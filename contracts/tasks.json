@@ -1,29 +1,155 @@
 {
-  "version": "0.1.0",
+  "version": "1.0.0",
+  "lastUpdated": "2026-01-08",
   "tasks": [
     {
       "id": "identity.register_user_v1",
+      "capabilityId": "identity.register_user_v1",
       "method": "POST",
-      "summary": "Create or update a user account (email auth or SSO).",
-      "requiredKyc": "KYC-0"
+      "summary": "Create a user account (email auth or SSO)."
     },
     {
-      "id": "identity.login_v1",
+      "id": "identity.update_profile_v1",
+      "capabilityId": "identity.update_profile_v1",
       "method": "POST",
-      "summary": "Authenticate user and return session token.",
-      "requiredKyc": "KYC-0"
+      "summary": "Update user profile fields (non-privileged)."
+    },
+
+    {
+      "id": "tenant.create_tenant_v1",
+      "capabilityId": "tenant.create_tenant_v1",
+      "method": "POST",
+      "summary": "Create a tenant and set the creating user as owner_admin."
     },
     {
-      "id": "dtc.create_dtc_v1",
+      "id": "tenant.invite_staff_v1",
+      "capabilityId": "tenant.invite_staff_v1",
       "method": "POST",
-      "summary": "Create a DTC draft record in Firebase (no mint).",
-      "requiredKyc": "KYC-1"
+      "summary": "Invite staff to tenant and assign roles."
+    },
+
+    {
+      "id": "vertical.install_vertical_package_v1",
+      "capabilityId": "vertical.install_vertical_package_v1",
+      "method": "POST",
+      "summary": "Install a vertical overlay package (real_estate, auto_dealer, etc.)."
     },
     {
-      "id": "logbook.create_entry_v1",
+      "id": "vertical.set_vertical_enabled_v1",
+      "capabilityId": "vertical.set_vertical_enabled_v1",
       "method": "POST",
-      "summary": "Create a logbook entry for a DTC.",
-      "requiredKyc": "KYC-1"
+      "summary": "Enable or disable a vertical overlay for a tenant."
+    },
+
+    {
+      "id": "leads.lead_capture_v1",
+      "capabilityId": "leads.lead_capture_v1",
+      "method": "POST",
+      "summary": "Create a lead record from web form, chat, or integration."
+    },
+    {
+      "id": "leads.update_lead_state_v1",
+      "capabilityId": "leads.update_lead_state_v1",
+      "method": "POST",
+      "summary": "Move a lead through the maturation state machine."
+    },
+    {
+      "id": "leads.assign_sales_owner_v1",
+      "capabilityId": "leads.assign_sales_owner_v1",
+      "method": "POST",
+      "summary": "Assign lead ownership to a broker/agent/rep."
+    },
+    {
+      "id": "leads.generate_daily_digest_v1",
+      "capabilityId": "leads.generate_daily_digest_v1",
+      "method": "POST",
+      "summary": "Generate daily lead digest for broker/manager."
+    },
+
+    {
+      "id": "docs.upload_rrl_doc_v1",
+      "capabilityId": "docs.upload_rrl_doc_v1",
+      "method": "POST",
+      "summary": "Upload a Rules & Resources doc (contracts/SOPs/disclosures) with versioning."
+    },
+    {
+      "id": "docs.list_rrl_docs_v1",
+      "capabilityId": "docs.list_rrl_docs_v1",
+      "method": "POST",
+      "summary": "List Rules & Resources docs available for a tenant/vertical."
+    },
+
+    {
+      "id": "drafts.generate_rrl_draft_v1",
+      "capabilityId": "drafts.generate_rrl_draft_v1",
+      "method": "POST",
+      "summary": "Generate draft Rules & Resources content from templates or client-supplied docs."
+    },
+    {
+      "id": "drafts.generate_sales_doc_v1",
+      "capabilityId": "drafts.generate_sales_doc_v1",
+      "method": "POST",
+      "summary": "Generate a draft offer/contract (explicitly marked Draft)."
+    },
+
+    {
+      "id": "approvals.sales_doc_approve_v1",
+      "capabilityId": "approvals.sales_doc_approve_v1",
+      "method": "POST",
+      "summary": "Explicit approval of a draft for sending/execution (versioned)."
+    },
+
+    {
+      "id": "kyc.verify_identity_v1",
+      "capabilityId": "kyc.verify_identity_v1",
+      "method": "POST",
+      "summary": "Run or refresh KYC verification (annual reuse supported)."
+    },
+    {
+      "id": "kyc.get_kyc_status_v1",
+      "capabilityId": "kyc.get_kyc_status_v1",
+      "method": "POST",
+      "summary": "Return KYC status and expiry for current user."
+    },
+
+    {
+      "id": "dtc.create_dtc_record_v1",
+      "capabilityId": "dtc.create_dtc_record_v1",
+      "method": "POST",
+      "summary": "Create DTC record in Firestore (pending_mint if on-chain enabled)."
+    },
+    {
+      "id": "dtc.mint_dtc_venly_v1",
+      "capabilityId": "dtc.mint_dtc_venly_v1",
+      "method": "POST",
+      "summary": "Asynchronous Venly minting worker (non-blocking)."
+    },
+
+    {
+      "id": "token.create_token_v1",
+      "capabilityId": "token.create_token_v1",
+      "method": "POST",
+      "summary": "Create and deploy a token (always KYC-gated)."
+    },
+
+    {
+      "id": "billing.create_invoice_v1",
+      "capabilityId": "billing.create_invoice_v1",
+      "method": "POST",
+      "summary": "Create an invoice or payment intent for a billable action."
+    },
+
+    {
+      "id": "workers.create_worker_v1",
+      "capabilityId": "workers.create_worker_v1",
+      "method": "POST",
+      "summary": "Create an AI Worker configuration (not deployed)."
+    },
+    {
+      "id": "workers.deploy_worker_v1",
+      "capabilityId": "workers.deploy_worker_v1",
+      "method": "POST",
+      "summary": "Deploy an AI Worker to production (gated, auditable)."
     }
   ]
 }
