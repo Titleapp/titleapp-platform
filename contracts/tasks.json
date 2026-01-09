@@ -1,0 +1,29 @@
+{
+  "version": "0.1.0",
+  "tasks": [
+    {
+      "id": "identity.register_user_v1",
+      "method": "POST",
+      "summary": "Create or update a user account (email auth or SSO).",
+      "requiredKyc": "KYC-0"
+    },
+    {
+      "id": "identity.login_v1",
+      "method": "POST",
+      "summary": "Authenticate user and return session token.",
+      "requiredKyc": "KYC-0"
+    },
+    {
+      "id": "dtc.create_dtc_v1",
+      "method": "POST",
+      "summary": "Create a DTC draft record in Firebase (no mint).",
+      "requiredKyc": "KYC-1"
+    },
+    {
+      "id": "logbook.create_entry_v1",
+      "method": "POST",
+      "summary": "Create a logbook entry for a DTC.",
+      "requiredKyc": "KYC-1"
+    }
+  ]
+}
