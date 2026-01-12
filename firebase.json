@@ -7,8 +7,8 @@
       { "source": "**", "destination": "/index.html" }
     ]
   },
-  "functions": {
-    "source": "functions",
-    "runtime": "nodejs20"
-  }
+"functions": {
+  "source": "functions/functions",
+  "runtime": "nodejs20"
+}
 }
