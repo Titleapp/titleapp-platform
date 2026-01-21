@@ -1,1 +1,34 @@
 
+---
+
+## Update Cadence
+
+- **Regulatory scan:** Continuous (AI-assisted)
+- **Human legal review:** Required
+- **Release cadence:** Monthly (or emergency hotfix)
+- **Versioning:** Semantic (vMAJOR.MINOR.PATCH)
+
+---
+
+## Client Customization Model
+
+Clients MAY:
+- Modify business terms (pricing, dates, contingencies)
+- Add internal policies
+
+Clients MAY NOT:
+- Remove required disclosures
+- Bypass mandatory workflows
+- Alter statutory constraints
+
+All overrides must be explicitly acknowledged.
+
+---
+
+## Next Step
+
+See:
+- `contracts/README.md`
+- `disclosures/README.md`
+- `workflows/README.md`
+
