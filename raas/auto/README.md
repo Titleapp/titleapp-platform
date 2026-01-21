@@ -58,4 +58,70 @@ TitleApp Auto RAAS enforces:
 
 Jurisdiction-specific RAAS lives under:
 
+raas/auto/<STATE>/
 
+makefile
+Copy code
+
+Example:
+
+raas/auto/IL/
+
+sql
+Copy code
+
+Each jurisdiction contains:
+
+raas/auto/<STATE>/
+README.md
+data-model/README.md
+sales/README.md
+service/README.md
+ownership/README.md
+fleet/README.md
+workflows/README.md
+
+yaml
+Copy code
+
+---
+
+## 4) Regulatory Referencing (Avoid Doom Loops)
+
+RAAS references authorities without restating statutes:
+- state motor vehicle codes (by name)
+- attorney general consumer guidance
+- FTC consumer rules (used car, warranties, etc.)
+- agency bulletins where applicable
+
+RAAS changes are:
+- reviewed by humans
+- versioned
+- released on a scheduled cadence (monthly) with emergency hotfix capability
+
+---
+
+## 5) Data & Customer Privacy Posture (Baseline)
+
+Auto RAAS distinguishes:
+- **Customer** (person or business interacting with dealer)
+- **Owner** (legal owner of vehicle record)
+- **Driver** (authorized operator; common in fleet)
+- **Dealer** (service provider and/or seller)
+
+Visibility and transfer rules are governed by jurisdiction RAAS and client policy,
+with audit logs for all access/ownership transitions.
+
+---
+
+## 6) Status
+
+- Vertical: Auto
+- RAAS Status: Active (baseline)
+- Next: establish first jurisdiction package (IL) and then extend.
+
+---
+
+## 7) Next Step
+
+Create the first jurisdiction package:
