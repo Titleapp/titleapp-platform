@@ -87,3 +87,34 @@ If regulatory uncertainty exists:
 
 ## 5) Package Structure (Illinois)
 
+raas/auto/IL/
+README.md ← This file
+data-model/README.md ← Entities + required fields
+sales/README.md ← Sales workflows
+service/README.md ← Service & RO workflows
+ownership/README.md ← Ownership & encumbrances
+fleet/README.md ← Fleet-specific workflows
+workflows/README.md ← End-to-end state machines
+
+yaml
+Copy code
+
+---
+
+## 6) Versioning & Governance
+
+- Jurisdiction: Illinois
+- Vertical: Auto
+- RAAS Version: v1.0 (baseline)
+- Review cadence: Monthly
+- Emergency updates permitted for material changes
+
+---
+
+## 7) Next Step
+
+Define the **Auto data model**, which all workflows depend on:
+
+raas/auto/IL/data-model/README.md
+
+Copy code
