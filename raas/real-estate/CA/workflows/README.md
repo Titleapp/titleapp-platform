@@ -1,77 +1,137 @@
-# California Real Estate — Workflows
+# Real Estate Workflows — California (CA)
 
-This file defines workflow IDs the API can list via:
-GET `/v1/raas:workflows&vertical=real-estate&jurisdiction=CA`
+These workflows are the “front door” for the Real Estate vertical in California.  
+They are written to be chat-friendly and map to a simple pattern:
 
-> Format: JSON block with `workflows: []`.
+- **Collect required inputs**
+- **Run compliance checks (jurisdiction-aware)**
+- **Produce a packet / record anchor / next action**
+
+---
+
+## Machine-readable workflows (CA)
+
+> The API reads this list to populate `/v1/raas:workflows?vertical=real-estate&jurisdiction=CA`
 
 ```json
 {
+  "vertical": "real-estate",
+  "jurisdiction": "CA",
   "workflows": [
     {
-      "id": "lease_residential_new",
-      "name": "Residential Lease — New",
-      "description": "Create a new residential lease package (CA). Collect parties, property, term, rent, deposits, disclosures, signatures, and move-in checklist."
+      "id": "re_inquiry_basic",
+      "name": "Property Inquiry (Basic)",
+      "description": "Collect address/APN + user intent and return a basic public-info summary + recommended next step (prelim/full/lease/HOA).",
+      "requiredInputs": ["property.address_or_apn", "user.intent"],
+      "optionalInputs": ["user.role", "property.county", "property.owner_name_if_known"],
+      "suggestedNextActions": [
+        { "action": "re:order_preliminary_report", "label": "Order Preliminary Report" },
+        { "action": "re:order_full_report", "label": "Order Full Blockchain Report" },
+        { "action": "re:start_residential_lease", "label": "Start Residential Lease" },
+        { "action": "re:start_hoa_request", "label": "HOA Request" }
+      ]
     },
     {
-      "id": "lease_residential_renewal",
-      "name": "Residential Lease — Renewal",
-      "description": "Renew an existing lease. Collect updated term/rent, updated notices/disclosures, signatures, and deliver renewal packet."
+      "id": "re_preliminary_title_report",
+      "name": "Preliminary Title Report (CA)",
+      "description": "Start a preliminary title workflow: ownership snapshot, liens/encumbrances, vesting, and flags. Produces a prelim report artifact.",
+      "requiredInputs": ["property.address_or_apn", "user.role"],
+      "optionalInputs": ["transaction.type", "transaction.close_date_target", "property.county"],
+      "suggestedNextActions": [
+        { "action": "re:review_flags", "label": "Review Title Flags" },
+        { "action": "re:upgrade_full_report", "label": "Upgrade to Full Report" }
+      ]
     },
     {
-      "id": "lease_residential_notice_rent_increase",
-      "name": "Residential Lease — Rent Increase Notice",
-      "description": "Prepare and deliver a rent increase notice. Determines required notice period and required content based on jurisdiction rules (client config / RAAS)."
+      "id": "re_full_blockchain_report",
+      "name": "Full Blockchain Report (CA)",
+      "description": "Start a full report workflow: deeper chain review, exceptions, risk notes, and a record-anchor plan (db + optional blockchain notary).",
+      "requiredInputs": ["property.address_or_apn", "user.role"],
+      "optionalInputs": ["transaction.type", "transaction.close_date_target", "property.county"],
+      "suggestedNextActions": [
+        { "action": "re:create_record_anchor", "label": "Create Record Anchor" },
+        { "action": "re:open_escrow_locker", "label": "Open Escrow Locker" }
+      ]
     },
     {
-      "id": "lease_residential_notice_terminate",
-      "name": "Residential Lease — Termination Notice",
-      "description": "Prepare a termination notice (tenant/landlord). Collect basis, dates, service method, and generate compliant notice packet."
+      "id": "re_purchase_sale_transaction",
+      "name": "Purchase & Sale Transaction (CA)",
+      "description": "Guided transaction checklist for purchase/sale: parties, escrow, disclosures, contingencies, signing, and closeout steps.",
+      "requiredInputs": ["transaction.type", "property.address_or_apn", "parties.buyer", "parties.seller"],
+      "optionalInputs": ["parties.agent_buyer", "parties.agent_seller", "escrow.provider", "financing.type"],
+      "suggestedNextActions": [
+        { "action": "re:generate_psa_packet", "label": "Generate PSA Packet" },
+        { "action": "re:request_disclosures", "label": "Request Disclosures" },
+        { "action": "re:route_for_signature", "label": "Send for eSign" }
+      ]
     },
     {
-      "id": "lease_move_in",
-      "name": "Lease — Move-In (Condition + Keys + Utilities)",
-      "description": "Move-in workflow: condition report, photo log, keys/garage/openers, utilities handoff, tenant acknowledgements."
+      "id": "re_listing_onboarding",
+      "name": "Listing Onboarding (CA)",
+      "description": "Set up a listing workflow: property facts, seller packet, required disclosures checklist, and marketing-ready summary.",
+      "requiredInputs": ["property.address_or_apn", "parties.seller", "listing.type"],
+      "optionalInputs": ["parties.agent", "listing.target_date"],
+      "suggestedNextActions": [
+        { "action": "re:generate_listing_packet", "label": "Generate Listing Packet" },
+        { "action": "re:order_preliminary_report", "label": "Order Preliminary Report" }
+      ]
     },
     {
-      "id": "lease_move_out",
-      "name": "Lease — Move-Out (Inspection + Deposit Accounting)",
-      "description": "Move-out workflow: inspection scheduling, condition/photos, itemized deposit accounting, vendor work orders, and tenant delivery."
+      "id": "re_residential_lease_new",
+      "name": "Residential Lease — New (CA)",
+      "description": "Create a residential lease workflow: tenant screening inputs, lease terms, required CA disclosures checklist, signing, and move-in checklist.",
+      "requiredInputs": ["property.address", "parties.landlord", "parties.tenant", "lease.start_date", "lease.rent_amount"],
+      "optionalInputs": ["lease.deposit_amount", "lease.term_months", "lease.pets", "lease.utilities", "lease.parking"],
+      "suggestedNextActions": [
+        { "action": "re:generate_residential_lease_packet", "label": "Generate Lease Packet" },
+        { "action": "re:route_for_signature", "label": "Send for eSign" },
+        { "action": "re:create_tenant_record_anchor", "label": "Create Tenant Record Anchor" }
+      ]
     },
     {
-      "id": "hoa_onboarding_unit",
-      "name": "HOA — Onboard New Unit Owner/Tenant",
-      "description": "Onboard a new resident: rules acknowledgement, HOA docs delivery, contact info, vehicle info, parking, and portal access."
+      "id": "re_commercial_lease_new",
+      "name": "Commercial Lease — New (CA)",
+      "description": "Create a commercial lease workflow: parties, premises, term, rent/escalations, CAM/NNN, insurance, signing, and possession checklist.",
+      "requiredInputs": ["property.address", "parties.landlord", "parties.tenant", "lease.start_date", "lease.term_months"],
+      "optionalInputs": ["lease.base_rent", "lease.cpi_escalation", "lease.cam_terms", "lease.nnn_terms", "lease.use_clause"],
+      "suggestedNextActions": [
+        { "action": "re:generate_commercial_lease_packet", "label": "Generate Commercial Lease Packet" },
+        { "action": "re:route_for_signature", "label": "Send for eSign" }
+      ]
     },
     {
-      "id": "hoa_violation_notice",
-      "name": "HOA — Violation Notice",
-      "description": "Issue HOA violation notice: evidence, violation type, cure period, hearing (if applicable), delivery, and tracking."
+      "id": "re_hoa_resale_request",
+      "name": "HOA Resale Package / Documents (CA)",
+      "description": "Request and track HOA docs for a resale: CC&Rs, bylaws, budget, reserve study, minutes, fee schedule, estoppel, transfer fees.",
+      "requiredInputs": ["property.address_or_apn", "hoa.name_or_mgmt_company", "request.type"],
+      "optionalInputs": ["transaction.close_date_target", "hoa.contact_email"],
+      "suggestedNextActions": [
+        { "action": "re:generate_hoa_request_letter", "label": "Generate HOA Request Letter" },
+        { "action": "re:track_hoa_status", "label": "Track HOA Status" }
+      ]
     },
     {
-      "id": "hoa_arch_request",
-      "name": "HOA — Architectural Request (ARC)",
-      "description": "Submit and route an architectural request: scope, drawings/photos, contractor/license/insurance, review steps, decision letter."
+      "id": "re_hoa_management_ops",
+      "name": "HOA Operations (CA)",
+      "description": "Operational HOA workflow: dues, violations, architectural requests, meeting notices, vendor work orders, and member communications.",
+      "requiredInputs": ["hoa.name_or_mgmt_company", "request.type"],
+      "optionalInputs": ["member.name", "unit.identifier", "violation.type", "dues.amount"],
+      "suggestedNextActions": [
+        { "action": "re:issue_violation_notice", "label": "Issue Violation Notice" },
+        { "action": "re:create_work_order", "label": "Create Vendor Work Order" },
+        { "action": "re:send_member_notice", "label": "Send Member Notice" }
+      ]
     },
     {
-      "id": "hoa_assessment_collection",
-      "name": "HOA — Assessment Collection (Friendly → Formal)",
-      "description": "Collection workflow: reminders, late fees (if applicable), payment plan offer, escalation steps, and recordkeeping."
-    },
-    {
-      "id": "purchase_sale_intake",
-      "name": "Purchase/Sale — Deal Intake (Buyer/Seller/Agent)",
-      "description": "Collect transaction basics (property, parties, escrow/title, dates). Build a task plan for disclosures, signatures, and closing checklist."
-    },
-    {
-      "id": "purchase_sale_disclosures_packet",
-      "name": "Purchase/Sale — Disclosures Packet",
-      "description": "Generate a disclosures checklist and packet for signatures. Track completion and delivery confirmations."
-    },
-    {
-      "id": "closing_coordination",
-      "name": "Closing — Coordination & Checklist",
-      "description": "Coordinate title/escrow, payoff, prorations, keys/possession, final walk-through, and closing deliverables."
+      "id": "re_record_anchor_property",
+      "name": "Create Property Record Anchor (CA)",
+      "description": "Create a record anchor for the property and transaction artifacts: database record + optional digital notary / blockchain proof for escrow locker continuity.",
+      "requiredInputs": ["property.address_or_apn", "anchor.purpose"],
+      "optionalInputs": ["transaction.type", "escrow.provider", "notary.required"],
+      "suggestedNextActions": [
+        { "action": "re:open_escrow_locker", "label": "Open Escrow Locker" },
+        { "action": "re:attach_documents", "label": "Attach Documents" }
+      ]
     }
   ]
 }
