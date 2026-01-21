@@ -1,116 +1,55 @@
-# RaaS — Real Estate Workflows — Nevada (NV)
+# RAAS — Homeowners Associations (Nevada)
 
-This directory defines **approved transaction workflows** for Nevada real estate
-under the TitleApp Rules as a Service (RaaS) framework.
+## Purpose
+This directory defines the **Rules as a Service (RAAS)** governing Homeowners Association (HOA)
+interactions and obligations in real estate transactions within the State of Nevada.
 
-Workflows enforce **ordering, gating, and compliance checks** across
-contracts and disclosures.
-
----
-
-## Workflow Philosophy
-
-- A transaction is a **state machine**, not a document dump
-- Required steps cannot be skipped
-- Compliance failures block progression
-- Overrides are logged and auditable
+These rules allow TitleApp to safely support HOA-encumbered properties without relying on
+client-supplied compliance frameworks.
 
 ---
 
-## Supported Workflow Types (Baseline)
-
-### 1) Residential Purchase
-### 2) Residential Lease
-### 3) Commercial Purchase (Baseline)
-### 4) Commercial Lease (Baseline)
-### 5) Seller Financing (Restricted)
-
----
-
-## Canonical Workflow States
-
-All workflows use the following states:
-
-1. `initiated`
-2. `intake-complete`
-3. `disclosures-issued`
-4. `disclosures-acknowledged`
-5. `contract-generated`
-6. `contract-executed`
-7. `pre-close`
-8. `closed`
-9. `archived`
-
-State regression is logged.
+## HOA Scope Covered
+- HOA disclosures during sale or lease
+- HOA resale packages
+- Governing document handling (CC&Rs, bylaws, rules)
+- HOA fee status and obligations
+- HOA transfer and demand processes
+- HOA management company interactions
 
 ---
 
-## Residential Purchase Workflow (NV)
-
-### Required Sequence
-1. Intake completed (property + parties)
-2. Seller disclosures issued
-3. Buyer acknowledgment recorded
-4. Purchase agreement generated
-5. Contract executed
-6. Close transaction
-7. Archive
-
-### Hard Stops
-- Contract generation blocked until disclosures acknowledged
-- Closing blocked if statutory disclosures missing
+## Core RAAS Responsibilities
+- Identify HOA-encumbered properties
+- Enforce required HOA disclosure steps
+- Prevent unsupported HOA-related actions
+- Guide compliant transaction workflows involving HOAs
+- Maintain transaction auditability
 
 ---
 
-## Residential Lease Workflow (NV)
+## Regulatory References (Informational)
+- Nevada Revised Statutes (NRS) Chapter 116 — Common-Interest Ownership
+- Nevada Real Estate Division
+- HOA governing documents (association-specific)
 
-### Required Sequence
-1. Intake (unit + tenant)
-2. Required disclosures issued
-3. Lease agreement generated
-4. Tenant acknowledgment
-5. Lease execution
-6. Archive
+> ⚠️ HOA rules vary by association.  
+> Association documents supplement but do not override RAAS safeguards.
 
 ---
 
-## Seller Financing Workflow (NV)
-
-### Risk Classification
-**HIGH**
-
-### Additional Requirements
-- Seller financing addendum required
-- Financing disclosure required
-- Buyer acknowledgment of non-bank financing
-
-### Enforcement
-- Workflow cannot proceed without disclosures
-- Overrides require senior approval
+## Client Overrides
+Clients may upload HOA-specific governing documents.
+All overrides are logged and validated against RAAS constraints.
 
 ---
 
-## Audit & Logging Requirements
-
-Each workflow produces:
-- Timestamped state transitions
-- Document versions used
-- Disclosure acknowledgments
-- Override log (if any)
+## Update Policy
+- Reviewed quarterly
+- Immediate updates for statutory HOA changes
+- Versioned releases applied across tenants
 
 ---
 
-## Local Overlays
-
-County or municipal overlays may extend these workflows but may not:
-- Remove required steps
-- Bypass disclosure acknowledgments
-
----
-
-## Versioning
-
-- Baseline version: v0.1
-- Review cadence: Monthly or emergency update
-- Jurisdiction: Nevada (NV)
-
+## Status
+**Active — v1.0**
