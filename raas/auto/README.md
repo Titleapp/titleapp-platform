@@ -1,5 +1,10 @@
 # RAAS — Auto (Vertical)
 
+RAAS Level:** 2 (Vertical Baseline)  
+Applies to:** Auto vertical, all jurisdictions  
+Subordinate to:** RAAS Level-0 (AI Style Guide), RAAS Level-1 (Core Behavioral Rules)
+Authoritative over:** Auto jurisdiction packages (`raas/auto/<STATE>/`)
+
 This directory defines the **Rules as a Service (RAAS)** baseline for the **Auto vertical**
 across supported jurisdictions.
 
