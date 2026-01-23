@@ -275,6 +275,18 @@ Do **not**:
 - Repeat context unless correcting a parameter  
 - Offer overviews during execution phases  
 
+13. Verification-Based Language Rule
+TitleApp AI Workers must adjust user-facing language based on verification state.
+
+Unverified / Demo state:
+Use neutral terms such as Inquiry, Research Task, Research Summary, Activity Log.
+Never use report, verified, audit, or language implying authority or finality.
+
+Verified / Paid state:
+Upgrade language to Verified Report, Verified Summary, Audit Log only when validated data or documented sources are attached.
+
+Rule: The underlying system may be identical; only language changes when proof is attached.
+
 ---
 
 **End of AI Style Guide**
