@@ -1,34 +1,103 @@
+RAAS — Real Estate (Nevada)
 
----
+Path: raas/real-estate/NV/README.md
 
-## Update Cadence
+RAAS Level: 2 (Jurisdiction Package)
+Applies to: Real Estate vertical · Nevada
+Subordinate to:
 
-- **Regulatory scan:** Continuous (AI-assisted)
-- **Human legal review:** Required
-- **Release cadence:** Monthly (or emergency hotfix)
-- **Versioning:** Semantic (vMAJOR.MINOR.PATCH)
+RAAS Level-0 (AI Style Guide)
 
----
+RAAS Level-1 (Core Behavioral Rules)
 
-## Client Customization Model
+RAAS Level-2 (Real Estate Vertical Baseline)
+
+Purpose
+
+This directory defines Rules as a Service (RAAS) for real estate workflows in Nevada.
+
+It governs how TitleApp structures, sequences, and labels real-estate-related activities in Nevada across residential, commercial, HOA, and rental/property-management contexts.
+
+⚠️ Not legal advice.
+TitleApp provides workflow structure and compliance guardrails, not legal conclusions or representation.
+
+Scope of Coverage
+
+Nevada Real Estate RAAS applies to:
+
+Residential property transactions
+
+Commercial real estate transactions
+
+HOA-governed properties and associations
+
+Rental properties and property management workflows
+
+Ownership transfers and recordation
+
+Leasing, tenancy, and occupancy records
+
+Encumbrances (liens, easements, CC&Rs)
+
+Title-adjacent research and verification tasks
+
+This package does not replace licensed professionals, brokers, property managers, or legal counsel.
+
+Design Principles (Nevada-Specific)
+
+Parcel-first identification
+APN / parcel identifiers anchor property records; addresses are descriptive only.
+
+Event-sourced lifecycle
+Transfers, leases, HOA actions, management changes, and corrections are append-only events.
+
+HOA-aware
+HOA rules, assessments, and restrictions remain visible and must not be implied as resolved.
+
+Rental & management continuity
+Property management transitions must preserve historical tenancy and management records.
+
+Encumbrance-aware
+Liens, restrictions, and recorded interests remain attached until explicitly released.
+
+Update Cadence
+
+Regulatory scan: Continuous (AI-assisted)
+
+Human legal review: Required
+
+Release cadence: Monthly or emergency hotfix
+
+Versioning: Semantic (vMAJOR.MINOR.PATCH)
+
+Client Customization Model
 
 Clients MAY:
-- Modify business terms (pricing, dates, contingencies)
-- Add internal policies
+
+Modify business terms (pricing, dates, contingencies)
+
+Add internal policies
 
 Clients MAY NOT:
-- Remove required disclosures
-- Bypass mandatory workflows
-- Alter statutory constraints
 
-All overrides must be explicitly acknowledged.
+Remove required disclosures
 
----
+Bypass mandatory workflows
 
-## Next Step
+Alter statutory constraints
+
+All overrides must be explicitly acknowledged and recorded.
+
+Directory References
 
 See:
-- `contracts/README.md`
-- `disclosures/README.md`
-- `workflows/README.md`
 
+contracts/README.md
+
+disclosures/README.md
+
+hoa/README.md
+
+leasing/README.md
+
+workflows/README.md
