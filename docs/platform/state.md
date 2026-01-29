@@ -311,3 +311,249 @@ If something feels “too hard,” it is usually because:
 - It must be auditable and compliant
 
 That complexity is the point.
+
+ADDENDUM — GPT FRONT DOOR & CSV INGESTION (LOCKED)
+
+Date: 2026-01-28
+Status: Production-verified
+
+18. GPT Front Door (Door 2) — Now Real, Not Conceptual
+
+A dedicated GPT-only front door has been implemented and partially locked.
+
+This GPT (working name: Title App Alpha GPT) operates as a first-class client of the platform — not a wrapper, demo, or proxy UI.
+
+GPT Capabilities (Current)
+
+The GPT is configured with exactly three actions:
+
+getWorkflows — GET /workflows
+
+chatMessage — POST /chat
+
+getReportStatus — GET /reportStatus
+
+These actions:
+
+Route through the Cloudflare Worker front door
+
+Call the same backend APIs as Web UI
+
+Obey the same auth, rules, and audit constraints
+
+There is no GPT-only logic in the backend.
+
+19. GPT Execution Contract (Locked)
+
+The GPT operates under strict execution rules, now documented and enforced at the prompt + schema layer:
+
+Execution Rules
+
+One action call per user turn
+
+Never call the same action twice in a turn
+
+Polling only allowed if the user explicitly asks after a jobId exists
+
+Required Query Parameters (Every Call)
+
+vertical (auto | real_estate)
+
+jurisdiction (IL | CA)
+
+sessionId (stable across the conversation)
+
+Routing Rules
+
+Workflow listing → getWorkflows
+
+Conversational progression → chatMessage
+
+Job status → getReportStatus
+
+UX Constraints
+
+Present API responses verbatim
+
+Show suggestedActions as explicit choices
+
+Ask only one question at a time
+
+Never invent workflows, job states, or data
+
+This effectively makes the GPT a deterministic client, not an agent that can hallucinate system behavior.
+
+20. GPT + Web UI Parity (Critical Lock)
+
+The GPT and Web UI now share:
+
+The same ingestion contracts
+
+The same backend endpoints
+
+The same auth model
+
+The same audit trail
+
+There is no “GPT path” vs “UI path”.
+
+CSV ingestion was the proof point.
+
+21. CSV / Bulk Ingestion — Fully Locked
+
+The CSV ingestion pipeline is now production-verified end-to-end.
+
+What Is Locked
+
+/v1/admin/import rewrite → api function
+
+Firebase ID token authentication
+
+Membership enforcement
+
+Tenant isolation
+
+Firestore writes
+
+Audit records
+
+Why This Matters
+
+This proves the system can safely support:
+
+CSV
+
+Excel
+
+Google Sheets
+
+External APIs
+
+GPT-initiated bulk ingestion
+
+The UI is optional.
+The contract is not.
+
+22. What the GPT Work Actually Achieved (Clarification)
+
+The GPT effort was not “prompting”.
+
+It achieved:
+
+A second production front door
+
+Deterministic AI behavior
+
+Shared backend contracts
+
+Elimination of UI-specific logic
+
+A scalable pattern for:
+
+Consumer chat
+
+Admin chat
+
+Partner chat
+
+Government chat
+
+This validates the “AI as a client” architecture.
+
+23. What Is Now Officially Locked
+Newly Locked (as of this update)
+
+GPT action schema
+
+GPT execution rules
+
+GPT ↔ backend parity
+
+CSV ingestion pipeline
+
+/v1 rewrite + route normalization
+
+Firebase Auth → membership enforcement (proven live)
+
+Still Replaceable
+
+Admin upload UI
+
+Consumer UI framework
+
+Styling, layout, components
+
+24. NEXT TASK — UI Wire-Up (Recommended)
+
+The next highest-leverage task is UI wiring, not new backend work.
+
+Objective
+
+Make the Web UI mirror what was sold in the Title App Sales Demo and align with the Consumer “Filing Cabinet” mental model.
+
+Recommended Scope
+
+Wire UI to existing endpoints only
+
+No new backend features
+
+No refactors
+
+No new auth logic
+
+Specific Targets
+
+Admin Filing Cabinet
+
+Customers
+
+Assets
+
+Imports
+
+Jobs / status
+
+Consumer Filing Cabinet
+
+Asset-centric navigation
+
+DTC + Logbook views
+
+Read-only initially
+
+GPT Embedded Assist
+
+Same GPT as Door 2
+
+Embedded, not duplicated
+
+Non-Goals
+
+New data models
+
+New permissions
+
+New workflows
+
+The backend is ready.
+The UI now needs to stop hiding it.
+
+25. Strategic Note (Why This Order Matters)
+
+At this point:
+
+Backend risk is low
+
+Architecture risk is low
+
+UX clarity is the bottleneck
+
+Wiring UI → existing contracts:
+
+De-risks demos
+
+De-risks partners
+
+De-risks fundraising
+
+Makes the system legible
