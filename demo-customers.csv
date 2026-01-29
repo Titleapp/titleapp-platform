@@ -1,0 +1,4 @@
+customerId,firstName,lastName,phone,email
+CUST-001,John,Smith,+13125550101,john.smith@example.com
+CUST-002,Sarah,Lee,+13125550102,sarah.lee@example.com
+CUST-003,Mike,Garcia,+13125550103,mike.garcia@example.com

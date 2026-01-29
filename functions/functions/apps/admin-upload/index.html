@@ -1,0 +1,122 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>TitleApp – Data Import</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont;
+      background: #f5f7fa;
+      padding: 40px;
+    }
+    .drop {
+      border: 2px dashed #999;
+      border-radius: 12px;
+      padding: 60px;
+      text-align: center;
+      background: white;
+      cursor: pointer;
+    }
+    .drop.dragover {
+      border-color: #2563eb;
+      background: #eef2ff;
+    }
+    button {
+      margin-top: 20px;
+      padding: 12px 20px;
+      font-size: 16px;
+    }
+    pre {
+      margin-top: 20px;
+      background: #111;
+      color: #0f0;
+      padding: 16px;
+      max-height: 300px;
+      overflow: auto;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Upload CSV</h1>
+
+<div id="drop" class="drop">
+  Drag & drop CSV here<br><br>
+  or click to select
+</div>
+
+<button id="upload" disabled>Upload</button>
+
+<pre id="out"></pre>
+
+<script>
+let csvText = "";
+let fileName = "";
+
+const drop = document.getElementById("drop");
+const upload = document.getElementById("upload");
+const out = document.getElementById("out");
+
+drop.onclick = () => {
+  const i = document.createElement("input");
+  i.type = "file";
+  i.accept = ".csv";
+  i.onchange = e => handleFile(e.target.files[0]);
+  i.click();
+};
+
+drop.ondragover = e => {
+  e.preventDefault();
+  drop.classList.add("dragover");
+};
+
+drop.ondragleave = () => drop.classList.remove("dragover");
+
+drop.ondrop = e => {
+  e.preventDefault();
+  drop.classList.remove("dragover");
+  handleFile(e.dataTransfer.files[0]);
+};
+
+function handleFile(file) {
+  if (!file || !file.name.endsWith(".csv")) {
+    alert("CSV only");
+    return;
+  }
+  fileName = file.name;
+  const r = new FileReader();
+  r.onload = () => {
+    csvText = r.result;
+    upload.disabled = false;
+    out.textContent = `Loaded ${fileName}\n\n${csvText.slice(0,500)}…`;
+  };
+  r.readAsText(file);
+}
+
+upload.onclick = async () => {
+  upload.disabled = true;
+  out.textContent = "Uploading…";
+
+  const res = await fetch("/admin/import", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer " + localStorage.getItem("ID_TOKEN"),
+      "x-tenant-id": "demo"
+    },
+    body: JSON.stringify({
+      tenantId: "demo",
+      type: "customers",
+      mode: "upsert",
+      source: { type: "upload", label: fileName },
+      csvText
+    })
+  });
+
+  out.textContent = JSON.stringify(await res.json(), null, 2);
+};
+</script>
+
+</body>
+</html>
+
