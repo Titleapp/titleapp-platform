@@ -1,9 +1,28 @@
 # Title App – Backend Architecture (Canonical)
 
-_Last updated: 2026-02-03_
+_Last updated: 2026-02-07_
 
 This document describes the **current, working backend architecture** for Title App.
 It is the single source of truth to prevent routing, auth, and infrastructure confusion.
+
+---
+
+## ✅ MVP Status (LOCKED)
+
+As of 2026-02-07, the following is **verified working end-to-end**:
+
+**Admin UI → Cloudflare Frontdoor → Firebase Functions (Cloud Run) → Admin UI**
+
+### Verified workflow call (Admin UI “Load workflows”)
+- Frontdoor request:
+  - `POST https://titleapp-frontdoor.titleapp-core.workers.dev/api?path=/v1/raas:workflows`
+- Response:
+  - `200 OK` JSON (stub payload currently)
+
+**Important note (recent fix):**
+- Backend routing now supports Frontdoor’s **generic passthrough** format:
+  - `/api?path=/v1/...`
+- Previously, requests to `/api?path=...` could 404 because the backend only parsed pathname routing.
 
 ---
 
@@ -31,10 +50,15 @@ Authentication is handled via **Firebase ID Tokens**, verified at the backend.
   auth.currentUser.getIdToken()
 Sends requests to Cloudflare with:
 
-makefile
-Copy code
 Authorization: Bearer <FIREBASE_ID_TOKEN>
+
 2. Cloudflare Worker (Frontdoor)
+
+Base URL
+
+https://titleapp-frontdoor.titleapp-core.workers.dev
+
+
 Purpose
 
 Public entry point
@@ -47,11 +71,6 @@ Token passthrough
 
 Proxies requests to backend
 
-Base URL
-
-arduino
-Copy code
-https://titleapp-frontdoor.titleapp-core.workers.dev
 Supported routes
 
 /workflows
@@ -65,12 +84,13 @@ Supported routes
 Important
 
 /api REQUIRES a path query param
+
 Example:
 
-bash
-Copy code
 /api?path=/v1/health
-What it does
+
+
+What it does:
 
 Accepts frontend request
 
@@ -83,11 +103,12 @@ X-Vertical / X-Jurisdiction forwarded
 Does NOT terminate auth (except /chat)
 
 3. Backend API (Firebase Functions / Cloud Run)
+
 Canonical project
 
-yaml
-Copy code
 Firebase / GCP Project: title-app-alpha
+
+
 Runtime
 
 Firebase Functions v2
@@ -96,34 +117,42 @@ Deployed as Cloud Run service
 
 Primary service URL
 
-arduino
-Copy code
 https://api-feyfibglbq-uc.a.run.app
+
+
 Single entrypoint
 
-ini
-Copy code
 exports.api = onRequest(...)
-Routing
 
+
+Routing
 Cloudflare forwards requests with:
 
-bash
-Copy code
 /api?path=/v1/...
-Backend strips /v1 internally and routes by path
+
+
+Backend routing behavior:
+
+Supports both:
+
+Firebase rewrite style: /api/<route>
+
+Frontdoor passthrough style: /api?path=/v1/<route>
+
+Backend strips /v1 internally and routes by path.
 
 🔐 Authentication (CRITICAL)
+
 All protected endpoints require:
 
-makefile
-Copy code
 Authorization: Bearer <Firebase ID Token>
+
+
 Token is verified server-side using:
 
-js
-Copy code
 admin.auth().verifyIdToken(token)
+
+
 Expected token claims:
 
 iss = https://securetoken.google.com/title-app-alpha
@@ -132,28 +161,33 @@ aud = title-app-alpha
 
 If these do not match, the request will return:
 
-Copy code
 401 Unauthorized
+
 🔁 Request Flow (Example: Workflows)
-pgsql
-Copy code
+
 Admin UI
-  ↓
+↓
 Cloudflare Worker
-  ↓
+↓
 Firebase Functions (Cloud Run)
-  ↓
+↓
 Firestore / Logic
+
 Concrete example:
 
-bash
-Copy code
 POST /workflows
 ↓
 Cloudflare → /v1/raas:workflows
 ↓
 Backend handler
+
+
+(Alternate equivalent, currently used by Admin UI in MVP):
+
+POST /api?path=/v1/raas:workflows
+
 🧱 Design Principles
+
 Cloudflare = routing + CORS only
 
 Backend = source of truth
@@ -165,17 +199,10 @@ One canonical backend project: title-app-alpha
 Do NOT create duplicate GCP projects without a migration plan
 
 🛑 Known Non-goals
+
 TitleApp_Core GCP project is NOT canonical
 
 GitHub auto-deploy is NOT set up yet
 
 Production / multi-tenant hardening comes later
 
-✅ Status
-Backend deployed
-
-Auth verified
-
-Routing understood
-
-Architecture locked
