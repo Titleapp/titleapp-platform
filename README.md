@@ -206,3 +206,26 @@ GitHub auto-deploy is NOT set up yet
 
 Production / multi-tenant hardening comes later
 
+
+---
+
+## 📤 Admin Upload (CSV Ingestion) – Status
+
+Deployed admin ingestion surface:
+
+- URL: `https://title-app-alpha.web.app/admin-upload/`
+- Current behavior:
+  - UI renders and attempts upload via `POST /v1/admin/import`
+  - Backend responds `401 Unauthorized` with reason `"Invalid token"` (auth not yet wired to current Firebase session/token flow)
+
+Purpose (MVP + near-term):
+- Bulk import/supplement content for:
+  - sales scoring
+  - screening
+  - marketing enrichment
+  - closing workflows
+- This ingestion lane is complementary to RaaS libraries in `/raas/**` (curated + versioned rules), and is intended for operational/batch data.
+
+Next steps:
+1) Re-enable uploader by attaching a **fresh Firebase ID token** to upload requests (or proxy through Frontdoor).
+2) Expand beyond CSV (PDF/images/etc.) once the auth contract is stable.
