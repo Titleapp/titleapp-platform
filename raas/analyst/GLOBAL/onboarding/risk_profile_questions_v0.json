@@ -1,0 +1,123 @@
+{
+  "id": "risk_profile_questions_v0",
+  "version": "v0",
+  "title": "Tenant Risk Profile (v0)",
+  "purpose": "Collect the minimum inputs needed to deterministically gate deal screening outcomes.",
+  "questions": [
+    {
+      "id": "target_asset_types",
+      "type": "multi_select",
+      "required": true,
+      "prompt": "What deal types do you want to screen?",
+      "options": [
+        "commercial_real_estate",
+        "private_equity",
+        "entitlement",
+        "refinance",
+        "conversion",
+        "debt_acquisition"
+      ]
+    },
+    {
+      "id": "min_gross_irr",
+      "type": "number",
+      "required": false,
+      "unit": "percent",
+      "prompt": "Minimum gross IRR target (optional)."
+    },
+    {
+      "id": "min_net_irr",
+      "type": "number",
+      "required": false,
+      "unit": "percent",
+      "prompt": "Minimum net IRR target (optional)."
+    },
+    {
+      "id": "min_cash_on_cash",
+      "type": "number",
+      "required": false,
+      "unit": "percent",
+      "prompt": "Minimum cash-on-cash target (optional)."
+    },
+    {
+      "id": "min_equity_multiple",
+      "type": "number",
+      "required": false,
+      "unit": "x",
+      "prompt": "Minimum equity multiple target (optional)."
+    },
+    {
+      "id": "max_ltv",
+      "type": "number",
+      "required": false,
+      "unit": "percent",
+      "prompt": "Maximum LTV allowed (optional)."
+    },
+    {
+      "id": "min_dscr",
+      "type": "number",
+      "required": false,
+      "unit": "x",
+      "prompt": "Minimum DSCR allowed (optional)."
+    },
+    {
+      "id": "max_debt_yield",
+      "type": "number",
+      "required": false,
+      "unit": "percent",
+      "prompt": "Maximum/Minimum debt yield target (optional)."
+    },
+    {
+      "id": "max_rec_capital",
+      "type": "multi_select",
+      "required": false,
+      "prompt": "What debt recourse is acceptable (optional)?",
+      "options": [
+        "non_recourse_only",
+        "limited_recourse",
+        "full_recourse_ok"
+      ]
+    },
+    {
+      "id": "risk_tolerance",
+      "type": "single_select",
+      "required": true,
+      "prompt": "Overall risk tolerance (used as tie-breaker when evidence is incomplete).",
+      "options": [
+        "low",
+        "medium",
+        "high"
+      ]
+    },
+    {
+      "id": "deal_size_min",
+      "type": "number",
+      "required": false,
+      "unit": "usd",
+      "prompt": "Minimum deal size (optional)."
+    },
+    {
+      "id": "deal_size_max",
+      "type": "number",
+      "required": false,
+      "unit": "usd",
+      "prompt": "Maximum deal size (optional)."
+    }
+  ],
+  "scoring": {
+    "gates": [
+      {
+        "id": "g_min_returns",
+        "logic": "if provided, deal metrics must meet or exceed tenant minimums"
+      },
+      {
+        "id": "g_debt_constraints",
+        "logic": "if provided, LTV/DSCR constraints must be satisfied"
+      },
+      {
+        "id": "g_risk_tolerance",
+        "logic": "low tolerance requires stronger evidence and fewer unknowns"
+      }
+    ]
+  }
+}

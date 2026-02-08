@@ -1,0 +1,42 @@
+{
+  "id": "model_intake_questions_v0",
+  "version": "v0",
+  "title": "Model Intake (v0)",
+  "purpose": "Capture whether tenant has an Excel/Sheets model and how it should be used.",
+  "questions": [
+    {
+      "id": "has_existing_model",
+      "type": "yes_no",
+      "required": true,
+      "prompt": "Do you already have a model you want to use (Excel/Sheets)?"
+    },
+    {
+      "id": "model_upload_expected",
+      "type": "single_select",
+      "required": false,
+      "prompt": "If yes, how will you provide it?",
+      "options": [
+        "upload_xlsx",
+        "upload_google_sheet_export",
+        "no_model_provided"
+      ]
+    },
+    {
+      "id": "model_notes",
+      "type": "free_text",
+      "required": false,
+      "prompt": "Any notes about the model (tabs, required inputs, pain points, what you trust/don\u2019t trust)."
+    },
+    {
+      "id": "use_titleapp_standard_model",
+      "type": "single_select",
+      "required": true,
+      "prompt": "Should we default to the TitleApp standard model when your model is missing/incomplete?",
+      "options": [
+        "yes_default_to_titleapp",
+        "no_require_tenant_model",
+        "case_by_case"
+      ]
+    }
+  ]
+}

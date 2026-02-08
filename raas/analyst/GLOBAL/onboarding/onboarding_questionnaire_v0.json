@@ -1,0 +1,34 @@
+{
+  "id": "onboarding_questionnaire_v0",
+  "version": "v0",
+  "title": "Analyst Vertical Onboarding (v0)",
+  "purpose": "Minimum onboarding for a small investor/single-operator to turn on Analyst workflows safely.",
+  "modules": [
+    {
+      "id": "risk_profile",
+      "ref": "risk_profile_questions_v0.json"
+    },
+    {
+      "id": "data_access",
+      "ref": "data_access_questions_v0.json"
+    },
+    {
+      "id": "model_intake",
+      "ref": "model_intake_questions_v0.json"
+    }
+  ],
+  "optional_benchmarking": {
+    "enabled": true,
+    "prompt": "If available, upload 1\u20133 example deal packages you have approved (or want to emulate). This anchors the benchmark and adds guardrails.",
+    "accepted_inputs": [
+      "pdf",
+      "docx",
+      "xlsx",
+      "csv",
+      "txt",
+      "json",
+      "images"
+    ],
+    "note": "We do not assume your model is better than ours; benchmarking is used as a reference only."
+  }
+}

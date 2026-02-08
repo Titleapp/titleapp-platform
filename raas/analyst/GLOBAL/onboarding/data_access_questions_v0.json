@@ -1,0 +1,64 @@
+{
+  "id": "data_access_questions_v0",
+  "version": "v0",
+  "title": "Data Access & Integrations (v0)",
+  "purpose": "Determine how external facts are sourced (tenant APIs vs TitleApp add-ons).",
+  "questions": [
+    {
+      "id": "has_existing_data_services",
+      "type": "yes_no",
+      "required": true,
+      "prompt": "Do you/fund already subscribe to any data services you want TitleApp to use?"
+    },
+    {
+      "id": "list_data_services",
+      "type": "free_text",
+      "required": false,
+      "prompt": "List the services (e.g., CoStar, Reonomy, PitchBook, Preqin, Yardi, Argus exports, county portals, custom DB)."
+    },
+    {
+      "id": "api_available",
+      "type": "yes_no",
+      "required": false,
+      "prompt": "Do any of those services have an API we can use?"
+    },
+    {
+      "id": "api_notes",
+      "type": "free_text",
+      "required": false,
+      "prompt": "If yes, note which services + any auth method (API key, OAuth, IP allowlist)."
+    },
+    {
+      "id": "preferred_ingestion_mode",
+      "type": "single_select",
+      "required": true,
+      "prompt": "Preferred way to ingest data if no API is available:",
+      "options": [
+        "file_upload_only",
+        "email_dropbox_style",
+        "manual_entry",
+        "webhook_if_possible"
+      ]
+    },
+    {
+      "id": "toggle_attom",
+      "type": "single_select",
+      "required": false,
+      "prompt": "Enable ATTOM Data add-on (monthly fee)?",
+      "options": [
+        "off",
+        "on"
+      ]
+    },
+    {
+      "id": "toggle_first_american_title",
+      "type": "single_select",
+      "required": false,
+      "prompt": "Enable First American Title add-on (monthly fee)?",
+      "options": [
+        "off",
+        "on"
+      ]
+    }
+  ]
+}
