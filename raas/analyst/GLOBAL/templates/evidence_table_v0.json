@@ -1,0 +1,18 @@
+{
+  "id": "evidence_table_v0",
+  "version": "v0",
+  "title": "Evidence Table (v0)",
+  "columns": [
+    "claim",
+    "value",
+    "unit",
+    "evidencePointers",
+    "confidence",
+    "notes"
+  ],
+  "confidence_scale": [
+    "low",
+    "medium",
+    "high"
+  ]
+}

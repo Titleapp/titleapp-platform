@@ -1,0 +1,68 @@
+{
+  "id": "ic_memo_lite_v0",
+  "version": "v0",
+  "title": "IC Memo Lite (v0)",
+  "sections": [
+    {
+      "id": "deal_summary",
+      "required": true,
+      "fields": [
+        "deal_type",
+        "asset",
+        "location",
+        "ask_price",
+        "proposed_terms",
+        "timeline"
+      ]
+    },
+    {
+      "id": "investment_thesis",
+      "required": true,
+      "fields": [
+        "thesis_bullets",
+        "value_creation_plan",
+        "key_assumptions"
+      ]
+    },
+    {
+      "id": "key_metrics",
+      "required": true,
+      "fields": [
+        "irr",
+        "equity_multiple",
+        "cash_on_cash",
+        "dscr",
+        "ltv",
+        "debt_yield"
+      ]
+    },
+    {
+      "id": "risks_and_mitigations",
+      "required": true,
+      "fields": [
+        "top_risks",
+        "mitigations",
+        "open_questions"
+      ]
+    },
+    {
+      "id": "recommendation",
+      "required": true,
+      "fields": [
+        "status",
+        "rationale",
+        "next_steps"
+      ]
+    }
+  ],
+  "evidence_requirements": {
+    "must_cite_fields": [
+      "ask_price",
+      "proposed_terms",
+      "irr",
+      "dscr",
+      "ltv"
+    ],
+    "format": "evidencePointers: [{sourceType, fileId?, page?, section?, integrationId?, userProvided?}]"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "id": "assumptions_register_v0",
+  "version": "v0",
+  "title": "Assumptions Register (v0)",
+  "fields": [
+    "assumption",
+    "value",
+    "unit",
+    "source",
+    "sensitivity",
+    "notes"
+  ],
+  "sensitivity_scale": [
+    "low",
+    "medium",
+    "high"
+  ]
+}

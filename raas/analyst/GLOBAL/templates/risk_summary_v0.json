@@ -1,0 +1,17 @@
+{
+  "id": "risk_summary_v0",
+  "version": "v0",
+  "title": "Risk Summary (v0)",
+  "fields": [
+    "overall_risk_rating",
+    "risk_drivers",
+    "missing_documents",
+    "gating_failures",
+    "approval_conditions"
+  ],
+  "risk_scale": [
+    "low",
+    "medium",
+    "high"
+  ]
+}
