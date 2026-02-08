@@ -229,3 +229,43 @@ Purpose (MVP + near-term):
 Next steps:
 1) Re-enable uploader by attaching a **fresh Firebase ID token** to upload requests (or proxy through Frontdoor).
 2) Expand beyond CSV (PDF/images/etc.) once the auth contract is stable.
+
+---
+
+## 🔒 MVP State Lock — Admin Upload & Import (2026-02-07)
+
+### ✅ What is working
+- **Firebase project:** `title-app-alpha`
+- **Hosting:** https://title-app-alpha.web.app
+- **Admin Upload UI:** `/admin-upload/`
+- **Admin Import Endpoint:** `POST /v1/admin/import`
+- **Auth:** Firebase ID token via `Authorization: Bearer <ID_TOKEN>`
+- **Tenant header:** `x-tenant-id: demo`
+- **Storage:** Firestore collection `imports`
+- **Response format:** `{ ok: true, importId, rows }`
+
+### 📁 Supported uploads (MVP)
+- Text-only ingestion:
+  - `.csv`
+  - `.txt`
+  - `.json`
+- Purpose:
+  - customer lists
+  - service lists
+  - deal notes
+  - contract text
+  - analyst inputs
+
+### 🔐 Auth note (MVP)
+- The upload page reads auth from `localStorage.ID_TOKEN`
+- Token can be copied from:
+  `http://localhost:5173 → DevTools → Application → Local Storage → ID_TOKEN`
+- Tokens are **session tokens**, not private keys
+
+### 🛑 Known non-goals (for now)
+- Binary uploads (PDF, DOCX, images)
+- Automatic token refresh on hosted upload page
+- Production multi-tenant hardening
+- GitHub auto-deploy
+
+---
