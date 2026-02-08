@@ -1,0 +1,35 @@
+{
+  "id": "refinance_screen_v0",
+  "version": "v0",
+  "domain": "refinance",
+  "required_inputs": [
+    "current_loan",
+    "property_financials"
+  ],
+  "hard_stops": [
+    {
+      "id": "dscr_below_min",
+      "logic": "if tenant.min_dscr provided AND projected.dscr < tenant.min_dscr"
+    },
+    {
+      "id": "ltv_exceeds_max",
+      "logic": "if tenant.max_ltv provided AND projected.ltv > tenant.max_ltv"
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "near_term_maturity",
+      "logic": "loan_maturity_months < 12"
+    },
+    {
+      "id": "rate_shock",
+      "logic": "rate_increase_bps > 200"
+    }
+  ],
+  "outputs": [
+    "ic_memo_lite",
+    "risk_summary",
+    "assumptions_register",
+    "evidence_table"
+  ]
+}

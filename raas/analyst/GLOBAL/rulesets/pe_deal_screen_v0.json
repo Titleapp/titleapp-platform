@@ -1,0 +1,35 @@
+{
+  "id": "pe_deal_screen_v0",
+  "version": "v0",
+  "domain": "private-equity",
+  "required_inputs": [
+    "pitch_deck",
+    "financials"
+  ],
+  "hard_stops": [
+    {
+      "id": "no_financials",
+      "logic": "financials missing"
+    },
+    {
+      "id": "returns_below_target",
+      "logic": "if tenant.min_net_irr provided AND deal.net_irr < tenant.min_net_irr"
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "customer_concentration",
+      "logic": "top_customer_pct > 40"
+    },
+    {
+      "id": "limited_operating_history",
+      "logic": "years_operating < 3"
+    }
+  ],
+  "outputs": [
+    "ic_memo_lite",
+    "risk_summary",
+    "assumptions_register",
+    "evidence_table"
+  ]
+}

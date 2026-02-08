@@ -1,0 +1,35 @@
+{
+  "id": "entitlement_screen_v0",
+  "version": "v0",
+  "domain": "entitlement",
+  "required_inputs": [
+    "site_plan",
+    "zoning_summary"
+  ],
+  "hard_stops": [
+    {
+      "id": "unknown_zoning",
+      "logic": "zoning_status == UNKNOWN"
+    },
+    {
+      "id": "no_path_to_entitlement",
+      "logic": "entitlement_probability < 0.5"
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "community_opposition",
+      "logic": "community_opposition == true"
+    },
+    {
+      "id": "environmental_constraints",
+      "logic": "environmental_review_required == true"
+    }
+  ],
+  "outputs": [
+    "ic_memo_lite",
+    "risk_summary",
+    "assumptions_register",
+    "evidence_table"
+  ]
+}

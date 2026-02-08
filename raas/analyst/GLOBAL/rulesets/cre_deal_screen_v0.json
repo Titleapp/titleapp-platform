@@ -1,0 +1,40 @@
+{
+  "id": "cre_deal_screen_v0",
+  "version": "v0",
+  "domain": "commercial-real-estate",
+  "required_inputs": [
+    "rent_roll",
+    "t12",
+    "offering_memo"
+  ],
+  "hard_stops": [
+    {
+      "id": "missing_core_docs",
+      "logic": "any required_inputs missing"
+    },
+    {
+      "id": "ltv_exceeds_max",
+      "logic": "if tenant.max_ltv provided AND deal.ltv > tenant.max_ltv"
+    },
+    {
+      "id": "dscr_below_min",
+      "logic": "if tenant.min_dscr provided AND deal.dscr < tenant.min_dscr"
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "single_tenant_risk",
+      "logic": "tenant_count == 1"
+    },
+    {
+      "id": "short_walt",
+      "logic": "walt_years < 2"
+    }
+  ],
+  "outputs": [
+    "ic_memo_lite",
+    "risk_summary",
+    "assumptions_register",
+    "evidence_table"
+  ]
+}
