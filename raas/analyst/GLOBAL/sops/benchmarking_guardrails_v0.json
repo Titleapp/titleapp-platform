@@ -1,0 +1,22 @@
+{
+  "id": "benchmarking_guardrails_v0",
+  "version": "v0",
+  "title": "Benchmarking Guardrails SOP (v0)",
+  "rules": [
+    {
+      "id": "benchmark_is_reference_only",
+      "type": "policy",
+      "description": "Benchmark uploads (approved deals) are a reference anchor, not ground truth for new deals."
+    },
+    {
+      "id": "avoid_false_authority",
+      "type": "hard_stop",
+      "description": "Do not claim 'fits your historical deals' unless there is explicit evidence mapping to the benchmark docs."
+    },
+    {
+      "id": "compare_on_dimensions",
+      "type": "required_format",
+      "description": "If benchmarking is used, comparisons must be on explicit dimensions (returns, leverage, sector, geography, sponsor quality, etc.) with evidence pointers."
+    }
+  ]
+}

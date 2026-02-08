@@ -1,0 +1,23 @@
+{
+  "id": "source_authorization_v0",
+  "version": "v0",
+  "title": "Source Authorization SOP (v0)",
+  "rules": [
+    {
+      "id": "allowed_sources",
+      "type": "policy",
+      "allowed": [
+        "tenant_upload",
+        "tenant_integration",
+        "titleapp_addon",
+        "user_provided"
+      ],
+      "description": "Only these source classes may be used to support claims."
+    },
+    {
+      "id": "no_web_scrape_in_mvp",
+      "type": "hard_stop",
+      "description": "Do not introduce external web data unless it arrives via an approved integration or upload."
+    }
+  ]
+}

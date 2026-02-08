@@ -1,0 +1,22 @@
+{
+  "id": "risk_profile_enforcement_v0",
+  "version": "v0",
+  "title": "Risk Profile Enforcement SOP (v0)",
+  "rules": [
+    {
+      "id": "apply_tenant_gates",
+      "type": "policy",
+      "description": "Tenant risk profile gates (min returns, max LTV, min DSCR, tolerance) must be applied before a 'greenlight' outcome."
+    },
+    {
+      "id": "insufficient_info_defaults_conservative",
+      "type": "policy",
+      "description": "If key inputs are missing, default outcome is 'Needs Info' not 'Approve'."
+    },
+    {
+      "id": "low_risk_requires_high_evidence",
+      "type": "policy",
+      "description": "If tenant risk tolerance is low, missing evidence increases risk rating and may block approval."
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "id": "evidence_first_v0",
+  "version": "v0",
+  "title": "Evidence-First SOP (v0)",
+  "rules": [
+    {
+      "id": "no_unsupported_numbers",
+      "type": "hard_stop",
+      "description": "Numeric claims (rent, NOI, capex, IRR, DSCR, LTV, comps, valuations) must cite a source: uploaded file, integration record, or explicit user input."
+    },
+    {
+      "id": "cite_every_claim",
+      "type": "required_format",
+      "description": "Each key claim must include an evidence pointer (fileId+page/section OR integration record id OR 'user_provided')."
+    },
+    {
+      "id": "unknowns_are_explicit",
+      "type": "required_format",
+      "description": "If evidence is missing, mark the field as UNKNOWN and add a missing-doc request. Do not guess."
+    }
+  ]
+}
