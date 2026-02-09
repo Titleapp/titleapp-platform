@@ -2,6 +2,15 @@ const { onRequest } = require("firebase-functions/v2/https");
 const admin = require("firebase-admin");
 const crypto = require("crypto");
 
+// RAAS handlers (v0)
+const {
+  handleRaasWorkflows,
+  handleRaasCatalogUpsert,
+  handleRaasPackagesCreate,
+  handleRaasPackagesBindFiles,
+  handleRaasPackagesGet,
+} = require("./raas/raas.handlers");
+
 if (!admin.apps.length) admin.initializeApp();
 const db = admin.firestore();
 
@@ -278,6 +287,35 @@ exports.api = onRequest(async (req, res) => {
     });
 
     return res.json({ ok: true, fileId, readUrl: url, expiresSeconds: seconds, path, bucket: getBucket().name });
+  }
+
+  // ----------------------------
+  // RAAS (v0) — same endpoints for all verticals
+  // ----------------------------
+
+  // GET /v1/raas:workflows?vertical=...&jurisdiction=...
+  if (route === "/raas:workflows") {
+    return handleRaasWorkflows({ req, res, method, body, ctx });
+  }
+
+  // POST /v1/raas:catalog:upsert  (seed catalog into Firestore)
+  if (route === "/raas:catalog:upsert") {
+    return handleRaasCatalogUpsert({ req, res, method, body, ctx });
+  }
+
+  // POST /v1/raas:packages:create
+  if (route === "/raas:packages:create") {
+    return handleRaasPackagesCreate({ req, res, method, body, ctx });
+  }
+
+  // POST /v1/raas:packages:bindFiles
+  if (route === "/raas:packages:bindFiles") {
+    return handleRaasPackagesBindFiles({ req, res, method, body, ctx });
+  }
+
+  // GET /v1/raas:packages:get?id=...
+  if (route === "/raas:packages:get") {
+    return handleRaasPackagesGet({ req, res, method, body, ctx });
   }
 
   return jsonError(res, 404, "Unknown endpoint", { route, method });
