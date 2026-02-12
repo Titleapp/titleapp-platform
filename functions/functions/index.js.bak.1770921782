@@ -22,19 +22,7 @@ const STORAGE_BUCKET = process.env.STORAGE_BUCKET || "title-app-alpha.firebasest
 // ----------------------------
 
 function getRoute(req) {
-  // Supports BOTH:
-  // 1) direct backend calls: /v1/<endpoint>
-  // 2) Cloudflare Frontdoor contract: /api?path=/v1/<endpoint>
   let p = req.path || "/";
-
-  // If frontdoor forwards /api without rewriting the path,
-  // the intended backend route is in the querystring.
-  if (p === "/api") {
-    const q = req.query || {};
-    const qp = (q.path || q.p || q.route || "").toString();
-    if (qp) p = qp;
-  }
-
   if (p.startsWith("/v1/")) p = p.slice(3);
   return p;
 }

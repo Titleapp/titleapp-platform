@@ -11,11 +11,15 @@ function jsonError(res, status, error, extra = {}) {
  */
 
 async function handleRaasWorkflows({ req, res, method, body, ctx }) {
-  // GET /v1/raas:workflows?vertical=...&jurisdiction=...
-  if (method !== "GET") return jsonError(res, 405, "Method not allowed");
+  // Supports BOTH:
+  // - GET  /v1/raas:workflows?vertical=...&jurisdiction=...
+  // - POST /v1/raas:workflows  { vertical, jurisdiction }
+  if (method !== "GET" && method !== "POST") return jsonError(res, 405, "Method not allowed");
 
-  const vertical = String(req.query?.vertical || "").trim();
-  const jurisdiction = String(req.query?.jurisdiction || "GLOBAL").trim();
+  const q = req.query || {};
+  const vertical = String((method === "POST" ? body?.vertical : q?.vertical) || q?.vertical || "").trim();
+  const jurisdiction = String((method === "POST" ? body?.jurisdiction : q?.jurisdiction) || q?.jurisdiction || "GLOBAL").trim();
+
   if (!vertical) return jsonError(res, 400, "Missing vertical");
 
   const catalog = await getCatalog({ vertical, jurisdiction });

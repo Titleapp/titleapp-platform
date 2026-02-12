@@ -34,15 +34,24 @@
       max-height: 300px;
       overflow: auto;
     }
+    .hint {
+      margin-top: 10px;
+      color: #4b5563;
+      font-size: 14px;
+    }
   </style>
 </head>
 <body>
 
-<h1>Upload CSV</h1>
+<h1>Upload Data File</h1>
 
 <div id="drop" class="drop">
-  Drag & drop CSV here<br><br>
+  Drag & drop file here<br><br>
   or click to select
+</div>
+
+<div class="hint">
+  Allowed: <b>.csv</b>, <b>.txt</b>, <b>.json</b> (text-only)
 </div>
 
 <button id="upload" disabled>Upload</button>
@@ -50,17 +59,32 @@
 <pre id="out"></pre>
 
 <script>
-let csvText = "";
+let rawText = "";
 let fileName = "";
+let detectedType = "";
+
+const ALLOWED = [".csv", ".txt", ".json"];
 
 const drop = document.getElementById("drop");
 const upload = document.getElementById("upload");
 const out = document.getElementById("out");
 
+function extOf(name) {
+  const i = name.lastIndexOf(".");
+  return i === -1 ? "" : name.slice(i).toLowerCase();
+}
+
+function detectTypeFromExt(ext) {
+  if (ext === ".csv") return "csv";
+  if (ext === ".txt") return "txt";
+  if (ext === ".json") return "json";
+  return "unknown";
+}
+
 drop.onclick = () => {
   const i = document.createElement("input");
   i.type = "file";
-  i.accept = ".csv";
+  i.accept = ALLOWED.join(",");
   i.onchange = e => handleFile(e.target.files[0]);
   i.click();
 };
@@ -79,16 +103,28 @@ drop.ondrop = e => {
 };
 
 function handleFile(file) {
-  if (!file || !file.name.endsWith(".csv")) {
-    alert("CSV only");
+  if (!file || !file.name) {
+    alert("No file selected");
     return;
   }
+
+  const ext = extOf(file.name);
+  if (!ALLOWED.includes(ext)) {
+    alert("Text files only: .csv, .txt, .json");
+    return;
+  }
+
   fileName = file.name;
+  detectedType = detectTypeFromExt(ext);
+
   const r = new FileReader();
   r.onload = () => {
-    csvText = r.result;
-    upload.disabled = false;
-    out.textContent = `Loaded ${fileName}\n\n${csvText.slice(0,500)}…`;
+    rawText = r.result || "";
+    upload.disabled = rawText.length === 0;
+    out.textContent =
+      `Loaded ${fileName}\n` +
+      `Type: ${detectedType}\n\n` +
+      `${rawText.slice(0,500)}${rawText.length > 500 ? "…" : ""}`;
   };
   r.readAsText(file);
 }
@@ -97,19 +133,24 @@ upload.onclick = async () => {
   upload.disabled = true;
   out.textContent = "Uploading…";
 
+  const token = localStorage.getItem("ID_TOKEN") || "";
+
   const res = await fetch("/v1/admin/import", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "Authorization": "Bearer " + localStorage.getItem("ID_TOKEN"),
+      "Authorization": "Bearer " + token,
       "x-tenant-id": "demo"
     },
     body: JSON.stringify({
       tenantId: "demo",
-      type: "customers",
+      // keep legacy fields (safe to ignore later)
       mode: "upsert",
       source: { type: "upload", label: fileName },
-      csvText
+      // IMPORTANT: backend currently reads csvText; we reuse it as "raw text"
+      csvText: rawText,
+      // new, more accurate type for future routing
+      type: detectedType
     })
   });
 
@@ -119,4 +160,3 @@ upload.onclick = async () => {
 
 </body>
 </html>
-

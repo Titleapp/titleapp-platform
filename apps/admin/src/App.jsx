@@ -1,24 +1,34 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import Login from "./auth/login";
-
-// NOTE:
-// This is a minimal auth gate to unblock MVP wiring.
-// If ID_TOKEN is missing, we render the Login screen.
-// Once present, we render the existing Admin UI shell.
-//
-// If you already have an Admin UI component you want to render,
-// replace <AdminShell /> with your existing component in Step 3.
+import { getWorkflows } from "./api/client";
 
 function AdminShell() {
-  return (
-    <div style={{ padding: 24, fontFamily: "sans-serif" }}>
-      <h2>Title App Admin</h2>
-      <p>
-        ✅ Logged in (ID_TOKEN present). Next step will wire API client + /workflows
-        call.
-      </p>
+  const [vertical, setVertical] = useState("auto");
+  const [jurisdiction, setJurisdiction] = useState("il");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [result, setResult] = useState(null);
 
-      <div style={{ marginTop: 16, display: "flex", gap: 12 }}>
+  async function loadWorkflows() {
+    setLoading(true);
+    setError("");
+    setResult(null);
+    try {
+      const data = await getWorkflows({ vertical, jurisdiction });
+      setResult(data);
+    } catch (e) {
+      setError(e?.message || String(e));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div style={{ padding: 24, fontFamily: "sans-serif", maxWidth: 900 }}>
+      <h2>Title App Admin</h2>
+      <p>✅ Logged in (ID_TOKEN present).</p>
+
+      <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
         <button
           onClick={() => {
             localStorage.removeItem("ID_TOKEN");
@@ -37,6 +47,51 @@ function AdminShell() {
           Show token prefix
         </button>
       </div>
+
+      <hr style={{ margin: "20px 0" }} />
+
+      <h3>Workflows</h3>
+      <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+        <label>
+          Vertical:&nbsp;
+          <select value={vertical} onChange={(e) => setVertical(e.target.value)}>
+            <option value="auto">auto (David)</option>
+            <option value="real_estate">real_estate (Christina)</option>
+          </select>
+        </label>
+
+        <label>
+          Jurisdiction:&nbsp;
+          <input
+            value={jurisdiction}
+            onChange={(e) => setJurisdiction(e.target.value)}
+            placeholder="e.g. il"
+            style={{ width: 100 }}
+          />
+        </label>
+
+        <button onClick={loadWorkflows} disabled={loading}>
+          {loading ? "Loading..." : "Load workflows"}
+        </button>
+      </div>
+
+      {error ? (
+        <div style={{ marginTop: 12, color: "crimson" }}>❌ {error}</div>
+      ) : null}
+
+      {result ? (
+        <pre
+          style={{
+            marginTop: 12,
+            padding: 12,
+            background: "#f6f8fa",
+            borderRadius: 8,
+            overflowX: "auto",
+          }}
+        >
+          {JSON.stringify(result, null, 2)}
+        </pre>
+      ) : null}
     </div>
   );
 }
@@ -46,7 +101,6 @@ export default function App() {
     typeof window !== "undefined" ? localStorage.getItem("ID_TOKEN") : null
   );
 
-  // Keep state in sync if token is set by login without a full reload
   useEffect(() => {
     const t = localStorage.getItem("ID_TOKEN");
     setToken(t);
@@ -59,6 +113,5 @@ export default function App() {
   }, []);
 
   if (!token) return <Login />;
-
   return <AdminShell />;
 }
