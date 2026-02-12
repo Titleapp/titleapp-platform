@@ -1,0 +1,14 @@
+
+# Local env files (never commit)
+.env
+.env.*
+apps/**/.env
+apps/**/.env.*
+functions/**/.env
+functions/**/.env.*
+
+# Backup / temp files
+*.bak
+*.bak.*
+*~ 
+.DS_Store
