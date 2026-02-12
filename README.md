@@ -1,15 +1,15 @@
 # Title App – Backend Architecture (Canonical)
 
-_Last updated: 2026-02-07_
+_Last updated: 2026-02-12_
 
 This document describes the **current, working backend architecture** for Title App.
-It is the single source of truth to prevent routing, auth, and infrastructure confusion.
+It is the single source of truth to prevent routing, auth, infrastructure, and architectural drift.
 
 ---
 
 ## ✅ MVP Status (LOCKED)
 
-As of 2026-02-07, the following is **verified working end-to-end**:
+As of 2026-02-12, the following is **verified working end-to-end**:
 
 **Admin UI → Cloudflare Frontdoor → Firebase Functions (Cloud Run) → Admin UI**
 
@@ -17,12 +17,12 @@ As of 2026-02-07, the following is **verified working end-to-end**:
 - Frontdoor request:
   - `POST https://titleapp-frontdoor.titleapp-core.workers.dev/api?path=/v1/raas:workflows`
 - Response:
-  - `200 OK` JSON (stub payload currently)
+  - `200 OK` JSON
 
-**Important note (recent fix):**
-- Backend routing now supports Frontdoor’s **generic passthrough** format:
+**Important note:**
+- Backend routing supports Frontdoor’s generic passthrough format:
   - `/api?path=/v1/...`
-- Previously, requests to `/api?path=...` could 404 because the backend only parsed pathname routing.
+- Backend strips `/v1` internally and routes by path.
 
 ---
 
@@ -30,7 +30,7 @@ As of 2026-02-07, the following is **verified working end-to-end**:
 
 Title App uses a **three-layer architecture**:
 
-1. **Frontend (Admin / UI)**
+1. **Frontend (Admin / Title Vault UI)**
 2. **Edge Router (Cloudflare Worker – “Frontdoor”)**
 3. **Backend API (Firebase Functions → Cloud Run)**
 
@@ -40,25 +40,26 @@ Authentication is handled via **Firebase ID Tokens**, verified at the backend.
 
 ## 🧩 Components
 
-### 1. Frontend (Admin UI)
+### 1. Frontend (Admin UI / Title Vault)
 
 - Location: `apps/admin`
 - Runs locally via Vite (`localhost:5173`)
 - Uses Firebase Auth (email/password)
 - Retrieves a **Firebase ID Token** via:
-  ```ts
-  auth.currentUser.getIdToken()
+
+```ts
+auth.currentUser.getIdToken()
 Sends requests to Cloudflare with:
 
+makefile
+Copy code
 Authorization: Bearer <FIREBASE_ID_TOKEN>
-
 2. Cloudflare Worker (Frontdoor)
-
 Base URL
 
+arduino
+Copy code
 https://titleapp-frontdoor.titleapp-core.workers.dev
-
-
 Purpose
 
 Public entry point
@@ -81,15 +82,15 @@ Supported routes
 
 /api?path=... (generic passthrough)
 
-Important
+Important:
 
 /api REQUIRES a path query param
 
 Example:
 
+bash
+Copy code
 /api?path=/v1/health
-
-
 What it does:
 
 Accepts frontend request
@@ -103,11 +104,9 @@ X-Vertical / X-Jurisdiction forwarded
 Does NOT terminate auth (except /chat)
 
 3. Backend API (Firebase Functions / Cloud Run)
-
 Canonical project
 
 Firebase / GCP Project: title-app-alpha
-
 
 Runtime
 
@@ -117,54 +116,36 @@ Deployed as Cloud Run service
 
 Primary service URL
 
+arduino
+Copy code
 https://api-feyfibglbq-uc.a.run.app
-
-
 Single entrypoint
 
+ini
+Copy code
 exports.api = onRequest(...)
-
-
-Routing
-Cloudflare forwards requests with:
-
-/api?path=/v1/...
-
-
-Backend routing behavior:
-
-Supports both:
-
-Firebase rewrite style: /api/<route>
-
-Frontdoor passthrough style: /api?path=/v1/<route>
-
-Backend strips /v1 internally and routes by path.
-
 🔐 Authentication (CRITICAL)
-
 All protected endpoints require:
 
+makefile
+Copy code
 Authorization: Bearer <Firebase ID Token>
-
-
 Token is verified server-side using:
 
+scss
+Copy code
 admin.auth().verifyIdToken(token)
-
-
 Expected token claims:
 
 iss = https://securetoken.google.com/title-app-alpha
 
 aud = title-app-alpha
 
-If these do not match, the request will return:
+If these do not match:
 
+Copy code
 401 Unauthorized
-
 🔁 Request Flow (Example: Workflows)
-
 Admin UI
 ↓
 Cloudflare Worker
@@ -175,97 +156,104 @@ Firestore / Logic
 
 Concrete example:
 
+bash
+Copy code
 POST /workflows
 ↓
 Cloudflare → /v1/raas:workflows
 ↓
 Backend handler
+(Alternate currently used by Admin UI in MVP):
 
-
-(Alternate equivalent, currently used by Admin UI in MVP):
-
+bash
+Copy code
 POST /api?path=/v1/raas:workflows
+🧱 Core Architecture & Record Principles (Non-Negotiable)
+Title App is not a traditional SaaS system.
+It is an event-sourced ownership ledger operated by AI agents under rule constraints.
 
-🧱 Design Principles
+These invariants define the platform and must not be violated.
 
-Cloudflare = routing + CORS only
+1️⃣ Append-Only Record Model
+Canonical records (DTCs, Logbook entries, Transfers, Escrow completions) are never overwritten.
 
-Backend = source of truth
+All state changes append new events.
 
-Firebase Auth = identity
+“Current state” is a computed projection of event history.
 
-One canonical backend project: title-app-alpha
+Historical state must always remain recoverable.
 
-Do NOT create duplicate GCP projects without a migration plan
+No direct mutation of canonical ownership or history is permitted.
 
-🛑 Known Non-goals
+2️⃣ Blockchain as Notary Layer (Optional but Foundational)
+Blockchain is used to anchor events, not replace the operational database.
 
-TitleApp_Core GCP project is NOT canonical
+On-chain records provide immutability guarantees.
 
-GitHub auto-deploy is NOT set up yet
+Firestore must behave as an append-only event store even when minting is disabled.
 
-Production / multi-tenant hardening comes later
+Blockchain enhances verifiability but does not replace operational logic.
 
+3️⃣ AI Agents Are Stateless Executors
+AI agents never directly mutate canonical state.
 
----
+Agents propose actions.
 
-## 📤 Admin Upload (CSV Ingestion) – Status
+RAAS validates actions.
 
-Deployed admin ingestion surface:
+Validated actions append new events.
 
-- URL: `https://title-app-alpha.web.app/admin-upload/`
-- Current behavior:
-  - UI renders and attempts upload via `POST /v1/admin/import`
-  - Backend responds `401 Unauthorized` with reason `"Invalid token"` (auth not yet wired to current Firebase session/token flow)
+Agents remain model-agnostic and replaceable (OpenAI, Claude, Gemini, etc.).
 
-Purpose (MVP + near-term):
-- Bulk import/supplement content for:
-  - sales scoring
-  - screening
-  - marketing enrichment
-  - closing workflows
-- This ingestion lane is complementary to RaaS libraries in `/raas/**` (curated + versioned rules), and is intended for operational/batch data.
+AI is an operator, not a source of truth.
 
-Next steps:
-1) Re-enable uploader by attaching a **fresh Firebase ID token** to upload requests (or proxy through Frontdoor).
-2) Expand beyond CSV (PDF/images/etc.) once the auth contract is stable.
+4️⃣ RAAS Is the Constraint Engine
+Rules are structured and deterministic.
 
----
+Business logic must not live solely in prompts.
 
-## 🔒 MVP State Lock — Admin Upload & Import (2026-02-07)
+Transfers, escrow, valuation updates, and attestations are rule-validated before persistence.
 
-### ✅ What is working
-- **Firebase project:** `title-app-alpha`
-- **Hosting:** https://title-app-alpha.web.app
-- **Admin Upload UI:** `/admin-upload/`
-- **Admin Import Endpoint:** `POST /v1/admin/import`
-- **Auth:** Firebase ID token via `Authorization: Bearer <ID_TOKEN>`
-- **Tenant header:** `x-tenant-id: demo`
-- **Storage:** Firestore collection `imports`
-- **Response format:** `{ ok: true, importId, rows }`
+Rule definitions are portable and tenant-configurable.
 
-### 📁 Supported uploads (MVP)
-- Text-only ingestion:
-  - `.csv`
-  - `.txt`
-  - `.json`
-- Purpose:
-  - customer lists
-  - service lists
-  - deal notes
-  - contract text
-  - analyst inputs
+Rules govern agents — not the other way around.
 
-### 🔐 Auth note (MVP)
-- The upload page reads auth from `localStorage.ID_TOKEN`
-- Token can be copied from:
-  `http://localhost:5173 → DevTools → Application → Local Storage → ID_TOKEN`
-- Tokens are **session tokens**, not private keys
+5️⃣ User Data Portability
+Users can export their DTCs, logbooks, attestations, and transaction history.
 
-### 🛑 Known non-goals (for now)
-- Binary uploads (PDF, DOCX, images)
-- Automatic token refresh on hosted upload page
-- Production multi-tenant hardening
-- GitHub auto-deploy
+Tenant membership does not override user ownership of records.
 
----
+Records must remain portable across tenants and future systems.
+
+Title App must not become a data silo.
+
+Strategic Direction
+Title App is evolving toward:
+
+AI-native execution
+
+RAAS-based governance
+
+Multi-tenant distribution (B2C, B2B, B2G)
+
+Optional blockchain notarization
+
+Event-sourced truth
+
+The defensible IP of the platform is:
+
+The append-only record model
+
+The rule engine (RAAS)
+
+The ownership and transfer semantics
+
+The tenant isolation model
+
+Not the UI.
+Not the model provider.
+Not the cloud vendor.
+
+These principles ensure long-term durability beyond SaaS-era constraints.
+
+END OF CANONICAL BACKEND ARCHITECTURE
