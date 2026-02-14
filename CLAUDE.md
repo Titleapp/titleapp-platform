@@ -76,6 +76,15 @@ Located in `raas/`. Three-level hierarchy:
 3. **RAAS is the constraint engine** — business logic lives in rule definitions, not prompts. Rules are tenant-configurable and portable.
 4. **Defensive IP** is the append-only record model, RAAS, and ownership/transfer semantics — NOT the UI, model provider, or cloud vendor.
 
+## Door 2 Multi-Model Strategy
+
+The chat interface is the **primary user experience** — Door 1 (admin dashboard) is fallback visibility only.
+
+- **Model routing:** The chat entry point routes to either Anthropic Claude or OpenAI GPT based on user preference. Both are treated as interchangeable executors.
+- **RAAS validation:** All AI outputs are validated by RAAS regardless of which model produced them. Business logic lives in rules, not prompts.
+- **Inline structured objects:** After AI proposes an action, the UI renders structured objects (Trade Summary, DTC, etc.) inline within the chat conversation — pending user consent.
+- **Explicit approval gate:** Nothing is shared or committed until the user explicitly approves. Agents propose; users confirm; only then do events append to Firestore.
+
 ## Key Files
 
 | File | Purpose |
