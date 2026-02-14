@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import FormModal from "../components/FormModal";
+import { getInventory, createInventoryItem, updateInventoryItem, deleteInventoryItem } from "../api/client";
 
 /**
  * Inventory - Services & Inventory Management
@@ -8,6 +9,7 @@ import FormModal from "../components/FormModal";
 export default function Inventory() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const [filterType, setFilterType] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -19,6 +21,9 @@ export default function Inventory() {
     price: "",
     cost: "",
   });
+
+  const vertical = "auto";
+  const jurisdiction = "il";
 
   // Mock inventory data
   const mockItems = [
@@ -95,46 +100,61 @@ export default function Inventory() {
 
   async function loadInventory() {
     setLoading(true);
-    setTimeout(() => {
-      setItems(mockItems);
+    setError("");
+    try {
+      const result = await getInventory({ vertical, jurisdiction, type: filterType === "all" ? undefined : filterType });
+      setItems(result.items || []);
+    } catch (e) {
+      setError(e?.message || String(e));
+      setItems([]);
+    } finally {
       setLoading(false);
-    }, 500);
+    }
   }
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
+    setError("");
 
-    if (editingItem) {
-      // Update existing item
-      setItems(
-        items.map((item) =>
-          item.id === editingItem.id
-            ? {
-                ...item,
-                ...formData,
-                price: parseFloat(formData.price) || 0,
-                cost: parseFloat(formData.cost) || 0,
-              }
-            : item
-        )
-      );
-    } else {
-      // Create new item
-      const newItem = {
-        id: `inv-${Date.now()}`,
-        type: formData.type,
-        status: formData.status,
-        metadata: formData.metadata,
-        price: parseFloat(formData.price) || 0,
-        cost: parseFloat(formData.cost) || 0,
-        createdAt: new Date().toISOString(),
-      };
-      setItems([newItem, ...items]);
+    try {
+      if (editingItem) {
+        // Update existing item
+        await updateInventoryItem({
+          vertical,
+          jurisdiction,
+          id: editingItem.id,
+          item: {
+            type: formData.type,
+            status: formData.status,
+            metadata: formData.metadata,
+            price: parseFloat(formData.price) || 0,
+            cost: parseFloat(formData.cost) || 0,
+          },
+        });
+      } else {
+        // Create new item
+        await createInventoryItem({
+          vertical,
+          jurisdiction,
+          item: {
+            type: formData.type,
+            status: formData.status,
+            metadata: formData.metadata,
+            price: parseFloat(formData.price) || 0,
+            cost: parseFloat(formData.cost) || 0,
+          },
+        });
+      }
+
+      // Reload inventory to get updated data from server
+      await loadInventory();
+
+      setShowCreateModal(false);
+      setEditingItem(null);
+      setFormData({ type: "vehicle", status: "available", metadata: {}, price: "", cost: "" });
+    } catch (e) {
+      setError(e?.message || String(e));
     }
-
-    setShowCreateModal(false);
-    setEditingItem(null);
-    setFormData({ type: "vehicle", status: "available", metadata: {}, price: "", cost: "" });
   }
 
   function handleEdit(item) {
@@ -149,9 +169,15 @@ export default function Inventory() {
     setShowCreateModal(true);
   }
 
-  function handleDelete(itemId) {
-    if (confirm("Are you sure you want to delete this item?")) {
-      setItems(items.filter((item) => item.id !== itemId));
+  async function handleDelete(itemId) {
+    if (!confirm("Are you sure you want to delete this item?")) return;
+
+    setError("");
+    try {
+      await deleteInventoryItem({ vertical, jurisdiction, id: itemId });
+      await loadInventory();
+    } catch (e) {
+      setError(e?.message || String(e));
     }
   }
 
@@ -265,6 +291,15 @@ export default function Inventory() {
           </select>
         </div>
       </div>
+
+      {/* Error state */}
+      {error && (
+        <div className="card" style={{ borderColor: "var(--danger)" }}>
+          <div className="empty" style={{ color: "var(--danger)" }}>
+            ❌ {error}
+          </div>
+        </div>
+      )}
 
       {/* Loading */}
       {loading && (

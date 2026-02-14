@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import LogbookEntry from "../components/LogbookEntry";
 import FormModal from "../components/FormModal";
+import { getDTCs, getLogbooks, appendLogbook } from "../api/client";
 
 /**
  * MyLogbooks - Logbook entries for DTCs
@@ -12,6 +13,7 @@ export default function MyLogbooks() {
   const [entries, setEntries] = useState([]);
   const [dtcs, setDtcs] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const [filterDTC, setFilterDTC] = useState("all");
   const [showAppendModal, setShowAppendModal] = useState(false);
   const [formData, setFormData] = useState({
@@ -20,14 +22,10 @@ export default function MyLogbooks() {
     data: {},
   });
 
-  // Mock DTCs for selection
-  const mockDTCs = [
-    { id: "dtc-001", title: "2022 Honda Civic" },
-    { id: "dtc-002", title: "123 Main Street, Chicago IL" },
-    { id: "dtc-003", title: "B.S. Computer Science" },
-  ];
+  const vertical = "auto";
+  const jurisdiction = "il";
 
-  // Mock logbook entries
+  // Remove mock data - will load from API
   const mockEntries = [
     {
       id: "log-001",
@@ -107,35 +105,47 @@ export default function MyLogbooks() {
 
   async function loadData() {
     setLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      setDtcs(mockDTCs);
-      setEntries(mockEntries);
+    setError("");
+    try {
+      const [dtcsResult, logbooksResult] = await Promise.all([
+        getDTCs({ vertical, jurisdiction }),
+        getLogbooks({ vertical, jurisdiction }),
+      ]);
+      setDtcs(dtcsResult.dtcs || []);
+      setEntries(logbooksResult.logbooks || []);
+    } catch (e) {
+      setError(e?.message || String(e));
+      setDtcs([]);
+      setEntries([]);
+    } finally {
       setLoading(false);
-    }, 500);
+    }
   }
 
-  function handleAppendEntry(e) {
+  async function handleAppendEntry(e) {
     e.preventDefault();
+    setError("");
 
-    // Find selected DTC
-    const selectedDTC = dtcs.find((d) => d.id === formData.dtcId);
-    if (!selectedDTC) return;
+    try {
+      await appendLogbook({
+        vertical,
+        jurisdiction,
+        entry: {
+          dtcId: formData.dtcId,
+          entryType: formData.entryType,
+          data: formData.data,
+          files: [],
+        },
+      });
 
-    // Create new logbook entry
-    const newEntry = {
-      id: `log-${Date.now()}`,
-      dtcId: formData.dtcId,
-      dtcTitle: selectedDTC.title,
-      entryType: formData.entryType,
-      data: formData.data,
-      files: [],
-      createdAt: new Date().toISOString(),
-    };
+      // Reload logbooks to get the new entry from server
+      await loadData();
 
-    setEntries([newEntry, ...entries]);
-    setShowAppendModal(false);
-    setFormData({ dtcId: "", entryType: "maintenance", data: {} });
+      setShowAppendModal(false);
+      setFormData({ dtcId: "", entryType: "maintenance", data: {} });
+    } catch (e) {
+      setError(e?.message || String(e));
+    }
   }
 
   function handleDataChange(key, value) {
@@ -198,6 +208,15 @@ export default function MyLogbooks() {
           ))}
         </select>
       </div>
+
+      {/* Error state */}
+      {error && (
+        <div className="card" style={{ borderColor: "var(--danger)" }}>
+          <div className="empty" style={{ color: "var(--danger)" }}>
+            ❌ {error}
+          </div>
+        </div>
+      )}
 
       {/* Loading state */}
       {loading && (

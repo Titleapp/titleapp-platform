@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import DTCCard from "../components/DTCCard";
 import FormModal from "../components/FormModal";
+import { getDTCs, createDTC } from "../api/client";
 
 /**
  * MyStuff - Digital Title Certificates (DTCs)
@@ -11,6 +12,7 @@ import FormModal from "../components/FormModal";
 export default function MyStuff() {
   const [dtcs, setDtcs] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const [activeType, setActiveType] = useState("all");
   const [viewMode, setViewMode] = useState("cards"); // 'cards' | 'table'
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -19,61 +21,9 @@ export default function MyStuff() {
     metadata: {},
   });
 
-  // Mock data for demonstration
-  const mockDTCs = [
-    {
-      id: "dtc-001",
-      type: "vehicle",
-      metadata: {
-        title: "2022 Honda Civic",
-        vin: "1HGCM82633A123456",
-        year: 2022,
-        make: "Honda",
-        model: "Civic",
-        titleStatus: "Clean Title - Illinois",
-      },
-      blockchainProof: {
-        hash: "0x1234abcd...",
-        network: "polygon",
-        timestamp: "2026-02-14T10:30:00Z",
-      },
-      logbookCount: 12,
-      createdAt: "2026-01-15T09:00:00Z",
-    },
-    {
-      id: "dtc-002",
-      type: "property",
-      metadata: {
-        title: "123 Main Street, Chicago IL",
-        address: "123 Main Street",
-        city: "Chicago",
-        state: "IL",
-        zipCode: "60601",
-        parcelId: "14-08-203-024-0000",
-      },
-      blockchainProof: {
-        hash: "0x5678efgh...",
-        network: "polygon",
-        timestamp: "2026-01-20T14:15:00Z",
-      },
-      logbookCount: 5,
-      createdAt: "2026-01-20T14:00:00Z",
-    },
-    {
-      id: "dtc-003",
-      type: "credential",
-      metadata: {
-        title: "B.S. Computer Science",
-        institution: "University of Illinois",
-        degree: "Bachelor of Science",
-        field: "Computer Science",
-        graduationDate: "2020-05-15",
-      },
-      blockchainProof: null, // Not yet verified on blockchain
-      logbookCount: 2,
-      createdAt: "2026-02-01T11:00:00Z",
-    },
-  ];
+  // Default vertical/jurisdiction (could be moved to context/props)
+  const vertical = "auto";
+  const jurisdiction = "il";
 
   useEffect(() => {
     loadDTCs();
@@ -81,29 +31,40 @@ export default function MyStuff() {
 
   async function loadDTCs() {
     setLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      setDtcs(mockDTCs);
+    setError("");
+    try {
+      const result = await getDTCs({ vertical, jurisdiction, type: activeType === "all" ? undefined : activeType });
+      setDtcs(result.dtcs || []);
+    } catch (e) {
+      setError(e?.message || String(e));
+      setDtcs([]);
+    } finally {
       setLoading(false);
-    }, 500);
+    }
   }
 
-  function handleCreateDTC(e) {
+  async function handleCreateDTC(e) {
     e.preventDefault();
+    setError("");
 
-    // Create new DTC with form data
-    const newDTC = {
-      id: `dtc-${Date.now()}`,
-      type: formData.type,
-      metadata: formData.metadata,
-      blockchainProof: null, // Will be added later
-      logbookCount: 0,
-      createdAt: new Date().toISOString(),
-    };
+    try {
+      const result = await createDTC({
+        vertical,
+        jurisdiction,
+        dtc: {
+          type: formData.type,
+          metadata: formData.metadata,
+        },
+      });
 
-    setDtcs([newDTC, ...dtcs]);
-    setShowCreateModal(false);
-    setFormData({ type: "vehicle", metadata: {} });
+      // Reload DTCs to get the new one from server
+      await loadDTCs();
+
+      setShowCreateModal(false);
+      setFormData({ type: "vehicle", metadata: {} });
+    } catch (e) {
+      setError(e?.message || String(e));
+    }
   }
 
   function handleMetadataChange(key, value) {
@@ -205,6 +166,15 @@ export default function MyStuff() {
           Table
         </button>
       </div>
+
+      {/* Error state */}
+      {error && (
+        <div className="card" style={{ borderColor: "var(--danger)" }}>
+          <div className="empty" style={{ color: "var(--danger)" }}>
+            ❌ {error}
+          </div>
+        </div>
+      )}
 
       {/* Loading state */}
       {loading && (

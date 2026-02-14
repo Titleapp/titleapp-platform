@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import FormModal from "../components/FormModal";
+import { getAppointments, createAppointment, updateAppointment, deleteAppointment, getCustomers } from "../api/client";
 
 /**
  * Appointments - Schedule and calendar management
@@ -8,6 +9,7 @@ export default function Appointments() {
   const [appointments, setAppointments] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingAppointment, setEditingAppointment] = useState(null);
   const [formData, setFormData] = useState({
@@ -18,6 +20,9 @@ export default function Appointments() {
     duration: 60,
     notes: "",
   });
+
+  const vertical = "auto";
+  const jurisdiction = "il";
 
   // Mock customers for selection
   const mockCustomers = [
@@ -69,51 +74,67 @@ export default function Appointments() {
 
   async function loadData() {
     setLoading(true);
-    setTimeout(() => {
-      setCustomers(mockCustomers);
-      setAppointments(mockAppointments);
+    setError("");
+    try {
+      const [apptResult, custResult] = await Promise.all([
+        getAppointments({ vertical, jurisdiction }),
+        getCustomers({ vertical, jurisdiction }),
+      ]);
+      setAppointments(apptResult.appointments || []);
+      setCustomers(custResult.customers || []);
+    } catch (e) {
+      setError(e?.message || String(e));
+      setAppointments([]);
+      setCustomers([]);
+    } finally {
       setLoading(false);
-    }, 500);
+    }
   }
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
+    setError("");
 
     const selectedCustomer = customers.find((c) => c.id === formData.customerId);
 
-    if (editingAppointment) {
-      setAppointments(
-        appointments.map((a) =>
-          a.id === editingAppointment.id
-            ? {
-                ...a,
-                ...formData,
-                customerName: selectedCustomer?.name || formData.customerName,
-              }
-            : a
-        )
-      );
-    } else {
-      const newAppointment = {
-        id: `appt-${Date.now()}`,
-        ...formData,
-        customerName: selectedCustomer?.name || formData.customerName,
-        status: "scheduled",
-        createdAt: new Date().toISOString(),
-      };
-      setAppointments([...appointments, newAppointment]);
-    }
+    try {
+      if (editingAppointment) {
+        await updateAppointment({
+          vertical,
+          jurisdiction,
+          id: editingAppointment.id,
+          appointment: {
+            ...formData,
+            customerName: selectedCustomer?.firstName + " " + selectedCustomer?.lastName || formData.customerName,
+          },
+        });
+      } else {
+        await createAppointment({
+          vertical,
+          jurisdiction,
+          appointment: {
+            ...formData,
+            customerName: selectedCustomer?.firstName + " " + selectedCustomer?.lastName || formData.customerName,
+          },
+        });
+      }
 
-    setShowCreateModal(false);
-    setEditingAppointment(null);
-    setFormData({
-      customerId: "",
-      customerName: "",
-      datetime: "",
-      type: "service",
-      duration: 60,
-      notes: "",
-    });
+      // Reload appointments to get updated data from server
+      await loadData();
+
+      setShowCreateModal(false);
+      setEditingAppointment(null);
+      setFormData({
+        customerId: "",
+        customerName: "",
+        datetime: "",
+        type: "service",
+        duration: 60,
+        notes: "",
+      });
+    } catch (e) {
+      setError(e?.message || String(e));
+    }
   }
 
   function handleEdit(appointment) {
@@ -129,16 +150,31 @@ export default function Appointments() {
     setShowCreateModal(true);
   }
 
-  function handleDelete(appointmentId) {
-    if (confirm("Are you sure you want to delete this appointment?")) {
-      setAppointments(appointments.filter((a) => a.id !== appointmentId));
+  async function handleDelete(appointmentId) {
+    if (!confirm("Are you sure you want to delete this appointment?")) return;
+
+    setError("");
+    try {
+      await deleteAppointment({ vertical, jurisdiction, id: appointmentId });
+      await loadData();
+    } catch (e) {
+      setError(e?.message || String(e));
     }
   }
 
-  function handleStatusChange(appointmentId, newStatus) {
-    setAppointments(
-      appointments.map((a) => (a.id === appointmentId ? { ...a, status: newStatus } : a))
-    );
+  async function handleStatusChange(appointmentId, newStatus) {
+    setError("");
+    try {
+      await updateAppointment({
+        vertical,
+        jurisdiction,
+        id: appointmentId,
+        appointment: { status: newStatus },
+      });
+      await loadData();
+    } catch (e) {
+      setError(e?.message || String(e));
+    }
   }
 
   // Group appointments by date
@@ -211,6 +247,15 @@ export default function Appointments() {
           <div className="kpiValue">{stats.cancelled}</div>
         </div>
       </div>
+
+      {/* Error state */}
+      {error && (
+        <div className="card" style={{ borderColor: "var(--danger)" }}>
+          <div className="empty" style={{ color: "var(--danger)" }}>
+            ❌ {error}
+          </div>
+        </div>
+      )}
 
       {/* Loading */}
       {loading && (

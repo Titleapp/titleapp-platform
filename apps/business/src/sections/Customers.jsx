@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import FormModal from "../components/FormModal";
+import { getCustomers, createCustomer, updateCustomer, deleteCustomer } from "../api/client";
 
 /**
  * Customers - CRM and customer relationship management
@@ -7,6 +8,7 @@ import FormModal from "../components/FormModal";
 export default function Customers() {
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState(null);
@@ -18,6 +20,9 @@ export default function Customers() {
     phone: "",
     tags: [],
   });
+
+  const vertical = "auto";
+  const jurisdiction = "il";
 
   // Mock customer data
   const mockCustomers = [
@@ -71,41 +76,47 @@ export default function Customers() {
 
   async function loadCustomers() {
     setLoading(true);
-    setTimeout(() => {
-      setCustomers(mockCustomers);
+    setError("");
+    try {
+      const result = await getCustomers({ vertical, jurisdiction });
+      setCustomers(result.customers || []);
+    } catch (e) {
+      setError(e?.message || String(e));
+      setCustomers([]);
+    } finally {
       setLoading(false);
-    }, 500);
+    }
   }
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
+    setError("");
 
-    if (editingCustomer) {
-      setCustomers(
-        customers.map((c) =>
-          c.id === editingCustomer.id
-            ? {
-                ...c,
-                ...formData,
-              }
-            : c
-        )
-      );
-    } else {
-      const newCustomer = {
-        id: `cust-${Date.now()}`,
-        ...formData,
-        deals: [],
-        notes: "",
-        createdAt: new Date().toISOString(),
-        lastContact: new Date().toISOString(),
-      };
-      setCustomers([newCustomer, ...customers]);
+    try {
+      if (editingCustomer) {
+        await updateCustomer({
+          vertical,
+          jurisdiction,
+          id: editingCustomer.id,
+          customer: formData,
+        });
+      } else {
+        await createCustomer({
+          vertical,
+          jurisdiction,
+          customer: formData,
+        });
+      }
+
+      // Reload customers to get updated data from server
+      await loadCustomers();
+
+      setShowCreateModal(false);
+      setEditingCustomer(null);
+      setFormData({ firstName: "", lastName: "", email: "", phone: "", tags: [] });
+    } catch (e) {
+      setError(e?.message || String(e));
     }
-
-    setShowCreateModal(false);
-    setEditingCustomer(null);
-    setFormData({ firstName: "", lastName: "", email: "", phone: "", tags: [] });
   }
 
   function handleEdit(customer) {
@@ -120,12 +131,18 @@ export default function Customers() {
     setShowCreateModal(true);
   }
 
-  function handleDelete(customerId) {
-    if (confirm("Are you sure you want to delete this customer?")) {
-      setCustomers(customers.filter((c) => c.id !== customerId));
+  async function handleDelete(customerId) {
+    if (!confirm("Are you sure you want to delete this customer?")) return;
+
+    setError("");
+    try {
+      await deleteCustomer({ vertical, jurisdiction, id: customerId });
       if (selectedCustomer?.id === customerId) {
         setSelectedCustomer(null);
       }
+      await loadCustomers();
+    } catch (e) {
+      setError(e?.message || String(e));
     }
   }
 
@@ -181,6 +198,15 @@ export default function Customers() {
           }}
         />
       </div>
+
+      {/* Error state */}
+      {error && (
+        <div className="card" style={{ borderColor: "var(--danger)" }}>
+          <div className="empty" style={{ color: "var(--danger)" }}>
+            ❌ {error}
+          </div>
+        </div>
+      )}
 
       {/* Loading */}
       {loading && (
