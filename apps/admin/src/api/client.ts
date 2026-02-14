@@ -99,3 +99,55 @@ export async function getReportStatus(params: { vertical: string; jurisdiction: 
     jurisdiction: params.jurisdiction,
   });
 }
+
+// ----------------------------
+// DTCs (Digital Title Certificates)
+// ----------------------------
+
+export async function getDTCs(params: { vertical: string; jurisdiction: string; type?: string }) {
+  let path = "/v1/dtc:list";
+  if (params.type) path += `?type=${encodeURIComponent(params.type)}`;
+
+  return httpJson("GET", path, {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+  });
+}
+
+export async function createDTC(params: {
+  vertical: string;
+  jurisdiction: string;
+  dtc: { type: string; metadata: any; fileIds?: string[]; blockchainProof?: any };
+}) {
+  return httpJson("POST", "/v1/dtc:create", {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+    body: params.dtc,
+  });
+}
+
+// ----------------------------
+// Logbooks
+// ----------------------------
+
+export async function getLogbooks(params: { vertical: string; jurisdiction: string; dtcId?: string }) {
+  let path = "/v1/logbook:list";
+  if (params.dtcId) path += `?dtcId=${encodeURIComponent(params.dtcId)}`;
+
+  return httpJson("GET", path, {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+  });
+}
+
+export async function appendLogbook(params: {
+  vertical: string;
+  jurisdiction: string;
+  entry: { dtcId: string; entryType: string; data: any; files?: string[] };
+}) {
+  return httpJson("POST", "/v1/logbook:append", {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+    body: params.entry,
+  });
+}

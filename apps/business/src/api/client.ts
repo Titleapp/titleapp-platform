@@ -99,3 +99,158 @@ export async function getReportStatus(params: { vertical: string; jurisdiction: 
     jurisdiction: params.jurisdiction,
   });
 }
+
+// ----------------------------
+// Inventory
+// ----------------------------
+
+export async function getInventory(params: { vertical: string; jurisdiction: string; type?: string }) {
+  let path = "/v1/inventory:list";
+  if (params.type) path += `?type=${encodeURIComponent(params.type)}`;
+
+  return httpJson("GET", path, {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+  });
+}
+
+export async function createInventoryItem(params: {
+  vertical: string;
+  jurisdiction: string;
+  item: { type: string; status: string; metadata: any; price: number; cost: number };
+}) {
+  return httpJson("POST", "/v1/inventory:create", {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+    body: params.item,
+  });
+}
+
+export async function updateInventoryItem(params: {
+  vertical: string;
+  jurisdiction: string;
+  id: string;
+  item: { type?: string; status?: string; metadata?: any; price?: number; cost?: number };
+}) {
+  return httpJson("PUT", "/v1/inventory:update", {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+    body: { id: params.id, ...params.item },
+  });
+}
+
+export async function deleteInventoryItem(params: {
+  vertical: string;
+  jurisdiction: string;
+  id: string;
+}) {
+  return httpJson("DELETE", "/v1/inventory:delete", {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+    body: { id: params.id },
+  });
+}
+
+// ----------------------------
+// Customers
+// ----------------------------
+
+export async function getCustomers(params: { vertical: string; jurisdiction: string }) {
+  return httpJson("GET", "/v1/customers:list", {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+  });
+}
+
+export async function createCustomer(params: {
+  vertical: string;
+  jurisdiction: string;
+  customer: { firstName: string; lastName: string; email: string; phone?: string; tags?: string[]; notes?: string };
+}) {
+  return httpJson("POST", "/v1/customers:create", {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+    body: params.customer,
+  });
+}
+
+export async function updateCustomer(params: {
+  vertical: string;
+  jurisdiction: string;
+  id: string;
+  customer: { firstName?: string; lastName?: string; email?: string; phone?: string; tags?: string[]; notes?: string };
+}) {
+  return httpJson("PUT", "/v1/customers:update", {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+    body: { id: params.id, ...params.customer },
+  });
+}
+
+export async function deleteCustomer(params: {
+  vertical: string;
+  jurisdiction: string;
+  id: string;
+}) {
+  return httpJson("DELETE", "/v1/customers:delete", {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+    body: { id: params.id },
+  });
+}
+
+// ----------------------------
+// Appointments
+// ----------------------------
+
+export async function getAppointments(params: { vertical: string; jurisdiction: string }) {
+  return httpJson("GET", "/v1/appointments:list", {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+  });
+}
+
+export async function createAppointment(params: {
+  vertical: string;
+  jurisdiction: string;
+  appointment: { customerId: string; customerName: string; datetime: string; type: string; duration: number; notes?: string };
+}) {
+  return httpJson("POST", "/v1/appointments:create", {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+    body: params.appointment,
+  });
+}
+
+export async function updateAppointment(params: {
+  vertical: string;
+  jurisdiction: string;
+  id: string;
+  appointment: {
+    customerId?: string;
+    customerName?: string;
+    datetime?: string;
+    type?: string;
+    duration?: number;
+    status?: string;
+    notes?: string;
+  };
+}) {
+  return httpJson("PUT", "/v1/appointments:update", {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+    body: { id: params.id, ...params.appointment },
+  });
+}
+
+export async function deleteAppointment(params: {
+  vertical: string;
+  jurisdiction: string;
+  id: string;
+}) {
+  return httpJson("DELETE", "/v1/appointments:delete", {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+    body: { id: params.id },
+  });
+}

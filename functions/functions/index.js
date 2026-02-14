@@ -5,6 +5,12 @@ const crypto = require("crypto");
 // Stripe (Identity)
 const Stripe = require("stripe");
 
+// Anthropic (Claude AI)
+const Anthropic = require("@anthropic-ai/sdk");
+
+// OpenAI (ChatGPT)
+const { OpenAI } = require("openai");
+
 // RAAS handlers (v0)
 const {
   handleRaasWorkflows,
@@ -24,10 +30,28 @@ const STORAGE_BUCKET = process.env.STORAGE_BUCKET || "title-app-alpha.firebasest
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || "";
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || "";
 
+// Anthropic API key (set via env / secrets)
+const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || "";
+
+// OpenAI API key (set via env / secrets)
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
+
 // Create Stripe client lazily so local dev without keys doesn't crash unless used
 function getStripe() {
   if (!STRIPE_SECRET_KEY) throw new Error("Missing STRIPE_SECRET_KEY");
   return new Stripe(STRIPE_SECRET_KEY, { apiVersion: "2024-06-20" });
+}
+
+// Create Anthropic client lazily
+function getAnthropic() {
+  if (!ANTHROPIC_API_KEY) throw new Error("Missing ANTHROPIC_API_KEY");
+  return new Anthropic({ apiKey: ANTHROPIC_API_KEY });
+}
+
+// Create OpenAI client lazily
+function getOpenAI() {
+  if (!OPENAI_API_KEY) throw new Error("Missing OPENAI_API_KEY");
+  return new OpenAI({ apiKey: OPENAI_API_KEY });
 }
 
 // ----------------------------
@@ -604,8 +628,103 @@ exports.api = onRequest(
           createdAt: nowServerTs(),
         });
 
-        // TODO: Replace stub with actual AI model call (Claude/OpenAI via preferredModel)
-        const aiResponse = `[AI response stub — model: ${preferredModel || "claude"}] You said: "${message}"`;
+        let aiResponse = "";
+
+        // Call Claude API if model is claude (default)
+        if (preferredModel === "claude" || !preferredModel) {
+          try {
+            // Fetch conversation history (last 20 messages)
+            const historySnapshot = await db
+              .collection("messageEvents")
+              .where("tenantId", "==", ctx.tenantId)
+              .where("userId", "==", ctx.userId)
+              .orderBy("createdAt", "desc")
+              .limit(20)
+              .get();
+
+            // Build message array for Claude (newest first from query, so reverse)
+            const messages = [];
+            const history = historySnapshot.docs.reverse();
+
+            for (const doc of history) {
+              const evt = doc.data();
+              if (evt.type === "chat:message:received") {
+                messages.push({ role: "user", content: evt.message });
+              } else if (evt.type === "chat:message:responded") {
+                messages.push({ role: "assistant", content: evt.response });
+              }
+            }
+
+            // Add current message
+            messages.push({ role: "user", content: message });
+
+            // Call Claude API
+            const anthropic = getAnthropic();
+            const response = await anthropic.messages.create({
+              model: "claude-sonnet-4-5-20250929",
+              max_tokens: 2048,
+              system: "You are a helpful assistant for TitleApp, a platform that helps people keep track of important records (car titles, home documents, pet records, student transcripts, etc.). Be concise, friendly, and focus on helping users understand how to organize and protect their important documents.",
+              messages,
+            });
+
+            aiResponse = response.content[0]?.text || "I apologize, but I couldn't generate a response. Please try again.";
+          } catch (apiError) {
+            console.error("❌ Claude API call failed:", apiError);
+            // Fallback to a helpful error message
+            aiResponse = "I'm having trouble connecting to the AI service right now. Please try again in a moment.";
+          }
+        } else if (preferredModel === "openai" || preferredModel === "chatgpt") {
+          // OpenAI / ChatGPT integration
+          try {
+            // Fetch conversation history (last 20 messages)
+            const historySnapshot = await db
+              .collection("messageEvents")
+              .where("tenantId", "==", ctx.tenantId)
+              .where("userId", "==", ctx.userId)
+              .orderBy("createdAt", "desc")
+              .limit(20)
+              .get();
+
+            // Build message array for OpenAI (newest first from query, so reverse)
+            const messages = [];
+            const history = historySnapshot.docs.reverse();
+
+            for (const doc of history) {
+              const evt = doc.data();
+              if (evt.type === "chat:message:received") {
+                messages.push({ role: "user", content: evt.message });
+              } else if (evt.type === "chat:message:responded") {
+                messages.push({ role: "assistant", content: evt.response });
+              }
+            }
+
+            // Add current message
+            messages.push({ role: "user", content: message });
+
+            // Call OpenAI API
+            const openai = getOpenAI();
+            const response = await openai.chat.completions.create({
+              model: "gpt-4o",
+              max_tokens: 2048,
+              messages: [
+                {
+                  role: "system",
+                  content: "You are a helpful assistant for TitleApp, a platform that helps people keep track of important records (car titles, home documents, pet records, student transcripts, etc.). Be concise, friendly, and focus on helping users understand how to organize and protect their important documents."
+                },
+                ...messages
+              ],
+            });
+
+            aiResponse = response.choices[0]?.message?.content || "I apologize, but I couldn't generate a response. Please try again.";
+          } catch (apiError) {
+            console.error("❌ OpenAI API call failed:", apiError);
+            // Fallback to a helpful error message
+            aiResponse = "I'm having trouble connecting to the AI service right now. Please try again in a moment.";
+          }
+        } else {
+          // Unsupported model
+          aiResponse = `[Unsupported model: ${preferredModel}. Please use "claude" or "openai".]`;
+        }
 
         // Event-sourced: append response event
         await db.collection("messageEvents").add({
@@ -682,6 +801,445 @@ exports.api = onRequest(
       } catch (e) {
         console.error("❌ /reportStatus failed:", e);
         return jsonError(res, 500, "Report status check failed");
+      }
+    }
+
+    // ----------------------------
+    // CONSUMER APP: DTCs (Digital Title Certificates)
+    // ----------------------------
+
+    // GET /v1/dtc:list?type=vehicle|property|credential
+    if (route === "/dtc:list" && method === "GET") {
+      try {
+        const type = req.query?.type?.toString() || null;
+        let q = db.collection("dtcs")
+          .where("userId", "==", ctx.userId)
+          .orderBy("createdAt", "desc")
+          .limit(50);
+
+        if (type) q = q.where("type", "==", type);
+
+        const snap = await q.get();
+        const dtcs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        return res.json({ ok: true, dtcs });
+      } catch (e) {
+        console.error("❌ dtc:list failed:", e);
+        return jsonError(res, 500, "Failed to load DTCs");
+      }
+    }
+
+    // POST /v1/dtc:create
+    if (route === "/dtc:create" && method === "POST") {
+      try {
+        const { type, metadata, fileIds, blockchainProof } = body;
+
+        if (!type || !metadata) {
+          return jsonError(res, 400, "Missing type or metadata");
+        }
+
+        const ref = await db.collection("dtcs").add({
+          userId: ctx.userId,
+          type,
+          metadata,
+          fileIds: fileIds || [],
+          blockchainProof: blockchainProof || null,
+          logbookCount: 0,
+          createdAt: nowServerTs(),
+        });
+
+        return res.json({ ok: true, dtcId: ref.id });
+      } catch (e) {
+        console.error("❌ dtc:create failed:", e);
+        return jsonError(res, 500, "Failed to create DTC");
+      }
+    }
+
+    // ----------------------------
+    // CONSUMER APP: LOGBOOKS
+    // ----------------------------
+
+    // GET /v1/logbook:list?dtcId=xxx
+    if (route === "/logbook:list" && method === "GET") {
+      try {
+        const dtcId = req.query?.dtcId?.toString() || null;
+
+        let q = db.collection("logbookEntries")
+          .where("userId", "==", ctx.userId)
+          .orderBy("createdAt", "desc")
+          .limit(100);
+
+        if (dtcId) q = q.where("dtcId", "==", dtcId);
+
+        const snap = await q.get();
+        const entries = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        return res.json({ ok: true, entries });
+      } catch (e) {
+        console.error("❌ logbook:list failed:", e);
+        return jsonError(res, 500, "Failed to load logbook entries");
+      }
+    }
+
+    // POST /v1/logbook:append
+    if (route === "/logbook:append" && method === "POST") {
+      try {
+        const { dtcId, entryType, data, files } = body;
+
+        if (!dtcId || !entryType || !data) {
+          return jsonError(res, 400, "Missing dtcId, entryType, or data");
+        }
+
+        // Verify DTC exists and user owns it
+        const dtcDoc = await db.collection("dtcs").doc(dtcId).get();
+        if (!dtcDoc.exists || dtcDoc.data().userId !== ctx.userId) {
+          return jsonError(res, 403, "DTC not found or access denied");
+        }
+
+        // Append logbook entry
+        const ref = await db.collection("logbookEntries").add({
+          dtcId,
+          userId: ctx.userId,
+          dtcTitle: dtcDoc.data().metadata?.title || "Untitled",
+          entryType,
+          data,
+          files: files || [],
+          createdAt: nowServerTs(),
+        });
+
+        // Update logbook count on DTC (denormalized for performance)
+        await db.collection("dtcs").doc(dtcId).update({
+          logbookCount: admin.firestore.FieldValue.increment(1),
+        });
+
+        return res.json({ ok: true, entryId: ref.id });
+      } catch (e) {
+        console.error("❌ logbook:append failed:", e);
+        return jsonError(res, 500, "Failed to append logbook entry");
+      }
+    }
+
+    // ----------------------------
+    // BUSINESS APP: INVENTORY
+    // ----------------------------
+
+    // GET /v1/inventory:list?type=vehicle|service
+    if (route === "/inventory:list" && method === "GET") {
+      try {
+        const type = req.query?.type?.toString() || null;
+
+        let q = db.collection("inventory")
+          .where("tenantId", "==", ctx.tenantId)
+          .orderBy("createdAt", "desc")
+          .limit(100);
+
+        if (type) q = q.where("type", "==", type);
+
+        const snap = await q.get();
+        const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        return res.json({ ok: true, items });
+      } catch (e) {
+        console.error("❌ inventory:list failed:", e);
+        return jsonError(res, 500, "Failed to load inventory");
+      }
+    }
+
+    // POST /v1/inventory:create
+    if (route === "/inventory:create" && method === "POST") {
+      try {
+        const { type, status, metadata, price, cost } = body;
+
+        if (!type || !metadata || price === undefined || cost === undefined) {
+          return jsonError(res, 400, "Missing required fields");
+        }
+
+        const ref = await db.collection("inventory").add({
+          tenantId: ctx.tenantId,
+          type,
+          status: status || "available",
+          metadata,
+          price: parseFloat(price) || 0,
+          cost: parseFloat(cost) || 0,
+          createdAt: nowServerTs(),
+        });
+
+        return res.json({ ok: true, itemId: ref.id });
+      } catch (e) {
+        console.error("❌ inventory:create failed:", e);
+        return jsonError(res, 500, "Failed to create inventory item");
+      }
+    }
+
+    // PUT /v1/inventory:update
+    if (route === "/inventory:update" && method === "PUT") {
+      try {
+        const { id, type, status, metadata, price, cost } = body;
+
+        if (!id) {
+          return jsonError(res, 400, "Missing item id");
+        }
+
+        // Verify ownership
+        const doc = await db.collection("inventory").doc(id).get();
+        if (!doc.exists || doc.data().tenantId !== ctx.tenantId) {
+          return jsonError(res, 403, "Item not found or access denied");
+        }
+
+        const updates = {};
+        if (type !== undefined) updates.type = type;
+        if (status !== undefined) updates.status = status;
+        if (metadata !== undefined) updates.metadata = metadata;
+        if (price !== undefined) updates.price = parseFloat(price) || 0;
+        if (cost !== undefined) updates.cost = parseFloat(cost) || 0;
+        updates.updatedAt = nowServerTs();
+
+        await db.collection("inventory").doc(id).update(updates);
+
+        return res.json({ ok: true });
+      } catch (e) {
+        console.error("❌ inventory:update failed:", e);
+        return jsonError(res, 500, "Failed to update inventory item");
+      }
+    }
+
+    // DELETE /v1/inventory:delete
+    if (route === "/inventory:delete" && method === "DELETE") {
+      try {
+        const { id } = body;
+
+        if (!id) {
+          return jsonError(res, 400, "Missing item id");
+        }
+
+        // Verify ownership
+        const doc = await db.collection("inventory").doc(id).get();
+        if (!doc.exists || doc.data().tenantId !== ctx.tenantId) {
+          return jsonError(res, 403, "Item not found or access denied");
+        }
+
+        await db.collection("inventory").doc(id).delete();
+
+        return res.json({ ok: true });
+      } catch (e) {
+        console.error("❌ inventory:delete failed:", e);
+        return jsonError(res, 500, "Failed to delete inventory item");
+      }
+    }
+
+    // ----------------------------
+    // BUSINESS APP: CUSTOMERS (CRM)
+    // ----------------------------
+
+    // GET /v1/customers:list?search=xxx
+    if (route === "/customers:list" && method === "GET") {
+      try {
+        const snap = await db.collection("customers")
+          .where("tenantId", "==", ctx.tenantId)
+          .orderBy("createdAt", "desc")
+          .limit(100)
+          .get();
+
+        const customers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        return res.json({ ok: true, customers });
+      } catch (e) {
+        console.error("❌ customers:list failed:", e);
+        return jsonError(res, 500, "Failed to load customers");
+      }
+    }
+
+    // POST /v1/customers:create
+    if (route === "/customers:create" && method === "POST") {
+      try {
+        const { firstName, lastName, email, phone, tags, notes } = body;
+
+        if (!firstName || !lastName || !email) {
+          return jsonError(res, 400, "Missing required fields (firstName, lastName, email)");
+        }
+
+        const ref = await db.collection("customers").add({
+          tenantId: ctx.tenantId,
+          firstName,
+          lastName,
+          email,
+          phone: phone || null,
+          tags: tags || [],
+          notes: notes || "",
+          deals: [],
+          createdAt: nowServerTs(),
+          lastContact: nowServerTs(),
+        });
+
+        return res.json({ ok: true, customerId: ref.id });
+      } catch (e) {
+        console.error("❌ customers:create failed:", e);
+        return jsonError(res, 500, "Failed to create customer");
+      }
+    }
+
+    // PUT /v1/customers:update
+    if (route === "/customers:update" && method === "PUT") {
+      try {
+        const { id, firstName, lastName, email, phone, tags, notes } = body;
+
+        if (!id) {
+          return jsonError(res, 400, "Missing customer id");
+        }
+
+        // Verify ownership
+        const doc = await db.collection("customers").doc(id).get();
+        if (!doc.exists || doc.data().tenantId !== ctx.tenantId) {
+          return jsonError(res, 403, "Customer not found or access denied");
+        }
+
+        const updates = {};
+        if (firstName !== undefined) updates.firstName = firstName;
+        if (lastName !== undefined) updates.lastName = lastName;
+        if (email !== undefined) updates.email = email;
+        if (phone !== undefined) updates.phone = phone;
+        if (tags !== undefined) updates.tags = tags;
+        if (notes !== undefined) updates.notes = notes;
+        updates.updatedAt = nowServerTs();
+
+        await db.collection("customers").doc(id).update(updates);
+
+        return res.json({ ok: true });
+      } catch (e) {
+        console.error("❌ customers:update failed:", e);
+        return jsonError(res, 500, "Failed to update customer");
+      }
+    }
+
+    // DELETE /v1/customers:delete
+    if (route === "/customers:delete" && method === "DELETE") {
+      try {
+        const { id } = body;
+
+        if (!id) {
+          return jsonError(res, 400, "Missing customer id");
+        }
+
+        // Verify ownership
+        const doc = await db.collection("customers").doc(id).get();
+        if (!doc.exists || doc.data().tenantId !== ctx.tenantId) {
+          return jsonError(res, 403, "Customer not found or access denied");
+        }
+
+        await db.collection("customers").doc(id).delete();
+
+        return res.json({ ok: true });
+      } catch (e) {
+        console.error("❌ customers:delete failed:", e);
+        return jsonError(res, 500, "Failed to delete customer");
+      }
+    }
+
+    // ----------------------------
+    // BUSINESS APP: APPOINTMENTS
+    // ----------------------------
+
+    // GET /v1/appointments:list
+    if (route === "/appointments:list" && method === "GET") {
+      try {
+        const snap = await db.collection("appointments")
+          .where("tenantId", "==", ctx.tenantId)
+          .orderBy("datetime", "asc")
+          .limit(100)
+          .get();
+
+        const appointments = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        return res.json({ ok: true, appointments });
+      } catch (e) {
+        console.error("❌ appointments:list failed:", e);
+        return jsonError(res, 500, "Failed to load appointments");
+      }
+    }
+
+    // POST /v1/appointments:create
+    if (route === "/appointments:create" && method === "POST") {
+      try {
+        const { customerId, customerName, datetime, type, duration, notes } = body;
+
+        if (!customerId || !datetime || !type) {
+          return jsonError(res, 400, "Missing required fields (customerId, datetime, type)");
+        }
+
+        const ref = await db.collection("appointments").add({
+          tenantId: ctx.tenantId,
+          customerId,
+          customerName: customerName || "",
+          datetime,
+          type,
+          duration: duration || 60,
+          status: "scheduled",
+          notes: notes || "",
+          createdAt: nowServerTs(),
+        });
+
+        return res.json({ ok: true, appointmentId: ref.id });
+      } catch (e) {
+        console.error("❌ appointments:create failed:", e);
+        return jsonError(res, 500, "Failed to create appointment");
+      }
+    }
+
+    // PUT /v1/appointments:update
+    if (route === "/appointments:update" && method === "PUT") {
+      try {
+        const { id, customerId, customerName, datetime, type, duration, status, notes } = body;
+
+        if (!id) {
+          return jsonError(res, 400, "Missing appointment id");
+        }
+
+        // Verify ownership
+        const doc = await db.collection("appointments").doc(id).get();
+        if (!doc.exists || doc.data().tenantId !== ctx.tenantId) {
+          return jsonError(res, 403, "Appointment not found or access denied");
+        }
+
+        const updates = {};
+        if (customerId !== undefined) updates.customerId = customerId;
+        if (customerName !== undefined) updates.customerName = customerName;
+        if (datetime !== undefined) updates.datetime = datetime;
+        if (type !== undefined) updates.type = type;
+        if (duration !== undefined) updates.duration = duration;
+        if (status !== undefined) updates.status = status;
+        if (notes !== undefined) updates.notes = notes;
+        updates.updatedAt = nowServerTs();
+
+        await db.collection("appointments").doc(id).update(updates);
+
+        return res.json({ ok: true });
+      } catch (e) {
+        console.error("❌ appointments:update failed:", e);
+        return jsonError(res, 500, "Failed to update appointment");
+      }
+    }
+
+    // DELETE /v1/appointments:delete
+    if (route === "/appointments:delete" && method === "DELETE") {
+      try {
+        const { id } = body;
+
+        if (!id) {
+          return jsonError(res, 400, "Missing appointment id");
+        }
+
+        // Verify ownership
+        const doc = await db.collection("appointments").doc(id).get();
+        if (!doc.exists || doc.data().tenantId !== ctx.tenantId) {
+          return jsonError(res, 403, "Appointment not found or access denied");
+        }
+
+        await db.collection("appointments").doc(id).delete();
+
+        return res.json({ ok: true });
+      } catch (e) {
+        console.error("❌ appointments:delete failed:", e);
+        return jsonError(res, 500, "Failed to delete appointment");
       }
     }
 
