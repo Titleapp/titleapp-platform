@@ -22,28 +22,21 @@
     header {
       padding: 24px 32px;
       flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
     }
 
     .logo {
       display: inline-flex;
       align-items: center;
-      gap: 9px;
+      gap: 12px;
       text-decoration: none;
     }
 
-    .logo-mark {
-      width: 32px;
-      height: 32px;
-      border-radius: 8px;
-      background: rgba(124, 58, 237, 0.12);
-      border: 1px solid rgba(124, 58, 237, 0.3);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #7C3AED;
-      font-size: 15px;
-      font-weight: 900;
-      letter-spacing: -0.02em;
+    .logo-img {
+      height: 40px;
+      width: auto;
     }
 
     .logo-name {
@@ -51,6 +44,38 @@
       font-weight: 800;
       color: #0F172A;
       letter-spacing: -0.02em;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .header-btn {
+      font-size: 14px;
+      font-weight: 600;
+      padding: 8px 16px;
+      border-radius: 10px;
+      text-decoration: none;
+      transition: opacity 120ms, background 120ms;
+    }
+
+    .header-btn.signin {
+      color: #64748B;
+      background: transparent;
+    }
+    .header-btn.signin:hover {
+      color: #0F172A;
+      background: rgba(15, 23, 42, 0.04);
+    }
+
+    .header-btn.cta {
+      background: #7C3AED;
+      color: #fff;
+    }
+    .header-btn.cta:hover {
+      opacity: 0.88;
     }
 
     /* ── Hero ── */
@@ -211,6 +236,11 @@
     /* ── Mobile ── */
     @media (max-width: 480px) {
       header { padding: 20px; }
+      .logo-img { height: 32px; }
+      .logo-name { font-size: 15px; }
+      .header-actions { gap: 8px; }
+      .header-btn { font-size: 13px; padding: 6px 12px; }
+      .header-btn.signin { display: none; }
       .sub { font-size: 16px; margin-bottom: 32px; }
       .chips { gap: 6px; }
       .chip { font-size: 12px; padding: 6px 12px; }
@@ -220,10 +250,14 @@
 <body>
 
   <header>
-    <a class="logo" href="#">
-      <div class="logo-mark">T</div>
+    <a class="logo" href="/">
+      <img src="/assets/logo.png" alt="TitleApp" class="logo-img" />
       <span class="logo-name">TitleApp</span>
     </a>
+    <div class="header-actions">
+      <a href="#" class="header-btn signin">Sign In</a>
+      <a href="#" class="header-btn cta">Start Free</a>
+    </div>
   </header>
 
   <main>
