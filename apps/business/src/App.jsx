@@ -3,14 +3,15 @@ import "./App.css";
 import Login from "./auth/login";
 import AppShell from "./components/AppShell";
 import Dashboard from "./sections/Dashboard";
-import MyStuff from "./sections/MyStuff";
-import MyLogbooks from "./sections/MyLogbooks";
-import StudentRecords from "./sections/StudentRecords";
-import MyGPTs from "./sections/MyGPTs";
+import RulesResources from "./sections/RulesResources";
+import Inventory from "./sections/Inventory";
+import AIChats from "./sections/AIChats";
+import Customers from "./sections/Customers";
+import Appointments from "./sections/Appointments";
+import Staff from "./sections/Staff";
 import Reports from "./sections/Reports";
-import Escrow from "./sections/Escrow";
-import Wallet from "./sections/Wallet";
-import Profile from "./sections/Profile";
+import DataAPIs from "./sections/DataAPIs";
+import Settings from "./sections/Settings";
 
 function AdminShell() {
   const [currentSection, setCurrentSection] = useState("dashboard");
@@ -19,22 +20,24 @@ function AdminShell() {
     switch (currentSection) {
       case "dashboard":
         return <Dashboard />;
-      case "my-stuff":
-        return <MyStuff />;
-      case "my-logbooks":
-        return <MyLogbooks />;
-      case "student-records":
-        return <StudentRecords />;
-      case "my-gpts":
-        return <MyGPTs />;
+      case "rules-resources":
+        return <RulesResources />;
+      case "inventory":
+        return <Inventory />;
+      case "ai-chats":
+        return <AIChats />;
+      case "customers":
+        return <Customers />;
+      case "appointments":
+        return <Appointments />;
+      case "staff":
+        return <Staff />;
       case "reports":
         return <Reports />;
-      case "escrow":
-        return <Escrow />;
-      case "wallet":
-        return <Wallet />;
-      case "profile":
-        return <Profile />;
+      case "data-apis":
+        return <DataAPIs />;
+      case "settings":
+        return <Settings />;
       default:
         return <Dashboard />;
     }
