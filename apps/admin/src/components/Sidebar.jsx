@@ -2,15 +2,15 @@ import React from "react";
 
 export default function Sidebar({ currentSection, onNavigate, onClose }) {
   const sections = [
-    { id: "dashboard", label: "Dashboard", icon: "📊" },
-    { id: "my-stuff", label: "My Stuff", icon: "🎯" },
-    { id: "my-logbooks", label: "My Logbooks", icon: "📝" },
-    { id: "student-records", label: "Student & Professional", icon: "🎓" },
-    { id: "my-gpts", label: "My GPTs", icon: "🤖" },
-    { id: "reports", label: "Reports", icon: "📈" },
-    { id: "escrow", label: "Escrow", icon: "🔒" },
-    { id: "wallet", label: "Wallet", icon: "💰" },
-    { id: "profile", label: "Profile", icon: "👤" },
+    { id: "dashboard", label: "Dashboard" },
+    { id: "my-stuff", label: "My Stuff" },
+    { id: "my-logbooks", label: "My Logbooks" },
+    { id: "student-records", label: "Student & Professional" },
+    { id: "my-gpts", label: "My GPTs" },
+    { id: "reports", label: "Reports" },
+    { id: "escrow", label: "Escrow" },
+    { id: "wallet", label: "Wallet" },
+    { id: "profile", label: "Profile" },
   ];
 
   function handleNavClick(sectionId) {
@@ -55,14 +55,10 @@ export default function Sidebar({ currentSection, onNavigate, onClose }) {
               style={{
                 width: "100%",
                 textAlign: "left",
-                display: "flex",
-                alignItems: "center",
-                gap: "10px",
                 cursor: "pointer",
               }}
             >
-              <span>{section.icon}</span>
-              <span>{section.label}</span>
+              {section.label}
             </button>
           ))}
         </nav>

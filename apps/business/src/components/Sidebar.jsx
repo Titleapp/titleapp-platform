@@ -2,16 +2,16 @@ import React from "react";
 
 export default function Sidebar({ currentSection, onNavigate, onClose }) {
   const sections = [
-    { id: "dashboard", label: "Dashboard", icon: "📊" },
-    { id: "rules-resources", label: "Rules & Resources", icon: "⚙️" },
-    { id: "inventory", label: "Services & Inventory", icon: "📦" },
-    { id: "ai-chats", label: "AI, GPTs & Chats", icon: "🤖" },
-    { id: "customers", label: "Customers", icon: "👥" },
-    { id: "appointments", label: "Appointments", icon: "📅" },
-    { id: "staff", label: "Staff", icon: "👤" },
-    { id: "reports", label: "Reports", icon: "📈" },
-    { id: "data-apis", label: "Data & APIs", icon: "🔌" },
-    { id: "settings", label: "Settings", icon: "⚙️" },
+    { id: "dashboard", label: "Dashboard" },
+    { id: "rules-resources", label: "Rules & Resources" },
+    { id: "inventory", label: "Services & Inventory" },
+    { id: "ai-chats", label: "AI, GPTs & Chats" },
+    { id: "customers", label: "Customers" },
+    { id: "appointments", label: "Appointments" },
+    { id: "staff", label: "Staff" },
+    { id: "reports", label: "Reports" },
+    { id: "data-apis", label: "Data & APIs" },
+    { id: "settings", label: "Settings" },
   ];
 
   function handleNavClick(sectionId) {
@@ -56,14 +56,10 @@ export default function Sidebar({ currentSection, onNavigate, onClose }) {
               style={{
                 width: "100%",
                 textAlign: "left",
-                display: "flex",
-                alignItems: "center",
-                gap: "10px",
                 cursor: "pointer",
               }}
             >
-              <span>{section.icon}</span>
-              <span>{section.label}</span>
+              {section.label}
             </button>
           ))}
         </nav>
