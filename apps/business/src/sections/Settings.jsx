@@ -1,6 +1,57 @@
-import React from "react";
+import React, { useState } from "react";
+import FormModal from "../components/FormModal";
 
+/**
+ * Settings - Business configuration and preferences
+ */
 export default function Settings() {
+  const [business, setBusiness] = useState({
+    name: "Velocity Motors",
+    type: "Auto Dealer",
+    vertical: "auto",
+    jurisdiction: "il",
+    address: "123 Dealer Drive, Chicago, IL 60601",
+    phone: "+1-555-DEALER",
+    email: "info@velocitymotors.com",
+    timezone: "America/Chicago",
+    notifications: {
+      email: true,
+      sms: true,
+      lowInventoryAlert: true,
+      appointmentReminders: true,
+    },
+  });
+
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editSection, setEditSection] = useState(null);
+  const [formData, setFormData] = useState({});
+
+  function handleEditClick(section) {
+    setEditSection(section);
+    if (section === "business") {
+      setFormData({
+        name: business.name,
+        type: business.type,
+        address: business.address,
+        phone: business.phone,
+        email: business.email,
+      });
+    } else if (section === "notifications") {
+      setFormData({ ...business.notifications });
+    }
+    setShowEditModal(true);
+  }
+
+  function handleSubmit(e) {
+    e.preventDefault();
+    if (editSection === "business") {
+      setBusiness({ ...business, ...formData });
+    } else if (editSection === "notifications") {
+      setBusiness({ ...business, notifications: formData });
+    }
+    setShowEditModal(false);
+  }
+
   return (
     <div>
       <div className="pageHeader">
@@ -10,29 +61,338 @@ export default function Settings() {
         </div>
       </div>
 
-      <div className="card">
+      {/* Business Information */}
+      <div className="card" style={{ marginBottom: "16px" }}>
         <div className="cardHeader">
-          <div className="cardTitle">Business Information</div>
+          <div>
+            <div className="cardTitle">Business Information</div>
+            <div className="cardSub">Your dealership details</div>
+          </div>
+          <button className="iconBtn" onClick={() => handleEditClick("business")}>
+            Edit
+          </button>
         </div>
         <div className="detail">
           <div className="kvRow">
             <div className="k">Business Name</div>
-            <div className="v">Velocity Motors</div>
+            <div className="v">{business.name}</div>
           </div>
           <div className="kvRow">
             <div className="k">Type</div>
-            <div className="v">Auto Dealer</div>
+            <div className="v">{business.type}</div>
           </div>
           <div className="kvRow">
             <div className="k">Vertical</div>
-            <div className="v">Auto (Illinois)</div>
+            <div className="v">
+              {business.vertical.toUpperCase()} ({business.jurisdiction.toUpperCase()})
+            </div>
           </div>
           <div className="kvRow">
-            <div className="k">Member Since</div>
-            <div className="v">January 2026</div>
+            <div className="k">Address</div>
+            <div className="v">{business.address}</div>
+          </div>
+          <div className="kvRow">
+            <div className="k">Phone</div>
+            <div className="v">{business.phone}</div>
+          </div>
+          <div className="kvRow">
+            <div className="k">Email</div>
+            <div className="v">{business.email}</div>
+          </div>
+          <div className="kvRow">
+            <div className="k">Timezone</div>
+            <div className="v">{business.timezone}</div>
           </div>
         </div>
       </div>
+
+      {/* Notification Preferences */}
+      <div className="card" style={{ marginBottom: "16px" }}>
+        <div className="cardHeader">
+          <div>
+            <div className="cardTitle">Notification Preferences</div>
+            <div className="cardSub">How your business receives alerts</div>
+          </div>
+          <button className="iconBtn" onClick={() => handleEditClick("notifications")}>
+            Edit
+          </button>
+        </div>
+        <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "12px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <input type="checkbox" checked={business.notifications.email} readOnly />
+            <div>
+              <div style={{ fontWeight: 600 }}>Email Notifications</div>
+              <div style={{ fontSize: "13px", color: "var(--textMuted)" }}>
+                Receive updates via email
+              </div>
+            </div>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <input type="checkbox" checked={business.notifications.sms} readOnly />
+            <div>
+              <div style={{ fontWeight: 600 }}>SMS Notifications</div>
+              <div style={{ fontSize: "13px", color: "var(--textMuted)" }}>
+                Receive updates via text message
+              </div>
+            </div>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <input type="checkbox" checked={business.notifications.lowInventoryAlert} readOnly />
+            <div>
+              <div style={{ fontWeight: 600 }}>Low Inventory Alerts</div>
+              <div style={{ fontSize: "13px", color: "var(--textMuted)" }}>
+                Get notified when inventory is running low
+              </div>
+            </div>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <input type="checkbox" checked={business.notifications.appointmentReminders} readOnly />
+            <div>
+              <div style={{ fontWeight: 600 }}>Appointment Reminders</div>
+              <div style={{ fontSize: "13px", color: "var(--textMuted)" }}>
+                Remind staff about upcoming appointments
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Integrations */}
+      <div className="card" style={{ marginBottom: "16px" }}>
+        <div className="cardHeader">
+          <div>
+            <div className="cardTitle">Integrations</div>
+            <div className="cardSub">Connected third-party services</div>
+          </div>
+        </div>
+        <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "12px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div>
+              <div style={{ fontWeight: 600 }}>Salesforce CRM</div>
+              <div style={{ fontSize: "13px", color: "var(--textMuted)" }}>
+                Sync customer data with Salesforce
+              </div>
+            </div>
+            <button className="iconBtn">Connect</button>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div>
+              <div style={{ fontWeight: 600 }}>QuickBooks</div>
+              <div style={{ fontSize: "13px", color: "var(--textMuted)" }}>
+                Sync financial data and invoices
+              </div>
+            </div>
+            <button className="iconBtn">Connect</button>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div>
+              <div style={{ fontWeight: 600 }}>Stripe Payments</div>
+              <div style={{ fontSize: "13px", color: "var(--textMuted)" }}>
+                Accept online payments
+              </div>
+            </div>
+            <span className="badge badge-completed">Connected</span>
+          </div>
+        </div>
+      </div>
+
+      {/* API Keys */}
+      <div className="card" style={{ marginBottom: "16px" }}>
+        <div className="cardHeader">
+          <div>
+            <div className="cardTitle">API Access</div>
+            <div className="cardSub">API keys for programmatic access</div>
+          </div>
+          <button className="iconBtn">Generate New Key</button>
+        </div>
+        <div style={{ padding: "16px" }}>
+          <div style={{ fontSize: "13px", color: "var(--textMuted)", marginBottom: "8px" }}>
+            Production API Key
+          </div>
+          <div
+            style={{
+              fontFamily: "monospace",
+              padding: "12px",
+              background: "#f8fafc",
+              borderRadius: "8px",
+              fontSize: "13px",
+            }}
+          >
+            ta_prod_••••••••••••••••••••••••
+          </div>
+        </div>
+      </div>
+
+      {/* Danger Zone */}
+      <div className="card" style={{ borderColor: "var(--danger)" }}>
+        <div className="cardHeader">
+          <div>
+            <div className="cardTitle" style={{ color: "var(--danger)" }}>
+              Danger Zone
+            </div>
+            <div className="cardSub">Irreversible actions</div>
+          </div>
+        </div>
+        <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "12px" }}>
+          <button className="iconBtn" style={{ width: "fit-content", color: "var(--danger)" }}>
+            Export All Data
+          </button>
+          <button className="iconBtn" style={{ width: "fit-content", color: "var(--danger)" }}>
+            Delete Business Account
+          </button>
+        </div>
+      </div>
+
+      {/* Edit Modal */}
+      <FormModal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        title={editSection === "business" ? "Edit Business Information" : "Edit Notifications"}
+        onSubmit={handleSubmit}
+        submitLabel="Save Changes"
+      >
+        {editSection === "business" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+            <div>
+              <label style={{ display: "block", marginBottom: "6px", fontWeight: 600 }}>
+                Business Name
+              </label>
+              <input
+                type="text"
+                value={formData.name || ""}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                style={{
+                  width: "100%",
+                  padding: "10px",
+                  borderRadius: "12px",
+                  border: "1px solid var(--line)",
+                }}
+              />
+            </div>
+            <div>
+              <label style={{ display: "block", marginBottom: "6px", fontWeight: 600 }}>Type</label>
+              <input
+                type="text"
+                value={formData.type || ""}
+                onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                style={{
+                  width: "100%",
+                  padding: "10px",
+                  borderRadius: "12px",
+                  border: "1px solid var(--line)",
+                }}
+              />
+            </div>
+            <div>
+              <label style={{ display: "block", marginBottom: "6px", fontWeight: 600 }}>
+                Address
+              </label>
+              <input
+                type="text"
+                value={formData.address || ""}
+                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                style={{
+                  width: "100%",
+                  padding: "10px",
+                  borderRadius: "12px",
+                  border: "1px solid var(--line)",
+                }}
+              />
+            </div>
+            <div>
+              <label style={{ display: "block", marginBottom: "6px", fontWeight: 600 }}>
+                Phone
+              </label>
+              <input
+                type="tel"
+                value={formData.phone || ""}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                style={{
+                  width: "100%",
+                  padding: "10px",
+                  borderRadius: "12px",
+                  border: "1px solid var(--line)",
+                }}
+              />
+            </div>
+            <div>
+              <label style={{ display: "block", marginBottom: "6px", fontWeight: 600 }}>
+                Email
+              </label>
+              <input
+                type="email"
+                value={formData.email || ""}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                style={{
+                  width: "100%",
+                  padding: "10px",
+                  borderRadius: "12px",
+                  border: "1px solid var(--line)",
+                }}
+              />
+            </div>
+          </div>
+        )}
+
+        {editSection === "notifications" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <input
+                type="checkbox"
+                checked={formData.email || false}
+                onChange={(e) => setFormData({ ...formData, email: e.target.checked })}
+              />
+              <div>
+                <div style={{ fontWeight: 600 }}>Email Notifications</div>
+                <div style={{ fontSize: "13px", color: "var(--textMuted)" }}>
+                  Receive updates via email
+                </div>
+              </div>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <input
+                type="checkbox"
+                checked={formData.sms || false}
+                onChange={(e) => setFormData({ ...formData, sms: e.target.checked })}
+              />
+              <div>
+                <div style={{ fontWeight: 600 }}>SMS Notifications</div>
+                <div style={{ fontSize: "13px", color: "var(--textMuted)" }}>
+                  Receive updates via text message
+                </div>
+              </div>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <input
+                type="checkbox"
+                checked={formData.lowInventoryAlert || false}
+                onChange={(e) => setFormData({ ...formData, lowInventoryAlert: e.target.checked })}
+              />
+              <div>
+                <div style={{ fontWeight: 600 }}>Low Inventory Alerts</div>
+                <div style={{ fontSize: "13px", color: "var(--textMuted)" }}>
+                  Get notified when inventory is running low
+                </div>
+              </div>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <input
+                type="checkbox"
+                checked={formData.appointmentReminders || false}
+                onChange={(e) =>
+                  setFormData({ ...formData, appointmentReminders: e.target.checked })
+                }
+              />
+              <div>
+                <div style={{ fontWeight: 600 }}>Appointment Reminders</div>
+                <div style={{ fontSize: "13px", color: "var(--textMuted)" }}>
+                  Remind staff about upcoming appointments
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </FormModal>
     </div>
   );
 }
