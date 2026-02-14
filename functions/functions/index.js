@@ -157,6 +157,34 @@ function identityDocId({ uid, tenantId, purpose }) {
 }
 
 // ----------------------------
+// RAAS Validation Gate
+// ----------------------------
+
+async function validateAgainstRaas(tenantId, type, row) {
+  // Define required fields per entity type
+  const required = {
+    customers: ["externalId", "firstName", "lastName"],
+    inventory: ["vin", "year", "make", "model"],
+    service_appointments: ["customerId", "date"],
+    sales: ["customerId", "vin", "saleDate"],
+    trade_ins: ["customerId", "vin"],
+    workflow_input: [], // workflows have variable schemas — validated by RAAS handlers
+  };
+
+  const fields = required[type] || [];
+  const missing = fields.filter((f) => !row[f]);
+
+  if (missing.length > 0) {
+    return {
+      valid: false,
+      reason: `Missing required fields for type '${type}': ${missing.join(", ")}`,
+    };
+  }
+
+  return { valid: true };
+}
+
+// ----------------------------
 // API
 // ----------------------------
 
@@ -164,7 +192,7 @@ exports.api = onRequest(
   // IMPORTANT: we need rawBody for Stripe webhook signature verification
   { region: "us-central1" },
   async (req, res) => {
-    console.log("✅ API_VERSION", "2026-02-12-onboarding-identity-v0");
+    console.log("✅ API_VERSION", "2026-02-14-audit-fixes-complete");
 
     const route = getRoute(req);
     const method = req.method;
@@ -206,8 +234,14 @@ exports.api = onRequest(
 
         if (uid) {
           const docId = identityDocId({ uid, tenantId, purpose });
-          await db.collection("identityVerifications").doc(docId).set(
-            {
+
+          // FIX: Use update() instead of set with merge for existing docs
+          const docRef = db.collection("identityVerifications").doc(docId);
+          const docSnap = await docRef.get();
+
+          if (!docSnap.exists) {
+            // First time — create with all fields
+            await docRef.set({
               uid,
               tenantId,
               purpose,
@@ -215,13 +249,22 @@ exports.api = onRequest(
               stripeEventType: type,
               stripeStatus: status,
               lastError,
+              createdAt: nowServerTs(),
               updatedAt: nowServerTs(),
-            },
-            { merge: true }
-          );
+            });
+          } else {
+            // Subsequent webhook — explicit field update only
+            await docRef.update({
+              stripeEventType: type,
+              stripeStatus: status,
+              lastError,
+              updatedAt: nowServerTs(),
+            });
+          }
 
-          // Also mark user summary
-          await db.collection("users").doc(uid).set(
+          // Also update user summary — explicit field update
+          const userRef = db.collection("users").doc(uid);
+          await userRef.set(
             {
               identity: {
                 [purpose]: {
@@ -232,7 +275,7 @@ exports.api = onRequest(
                 },
               },
             },
-            { merge: true }
+            { merge: true } // OK here: users collection is not append-only ledger
           );
         }
 
@@ -327,13 +370,11 @@ exports.api = onRequest(
           createdAt: nowServerTs(),
         });
       } else {
-        await db.collection("memberships").doc(memSnap.docs[0].id).set(
-          {
-            status: "active",
-            updatedAt: nowServerTs(),
-          },
-          { merge: true }
-        );
+        // FIX: Use update() for explicit field changes only
+        await db.collection("memberships").doc(memSnap.docs[0].id).update({
+          status: "active",
+          updatedAt: nowServerTs(),
+        });
       }
 
       return res.json({ ok: true, tenantId: finalTenantId });
@@ -365,18 +406,17 @@ exports.api = onRequest(
 
         // Persist a record (no PII)
         const docId = identityDocId({ uid: auth.user.uid, tenantId: ctx.tenantId, purpose });
-        await db.collection("identityVerifications").doc(docId).set(
-          {
-            uid: auth.user.uid,
-            tenantId: ctx.tenantId,
-            purpose: String(purpose),
-            stripeSessionId: session.id,
-            stripeStatus: session.status || "created",
-            createdAt: nowServerTs(),
-            updatedAt: nowServerTs(),
-          },
-          { merge: true }
-        );
+
+        // FIX: Create-only — no merge
+        await db.collection("identityVerifications").doc(docId).set({
+          uid: auth.user.uid,
+          tenantId: ctx.tenantId,
+          purpose: String(purpose),
+          stripeSessionId: session.id,
+          stripeStatus: session.status || "created",
+          createdAt: nowServerTs(),
+          updatedAt: nowServerTs(),
+        });
 
         // Return minimal data to run Stripe UI
         return res.json({
@@ -504,16 +544,14 @@ exports.api = onRequest(
       const data = snap.data() || {};
       if (data.tenantId !== ctx.tenantId) return jsonError(res, 403, "Forbidden");
 
-      await ref.set(
-        {
-          status: "ready",
-          finalizedAt: nowServerTs(),
-          contentType: contentType || data.contentType || null,
-          sizeBytes: sizeBytes || data.sizeBytes || null,
-          storagePath: storagePath || getPathFromMeta(data) || data.storagePath || null,
-        },
-        { merge: true }
-      );
+      // FIX: Use update() for explicit field changes only
+      await ref.update({
+        status: "ready",
+        finalizedAt: nowServerTs(),
+        contentType: contentType || data.contentType || null,
+        sizeBytes: sizeBytes || data.sizeBytes || null,
+        storagePath: storagePath || getPathFromMeta(data) || data.storagePath || null,
+      });
 
       return res.json({ ok: true, fileId });
     }
@@ -546,6 +584,108 @@ exports.api = onRequest(
     }
 
     // ----------------------------
+    // DOOR 2 ROUTES (Chat, Workflows, Report Status)
+    // ----------------------------
+
+    // POST /v1/chat:message
+    if (route === "/chat:message" && method === "POST") {
+      const { message, context, preferredModel } = body || {};
+      if (!message) return jsonError(res, 400, "Missing message");
+
+      try {
+        // Event-sourced: append message received event
+        const eventRef = await db.collection("messageEvents").add({
+          tenantId: ctx.tenantId,
+          userId: ctx.userId,
+          type: "chat:message:received",
+          message,
+          context: context || {},
+          preferredModel: preferredModel || "claude",
+          createdAt: nowServerTs(),
+        });
+
+        // TODO: Replace stub with actual AI model call (Claude/OpenAI via preferredModel)
+        const aiResponse = `[AI response stub — model: ${preferredModel || "claude"}] You said: "${message}"`;
+
+        // Event-sourced: append response event
+        await db.collection("messageEvents").add({
+          tenantId: ctx.tenantId,
+          userId: ctx.userId,
+          type: "chat:message:responded",
+          requestEventId: eventRef.id,
+          preferredModel: preferredModel || "claude",
+          response: aiResponse,
+          createdAt: nowServerTs(),
+        });
+
+        return res.json({ ok: true, response: aiResponse, eventId: eventRef.id });
+      } catch (e) {
+        console.error("❌ chat:message failed:", e);
+        return jsonError(res, 500, "Chat message failed");
+      }
+    }
+
+    // POST /v1/workflows
+    if (route === "/workflows" && method === "POST") {
+      const { workflowId, input, vertical, jurisdiction } = body || {};
+      if (!workflowId) return jsonError(res, 400, "Missing workflowId");
+
+      try {
+        // RAAS validation gate
+        const raasResult = await validateAgainstRaas(ctx.tenantId, "workflow_input", input || {});
+        if (!raasResult.valid) {
+          return jsonError(res, 422, "RAAS validation failed", { reason: raasResult.reason });
+        }
+
+        // Event-sourced: append workflow initiated event
+        const eventRef = await db.collection("workflowEvents").add({
+          tenantId: ctx.tenantId,
+          userId: ctx.userId,
+          type: "workflow:initiated",
+          workflowId,
+          input: input || {},
+          vertical: vertical || req.headers["x-vertical"] || "GLOBAL",
+          jurisdiction: jurisdiction || req.headers["x-jurisdiction"] || "GLOBAL",
+          createdAt: nowServerTs(),
+        });
+
+        // Pass event ID to RAAS handler for audit trail
+        req.body = { ...body, _workflowEventId: eventRef.id };
+        return handleRaasWorkflows(req, res, ctx);
+      } catch (e) {
+        console.error("❌ /workflows failed:", e);
+        return jsonError(res, 500, "Workflow initiation failed");
+      }
+    }
+
+    // GET /v1/reportStatus?jobId=...
+    if (route === "/reportStatus" && method === "GET") {
+      const jobId = (req.query?.jobId || "").toString().trim();
+      if (!jobId) return jsonError(res, 400, "Missing jobId");
+
+      try {
+        const snap = await db.collection("reportJobs").doc(jobId).get();
+        if (!snap.exists) return jsonError(res, 404, "Job not found", { jobId });
+
+        const data = snap.data() || {};
+        if (data.tenantId !== ctx.tenantId) return jsonError(res, 403, "Forbidden");
+
+        return res.json({
+          ok: true,
+          jobId,
+          status: data.status || "pending",
+          progress: data.progress || 0,
+          resultUrl: data.resultUrl || null,
+          createdAt: data.createdAt || null,
+          completedAt: data.completedAt || null,
+        });
+      } catch (e) {
+        console.error("❌ /reportStatus failed:", e);
+        return jsonError(res, 500, "Report status check failed");
+      }
+    }
+
+    // ----------------------------
     // RAAS (existing handlers)
     // ----------------------------
     if (route === "/raas:workflows" && method === "GET") return handleRaasWorkflows(req, res, ctx);
@@ -559,3 +699,108 @@ exports.api = onRequest(
     return jsonError(res, 404, "Not Found", { route, method });
   }
 );
+
+// ----------------------------
+// EVENT-SOURCED CSV IMPORT (separate endpoint)
+// ----------------------------
+
+exports.importCsv = onRequest({ region: "us-central1" }, async (req, res) => {
+  if (req.method !== "POST") return jsonError(res, 405, "Method not allowed");
+
+  const auth = await requireFirebaseUser(req, res);
+  if (auth.handled) return;
+
+  const body = req.body || {};
+  const ctx = getCtx(req, body, auth.user);
+
+  const gate = await requireMembershipIfNeeded({ uid: auth.user.uid, tenantId: ctx.tenantId }, res);
+  if (!gate.ok) return;
+
+  const { type, rows, isDemo } = body;
+  if (!type || !Array.isArray(rows) || rows.length === 0) {
+    return jsonError(res, 400, "Missing type or rows array");
+  }
+
+  const errors = [];
+  const eventIds = [];
+  let currentBatch = db.batch();
+  let batchCount = 0;
+
+  // Flush batch to Firestore when threshold is reached
+  async function flushBatch() {
+    if (batchCount > 0) {
+      await currentBatch.commit();
+      currentBatch = db.batch();
+      batchCount = 0;
+    }
+  }
+
+  // Create import job record
+  const importJobRef = db.collection("importJobs").doc();
+  currentBatch.set(importJobRef, {
+    tenantId: ctx.tenantId,
+    userId: ctx.userId,
+    type,
+    isDemo: !!isDemo,
+    totalRows: rows.length,
+    status: "processing",
+    createdAt: nowServerTs(),
+  });
+  batchCount++;
+
+  // Process each row
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+
+    // RAAS validation gate
+    const raasResult = await validateAgainstRaas(ctx.tenantId, type, row);
+    if (!raasResult.valid) {
+      errors.push({ rowIndex: i, row, reason: raasResult.reason });
+      continue;
+    }
+
+    // Append import event (event-sourced)
+    const eventRef = db.collection("importEvents").doc();
+    currentBatch.set(eventRef, {
+      tenantId: ctx.tenantId,
+      userId: ctx.userId,
+      importJobId: importJobRef.id,
+      type: `${type}:imported`,
+      isDemo: !!isDemo,
+      data: row,
+      rowIndex: i,
+      externalId: row.externalId || row.vin || row.customerId || null,
+      createdAt: nowServerTs(),
+    });
+
+    eventIds.push(eventRef.id);
+    batchCount++;
+
+    // Flush batch when approaching Firestore limit (500 ops max, we use 390 for safety)
+    if (batchCount >= 390) await flushBatch();
+  }
+
+  // Final status update
+  currentBatch.set(
+    importJobRef,
+    {
+      status: errors.length === rows.length ? "failed" : errors.length > 0 ? "partial" : "completed",
+      successCount: eventIds.length,
+      errorCount: errors.length,
+      completedAt: nowServerTs(),
+    },
+    { merge: true } // OK here: importJobs is operational metadata, not canonical ledger
+  );
+  batchCount++;
+
+  // Final flush
+  await flushBatch();
+
+  return res.json({
+    ok: true,
+    importJobId: importJobRef.id,
+    successCount: eventIds.length,
+    errorCount: errors.length,
+    errors: errors.length > 0 ? errors : undefined,
+  });
+});
