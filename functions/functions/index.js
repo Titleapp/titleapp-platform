@@ -652,9 +652,71 @@ exports.api = onRequest(
         });
 
         let aiResponse = "";
+        let structuredData = null;
 
-        // Call Claude API if model is claude (default)
-        if (preferredModel === "claude" || !preferredModel) {
+        // ANALYST DETECTION: Check if user wants deal analysis
+        const isDealAnalysis = message.toLowerCase().includes("analyze") ||
+                              message.toLowerCase().includes("deal") ||
+                              message.toLowerCase().includes("company:") ||
+                              message.toLowerCase().includes("investment") ||
+                              (message.includes("$") && message.length > 100); // Likely a deal paste
+
+        if (isDealAnalysis && message.length > 50) {
+          // Route to Analyst RAAS
+          try {
+            console.log("🎯 Detected deal analysis request, routing to Analyst RAAS");
+
+            // Parse deal info from message (simple extraction for now)
+            const dealSummary = message;
+
+            // Call Analyst RAAS (reuse existing logic)
+            const rulesetName = "pe_deal_screen_v0"; // Default ruleset
+
+            // Generate mock analysis (same logic as /analyst:analyze endpoint)
+            const isBadDeal = message.toLowerCase().includes("no revenue") ||
+                             message.toLowerCase().includes("pre-revenue") ||
+                             message.toLowerCase().includes("idea stage") ||
+                             message.toLowerCase().includes("nft") ||
+                             message.toLowerCase().includes("blockchain") ||
+                             message.toLowerCase().includes("crypto");
+
+            const analysis = {
+              riskScore: isBadDeal ? 85 : 45,
+              recommendation: isBadDeal ? "PASS" : "INVEST",
+              emoji: isBadDeal ? "💩" : "💎",
+              summary: isBadDeal
+                ? `This deal presents significant red flags. The business model appears speculative with unclear path to profitability.`
+                : `Strong fundamentals with validated business model and clear unit economics. Risk is manageable with proper structuring.`,
+              evidence: {
+                positive: isBadDeal ? [] : ["Proven revenue generation", "Strong growth trajectory", "Experienced team"],
+                negative: isBadDeal ? ["No validated business model", "High speculation risk", "Regulatory uncertainty"] : ["Customer concentration risk"],
+                neutral: ["Industry is competitive but growing"]
+              },
+              nextSteps: isBadDeal ? ["Pass on this opportunity", "Request clearer business plan if revisiting"] : ["Conduct due diligence", "Schedule management meeting"]
+            };
+
+            // Save to Firestore
+            await db.collection("analyzedDeals").add({
+              tenantId: ctx.tenantId,
+              dealInput: { summary: dealSummary },
+              analysis,
+              source: "chat",
+              createdAt: nowServerTs(),
+            });
+
+            // Format response for chat
+            aiResponse = `## ${analysis.emoji} Deal Analysis\n\n**Risk Score:** ${analysis.riskScore}/100\n**Recommendation:** ${analysis.recommendation}\n\n${analysis.summary}\n\n**Key Evidence:**\n${analysis.evidence.positive.map(e => `✅ ${e}`).join('\n')}\n${analysis.evidence.negative.map(e => `❌ ${e}`).join('\n')}\n\n**Next Steps:**\n${analysis.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}`;
+
+            structuredData = { type: "trade_summary", analysis };
+
+          } catch (analystError) {
+            console.error("❌ Analyst routing failed:", analystError);
+            // Fall through to normal chat
+          }
+        }
+
+        // Call Claude API if no structured response yet
+        if (!aiResponse && (preferredModel === "claude" || !preferredModel)) {
           try {
             // Fetch conversation history (last 20 messages)
             const historySnapshot = await db
@@ -757,10 +819,16 @@ exports.api = onRequest(
           requestEventId: eventRef.id,
           preferredModel: preferredModel || "claude",
           response: aiResponse,
+          structuredData,
           createdAt: nowServerTs(),
         });
 
-        return res.json({ ok: true, response: aiResponse, eventId: eventRef.id });
+        return res.json({
+          ok: true,
+          response: aiResponse,
+          structuredData,
+          eventId: eventRef.id
+        });
       } catch (e) {
         console.error("❌ chat:message failed:", e);
         return jsonError(res, 500, "Chat message failed");

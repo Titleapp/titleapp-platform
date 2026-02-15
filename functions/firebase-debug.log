@@ -40155,3 +40155,79 @@ Issues? Report them at https://github.com/firebase/firebase-tools/issues and att
 [debug] [2026-02-15T19:44:53.304Z] Finishing up request with event=finish {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-api"},"extension":{},"message":"Finishing up request with event=finish"}}
 [debug] [2026-02-15T19:44:53.304Z] Finishing up request with event=close {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-api"},"extension":{},"message":"Finishing up request with event=close"}}
 [debug] [2026-02-15T19:44:53.304Z] [work-queue] {"queuedWork":[],"queueLength":0,"runningWork":[],"workRunningCount":0}
+[debug] [2026-02-15T19:47:41.737Z] File /Users/seancombs/titleapp-platform/functions/functions/index.js changed, reloading triggers {"metadata":{"emulator":{"name":"functions"},"message":"File /Users/seancombs/titleapp-platform/functions/functions/index.js changed, reloading triggers"}}
+[debug] [2026-02-15T19:47:42.749Z] Validating nodejs source
+[warn] ⚠  functions: package.json indicates an outdated version of firebase-functions. Please upgrade using npm install --save firebase-functions@latest in your functions directory. 
+[warn] ⚠  functions: Please note that there will be breaking changes when you upgrade. 
+[debug] [2026-02-15T19:47:43.447Z] > [functions] package.json contents: {
+  "name": "functions",
+  "private": true,
+  "engines": {
+    "node": "20"
+  },
+  "main": "index.js",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.32.1",
+    "csv-parse": "^5.5.6",
+    "firebase": "^12.8.0",
+    "firebase-admin": "^12.7.0",
+    "firebase-functions": "^5.1.1",
+    "openai": "^4.77.3",
+    "stripe": "^20.3.1"
+  }
+}
+[debug] [2026-02-15T19:47:43.448Z] Building nodejs source
+[debug] [2026-02-15T19:47:43.448Z] Failed to find version of module node: reached end of search path /Users/seancombs/titleapp-platform/functions/functions/node_modules
+[info] ✔  functions: Using node@20 from host. 
+[debug] [2026-02-15T19:47:43.451Z] Could not find functions.yaml. Must use http discovery
+[debug] [2026-02-15T19:47:43.453Z] Found firebase-functions binary at '/Users/seancombs/titleapp-platform/functions/functions/node_modules/.bin/firebase-functions'
+[info] Serving at port 8681
+
+[debug] [2026-02-15T19:47:44.702Z] Got response from /__/functions.yaml {"endpoints":{"api":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","region":["us-central1"],"labels":{},"httpsTrigger":{},"entryPoint":"api"},"importCsv":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","region":["us-central1"],"labels":{},"httpsTrigger":{},"entryPoint":"importCsv"}},"specVersion":"v1alpha1","requiredAPIs":[],"extensions":{}}
+[debug] [2026-02-15T19:47:48.743Z] defaultcredentials: writing to file /Users/seancombs/.config/firebase/titleapp_core_gmail.com_application_default_credentials.json
+[debug] [2026-02-15T19:47:48.745Z] Setting GAC to /Users/seancombs/.config/firebase/titleapp_core_gmail.com_application_default_credentials.json {"metadata":{"emulator":{"name":"functions"},"message":"Setting GAC to /Users/seancombs/.config/firebase/titleapp_core_gmail.com_application_default_credentials.json"}}
+[info] ✔  functions: Loaded functions definitions from source: api, importCsv. {"metadata":{"emulator":{"name":"functions"},"message":"Loaded functions definitions from source: api, importCsv."}}
+[debug] [2026-02-15T19:47:48.748Z] [worker-pool] Shutting down IDLE worker (us-central1-api) {"metadata":{"emulator":{"name":"functions"},"message":"[worker-pool] Shutting down IDLE worker (us-central1-api)"}}
+[debug] [2026-02-15T19:47:48.748Z] [worker-us-central1-api-ff3d9802-eb9a-402a-bc64-761a4180d74c]: FINISHING {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-api"},"extension":{},"message":"[worker-us-central1-api-ff3d9802-eb9a-402a-bc64-761a4180d74c]: FINISHING"}}
+[debug] [2026-02-15T19:47:48.748Z] [worker-pool] Shutting down IDLE worker (us-central1-api) {"metadata":{"emulator":{"name":"functions"},"message":"[worker-pool] Shutting down IDLE worker (us-central1-api)"}}
+[debug] [2026-02-15T19:47:48.748Z] [worker-us-central1-api-43b9f797-e3cb-4847-a92f-55efc89dce90]: FINISHING {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-api"},"extension":{},"message":"[worker-us-central1-api-43b9f797-e3cb-4847-a92f-55efc89dce90]: FINISHING"}}
+[debug] [2026-02-15T19:47:48.748Z] [worker-pool] Shutting down IDLE worker (us-central1-api) {"metadata":{"emulator":{"name":"functions"},"message":"[worker-pool] Shutting down IDLE worker (us-central1-api)"}}
+[debug] [2026-02-15T19:47:48.748Z] [worker-us-central1-api-37529eb6-3b5a-46f1-9a6d-d979dfc350f0]: FINISHING {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-api"},"extension":{},"message":"[worker-us-central1-api-37529eb6-3b5a-46f1-9a6d-d979dfc350f0]: FINISHING"}}
+[debug] [2026-02-15T19:47:48.763Z] [worker-us-central1-api-37529eb6-3b5a-46f1-9a6d-d979dfc350f0]: exited {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-api"},"extension":{},"message":"[worker-us-central1-api-37529eb6-3b5a-46f1-9a6d-d979dfc350f0]: exited"}}
+[debug] [2026-02-15T19:47:48.764Z] [worker-us-central1-api-37529eb6-3b5a-46f1-9a6d-d979dfc350f0]: FINISHED {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-api"},"extension":{},"message":"[worker-us-central1-api-37529eb6-3b5a-46f1-9a6d-d979dfc350f0]: FINISHED"}}
+[debug] [2026-02-15T19:47:48.764Z] [worker-us-central1-api-43b9f797-e3cb-4847-a92f-55efc89dce90]: exited {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-api"},"extension":{},"message":"[worker-us-central1-api-43b9f797-e3cb-4847-a92f-55efc89dce90]: exited"}}
+[debug] [2026-02-15T19:47:48.764Z] [worker-us-central1-api-43b9f797-e3cb-4847-a92f-55efc89dce90]: FINISHED {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-api"},"extension":{},"message":"[worker-us-central1-api-43b9f797-e3cb-4847-a92f-55efc89dce90]: FINISHED"}}
+[debug] [2026-02-15T19:47:48.764Z] [worker-us-central1-api-ff3d9802-eb9a-402a-bc64-761a4180d74c]: exited {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-api"},"extension":{},"message":"[worker-us-central1-api-ff3d9802-eb9a-402a-bc64-761a4180d74c]: exited"}}
+[debug] [2026-02-15T19:47:48.765Z] [worker-us-central1-api-ff3d9802-eb9a-402a-bc64-761a4180d74c]: FINISHED {"metadata":{"emulator":{"name":"functions"},"function":{"name":"us-central1-api"},"extension":{},"message":"[worker-us-central1-api-ff3d9802-eb9a-402a-bc64-761a4180d74c]: FINISHED"}}
+[debug] [2026-02-15T19:48:04.267Z] File /Users/seancombs/titleapp-platform/functions/functions/index.js changed, reloading triggers {"metadata":{"emulator":{"name":"functions"},"message":"File /Users/seancombs/titleapp-platform/functions/functions/index.js changed, reloading triggers"}}
+[debug] [2026-02-15T19:48:05.268Z] Validating nodejs source
+[warn] ⚠  functions: package.json indicates an outdated version of firebase-functions. Please upgrade using npm install --save firebase-functions@latest in your functions directory. 
+[warn] ⚠  functions: Please note that there will be breaking changes when you upgrade. 
+[debug] [2026-02-15T19:48:05.696Z] > [functions] package.json contents: {
+  "name": "functions",
+  "private": true,
+  "engines": {
+    "node": "20"
+  },
+  "main": "index.js",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.32.1",
+    "csv-parse": "^5.5.6",
+    "firebase": "^12.8.0",
+    "firebase-admin": "^12.7.0",
+    "firebase-functions": "^5.1.1",
+    "openai": "^4.77.3",
+    "stripe": "^20.3.1"
+  }
+}
+[debug] [2026-02-15T19:48:05.696Z] Building nodejs source
+[debug] [2026-02-15T19:48:05.696Z] Failed to find version of module node: reached end of search path /Users/seancombs/titleapp-platform/functions/functions/node_modules
+[info] ✔  functions: Using node@20 from host. 
+[debug] [2026-02-15T19:48:05.696Z] Could not find functions.yaml. Must use http discovery
+[debug] [2026-02-15T19:48:05.697Z] Found firebase-functions binary at '/Users/seancombs/titleapp-platform/functions/functions/node_modules/.bin/firebase-functions'
+[info] Serving at port 8991
+
+[debug] [2026-02-15T19:48:05.979Z] Got response from /__/functions.yaml {"endpoints":{"api":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","region":["us-central1"],"labels":{},"httpsTrigger":{},"entryPoint":"api"},"importCsv":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","region":["us-central1"],"labels":{},"httpsTrigger":{},"entryPoint":"importCsv"}},"specVersion":"v1alpha1","requiredAPIs":[],"extensions":{}}
+[debug] [2026-02-15T19:48:10.000Z] defaultcredentials: writing to file /Users/seancombs/.config/firebase/titleapp_core_gmail.com_application_default_credentials.json
+[debug] [2026-02-15T19:48:10.001Z] Setting GAC to /Users/seancombs/.config/firebase/titleapp_core_gmail.com_application_default_credentials.json {"metadata":{"emulator":{"name":"functions"},"message":"Setting GAC to /Users/seancombs/.config/firebase/titleapp_core_gmail.com_application_default_credentials.json"}}
+[info] ✔  functions: Loaded functions definitions from source: api, importCsv. {"metadata":{"emulator":{"name":"functions"},"message":"Loaded functions definitions from source: api, importCsv."}}
