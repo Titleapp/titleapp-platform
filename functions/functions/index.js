@@ -2032,6 +2032,221 @@ Return as JSON: { summary, risks: [], recommendations: [], confidence }`
     }
 
     // ----------------------------
+    // ANALYST RAAS
+    // ----------------------------
+
+    // POST /v1/analyst:analyze
+    // AI-powered deal analysis with multi-angle assessment
+    if (route === "/analyst:analyze" && method === "POST") {
+      try {
+        const { deal } = body;
+
+        if (!deal || !deal.companyName || !deal.summary) {
+          return jsonError(res, 400, "Missing required deal fields");
+        }
+
+        // Load appropriate RAAS rules based on deal type
+        const dealTypeMap = {
+          "seed": "pe_deal_screen_v0",
+          "series_a": "pe_deal_screen_v0",
+          "series_b": "pe_deal_screen_v0",
+          "series_c": "pe_deal_screen_v0",
+          "pe": "pe_deal_screen_v0",
+          "refinance": "refinance_screen_v0",
+          "real_estate": "cre_deal_screen_v0",
+          "conversion": "conversion_screen_v0",
+          "debt": "debt_acquisition_screen_v0",
+        };
+
+        const rulesetName = dealTypeMap[deal.dealType] || "pe_deal_screen_v0";
+
+        // Build sophisticated analysis prompt
+        const analysisPrompt = `You are the world's best investment analyst. Analyze this deal with the sophistication of a Goldman Sachs analyst but accessible to anyone from house flippers to institutional investors.
+
+**Deal Information:**
+- Company: ${deal.companyName}
+- Industry: ${deal.industry || "Not specified"}
+- Ask Amount: ${deal.askAmount || "Not specified"}
+- Deal Type: ${deal.dealType || "Not specified"}
+- Summary: ${deal.summary}
+
+**Analysis Requirements:**
+
+1. **Multi-Angle Assessment** - Analyze from ALL these perspectives:
+   - Direct investment (buy/sell fundamentals)
+   - Leverage opportunities (debt structuring, LBO potential)
+   - Tax optimization (depreciation, credits, offshore strategies)
+   - Regulatory considerations (securities laws, compliance risks)
+   - Alternative structures (convertible notes, SAFE, revenue share)
+
+2. **Evidence-First Approach** - Follow these rules:
+   - Cite specific facts from the deal summary
+   - Mark unknowns explicitly (don't guess)
+   - Flag missing critical information
+
+3. **Risk-Scaled Alternatives** - Present deal options at three risk levels:
+   - **Low Risk**: Conservative structure, protective terms, clear exit
+   - **Medium Risk**: Balanced risk/reward, standard terms
+   - **High Risk**: Aggressive bet, higher upside, concentrated exposure
+
+4. **Output Format** - Return a JSON object with:
+   {
+     "riskScore": 0-100 (0=lowest risk, 100=highest risk),
+     "recommendation": "INVEST" | "PASS" | "WAIT",
+     "emoji": "💎" for great deals, "👍" for good, "⚠️" for concerns, "💩" for terrible deals,
+     "summary": "2-3 sentence executive summary",
+     "evidence": {
+       "positive": ["fact 1", "fact 2"],
+       "negative": ["concern 1", "concern 2"],
+       "neutral": ["observation 1"]
+     },
+     "multiAngleAnalysis": {
+       "directInvestment": "assessment...",
+       "leverageOpportunities": "assessment...",
+       "taxOptimization": "assessment...",
+       "regulatoryConsiderations": "assessment...",
+       "alternativeStructures": "suggested alternatives..."
+     },
+     "riskScaledAlternatives": {
+       "lowRisk": { "structure": "...", "terms": "...", "expectedReturn": "..." },
+       "mediumRisk": { "structure": "...", "terms": "...", "expectedReturn": "..." },
+       "highRisk": { "structure": "...", "terms": "...", "expectedReturn": "..." }
+     },
+     "keyMetrics": {
+       "estimatedValuation": "...",
+       "dilution": "...",
+       "targetIRR": "...",
+       "other": "..."
+     },
+     "nextSteps": ["action 1", "action 2"],
+     "missingInfo": ["critical doc 1", "critical doc 2"]
+   }
+
+**CRITICAL**: Use the 💩 emoji for deals that are clearly terrible (red flags, unrealistic assumptions, regulatory violations, obvious frauds).
+
+Analyze now:`;
+
+        // Call Claude Opus for analysis
+        const anthropic = getAnthropic();
+        const response = await anthropic.messages.create({
+          model: "claude-opus-4-20250514",
+          max_tokens: 4096,
+          temperature: 0.3,
+          messages: [{
+            role: "user",
+            content: analysisPrompt
+          }]
+        });
+
+        const analysisText = response.content[0].text;
+
+        // Parse JSON from Claude's response
+        let analysis;
+        try {
+          // Claude sometimes wraps JSON in markdown, so extract it
+          const jsonMatch = analysisText.match(/\{[\s\S]*\}/);
+          analysis = JSON.parse(jsonMatch ? jsonMatch[0] : analysisText);
+        } catch (e) {
+          // Fallback if parsing fails
+          analysis = {
+            riskScore: 50,
+            recommendation: "WAIT",
+            emoji: "⚠️",
+            summary: analysisText.substring(0, 500),
+            evidence: { positive: [], negative: [], neutral: [] },
+            multiAngleAnalysis: {
+              directInvestment: "Analysis parsing failed",
+              leverageOpportunities: "See raw response",
+              taxOptimization: "See raw response",
+              regulatoryConsiderations: "See raw response",
+              alternativeStructures: "See raw response"
+            },
+            riskScaledAlternatives: {
+              lowRisk: { structure: "N/A", terms: "N/A", expectedReturn: "N/A" },
+              mediumRisk: { structure: "N/A", terms: "N/A", expectedReturn: "N/A" },
+              highRisk: { structure: "N/A", terms: "N/A", expectedReturn: "N/A" }
+            },
+            keyMetrics: {},
+            nextSteps: ["Review raw analysis"],
+            missingInfo: []
+          };
+        }
+
+        // Save to Firestore
+        const ref = await db.collection("analyzedDeals").add({
+          tenantId: ctx.tenantId,
+          dealInput: deal,
+          analysis,
+          rulesetUsed: rulesetName,
+          analyzedAt: nowServerTs(),
+          createdAt: nowServerTs(),
+        });
+
+        return res.json({
+          ok: true,
+          dealId: ref.id,
+          analysis
+        });
+
+      } catch (e) {
+        console.error("❌ analyst:analyze failed:", e);
+        return jsonError(res, 500, "Failed to analyze deal: " + (e?.message || String(e)));
+      }
+    }
+
+    // GET /v1/analyst:deals
+    // List all analyzed deals
+    if (route === "/analyst:deals" && method === "GET") {
+      try {
+        const limit = parseInt(req.query?.limit?.toString() || "50", 10);
+
+        const snap = await db.collection("analyzedDeals")
+          .where("tenantId", "==", ctx.tenantId)
+          .orderBy("analyzedAt", "desc")
+          .limit(limit)
+          .get();
+
+        const deals = snap.docs.map(d => ({
+          id: d.id,
+          ...d.data()
+        }));
+
+        return res.json({ ok: true, deals });
+
+      } catch (e) {
+        console.error("❌ analyst:deals failed:", e);
+        return jsonError(res, 500, "Failed to load analyzed deals");
+      }
+    }
+
+    // GET /v1/analyst:deal?id=...
+    // Get specific deal analysis
+    if (route === "/analyst:deal" && method === "GET") {
+      try {
+        const dealId = req.query?.id?.toString();
+
+        if (!dealId) {
+          return jsonError(res, 400, "Missing deal id");
+        }
+
+        const doc = await db.collection("analyzedDeals").doc(dealId).get();
+
+        if (!doc.exists || doc.data().tenantId !== ctx.tenantId) {
+          return jsonError(res, 403, "Deal not found or access denied");
+        }
+
+        return res.json({
+          ok: true,
+          deal: { id: doc.id, ...doc.data() }
+        });
+
+      } catch (e) {
+        console.error("❌ analyst:deal failed:", e);
+        return jsonError(res, 500, "Failed to load deal");
+      }
+    }
+
+    // ----------------------------
     // RAAS (existing handlers)
     // ----------------------------
     if (route === "/raas:workflows" && method === "GET") return handleRaasWorkflows(req, res, ctx);

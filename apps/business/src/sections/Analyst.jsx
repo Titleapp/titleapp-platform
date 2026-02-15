@@ -80,17 +80,18 @@ export default function Analyst() {
   const filteredDeals = filterRisk === "all"
     ? deals
     : deals.filter(d => {
-        if (filterRisk === "high") return d.riskScore >= 70;
-        if (filterRisk === "medium") return d.riskScore >= 40 && d.riskScore < 70;
-        if (filterRisk === "low") return d.riskScore < 40;
+        const score = d.analysis?.riskScore || 0;
+        if (filterRisk === "high") return score >= 70;
+        if (filterRisk === "medium") return score >= 40 && score < 70;
+        if (filterRisk === "low") return score < 40;
         return true;
       });
 
   const stats = {
     total: deals.length,
-    invest: deals.filter(d => d.recommendation === "INVEST").length,
-    pass: deals.filter(d => d.recommendation === "PASS").length,
-    wait: deals.filter(d => d.recommendation === "WAIT").length,
+    invest: deals.filter(d => d.analysis?.recommendation === "INVEST").length,
+    pass: deals.filter(d => d.analysis?.recommendation === "PASS").length,
+    wait: deals.filter(d => d.analysis?.recommendation === "WAIT").length,
   };
 
   function getRiskColor(score) {
@@ -248,9 +249,9 @@ export default function Analyst() {
               <tbody>
                 {filteredDeals.map((deal) => (
                   <tr key={deal.id}>
-                    <td className="tdStrong">{deal.companyName}</td>
-                    <td>{deal.industry}</td>
-                    <td className="tdMuted">{deal.askAmount}</td>
+                    <td className="tdStrong">{deal.dealInput?.companyName || "Unknown"}</td>
+                    <td>{deal.dealInput?.industry || "-"}</td>
+                    <td className="tdMuted">{deal.dealInput?.askAmount || "-"}</td>
                     <td>
                       <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                         <div
@@ -258,22 +259,24 @@ export default function Analyst() {
                             width: "8px",
                             height: "8px",
                             borderRadius: "50%",
-                            background: getRiskColor(deal.riskScore),
+                            background: getRiskColor(deal.analysis?.riskScore || 0),
                           }}
                         />
-                        <span style={{ fontWeight: 600 }}>{deal.riskScore}/100</span>
-                        <span className="tdMuted">({getRiskLabel(deal.riskScore)})</span>
+                        <span style={{ fontWeight: 600 }}>{deal.analysis?.riskScore || 0}/100</span>
+                        <span className="tdMuted">({getRiskLabel(deal.analysis?.riskScore || 0)})</span>
                       </div>
                     </td>
                     <td>
                       <span
-                        className={`badge badge-${deal.recommendation === "INVEST" ? "completed" : deal.recommendation === "PASS" ? "" : "processing"}`}
+                        className={`badge badge-${deal.analysis?.recommendation === "INVEST" ? "completed" : deal.analysis?.recommendation === "PASS" ? "" : "processing"}`}
                       >
-                        {deal.recommendation}
+                        {deal.analysis?.emoji || ""} {deal.analysis?.recommendation || "WAIT"}
                       </span>
                     </td>
                     <td className="tdMuted">
-                      {new Date(deal.analyzedAt).toLocaleDateString()}
+                      {deal.analyzedAt?.seconds
+                        ? new Date(deal.analyzedAt.seconds * 1000).toLocaleDateString()
+                        : new Date(deal.analyzedAt).toLocaleDateString()}
                     </td>
                     <td>
                       <button
@@ -449,147 +452,270 @@ export default function Analyst() {
       )}
 
       {/* Analysis Detail Modal */}
-      {selectedDeal && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.5)",
-            display: "grid",
-            placeItems: "center",
-            zIndex: 1000,
-            padding: "20px",
-          }}
-          onClick={() => setSelectedDeal(null)}
-        >
+      {selectedDeal && (() => {
+        // Normalize data access - handle both direct analysis object and full deal object
+        const analysis = selectedDeal.analysis || selectedDeal;
+        const dealInfo = selectedDeal.dealInput || selectedDeal;
+
+        return (
           <div
-            className="card"
             style={{
-              maxWidth: "800px",
-              width: "100%",
-              maxHeight: "90vh",
-              overflow: "auto",
+              position: "fixed",
+              inset: 0,
+              background: "rgba(0,0,0,0.5)",
+              display: "grid",
+              placeItems: "center",
+              zIndex: 1000,
+              padding: "20px",
             }}
-            onClick={(e) => e.stopPropagation()}
+            onClick={() => setSelectedDeal(null)}
           >
-            <div className="cardHeader">
-              <div>
-                <div className="cardTitle">{selectedDeal.companyName} - Analysis</div>
-                <div className="cardSub">{selectedDeal.industry} • {selectedDeal.askAmount}</div>
-              </div>
-              <button className="iconBtn" onClick={() => setSelectedDeal(null)}>
-                ✕
-              </button>
-            </div>
-
-            <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "20px" }}>
-              {/* Risk Score */}
-              <div
-                style={{
-                  padding: "16px",
-                  background: `${getRiskColor(selectedDeal.riskScore)}15`,
-                  border: `2px solid ${getRiskColor(selectedDeal.riskScore)}`,
-                  borderRadius: "12px",
-                }}
-              >
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <div>
-                    <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--textMuted)", marginBottom: "4px" }}>
-                      RISK SCORE
-                    </div>
-                    <div style={{ fontSize: "32px", fontWeight: 700, color: getRiskColor(selectedDeal.riskScore) }}>
-                      {selectedDeal.riskScore}/100
-                    </div>
-                    <div style={{ fontSize: "14px", color: "var(--textMuted)" }}>
-                      {getRiskLabel(selectedDeal.riskScore)}
-                    </div>
+            <div
+              className="card"
+              style={{
+                maxWidth: "800px",
+                width: "100%",
+                maxHeight: "90vh",
+                overflow: "auto",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="cardHeader">
+                <div>
+                  <div className="cardTitle">
+                    {analysis.emoji || "📊"} {dealInfo.companyName || "Deal"} - Analysis
                   </div>
-                  <div style={{ textAlign: "right" }}>
-                    <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--textMuted)", marginBottom: "4px" }}>
-                      RECOMMENDATION
-                    </div>
-                    <div
-                      className={`badge badge-${selectedDeal.recommendation === "INVEST" ? "completed" : selectedDeal.recommendation === "PASS" ? "" : "processing"}`}
-                      style={{ fontSize: "18px", padding: "8px 16px" }}
-                    >
-                      {selectedDeal.recommendation}
-                    </div>
-                  </div>
+                  <div className="cardSub">{dealInfo.industry || "-"} • {dealInfo.askAmount || "-"}</div>
                 </div>
+                <button className="iconBtn" onClick={() => setSelectedDeal(null)}>
+                  ✕
+                </button>
               </div>
 
-              {/* AI Summary */}
-              {selectedDeal.aiSummary && (
-                <div>
-                  <div style={{ fontWeight: 600, marginBottom: "8px" }}>AI Summary</div>
-                  <div style={{ color: "var(--textMuted)", lineHeight: "1.6" }}>
-                    {selectedDeal.aiSummary}
-                  </div>
-                </div>
-              )}
-
-              {/* Evidence */}
-              {selectedDeal.evidence && selectedDeal.evidence.length > 0 && (
-                <div>
-                  <div style={{ fontWeight: 600, marginBottom: "12px" }}>Evidence Analysis</div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                    {selectedDeal.evidence.map((item, i) => (
+              <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "20px" }}>
+                {/* Risk Score */}
+                <div
+                  style={{
+                    padding: "16px",
+                    background: `${getRiskColor(analysis.riskScore || 0)}15`,
+                    border: `2px solid ${getRiskColor(analysis.riskScore || 0)}`,
+                    borderRadius: "12px",
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div>
+                      <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--textMuted)", marginBottom: "4px" }}>
+                        RISK SCORE
+                      </div>
+                      <div style={{ fontSize: "32px", fontWeight: 700, color: getRiskColor(analysis.riskScore || 0) }}>
+                        {analysis.riskScore || 0}/100
+                      </div>
+                      <div style={{ fontSize: "14px", color: "var(--textMuted)" }}>
+                        {getRiskLabel(analysis.riskScore || 0)}
+                      </div>
+                    </div>
+                    <div style={{ textAlign: "right" }}>
+                      <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--textMuted)", marginBottom: "4px" }}>
+                        RECOMMENDATION
+                      </div>
                       <div
-                        key={i}
-                        style={{
-                          padding: "12px",
-                          background: item.type === "positive" ? "#f0fdf4" : item.type === "negative" ? "#fef2f2" : "#f8fafc",
-                          border: `1px solid ${item.type === "positive" ? "#86efac" : item.type === "negative" ? "#fca5a5" : "#e5e7eb"}`,
-                          borderRadius: "8px",
-                          display: "flex",
-                          gap: "8px",
-                        }}
+                        className={`badge badge-${analysis.recommendation === "INVEST" ? "completed" : analysis.recommendation === "PASS" ? "" : "processing"}`}
+                        style={{ fontSize: "18px", padding: "8px 16px" }}
                       >
-                        <div style={{ fontSize: "16px" }}>
-                          {item.type === "positive" ? "✅" : item.type === "negative" ? "❌" : "ℹ️"}
-                        </div>
-                        <div style={{ flex: 1, fontSize: "14px" }}>{item.text}</div>
+                        {analysis.emoji || ""} {analysis.recommendation || "WAIT"}
                       </div>
-                    ))}
+                    </div>
                   </div>
                 </div>
-              )}
 
-              {/* Key Metrics */}
-              {selectedDeal.keyMetrics && (
-                <div>
-                  <div style={{ fontWeight: 600, marginBottom: "12px" }}>Key Metrics</div>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "12px" }}>
-                    {Object.entries(selectedDeal.keyMetrics).map(([key, value]) => (
-                      <div key={key} style={{ padding: "12px", background: "#f8fafc", borderRadius: "8px" }}>
-                        <div style={{ fontSize: "11px", fontWeight: 600, color: "var(--textMuted)", marginBottom: "4px", textTransform: "uppercase" }}>
-                          {key.replace(/_/g, " ")}
-                        </div>
-                        <div style={{ fontSize: "16px", fontWeight: 600 }}>{value}</div>
-                      </div>
-                    ))}
+                {/* AI Summary */}
+                {analysis.summary && (
+                  <div>
+                    <div style={{ fontWeight: 600, marginBottom: "8px" }}>AI Summary</div>
+                    <div style={{ color: "var(--textMuted)", lineHeight: "1.6" }}>
+                      {analysis.summary}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* Next Steps */}
-              {selectedDeal.nextSteps && selectedDeal.nextSteps.length > 0 && (
-                <div>
-                  <div style={{ fontWeight: 600, marginBottom: "12px" }}>Recommended Next Steps</div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                    {selectedDeal.nextSteps.map((step, i) => (
-                      <div key={i} style={{ display: "flex", gap: "8px", alignItems: "start" }}>
-                        <div style={{ color: "var(--accent)", fontWeight: 600 }}>{i + 1}.</div>
-                        <div style={{ flex: 1 }}>{step}</div>
-                      </div>
-                    ))}
+                {/* Evidence */}
+                {analysis.evidence && (
+                  <div>
+                    <div style={{ fontWeight: 600, marginBottom: "12px" }}>Evidence Analysis</div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                      {analysis.evidence.positive?.length > 0 && analysis.evidence.positive.map((text, i) => (
+                        <div
+                          key={`pos-${i}`}
+                          style={{
+                            padding: "12px",
+                            background: "#f0fdf4",
+                            border: "1px solid #86efac",
+                            borderRadius: "8px",
+                            display: "flex",
+                            gap: "8px",
+                          }}
+                        >
+                          <div style={{ fontSize: "16px" }}>✅</div>
+                          <div style={{ flex: 1, fontSize: "14px" }}>{text}</div>
+                        </div>
+                      ))}
+                      {analysis.evidence.negative?.length > 0 && analysis.evidence.negative.map((text, i) => (
+                        <div
+                          key={`neg-${i}`}
+                          style={{
+                            padding: "12px",
+                            background: "#fef2f2",
+                            border: "1px solid #fca5a5",
+                            borderRadius: "8px",
+                            display: "flex",
+                            gap: "8px",
+                          }}
+                        >
+                          <div style={{ fontSize: "16px" }}>❌</div>
+                          <div style={{ flex: 1, fontSize: "14px" }}>{text}</div>
+                        </div>
+                      ))}
+                      {analysis.evidence.neutral?.length > 0 && analysis.evidence.neutral.map((text, i) => (
+                        <div
+                          key={`neu-${i}`}
+                          style={{
+                            padding: "12px",
+                            background: "#f8fafc",
+                            border: "1px solid #e5e7eb",
+                            borderRadius: "8px",
+                            display: "flex",
+                            gap: "8px",
+                          }}
+                        >
+                          <div style={{ fontSize: "16px" }}>ℹ️</div>
+                          <div style={{ flex: 1, fontSize: "14px" }}>{text}</div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+
+                {/* Multi-Angle Analysis */}
+                {analysis.multiAngleAnalysis && (
+                  <div>
+                    <div style={{ fontWeight: 600, marginBottom: "12px" }}>Multi-Angle Analysis</div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                      {Object.entries(analysis.multiAngleAnalysis).map(([angle, assessment]) => (
+                        <div key={angle} style={{ padding: "12px", background: "#f8fafc", borderRadius: "8px" }}>
+                          <div style={{ fontSize: "12px", fontWeight: 600, color: "var(--accent)", marginBottom: "4px", textTransform: "uppercase" }}>
+                            {angle.replace(/([A-Z])/g, " $1").trim()}
+                          </div>
+                          <div style={{ fontSize: "14px", lineHeight: "1.5" }}>{assessment}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Risk-Scaled Alternatives */}
+                {analysis.riskScaledAlternatives && (
+                  <div>
+                    <div style={{ fontWeight: 600, marginBottom: "12px" }}>Risk-Scaled Deal Structures</div>
+                    <div style={{ display: "grid", gap: "12px" }}>
+                      {["lowRisk", "mediumRisk", "highRisk"].map((level) => {
+                        const alt = analysis.riskScaledAlternatives[level];
+                        if (!alt) return null;
+                        const colors = {
+                          lowRisk: { bg: "#f0fdf4", border: "#86efac", label: "Low Risk" },
+                          mediumRisk: { bg: "#fffbeb", border: "#fcd34d", label: "Medium Risk" },
+                          highRisk: { bg: "#fef2f2", border: "#fca5a5", label: "High Risk" },
+                        };
+                        const color = colors[level];
+                        return (
+                          <div
+                            key={level}
+                            style={{
+                              padding: "12px",
+                              background: color.bg,
+                              border: `2px solid ${color.border}`,
+                              borderRadius: "8px",
+                            }}
+                          >
+                            <div style={{ fontSize: "12px", fontWeight: 600, marginBottom: "8px", textTransform: "uppercase" }}>
+                              {color.label}
+                            </div>
+                            <div style={{ fontSize: "13px", marginBottom: "4px" }}>
+                              <strong>Structure:</strong> {alt.structure}
+                            </div>
+                            <div style={{ fontSize: "13px", marginBottom: "4px" }}>
+                              <strong>Terms:</strong> {alt.terms}
+                            </div>
+                            <div style={{ fontSize: "13px" }}>
+                              <strong>Expected Return:</strong> {alt.expectedReturn}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Key Metrics */}
+                {analysis.keyMetrics && Object.keys(analysis.keyMetrics).length > 0 && (
+                  <div>
+                    <div style={{ fontWeight: 600, marginBottom: "12px" }}>Key Metrics</div>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "12px" }}>
+                      {Object.entries(analysis.keyMetrics).map(([key, value]) => (
+                        <div key={key} style={{ padding: "12px", background: "#f8fafc", borderRadius: "8px" }}>
+                          <div style={{ fontSize: "11px", fontWeight: 600, color: "var(--textMuted)", marginBottom: "4px", textTransform: "uppercase" }}>
+                            {key.replace(/_/g, " ")}
+                          </div>
+                          <div style={{ fontSize: "16px", fontWeight: 600 }}>{value}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Next Steps */}
+                {analysis.nextSteps && analysis.nextSteps.length > 0 && (
+                  <div>
+                    <div style={{ fontWeight: 600, marginBottom: "12px" }}>Recommended Next Steps</div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                      {analysis.nextSteps.map((step, i) => (
+                        <div key={i} style={{ display: "flex", gap: "8px", alignItems: "start" }}>
+                          <div style={{ color: "var(--accent)", fontWeight: 600 }}>{i + 1}.</div>
+                          <div style={{ flex: 1 }}>{step}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Missing Info */}
+                {analysis.missingInfo && analysis.missingInfo.length > 0 && (
+                  <div>
+                    <div style={{ fontWeight: 600, marginBottom: "12px", color: "#dc2626" }}>Missing Critical Information</div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                      {analysis.missingInfo.map((info, i) => (
+                        <div
+                          key={i}
+                          style={{
+                            padding: "12px",
+                            background: "#fef2f2",
+                            border: "1px solid #fca5a5",
+                            borderRadius: "8px",
+                            display: "flex",
+                            gap: "8px",
+                          }}
+                        >
+                          <div style={{ fontSize: "16px" }}>⚠️</div>
+                          <div style={{ flex: 1, fontSize: "14px" }}>{info}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }

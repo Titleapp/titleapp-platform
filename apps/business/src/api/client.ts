@@ -402,3 +402,48 @@ export async function syncIntegration(params: {
     body: { id: params.integrationId },
   });
 }
+
+// ----------------------------
+// Analyst RAAS
+// ----------------------------
+
+export async function analyzeDeal(params: {
+  vertical: string;
+  jurisdiction: string;
+  deal: {
+    companyName: string;
+    industry?: string;
+    askAmount?: string;
+    dealType: string;
+    summary: string;
+  };
+}) {
+  return httpJson("POST", "/v1/analyst:analyze", {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+    body: { deal: params.deal },
+  });
+}
+
+export async function getAnalyzedDeals(params: {
+  vertical: string;
+  jurisdiction: string;
+  limit?: number;
+}) {
+  const limitParam = params.limit ? `?limit=${params.limit}` : "";
+  return httpJson("GET", `/v1/analyst:deals${limitParam}`, {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+  });
+}
+
+export async function getAnalyzedDeal(params: {
+  vertical: string;
+  jurisdiction: string;
+  dealId: string;
+}) {
+  return httpJson("GET", `/v1/analyst:deal?id=${params.dealId}`, {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+  });
+}

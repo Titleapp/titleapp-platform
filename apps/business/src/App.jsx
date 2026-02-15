@@ -3,6 +3,7 @@ import "./App.css";
 import Login from "./auth/login";
 import AppShell from "./components/AppShell";
 import Dashboard from "./sections/Dashboard";
+import Analyst from "./sections/Analyst";
 import RulesResources from "./sections/RulesResources";
 import Inventory from "./sections/Inventory";
 import AIChats from "./sections/AIChats";
@@ -20,6 +21,8 @@ function AdminShell() {
     switch (currentSection) {
       case "dashboard":
         return <Dashboard />;
+      case "analyst":
+        return <Analyst />;
       case "rules-resources":
         return <RulesResources />;
       case "inventory":

@@ -3,6 +3,7 @@ import React from "react";
 export default function Sidebar({ currentSection, onNavigate, onClose }) {
   const sections = [
     { id: "dashboard", label: "Dashboard" },
+    { id: "analyst", label: "Analyst" },
     { id: "rules-resources", label: "Rules & Resources" },
     { id: "inventory", label: "Services & Inventory" },
     { id: "ai-chats", label: "AI, GPTs & Chats" },
