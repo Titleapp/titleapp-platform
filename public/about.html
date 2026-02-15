@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>About TitleApp — Secure, immutable records for everything that matters</title>
+  <meta name="description" content="TitleApp helps you make sense of a messy world with AI-powered, blockchain-anchored records." />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: #F6F7FB;
+      color: #0F172A;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Header ── */
+    header {
+      padding: 24px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+    }
+
+    .logo-img {
+      height: 40px;
+      width: 40px;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+
+    .logo-name {
+      font-size: 17px;
+      font-weight: 800;
+      color: #0F172A;
+      letter-spacing: -0.02em;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .header-btn {
+      font-size: 14px;
+      font-weight: 600;
+      padding: 8px 16px;
+      border-radius: 10px;
+      text-decoration: none;
+      transition: opacity 120ms, background 120ms;
+    }
+
+    .header-btn.signin {
+      color: #64748B;
+      background: transparent;
+    }
+    .header-btn.signin:hover {
+      color: #0F172A;
+      background: rgba(15, 23, 42, 0.04);
+    }
+
+    .header-btn.cta {
+      background: #7C3AED;
+      color: #fff;
+    }
+    .header-btn.cta:hover {
+      opacity: 0.88;
+    }
+
+    /* ── Content ── */
+    main {
+      flex: 1;
+      padding: 60px 24px 80px;
+    }
+
+    .content {
+      max-width: 720px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      font-size: clamp(32px, 5vw, 48px);
+      font-weight: 900;
+      line-height: 1.1;
+      letter-spacing: -0.03em;
+      color: #0F172A;
+      margin-bottom: 24px;
+    }
+
+    h2 {
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: #0F172A;
+      margin-top: 48px;
+      margin-bottom: 16px;
+    }
+
+    p {
+      font-size: 16px;
+      line-height: 1.7;
+      color: #475569;
+      margin-bottom: 16px;
+    }
+
+    .lead {
+      font-size: 18px;
+      color: #64748B;
+      line-height: 1.6;
+      margin-bottom: 32px;
+    }
+
+    .contact-card {
+      background: #fff;
+      border: 1px solid #E2E8F0;
+      border-radius: 16px;
+      padding: 24px;
+      margin-top: 32px;
+    }
+
+    .contact-person {
+      margin-bottom: 20px;
+    }
+
+    .contact-person:last-child {
+      margin-bottom: 0;
+    }
+
+    .contact-name {
+      font-size: 15px;
+      font-weight: 700;
+      color: #0F172A;
+      margin-bottom: 4px;
+    }
+
+    .contact-email {
+      font-size: 14px;
+      color: #7C3AED;
+      text-decoration: none;
+    }
+
+    .contact-email:hover {
+      text-decoration: underline;
+    }
+
+    /* ── Footer ── */
+    footer {
+      padding: 20px 24px 28px;
+      text-align: center;
+    }
+
+    footer p {
+      font-size: 13px;
+      color: #94A3B8;
+      line-height: 1.5;
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+
+    .footer-links a {
+      font-size: 13px;
+      color: #64748B;
+      text-decoration: none;
+      transition: color 120ms;
+    }
+
+    .footer-links a:hover {
+      color: #7C3AED;
+    }
+
+    .footer-divider {
+      color: #CBD5E1;
+    }
+
+    /* ── Mobile ── */
+    @media (max-width: 768px) {
+      header { padding: 20px 24px; }
+      .logo-img { height: 32px; width: 32px; }
+      .logo-name { font-size: 15px; }
+      .header-btn { font-size: 13px; padding: 6px 12px; }
+      .header-btn.signin { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <a class="logo" href="/">
+      <img src="/assets/logo.png" alt="TitleApp" class="logo-img" />
+      <span class="logo-name">TitleApp</span>
+    </a>
+    <div class="header-actions">
+      <a href="#" class="header-btn signin">Sign In</a>
+      <a href="#" class="header-btn cta">Start Free</a>
+    </div>
+  </header>
+
+  <main>
+    <div class="content">
+      <h1>About TitleApp</h1>
+
+      <p class="lead">
+        TitleApp helps you make sense of a messy world. We provide a secure and immutable record of any asset's title records, chain of title, and transfer.
+      </p>
+
+      <p>
+        Our AI- and blockchain-native software simplifies record keeping, improves security and accuracy, increases transparency, empowers communities, and saves time and money.
+      </p>
+
+      <h2>Our Vision</h2>
+      <p>
+        In a post-screen world where AI is embedded into our lives, we provide the unbreakable source of truth.
+      </p>
+
+      <p>
+        We use AI to make managing important assets effortless while anchoring them on blockchain to guarantee immutability and transparency.
+      </p>
+
+      <h2>Contact</h2>
+      <div class="contact-card">
+        <div class="contact-person">
+          <div class="contact-name">Sean Lee Combs, Co-Founder & CEO</div>
+          <a href="mailto:sean@titleapp.io" class="contact-email">sean@titleapp.io</a>
+        </div>
+        <div class="contact-person">
+          <div class="contact-name">Kent Redwine, Co-Founder & CFO</div>
+          <a href="mailto:kent@titleapp.io" class="contact-email">kent@titleapp.io</a>
+        </div>
+      </div>
+
+      <h2>Investor Relations</h2>
+      <p>
+        We're at the forefront of a major technological shift in how ownership is managed and verified. For strategic documents including our white paper, pitch deck, and business plan, please contact us directly.
+      </p>
+    </div>
+  </main>
+
+  <footer>
+    <div class="footer-links">
+      <a href="/about">About Us</a>
+      <span class="footer-divider">·</span>
+      <a href="/privacy">Privacy Policy</a>
+      <span class="footer-divider">·</span>
+      <a href="/terms">Terms of Service</a>
+      <span class="footer-divider">·</span>
+      <a href="/contact">Contact Us</a>
+      <span class="footer-divider">·</span>
+      <a href="/" style="color: #7C3AED; font-weight: 600;">Home →</a>
+    </div>
+    <p>Permanent records. Nothing shared without your approval.</p>
+    <p style="margin-top: 8px; color: #94A3B8;">© 2026 TitleApp, LLC. All rights reserved.</p>
+  </footer>
+
+</body>
+</html>

@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Contact Us — TitleApp</title>
+  <meta name="description" content="Get in touch with the TitleApp team." />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: #F6F7FB;
+      color: #0F172A;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Header ── */
+    header {
+      padding: 24px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+    }
+
+    .logo-img {
+      height: 40px;
+      width: 40px;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+
+    .logo-name {
+      font-size: 17px;
+      font-weight: 800;
+      color: #0F172A;
+      letter-spacing: -0.02em;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .header-btn {
+      font-size: 14px;
+      font-weight: 600;
+      padding: 8px 16px;
+      border-radius: 10px;
+      text-decoration: none;
+      transition: opacity 120ms, background 120ms;
+    }
+
+    .header-btn.signin {
+      color: #64748B;
+      background: transparent;
+    }
+    .header-btn.signin:hover {
+      color: #0F172A;
+      background: rgba(15, 23, 42, 0.04);
+    }
+
+    .header-btn.cta {
+      background: #7C3AED;
+      color: #fff;
+    }
+    .header-btn.cta:hover {
+      opacity: 0.88;
+    }
+
+    /* ── Content ── */
+    main {
+      flex: 1;
+      padding: 60px 24px 80px;
+    }
+
+    .content {
+      max-width: 640px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      font-size: clamp(32px, 5vw, 48px);
+      font-weight: 900;
+      line-height: 1.1;
+      letter-spacing: -0.03em;
+      color: #0F172A;
+      margin-bottom: 16px;
+    }
+
+    .lead {
+      font-size: 18px;
+      color: #64748B;
+      line-height: 1.6;
+      margin-bottom: 40px;
+    }
+
+    h2 {
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: #0F172A;
+      margin-top: 32px;
+      margin-bottom: 16px;
+    }
+
+    .contact-grid {
+      display: grid;
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .contact-card {
+      background: #fff;
+      border: 1px solid #E2E8F0;
+      border-radius: 16px;
+      padding: 24px;
+      transition: border-color 120ms;
+    }
+
+    .contact-card:hover {
+      border-color: #7C3AED;
+    }
+
+    .contact-label {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #94A3B8;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .contact-name {
+      font-size: 17px;
+      font-weight: 700;
+      color: #0F172A;
+      margin-bottom: 4px;
+    }
+
+    .contact-email {
+      font-size: 15px;
+      color: #7C3AED;
+      text-decoration: none;
+    }
+
+    .contact-email:hover {
+      text-decoration: underline;
+    }
+
+    .contact-detail {
+      font-size: 15px;
+      line-height: 1.6;
+      color: #475569;
+    }
+
+    /* ── Footer ── */
+    footer {
+      padding: 20px 24px 28px;
+      text-align: center;
+    }
+
+    footer p {
+      font-size: 13px;
+      color: #94A3B8;
+      line-height: 1.5;
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+
+    .footer-links a {
+      font-size: 13px;
+      color: #64748B;
+      text-decoration: none;
+      transition: color 120ms;
+    }
+
+    .footer-links a:hover {
+      color: #7C3AED;
+    }
+
+    .footer-divider {
+      color: #CBD5E1;
+    }
+
+    /* ── Mobile ── */
+    @media (max-width: 768px) {
+      header { padding: 20px 24px; }
+      .logo-img { height: 32px; width: 32px; }
+      .logo-name { font-size: 15px; }
+      .header-btn { font-size: 13px; padding: 6px 12px; }
+      .header-btn.signin { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <a class="logo" href="/">
+      <img src="/assets/logo.png" alt="TitleApp" class="logo-img" />
+      <span class="logo-name">TitleApp</span>
+    </a>
+    <div class="header-actions">
+      <a href="#" class="header-btn signin">Sign In</a>
+      <a href="#" class="header-btn cta">Start Free</a>
+    </div>
+  </header>
+
+  <main>
+    <div class="content">
+      <h1>Contact Us</h1>
+      <p class="lead">
+        We'd love to hear from you. Whether you have questions about our platform, need support, or want to explore partnership opportunities, we're here to help.
+      </p>
+
+      <h2>Leadership</h2>
+      <div class="contact-grid">
+        <div class="contact-card">
+          <div class="contact-label">Co-Founder & CEO</div>
+          <div class="contact-name">Sean Lee Combs</div>
+          <a href="mailto:sean@titleapp.io" class="contact-email">sean@titleapp.io</a>
+        </div>
+
+        <div class="contact-card">
+          <div class="contact-label">Co-Founder & CFO</div>
+          <div class="contact-name">Kent Redwine</div>
+          <a href="mailto:kent@titleapp.io" class="contact-email">kent@titleapp.io</a>
+        </div>
+      </div>
+
+      <h2>General Inquiries</h2>
+      <div class="contact-grid">
+        <div class="contact-card">
+          <div class="contact-label">Support</div>
+          <div class="contact-detail">
+            For technical support or account questions:
+          </div>
+          <a href="mailto:support@titleapp.io" class="contact-email">support@titleapp.io</a>
+        </div>
+
+        <div class="contact-card">
+          <div class="contact-label">Business & Partnerships</div>
+          <div class="contact-detail">
+            Interested in partnering with TitleApp or integrating our services:
+          </div>
+          <a href="mailto:business@titleapp.io" class="contact-email">business@titleapp.io</a>
+        </div>
+
+        <div class="contact-card">
+          <div class="contact-label">Legal & Privacy</div>
+          <div class="contact-detail">
+            For legal inquiries, privacy concerns, or compliance questions:
+          </div>
+          <a href="mailto:legal@titleapp.io" class="contact-email">legal@titleapp.io</a>
+        </div>
+
+        <div class="contact-card">
+          <div class="contact-label">Investor Relations</div>
+          <div class="contact-detail">
+            For investment opportunities and strategic documents:
+          </div>
+          <a href="mailto:investors@titleapp.io" class="contact-email">investors@titleapp.io</a>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="footer-links">
+      <a href="/about">About Us</a>
+      <span class="footer-divider">·</span>
+      <a href="/privacy">Privacy Policy</a>
+      <span class="footer-divider">·</span>
+      <a href="/terms">Terms of Service</a>
+      <span class="footer-divider">·</span>
+      <a href="/contact">Contact Us</a>
+      <span class="footer-divider">·</span>
+      <a href="/" style="color: #7C3AED; font-weight: 600;">Home →</a>
+    </div>
+    <p>Permanent records. Nothing shared without your approval.</p>
+    <p style="margin-top: 8px; color: #94A3B8;">© 2026 TitleApp, LLC. All rights reserved.</p>
+  </footer>
+
+</body>
+</html>

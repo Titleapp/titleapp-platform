@@ -254,3 +254,151 @@ export async function deleteAppointment(params: {
     body: { id: params.id },
   });
 }
+
+// ----------------------------
+// Staff
+// ----------------------------
+
+export async function getStaff(params: { vertical: string; jurisdiction: string }) {
+  return httpJson("GET", "/v1/staff:list", {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+  });
+}
+
+export async function createStaffMember(params: {
+  vertical: string;
+  jurisdiction: string;
+  staff: {
+    name: string;
+    email: string;
+    role: string;
+    permissions: string[];
+    phone?: string;
+  };
+}) {
+  return httpJson("POST", "/v1/staff:create", {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+    body: params.staff,
+  });
+}
+
+export async function updateStaffMember(params: {
+  vertical: string;
+  jurisdiction: string;
+  id: string;
+  staff: {
+    name?: string;
+    email?: string;
+    role?: string;
+    permissions?: string[];
+    status?: string;
+    phone?: string;
+  };
+}) {
+  return httpJson("PUT", "/v1/staff:update", {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+    body: { id: params.id, ...params.staff },
+  });
+}
+
+export async function deleteStaffMember(params: {
+  vertical: string;
+  jurisdiction: string;
+  id: string;
+}) {
+  return httpJson("DELETE", "/v1/staff:delete", {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+    body: { id: params.id },
+  });
+}
+
+// ----------------------------
+// AI Activity & Conversations
+// ----------------------------
+
+export async function getAIActivity(params: {
+  vertical: string;
+  jurisdiction: string;
+  limit?: number;
+}) {
+  let path = "/v1/ai:activity";
+  if (params.limit) path += `?limit=${params.limit}`;
+
+  return httpJson("GET", path, {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+  });
+}
+
+export async function getConversations(params: { vertical: string; jurisdiction: string }) {
+  return httpJson("GET", "/v1/ai:conversations", {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+  });
+}
+
+export async function getConversationReplay(params: {
+  vertical: string;
+  jurisdiction: string;
+  conversationId: string;
+}) {
+  return httpJson("GET", `/v1/ai:conversation:replay?id=${params.conversationId}`, {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+  });
+}
+
+// ----------------------------
+// Integrations & APIs
+// ----------------------------
+
+export async function getIntegrations(params: { vertical: string; jurisdiction: string }) {
+  return httpJson("GET", "/v1/integrations:list", {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+  });
+}
+
+export async function connectIntegration(params: {
+  vertical: string;
+  jurisdiction: string;
+  integration: {
+    name: string;
+    type: string;
+    credentials: any;
+  };
+}) {
+  return httpJson("POST", "/v1/integrations:connect", {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+    body: params.integration,
+  });
+}
+
+export async function disconnectIntegration(params: {
+  vertical: string;
+  jurisdiction: string;
+  integrationId: string;
+}) {
+  return httpJson("POST", "/v1/integrations:disconnect", {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+    body: { id: params.integrationId },
+  });
+}
+
+export async function syncIntegration(params: {
+  vertical: string;
+  jurisdiction: string;
+  integrationId: string;
+}) {
+  return httpJson("POST", "/v1/integrations:sync", {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+    body: { id: params.integrationId },
+  });
+}

@@ -855,6 +855,93 @@ exports.api = onRequest(
       }
     }
 
+    // POST /v1/dtc:refresh-value
+    // Manual or voice-activated asset valuation update
+    if (route === "/dtc:refresh-value" && method === "POST") {
+      try {
+        const { dtcId } = body;
+
+        if (!dtcId) {
+          return jsonError(res, 400, "Missing dtcId");
+        }
+
+        const dtcDoc = await db.collection("dtcs").doc(dtcId).get();
+        if (!dtcDoc.exists || dtcDoc.data().userId !== ctx.userId) {
+          return jsonError(res, 403, "DTC not found or access denied");
+        }
+
+        const dtc = dtcDoc.data();
+        let newValue = null;
+        let source = "manual";
+        let changePercent = 0;
+
+        // Mock valuation logic (replace with real API calls later)
+        if (dtc.type === "vehicle" && dtc.metadata?.vin) {
+          // Simulate vehicle depreciation (1-3% monthly)
+          const currentValue = dtc.metadata.value || 0;
+          const depreciation = 0.01 + Math.random() * 0.02; // 1-3%
+          newValue = Math.round(currentValue * (1 - depreciation));
+          source = "kbb_estimate";
+          changePercent = -depreciation * 100;
+        } else if (dtc.type === "property" && dtc.metadata?.address) {
+          // Simulate property appreciation (0.5-2% monthly)
+          const currentValue = dtc.metadata.value || 0;
+          const appreciation = 0.005 + Math.random() * 0.015; // 0.5-2%
+          newValue = Math.round(currentValue * (1 + appreciation));
+          source = "attom_estimate";
+          changePercent = appreciation * 100;
+        } else {
+          // No automatic valuation for this asset type
+          return jsonError(res, 400, "Asset type does not support automatic valuation");
+        }
+
+        const oldValue = dtc.metadata.value || 0;
+
+        // Update DTC with new value
+        await dtcDoc.ref.update({
+          "metadata.value": newValue,
+          lastValuationUpdate: nowServerTs(),
+          valuationSource: source,
+          valuationHistory: admin.firestore.FieldValue.arrayUnion({
+            date: new Date().toISOString(),
+            value: newValue,
+            source,
+            changePercent: Math.round(changePercent * 100) / 100,
+          }),
+        });
+
+        // Create logbook entry for the valuation update
+        await db.collection("logbookEntries").add({
+          dtcId,
+          userId: ctx.userId,
+          dtcTitle: dtc.metadata?.title || "Untitled",
+          entryType: "valuation_update",
+          data: {
+            oldValue,
+            newValue,
+            change: newValue - oldValue,
+            changePercent: Math.round(changePercent * 100) / 100,
+            source,
+          },
+          files: [],
+          createdAt: nowServerTs(),
+        });
+
+        return res.json({
+          ok: true,
+          dtcId,
+          oldValue,
+          newValue,
+          change: newValue - oldValue,
+          changePercent: Math.round(changePercent * 100) / 100,
+          source,
+        });
+      } catch (e) {
+        console.error("❌ dtc:refresh-value failed:", e);
+        return jsonError(res, 500, "Failed to refresh value");
+      }
+    }
+
     // ----------------------------
     // CONSUMER APP: LOGBOOKS
     // ----------------------------
@@ -1240,6 +1327,707 @@ exports.api = onRequest(
       } catch (e) {
         console.error("❌ appointments:delete failed:", e);
         return jsonError(res, 500, "Failed to delete appointment");
+      }
+    }
+
+    // ----------------------------
+    // CONSUMER APP: CREDENTIALS
+    // ----------------------------
+
+    // GET /v1/credentials:list?type=education|professional
+    if (route === "/credentials:list" && method === "GET") {
+      try {
+        const type = req.query?.type?.toString() || null;
+
+        let q = db.collection("credentials")
+          .where("userId", "==", ctx.userId)
+          .orderBy("date", "desc")
+          .limit(100);
+
+        if (type) q = q.where("type", "==", type);
+
+        const snap = await q.get();
+        const credentials = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        return res.json({ ok: true, credentials });
+      } catch (e) {
+        console.error("❌ credentials:list failed:", e);
+        return jsonError(res, 500, "Failed to load credentials");
+      }
+    }
+
+    // POST /v1/credentials:add
+    if (route === "/credentials:add" && method === "POST") {
+      try {
+        const { type, title, institution, field, date, verified, files } = body;
+
+        if (!type || !title || !institution || !date) {
+          return jsonError(res, 400, "Missing required fields");
+        }
+
+        const ref = await db.collection("credentials").add({
+          userId: ctx.userId,
+          type,
+          title,
+          institution,
+          field: field || "",
+          date,
+          verified: verified || false,
+          files: files || [],
+          createdAt: nowServerTs(),
+        });
+
+        return res.json({ ok: true, credentialId: ref.id });
+      } catch (e) {
+        console.error("❌ credentials:add failed:", e);
+        return jsonError(res, 500, "Failed to add credential");
+      }
+    }
+
+    // ----------------------------
+    // CONSUMER APP: GPTS
+    // ----------------------------
+
+    // GET /v1/gpts:list
+    if (route === "/gpts:list" && method === "GET") {
+      try {
+        const snap = await db.collection("gpts")
+          .where("userId", "==", ctx.userId)
+          .orderBy("createdAt", "desc")
+          .limit(50)
+          .get();
+
+        const gpts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        return res.json({ ok: true, gpts });
+      } catch (e) {
+        console.error("❌ gpts:list failed:", e);
+        return jsonError(res, 500, "Failed to load GPTs");
+      }
+    }
+
+    // POST /v1/gpts:create
+    if (route === "/gpts:create" && method === "POST") {
+      try {
+        const { name, description, systemPrompt, capabilities } = body;
+
+        if (!name || !systemPrompt) {
+          return jsonError(res, 400, "Missing name or systemPrompt");
+        }
+
+        const ref = await db.collection("gpts").add({
+          userId: ctx.userId,
+          name,
+          description: description || "",
+          systemPrompt,
+          capabilities: capabilities || [],
+          conversationCount: 0,
+          lastUsed: null,
+          createdAt: nowServerTs(),
+        });
+
+        return res.json({ ok: true, gptId: ref.id });
+      } catch (e) {
+        console.error("❌ gpts:create failed:", e);
+        return jsonError(res, 500, "Failed to create GPT");
+      }
+    }
+
+    // DELETE /v1/gpts:delete?id=xxx
+    if (route === "/gpts:delete" && method === "DELETE") {
+      try {
+        const id = req.query?.id?.toString();
+
+        if (!id) {
+          return jsonError(res, 400, "Missing GPT id");
+        }
+
+        const doc = await db.collection("gpts").doc(id).get();
+        if (!doc.exists || doc.data().userId !== ctx.userId) {
+          return jsonError(res, 403, "GPT not found or access denied");
+        }
+
+        await db.collection("gpts").doc(id).delete();
+
+        return res.json({ ok: true });
+      } catch (e) {
+        console.error("❌ gpts:delete failed:", e);
+        return jsonError(res, 500, "Failed to delete GPT");
+      }
+    }
+
+    // ----------------------------
+    // CONSUMER APP: ESCROW
+    // ----------------------------
+
+    // GET /v1/escrow:list?status=pending|active|completed
+    if (route === "/escrow:list" && method === "GET") {
+      try {
+        const status = req.query?.status?.toString() || null;
+
+        let q = db.collection("escrows")
+          .where("userId", "==", ctx.userId)
+          .orderBy("createdAt", "desc")
+          .limit(50);
+
+        if (status) q = q.where("status", "==", status);
+
+        const snap = await q.get();
+        const escrows = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        return res.json({ ok: true, escrows });
+      } catch (e) {
+        console.error("❌ escrow:list failed:", e);
+        return jsonError(res, 500, "Failed to load escrows");
+      }
+    }
+
+    // POST /v1/escrow:create
+    if (route === "/escrow:create" && method === "POST") {
+      try {
+        const { title, counterparty, dtcIds, terms, releaseConditions, amount } = body;
+
+        if (!title || !counterparty || !terms || !releaseConditions) {
+          return jsonError(res, 400, "Missing required fields");
+        }
+
+        const ref = await db.collection("escrows").add({
+          userId: ctx.userId,
+          title,
+          counterparty,
+          dtcIds: dtcIds || [],
+          terms,
+          releaseConditions,
+          amount: amount || null,
+          status: "pending",
+          createdAt: nowServerTs(),
+        });
+
+        return res.json({ ok: true, escrowId: ref.id });
+      } catch (e) {
+        console.error("❌ escrow:create failed:", e);
+        return jsonError(res, 500, "Failed to create escrow");
+      }
+    }
+
+    // POST /v1/escrow:release
+    if (route === "/escrow:release" && method === "POST") {
+      try {
+        const { id, signature } = body;
+
+        if (!id) {
+          return jsonError(res, 400, "Missing escrow id");
+        }
+
+        const doc = await db.collection("escrows").doc(id).get();
+        if (!doc.exists || doc.data().userId !== ctx.userId) {
+          return jsonError(res, 403, "Escrow not found or access denied");
+        }
+
+        await db.collection("escrows").doc(id).update({
+          status: "completed",
+          completedAt: nowServerTs(),
+          signature: signature || null,
+        });
+
+        return res.json({ ok: true });
+      } catch (e) {
+        console.error("❌ escrow:release failed:", e);
+        return jsonError(res, 500, "Failed to release escrow");
+      }
+    }
+
+    // GET /v1/escrow:ai:analysis?id=xxx
+    if (route === "/escrow:ai:analysis" && method === "GET") {
+      try {
+        const id = req.query?.id?.toString();
+
+        if (!id) {
+          return jsonError(res, 400, "Missing escrow id");
+        }
+
+        const doc = await db.collection("escrows").doc(id).get();
+        if (!doc.exists || doc.data().userId !== ctx.userId) {
+          return jsonError(res, 403, "Escrow not found or access denied");
+        }
+
+        const escrow = doc.data();
+
+        // Use Claude for AI analysis
+        const anthropic = getAnthropic();
+        const message = await anthropic.messages.create({
+          model: "claude-opus-4-20250514",
+          max_tokens: 1024,
+          messages: [{
+            role: "user",
+            content: `Analyze this escrow transaction:
+
+Title: ${escrow.title}
+Counterparty: ${escrow.counterparty}
+Terms: ${escrow.terms}
+Release Conditions: ${escrow.releaseConditions}
+
+Provide:
+1. A brief summary (1-2 sentences)
+2. Identified risks (bullet points)
+3. Recommendations (bullet points)
+4. Confidence score (0-1)
+
+Return as JSON: { summary, risks: [], recommendations: [], confidence }`
+          }],
+        });
+
+        const analysisText = message.content[0]?.text || "{}";
+        const analysis = JSON.parse(analysisText);
+
+        return res.json({ ok: true, analysis });
+      } catch (e) {
+        console.error("❌ escrow:ai:analysis failed:", e);
+        return jsonError(res, 500, "Failed to analyze escrow");
+      }
+    }
+
+    // ----------------------------
+    // CONSUMER APP: WALLET
+    // ----------------------------
+
+    // GET /v1/wallet:assets
+    if (route === "/wallet:assets" && method === "GET") {
+      try {
+        // Aggregate asset values from DTCs
+        const dtcsSnap = await db.collection("dtcs")
+          .where("userId", "==", ctx.userId)
+          .get();
+
+        const assets = {
+          vehicles: { count: 0, value: 0 },
+          property: { count: 0, value: 0 },
+          credentials: { count: 0, value: 0 },
+          tokens: { count: 0, value: 0 },
+        };
+
+        dtcsSnap.forEach(doc => {
+          const dtc = doc.data();
+          if (dtc.type === "vehicle") {
+            assets.vehicles.count++;
+            assets.vehicles.value += dtc.metadata?.value || 0;
+          } else if (dtc.type === "property") {
+            assets.property.count++;
+            assets.property.value += dtc.metadata?.value || 0;
+          } else if (dtc.type === "credential") {
+            assets.credentials.count++;
+            assets.credentials.value += dtc.metadata?.value || 0;
+          }
+        });
+
+        return res.json({ ok: true, assets });
+      } catch (e) {
+        console.error("❌ wallet:assets failed:", e);
+        return jsonError(res, 500, "Failed to load wallet assets");
+      }
+    }
+
+    // GET /v1/wallet:tokens:list
+    if (route === "/wallet:tokens:list" && method === "GET") {
+      try {
+        const snap = await db.collection("tokens")
+          .where("userId", "==", ctx.userId)
+          .orderBy("createdAt", "desc")
+          .get();
+
+        const tokens = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        return res.json({ ok: true, tokens });
+      } catch (e) {
+        console.error("❌ wallet:tokens:list failed:", e);
+        return jsonError(res, 500, "Failed to load tokens");
+      }
+    }
+
+    // POST /v1/wallet:token:create
+    if (route === "/wallet:token:create" && method === "POST") {
+      try {
+        const { name, symbol, supply, network } = body;
+
+        if (!name || !symbol || !supply || !network) {
+          return jsonError(res, 400, "Missing required fields");
+        }
+
+        const ref = await db.collection("tokens").add({
+          userId: ctx.userId,
+          name,
+          symbol,
+          supply,
+          network,
+          holders: 1,
+          currentValue: "$0",
+          createdAt: nowServerTs(),
+        });
+
+        return res.json({ ok: true, tokenId: ref.id });
+      } catch (e) {
+        console.error("❌ wallet:token:create failed:", e);
+        return jsonError(res, 500, "Failed to create token");
+      }
+    }
+
+    // GET /v1/wallet:captables:list
+    if (route === "/wallet:captables:list" && method === "GET") {
+      try {
+        const snap = await db.collection("capTables")
+          .where("userId", "==", ctx.userId)
+          .orderBy("createdAt", "desc")
+          .get();
+
+        const capTables = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        return res.json({ ok: true, capTables });
+      } catch (e) {
+        console.error("❌ wallet:captables:list failed:", e);
+        return jsonError(res, 500, "Failed to load cap tables");
+      }
+    }
+
+    // POST /v1/wallet:captable:create
+    if (route === "/wallet:captable:create" && method === "POST") {
+      try {
+        const { companyName, totalShares, shareholders } = body;
+
+        if (!companyName || !totalShares || !shareholders) {
+          return jsonError(res, 400, "Missing required fields");
+        }
+
+        const ref = await db.collection("capTables").add({
+          userId: ctx.userId,
+          companyName,
+          totalShares,
+          shareholders,
+          createdAt: nowServerTs(),
+        });
+
+        return res.json({ ok: true, capTableId: ref.id });
+      } catch (e) {
+        console.error("❌ wallet:captable:create failed:", e);
+        return jsonError(res, 500, "Failed to create cap table");
+      }
+    }
+
+    // ----------------------------
+    // BUSINESS APP: STAFF
+    // ----------------------------
+
+    // GET /v1/staff:list
+    if (route === "/staff:list" && method === "GET") {
+      try {
+        const snap = await db.collection("staff")
+          .where("tenantId", "==", ctx.tenantId)
+          .orderBy("createdAt", "desc")
+          .limit(100)
+          .get();
+
+        const staff = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        return res.json({ ok: true, staff });
+      } catch (e) {
+        console.error("❌ staff:list failed:", e);
+        return jsonError(res, 500, "Failed to load staff");
+      }
+    }
+
+    // POST /v1/staff:create
+    if (route === "/staff:create" && method === "POST") {
+      try {
+        const { name, email, role, permissions, phone } = body;
+
+        if (!name || !email || !role) {
+          return jsonError(res, 400, "Missing name, email, or role");
+        }
+
+        const ref = await db.collection("staff").add({
+          tenantId: ctx.tenantId,
+          name,
+          email,
+          role,
+          permissions: permissions || [],
+          phone: phone || "",
+          status: "active",
+          createdAt: nowServerTs(),
+        });
+
+        return res.json({ ok: true, staffId: ref.id });
+      } catch (e) {
+        console.error("❌ staff:create failed:", e);
+        return jsonError(res, 500, "Failed to create staff member");
+      }
+    }
+
+    // PUT /v1/staff:update
+    if (route === "/staff:update" && method === "PUT") {
+      try {
+        const { id, name, email, role, permissions, status, phone } = body;
+
+        if (!id) {
+          return jsonError(res, 400, "Missing staff id");
+        }
+
+        const doc = await db.collection("staff").doc(id).get();
+        if (!doc.exists || doc.data().tenantId !== ctx.tenantId) {
+          return jsonError(res, 403, "Staff member not found or access denied");
+        }
+
+        const updates = { updatedAt: nowServerTs() };
+        if (name !== undefined) updates.name = name;
+        if (email !== undefined) updates.email = email;
+        if (role !== undefined) updates.role = role;
+        if (permissions !== undefined) updates.permissions = permissions;
+        if (status !== undefined) updates.status = status;
+        if (phone !== undefined) updates.phone = phone;
+
+        await db.collection("staff").doc(id).update(updates);
+
+        return res.json({ ok: true });
+      } catch (e) {
+        console.error("❌ staff:update failed:", e);
+        return jsonError(res, 500, "Failed to update staff member");
+      }
+    }
+
+    // DELETE /v1/staff:delete
+    if (route === "/staff:delete" && method === "DELETE") {
+      try {
+        const { id } = body;
+
+        if (!id) {
+          return jsonError(res, 400, "Missing staff id");
+        }
+
+        const doc = await db.collection("staff").doc(id).get();
+        if (!doc.exists || doc.data().tenantId !== ctx.tenantId) {
+          return jsonError(res, 403, "Staff member not found or access denied");
+        }
+
+        await db.collection("staff").doc(id).delete();
+
+        return res.json({ ok: true });
+      } catch (e) {
+        console.error("❌ staff:delete failed:", e);
+        return jsonError(res, 500, "Failed to delete staff member");
+      }
+    }
+
+    // ----------------------------
+    // BUSINESS APP: AI ACTIVITY & CONVERSATIONS
+    // ----------------------------
+
+    // GET /v1/ai:activity?limit=N
+    if (route === "/ai:activity" && method === "GET") {
+      try {
+        const limit = parseInt(req.query?.limit?.toString() || "50", 10);
+
+        // Get AI chat messages from raasPackages (execution history)
+        const snap = await db.collection("raasPackages")
+          .where("tenantId", "==", ctx.tenantId)
+          .orderBy("createdAt", "desc")
+          .limit(limit)
+          .get();
+
+        const activity = snap.docs.map(d => {
+          const pkg = d.data();
+          return {
+            id: d.id,
+            workflowId: pkg.workflowId,
+            status: pkg.status,
+            createdAt: pkg.createdAt,
+            completedAt: pkg.completedAt || null,
+            model: pkg.model || "claude-opus-4",
+            conversationId: pkg.conversationId || null,
+          };
+        });
+
+        return res.json({ ok: true, activity });
+      } catch (e) {
+        console.error("❌ ai:activity failed:", e);
+        return jsonError(res, 500, "Failed to load AI activity");
+      }
+    }
+
+    // GET /v1/ai:conversations
+    if (route === "/ai:conversations" && method === "GET") {
+      try {
+        // Get unique conversation IDs from raasPackages
+        const snap = await db.collection("raasPackages")
+          .where("tenantId", "==", ctx.tenantId)
+          .where("conversationId", "!=", null)
+          .orderBy("conversationId")
+          .orderBy("createdAt", "desc")
+          .limit(100)
+          .get();
+
+        const conversationsMap = new Map();
+        snap.docs.forEach(d => {
+          const pkg = d.data();
+          const convId = pkg.conversationId;
+          if (!conversationsMap.has(convId)) {
+            conversationsMap.set(convId, {
+              id: convId,
+              firstMessage: pkg.createdAt,
+              lastMessage: pkg.createdAt,
+              messageCount: 1,
+            });
+          } else {
+            const conv = conversationsMap.get(convId);
+            conv.messageCount++;
+            if (pkg.createdAt > conv.lastMessage) {
+              conv.lastMessage = pkg.createdAt;
+            }
+          }
+        });
+
+        const conversations = Array.from(conversationsMap.values());
+
+        return res.json({ ok: true, conversations });
+      } catch (e) {
+        console.error("❌ ai:conversations failed:", e);
+        return jsonError(res, 500, "Failed to load conversations");
+      }
+    }
+
+    // GET /v1/ai:conversation:replay?id=xxx
+    if (route === "/ai:conversation:replay" && method === "GET") {
+      try {
+        const conversationId = req.query?.id?.toString();
+
+        if (!conversationId) {
+          return jsonError(res, 400, "Missing conversation id");
+        }
+
+        const snap = await db.collection("raasPackages")
+          .where("tenantId", "==", ctx.tenantId)
+          .where("conversationId", "==", conversationId)
+          .orderBy("createdAt", "asc")
+          .get();
+
+        const messages = snap.docs.map(d => {
+          const pkg = d.data();
+          return {
+            id: d.id,
+            workflowId: pkg.workflowId,
+            input: pkg.boundFiles || [],
+            output: pkg.result || null,
+            status: pkg.status,
+            createdAt: pkg.createdAt,
+          };
+        });
+
+        return res.json({ ok: true, conversationId, messages });
+      } catch (e) {
+        console.error("❌ ai:conversation:replay failed:", e);
+        return jsonError(res, 500, "Failed to load conversation replay");
+      }
+    }
+
+    // ----------------------------
+    // BUSINESS APP: INTEGRATIONS & APIs
+    // ----------------------------
+
+    // GET /v1/integrations:list
+    if (route === "/integrations:list" && method === "GET") {
+      try {
+        const snap = await db.collection("integrations")
+          .where("tenantId", "==", ctx.tenantId)
+          .orderBy("createdAt", "desc")
+          .get();
+
+        const integrations = snap.docs.map(d => {
+          const integration = d.data();
+          // Don't expose credentials
+          delete integration.credentials;
+          return { id: d.id, ...integration };
+        });
+
+        return res.json({ ok: true, integrations });
+      } catch (e) {
+        console.error("❌ integrations:list failed:", e);
+        return jsonError(res, 500, "Failed to load integrations");
+      }
+    }
+
+    // POST /v1/integrations:connect
+    if (route === "/integrations:connect" && method === "POST") {
+      try {
+        const { name, type, credentials } = body;
+
+        if (!name || !type || !credentials) {
+          return jsonError(res, 400, "Missing name, type, or credentials");
+        }
+
+        const ref = await db.collection("integrations").add({
+          tenantId: ctx.tenantId,
+          name,
+          type,
+          credentials,
+          status: "connected",
+          lastSync: null,
+          createdAt: nowServerTs(),
+        });
+
+        return res.json({ ok: true, integrationId: ref.id });
+      } catch (e) {
+        console.error("❌ integrations:connect failed:", e);
+        return jsonError(res, 500, "Failed to connect integration");
+      }
+    }
+
+    // POST /v1/integrations:disconnect
+    if (route === "/integrations:disconnect" && method === "POST") {
+      try {
+        const { id } = body;
+
+        if (!id) {
+          return jsonError(res, 400, "Missing integration id");
+        }
+
+        const doc = await db.collection("integrations").doc(id).get();
+        if (!doc.exists || doc.data().tenantId !== ctx.tenantId) {
+          return jsonError(res, 403, "Integration not found or access denied");
+        }
+
+        await db.collection("integrations").doc(id).update({
+          status: "disconnected",
+          updatedAt: nowServerTs(),
+        });
+
+        return res.json({ ok: true });
+      } catch (e) {
+        console.error("❌ integrations:disconnect failed:", e);
+        return jsonError(res, 500, "Failed to disconnect integration");
+      }
+    }
+
+    // POST /v1/integrations:sync
+    if (route === "/integrations:sync" && method === "POST") {
+      try {
+        const { id } = body;
+
+        if (!id) {
+          return jsonError(res, 400, "Missing integration id");
+        }
+
+        const doc = await db.collection("integrations").doc(id).get();
+        if (!doc.exists || doc.data().tenantId !== ctx.tenantId) {
+          return jsonError(res, 403, "Integration not found or access denied");
+        }
+
+        // Update lastSync timestamp
+        await db.collection("integrations").doc(id).update({
+          lastSync: nowServerTs(),
+          updatedAt: nowServerTs(),
+        });
+
+        return res.json({ ok: true, syncStarted: true });
+      } catch (e) {
+        console.error("❌ integrations:sync failed:", e);
+        return jsonError(res, 500, "Failed to sync integration");
       }
     }
 

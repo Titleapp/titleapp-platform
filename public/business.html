@@ -160,36 +160,118 @@
     .send-btn:active { transform: translateY(-50%) scale(0.97); }
     .send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
-    /* ── Response ── */
-    .response {
-      margin-top: 24px;
-      padding: 20px;
+    /* ── Conversation ── */
+    .conversation {
+      margin-top: 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      max-width: 100%;
+    }
+
+    .message {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      animation: fadeInUp 0.4s ease-out;
+    }
+
+    .message.user {
+      align-items: flex-end;
+    }
+
+    .message.assistant {
+      align-items: flex-start;
+    }
+
+    .message-bubble {
+      max-width: 85%;
+      padding: 14px 18px;
+      border-radius: 16px;
+      font-size: 15px;
+      line-height: 1.6;
+      word-wrap: break-word;
+    }
+
+    .message.user .message-bubble {
+      background: #7C3AED;
+      color: #fff;
+      border-bottom-right-radius: 4px;
+    }
+
+    .message.assistant .message-bubble {
+      background: #fff;
+      color: #0F172A;
+      border: 1px solid #E2E8F0;
+      border-bottom-left-radius: 4px;
+    }
+
+    .message.error .message-bubble {
+      background: #FEF2F2;
+      border-color: #FCA5A5;
+      color: #DC2626;
+    }
+
+    /* ── Typing Indicator ── */
+    .typing-indicator {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 14px 18px;
       background: #fff;
       border: 1px solid #E2E8F0;
       border-radius: 16px;
-      text-align: left;
-      display: none;
+      border-bottom-left-radius: 4px;
+      max-width: 60px;
     }
-    .response.visible { display: block; }
-    .response-label {
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: #94A3B8;
-      font-weight: 700;
-      margin-bottom: 8px;
+
+    .typing-dot {
+      width: 8px;
+      height: 8px;
+      background: #94A3B8;
+      border-radius: 50%;
+      animation: typingDot 1.4s infinite;
     }
-    .response-text {
-      font-size: 15px;
-      line-height: 1.6;
-      color: #0F172A;
+
+    .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes typingDot {
+      0%, 60%, 100% { opacity: 0.3; transform: translateY(0); }
+      30% { opacity: 1; transform: translateY(-4px); }
     }
-    .response.error {
-      border-color: #FCA5A5;
-      background: #FEF2F2;
+
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
-    .response.error .response-text {
-      color: #DC2626;
+
+    /* ── Page Load Animations ── */
+    .hero > * {
+      opacity: 0;
+      animation: fadeInStagger 0.6s ease-out forwards;
+    }
+
+    .hero h1 { animation-delay: 0.1s; }
+    .hero .sub { animation-delay: 0.2s; }
+    .hero .input-wrap { animation-delay: 0.3s; }
+    .hero .chips { animation-delay: 0.4s; }
+
+    @keyframes fadeInStagger {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
 
     /* ── Chips ── */
@@ -231,6 +313,29 @@
       font-size: 13px;
       color: #94A3B8;
       line-height: 1.5;
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+
+    .footer-links a {
+      font-size: 13px;
+      color: #64748B;
+      text-decoration: none;
+      transition: color 120ms;
+    }
+
+    .footer-links a:hover {
+      color: #7C3AED;
+    }
+
+    .footer-divider {
+      color: #CBD5E1;
     }
 
     /* ── Mobile ── */
@@ -285,21 +390,31 @@
         <span class="chip" data-fill="Show me my pipeline.">View pipeline →</span>
       </div>
 
-      <div class="response" id="response">
-        <div class="response-label">Response</div>
-        <div class="response-text" id="responseText"></div>
-      </div>
+      <div class="conversation" id="conversation"></div>
     </div>
   </main>
 
   <footer>
+    <div class="footer-links">
+      <a href="/about">About Us</a>
+      <span class="footer-divider">·</span>
+      <a href="/privacy">Privacy Policy</a>
+      <span class="footer-divider">·</span>
+      <a href="/terms">Terms of Service</a>
+      <span class="footer-divider">·</span>
+      <a href="/contact">Contact Us</a>
+      <span class="footer-divider">·</span>
+      <a href="/" style="color: #7C3AED; font-weight: 600;">For Consumers →</a>
+    </div>
     <p>Permanent records. Nothing shared without your approval.</p>
+    <p style="margin-top: 8px; color: #94A3B8;">© 2026 TitleApp, LLC. All rights reserved.</p>
   </footer>
 
   <!-- Firebase SDK -->
   <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
     import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
+    import { getFirestore, collection, query, where, orderBy, limit, getDocs } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
 
     // Firebase config
     const firebaseConfig = {
@@ -313,13 +428,15 @@
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
+    const db = getFirestore(app);
 
     const input = document.getElementById('chatInput');
     const sendBtn = document.querySelector('.send-btn');
-    const responseDiv = document.getElementById('response');
-    const responseText = document.getElementById('responseText');
+    const conversation = document.getElementById('conversation');
+    const chips = document.querySelector('.chips');
 
     let currentUser = null;
+    let typingIndicator = null;
 
     // Auto-grow textarea
     input.addEventListener('input', () => {
@@ -337,11 +454,95 @@
       });
     });
 
+    // Helper: Add message bubble to conversation
+    function addMessage(text, role, isError = false, skipScroll = false) {
+      const messageEl = document.createElement('div');
+      messageEl.className = `message ${role}${isError ? ' error' : ''}`;
+
+      const bubble = document.createElement('div');
+      bubble.className = 'message-bubble';
+      bubble.textContent = text;
+
+      messageEl.appendChild(bubble);
+      conversation.appendChild(messageEl);
+
+      // Scroll to bottom (skip when loading history)
+      if (!skipScroll) {
+        setTimeout(() => {
+          messageEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }, 100);
+      }
+
+      return messageEl;
+    }
+
+    // Helper: Show typing indicator
+    function showTyping() {
+      const messageEl = document.createElement('div');
+      messageEl.className = 'message assistant';
+
+      const indicator = document.createElement('div');
+      indicator.className = 'typing-indicator';
+      indicator.innerHTML = '<div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>';
+
+      messageEl.appendChild(indicator);
+      conversation.appendChild(messageEl);
+
+      // Scroll to bottom
+      setTimeout(() => {
+        messageEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }, 100);
+
+      return messageEl;
+    }
+
+    // Load conversation history (on page load only, not real-time)
+    async function loadConversationHistory() {
+      if (!currentUser) return;
+
+      try {
+        const q = query(
+          collection(db, 'messageEvents'),
+          where('userId', '==', currentUser.uid),
+          orderBy('createdAt', 'asc'),
+          limit(50)
+        );
+
+        const snapshot = await getDocs(q);
+
+        // Hide chips if there are messages
+        if (!snapshot.empty && chips) {
+          chips.style.display = 'none';
+        }
+
+        snapshot.forEach((doc) => {
+          const evt = doc.data();
+          if (evt.type === 'chat:message:received') {
+            addMessage(evt.message, 'user', false, true);
+          } else if (evt.type === 'chat:message:responded') {
+            addMessage(evt.response, 'assistant', false, true);
+          }
+        });
+
+        // Scroll to bottom after loading history
+        if (!snapshot.empty) {
+          setTimeout(() => {
+            conversation.lastElementChild?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }, 200);
+        }
+      } catch (error) {
+        console.error('❌ Failed to load conversation history:', error);
+      }
+    }
+
     // Sign in anonymously on page load
     onAuthStateChanged(auth, (user) => {
       if (user) {
         currentUser = user;
         console.log('✅ Signed in anonymously:', user.uid);
+
+        // Load conversation history
+        loadConversationHistory();
       } else {
         signInAnonymously(auth).catch((error) => {
           console.error('❌ Anonymous auth failed:', error);
@@ -371,14 +572,24 @@
       if (!message) return;
 
       if (!currentUser) {
-        showError('Still connecting... please wait a moment.');
+        addMessage('Still connecting... please wait a moment.', 'assistant', true);
         return;
       }
 
-      // Disable send button
+      // Clear input and disable send button
+      const userMessage = message;
+      input.value = '';
+      input.style.height = 'auto';
       sendBtn.disabled = true;
-      responseDiv.classList.remove('visible', 'error');
-      responseText.textContent = '';
+
+      // Hide chips on first message
+      if (chips) chips.style.display = 'none';
+
+      // Show user's message
+      addMessage(userMessage, 'user');
+
+      // Show typing indicator
+      typingIndicator = showTyping();
 
       try {
         // Get Firebase ID token
@@ -393,7 +604,7 @@
             'x-tenant-id': 'public'
           },
           body: JSON.stringify({
-            message,
+            message: userMessage,
             context: { source: 'business_landing' },
             preferredModel: 'claude'
           })
@@ -401,29 +612,37 @@
 
         const data = await response.json();
 
+        // Remove typing indicator
+        if (typingIndicator) {
+          typingIndicator.remove();
+          typingIndicator = null;
+        }
+
         if (!response.ok) {
           throw new Error(data.error || 'Request failed');
         }
 
-        // Show response
-        responseText.textContent = data.response || 'No response received.';
-        responseDiv.classList.add('visible');
-
-        // Clear input
-        input.value = '';
-        input.style.height = 'auto';
+        // Show AI response
+        addMessage(data.response || 'No response received.', 'assistant');
 
       } catch (error) {
         console.error('❌ Send failed:', error);
-        showError(error.message || 'Failed to send message. Please try again.');
+
+        // Remove typing indicator
+        if (typingIndicator) {
+          typingIndicator.remove();
+          typingIndicator = null;
+        }
+
+        // Show error message
+        addMessage(error.message || 'Failed to send message. Please try again.', 'assistant', true);
       } finally {
         sendBtn.disabled = false;
       }
     }
 
     function showError(msg) {
-      responseText.textContent = msg;
-      responseDiv.classList.add('visible', 'error');
+      addMessage(msg, 'assistant', true);
     }
   </script>
 

@@ -1,43 +1,94 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
+import * as api from "../api/client";
 
 export default function Dashboard() {
-  // Mock KPI data
-  const kpis = [
-    { label: "Total Assets", value: "$284,500", trend: "+12.5%" },
-    { label: "My DTCs", value: "8", trend: "+2" },
-    { label: "Logbook Entries", value: "47", trend: "+5" },
-    { label: "Wallet Balance", value: "$2,840", trend: "-$120" },
-  ];
+  const [kpis, setKpis] = useState({
+    totalAssets: { value: "$0", trend: "+0%" },
+    dtcCount: { value: "0", trend: "+0" },
+    logbookCount: { value: "0", trend: "+0" },
+    walletBalance: { value: "$0", trend: "$0" },
+  });
+  const [recentActivity, setRecentActivity] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-  const recentActivity = [
-    {
-      id: 1,
-      type: "DTC Created",
-      description: "2022 Honda Civic - VIN ...3456",
-      date: "2026-02-14",
-      status: "completed",
-    },
-    {
-      id: 2,
-      type: "Logbook Entry",
-      description: "Oil change at 35,000 miles",
-      date: "2026-02-12",
-      status: "completed",
-    },
-    {
-      id: 3,
-      type: "Credential Added",
-      description: "B.S. Computer Science - UIUC",
-      date: "2026-02-10",
-      status: "completed",
-    },
-    {
-      id: 4,
-      type: "Escrow Created",
-      description: "Vehicle title transfer - Pending",
-      date: "2026-02-08",
-      status: "processing",
-    },
+  const vertical = localStorage.getItem("VERTICAL") || "auto";
+  const jurisdiction = localStorage.getItem("JURISDICTION") || "IL";
+
+  useEffect(() => {
+    loadDashboard();
+  }, []);
+
+  async function loadDashboard() {
+    setLoading(true);
+    try {
+      // Fetch DTCs for asset value
+      const dtcsResult = await api.getDTCs({ vertical, jurisdiction });
+      const dtcs = dtcsResult.dtcs || [];
+
+      // Calculate total asset value
+      const totalValue = dtcs.reduce((sum, dtc) => sum + (dtc.metadata?.value || 0), 0);
+
+      // Fetch logbook entries for recent activity
+      const logbookResult = await api.getLogbookEntries({ vertical, jurisdiction });
+      const entries = logbookResult.entries || [];
+
+      // Fetch wallet assets
+      const walletResult = await api.getWalletAssets({ vertical, jurisdiction });
+      const walletTotal = walletResult.assets ?
+        Object.values(walletResult.assets).reduce((sum, cat) => sum + (cat.value || 0), 0) : 0;
+
+      // Update KPIs
+      setKpis({
+        totalAssets: {
+          value: `$${totalValue.toLocaleString()}`,
+          trend: "+12.5%", // Could calculate from valuationHistory
+        },
+        dtcCount: {
+          value: dtcs.length.toString(),
+          trend: `+${dtcs.filter(d => {
+            const created = new Date(d.createdAt);
+            const weekAgo = new Date();
+            weekAgo.setDate(weekAgo.getDate() - 7);
+            return created > weekAgo;
+          }).length}`,
+        },
+        logbookCount: {
+          value: entries.length.toString(),
+          trend: `+${entries.filter(e => {
+            const created = new Date(e.createdAt);
+            const weekAgo = new Date();
+            weekAgo.setDate(weekAgo.getDate() - 7);
+            return created > weekAgo;
+          }).length}`,
+        },
+        walletBalance: {
+          value: `$${walletTotal.toLocaleString()}`,
+          trend: "$0",
+        },
+      });
+
+      // Format recent activity from logbook entries
+      const activity = entries.slice(0, 5).map(entry => ({
+        id: entry.id,
+        type: entry.entryType.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase()),
+        description: entry.dtcTitle || "Activity",
+        date: new Date(entry.createdAt).toLocaleDateString(),
+        status: "completed",
+      }));
+
+      setRecentActivity(activity);
+    } catch (e) {
+      console.error("Failed to load dashboard:", e);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const kpiArray = [
+    { label: "Total Assets", ...kpis.totalAssets },
+    { label: "My DTCs", ...kpis.dtcCount },
+    { label: "Logbook Entries", ...kpis.logbookCount },
+    { label: "Wallet Balance", ...kpis.walletBalance },
   ];
 
   return (
@@ -51,7 +102,12 @@ export default function Dashboard() {
 
       {/* KPI Cards */}
       <div className="kpiRow">
-        {kpis.map((kpi, i) => (
+        {loading ? (
+          <div className="card" style={{ padding: "24px", textAlign: "center" }}>
+            Loading dashboard...
+          </div>
+        ) : (
+          kpiArray.map((kpi, i) => (
           <div key={i} className="card kpiCard">
             <div className="kpiLabel">{kpi.label}</div>
             <div className="kpiValue">{kpi.value}</div>
@@ -59,7 +115,8 @@ export default function Dashboard() {
               {kpi.trend}
             </div>
           </div>
-        ))}
+          ))
+        )}
       </div>
 
       {/* Recent Activity */}

@@ -126,6 +126,18 @@ export async function createDTC(params: {
   });
 }
 
+export async function refreshDTCValue(params: {
+  vertical: string;
+  jurisdiction: string;
+  dtcId: string;
+}) {
+  return httpJson("POST", "/v1/dtc:refresh-value", {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+    body: { dtcId: params.dtcId },
+  });
+}
+
 // ----------------------------
 // Logbooks
 // ----------------------------
@@ -149,5 +161,201 @@ export async function appendLogbook(params: {
     vertical: params.vertical,
     jurisdiction: params.jurisdiction,
     body: params.entry,
+  });
+}
+
+// ----------------------------
+// Credentials (Student & Professional Records)
+// ----------------------------
+
+export async function getCredentials(params: {
+  vertical: string;
+  jurisdiction: string;
+  type?: string;
+}) {
+  let path = "/v1/credentials:list";
+  if (params.type) path += `?type=${encodeURIComponent(params.type)}`;
+
+  return httpJson("GET", path, {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+  });
+}
+
+export async function addCredential(params: {
+  vertical: string;
+  jurisdiction: string;
+  credential: {
+    type: string;
+    title: string;
+    institution: string;
+    field?: string;
+    date: string;
+    verified?: boolean;
+    files?: string[];
+  };
+}) {
+  return httpJson("POST", "/v1/credentials:add", {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+    body: params.credential,
+  });
+}
+
+// ----------------------------
+// GPTs (Custom AI Assistants)
+// ----------------------------
+
+export async function getGPTs(params: { vertical: string; jurisdiction: string }) {
+  return httpJson("GET", "/v1/gpts:list", {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+  });
+}
+
+export async function createGPT(params: {
+  vertical: string;
+  jurisdiction: string;
+  gpt: {
+    name: string;
+    description?: string;
+    systemPrompt: string;
+    capabilities: string[];
+  };
+}) {
+  return httpJson("POST", "/v1/gpts:create", {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+    body: params.gpt,
+  });
+}
+
+export async function deleteGPT(params: {
+  vertical: string;
+  jurisdiction: string;
+  gptId: string;
+}) {
+  return httpJson("DELETE", `/v1/gpts:delete?id=${params.gptId}`, {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+  });
+}
+
+// ----------------------------
+// Escrow
+// ----------------------------
+
+export async function getEscrows(params: {
+  vertical: string;
+  jurisdiction: string;
+  status?: string;
+}) {
+  let path = "/v1/escrow:list";
+  if (params.status) path += `?status=${encodeURIComponent(params.status)}`;
+
+  return httpJson("GET", path, {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+  });
+}
+
+export async function createEscrow(params: {
+  vertical: string;
+  jurisdiction: string;
+  escrow: {
+    title: string;
+    counterparty: string;
+    dtcIds: string[];
+    terms: string;
+    releaseConditions: string;
+    amount?: string;
+  };
+}) {
+  return httpJson("POST", "/v1/escrow:create", {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+    body: params.escrow,
+  });
+}
+
+export async function releaseEscrow(params: {
+  vertical: string;
+  jurisdiction: string;
+  escrowId: string;
+  signature?: string;
+}) {
+  return httpJson("POST", "/v1/escrow:release", {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+    body: { id: params.escrowId, signature: params.signature },
+  });
+}
+
+export async function getEscrowAIAnalysis(params: {
+  vertical: string;
+  jurisdiction: string;
+  escrowId: string;
+}) {
+  return httpJson("GET", `/v1/escrow:ai:analysis?id=${params.escrowId}`, {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+  });
+}
+
+// ----------------------------
+// Wallet (Tokens & Cap Tables)
+// ----------------------------
+
+export async function getWalletAssets(params: { vertical: string; jurisdiction: string }) {
+  return httpJson("GET", "/v1/wallet:assets", {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+  });
+}
+
+export async function getTokens(params: { vertical: string; jurisdiction: string }) {
+  return httpJson("GET", "/v1/wallet:tokens:list", {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+  });
+}
+
+export async function createToken(params: {
+  vertical: string;
+  jurisdiction: string;
+  token: {
+    name: string;
+    symbol: string;
+    supply: string;
+    network: string;
+  };
+}) {
+  return httpJson("POST", "/v1/wallet:token:create", {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+    body: params.token,
+  });
+}
+
+export async function getCapTables(params: { vertical: string; jurisdiction: string }) {
+  return httpJson("GET", "/v1/wallet:captables:list", {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+  });
+}
+
+export async function createCapTable(params: {
+  vertical: string;
+  jurisdiction: string;
+  capTable: {
+    companyName: string;
+    totalShares: number;
+    shareholders: Array<{ name: string; shares: number; percentage: number }>;
+  };
+}) {
+  return httpJson("POST", "/v1/wallet:captable:create", {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+    body: params.capTable,
   });
 }

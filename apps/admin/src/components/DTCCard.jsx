@@ -6,7 +6,7 @@ import React from "react";
  * DTCs are immutable ownership records (like a car title or diploma).
  * They serve as the anchor for dynamic logbook entries.
  */
-export default function DTCCard({ dtc, onView, onTransfer }) {
+export default function DTCCard({ dtc, onView, onTransfer, onRefreshValue }) {
   // Determine icon and color based on DTC type
   const typeConfig = {
     vehicle: { icon: "🚗", color: "#7c3aed" },
@@ -95,21 +95,38 @@ export default function DTCCard({ dtc, onView, onTransfer }) {
 
       {/* Actions */}
       <div style={{ padding: "12px 16px", borderTop: "1px solid var(--line)" }}>
-        <div style={{ display: "flex", gap: "8px" }}>
+        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
           <button
             className="iconBtn"
             onClick={() => onView?.(dtc)}
-            style={{ flex: 1 }}
+            style={{ flex: 1, minWidth: "120px" }}
           >
             View Details
           </button>
           <button
             className="iconBtn"
             onClick={() => onTransfer?.(dtc)}
-            style={{ flex: 1 }}
+            style={{ flex: 1, minWidth: "120px" }}
           >
             Transfer
           </button>
+          {/* Refresh Value button (only for vehicles and property) */}
+          {(dtc.type === "vehicle" || dtc.type === "property") && onRefreshValue && (
+            <button
+              className="iconBtn"
+              onClick={() => onRefreshValue?.(dtc)}
+              style={{
+                flex: 1,
+                minWidth: "120px",
+                background: "linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)",
+                color: "white",
+                border: "none"
+              }}
+              title="Update current market value"
+            >
+              Refresh Value
+            </button>
+          )}
         </div>
       </div>
     </div>

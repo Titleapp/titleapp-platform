@@ -28,9 +28,13 @@ export default function Sidebar({ currentSection, onNavigate, onClose }) {
     <div className="sidebar">
       <div className="sidebarHeader">
         <div className="brand">
-          <div className="brandMark">T</div>
+          <img
+            src="/logo.png"
+            alt="TitleApp AI"
+            style={{ width: "32px", height: "32px", borderRadius: "8px" }}
+          />
           <div>
-            <div className="brandName">TitleApp</div>
+            <div className="brandName">TitleApp AI</div>
             <div className="brandSub">Business</div>
           </div>
         </div>

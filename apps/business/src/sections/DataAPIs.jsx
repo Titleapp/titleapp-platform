@@ -1,42 +1,19 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import FormModal from "../components/FormModal";
+import * as api from "../api/client";
 
 /**
  * DataAPIs - Third-party integrations and API management
  */
 export default function DataAPIs() {
-  const [integrations, setIntegrations] = useState([
-    {
-      id: "int-001",
-      name: "Salesforce CRM",
-      type: "crm",
-      status: "connected",
-      description: "Sync customer data with Salesforce",
-      lastSync: "2026-02-14T10:30:00Z",
-      recordsSync: "1,234",
-    },
-    {
-      id: "int-002",
-      name: "QuickBooks",
-      type: "accounting",
-      status: "connected",
-      description: "Sync financial data and invoices",
-      lastSync: "2026-02-14T08:00:00Z",
-      recordsSync: "567",
-    },
-    {
-      id: "int-003",
-      name: "Stripe",
-      type: "payments",
-      status: "connected",
-      description: "Accept online payments",
-      lastSync: "2026-02-14T12:15:00Z",
-      recordsSync: "89",
-    },
-  ]);
-
+  const [integrations, setIntegrations] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedIntegration, setSelectedIntegration] = useState(null);
+
+  const vertical = localStorage.getItem("VERTICAL") || "auto";
+  const jurisdiction = localStorage.getItem("JURISDICTION") || "IL";
 
   const availableIntegrations = [
     { id: "salesforce", name: "Salesforce", type: "CRM", icon: "SF" },
@@ -49,18 +26,48 @@ export default function DataAPIs() {
     { id: "foreflight", name: "ForeFlight", type: "Aviation", icon: "FF" },
   ];
 
-  function handleDisconnect(integrationId) {
-    if (confirm("Are you sure you want to disconnect this integration?")) {
-      setIntegrations(integrations.filter((i) => i.id !== integrationId));
+  useEffect(() => {
+    loadIntegrations();
+  }, []);
+
+  async function loadIntegrations() {
+    setLoading(true);
+    setError("");
+    try {
+      const result = await api.getIntegrations({ vertical, jurisdiction });
+      setIntegrations(result.integrations || []);
+    } catch (e) {
+      setError(e?.message || String(e));
+      console.error("Failed to load integrations:", e);
+    } finally {
+      setLoading(false);
     }
   }
 
-  function handleSync(integrationId) {
-    setIntegrations(
-      integrations.map((i) =>
-        i.id === integrationId ? { ...i, lastSync: new Date().toISOString() } : i
-      )
-    );
+  async function handleDisconnect(integrationId) {
+    if (confirm("Are you sure you want to disconnect this integration?")) {
+      setError("");
+      try {
+        await api.disconnectIntegration({ vertical, jurisdiction, integrationId });
+        await loadIntegrations();
+      } catch (e) {
+        setError(e?.message || String(e));
+        console.error("Failed to disconnect integration:", e);
+      }
+    }
+  }
+
+  async function handleSync(integrationId) {
+    setError("");
+    try {
+      await api.syncIntegration({ vertical, jurisdiction, integrationId });
+      await loadIntegrations();
+      alert("Sync started successfully!");
+    } catch (e) {
+      setError(e?.message || String(e));
+      console.error("Failed to sync integration:", e);
+      alert("Sync failed: " + (e?.message || String(e)));
+    }
   }
 
   return (

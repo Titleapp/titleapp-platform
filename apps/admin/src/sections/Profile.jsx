@@ -16,6 +16,12 @@ export default function Profile() {
       sms: false,
       push: true,
     },
+    blockchain: {
+      enabled: false,
+      provider: "venly",
+      dtcsOnChain: 0,
+      logbooksOnChain: 0,
+    },
   });
 
   const [showEditModal, setShowEditModal] = useState(false);
@@ -138,11 +144,116 @@ export default function Profile() {
         </div>
         <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "12px" }}>
           <button className="iconBtn" style={{ width: "fit-content" }}>
-            🔑 Change Password
+            Change Password
           </button>
           <button className="iconBtn" style={{ width: "fit-content" }}>
-            📱 Two-Factor Authentication
+            Two-Factor Authentication
           </button>
+        </div>
+      </div>
+
+      {/* Blockchain Verification */}
+      <div className="card" style={{ marginBottom: "16px" }}>
+        <div className="cardHeader">
+          <div>
+            <div className="cardTitle">Blockchain Verification</div>
+            <div className="cardSub">NFT records for DTCs and Logbooks via VENLY</div>
+          </div>
+          <span
+            className={`badge ${user.blockchain.enabled ? "badge-completed" : ""}`}
+            style={{ fontSize: "11px" }}
+          >
+            {user.blockchain.enabled ? "Active" : "Inactive"}
+          </span>
+        </div>
+        <div style={{ padding: "16px" }}>
+          <div
+            style={{
+              padding: "16px",
+              background: user.blockchain.enabled ? "#f0fdf4" : "#f8fafc",
+              border: user.blockchain.enabled
+                ? "1px solid #86efac"
+                : "1px solid #e5e7eb",
+              borderRadius: "12px",
+              marginBottom: "16px",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "12px" }}>
+              <input
+                type="checkbox"
+                checked={user.blockchain.enabled}
+                onChange={(e) =>
+                  setUser({
+                    ...user,
+                    blockchain: { ...user.blockchain, enabled: e.target.checked },
+                  })
+                }
+                style={{ width: "20px", height: "20px" }}
+              />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 600, marginBottom: "4px" }}>
+                  Enable Blockchain Records
+                </div>
+                <div style={{ fontSize: "13px", color: "var(--textMuted)" }}>
+                  Create immutable NFT records of your DTCs and Logbooks on Polygon
+                </div>
+              </div>
+            </div>
+
+            {user.blockchain.enabled && (
+              <div
+                style={{
+                  paddingTop: "12px",
+                  borderTop: "1px solid #e5e7eb",
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: "12px",
+                  fontSize: "13px",
+                }}
+              >
+                <div>
+                  <div style={{ color: "var(--textMuted)", marginBottom: "4px" }}>
+                    DTCs on Chain
+                  </div>
+                  <div style={{ fontWeight: 600, fontSize: "18px" }}>
+                    {user.blockchain.dtcsOnChain}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ color: "var(--textMuted)", marginBottom: "4px" }}>
+                    Logbooks on Chain
+                  </div>
+                  <div style={{ fontWeight: 600, fontSize: "18px" }}>
+                    {user.blockchain.logbooksOnChain}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div
+            style={{
+              padding: "12px",
+              background: "#fff5f5",
+              border: "1px solid #fecaca",
+              borderRadius: "8px",
+              fontSize: "13px",
+              marginBottom: "12px",
+            }}
+          >
+            <div style={{ fontWeight: 600, marginBottom: "4px" }}>Cost Notice</div>
+            <div style={{ color: "#dc2626" }}>
+              VENLY blockchain integration costs $700/month when active. Only enable if you
+              need verifiable on-chain records.
+            </div>
+          </div>
+
+          <div style={{ fontSize: "13px", color: "var(--textMuted)", lineHeight: "1.6" }}>
+            <strong>How it works:</strong> When enabled, all new DTCs and Logbook entries are
+            minted as NFTs on Polygon blockchain via VENLY. Existing records can be
+            retroactively minted. This provides immutable proof of ownership and transaction
+            history.
+          </div>
         </div>
       </div>
 

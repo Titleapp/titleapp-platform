@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import DTCCard from "../components/DTCCard";
 import FormModal from "../components/FormModal";
-import { getDTCs, createDTC } from "../api/client";
+import { getDTCs, createDTC, refreshDTCValue } from "../api/client";
 
 /**
  * MyStuff - Digital Title Certificates (DTCs)
@@ -75,6 +75,30 @@ export default function MyStuff() {
         [key]: value,
       },
     });
+  }
+
+  async function handleRefreshValue(dtc) {
+    setError("");
+    try {
+      const result = await refreshDTCValue({
+        vertical,
+        jurisdiction,
+        dtcId: dtc.id,
+      });
+
+      // Show success message with value change
+      const change = result.newValue - result.oldValue;
+      const changeSign = change >= 0 ? "+" : "";
+      alert(
+        `Value updated!\n\nOld: $${result.oldValue.toLocaleString()}\nNew: $${result.newValue.toLocaleString()}\nChange: ${changeSign}$${change.toLocaleString()} (${changeSign}${result.changePercent}%)\n\nSource: ${result.source}`
+      );
+
+      // Reload DTCs to show updated value
+      await loadDTCs();
+    } catch (e) {
+      setError(e?.message || String(e));
+      alert("Failed to refresh value: " + (e?.message || String(e)));
+    }
   }
 
   const filteredDTCs =
@@ -222,6 +246,7 @@ export default function MyStuff() {
               dtc={dtc}
               onView={(dtc) => alert(`View DTC: ${dtc.id}`)}
               onTransfer={(dtc) => alert(`Transfer DTC: ${dtc.id}`)}
+              onRefreshValue={handleRefreshValue}
             />
           ))}
         </div>

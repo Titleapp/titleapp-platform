@@ -20,6 +20,12 @@ export default function Settings() {
       lowInventoryAlert: true,
       appointmentReminders: true,
     },
+    blockchain: {
+      enabled: false,
+      provider: "venly",
+      inventoryOnChain: 0,
+      dealsOnChain: 0,
+    },
   });
 
   const [showEditModal, setShowEditModal] = useState(false);
@@ -219,6 +225,110 @@ export default function Settings() {
             }}
           >
             ta_prod_••••••••••••••••••••••••
+          </div>
+        </div>
+      </div>
+
+      {/* Blockchain Verification */}
+      <div className="card" style={{ marginBottom: "16px" }}>
+        <div className="cardHeader">
+          <div>
+            <div className="cardTitle">Blockchain Verification</div>
+            <div className="cardSub">NFT records for inventory and deals via VENLY</div>
+          </div>
+          <span
+            className={`badge ${business.blockchain.enabled ? "badge-completed" : ""}`}
+            style={{ fontSize: "11px" }}
+          >
+            {business.blockchain.enabled ? "Active" : "Inactive"}
+          </span>
+        </div>
+        <div style={{ padding: "16px" }}>
+          <div
+            style={{
+              padding: "16px",
+              background: business.blockchain.enabled ? "#f0fdf4" : "#f8fafc",
+              border: business.blockchain.enabled
+                ? "1px solid #86efac"
+                : "1px solid #e5e7eb",
+              borderRadius: "12px",
+              marginBottom: "16px",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "12px" }}>
+              <input
+                type="checkbox"
+                checked={business.blockchain.enabled}
+                onChange={(e) =>
+                  setBusiness({
+                    ...business,
+                    blockchain: { ...business.blockchain, enabled: e.target.checked },
+                  })
+                }
+                style={{ width: "20px", height: "20px" }}
+              />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 600, marginBottom: "4px" }}>
+                  Enable Blockchain Records
+                </div>
+                <div style={{ fontSize: "13px", color: "var(--textMuted)" }}>
+                  Create immutable NFT records of inventory and customer deals on Polygon
+                </div>
+              </div>
+            </div>
+
+            {business.blockchain.enabled && (
+              <div
+                style={{
+                  paddingTop: "12px",
+                  borderTop: "1px solid #e5e7eb",
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: "12px",
+                  fontSize: "13px",
+                }}
+              >
+                <div>
+                  <div style={{ color: "var(--textMuted)", marginBottom: "4px" }}>
+                    Inventory on Chain
+                  </div>
+                  <div style={{ fontWeight: 600, fontSize: "18px" }}>
+                    {business.blockchain.inventoryOnChain}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ color: "var(--textMuted)", marginBottom: "4px" }}>
+                    Deals on Chain
+                  </div>
+                  <div style={{ fontWeight: 600, fontSize: "18px" }}>
+                    {business.blockchain.dealsOnChain}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div
+            style={{
+              padding: "12px",
+              background: "#fff5f5",
+              border: "1px solid #fecaca",
+              borderRadius: "8px",
+              fontSize: "13px",
+              marginBottom: "12px",
+            }}
+          >
+            <div style={{ fontWeight: 600, marginBottom: "4px" }}>Cost Notice</div>
+            <div style={{ color: "#dc2626" }}>
+              VENLY blockchain integration costs $700/month when active. Requires 30+ active
+              clients to justify the expense. Only enable when you have scale.
+            </div>
+          </div>
+
+          <div style={{ fontSize: "13px", color: "var(--textMuted)", lineHeight: "1.6" }}>
+            <strong>How it works:</strong> When enabled, all new inventory items and customer
+            deals are minted as NFTs on Polygon blockchain via VENLY. This provides immutable
+            proof of transactions and builds trust with customers through verifiable records.
           </div>
         </div>
       </div>
