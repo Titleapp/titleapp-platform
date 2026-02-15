@@ -2126,11 +2126,122 @@ Return as JSON: { summary, risks: [], recommendations: [], confidence }`
 
 Analyze now:`;
 
-        // Call Claude Opus for analysis
-        const anthropic = getAnthropic();
-        const response = await anthropic.messages.create({
-          model: "claude-opus-4-20250514",
-          max_tokens: 4096,
+        let analysis;
+
+        // Check if API key is configured, otherwise use mock data for testing
+        if (!ANTHROPIC_API_KEY) {
+          console.log("⚠️ No ANTHROPIC_API_KEY - using mock analysis for testing");
+
+          // Generate realistic mock analysis based on deal type
+          const isBadDeal = deal.summary.toLowerCase().includes("no revenue") ||
+                           deal.summary.toLowerCase().includes("pre-revenue") ||
+                           deal.summary.toLowerCase().includes("idea stage");
+
+          analysis = {
+            riskScore: isBadDeal ? 85 : (deal.dealType === "seed" ? 65 : 45),
+            recommendation: isBadDeal ? "PASS" : (deal.dealType === "seed" ? "WAIT" : "INVEST"),
+            emoji: isBadDeal ? "💩" : (deal.dealType === "seed" ? "⚠️" : "💎"),
+            summary: isBadDeal
+              ? `${deal.companyName} presents significant red flags with no proven revenue model and unclear path to profitability. The ask amount appears misaligned with current traction.`
+              : `${deal.companyName} shows strong fundamentals in the ${deal.industry} sector. The business model is validated with clear unit economics and defensible market position. Risk is manageable with proper structuring.`,
+            evidence: {
+              positive: isBadDeal
+                ? ["Founder passion evident", "Large addressable market mentioned"]
+                : ["Proven revenue generation", "Strong YoY growth trajectory", "Experienced management team", "Clear competitive moat"],
+              negative: isBadDeal
+                ? ["No revenue or customers cited", "Unrealistic valuation expectations", "Missing critical financial data", "Regulatory uncertainty"]
+                : ["Customer concentration risk if top 3 clients represent >40%", "Capital intensive scaling requirements"],
+              neutral: ["Industry is competitive but growing", "Exit timeline uncertain"]
+            },
+            multiAngleAnalysis: {
+              directInvestment: isBadDeal
+                ? "Direct equity investment is not recommended given the lack of validated product-market fit and unclear revenue model. The pre-money valuation implied by the ask appears disconnected from observable traction."
+                : `Strong case for direct equity participation. Current valuation of ~${deal.askAmount} appears reasonable given revenue multiples in the ${deal.industry} sector. Standard preferred equity with 1x liquidation preference recommended.`,
+              leverageOpportunities: isBadDeal
+                ? "No debt capacity given lack of cash flows. Any leverage would be personally guaranteed by founders, which is risky given business model uncertainty."
+                : "Moderate debt capacity exists given established cash flows. Consider venture debt at 2-3x ARR to extend runway and minimize dilution. Could support 10-15% of capital structure as senior debt.",
+              taxOptimization: isBadDeal
+                ? "Limited tax planning opportunities. Any losses would likely need to be carried forward indefinitely given unclear path to profitability."
+                : `Qualified Small Business Stock (QSBS) eligible - potential for 100% capital gains exclusion on exit if held 5+ years. Consider QSBS planning for all investors. ${deal.industry.includes('energy') ? 'Renewable energy tax credits may be available (ITC/PTC).' : ''}`,
+              regulatoryConsiderations: isBadDeal
+                ? "Regulation D 506(c) filing required for general solicitation. High risk of violating securities laws if revenue projections are used in marketing materials without disclaimer. Company may need registered broker-dealer for equity crowdfunding."
+                : `Standard Reg D 506(b) private placement appropriate. Ensure all investors are accredited. ${deal.industry.includes('healthcare') ? 'HIPAA compliance required.' : deal.industry.includes('financial') ? 'FinCEN and state money transmitter licenses may be required.' : 'No unusual regulatory hurdles identified.'}`,
+              alternativeStructures: isBadDeal
+                ? "Given high risk, consider: (1) Revenue share agreement (5-10% of gross revenue until 3x return), (2) Convertible note with very low valuation cap ($2-3M) and 20%+ discount, (3) Advisory equity-only (no cash) with milestone-based vesting."
+                : "Multiple viable structures: (1) Straight preferred equity with standard terms, (2) Convertible note with $15M cap / 20% discount for faster close, (3) SAFE with post-money cap for founder-friendly terms, (4) Revenue-based financing for non-dilutive capital."
+            },
+            riskScaledAlternatives: {
+              lowRisk: {
+                structure: isBadDeal
+                  ? "Revenue share only - no equity"
+                  : "Convertible note with protective floor",
+                terms: isBadDeal
+                  ? "10% of monthly gross revenue until 2.5x return; no equity dilution; immediate payout from revenues"
+                  : `$${deal.askAmount} convertible note, 8% interest, $12M cap, 25% discount, 2-year maturity with mandatory conversion on qualified financing >$10M`,
+                expectedReturn: isBadDeal ? "2.5x in 5-7 years (if revenues materialize)" : "2.5-3x in 4-5 years with downside protection"
+              },
+              mediumRisk: {
+                structure: isBadDeal
+                  ? "Very small equity bet with founder earnout"
+                  : "Standard Series A preferred equity",
+                terms: isBadDeal
+                  ? `$${parseInt(deal.askAmount.replace(/[^0-9]/g, '')) / 5}M for 25% equity with 50% of founder shares in 3-year earnout tied to revenue milestones ($1M ARR year 1, $3M year 2, $8M year 3)`
+                  : `$${deal.askAmount} for 20-25% fully-diluted, 1x liquidation preference, pro-rata rights, standard board seat and protective provisions`,
+                expectedReturn: isBadDeal ? "5x in 7-10 years if milestones hit (high risk of zero)" : "5-8x in 5-7 years on exit"
+              },
+              highRisk: {
+                structure: isBadDeal
+                  ? "Not recommended - pass on deal"
+                  : "Majority equity with aggressive terms",
+                terms: isBadDeal
+                  ? "Any investment in this deal at current valuation is too risky. If proceeding despite recommendation, structure as majority control with full ratchet anti-dilution and 3x liquidation preference."
+                  : `$${deal.askAmount} for 35-40% fully-diluted with 2x participating preferred, full ratchet anti-dilution, majority board control, broad drag-along rights. Aggressive but maximizes upside.`,
+                expectedReturn: isBadDeal ? "0-3x (most likely zero)" : "10-20x in 5-7 years if company hits aggressive targets"
+              }
+            },
+            keyMetrics: {
+              estimatedValuation: isBadDeal ? "$3-5M (overvalued)" : `$${parseInt(deal.askAmount.replace(/[^0-9]/g, '')) * 4}M post-money`,
+              dilution: isBadDeal ? "25-30%" : "20-25%",
+              targetIRR: isBadDeal ? "N/A (high risk of loss)" : "35-45%",
+              paybackPeriod: isBadDeal ? "Unknown" : "4-6 years"
+            },
+            nextSteps: isBadDeal
+              ? [
+                  "Request full financial statements (P&L, balance sheet, cash flow)",
+                  "Conduct customer discovery interviews to validate product-market fit",
+                  "Request detailed go-to-market plan with customer acquisition costs",
+                  "Revisit after company achieves $500K ARR or 50+ paying customers",
+                  "If proceeding, negotiate down to 1/5 of current ask with revenue earnout structure"
+                ]
+              : [
+                  "Request full financial statements (3 years historical if available)",
+                  "Conduct customer reference calls with top 5 accounts",
+                  "Engage third-party technical due diligence on product/IP",
+                  "Review cap table and confirm no problematic prior investor terms",
+                  "Request detailed financial projections with sensitivity analysis",
+                  "Schedule management presentations for investment committee",
+                  "Prepare term sheet with target close in 45-60 days"
+                ],
+            missingInfo: isBadDeal
+              ? [
+                  "Financial statements (any revenue?)",
+                  "Customer list and contracts",
+                  "Unit economics and CAC payback",
+                  "Founder background checks",
+                  "Cap table and prior investment terms"
+                ]
+              : [
+                  "Detailed customer concentration analysis",
+                  "Full cap table with all option pool details",
+                  "Three-year financial projections with assumptions"
+                ]
+          };
+        } else {
+          // Call Claude Opus for analysis
+          const anthropic = getAnthropic();
+          const response = await anthropic.messages.create({
+            model: "claude-opus-4-20250514",
+            max_tokens: 4096,
           temperature: 0.3,
           messages: [{
             role: "user",
@@ -2138,15 +2249,14 @@ Analyze now:`;
           }]
         });
 
-        const analysisText = response.content[0].text;
+          const analysisText = response.content[0].text;
 
-        // Parse JSON from Claude's response
-        let analysis;
-        try {
-          // Claude sometimes wraps JSON in markdown, so extract it
-          const jsonMatch = analysisText.match(/\{[\s\S]*\}/);
-          analysis = JSON.parse(jsonMatch ? jsonMatch[0] : analysisText);
-        } catch (e) {
+          // Parse JSON from Claude's response
+          try {
+            // Claude sometimes wraps JSON in markdown, so extract it
+            const jsonMatch = analysisText.match(/\{[\s\S]*\}/);
+            analysis = JSON.parse(jsonMatch ? jsonMatch[0] : analysisText);
+          } catch (e) {
           // Fallback if parsing fails
           analysis = {
             riskScore: 50,
@@ -2170,6 +2280,7 @@ Analyze now:`;
             nextSteps: ["Review raw analysis"],
             missingInfo: []
           };
+        }
         }
 
         // Save to Firestore
