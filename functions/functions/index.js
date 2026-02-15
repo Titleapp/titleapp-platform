@@ -64,15 +64,18 @@ function getRoute(req) {
   // 2) Cloudflare Frontdoor contract: /api?path=/v1/<endpoint>
   let p = req.path || "/";
 
+  console.log("🔍 getRoute:", { path: req.path, query: req.query, url: req.url });
+
   // If frontdoor forwards /api without rewriting the path,
   // the intended backend route is in the querystring.
-  if (p === "/api") {
+  if (p === "/api" || p === "/") {
     const q = req.query || {};
     const qp = (q.path || q.p || q.route || "").toString();
     if (qp) p = qp;
   }
 
   if (p.startsWith("/v1/")) p = p.slice(3);
+  console.log("🔍 getRoute result:", p);
   return p;
 }
 
@@ -96,6 +99,20 @@ async function requireFirebaseUser(req, res) {
       user: null,
       res: jsonError(res, 401, "Unauthorized", { reason: "Missing bearer token" }),
     };
+
+  // EMULATOR MODE: Accept test-token for local development
+  const isEmulator = process.env.FUNCTIONS_EMULATOR === 'true';
+  if (isEmulator && token === 'test-token') {
+    console.log("⚠️ EMULATOR MODE: Accepting test-token");
+    return {
+      handled: false,
+      user: {
+        uid: 'test-user',
+        email: 'test@titleapp.ai',
+        user_id: 'test-user'
+      }
+    };
+  }
 
   try {
     const decoded = await admin.auth().verifyIdToken(token);
@@ -172,7 +189,13 @@ function slugifyTenantId(name) {
 }
 
 function nowServerTs() {
-  return admin.firestore.FieldValue.serverTimestamp();
+  try {
+    return admin.firestore.FieldValue.serverTimestamp();
+  } catch (e) {
+    // Fallback for emulator or if admin.firestore is unavailable
+    console.warn("⚠️ serverTimestamp() failed, using new Date()");
+    return new Date();
+  }
 }
 
 function identityDocId({ uid, tenantId, purpose }) {
@@ -2309,18 +2332,23 @@ Analyze now:`;
     // List all analyzed deals
     if (route === "/analyst:deals" && method === "GET") {
       try {
-        const limit = parseInt(req.query?.limit?.toString() || "50", 10);
+        const limitVal = parseInt(req.query?.limit?.toString() || "50", 10);
 
+        // For emulator, simplify query to avoid index requirement
         const snap = await db.collection("analyzedDeals")
           .where("tenantId", "==", ctx.tenantId)
-          .orderBy("analyzedAt", "desc")
-          .limit(limit)
+          .limit(limitVal)
           .get();
 
         const deals = snap.docs.map(d => ({
           id: d.id,
           ...d.data()
-        }));
+        })).sort((a, b) => {
+          // Sort in memory to avoid Firestore index
+          const aTime = a.analyzedAt?.seconds || a.analyzedAt?.getTime?.() || 0;
+          const bTime = b.analyzedAt?.seconds || b.analyzedAt?.getTime?.() || 0;
+          return bTime - aTime;
+        });
 
         return res.json({ ok: true, deals });
 
