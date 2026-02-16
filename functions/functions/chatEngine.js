@@ -1475,6 +1475,7 @@ function handleVehicleDTC(state) {
           ownershipType: state.carData.ownershipType || '',
           lender: state.carData.lender || '',
         },
+        files: (state.carData.uploadedFiles || []).filter(f => f.path).map(f => ({ name: f.name, path: f.path, url: f.url })),
       },
     }],
   });
@@ -1553,6 +1554,7 @@ function handleStudentDTC(state) {
           year: d.year || '',
           recordType: d.type || '',
         },
+        files: (d.uploadedFiles || []).filter(f => f.path).map(f => ({ name: f.name, path: f.path, url: f.url })),
       },
     }],
   });
@@ -1633,6 +1635,7 @@ function handleCredentialDTC(state) {
           dateEarned: d.dateEarned || '',
           expiry: d.expiry || '',
         },
+        files: (d.uploadedFiles || []).filter(f => f.path).map(f => ({ name: f.name, path: f.path, url: f.url })),
       },
     }],
   });
@@ -1720,6 +1723,7 @@ function handlePilotDTC(state) {
           typeRatings: p.typeRatings || [],
           totalHours: p.totalHours || '',
         },
+        files: (p.uploadedFiles || []).filter(f => f.path).map(f => ({ name: f.name, path: f.path, url: f.url })),
       },
     }],
   });
@@ -1755,31 +1759,34 @@ function handleAttestationConfirmed(state) {
 // ── Files Uploaded / Skipped ──
 
 function handleFilesUploaded(state, input) {
-  const fileName = input.fileName || 'document';
-  const fileCount = input.actionData && input.actionData.fileCount ? input.actionData.fileCount : 1;
+  // Accept array of files from actionData, or fall back to single fileName
+  const filesArray = (input.actionData && input.actionData.files) || [];
+  const parsed = filesArray.length > 0
+    ? filesArray.map(f => ({ name: f.name || 'document', size: f.size || 0, path: f.path || null, url: f.url || null }))
+    : [{ name: input.fileName || 'document', size: 0, path: null, url: null }];
 
   if (state.step === 'car_onboarding_upload') {
     if (!state.carData) state.carData = {};
     if (!state.carData.uploadedFiles) state.carData.uploadedFiles = [];
-    state.carData.uploadedFiles.push({ name: fileName, size: 0 });
+    state.carData.uploadedFiles.push(...parsed);
     return handleShowVehicleAttestation(state);
   }
   if (state.step === 'student_upload') {
     if (!state.studentData) state.studentData = {};
     if (!state.studentData.uploadedFiles) state.studentData.uploadedFiles = [];
-    state.studentData.uploadedFiles.push({ name: fileName, size: 0 });
+    state.studentData.uploadedFiles.push(...parsed);
     return handleShowStudentAttestation(state);
   }
   if (state.step === 'credential_upload') {
     if (!state.credentialData) state.credentialData = {};
     if (!state.credentialData.uploadedFiles) state.credentialData.uploadedFiles = [];
-    state.credentialData.uploadedFiles.push({ name: fileName, size: 0 });
+    state.credentialData.uploadedFiles.push(...parsed);
     return handleShowCredentialAttestation(state);
   }
   if (state.step === 'pilot_upload') {
     if (!state.pilotData) state.pilotData = {};
     if (!state.pilotData.uploadedFiles) state.pilotData.uploadedFiles = [];
-    state.pilotData.uploadedFiles.push({ name: fileName, size: 0 });
+    state.pilotData.uploadedFiles.push(...parsed);
     return handleShowPilotAttestation(state);
   }
   return response(state, "Files received. What would you like to do next?");

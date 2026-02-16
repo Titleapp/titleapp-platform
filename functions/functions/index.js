@@ -349,16 +349,18 @@ async function executeChatSideEffects(sideEffects, userId) {
         case 'createDtc': {
           if (!userId) break;
           const d = effect.data || {};
+          const files = d.files || [];
           const ref = await db.collection("dtcs").add({
             userId,
             type: d.type,
             metadata: d.metadata || {},
             fileIds: [],
+            files: files.map(f => ({ name: f.name, path: f.path, url: f.url })),
             blockchainProof: null,
             logbookCount: 0,
             createdAt: nowServerTs(),
           });
-          console.log("chatEngine side-effect: createDtc OK", ref.id);
+          console.log("chatEngine side-effect: createDtc OK", ref.id, "with", files.length, "files");
           break;
         }
         default:
