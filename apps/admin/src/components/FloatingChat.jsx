@@ -28,17 +28,12 @@ function CardShell({ gradient, title, subtitle, children }) {
 
 function MagicLinkCard({ data, onAction }) {
   return (
-    <CardShell title="Check Your Email">
-      <p style={{ color: '#475569', fontSize: '0.9rem', textAlign: 'center' }}>We sent a secure sign-in link to</p>
-      <p style={{ color: '#1e293b', fontSize: '1rem', fontWeight: 600, margin: '0.5rem 0 1.25rem', textAlign: 'center' }}>{data.email}</p>
-      <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10, padding: '1.25rem', marginBottom: '1rem' }}>
-        <p style={{ color: '#64748b', fontSize: '0.8rem', fontStyle: 'italic', marginBottom: '0.5rem' }}>TitleApp AI — Secure Sign In</p>
-        <p style={{ color: '#475569', fontSize: '0.85rem', marginBottom: '1rem' }}>Click below to sign in. This link expires in 15 minutes.</p>
-        <button className="chat-card-btn-primary" onClick={() => onAction('magic_link_clicked', {}, 'Magic link clicked')}>
-          Sign In to TitleApp AI &rarr;
-        </button>
-      </div>
-      <p style={{ color: '#94a3b8', fontSize: '0.75rem', textAlign: 'center' }}>Demo mode: This simulates the email you'd receive</p>
+    <CardShell title="Your Magic Link">
+      <p style={{ color: '#1e293b', fontSize: '0.95rem', fontWeight: 500, marginBottom: '1.25rem', textAlign: 'center' }}>Click below to sign in and get started.</p>
+      <button className="chat-card-btn-primary" onClick={() => onAction('magic_link_clicked', {}, 'Magic link clicked')} style={{ marginBottom: '1rem' }}>
+        Sign In to TitleApp AI &rarr;
+      </button>
+      <p style={{ color: '#94a3b8', fontSize: '0.8rem', textAlign: 'center' }}>We also sent a link to <strong style={{ color: '#64748b' }}>{data.email}</strong> if you'd prefer.</p>
     </CardShell>
   );
 }

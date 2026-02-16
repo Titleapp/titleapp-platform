@@ -628,7 +628,7 @@ async function processMessage(input, services = {}) {
       if (isValidEmail(message)) {
         state.email = getEmail(message);
         state.step = 'magic_link_sent';
-        return response(state, `Got it. I sent a magic link to ${state.email}. Stay here in the chat -- it'll appear in a moment and we'll get you started.`, {
+        return response(state, "Here's your magic link -- just click to get started.", {
           cards: [{ type: 'magicLink', data: { email: state.email } }],
         });
       }
@@ -639,7 +639,7 @@ async function processMessage(input, services = {}) {
       if (isValidEmail(message)) {
         state.email = getEmail(message);
         state.step = 'magic_link_sent';
-        return response(state, `Great! We're sending a magic link to ${state.email}.`, {
+        return response(state, "Here's your sign-in link -- just click to continue.", {
           cards: [{ type: 'magicLink', data: { email: state.email } }],
         });
       }
