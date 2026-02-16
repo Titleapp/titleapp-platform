@@ -239,7 +239,13 @@ exports.api = onRequest(
   // IMPORTANT: we need rawBody for Stripe webhook signature verification
   { region: "us-central1" },
   async (req, res) => {
-    console.log("✅ API_VERSION", "2026-02-14-audit-fixes-complete");
+    console.log("✅ API_VERSION", "2026-02-15-chat-wiring");
+
+    // CORS
+    res.set("Access-Control-Allow-Origin", "*");
+    res.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+    res.set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Tenant-Id");
+    if (req.method === "OPTIONS") return res.status(204).send("");
 
     const route = getRoute(req);
     const method = req.method;
@@ -333,12 +339,84 @@ exports.api = onRequest(
       }
     }
 
+    // ----------------------------
+    // UNAUTHENTICATED ENDPOINTS (before auth check)
+    // ----------------------------
+
+    // POST /v1/auth:signup — create user from landing page chat
+    if (route === "/auth:signup" && method === "POST") {
+      const { email, name, accountType, companyName, companyDescription } = body || {};
+      if (!email) return jsonError(res, 400, "Missing email");
+
+      try {
+        let userRecord;
+        let existing = false;
+
+        try {
+          userRecord = await admin.auth().createUser({
+            email,
+            displayName: name || null,
+          });
+        } catch (e) {
+          if (e.code === "auth/email-already-exists") {
+            userRecord = await admin.auth().getUserByEmail(email);
+            existing = true;
+          } else {
+            throw e;
+          }
+        }
+
+        // Create or update Firestore user doc
+        const userRef = db.collection("users").doc(userRecord.uid);
+        const userSnap = await userRef.get();
+
+        if (!userSnap.exists) {
+          await userRef.set({
+            email,
+            name: name || null,
+            accountType: accountType || "consumer",
+            companyName: companyName || null,
+            companyDescription: companyDescription || null,
+            termsAcceptedAt: null,
+            createdAt: nowServerTs(),
+            createdVia: "chat",
+          });
+        }
+
+        const customToken = await admin.auth().createCustomToken(userRecord.uid);
+
+        return res.json({
+          ok: true,
+          uid: userRecord.uid,
+          token: customToken,
+          existing,
+        });
+      } catch (e) {
+        console.error("auth:signup failed:", e);
+        return jsonError(res, 500, "Signup failed");
+      }
+    }
+
     // All other routes require Firebase auth
     const auth = await requireFirebaseUser(req, res);
     if (auth.handled) return;
 
     const ctx = getCtx(req, body, auth.user);
     console.log("🧠 CTX:", ctx);
+
+    // POST /v1/user:acceptTerms
+    if (route === "/user:acceptTerms" && method === "POST") {
+      try {
+        await db.collection("users").doc(auth.user.uid).set(
+          { termsAcceptedAt: nowServerTs() },
+          { merge: true }
+        );
+        return res.json({ ok: true });
+      } catch (e) {
+        console.error("user:acceptTerms failed:", e);
+        return jsonError(res, 500, "Failed to accept terms");
+      }
+    }
 
     // ----------------------------
     // MEMBERSHIP / TENANTS

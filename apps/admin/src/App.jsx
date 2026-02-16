@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import "./App.css";
 import Login from "./auth/login";
 import Onboarding from "./components/Onboarding";
+import VaultOnboarding from "./pages/VaultOnboarding";
 import OnboardingTour from "./components/OnboardingTour";
 import AppShell from "./components/AppShell";
 import Dashboard from "./sections/Dashboard";
@@ -15,6 +16,7 @@ import Escrow from "./sections/Escrow";
 import Wallet from "./sections/Wallet";
 import Profile from "./sections/Profile";
 import { auth } from "./firebase";
+import { signInWithCustomToken } from "firebase/auth";
 
 function AdminShell() {
   const [currentSection, setCurrentSection] = useState("dashboard");
@@ -67,6 +69,46 @@ function AdminShell() {
   );
 }
 
+// Route /vault/onboarding and /biz/onboarding based on URL path
+function AppRouter() {
+  const path = window.location.pathname;
+
+  if (path === "/vault/onboarding") {
+    return <VaultOnboarding />;
+  }
+
+  if (path.startsWith("/biz/onboarding")) {
+    // Biz onboarding not yet built — show placeholder
+    return (
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#f8fafc", fontFamily: "-apple-system, BlinkMacSystemFont, sans-serif" }}>
+        <div style={{ textAlign: "center", maxWidth: "400px", padding: "2rem" }}>
+          <div style={{ fontSize: "1.25rem", fontWeight: 700, color: "#7c3aed", marginBottom: "1rem" }}>TitleApp</div>
+          <h1 style={{ fontSize: "1.5rem", fontWeight: 700, color: "#1e293b", marginBottom: "0.5rem" }}>Business onboarding</h1>
+          <p style={{ color: "#64748b", marginBottom: "1.5rem" }}>Business onboarding is coming soon. Contact us to get started.</p>
+          <a href="/" style={{ color: "#7c3aed", fontWeight: 600, textDecoration: "none" }}>Back to home</a>
+        </div>
+      </div>
+    );
+  }
+
+  // /signup router — redirect based on type param
+  if (path === "/signup") {
+    const params = new URLSearchParams(window.location.search);
+    const type = params.get("type");
+    if (type === "business" || type === "dealer" || type === "compliance") {
+      const focus = type === "compliance" ? "?focus=compliance" : "";
+      window.location.href = `/biz/onboarding${focus}`;
+      return null;
+    }
+    window.location.href = "/vault/onboarding";
+    return null;
+  }
+
+  return <App />;
+}
+
+export { AppRouter };
+
 export default function App() {
   const [token, setToken] = useState(() =>
     typeof window !== "undefined" ? localStorage.getItem("ID_TOKEN") : null
@@ -75,6 +117,19 @@ export default function App() {
   const [checkingMemberships, setCheckingMemberships] = useState(true);
 
   useEffect(() => {
+    // Handle custom token handoff from landing page chat
+    const urlParams = new URLSearchParams(window.location.search);
+    const chatToken = urlParams.get("token");
+    if (chatToken) {
+      signInWithCustomToken(auth, chatToken)
+        .then(() => {
+          window.history.replaceState({}, "", window.location.pathname);
+        })
+        .catch((err) => {
+          console.error("Custom token sign-in failed:", err);
+        });
+    }
+
     const t = localStorage.getItem("ID_TOKEN");
     setToken(t);
 
