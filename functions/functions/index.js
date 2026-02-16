@@ -641,11 +641,34 @@ exports.api = onRequest(
         }
 
         // Look up or create conversation session in Firestore
-        const sessionRef = db.collection("chatSessions").doc(sessionId);
-        const sessionSnap = await sessionRef.get();
+        let effectiveSessionId = sessionId;
+        let sessionRef = db.collection("chatSessions").doc(sessionId);
+        let sessionSnap = await sessionRef.get();
         let sessionState = sessionSnap.exists
           ? (sessionSnap.data().state || {})
           : {};
+
+        // Session continuity: if session is empty and user is authenticated,
+        // try to resume their most recent session from any surface
+        if (!sessionSnap.exists && authUser) {
+          try {
+            const recentSnap = await db.collection("chatSessions")
+              .where("userId", "==", authUser.uid)
+              .orderBy("updatedAt", "desc")
+              .limit(1)
+              .get();
+            if (!recentSnap.empty) {
+              const recentDoc = recentSnap.docs[0];
+              effectiveSessionId = recentDoc.id;
+              sessionRef = db.collection("chatSessions").doc(effectiveSessionId);
+              sessionSnap = recentDoc;
+              sessionState = recentDoc.data().state || {};
+              console.log("chatEngine: resumed session", effectiveSessionId, "for user", authUser.uid);
+            }
+          } catch (e) {
+            console.warn("chatEngine: session resume lookup failed:", e.message);
+          }
+        }
 
         // If authenticated and session has no userId, attach it
         if (authUser && !sessionState.userId) {
@@ -717,6 +740,8 @@ exports.api = onRequest(
           conversationState: engineResult.state.step,
           // Pass auth token back to surface if signup just happened
           ...(engineResult.state.authToken ? { authToken: engineResult.state.authToken } : {}),
+          // Pass back effective session ID if it changed (session resume)
+          ...(effectiveSessionId !== sessionId ? { sessionId: effectiveSessionId } : {}),
         });
 
       } catch (e) {

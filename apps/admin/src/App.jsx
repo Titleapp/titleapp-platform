@@ -117,9 +117,16 @@ export default function App() {
   const [checkingMemberships, setCheckingMemberships] = useState(true);
 
   useEffect(() => {
-    // Handle custom token handoff from landing page chat
+    // Handle custom token + session handoff from landing page chat
     const urlParams = new URLSearchParams(window.location.search);
     const chatToken = urlParams.get("token");
+    const chatSid = urlParams.get("sid");
+
+    // Store landing page session ID so FloatingChat can resume it
+    if (chatSid) {
+      sessionStorage.setItem("ta_platform_sid", chatSid);
+    }
+
     if (chatToken) {
       signInWithCustomToken(auth, chatToken)
         .then(() => {

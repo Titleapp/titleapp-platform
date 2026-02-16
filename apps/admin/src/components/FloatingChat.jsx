@@ -512,6 +512,12 @@ export default function FloatingChat({ demoMode = false }) {
       return;
     }
 
+    // Backend may return a different sessionId if it resumed an existing session
+    if (result.sessionId && result.sessionId !== sessionIdRef.current) {
+      sessionIdRef.current = result.sessionId;
+      sessionStorage.setItem('ta_platform_sid', result.sessionId);
+    }
+
     const newMessages = [];
 
     if (result.message) {
