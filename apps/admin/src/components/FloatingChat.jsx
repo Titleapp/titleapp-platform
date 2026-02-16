@@ -72,6 +72,18 @@ function WelcomeCard({ data }) {
   );
 }
 
+function AudienceSelectCard({ data, onAction }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '0.5rem 0' }}>
+      {(data.options || []).map(opt => (
+        <button key={opt.value} className="chat-card-btn-option" onClick={() => onAction('audience_selected', { type: opt.value }, opt.label)}>
+          {opt.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function OwnershipCard({ data, onAction }) {
   return (
     <CardShell title="Ownership Status">
@@ -435,6 +447,7 @@ function ChatCard({ card, onAction }) {
     case 'magicLink': return <MagicLinkCard data={card.data} onAction={onAction} />;
     case 'terms': return <TermsCard data={card.data} onAction={onAction} />;
     case 'welcome': return <WelcomeCard data={card.data} />;
+    case 'audienceSelect': return <AudienceSelectCard data={card.data} onAction={onAction} />;
     case 'ownership': return <OwnershipCard data={card.data} onAction={onAction} />;
     case 'fileUpload': return <FileUploadCard data={card.data} onAction={onAction} />;
     case 'attestation': return <AttestationCard data={card.data} onAction={onAction} />;

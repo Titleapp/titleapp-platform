@@ -459,7 +459,33 @@ async function processMessage(input, services = {}) {
   // ── Handle card actions (button clicks) ──
 
   if (action === 'start_free') {
-    const audience = actionData.audienceType || 'consumer';
+    const audience = actionData.audienceType || null;
+    if (audience) {
+      // Explicit audience from slide context — skip the question
+      state.audienceType = audience;
+      state.step = 'collect_name';
+      const msg = audience === 'business'
+        ? "Let's get your business set up. What's your name?"
+        : "Let's get you set up. This takes about 2 minutes and you'll have your first verified record. What's your name?";
+      return response(state, msg);
+    }
+    // No explicit context — ask what brings them here
+    state.step = 'choose_audience';
+    return response(state, "What brings you to TitleApp?", {
+      cards: [{
+        type: 'audienceSelect',
+        data: {
+          options: [
+            { value: 'consumer', label: 'Personal use' },
+            { value: 'business', label: 'Business use' },
+          ],
+        },
+      }],
+    });
+  }
+
+  if (action === 'audience_selected') {
+    const audience = actionData.type || 'consumer';
     state.audienceType = audience;
     state.step = 'collect_name';
     const msg = audience === 'business'
@@ -608,6 +634,32 @@ async function processMessage(input, services = {}) {
   const lowerMsg = message.toLowerCase();
 
   switch (state.step) {
+
+    // ── Audience Selection ──
+
+    case 'choose_audience': {
+      if (lowerMsg.includes('personal') || lowerMsg.includes('consumer') || lowerMsg.includes('myself') || lowerMsg.includes('my own')) {
+        state.audienceType = 'consumer';
+        state.step = 'collect_name';
+        return response(state, "Let's get you set up. This takes about 2 minutes and you'll have your first verified record. What's your name?");
+      }
+      if (lowerMsg.includes('business') || lowerMsg.includes('company') || lowerMsg.includes('work') || lowerMsg.includes('dealer')) {
+        state.audienceType = 'business';
+        state.step = 'collect_name';
+        return response(state, "Let's get your business set up. What's your name?");
+      }
+      return response(state, "Are you looking to use TitleApp for personal use or for your business?", {
+        cards: [{
+          type: 'audienceSelect',
+          data: {
+            options: [
+              { value: 'consumer', label: 'Personal use' },
+              { value: 'business', label: 'Business use' },
+            ],
+          },
+        }],
+      });
+    }
 
     // ── Account Creation Flow ──
 
