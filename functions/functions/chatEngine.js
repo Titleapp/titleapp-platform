@@ -1504,6 +1504,324 @@ async function processMessage(input, services = {}) {
       return response(state, "Let's revise. What's your investment thesis?");
     }
 
+    // ── Real Estate: Property Setup Lane ──
+
+    case 're_property_address': {
+      state.propertyData = state.propertyData || {};
+      state.propertyData.address = message.trim();
+      state.step = 're_property_confirm_address';
+      return response(state, `${state.propertyData.address}. Is that correct?`);
+    }
+
+    case 're_property_confirm_address': {
+      if (isAffirmative(message)) {
+        state.step = 're_property_type';
+        return response(state, "What type of property?", {
+          promptChips: ['Single Family', 'Multi-Family', 'Commercial', 'Condo'],
+        });
+      }
+      state.step = 're_property_address';
+      return response(state, "No problem. What's the correct address?");
+    }
+
+    case 're_property_type': {
+      state.propertyData = state.propertyData || {};
+      const pType = message.trim().toLowerCase();
+      if (pType.includes('single')) state.propertyData.propertyType = 'single-family';
+      else if (pType.includes('multi')) state.propertyData.propertyType = 'multi-family';
+      else if (pType.includes('commercial')) state.propertyData.propertyType = 'commercial';
+      else if (pType.includes('condo')) state.propertyData.propertyType = 'condo';
+      else state.propertyData.propertyType = message.trim();
+
+      if (state.propertyData.propertyType === 'multi-family' || state.propertyData.propertyType === 'condo' || state.propertyData.propertyType === 'commercial') {
+        state.step = 're_property_units';
+        return response(state, "How many units?");
+      }
+      state.propertyData.unitCount = 1;
+      state.step = 're_property_ownership';
+      return response(state, "What entity owns this property? For example, your name or an LLC.");
+    }
+
+    case 're_property_units': {
+      state.propertyData = state.propertyData || {};
+      const units = parseInt(message.replace(/[^0-9]/g, ''));
+      if (isNaN(units) || units < 1 || units > 10000) {
+        return response(state, "Please enter a valid number of units.");
+      }
+      state.propertyData.unitCount = units;
+      state.step = 're_property_ownership';
+      return response(state, "What entity owns this property? For example, your name or an LLC.");
+    }
+
+    case 're_property_ownership': {
+      state.propertyData = state.propertyData || {};
+      state.propertyData.ownershipEntity = message.trim();
+      state.step = 're_property_docs';
+      return response(state, "Upload the deed or any property documents. You can always add more later.");
+    }
+
+    case 're_property_docs': {
+      if (lowerMsg.includes('yes') || lowerMsg.includes('upload')) {
+        state.step = 're_property_upload';
+        return response(state, null, {
+          cards: [{
+            type: 'fileUpload',
+            data: {
+              category: 'property',
+              title: 'Upload Property Documents',
+              description: 'Deed, title, inspection report, or other documents',
+              acceptedTypes: '.pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx,.csv,.txt,.rtf,.zip,.heic,.webp',
+            },
+          }],
+        });
+      }
+      return handleShowPropertySummary(state);
+    }
+
+    case 're_property_upload': {
+      return handleShowPropertySummary(state);
+    }
+
+    case 're_property_confirm_all': {
+      if (isAffirmative(message)) {
+        return handleShowPropertyAttestation(state);
+      }
+      state.step = 're_property_address';
+      state.propertyData = {};
+      return response(state, "No problem. Let's start over. What's the property address?");
+    }
+
+    case 're_property_attestation': {
+      if (isAffirmative(message)) {
+        return handlePropertyDTC(state);
+      }
+      state.step = 're_property_address';
+      state.propertyData = {};
+      return response(state, "No problem. Let's start over. What's the property address?");
+    }
+
+    // ── Real Estate: Tenant Onboarding Lane ──
+
+    case 're_tenant_property': {
+      state.propertyData = state.propertyData || {};
+      const tenantPropRecords = (state.records || []).filter(r => r.type === 'property');
+
+      // If user said "yes" to a single-property prompt, use that property
+      if (isAffirmative(message) && tenantPropRecords.length === 1) {
+        state.propertyData.tenantPropertyName = tenantPropRecords[0].address;
+        state.propertyData.tenantPropertyId = tenantPropRecords[0].id;
+        if (tenantPropRecords[0].unitCount > 1) {
+          state.step = 're_tenant_unit';
+          return response(state, "Which unit?");
+        }
+        state.step = 're_tenant_name';
+        return response(state, "What's the tenant's name?");
+      }
+
+      // User typed a property name/address
+      state.propertyData.tenantPropertyName = message.trim();
+      const matchTenantProp = tenantPropRecords.find(r => r.address && r.address.toLowerCase().includes(message.trim().toLowerCase()));
+      if (matchTenantProp) {
+        state.propertyData.tenantPropertyId = matchTenantProp.id;
+        if (matchTenantProp.unitCount > 1) {
+          state.step = 're_tenant_unit';
+          return response(state, "Which unit?");
+        }
+      }
+      state.step = 're_tenant_name';
+      return response(state, "What's the tenant's name?");
+    }
+
+    case 're_tenant_unit': {
+      state.propertyData = state.propertyData || {};
+      state.propertyData.tenantUnit = message.trim();
+      state.step = 're_tenant_name';
+      return response(state, "What's the tenant's name?");
+    }
+
+    case 're_tenant_name': {
+      state.propertyData = state.propertyData || {};
+      state.propertyData.tenantName = parseName(message);
+      state.step = 're_tenant_email';
+      return response(state, "What's their email? We'll send them an invite to set up their own TitleApp account.");
+    }
+
+    case 're_tenant_email': {
+      if (isValidEmail(message)) {
+        state.propertyData = state.propertyData || {};
+        state.propertyData.tenantEmail = getEmail(message);
+        state.step = 're_tenant_lease_start';
+        return response(state, "When does the lease start?");
+      }
+      return response(state, "That doesn't look like a valid email address. Please try again.");
+    }
+
+    case 're_tenant_lease_start': {
+      state.propertyData = state.propertyData || {};
+      state.propertyData.leaseStart = message.trim();
+      state.step = 're_tenant_lease_end';
+      return response(state, "When does it end?");
+    }
+
+    case 're_tenant_lease_end': {
+      state.propertyData = state.propertyData || {};
+      state.propertyData.leaseEnd = message.trim();
+      state.step = 're_tenant_rent';
+      return response(state, "What's the monthly rent?");
+    }
+
+    case 're_tenant_rent': {
+      state.propertyData = state.propertyData || {};
+      state.propertyData.monthlyRent = message.trim();
+      state.step = 're_tenant_deposit';
+      return response(state, "Security deposit amount?");
+    }
+
+    case 're_tenant_deposit': {
+      state.propertyData = state.propertyData || {};
+      state.propertyData.securityDeposit = message.trim();
+      state.step = 're_tenant_lease_doc';
+      return response(state, "Upload the signed lease if you have it. You can always add it later.");
+    }
+
+    case 're_tenant_lease_doc': {
+      if (lowerMsg.includes('yes') || lowerMsg.includes('upload')) {
+        state.step = 're_tenant_upload';
+        return response(state, null, {
+          cards: [{
+            type: 'fileUpload',
+            data: {
+              category: 'lease',
+              title: 'Upload Signed Lease',
+              description: 'Signed lease agreement or addenda',
+              acceptedTypes: '.pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx,.csv,.txt,.rtf,.zip,.heic,.webp',
+            },
+          }],
+        });
+      }
+      return handleShowTenantSummary(state);
+    }
+
+    case 're_tenant_upload': {
+      return handleShowTenantSummary(state);
+    }
+
+    case 're_tenant_confirm': {
+      if (isAffirmative(message)) {
+        return handleTenantDTC(state);
+      }
+      state.step = 're_tenant_name';
+      state.propertyData.tenantName = null;
+      return response(state, "No problem. Let's start over. What's the tenant's name?");
+    }
+
+    // ── Real Estate: Maintenance Request Lane ──
+
+    case 're_mx_property': {
+      state.propertyData = state.propertyData || {};
+      const mxPropRecords = (state.records || []).filter(r => r.type === 'property');
+
+      // If user said "yes" to a single-property prompt, use that property
+      if (isAffirmative(message) && mxPropRecords.length === 1) {
+        state.propertyData.mxPropertyName = mxPropRecords[0].address;
+        state.propertyData.mxPropertyId = mxPropRecords[0].id;
+        if (mxPropRecords[0].unitCount > 1) {
+          state.step = 're_mx_unit';
+          return response(state, "Which unit?");
+        }
+        state.step = 're_mx_describe';
+        return response(state, "Describe the issue.");
+      }
+
+      // User typed a property name/address
+      state.propertyData.mxPropertyName = message.trim();
+      const mxMatchProp = mxPropRecords.find(r => r.address && r.address.toLowerCase().includes(message.trim().toLowerCase()));
+      if (mxMatchProp) {
+        state.propertyData.mxPropertyId = mxMatchProp.id;
+        if (mxMatchProp.unitCount > 1) {
+          state.step = 're_mx_unit';
+          return response(state, "Which unit?");
+        }
+      }
+      state.step = 're_mx_describe';
+      return response(state, "Describe the issue.");
+    }
+
+    case 're_mx_unit': {
+      state.propertyData = state.propertyData || {};
+      state.propertyData.mxUnit = message.trim();
+      state.step = 're_mx_describe';
+      return response(state, "Describe the issue.");
+    }
+
+    case 're_mx_describe': {
+      state.propertyData = state.propertyData || {};
+      state.propertyData.mxDescription = message.trim();
+      // Auto-detect category
+      const desc = message.toLowerCase();
+      let autoCategory = 'General';
+      if (desc.includes('plumb') || desc.includes('leak') || desc.includes('pipe') || desc.includes('drain') || desc.includes('toilet') || desc.includes('faucet')) autoCategory = 'Plumbing';
+      else if (desc.includes('electric') || desc.includes('outlet') || desc.includes('light') || desc.includes('wire') || desc.includes('breaker') || desc.includes('switch')) autoCategory = 'Electrical';
+      else if (desc.includes('hvac') || desc.includes('heat') || desc.includes('ac') || desc.includes('air condition') || desc.includes('furnace') || desc.includes('thermostat')) autoCategory = 'HVAC';
+      else if (desc.includes('appliance') || desc.includes('dishwasher') || desc.includes('washer') || desc.includes('dryer') || desc.includes('refrigerator') || desc.includes('oven') || desc.includes('stove')) autoCategory = 'Appliance';
+      else if (desc.includes('roof') || desc.includes('wall') || desc.includes('floor') || desc.includes('foundation') || desc.includes('window') || desc.includes('door') || desc.includes('structural')) autoCategory = 'Structural';
+      state.propertyData.mxAutoCategory = autoCategory;
+      state.step = 're_mx_category';
+      return response(state, `Sounds like ${autoCategory}. Is that right?`, {
+        promptChips: ['Plumbing', 'Electrical', 'HVAC', 'Appliance', 'Structural', 'General'],
+      });
+    }
+
+    case 're_mx_category': {
+      state.propertyData = state.propertyData || {};
+      if (isAffirmative(message)) {
+        state.propertyData.mxCategory = state.propertyData.mxAutoCategory || 'General';
+      } else {
+        state.propertyData.mxCategory = message.trim();
+      }
+      state.step = 're_mx_priority';
+      return response(state, "How urgent is this?", {
+        promptChips: ['Low', 'Medium', 'High', 'Emergency'],
+      });
+    }
+
+    case 're_mx_priority': {
+      state.propertyData = state.propertyData || {};
+      state.propertyData.mxPriority = message.trim();
+      state.step = 're_mx_photos';
+      return response(state, "Can you upload any photos of the issue? You can skip this.");
+    }
+
+    case 're_mx_photos': {
+      if (lowerMsg.includes('yes') || lowerMsg.includes('upload')) {
+        state.step = 're_mx_upload';
+        return response(state, null, {
+          cards: [{
+            type: 'fileUpload',
+            data: {
+              category: 'maintenance',
+              title: 'Upload Photos',
+              description: 'Photos of the maintenance issue',
+              acceptedTypes: '.jpg,.jpeg,.png,.heic,.webp,.pdf',
+            },
+          }],
+        });
+      }
+      return handleShowWorkOrderSummary(state);
+    }
+
+    case 're_mx_upload': {
+      return handleShowWorkOrderSummary(state);
+    }
+
+    case 're_mx_confirm': {
+      if (isAffirmative(message)) {
+        return handleWorkOrderDTC(state);
+      }
+      state.step = 're_mx_describe';
+      return response(state, "No problem. Describe the issue again.");
+    }
+
     // ── Post-Auth Business Setup ──
 
     case 'biz_collect_company_name': {
@@ -2031,6 +2349,11 @@ function handleAttestationConfirmed(state) {
     state.dealData.attester = state.name;
     return handleDealDTC(state);
   }
+  if (state.step === 're_property_attestation') {
+    state.propertyData.attestedAt = new Date().toISOString();
+    state.propertyData.attester = state.name;
+    return handlePropertyDTC(state);
+  }
   // Fallback
   return response(state, "Something went wrong. What would you like to do?");
 }
@@ -2074,6 +2397,24 @@ function handleFilesUploaded(state, input) {
     state.dealData.uploadedFiles.push(...parsed);
     return handleShowDealAttestation(state);
   }
+  if (state.step === 're_property_upload') {
+    if (!state.propertyData) state.propertyData = {};
+    if (!state.propertyData.uploadedFiles) state.propertyData.uploadedFiles = [];
+    state.propertyData.uploadedFiles.push(...parsed);
+    return handleShowPropertySummary(state);
+  }
+  if (state.step === 're_tenant_upload') {
+    if (!state.propertyData) state.propertyData = {};
+    if (!state.propertyData.leaseUploadedFiles) state.propertyData.leaseUploadedFiles = [];
+    state.propertyData.leaseUploadedFiles.push(...parsed);
+    return handleShowTenantSummary(state);
+  }
+  if (state.step === 're_mx_upload') {
+    if (!state.propertyData) state.propertyData = {};
+    if (!state.propertyData.mxUploadedFiles) state.propertyData.mxUploadedFiles = [];
+    state.propertyData.mxUploadedFiles.push(...parsed);
+    return handleShowWorkOrderSummary(state);
+  }
   return response(state, "Files received. What would you like to do next?");
 }
 
@@ -2083,6 +2424,9 @@ function handleFileUploadSkipped(state) {
   if (state.step === 'credential_upload') return handleShowCredentialAttestation(state);
   if (state.step === 'pilot_upload') return handleShowPilotAttestation(state);
   if (state.step === 'analyst_deal_upload_docs' || state.step === 'analyst_deal_upload') return handleShowDealAttestation(state);
+  if (state.step === 're_property_upload') return handleShowPropertySummary(state);
+  if (state.step === 're_tenant_upload') return handleShowTenantSummary(state);
+  if (state.step === 're_mx_upload') return handleShowWorkOrderSummary(state);
   return response(state, "What would you like to do next?");
 }
 
@@ -2103,6 +2447,9 @@ function handleShowVault(state) {
             : r.type === 'student' ? (r.year || '')
             : r.type === 'deal' ? (r.dealType || r.status || '')
             : r.type === 'pov' ? (r.recommendation || '')
+            : r.type === 'property' ? (r.propertyType || '')
+            : r.type === 'lease' ? (r.tenantName || '')
+            : r.type === 'workOrder' ? (r.status || 'open')
             : isPilot ? (r.totalHours ? r.totalHours + ' hrs' : '')
             : (r.dateEarned || '');
           const logCount = (r.logbook || []).length;
@@ -2355,7 +2702,7 @@ function handlePovDTC(state) {
   });
 }
 
-// ── Real Estate Hub (stub — expanded in Part 3) ──
+// ── Real Estate Hub ──
 
 function handleRealEstateHub(state, lowerMsg) {
   if (lowerMsg.includes('property') || lowerMsg.includes('add property') || lowerMsg.includes('new property') ||
@@ -2365,25 +2712,317 @@ function handleRealEstateHub(state, lowerMsg) {
     return response(state, "What's the property address?");
   }
   if (lowerMsg.includes('tenant') || lowerMsg.includes('new tenant') || lowerMsg.includes('renter') ||
-      lowerMsg.includes('lease') || lowerMsg.includes('move in') || lowerMsg.includes('onboard tenant')) {
-    return response(state, "Tenant onboarding is coming soon. For now, you can add properties and view your portfolio.", {
-      promptChips: ['Add a property', 'View properties'],
-    });
+      lowerMsg.includes('lease') || lowerMsg.includes('move in') || lowerMsg.includes('onboard')) {
+    const propRecords = (state.records || []).filter(r => r.type === 'property');
+    if (propRecords.length === 0) {
+      return response(state, "You need to add a property first before onboarding a tenant.", {
+        promptChips: ['Add a property'],
+      });
+    }
+    state.propertyData = state.propertyData || {};
+    state.step = 're_tenant_property';
+    if (propRecords.length === 1) {
+      return response(state, `Is this for ${propRecords[0].address}?`, {
+        promptChips: ['Yes', 'Different property'],
+      });
+    }
+    return response(state, "Which property?");
   }
   if (lowerMsg.includes('maintenance') || lowerMsg.includes('repair') || lowerMsg.includes('fix') ||
-      lowerMsg.includes('broken') || lowerMsg.includes('issue') || lowerMsg.includes('work order')) {
-    return response(state, "Maintenance tracking is coming soon. For now, you can add properties and view your portfolio.", {
-      promptChips: ['Add a property', 'View properties'],
-    });
+      lowerMsg.includes('broken') || lowerMsg.includes('issue') || lowerMsg.includes('work order') ||
+      lowerMsg.includes('something wrong')) {
+    const propRecords = (state.records || []).filter(r => r.type === 'property');
+    if (propRecords.length === 0) {
+      return response(state, "You need to add a property first before creating a work order.", {
+        promptChips: ['Add a property'],
+      });
+    }
+    state.propertyData = state.propertyData || {};
+    state.step = 're_mx_property';
+    if (propRecords.length === 1) {
+      return response(state, `Is this for ${propRecords[0].address}?`, {
+        promptChips: ['Yes', 'Different property'],
+      });
+    }
+    return response(state, "Which property?");
   }
   if (lowerMsg.includes('properties') || lowerMsg.includes('portfolio') || lowerMsg.includes('overview') ||
       lowerMsg.includes('buildings') || lowerMsg.includes('my properties')) {
-    return response(state, "No properties yet. Want to add one?", {
-      promptChips: ['Add a property'],
+    const propRecords = (state.records || []).filter(r => r.type === 'property');
+    if (propRecords.length === 0) {
+      return response(state, "No properties yet. Want to add one?", {
+        promptChips: ['Add a property'],
+      });
+    }
+    return response(state, null, {
+      cards: [{
+        type: 'portfolio',
+        data: {
+          properties: propRecords.map(r => ({
+            address: r.address || r.details,
+            propertyType: r.propertyType || '',
+            unitCount: r.unitCount || 1,
+            ownershipEntity: r.ownershipEntity || '',
+            id: r.id,
+            createdAt: r.createdAt,
+          })),
+        },
+      }],
+      followUpMessage: 'Tap a property to see details, or add another one.',
+      promptChips: ['Add a property', 'Onboard a tenant', 'Maintenance request'],
     });
   }
   return response(state, `Welcome to your property management workspace, ${state.name || ''}. What would you like to do?`, {
     promptChips: ['Add a property', 'Onboard a tenant', 'Maintenance request', 'View properties'],
+  });
+}
+
+// ── Property Summary, Attestation & DTC ──
+
+function handleShowPropertySummary(state) {
+  const p = state.propertyData || {};
+  state.step = 're_property_confirm_all';
+  const unitLine = (p.unitCount && p.unitCount > 1) ? `\nUnits: ${p.unitCount}` : '';
+  return response(state, `Here's what I have:\n\nAddress: ${p.address}\nType: ${p.propertyType}${unitLine}\nOwnership: ${p.ownershipEntity}\n\nDoes this look right?`);
+}
+
+function handleShowPropertyAttestation(state) {
+  const p = state.propertyData || {};
+  state.step = 're_property_attestation';
+  return response(state, "Last step -- confirm this property record is accurate.", {
+    cards: [{
+      type: 'attestation',
+      data: {
+        category: 'property',
+        address: p.address || '',
+        propertyType: p.propertyType || '',
+        unitCount: p.unitCount || 1,
+        ownershipEntity: p.ownershipEntity || '',
+      },
+    }],
+  });
+}
+
+function handlePropertyDTC(state) {
+  const p = state.propertyData || {};
+  const recordId = generateRecordId();
+  const hash = generateHash();
+  const today = nowDateString();
+  const now = nowTimeString();
+  const docCount = (p.uploadedFiles || []).length;
+
+  if (!state.records) state.records = [];
+  state.records.push({
+    type: 'property',
+    details: p.address || 'Property',
+    address: p.address || '',
+    propertyType: p.propertyType || '',
+    unitCount: p.unitCount || 1,
+    ownershipEntity: p.ownershipEntity || '',
+    documents: (p.uploadedFiles || []).map(f => ({ name: f.name, size: f.size })),
+    id: recordId,
+    createdAt: today,
+    logbook: [
+      { entry: 'Property record created', date: today, time: now },
+      { entry: 'Ownership attested by ' + (state.name || 'owner'), date: today, time: now },
+      ...(docCount > 0 ? [{ entry: docCount + ' document' + (docCount > 1 ? 's' : '') + ' uploaded', date: today, time: now }] : []),
+    ],
+  });
+
+  state.step = 'authenticated';
+
+  return response(state, null, {
+    cards: [{
+      type: 'dtc',
+      data: {
+        category: 'property',
+        address: p.address || 'Property',
+        propertyType: p.propertyType || '',
+        unitCount: p.unitCount || 1,
+        ownershipEntity: p.ownershipEntity || '',
+        owner: state.name || 'Owner',
+        recordId,
+        hash,
+        createdAt: today,
+        docCount,
+      },
+    }],
+    followUpMessage: `Property record created for ${p.address || 'your property'}. Your logbook is tracking it -- add tenants, documents, or maintenance records anytime.`,
+    promptChips: ['Add another property', 'Onboard a tenant', 'View properties'],
+    sideEffects: [{
+      action: 'createDtc',
+      data: {
+        type: 'property',
+        metadata: {
+          address: p.address || '',
+          propertyType: p.propertyType || '',
+          unitCount: p.unitCount || 1,
+          ownershipEntity: p.ownershipEntity || '',
+        },
+        files: (p.uploadedFiles || []).filter(f => f.path).map(f => ({ name: f.name, path: f.path, url: f.url })),
+      },
+    }],
+  });
+}
+
+// ── Tenant Summary & DTC ──
+
+function handleShowTenantSummary(state) {
+  const p = state.propertyData || {};
+  state.step = 're_tenant_confirm';
+  const unitLine = p.tenantUnit ? `\nUnit: ${p.tenantUnit}` : '';
+  return response(state, `Here's the lease summary:\n\nProperty: ${p.tenantPropertyName}${unitLine}\nTenant: ${p.tenantName}\nEmail: ${p.tenantEmail}\nLease: ${p.leaseStart} to ${p.leaseEnd}\nRent: ${p.monthlyRent}/month\nDeposit: ${p.securityDeposit}\n\nDoes this look right?`);
+}
+
+function handleTenantDTC(state) {
+  const p = state.propertyData || {};
+  const recordId = generateRecordId();
+  const hash = generateHash();
+  const today = nowDateString();
+  const now = nowTimeString();
+  const docCount = (p.leaseUploadedFiles || []).length;
+
+  if (!state.records) state.records = [];
+  state.records.push({
+    type: 'lease',
+    details: `${p.tenantName || 'Tenant'} -- ${p.tenantPropertyName || 'Property'}`,
+    tenantName: p.tenantName || '',
+    tenantEmail: p.tenantEmail || '',
+    property: p.tenantPropertyName || '',
+    unit: p.tenantUnit || '',
+    leaseStart: p.leaseStart || '',
+    leaseEnd: p.leaseEnd || '',
+    monthlyRent: p.monthlyRent || '',
+    securityDeposit: p.securityDeposit || '',
+    documents: (p.leaseUploadedFiles || []).map(f => ({ name: f.name, size: f.size })),
+    id: recordId,
+    createdAt: today,
+    logbook: [
+      { entry: 'Lease record created', date: today, time: now },
+      { entry: 'Tenant: ' + (p.tenantName || ''), date: today, time: now },
+      { entry: 'Lease period: ' + (p.leaseStart || '') + ' to ' + (p.leaseEnd || ''), date: today, time: now },
+      ...(docCount > 0 ? [{ entry: docCount + ' document' + (docCount > 1 ? 's' : '') + ' uploaded', date: today, time: now }] : []),
+    ],
+  });
+
+  state.step = 'authenticated';
+
+  return response(state, null, {
+    cards: [{
+      type: 'dtc',
+      data: {
+        category: 'lease',
+        tenantName: p.tenantName || 'Tenant',
+        tenantEmail: p.tenantEmail || '',
+        property: p.tenantPropertyName || '',
+        unit: p.tenantUnit || '',
+        leaseStart: p.leaseStart || '',
+        leaseEnd: p.leaseEnd || '',
+        monthlyRent: p.monthlyRent || '',
+        owner: state.name || 'Owner',
+        recordId,
+        hash,
+        createdAt: today,
+        docCount,
+      },
+    }],
+    followUpMessage: `Lease created for ${p.tenantName || 'tenant'}. An invite will be sent to ${p.tenantEmail || 'their email'} to set up their own TitleApp account.`,
+    promptChips: ['Add another tenant', 'Maintenance request', 'View properties'],
+    sideEffects: [{
+      action: 'createDtc',
+      data: {
+        type: 'lease',
+        metadata: {
+          tenantName: p.tenantName || '',
+          tenantEmail: p.tenantEmail || '',
+          property: p.tenantPropertyName || '',
+          unit: p.tenantUnit || '',
+          leaseStart: p.leaseStart || '',
+          leaseEnd: p.leaseEnd || '',
+          monthlyRent: p.monthlyRent || '',
+          securityDeposit: p.securityDeposit || '',
+        },
+        files: (p.leaseUploadedFiles || []).filter(f => f.path).map(f => ({ name: f.name, path: f.path, url: f.url })),
+      },
+    }],
+  });
+}
+
+// ── Work Order Summary & DTC ──
+
+function handleShowWorkOrderSummary(state) {
+  const p = state.propertyData || {};
+  state.step = 're_mx_confirm';
+  const unitLine = p.mxUnit ? `\nUnit: ${p.mxUnit}` : '';
+  return response(state, `Work order summary:\n\nProperty: ${p.mxPropertyName}${unitLine}\nIssue: ${p.mxDescription}\nCategory: ${p.mxCategory}\nPriority: ${p.mxPriority}\n\nDoes this look right?`);
+}
+
+function handleWorkOrderDTC(state) {
+  const p = state.propertyData || {};
+  const recordId = generateRecordId();
+  const hash = generateHash();
+  const today = nowDateString();
+  const now = nowTimeString();
+  const photoCount = (p.mxUploadedFiles || []).length;
+
+  if (!state.records) state.records = [];
+  state.records.push({
+    type: 'workOrder',
+    details: `${p.mxCategory || 'Maintenance'} -- ${p.mxPropertyName || 'Property'}`,
+    property: p.mxPropertyName || '',
+    unit: p.mxUnit || '',
+    description: p.mxDescription || '',
+    category: p.mxCategory || 'General',
+    priority: p.mxPriority || 'Medium',
+    status: 'open',
+    photos: (p.mxUploadedFiles || []).map(f => ({ name: f.name, size: f.size })),
+    id: recordId,
+    createdAt: today,
+    logbook: [
+      { entry: 'Work order created', date: today, time: now },
+      { entry: 'Category: ' + (p.mxCategory || 'General'), date: today, time: now },
+      { entry: 'Priority: ' + (p.mxPriority || 'Medium'), date: today, time: now },
+      ...(photoCount > 0 ? [{ entry: photoCount + ' photo' + (photoCount > 1 ? 's' : '') + ' uploaded', date: today, time: now }] : []),
+    ],
+  });
+
+  state.step = 'authenticated';
+
+  return response(state, null, {
+    cards: [{
+      type: 'dtc',
+      data: {
+        category: 'workOrder',
+        property: p.mxPropertyName || 'Property',
+        unit: p.mxUnit || '',
+        description: p.mxDescription || '',
+        issueCategory: p.mxCategory || 'General',
+        priority: p.mxPriority || 'Medium',
+        status: 'open',
+        reporter: state.name || 'Reporter',
+        recordId,
+        hash,
+        createdAt: today,
+        photoCount,
+      },
+    }],
+    followUpMessage: `Work order created for ${p.mxPropertyName || 'property'}. You can track its status and assign it from your dashboard.`,
+    promptChips: ['Create another work order', 'View properties', 'Onboard a tenant'],
+    sideEffects: [{
+      action: 'createDtc',
+      data: {
+        type: 'workOrder',
+        metadata: {
+          property: p.mxPropertyName || '',
+          unit: p.mxUnit || '',
+          description: p.mxDescription || '',
+          category: p.mxCategory || 'General',
+          priority: p.mxPriority || 'Medium',
+          status: 'open',
+        },
+        files: (p.mxUploadedFiles || []).filter(f => f.path).map(f => ({ name: f.name, path: f.path, url: f.url })),
+      },
+    }],
   });
 }
 
