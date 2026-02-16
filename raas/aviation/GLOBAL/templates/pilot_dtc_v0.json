@@ -1,0 +1,141 @@
+{
+  "id": "pilot_dtc_v0",
+  "version": "v0",
+  "title": "Pilot Digital Title Certificate",
+  "purpose": "Immutable credential record for pilots, verifiable by employers, insurance, charter operators",
+  "structure": {
+    "metadata": {
+      "type": "pilot_credentials",
+      "dtcType": "credential",
+      "credentialSubtype": "aviation_pilot",
+      "issuer": "faa",
+      "jurisdiction": "US"
+    },
+    "pilot": {
+      "name": "string",
+      "certificateNumber": "string (7-10 digits)",
+      "dateOfBirth": "date (optional, for verification)",
+      "email": "string",
+      "phone": "string (optional)"
+    },
+    "certificates": [
+      {
+        "type": "private|commercial|atp|cfi|etc",
+        "issueDate": "date",
+        "certificateNumber": "string",
+        "limitations": "string (e.g., 'Valid for airplane single-engine land')"
+      }
+    ],
+    "ratings": {
+      "instrument": ["airplane", "helicopter"],
+      "multiEngine": true,
+      "seaplane": false,
+      "typeRatings": ["B-737", "CE-525"]
+    },
+    "medical": {
+      "class": "first|second|third|basic_med",
+      "issueDate": "date",
+      "expirationDate": "date",
+      "restrictions": "string (e.g., 'Must wear corrective lenses')"
+    },
+    "totals": {
+      "totalTime": 0,
+      "picTime": 0,
+      "sicTime": 0,
+      "crossCountry": 0,
+      "night": 0,
+      "instrumentActual": 0,
+      "instrumentSimulated": 0,
+      "dualReceived": 0,
+      "dualGiven": 0,
+      "multiEngine": 0,
+      "turbine": 0,
+      "jet": 0,
+      "turboprop": 0,
+      "tailwheel": 0,
+      "glider": 0,
+      "lastUpdated": "timestamp"
+    },
+    "currency": {
+      "day": {
+        "current": true,
+        "lastFlight": "date",
+        "expiresOn": "date"
+      },
+      "night": {
+        "current": true,
+        "lastFlight": "date",
+        "expiresOn": "date"
+      },
+      "ifr": {
+        "current": true,
+        "lastApproach": "date",
+        "expiresOn": "date"
+      },
+      "biennial_flight_review": {
+        "current": true,
+        "lastCompleted": "date",
+        "expiresOn": "date"
+      }
+    },
+    "training": [
+      {
+        "type": "initial|recurrent|transition",
+        "aircraft": "string (e.g., 'Cessna 172')",
+        "school": "string",
+        "instructor": "string",
+        "startDate": "date",
+        "endDate": "date",
+        "certificateIssued": "string"
+      }
+    ],
+    "checkrides": [
+      {
+        "type": "private|commercial|atp|type_rating",
+        "date": "date",
+        "examiner": "string",
+        "aircraft": "string",
+        "location": "string",
+        "result": "pass|fail|discontinue",
+        "certificateIssued": "string"
+      }
+    ],
+    "priaRecords": {
+      "requested": true,
+      "receivedDate": "date",
+      "incidents": [],
+      "accidents": [],
+      "violations": [],
+      "employmentHistory": []
+    },
+    "files": [
+      {
+        "fileId": "string",
+        "type": "certificate|medical|logbook|pria",
+        "uploadDate": "timestamp"
+      }
+    ],
+    "blockchainProof": {
+      "hash": "string",
+      "network": "polygon|ethereum",
+      "timestamp": "timestamp",
+      "verificationUrl": "string"
+    },
+    "verifications": {
+      "faaRegistry": {
+        "verified": true,
+        "verifiedAt": "timestamp",
+        "status": "active|revoked|suspended"
+      }
+    },
+    "createdAt": "timestamp",
+    "updatedAt": "timestamp"
+  },
+  "notes": [
+    "DTC is immutable - amendments append to logbook",
+    "Totals are cached from logbook entries for quick access",
+    "Currency calculations run daily and update flags",
+    "FAA verification runs on creation and can be re-run on demand",
+    "Blockchain anchor provides tamper-proof timestamp"
+  ]
+}

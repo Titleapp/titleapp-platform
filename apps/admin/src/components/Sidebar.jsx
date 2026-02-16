@@ -4,8 +4,9 @@ export default function Sidebar({ currentSection, onNavigate, onClose }) {
   const sections = [
     { id: "dashboard", label: "Dashboard" },
     { id: "my-stuff", label: "My Stuff" },
-    { id: "my-logbooks", label: "My Logbooks" },
     { id: "student-records", label: "Student & Professional" },
+    { id: "my-logbooks", label: "My Logbooks" },
+    { id: "pilot-records", label: "Pilot Records" },
     { id: "my-gpts", label: "My GPTs" },
     { id: "reports", label: "Reports" },
     { id: "escrow", label: "Escrow" },

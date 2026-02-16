@@ -377,6 +377,8 @@ exports.api = onRequest(
         tenantType = "personal", // "personal" | "business"
         vertical = "GLOBAL",
         jurisdiction = "GLOBAL",
+        riskProfile = null, // Analyst vertical investment criteria
+        verticalConfig = null, // Other vertical-specific configs
       } = body || {};
 
       const finalTenantId = (requestedTenantId || slugifyTenantId(tenantName || auth.user.email || auth.user.uid))
@@ -389,7 +391,7 @@ exports.api = onRequest(
       const tSnap = await tenantRef.get();
 
       if (!tSnap.exists) {
-        await tenantRef.set({
+        const tenantData = {
           name: tenantName || finalTenantId,
           tenantType,
           vertical,
@@ -397,7 +399,13 @@ exports.api = onRequest(
           status: "active",
           createdAt: nowServerTs(),
           createdBy: auth.user.uid,
-        });
+        };
+
+        // Store vertical-specific parameters
+        if (riskProfile) tenantData.riskProfile = riskProfile;
+        if (verticalConfig) tenantData.verticalConfig = verticalConfig;
+
+        await tenantRef.set(tenantData);
       }
 
       // Upsert membership (caller becomes admin/owner)
@@ -917,6 +925,102 @@ exports.api = onRequest(
       } catch (e) {
         console.error("❌ dtc:list failed:", e);
         return jsonError(res, 500, "Failed to load DTCs");
+      }
+    }
+
+    // POST /v1/vin:decode
+    // Public endpoint (no auth required) - validates and decodes VIN using NHTSA API
+    if (route === "/vin:decode" && method === "POST") {
+      try {
+        const { vin } = body;
+
+        if (!vin) {
+          return jsonError(res, 400, "Missing VIN");
+        }
+
+        // Validate VIN format: 17 alphanumeric characters, no I, O, or Q
+        const vinStr = String(vin).toUpperCase().trim();
+        const vinRegex = /^[A-HJ-NPR-Z0-9]{17}$/;
+
+        if (!vinRegex.test(vinStr)) {
+          return res.json({
+            valid: false,
+            vin: vinStr,
+            errors: ["Invalid VIN format. VIN must be 17 characters (A-Z, 0-9, excluding I, O, Q)"],
+          });
+        }
+
+        // Call NHTSA API
+        const nhtsaUrl = `https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVinValues/${vinStr}?format=json`;
+        console.log("🔍 Decoding VIN via NHTSA:", vinStr);
+
+        const nhtsaResponse = await fetch(nhtsaUrl);
+        if (!nhtsaResponse.ok) {
+          throw new Error(`NHTSA API returned ${nhtsaResponse.status}`);
+        }
+
+        const nhtsaData = await nhtsaResponse.json();
+        const result = nhtsaData.Results?.[0];
+
+        if (!result) {
+          return res.json({
+            valid: false,
+            vin: vinStr,
+            errors: ["No data returned from NHTSA"],
+          });
+        }
+
+        // Check for NHTSA errors
+        const errorCode = result.ErrorCode;
+        if (errorCode && errorCode !== "0" && errorCode !== 0) {
+          return res.json({
+            valid: false,
+            vin: vinStr,
+            errors: [result.ErrorText || "VIN decode failed"],
+          });
+        }
+
+        // Extract and clean vehicle data
+        const vehicle = {
+          year: result.ModelYear || null,
+          make: result.Make || null,
+          model: result.Model || null,
+          trim: result.Trim || null,
+          bodyClass: result.BodyClass || null,
+          engineCylinders: result.EngineCylinders || null,
+          engineDisplacement: result.DisplacementL || null,
+          fuelType: result.FuelTypePrimary || null,
+          driveType: result.DriveType || null,
+          transmissionStyle: result.TransmissionStyle || null,
+          plantCity: result.PlantCity || null,
+          plantState: result.PlantStateProvince || null,
+          plantCountry: result.PlantCountry || null,
+          vehicleType: result.VehicleType || null,
+          gvwr: result.GVWR || null,
+        };
+
+        // Cache the decoded VIN in Firestore to avoid redundant API calls
+        try {
+          await db.collection("vinCache").doc(vinStr).set({
+            vin: vinStr,
+            vehicle,
+            decodedAt: nowServerTs(),
+            source: "nhtsa",
+          });
+        } catch (cacheError) {
+          console.warn("⚠️ Failed to cache VIN:", cacheError);
+          // Don't fail the request if caching fails
+        }
+
+        return res.json({
+          valid: true,
+          vin: vinStr,
+          vehicle,
+          errors: [],
+        });
+      } catch (e) {
+        console.error("❌ vin:decode failed:", e);
+        return jsonError(res, 500, "Failed to decode VIN", { details: e.message });
       }
     }
 
@@ -2136,6 +2240,18 @@ Return as JSON: { summary, risks: [], recommendations: [], confidence }`
           return jsonError(res, 400, "Missing required deal fields");
         }
 
+        // Fetch tenant's risk profile for personalized analysis
+        const tenantDoc = await db.collection("tenants").doc(ctx.tenantId).get();
+        const tenantData = tenantDoc.exists ? tenantDoc.data() : {};
+        const riskProfile = tenantData.riskProfile || {};
+
+        console.log("🎯 Analyzing deal with tenant risk profile:", {
+          tenantId: ctx.tenantId,
+          hasRiskProfile: !!tenantData.riskProfile,
+          riskTolerance: riskProfile.risk_tolerance,
+          minNetIRR: riskProfile.min_net_irr,
+        });
+
         // Load appropriate RAAS rules based on deal type
         const dealTypeMap = {
           "seed": "pe_deal_screen_v0",
@@ -2151,8 +2267,23 @@ Return as JSON: { summary, risks: [], recommendations: [], confidence }`
 
         const rulesetName = dealTypeMap[deal.dealType] || "pe_deal_screen_v0";
 
-        // Build sophisticated analysis prompt
-        const analysisPrompt = `You are the world's best investment analyst. Analyze this deal with the sophistication of a Goldman Sachs analyst but accessible to anyone from house flippers to institutional investors.
+        // Build sophisticated analysis prompt with tenant's criteria
+        const criteriaSection = riskProfile.min_net_irr || riskProfile.min_equity_multiple || riskProfile.deal_size_min
+          ? `
+**Investor's Target Box (YOUR CRITERIA):**
+${riskProfile.min_net_irr ? `- Minimum Net IRR: ${riskProfile.min_net_irr}%` : ''}
+${riskProfile.min_cash_on_cash ? `- Minimum Cash-on-Cash: ${riskProfile.min_cash_on_cash}%` : ''}
+${riskProfile.min_equity_multiple ? `- Minimum Equity Multiple: ${riskProfile.min_equity_multiple}x` : ''}
+${riskProfile.risk_tolerance ? `- Risk Tolerance: ${riskProfile.risk_tolerance}` : ''}
+${riskProfile.deal_size_min || riskProfile.deal_size_max ? `- Deal Size Range: $${riskProfile.deal_size_min || '0'} - $${riskProfile.deal_size_max || 'unlimited'}` : ''}
+
+**CRITICAL**: If this deal does NOT meet the investor's minimum return targets, it is an automatic PASS. Mark it with 💩 emoji and high risk score (80+).
+`
+          : `
+**Investor Profile:** This investor has not yet defined specific return targets. Use industry-standard benchmarks (15% net IRR, 2.0x equity multiple).
+`;
+
+        const analysisPrompt = `You are a professional investment analyst. Provide an objective, evidence-based analysis of this deal opportunity.
 
 **Deal Information:**
 - Company: ${deal.companyName}
@@ -2160,6 +2291,8 @@ Return as JSON: { summary, risks: [], recommendations: [], confidence }`
 - Ask Amount: ${deal.askAmount || "Not specified"}
 - Deal Type: ${deal.dealType || "Not specified"}
 - Summary: ${deal.summary}
+
+${criteriaSection}
 
 **Analysis Requirements:**
 
@@ -2174,6 +2307,7 @@ Return as JSON: { summary, risks: [], recommendations: [], confidence }`
    - Cite specific facts from the deal summary
    - Mark unknowns explicitly (don't guess)
    - Flag missing critical information
+   - Use neutral, professional language without hyperbole
 
 3. **Risk-Scaled Alternatives** - Present deal options at three risk levels:
    - **Low Risk**: Conservative structure, protective terms, clear exit
@@ -2184,8 +2318,8 @@ Return as JSON: { summary, risks: [], recommendations: [], confidence }`
    {
      "riskScore": 0-100 (0=lowest risk, 100=highest risk),
      "recommendation": "INVEST" | "PASS" | "WAIT",
-     "emoji": "💎" for great deals, "👍" for good, "⚠️" for concerns, "💩" for terrible deals,
-     "summary": "2-3 sentence executive summary",
+     "emoji": "💎" for strong opportunities, "👍" for solid deals, "⚠️" for concerns, "💩" for high-risk deals,
+     "summary": "2-3 sentence objective executive summary",
      "evidence": {
        "positive": ["fact 1", "fact 2"],
        "negative": ["concern 1", "concern 2"],
@@ -2209,11 +2343,21 @@ Return as JSON: { summary, risks: [], recommendations: [], confidence }`
        "targetIRR": "...",
        "other": "..."
      },
-     "nextSteps": ["action 1", "action 2"],
+     "nextSteps": ["Specific actionable step 1", "Specific actionable step 2"],
      "missingInfo": ["critical doc 1", "critical doc 2"]
    }
 
-**CRITICAL**: Use the 💩 emoji for deals that are clearly terrible (red flags, unrealistic assumptions, regulatory violations, obvious frauds).
+**IMPORTANT - Next Steps Format:**
+After the analysis, include concrete next steps such as:
+- Offering to collect additional due diligence materials (financials, customer data, etc.)
+- Suggesting a call with the company principal or management team
+- Recommending specific follow-up actions based on the analysis
+
+**Tone Guidelines:**
+- Be neutral and objective, not emotional or salesy
+- State facts and observations clearly
+- Avoid superlatives and hype
+- Write like a professional analyst, not a salesperson
 
 Analyze now:`;
 
@@ -2233,33 +2377,33 @@ Analyze now:`;
             recommendation: isBadDeal ? "PASS" : (deal.dealType === "seed" ? "WAIT" : "INVEST"),
             emoji: isBadDeal ? "💩" : (deal.dealType === "seed" ? "⚠️" : "💎"),
             summary: isBadDeal
-              ? `${deal.companyName} presents significant red flags with no proven revenue model and unclear path to profitability. The ask amount appears misaligned with current traction.`
-              : `${deal.companyName} shows strong fundamentals in the ${deal.industry} sector. The business model is validated with clear unit economics and defensible market position. Risk is manageable with proper structuring.`,
+              ? `${deal.companyName} lacks a proven revenue model and path to profitability based on available information. The requested valuation does not align with current traction and financial data. Additional due diligence is required before proceeding.`
+              : `${deal.companyName} demonstrates solid fundamentals in the ${deal.industry} sector with validated business model and established unit economics. The opportunity merits further evaluation through detailed due diligence and management discussions.`,
             evidence: {
               positive: isBadDeal
-                ? ["Founder passion evident", "Large addressable market mentioned"]
-                : ["Proven revenue generation", "Strong YoY growth trajectory", "Experienced management team", "Clear competitive moat"],
+                ? ["Operating in a large addressable market", "Industry sector shows growth potential"]
+                : ["Documented revenue generation and customer base", "Measurable year-over-year growth", "Management team has relevant industry experience", "Identified competitive differentiation"],
               negative: isBadDeal
-                ? ["No revenue or customers cited", "Unrealistic valuation expectations", "Missing critical financial data", "Regulatory uncertainty"]
-                : ["Customer concentration risk if top 3 clients represent >40%", "Capital intensive scaling requirements"],
-              neutral: ["Industry is competitive but growing", "Exit timeline uncertain"]
+                ? ["No documented revenue or customer contracts", "Valuation not supported by current metrics", "Limited financial data available for analysis", "Regulatory requirements not addressed"]
+                : ["Potential customer concentration risk requiring analysis", "Capital requirements for scaling operations"],
+              neutral: ["Competitive market dynamics with established players", "Exit timeline depends on market conditions and execution"]
             },
             multiAngleAnalysis: {
               directInvestment: isBadDeal
-                ? "Direct equity investment is not recommended given the lack of validated product-market fit and unclear revenue model. The pre-money valuation implied by the ask appears disconnected from observable traction."
-                : `Strong case for direct equity participation. Current valuation of ~${deal.askAmount} appears reasonable given revenue multiples in the ${deal.industry} sector. Standard preferred equity with 1x liquidation preference recommended.`,
+                ? "Direct equity investment presents elevated risk due to unvalidated product-market fit and limited revenue visibility. The implied valuation requires substantiation through concrete metrics and customer traction."
+                : `Direct equity participation is feasible at the current valuation of ${deal.askAmount}, which falls within typical revenue multiples for the ${deal.industry} sector. Standard preferred equity structure with 1x liquidation preference would provide appropriate investor protection.`,
               leverageOpportunities: isBadDeal
-                ? "No debt capacity given lack of cash flows. Any leverage would be personally guaranteed by founders, which is risky given business model uncertainty."
-                : "Moderate debt capacity exists given established cash flows. Consider venture debt at 2-3x ARR to extend runway and minimize dilution. Could support 10-15% of capital structure as senior debt.",
+                ? "Limited debt capacity due to absence of established cash flows. Leverage would require personal guarantees and presents heightened risk given the early-stage business model."
+                : "The company demonstrates debt capacity based on established cash flows. Venture debt at 2-3x ARR could extend operational runway while minimizing equity dilution. Senior debt could comprise 10-15% of the capital structure.",
               taxOptimization: isBadDeal
-                ? "Limited tax planning opportunities. Any losses would likely need to be carried forward indefinitely given unclear path to profitability."
-                : `Qualified Small Business Stock (QSBS) eligible - potential for 100% capital gains exclusion on exit if held 5+ years. Consider QSBS planning for all investors. ${deal.industry.includes('energy') ? 'Renewable energy tax credits may be available (ITC/PTC).' : ''}`,
+                ? "Tax optimization opportunities are limited at this stage. Loss carryforwards may be available, subject to achieving profitability and applicable tax regulations."
+                : `The investment may qualify for Qualified Small Business Stock (QSBS) treatment, offering potential capital gains exclusion on exit if held for five years. All investors should evaluate QSBS planning strategies. ${deal.industry.includes('energy') ? 'Renewable energy tax credits (ITC/PTC) may apply and should be evaluated.' : ''}`,
               regulatoryConsiderations: isBadDeal
-                ? "Regulation D 506(c) filing required for general solicitation. High risk of violating securities laws if revenue projections are used in marketing materials without disclaimer. Company may need registered broker-dealer for equity crowdfunding."
-                : `Standard Reg D 506(b) private placement appropriate. Ensure all investors are accredited. ${deal.industry.includes('healthcare') ? 'HIPAA compliance required.' : deal.industry.includes('financial') ? 'FinCEN and state money transmitter licenses may be required.' : 'No unusual regulatory hurdles identified.'}`,
+                ? "Regulation D 506(c) filing is required for general solicitation. Revenue projections in marketing materials must include appropriate disclaimers to comply with securities laws. Equity crowdfunding may require engagement of a registered broker-dealer."
+                : `Standard Reg D 506(b) private placement structure is appropriate. All investors must meet accreditation requirements. ${deal.industry.includes('healthcare') ? 'HIPAA compliance verification is required.' : deal.industry.includes('financial') ? 'FinCEN registration and state money transmitter licenses require evaluation.' : 'Standard regulatory compliance applies with no unusual requirements identified.'}`,
               alternativeStructures: isBadDeal
-                ? "Given high risk, consider: (1) Revenue share agreement (5-10% of gross revenue until 3x return), (2) Convertible note with very low valuation cap ($2-3M) and 20%+ discount, (3) Advisory equity-only (no cash) with milestone-based vesting."
-                : "Multiple viable structures: (1) Straight preferred equity with standard terms, (2) Convertible note with $15M cap / 20% discount for faster close, (3) SAFE with post-money cap for founder-friendly terms, (4) Revenue-based financing for non-dilutive capital."
+                ? "Alternative structures to mitigate risk include: (1) Revenue share agreement at 5-10% of gross revenue until 3x return, (2) Convertible note with reduced valuation cap ($2-3M) and 20%+ discount, (3) Advisory equity with milestone-based vesting and minimal cash investment."
+                : "Multiple viable investment structures are available: (1) Preferred equity with standard protective provisions, (2) Convertible note with $15M cap and 20% discount for expedited closing, (3) SAFE agreement with post-money cap, (4) Revenue-based financing for non-dilutive capital deployment."
             },
             riskScaledAlternatives: {
               lowRisk: {
@@ -2298,20 +2442,20 @@ Analyze now:`;
             },
             nextSteps: isBadDeal
               ? [
-                  "Request full financial statements (P&L, balance sheet, cash flow)",
-                  "Conduct customer discovery interviews to validate product-market fit",
-                  "Request detailed go-to-market plan with customer acquisition costs",
-                  "Revisit after company achieves $500K ARR or 50+ paying customers",
-                  "If proceeding, negotiate down to 1/5 of current ask with revenue earnout structure"
+                  "Collect additional due diligence materials: financial statements, customer contracts, and unit economics",
+                  "Schedule a call with the company principal to discuss business model validation",
+                  "Request detailed go-to-market plan with customer acquisition cost analysis",
+                  "Consider revisiting after the company achieves $500K ARR or 50+ paying customers",
+                  "If proceeding despite concerns, negotiate significantly reduced valuation with milestone-based earnouts"
                 ]
               : [
-                  "Request full financial statements (3 years historical if available)",
-                  "Conduct customer reference calls with top 5 accounts",
-                  "Engage third-party technical due diligence on product/IP",
-                  "Review cap table and confirm no problematic prior investor terms",
-                  "Request detailed financial projections with sensitivity analysis",
-                  "Schedule management presentations for investment committee",
-                  "Prepare term sheet with target close in 45-60 days"
+                  "Collect additional due diligence materials: 3-year financial statements, customer references, and technical documentation",
+                  "Schedule a management presentation with the company principal and key executives",
+                  "Conduct customer reference calls with top 5 accounts to validate product-market fit",
+                  "Engage third-party advisors for technical and financial due diligence",
+                  "Review cap table and confirm no problematic prior investor terms or preferences",
+                  "Prepare preliminary term sheet and schedule follow-up call to discuss deal structure",
+                  "Target close in 45-60 days pending satisfactory due diligence completion"
                 ],
             missingInfo: isBadDeal
               ? [
@@ -2450,6 +2594,291 @@ Analyze now:`;
       } catch (e) {
         console.error("❌ analyst:deal failed:", e);
         return jsonError(res, 500, "Failed to load deal");
+      }
+    }
+
+    // ----------------------------
+    // PILOT RECORDS PARSING
+    // ----------------------------
+
+    // POST /v1/pilot:parse
+    // Parse uploaded pilot records Excel file into DTCs and logbooks
+    if (route === "/pilot:parse" && method === "POST") {
+      try {
+        const { fileId } = body;
+        if (!fileId) return jsonError(res, 400, "Missing fileId");
+
+        // Get file metadata from Firestore
+        const fileSnap = await db.collection("files").doc(fileId).get();
+        if (!fileSnap.exists) return jsonError(res, 404, "File not found");
+
+        const fileData = fileSnap.data();
+        if (fileData.tenantId !== ctx.tenantId) return jsonError(res, 403, "Forbidden");
+
+        // Download file from Cloud Storage
+        const storagePath = fileData.storagePath;
+        const bucket = admin.storage().bucket();
+        const file = bucket.file(storagePath);
+
+        const [fileBuffer] = await file.download();
+
+        // Parse Excel file
+        const xlsx = require("xlsx");
+        const workbook = xlsx.read(fileBuffer, { type: "buffer" });
+
+        // Extract Pilot Profile sheet
+        const profileSheet = workbook.Sheets["Pilot Profile"];
+        if (!profileSheet) return jsonError(res, 400, "Missing 'Pilot Profile' sheet");
+
+        const profileData = xlsx.utils.sheet_to_json(profileSheet, { header: 1 });
+
+        // Parse pilot profile
+        const pilotProfile = {};
+        for (let i = 0; i < profileData.length; i++) {
+          const [key, value] = profileData[i];
+          if (key && value) {
+            pilotProfile[key] = value;
+          }
+        }
+
+        // Extract Flight Log sheet
+        const logSheet = workbook.Sheets["Flight Log"];
+        if (!logSheet) return jsonError(res, 400, "Missing 'Flight Log' sheet");
+
+        const flightLog = xlsx.utils.sheet_to_json(logSheet);
+
+        // Create DTCs for certificates
+        const certificates = [];
+
+        // FAA Certificate DTC
+        if (pilotProfile["FAA Certificate Number"]) {
+          const certRef = await db.collection("dtc").add({
+            userId: auth.user.uid,
+            tenantId: ctx.tenantId,
+            type: "credential",
+            metadata: {
+              title: `FAA ${pilotProfile["Certificate Type"] || "Pilot Certificate"}`,
+              certificateNumber: pilotProfile["FAA Certificate Number"],
+              pilotName: pilotProfile["Full Legal Name"],
+              dateOfBirth: pilotProfile["Date of Birth"],
+              ratings: pilotProfile["Ratings Held"] || "",
+              email: pilotProfile["Email"],
+            },
+            fileIds: [fileId],
+            value: null,
+            blockchainProof: null,
+            createdAt: nowServerTs(),
+            updatedAt: nowServerTs(),
+          });
+          certificates.push({ id: certRef.id, type: "FAA Certificate" });
+        }
+
+        // Student ID DTC (if applicable)
+        if (pilotProfile["Full Legal Name"] && pilotProfile["Date of Birth"]) {
+          const studentIdRef = await db.collection("dtc").add({
+            userId: auth.user.uid,
+            tenantId: ctx.tenantId,
+            type: "credential",
+            metadata: {
+              title: "Student/Pilot ID",
+              name: pilotProfile["Full Legal Name"],
+              dateOfBirth: pilotProfile["Date of Birth"],
+              citizenship: pilotProfile["Citizenship"],
+              placeOfBirth: pilotProfile["Place of Birth"],
+            },
+            fileIds: [fileId],
+            value: null,
+            blockchainProof: null,
+            createdAt: nowServerTs(),
+            updatedAt: nowServerTs(),
+          });
+          certificates.push({ id: studentIdRef.id, type: "Student ID" });
+        }
+
+        // Create logbook entries from flight log
+        let logbookEntriesCreated = 0;
+        for (const entry of flightLog) {
+          if (entry.Date && entry.Aircraft) {
+            await db.collection("logbook").add({
+              userId: auth.user.uid,
+              tenantId: ctx.tenantId,
+              dtcId: null, // Not linked to a specific DTC, general logbook
+              entryType: "flight",
+              data: {
+                date: entry.Date,
+                aircraft: entry.Aircraft,
+                tailNumber: entry["Tail #"],
+                route: entry.Route,
+                remarks: entry["Remarks/Endorsements"],
+                totalTime: entry["Total Time"] || 0,
+                pic: entry.PIC || 0,
+                sic: entry.SIC || 0,
+                dualReceived: entry["Dual Rcvd"] || 0,
+                solo: entry.Solo || 0,
+                crossCountry: entry["Cross-Country"] || 0,
+                night: entry.Night || 0,
+                actualInstrument: entry["Actual Inst"] || 0,
+                simulatedInstrument: entry["Sim Inst"] || 0,
+                dayLandings: entry["Day Ldg"] || 0,
+                nightLandings: entry["Night Ldg"] || 0,
+                simulator: entry.Sim || "",
+                runningTotal: entry["Running Total"] || 0,
+              },
+              files: [],
+              createdAt: nowServerTs(),
+              updatedAt: nowServerTs(),
+            });
+            logbookEntriesCreated++;
+          }
+        }
+
+        // Calculate totals for FAA 8710 experience summary
+        const experienceTotals = {
+          totalTime: 0,
+          pic: 0,
+          sic: 0,
+          dualReceived: 0,
+          solo: 0,
+          crossCountry: 0,
+          night: 0,
+          actualInstrument: 0,
+          simulatedInstrument: 0,
+          dayLandings: 0,
+          nightLandings: 0,
+        };
+
+        for (const entry of flightLog) {
+          experienceTotals.totalTime += Number(entry["Total Time"]) || 0;
+          experienceTotals.pic += Number(entry.PIC) || 0;
+          experienceTotals.sic += Number(entry.SIC) || 0;
+          experienceTotals.dualReceived += Number(entry["Dual Rcvd"]) || 0;
+          experienceTotals.solo += Number(entry.Solo) || 0;
+          experienceTotals.crossCountry += Number(entry["Cross-Country"]) || 0;
+          experienceTotals.night += Number(entry.Night) || 0;
+          experienceTotals.actualInstrument += Number(entry["Actual Inst"]) || 0;
+          experienceTotals.simulatedInstrument += Number(entry["Sim Inst"]) || 0;
+          experienceTotals.dayLandings += Number(entry["Day Ldg"]) || 0;
+          experienceTotals.nightLandings += Number(entry["Night Ldg"]) || 0;
+        }
+
+        return res.status(200).json({
+          ok: true,
+          pilotProfile,
+          certificates,
+          logbookEntriesCreated,
+          experienceTotals,
+        });
+      } catch (error) {
+        console.error("❌ Pilot parse error:", error);
+        return jsonError(res, 500, "Failed to parse pilot records", { error: error.message });
+      }
+    }
+
+    // GET /v1/pilot:experience-summary
+    // Generate FAA 8710 and ICAO experience summary forms
+    if (route === "/pilot:experience-summary" && method === "GET") {
+      try {
+        // Get all logbook entries for this user
+        const logbookSnap = await db.collection("logbook")
+          .where("userId", "==", auth.user.uid)
+          .where("tenantId", "==", ctx.tenantId)
+          .where("entryType", "==", "flight")
+          .get();
+
+        const logbookEntries = [];
+        logbookSnap.forEach((doc) => {
+          logbookEntries.push({ id: doc.id, ...doc.data() });
+        });
+
+        // Calculate totals
+        const experienceTotals = {
+          totalTime: 0,
+          pic: 0,
+          sic: 0,
+          dualReceived: 0,
+          solo: 0,
+          crossCountry: 0,
+          night: 0,
+          actualInstrument: 0,
+          simulatedInstrument: 0,
+          dayLandings: 0,
+          nightLandings: 0,
+        };
+
+        for (const entry of logbookEntries) {
+          const data = entry.data || {};
+          experienceTotals.totalTime += Number(data.totalTime) || 0;
+          experienceTotals.pic += Number(data.pic) || 0;
+          experienceTotals.sic += Number(data.sic) || 0;
+          experienceTotals.dualReceived += Number(data.dualReceived) || 0;
+          experienceTotals.solo += Number(data.solo) || 0;
+          experienceTotals.crossCountry += Number(data.crossCountry) || 0;
+          experienceTotals.night += Number(data.night) || 0;
+          experienceTotals.actualInstrument += Number(data.actualInstrument) || 0;
+          experienceTotals.simulatedInstrument += Number(data.simulatedInstrument) || 0;
+          experienceTotals.dayLandings += Number(data.dayLandings) || 0;
+          experienceTotals.nightLandings += Number(data.nightLandings) || 0;
+        }
+
+        // Format for FAA 8710
+        const faa8710 = {
+          form: "FAA Form 8710-1",
+          generatedAt: new Date().toISOString(),
+          experience: {
+            "Total Flight Time": experienceTotals.totalTime.toFixed(1),
+            "Pilot in Command (PIC)": experienceTotals.pic.toFixed(1),
+            "Second in Command (SIC)": experienceTotals.sic.toFixed(1),
+            "Dual Received": experienceTotals.dualReceived.toFixed(1),
+            "Solo": experienceTotals.solo.toFixed(1),
+            "Cross-Country": experienceTotals.crossCountry.toFixed(1),
+            "Night": experienceTotals.night.toFixed(1),
+            "Actual Instrument": experienceTotals.actualInstrument.toFixed(1),
+            "Simulated Instrument": experienceTotals.simulatedInstrument.toFixed(1),
+            "Day Landings": experienceTotals.dayLandings,
+            "Night Landings": experienceTotals.nightLandings,
+          },
+        };
+
+        // Format for ICAO
+        const icao = {
+          form: "ICAO License Application - Experience Summary",
+          generatedAt: new Date().toISOString(),
+          totalFlightTime: {
+            hours: Math.floor(experienceTotals.totalTime),
+            minutes: Math.round((experienceTotals.totalTime % 1) * 60),
+          },
+          commandTime: {
+            hours: Math.floor(experienceTotals.pic),
+            minutes: Math.round((experienceTotals.pic % 1) * 60),
+          },
+          secondInCommandTime: {
+            hours: Math.floor(experienceTotals.sic),
+            minutes: Math.round((experienceTotals.sic % 1) * 60),
+          },
+          crossCountryTime: {
+            hours: Math.floor(experienceTotals.crossCountry),
+            minutes: Math.round((experienceTotals.crossCountry % 1) * 60),
+          },
+          nightTime: {
+            hours: Math.floor(experienceTotals.night),
+            minutes: Math.round((experienceTotals.night % 1) * 60),
+          },
+          instrumentTime: {
+            hours: Math.floor(experienceTotals.actualInstrument + experienceTotals.simulatedInstrument),
+            minutes: Math.round(((experienceTotals.actualInstrument + experienceTotals.simulatedInstrument) % 1) * 60),
+          },
+          totalLandings: experienceTotals.dayLandings + experienceTotals.nightLandings,
+        };
+
+        return res.status(200).json({
+          ok: true,
+          faa8710,
+          icao,
+          totalEntries: logbookEntries.length,
+        });
+      } catch (error) {
+        console.error("❌ Experience summary error:", error);
+        return jsonError(res, 500, "Failed to generate experience summary", { error: error.message });
       }
     }
 

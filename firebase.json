@@ -1,17 +1,13 @@
 {
   "hosting": {
-    "public": "public",
+    "public": "apps/business/dist",
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
     "rewrites": [
-      { "source": "/v1/**", "function": "api" },
-      { "source": "/about", "destination": "/about.html" },
-      { "source": "/privacy", "destination": "/privacy.html" },
-      { "source": "/terms", "destination": "/terms.html" },
-      { "source": "/contact", "destination": "/contact.html" }
+      { "source": "**", "destination": "/index.html" }
     ]
   },
-"functions": {
-  "source": "functions/functions",
-  "runtime": "nodejs20"
-}
+  "functions": {
+    "source": "functions/functions",
+    "runtime": "nodejs20"
+  }
 }

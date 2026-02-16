@@ -1,10 +1,23 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import FormModal from "../components/FormModal";
+import * as api from "../api/client";
 
 /**
  * Settings - Business configuration and preferences
  */
 export default function Settings() {
+  const [myCompanies, setMyCompanies] = useState([]);
+  const [currentTenantId, setCurrentTenantId] = useState(
+    localStorage.getItem("CURRENT_TENANT_ID") || null
+  );
+  const [showNewCompanyModal, setShowNewCompanyModal] = useState(false);
+  const [newCompanyData, setNewCompanyData] = useState({
+    name: "",
+    type: "business",
+    vertical: "auto",
+    jurisdiction: "IL",
+  });
+
   const [business, setBusiness] = useState({
     name: "Velocity Motors",
     type: "Auto Dealer",
@@ -58,12 +71,102 @@ export default function Settings() {
     setShowEditModal(false);
   }
 
+  useEffect(() => {
+    loadMyCompanies();
+  }, []);
+
+  async function loadMyCompanies() {
+    try {
+      // This endpoint returns all tenants user has access to
+      const vertical = localStorage.getItem("VERTICAL") || "auto";
+      const jurisdiction = localStorage.getItem("JURISDICTION") || "IL";
+
+      // Mock for now - replace with real API call
+      setMyCompanies([
+        { id: "demo-company-1", name: "Velocity Motors", type: "Auto Dealer", role: "admin" },
+      ]);
+    } catch (e) {
+      console.error("Failed to load companies:", e);
+    }
+  }
+
+  function switchTenant(tenantId) {
+    localStorage.setItem("CURRENT_TENANT_ID", tenantId);
+    setCurrentTenantId(tenantId);
+    window.location.reload(); // Reload to apply new context
+  }
+
+  async function handleCreateCompany(e) {
+    e.preventDefault();
+    try {
+      // Call onboarding endpoint to create new tenant
+      console.log("Creating new company:", newCompanyData);
+      // TODO: Wire to real API
+      // await api.claimTenant({ ...newCompanyData });
+      setShowNewCompanyModal(false);
+      loadMyCompanies();
+    } catch (e) {
+      console.error("Failed to create company:", e);
+    }
+  }
+
   return (
     <div>
       <div className="pageHeader">
         <div>
           <h1 className="h1">Settings</h1>
           <p className="subtle">Business configuration and preferences</p>
+        </div>
+      </div>
+
+      {/* My Companies - Multi-Tenant Switcher */}
+      <div className="card" style={{ marginBottom: "16px" }}>
+        <div className="cardHeader">
+          <div>
+            <div className="cardTitle">My Companies</div>
+            <div className="cardSub">
+              Manage multiple businesses with one account (perfect for ICs & solo operators)
+            </div>
+          </div>
+          <button
+            className="iconBtn"
+            onClick={() => setShowNewCompanyModal(true)}
+            style={{ background: "var(--accent)", color: "white", borderColor: "var(--accent)" }}
+          >
+            + New Company
+          </button>
+        </div>
+        <div style={{ padding: "16px" }}>
+          {myCompanies.map((company) => (
+            <div
+              key={company.id}
+              style={{
+                padding: "12px",
+                marginBottom: "8px",
+                border: `2px solid ${currentTenantId === company.id ? "var(--accent)" : "var(--line)"}`,
+                borderRadius: "8px",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                background: currentTenantId === company.id ? "rgba(124,58,237,0.05)" : "transparent",
+              }}
+            >
+              <div>
+                <div style={{ fontWeight: 600 }}>{company.name}</div>
+                <div style={{ fontSize: "13px", color: "var(--textMuted)" }}>
+                  {company.type} • {company.role}
+                  {currentTenantId === company.id && (
+                    <span style={{ color: "var(--accent)", marginLeft: "8px" }}>● Active</span>
+                  )}
+                </div>
+              </div>
+              {currentTenantId !== company.id && (
+                <button className="iconBtn" onClick={() => switchTenant(company.id)}>
+                  Switch
+                </button>
+              )}
+            </div>
+          ))}
         </div>
       </div>
 

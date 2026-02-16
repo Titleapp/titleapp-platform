@@ -1,0 +1,105 @@
+{
+  "id": "flight_log_entry_v0",
+  "version": "v0",
+  "title": "Flight Logbook Entry",
+  "purpose": "Single flight entry that appends to pilot's logbook, updating DTC totals and currency",
+  "structure": {
+    "metadata": {
+      "entryType": "flight",
+      "source": "manual|foreflight|garmin|jeppesen|api",
+      "dtcId": "string (linked Pilot DTC)"
+    },
+    "flight": {
+      "date": "date",
+      "aircraft": {
+        "registration": "string (e.g., N12345)",
+        "type": "string (e.g., Cessna 172S)",
+        "category": "airplane|helicopter|glider",
+        "class": "single_engine_land|multi_engine_land|single_engine_sea|etc",
+        "powerplant": "piston|turboprop|jet"
+      },
+      "route": {
+        "from": "string (ICAO/IATA code)",
+        "to": "string",
+        "via": ["string (waypoints)"]
+      },
+      "times": {
+        "departure": "timestamp",
+        "arrival": "timestamp",
+        "totalTime": "decimal hours",
+        "picTime": "decimal hours",
+        "sicTime": "decimal hours",
+        "dualReceived": "decimal hours",
+        "dualGiven": "decimal hours",
+        "solo": "decimal hours",
+        "crossCountry": "decimal hours",
+        "night": "decimal hours",
+        "instrumentActual": "decimal hours",
+        "instrumentSimulated": "decimal hours",
+        "instrumentHood": "decimal hours",
+        "groundTraining": "decimal hours"
+      },
+      "conditions": {
+        "day": "decimal hours",
+        "night": "decimal hours",
+        "ifr": "decimal hours",
+        "vfr": "decimal hours"
+      },
+      "operations": {
+        "dayTakeoffs": 0,
+        "dayLandings": 0,
+        "nightTakeoffs": 0,
+        "nightLandings": 0,
+        "instrumentApproaches": 0,
+        "holds": 0
+      },
+      "crew": {
+        "pic": "string (name or cert number)",
+        "sic": "string",
+        "instructor": "string",
+        "examiner": "string",
+        "safety_pilot": "string"
+      },
+      "flightType": "training|cross_country|solo|check_ride|proficiency|currency|commercial|personal",
+      "remarks": "string (free text)",
+      "endorsements": [
+        {
+          "type": "high_performance|complex|tailwheel|instrument|etc",
+          "endorsedBy": "string (CFI name and number)",
+          "date": "date"
+        }
+      ]
+    },
+    "attachments": [
+      {
+        "fileId": "string",
+        "type": "receipt|weight_balance|flight_plan|photo",
+        "uploadDate": "timestamp"
+      }
+    ],
+    "sync": {
+      "source": "foreflight|garmin|manual",
+      "sourceId": "string (external ID)",
+      "syncedAt": "timestamp",
+      "lastModified": "timestamp"
+    },
+    "createdAt": "timestamp"
+  },
+  "calculations": {
+    "updates_dtc_totals": true,
+    "updates_currency": true,
+    "triggers": [
+      "recalculate_90_day_currency",
+      "recalculate_ifr_currency",
+      "update_total_hours",
+      "check_bfr_expiration"
+    ]
+  },
+  "notes": [
+    "Each entry appends to logbook collection",
+    "DTC totals are aggregate of all entries",
+    "Currency checks run on each new entry",
+    "ForeFlight/Garmin sync creates entries automatically",
+    "Manual entries can be created via UI or API"
+  ]
+}

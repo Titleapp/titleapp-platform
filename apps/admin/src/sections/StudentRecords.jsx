@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import FormModal from "../components/FormModal";
+import AddRecordForm from "../components/AddRecordForm";
 import * as api from "../api/client";
 
 /**
@@ -11,6 +12,7 @@ export default function StudentRecords() {
   const [error, setError] = useState("");
   const [filterType, setFilterType] = useState("all");
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showInlineForm, setShowInlineForm] = useState(false);
   const [formData, setFormData] = useState({
     type: "education",
     title: "",
@@ -97,14 +99,14 @@ export default function StudentRecords() {
         </div>
         <button
           className="iconBtn"
-          onClick={() => setShowCreateModal(true)}
+          onClick={() => setShowInlineForm(true)}
           style={{
             background: "var(--accent)",
             color: "white",
             borderColor: "var(--accent)",
           }}
         >
-          + Add Credential
+          + Add Record
         </button>
       </div>
 
@@ -127,6 +129,36 @@ export default function StudentRecords() {
           <div className="kpiValue">{stats.verified}</div>
         </div>
       </div>
+
+      {/* Inline Add Form */}
+      {showInlineForm && (
+        <AddRecordForm
+          onSave={async (record) => {
+            // Convert to API format
+            const credential = {
+              type: record.recordType === "professional" ? "professional" : "education",
+              title: record.degree,
+              institution: record.name,
+              field: record.field,
+              date: record.graduationDate || new Date().toISOString().split('T')[0],
+              verified: false,
+            };
+
+            await api.addCredential({
+              vertical,
+              jurisdiction,
+              credential,
+            });
+
+            await loadCredentials();
+          }}
+          onCancel={() => setShowInlineForm(false)}
+          onAddAnother={() => {
+            // Form handles the "add another" prompt
+            return true;
+          }}
+        />
+      )}
 
       {/* Type tabs */}
       <div style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>

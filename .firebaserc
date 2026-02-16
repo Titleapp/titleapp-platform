@@ -1,0 +1,19 @@
+{
+  "projects": {},
+  "targets": {
+    "title-app-alpha": {
+      "hosting": {
+        "admin": [
+          "admin-titleapp-ai"
+        ],
+        "business": [
+          "business-titleapp-ai"
+        ],
+        "main": [
+          "title-app-alpha"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}

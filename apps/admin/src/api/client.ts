@@ -359,3 +359,73 @@ export async function createCapTable(params: {
     body: params.capTable,
   });
 }
+
+// ----------------------------
+// Pilot Records
+// ----------------------------
+
+export async function parsePilotRecords(params: {
+  vertical: string;
+  jurisdiction: string;
+  fileId: string;
+}) {
+  return httpJson("POST", "/v1/pilot:parse", {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+    body: { fileId: params.fileId },
+  });
+}
+
+export async function getExperienceSummary(params: {
+  vertical: string;
+  jurisdiction: string;
+}) {
+  return httpJson("GET", "/v1/pilot:experience-summary", {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+  });
+}
+
+// ----------------------------
+// File Upload
+// ----------------------------
+
+export async function requestUploadUrl(params: {
+  vertical: string;
+  jurisdiction: string;
+  filename: string;
+  contentType: string;
+  sizeBytes: number;
+  purpose?: string;
+}) {
+  return httpJson("POST", "/v1/files:sign", {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+    body: {
+      filename: params.filename,
+      contentType: params.contentType,
+      sizeBytes: params.sizeBytes,
+      purpose: params.purpose || "general",
+    },
+  });
+}
+
+export async function finalizeUpload(params: {
+  vertical: string;
+  jurisdiction: string;
+  fileId: string;
+  storagePath: string;
+  contentType: string;
+  sizeBytes: number;
+}) {
+  return httpJson("POST", "/v1/files:finalize", {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+    body: {
+      fileId: params.fileId,
+      storagePath: params.storagePath,
+      contentType: params.contentType,
+      sizeBytes: params.sizeBytes,
+    },
+  });
+}

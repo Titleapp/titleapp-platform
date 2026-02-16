@@ -44,7 +44,7 @@ export default function AppShell({ children, currentSection, onNavigate }) {
       </div>
 
       {/* FloatingChat - Door 2 */}
-      <FloatingChat demoMode={true} />
+      <FloatingChat demoMode={false} />
     </>
   );
 }

@@ -20,6 +20,7 @@ export default function Analyst() {
     dealType: "series_a",
     summary: "",
   });
+  const [uploadedFile, setUploadedFile] = useState(null);
 
   const vertical = localStorage.getItem("VERTICAL") || "analyst";
   const jurisdiction = localStorage.getItem("JURISDICTION") || "GLOBAL";
@@ -410,7 +411,7 @@ export default function Analyst() {
                   Deal Summary / Pitch
                 </label>
                 <textarea
-                  required
+                  required={!uploadedFile}
                   value={dealInput.summary}
                   onChange={(e) => setDealInput({ ...dealInput, summary: e.target.value })}
                   rows={8}
@@ -423,6 +424,36 @@ export default function Analyst() {
                   }}
                   placeholder="Paste pitch deck summary, exec summary, or key details about the deal..."
                 />
+              </div>
+
+              <div>
+                <label style={{ display: "block", marginBottom: "6px", fontWeight: 600 }}>
+                  Or Upload PDF
+                </label>
+                <input
+                  type="file"
+                  accept=".pdf"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      setUploadedFile(file);
+                      // TODO: Extract text from PDF and populate summary field
+                      // For now, just show the filename
+                      setDealInput({ ...dealInput, summary: `[PDF uploaded: ${file.name}] - PDF text extraction coming soon` });
+                    }
+                  }}
+                  style={{
+                    width: "100%",
+                    padding: "10px",
+                    borderRadius: "12px",
+                    border: "1px solid var(--line)",
+                  }}
+                />
+                {uploadedFile && (
+                  <div style={{ marginTop: "8px", fontSize: "13px", color: "var(--textMuted)" }}>
+                    Uploaded: {uploadedFile.name} ({(uploadedFile.size / 1024).toFixed(1)} KB)
+                  </div>
+                )}
               </div>
 
               <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
