@@ -2482,6 +2482,7 @@ function handleVehicleDTC(state) {
   if (!state.records) state.records = [];
   state.records.push({
     type: 'vehicle',
+    userId: state.userId || null,
     details: vehicleName,
     vin: state.carData.vin || null,
     year: state.carData.year || '',
@@ -2584,6 +2585,7 @@ function handleStudentDTC(state) {
   if (!state.records) state.records = [];
   state.records.push({
     type: 'student',
+    userId: state.userId || null,
     details: `${d.program || d.type || 'Academic Record'} -- ${d.school || ''}`,
     school: d.school || '',
     program: d.program || '',
@@ -2671,6 +2673,7 @@ function handleCredentialDTC(state) {
   if (!state.records) state.records = [];
   state.records.push({
     type: 'credential',
+    userId: state.userId || null,
     details: `${d.name || 'Credential'} -- ${d.issuer || ''}`,
     name: d.name || '',
     issuer: d.issuer || '',
@@ -2763,6 +2766,7 @@ function handlePilotDTC(state) {
   if (!state.records) state.records = [];
   state.records.push({
     type: 'credential',
+    userId: state.userId || null,
     subtype: 'pilot',
     details: `${p.certName || 'Pilot Certificate'} -- FAA ${p.certNumber || ''}`,
     name: p.certName || '',
@@ -2937,7 +2941,11 @@ function handleFileUploadSkipped(state) {
 // ── Vault & Logbook ──
 
 function handleShowVault(state) {
-  const records = state.records || [];
+  const allRecords = state.records || [];
+  // Filter to current user's records — excludes stale data from resumed sessions
+  const records = state.userId
+    ? allRecords.filter(r => !r.userId || r.userId === state.userId)
+    : allRecords;
   const totalLogEntries = records.reduce((sum, r) => sum + (r.logbook || []).length, 0);
 
   return response(state, null, {
@@ -3100,6 +3108,7 @@ function handleDealDTC(state) {
   if (!state.records) state.records = [];
   state.records.push({
     type: 'deal',
+    userId: state.userId || null,
     details: `${d.companyName || 'Deal'} -- ${d.dealType || ''} -- ${d.sector || ''}`,
     companyName: d.companyName || '',
     sector: d.sector || '',
@@ -3177,6 +3186,7 @@ function handlePovDTC(state) {
   if (!state.records) state.records = [];
   state.records.push({
     type: 'pov',
+    userId: state.userId || null,
     details: `POV: ${d.povDealName || 'Deal'} -- ${d.povRecommendation || ''}`,
     dealName: d.povDealName || '',
     thesis: d.povThesis || '',
@@ -3340,6 +3350,7 @@ function handlePropertyDTC(state) {
   if (!state.records) state.records = [];
   state.records.push({
     type: 'property',
+    userId: state.userId || null,
     details: p.address || 'Property',
     address: p.address || '',
     propertyType: p.propertyType || '',
@@ -3419,6 +3430,7 @@ function handleTenantDTC(state) {
   if (!state.records) state.records = [];
   state.records.push({
     type: 'lease',
+    userId: state.userId || null,
     details: `${p.tenantName || 'Tenant'} -- ${p.tenantPropertyName || 'Property'}`,
     tenantName: p.tenantName || '',
     tenantEmail: p.tenantEmail || '',
@@ -3510,6 +3522,7 @@ function handleWorkOrderDTC(state) {
   if (!state.records) state.records = [];
   state.records.push({
     type: 'workOrder',
+    userId: state.userId || null,
     details: `${p.mxCategory || 'Maintenance'} -- ${p.mxPropertyName || 'Property'}`,
     property: p.mxPropertyName || '',
     unit: p.mxUnit || '',

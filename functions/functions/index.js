@@ -1590,7 +1590,7 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
             const analysis = {
               riskScore: isBadDeal ? 85 : 45,
               recommendation: isBadDeal ? "PASS" : "INVEST",
-              emoji: isBadDeal ? "💩" : "💎",
+              rating: isBadDeal ? "PASS" : "STRONG",
               summary: isBadDeal
                 ? `This deal presents significant red flags. The business model appears speculative with unclear path to profitability.`
                 : `Strong fundamentals with validated business model and clear unit economics. Risk is manageable with proper structuring.`,
@@ -1612,7 +1612,7 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
             });
 
             // Format response for chat
-            aiResponse = `## ${analysis.emoji} Deal Analysis\n\n**Risk Score:** ${analysis.riskScore}/100\n**Recommendation:** ${analysis.recommendation}\n\n${analysis.summary}\n\n**Key Evidence:**\n${analysis.evidence.positive.map(e => `✅ ${e}`).join('\n')}\n${analysis.evidence.negative.map(e => `❌ ${e}`).join('\n')}\n\n**Next Steps:**\n${analysis.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}`;
+            aiResponse = `Deal Analysis\n\nRisk Score: ${analysis.riskScore}/100\nRecommendation: ${analysis.recommendation}\n\n${analysis.summary}\n\nKey Evidence:\n${analysis.evidence.positive.map(e => `+ ${e}`).join('\n')}\n${analysis.evidence.negative.map(e => `- ${e}`).join('\n')}\n\nNext Steps:\n${analysis.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}`;
 
             structuredData = { type: "trade_summary", analysis };
 
@@ -3176,7 +3176,7 @@ ${riskProfile.min_equity_multiple ? `- Minimum Equity Multiple: ${riskProfile.mi
 ${riskProfile.risk_tolerance ? `- Risk Tolerance: ${riskProfile.risk_tolerance}` : ''}
 ${riskProfile.deal_size_min || riskProfile.deal_size_max ? `- Deal Size Range: $${riskProfile.deal_size_min || '0'} - $${riskProfile.deal_size_max || 'unlimited'}` : ''}
 
-**CRITICAL**: If this deal does NOT meet the investor's minimum return targets, it is an automatic PASS. Mark it with 💩 emoji and high risk score (80+).
+**CRITICAL**: If this deal does NOT meet the investor's minimum return targets, it is an automatic PASS. Mark with rating "PASS" and high risk score (80+).
 `
           : `
 **Investor Profile:** This investor has not yet defined specific return targets. Use industry-standard benchmarks (15% net IRR, 2.0x equity multiple).
@@ -3217,7 +3217,7 @@ ${criteriaSection}
    {
      "riskScore": 0-100 (0=lowest risk, 100=highest risk),
      "recommendation": "INVEST" | "PASS" | "WAIT",
-     "emoji": "💎" for strong opportunities, "👍" for solid deals, "⚠️" for concerns, "💩" for high-risk deals,
+     "rating": "STRONG" for strong opportunities, "SOLID" for solid deals, "CAUTION" for concerns, "PASS" for high-risk deals,
      "summary": "2-3 sentence objective executive summary",
      "evidence": {
        "positive": ["fact 1", "fact 2"],
@@ -3274,7 +3274,7 @@ Analyze now:`;
           analysis = {
             riskScore: isBadDeal ? 85 : (deal.dealType === "seed" ? 65 : 45),
             recommendation: isBadDeal ? "PASS" : (deal.dealType === "seed" ? "WAIT" : "INVEST"),
-            emoji: isBadDeal ? "💩" : (deal.dealType === "seed" ? "⚠️" : "💎"),
+            rating: isBadDeal ? "PASS" : (deal.dealType === "seed" ? "CAUTION" : "STRONG"),
             summary: isBadDeal
               ? `${deal.companyName} lacks a proven revenue model and path to profitability based on available information. The requested valuation does not align with current traction and financial data. Additional due diligence is required before proceeding.`
               : `${deal.companyName} demonstrates solid fundamentals in the ${deal.industry} sector with validated business model and established unit economics. The opportunity merits further evaluation through detailed due diligence and management discussions.`,
@@ -3395,7 +3395,7 @@ Analyze now:`;
           analysis = {
             riskScore: 50,
             recommendation: "WAIT",
-            emoji: "⚠️",
+            rating: "CAUTION",
             summary: analysisText.substring(0, 500),
             evidence: { positive: [], negative: [], neutral: [] },
             multiAngleAnalysis: {
