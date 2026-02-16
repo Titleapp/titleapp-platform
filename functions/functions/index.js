@@ -257,11 +257,13 @@ async function decodeVinInternal(vin) {
  */
 async function signupInternal({ email, name, accountType, companyName, companyDescription }) {
   let userRecord;
+  let existing = false;
   try {
     userRecord = await admin.auth().createUser({ email, displayName: name || null });
   } catch (e) {
     if (e.code === "auth/email-already-exists") {
       userRecord = await admin.auth().getUserByEmail(email);
+      existing = true;
     } else throw e;
   }
 
@@ -280,8 +282,17 @@ async function signupInternal({ email, name, accountType, companyName, companyDe
     });
   }
 
+  const userData = userSnap.exists ? userSnap.data() : {};
   const customToken = await admin.auth().createCustomToken(userRecord.uid);
-  return { ok: true, uid: userRecord.uid, token: customToken };
+  return {
+    ok: true,
+    uid: userRecord.uid,
+    token: customToken,
+    existing,
+    termsAcceptedAt: userData.termsAcceptedAt || null,
+    existingName: userData.name || null,
+    existingAccountType: userData.accountType || null,
+  };
 }
 
 /**

@@ -497,6 +497,15 @@ async function processMessage(input, services = {}) {
       state.userId = signupResult.uid;
       state.accountCreated = true;
       state.authToken = signupResult.token;
+
+      // Existing user who already accepted terms — skip onboarding
+      if (signupResult.existing && signupResult.termsAcceptedAt) {
+        state.name = signupResult.existingName || state.name;
+        state.termsAcceptedAt = signupResult.termsAcceptedAt;
+        state.audienceType = signupResult.existingAccountType || state.audienceType || 'consumer';
+        state.step = 'authenticated';
+        return response(state, `Welcome back, ${state.name || 'friend'}. What would you like to do?`);
+      }
     } else {
       state.accountCreated = true;
     }
