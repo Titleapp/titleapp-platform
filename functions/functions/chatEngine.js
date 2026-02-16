@@ -1356,6 +1356,154 @@ async function processMessage(input, services = {}) {
       return response(state, getDemoResponse(message));
     }
 
+    // ── Analyst: Deal Vetting Lane ──
+
+    case 'analyst_deal_upload': {
+      if (input.fileData || (input.action === 'files_uploaded')) {
+        return handleFilesUploaded(state, input);
+      }
+      if (lowerMsg.includes('skip') || lowerMsg.includes('no') || lowerMsg.includes('later') || isNegative(message)) {
+        state.step = 'analyst_deal_company';
+        return response(state, "No problem. Tell me about this deal -- what's the company name?");
+      }
+      state.dealData = state.dealData || {};
+      state.dealData.companyName = message.trim();
+      state.step = 'analyst_deal_sector';
+      return response(state, `Got it. What sector is ${state.dealData.companyName} in?`);
+    }
+
+    case 'analyst_deal_company': {
+      state.dealData = state.dealData || {};
+      state.dealData.companyName = message.trim();
+      state.step = 'analyst_deal_sector';
+      return response(state, `What sector is ${state.dealData.companyName} in?`);
+    }
+
+    case 'analyst_deal_sector': {
+      state.dealData = state.dealData || {};
+      state.dealData.sector = message.trim();
+      state.step = 'analyst_deal_type';
+      return response(state, "What type of deal?", {
+        promptChips: ['M&A', 'LBO', 'Growth Equity', 'Debt'],
+      });
+    }
+
+    case 'analyst_deal_type': {
+      state.dealData = state.dealData || {};
+      state.dealData.dealType = message.trim();
+      state.step = 'analyst_deal_size';
+      return response(state, "What's the deal size?");
+    }
+
+    case 'analyst_deal_size': {
+      state.dealData = state.dealData || {};
+      state.dealData.dealSize = message.trim();
+      state.step = 'analyst_deal_source';
+      return response(state, "Where did this come from?", {
+        promptChips: ['Bank', 'Broker', 'Direct', 'Other'],
+      });
+    }
+
+    case 'analyst_deal_source': {
+      state.dealData = state.dealData || {};
+      state.dealData.source = message.trim();
+      state.step = 'analyst_deal_summary';
+
+      const d = state.dealData;
+      return response(state, `Here's what I have:\n\nCompany: ${d.companyName}\nSector: ${d.sector}\nDeal type: ${d.dealType}\nDeal size: ${d.dealSize}\nSource: ${d.source}\n\nDoes this look right?`);
+    }
+
+    case 'analyst_deal_summary': {
+      if (isAffirmative(message)) {
+        state.step = 'analyst_deal_docs';
+        return response(state, "Do you have a CIM or deal package to upload? You can always add it later.");
+      }
+      state.step = 'analyst_deal_company';
+      state.dealData = {};
+      return response(state, "No problem. Let's start over. What's the company name?");
+    }
+
+    case 'analyst_deal_docs': {
+      if (lowerMsg.includes('yes') || lowerMsg.includes('upload')) {
+        state.step = 'analyst_deal_upload_docs';
+        return response(state, null, {
+          cards: [{
+            type: 'fileUpload',
+            data: {
+              category: 'deal',
+              title: 'Upload Deal Package',
+              description: 'CIM, teaser, financial model, or other deal documents',
+              acceptedTypes: '.pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx,.csv,.txt,.rtf,.zip,.pptx,.ppt',
+            },
+          }],
+        });
+      }
+      return handleShowDealAttestation(state);
+    }
+
+    case 'analyst_deal_upload_docs': {
+      return handleShowDealAttestation(state);
+    }
+
+    case 'analyst_deal_attestation': {
+      if (isAffirmative(message)) {
+        return handleDealDTC(state);
+      }
+      state.step = 'analyst_deal_company';
+      state.dealData = {};
+      return response(state, "No problem. Let's start over. What's the company name?");
+    }
+
+    // ── Analyst: POV Writing Lane ──
+
+    case 'analyst_pov_select': {
+      state.dealData = state.dealData || {};
+      state.dealData.povDealName = message.trim();
+      state.step = 'analyst_pov_thesis';
+      return response(state, "What's your investment thesis in a sentence or two?");
+    }
+
+    case 'analyst_pov_thesis': {
+      state.dealData = state.dealData || {};
+      state.dealData.povThesis = message.trim();
+      state.step = 'analyst_pov_risks';
+      return response(state, "What are the key risks?");
+    }
+
+    case 'analyst_pov_risks': {
+      state.dealData = state.dealData || {};
+      state.dealData.povRisks = message.trim();
+      state.step = 'analyst_pov_strengths';
+      return response(state, "What are the strengths?");
+    }
+
+    case 'analyst_pov_strengths': {
+      state.dealData = state.dealData || {};
+      state.dealData.povStrengths = message.trim();
+      state.step = 'analyst_pov_recommendation';
+      return response(state, "What's your recommendation?", {
+        promptChips: ['Pass', 'Pursue', 'Watch'],
+      });
+    }
+
+    case 'analyst_pov_recommendation': {
+      state.dealData = state.dealData || {};
+      state.dealData.povRecommendation = message.trim();
+      state.step = 'analyst_pov_review';
+
+      const pd = state.dealData;
+      return response(state, `Here's your draft POV:\n\nDeal: ${pd.povDealName || 'N/A'}\nThesis: ${pd.povThesis}\nRisks: ${pd.povRisks}\nStrengths: ${pd.povStrengths}\nRecommendation: ${pd.povRecommendation}\n\nWant to adjust anything?`);
+    }
+
+    case 'analyst_pov_review': {
+      if (isAffirmative(message) || lowerMsg.includes('good') || lowerMsg.includes('looks good') ||
+          lowerMsg.includes('submit') || lowerMsg.includes('save') || lowerMsg.includes('confirm')) {
+        return handlePovDTC(state);
+      }
+      state.step = 'analyst_pov_thesis';
+      return response(state, "Let's revise. What's your investment thesis?");
+    }
+
     // ── Post-Auth Business Setup ──
 
     case 'biz_collect_company_name': {
@@ -1878,6 +2026,11 @@ function handleAttestationConfirmed(state) {
     state.pilotData.attester = state.name;
     return handlePilotDTC(state);
   }
+  if (state.step === 'analyst_deal_attestation') {
+    state.dealData.attestedAt = new Date().toISOString();
+    state.dealData.attester = state.name;
+    return handleDealDTC(state);
+  }
   // Fallback
   return response(state, "Something went wrong. What would you like to do?");
 }
@@ -1915,6 +2068,12 @@ function handleFilesUploaded(state, input) {
     state.pilotData.uploadedFiles.push(...parsed);
     return handleShowPilotAttestation(state);
   }
+  if (state.step === 'analyst_deal_upload_docs' || state.step === 'analyst_deal_upload') {
+    if (!state.dealData) state.dealData = {};
+    if (!state.dealData.uploadedFiles) state.dealData.uploadedFiles = [];
+    state.dealData.uploadedFiles.push(...parsed);
+    return handleShowDealAttestation(state);
+  }
   return response(state, "Files received. What would you like to do next?");
 }
 
@@ -1923,6 +2082,7 @@ function handleFileUploadSkipped(state) {
   if (state.step === 'student_upload') return handleShowStudentAttestation(state);
   if (state.step === 'credential_upload') return handleShowCredentialAttestation(state);
   if (state.step === 'pilot_upload') return handleShowPilotAttestation(state);
+  if (state.step === 'analyst_deal_upload_docs' || state.step === 'analyst_deal_upload') return handleShowDealAttestation(state);
   return response(state, "What would you like to do next?");
 }
 
@@ -1941,6 +2101,8 @@ function handleShowVault(state) {
           const isPilot = r.subtype === 'pilot';
           const subtitle = r.type === 'vehicle' ? (r.mileage ? r.mileage + ' mi' : '')
             : r.type === 'student' ? (r.year || '')
+            : r.type === 'deal' ? (r.dealType || r.status || '')
+            : r.type === 'pov' ? (r.recommendation || '')
             : isPilot ? (r.totalHours ? r.totalHours + ' hrs' : '')
             : (r.dateEarned || '');
           const logCount = (r.logbook || []).length;
@@ -1993,30 +2155,203 @@ function handleShowLogbook(state) {
   });
 }
 
-// ── Analyst Hub (stub — expanded in Part 2) ──
+// ── Analyst Hub ──
 
 function handleAnalystHub(state, lowerMsg) {
   if (lowerMsg.includes('deal') || lowerMsg.includes('vet') || lowerMsg.includes('review') ||
       lowerMsg.includes('cim') || lowerMsg.includes('new deal') || lowerMsg.includes('package') ||
       lowerMsg.includes('analyze')) {
-    state.step = 'analyst_deal_company';
+    state.step = 'analyst_deal_upload';
     state.dealData = {};
-    return response(state, "Let's vet this deal. What's the company name?");
+    return response(state, "Upload the deal package and I'll analyze it. Or tell me the company name to get started.", {
+      promptChips: ['Skip upload'],
+    });
   }
   if (lowerMsg.includes('pov') || lowerMsg.includes('point of view') || lowerMsg.includes('write up') ||
       lowerMsg.includes('memo') || lowerMsg.includes('thesis') || lowerMsg.includes('investment memo')) {
-    return response(state, "POV writing is coming soon. For now, you can vet deals and review your pipeline.", {
-      promptChips: ['Vet a new deal', 'View pipeline'],
-    });
+    state.dealData = state.dealData || {};
+    state.step = 'analyst_pov_select';
+    return response(state, "Which deal is this POV for? Enter the company name or deal reference.");
   }
   if (lowerMsg.includes('pipeline') || lowerMsg.includes('deals') || lowerMsg.includes('status') ||
       lowerMsg.includes('my deals')) {
-    return response(state, "No deals yet. Want to vet one?", {
-      promptChips: ['Vet a new deal'],
+    const dealRecords = (state.records || []).filter(r => r.type === 'deal');
+    if (dealRecords.length === 0) {
+      return response(state, "No deals in your pipeline yet. Want to vet one?", {
+        promptChips: ['Vet a new deal'],
+      });
+    }
+    return response(state, null, {
+      cards: [{
+        type: 'pipeline',
+        data: {
+          deals: dealRecords.map(r => ({
+            companyName: r.companyName || r.details,
+            sector: r.sector || '',
+            dealType: r.dealType || '',
+            status: r.status || 'new',
+            id: r.id,
+            createdAt: r.createdAt,
+          })),
+        },
+      }],
+      followUpMessage: 'Tap a deal to see details, or vet another one.',
+      promptChips: ['Vet a new deal', 'Write a POV'],
     });
   }
   return response(state, `Welcome to your analyst workspace, ${state.name || ''}. What would you like to do?`, {
     promptChips: ['Vet a new deal', 'Write a POV', 'View pipeline'],
+  });
+}
+
+// ── Deal Attestation & DTC ──
+
+function handleShowDealAttestation(state) {
+  const d = state.dealData || {};
+  state.step = 'analyst_deal_attestation';
+  return response(state, "Last step -- confirm this deal record is accurate.", {
+    cards: [{
+      type: 'attestation',
+      data: {
+        category: 'deal',
+        companyName: d.companyName || '',
+        sector: d.sector || '',
+        dealType: d.dealType || '',
+        dealSize: d.dealSize || '',
+        source: d.source || '',
+      },
+    }],
+  });
+}
+
+function handleDealDTC(state) {
+  const d = state.dealData || {};
+  const recordId = generateRecordId();
+  const hash = generateHash();
+  const today = nowDateString();
+  const now = nowTimeString();
+  const docCount = (d.uploadedFiles || []).length;
+
+  if (!state.records) state.records = [];
+  state.records.push({
+    type: 'deal',
+    details: `${d.companyName || 'Deal'} -- ${d.dealType || ''} -- ${d.sector || ''}`,
+    companyName: d.companyName || '',
+    sector: d.sector || '',
+    dealType: d.dealType || '',
+    dealSize: d.dealSize || '',
+    source: d.source || '',
+    status: 'new',
+    documents: (d.uploadedFiles || []).map(f => ({ name: f.name, size: f.size })),
+    id: recordId,
+    createdAt: today,
+    logbook: [
+      { entry: 'Deal record created', date: today, time: now },
+      { entry: 'Deal attested by ' + (state.name || 'analyst'), date: today, time: now },
+      ...(docCount > 0 ? [{ entry: docCount + ' document' + (docCount > 1 ? 's' : '') + ' uploaded', date: today, time: now }] : []),
+    ],
+  });
+
+  state.step = 'authenticated';
+
+  return response(state, null, {
+    cards: [{
+      type: 'dtc',
+      data: {
+        category: 'deal',
+        companyName: d.companyName || 'Deal',
+        sector: d.sector || '',
+        dealType: d.dealType || '',
+        dealSize: d.dealSize || '',
+        source: d.source || '',
+        status: 'new',
+        analyst: state.name || 'Analyst',
+        recordId,
+        hash,
+        createdAt: today,
+        docCount,
+      },
+    }],
+    followUpMessage: `Deal record created for ${d.companyName || 'this deal'}. Your logbook is tracking it -- add documents, POVs, or status updates anytime.`,
+    promptChips: ['Vet another deal', 'Write a POV', 'View pipeline'],
+    sideEffects: [{
+      action: 'createDtc',
+      data: {
+        type: 'deal',
+        metadata: {
+          companyName: d.companyName || '',
+          sector: d.sector || '',
+          dealType: d.dealType || '',
+          dealSize: d.dealSize || '',
+          source: d.source || '',
+          status: 'new',
+        },
+        files: (d.uploadedFiles || []).filter(f => f.path).map(f => ({ name: f.name, path: f.path, url: f.url })),
+      },
+    }],
+  });
+}
+
+// ── POV DTC ──
+
+function handlePovDTC(state) {
+  const d = state.dealData || {};
+  const recordId = generateRecordId();
+  const hash = generateHash();
+  const today = nowDateString();
+  const now = nowTimeString();
+
+  if (!state.records) state.records = [];
+  state.records.push({
+    type: 'pov',
+    details: `POV: ${d.povDealName || 'Deal'} -- ${d.povRecommendation || ''}`,
+    dealName: d.povDealName || '',
+    thesis: d.povThesis || '',
+    risks: d.povRisks || '',
+    strengths: d.povStrengths || '',
+    recommendation: d.povRecommendation || '',
+    author: state.name || 'Analyst',
+    id: recordId,
+    createdAt: today,
+    logbook: [
+      { entry: 'POV created', date: today, time: now },
+      { entry: 'Recommendation: ' + (d.povRecommendation || 'N/A'), date: today, time: now },
+      { entry: 'Authored by ' + (state.name || 'analyst'), date: today, time: now },
+    ],
+  });
+
+  state.step = 'authenticated';
+
+  return response(state, null, {
+    cards: [{
+      type: 'dtc',
+      data: {
+        category: 'pov',
+        dealName: d.povDealName || 'Deal',
+        thesis: d.povThesis || '',
+        recommendation: d.povRecommendation || '',
+        author: state.name || 'Analyst',
+        recordId,
+        hash,
+        createdAt: today,
+      },
+    }],
+    followUpMessage: `POV recorded for ${d.povDealName || 'this deal'}. Recommendation: ${d.povRecommendation || 'N/A'}.`,
+    promptChips: ['Vet a new deal', 'Write another POV', 'View pipeline'],
+    sideEffects: [{
+      action: 'createDtc',
+      data: {
+        type: 'pov',
+        metadata: {
+          dealName: d.povDealName || '',
+          thesis: d.povThesis || '',
+          risks: d.povRisks || '',
+          strengths: d.povStrengths || '',
+          recommendation: d.povRecommendation || '',
+          author: state.name || '',
+        },
+      },
+    }],
   });
 }
 
