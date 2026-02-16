@@ -45,6 +45,35 @@ function isNegative(msg) {
   ].some(n => m === n || m.startsWith(n + ' ') || m.startsWith(n + ','));
 }
 
+function isCancelIntent(msg) {
+  const m = msg.toLowerCase().trim();
+  return [
+    'cancel', 'go back', 'go home', 'nevermind', 'never mind', 'start over',
+    'main menu', 'back to menu', 'quit', 'exit', 'stop', 'back to hub',
+    'back to dashboard', 'show menu', 'what else can i do',
+  ].some(phrase => m === phrase || m.startsWith(phrase + ' ') || m.includes(phrase));
+}
+
+// States where escape should NOT fire — onboarding, auth, and hub states
+const NON_LANE_STATES = new Set([
+  'idle', 'interested', 'choose_audience', 'collect_name', 'collect_email',
+  'collect_company_name', 'collect_company_description', 'signin_email',
+  'magic_link_sent', 'terms_acceptance', 'authenticated', 'confirm_intent',
+  'select_vertical', 'raas_onboarding', 'raas_upload_sops', 'raas_build',
+  'raas_build_confirm', 'raas_ready', 'consumer_onboarding_promise',
+  'biz_collect_company_name', 'biz_collect_company_description',
+  'id_verification_before_publish', 'id_verification',
+]);
+
+function clearLaneData(state) {
+  state.carData = null;
+  state.propertyData = null;
+  state.credentialData = null;
+  state.studentData = null;
+  state.dealData = null;
+  state.pilotData = null;
+}
+
 function parseName(raw) {
   const namePatterns = [
     /^(?:my name is|i'm|im|i am|it's|its|call me|they call me|this is|hey i'm|hi i'm)\s+(.+)$/i,
@@ -668,6 +697,30 @@ async function processMessage(input, services = {}) {
 
   const message = userInput;
   const lowerMsg = message.toLowerCase();
+
+  // ── Global escape hatch: cancel out of any lane mid-flow ──
+  if (lowerMsg && isCancelIntent(lowerMsg) && !NON_LANE_STATES.has(state.step)) {
+    clearLaneData(state);
+    state.step = 'authenticated';
+
+    // Return vertical-appropriate prompt chips
+    let chips;
+    if (state.businessVertical === 'real_estate') {
+      chips = ['Add a property', 'Onboard a tenant', 'Maintenance request', 'View properties'];
+    } else if (state.businessVertical === 'analyst') {
+      chips = ['Vet a new deal', 'Write a POV', 'View pipeline'];
+    } else if (state.businessVertical === 'auto') {
+      chips = ['Add a vehicle', 'View inventory'];
+    } else if (state.audienceType === 'business') {
+      chips = ['Add a record', 'View vault', 'Set up compliance'];
+    } else {
+      chips = ['Track a vehicle', 'Add a credential', 'Student records', 'View vault'];
+    }
+
+    return response(state, "No problem. What would you like to do instead?", {
+      promptChips: chips,
+    });
+  }
 
   switch (state.step) {
 
