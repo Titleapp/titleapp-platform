@@ -397,6 +397,7 @@ function defaultState() {
     step: 'idle',
     vertical: null,
     audienceType: null,
+    businessVertical: null,
     name: null,
     email: null,
     companyName: null,
@@ -409,6 +410,8 @@ function defaultState() {
     studentData: null,
     credentialData: null,
     pilotData: null,
+    dealData: null,
+    propertyData: null,
     records: [],
   };
 }
@@ -530,7 +533,14 @@ async function processMessage(input, services = {}) {
         state.termsAcceptedAt = signupResult.termsAcceptedAt;
         state.audienceType = signupResult.existingAccountType || state.audienceType || 'consumer';
         state.step = 'authenticated';
-        return response(state, `Welcome back, ${state.name || 'friend'}. What would you like to do?`);
+        const chips = state.audienceType === 'business'
+          ? ['Set up my workspace', 'Add a record', 'View my vault']
+          : (state.records && state.records.length > 0)
+            ? ['View my vault', 'Add another record', 'Set up a business']
+            : ['Add a vehicle', 'Add a credential', 'View my vault'];
+        return response(state, `Welcome back, ${state.name || 'friend'}. What would you like to do?`, {
+          promptChips: chips,
+        });
       }
     } else {
       state.accountCreated = true;
@@ -725,25 +735,66 @@ async function processMessage(input, services = {}) {
     // ── Authenticated Hub ──
 
     case 'authenticated': {
-      // Business-authenticated routing
-      if (state.audienceType === 'business') {
+      // Vault / dashboard — common to all account types
+      if (lowerMsg.includes('dashboard') || lowerMsg.includes('vault') || lowerMsg.includes('my records') ||
+          lowerMsg.includes('my stuff') || lowerMsg.includes('see my') || lowerMsg.includes('show my')) {
+        return handleShowVault(state);
+      }
+
+      // Logbook — common to all account types
+      if (lowerMsg.includes('logbook') || lowerMsg.includes('log book') || lowerMsg.includes('history') ||
+          lowerMsg.includes('entries') || lowerMsg.includes('log entry') || lowerMsg.includes('add entry') ||
+          lowerMsg.includes('log something') || lowerMsg.includes('update log') || lowerMsg.includes('new entry')) {
+        return handleShowLogbook(state);
+      }
+
+      // ── Business intent detection (works for both consumer and business accounts) ──
+      const businessKeywords = ['business', 'company', 'workspace', 'enterprise', 'organization',
+        'marketing', 'management', 'agency', 'firm', 'fund', 'portfolio',
+        'set up my business', 'set up my company', 'set up my workspace',
+        'start a business', 'create a business', 'my business'];
+      const isBizIntent = businessKeywords.some(k => lowerMsg.includes(k));
+
+      if (isBizIntent) {
+        // Already have company info — go to vertical selection
+        if (state.companyName && state.companyDescription) {
+          state.audienceType = 'business';
+          state.step = 'select_vertical';
+          return response(state, `What does ${state.companyName} focus on?`, {
+            promptChips: ['Property Management', 'Deal Analysis & Investment', 'Auto Dealer', 'Sales & Marketing', 'Other'],
+          });
+        }
+        // Need to collect company info first
+        state.audienceType = 'business';
+        state.step = 'biz_collect_company_name';
+        return response(state, "Let's get your business set up. What's your company name?");
+      }
+
+      // ── Business-vertical routing (user already selected a vertical) ──
+      if (state.audienceType === 'business' && state.businessVertical) {
+        // Route to vertical-specific hub based on stored vertical
+        if (state.businessVertical === 'analyst') {
+          return handleAnalystHub(state, lowerMsg);
+        }
+        if (state.businessVertical === 'real_estate') {
+          return handleRealEstateHub(state, lowerMsg);
+        }
+        // Auto dealer
+        if (state.businessVertical === 'auto') {
+          if (lowerMsg.includes('inventory') || lowerMsg.includes('add vehicle') || lowerMsg.includes('add car') || lowerMsg.includes('vin')) {
+            state.step = 'car_onboarding_vin';
+            state.carData = {};
+            return response(state, "What's the VIN of the vehicle you'd like to add?");
+          }
+          return response(state, "Welcome to your auto dealer workspace. What would you like to do?", {
+            promptChips: ['Add a vehicle', 'View inventory', 'Sales pipeline'],
+          });
+        }
+        // Generic business fallback
         if (lowerMsg.includes('inventory') || lowerMsg.includes('add vehicle') || lowerMsg.includes('add car')) {
           state.step = 'car_onboarding_vin';
           state.carData = {};
           return response(state, "What's the VIN of the first vehicle you'd like to add to your inventory?");
-        }
-        if (lowerMsg.includes('dashboard') || lowerMsg.includes('vault') || lowerMsg.includes('admin') || lowerMsg.includes('workspace')) {
-          return response(state, null, {
-            cards: [{
-              type: 'businessDashboard',
-              data: {
-                companyName: state.companyName || 'Your Workspace',
-                industry: extractIndustry(state.companyDescription || ''),
-                metrics: { inventory: 0, pipeline: 0, team: 1, documents: 0 },
-              },
-            }],
-            followUpMessage: 'You can manage everything here in the chat. What would you like to do?',
-          });
         }
         if (lowerMsg.includes('team') || lowerMsg.includes('employee') || lowerMsg.includes('staff')) {
           return response(state, "Team management is available in your full dashboard. Want me to open it?");
@@ -754,41 +805,38 @@ async function processMessage(input, services = {}) {
         if (lowerMsg.includes('customer') || lowerMsg.includes('pipeline') || lowerMsg.includes('lead') || lowerMsg.includes('follow')) {
           return response(state, "Your sales pipeline is empty right now. Want to add your first customer or import a list?");
         }
-        return response(state, "I can help you add inventory, manage your team, set up compliance rules, or configure your sales pipeline. What would you like to start with?");
+        return response(state, "I can help you add inventory, manage your team, set up compliance rules, or configure your sales pipeline. What would you like to start with?", {
+          promptChips: ['Add inventory', 'Set up compliance', 'Sales pipeline', 'View vault'],
+        });
       }
 
-      // Consumer-authenticated: vault/dashboard
-      if (lowerMsg.includes('dashboard') || lowerMsg.includes('vault') || lowerMsg.includes('my records') ||
-          lowerMsg.includes('my stuff') || lowerMsg.includes('see my') || lowerMsg.includes('show my')) {
-        return handleShowVault(state);
+      // ── Business account without vertical — prompt to select one ──
+      if (state.audienceType === 'business' && !state.businessVertical) {
+        if (state.companyName) {
+          state.step = 'select_vertical';
+          return response(state, `What does ${state.companyName} focus on?`, {
+            promptChips: ['Property Management', 'Deal Analysis & Investment', 'Auto Dealer', 'Sales & Marketing', 'Other'],
+          });
+        }
+        // Fall through to general consumer routing below
       }
 
-      // Logbook
-      if (lowerMsg.includes('logbook') || lowerMsg.includes('log book') || lowerMsg.includes('history') ||
-          lowerMsg.includes('entries') || lowerMsg.includes('log entry') || lowerMsg.includes('add entry') ||
-          lowerMsg.includes('log something') || lowerMsg.includes('update log') || lowerMsg.includes('new entry')) {
-        return handleShowLogbook(state);
-      }
-
-      // Add another record
-      if (lowerMsg.includes('another') || lowerMsg.includes('add') || lowerMsg.includes('create') ||
-          lowerMsg.includes('new record') || lowerMsg.includes('track') || lowerMsg.includes('keep track') ||
-          lowerMsg.includes('record of') || lowerMsg.includes('set up')) {
-        return response(state, "What would you like to create a record of?");
-      }
+      // ── Consumer record creation ──
 
       // Detect vehicle intent
       if (lowerMsg.includes('car') || lowerMsg.includes('vehicle') || lowerMsg.includes('truck') ||
-          lowerMsg.includes('motorcycle') || lowerMsg.includes('auto') || lowerMsg.includes('vin')) {
+          lowerMsg.includes('motorcycle') || lowerMsg.includes('vin')) {
         state.step = 'car_onboarding_vin';
         state.carData = {};
         return response(state, "What's your VIN? You'll find it on your dashboard near the windshield or on your registration card.");
       }
 
-      // Detect property intent
+      // Detect property intent (consumer)
       if (lowerMsg.includes('home') || lowerMsg.includes('house') || lowerMsg.includes('property') ||
           lowerMsg.includes('real estate') || lowerMsg.includes('apartment') || lowerMsg.includes('condo')) {
-        return response(state, "Property records are coming soon. For now, I can help you set up a vehicle record. Would you like to do that instead?");
+        return response(state, "Property records are coming soon. For now, I can help you set up a vehicle or credential record. What would you like to do?", {
+          promptChips: ['Add a vehicle', 'Add a credential', 'View my vault'],
+        });
       }
 
       // Detect student/education intent
@@ -809,19 +857,34 @@ async function processMessage(input, services = {}) {
         return handleCredentialDetection(state, message, lowerMsg);
       }
 
+      // Add another record (generic)
+      if (lowerMsg.includes('another') || lowerMsg.includes('new record') || lowerMsg.includes('record of')) {
+        return response(state, "What would you like to create a record of?", {
+          promptChips: ['Vehicle', 'Credential', 'Education record'],
+        });
+      }
+
       // Detect general asset/possession — short inputs that are likely things to track
-      // (e.g., "painting", "guitar", "boat", "jewelry", "watch", "camera")
       const words = message.trim().split(/\s+/);
       if (words.length <= 4 && !lowerMsg.includes('?') && !lowerMsg.includes('help') &&
           !lowerMsg.includes('what') && !lowerMsg.includes('how') && !lowerMsg.includes('why')) {
         const assetName = lowerMsg.replace(/^(my|a|an|the)\s+/i, '').trim();
-        return response(state, `I can help you create a record for your ${assetName}. Would you like to get started? I'll walk you through documenting and verifying it.`);
+        if (assetName.length > 1) {
+          return response(state, `I can help you create a record for your ${assetName}. Would you like to get started? I'll walk you through documenting and verifying it.`);
+        }
       }
 
-      // No specific intent detected — fall through to AI with a fallback
+      // No specific intent detected — fall through to AI with a helpful fallback
       return response(state,
-        "I can help you create verified records of vehicles, property, credentials, and more. You can also view your vault, add a logbook entry, or tell me what you'd like to keep track of.",
-        { useAI: true });
+        "I can help you set up your business, create records for vehicles or property, manage credentials, or view your vault. What would you like to do?",
+        {
+          useAI: true,
+          promptChips: state.audienceType === 'business'
+            ? ['Set up my workspace', 'Add a record', 'View my vault']
+            : (state.records && state.records.length > 0)
+              ? ['View my vault', 'Add another record', 'Set up a business']
+              : ['Add a vehicle', 'Add a credential', 'View my vault'],
+        });
     }
 
     // ── Vehicle Flow ──
@@ -1291,6 +1354,69 @@ async function processMessage(input, services = {}) {
       }
       // Didn't match yes/no — treat as new input (unauthenticated chat)
       return response(state, getDemoResponse(message));
+    }
+
+    // ── Post-Auth Business Setup ──
+
+    case 'biz_collect_company_name': {
+      state.companyName = message.trim();
+      state.step = 'biz_collect_company_description';
+      return response(state, `What does ${state.companyName} do? Just a sentence or two.`);
+    }
+
+    case 'biz_collect_company_description': {
+      state.companyDescription = message.trim();
+      state.step = 'select_vertical';
+      return response(state, `Got it. What does ${state.companyName} focus on?`, {
+        promptChips: ['Property Management', 'Deal Analysis & Investment', 'Auto Dealer', 'Sales & Marketing', 'Other'],
+      });
+    }
+
+    case 'select_vertical': {
+      if (lowerMsg.includes('property') || lowerMsg.includes('real estate') || lowerMsg.includes('rental') ||
+          lowerMsg.includes('tenant') || lowerMsg.includes('landlord') || lowerMsg.includes('building')) {
+        state.businessVertical = 'real_estate';
+        state.step = 'authenticated';
+        return response(state, `Welcome to your property management workspace, ${state.name || ''}. What would you like to do?`, {
+          promptChips: ['Add a property', 'Onboard a tenant', 'Maintenance request', 'View properties'],
+        });
+      }
+      if (lowerMsg.includes('deal') || lowerMsg.includes('analyst') || lowerMsg.includes('investment') ||
+          lowerMsg.includes('m&a') || lowerMsg.includes('lbo') || lowerMsg.includes('equity') ||
+          lowerMsg.includes('screening') || lowerMsg.includes('vetting')) {
+        state.businessVertical = 'analyst';
+        state.step = 'authenticated';
+        return response(state, `Welcome to your analyst workspace, ${state.name || ''}. What would you like to do?`, {
+          promptChips: ['Vet a new deal', 'Write a POV', 'View pipeline'],
+        });
+      }
+      if (lowerMsg.includes('auto') || lowerMsg.includes('dealer') || lowerMsg.includes('car') ||
+          lowerMsg.includes('vehicle') || lowerMsg.includes('inventory')) {
+        state.businessVertical = 'auto';
+        state.step = 'authenticated';
+        return response(state, `Welcome to your auto dealer workspace, ${state.name || ''}. What would you like to do?`, {
+          promptChips: ['Add a vehicle', 'View inventory', 'Sales pipeline'],
+        });
+      }
+      if (lowerMsg.includes('sales') || lowerMsg.includes('marketing') || lowerMsg.includes('crm') ||
+          lowerMsg.includes('lead') || lowerMsg.includes('pipeline') || lowerMsg.includes('customer')) {
+        state.businessVertical = 'sales';
+        state.step = 'authenticated';
+        return response(state, `Welcome to your sales workspace, ${state.name || ''}. What would you like to do?`, {
+          promptChips: ['Add a customer', 'View pipeline', 'Set up follow-up'],
+        });
+      }
+      // "Other" or unrecognized — generic business
+      if (lowerMsg.includes('other') || message.trim().length > 0) {
+        state.businessVertical = 'general';
+        state.step = 'authenticated';
+        return response(state, `Your workspace is ready, ${state.name || ''}. What would you like to do?`, {
+          promptChips: ['Add a record', 'Set up compliance', 'View vault'],
+        });
+      }
+      return response(state, "What does your business focus on?", {
+        promptChips: ['Property Management', 'Deal Analysis & Investment', 'Auto Dealer', 'Sales & Marketing', 'Other'],
+      });
     }
 
     // ── Default / Idle ──
@@ -1864,6 +1990,65 @@ function handleShowLogbook(state) {
         recordCount: records.length,
       },
     }],
+  });
+}
+
+// ── Analyst Hub (stub — expanded in Part 2) ──
+
+function handleAnalystHub(state, lowerMsg) {
+  if (lowerMsg.includes('deal') || lowerMsg.includes('vet') || lowerMsg.includes('review') ||
+      lowerMsg.includes('cim') || lowerMsg.includes('new deal') || lowerMsg.includes('package') ||
+      lowerMsg.includes('analyze')) {
+    state.step = 'analyst_deal_company';
+    state.dealData = {};
+    return response(state, "Let's vet this deal. What's the company name?");
+  }
+  if (lowerMsg.includes('pov') || lowerMsg.includes('point of view') || lowerMsg.includes('write up') ||
+      lowerMsg.includes('memo') || lowerMsg.includes('thesis') || lowerMsg.includes('investment memo')) {
+    return response(state, "POV writing is coming soon. For now, you can vet deals and review your pipeline.", {
+      promptChips: ['Vet a new deal', 'View pipeline'],
+    });
+  }
+  if (lowerMsg.includes('pipeline') || lowerMsg.includes('deals') || lowerMsg.includes('status') ||
+      lowerMsg.includes('my deals')) {
+    return response(state, "No deals yet. Want to vet one?", {
+      promptChips: ['Vet a new deal'],
+    });
+  }
+  return response(state, `Welcome to your analyst workspace, ${state.name || ''}. What would you like to do?`, {
+    promptChips: ['Vet a new deal', 'Write a POV', 'View pipeline'],
+  });
+}
+
+// ── Real Estate Hub (stub — expanded in Part 3) ──
+
+function handleRealEstateHub(state, lowerMsg) {
+  if (lowerMsg.includes('property') || lowerMsg.includes('add property') || lowerMsg.includes('new property') ||
+      lowerMsg.includes('building') || lowerMsg.includes('address') || lowerMsg.includes('rental')) {
+    state.step = 're_property_address';
+    state.propertyData = {};
+    return response(state, "What's the property address?");
+  }
+  if (lowerMsg.includes('tenant') || lowerMsg.includes('new tenant') || lowerMsg.includes('renter') ||
+      lowerMsg.includes('lease') || lowerMsg.includes('move in') || lowerMsg.includes('onboard tenant')) {
+    return response(state, "Tenant onboarding is coming soon. For now, you can add properties and view your portfolio.", {
+      promptChips: ['Add a property', 'View properties'],
+    });
+  }
+  if (lowerMsg.includes('maintenance') || lowerMsg.includes('repair') || lowerMsg.includes('fix') ||
+      lowerMsg.includes('broken') || lowerMsg.includes('issue') || lowerMsg.includes('work order')) {
+    return response(state, "Maintenance tracking is coming soon. For now, you can add properties and view your portfolio.", {
+      promptChips: ['Add a property', 'View properties'],
+    });
+  }
+  if (lowerMsg.includes('properties') || lowerMsg.includes('portfolio') || lowerMsg.includes('overview') ||
+      lowerMsg.includes('buildings') || lowerMsg.includes('my properties')) {
+    return response(state, "No properties yet. Want to add one?", {
+      promptChips: ['Add a property'],
+    });
+  }
+  return response(state, `Welcome to your property management workspace, ${state.name || ''}. What would you like to do?`, {
+    promptChips: ['Add a property', 'Onboard a tenant', 'Maintenance request', 'View properties'],
   });
 }
 
