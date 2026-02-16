@@ -398,6 +398,8 @@ function defaultState() {
     vertical: null,
     audienceType: null,
     businessVertical: null,
+    raasConfigured: false,
+    currentHub: null,
     name: null,
     email: null,
     companyName: null,
@@ -780,7 +782,24 @@ async function processMessage(input, services = {}) {
       const isBizIntent = businessKeywords.some(k => lowerMsg.includes(k));
 
       if (isBizIntent) {
-        // Already have company info — go to vertical selection
+        // Already configured — don't restart, route to vertical hub
+        if (state.raasConfigured && state.businessVertical) {
+          const verticalLabel = state.businessVertical === 'real_estate' ? 'property management'
+            : state.businessVertical === 'analyst' ? 'deal analysis'
+            : state.businessVertical === 'auto' ? 'auto dealer'
+            : state.businessVertical;
+          const chips = state.businessVertical === 'real_estate'
+            ? ['Add a property', 'Onboard a tenant', 'Maintenance request', 'View properties']
+            : state.businessVertical === 'analyst'
+            ? ['Vet a new deal', 'Write a POV', 'View pipeline']
+            : state.businessVertical === 'auto'
+            ? ['Add a vehicle', 'View inventory', 'Sales pipeline']
+            : ['Add a record', 'Set up compliance', 'View vault'];
+          return response(state, `Your ${state.companyName || ''} workspace is already configured for ${verticalLabel}. Want to adjust your setup or get to work?`, {
+            promptChips: chips,
+          });
+        }
+        // Already have company info but no RAAS — go to vertical selection
         if (state.companyName && state.companyDescription) {
           state.audienceType = 'business';
           state.step = 'select_vertical';
@@ -940,6 +959,14 @@ async function processMessage(input, services = {}) {
         if (intent.includes('business') || intent.includes('workspace') || intent.includes('company') ||
             vertical === 'property management' || vertical === 'real estate' ||
             vertical === 'investment' || vertical === 'automotive') {
+          // Already configured — route to hub, don't restart
+          if (state.raasConfigured && state.businessVertical) {
+            state.step = 'authenticated';
+            return processMessage({
+              state, userInput: classified.originalMessage || message, action: null, actionData: {},
+              fileData: input.fileData || null, fileName: input.fileName || null, surface: input.surface || 'landing',
+            }, services);
+          }
           state.audienceType = 'business';
           if (state.companyName && state.companyDescription) {
             state.step = 'select_vertical';
@@ -1988,6 +2015,8 @@ async function processMessage(input, services = {}) {
         }
 
         // Go to raas_ready — generate the emotional onboarding promise
+        state.raasConfigured = true;
+        state.currentHub = state.businessVertical;
         state.step = 'raas_ready';
         return response(state, null, {
           generateOnboardingPromise: true,
@@ -2077,6 +2106,8 @@ async function processMessage(input, services = {}) {
           state.businessVertical = 'general';
         }
         state.audienceType = 'business';
+        state.raasConfigured = true;
+        state.currentHub = state.businessVertical;
         state.step = 'raas_ready';
         return response(state, ackMsg, {
           generateOnboardingPromise: true,
@@ -2137,6 +2168,8 @@ async function processMessage(input, services = {}) {
         // Confirmed — set vertical and go to raas_ready
         state.businessVertical = state.businessVertical || 'general';
         state.audienceType = 'business';
+        state.raasConfigured = true;
+        state.currentHub = state.businessVertical;
         state.step = 'raas_ready';
         return response(state, null, {
           generateOnboardingPromise: true,
@@ -2892,8 +2925,22 @@ function handleShowVault(state) {
     }],
     followUpMessage: records.length > 0
       ? 'Tap a record to see its full logbook, or add another record.'
-      : 'Your vault is empty. Want to create your first record?',
+      : getEmptyVaultMessage(state),
   });
+}
+
+function getEmptyVaultMessage(state) {
+  const v = state.businessVertical;
+  if (v === 'real_estate') {
+    return "Your property records start here. Add your first property and you've got a verified title no competitor can match. What's the address?";
+  }
+  if (v === 'analyst') {
+    return "Your deal pipeline starts here. Upload your first deal package and let's get it vetted.";
+  }
+  if (v === 'auto') {
+    return "Your inventory starts here. Let's get your first vehicle in -- what's the VIN?";
+  }
+  return "Nothing here yet. What would you like to start with -- a vehicle, a credential, or something else?";
 }
 
 function handleShowLogbook(state) {

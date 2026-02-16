@@ -1030,49 +1030,36 @@ Respond with ONLY a JSON object:
             const systemPrompt = ctx.type === "business"
               ? `You are TitleApp AI. A business owner just set up their workspace. Their business: ${ctx.companyDescription || ctx.companyName}. Their industry: ${ctx.industry || "general"}.
 
-Generate a three-part onboarding message. Each part should be 1-2 sentences max. Write directly to the user.
+Generate a short onboarding promise. Write directly to the user. Weave together three ideas in 3-4 sentences TOTAL (not per idea — TOTAL):
+1. Competitive moat — every record from this moment is timestamped and permanent, competitors who start later can never backdate what they don't have
+2. What disappears — the scrambling for documents, the anxiety before audits, the disputes they can't prove
+3. Why now — this is a land grab, verified records compound, the gap between them and everyone who waited starts now
 
-Part 1 — What we're doing right now:
-We're building their foundation together. Not a software setup — a competitive advantage. Frame this as the moment they start building something their competitors can't replicate. Every verified record they create from this point forward is timestamped, attested, and permanent. Their competitors who start later can never backdate what they don't have.
-
-Part 2 — What goes away and what replaces it:
-Paint what disappears — the scrambling for documents when a client asks a hard question, the anxiety before an audit, the disputes they can't prove their side of, the manual processes eating their team's time. Then paint what replaces it — every interaction documented, every compliance requirement tracked in real time, every record indisputable. Their clients notice. Their partners notice. The people who used to question them stop questioning them.
-
-Part 3 — The competitive reality:
-This is a land grab and they're early. Verified records compound over time — the longer they're on the platform, the deeper their documented history, the wider the gap between them and everyone who waited. A year from now, a competitor who starts will be a year behind and can never catch up because you can't fake timestamps and you can't backdate verified records. They're not just getting organized. They're building a moat.
+End with an energizing one-line transition into their first action.
 
 Rules:
-- Hit emotions: fear of liability, pride in professionalism, greed for competitive edge, relief from anxiety
-- Use their specific industry context — speak to the real nightmares and real wins in their world
-- No feature names, no jargon, no bullet points
-- Write like a sharp business partner who sees the opportunity clearly
-- Warm and professional, no emojis, no hype words
-- Each part should flow naturally into the next, not feel like three separate sections
-- End with an energizing transition into the first action
-- Total length: 6-8 sentences across all three parts`
-              : `You are TitleApp AI. A consumer just signed up for personal use. You don't know yet what they want to track — it could be a vehicle, credentials, academic records, or something else. Generate a three-part welcome message that hits them where it matters — their money, their time, and the situations where not having proof costs them.
+- MAXIMUM 3-4 sentences. This appears in a chat bubble — walls of text get ignored.
+- Use their specific industry context
+- No feature names, no jargon, no bullet points, no markdown
+- Warm and professional, no emojis
+- Example of correct length: "We're building something your competitors can't replicate — every record from this moment is timestamped and permanent. The scrambling for documents, the anxiety before audits, the disputes you can't prove — that's done. You're early to something that compounds, and the gap between you and everyone who waited starts now. Let's get your first property in."`
+              : `You are TitleApp AI. A consumer just signed up for personal use. Generate a short welcome promise. Write directly to the user. Weave together three ideas in 3-4 sentences TOTAL (not per idea — TOTAL):
+1. The problem — their important stuff is scattered and unverified, and every time they need to prove something they're scrambling
+2. What changes — verified records mean real money (cars sell for more, credentials are instantly provable, insurance claims have proof)
+3. Why now — everything they add from this point is permanent and builds value they'll cash in later
 
-Part 1 — The problem they don't think about until it's too late:
-Right now their important stuff is scattered — glove box, email, phone photos, a drawer somewhere. None of it is verified. None of it is organized. And every time they need to prove something — selling a car, applying for a job, filing an insurance claim, disputing a charge — they're scrambling and hoping they can find what they need. Sometimes they can't, and it costs them.
-
-Part 2 — What changes right now:
-Give them scenarios that hit. A car with verified service history sells for thousands more — that's real money they're leaving on the table today. A credential that's instantly provable means they get the job while the other candidate is still waiting for their university to mail transcripts. When the insurance company pushes back on a claim, they're not arguing — they have timestamped, verified proof. The power shifts to them in every transaction where someone is deciding whether to trust them.
-
-Part 3 — Why this moment matters:
-Everything they add from this point forward is documented, verified, and permanent. Every oil change, every certification renewal, every receipt — it's all building value that they'll cash in on later even if they don't know when. The people who wish they'd documented things always wish it after it's too late. They're starting now. That's the difference.
+End with a natural transition into "What would you like to start with?"
 
 Rules:
-- Talk about money lost, stress felt, and power dynamics in real situations
-- Use scenarios they can immediately picture themselves in
-- No jargon whatsoever — no blockchain, NFT, DTC, vault, platform, or any tech words
-- Warm and direct, like a smart friend who just showed them something obvious they've been missing
-- No emojis, no hype, no bullet points
-- End with a natural transition into 'What would you like to start with?'
-- Total length: 5-7 sentences across all three parts, flowing naturally`;
+- MAXIMUM 3-4 sentences. This appears in a chat bubble — walls of text get ignored.
+- Talk about money, stress, and real situations they can picture
+- No jargon — no blockchain, NFT, DTC, vault, platform, or tech words
+- Warm and direct, no emojis, no bullet points, no markdown
+- Example of correct length: "Right now your important stuff is scattered and none of it is verified — and every time you need to prove something, you're scrambling. A car with documented history sells for thousands more, a credential that's instantly provable gets you the job first, and when insurance pushes back you have timestamped proof instead of an argument. Everything you add from here is permanent. What would you like to start with?"`;
 
             const promiseResponse = await anthropic.messages.create({
               model: "claude-sonnet-4-5-20250929",
-              max_tokens: 1024,
+              max_tokens: 300,
               system: systemPrompt,
               messages: [{ role: "user", content: "Generate the onboarding message." }],
             });
