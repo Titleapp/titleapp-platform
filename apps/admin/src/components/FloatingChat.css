@@ -320,183 +320,152 @@
   }
 }
 
-/* Structured Data Rendering */
-.chat-structured-data {
-  margin-top: 12px;
-  max-width: 85%;
-}
+/* ── Chat Cards (shared card system) ── */
 
-/* Analyst Result */
-.structured-analyst-result {
+.chat-card {
   background: white;
-  border: 2px solid #E2E8F0;
-  border-radius: 12px;
-  padding: 16px;
-  animation: fadeInUp 0.3s ease-out 0.1s backwards;
+  border-radius: 16px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  margin: 0.5rem 0;
+  animation: fadeInUp 0.3s ease-out;
+  max-width: 100%;
 }
 
-.analyst-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 12px;
+.chat-card-header {
+  padding: 1.25rem 1.5rem;
 }
 
-.analyst-emoji {
-  font-size: 32px;
-}
-
-.analyst-header h4 {
-  flex: 1;
-  margin: 0;
-  font-size: 18px;
-  font-weight: 700;
-  color: #0F172A;
-}
-
-.analyst-score {
-  font-size: 16px;
-  font-weight: 700;
-  color: #7C3AED;
-  background: #F3E8FF;
-  padding: 4px 12px;
-  border-radius: 8px;
-}
-
-.analyst-summary {
-  color: #475569;
-  font-size: 14px;
-  line-height: 1.6;
-  margin: 0 0 12px 0;
-}
-
-.analyst-findings h5 {
-  font-size: 14px;
-  font-weight: 700;
-  color: #0F172A;
-  margin: 0 0 8px 0;
-}
-
-.analyst-findings ul {
-  margin: 0;
-  padding-left: 20px;
-}
-
-.analyst-findings li {
-  color: #475569;
-  font-size: 14px;
-  line-height: 1.6;
-  margin-bottom: 4px;
-}
-
-/* DTC Preview */
-.structured-dtc-preview {
-  background: white;
-  border: 2px solid #E2E8F0;
-  border-radius: 12px;
-  padding: 16px;
-  animation: fadeInUp 0.3s ease-out 0.1s backwards;
-}
-
-.dtc-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 12px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid #E2E8F0;
-}
-
-.dtc-header h4 {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 700;
-  color: #0F172A;
-}
-
-.dtc-verified {
-  background: #10B981;
+.chat-card-header-title {
   color: white;
-  font-size: 12px;
+  font-size: 1.1rem;
   font-weight: 600;
-  padding: 4px 10px;
-  border-radius: 6px;
-}
-
-.dtc-details {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.dtc-field {
-  display: flex;
-  gap: 8px;
-  font-size: 14px;
-  line-height: 1.5;
-}
-
-.dtc-label {
-  font-weight: 600;
-  color: #64748B;
-  min-width: 100px;
-}
-
-.dtc-value {
-  color: #0F172A;
-  flex: 1;
-}
-
-/* Trade Summary */
-.structured-trade-summary {
-  background: white;
-  border: 2px solid #E2E8F0;
-  border-radius: 12px;
-  padding: 16px;
-  animation: fadeInUp 0.3s ease-out 0.1s backwards;
-}
-
-.structured-trade-summary h4 {
-  margin: 0 0 12px 0;
-  font-size: 16px;
-  font-weight: 700;
-  color: #0F172A;
-  padding-bottom: 12px;
-  border-bottom: 1px solid #E2E8F0;
-}
-
-.trade-details {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.trade-field {
-  font-size: 14px;
-  line-height: 1.5;
-  color: #475569;
-}
-
-.trade-field strong {
-  color: #0F172A;
-  font-weight: 600;
-  margin-right: 6px;
-}
-
-/* Generic Structured Data */
-.structured-generic {
-  background: #F8FAFC;
-  border: 1px solid #E2E8F0;
-  border-radius: 8px;
-  padding: 12px;
-  overflow-x: auto;
-}
-
-.structured-generic pre {
   margin: 0;
-  font-size: 12px;
-  color: #475569;
-  font-family: 'Monaco', 'Consolas', monospace;
+}
+
+.chat-card-header-subtitle {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.85rem;
+  margin: 0.25rem 0 0;
+}
+
+.chat-card-body {
+  padding: 1.5rem;
+}
+
+.chat-card-btn-primary {
+  width: 100%;
+  padding: 0.875rem;
+  background: #7C3AED;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.95rem;
+  transition: opacity 0.2s ease;
+}
+
+.chat-card-btn-primary:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.chat-card-btn-primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.chat-card-btn-secondary {
+  padding: 0.75rem;
+  background: #F8FAFC;
+  color: #64748B;
+  border: 2px solid #E2E8F0;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.chat-card-btn-secondary:hover {
+  background: #F1F5F9;
+}
+
+.chat-card-btn-option {
+  width: 100%;
+  padding: 1rem;
+  background: #F8FAFC;
+  border: 2px solid #E2E8F0;
+  border-radius: 10px;
+  color: #1E293B;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 600;
+  text-align: left;
+  transition: all 0.2s ease;
+}
+
+.chat-card-btn-option:hover {
+  border-color: #7C3AED;
+  background: #F3E8FF;
+}
+
+.chat-card-dropzone {
+  border: 2px dashed #CBD5E1;
+  border-radius: 10px;
+  padding: 2rem;
+  text-align: center;
+  margin-bottom: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.chat-card-dropzone:hover {
+  border-color: #7C3AED;
+  background: #F3E8FF;
+}
+
+.chat-card-vault-item {
+  background: #F8FAFC;
+  border-radius: 10px;
+  padding: 0.75rem;
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.chat-card-vault-item:hover {
+  background: #F1F5F9;
+}
+
+/* ── Prompt chips ── */
+
+.chat-prompt-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 4px 0;
+  animation: fadeInUp 0.3s ease-out;
+}
+
+.chat-prompt-chip {
+  padding: 8px 16px;
+  background: #F3E8FF;
+  color: #7C3AED;
+  border: 1px solid #DDD6FE;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.chat-prompt-chip:hover {
+  background: #EDE9FE;
+  border-color: #7C3AED;
 }
 
 /* Mobile Responsive */
