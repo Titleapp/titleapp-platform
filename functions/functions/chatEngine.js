@@ -1746,7 +1746,8 @@ function handleShowVault(state) {
             docCount,
             id: r.id,
             createdAt: r.createdAt,
-            logbook: (r.logbook || []).slice(0, 3),
+            logbook: r.logbook || [],
+            documents: r.documents || [],
             totalLogEntries: logCount,
           };
         }),
