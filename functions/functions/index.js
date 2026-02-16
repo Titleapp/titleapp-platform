@@ -20,6 +20,9 @@ const {
   handleRaasPackagesGet,
 } = require("./raas/raas.handlers");
 
+// Chat Engine (conversational state machine)
+const { processMessage: chatEngineProcess, defaultState: chatEngineDefaultState } = require("./chatEngine");
+
 if (!admin.apps.length) admin.initializeApp();
 const db = admin.firestore();
 
@@ -201,6 +204,225 @@ function nowServerTs() {
 function identityDocId({ uid, tenantId, purpose }) {
   const p = String(purpose || "general").toLowerCase().replace(/[^a-z0-9_-]+/g, "_");
   return `idv_${uid}_${tenantId}_${p}`.slice(0, 200);
+}
+
+// ----------------------------
+// Chat Engine Internal Services
+// ----------------------------
+
+/**
+ * Decode VIN via NHTSA (direct call, no HTTP round-trip).
+ * Same logic as the /v1/vin:decode endpoint.
+ */
+async function decodeVinInternal(vin) {
+  const vinStr = String(vin).toUpperCase().trim();
+  const nhtsaUrl = `https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVinValues/${vinStr}?format=json`;
+  console.log("🔍 chatEngine: decoding VIN via NHTSA:", vinStr);
+
+  const nhtsaResponse = await fetch(nhtsaUrl);
+  if (!nhtsaResponse.ok) throw new Error(`NHTSA API returned ${nhtsaResponse.status}`);
+
+  const nhtsaData = await nhtsaResponse.json();
+  const result = nhtsaData.Results?.[0];
+
+  if (!result || (result.ErrorCode && result.ErrorCode !== "0" && result.ErrorCode !== 0)) {
+    return { valid: false, vin: vinStr };
+  }
+
+  const vehicle = {
+    year: result.ModelYear || null,
+    make: result.Make || null,
+    model: result.Model || null,
+    trim: result.Trim || null,
+    engineCylinders: result.EngineCylinders || null,
+    engineDisplacement: result.DisplacementL || null,
+    fuelType: result.FuelTypePrimary || null,
+    plantCity: result.PlantCity || null,
+    plantState: result.PlantStateProvince || null,
+  };
+
+  // Cache (best-effort)
+  try {
+    await db.collection("vinCache").doc(vinStr).set({
+      vin: vinStr, vehicle, decodedAt: nowServerTs(), source: "nhtsa",
+    });
+  } catch (e) { /* ignore cache failures */ }
+
+  return { valid: true, vin: vinStr, vehicle };
+}
+
+/**
+ * Create Firebase Auth user + Firestore doc + return custom token.
+ * Same logic as the /v1/auth:signup endpoint.
+ */
+async function signupInternal({ email, name, accountType, companyName, companyDescription }) {
+  let userRecord;
+  try {
+    userRecord = await admin.auth().createUser({ email, displayName: name || null });
+  } catch (e) {
+    if (e.code === "auth/email-already-exists") {
+      userRecord = await admin.auth().getUserByEmail(email);
+    } else throw e;
+  }
+
+  const userRef = db.collection("users").doc(userRecord.uid);
+  const userSnap = await userRef.get();
+  if (!userSnap.exists) {
+    await userRef.set({
+      email,
+      name: name || null,
+      accountType: accountType || "consumer",
+      companyName: companyName || null,
+      companyDescription: companyDescription || null,
+      termsAcceptedAt: null,
+      createdAt: nowServerTs(),
+      createdVia: "chat",
+    });
+  }
+
+  const customToken = await admin.auth().createCustomToken(userRecord.uid);
+  return { ok: true, uid: userRecord.uid, token: customToken };
+}
+
+/**
+ * Execute fire-and-forget side effects from chatEngine.
+ * Failures are logged but do not break the response.
+ */
+async function executeChatSideEffects(sideEffects, userId) {
+  for (const effect of (sideEffects || [])) {
+    try {
+      switch (effect.action) {
+        case 'acceptTerms': {
+          if (!userId) break;
+          await db.collection("users").doc(userId).set(
+            { termsAcceptedAt: nowServerTs() },
+            { merge: true }
+          );
+          console.log("chatEngine side-effect: acceptTerms OK for", userId);
+          break;
+        }
+        case 'claimTenant': {
+          if (!userId) break;
+          const d = effect.data || {};
+          const tenantId = slugifyTenantId(d.tenantName);
+          const tenantRef = db.collection("tenants").doc(tenantId);
+          const tSnap = await tenantRef.get();
+          if (!tSnap.exists) {
+            await tenantRef.set({
+              name: d.tenantName || tenantId,
+              tenantType: d.tenantType || "personal",
+              vertical: d.vertical || "GLOBAL",
+              jurisdiction: d.jurisdiction || "GLOBAL",
+              status: "active",
+              createdAt: nowServerTs(),
+              createdBy: userId,
+            });
+          }
+          const memSnap = await db.collection("memberships")
+            .where("userId", "==", userId)
+            .where("tenantId", "==", tenantId)
+            .limit(1)
+            .get();
+          if (memSnap.empty) {
+            await db.collection("memberships").add({
+              userId,
+              tenantId,
+              role: d.tenantType === "business" ? "admin" : "owner",
+              status: "active",
+              createdAt: nowServerTs(),
+            });
+          }
+          console.log("chatEngine side-effect: claimTenant OK", tenantId);
+          break;
+        }
+        case 'createDtc': {
+          if (!userId) break;
+          const d = effect.data || {};
+          const ref = await db.collection("dtcs").add({
+            userId,
+            type: d.type,
+            metadata: d.metadata || {},
+            fileIds: [],
+            blockchainProof: null,
+            logbookCount: 0,
+            createdAt: nowServerTs(),
+          });
+          console.log("chatEngine side-effect: createDtc OK", ref.id);
+          break;
+        }
+        default:
+          console.warn("chatEngine side-effect: unknown action", effect.action);
+      }
+    } catch (e) {
+      console.warn(`chatEngine side-effect ${effect.action} failed:`, e.message);
+    }
+  }
+}
+
+/**
+ * AI chat fallthrough — call Claude when chatEngine returns useAI: true.
+ * Only for authenticated users with free-form questions.
+ */
+async function handleAIChatFallthrough(message, userId, tenantId) {
+  // Event-sourced: log received message
+  const eventRef = await db.collection("messageEvents").add({
+    tenantId: tenantId || "public",
+    userId,
+    type: "chat:message:received",
+    message,
+    context: {},
+    preferredModel: "claude",
+    createdAt: nowServerTs(),
+  });
+
+  let aiResponse = "";
+
+  try {
+    // Fetch conversation history (last 20 messages)
+    const historySnapshot = await db.collection("messageEvents")
+      .where("userId", "==", userId)
+      .orderBy("createdAt", "desc")
+      .limit(20)
+      .get();
+
+    const messages = [];
+    const history = historySnapshot.docs.reverse();
+    for (const doc of history) {
+      const evt = doc.data();
+      if (evt.type === "chat:message:received") {
+        messages.push({ role: "user", content: evt.message });
+      } else if (evt.type === "chat:message:responded") {
+        messages.push({ role: "assistant", content: evt.response });
+      }
+    }
+    messages.push({ role: "user", content: message });
+
+    const anthropic = getAnthropic();
+    const response = await anthropic.messages.create({
+      model: "claude-sonnet-4-5-20250929",
+      max_tokens: 2048,
+      system: "You are a helpful assistant for TitleApp, a platform that helps people keep track of important records (car titles, home documents, pet records, student transcripts, etc.). Be concise, friendly, and focus on helping users understand how to organize and protect their important documents.",
+      messages,
+    });
+
+    aiResponse = response.content[0]?.text || "I couldn't generate a response. Please try again.";
+  } catch (e) {
+    console.error("chatEngine AI fallthrough failed:", e.message);
+    aiResponse = "I'm having trouble connecting right now. Please try again in a moment.";
+  }
+
+  // Event-sourced: log response
+  await db.collection("messageEvents").add({
+    tenantId: tenantId || "public",
+    userId,
+    type: "chat:message:responded",
+    requestEventId: eventRef.id,
+    preferredModel: "claude",
+    response: aiResponse,
+    createdAt: nowServerTs(),
+  });
+
+  return aiResponse;
 }
 
 // ----------------------------
@@ -394,6 +616,112 @@ exports.api = onRequest(
       } catch (e) {
         console.error("auth:signup failed:", e);
         return jsonError(res, 500, "Signup failed");
+      }
+    }
+
+    // ----------------------------
+    // CHAT ENGINE (new conversational state machine)
+    // Handles both authenticated and unauthenticated sessions.
+    // Legacy chat:message requests (without sessionId) fall through to the
+    // auth-gated handler below.
+    // ----------------------------
+    if (route === "/chat:message" && method === "POST" && body.sessionId) {
+      const { sessionId, userInput, action, actionData, fileData, fileName, surface } = body;
+
+      try {
+        // Optional auth — verify token if present but don't reject if missing
+        let authUser = null;
+        const bearerToken = getAuthBearerToken(req);
+        if (bearerToken) {
+          try {
+            authUser = await admin.auth().verifyIdToken(bearerToken);
+          } catch (e) {
+            console.warn("chatEngine: bearer token invalid, continuing as unauthenticated");
+          }
+        }
+
+        // Look up or create conversation session in Firestore
+        const sessionRef = db.collection("chatSessions").doc(sessionId);
+        const sessionSnap = await sessionRef.get();
+        let sessionState = sessionSnap.exists
+          ? (sessionSnap.data().state || {})
+          : {};
+
+        // If authenticated and session has no userId, attach it
+        if (authUser && !sessionState.userId) {
+          sessionState.userId = authUser.uid;
+        }
+
+        // Build services for chatEngine (called during processing)
+        const services = {
+          decodeVin: decodeVinInternal,
+          signup: signupInternal,
+        };
+
+        // Process through chatEngine
+        const engineResult = await chatEngineProcess({
+          state: sessionState,
+          userInput: userInput || "",
+          action: action || null,
+          actionData: actionData || {},
+          fileData: fileData || null,
+          fileName: fileName || null,
+          surface: surface || "landing",
+        }, services);
+
+        // If signup just happened, the engine state now has userId + authToken
+        // Use it for subsequent side effects
+        const effectiveUserId = engineResult.state.userId || (authUser && authUser.uid) || null;
+
+        // Execute fire-and-forget side effects
+        if (engineResult.sideEffects && engineResult.sideEffects.length > 0) {
+          // Run side effects without blocking the response
+          executeChatSideEffects(engineResult.sideEffects, effectiveUserId)
+            .catch(e => console.warn("chatEngine side-effects batch error:", e.message));
+        }
+
+        // Handle AI fallthrough (authenticated free-form chat)
+        let aiMessage = null;
+        if (engineResult.useAI && effectiveUserId) {
+          try {
+            aiMessage = await handleAIChatFallthrough(
+              userInput,
+              effectiveUserId,
+              "public"
+            );
+          } catch (e) {
+            console.error("chatEngine AI fallthrough error:", e.message);
+            aiMessage = "I'm having trouble connecting right now. Please try again in a moment.";
+          }
+        }
+
+        // Determine final message
+        const finalMessage = aiMessage || engineResult.message || "";
+
+        // Write updated state to Firestore
+        await sessionRef.set({
+          state: engineResult.state,
+          surface: surface || "landing",
+          userId: effectiveUserId,
+          ...(sessionSnap.exists ? {} : { createdAt: nowServerTs() }),
+          updatedAt: nowServerTs(),
+        }, { merge: true });
+
+        // Return response
+        return res.json({
+          ok: true,
+          message: finalMessage,
+          cards: engineResult.cards || [],
+          promptChips: engineResult.promptChips || [],
+          followUpMessage: engineResult.followUpMessage || null,
+          conversationState: engineResult.state.step,
+          // Pass auth token back to surface if signup just happened
+          ...(engineResult.state.authToken ? { authToken: engineResult.state.authToken } : {}),
+        });
+
+      } catch (e) {
+        console.error("chatEngine error:", e);
+        return jsonError(res, 500, "Chat engine failed", { details: e.message });
       }
     }
 
