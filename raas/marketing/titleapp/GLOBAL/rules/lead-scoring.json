@@ -1,0 +1,205 @@
+{
+  "rule_set_id": "lead_scoring_v1",
+  "version": "1.0.0",
+  "name": "Lead Scoring Rules",
+  "description": "Calculate lead score (0-100) and assign grade (A/B/C/D)",
+  "scoring_model": {
+    "base_score": 0,
+    "max_score": 100,
+    "grade_thresholds": {
+      "A": 70,
+      "B": 50,
+      "C": 30,
+      "D": 0
+    }
+  },
+  "signals": [
+    {
+      "signal_id": "email_quality",
+      "name": "Email Quality",
+      "rules": [
+        {
+          "condition": "email_domain == 'gmail.com' OR 'yahoo.com' OR 'hotmail.com'",
+          "points": 0,
+          "rationale": "Personal email (consumer)"
+        },
+        {
+          "condition": "email_domain != common_consumer_domains",
+          "points": 15,
+          "rationale": "Business email (B2B intent)"
+        },
+        {
+          "condition": "email_domain matches known_enterprise_list",
+          "points": 25,
+          "rationale": "Enterprise organization"
+        }
+      ]
+    },
+    {
+      "signal_id": "vertical_interest",
+      "name": "Vertical Fit",
+      "rules": [
+        {
+          "condition": "mentions 'dealership' OR 'car lot' OR 'auto sales'",
+          "points": 20,
+          "rationale": "Auto dealer vertical (high LTV)"
+        },
+        {
+          "condition": "mentions 'investment' OR 'PE' OR 'analyst'",
+          "points": 25,
+          "rationale": "Investment analyst vertical (highest LTV)"
+        },
+        {
+          "condition": "mentions 'real estate' OR 'agent' OR 'broker'",
+          "points": 15,
+          "rationale": "Real estate vertical (good fit)"
+        },
+        {
+          "condition": "mentions 'personal' OR 'my car' OR 'my home'",
+          "points": 5,
+          "rationale": "Consumer vertical (lower LTV)"
+        }
+      ]
+    },
+    {
+      "signal_id": "urgency",
+      "name": "Buying Urgency",
+      "rules": [
+        {
+          "condition": "message_contains 'need now' OR 'urgent' OR 'ASAP'",
+          "points": 15,
+          "rationale": "High urgency (ready to buy)"
+        },
+        {
+          "condition": "message_contains 'looking for' OR 'interested in'",
+          "points": 10,
+          "rationale": "Medium urgency (active buyer)"
+        },
+        {
+          "condition": "message_contains 'thinking about' OR 'researching'",
+          "points": 5,
+          "rationale": "Low urgency (early stage)"
+        },
+        {
+          "condition": "message_contains 'just curious' OR 'browsing'",
+          "points": 0,
+          "rationale": "No urgency (tire kicker)"
+        }
+      ]
+    },
+    {
+      "signal_id": "pain_point",
+      "name": "Clear Pain Point",
+      "rules": [
+        {
+          "condition": "mentions problem OR frustration OR challenge",
+          "points": 15,
+          "rationale": "Customer has identified pain"
+        },
+        {
+          "condition": "mentions current_solution AND expresses_dissatisfaction",
+          "points": 20,
+          "rationale": "Actively looking to replace current solution"
+        }
+      ]
+    },
+    {
+      "signal_id": "company_size",
+      "name": "Company Size (B2B only)",
+      "rules": [
+        {
+          "condition": "company_employees > 100",
+          "points": 15,
+          "rationale": "Enterprise (high budget)"
+        },
+        {
+          "condition": "company_employees 20-99",
+          "points": 10,
+          "rationale": "Mid-market (good fit)"
+        },
+        {
+          "condition": "company_employees < 20",
+          "points": 5,
+          "rationale": "Small business (limited budget)"
+        }
+      ]
+    },
+    {
+      "signal_id": "engagement",
+      "name": "Engagement Quality",
+      "rules": [
+        {
+          "condition": "message_length > 100_characters",
+          "points": 5,
+          "rationale": "Detailed inquiry (high intent)"
+        },
+        {
+          "condition": "asks_specific_questions",
+          "points": 10,
+          "rationale": "Thoughtful engagement"
+        },
+        {
+          "condition": "mentions_competitor_by_name",
+          "points": 15,
+          "rationale": "Already evaluating alternatives"
+        }
+      ]
+    },
+    {
+      "signal_id": "disqualifiers",
+      "name": "Disqualification Signals",
+      "rules": [
+        {
+          "condition": "message_contains 'student project' OR 'homework' OR 'school'",
+          "points": -50,
+          "rationale": "Not a real buyer"
+        },
+        {
+          "condition": "message_contains 'free only' OR 'no budget'",
+          "points": -30,
+          "rationale": "Will not convert to paid"
+        },
+        {
+          "condition": "duplicate_submission_within_24h",
+          "points": -20,
+          "rationale": "Spam or testing"
+        }
+      ]
+    }
+  ],
+  "routing_logic": {
+    "grade_A": {
+      "score_range": "70-100",
+      "action": "immediate_sales_engagement",
+      "workflow": "workflows/sales-conversation.json",
+      "priority": "high",
+      "sla": "respond_within_5_minutes"
+    },
+    "grade_B": {
+      "score_range": "50-69",
+      "action": "automated_nurture",
+      "workflow": "workflows/outreach-sequences.json",
+      "campaign": "high_intent_nurture",
+      "sla": "first_touch_within_1_hour"
+    },
+    "grade_C": {
+      "score_range": "30-49",
+      "action": "educational_drip",
+      "workflow": "workflows/outreach-sequences.json",
+      "campaign": "educational_sequence",
+      "sla": "first_touch_within_24_hours"
+    },
+    "grade_D": {
+      "score_range": "0-29",
+      "action": "disqualify",
+      "log_reason": true,
+      "archive": true
+    }
+  },
+  "metadata": {
+    "owner": "marketing_raas",
+    "vertical": "marketing",
+    "jurisdiction": "GLOBAL",
+    "last_updated": "2026-02-16"
+  }
+}

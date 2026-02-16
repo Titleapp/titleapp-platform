@@ -1,0 +1,171 @@
+{
+  "workflow_id": "customer_onboarding_v1",
+  "version": "1.0.0",
+  "name": "Customer Onboarding",
+  "description": "Convert trial users to activated, paying customers",
+  "trigger": "account:created:trial",
+  "timeline": "14_days",
+  "milestones": [
+    {
+      "milestone_id": "account_created",
+      "day": 0,
+      "goal": "Set expectations and first success",
+      "actions": [
+        {
+          "action": "send_welcome_email",
+          "template": "prompts/outreach-templates.md#welcome_email",
+          "timing": "immediate"
+        },
+        {
+          "action": "in_app_tour",
+          "flow": "show_create_first_dtc_tutorial",
+          "completion_required": false
+        }
+      ],
+      "success_metric": "First DTC created within 24 hours"
+    },
+    {
+      "milestone_id": "first_dtc_created",
+      "day": "0-1",
+      "goal": "Customer sees the value",
+      "actions": [
+        {
+          "action": "send_congratulations",
+          "channel": "email",
+          "template": "prompts/outreach-templates.md#first_dtc_congrats"
+        },
+        {
+          "action": "suggest_next_action",
+          "suggestions": [
+            "Upload a document",
+            "Share your DTC with someone",
+            "Create another DTC for a different asset"
+          ]
+        }
+      ],
+      "success_metric": "Customer uploads at least one document"
+    },
+    {
+      "milestone_id": "feature_discovery",
+      "day": "2-7",
+      "goal": "Customer explores key features",
+      "actions": [
+        {
+          "action": "send_feature_education",
+          "cadence": "every_other_day",
+          "features": [
+            {
+              "day": 3,
+              "feature": "document_uploads",
+              "template": "prompts/outreach-templates.md#feature_uploads"
+            },
+            {
+              "day": 5,
+              "feature": "sharing_access",
+              "template": "prompts/outreach-templates.md#feature_sharing"
+            },
+            {
+              "day": 7,
+              "feature": "blockchain_verification",
+              "template": "prompts/outreach-templates.md#feature_blockchain"
+            }
+          ]
+        },
+        {
+          "action": "monitor_usage",
+          "track": ["logins", "dtcs_created", "documents_uploaded", "shares_sent"],
+          "alert_if": "no_activity_for_3_days"
+        }
+      ],
+      "success_metric": "At least 3 logins AND 2 DTCs created"
+    },
+    {
+      "milestone_id": "payment_prompt",
+      "day": 10,
+      "goal": "Convert to paying customer before trial expires",
+      "conditions": [
+        {
+          "if": "high_engagement",
+          "criteria": "5+ DTCs created OR 10+ documents uploaded",
+          "message": "You're getting a lot of value from TitleApp! Ready to keep protecting your assets? Upgrade now and get 20% off your first 3 months.",
+          "discount": "20_percent_3_months"
+        },
+        {
+          "if": "medium_engagement",
+          "criteria": "2-4 DTCs created OR 3-9 documents uploaded",
+          "message": "Your trial ends in 4 days. Keep all your DTCs protected — upgrade for just $9/month.",
+          "discount": "none"
+        },
+        {
+          "if": "low_engagement",
+          "criteria": "0-1 DTCs created",
+          "message": "Need help getting started? Let me walk you through creating your first DTC.",
+          "action": "trigger_activation_campaign"
+        }
+      ],
+      "success_metric": "Trial converted to paid"
+    },
+    {
+      "milestone_id": "trial_expiring",
+      "day": 13,
+      "goal": "Last chance conversion",
+      "actions": [
+        {
+          "action": "send_urgency_email",
+          "template": "prompts/outreach-templates.md#trial_expiring_24h",
+          "subject": "Your TitleApp trial ends tomorrow"
+        },
+        {
+          "action": "in_app_banner",
+          "message": "Trial ends in 24 hours. Upgrade now to keep your DTCs.",
+          "cta": "Upgrade for $9/month"
+        }
+      ],
+      "success_metric": "Upgrade before expiration"
+    },
+    {
+      "milestone_id": "trial_expired",
+      "day": 14,
+      "goal": "Recover expired trials",
+      "actions": [
+        {
+          "if": "did_not_upgrade",
+          "then": "workflows/refund-and-recovery.json",
+          "campaign": "trial_expired_winback"
+        }
+      ]
+    }
+  ],
+  "activation_criteria": {
+    "fully_activated": "3+ DTCs created AND 1+ document uploaded AND 1+ share sent",
+    "partially_activated": "1+ DTC created AND 1+ document uploaded",
+    "not_activated": "0 DTCs created OR 0 logins after day 1"
+  },
+  "intervention_triggers": [
+    {
+      "trigger": "no_activity_for_3_days",
+      "action": "send_re_engagement_email",
+      "template": "prompts/outreach-templates.md#re_engagement"
+    },
+    {
+      "trigger": "stuck_on_first_dtc",
+      "criteria": "account_age > 48_hours AND dtc_count == 0",
+      "action": "offer_live_help",
+      "message": "Having trouble getting started? I can walk you through it."
+    }
+  ],
+  "metrics": {
+    "track": [
+      "time_to_first_dtc",
+      "trial_to_paid_conversion_rate",
+      "day_7_activation_rate",
+      "feature_adoption_rate"
+    ]
+  },
+  "metadata": {
+    "owner": "marketing_raas",
+    "vertical": "marketing",
+    "jurisdiction": "GLOBAL",
+    "last_updated": "2026-02-16"
+  }
+}

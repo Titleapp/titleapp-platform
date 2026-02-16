@@ -1,0 +1,144 @@
+{
+  "workflow_id": "sales_conversation_v1",
+  "version": "1.0.0",
+  "name": "Sales Conversation (In-Chat Sales Agent)",
+  "description": "Primary sales flow for high-intent leads via chat interface",
+  "trigger": "lead:qualified:grade_A OR manual:start_sales_chat",
+  "conversation_stages": [
+    {
+      "stage_id": "discovery",
+      "name": "Discovery & Qualification",
+      "goal": "Understand customer's current state and pain points",
+      "questions": [
+        "What brings you to TitleApp today?",
+        "What are you currently using to track your [asset type]?",
+        "What's the biggest challenge you're facing with that?",
+        "How much time do you spend managing this each week?"
+      ],
+      "ai_instructions": "Be curious, not salesy. Listen for pain points. Use prompts/sales-agent-system-prompt.md tone.",
+      "success_criteria": "Pain point identified AND urgency confirmed",
+      "max_messages": 5,
+      "next_stage": "demo"
+    },
+    {
+      "stage_id": "demo",
+      "name": "Show Value (Inline Demo)",
+      "goal": "Render a live example of TitleApp solving their problem",
+      "actions": [
+        {
+          "action": "render_inline_demo",
+          "type": "interactive_dtc_preview",
+          "description": "Show a sample DTC for their asset type with live data"
+        },
+        {
+          "action": "highlight_features",
+          "features": [
+            "Instant verification",
+            "Blockchain proof",
+            "Lifetime access",
+            "Share with anyone"
+          ]
+        }
+      ],
+      "ai_instructions": "Don't just describe — SHOW. Render structured objects inline. 'Here's what your car DTC would look like...'",
+      "success_criteria": "Customer engages with demo (clicks, asks questions)",
+      "max_messages": 3,
+      "next_stage": "objections"
+    },
+    {
+      "stage_id": "objections",
+      "name": "Handle Objections",
+      "goal": "Address concerns before asking for commitment",
+      "common_objections": [
+        {
+          "objection": "How much does this cost?",
+          "response_template": "prompts/objection-handling.md#pricing",
+          "action": "show_pricing_comparison"
+        },
+        {
+          "objection": "How is this different from [competitor]?",
+          "response_template": "prompts/objection-handling.md#competitors",
+          "action": "show_feature_matrix"
+        },
+        {
+          "objection": "What if I lose my data?",
+          "response_template": "prompts/objection-handling.md#data_security",
+          "action": "show_redundancy_proof"
+        },
+        {
+          "objection": "I need to think about it",
+          "response_template": "prompts/objection-handling.md#hesitation",
+          "action": "offer_trial"
+        }
+      ],
+      "ai_instructions": "Empathize first, then provide evidence. Use real customer stories where possible.",
+      "success_criteria": "Objections resolved OR trial offered",
+      "max_messages": 4,
+      "next_stage": "close"
+    },
+    {
+      "stage_id": "close",
+      "name": "Ask for Commitment",
+      "goal": "Convert to trial or paid customer",
+      "closing_question": "Ready to protect your [asset] with TitleApp? I can set up your account in 90 seconds.",
+      "call_to_action": {
+        "primary": "Start 14-day free trial",
+        "secondary": "See pricing",
+        "fallback": "Email me a summary"
+      },
+      "actions": [
+        {
+          "if": "customer_says_yes",
+          "then": "workflows/onboarding.json"
+        },
+        {
+          "if": "customer_wants_pricing",
+          "then": "show_pricing_inline",
+          "follow_up": "Which plan fits your needs?"
+        },
+        {
+          "if": "customer_wants_summary",
+          "then": "send_email_summary",
+          "campaign": "post_demo_nurture"
+        }
+      ],
+      "success_criteria": "Trial started OR follow-up scheduled",
+      "max_messages": 2
+    }
+  ],
+  "escalation_rules": [
+    {
+      "trigger": "customer_asks_for_human",
+      "action": "escalate_to_sales_rep",
+      "notify": "sales@titleapp.ai",
+      "context": "Include full conversation transcript"
+    },
+    {
+      "trigger": "stuck_on_objection_after_3_attempts",
+      "action": "offer_calendly_link",
+      "message": "I can connect you with our team to walk through this together."
+    }
+  ],
+  "analytics": {
+    "track_events": [
+      "conversation_started",
+      "stage_completed",
+      "objection_raised",
+      "demo_rendered",
+      "trial_started",
+      "conversation_abandoned"
+    ],
+    "conversion_metrics": [
+      "discovery_to_demo_rate",
+      "demo_to_trial_rate",
+      "objection_resolution_rate",
+      "time_to_close"
+    ]
+  },
+  "metadata": {
+    "owner": "marketing_raas",
+    "vertical": "marketing",
+    "jurisdiction": "GLOBAL",
+    "last_updated": "2026-02-16"
+  }
+}

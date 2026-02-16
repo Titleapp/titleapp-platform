@@ -1,0 +1,96 @@
+{
+  "workflow_id": "lead_qualification_v1",
+  "version": "1.0.0",
+  "name": "Lead Qualification",
+  "description": "Score and route leads based on intent, fit, and readiness to buy",
+  "trigger": "chat:message:received OR form:submitted",
+  "steps": [
+    {
+      "step_id": "extract_signals",
+      "name": "Extract Intent Signals",
+      "action": "analyze_message",
+      "inputs": {
+        "message": "{{event.message}}",
+        "email": "{{event.email}}",
+        "referrer": "{{event.referrer}}"
+      },
+      "extract": [
+        "vertical_interest",
+        "use_case",
+        "urgency_level",
+        "company_size",
+        "current_solution"
+      ]
+    },
+    {
+      "step_id": "calculate_score",
+      "name": "Calculate Lead Score",
+      "action": "apply_scoring_rules",
+      "rule_set": "rules/lead-scoring.json",
+      "inputs": {
+        "signals": "{{steps.extract_signals.output}}"
+      },
+      "outputs": {
+        "score": "integer (0-100)",
+        "grade": "A|B|C|D",
+        "routing": "sales_agent|nurture|disqualify"
+      }
+    },
+    {
+      "step_id": "route_lead",
+      "name": "Route to Appropriate Flow",
+      "action": "conditional_routing",
+      "conditions": [
+        {
+          "if": "{{steps.calculate_score.grade}} == 'A'",
+          "then": "workflows/sales-conversation.json",
+          "priority": "high"
+        },
+        {
+          "if": "{{steps.calculate_score.grade}} == 'B'",
+          "then": "workflows/outreach-sequences.json",
+          "campaign": "high_intent_nurture"
+        },
+        {
+          "if": "{{steps.calculate_score.grade}} == 'C'",
+          "then": "workflows/outreach-sequences.json",
+          "campaign": "educational_drip"
+        },
+        {
+          "if": "{{steps.calculate_score.grade}} == 'D'",
+          "then": "disqualify",
+          "action": "log_and_archive"
+        }
+      ]
+    },
+    {
+      "step_id": "log_lead",
+      "name": "Create Lead Record",
+      "action": "firestore:create",
+      "collection": "leads",
+      "document": {
+        "email": "{{event.email}}",
+        "score": "{{steps.calculate_score.score}}",
+        "grade": "{{steps.calculate_score.grade}}",
+        "vertical_interest": "{{steps.extract_signals.vertical_interest}}",
+        "use_case": "{{steps.extract_signals.use_case}}",
+        "routing": "{{steps.calculate_score.routing}}",
+        "source": "{{event.source}}",
+        "referrer": "{{event.referrer}}",
+        "first_message": "{{event.message}}",
+        "createdAt": "{{timestamp}}",
+        "status": "qualified"
+      }
+    }
+  ],
+  "error_handling": {
+    "on_scoring_failure": "default_to_grade_C",
+    "on_routing_failure": "escalate_to_human"
+  },
+  "metadata": {
+    "owner": "marketing_raas",
+    "vertical": "marketing",
+    "jurisdiction": "GLOBAL",
+    "last_updated": "2026-02-16"
+  }
+}

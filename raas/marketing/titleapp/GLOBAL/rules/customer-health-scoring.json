@@ -1,0 +1,252 @@
+{
+  "rule_set_id": "customer_health_scoring_v1",
+  "version": "1.0.0",
+  "name": "Customer Health Scoring",
+  "description": "Predict churn risk and identify expansion opportunities",
+  "scoring_model": {
+    "health_score_range": "0-100",
+    "update_frequency": "daily",
+    "risk_thresholds": {
+      "healthy": 70,
+      "at_risk": 40,
+      "critical": 20,
+      "churned": 0
+    }
+  },
+  "factors": [
+    {
+      "factor_id": "usage_frequency",
+      "name": "Login & Activity Frequency",
+      "weight": 30,
+      "rules": [
+        {
+          "condition": "logins_last_7_days >= 5",
+          "points": 30,
+          "rationale": "High engagement (daily user)"
+        },
+        {
+          "condition": "logins_last_7_days 2-4",
+          "points": 20,
+          "rationale": "Moderate engagement (regular user)"
+        },
+        {
+          "condition": "logins_last_7_days == 1",
+          "points": 10,
+          "rationale": "Low engagement (occasional user)"
+        },
+        {
+          "condition": "logins_last_7_days == 0 AND logins_last_30_days > 0",
+          "points": 5,
+          "rationale": "Dormant (at risk)"
+        },
+        {
+          "condition": "logins_last_30_days == 0",
+          "points": 0,
+          "rationale": "Inactive (churned)"
+        }
+      ]
+    },
+    {
+      "factor_id": "feature_adoption",
+      "name": "Feature Usage Depth",
+      "weight": 25,
+      "rules": [
+        {
+          "condition": "features_used >= 4 (dtc_created, document_uploaded, shared_access, blockchain_verified)",
+          "points": 25,
+          "rationale": "Power user (high retention)"
+        },
+        {
+          "condition": "features_used == 3",
+          "points": 18,
+          "rationale": "Good adoption"
+        },
+        {
+          "condition": "features_used == 2",
+          "points": 12,
+          "rationale": "Partial adoption (upsell opportunity)"
+        },
+        {
+          "condition": "features_used == 1",
+          "points": 6,
+          "rationale": "Minimal adoption (onboarding needed)"
+        },
+        {
+          "condition": "features_used == 0",
+          "points": 0,
+          "rationale": "Not activated (immediate intervention)"
+        }
+      ]
+    },
+    {
+      "factor_id": "dtc_count",
+      "name": "Number of DTCs Created",
+      "weight": 20,
+      "rules": [
+        {
+          "condition": "dtc_count >= 5",
+          "points": 20,
+          "rationale": "Committed user (high LTV)"
+        },
+        {
+          "condition": "dtc_count 3-4",
+          "points": 15,
+          "rationale": "Engaged user"
+        },
+        {
+          "condition": "dtc_count 1-2",
+          "points": 10,
+          "rationale": "Light user (upsell opportunity)"
+        },
+        {
+          "condition": "dtc_count == 0",
+          "points": 0,
+          "rationale": "Never activated (critical)"
+        }
+      ]
+    },
+    {
+      "factor_id": "payment_status",
+      "name": "Billing Health",
+      "weight": 15,
+      "rules": [
+        {
+          "condition": "payment_current AND no_failed_charges",
+          "points": 15,
+          "rationale": "Healthy billing"
+        },
+        {
+          "condition": "payment_current AND past_failed_charges > 0",
+          "points": 10,
+          "rationale": "Watch for future failures"
+        },
+        {
+          "condition": "payment_overdue < 7_days",
+          "points": 5,
+          "rationale": "Recent failure (reach out)"
+        },
+        {
+          "condition": "payment_overdue >= 7_days",
+          "points": 0,
+          "rationale": "Critical (churn imminent)"
+        }
+      ]
+    },
+    {
+      "factor_id": "support_interactions",
+      "name": "Support Ticket Health",
+      "weight": 10,
+      "rules": [
+        {
+          "condition": "support_tickets_last_30_days == 0",
+          "points": 10,
+          "rationale": "No issues (smooth experience)"
+        },
+        {
+          "condition": "support_tickets_last_30_days 1-2 AND all_resolved",
+          "points": 8,
+          "rationale": "Minor issues, resolved"
+        },
+        {
+          "condition": "support_tickets_last_30_days >= 3 OR any_unresolved",
+          "points": 3,
+          "rationale": "Frustrated user (intervention needed)"
+        },
+        {
+          "condition": "negative_sentiment_detected",
+          "points": 0,
+          "rationale": "High churn risk"
+        }
+      ]
+    }
+  ],
+  "intervention_triggers": [
+    {
+      "trigger_id": "critical_health",
+      "condition": "health_score < 20",
+      "action": "workflows/refund-and-recovery.json",
+      "campaign": "save_account",
+      "urgency": "immediate",
+      "notify": "customer_success_team"
+    },
+    {
+      "trigger_id": "at_risk",
+      "condition": "health_score 20-39",
+      "action": "send_re_engagement_campaign",
+      "workflow": "workflows/customer-success.json",
+      "campaign": "prevent_churn"
+    },
+    {
+      "trigger_id": "healthy_upsell",
+      "condition": "health_score >= 70 AND plan == 'basic'",
+      "action": "identify_upsell_opportunity",
+      "message": "You're getting a lot of value! Want to unlock premium features?"
+    },
+    {
+      "trigger_id": "dormant_user",
+      "condition": "logins_last_30_days == 0 AND account_age > 60_days",
+      "action": "send_win_back_email",
+      "template": "prompts/outreach-templates.md#dormant_user"
+    },
+    {
+      "trigger_id": "payment_failure",
+      "condition": "payment_status == 'failed'",
+      "action": "send_payment_retry_email",
+      "timing": "within_24_hours",
+      "escalate_if_failed_again": true
+    }
+  ],
+  "expansion_signals": [
+    {
+      "signal": "high_dtc_count",
+      "condition": "dtc_count >= 10",
+      "opportunity": "Upgrade to unlimited plan or add team members"
+    },
+    {
+      "signal": "high_document_uploads",
+      "condition": "documents_uploaded >= 50",
+      "opportunity": "Offer premium storage tier"
+    },
+    {
+      "signal": "frequent_sharing",
+      "condition": "shares_sent >= 10",
+      "opportunity": "Upgrade to business plan (team collaboration)"
+    },
+    {
+      "signal": "vertical_fit",
+      "condition": "use_case_matches_premium_vertical (dealer, analyst, etc.)",
+      "opportunity": "Upsell to vertical-specific plan"
+    }
+  ],
+  "churn_prediction": {
+    "high_risk_indicators": [
+      "health_score < 30",
+      "no_logins_last_14_days",
+      "payment_failed_twice",
+      "negative_support_sentiment",
+      "feature_usage_declining"
+    ],
+    "preventive_actions": [
+      {
+        "action": "personal_outreach",
+        "owner": "customer_success",
+        "timing": "within_24_hours"
+      },
+      {
+        "action": "offer_discount",
+        "discount": "50_percent_off_next_3_months",
+        "condition": "health_score < 25 AND payment_current"
+      },
+      {
+        "action": "feature_tutorial",
+        "message": "Looks like you're not using [feature]. Let me show you how it saves time!"
+      }
+    ]
+  },
+  "metadata": {
+    "owner": "marketing_raas",
+    "vertical": "marketing",
+    "jurisdiction": "GLOBAL",
+    "last_updated": "2026-02-16"
+  }
+}
