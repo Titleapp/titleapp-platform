@@ -5,26 +5,31 @@ import './FloatingChat.css';
 
 export default function FloatingChat({ demoMode = false }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState(demoMode ? [
-    { role: 'assistant', content: 'Hi! I\'m your Velocity Motors AI assistant. Ask me about customer inquiries, inventory, service appointments, or trade-in valuations.' },
-    { role: 'user', content: 'Show me pending customer inquiries' },
-    { role: 'assistant', content: 'You have 4 pending customer inquiries:\n\n1. Sarah Chen - 2024 Honda Accord EX-L - Financing options\n2. Mike Torres - Trade-in evaluation for 2019 Toyota Camry\n3. Lisa Park - Service appointment for brake inspection\n4. James Wilson - Test drive request for 2025 Mazda CX-5\n\nWould you like to respond to any of these?' }
-  ] : []);
+  const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [authReady, setAuthReady] = useState(false);
   const conversationRef = useRef(null);
 
-  const auth = demoMode ? null : getAuth();
-  const db = demoMode ? null : getFirestore();
+  const auth = getAuth();
+  const db = getFirestore();
   const currentUser = auth?.currentUser;
+
+  // Wait for auth to be ready
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      setAuthReady(true);
+    });
+    return () => unsubscribe();
+  }, []);
 
   // Load conversation history when chat opens
   useEffect(() => {
-    if (!demoMode && isOpen && currentUser && messages.length === 0) {
+    if (isOpen && currentUser && authReady && messages.length === 0) {
       loadConversationHistory();
     }
-  }, [isOpen, currentUser]);
+  }, [isOpen, currentUser, authReady]);
 
   // Scroll to bottom when new messages arrive
   useEffect(() => {
@@ -64,6 +69,16 @@ export default function FloatingChat({ demoMode = false }) {
     e?.preventDefault();
     if (!input.trim() || isSending) return;
 
+    // Check if user is logged in
+    if (!currentUser) {
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: 'Please sign in to use the AI assistant.',
+        isError: true
+      }]);
+      return;
+    }
+
     const userMessage = input.trim();
     setInput('');
     setIsSending(true);
@@ -74,32 +89,29 @@ export default function FloatingChat({ demoMode = false }) {
     // Show typing indicator
     setIsTyping(true);
 
-    // Demo mode - mock response
-    if (demoMode) {
-      setTimeout(() => {
-        setIsTyping(false);
-        setMessages(prev => [...prev, {
-          role: 'assistant',
-          content: `This is a demo response to: "${userMessage}"\n\nIn production, I'll connect to Claude/ChatGPT and provide real assistance with your records and documents. Enable Firebase Auth to see the full experience!`
-        }]);
-        setIsSending(false);
-      }, 1500);
-      return;
-    }
-
     try {
       const token = await currentUser.getIdToken();
+      const tenantId = localStorage.getItem('TENANT_ID') || 'public';
+      const vertical = localStorage.getItem('VERTICAL') || 'auto';
+      const jurisdiction = localStorage.getItem('JURISDICTION') || 'IL';
 
-      const response = await fetch('https://titleapp-frontdoor.titleapp-core.workers.dev/chat', {
+      const apiBase = import.meta.env.VITE_API_BASE || 'https://titleapp-frontdoor.titleapp-core.workers.dev';
+      const response = await fetch(`${apiBase}/api?path=/v1/chat:message`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
-          'x-tenant-id': 'public'
+          'X-Tenant-Id': tenantId,
+          'X-Vertical': vertical,
+          'X-Jurisdiction': jurisdiction
         },
         body: JSON.stringify({
           message: userMessage,
-          context: { source: 'consumer_admin' },
+          context: {
+            source: 'business_portal',
+            vertical,
+            jurisdiction
+          },
           preferredModel: 'claude'
         })
       });
@@ -112,7 +124,15 @@ export default function FloatingChat({ demoMode = false }) {
 
       // Remove typing indicator and add AI response
       setIsTyping(false);
-      setMessages(prev => [...prev, { role: 'assistant', content: data.response || 'No response received.' }]);
+
+      // Add AI response with optional structured data
+      const newMessage = {
+        role: 'assistant',
+        content: data.response || 'No response received.',
+        structuredData: data.structuredData // For inline rendering
+      };
+
+      setMessages(prev => [...prev, newMessage]);
 
     } catch (error) {
       console.error('Send failed:', error);
@@ -132,6 +152,80 @@ export default function FloatingChat({ demoMode = false }) {
       e.preventDefault();
       sendMessage();
     }
+  }
+
+  // Render structured data inline (DTCs, Trade Summaries, Analyst results, etc.)
+  function renderStructuredData(data) {
+    if (!data || typeof data !== 'object') return null;
+
+    // Analyst result
+    if (data.type === 'analyst_result') {
+      return (
+        <div className="structured-analyst-result">
+          <div className="analyst-header">
+            <span className="analyst-emoji">{data.verdict_emoji}</span>
+            <h4>{data.verdict}</h4>
+            <span className="analyst-score">{data.score}/100</span>
+          </div>
+          {data.summary && <p className="analyst-summary">{data.summary}</p>}
+          {data.key_findings && data.key_findings.length > 0 && (
+            <div className="analyst-findings">
+              <h5>Key Findings:</h5>
+              <ul>
+                {data.key_findings.map((finding, i) => (
+                  <li key={i}>{finding}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // DTC preview
+    if (data.type === 'dtc_preview') {
+      return (
+        <div className="structured-dtc-preview">
+          <div className="dtc-header">
+            <h4>{data.asset_type} DTC Preview</h4>
+            {data.blockchain_verified && <span className="dtc-verified">✓ Verified</span>}
+          </div>
+          {data.details && (
+            <div className="dtc-details">
+              {Object.entries(data.details).map(([key, value]) => (
+                <div key={key} className="dtc-field">
+                  <span className="dtc-label">{key}:</span>
+                  <span className="dtc-value">{value}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // Trade Summary
+    if (data.type === 'trade_summary') {
+      return (
+        <div className="structured-trade-summary">
+          <h4>Trade Summary</h4>
+          <div className="trade-details">
+            <div className="trade-field"><strong>Your Vehicle:</strong> {data.your_vehicle}</div>
+            <div className="trade-field"><strong>Trade Value:</strong> ${data.trade_value?.toLocaleString()}</div>
+            <div className="trade-field"><strong>New Vehicle:</strong> {data.new_vehicle}</div>
+            <div className="trade-field"><strong>Price:</strong> ${data.new_price?.toLocaleString()}</div>
+            <div className="trade-field"><strong>Net Cost:</strong> ${data.net_cost?.toLocaleString()}</div>
+          </div>
+        </div>
+      );
+    }
+
+    // Generic structured data (fallback)
+    return (
+      <div className="structured-generic">
+        <pre>{JSON.stringify(data, null, 2)}</pre>
+      </div>
+    );
   }
 
   return (
@@ -178,14 +272,23 @@ export default function FloatingChat({ demoMode = false }) {
         <div className="chat-panel-conversation" ref={conversationRef}>
           {messages.length === 0 && !isTyping && (
             <div className="chat-welcome">
-              <p>👋 Hi! I'm your AI assistant.</p>
-              <p>Ask me anything about your records, documents, or help managing your assets.</p>
+              <p>👋 Hi! I'm your TitleApp AI assistant.</p>
+              {currentUser ? (
+                <p>Ask me anything about your records, documents, customers, inventory, or business operations.</p>
+              ) : (
+                <p>Please sign in to start chatting.</p>
+              )}
             </div>
           )}
 
           {messages.map((msg, idx) => (
             <div key={idx} className={`chat-message ${msg.role} ${msg.isError ? 'error' : ''}`}>
               <div className="chat-bubble">{msg.content}</div>
+              {msg.structuredData && (
+                <div className="chat-structured-data">
+                  {renderStructuredData(msg.structuredData)}
+                </div>
+              )}
             </div>
           ))}
 
