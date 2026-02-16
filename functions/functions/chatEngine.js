@@ -703,12 +703,16 @@ async function processMessage(input, services = {}) {
       }
 
       // Logbook
-      if (lowerMsg.includes('logbook') || lowerMsg.includes('log book') || lowerMsg.includes('history') || lowerMsg.includes('entries')) {
+      if (lowerMsg.includes('logbook') || lowerMsg.includes('log book') || lowerMsg.includes('history') ||
+          lowerMsg.includes('entries') || lowerMsg.includes('log entry') || lowerMsg.includes('add entry') ||
+          lowerMsg.includes('log something') || lowerMsg.includes('update log') || lowerMsg.includes('new entry')) {
         return handleShowLogbook(state);
       }
 
       // Add another record
-      if (lowerMsg.includes('another') || lowerMsg.includes('add') || lowerMsg.includes('create') || lowerMsg.includes('new record')) {
+      if (lowerMsg.includes('another') || lowerMsg.includes('add') || lowerMsg.includes('create') ||
+          lowerMsg.includes('new record') || lowerMsg.includes('track') || lowerMsg.includes('keep track') ||
+          lowerMsg.includes('record of') || lowerMsg.includes('set up')) {
         return response(state, "What would you like to create a record of?");
       }
 
@@ -744,8 +748,19 @@ async function processMessage(input, services = {}) {
         return handleCredentialDetection(state, message, lowerMsg);
       }
 
-      // No specific intent detected — fall through to AI
-      return response(state, null, { useAI: true });
+      // Detect general asset/possession — short inputs that are likely things to track
+      // (e.g., "painting", "guitar", "boat", "jewelry", "watch", "camera")
+      const words = message.trim().split(/\s+/);
+      if (words.length <= 4 && !lowerMsg.includes('?') && !lowerMsg.includes('help') &&
+          !lowerMsg.includes('what') && !lowerMsg.includes('how') && !lowerMsg.includes('why')) {
+        const assetName = lowerMsg.replace(/^(my|a|an|the)\s+/i, '').trim();
+        return response(state, `I can help you create a record for your ${assetName}. Would you like to get started? I'll walk you through documenting and verifying it.`);
+      }
+
+      // No specific intent detected — fall through to AI with a fallback
+      return response(state,
+        "I can help you create verified records of vehicles, property, credentials, and more. You can also view your vault, add a logbook entry, or tell me what you'd like to keep track of.",
+        { useAI: true });
     }
 
     // ── Vehicle Flow ──

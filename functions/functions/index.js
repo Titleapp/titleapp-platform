@@ -714,12 +714,12 @@ exports.api = onRequest(
             );
           } catch (e) {
             console.error("chatEngine AI fallthrough error:", e.message);
-            aiMessage = "I'm having trouble connecting right now. Please try again in a moment.";
+            // Don't set aiMessage — let engineResult.message (the fallback) show instead
           }
         }
 
-        // Determine final message
-        const finalMessage = aiMessage || engineResult.message || "";
+        // Determine final message — engineResult.message now always has a fallback
+        const finalMessage = aiMessage || engineResult.message || "I'm here to help. What would you like to do?";
 
         // Write updated state to Firestore
         await sessionRef.set({
