@@ -427,6 +427,12 @@ function response(state, message, opts = {}) {
     followUpMessage: opts.followUpMessage || null,
     sideEffects: opts.sideEffects || [],
     useAI: opts.useAI || false,
+    classifyIntent: opts.classifyIntent || false,
+    originalMessage: opts.originalMessage || null,
+    generateRaas: opts.generateRaas || false,
+    generateOnboardingPromise: opts.generateOnboardingPromise || false,
+    generateMilestone: opts.generateMilestone || false,
+    aiContext: opts.aiContext || null,
   };
 }
 
@@ -874,17 +880,112 @@ async function processMessage(input, services = {}) {
         }
       }
 
-      // No specific intent detected — fall through to AI with a helpful fallback
-      return response(state,
-        "I can help you set up your business, create records for vehicles or property, manage credentials, or view your vault. What would you like to do?",
-        {
-          useAI: true,
-          promptChips: state.audienceType === 'business'
-            ? ['Set up my workspace', 'Add a record', 'View my vault']
-            : (state.records && state.records.length > 0)
-              ? ['View my vault', 'Add another record', 'Set up a business']
-              : ['Add a vehicle', 'Add a credential', 'View my vault'],
+      // No keyword match — hand off to AI intent classification
+      return response(state, null, {
+        classifyIntent: true,
+        originalMessage: message,
+      });
+    }
+
+    // ── AI Intent Confirmation ──
+
+    case 'confirm_intent': {
+      if (isAffirmative(lowerMsg) || lowerMsg.includes("that's right") || lowerMsg.includes('yes')) {
+        // User confirmed the AI-classified intent — route based on stored classification
+        const classified = state.classifiedIntent || {};
+        const intent = (classified.intent || '').toLowerCase();
+        const vertical = (classified.vertical || '').toLowerCase();
+
+        // Vehicle intents
+        if (intent.includes('vehicle') || intent.includes('car') || intent.includes('auto') || intent.includes('vin')) {
+          state.step = 'car_onboarding_vin';
+          state.carData = {};
+          return response(state, "What's your VIN? You'll find it on your dashboard near the windshield or on your registration card.");
+        }
+
+        // Student/education intents
+        if (intent.includes('student') || intent.includes('education') || intent.includes('academic') ||
+            intent.includes('transcript') || intent.includes('diploma') || intent.includes('degree')) {
+          state.step = 'student_type';
+          state.studentData = {};
+          return response(state, "I can help you create a verified record of your academic history. What would you like to start with -- a transcript, diploma, or certification?");
+        }
+
+        // Credential intents
+        if (intent.includes('credential') || intent.includes('certification') || intent.includes('license') ||
+            intent.includes('professional') || intent.includes('pilot') || intent.includes('nurse')) {
+          state.credentialData = {};
+          return handleCredentialDetection(state, classified.originalMessage || '', (classified.originalMessage || '').toLowerCase());
+        }
+
+        // Business/workspace intents
+        if (intent.includes('business') || intent.includes('workspace') || intent.includes('company') ||
+            vertical === 'property management' || vertical === 'real estate' ||
+            vertical === 'investment' || vertical === 'automotive') {
+          state.audienceType = 'business';
+          if (state.companyName && state.companyDescription) {
+            state.step = 'select_vertical';
+            return response(state, `What does ${state.companyName} focus on?`, {
+              promptChips: ['Property Management', 'Deal Analysis & Investment', 'Auto Dealer', 'Sales & Marketing', 'Other'],
+            });
+          }
+          state.step = 'biz_collect_company_name';
+          return response(state, "Let's get your business set up. What's your company name?");
+        }
+
+        // Property management
+        if (intent.includes('property') || intent.includes('rental') || intent.includes('tenant') || intent.includes('landlord')) {
+          if (state.audienceType === 'business' && state.businessVertical === 'real_estate') {
+            return handleRealEstateHub(state, (classified.originalMessage || '').toLowerCase());
+          }
+          state.audienceType = 'business';
+          state.step = 'biz_collect_company_name';
+          return response(state, "Let's get your business set up. What's your company name?");
+        }
+
+        // Deal/investment analysis
+        if (intent.includes('deal') || intent.includes('investment') || intent.includes('analyst') || intent.includes('pipeline')) {
+          if (state.audienceType === 'business' && state.businessVertical === 'analyst') {
+            return handleAnalystHub(state, (classified.originalMessage || '').toLowerCase());
+          }
+          state.audienceType = 'business';
+          state.step = 'biz_collect_company_name';
+          return response(state, "Let's get your business set up. What's your company name?");
+        }
+
+        // Vault/records
+        if (intent.includes('vault') || intent.includes('record') || intent.includes('view')) {
+          return handleShowVault(state);
+        }
+
+        // Logbook
+        if (intent.includes('logbook') || intent.includes('log') || intent.includes('entry')) {
+          return handleShowLogbook(state);
+        }
+
+        // Fallback — couldn't route the confirmed intent
+        state.step = 'authenticated';
+        return response(state, "What would you like to create a record of?", {
+          promptChips: ['Vehicle', 'Credential', 'Education record', 'Set up a business'],
         });
+      }
+
+      // User declined — ask them to explain
+      if (isNegative(lowerMsg) || lowerMsg.includes('not quite') || lowerMsg.includes('something else') ||
+          lowerMsg.includes('no') || lowerMsg.includes('not really')) {
+        state.step = 'authenticated';
+        state.classifiedIntent = null;
+        return response(state, "No problem. Tell me more about what you're looking for and I'll help you get there.");
+      }
+
+      // Unclear response — treat as new input, go back to authenticated
+      state.step = 'authenticated';
+      state.classifiedIntent = null;
+      // Re-process through authenticated hub by returning classifyIntent again
+      return response(state, null, {
+        classifyIntent: true,
+        originalMessage: message,
+      });
     }
 
     // ── Vehicle Flow ──

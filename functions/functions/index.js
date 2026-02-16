@@ -716,6 +716,117 @@ exports.api = onRequest(
             .catch(e => console.warn("chatEngine side-effects batch error:", e.message));
         }
 
+        // Handle AI intent classification
+        if (engineResult.classifyIntent && engineResult.originalMessage) {
+          try {
+            const anthropic = getAnthropic();
+            const classifyResponse = await anthropic.messages.create({
+              model: "claude-sonnet-4-5-20250929",
+              max_tokens: 512,
+              system: `You are TitleApp AI's intent classifier. The user is authenticated and telling you what they want to do. Based on their message, determine what they're trying to accomplish. Consider the full meaning of what they're saying, not just keywords.
+
+Respond with ONLY a JSON object:
+{
+  "intent": "a short snake_case label for what they want",
+  "summary": "a natural one-sentence description of what they want to do, written as if confirming back to them",
+  "vertical": "if this is business-related, your best guess at the industry or business type, otherwise null",
+  "confidence": "high or low"
+}
+
+Be generous in interpretation. If someone says 'I manage apartments in Austin' that's property management. If someone says 'I need to track my deals' that's investment analysis. If someone says 'my ride needs documenting' that's a vehicle record. Understand what people mean, not just what they say.`,
+              messages: [{ role: "user", content: engineResult.originalMessage }],
+            });
+
+            const aiText = classifyResponse.content[0]?.text || "";
+            let classified;
+            try {
+              classified = JSON.parse(aiText);
+            } catch (parseErr) {
+              // Try to extract JSON from the response
+              const jsonMatch = aiText.match(/\{[\s\S]*\}/);
+              classified = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
+            }
+
+            if (classified) {
+              // Store classification in state for confirm_intent handler
+              engineResult.state.classifiedIntent = {
+                intent: classified.intent,
+                summary: classified.summary,
+                vertical: classified.vertical,
+                confidence: classified.confidence,
+                originalMessage: engineResult.originalMessage,
+              };
+              engineResult.state.step = "confirm_intent";
+
+              // Build confirmation message based on confidence
+              // Clean the summary: strip trailing period, lowercase first char,
+              // and remove leading "you want to" / "you'd like to" if the AI included it
+              let cleanSummary = classified.summary.replace(/\.$/, '');
+              cleanSummary = cleanSummary.charAt(0).toLowerCase() + cleanSummary.slice(1);
+              cleanSummary = cleanSummary.replace(/^(you want to |you'd like to |you're looking to |you need to )/, '');
+
+              const confirmMessage = classified.confidence === "high"
+                ? `It sounds like you want to ${cleanSummary}. Is that right?`
+                : `I want to make sure I understand. Are you looking to ${cleanSummary}?`;
+
+              const confirmChips = classified.confidence === "high"
+                ? ["Yes, that's right", "No, something else"]
+                : ["Yes", "Not quite -- let me explain"];
+
+              // Write state and return
+              await sessionRef.set({
+                state: engineResult.state,
+                surface: surface || "landing",
+                userId: effectiveUserId,
+                ...(sessionSnap.exists ? {} : { createdAt: nowServerTs() }),
+                updatedAt: nowServerTs(),
+              }, { merge: true });
+
+              return res.json({
+                ok: true,
+                message: confirmMessage,
+                cards: [],
+                promptChips: confirmChips,
+                followUpMessage: null,
+                conversationState: "confirm_intent",
+                ...(engineResult.state.authToken ? { authToken: engineResult.state.authToken } : {}),
+                ...(effectiveSessionId !== sessionId ? { sessionId: effectiveSessionId } : {}),
+              });
+            }
+          } catch (e) {
+            console.error("AI intent classification failed:", e.message);
+            // Fall through gracefully — don't show "trouble connecting"
+          }
+
+          // Classification failed — graceful fallback
+          engineResult.state.step = "authenticated";
+          const fallbackMessage = "Tell me a bit more about what you're looking to do and I'll point you in the right direction.";
+          const fallbackChips = engineResult.state.audienceType === "business"
+            ? ["Set up my workspace", "Add a record", "View my vault"]
+            : (engineResult.state.records && engineResult.state.records.length > 0)
+              ? ["View my vault", "Add another record", "Set up a business"]
+              : ["Add a vehicle", "Add a credential", "View my vault"];
+
+          await sessionRef.set({
+            state: engineResult.state,
+            surface: surface || "landing",
+            userId: effectiveUserId,
+            ...(sessionSnap.exists ? {} : { createdAt: nowServerTs() }),
+            updatedAt: nowServerTs(),
+          }, { merge: true });
+
+          return res.json({
+            ok: true,
+            message: fallbackMessage,
+            cards: [],
+            promptChips: fallbackChips,
+            followUpMessage: null,
+            conversationState: "authenticated",
+            ...(engineResult.state.authToken ? { authToken: engineResult.state.authToken } : {}),
+            ...(effectiveSessionId !== sessionId ? { sessionId: effectiveSessionId } : {}),
+          });
+        }
+
         // Handle AI fallthrough (authenticated free-form chat)
         let aiMessage = null;
         if (engineResult.useAI && effectiveUserId) {
