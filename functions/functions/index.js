@@ -363,6 +363,48 @@ async function executeChatSideEffects(sideEffects, userId) {
           console.log("chatEngine side-effect: createDtc OK", ref.id, "with", files.length, "files");
           break;
         }
+        case 'uploadRaasSop': {
+          if (!userId) break;
+          const d = effect.data || {};
+          // Store SOP reference in Firestore (actual file storage handled by client)
+          // For now, log the upload and store metadata
+          const memSnap2 = await db.collection("memberships")
+            .where("userId", "==", userId)
+            .where("status", "==", "active")
+            .limit(1)
+            .get();
+          const tenantId2 = memSnap2.empty ? "public" : memSnap2.docs[0].data().tenantId;
+
+          await db.collection("raasUploads").add({
+            userId,
+            tenantId: tenantId2,
+            fileName: d.fileName || "document",
+            uploadedAt: nowServerTs(),
+            status: "received",
+          });
+          console.log("chatEngine side-effect: uploadRaasSop OK", d.fileName);
+          break;
+        }
+        case 'saveRaasConfig': {
+          if (!userId) break;
+          const d = effect.data || {};
+          const memSnap3 = await db.collection("memberships")
+            .where("userId", "==", userId)
+            .where("status", "==", "active")
+            .limit(1)
+            .get();
+          const tenantId3 = memSnap3.empty ? "public" : memSnap3.docs[0].data().tenantId;
+
+          await db.collection("tenants").doc(tenantId3).set({
+            raasConfig: {
+              buildAnswers: d.raasBuildAnswers || [],
+              buildSummary: d.raasBuildSummary || "",
+              configuredAt: nowServerTs(),
+            },
+          }, { merge: true });
+          console.log("chatEngine side-effect: saveRaasConfig OK for tenant", tenantId3);
+          break;
+        }
         default:
           console.warn("chatEngine side-effect: unknown action", effect.action);
       }
@@ -825,6 +867,321 @@ Be generous in interpretation. If someone says 'I manage apartments in Austin' t
             ...(engineResult.state.authToken ? { authToken: engineResult.state.authToken } : {}),
             ...(effectiveSessionId !== sessionId ? { sessionId: effectiveSessionId } : {}),
           });
+        }
+
+        // Handle RAAS onboarding (AI classifies business and matches to pre-built RAAS)
+        if (engineResult.generateRaas && engineResult.aiContext) {
+          const ctx = engineResult.aiContext;
+          let raasMessage = "";
+          let raasChips = [];
+
+          if (engineResult.generateRaas === 'build_questions') {
+            // Generate first question for RAAS builder
+            try {
+              const anthropic = getAnthropic();
+              const qResponse = await anthropic.messages.create({
+                model: "claude-sonnet-4-5-20250929",
+                max_tokens: 512,
+                system: `You are helping build a custom RAAS configuration for a business. Based on their description: "${ctx.companyDescription}". Company: ${ctx.companyName}. Ask them the first of 3-5 questions that would help you understand their key record types, compliance requirements, and workflows. Ask one question at a time. Keep questions conversational and specific to their industry. Respond with ONLY the question text, nothing else.`,
+                messages: [{ role: "user", content: "What should I ask first?" }],
+              });
+              raasMessage = qResponse.content[0]?.text || "What types of records does your business need to track?";
+              engineResult.state.raasBuildCurrentQuestion = raasMessage;
+            } catch (e) {
+              console.error("RAAS build questions failed:", e.message);
+              raasMessage = "What types of records does your business need to track?";
+              engineResult.state.raasBuildCurrentQuestion = raasMessage;
+            }
+          } else if (engineResult.generateRaas === 'build_next_question') {
+            // Generate next question based on previous answers
+            try {
+              const anthropic = getAnthropic();
+              const answersText = (ctx.answers || []).map((a, i) => `Q${i+1}: ${a.question}\nA${i+1}: ${a.answer}`).join("\n\n");
+              const qResponse = await anthropic.messages.create({
+                model: "claude-sonnet-4-5-20250929",
+                max_tokens: 512,
+                system: `You are helping build a custom RAAS configuration for "${ctx.companyName}" (${ctx.companyDescription}). Here are the questions asked and answers so far:\n\n${answersText}\n\nAsk the next question to understand their record types, compliance requirements, or workflows. Keep it conversational and specific to their industry. Respond with ONLY the question text.`,
+                messages: [{ role: "user", content: "What should I ask next?" }],
+              });
+              raasMessage = qResponse.content[0]?.text || "What compliance requirements does your business need to track?";
+              engineResult.state.raasBuildCurrentQuestion = raasMessage;
+            } catch (e) {
+              console.error("RAAS build next question failed:", e.message);
+              raasMessage = "What compliance requirements does your business need to track?";
+              engineResult.state.raasBuildCurrentQuestion = raasMessage;
+            }
+          } else if (engineResult.generateRaas === 'build_summary') {
+            // Generate configuration summary
+            try {
+              const anthropic = getAnthropic();
+              const answersText = (ctx.answers || []).map((a, i) => `Q${i+1}: ${a.question}\nA${i+1}: ${a.answer}`).join("\n\n");
+              const sResponse = await anthropic.messages.create({
+                model: "claude-sonnet-4-5-20250929",
+                max_tokens: 1024,
+                system: `You are TitleApp AI. Based on the following conversation with "${ctx.companyName}" (${ctx.companyDescription}), summarize the RAAS configuration you'd set up for them. Write 2-3 sentences describing what their workspace will include — record types, compliance rules, and workflows. Write directly to the user in second person. No bullet points, no jargon.`,
+                messages: [{ role: "user", content: answersText }],
+              });
+              const summary = sResponse.content[0]?.text || "Your workspace will include custom record management, compliance tracking, and automated workflows.";
+              engineResult.state.raasBuildSummary = summary;
+              raasMessage = `Based on what you've told me, here's what I'm setting up for your workspace: ${summary} Does this look right?`;
+              raasChips = ["Yes, looks good", "Not quite -- let me adjust"];
+            } catch (e) {
+              console.error("RAAS build summary failed:", e.message);
+              raasMessage = "Your workspace is configured. Does this look right?";
+              raasChips = ["Yes, looks good", "Not quite -- let me adjust"];
+            }
+          } else {
+            // Standard RAAS classification
+            try {
+              const anthropic = getAnthropic();
+              const raasResponse = await anthropic.messages.create({
+                model: "claude-sonnet-4-5-20250929",
+                max_tokens: 1024,
+                system: `You are TitleApp AI helping onboard a new business. The user has described their business. Based on their description, determine:
+
+1. What industry or business type this is
+2. What kinds of records, compliance requirements, and workflows they likely need
+3. Whether TitleApp has a pre-built RAAS (Rules as a Service) configuration that fits
+
+TitleApp currently has pre-built RAAS configurations for: consumer (vehicles, credentials, student records), property management (rentals, tenants, leases, maintenance, HOA), and deal analysis (investment vetting, memos, pipeline). More are being built.
+
+Respond with ONLY a JSON object:
+{
+  "industry": "the industry or business type",
+  "hasExistingRaas": true/false,
+  "raasMatch": "which existing RAAS fits, or null",
+  "summary": "a 2-3 sentence description of what their workspace would include, written directly to the user in second person",
+  "suggestedNextStep": "what to do first in their workspace"
+}`,
+                messages: [{ role: "user", content: `Company: ${ctx.companyName}. Description: ${ctx.companyDescription}` }],
+              });
+
+              const aiText = raasResponse.content[0]?.text || "";
+              let raasClassification;
+              try {
+                raasClassification = JSON.parse(aiText);
+              } catch (parseErr) {
+                const jsonMatch = aiText.match(/\{[\s\S]*\}/);
+                raasClassification = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
+              }
+
+              if (raasClassification) {
+                engineResult.state.raasClassification = raasClassification;
+
+                if (raasClassification.hasExistingRaas) {
+                  raasMessage = `Good news -- we have a rules engine built for ${raasClassification.industry}. ${raasClassification.summary} You can start using it right away, or if you have your own standard operating procedures and policies, I can incorporate those too. How would you like to proceed?`;
+                  raasChips = ["Start with the standard setup", "I have SOPs to upload first", "Tell me more about what's included"];
+                } else {
+                  raasMessage = `We don't have a pre-built configuration for ${raasClassification.industry} yet, but that's what the AI is for. I'll ask you some questions about how your business works -- your records, your compliance needs, your workflows -- and I'll build a custom rules engine for you. It usually takes about 10 minutes. Ready to get started?`;
+                  raasChips = ["Let's build it", "Tell me more about how this works"];
+                }
+              }
+            } catch (e) {
+              console.error("RAAS classification failed:", e.message);
+            }
+          }
+
+          // If RAAS classification failed, use fallback
+          if (!raasMessage) {
+            raasMessage = "I'm setting up your workspace. What does your business focus on?";
+            raasChips = ["Property Management", "Deal Analysis & Investment", "Auto Dealer", "Sales & Marketing", "Other"];
+            engineResult.state.step = "select_vertical";
+          }
+
+          // Combine with any existing message from chatEngine (like welcome card)
+          const combinedMessage = engineResult.message
+            ? engineResult.message
+            : "";
+
+          await sessionRef.set({
+            state: engineResult.state,
+            surface: surface || "landing",
+            userId: effectiveUserId,
+            ...(sessionSnap.exists ? {} : { createdAt: nowServerTs() }),
+            updatedAt: nowServerTs(),
+          }, { merge: true });
+
+          // Execute side effects if any
+          if (engineResult.sideEffects && engineResult.sideEffects.length > 0) {
+            executeChatSideEffects(engineResult.sideEffects, effectiveUserId)
+              .catch(e => console.warn("chatEngine side-effects batch error:", e.message));
+          }
+
+          return res.json({
+            ok: true,
+            message: combinedMessage,
+            cards: engineResult.cards || [],
+            promptChips: raasChips,
+            followUpMessage: raasMessage,
+            conversationState: engineResult.state.step,
+            ...(engineResult.state.authToken ? { authToken: engineResult.state.authToken } : {}),
+            ...(effectiveSessionId !== sessionId ? { sessionId: effectiveSessionId } : {}),
+          });
+        }
+
+        // Handle onboarding promise (emotional AI-generated welcome)
+        if (engineResult.generateOnboardingPromise && engineResult.aiContext) {
+          const ctx = engineResult.aiContext;
+          let promiseMessage = "";
+
+          try {
+            const anthropic = getAnthropic();
+
+            const systemPrompt = ctx.type === "business"
+              ? `You are TitleApp AI. A business owner just set up their workspace. Their business: ${ctx.companyDescription || ctx.companyName}. Their industry: ${ctx.industry || "general"}.
+
+Generate a three-part onboarding message. Each part should be 1-2 sentences max. Write directly to the user.
+
+Part 1 — What we're doing right now:
+We're building their foundation together. Not a software setup — a competitive advantage. Frame this as the moment they start building something their competitors can't replicate. Every verified record they create from this point forward is timestamped, attested, and permanent. Their competitors who start later can never backdate what they don't have.
+
+Part 2 — What goes away and what replaces it:
+Paint what disappears — the scrambling for documents when a client asks a hard question, the anxiety before an audit, the disputes they can't prove their side of, the manual processes eating their team's time. Then paint what replaces it — every interaction documented, every compliance requirement tracked in real time, every record indisputable. Their clients notice. Their partners notice. The people who used to question them stop questioning them.
+
+Part 3 — The competitive reality:
+This is a land grab and they're early. Verified records compound over time — the longer they're on the platform, the deeper their documented history, the wider the gap between them and everyone who waited. A year from now, a competitor who starts will be a year behind and can never catch up because you can't fake timestamps and you can't backdate verified records. They're not just getting organized. They're building a moat.
+
+Rules:
+- Hit emotions: fear of liability, pride in professionalism, greed for competitive edge, relief from anxiety
+- Use their specific industry context — speak to the real nightmares and real wins in their world
+- No feature names, no jargon, no bullet points
+- Write like a sharp business partner who sees the opportunity clearly
+- Warm and professional, no emojis, no hype words
+- Each part should flow naturally into the next, not feel like three separate sections
+- End with an energizing transition into the first action
+- Total length: 6-8 sentences across all three parts`
+              : `You are TitleApp AI. A consumer just signed up for personal use. You don't know yet what they want to track — it could be a vehicle, credentials, academic records, or something else. Generate a three-part welcome message that hits them where it matters — their money, their time, and the situations where not having proof costs them.
+
+Part 1 — The problem they don't think about until it's too late:
+Right now their important stuff is scattered — glove box, email, phone photos, a drawer somewhere. None of it is verified. None of it is organized. And every time they need to prove something — selling a car, applying for a job, filing an insurance claim, disputing a charge — they're scrambling and hoping they can find what they need. Sometimes they can't, and it costs them.
+
+Part 2 — What changes right now:
+Give them scenarios that hit. A car with verified service history sells for thousands more — that's real money they're leaving on the table today. A credential that's instantly provable means they get the job while the other candidate is still waiting for their university to mail transcripts. When the insurance company pushes back on a claim, they're not arguing — they have timestamped, verified proof. The power shifts to them in every transaction where someone is deciding whether to trust them.
+
+Part 3 — Why this moment matters:
+Everything they add from this point forward is documented, verified, and permanent. Every oil change, every certification renewal, every receipt — it's all building value that they'll cash in on later even if they don't know when. The people who wish they'd documented things always wish it after it's too late. They're starting now. That's the difference.
+
+Rules:
+- Talk about money lost, stress felt, and power dynamics in real situations
+- Use scenarios they can immediately picture themselves in
+- No jargon whatsoever — no blockchain, NFT, DTC, vault, platform, or any tech words
+- Warm and direct, like a smart friend who just showed them something obvious they've been missing
+- No emojis, no hype, no bullet points
+- End with a natural transition into 'What would you like to start with?'
+- Total length: 5-7 sentences across all three parts, flowing naturally`;
+
+            const promiseResponse = await anthropic.messages.create({
+              model: "claude-sonnet-4-5-20250929",
+              max_tokens: 1024,
+              system: systemPrompt,
+              messages: [{ role: "user", content: "Generate the onboarding message." }],
+            });
+
+            promiseMessage = promiseResponse.content[0]?.text || "";
+            // Strip any markdown formatting the AI might have added
+            promiseMessage = promiseMessage
+              .replace(/^#+\s.*\n+/gm, '')  // Remove markdown headers
+              .replace(/\*\*/g, '')          // Remove bold
+              .replace(/\*/g, '')            // Remove italic
+              .replace(/^[-*]\s/gm, '')      // Remove bullet points
+              .replace(/^\d+\.\s/gm, '')     // Remove numbered lists
+              .trim();
+          } catch (e) {
+            console.error("Onboarding promise generation failed:", e.message);
+          }
+
+          // Fallback if AI fails
+          if (!promiseMessage) {
+            promiseMessage = ctx.type === "business"
+              ? `Your workspace is ready. Every record you create from this point forward is timestamped, verified, and permanent. Let's get started.`
+              : `Everything you add from this point forward is documented, verified, and yours. What would you like to start with?`;
+          }
+
+          // Execute side effects
+          if (engineResult.sideEffects && engineResult.sideEffects.length > 0) {
+            executeChatSideEffects(engineResult.sideEffects, effectiveUserId)
+              .catch(e => console.warn("chatEngine side-effects batch error:", e.message));
+          }
+
+          // Determine prompt chips based on type
+          const promiseChips = ctx.type === "business"
+            ? (ctx.businessVertical === "real_estate"
+              ? ["Add a property", "Onboard a tenant", "Maintenance request", "View properties"]
+              : ctx.businessVertical === "analyst"
+                ? ["Vet a new deal", "Write a POV", "View pipeline"]
+                : ctx.businessVertical === "auto"
+                  ? ["Add a vehicle", "View inventory", "Sales pipeline"]
+                  : ["Add a record", "Set up compliance", "View vault"])
+            : ["Add a vehicle", "Add a credential", "Education record"];
+
+          await sessionRef.set({
+            state: engineResult.state,
+            surface: surface || "landing",
+            userId: effectiveUserId,
+            ...(sessionSnap.exists ? {} : { createdAt: nowServerTs() }),
+            updatedAt: nowServerTs(),
+          }, { merge: true });
+
+          return res.json({
+            ok: true,
+            message: engineResult.message || "",
+            cards: engineResult.cards || [],
+            promptChips: promiseChips,
+            followUpMessage: promiseMessage,
+            conversationState: engineResult.state.step,
+            ...(engineResult.state.authToken ? { authToken: engineResult.state.authToken } : {}),
+            ...(effectiveSessionId !== sessionId ? { sessionId: effectiveSessionId } : {}),
+          });
+        }
+
+        // Handle milestone acknowledgment (AI-generated contextual message after DTC creation)
+        if (engineResult.generateMilestone && engineResult.aiContext) {
+          const ctx = engineResult.aiContext;
+          let milestoneMessage = "";
+
+          try {
+            const anthropic = getAnthropic();
+            const milestoneResponse = await anthropic.messages.create({
+              model: "claude-sonnet-4-5-20250929",
+              max_tokens: 512,
+              system: `You are TitleApp AI. A user just created a verified record. Generate a 1-2 sentence acknowledgment that connects this specific achievement to real-world value — money saved, time saved, or stress avoided. Be specific to what they just did. No jargon, no feature names, no emojis, no bullet points. Warm and direct. End with a brief forward-looking statement about what this means for them.
+
+Context:
+- Milestone type: ${ctx.milestoneType}
+- User name: ${ctx.name || "there"}
+- Is first record: ${ctx.isFirstRecord ? "yes" : "no"}
+${ctx.vehicleName ? "- Vehicle: " + ctx.vehicleName : ""}
+${ctx.credentialName ? "- Credential: " + ctx.credentialName : ""}
+${ctx.school ? "- School: " + ctx.school : ""}
+${ctx.program ? "- Program: " + ctx.program : ""}
+${ctx.companyName ? "- Company: " + ctx.companyName : ""}
+${ctx.sector ? "- Sector: " + ctx.sector : ""}
+${ctx.address ? "- Property: " + ctx.address : ""}
+${ctx.propertyType ? "- Property type: " + ctx.propertyType : ""}
+${ctx.tenantName ? "- Tenant: " + ctx.tenantName : ""}
+${ctx.property ? "- For property: " + ctx.property : ""}
+${ctx.category ? "- Category: " + ctx.category : ""}`,
+              messages: [{ role: "user", content: "Generate the milestone acknowledgment." }],
+            });
+            milestoneMessage = (milestoneResponse.content[0]?.text || "")
+              .replace(/^#+\s.*\n+/gm, '')
+              .replace(/\*\*/g, '')
+              .replace(/\*/g, '')
+              .replace(/^[-*]\s/gm, '')
+              .trim();
+          } catch (e) {
+            console.error("Milestone generation failed:", e.message);
+          }
+
+          // If AI generated a milestone, append it to the follow-up message
+          if (milestoneMessage) {
+            const existingFollowUp = engineResult.followUpMessage || "";
+            engineResult.followUpMessage = existingFollowUp
+              ? `${existingFollowUp}\n\n${milestoneMessage}`
+              : milestoneMessage;
+          }
+
+          // Fall through to normal response handling below
         }
 
         // Handle AI fallthrough (authenticated free-form chat)
