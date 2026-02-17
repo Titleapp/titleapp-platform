@@ -370,16 +370,21 @@ export default function Analyst() {
                 </label>
                 <input
                   type="text"
+                  inputMode="numeric"
                   required
                   value={dealInput.askAmount}
-                  onChange={(e) => setDealInput({ ...dealInput, askAmount: e.target.value })}
+                  onChange={(e) => {
+                    const raw = e.target.value.replace(/[^0-9]/g, "");
+                    const formatted = raw ? "$" + Number(raw).toLocaleString() : "";
+                    setDealInput({ ...dealInput, askAmount: formatted });
+                  }}
                   style={{
                     width: "100%",
                     padding: "10px",
                     borderRadius: "12px",
                     border: "1px solid var(--line)",
                   }}
-                  placeholder="$5M"
+                  placeholder="$5,000,000"
                 />
               </div>
 
@@ -397,12 +402,25 @@ export default function Analyst() {
                     border: "1px solid var(--line)",
                   }}
                 >
-                  <option value="seed">Seed</option>
-                  <option value="series_a">Series A</option>
-                  <option value="series_b">Series B</option>
-                  <option value="series_c">Series C+</option>
-                  <option value="pe_buyout">PE Buyout</option>
-                  <option value="refinance">Refinance</option>
+                  <optgroup label="Venture / PE">
+                    <option value="seed">Seed</option>
+                    <option value="series_a">Series A</option>
+                    <option value="series_b">Series B</option>
+                    <option value="series_c">Series C+</option>
+                    <option value="pe_buyout">PE Buyout</option>
+                  </optgroup>
+                  <optgroup label="Real Estate">
+                    <option value="acquisition">Acquisition</option>
+                    <option value="development">Development</option>
+                    <option value="value_add">Value-Add</option>
+                    <option value="sale_leaseback">Sale-Leaseback</option>
+                  </optgroup>
+                  <optgroup label="Debt / Other">
+                    <option value="refinance">Refinance</option>
+                    <option value="bridge_loan">Bridge Loan</option>
+                    <option value="mezzanine">Mezzanine</option>
+                    <option value="joint_venture">Joint Venture</option>
+                  </optgroup>
                 </select>
               </div>
 
@@ -461,6 +479,7 @@ export default function Analyst() {
                   type="button"
                   className="iconBtn"
                   onClick={() => setShowUploadModal(false)}
+                  disabled={analyzing}
                 >
                   Cancel
                 </button>
@@ -472,11 +491,40 @@ export default function Analyst() {
                     background: "var(--accent)",
                     color: "white",
                     borderColor: "var(--accent)",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
                   }}
                 >
-                  {analyzing ? "Analyzing..." : "Analyze with AI"}
+                  {analyzing ? (
+                    <>
+                      <span style={{ display: "inline-block", width: "16px", height: "16px", border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "white", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+                      Analyzing...
+                    </>
+                  ) : "Analyze with AI"}
                 </button>
               </div>
+              {analyzing && (
+                <div style={{ padding: "16px", background: "#f8f4ff", borderRadius: "12px", border: "1px solid #e9d5ff", textAlign: "center" }}>
+                  <div style={{ fontSize: "14px", color: "var(--accent)", fontWeight: 600, marginBottom: "8px" }}>
+                    AI is analyzing this deal
+                  </div>
+                  <div style={{ fontSize: "13px", color: "#6b7280" }}>
+                    Screening against your criteria, checking evidence, evaluating risk...
+                  </div>
+                  <div style={{ marginTop: "12px", height: "3px", background: "#e9d5ff", borderRadius: "2px", overflow: "hidden" }}>
+                    <div style={{ width: "100%", height: "100%", background: "var(--accent)", borderRadius: "2px", animation: "analyzeProgress 3s ease-in-out infinite" }} />
+                  </div>
+                </div>
+              )}
+              <style>{`
+                @keyframes spin { to { transform: rotate(360deg); } }
+                @keyframes analyzeProgress {
+                  0% { transform: translateX(-100%); }
+                  50% { transform: translateX(0%); }
+                  100% { transform: translateX(100%); }
+                }
+              `}</style>
             </form>
           </div>
         </div>
@@ -742,6 +790,67 @@ export default function Analyst() {
                     </div>
                   </div>
                 )}
+
+                {/* Action Buttons */}
+                <div style={{
+                  display: "flex",
+                  gap: "8px",
+                  flexWrap: "wrap",
+                  paddingTop: "12px",
+                  borderTop: "1px solid #e5e7eb",
+                }}>
+                  <button
+                    className="iconBtn"
+                    onClick={() => {
+                      const name = dealInfo.companyName || "this deal";
+                      window.dispatchEvent(new CustomEvent('ta:chatPrompt', {
+                        detail: { message: `Let's discuss the ${name} analysis. What are the key risks I should focus on?` }
+                      }));
+                      setSelectedDeal(null);
+                    }}
+                    style={{
+                      background: "var(--accent)",
+                      color: "white",
+                      borderColor: "var(--accent)",
+                      flex: "1 1 auto",
+                    }}
+                  >
+                    Discuss with AI
+                  </button>
+                  <button
+                    className="iconBtn"
+                    onClick={() => {
+                      const blob = new Blob(
+                        [JSON.stringify({ deal: dealInfo, analysis }, null, 2)],
+                        { type: "application/json" }
+                      );
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement("a");
+                      a.href = url;
+                      a.download = `${(dealInfo.companyName || "deal").replace(/\s+/g, "_")}_analysis.json`;
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    }}
+                    style={{ flex: "1 1 auto" }}
+                  >
+                    Export
+                  </button>
+                  {analysis.missingInfo && analysis.missingInfo.length > 0 && (
+                    <button
+                      className="iconBtn"
+                      onClick={() => {
+                        const missing = analysis.missingInfo.join(", ");
+                        window.dispatchEvent(new CustomEvent('ta:chatPrompt', {
+                          detail: { message: `For the ${dealInfo.companyName || "deal"} analysis, I need help gathering: ${missing}` }
+                        }));
+                        setSelectedDeal(null);
+                      }}
+                      style={{ flex: "1 1 auto", color: "#dc2626", borderColor: "#fca5a5" }}
+                    >
+                      Request Missing Info
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </div>

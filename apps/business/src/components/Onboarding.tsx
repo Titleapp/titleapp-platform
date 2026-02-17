@@ -12,10 +12,16 @@ import { doc, getDoc } from "firebase/firestore";
 
 interface OnboardingProps {
   onComplete: (tenantId: string) => void;
+  onStepChange?: (step: string) => void;
 }
 
-export default function Onboarding({ onComplete }: OnboardingProps) {
-  const [step, setStep] = useState<"checking" | "terms" | "welcome" | "idVerify" | "details" | "raas" | "criteria" | "sampleDeals" | "dealerData" | "realEstateData" | "brokerage" | "propertyMgmt" | "magic">("checking");
+export default function Onboarding({ onComplete, onStepChange }: OnboardingProps) {
+  const [step, setStepRaw] = useState<"checking" | "terms" | "welcome" | "idVerify" | "details" | "raas" | "criteria" | "sampleDeals" | "dealerData" | "realEstateData" | "brokerage" | "propertyMgmt" | "magic">("checking");
+
+  function setStep(newStep: typeof step) {
+    setStepRaw(newStep);
+    onStepChange?.(newStep);
+  }
   const [companyName, setCompanyName] = useState("");
   const [vertical, setVertical] = useState("auto");
   const [jurisdiction, setJurisdiction] = useState("IL");
@@ -136,7 +142,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
 
   if (step === "checking") {
     return (
-      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#f8fafc", fontFamily: "-apple-system, BlinkMacSystemFont, sans-serif" }}>
+      <div style={{ minHeight: "100%", display: "flex", alignItems: "center", justifyContent: "center", background: "#f8fafc", fontFamily: "-apple-system, BlinkMacSystemFont, sans-serif" }}>
         <div style={{ textAlign: "center" }}>
           <div style={{ fontSize: "20px", fontWeight: 600, color: "#7c3aed", marginBottom: "16px" }}>TitleApp</div>
           <div style={{ fontSize: "16px", color: "#6b7280" }}>Loading...</div>
@@ -161,7 +167,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
     return (
       <div
         style={{
-          minHeight: "100vh",
+          minHeight: "100%",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -193,7 +199,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
     return (
       <div
         style={{
-          minHeight: "100vh",
+          minHeight: "100%",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -226,7 +232,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
     return (
       <div
         style={{
-          minHeight: "100vh",
+          minHeight: "100%",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -258,7 +264,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
     return (
       <div
         style={{
-          minHeight: "100vh",
+          minHeight: "100%",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -290,7 +296,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
     return (
       <div
         style={{
-          minHeight: "100vh",
+          minHeight: "100%",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -302,7 +308,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
         <div
           style={{
             width: "100%",
-            maxWidth: "500px",
+            maxWidth: "560px",
             padding: "40px",
             background: "white",
             borderRadius: "16px",
@@ -322,7 +328,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
             value={raasRules}
             onChange={(e) => setRaasRules(e.target.value)}
             placeholder="e.g. Always address clients formally. Never discuss competitor pricing. Use metric units."
-            rows={5}
+            rows={4}
             style={{
               width: "100%",
               padding: "12px 16px",
@@ -334,7 +340,56 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
               lineHeight: 1.5,
             }}
           />
-          <div style={{ display: "flex", gap: "12px", marginTop: "24px" }}>
+
+          <div style={{ marginTop: "24px", marginBottom: "24px" }}>
+            <h3 style={{ margin: "0 0 8px 0", fontSize: "16px", fontWeight: 600 }}>
+              Compliance & Regulations
+            </h3>
+            <p style={{ margin: "0 0 12px 0", color: "#6b7280", fontSize: "14px", lineHeight: 1.5 }}>
+              Which regulations apply to your business? The AI will factor these into every recommendation.
+            </p>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+              {[
+                { label: "State Licensing", value: "state_licensing" },
+                { label: "FTC / Consumer Protection", value: "ftc" },
+                { label: "Fair Housing", value: "fair_housing" },
+                { label: "AML / KYC", value: "aml_kyc" },
+                { label: "SEC Reporting", value: "sec" },
+                { label: "RESPA / TILA", value: "respa_tila" },
+                { label: "GDPR / Privacy", value: "gdpr" },
+                { label: "EPA / Environmental", value: "epa" },
+              ].map((reg) => {
+                const isSelected = raasRules.includes(reg.value);
+                return (
+                  <button
+                    key={reg.value}
+                    type="button"
+                    onClick={() => {
+                      if (isSelected) {
+                        setRaasRules(raasRules.replace(`[${reg.value}]`, "").trim());
+                      } else {
+                        setRaasRules((raasRules + ` [${reg.value}]`).trim());
+                      }
+                    }}
+                    style={{
+                      padding: "6px 14px",
+                      fontSize: "13px",
+                      borderRadius: "20px",
+                      border: isSelected ? "2px solid rgb(124,58,237)" : "1px solid #e5e7eb",
+                      background: isSelected ? "rgba(124,58,237,0.08)" : "white",
+                      color: isSelected ? "rgb(124,58,237)" : "#374151",
+                      cursor: "pointer",
+                      fontWeight: isSelected ? 600 : 400,
+                    }}
+                  >
+                    {reg.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div style={{ display: "flex", gap: "12px" }}>
             <button
               onClick={handleRaasNext}
               style={{
@@ -352,20 +407,19 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
             </button>
             <button
               onClick={handleRaasNext}
-              disabled={!raasRules.trim()}
               style={{
                 flex: 1,
                 padding: "14px",
                 fontSize: "15px",
                 fontWeight: 600,
-                background: raasRules.trim() ? "rgb(124,58,237)" : "#9ca3af",
+                background: "rgb(124,58,237)",
                 color: "white",
                 border: "none",
                 borderRadius: "8px",
-                cursor: raasRules.trim() ? "pointer" : "not-allowed",
+                cursor: "pointer",
               }}
             >
-              Save & Continue
+              {raasRules.trim() ? "Save & Continue" : "Continue"}
             </button>
           </div>
         </div>
@@ -377,7 +431,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
     return (
       <div
         style={{
-          minHeight: "100vh",
+          minHeight: "100%",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -409,7 +463,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
     return (
       <div
         style={{
-          minHeight: "100vh",
+          minHeight: "100%",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -441,7 +495,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
     return (
       <div
         style={{
-          minHeight: "100vh",
+          minHeight: "100%",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -454,6 +508,8 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
             textAlign: "center",
             color: "white",
             animation: "fadeInScale 0.6s ease-out",
+            maxWidth: "500px",
+            padding: "40px 20px",
           }}
         >
           <div style={{ fontSize: "48px", marginBottom: "24px", fontWeight: 300, letterSpacing: "-2px" }}>
@@ -462,24 +518,26 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
           <h1 style={{ fontSize: "32px", fontWeight: 700, margin: "0 0 16px 0" }}>
             Welcome, {companyName || "partner"}.
           </h1>
-          <p style={{ fontSize: "18px", opacity: 0.9 }}>
+          <p style={{ fontSize: "18px", opacity: 0.9, marginBottom: "32px" }}>
             Your AI-powered business platform is ready
           </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "32px", textAlign: "left", background: "rgba(255,255,255,0.12)", borderRadius: "12px", padding: "20px 24px" }}>
+            <div style={{ fontSize: "14px", opacity: 0.8 }}>Setting up your workspace</div>
+            <div style={{ fontSize: "14px", opacity: 0.8 }}>Configuring AI assistant for {vertical === "auto" ? "automotive" : vertical === "analyst" ? "investment" : vertical === "real-estate" ? "real estate" : vertical === "property-mgmt" ? "property management" : vertical}</div>
+            <div style={{ fontSize: "14px", opacity: 0.8 }}>Loading {jurisdiction} compliance rules</div>
+          </div>
+          <div style={{ width: "200px", height: "3px", background: "rgba(255,255,255,0.2)", borderRadius: "2px", margin: "0 auto", overflow: "hidden" }}>
+            <div style={{ width: "100%", height: "100%", background: "white", borderRadius: "2px", animation: "progressSlide 2s ease-in-out" }} />
+          </div>
         </div>
         <style>{`
           @keyframes fadeInScale {
-            from {
-              opacity: 0;
-              transform: scale(0.8);
-            }
-            to {
-              opacity: 1;
-              transform: scale(1);
-            }
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
           }
-          @keyframes bounce {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-20px); }
+          @keyframes progressSlide {
+            from { transform: translateX(-100%); }
+            to { transform: translateX(0); }
           }
         `}</style>
       </div>
@@ -499,7 +557,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
     return (
       <div
         style={{
-          minHeight: "100vh",
+          minHeight: "100%",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -644,7 +702,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
   return (
     <div
       style={{
-        minHeight: "100vh",
+        minHeight: "100%",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",

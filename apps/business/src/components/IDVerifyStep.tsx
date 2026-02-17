@@ -41,13 +41,11 @@ export default function IDVerifyStep({ onComplete, onSkip }: IDVerifyStepProps) 
   return (
     <div
       style={{
-        minHeight: "100vh",
         display: "flex",
-        alignItems: "center",
+        alignItems: "flex-start",
         justifyContent: "center",
-        background: "#f8fafc",
-        fontFamily: "-apple-system, BlinkMacSystemFont, sans-serif",
-        padding: "20px",
+        padding: "40px 20px",
+        minHeight: "100%",
       }}
     >
       <div
@@ -58,6 +56,7 @@ export default function IDVerifyStep({ onComplete, onSkip }: IDVerifyStepProps) 
           background: "white",
           borderRadius: "16px",
           border: "1px solid #e5e7eb",
+          boxShadow: "0 10px 24px rgba(15, 23, 42, 0.08)",
           textAlign: "center",
         }}
       >

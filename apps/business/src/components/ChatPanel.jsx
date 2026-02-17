@@ -2,13 +2,39 @@ import React, { useState, useEffect, useRef } from 'react';
 import { getAuth } from 'firebase/auth';
 import { getFirestore, collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
 
-export default function ChatPanel({ currentSection }) {
+const CONTEXTUAL_MESSAGES = {
+  terms: "This is our standard terms and liability agreement. Take a look and let me know if you have questions.",
+  idVerify: "Quick identity check -- keeps your records secure and verified. $2, once a year.",
+  details: "This is where we set your foundation. The jurisdiction matters because compliance rules vary by state.",
+  raas: "Tell me how you want your AI assistant to work. I'll follow these rules in every interaction.",
+  criteria: "This is your target box. Every deal gets screened against these numbers automatically.",
+  sampleDeals: "Drop your deal memos here. I'll pull out the key data so you don't have to enter it manually.",
+  dealerData: "Upload your dealership data. The more I know about your inventory and customers, the more I can help.",
+  brokerage: "Tell me about your brokerage. I'll help you track listings, manage documents, and stay compliant.",
+  propertyMgmt: "Let's set up your property portfolio. I'll help you track units, leases, and maintenance.",
+  dashboard: "Welcome to your workspace. Everything starts from here -- your deals, your analysis, your pipeline.",
+  analyst: "Your deal analysis hub. Upload deals and I'll screen them against your criteria.",
+};
+
+export default function ChatPanel({ currentSection, onboardingStep }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [authReady, setAuthReady] = useState(false);
+  const [lastContextStep, setLastContextStep] = useState(null);
   const conversationRef = useRef(null);
+
+  // Listen for "discuss with AI" events from other components
+  useEffect(() => {
+    function handleChatPrompt(e) {
+      if (e.detail?.message) {
+        setInput(e.detail.message);
+      }
+    }
+    window.addEventListener('ta:chatPrompt', handleChatPrompt);
+    return () => window.removeEventListener('ta:chatPrompt', handleChatPrompt);
+  }, []);
 
   const auth = getAuth();
   const db = getFirestore();
@@ -26,6 +52,22 @@ export default function ChatPanel({ currentSection }) {
       loadConversationHistory();
     }
   }, [currentUser, authReady]);
+
+  // Send contextual messages when onboarding step or section changes
+  useEffect(() => {
+    const stepKey = onboardingStep || currentSection;
+    if (stepKey && stepKey !== lastContextStep && stepKey !== 'checking' && stepKey !== 'welcome' && stepKey !== 'magic') {
+      const contextMsg = CONTEXTUAL_MESSAGES[stepKey];
+      if (contextMsg) {
+        setLastContextStep(stepKey);
+        // Small delay so it feels natural
+        const timer = setTimeout(() => {
+          setMessages(prev => [...prev, { role: 'assistant', content: contextMsg, isSystem: true }]);
+        }, 600);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [onboardingStep, currentSection]);
 
   useEffect(() => {
     if (conversationRef.current) {

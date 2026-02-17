@@ -212,15 +212,20 @@ export default function App() {
     );
   }
   if (!token) return <Login />;
+  const [onboardingStep, setOnboardingStep] = useState(null);
+
   if (needsOnboarding) {
     return (
       <div className="appShell" style={{ minHeight: "100vh" }}>
         <div className="dualPanel" style={{ minHeight: "100vh" }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <Onboarding onComplete={() => setNeedsOnboarding(false)} />
+          <div style={{ flex: 1, minWidth: 0, overflowY: "auto", height: "100vh" }}>
+            <Onboarding
+              onComplete={() => setNeedsOnboarding(false)}
+              onStepChange={setOnboardingStep}
+            />
           </div>
           <aside className="chatSidebar">
-            <ChatPanel currentSection="onboarding" />
+            <ChatPanel currentSection="onboarding" onboardingStep={onboardingStep} />
           </aside>
         </div>
       </div>

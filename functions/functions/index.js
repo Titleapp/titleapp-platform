@@ -1645,25 +1645,27 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
         if (!aiResponse && (preferredModel === "claude" || !preferredModel)) {
           try {
             // Fetch conversation history (last 20 messages)
-            const historySnapshot = await db
-              .collection("messageEvents")
-              .where("tenantId", "==", ctx.tenantId)
-              .where("userId", "==", ctx.userId)
-              .orderBy("createdAt", "desc")
-              .limit(20)
-              .get();
-
-            // Build message array for Claude (newest first from query, so reverse)
             const messages = [];
-            const history = historySnapshot.docs.reverse();
+            try {
+              const historySnapshot = await db
+                .collection("messageEvents")
+                .where("tenantId", "==", ctx.tenantId)
+                .where("userId", "==", ctx.userId)
+                .orderBy("createdAt", "desc")
+                .limit(20)
+                .get();
 
-            for (const doc of history) {
-              const evt = doc.data();
-              if (evt.type === "chat:message:received") {
-                messages.push({ role: "user", content: evt.message });
-              } else if (evt.type === "chat:message:responded") {
-                messages.push({ role: "assistant", content: evt.response });
+              const history = historySnapshot.docs.reverse();
+              for (const doc of history) {
+                const evt = doc.data();
+                if (evt.type === "chat:message:received") {
+                  messages.push({ role: "user", content: evt.message });
+                } else if (evt.type === "chat:message:responded") {
+                  messages.push({ role: "assistant", content: evt.response });
+                }
               }
+            } catch (historyErr) {
+              console.warn("⚠️ Could not load chat history (index may be building):", historyErr.message);
             }
 
             // Add current message
@@ -1674,39 +1676,39 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
             const response = await anthropic.messages.create({
               model: "claude-sonnet-4-5-20250929",
               max_tokens: 2048,
-              system: "You are a helpful assistant for TitleApp, a platform that helps people keep track of important records (car titles, home documents, pet records, student transcripts, etc.). Be concise, friendly, and focus on helping users understand how to organize and protect their important documents.",
+              system: `You are the AI assistant for TitleApp, a business intelligence platform. The user is on the "${(context || {}).currentSection || "dashboard"}" section. Be concise and professional. Help with deal analysis, business operations, compliance questions, document management, and platform navigation. When discussing deals or investments, always note that you provide informational analysis only, not financial advice.`,
               messages,
             });
 
             aiResponse = response.content[0]?.text || "I apologize, but I couldn't generate a response. Please try again.";
           } catch (apiError) {
-            console.error("❌ Claude API call failed:", apiError);
-            // Fallback to a helpful error message
+            console.error("❌ Claude API call failed:", apiError.message || apiError);
             aiResponse = "I'm having trouble connecting to the AI service right now. Please try again in a moment.";
           }
         } else if (preferredModel === "openai" || preferredModel === "chatgpt") {
           // OpenAI / ChatGPT integration
           try {
-            // Fetch conversation history (last 20 messages)
-            const historySnapshot = await db
-              .collection("messageEvents")
-              .where("tenantId", "==", ctx.tenantId)
-              .where("userId", "==", ctx.userId)
-              .orderBy("createdAt", "desc")
-              .limit(20)
-              .get();
-
-            // Build message array for OpenAI (newest first from query, so reverse)
             const messages = [];
-            const history = historySnapshot.docs.reverse();
+            try {
+              const historySnapshot = await db
+                .collection("messageEvents")
+                .where("tenantId", "==", ctx.tenantId)
+                .where("userId", "==", ctx.userId)
+                .orderBy("createdAt", "desc")
+                .limit(20)
+                .get();
 
-            for (const doc of history) {
-              const evt = doc.data();
-              if (evt.type === "chat:message:received") {
-                messages.push({ role: "user", content: evt.message });
-              } else if (evt.type === "chat:message:responded") {
-                messages.push({ role: "assistant", content: evt.response });
+              const history = historySnapshot.docs.reverse();
+              for (const doc of history) {
+                const evt = doc.data();
+                if (evt.type === "chat:message:received") {
+                  messages.push({ role: "user", content: evt.message });
+                } else if (evt.type === "chat:message:responded") {
+                  messages.push({ role: "assistant", content: evt.response });
+                }
               }
+            } catch (historyErr) {
+              console.warn("⚠️ Could not load chat history (index may be building):", historyErr.message);
             }
 
             // Add current message
