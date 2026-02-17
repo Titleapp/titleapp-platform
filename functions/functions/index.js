@@ -1210,6 +1210,8 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
           ...(engineResult.state.authToken ? { authToken: engineResult.state.authToken } : {}),
           // Pass back effective session ID if it changed (session resume)
           ...(effectiveSessionId !== sessionId ? { sessionId: effectiveSessionId } : {}),
+          // Pass through platform redirect signal from chatEngine
+          ...(engineResult.platformRedirect ? { platformRedirect: true, platformUrl: engineResult.platformUrl || 'https://title-app-alpha.web.app' } : {}),
         });
 
       } catch (e) {

@@ -22,8 +22,8 @@ export default function Inventory() {
     cost: "",
   });
 
-  const vertical = "auto";
-  const jurisdiction = "il";
+  const vertical = localStorage.getItem("VERTICAL") || "auto";
+  const jurisdiction = localStorage.getItem("JURISDICTION") || "IL";
 
   // Mock inventory data
   const mockItems = [

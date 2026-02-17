@@ -16,73 +16,17 @@ export default function RulesResources() {
     enabled: true,
   });
 
-  // Mock RAAS workflows
-  const mockWorkflows = [
-    {
-      id: "wf-001",
-      name: "Vehicle Purchase Flow",
-      vertical: "auto",
-      jurisdiction: "IL",
-      description: "Complete workflow for vehicle purchase and title transfer",
-      rules: [
-        "VIN verification required",
-        "Odometer disclosure mandatory",
-        "Lien release check before transfer",
-        "Sales tax calculation (IL: 7.25% base + local)",
-      ],
-      enabled: true,
-      executionCount: 47,
-      lastUsed: "2026-02-14T10:30:00Z",
-    },
-    {
-      id: "wf-002",
-      name: "Service Work Order",
-      vertical: "auto",
-      jurisdiction: "IL",
-      description: "Service appointment and work order processing",
-      rules: [
-        "Customer authorization required for work >$100",
-        "Parts inventory check before quoting",
-        "Labor rate: $125/hour standard, $150/hour diagnostic",
-        "Warranty verification for covered repairs",
-      ],
-      enabled: true,
-      executionCount: 234,
-      lastUsed: "2026-02-14T15:00:00Z",
-    },
-    {
-      id: "wf-003",
-      name: "Trade-In Valuation",
-      vertical: "auto",
-      jurisdiction: "IL",
-      description: "Vehicle trade-in appraisal workflow",
-      rules: [
-        "KBB/NADA price check required",
-        "Visual inspection checklist (25 points)",
-        "CarFax/AutoCheck history review",
-        "Outstanding loan payoff verification",
-      ],
-      enabled: true,
-      executionCount: 18,
-      lastUsed: "2026-02-13T11:00:00Z",
-    },
-    {
-      id: "wf-004",
-      name: "Financing Application",
-      vertical: "auto",
-      jurisdiction: "IL",
-      description: "Customer financing and credit check",
-      rules: [
-        "Credit score check (minimum 600)",
-        "Debt-to-income ratio <43%",
-        "Down payment: 10% minimum for used, 5% for new",
-        "APR range: 3.9%-18% based on credit tier",
-      ],
-      enabled: false,
-      executionCount: 12,
-      lastUsed: "2026-02-10T09:00:00Z",
-    },
-  ];
+  const vertical = localStorage.getItem("VERTICAL") || "auto";
+  const jurisdiction = localStorage.getItem("JURISDICTION") || "IL";
+
+  const VERTICAL_LABELS = {
+    auto: "Auto Dealer",
+    analyst: "Investment Analyst",
+    "real-estate": "Real Estate Brokerage",
+    "property-mgmt": "Property Management",
+    aviation: "Aviation",
+    marine: "Marine",
+  };
 
   useEffect(() => {
     loadWorkflows();
@@ -90,10 +34,12 @@ export default function RulesResources() {
 
   async function loadWorkflows() {
     setLoading(true);
-    setTimeout(() => {
-      setWorkflows(mockWorkflows);
+    try {
+      // Workflows will be loaded from RAAS catalog when backend is ready
+      setWorkflows([]);
+    } finally {
       setLoading(false);
-    }, 500);
+    }
   }
 
   function handleEditClick(workflow) {
@@ -177,16 +123,22 @@ export default function RulesResources() {
         <div className="detail">
           <div className="kvRow">
             <div className="k">Vertical</div>
-            <div className="v">Auto Dealer</div>
+            <div className="v">{VERTICAL_LABELS[vertical] || vertical}</div>
           </div>
           <div className="kvRow">
             <div className="k">Jurisdiction</div>
-            <div className="v">Illinois (IL)</div>
+            <div className="v">{jurisdiction.toUpperCase()}</div>
           </div>
           <div className="kvRow">
             <div className="k">RAAS Version</div>
             <div className="v">2.1.0</div>
           </div>
+          {localStorage.getItem("RAAS_RULES") && (
+            <div className="kvRow">
+              <div className="k">Custom Rules</div>
+              <div className="v" style={{ whiteSpace: "pre-wrap" }}>{localStorage.getItem("RAAS_RULES")}</div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -194,6 +146,25 @@ export default function RulesResources() {
       {loading && (
         <div className="card">
           <div className="empty">Loading workflows...</div>
+        </div>
+      )}
+
+      {/* Empty state */}
+      {!loading && workflows.length === 0 && (
+        <div className="card" style={{ marginTop: "16px" }}>
+          <div className="empty" style={{ padding: "40px 20px", textAlign: "center" }}>
+            <div style={{ fontSize: "16px", fontWeight: 600, marginBottom: "8px" }}>No workflows configured yet</div>
+            <div style={{ fontSize: "14px", color: "var(--textMuted)", marginBottom: "16px", maxWidth: "400px", margin: "0 auto 16px" }}>
+              Workflows define the rules your AI assistant follows. They are configured per vertical and jurisdiction. Create your first workflow or ask the AI assistant to set one up for you.
+            </div>
+            <button
+              className="iconBtn"
+              onClick={() => alert("Create new workflow...")}
+              style={{ background: "var(--accent)", color: "white", borderColor: "var(--accent)" }}
+            >
+              + Create First Workflow
+            </button>
+          </div>
         </div>
       )}
 

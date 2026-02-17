@@ -5,48 +5,52 @@ import React, { useState } from "react";
  */
 export default function Reports() {
   const [dateRange, setDateRange] = useState("30days");
+  const vertical = localStorage.getItem("VERTICAL") || "auto";
 
-  // Mock analytics data
-  const kpis = {
-    revenue: { value: "$127,450", change: "+12.5%", positive: true },
-    sales: { value: "47", change: "+8.2%", positive: true },
-    customers: { value: "234", change: "+15.3%", positive: true },
-    avgDealSize: { value: "$2,712", change: "-3.1%", positive: false },
+  const VERTICAL_LABELS = {
+    auto: "Auto Dealer",
+    analyst: "Investment Analyst",
+    "real-estate": "Real Estate Brokerage",
+    "property-mgmt": "Property Management",
+    aviation: "Aviation",
+    marine: "Marine",
   };
 
-  const topProducts = [
-    { name: "2024 Honda Accord", sales: 12, revenue: "$34,200" },
-    { name: "2023 Toyota Camry", sales: 8, revenue: "$28,400" },
-    { name: "Premium Oil Change", sales: 45, revenue: "$3,600" },
-    { name: "Tire Rotation", sales: 32, revenue: "$1,120" },
-  ];
+  function getKpiConfig() {
+    if (vertical === "analyst") {
+      return [
+        { label: "Deals Analyzed", value: "--" },
+        { label: "Avg Risk Score", value: "--" },
+        { label: "AI Sessions", value: "--" },
+        { label: "Reports Generated", value: "--" },
+      ];
+    }
+    if (vertical === "property-mgmt") {
+      return [
+        { label: "Revenue", value: "--" },
+        { label: "Occupancy Rate", value: "--" },
+        { label: "Work Orders", value: "--" },
+        { label: "Lease Renewals", value: "--" },
+      ];
+    }
+    if (vertical === "real-estate") {
+      return [
+        { label: "Active Listings", value: "--" },
+        { label: "Closings", value: "--" },
+        { label: "Commission", value: "--" },
+        { label: "Days on Market", value: "--" },
+      ];
+    }
+    // auto default
+    return [
+      { label: "Total Revenue", value: "--" },
+      { label: "Total Sales", value: "--" },
+      { label: "Active Customers", value: "--" },
+      { label: "Avg Deal Size", value: "--" },
+    ];
+  }
 
-  const recentActivity = [
-    {
-      date: "2026-02-14",
-      type: "Sale",
-      description: "2024 Honda Accord to John Smith",
-      amount: "$28,500",
-    },
-    {
-      date: "2026-02-13",
-      type: "Service",
-      description: "Premium Oil Change for Sarah Lee",
-      amount: "$79.99",
-    },
-    {
-      date: "2026-02-13",
-      type: "Sale",
-      description: "2023 Toyota Camry to Mike Johnson",
-      amount: "$25,900",
-    },
-    {
-      date: "2026-02-12",
-      type: "Service",
-      description: "Brake Inspection for Lisa Park",
-      amount: "$120.00",
-    },
-  ];
+  const kpis = getKpiConfig();
 
   return (
     <div>
@@ -73,53 +77,23 @@ export default function Reports() {
 
       {/* KPIs */}
       <div className="kpiRow">
-        <div className="card kpiCard">
-          <div className="kpiLabel">Total Revenue</div>
-          <div className="kpiValue">{kpis.revenue.value}</div>
-          <div
-            className="kpiChange"
-            style={{ color: kpis.revenue.positive ? "var(--success)" : "var(--danger)" }}
-          >
-            {kpis.revenue.change}
+        {kpis.map((kpi, i) => (
+          <div key={i} className="card kpiCard">
+            <div className="kpiLabel">{kpi.label}</div>
+            <div className="kpiValue" style={{ color: kpi.value === "--" ? "var(--textMuted)" : undefined }}>
+              {kpi.value}
+            </div>
           </div>
-        </div>
-        <div className="card kpiCard">
-          <div className="kpiLabel">Total Sales</div>
-          <div className="kpiValue">{kpis.sales.value}</div>
-          <div
-            className="kpiChange"
-            style={{ color: kpis.sales.positive ? "var(--success)" : "var(--danger)" }}
-          >
-            {kpis.sales.change}
-          </div>
-        </div>
-        <div className="card kpiCard">
-          <div className="kpiLabel">Active Customers</div>
-          <div className="kpiValue">{kpis.customers.value}</div>
-          <div
-            className="kpiChange"
-            style={{ color: kpis.customers.positive ? "var(--success)" : "var(--danger)" }}
-          >
-            {kpis.customers.change}
-          </div>
-        </div>
-        <div className="card kpiCard">
-          <div className="kpiLabel">Avg Deal Size</div>
-          <div className="kpiValue">{kpis.avgDealSize.value}</div>
-          <div
-            className="kpiChange"
-            style={{ color: kpis.avgDealSize.positive ? "var(--success)" : "var(--danger)" }}
-          >
-            {kpis.avgDealSize.change}
-          </div>
-        </div>
+        ))}
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "16px" }}>
         {/* Revenue Chart Placeholder */}
         <div className="card">
           <div className="cardHeader">
-            <div className="cardTitle">Revenue Trend</div>
+            <div className="cardTitle">
+              {vertical === "analyst" ? "Analysis Activity" : "Revenue Trend"}
+            </div>
           </div>
           <div
             style={{
@@ -132,76 +106,25 @@ export default function Reports() {
               background: "#f8fafc",
               borderRadius: "8px",
               margin: "16px",
+              flexDirection: "column",
+              gap: "12px",
             }}
           >
-            [Chart: Revenue over time - integrate Chart.js or similar]
+            <div style={{ fontSize: "16px", fontWeight: 600 }}>No data yet</div>
+            <div style={{ fontSize: "14px", textAlign: "center", maxWidth: "300px" }}>
+              Reports will populate as you use the platform. Start by adding records or running AI workflows.
+            </div>
           </div>
         </div>
 
-        {/* Top Products */}
+        {/* Activity Summary */}
         <div className="card">
           <div className="cardHeader">
-            <div className="cardTitle">Top Products</div>
+            <div className="cardTitle">Recent Activity</div>
           </div>
-          <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "12px" }}>
-            {topProducts.map((product, index) => (
-              <div
-                key={index}
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "flex-start",
-                  paddingBottom: "12px",
-                  borderBottom: index < topProducts.length - 1 ? "1px solid var(--line)" : "none",
-                }}
-              >
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 600, fontSize: "14px" }}>{product.name}</div>
-                  <div style={{ fontSize: "13px", color: "var(--textMuted)" }}>
-                    {product.sales} sales
-                  </div>
-                </div>
-                <div style={{ fontWeight: 600, fontSize: "14px" }}>{product.revenue}</div>
-              </div>
-            ))}
+          <div style={{ padding: "32px 16px", textAlign: "center", color: "var(--textMuted)", fontSize: "14px" }}>
+            No activity recorded yet. Use the AI assistant or add records to see activity here.
           </div>
-        </div>
-      </div>
-
-      {/* Recent Activity */}
-      <div className="card" style={{ marginTop: "16px" }}>
-        <div className="cardHeader">
-          <div className="cardTitle">Recent Activity</div>
-        </div>
-        <div className="tableWrap">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Type</th>
-                <th>Description</th>
-                <th>Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              {recentActivity.map((activity, index) => (
-                <tr key={index}>
-                  <td className="tdMuted">{new Date(activity.date).toLocaleDateString()}</td>
-                  <td>
-                    <span
-                      className={`badge ${
-                        activity.type === "Sale" ? "badge-completed" : ""
-                      }`}
-                    >
-                      {activity.type}
-                    </span>
-                  </td>
-                  <td>{activity.description}</td>
-                  <td className="tdStrong">{activity.amount}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
         </div>
       </div>
 

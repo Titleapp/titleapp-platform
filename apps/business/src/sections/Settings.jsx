@@ -18,18 +18,30 @@ export default function Settings() {
     jurisdiction: "IL",
   });
 
+  const vertical = localStorage.getItem("VERTICAL") || "auto";
+  const jurisdiction = localStorage.getItem("JURISDICTION") || "IL";
+
+  const VERTICAL_LABELS = {
+    auto: "Auto Dealer",
+    analyst: "Investment Analyst",
+    "real-estate": "Real Estate Brokerage",
+    "property-mgmt": "Property Management",
+    aviation: "Aviation",
+    marine: "Marine",
+  };
+
   const [business, setBusiness] = useState({
-    name: "Velocity Motors",
-    type: "Auto Dealer",
-    vertical: "auto",
-    jurisdiction: "il",
-    address: "123 Dealer Drive, Chicago, IL 60601",
-    phone: "+1-555-DEALER",
-    email: "info@velocitymotors.com",
-    timezone: "America/Chicago",
+    name: "",
+    type: VERTICAL_LABELS[vertical] || vertical,
+    vertical,
+    jurisdiction,
+    address: "",
+    phone: "",
+    email: "",
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "America/Chicago",
     notifications: {
       email: true,
-      sms: true,
+      sms: false,
       lowInventoryAlert: true,
       appointmentReminders: true,
     },
@@ -77,14 +89,39 @@ export default function Settings() {
 
   async function loadMyCompanies() {
     try {
-      // This endpoint returns all tenants user has access to
-      const vertical = localStorage.getItem("VERTICAL") || "auto";
-      const jurisdiction = localStorage.getItem("JURISDICTION") || "IL";
+      const result = await api.getMemberships({ vertical, jurisdiction });
+      if (result.ok && result.memberships?.length > 0) {
+        const companies = result.memberships.map((m) => {
+          const tenant = result.tenants?.[m.tenantId];
+          return {
+            id: m.tenantId,
+            name: tenant?.name || m.tenantId,
+            type: VERTICAL_LABELS[tenant?.vertical || vertical] || tenant?.vertical || vertical,
+            role: m.role || "member",
+          };
+        });
+        setMyCompanies(companies);
 
-      // Mock for now - replace with real API call
-      setMyCompanies([
-        { id: "demo-company-1", name: "Velocity Motors", type: "Auto Dealer", role: "admin" },
-      ]);
+        // Also populate business info from the first tenant
+        const firstTenant = result.tenants?.[result.memberships[0].tenantId];
+        if (firstTenant) {
+          setBusiness((prev) => ({
+            ...prev,
+            name: firstTenant.name || prev.name,
+            type: VERTICAL_LABELS[firstTenant.vertical || vertical] || prev.type,
+            vertical: firstTenant.vertical || vertical,
+            jurisdiction: firstTenant.jurisdiction || jurisdiction,
+            email: firstTenant.email || prev.email,
+            phone: firstTenant.phone || prev.phone,
+            address: firstTenant.address || prev.address,
+          }));
+        }
+
+        // Set current tenant if not already set
+        if (!currentTenantId && companies.length > 0) {
+          setCurrentTenantId(companies[0].id);
+        }
+      }
     } catch (e) {
       console.error("Failed to load companies:", e);
     }
@@ -175,7 +212,7 @@ export default function Settings() {
         <div className="cardHeader">
           <div>
             <div className="cardTitle">Business Information</div>
-            <div className="cardSub">Your dealership details</div>
+            <div className="cardSub">Your business details</div>
           </div>
           <button className="iconBtn" onClick={() => handleEditClick("business")}>
             Edit

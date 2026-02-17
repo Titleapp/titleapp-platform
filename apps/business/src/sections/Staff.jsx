@@ -19,50 +19,19 @@ export default function Staff() {
     permissions: [],
   });
 
-  // Mock staff data
-  const mockStaff = [
-    {
-      id: "staff-001",
-      name: "Jane Smith",
-      email: "jane.smith@dealer.com",
-      role: "manager",
-      permissions: ["all"],
-      status: "active",
-      createdAt: "2026-01-15T09:00:00Z",
-      lastLogin: "2026-02-14T08:30:00Z",
-    },
-    {
-      id: "staff-002",
-      name: "Bob Johnson",
-      email: "bob.j@dealer.com",
-      role: "sales",
-      permissions: ["customers.write", "inventory.read", "appointments.write"],
-      status: "active",
-      createdAt: "2026-02-01T10:00:00Z",
-      lastLogin: "2026-02-13T16:45:00Z",
-    },
-    {
-      id: "staff-003",
-      name: "Sarah Williams",
-      email: "sarah.w@dealer.com",
-      role: "service",
-      permissions: ["appointments.write", "customers.read"],
-      status: "active",
-      createdAt: "2026-02-05T11:00:00Z",
-      lastLogin: "2026-02-14T07:15:00Z",
-    },
-  ];
-
   useEffect(() => {
     loadStaff();
   }, []);
 
   async function loadStaff() {
     setLoading(true);
-    setTimeout(() => {
-      setStaff(mockStaff);
+    try {
+      // Staff will be loaded from API when backend endpoint is available
+      // For now, start empty — user adds staff through the UI
+      setStaff([]);
+    } finally {
       setLoading(false);
-    }, 500);
+    }
   }
 
   function handleSubmit(e) {
@@ -210,10 +179,31 @@ export default function Staff() {
       )}
 
       {/* Empty state */}
-      {!loading && filteredStaff.length === 0 && (
+      {!loading && filteredStaff.length === 0 && !searchQuery && (
+        <div className="card">
+          <div className="empty" style={{ padding: "40px 20px", textAlign: "center" }}>
+            <div style={{ fontSize: "16px", fontWeight: 600, marginBottom: "8px" }}>No team members yet</div>
+            <div style={{ fontSize: "14px", color: "var(--textMuted)", marginBottom: "16px" }}>
+              Add staff members to manage permissions and track team activity.
+            </div>
+            <button
+              className="iconBtn"
+              onClick={() => {
+                setEditingStaff(null);
+                setFormData({ name: "", email: "", role: "sales", permissions: [] });
+                setShowCreateModal(true);
+              }}
+              style={{ background: "var(--accent)", color: "white", borderColor: "var(--accent)" }}
+            >
+              + Add Your First Team Member
+            </button>
+          </div>
+        </div>
+      )}
+      {!loading && filteredStaff.length === 0 && searchQuery && (
         <div className="card">
           <div className="empty">
-            <p>No staff members found.</p>
+            <p>No staff members match your search.</p>
           </div>
         </div>
       )}

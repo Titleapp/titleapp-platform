@@ -37,9 +37,6 @@ export default function Login() {
       const token = await cred.user.getIdToken(true);
 
       localStorage.setItem("ID_TOKEN", token);
-      if (!localStorage.getItem("TENANT_ID")) {
-        localStorage.setItem("TENANT_ID", "demo");
-      }
 
       window.localStorage.removeItem("emailForSignIn");
       window.location.href = "/"; // Clean URL
@@ -78,9 +75,6 @@ export default function Login() {
       const token = await cred.user.getIdToken(true);
 
       localStorage.setItem("ID_TOKEN", token);
-      if (!localStorage.getItem("TENANT_ID")) {
-        localStorage.setItem("TENANT_ID", "demo");
-      }
 
       setStatus("Signed in successfully");
       window.location.reload();
@@ -108,9 +102,6 @@ export default function Login() {
       const token = await cred.user.getIdToken(true);
 
       localStorage.setItem("ID_TOKEN", token);
-      if (!localStorage.getItem("TENANT_ID")) {
-        localStorage.setItem("TENANT_ID", "demo");
-      }
 
       setStatus("Signed in successfully");
       window.location.reload();

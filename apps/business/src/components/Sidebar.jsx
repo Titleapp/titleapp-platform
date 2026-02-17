@@ -1,19 +1,58 @@
 import React from "react";
+import { getAuth, signOut } from "firebase/auth";
 
-export default function Sidebar({ currentSection, onNavigate, onClose, tenantName }) {
-  const sections = [
+const NAV_BY_VERTICAL = {
+  analyst: [
     { id: "dashboard", label: "Dashboard" },
     { id: "analyst", label: "Analyst" },
     { id: "rules-resources", label: "Rules & Resources" },
-    { id: "inventory", label: "Services & Inventory" },
-    { id: "ai-chats", label: "AI, GPTs & Chats" },
-    { id: "customers", label: "Customers" },
-    { id: "appointments", label: "Appointments" },
-    { id: "staff", label: "Staff" },
+    { id: "inventory", label: "Documents" },
+    { id: "staff", label: "Team" },
+    { id: "ai-chats", label: "AI & GPTs" },
     { id: "reports", label: "Reports" },
     { id: "data-apis", label: "Data & APIs" },
     { id: "settings", label: "Settings" },
-  ];
+  ],
+  "property-mgmt": [
+    { id: "dashboard", label: "Dashboard" },
+    { id: "inventory", label: "Properties" },
+    { id: "customers", label: "Tenants" },
+    { id: "appointments", label: "Maintenance" },
+    { id: "rules-resources", label: "Rules & Resources" },
+    { id: "reports", label: "Reports" },
+    { id: "settings", label: "Settings" },
+  ],
+  auto: [
+    { id: "dashboard", label: "Dashboard" },
+    { id: "inventory", label: "Inventory" },
+    { id: "customers", label: "Customers" },
+    { id: "appointments", label: "Appointments" },
+    { id: "staff", label: "Staff" },
+    { id: "rules-resources", label: "Rules & Resources" },
+    { id: "reports", label: "Reports" },
+    { id: "settings", label: "Settings" },
+  ],
+  "real-estate": [
+    { id: "dashboard", label: "Dashboard" },
+    { id: "inventory", label: "Listings" },
+    { id: "customers", label: "Clients" },
+    { id: "rules-resources", label: "Rules & Resources" },
+    { id: "reports", label: "Reports" },
+    { id: "settings", label: "Settings" },
+  ],
+};
+
+const DEFAULT_NAV = [
+  { id: "dashboard", label: "Dashboard" },
+  { id: "rules-resources", label: "Rules & Resources" },
+  { id: "ai-chats", label: "AI & GPTs" },
+  { id: "reports", label: "Reports" },
+  { id: "settings", label: "Settings" },
+];
+
+export default function Sidebar({ currentSection, onNavigate, onClose, tenantName }) {
+  const vertical = localStorage.getItem("VERTICAL") || "auto";
+  const sections = NAV_BY_VERTICAL[vertical] || DEFAULT_NAV;
 
   function handleNavClick(sectionId) {
     onNavigate(sectionId);
@@ -21,8 +60,16 @@ export default function Sidebar({ currentSection, onNavigate, onClose, tenantNam
   }
 
   function handleSignOut() {
-    localStorage.removeItem("ID_TOKEN");
-    window.location.reload();
+    const auth = getAuth();
+    signOut(auth).then(() => {
+      localStorage.removeItem("ID_TOKEN");
+      localStorage.removeItem("TENANT_ID");
+      window.location.reload();
+    }).catch(() => {
+      localStorage.removeItem("ID_TOKEN");
+      localStorage.removeItem("TENANT_ID");
+      window.location.reload();
+    });
   }
 
   return (
