@@ -12,7 +12,7 @@ export default function AIChats() {
 
       <div className="card">
         <div className="empty">
-          <p>🤖 No AI conversations yet. AI activity will appear here.</p>
+          <p>No AI conversations yet. AI activity will appear here.</p>
         </div>
       </div>
     </div>

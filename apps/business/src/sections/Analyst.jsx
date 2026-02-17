@@ -213,7 +213,7 @@ export default function Analyst() {
         </div>
       ) : filteredDeals.length === 0 ? (
         <div className="card" style={{ padding: "32px", textAlign: "center" }}>
-          <div style={{ fontSize: "48px", marginBottom: "16px" }}>📊</div>
+          <div style={{ fontSize: "24px", fontWeight: 600, color: "#64748b", marginBottom: "16px" }}>Analyst</div>
           <p style={{ fontSize: "16px", fontWeight: 600, marginBottom: "8px" }}>
             No deals analyzed yet
           </p>
@@ -514,7 +514,7 @@ export default function Analyst() {
               <div className="cardHeader">
                 <div>
                   <div className="cardTitle">
-                    {analysis.emoji || "📊"} {dealInfo.companyName || "Deal"} - Analysis
+                    {dealInfo.companyName || "Deal"} - Analysis
                   </div>
                   <div className="cardSub">{dealInfo.industry || "-"} • {dealInfo.askAmount || "-"}</div>
                 </div>
@@ -586,7 +586,7 @@ export default function Analyst() {
                             gap: "8px",
                           }}
                         >
-                          <div style={{ fontSize: "16px" }}>✅</div>
+                          <div style={{ fontSize: "14px", fontWeight: 600, color: "#10b981" }}>+</div>
                           <div style={{ flex: 1, fontSize: "14px" }}>{text}</div>
                         </div>
                       ))}
@@ -602,7 +602,7 @@ export default function Analyst() {
                             gap: "8px",
                           }}
                         >
-                          <div style={{ fontSize: "16px" }}>❌</div>
+                          <div style={{ fontSize: "14px", fontWeight: 600, color: "#dc2626" }}>-</div>
                           <div style={{ flex: 1, fontSize: "14px" }}>{text}</div>
                         </div>
                       ))}
@@ -735,7 +735,7 @@ export default function Analyst() {
                             gap: "8px",
                           }}
                         >
-                          <div style={{ fontSize: "16px" }}>⚠️</div>
+                          <div style={{ fontSize: "14px", fontWeight: 600, color: "#f59e0b" }}>!</div>
                           <div style={{ flex: 1, fontSize: "14px" }}>{info}</div>
                         </div>
                       ))}

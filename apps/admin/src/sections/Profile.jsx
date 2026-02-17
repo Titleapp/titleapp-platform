@@ -69,7 +69,7 @@ export default function Profile() {
             <div className="cardSub">Your account details</div>
           </div>
           <button className="iconBtn" onClick={() => handleEditClick("personal")}>
-            ✏️ Edit
+            Edit
           </button>
         </div>
         <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "12px" }}>
@@ -100,7 +100,7 @@ export default function Profile() {
             <div className="cardSub">How you receive updates</div>
           </div>
           <button className="iconBtn" onClick={() => handleEditClick("notifications")}>
-            ✏️ Edit
+            Edit
           </button>
         </div>
         <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "12px" }}>

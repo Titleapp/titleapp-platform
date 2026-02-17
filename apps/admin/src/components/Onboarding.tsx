@@ -1,17 +1,47 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import PilotOnboardingStep from "./PilotOnboardingStep";
 import TermsAndConditions from "./TermsAndConditions";
+import { auth, db } from "../firebase";
+import { doc, getDoc } from "firebase/firestore";
 
 interface OnboardingProps {
   onComplete: (tenantId: string) => void;
 }
 
 export default function Onboarding({ onComplete }: OnboardingProps) {
-  const [step, setStep] = useState<"terms" | "welcome" | "details" | "whatToAdd" | "pilot" | "magic">("terms");
+  const [step, setStep] = useState<"terms" | "welcome" | "details" | "whatToAdd" | "pilot" | "magic" | "checking">("checking");
   const [displayName, setDisplayName] = useState("");
   const [tenantId, setTenantId] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // Check if user already accepted terms (e.g., via chat onboarding)
+  useEffect(() => {
+    async function checkExistingProgress() {
+      try {
+        const user = auth.currentUser;
+        if (!user) {
+          setStep("terms");
+          return;
+        }
+        const userDoc = await getDoc(doc(db, "users", user.uid));
+        if (userDoc.exists()) {
+          const data = userDoc.data();
+          if (data.termsAcceptedAt) {
+            // Terms already accepted — skip to vault creation
+            if (data.name) setDisplayName(data.name);
+            setStep("details");
+            return;
+          }
+        }
+        setStep("terms");
+      } catch (err) {
+        console.error("Failed to check onboarding progress:", err);
+        setStep("terms");
+      }
+    }
+    checkExistingProgress();
+  }, []);
 
   async function handleCreate() {
     if (!displayName.trim()) {
@@ -91,6 +121,17 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
     }, 2500);
   }
 
+  if (step === "checking") {
+    return (
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#f8fafc", fontFamily: "-apple-system, BlinkMacSystemFont, sans-serif" }}>
+        <div style={{ textAlign: "center" }}>
+          <div style={{ fontSize: "20px", fontWeight: 600, color: "#7c3aed", marginBottom: "16px" }}>TitleApp</div>
+          <div style={{ fontSize: "16px", color: "#6b7280" }}>Loading...</div>
+        </div>
+      </div>
+    );
+  }
+
   if (step === "terms") {
     return (
       <TermsAndConditions
@@ -106,43 +147,43 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
   if (step === "whatToAdd") {
     const categories = [
       {
-        icon: "🏠",
+        icon: "",
         title: "Real Estate",
         description: "Property titles, deeds, and ownership records",
         action: skipToComplete,
       },
       {
-        icon: "🚗",
+        icon: "",
         title: "Vehicles",
         description: "Car titles, registration, and maintenance logbooks",
         action: skipToComplete,
       },
       {
-        icon: "💎",
+        icon: "",
         title: "Valuables & Jewelry",
         description: "Certificates, appraisals, and authentication",
         action: skipToComplete,
       },
       {
-        icon: "🎓",
+        icon: "",
         title: "Student Records",
         description: "Diplomas, transcripts, and educational credentials",
         action: skipToComplete,
       },
       {
-        icon: "📜",
+        icon: "",
         title: "Professional Certifications",
         description: "Licenses, certificates, pilot credentials, etc.",
         action: () => setStep("pilot"),
       },
       {
-        icon: "🐾",
+        icon: "",
         title: "Pet Records",
         description: "Vaccination records, pedigrees, and vet history",
         action: skipToComplete,
       },
       {
-        icon: "📦",
+        icon: "",
         title: "Start with empty vault",
         description: "I'll add items later",
         action: skipToComplete,
@@ -268,8 +309,8 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
             animation: "fadeInScale 0.6s ease-out",
           }}
         >
-          <div style={{ fontSize: "80px", marginBottom: "24px", animation: "bounce 1s infinite" }}>
-            🎉
+          <div style={{ fontSize: "48px", marginBottom: "24px", fontWeight: 300, letterSpacing: "-2px" }}>
+            TitleApp
           </div>
           <h1 style={{ fontSize: "32px", fontWeight: 700, margin: "0 0 16px 0" }}>
             Welcome, {displayName}!
@@ -433,7 +474,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
           maxWidth: "600px",
         }}
       >
-        <div style={{ fontSize: "64px", marginBottom: "24px" }}>🔐</div>
+        <div style={{ fontSize: "48px", marginBottom: "24px", fontWeight: 300, letterSpacing: "-2px" }}>TitleApp</div>
         <h1 style={{ fontSize: "40px", fontWeight: 700, margin: "0 0 16px 0" }}>
           Welcome to Your Vault
         </h1>

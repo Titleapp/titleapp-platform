@@ -193,7 +193,7 @@ export default function AddRecordForm({ onSave, onCancel, onAddAnother }) {
                     className="autocomplete-item"
                     onClick={() => selectName(suggestion)}
                   >
-                    🎓 {suggestion}
+                    {suggestion}
                   </button>
                 ))}
               </div>
@@ -279,7 +279,7 @@ export default function AddRecordForm({ onSave, onCancel, onAddAnother }) {
             <label htmlFor="record-file" className="file-upload-label">
               {uploadedFile ? (
                 <div className="file-uploaded">
-                  <span className="file-icon">📎</span>
+                  <span className="file-icon"></span>
                   <div>
                     <div className="file-name">{uploadedFile.name}</div>
                     <div className="file-size">
@@ -289,7 +289,7 @@ export default function AddRecordForm({ onSave, onCancel, onAddAnother }) {
                 </div>
               ) : (
                 <div className="file-prompt">
-                  <span className="file-icon">📄</span>
+                  <span className="file-icon"></span>
                   <div>
                     <div className="file-text">Click to upload transcript, diploma, or student ID</div>
                     <div className="file-hint">PDF, JPG, or PNG (max 10MB)</div>

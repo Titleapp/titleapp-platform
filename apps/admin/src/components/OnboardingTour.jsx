@@ -20,7 +20,7 @@ export default function OnboardingTour({ onComplete }) {
 
   const steps = [
     {
-      title: 'Welcome to TitleApp! 🎉',
+      title: 'Welcome to TitleApp',
       content: 'Your personal digital vault for all your important records and documents. Let me show you around.',
       action: 'Get Started',
     },
@@ -30,12 +30,12 @@ export default function OnboardingTour({ onComplete }) {
       highlight: '.pageHeader',
     },
     {
-      title: 'Upload Your Documents 📄',
+      title: 'Upload Your Documents',
       content: 'Start by uploading your important documents:\n\n• Vehicle titles & registrations\n• Student ID & transcripts\n• Professional licenses\n• Property deeds\n• Medical records\n\nWe\'ll help you organize and verify everything.',
       action: 'Upload Now',
     },
     {
-      title: 'AI Chat Assistant 💬',
+      title: 'AI Chat Assistant',
       content: 'Click the chat button anytime to ask questions about your records, get help finding documents, or request verifications.',
       highlight: '.floating-chat-button',
       action: 'Try It',
@@ -51,7 +51,7 @@ export default function OnboardingTour({ onComplete }) {
       highlight: null,
     },
     {
-      title: 'You\'re All Set! ✨',
+      title: 'You\'re All Set',
       content: 'That\'s it! Start uploading your documents and the AI will help you organize everything. Remember, you can always ask the chat assistant for help.',
       action: 'Start Using TitleApp',
     },

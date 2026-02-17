@@ -22,7 +22,7 @@ export default function OnboardingTour({ onComplete, vertical = 'auto' }) {
   const getTourSteps = () => {
     const commonSteps = [
       {
-        title: 'Welcome to TitleApp AI! 🎉',
+        title: 'Welcome to TitleApp AI',
         content: 'Let me show you around. This quick tour will help you get started with your AI-powered business platform.',
         action: 'Get Started',
         highlight: null,
@@ -34,7 +34,7 @@ export default function OnboardingTour({ onComplete, vertical = 'auto' }) {
         section: 'dashboard',
       },
       {
-        title: 'AI Chat Assistant 💬',
+        title: 'AI Chat Assistant',
         content: 'Click the chat button in the bottom right to talk to your AI assistant. Ask about customers, inventory, records, or get help with any task.',
         highlight: '.floating-chat-button',
         action: 'Try It',
@@ -50,7 +50,7 @@ export default function OnboardingTour({ onComplete, vertical = 'auto' }) {
     const verticalSteps = {
       auto: [
         {
-          title: 'Upload Your Data 📁',
+          title: 'Upload Your Data',
           content: 'To get the most out of TitleApp, upload your business data:\n\n• Customer database\n• Current inventory\n• Service schedules\n• Financial products\n• Warranty offerings\n\nWe\'ll use AI to analyze and help you sell more effectively.',
           action: 'Upload Now',
           highlight: null,
@@ -63,7 +63,7 @@ export default function OnboardingTour({ onComplete, vertical = 'auto' }) {
       ],
       analyst: [
         {
-          title: 'Upload Deal Memos 📄',
+          title: 'Upload Deal Memos',
           content: 'Upload 2-3 sample deals you\'re interested in. Our AI will analyze them against your investment criteria and help you identify your sweet spot.',
           action: 'Upload Deals',
           highlight: null,
@@ -77,7 +77,7 @@ export default function OnboardingTour({ onComplete, vertical = 'auto' }) {
       ],
       'real-estate': [
         {
-          title: 'Upload Property Docs 📋',
+          title: 'Upload Property Docs',
           content: 'Upload property titles, inspection reports, and transaction records. We\'ll help you track ownership and identify opportunities.',
           action: 'Upload Now',
           highlight: null,
@@ -87,7 +87,7 @@ export default function OnboardingTour({ onComplete, vertical = 'auto' }) {
 
     const finalSteps = [
       {
-        title: 'You\'re All Set! ✨',
+        title: 'You\'re All Set',
         content: 'That\'s it! Remember, you can always ask the AI chat assistant for help. It knows your business context and can guide you through any task.',
         action: 'Start Using TitleApp',
         highlight: null,

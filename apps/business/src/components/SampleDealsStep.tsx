@@ -17,13 +17,40 @@ interface UploadedDeal {
 export default function SampleDealsStep({ criteria, onComplete, onSkip }: SampleDealsStepProps) {
   const [deals, setDeals] = useState<UploadedDeal[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
   const fileUpload = useFileUpload({ purpose: "deal_memo" });
+
+  function handleDragOver(e: React.DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOver(true);
+  }
+
+  function handleDragLeave(e: React.DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOver(false);
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOver(false);
+    const droppedFiles = Array.from(e.dataTransfer.files).filter(
+      f => f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf")
+    );
+    if (droppedFiles.length > 0) {
+      processFiles(droppedFiles);
+    }
+  }
 
   async function handleFileUpload(event: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.target.files || []);
     if (files.length === 0) return;
+    processFiles(files);
+  }
 
-    // Add files to the list
+  async function processFiles(files: File[]) {
     const newDeals: UploadedDeal[] = files.map(file => ({
       file,
       analyzing: false,
@@ -31,9 +58,8 @@ export default function SampleDealsStep({ criteria, onComplete, onSkip }: Sample
       error: null,
     }));
 
-    setDeals([...deals, ...newDeals]);
+    setDeals(prev => [...prev, ...newDeals]);
 
-    // Analyze each deal
     for (let i = 0; i < newDeals.length; i++) {
       await analyzeDeal(deals.length + i, newDeals[i].file);
     }
@@ -146,12 +172,17 @@ export default function SampleDealsStep({ criteria, onComplete, onSkip }: Sample
 
       {/* Upload Area */}
       <div
+        onDragOver={handleDragOver}
+        onDragEnter={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
         style={{
           padding: "32px",
-          border: "2px dashed #d1d5db",
+          border: dragOver ? "2px dashed rgb(124, 58, 237)" : "2px dashed #d1d5db",
           borderRadius: "12px",
           textAlign: "center",
-          background: "#f9fafb",
+          background: dragOver ? "rgba(124, 58, 237, 0.05)" : "#f9fafb",
+          transition: "border-color 0.2s, background 0.2s",
         }}
       >
         <div style={{ fontSize: "24px", fontWeight: 600, color: "#64748b", marginBottom: "16px" }}>Deal Memos</div>
@@ -159,7 +190,7 @@ export default function SampleDealsStep({ criteria, onComplete, onSkip }: Sample
           Upload Deal Memos (PDFs)
         </p>
         <p style={{ fontSize: "14px", color: "#6b7280", marginBottom: "20px" }}>
-          Offering memos, pitch decks, investment summaries, or deal analyses
+          {dragOver ? "Drop PDF files here" : "Drag and drop PDFs here, or click to choose files"}
         </p>
         <input
           type="file"

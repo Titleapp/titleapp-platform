@@ -296,7 +296,7 @@ export default function Inventory() {
       {error && (
         <div className="card" style={{ borderColor: "var(--danger)" }}>
           <div className="empty" style={{ color: "var(--danger)" }}>
-            ❌ {error}
+            {error}
           </div>
         </div>
       )}
@@ -312,7 +312,7 @@ export default function Inventory() {
       {!loading && filteredItems.length === 0 && (
         <div className="card">
           <div className="empty">
-            <p>📦 No inventory items found.</p>
+            <p>No inventory items found.</p>
           </div>
         </div>
       )}
@@ -341,7 +341,7 @@ export default function Inventory() {
                   return (
                     <tr key={item.id}>
                       <td>
-                        {item.type === "vehicle" ? "🚗" : "🔧"} {item.type}
+                        {item.type}
                       </td>
                       <td className="tdStrong">
                         {item.type === "vehicle"

@@ -9,12 +9,12 @@ import React from "react";
 export default function LogbookEntry({ entry, showDTC = false, onViewDTC }) {
   // Entry type configurations
   const entryTypes = {
-    maintenance: { icon: "🔧", color: "#06b6d4", label: "Maintenance" },
-    transfer: { icon: "🔄", color: "#7c3aed", label: "Transfer" },
-    inspection: { icon: "🔍", color: "#22c55e", label: "Inspection" },
-    update: { icon: "📝", color: "#f59e0b", label: "Update" },
-    note: { icon: "💬", color: "#64748b", label: "Note" },
-    default: { icon: "📄", color: "#64748b", label: "Entry" },
+    maintenance: { icon: "M", color: "#06b6d4", label: "Maintenance" },
+    transfer: { icon: "T", color: "#7c3aed", label: "Transfer" },
+    inspection: { icon: "I", color: "#22c55e", label: "Inspection" },
+    update: { icon: "U", color: "#f59e0b", label: "Update" },
+    note: { icon: "N", color: "#64748b", label: "Note" },
+    default: { icon: "E", color: "#64748b", label: "Entry" },
   };
 
   const config = entryTypes[entry.entryType] || entryTypes.default;
@@ -133,7 +133,7 @@ export default function LogbookEntry({ entry, showDTC = false, onViewDTC }) {
                 className="badge"
                 style={{ fontSize: "11px", padding: "4px 8px" }}
               >
-                📎 {file}
+                {file}
               </div>
             ))}
           </div>

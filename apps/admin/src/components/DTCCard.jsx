@@ -9,10 +9,10 @@ import React from "react";
 export default function DTCCard({ dtc, onView, onTransfer, onRefreshValue }) {
   // Determine icon and color based on DTC type
   const typeConfig = {
-    vehicle: { icon: "🚗", color: "#7c3aed" },
-    property: { icon: "🏠", color: "#22c55e" },
-    credential: { icon: "🎓", color: "#06b6d4" },
-    default: { icon: "📄", color: "#64748b" },
+    vehicle: { icon: "V", color: "#7c3aed" },
+    property: { icon: "P", color: "#22c55e" },
+    credential: { icon: "C", color: "#06b6d4" },
+    default: { icon: "R", color: "#64748b" },
   };
 
   const config = typeConfig[dtc.type] || typeConfig.default;

@@ -115,6 +115,11 @@ export default function App() {
   );
   const [needsOnboarding, setNeedsOnboarding] = useState(null); // null = checking, true = needs, false = has account
   const [checkingMemberships, setCheckingMemberships] = useState(true);
+  const [handoffInProgress, setHandoffInProgress] = useState(() => {
+    // If URL has ?token=, we need to complete handoff before doing anything
+    const params = new URLSearchParams(window.location.search);
+    return !!params.get("token");
+  });
 
   useEffect(() => {
     // Handle custom token + session handoff from landing page chat
@@ -128,17 +133,27 @@ export default function App() {
     }
 
     if (chatToken) {
+      // Await sign-in before allowing any other rendering
       signInWithCustomToken(auth, chatToken)
-        .then(() => {
+        .then(async (userCred) => {
+          // Get a fresh ID token immediately
+          const freshToken = await userCred.user.getIdToken(true);
+          localStorage.setItem("ID_TOKEN", freshToken);
+          setToken(freshToken);
+          // Clean URL params
           window.history.replaceState({}, "", window.location.pathname);
+          setHandoffInProgress(false);
         })
         .catch((err) => {
           console.error("Custom token sign-in failed:", err);
+          setHandoffInProgress(false);
         });
     }
 
-    const t = localStorage.getItem("ID_TOKEN");
-    setToken(t);
+    if (!chatToken) {
+      const t = localStorage.getItem("ID_TOKEN");
+      setToken(t);
+    }
 
     const onStorage = (e) => {
       if (e.key === "ID_TOKEN") setToken(e.newValue);
@@ -152,9 +167,9 @@ export default function App() {
           const freshToken = await user.getIdToken(true); // Force refresh
           localStorage.setItem("ID_TOKEN", freshToken);
           setToken(freshToken);
-          console.log("✅ Token refreshed:", freshToken.substring(0, 20) + "...");
+          console.log("Token refreshed:", freshToken.substring(0, 20) + "...");
         } catch (err) {
-          console.error("❌ Failed to refresh token:", err);
+          console.error("Failed to refresh token:", err);
         }
       } else {
         localStorage.removeItem("ID_TOKEN");
@@ -228,8 +243,7 @@ export default function App() {
     checkMemberships();
   }, [token]);
 
-  if (!token) return <Login />;
-  if (checkingMemberships) {
+  if (handoffInProgress || checkingMemberships) {
     return (
       <div
         style={{
@@ -241,12 +255,13 @@ export default function App() {
         }}
       >
         <div style={{ textAlign: "center" }}>
-          <div style={{ fontSize: "40px", marginBottom: "16px" }}>⏳</div>
+          <div style={{ fontSize: "20px", fontWeight: 600, color: "#7c3aed", marginBottom: "16px" }}>TitleApp</div>
           <div style={{ fontSize: "16px", color: "#6b7280" }}>Loading...</div>
         </div>
       </div>
     );
   }
+  if (!token) return <Login />;
   if (needsOnboarding) {
     return <Onboarding onComplete={() => setNeedsOnboarding(false)} />;
   }

@@ -20,6 +20,16 @@ export default function InvestmentCriteriaStep({ onComplete, onSkip }: Investmen
   const [dealSizeMin, setDealSizeMin] = useState("");
   const [dealSizeMax, setDealSizeMax] = useState("");
 
+  const fmt = new Intl.NumberFormat("en-US");
+  function formatNumber(raw: string): string {
+    const digits = raw.replace(/[^0-9]/g, "");
+    if (!digits) return "";
+    return fmt.format(Number(digits));
+  }
+  function parseNumber(formatted: string): string {
+    return formatted.replace(/[^0-9]/g, "");
+  }
+
   function handleNoviceComplete() {
     const criteria = {
       target_asset_types: ["private_equity"],
@@ -41,8 +51,8 @@ export default function InvestmentCriteriaStep({ onComplete, onSkip }: Investmen
     if (minNetIRR) criteria.min_net_irr = parseFloat(minNetIRR);
     if (minCashOnCash) criteria.min_cash_on_cash = parseFloat(minCashOnCash);
     if (minEquityMultiple) criteria.min_equity_multiple = parseFloat(minEquityMultiple);
-    if (dealSizeMin) criteria.deal_size_min = parseFloat(dealSizeMin);
-    if (dealSizeMax) criteria.deal_size_max = parseFloat(dealSizeMax);
+    if (dealSizeMin) criteria.deal_size_min = parseFloat(parseNumber(dealSizeMin));
+    if (dealSizeMax) criteria.deal_size_max = parseFloat(parseNumber(dealSizeMax));
 
     onComplete(criteria);
   }
@@ -80,7 +90,7 @@ export default function InvestmentCriteriaStep({ onComplete, onSkip }: Investmen
             }}
           >
             <div style={{ fontSize: "16px", fontWeight: 600, marginBottom: "4px" }}>
-              🌱 I'm new to investing
+              I'm new to investing
             </div>
             <div style={{ fontSize: "14px", color: "#6b7280" }}>
               We'll set up sensible defaults and guide you through the basics
@@ -99,7 +109,7 @@ export default function InvestmentCriteriaStep({ onComplete, onSkip }: Investmen
             }}
           >
             <div style={{ fontSize: "16px", fontWeight: 600, marginBottom: "4px" }}>
-              💼 I have a target box
+              I have a target box
             </div>
             <div style={{ fontSize: "14px", color: "#6b7280" }}>
               Define specific criteria: IRR targets, deal size, risk parameters
@@ -160,7 +170,7 @@ export default function InvestmentCriteriaStep({ onComplete, onSkip }: Investmen
             fontSize: "14px",
           }}
         >
-          <div style={{ fontWeight: 600, marginBottom: "8px" }}>📚 What we'll set up:</div>
+          <div style={{ fontWeight: 600, marginBottom: "8px" }}>What we'll set up:</div>
           <ul style={{ margin: "8px 0 0 0", paddingLeft: "20px" }}>
             <li>Minimum 15% net IRR target (industry standard)</li>
             <li>2x equity multiple minimum (double your money)</li>
@@ -350,10 +360,11 @@ export default function InvestmentCriteriaStep({ onComplete, onSkip }: Investmen
         <div style={{ fontSize: "14px", fontWeight: 600 }}>Deal Size Range (USD)</div>
         <div style={{ display: "grid", gap: "8px", gridTemplateColumns: "1fr 1fr" }}>
           <input
-            type="number"
+            type="text"
+            inputMode="numeric"
             value={dealSizeMin}
-            onChange={(e) => setDealSizeMin(e.target.value)}
-            placeholder="Min (e.g., 500000)"
+            onChange={(e) => setDealSizeMin(formatNumber(e.target.value))}
+            placeholder="Min (e.g., 500,000)"
             style={{
               padding: "10px 12px",
               fontSize: "14px",
@@ -362,10 +373,11 @@ export default function InvestmentCriteriaStep({ onComplete, onSkip }: Investmen
             }}
           />
           <input
-            type="number"
+            type="text"
+            inputMode="numeric"
             value={dealSizeMax}
-            onChange={(e) => setDealSizeMax(e.target.value)}
-            placeholder="Max (e.g., 10000000)"
+            onChange={(e) => setDealSizeMax(formatNumber(e.target.value))}
+            placeholder="Max (e.g., 10,000,000)"
             style={{
               padding: "10px 12px",
               fontSize: "14px",

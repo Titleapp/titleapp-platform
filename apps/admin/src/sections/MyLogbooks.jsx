@@ -213,7 +213,7 @@ export default function MyLogbooks() {
       {error && (
         <div className="card" style={{ borderColor: "var(--danger)" }}>
           <div className="empty" style={{ color: "var(--danger)" }}>
-            ❌ {error}
+            {error}
           </div>
         </div>
       )}
@@ -229,7 +229,7 @@ export default function MyLogbooks() {
       {!loading && filteredEntries.length === 0 && (
         <div className="card">
           <div className="empty">
-            <p>📝 No logbook entries yet.</p>
+            <p>No logbook entries yet.</p>
             <p style={{ marginTop: "8px" }}>
               <button
                 className="iconBtn"
@@ -328,11 +328,11 @@ export default function MyLogbooks() {
               }}
               required
             >
-              <option value="maintenance">🔧 Maintenance</option>
-              <option value="inspection">🔍 Inspection</option>
-              <option value="transfer">🔄 Transfer</option>
-              <option value="update">📝 Update</option>
-              <option value="note">💬 Note</option>
+              <option value="maintenance">Maintenance</option>
+              <option value="inspection">Inspection</option>
+              <option value="transfer">Transfer</option>
+              <option value="update">Update</option>
+              <option value="note">Note</option>
             </select>
           </div>
 

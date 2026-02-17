@@ -34,6 +34,7 @@ export default function useFileUpload({ purpose }: UseFileUploadOptions): UseFil
       const token = localStorage.getItem("ID_TOKEN");
       const vertical = localStorage.getItem("VERTICAL") || "auto";
       const jurisdiction = localStorage.getItem("JURISDICTION") || "IL";
+      const tenantId = localStorage.getItem("TENANT_ID") || "";
       const apiBase = (import.meta as any).env?.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
 
       // Step 1: Request signed upload URL
@@ -44,6 +45,7 @@ export default function useFileUpload({ purpose }: UseFileUploadOptions): UseFil
           Authorization: `Bearer ${token}`,
           "X-Vertical": vertical,
           "X-Jurisdiction": jurisdiction,
+          ...(tenantId ? { "X-Tenant-Id": tenantId } : {}),
         },
         body: JSON.stringify({
           filename: file.name,
@@ -79,6 +81,7 @@ export default function useFileUpload({ purpose }: UseFileUploadOptions): UseFil
           Authorization: `Bearer ${token}`,
           "X-Vertical": vertical,
           "X-Jurisdiction": jurisdiction,
+          ...(tenantId ? { "X-Tenant-Id": tenantId } : {}),
         },
         body: JSON.stringify({
           fileId: signData.fileId,

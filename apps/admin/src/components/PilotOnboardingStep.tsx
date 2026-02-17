@@ -303,7 +303,7 @@ export default function PilotOnboardingStep({ onComplete, onSkip }: PilotOnboard
           }}
         >
           <div style={{ fontSize: "15px", fontWeight: 600, marginBottom: "4px" }}>
-            ✈️ Quick Start (Recommended)
+            Quick Start (Recommended)
           </div>
           <div style={{ fontSize: "13px", color: "#6b7280" }}>
             Just name + certificate number. Add details later.
@@ -322,7 +322,7 @@ export default function PilotOnboardingStep({ onComplete, onSkip }: PilotOnboard
           }}
         >
           <div style={{ fontSize: "15px", fontWeight: 600, marginBottom: "4px" }}>
-            📋 Complete Setup
+            Complete Setup
           </div>
           <div style={{ fontSize: "13px", color: "#6b7280" }}>
             Add all certificates, ratings, hours, and medical now

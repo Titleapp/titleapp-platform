@@ -18,35 +18,35 @@ const REQUIRED_FILES = [
     type: "customer_list",
     label: "Customer Database",
     description: "Customer contact info, purchase history, preferences",
-    icon: "👥",
+    icon: "",
     required: true,
   },
   {
     type: "dealer_inventory",
     label: "Current Inventory",
     description: "VINs, models, prices, stock numbers",
-    icon: "🚗",
+    icon: "",
     required: true,
   },
   {
     type: "service_schedule",
     label: "Service Appointments",
     description: "Scheduled services, maintenance history",
-    icon: "🔧",
+    icon: "",
     required: false,
   },
   {
     type: "financial_products",
     label: "Financing Options",
     description: "Available loan products, rates, terms",
-    icon: "💰",
+    icon: "",
     required: false,
   },
   {
     type: "warranty_products",
     label: "Warranty Products",
     description: "Extended warranties, service contracts",
-    icon: "🛡️",
+    icon: "",
     required: false,
   },
 ];
@@ -188,7 +188,7 @@ export default function DealershipDataStep({ onComplete, onSkip }: DealershipDat
           fontSize: "14px",
         }}
       >
-        <div style={{ fontWeight: 600, marginBottom: "4px" }}>💡 Minimum Viable Data</div>
+        <div style={{ fontWeight: 600, marginBottom: "4px" }}>Minimum Viable Data</div>
         <div style={{ color: "#92400e" }}>
           Customer database and inventory are required. The more data you provide, the more AI can help you sell.
         </div>
@@ -266,7 +266,7 @@ export default function DealershipDataStep({ onComplete, onSkip }: DealershipDat
                   {hasFile && (
                     <div style={{ marginBottom: "12px" }}>
                       <div style={{ fontSize: "13px", color: "#374151", marginBottom: "4px" }}>
-                        📎 {fileEntry.file?.name}
+                        {fileEntry.file?.name}
                       </div>
                       <div style={{ fontSize: "12px", color: "#9ca3af" }}>
                         {fileEntry.file ? (fileEntry.file.size / 1024).toFixed(1) : 0} KB
@@ -345,7 +345,7 @@ export default function DealershipDataStep({ onComplete, onSkip }: DealershipDat
           }}
         >
           <div style={{ fontSize: "15px", fontWeight: 600, marginBottom: "8px" }}>
-            ✨ Great! Your data is being processed
+            Your data is being processed
           </div>
           <p style={{ fontSize: "14px", color: "#374151", margin: 0 }}>
             TitleApp AI will analyze your data and start helping you match customers to vehicles,

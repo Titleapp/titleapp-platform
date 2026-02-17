@@ -185,7 +185,7 @@ export default function Customers() {
       <div style={{ marginBottom: "16px" }}>
         <input
           type="text"
-          placeholder="🔍 Search customers by name, email, or phone..."
+          placeholder="Search customers by name, email, or phone..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           style={{
@@ -203,7 +203,7 @@ export default function Customers() {
       {error && (
         <div className="card" style={{ borderColor: "var(--danger)" }}>
           <div className="empty" style={{ color: "var(--danger)" }}>
-            ❌ {error}
+            {error}
           </div>
         </div>
       )}
@@ -219,7 +219,7 @@ export default function Customers() {
       {!loading && filteredCustomers.length === 0 && (
         <div className="card">
           <div className="empty">
-            <p>👥 {searchQuery ? "No customers found." : "No customers yet."}</p>
+            <p>{searchQuery ? "No customers found." : "No customers yet."}</p>
           </div>
         </div>
       )}

@@ -107,10 +107,10 @@ export default function MyStuff() {
       : dtcs.filter((dtc) => dtc.type === activeType);
 
   const types = [
-    { id: "all", label: "All", icon: "📋", count: dtcs.length },
-    { id: "vehicle", label: "Vehicles", icon: "🚗", count: dtcs.filter(d => d.type === "vehicle").length },
-    { id: "property", label: "Property", icon: "🏠", count: dtcs.filter(d => d.type === "property").length },
-    { id: "credential", label: "Credentials", icon: "🎓", count: dtcs.filter(d => d.type === "credential").length },
+    { id: "all", label: "All", icon: "", count: dtcs.length },
+    { id: "vehicle", label: "Vehicles", icon: "", count: dtcs.filter(d => d.type === "vehicle").length },
+    { id: "property", label: "Property", icon: "", count: dtcs.filter(d => d.type === "property").length },
+    { id: "credential", label: "Credentials", icon: "", count: dtcs.filter(d => d.type === "credential").length },
   ];
 
   return (
@@ -195,7 +195,7 @@ export default function MyStuff() {
       {error && (
         <div className="card" style={{ borderColor: "var(--danger)" }}>
           <div className="empty" style={{ color: "var(--danger)" }}>
-            ❌ {error}
+            {error}
           </div>
         </div>
       )}
@@ -212,7 +212,7 @@ export default function MyStuff() {
         <div className="card">
           <div className="empty">
             <p>
-              🎯 No {activeType !== "all" ? activeType : ""} DTCs yet.
+              No {activeType !== "all" ? activeType : ""} DTCs yet.
             </p>
             <p style={{ marginTop: "8px" }}>
               <button
@@ -270,9 +270,9 @@ export default function MyStuff() {
                 {filteredDTCs.map((dtc) => (
                   <tr key={dtc.id}>
                     <td>
-                      {dtc.type === "vehicle" && "🚗"}
-                      {dtc.type === "property" && "🏠"}
-                      {dtc.type === "credential" && "🎓"}
+                      {dtc.type === "vehicle" && "V"}
+                      {dtc.type === "property" && "P"}
+                      {dtc.type === "credential" && "C"}
                       {" " + dtc.type}
                     </td>
                     <td className="tdStrong">{dtc.metadata?.title || "Untitled"}</td>

@@ -252,7 +252,7 @@ export default function Appointments() {
       {error && (
         <div className="card" style={{ borderColor: "var(--danger)" }}>
           <div className="empty" style={{ color: "var(--danger)" }}>
-            ❌ {error}
+            {error}
           </div>
         </div>
       )}
@@ -268,7 +268,7 @@ export default function Appointments() {
       {!loading && appointments.length === 0 && (
         <div className="card">
           <div className="empty">
-            <p>📅 No appointments scheduled.</p>
+            <p>No appointments scheduled.</p>
           </div>
         </div>
       )}
@@ -380,10 +380,7 @@ export default function Appointments() {
                                 </div>
 
                                 <div style={{ fontSize: "14px", color: "var(--muted)" }}>
-                                  {appt.type === "service" && "🔧"}
-                                  {appt.type === "test-drive" && "🚗"}
-                                  {appt.type === "financing" && "💰"}
-                                  {appt.type === "consultation" && "💬"} {appt.type}
+                                  {appt.type}
                                 </div>
 
                                 {appt.notes && (
@@ -539,10 +536,10 @@ export default function Appointments() {
                 }}
                 required
               >
-                <option value="service">🔧 Service</option>
-                <option value="test-drive">🚗 Test Drive</option>
-                <option value="financing">💰 Financing</option>
-                <option value="consultation">💬 Consultation</option>
+                <option value="service">Service</option>
+                <option value="test-drive">Test Drive</option>
+                <option value="financing">Financing</option>
+                <option value="consultation">Consultation</option>
               </select>
             </div>
 

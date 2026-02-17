@@ -216,7 +216,7 @@ export default function TermsAndConditions({ onAccept, onDecline }: TermsProps) 
               color: "#92400e",
             }}
           >
-            ⚠️ Please scroll to the bottom to read all terms
+            Please scroll to the bottom to read all terms
           </div>
         )}
 

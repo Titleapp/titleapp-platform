@@ -365,7 +365,7 @@ export default function PilotRecords() {
 
       {!parseResult && !experienceSummary && (
         <div className="card" style={{ padding: "32px", textAlign: "center" }}>
-          <div style={{ fontSize: "48px", marginBottom: "16px" }}>✈️</div>
+          <div style={{ fontSize: "24px", marginBottom: "16px", fontWeight: 600, color: "#64748b" }}>Pilot Records</div>
           <p style={{ fontSize: "16px", fontWeight: 600, marginBottom: "8px" }}>
             No pilot records uploaded yet
           </p>

@@ -545,7 +545,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
                   outline: "none",
                 }}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") handleCreate();
+                  if (e.key === "Enter") handleDetailsNext();
                 }}
               />
             </label>
