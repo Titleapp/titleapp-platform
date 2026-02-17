@@ -436,6 +436,74 @@ export default function Settings() {
         </div>
       </div>
 
+      {/* AI Assistant Rules */}
+      <div className="card" style={{ marginBottom: "16px" }}>
+        <div className="cardHeader">
+          <div>
+            <div className="cardTitle">AI Assistant Rules (RAAS)</div>
+            <div className="cardSub">Custom rules and compliance settings for your AI assistant</div>
+          </div>
+        </div>
+        <div style={{ padding: "16px" }}>
+          <div style={{ fontSize: "14px", color: "var(--textMuted)", marginBottom: "8px" }}>
+            These rules were set during onboarding. You can update them anytime.
+          </div>
+          <div style={{
+            padding: "12px",
+            background: "#f8fafc",
+            borderRadius: "8px",
+            fontSize: "14px",
+            lineHeight: 1.6,
+            minHeight: "60px",
+            color: "#374151",
+          }}>
+            {localStorage.getItem("RAAS_RULES") || "Standard rules (no custom rules set)"}
+          </div>
+        </div>
+      </div>
+
+      {/* Developer Tools */}
+      <div className="card" style={{ marginBottom: "16px", borderColor: "#e9d5ff" }}>
+        <div className="cardHeader">
+          <div>
+            <div className="cardTitle">Developer Tools</div>
+            <div className="cardSub">Testing and debugging utilities</div>
+          </div>
+        </div>
+        <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "12px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div>
+              <div style={{ fontWeight: 600 }}>Reset Onboarding</div>
+              <div style={{ fontSize: "13px", color: "var(--textMuted)" }}>
+                Clear onboarding state and restart the setup flow. Your data is preserved.
+              </div>
+            </div>
+            <button
+              className="iconBtn"
+              style={{ color: "#f59e0b", borderColor: "#fcd34d" }}
+              onClick={() => {
+                if (window.confirm("This will reset your onboarding flow. Your existing data will be preserved. Continue?")) {
+                  localStorage.removeItem("TENANT_ID");
+                  localStorage.removeItem("VERTICAL");
+                  localStorage.removeItem("JURISDICTION");
+                  window.location.reload();
+                }
+              }}
+            >
+              Reset
+            </button>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div>
+              <div style={{ fontWeight: 600 }}>Current Config</div>
+              <div style={{ fontSize: "13px", color: "var(--textMuted)" }}>
+                Vertical: {localStorage.getItem("VERTICAL") || "auto"} | Jurisdiction: {localStorage.getItem("JURISDICTION") || "IL"} | Tenant: {localStorage.getItem("TENANT_ID") || "none"}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Danger Zone */}
       <div className="card" style={{ borderColor: "var(--danger)" }}>
         <div className="cardHeader">

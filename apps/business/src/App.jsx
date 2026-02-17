@@ -87,6 +87,7 @@ export default function App() {
     const params = new URLSearchParams(window.location.search);
     return !!params.get("token");
   });
+  const [onboardingStep, setOnboardingStep] = useState(null);
 
   useEffect(() => {
     // Handle custom token + session handoff from landing page chat
@@ -212,7 +213,6 @@ export default function App() {
     );
   }
   if (!token) return <Login />;
-  const [onboardingStep, setOnboardingStep] = useState(null);
 
   if (needsOnboarding) {
     return (

@@ -1,6 +1,6 @@
 import React from "react";
 
-export default function Sidebar({ currentSection, onNavigate, onClose }) {
+export default function Sidebar({ currentSection, onNavigate, onClose, tenantName }) {
   const sections = [
     { id: "dashboard", label: "Dashboard" },
     { id: "analyst", label: "Analyst" },
@@ -36,7 +36,7 @@ export default function Sidebar({ currentSection, onNavigate, onClose }) {
           />
           <div>
             <div className="brandName">TitleApp AI</div>
-            <div className="brandSub">Business</div>
+            <div className="brandSub">{tenantName || "Business"}</div>
           </div>
         </div>
         <button

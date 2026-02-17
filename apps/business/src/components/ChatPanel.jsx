@@ -25,11 +25,16 @@ export default function ChatPanel({ currentSection, onboardingStep }) {
   const [lastContextStep, setLastContextStep] = useState(null);
   const conversationRef = useRef(null);
 
+  const [dealContext, setDealContext] = useState(null);
+
   // Listen for "discuss with AI" events from other components
   useEffect(() => {
     function handleChatPrompt(e) {
       if (e.detail?.message) {
         setInput(e.detail.message);
+      }
+      if (e.detail?.dealContext) {
+        setDealContext(e.detail.dealContext);
       }
     }
     window.addEventListener('ta:chatPrompt', handleChatPrompt);
@@ -159,8 +164,8 @@ export default function ChatPanel({ currentSection, onboardingStep }) {
             currentSection: currentSection || 'dashboard',
             vertical,
             jurisdiction,
+            ...(dealContext ? { dealContext } : {}),
           },
-          preferredModel: 'claude',
         }),
       });
 
@@ -171,6 +176,7 @@ export default function ChatPanel({ currentSection, onboardingStep }) {
       }
 
       setIsTyping(false);
+      setDealContext(null); // Clear deal context after use
       setMessages(prev => [...prev, {
         role: 'assistant',
         content: data.response || 'No response received.',

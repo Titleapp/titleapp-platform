@@ -123,8 +123,13 @@ export default function Onboarding({ onComplete, onStepChange }: OnboardingProps
         throw new Error(data.error || "Failed to create account");
       }
 
-      // Store tenant ID
+      // Store tenant ID and vertical/jurisdiction for chat context
       localStorage.setItem("TENANT_ID", data.tenantId);
+      localStorage.setItem("VERTICAL", vertical);
+      localStorage.setItem("JURISDICTION", jurisdiction);
+      if (raasRules.trim()) {
+        localStorage.setItem("RAAS_RULES", raasRules.trim());
+      }
 
       // Show magic moment
       setStep("magic");

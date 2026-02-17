@@ -107,6 +107,7 @@ export default function AppShell({ children, currentSection, onNavigate }) {
           currentSection={currentSection}
           onNavigate={onNavigate}
           onClose={() => setSidebarOpen(false)}
+          tenantName={tenantInfo?.name}
         />
       </div>
 

@@ -1580,14 +1580,12 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
         let aiResponse = "";
         let structuredData = null;
 
-        // ANALYST DETECTION: Check if user wants deal analysis
-        const isDealAnalysis = message.toLowerCase().includes("analyze") ||
-                              message.toLowerCase().includes("deal") ||
-                              message.toLowerCase().includes("company:") ||
-                              message.toLowerCase().includes("investment") ||
-                              (message.includes("$") && message.length > 100); // Likely a deal paste
+        // ANALYST DETECTION: Only trigger for explicit deal analysis requests (paste-ins or explicit commands)
+        const msgLower = message.toLowerCase();
+        const isDealAnalysis = (msgLower.startsWith("analyze this") || msgLower.startsWith("analyze deal") || msgLower.includes("company:")) &&
+                              message.length > 200; // Must be a substantial deal paste, not a chat message
 
-        if (isDealAnalysis && message.length > 50) {
+        if (isDealAnalysis) {
           // Route to Analyst RAAS
           try {
             console.log("🎯 Detected deal analysis request, routing to Analyst RAAS");
@@ -1633,7 +1631,7 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
             // Format response for chat
             aiResponse = `Deal Analysis\n\nRisk Score: ${analysis.riskScore}/100\nRecommendation: ${analysis.recommendation}\n\n${analysis.summary}\n\nKey Evidence:\n${analysis.evidence.positive.map(e => `+ ${e}`).join('\n')}\n${analysis.evidence.negative.map(e => `- ${e}`).join('\n')}\n\nNext Steps:\n${analysis.nextSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}`;
 
-            structuredData = { type: "trade_summary", analysis };
+            structuredData = { type: "analyst_result", verdict: analysis.recommendation, verdict_emoji: analysis.recommendation === "INVEST" ? "+" : "-", score: analysis.riskScore, summary: analysis.summary, key_findings: [...(analysis.evidence.positive || []), ...(analysis.evidence.negative || [])] };
 
           } catch (analystError) {
             console.error("❌ Analyst routing failed:", analystError);
@@ -1641,8 +1639,8 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
           }
         }
 
-        // Call Claude API if no structured response yet
-        if (!aiResponse && (preferredModel === "claude" || !preferredModel)) {
+        // Call AI model if no structured response yet
+        if (!aiResponse && (!preferredModel || preferredModel === "claude")) {
           try {
             // Fetch conversation history (last 20 messages)
             const messages = [];
@@ -1676,7 +1674,7 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
             const response = await anthropic.messages.create({
               model: "claude-sonnet-4-5-20250929",
               max_tokens: 2048,
-              system: `You are the AI assistant for TitleApp, a business intelligence platform. The user is on the "${(context || {}).currentSection || "dashboard"}" section. Be concise and professional. Help with deal analysis, business operations, compliance questions, document management, and platform navigation. When discussing deals or investments, always note that you provide informational analysis only, not financial advice.`,
+              system: `You are the AI assistant for TitleApp, a business intelligence platform. The user's vertical is "${ctx.vertical || "general"}" and they are on the "${(context || {}).currentSection || "dashboard"}" section. Be concise and professional. ${ctx.vertical === "analyst" ? "You specialize in deal analysis, investment screening, risk assessment, and portfolio management. Help analyze deals, discuss risk factors, identify missing information, and provide actionable next steps." : ctx.vertical === "auto" ? "You specialize in automotive dealership operations, inventory management, trade-ins, and compliance." : ctx.vertical === "real-estate" || ctx.vertical === "property-mgmt" ? "You specialize in real estate transactions, property management, compliance, and document management." : "Help with business operations, compliance questions, document management, and platform navigation."} When discussing deals or investments, note that you provide informational analysis only, not financial advice.${(context || {}).dealContext ? `\n\nThe user wants to discuss this deal analysis:\n${JSON.stringify(context.dealContext)}` : ""}`,
               messages,
             });
 
@@ -1734,8 +1732,8 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
             // Fallback to a helpful error message
             aiResponse = "I'm having trouble connecting to the AI service right now. Please try again in a moment.";
           }
-        } else {
-          // Unsupported model
+        } else if (!aiResponse) {
+          // Unsupported model (only if no response generated yet)
           aiResponse = `[Unsupported model: ${preferredModel}. Please use "claude" or "openai".]`;
         }
 

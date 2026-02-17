@@ -258,14 +258,20 @@ export default function InvestmentCriteriaStep({ onComplete, onSkip }: Investmen
 
       <label style={{ display: "grid", gap: "8px" }}>
         <div style={{ fontSize: "14px", fontWeight: 600 }}>Deal Types *</div>
-        <div style={{ display: "grid", gap: "8px" }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
           {[
-            { value: "private_equity", label: "Private Equity" },
-            { value: "commercial_real_estate", label: "Commercial Real Estate" },
+            { value: "seed", label: "Seed" },
+            { value: "series_a", label: "Series A" },
+            { value: "series_b", label: "Series B" },
+            { value: "pe_buyout", label: "PE Buyout" },
+            { value: "acquisition", label: "Acquisition" },
+            { value: "development", label: "Development" },
+            { value: "value_add", label: "Value-Add" },
             { value: "refinance", label: "Refinance" },
-            { value: "conversion", label: "Conversion" },
-            { value: "entitlement", label: "Entitlement" },
-            { value: "debt_acquisition", label: "Debt Acquisition" },
+            { value: "bridge_loan", label: "Bridge Loan" },
+            { value: "mezzanine", label: "Mezzanine" },
+            { value: "joint_venture", label: "Joint Venture" },
+            { value: "sale_leaseback", label: "Sale-Leaseback" },
           ].map(type => (
             <button
               key={type.value}
