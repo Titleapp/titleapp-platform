@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import useFileUpload from "../hooks/useFileUpload";
 
 interface RealEstateDataStepProps {
   onComplete: () => void;
@@ -70,12 +71,13 @@ export default function RealEstateDataStep({ onComplete, onSkip }: RealEstateDat
   const [parsedFiles, setParsedFiles] = useState<ParsedFile[]>([]);
   const [parsing, setParsing] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<Record<string, "pending" | "uploading" | "done" | "error">>({});
+  const fileUpload = useFileUpload({ purpose: "real_estate_data" });
 
   async function handleFileUpload(event: React.ChangeEvent<HTMLInputElement>) {
     const uploadedFiles = Array.from(event.target.files || []);
     setFiles([...files, ...uploadedFiles]);
 
-    // Parse each file
     for (const file of uploadedFiles) {
       await parseFile(file);
     }
@@ -85,8 +87,6 @@ export default function RealEstateDataStep({ onComplete, onSkip }: RealEstateDat
     setParsing(true);
 
     try {
-      // In production, this would use a backend endpoint with xlsx parser
-      // For now, we'll simulate the parsing
       const parsed: ParsedFile = await simulateFileParsing(file);
       setParsedFiles(prev => [...prev, parsed]);
     } catch (error) {
@@ -250,8 +250,11 @@ export default function RealEstateDataStep({ onComplete, onSkip }: RealEstateDat
   async function handleImport() {
     setUploading(true);
     try {
-      // In production, this would upload files and trigger backend parsing
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      for (const file of files) {
+        setUploadProgress(prev => ({ ...prev, [file.name]: "uploading" }));
+        const result = await fileUpload.uploadFile(file);
+        setUploadProgress(prev => ({ ...prev, [file.name]: result ? "done" : "error" }));
+      }
       onComplete();
     } catch (error) {
       console.error("Import error:", error);
@@ -288,7 +291,7 @@ export default function RealEstateDataStep({ onComplete, onSkip }: RealEstateDat
           background: "#f9fafb",
         }}
       >
-        <div style={{ fontSize: "48px", marginBottom: "16px" }}>📊</div>
+        <div style={{ fontSize: "24px", fontWeight: 600, color: "#64748b", marginBottom: "16px" }}>Data Upload</div>
         <p style={{ fontSize: "16px", fontWeight: 600, marginBottom: "8px" }}>
           Upload Real Estate Data Files
         </p>
@@ -322,7 +325,7 @@ export default function RealEstateDataStep({ onComplete, onSkip }: RealEstateDat
 
       {parsing && (
         <div style={{ padding: "16px", background: "#f0fdf4", borderRadius: "12px", textAlign: "center" }}>
-          🔄 Analyzing file structure and detecting data types...
+          Analyzing file structure and detecting data types...
         </div>
       )}
 
@@ -345,7 +348,7 @@ export default function RealEstateDataStep({ onComplete, onSkip }: RealEstateDat
             >
               <div style={{ marginBottom: "16px" }}>
                 <div style={{ fontSize: "16px", fontWeight: 600, marginBottom: "4px" }}>
-                  📄 {file.filename}
+                  {file.filename}
                 </div>
                 <div style={{ fontSize: "14px", color: "#6b7280" }}>
                   Profile: {file.detectedProfile.replace(/_/g, " ").toUpperCase()}
@@ -388,7 +391,7 @@ export default function RealEstateDataStep({ onComplete, onSkip }: RealEstateDat
                   }}
                 >
                   <div style={{ fontSize: "13px", fontWeight: 600, marginBottom: "8px" }}>
-                    🔌 Platform Integrations Detected ({file.platformIntegrations.length})
+                    Platform Integrations Detected ({file.platformIntegrations.length})
                   </div>
                   <div style={{ fontSize: "13px", color: "#92400e", display: "flex", flexWrap: "wrap", gap: "6px" }}>
                     {file.platformIntegrations.map((platform, idx) => (

@@ -1268,6 +1268,25 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       return res.json({ ok: true, userId: auth.user.uid, email: auth.user.email || null, memberships, tenants });
     }
 
+    // POST /v1/me:update
+    if (route === "/me:update" && method === "POST") {
+      const ALLOWED_FIELDS = ["idVerified", "idVerifiedAt", "displayName"];
+      const updates = {};
+      for (const key of ALLOWED_FIELDS) {
+        if (body[key] !== undefined) updates[key] = body[key];
+      }
+      if (Object.keys(updates).length === 0) {
+        return jsonError(res, 400, "No valid fields to update");
+      }
+      try {
+        await db.collection("users").doc(auth.user.uid).set(updates, { merge: true });
+        return res.json({ ok: true, updated: Object.keys(updates) });
+      } catch (e) {
+        console.error("me:update failed:", e);
+        return jsonError(res, 500, "Failed to update user profile");
+      }
+    }
+
     // POST /v1/onboarding:claimTenant
     if (route === "/onboarding:claimTenant" && method === "POST") {
       const {
@@ -1930,6 +1949,13 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
 
         if (!type || !metadata) {
           return jsonError(res, 400, "Missing type or metadata");
+        }
+
+        // ID verification gate
+        const userDoc = await db.collection("users").doc(ctx.userId).get();
+        const userData = userDoc.exists ? userDoc.data() : {};
+        if (!userData.idVerified) {
+          return res.json({ ok: false, requiresIdVerification: true, error: "Identity verification required" });
         }
 
         const ref = await db.collection("dtcs").add({

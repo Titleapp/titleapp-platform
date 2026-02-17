@@ -1,38 +1,75 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import InvestmentCriteriaStep from "./InvestmentCriteriaStep";
 import SampleDealsStep from "./SampleDealsStep";
 import DealershipDataStep from "./DealershipDataStep";
 import RealEstateDataStep from "./RealEstateDataStep";
 import TermsAndConditions from "./TermsAndConditions";
+import IDVerifyStep from "./IDVerifyStep";
+import PropertyMgmtStep from "./PropertyMgmtStep";
+import BrokerageStep from "./BrokerageStep";
+import { auth, db } from "../firebase";
+import { doc, getDoc } from "firebase/firestore";
 
 interface OnboardingProps {
   onComplete: (tenantId: string) => void;
 }
 
 export default function Onboarding({ onComplete }: OnboardingProps) {
-  const [step, setStep] = useState<"terms" | "welcome" | "details" | "criteria" | "sampleDeals" | "dealerData" | "realEstateData" | "magic">("terms");
+  const [step, setStep] = useState<"checking" | "terms" | "welcome" | "idVerify" | "details" | "raas" | "criteria" | "sampleDeals" | "dealerData" | "realEstateData" | "brokerage" | "propertyMgmt" | "magic">("checking");
   const [companyName, setCompanyName] = useState("");
   const [vertical, setVertical] = useState("auto");
   const [jurisdiction, setJurisdiction] = useState("IL");
   const [riskProfile, setRiskProfile] = useState<any>(null);
+  const [raasRules, setRaasRules] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // Check if user already accepted terms (e.g., via chat onboarding)
+  useEffect(() => {
+    async function checkExistingProgress() {
+      try {
+        const user = auth.currentUser;
+        if (!user) {
+          setStep("terms");
+          return;
+        }
+        const userDoc = await getDoc(doc(db, "users", user.uid));
+        if (userDoc.exists()) {
+          const data = userDoc.data();
+          if (data.termsAcceptedAt) {
+            // Terms already accepted — skip to account details
+            if (data.companyName) setCompanyName(data.companyName);
+            setStep("details");
+            return;
+          }
+        }
+        setStep("terms");
+      } catch (err) {
+        console.error("Failed to check onboarding progress:", err);
+        setStep("terms");
+      }
+    }
+    checkExistingProgress();
+  }, []);
 
   function handleDetailsNext() {
     if (!companyName.trim()) {
       setError("Please enter your company name");
       return;
     }
+    setStep("raas");
+  }
 
-    // Show vertical-specific onboarding
+  function handleRaasNext() {
     if (vertical === "analyst") {
       setStep("criteria");
     } else if (vertical === "auto") {
       setStep("dealerData");
     } else if (vertical === "real-estate") {
-      setStep("realEstateData");
+      setStep("brokerage");
+    } else if (vertical === "property-mgmt") {
+      setStep("propertyMgmt");
     } else {
-      // Other verticals - create account immediately
       handleCreate(null);
     }
   }
@@ -60,6 +97,9 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
 
       if (criteria) {
         payload.riskProfile = criteria;
+      }
+      if (raasRules.trim()) {
+        payload.raasRules = raasRules.trim();
       }
 
       const response = await fetch(`${apiBase}/api?path=/v1/onboarding:claimTenant`, {
@@ -92,6 +132,17 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
       setError(err?.message || String(err));
       setLoading(false);
     }
+  }
+
+  if (step === "checking") {
+    return (
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#f8fafc", fontFamily: "-apple-system, BlinkMacSystemFont, sans-serif" }}>
+        <div style={{ textAlign: "center" }}>
+          <div style={{ fontSize: "20px", fontWeight: 600, color: "#7c3aed", marginBottom: "16px" }}>TitleApp</div>
+          <div style={{ fontSize: "16px", color: "#6b7280" }}>Loading...</div>
+        </div>
+      </div>
+    );
   }
 
   if (step === "terms") {
@@ -235,6 +286,157 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
     );
   }
 
+  if (step === "raas") {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "#f8fafc",
+          fontFamily: "-apple-system, BlinkMacSystemFont, sans-serif",
+          padding: "20px",
+        }}
+      >
+        <div
+          style={{
+            width: "100%",
+            maxWidth: "500px",
+            padding: "40px",
+            background: "white",
+            borderRadius: "16px",
+            border: "1px solid #e5e7eb",
+          }}
+        >
+          <div style={{ marginBottom: "24px" }}>
+            <h2 style={{ margin: "0 0 8px 0", fontSize: "24px", fontWeight: 700 }}>
+              AI Assistant Rules
+            </h2>
+            <p style={{ margin: 0, color: "#6b7280", fontSize: "15px", lineHeight: 1.5 }}>
+              Any custom rules for your AI assistant? For example, tone of voice,
+              topics to avoid, preferred terminology, or specific workflows.
+            </p>
+          </div>
+          <textarea
+            value={raasRules}
+            onChange={(e) => setRaasRules(e.target.value)}
+            placeholder="e.g. Always address clients formally. Never discuss competitor pricing. Use metric units."
+            rows={5}
+            style={{
+              width: "100%",
+              padding: "12px 16px",
+              fontSize: "15px",
+              border: "1px solid #e5e7eb",
+              borderRadius: "8px",
+              resize: "vertical",
+              fontFamily: "inherit",
+              lineHeight: 1.5,
+            }}
+          />
+          <div style={{ display: "flex", gap: "12px", marginTop: "24px" }}>
+            <button
+              onClick={handleRaasNext}
+              style={{
+                flex: 1,
+                padding: "14px",
+                fontSize: "15px",
+                background: "transparent",
+                border: "1px solid #e5e7eb",
+                borderRadius: "8px",
+                cursor: "pointer",
+                color: "#6b7280",
+              }}
+            >
+              Use Standard Rules
+            </button>
+            <button
+              onClick={handleRaasNext}
+              disabled={!raasRules.trim()}
+              style={{
+                flex: 1,
+                padding: "14px",
+                fontSize: "15px",
+                fontWeight: 600,
+                background: raasRules.trim() ? "rgb(124,58,237)" : "#9ca3af",
+                color: "white",
+                border: "none",
+                borderRadius: "8px",
+                cursor: raasRules.trim() ? "pointer" : "not-allowed",
+              }}
+            >
+              Save & Continue
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (step === "brokerage") {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "#f8fafc",
+          fontFamily: "-apple-system, BlinkMacSystemFont, sans-serif",
+          padding: "40px 20px",
+        }}
+      >
+        <div
+          style={{
+            width: "100%",
+            maxWidth: "700px",
+            padding: "40px",
+            background: "white",
+            borderRadius: "16px",
+            border: "1px solid #e5e7eb",
+          }}
+        >
+          <BrokerageStep
+            onComplete={() => handleCreate(null)}
+            onSkip={() => handleCreate(null)}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  if (step === "propertyMgmt") {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "#f8fafc",
+          fontFamily: "-apple-system, BlinkMacSystemFont, sans-serif",
+          padding: "40px 20px",
+        }}
+      >
+        <div
+          style={{
+            width: "100%",
+            maxWidth: "700px",
+            padding: "40px",
+            background: "white",
+            borderRadius: "16px",
+            border: "1px solid #e5e7eb",
+          }}
+        >
+          <PropertyMgmtStep
+            onComplete={() => handleCreate(null)}
+            onSkip={() => handleCreate(null)}
+          />
+        </div>
+      </div>
+    );
+  }
+
   if (step === "magic") {
     return (
       <div
@@ -254,11 +456,11 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
             animation: "fadeInScale 0.6s ease-out",
           }}
         >
-          <div style={{ fontSize: "80px", marginBottom: "24px", animation: "bounce 1s infinite" }}>
-            ✨
+          <div style={{ fontSize: "48px", marginBottom: "24px", fontWeight: 300, letterSpacing: "-2px" }}>
+            TitleApp
           </div>
           <h1 style={{ fontSize: "32px", fontWeight: 700, margin: "0 0 16px 0" }}>
-            Welcome to TitleApp AI!
+            Welcome, {companyName || "partner"}.
           </h1>
           <p style={{ fontSize: "18px", opacity: 0.9 }}>
             Your AI-powered business platform is ready
@@ -281,6 +483,15 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
           }
         `}</style>
       </div>
+    );
+  }
+
+  if (step === "idVerify") {
+    return (
+      <IDVerifyStep
+        onComplete={() => setStep("details")}
+        onSkip={() => setStep("details")}
+      />
     );
   }
 
@@ -354,7 +565,8 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
                 }}
               >
                 <option value="auto">Automotive</option>
-                <option value="real-estate">Real Estate</option>
+                <option value="real-estate">Real Estate (Brokerage)</option>
+                <option value="property-mgmt">Property Management</option>
                 <option value="aviation">Aviation</option>
                 <option value="marine">Marine</option>
                 <option value="analyst">Investment / PE</option>
@@ -416,7 +628,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
                 marginTop: "8px",
               }}
             >
-              {loading ? "Creating your account..." : vertical === "analyst" ? "Next: Set Investment Criteria →" : "Get Started →"}
+              {loading ? "Creating your account..." : "Next →"}
             </button>
 
             <p style={{ fontSize: "13px", color: "#6b7280", textAlign: "center", margin: 0 }}>
@@ -448,7 +660,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
           maxWidth: "600px",
         }}
       >
-        <div style={{ fontSize: "64px", marginBottom: "24px" }}>🚀</div>
+        <div style={{ fontSize: "48px", marginBottom: "24px", fontWeight: 300, letterSpacing: "-2px" }}>TitleApp</div>
         <h1 style={{ fontSize: "40px", fontWeight: 700, margin: "0 0 16px 0" }}>
           Welcome to TitleApp AI
         </h1>
@@ -456,7 +668,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
           Your AI-powered platform for title, ownership, and business automation
         </p>
         <button
-          onClick={() => setStep("details")}
+          onClick={() => setStep("idVerify")}
           style={{
             padding: "16px 48px",
             fontSize: "18px",

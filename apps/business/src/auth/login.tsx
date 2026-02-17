@@ -4,6 +4,8 @@ import {
   sendSignInLinkToEmail,
   isSignInWithEmailLink,
   signInWithEmailLink,
+  GoogleAuthProvider,
+  signInWithPopup,
 } from "firebase/auth";
 import { auth } from "../firebase";
 
@@ -84,7 +86,41 @@ export default function Login() {
       window.location.reload();
     } catch (err: any) {
       console.error(err);
-      setStatus(`Login failed: ${err?.message || String(err)}`);
+      const code = err?.code || "";
+      if (
+        code === "auth/wrong-password" ||
+        code === "auth/user-not-found" ||
+        code === "auth/invalid-credential" ||
+        code === "auth/invalid-login-credentials"
+      ) {
+        setStatus("No password set for this account. Please use Magic Link or Google to sign in.");
+      } else {
+        setStatus(`Login failed: ${err?.message || String(err)}`);
+      }
+    }
+  }
+
+  async function handleGoogleLogin() {
+    setStatus("Signing in with Google...");
+    try {
+      const provider = new GoogleAuthProvider();
+      const cred = await signInWithPopup(auth, provider);
+      const token = await cred.user.getIdToken(true);
+
+      localStorage.setItem("ID_TOKEN", token);
+      if (!localStorage.getItem("TENANT_ID")) {
+        localStorage.setItem("TENANT_ID", "demo");
+      }
+
+      setStatus("Signed in successfully");
+      window.location.reload();
+    } catch (err: any) {
+      console.error(err);
+      if (err?.code === "auth/popup-closed-by-user") {
+        setStatus("");
+      } else {
+        setStatus(`Google sign-in failed: ${err?.message || String(err)}`);
+      }
     }
   }
 
@@ -297,13 +333,13 @@ export default function Login() {
                 style={{
                   marginTop: "16px",
                   padding: "12px",
-                  background: status.includes("Failed") ? "#fff5f5" : "#f0fdf4",
-                  border: status.includes("Failed")
+                  background: status.includes("Failed") || status.includes("failed") || status.includes("No password") ? "#fff5f5" : "#f0fdf4",
+                  border: status.includes("Failed") || status.includes("failed") || status.includes("No password")
                     ? "1px solid #fecaca"
                     : "1px solid #86efac",
                   borderRadius: "8px",
                   fontSize: "13px",
-                  color: status.includes("Failed") ? "#dc2626" : "#16a34a",
+                  color: status.includes("Failed") || status.includes("failed") || status.includes("No password") ? "#dc2626" : "#16a34a",
                 }}
               >
                 {status}
@@ -324,7 +360,7 @@ export default function Login() {
               </div>
               <div style={{ display: "grid", gap: "8px" }}>
                 <button
-                  onClick={() => alert("Google SSO not yet implemented")}
+                  onClick={handleGoogleLogin}
                   style={{
                     padding: "12px",
                     fontSize: "14px",
@@ -335,19 +371,6 @@ export default function Login() {
                   }}
                 >
                   Google
-                </button>
-                <button
-                  onClick={() => alert("Apple SSO not yet implemented")}
-                  style={{
-                    padding: "12px",
-                    fontSize: "14px",
-                    background: "white",
-                    border: "1px solid #e5e7eb",
-                    borderRadius: "8px",
-                    cursor: "pointer",
-                  }}
-                >
-                  Apple
                 </button>
               </div>
             </div>

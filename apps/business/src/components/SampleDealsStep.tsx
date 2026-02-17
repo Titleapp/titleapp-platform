@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import useFileUpload from "../hooks/useFileUpload";
 
 interface SampleDealsStepProps {
   criteria: any;
@@ -16,6 +17,7 @@ interface UploadedDeal {
 export default function SampleDealsStep({ criteria, onComplete, onSkip }: SampleDealsStepProps) {
   const [deals, setDeals] = useState<UploadedDeal[]>([]);
   const [uploading, setUploading] = useState(false);
+  const fileUpload = useFileUpload({ purpose: "deal_memo" });
 
   async function handleFileUpload(event: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.target.files || []);
@@ -45,14 +47,14 @@ export default function SampleDealsStep({ criteria, onComplete, onSkip }: Sample
     });
 
     try {
-      // Step 1: Read PDF text (simplified - in production would use pdf.js or backend parser)
-      const fileText = await readFileAsText(file);
+      // Step 1: Upload PDF via useFileUpload hook
+      const uploadedFileId = await fileUpload.uploadFile(file);
 
-      // Step 2: Call analyze endpoint
+      // Step 2: Call analyze endpoint with fileId
       const token = localStorage.getItem("ID_TOKEN");
       const vertical = "analyst";
       const jurisdiction = "GLOBAL";
-      const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+      const apiBase = (import.meta as any).env?.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
 
       const response = await fetch(`${apiBase}/api?path=/v1/analyst:analyze`, {
         method: "POST",
@@ -66,7 +68,7 @@ export default function SampleDealsStep({ criteria, onComplete, onSkip }: Sample
           deal: {
             companyName: file.name.replace(/\.(pdf|PDF)$/, ""),
             dealType: "private_equity",
-            summary: fileText.substring(0, 8000), // First 8000 chars
+            fileId: uploadedFileId,
           },
         }),
       });
@@ -97,12 +99,6 @@ export default function SampleDealsStep({ criteria, onComplete, onSkip }: Sample
         return updated;
       });
     }
-  }
-
-  async function readFileAsText(file: File): Promise<string> {
-    // For PDFs, we'd ideally use pdf.js on the backend
-    // For now, return a placeholder that indicates we uploaded a PDF
-    return `Deal memo: ${file.name}\n\nFile uploaded for analysis. In production, full PDF text would be extracted here.`;
   }
 
   function removeDeal(index: number) {
@@ -158,7 +154,7 @@ export default function SampleDealsStep({ criteria, onComplete, onSkip }: Sample
           background: "#f9fafb",
         }}
       >
-        <div style={{ fontSize: "48px", marginBottom: "16px" }}>📄</div>
+        <div style={{ fontSize: "24px", fontWeight: 600, color: "#64748b", marginBottom: "16px" }}>Deal Memos</div>
         <p style={{ fontSize: "16px", fontWeight: 600, marginBottom: "8px" }}>
           Upload Deal Memos (PDFs)
         </p>
@@ -233,13 +229,13 @@ export default function SampleDealsStep({ criteria, onComplete, onSkip }: Sample
 
               {deal.analyzing && (
                 <div style={{ padding: "12px", background: "#f0fdf4", borderRadius: "8px", fontSize: "14px" }}>
-                  🔄 Analyzing with AI...
+                  Analyzing with AI...
                 </div>
               )}
 
               {deal.error && (
                 <div style={{ padding: "12px", background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: "8px", fontSize: "14px", color: "#dc2626" }}>
-                  ❌ {deal.error}
+                  {deal.error}
                 </div>
               )}
 
@@ -289,7 +285,7 @@ export default function SampleDealsStep({ criteria, onComplete, onSkip }: Sample
           }}
         >
           <div style={{ fontSize: "16px", fontWeight: 600, marginBottom: "12px" }}>
-            ✨ Sweet Spot Identified
+            Sweet Spot Identified
           </div>
           <p style={{ fontSize: "14px", color: "#374151", marginBottom: "12px", lineHeight: 1.5 }}>
             Based on your uploaded deals and criteria, TitleApp will help you:

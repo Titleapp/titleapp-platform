@@ -681,6 +681,12 @@ async function processMessage(input, services = {}) {
   if (action === 'id_verify_accept') {
     state.step = 'id_verification';
     state.idVerified = true;
+    // Resume pending attestation if ID verification was triggered mid-flow
+    if (state.pendingAttestationStep) {
+      state.step = state.pendingAttestationStep;
+      state.pendingAttestationStep = null;
+      return handleAttestationConfirmed(state);
+    }
     if (state.carData) {
       return handleVehicleDTC(state);
     }
@@ -807,8 +813,9 @@ async function processMessage(input, services = {}) {
           cards: [{ type: 'idVerification', data: {} }],
         });
       }
+      state.pendingAttestationStep = null;
       state.step = 'authenticated';
-      return response(state, "No problem! Your car info is saved as a draft. You can verify and publish later from your account. What else would you like to do?");
+      return response(state, "No problem. Your record is saved as a draft. You can verify and publish later from your account. What else would you like to do?");
     }
 
     // ── Authenticated Hub ──
@@ -2254,8 +2261,15 @@ async function processMessage(input, services = {}) {
       // Business user just saw the emotional onboarding promise
       // Route their response through the authenticated hub
       state.step = 'authenticated';
+
+      // Signal the landing page to redirect to the platform
+      const raasReadyExtra = {
+        platformRedirect: true,
+        platformUrl: 'https://title-app-alpha.web.app',
+      };
+
       if (message && message.trim().length > 0) {
-        return processMessage({
+        const result = processMessage({
           state,
           userInput: message,
           action: null,
@@ -2264,26 +2278,18 @@ async function processMessage(input, services = {}) {
           fileName: input.fileName || null,
           surface: input.surface || 'landing',
         }, services);
+        return { ...result, ...raasReadyExtra };
       }
-      // No message — show workspace prompt chips
+      // No message — show workspace prompt chips + platform redirect
+      let noMsgChips = ['Add a record', 'Set up compliance', 'View vault'];
       if (state.businessVertical === 'real_estate') {
-        return response(state, null, {
-          promptChips: ['Add a property', 'Onboard a tenant', 'Maintenance request', 'View properties'],
-        });
+        noMsgChips = ['Add a property', 'Onboard a tenant', 'Maintenance request', 'View properties'];
+      } else if (state.businessVertical === 'analyst') {
+        noMsgChips = ['Vet a new deal', 'Write a POV', 'View pipeline'];
+      } else if (state.businessVertical === 'auto') {
+        noMsgChips = ['Add a vehicle', 'View inventory', 'Sales pipeline'];
       }
-      if (state.businessVertical === 'analyst') {
-        return response(state, null, {
-          promptChips: ['Vet a new deal', 'Write a POV', 'View pipeline'],
-        });
-      }
-      if (state.businessVertical === 'auto') {
-        return response(state, null, {
-          promptChips: ['Add a vehicle', 'View inventory', 'Sales pipeline'],
-        });
-      }
-      return response(state, null, {
-        promptChips: ['Add a record', 'Set up compliance', 'View vault'],
-      });
+      return { ...response(state, null, { promptChips: noMsgChips }), ...raasReadyExtra };
     }
 
     // ── Consumer Onboarding Promise ──
@@ -2832,6 +2838,15 @@ function handlePilotDTC(state) {
 // ── Attestation Confirmed (dispatches to correct DTC handler) ──
 
 function handleAttestationConfirmed(state) {
+  // ID verification gate — all DTC types require verification
+  if (!state.idVerified) {
+    state.pendingAttestationStep = state.step;
+    state.step = 'id_verification_before_publish';
+    return response(state, "Before we can publish this record, we need to verify your identity. It takes about a minute and costs $2 (once a year). Ready?", {
+      promptChips: ["Yes, verify me", "Skip for now"],
+    });
+  }
+
   if (state.step === 'car_onboarding_attestation') {
     state.carData.attestedAt = new Date().toISOString();
     state.carData.attester = state.name;
