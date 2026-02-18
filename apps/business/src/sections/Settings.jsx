@@ -29,6 +29,7 @@ function PersonalSettings() {
     };
   });
 
+  const [toast, setToast] = useState(null);
   const [blockchainEnabled, setBlockchainEnabled] = useState(() => localStorage.getItem("VAULT_BLOCKCHAIN_ENABLED") === "true");
 
   const [notifications, setNotifications] = useState({
@@ -51,6 +52,8 @@ function PersonalSettings() {
       const dataUrl = ev.target.result;
       setAvatarPreview(dataUrl);
       localStorage.setItem("VAULT_AVATAR", dataUrl);
+      setToast("Photo updated");
+      setTimeout(() => setToast(null), 3000);
     };
     reader.readAsDataURL(file);
   }
@@ -68,6 +71,12 @@ function PersonalSettings() {
           <p className="subtle">Your personal Vault preferences</p>
         </div>
       </div>
+
+      {toast && (
+        <div style={{ padding: "10px 16px", marginBottom: "12px", borderRadius: "10px", background: "#f0fdf4", color: "#16a34a", fontSize: "14px", fontWeight: 500 }}>
+          {toast}
+        </div>
+      )}
 
       {/* Profile */}
       <div className="card" style={{ marginBottom: "16px" }}>
