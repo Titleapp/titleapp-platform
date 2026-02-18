@@ -103,10 +103,13 @@ async function requireFirebaseUser(req, res) {
       res: jsonError(res, 401, "Unauthorized", { reason: "Missing bearer token" }),
     };
 
-  // EMULATOR MODE: Accept test-token for local development
-  const isEmulator = process.env.FUNCTIONS_EMULATOR === 'true';
+  // EMULATOR MODE: Accept test-token for LOCAL development only
+  // Double-gated: requires BOTH emulator flag AND non-production project
+  const isEmulator = process.env.FUNCTIONS_EMULATOR === 'true'
+    && process.env.GCLOUD_PROJECT !== 'title-app-alpha'
+    && process.env.NODE_ENV !== 'production';
   if (isEmulator && token === 'test-token') {
-    console.log("⚠️ EMULATOR MODE: Accepting test-token");
+    console.log("EMULATOR MODE: Accepting test-token (local dev only)");
     return {
       handled: false,
       user: {
@@ -130,11 +133,10 @@ async function requireFirebaseUser(req, res) {
 }
 
 async function requireMembershipIfNeeded({ uid, tenantId }, res) {
-  console.log("🔍 Membership check:", { uid, tenantId });
+  console.log("Membership check:", { uid, tenantId });
 
-  if (!tenantId || tenantId === "public") {
-    console.log("✅ Public tenant — membership bypass");
-    return { ok: true };
+  if (!tenantId) {
+    return jsonError(res, 400, "Missing tenantId");
   }
 
   const snap = await db
@@ -157,7 +159,8 @@ async function requireMembershipIfNeeded({ uid, tenantId }, res) {
 function getCtx(req, body, user) {
   // NOTE: tenantId is always derived from x-tenant-id header (preferred).
   // body.tenantId remains accepted for backwards compatibility with older clients.
-  const tenantId = (req.headers["x-tenant-id"] || body.tenantId || "public").toString().trim();
+  const rawTenantId = (req.headers["x-tenant-id"] || body.tenantId || "").toString().trim();
+  const tenantId = rawTenantId || null;
   const vertical = (req.headers["x-vertical"] || body.vertical || "").toString().trim() || null;
   const jurisdiction = (req.headers["x-jurisdiction"] || body.jurisdiction || "").toString().trim() || null;
   return { tenantId, userId: user.uid, email: user.email || null, vertical, jurisdiction };
@@ -182,6 +185,116 @@ function getBucket() {
 // ✅ Backward compatible: accept both {storage:{path}} and {storagePath}
 function getPathFromMeta(meta) {
   return (meta && meta.storage && meta.storage.path) || meta.storagePath || null;
+}
+
+// ----------------------------
+// CORS — approved origins only
+// ----------------------------
+const ALLOWED_ORIGINS = [
+  'https://title-app-alpha.web.app',
+  'https://title-app-alpha.firebaseapp.com',
+  'https://titleapp-frontdoor.titleapp-core.workers.dev',
+];
+
+if (process.env.FUNCTIONS_EMULATOR === 'true') {
+  ALLOWED_ORIGINS.push('http://localhost:3000');
+  ALLOWED_ORIGINS.push('http://localhost:5173');
+  ALLOWED_ORIGINS.push('http://127.0.0.1:3000');
+  ALLOWED_ORIGINS.push('http://127.0.0.1:5173');
+}
+
+function setCorsHeaders(req, res) {
+  const origin = req.headers.origin;
+  if (ALLOWED_ORIGINS.includes(origin)) {
+    res.set('Access-Control-Allow-Origin', origin);
+  }
+  res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Tenant-Id, X-Vertical, X-Jurisdiction');
+  res.set('Access-Control-Max-Age', '3600');
+}
+
+// ----------------------------
+// Rate Limiting — signup endpoint
+// ----------------------------
+const signupAttempts = new Map();
+const SIGNUP_LIMIT = 5;
+const SIGNUP_WINDOW = 60 * 60 * 1000; // 1 hour
+
+function checkSignupRateLimit(ip) {
+  const now = Date.now();
+  const attempts = signupAttempts.get(ip) || [];
+  const recent = attempts.filter(t => now - t < SIGNUP_WINDOW);
+  if (recent.length >= SIGNUP_LIMIT) {
+    return false;
+  }
+  recent.push(now);
+  signupAttempts.set(ip, recent);
+  return true;
+}
+
+// Periodic cleanup of stale rate limit entries (every 10 minutes)
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, attempts] of signupAttempts.entries()) {
+    const recent = attempts.filter(t => now - t < SIGNUP_WINDOW);
+    if (recent.length === 0) {
+      signupAttempts.delete(ip);
+    } else {
+      signupAttempts.set(ip, recent);
+    }
+  }
+}, 10 * 60 * 1000);
+
+// ----------------------------
+// AI Response Validation
+// ----------------------------
+function validateAIResponse(parsed, expectedSchema) {
+  if (!parsed || typeof parsed !== 'object') {
+    console.error('AI response is not an object:', typeof parsed);
+    return null;
+  }
+
+  for (const field of expectedSchema.required || []) {
+    if (!(field in parsed)) {
+      console.error(`AI response missing required field: ${field}`);
+      return null;
+    }
+  }
+
+  const MAX_STRING_LENGTH = 10000;
+  for (const [key, value] of Object.entries(parsed)) {
+    if (typeof value === 'string' && value.length > MAX_STRING_LENGTH) {
+      parsed[key] = value.substring(0, MAX_STRING_LENGTH) + '... [truncated]';
+    }
+  }
+
+  return parsed;
+}
+
+function safeParseJSON(text, schema) {
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch (e) {
+    // Try to extract JSON from the response
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      try {
+        parsed = JSON.parse(jsonMatch[0]);
+      } catch (e2) {
+        console.error('Failed to parse AI response JSON:', e2.message);
+        return null;
+      }
+    } else {
+      console.error('Failed to parse AI response:', e.message);
+      return null;
+    }
+  }
+
+  if (schema) {
+    return validateAIResponse(parsed, schema);
+  }
+  return parsed;
 }
 
 function slugifyTenantId(name) {
@@ -333,7 +446,7 @@ async function signupInternal({ email, name, accountType, companyName, companyDe
  * Execute fire-and-forget side effects from chatEngine.
  * Failures are logged but do not break the response.
  */
-async function executeChatSideEffects(sideEffects, userId) {
+async function executeChatSideEffects(sideEffects, userId, tenantId) {
   for (const effect of (sideEffects || [])) {
     try {
       switch (effect.action) {
@@ -386,6 +499,7 @@ async function executeChatSideEffects(sideEffects, userId) {
           const files = d.files || [];
           const ref = await db.collection("dtcs").add({
             userId,
+            tenantId: tenantId || null,
             type: d.type,
             metadata: d.metadata || {},
             fileIds: [],
@@ -400,18 +514,24 @@ async function executeChatSideEffects(sideEffects, userId) {
         case 'uploadRaasSop': {
           if (!userId) break;
           const d = effect.data || {};
-          // Store SOP reference in Firestore (actual file storage handled by client)
-          // For now, log the upload and store metadata
-          const memSnap2 = await db.collection("memberships")
-            .where("userId", "==", userId)
-            .where("status", "==", "active")
-            .limit(1)
-            .get();
-          const tenantId2 = memSnap2.empty ? "public" : memSnap2.docs[0].data().tenantId;
+          // Use passed tenantId, fall back to membership lookup
+          let sopTenantId = tenantId;
+          if (!sopTenantId) {
+            const memSnap2 = await db.collection("memberships")
+              .where("userId", "==", userId)
+              .where("status", "==", "active")
+              .limit(1)
+              .get();
+            sopTenantId = memSnap2.empty ? null : memSnap2.docs[0].data().tenantId;
+          }
+          if (!sopTenantId) {
+            console.warn("chatEngine side-effect: uploadRaasSop skipped — no tenantId");
+            break;
+          }
 
           await db.collection("raasUploads").add({
             userId,
-            tenantId: tenantId2,
+            tenantId: sopTenantId,
             fileName: d.fileName || "document",
             uploadedAt: nowServerTs(),
             status: "received",
@@ -422,21 +542,29 @@ async function executeChatSideEffects(sideEffects, userId) {
         case 'saveRaasConfig': {
           if (!userId) break;
           const d = effect.data || {};
-          const memSnap3 = await db.collection("memberships")
-            .where("userId", "==", userId)
-            .where("status", "==", "active")
-            .limit(1)
-            .get();
-          const tenantId3 = memSnap3.empty ? "public" : memSnap3.docs[0].data().tenantId;
+          // Use passed tenantId, fall back to membership lookup
+          let configTenantId = tenantId;
+          if (!configTenantId) {
+            const memSnap3 = await db.collection("memberships")
+              .where("userId", "==", userId)
+              .where("status", "==", "active")
+              .limit(1)
+              .get();
+            configTenantId = memSnap3.empty ? null : memSnap3.docs[0].data().tenantId;
+          }
+          if (!configTenantId) {
+            console.warn("chatEngine side-effect: saveRaasConfig skipped — no tenantId");
+            break;
+          }
 
-          await db.collection("tenants").doc(tenantId3).set({
+          await db.collection("tenants").doc(configTenantId).set({
             raasConfig: {
               buildAnswers: d.raasBuildAnswers || [],
               buildSummary: d.raasBuildSummary || "",
               configuredAt: nowServerTs(),
             },
           }, { merge: true });
-          console.log("chatEngine side-effect: saveRaasConfig OK for tenant", tenantId3);
+          console.log("chatEngine side-effect: saveRaasConfig OK for tenant", configTenantId);
           break;
         }
         default:
@@ -453,9 +581,14 @@ async function executeChatSideEffects(sideEffects, userId) {
  * Only for authenticated users with free-form questions.
  */
 async function handleAIChatFallthrough(message, userId, tenantId) {
+  if (!tenantId || tenantId === 'public') {
+    console.warn("handleAIChatFallthrough: tenantId missing or public, skipping");
+    return "I can help you with that. What specifically would you like to know?";
+  }
+
   // Event-sourced: log received message
   const eventRef = await db.collection("messageEvents").add({
-    tenantId: tenantId || "public",
+    tenantId,
     userId,
     type: "chat:message:received",
     message,
@@ -467,9 +600,10 @@ async function handleAIChatFallthrough(message, userId, tenantId) {
   let aiResponse = "";
 
   try {
-    // Fetch conversation history (last 20 messages)
+    // Fetch conversation history (last 20 messages) — scoped by BOTH userId AND tenantId
     const historySnapshot = await db.collection("messageEvents")
       .where("userId", "==", userId)
+      .where("tenantId", "==", tenantId)
       .orderBy("createdAt", "desc")
       .limit(20)
       .get();
@@ -509,7 +643,7 @@ Formatting rules — follow these strictly:
 
   // Event-sourced: log response
   await db.collection("messageEvents").add({
-    tenantId: tenantId || "public",
+    tenantId,
     userId,
     type: "chat:message:responded",
     requestEventId: eventRef.id,
@@ -559,10 +693,8 @@ exports.api = onRequest(
   async (req, res) => {
     console.log("✅ API_VERSION", "2026-02-15-chat-wiring");
 
-    // CORS
-    res.set("Access-Control-Allow-Origin", "*");
-    res.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-    res.set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Tenant-Id");
+    // CORS — approved origins only (no wildcard)
+    setCorsHeaders(req, res);
     if (req.method === "OPTIONS") return res.status(204).send("");
 
     const route = getRoute(req);
@@ -595,7 +727,7 @@ exports.api = onRequest(
         // We rely on metadata set at session create
         const md = obj.metadata || {};
         const uid = md.userId || md.uid || null;
-        const tenantId = md.tenantId || "public";
+        const tenantId = md.tenantId || null;
         const purpose = md.purpose || "general";
         const sessionId = obj.id;
 
@@ -603,7 +735,7 @@ exports.api = onRequest(
         const status = obj.status || null; // e.g. "requires_input" | "processing" | "verified" | "canceled"
         const lastError = obj.last_error || null;
 
-        if (uid) {
+        if (uid && tenantId) {
           const docId = identityDocId({ uid, tenantId, purpose });
 
           // FIX: Use update() instead of set with merge for existing docs
@@ -665,6 +797,20 @@ exports.api = onRequest(
     if (route === "/auth:signup" && method === "POST") {
       const { email, name, accountType, companyName, companyDescription } = body || {};
       if (!email) return jsonError(res, 400, "Missing email");
+
+      // Email format validation
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(String(email).toLowerCase())) {
+        return jsonError(res, 400, "Invalid email format");
+      }
+
+      // Rate limiting by IP
+      const clientIp = (req.headers['x-forwarded-for'] || req.ip || 'unknown').toString().split(',')[0].trim();
+      if (!checkSignupRateLimit(clientIp)) {
+        return res.status(429).json({ ok: false, error: 'Too many signup attempts. Try again later.' });
+      }
+
+      // TODO: Add Cloudflare Turnstile verification on the frontend signup flow
 
       try {
         let userRecord;
@@ -792,10 +938,27 @@ exports.api = onRequest(
         // Use it for subsequent side effects
         const effectiveUserId = engineResult.state.userId || (authUser && authUser.uid) || null;
 
+        // Resolve tenantId from user's active membership (for cross-tenant isolation)
+        let effectiveTenantId = null;
+        if (effectiveUserId) {
+          try {
+            const memSnap = await db.collection("memberships")
+              .where("userId", "==", effectiveUserId)
+              .where("status", "==", "active")
+              .limit(1)
+              .get();
+            if (!memSnap.empty) {
+              effectiveTenantId = memSnap.docs[0].data().tenantId || null;
+            }
+          } catch (e) {
+            console.warn("chatEngine: failed to resolve tenantId for user", effectiveUserId, e.message);
+          }
+        }
+
         // Execute fire-and-forget side effects
         if (engineResult.sideEffects && engineResult.sideEffects.length > 0) {
           // Run side effects without blocking the response
-          executeChatSideEffects(engineResult.sideEffects, effectiveUserId)
+          executeChatSideEffects(engineResult.sideEffects, effectiveUserId, effectiveTenantId)
             .catch(e => console.warn("chatEngine side-effects batch error:", e.message));
         }
 
@@ -821,22 +984,17 @@ Be generous in interpretation. If someone says 'I manage apartments in Austin' t
             });
 
             const aiText = classifyResponse.content[0]?.text || "";
-            let classified;
-            try {
-              classified = JSON.parse(aiText);
-            } catch (parseErr) {
-              // Try to extract JSON from the response
-              const jsonMatch = aiText.match(/\{[\s\S]*\}/);
-              classified = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
-            }
+            const classified = safeParseJSON(aiText, {
+              required: ['intent', 'summary'],
+            });
 
             if (classified) {
               // Store classification in state for confirm_intent handler
               engineResult.state.classifiedIntent = {
-                intent: classified.intent,
-                summary: classified.summary,
-                vertical: classified.vertical,
-                confidence: classified.confidence,
+                intent: String(classified.intent || '').substring(0, 200),
+                summary: String(classified.summary || '').substring(0, 1000),
+                vertical: classified.vertical ? String(classified.vertical).substring(0, 200) : null,
+                confidence: String(classified.confidence || 'low').substring(0, 10),
                 originalMessage: engineResult.originalMessage,
               };
               engineResult.state.step = "confirm_intent";
@@ -998,13 +1156,9 @@ Respond with ONLY a JSON object:
               });
 
               const aiText = raasResponse.content[0]?.text || "";
-              let raasClassification;
-              try {
-                raasClassification = JSON.parse(aiText);
-              } catch (parseErr) {
-                const jsonMatch = aiText.match(/\{[\s\S]*\}/);
-                raasClassification = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
-              }
+              const raasClassification = safeParseJSON(aiText, {
+                required: ['industry'],
+              });
 
               if (raasClassification) {
                 engineResult.state.raasClassification = raasClassification;
@@ -1044,7 +1198,7 @@ Respond with ONLY a JSON object:
 
           // Execute side effects if any
           if (engineResult.sideEffects && engineResult.sideEffects.length > 0) {
-            executeChatSideEffects(engineResult.sideEffects, effectiveUserId)
+            executeChatSideEffects(engineResult.sideEffects, effectiveUserId, effectiveTenantId)
               .catch(e => console.warn("chatEngine side-effects batch error:", e.message));
           }
 
@@ -1103,7 +1257,7 @@ Write 2 sentences MAX. First sentence: what changes for them now (no more scramb
 
           // Execute side effects
           if (engineResult.sideEffects && engineResult.sideEffects.length > 0) {
-            executeChatSideEffects(engineResult.sideEffects, effectiveUserId)
+            executeChatSideEffects(engineResult.sideEffects, effectiveUserId, effectiveTenantId)
               .catch(e => console.warn("chatEngine side-effects batch error:", e.message));
           }
 
@@ -1199,7 +1353,7 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
             aiMessage = await handleAIChatFallthrough(
               userInput,
               effectiveUserId,
-              "public"
+              effectiveTenantId
             );
           } catch (e) {
             console.error("chatEngine AI fallthrough error:", e.message);
@@ -1955,7 +2109,10 @@ Platform navigation — when users ask how to do things, give them accurate dire
             const startIdx = aiResponse.indexOf(recordMarkerStart) + recordMarkerStart.length;
             const endIdx = aiResponse.indexOf(recordMarkerEnd);
             const jsonStr = aiResponse.substring(startIdx, endIdx).trim();
-            const recordData = JSON.parse(jsonStr);
+            const recordData = safeParseJSON(jsonStr, {
+              required: ['type'],
+            });
+            if (!recordData) throw new Error('Invalid record data from AI');
 
             // Strip markers from the user-visible response
             aiResponse = aiResponse.substring(0, aiResponse.indexOf(recordMarkerStart)).trim() +
@@ -1965,6 +2122,7 @@ Platform navigation — when users ask how to do things, give them accurate dire
             // Create DTC in Firestore (skip ID verification for chat-created records)
             const dtcRef = await db.collection("dtcs").add({
               userId: ctx.userId,
+              tenantId: ctx.tenantId,
               type: recordData.type || "document",
               metadata: recordData.metadata || {},
               imageUrl: uploadedFileUrl || null,
@@ -1994,6 +2152,7 @@ Platform navigation — when users ask how to do things, give them accurate dire
             await db.collection("logbookEntries").add({
               dtcId: dtcRef.id,
               userId: ctx.userId,
+              tenantId: ctx.tenantId,
               dtcTitle,
               entryType: "creation",
               data: { description: "Record created via Chief of Staff chat" },
@@ -2006,6 +2165,7 @@ Platform navigation — when users ask how to do things, give them accurate dire
               await db.collection("logbookEntries").add({
                 dtcId: dtcRef.id,
                 userId: ctx.userId,
+                tenantId: ctx.tenantId,
                 dtcTitle,
                 entryType: "update",
                 data: { description: `Photo attached: ${uploadedFileName}`, fileUrl: uploadedFileUrl },
@@ -2123,6 +2283,7 @@ Platform navigation — when users ask how to do things, give them accurate dire
         const type = req.query?.type?.toString() || null;
         let q = db.collection("dtcs")
           .where("userId", "==", ctx.userId)
+          .where("tenantId", "==", ctx.tenantId)
           .orderBy("createdAt", "desc")
           .limit(50);
 
@@ -2252,6 +2413,7 @@ Platform navigation — when users ask how to do things, give them accurate dire
 
         const ref = await db.collection("dtcs").add({
           userId: ctx.userId,
+          tenantId: ctx.tenantId,
           type,
           metadata,
           fileIds: fileIds || [],
@@ -2326,6 +2488,7 @@ Platform navigation — when users ask how to do things, give them accurate dire
         await db.collection("logbookEntries").add({
           dtcId,
           userId: ctx.userId,
+          tenantId: ctx.tenantId,
           dtcTitle: dtc.metadata?.title || "Untitled",
           entryType: "valuation_update",
           data: {
@@ -2425,6 +2588,7 @@ Platform navigation — when users ask how to do things, give them accurate dire
         const ref = await db.collection("logbookEntries").add({
           dtcId,
           userId: ctx.userId,
+          tenantId: ctx.tenantId,
           dtcTitle: dtcDoc.data().metadata?.title || "Untitled",
           entryType,
           data,
@@ -2509,6 +2673,7 @@ Platform navigation — when users ask how to do things, give them accurate dire
         await db.collection("logbookEntries").add({
           dtcId: dtcRef.id,
           userId: ctx.userId,
+          tenantId: ctx.tenantId,
           dtcTitle: recordTitle,
           entryType: "creation",
           data: { description: `Record created: ${recordTitle}` },
@@ -2576,6 +2741,7 @@ Platform navigation — when users ask how to do things, give them accurate dire
         await db.collection("logbookEntries").add({
           dtcId,
           userId: ctx.userId,
+          tenantId: ctx.tenantId,
           dtcTitle,
           entryType: "attestation",
           data: { description: "Owner attested to lawful ownership and accuracy of record information" },
@@ -3082,11 +3248,12 @@ Return as JSON: { summary, risks: [], recommendations: [], confidence }`
         });
 
         const analysisText = message.content[0]?.text || "{}";
-        const analysis = JSON.parse(analysisText);
+        const analysis = safeParseJSON(analysisText);
+        if (!analysis) throw new Error('Failed to parse AI analysis response');
 
         return res.json({ ok: true, analysis });
       } catch (e) {
-        console.error("❌ escrow:ai:analysis failed:", e);
+        console.error("escrow:ai:analysis failed:", e);
         return jsonError(res, 500, "Failed to analyze escrow");
       }
     }
@@ -3796,11 +3963,8 @@ Analyze now:`;
           const analysisText = response.content[0].text;
 
           // Parse JSON from Claude's response
-          try {
-            // Claude sometimes wraps JSON in markdown, so extract it
-            const jsonMatch = analysisText.match(/\{[\s\S]*\}/);
-            analysis = JSON.parse(jsonMatch ? jsonMatch[0] : analysisText);
-          } catch (e) {
+          analysis = safeParseJSON(analysisText);
+          if (!analysis) {
           // Fallback if parsing fails
           analysis = {
             riskScore: 50,
