@@ -159,11 +159,12 @@ export async function appendLogbook(params: {
   vertical: string;
   jurisdiction: string;
   entry: { dtcId: string; entryType: string; data: any; files?: string[] };
+  file?: { name: string; type: string; data: string };
 }) {
   return httpJson("POST", "/v1/logbook:append", {
     vertical: params.vertical,
     jurisdiction: params.jurisdiction,
-    body: params.entry,
+    body: { ...params.entry, ...(params.file ? { file: params.file } : {}) },
   });
 }
 

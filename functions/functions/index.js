@@ -1588,9 +1588,41 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
 
     // POST /v1/chat:message
     if (route === "/chat:message" && method === "POST") {
-      const { message, context, preferredModel, fileIds } = body || {};
+      const { message, context, preferredModel, fileIds, file } = body || {};
       const validFileIds = Array.isArray(fileIds) ? fileIds.filter(id => typeof id === "string") : [];
       if (!message) return jsonError(res, 400, "Missing message");
+
+      // Handle base64 file upload if provided
+      let uploadedFileUrl = null;
+      let uploadedFileName = null;
+      if (file && file.data && file.name) {
+        try {
+          const base64Data = file.data.replace(/^data:[^;]+;base64,/, "");
+          const buffer = Buffer.from(base64Data, "base64");
+          const storagePath = `uploads/${ctx.userId}/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+          const bucket = getBucket();
+          const fileRef = bucket.file(storagePath);
+          await fileRef.save(buffer, { contentType: file.type || "application/octet-stream" });
+          const [url] = await fileRef.getSignedUrl({ version: "v4", action: "read", expires: Date.now() + 365 * 24 * 60 * 60 * 1000 });
+          uploadedFileUrl = url;
+          uploadedFileName = file.name;
+          // Create file record in Firestore
+          const fileDocRef = await db.collection("files").add({
+            tenantId: ctx.tenantId,
+            userId: ctx.userId,
+            name: file.name,
+            contentType: file.type || "application/octet-stream",
+            storagePath,
+            size: buffer.length,
+            status: "finalized",
+            createdAt: nowServerTs(),
+          });
+          validFileIds.push(fileDocRef.id);
+          console.log("File uploaded from chat:", storagePath, "fileId:", fileDocRef.id);
+        } catch (uploadErr) {
+          console.error("Chat file upload failed:", uploadErr);
+        }
+      }
 
       try {
         // Event-sourced: append message received event
@@ -1601,6 +1633,7 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
           message,
           context: context || {},
           preferredModel: preferredModel || "claude",
+          fileIds: validFileIds.length > 0 ? validFileIds : undefined,
           createdAt: nowServerTs(),
         });
 
@@ -1693,20 +1726,20 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
               console.warn("⚠️ Could not load chat history (index may be building):", historyErr.message);
             }
 
-            // Add current message
-            messages.push({ role: "user", content: message });
+            // Add current message (with file context if uploaded)
+            let userContent = message;
+            if (uploadedFileUrl && uploadedFileName) {
+              userContent += `\n\n[The user uploaded a file: "${uploadedFileName}". It has been stored and is available at: ${uploadedFileUrl}. Acknowledge the file by name.]`;
+            }
+            messages.push({ role: "user", content: userContent });
 
             // Call Claude API
             const anthropic = getAnthropic();
             const isPersonalVault = (ctx.vertical || "").toLowerCase() === "consumer" || (ctx.vertical || "").toUpperCase() === "GLOBAL";
-            const personalSystemPrompt = `You are the user's personal Chief of Staff in their TitleApp Vault. You help them manage their personal records -- vehicles, properties, important documents, and certifications. The user is on the "${(context || {}).currentSection || "dashboard"}" section.
+            const personalSystemPrompt = `You are the user's personal Chief of Staff in their TitleApp Vault. You do everything for them directly in this chat. You create records, store files, manage logbooks, handle attestations, and organize their entire digital life. The dashboard is a read-only view into what you have already done -- the user never needs to leave this chat to accomplish anything.
 
 Your role:
-- Help users add, find, and manage their personal records (vehicles, properties, important documents, certifications).
-- Track deadlines, remind them about renewals and expirations, and help them stay organized.
-- Explain Digital Title Certificates (DTCs) when asked -- verified, timestamped proof of ownership or attestation.
-- Be professional, warm, and proactive. You are a trusted team member, not a chatbot.
-- IMPORTANT: You CAN and SHOULD create records directly when the user provides enough information. You are their Chief of Staff -- act on their behalf.
+You are not a chatbot. You are a trusted team member who acts on the user's behalf. When they tell you about something they own, you create the record. When they upload a file, you store it. When they need to attest ownership, you walk them through it. You never tell the user to "go to a section" or "use the left navigation." Everything happens here.
 
 You do NOT discuss business analytics, deals, investment criteria, team management, or inventory operations. This is a personal Vault, not a business workspace.
 
@@ -1717,14 +1750,21 @@ Formatting rules -- follow these strictly:
 - Write in complete, clean sentences. Use plain text only.
 - Keep your tone warm but professional -- direct, calm, no hype.
 
-RECORD CREATION -- this is your most important capability:
-When a user tells you about a vehicle, property, document, certification, or valuable item, collect the key details conversationally. Once you have enough information, CREATE the record by including a JSON block in your response using these exact markers:
+DTC LIFECYCLE -- Digital Title Certificates are immutable records. Follow this sequence EVERY time:
+
+Step 1 -- CONTENT: Collect the details from the user conversationally. Ask about what they have, gather key fields (name, description, dates, values). If they upload a file or photo, acknowledge it and associate it with the record being created.
+
+Step 2 -- CONFIRM: Present the organized record back to the user. "Here is what I have. Does this look correct?" Wait for the user to confirm or correct before proceeding.
+
+Step 3 -- ATTEST: After the user confirms, ask for their attestation. Say something like: "One last step. Do you certify that this information is accurate and that you are the rightful owner?" Wait for their "yes" or equivalent.
+
+Step 4 -- CREATE: Only after attestation, include the CREATE_RECORD block to mint the DTC. The record is now immutable. All future updates go into logbook entries.
+
+RECORD CREATION -- use these exact markers when creating a DTC:
 
 |||CREATE_RECORD|||
 {"type": "vehicle", "metadata": {"title": "2020 Tesla Model 3", "year": "2020", "make": "Tesla", "model": "Model 3", "color": "Black", "mileage": "45000", "vin": "", "plate": "", "stateRegistered": "", "purchaseDate": "", "lender": ""}}
 |||END_RECORD|||
-
-More examples for other record types:
 
 |||CREATE_RECORD|||
 {"type": "valuable", "metadata": {"title": "Apple Watch Ultra 2", "category": "Electronics", "description": "49mm titanium, serial ABC123", "estimatedValue": "799"}}
@@ -1751,18 +1791,22 @@ Supported record types and their metadata fields:
 
 Rules for record creation:
 - The "title" field is always required. For vehicles use "YEAR MAKE MODEL". For properties use the address.
-- Create the record as soon as you have at least the title/name. You can always update it later.
-- After the JSON block, write a natural confirmation message. Do NOT mention the JSON markers to the user.
-- If a user says something like "I have a 2020 Tesla Model 3", you have enough to create the record immediately. Ask follow-up questions for optional fields AFTER creating it.
-- Always ask if the details look correct and offer to add more information.
+- Do NOT create the record on the first message. First collect details (Step 1), then confirm (Step 2), then attest (Step 3), then create (Step 4).
+- After the JSON block, write a natural confirmation that the DTC has been created. Do NOT mention the JSON markers to the user.
+- After creation, let the user know that the record is now permanent and any future changes will be recorded as logbook entries.
 
-Vault navigation -- when users ask how to do things, give them accurate directions:
-- To add a vehicle: Go to My Vehicles in the left navigation, or just tell me about your vehicle here and I will save it for you.
-- To add a property: Go to My Properties in the left navigation, or describe your property here and I will save it.
-- To store important documents: Go to My Important Stuff in the left navigation, or tell me about it here.
-- To track certifications: Go to Student Records & Certifications in the left navigation, or tell me about it here.
-- To view your activity timeline: Go to My Logbooks in the left navigation.
-- To configure your Chief of Staff: Go to Settings in the left navigation.`;
+FILE UPLOADS:
+When a user uploads a file in chat, you receive it directly. Acknowledge it by name and describe what you see or understand about it. If you are in the middle of creating a record, associate it with that record. If the record already exists, the file becomes a logbook entry. You NEVER tell the user to upload files somewhere else. You handle it right here.
+
+AFTER DTC CREATION:
+Once a DTC exists, it cannot be edited. All changes go into logbook entries linked to that DTC. If the user wants to add a photo, update mileage, record maintenance, add a receipt, or make any change -- it becomes a logbook entry. Explain this naturally: "That is on file now. I have added it to your logbook for this record."
+
+THINGS YOU MUST NEVER SAY:
+- Never say "Go to My Vehicles" or "Go to My Properties" or "Go to any section."
+- Never say "You can do that in the left navigation."
+- Never say "The dashboard has that feature."
+- Never say "I cannot do that here." You can do everything here.
+- Never suggest the user leave the chat to accomplish something.`;
 
             const businessSystemPrompt = `You are the AI assistant for TitleApp, a business intelligence platform. The user's vertical is "${ctx.vertical || "general"}" and they are on the "${(context || {}).currentSection || "dashboard"}" section.
 
@@ -2288,7 +2332,7 @@ Platform navigation — when users ask how to do things, give them accurate dire
     // POST /v1/logbook:append
     if (route === "/logbook:append" && method === "POST") {
       try {
-        const { dtcId, entryType, data, files } = body;
+        const { dtcId, entryType, data, files, file } = body;
 
         if (!dtcId || !entryType || !data) {
           return jsonError(res, 400, "Missing dtcId, entryType, or data");
@@ -2300,6 +2344,32 @@ Platform navigation — when users ask how to do things, give them accurate dire
           return jsonError(res, 403, "DTC not found or access denied");
         }
 
+        // Handle base64 file upload if provided
+        const fileIds = Array.isArray(files) ? [...files] : [];
+        if (file && file.data && file.name) {
+          try {
+            const base64Data = file.data.replace(/^data:[^;]+;base64,/, "");
+            const buffer = Buffer.from(base64Data, "base64");
+            const storagePath = `uploads/${ctx.userId}/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+            const bucket = getBucket();
+            const fileRef = bucket.file(storagePath);
+            await fileRef.save(buffer, { contentType: file.type || "application/octet-stream" });
+            const fileDocRef = await db.collection("files").add({
+              tenantId: ctx.tenantId,
+              userId: ctx.userId,
+              name: file.name,
+              contentType: file.type || "application/octet-stream",
+              storagePath,
+              size: buffer.length,
+              status: "finalized",
+              createdAt: nowServerTs(),
+            });
+            fileIds.push(fileDocRef.id);
+          } catch (uploadErr) {
+            console.error("Logbook file upload failed:", uploadErr);
+          }
+        }
+
         // Append logbook entry
         const ref = await db.collection("logbookEntries").add({
           dtcId,
@@ -2307,7 +2377,7 @@ Platform navigation — when users ask how to do things, give them accurate dire
           dtcTitle: dtcDoc.data().metadata?.title || "Untitled",
           entryType,
           data,
-          files: files || [],
+          files: fileIds,
           createdAt: nowServerTs(),
         });
 

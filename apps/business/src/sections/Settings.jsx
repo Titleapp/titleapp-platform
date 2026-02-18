@@ -46,35 +46,60 @@ function PersonalSettings() {
 
   function handleAvatarChange(e) {
     const file = e.target.files?.[0];
+    console.log("[Avatar] File selected:", file?.name, file?.type, file?.size);
     if (!file) return;
-    // Reset file input so re-selecting the same file triggers onChange
-    if (fileInputRef.current) fileInputRef.current.value = "";
 
     const reader = new FileReader();
     reader.onload = (ev) => {
+      console.log("[Avatar] FileReader loaded, data length:", ev.target.result?.length);
       const img = new Image();
       img.onload = () => {
-        // Resize to 200x200 max to avoid localStorage overflow
-        const canvas = document.createElement("canvas");
-        const maxSize = 200;
-        let w = img.width;
-        let h = img.height;
-        if (w > maxSize || h > maxSize) {
-          if (w > h) { h = Math.round(h * maxSize / w); w = maxSize; }
-          else { w = Math.round(w * maxSize / h); h = maxSize; }
+        console.log("[Avatar] Image loaded:", img.width, "x", img.height);
+        try {
+          const canvas = document.createElement("canvas");
+          const maxSize = 200;
+          let w = img.width;
+          let h = img.height;
+          if (w > maxSize || h > maxSize) {
+            if (w > h) { h = Math.round(h * maxSize / w); w = maxSize; }
+            else { w = Math.round(w * maxSize / h); h = maxSize; }
+          }
+          canvas.width = w;
+          canvas.height = h;
+          canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+          const compressed = canvas.toDataURL("image/jpeg", 0.85);
+          console.log("[Avatar] Compressed length:", compressed.length);
+          setAvatarPreview(compressed);
+          localStorage.setItem("VAULT_AVATAR", compressed);
+          setToast("Photo updated");
+          setTimeout(() => setToast(null), 3000);
+        } catch (canvasErr) {
+          console.error("[Avatar] Canvas error:", canvasErr);
+          // Fallback: use the raw data URL without compression
+          const raw = ev.target.result;
+          setAvatarPreview(raw);
+          try { localStorage.setItem("VAULT_AVATAR", raw); } catch (lsErr) {
+            console.error("[Avatar] localStorage full, using in-memory only:", lsErr);
+          }
+          setToast("Photo updated");
+          setTimeout(() => setToast(null), 3000);
         }
-        canvas.width = w;
-        canvas.height = h;
-        canvas.getContext("2d").drawImage(img, 0, 0, w, h);
-        const compressed = canvas.toDataURL("image/jpeg", 0.85);
-        setAvatarPreview(compressed);
-        localStorage.setItem("VAULT_AVATAR", compressed);
-        setToast("Photo updated");
-        setTimeout(() => setToast(null), 3000);
+      };
+      img.onerror = (imgErr) => {
+        console.error("[Avatar] Image load error:", imgErr);
+        setToast("Could not load image. Try a different file.");
+        setTimeout(() => setToast(null), 4000);
       };
       img.src = ev.target.result;
     };
+    reader.onerror = (readErr) => {
+      console.error("[Avatar] FileReader error:", readErr);
+      setToast("Could not read file. Try again.");
+      setTimeout(() => setToast(null), 4000);
+    };
     reader.readAsDataURL(file);
+    // Reset input so same file can be re-selected
+    if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
   function handleBlockchainToggle(checked) {

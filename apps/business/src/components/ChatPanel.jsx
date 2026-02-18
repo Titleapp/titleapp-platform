@@ -1,9 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { getAuth } from 'firebase/auth';
 import { getFirestore, collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
-import useFileUpload from '../hooks/useFileUpload';
-import useIdVerificationGate, { needsIdVerification } from '../hooks/useIdVerificationGate';
-import IDVerifyModal from './IDVerifyModal';
 
 const CONTEXTUAL_MESSAGES = {
   terms: "This is our standard terms and liability agreement. Take a look and let me know if you have questions.",
@@ -44,17 +41,7 @@ export default function ChatPanel({ currentSection, onboardingStep }) {
   const fileInputRef = useRef(null);
   const recognitionRef = useRef(null);
 
-  // File upload hook
-  const { uploadFile, uploading: fileUploading } = useFileUpload({ purpose: 'chat_attachment' });
-
-  // ID verification gate
-  const { showModal: showIdVerify, onVerified: onIdVerified, onClose: onIdClose, checkIdVerification } = useIdVerificationGate();
-  const [pendingIdVerifyDtcId, setPendingIdVerifyDtcId] = useState(null);
-  const [idVerifiedRecords, setIdVerifiedRecords] = useState(new Set());
-
-  // Attestation state
-  const [attestedRecords, setAttestedRecords] = useState(new Set());
-  const [attestingRecords, setAttestingRecords] = useState(new Set());
+  const [fileUploading, setFileUploading] = useState(false);
 
   // Listen for "discuss with AI" events from other components
   useEffect(() => {
@@ -176,36 +163,38 @@ export default function ChatPanel({ currentSection, onboardingStep }) {
     setIsSending(true);
     setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
 
-    // Upload file if attached
-    let fileIds = [];
+    // Read file as base64 if attached
+    let filePayload = null;
     if (currentFile) {
+      setFileUploading(true);
       setMessages(prev => [...prev, { role: 'assistant', content: `Uploading ${currentFile.name}...`, isSystem: true }]);
       try {
-        // Ensure fresh token for upload hook
-        const freshToken = await currentUser.getIdToken();
-        localStorage.setItem('ID_TOKEN', freshToken);
-        const fid = await uploadFile(currentFile);
-        if (fid) {
-          fileIds = [fid];
-          setMessages(prev => {
-            const updated = [...prev];
-            const uploadIdx = updated.findLastIndex(m => m.isSystem && m.content.startsWith('Uploading '));
-            if (uploadIdx >= 0) {
-              updated[uploadIdx] = { ...updated[uploadIdx], content: `File uploaded: ${currentFile.name}` };
-            }
-            return updated;
-          });
-        }
-      } catch (err) {
-        console.error('File upload failed:', err);
+        filePayload = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve({ name: currentFile.name, type: currentFile.type, data: reader.result });
+          reader.onerror = () => reject(new Error('Failed to read file'));
+          reader.readAsDataURL(currentFile);
+        });
         setMessages(prev => {
           const updated = [...prev];
           const uploadIdx = updated.findLastIndex(m => m.isSystem && m.content.startsWith('Uploading '));
           if (uploadIdx >= 0) {
-            updated[uploadIdx] = { ...updated[uploadIdx], content: `Upload failed for ${currentFile.name}. Message sent without file.` };
+            updated[uploadIdx] = { ...updated[uploadIdx], content: `File ready: ${currentFile.name}` };
           }
           return updated;
         });
+      } catch (err) {
+        console.error('File read failed:', err);
+        setMessages(prev => {
+          const updated = [...prev];
+          const uploadIdx = updated.findLastIndex(m => m.isSystem && m.content.startsWith('Uploading '));
+          if (uploadIdx >= 0) {
+            updated[uploadIdx] = { ...updated[uploadIdx], content: `Could not read ${currentFile.name}. Message sent without file.` };
+          }
+          return updated;
+        });
+      } finally {
+        setFileUploading(false);
       }
     }
 
@@ -229,7 +218,7 @@ export default function ChatPanel({ currentSection, onboardingStep }) {
         },
         body: JSON.stringify({
           message: userMessage,
-          fileIds,
+          ...(filePayload ? { file: filePayload } : {}),
           context: {
             source: 'business_portal',
             currentSection: currentSection || 'dashboard',
@@ -249,21 +238,6 @@ export default function ChatPanel({ currentSection, onboardingStep }) {
       setIsTyping(false);
       setDealContext(null);
 
-      // Check if ID verification is needed for the created record
-      if (data.structuredData?.type === 'record_created') {
-        const sd = data.structuredData;
-        if (needsIdVerification(sd.recordType, sd.metadata)) {
-          const verified = await checkIdVerification();
-          if (verified) {
-            setIdVerifiedRecords(prev => new Set(prev).add(sd.dtcId));
-          }
-          // If not verified, the card will show the "Verify Identity" button
-        } else {
-          // No ID verification needed — skip straight to attestation
-          setIdVerifiedRecords(prev => new Set(prev).add(sd.dtcId));
-        }
-      }
-
       setMessages(prev => [...prev, {
         role: 'assistant',
         content: data.response || 'No response received.',
@@ -279,30 +253,6 @@ export default function ChatPanel({ currentSection, onboardingStep }) {
       }]);
     } finally {
       setIsSending(false);
-    }
-  }
-
-  async function handleAttest(dtcId) {
-    setAttestingRecords(prev => new Set(prev).add(dtcId));
-    try {
-      const token = await currentUser.getIdToken();
-      const apiBase = import.meta.env.VITE_API_BASE || 'https://titleapp-frontdoor.titleapp-core.workers.dev';
-      await fetch(`${apiBase}/api?path=/v1/inventory:attest`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          'X-Tenant-Id': localStorage.getItem('TENANT_ID') || 'public',
-          'X-Vertical': localStorage.getItem('VERTICAL') || 'auto',
-          'X-Jurisdiction': localStorage.getItem('JURISDICTION') || 'IL',
-        },
-        body: JSON.stringify({ dtcId }),
-      });
-      setAttestedRecords(prev => new Set(prev).add(dtcId));
-    } catch (err) {
-      console.error('Attestation failed:', err);
-    } finally {
-      setAttestingRecords(prev => { const next = new Set(prev); next.delete(dtcId); return next; });
     }
   }
 
@@ -352,10 +302,6 @@ export default function ChatPanel({ currentSection, onboardingStep }) {
       const label = typeLabels[data.recordType] || 'Record';
       const meta = data.metadata || {};
       const displayFields = Object.entries(meta).filter(([k, v]) => k !== 'title' && v);
-      const requiresId = needsIdVerification(data.recordType, meta);
-      const idDone = idVerifiedRecords.has(data.dtcId);
-      const attested = attestedRecords.has(data.dtcId);
-      const attesting = attestingRecords.has(data.dtcId);
 
       return (
         <div style={{ border: `2px solid ${color}30`, borderRadius: '14px', overflow: 'hidden', marginTop: '8px' }}>
@@ -373,53 +319,12 @@ export default function ChatPanel({ currentSection, onboardingStep }) {
               ))}
             </div>
           )}
-
-          {/* Saved to Vault */}
           <div style={{ padding: '8px 16px', borderTop: '1px solid #f1f5f9' }}>
             <span style={{ fontSize: '12px', fontWeight: 600, color: '#16a34a', display: 'flex', alignItems: 'center', gap: '4px' }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-              Saved to Vault
+              Digital Title Certificate Created
             </span>
           </div>
-
-          {/* ID Verification gate */}
-          {requiresId && !idDone && (
-            <div style={{ padding: '12px 16px', borderTop: '1px solid #f1f5f9' }}>
-              <p style={{ fontSize: '12px', color: '#64748b', margin: '0 0 8px 0', lineHeight: 1.5 }}>
-                Identity verification is required for this record type. Quick check, $2, valid for one year.
-              </p>
-              <button
-                onClick={() => setPendingIdVerifyDtcId(data.dtcId)}
-                style={{ padding: '8px 16px', fontSize: '13px', fontWeight: 600, background: '#7c3aed', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', width: '100%' }}
-              >
-                Verify Identity
-              </button>
-            </div>
-          )}
-
-          {/* Attestation step -- only after ID verification passes (or if not needed) */}
-          {idDone && !attested && (
-            <div style={{ padding: '12px 16px', borderTop: '1px solid #f1f5f9' }}>
-              <p style={{ fontSize: '12px', color: '#64748b', lineHeight: 1.5, margin: '0 0 10px 0' }}>
-                I represent that I am the lawful owner of this item and that the information provided is accurate to the best of my knowledge.
-              </p>
-              <button
-                onClick={() => handleAttest(data.dtcId)}
-                disabled={attesting}
-                style={{ padding: '8px 16px', fontSize: '13px', fontWeight: 600, background: '#7c3aed', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', width: '100%', opacity: attesting ? 0.6 : 1 }}
-              >
-                {attesting ? 'Recording...' : 'I Attest'}
-              </button>
-            </div>
-          )}
-
-          {/* Attestation confirmed */}
-          {attested && (
-            <div style={{ padding: '8px 16px', borderTop: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-              <span style={{ fontSize: '12px', fontWeight: 600, color: '#7c3aed' }}>Ownership Attested</span>
-            </div>
-          )}
         </div>
       );
     }
@@ -613,16 +518,6 @@ export default function ChatPanel({ currentSection, onboardingStep }) {
         </div>
       </form>
 
-      {/* ID Verification Modal */}
-      {pendingIdVerifyDtcId && (
-        <IDVerifyModal
-          onVerified={() => {
-            setIdVerifiedRecords(prev => new Set(prev).add(pendingIdVerifyDtcId));
-            setPendingIdVerifyDtcId(null);
-          }}
-          onClose={() => setPendingIdVerifyDtcId(null)}
-        />
-      )}
     </div>
   );
 }

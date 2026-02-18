@@ -17,31 +17,61 @@ export default function AIChats() {
       </div>
 
       {isPersonal ? (
-        <div className="card" style={{ padding: "48px 32px", textAlign: "center" }}>
-          <div style={{
-            width: "64px",
-            height: "64px",
-            borderRadius: "16px",
-            background: "linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            margin: "0 auto 20px",
-          }}>
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
-              <line x1="8" y1="21" x2="16" y2="21"></line>
-              <line x1="12" y1="17" x2="12" y2="21"></line>
-            </svg>
+        <div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "12px", marginBottom: "16px" }}>
+            {/* Chief of Staff card */}
+            <div className="card" style={{ overflow: "hidden" }}>
+              <div style={{ height: "80px", background: "linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                </svg>
+              </div>
+              <div style={{ padding: "14px 16px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
+                  <span style={{ fontWeight: 700, fontSize: "15px", color: "#1e293b" }}>Chief of Staff</span>
+                  <span style={{ fontSize: "10px", fontWeight: 600, padding: "2px 8px", borderRadius: "20px", background: "#f0fdf4", color: "#16a34a" }}>Active</span>
+                </div>
+                <div style={{ fontSize: "13px", color: "#64748b", lineHeight: 1.6, marginBottom: "12px" }}>
+                  Your personal assistant that manages vehicles, properties, documents, certifications, and your entire Vault.
+                </div>
+                <button
+                  onClick={() => window.dispatchEvent(new CustomEvent("ta:navigate", { detail: { section: "dashboard" } }))}
+                  style={{ padding: "8px 16px", fontSize: "13px", fontWeight: 600, background: "linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)", color: "white", border: "none", borderRadius: "8px", cursor: "pointer" }}
+                >
+                  Open Chat
+                </button>
+              </div>
+            </div>
+
+            {/* Investment Analyst card */}
+            <div className="card" style={{ overflow: "hidden" }}>
+              <div style={{ height: "80px", background: "linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="12" y1="20" x2="12" y2="10"></line>
+                  <line x1="18" y1="20" x2="18" y2="4"></line>
+                  <line x1="6" y1="20" x2="6" y2="16"></line>
+                </svg>
+              </div>
+              <div style={{ padding: "14px 16px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
+                  <span style={{ fontWeight: 700, fontSize: "15px", color: "#1e293b" }}>Investment Analyst</span>
+                  <span style={{ fontSize: "10px", fontWeight: 600, padding: "2px 8px", borderRadius: "20px", background: "#ecfdf5", color: "#059669" }}>Active</span>
+                </div>
+                <div style={{ fontSize: "13px", color: "#64748b", lineHeight: 1.6, marginBottom: "12px" }}>
+                  Screens deals, analyzes risk profiles, evaluates investment opportunities, and generates due diligence reports.
+                </div>
+                <button
+                  onClick={() => window.dispatchEvent(new CustomEvent("ta:navigate", { detail: { section: "dashboard" } }))}
+                  style={{ padding: "8px 16px", fontSize: "13px", fontWeight: 600, background: "linear-gradient(135deg, #059669 0%, #047857 100%)", color: "white", border: "none", borderRadius: "8px", cursor: "pointer" }}
+                >
+                  Open Chat
+                </button>
+              </div>
+            </div>
           </div>
-          <div style={{ fontSize: "18px", fontWeight: 600, color: "#1e293b", marginBottom: "10px" }}>
-            Your Personal AI Apps
-          </div>
-          <div style={{ fontSize: "14px", color: "#64748b", maxWidth: "480px", margin: "0 auto 16px", lineHeight: "1.7" }}>
-            Think of this as your own personal app store for AI. Each AI here is a specialist -- one manages your vehicle records, another tracks your property documents, another monitors your certification renewals. As you use your Vault, your AI team grows and learns your preferences. You'll see your conversation history and can pick up any thread where you left off.
-          </div>
-          <div style={{ fontSize: "13px", color: "#94a3b8", maxWidth: "420px", margin: "0 auto", lineHeight: "1.6" }}>
-            No AI activity yet. Start by adding items to your Vault or chatting with your Chief of Staff. Your AI conversations and specialist tools will appear here.
+
+          <div style={{ fontSize: "13px", color: "#94a3b8", textAlign: "center", lineHeight: "1.6" }}>
+            More specialist AIs coming soon. Your conversation history will appear here as you use each tool.
           </div>
         </div>
       ) : (

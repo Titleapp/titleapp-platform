@@ -36,6 +36,8 @@ export default function MyLogbook() {
   const [addingTo, setAddingTo] = useState(null);
   const [newEntry, setNewEntry] = useState({ entryType: "update", description: "" });
   const [saving, setSaving] = useState(false);
+  const [entryFile, setEntryFile] = useState(null);
+  const entryFileRef = React.useRef(null);
 
   useEffect(() => { loadLogbook(); }, []);
 
@@ -67,6 +69,17 @@ export default function MyLogbook() {
     if (!newEntry.description.trim()) return;
     setSaving(true);
     try {
+      // Read file as base64 if attached
+      let filePayload = null;
+      if (entryFile) {
+        filePayload = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve({ name: entryFile.name, type: entryFile.type, data: reader.result });
+          reader.onerror = () => reject(new Error("Failed to read file"));
+          reader.readAsDataURL(entryFile);
+        });
+      }
+
       await api.appendLogbook({
         vertical: "consumer",
         jurisdiction: "GLOBAL",
@@ -75,9 +88,11 @@ export default function MyLogbook() {
           entryType: newEntry.entryType,
           data: { description: newEntry.description },
         },
+        ...(filePayload ? { file: filePayload } : {}),
       });
       setAddingTo(null);
       setNewEntry({ entryType: "update", description: "" });
+      setEntryFile(null);
       setLoading(true);
       await loadLogbook();
     } catch (e) {
@@ -210,6 +225,32 @@ export default function MyLogbook() {
                             style={inputStyle}
                           />
                         </div>
+                        <div>
+                          <label style={{ display: "block", marginBottom: "4px", fontWeight: 600, fontSize: "12px", color: "#64748b" }}>Attach File (optional)</label>
+                          <input ref={entryFileRef} type="file" style={{ display: "none" }} onChange={(e) => setEntryFile(e.target.files?.[0] || null)} />
+                          {entryFile ? (
+                            <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 12px", background: "white", borderRadius: "10px", border: "1px solid var(--line)", fontSize: "13px" }}>
+                              <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "#475569" }}>{entryFile.name}</span>
+                              <button type="button" onClick={() => { setEntryFile(null); if (entryFileRef.current) entryFileRef.current.value = ""; }} style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8", fontSize: "14px" }}>x</button>
+                            </div>
+                          ) : (
+                            <button type="button" onClick={() => entryFileRef.current?.click()} className="iconBtn" style={{ fontSize: "12px" }}>
+                              Choose File
+                            </button>
+                          )}
+                        </div>
+                        <div>
+                          <button
+                            type="button"
+                            disabled
+                            className="iconBtn"
+                            style={{ fontSize: "12px", opacity: 0.4, cursor: "not-allowed" }}
+                            title="E-signature integration coming soon"
+                          >
+                            Request Signature
+                          </button>
+                          <span style={{ fontSize: "11px", color: "#94a3b8", marginLeft: "8px" }}>DocuSign / e-signature coming soon</span>
+                        </div>
                         <div style={{ display: "flex", gap: "8px" }}>
                           <button
                             onClick={() => handleAddEntry(dtcId)}
@@ -219,7 +260,7 @@ export default function MyLogbook() {
                           >
                             {saving ? "Saving..." : "Save Entry"}
                           </button>
-                          <button onClick={() => setAddingTo(null)} className="iconBtn">Cancel</button>
+                          <button onClick={() => { setAddingTo(null); setEntryFile(null); }} className="iconBtn">Cancel</button>
                         </div>
                       </div>
                     </div>
