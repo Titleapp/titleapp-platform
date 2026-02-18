@@ -1,0 +1,280 @@
+import React, { useEffect, useState } from 'react';
+import AddWorkspaceWizard from './AddWorkspaceWizard';
+
+const VERTICAL_ICONS = {
+  consumer: '\u{1F510}',
+  analyst: '\u{1F4CA}',
+  auto: '\u{1F697}',
+  'real-estate': '\u{1F3E0}',
+  aviation: '\u2708\uFE0F',
+};
+
+function daysLeft(trialEndsAt) {
+  if (!trialEndsAt) return 0;
+  const end = trialEndsAt.toDate ? trialEndsAt.toDate() : new Date(trialEndsAt);
+  const diff = end - Date.now();
+  return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+}
+
+function WorkspaceCard({ workspace, onLaunch }) {
+  const [hovered, setHovered] = useState(false);
+
+  const statusBadge = {
+    active: {
+      label: workspace.monthlyPrice === 0 ? 'FREE' : `$${workspace.monthlyPrice / 100}/mo`,
+      color: '#16a34a',
+    },
+    trial: {
+      label: `Trial \u00B7 ${daysLeft(workspace.trialEndsAt)} days left`,
+      color: '#d97706',
+    },
+    suspended: { label: 'Suspended', color: '#dc2626' },
+  }[workspace.status] || { label: workspace.status, color: '#6b7280' };
+
+  const icon = VERTICAL_ICONS[workspace.vertical] || '\u{1F4C1}';
+
+  return (
+    <div
+      style={{
+        border: hovered ? '1px solid #7c3aed' : '1px solid #e2e8f0',
+        borderRadius: 12,
+        padding: 20,
+        cursor: 'pointer',
+        transition: 'all 0.2s',
+        background: hovered ? '#faf5ff' : 'white',
+        minWidth: 180,
+        flex: '1 1 180px',
+        maxWidth: 240,
+      }}
+      onClick={() => onLaunch(workspace)}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      <div style={{ fontSize: 28, marginBottom: 8 }}>{icon}</div>
+      <div style={{ fontWeight: 600, fontSize: 16, color: '#1e293b' }}>{workspace.name}</div>
+      <div style={{ color: '#64748b', fontSize: 13, marginBottom: 12, minHeight: 18 }}>
+        {workspace.tagline || ''}
+      </div>
+      <div
+        style={{
+          display: 'inline-block',
+          padding: '2px 10px',
+          borderRadius: 20,
+          fontSize: 12,
+          fontWeight: 600,
+          backgroundColor: statusBadge.color + '15',
+          color: statusBadge.color,
+        }}
+      >
+        {statusBadge.label}
+      </div>
+      <div style={{ marginTop: 12 }}>
+        <button
+          style={{
+            width: '100%',
+            padding: '8px 0',
+            backgroundColor: '#7c3aed',
+            color: 'white',
+            border: 'none',
+            borderRadius: 8,
+            fontWeight: 600,
+            cursor: 'pointer',
+            fontSize: 14,
+          }}
+        >
+          Launch &rarr;
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function BillingSummary({ workspaces }) {
+  const billable = workspaces.filter(w => w.status === 'active' && w.monthlyPrice > 0);
+  const total = billable.reduce((sum, w) => sum + w.monthlyPrice, 0);
+
+  return (
+    <div style={{ marginTop: 32, padding: 20, backgroundColor: '#f8fafc', borderRadius: 12 }}>
+      <div style={{ fontWeight: 600, marginBottom: 12, color: '#1e293b' }}>Monthly Summary</div>
+      {workspaces.map(w => (
+        <div
+          key={w.id}
+          style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: 14 }}
+        >
+          <span style={{ color: '#334155' }}>{w.name}</span>
+          <span style={{ color: '#64748b' }}>
+            {w.monthlyPrice === 0
+              ? 'FREE'
+              : w.status === 'trial'
+                ? `Trial (${daysLeft(w.trialEndsAt)} days)`
+                : `$${w.monthlyPrice / 100}/mo`}
+          </span>
+        </div>
+      ))}
+      <div
+        style={{
+          borderTop: '1px solid #e2e8f0',
+          marginTop: 8,
+          paddingTop: 8,
+          display: 'flex',
+          justifyContent: 'space-between',
+          fontWeight: 600,
+          fontSize: 14,
+        }}
+      >
+        <span style={{ color: '#1e293b' }}>Total</span>
+        <span style={{ color: '#1e293b' }}>${total / 100}/mo</span>
+      </div>
+    </div>
+  );
+}
+
+export default function WorkspaceHub({ userName, onLaunch }) {
+  const [workspaces, setWorkspaces] = useState(null);
+  const [error, setError] = useState(null);
+  const [showWizard, setShowWizard] = useState(false);
+
+  async function loadWorkspaces() {
+    try {
+      const token = localStorage.getItem('ID_TOKEN');
+      const apiBase = import.meta.env.VITE_API_BASE || 'https://titleapp-frontdoor.titleapp-core.workers.dev';
+      const resp = await fetch(`${apiBase}/api?path=/v1/workspaces`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await resp.json();
+      if (data.ok) {
+        setWorkspaces(data.workspaces);
+      } else {
+        setError(data.error || 'Failed to load workspaces');
+      }
+    } catch (e) {
+      console.error('Failed to load workspaces:', e);
+      setError('Failed to load workspaces');
+    }
+  }
+
+  useEffect(() => {
+    loadWorkspaces();
+  }, []);
+
+  function handleLaunch(workspace) {
+    localStorage.setItem('VERTICAL', workspace.vertical);
+    localStorage.setItem('WORKSPACE_ID', workspace.id);
+    localStorage.setItem('WORKSPACE_NAME', workspace.name);
+    localStorage.setItem('TENANT_NAME', workspace.name);
+
+    if (workspace.jurisdiction) {
+      localStorage.setItem('JURISDICTION', workspace.jurisdiction);
+    } else {
+      localStorage.removeItem('JURISDICTION');
+    }
+
+    if (workspace.cosConfig) {
+      localStorage.setItem('COS_CONFIG', JSON.stringify(workspace.cosConfig));
+    }
+
+    onLaunch(workspace);
+  }
+
+  function handleWorkspaceCreated(workspace) {
+    setShowWizard(false);
+    loadWorkspaces().then(() => {
+      handleLaunch(workspace);
+    });
+  }
+
+  if (showWizard) {
+    return (
+      <AddWorkspaceWizard
+        existingWorkspaces={workspaces || []}
+        onCreated={handleWorkspaceCreated}
+        onCancel={() => setShowWizard(false)}
+      />
+    );
+  }
+
+  return (
+    <div
+      style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: '#f8fafc',
+        padding: 20,
+      }}
+    >
+      <div style={{ maxWidth: 720, width: '100%' }}>
+        <div style={{ textAlign: 'center', marginBottom: 32 }}>
+          <div style={{ fontSize: 20, fontWeight: 700, color: '#7c3aed', marginBottom: 8 }}>
+            TitleApp AI
+          </div>
+          <div style={{ fontSize: 18, fontWeight: 600, color: '#1e293b' }}>
+            {userName ? `Welcome back, ${userName}` : 'Welcome back'}
+          </div>
+        </div>
+
+        <div style={{ marginBottom: 24 }}>
+          <div
+            style={{
+              fontSize: 12,
+              fontWeight: 600,
+              color: '#94a3b8',
+              textTransform: 'uppercase',
+              letterSpacing: 1,
+              marginBottom: 16,
+            }}
+          >
+            Your Workspaces
+          </div>
+
+          {workspaces === null && !error && (
+            <div style={{ textAlign: 'center', color: '#6b7280', padding: 40 }}>Loading...</div>
+          )}
+
+          {error && (
+            <div style={{ textAlign: 'center', color: '#dc2626', padding: 40 }}>{error}</div>
+          )}
+
+          {workspaces && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
+              {workspaces.map(w => (
+                <WorkspaceCard key={w.id} workspace={w} onLaunch={handleLaunch} />
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div
+          onClick={() => setShowWizard(true)}
+          style={{
+            border: '2px dashed #cbd5e1',
+            borderRadius: 12,
+            padding: '20px 24px',
+            cursor: 'pointer',
+            textAlign: 'center',
+            transition: 'all 0.2s',
+            marginBottom: 8,
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.borderColor = '#7c3aed';
+            e.currentTarget.style.background = '#faf5ff';
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.borderColor = '#cbd5e1';
+            e.currentTarget.style.background = 'transparent';
+          }}
+        >
+          <div style={{ fontWeight: 600, color: '#1e293b', fontSize: 15 }}>
+            + Add a Business Workspace
+          </div>
+          <div style={{ color: '#64748b', fontSize: 13, marginTop: 4 }}>
+            $9/month per workspace &middot; 14-day trial
+          </div>
+        </div>
+
+        {workspaces && workspaces.length > 0 && <BillingSummary workspaces={workspaces} />}
+      </div>
+    </div>
+  );
+}

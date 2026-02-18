@@ -110,14 +110,16 @@ export default function ChatPanel({ currentSection, onboardingStep }) {
     try {
       const platformSid = sessionStorage.getItem('ta_platform_sid');
 
+      const tenantIdFilter = localStorage.getItem('TENANT_ID') || localStorage.getItem('WORKSPACE_ID');
       const constraints = [
         where('userId', '==', currentUser.uid),
+        ...(tenantIdFilter ? [where('tenantId', '==', tenantIdFilter)] : []),
         orderBy('createdAt', 'asc'),
         limit(50),
       ];
 
       if (platformSid) {
-        constraints.splice(1, 0, where('sessionId', '==', platformSid));
+        constraints.splice(tenantIdFilter ? 2 : 1, 0, where('sessionId', '==', platformSid));
       }
 
       const q = query(collection(db, 'messageEvents'), ...constraints);
@@ -210,9 +212,9 @@ export default function ChatPanel({ currentSection, onboardingStep }) {
 
     try {
       const token = await currentUser.getIdToken();
-      const tenantId = localStorage.getItem('TENANT_ID') || 'public';
+      const tenantId = localStorage.getItem('TENANT_ID') || localStorage.getItem('WORKSPACE_ID') || '';
       const vertical = localStorage.getItem('VERTICAL') || 'auto';
-      const jurisdiction = localStorage.getItem('JURISDICTION') || 'IL';
+      const jurisdiction = localStorage.getItem('JURISDICTION') || '';
 
       const apiBase = import.meta.env.VITE_API_BASE || 'https://titleapp-frontdoor.titleapp-core.workers.dev';
       const response = await fetch(`${apiBase}/api?path=/v1/chat:message`, {
@@ -232,6 +234,8 @@ export default function ChatPanel({ currentSection, onboardingStep }) {
             currentSection: currentSection || 'dashboard',
             vertical,
             jurisdiction,
+            workspaceId: localStorage.getItem('WORKSPACE_ID') || '',
+            workspaceName: localStorage.getItem('WORKSPACE_NAME') || '',
             ...(dealContext ? { dealContext } : {}),
           },
         }),

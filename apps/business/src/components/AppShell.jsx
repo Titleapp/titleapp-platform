@@ -3,7 +3,7 @@ import Sidebar from "./Sidebar";
 import ChatPanel from "./ChatPanel";
 import * as api from "../api/client";
 
-export default function AppShell({ children, currentSection, onNavigate }) {
+export default function AppShell({ children, currentSection, onNavigate, onBackToHub }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [tenantInfo, setTenantInfo] = useState(null);
 
@@ -115,6 +115,7 @@ export default function AppShell({ children, currentSection, onNavigate }) {
           onNavigate={onNavigate}
           onClose={() => setSidebarOpen(false)}
           tenantName={tenantInfo?.name}
+          onBackToHub={onBackToHub}
         />
       </div>
 

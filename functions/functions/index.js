@@ -23,6 +23,9 @@ const {
 // Chat Engine (conversational state machine)
 const { processMessage: chatEngineProcess, defaultState: chatEngineDefaultState } = require("./chatEngine");
 
+// Workspace management
+const { getUserWorkspaces, createWorkspace, getWorkspace, PERSONAL_VAULT } = require("./helpers/workspaces");
+
 if (!admin.apps.length) admin.initializeApp();
 const db = admin.firestore();
 
@@ -1533,7 +1536,86 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       return res.json({ ok: true, tenantId: finalTenantId });
     }
 
-    // For all other routes, enforce tenant membership (except public)
+    // ----------------------------
+    // WORKSPACE MANAGEMENT
+    // User-scoped workspace CRUD (no tenant membership needed)
+    // ----------------------------
+
+    // GET /v1/workspaces
+    if (route === "/workspaces" && method === "GET") {
+      try {
+        const workspaces = await getUserWorkspaces(auth.user.uid);
+        return res.json({ ok: true, workspaces });
+      } catch (e) {
+        console.error("workspaces:list failed:", e);
+        return jsonError(res, 500, "Failed to list workspaces");
+      }
+    }
+
+    // POST /v1/workspaces
+    if (route === "/workspaces" && method === "POST") {
+      try {
+        const { vertical, name, tagline, jurisdiction } = body;
+
+        if (!vertical || !name) {
+          return jsonError(res, 400, "vertical and name are required");
+        }
+        if (typeof name !== 'string' || name.length > 200) {
+          return jsonError(res, 400, "Invalid workspace name");
+        }
+
+        const existing = await getUserWorkspaces(auth.user.uid);
+        const businessCount = existing.filter(w => w.plan !== 'free').length;
+        if (businessCount >= 10) {
+          return jsonError(res, 400, "Maximum 10 business workspaces per account");
+        }
+
+        const duplicate = existing.find(w =>
+          w.vertical === vertical && w.jurisdiction === jurisdiction
+        );
+        if (duplicate) {
+          return jsonError(res, 400, `You already have a ${vertical} workspace for ${jurisdiction}`);
+        }
+
+        const workspace = await createWorkspace(auth.user.uid, {
+          vertical: String(vertical).substring(0, 50),
+          name: String(name).substring(0, 200),
+          tagline: tagline ? String(tagline).substring(0, 500) : '',
+          jurisdiction: jurisdiction ? String(jurisdiction).substring(0, 10) : null,
+        });
+
+        return res.json({ ok: true, workspace });
+      } catch (e) {
+        console.error("workspaces:create failed:", e);
+        return jsonError(res, 500, "Failed to create workspace");
+      }
+    }
+
+    // DELETE /v1/workspaces — soft-delete (set status to canceled)
+    if (route.startsWith("/workspaces/") && method === "DELETE") {
+      try {
+        const workspaceId = route.replace("/workspaces/", "");
+        if (!workspaceId) return jsonError(res, 400, "Missing workspace ID");
+        if (workspaceId === "vault") return jsonError(res, 400, "Cannot remove Personal Vault");
+
+        const wsRef = db.collection("users").doc(auth.user.uid)
+          .collection("workspaces").doc(workspaceId);
+        const wsSnap = await wsRef.get();
+        if (!wsSnap.exists) return jsonError(res, 404, "Workspace not found");
+
+        await wsRef.update({
+          status: "canceled",
+          canceledAt: nowServerTs(),
+        });
+
+        return res.json({ ok: true });
+      } catch (e) {
+        console.error("workspaces:delete failed:", e);
+        return jsonError(res, 500, "Failed to cancel workspace");
+      }
+    }
+
+    // For all other routes, enforce tenant membership
     const gate = await requireMembershipIfNeeded({ uid: auth.user.uid, tenantId: ctx.tenantId }, res);
     if (!gate.ok) return;
 

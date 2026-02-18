@@ -62,7 +62,7 @@ const DEFAULT_NAV = [
   { id: "settings", label: "Settings" },
 ];
 
-export default function Sidebar({ currentSection, onNavigate, onClose, tenantName }) {
+export default function Sidebar({ currentSection, onNavigate, onClose, tenantName, onBackToHub }) {
   const vertical = localStorage.getItem("VERTICAL") || "auto";
   const sections = NAV_BY_VERTICAL[vertical] || DEFAULT_NAV;
   const isPersonal = vertical === "consumer";
@@ -139,6 +139,15 @@ export default function Sidebar({ currentSection, onNavigate, onClose, tenantNam
       </div>
 
       <div className="sidebarFooter">
+        {onBackToHub && (
+          <button
+            onClick={onBackToHub}
+            className="iconBtn"
+            style={{ width: "100%", marginTop: "10px", color: "#7c3aed" }}
+          >
+            Switch Workspace
+          </button>
+        )}
         <button
           onClick={handleSignOut}
           className="iconBtn"

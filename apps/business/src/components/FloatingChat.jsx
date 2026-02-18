@@ -40,9 +40,11 @@ export default function FloatingChat({ demoMode = false }) {
 
   async function loadConversationHistory() {
     try {
+      const tenantIdFilter = localStorage.getItem('TENANT_ID') || localStorage.getItem('WORKSPACE_ID');
       const q = query(
         collection(db, 'messageEvents'),
         where('userId', '==', currentUser.uid),
+        ...(tenantIdFilter ? [where('tenantId', '==', tenantIdFilter)] : []),
         orderBy('createdAt', 'asc'),
         limit(50)
       );
