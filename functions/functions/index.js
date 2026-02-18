@@ -1735,7 +1735,7 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
 
             // For analyst vertical, fetch deal data to enrich the system prompt
             let analystDealContext = "";
-            if (ctx.vertical === "analyst") {
+            if (effectiveVertical === "analyst") {
               try {
                 const dealsSnap = await db.collection("analyzedDeals")
                   .where("tenantId", "==", ctx.tenantId)
@@ -1759,7 +1759,9 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
 
             // Call Claude API
             const anthropic = getAnthropic();
-            const isPersonalVault = (ctx.vertical || "").toLowerCase() === "consumer" || (ctx.vertical || "").toUpperCase() === "GLOBAL";
+            const contextOverride = context?.contextOverride;
+            const effectiveVertical = contextOverride || ctx.vertical || "";
+            const isPersonalVault = effectiveVertical.toLowerCase() === "consumer" || effectiveVertical.toUpperCase() === "GLOBAL";
             const personalSystemPrompt = `You are the user's personal Chief of Staff in their TitleApp Vault. You do everything for them directly in this chat. You create records, store files, manage logbooks, handle attestations, and organize their entire digital life. The dashboard is a read-only view into what you have already done -- the user never needs to leave this chat to accomplish anything.
 
 Your role:
@@ -1841,7 +1843,7 @@ Formatting rules — follow these strictly:
 - Write in complete, clean sentences. Use plain text only.
 - Keep your tone warm but professional — direct, calm, no hype.
 
-${ctx.vertical === "analyst" ? "You specialize in deal analysis, investment screening, risk assessment, and portfolio management. Help analyze deals, discuss risk factors, identify missing information, and provide actionable next steps." : ctx.vertical === "auto" ? "You specialize in automotive dealership operations, inventory management, trade-ins, and compliance." : ctx.vertical === "real-estate" || ctx.vertical === "property-mgmt" ? "You specialize in real estate transactions, property management, compliance, and document management." : "Help with business operations, compliance questions, document management, and platform navigation."} When discussing deals or investments, note that you provide informational analysis only, not financial advice.
+${effectiveVertical === "analyst" ? "You specialize in deal analysis, investment screening, risk assessment, and portfolio management. Help analyze deals, discuss risk factors, identify missing information, and provide actionable next steps." : effectiveVertical === "auto" ? "You specialize in automotive dealership operations, inventory management, trade-ins, and compliance." : effectiveVertical === "real-estate" || effectiveVertical === "property-mgmt" ? "You specialize in real estate transactions, property management, compliance, and document management." : "Help with business operations, compliance questions, document management, and platform navigation."} When discussing deals or investments, note that you provide informational analysis only, not financial advice.
 
 Platform navigation — when users ask how to do things, give them accurate directions:
 - To analyze a new deal: Go to the Analyst section in the left navigation, then click the "+ Analyze Deal" button at the top right.

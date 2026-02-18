@@ -42,6 +42,23 @@ export default function ChatPanel({ currentSection, onboardingStep }) {
   const recognitionRef = useRef(null);
 
   const [fileUploading, setFileUploading] = useState(false);
+  const [chatContext, setChatContext] = useState(() => localStorage.getItem('CHAT_CONTEXT_OVERRIDE') || null);
+
+  // Listen for context switch events (e.g. switching to Investment Analyst)
+  useEffect(() => {
+    function handleContextSwitch(e) {
+      const newContext = e.detail?.context;
+      if (newContext) {
+        localStorage.setItem('CHAT_CONTEXT_OVERRIDE', newContext);
+        setChatContext(newContext);
+      } else {
+        localStorage.removeItem('CHAT_CONTEXT_OVERRIDE');
+        setChatContext(null);
+      }
+    }
+    window.addEventListener('ta:switchChatContext', handleContextSwitch);
+    return () => window.removeEventListener('ta:switchChatContext', handleContextSwitch);
+  }, []);
 
   // Listen for "discuss with AI" events from other components
   useEffect(() => {
@@ -228,6 +245,7 @@ export default function ChatPanel({ currentSection, onboardingStep }) {
             vertical,
             jurisdiction,
             ...(dealContext ? { dealContext } : {}),
+            ...(chatContext ? { contextOverride: chatContext } : {}),
           },
         }),
       });
@@ -404,12 +422,27 @@ export default function ChatPanel({ currentSection, onboardingStep }) {
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
         </svg>
-        <span>{(() => {
+        <span>{chatContext === 'analyst' ? 'Investment Analyst' : (() => {
           try {
             const cfg = JSON.parse(localStorage.getItem('COS_CONFIG') || '{}');
             return cfg.name ? `${cfg.name} -- Chief of Staff` : 'Chief of Staff';
           } catch { return 'Chief of Staff'; }
         })()}</span>
+        {chatContext === 'analyst' && (
+          <button
+            onClick={() => {
+              localStorage.removeItem('CHAT_CONTEXT_OVERRIDE');
+              setChatContext(null);
+            }}
+            style={{
+              fontSize: '12px', padding: '4px 10px', background: 'rgba(255,255,255,0.2)',
+              color: 'white', border: '1px solid rgba(255,255,255,0.3)', borderRadius: '6px',
+              cursor: 'pointer', marginLeft: '8px'
+            }}
+          >
+            &larr; Back to Chief of Staff
+          </button>
+        )}
       </div>
 
       <div className="chatPanelMessages" ref={conversationRef}>
