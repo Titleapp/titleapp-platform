@@ -2403,12 +2403,7 @@ async function processMessage(input, services = {}) {
     // ── Default / Idle ──
 
     default: {
-      // Authenticated user in idle — fall through to AI
-      if (state.step === 'idle' && state.userId) {
-        return response(state, null, { useAI: true });
-      }
-
-      // Unauthenticated — detect vertical
+      // Detect vertical first — works for both authenticated and unauthenticated
       const detected = detectVertical(lowerMsg);
       if (detected) {
         state.vertical = detected;
@@ -2417,7 +2412,12 @@ async function processMessage(input, services = {}) {
         return response(state, PITCHES[detected]);
       }
 
-      // No vertical detected — demo response
+      // Authenticated user in idle with no vertical match — fall through to AI
+      if (state.step === 'idle' && state.userId) {
+        return response(state, null, { useAI: true });
+      }
+
+      // No vertical detected, not authenticated — demo response
       return response(state, getDemoResponse(message));
     }
   }

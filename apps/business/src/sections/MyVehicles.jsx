@@ -43,14 +43,44 @@ export default function MyVehicles() {
           Loading vehicles...
         </div>
       ) : vehicles.length === 0 ? (
-        <div className="card" style={{ padding: "40px", textAlign: "center" }}>
-          <div style={{ fontSize: "48px", marginBottom: "16px", opacity: 0.3 }}>&#x1F697;</div>
-          <div style={{ fontSize: "16px", fontWeight: 600, color: "#1e293b", marginBottom: "8px" }}>
-            No vehicles yet
+        <div className="card" style={{ padding: "48px 32px", textAlign: "center" }}>
+          <div style={{
+            width: "64px",
+            height: "64px",
+            borderRadius: "16px",
+            background: "linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            margin: "0 auto 20px",
+          }}>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M5 17h14v-6l-2-5H7L5 11v6z"></path>
+              <circle cx="7.5" cy="17.5" r="1.5"></circle>
+              <circle cx="16.5" cy="17.5" r="1.5"></circle>
+            </svg>
           </div>
-          <div style={{ fontSize: "14px", color: "#64748b", marginBottom: "20px" }}>
-            Add your first vehicle by chatting with the AI assistant. Just say "Track a vehicle" to get started.
+          <div style={{ fontSize: "18px", fontWeight: 600, color: "#1e293b", marginBottom: "10px" }}>
+            Add your first vehicle
           </div>
+          <div style={{ fontSize: "14px", color: "#64748b", maxWidth: "420px", margin: "0 auto 24px", lineHeight: "1.6" }}>
+            Track titles, registration, service history, and insurance all in one place. Your vehicle records are verified and permanent.
+          </div>
+          <button
+            onClick={() => openChat("I want to add a vehicle to my vault")}
+            style={{
+              padding: "12px 28px",
+              background: "linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)",
+              color: "white",
+              border: "none",
+              borderRadius: "12px",
+              fontSize: "14px",
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            Add Vehicle
+          </button>
         </div>
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: "12px" }}>

@@ -31,7 +31,17 @@ export default function MyLogbook() {
       <div className="pageHeader">
         <div>
           <h1 className="h1">My Logbook</h1>
-          <p className="subtle">A timeline of every action, verification, and change across your records</p>
+          <p className="subtle">Your permanent activity timeline and Digital Title Certificate records</p>
+        </div>
+      </div>
+
+      {/* DTC Explanation */}
+      <div className="card" style={{ marginBottom: "16px", padding: "20px", background: "#faf5ff", border: "1px solid #e9d5ff" }}>
+        <div style={{ fontSize: "15px", fontWeight: 600, color: "#1e293b", marginBottom: "8px" }}>
+          What is a Digital Title Certificate?
+        </div>
+        <div style={{ fontSize: "14px", color: "#64748b", lineHeight: "1.7" }}>
+          A Digital Title Certificate (DTC) is a verified, timestamped record of ownership or attestation for your assets. Every time you add a vehicle, property, credential, or important document to your Vault, TitleApp creates a DTC that serves as permanent proof of that record. Your Logbook is where every DTC and every action you take -- additions, updates, verifications, transfers -- appears automatically as a permanent timeline.
         </div>
       </div>
 
@@ -40,13 +50,27 @@ export default function MyLogbook() {
           Loading logbook...
         </div>
       ) : entries.length === 0 ? (
-        <div className="card" style={{ padding: "40px", textAlign: "center" }}>
-          <div style={{ fontSize: "48px", marginBottom: "16px", opacity: 0.3 }}>&#x1F4D3;</div>
-          <div style={{ fontSize: "16px", fontWeight: 600, color: "#1e293b", marginBottom: "8px" }}>
-            No activity yet
+        <div className="card" style={{ padding: "48px 32px", textAlign: "center" }}>
+          <div style={{
+            width: "64px",
+            height: "64px",
+            borderRadius: "16px",
+            background: "linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            margin: "0 auto 20px",
+          }}>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+            </svg>
           </div>
-          <div style={{ fontSize: "14px", color: "#64748b", marginBottom: "20px" }}>
-            Your logbook will record every action you take -- adding records, verifying identity, uploading documents. Everything is timestamped and permanent.
+          <div style={{ fontSize: "18px", fontWeight: 600, color: "#1e293b", marginBottom: "10px" }}>
+            No logbook entries yet
+          </div>
+          <div style={{ fontSize: "14px", color: "#64748b", maxWidth: "420px", margin: "0 auto", lineHeight: "1.6" }}>
+            Add a vehicle, property, or document to get started. Your DTC records and all activity will appear here automatically as a permanent timeline.
           </div>
         </div>
       ) : (

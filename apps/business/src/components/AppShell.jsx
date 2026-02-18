@@ -85,7 +85,14 @@ export default function AppShell({ children, currentSection, onNavigate }) {
               color: "var(--text)",
               whiteSpace: "nowrap"
             }}>
-              {tenantInfo.name || "Business"}
+              {(() => {
+                const v = localStorage.getItem("VERTICAL") || "auto";
+                if (v === "consumer") {
+                  const first = (tenantInfo.name || "").split(" ")[0];
+                  return first ? `${first}'s Vault` : "My Vault";
+                }
+                return tenantInfo.name || "Business";
+              })()}
             </div>
           </div>
         )}

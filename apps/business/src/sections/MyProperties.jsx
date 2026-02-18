@@ -35,14 +35,47 @@ export default function MyProperties() {
           Loading properties...
         </div>
       ) : properties.length === 0 ? (
-        <div className="card" style={{ padding: "40px", textAlign: "center" }}>
-          <div style={{ fontSize: "48px", marginBottom: "16px", opacity: 0.3 }}>&#x1F3E0;</div>
-          <div style={{ fontSize: "16px", fontWeight: 600, color: "#1e293b", marginBottom: "8px" }}>
-            No properties yet
+        <div className="card" style={{ padding: "48px 32px", textAlign: "center" }}>
+          <div style={{
+            width: "64px",
+            height: "64px",
+            borderRadius: "16px",
+            background: "linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            margin: "0 auto 20px",
+          }}>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+              <polyline points="9 22 9 12 15 12 15 22"></polyline>
+            </svg>
           </div>
-          <div style={{ fontSize: "14px", color: "#64748b", marginBottom: "20px" }}>
-            Add your first property by chatting with the AI assistant. Just say "Add a property" to get started.
+          <div style={{ fontSize: "18px", fontWeight: 600, color: "#1e293b", marginBottom: "10px" }}>
+            Add your first property
           </div>
+          <div style={{ fontSize: "14px", color: "#64748b", maxWidth: "420px", margin: "0 auto 24px", lineHeight: "1.6" }}>
+            Keep track of deeds, mortgage info, tax records, and insurance for every property you own. Everything verified and in one place.
+          </div>
+          <button
+            onClick={() => {
+              window.dispatchEvent(new CustomEvent("ta:chatPrompt", {
+                detail: { message: "I want to add a property to my vault" },
+              }));
+            }}
+            style={{
+              padding: "12px 28px",
+              background: "linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)",
+              color: "white",
+              border: "none",
+              borderRadius: "12px",
+              fontSize: "14px",
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            Add Property
+          </button>
         </div>
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: "12px" }}>

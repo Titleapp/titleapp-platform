@@ -9,5 +9,8 @@
   "functions": {
     "source": "functions/functions",
     "runtime": "nodejs20"
+  },
+  "firestore": {
+    "indexes": "firestore.indexes.json"
   }
 }

@@ -502,7 +502,7 @@ Formatting rules — follow these strictly:
     aiResponse = response.content[0]?.text || "I couldn't generate a response. Please try again.";
   } catch (e) {
     console.error("chatEngine AI fallthrough failed:", e.message);
-    aiResponse = "I'm having trouble connecting right now. Please try again in a moment.";
+    aiResponse = "I can help you with that. What specifically would you like to know?";
   }
 
   // Event-sourced: log response
@@ -1695,10 +1695,33 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
 
             // Call Claude API
             const anthropic = getAnthropic();
-            const response = await anthropic.messages.create({
-              model: "claude-sonnet-4-5-20250929",
-              max_tokens: 2048,
-              system: `You are the AI assistant for TitleApp, a business intelligence platform. The user's vertical is "${ctx.vertical || "general"}" and they are on the "${(context || {}).currentSection || "dashboard"}" section.
+            const isPersonalVault = (ctx.vertical || "").toLowerCase() === "consumer" || (ctx.vertical || "").toUpperCase() === "GLOBAL";
+            const personalSystemPrompt = `You are the user's personal Chief of Staff in their TitleApp Vault. You help them manage their personal records -- vehicles, properties, important documents, and certifications. The user is on the "${(context || {}).currentSection || "dashboard"}" section.
+
+Your role:
+- Help users add, find, and manage their personal records (vehicles, properties, important documents, certifications).
+- Track deadlines, remind them about renewals and expirations, and help them stay organized.
+- Explain Digital Title Certificates (DTCs) when asked -- verified, timestamped proof of ownership or attestation.
+- Be professional, warm, and proactive. You are a trusted team member, not a chatbot.
+
+You do NOT discuss business analytics, deals, investment criteria, team management, or inventory operations. This is a personal Vault, not a business workspace.
+
+Formatting rules -- follow these strictly:
+- Never use emojis in your responses.
+- Never use markdown formatting such as asterisks, bold, italic, or headers.
+- Never use bullet points or numbered lists unless the user explicitly asks for a list.
+- Write in complete, clean sentences. Use plain text only.
+- Keep your tone warm but professional -- direct, calm, no hype.
+
+Vault navigation -- when users ask how to do things, give them accurate directions:
+- To add a vehicle: Go to My Vehicles in the left navigation, or just tell me about your vehicle here.
+- To add a property: Go to My Properties in the left navigation, or describe your property here.
+- To store important documents: Go to My Important Stuff in the left navigation.
+- To track certifications: Go to My Certifications in the left navigation.
+- To view your activity timeline: Go to My Logbook in the left navigation.
+- To configure your Chief of Staff: Go to Settings in the left navigation.`;
+
+            const businessSystemPrompt = `You are the AI assistant for TitleApp, a business intelligence platform. The user's vertical is "${ctx.vertical || "general"}" and they are on the "${(context || {}).currentSection || "dashboard"}" section.
 
 Formatting rules — follow these strictly:
 - Never use emojis in your responses.
@@ -1718,7 +1741,12 @@ Platform navigation — when users ask how to do things, give them accurate dire
 - To view rules and compliance configuration: Go to Rules & Resources in the left navigation.
 - To manage services or inventory: Go to Services & Inventory in the left navigation.
 - To access the chat assistant: The chat panel is on the right side of the dashboard, always available.
-${(context || {}).dealContext ? `\nThe user wants to discuss this deal analysis:\n${JSON.stringify(context.dealContext)}` : ""}`,
+${(context || {}).dealContext ? `\nThe user wants to discuss this deal analysis:\n${JSON.stringify(context.dealContext)}` : ""}`;
+
+            const response = await anthropic.messages.create({
+              model: "claude-sonnet-4-5-20250929",
+              max_tokens: 2048,
+              system: isPersonalVault ? personalSystemPrompt : businessSystemPrompt,
               messages,
             });
 

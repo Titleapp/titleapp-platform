@@ -16,6 +16,16 @@ const CONTEXTUAL_MESSAGES = {
   analyst: "Your deal analysis hub. Upload deals and I'll screen them against your criteria.",
 };
 
+const PERSONAL_CONTEXTUAL_MESSAGES = {
+  dashboard: "Welcome to your Vault. This is your personal command center -- vehicles, properties, documents, and certifications all in one place.",
+  "my-vehicles": "Your vehicle records. I can help you add a new vehicle, look up a VIN, or check on registration and insurance status.",
+  "my-properties": "Your property records. I can help you add a property, track mortgage details, or organize tax and insurance documents.",
+  "my-documents": "Your important documents. I can help you store and organize IDs, contracts, tax records, insurance policies, and anything else that matters.",
+  "my-certifications": "Your certifications and credentials. I can help you add licenses, track expiration dates, and set up renewal reminders.",
+  "my-logbook": "Your activity logbook. Every Digital Title Certificate and action is recorded here permanently.",
+  settings: "Your Vault settings. You can update your profile, configure your Chief of Staff, and manage notification preferences.",
+};
+
 export default function ChatPanel({ currentSection, onboardingStep }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
@@ -61,8 +71,12 @@ export default function ChatPanel({ currentSection, onboardingStep }) {
   // Send contextual messages when onboarding step or section changes
   useEffect(() => {
     const stepKey = onboardingStep || currentSection;
+    const vertical = localStorage.getItem('VERTICAL') || 'auto';
+    const isPersonal = vertical === 'consumer';
     if (stepKey && stepKey !== lastContextStep && stepKey !== 'checking' && stepKey !== 'welcome' && stepKey !== 'magic') {
-      const contextMsg = CONTEXTUAL_MESSAGES[stepKey];
+      const contextMsg = isPersonal
+        ? (PERSONAL_CONTEXTUAL_MESSAGES[stepKey] || CONTEXTUAL_MESSAGES[stepKey])
+        : CONTEXTUAL_MESSAGES[stepKey];
       if (contextMsg) {
         setLastContextStep(stepKey);
         // Small delay so it feels natural
@@ -277,18 +291,37 @@ export default function ChatPanel({ currentSection, onboardingStep }) {
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
         </svg>
-        <span>AI Assistant</span>
+        <span>{(localStorage.getItem('VERTICAL') || 'auto') === 'consumer' ? 'Chief of Staff' : 'AI Assistant'}</span>
       </div>
 
       <div className="chatPanelMessages" ref={conversationRef}>
         {messages.length === 0 && !isTyping && (
           <div className="chat-welcome">
-            <p>Hi. I'm your TitleApp AI assistant.</p>
-            {currentUser ? (
-              <p>Ask me anything about your records, documents, customers, inventory, or business operations.</p>
-            ) : (
-              <p>Please sign in to start chatting.</p>
-            )}
+            {(() => {
+              const v = localStorage.getItem('VERTICAL') || 'auto';
+              if (v === 'consumer') {
+                return (
+                  <>
+                    <p>Hi. I'm your personal Chief of Staff.</p>
+                    {currentUser ? (
+                      <p>I can help you manage your vehicles, properties, documents, and certifications. What would you like to do?</p>
+                    ) : (
+                      <p>Please sign in to start chatting.</p>
+                    )}
+                  </>
+                );
+              }
+              return (
+                <>
+                  <p>Hi. I'm your TitleApp AI assistant.</p>
+                  {currentUser ? (
+                    <p>Ask me anything about your records, documents, customers, inventory, or business operations.</p>
+                  ) : (
+                    <p>Please sign in to start chatting.</p>
+                  )}
+                </>
+              );
+            })()}
           </div>
         )}
 
