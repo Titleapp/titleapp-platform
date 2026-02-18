@@ -2,6 +2,14 @@ import React from "react";
 import { getAuth, signOut } from "firebase/auth";
 
 const NAV_BY_VERTICAL = {
+  consumer: [
+    { id: "dashboard", label: "Dashboard" },
+    { id: "my-vehicles", label: "My Vehicles" },
+    { id: "my-properties", label: "My Properties" },
+    { id: "my-documents", label: "My Documents" },
+    { id: "my-logbook", label: "My Logbook" },
+    { id: "settings", label: "Settings" },
+  ],
   analyst: [
     { id: "dashboard", label: "Dashboard" },
     { id: "analyst", label: "Analyst" },
@@ -83,7 +91,7 @@ export default function Sidebar({ currentSection, onNavigate, onClose, tenantNam
           />
           <div>
             <div className="brandName">TitleApp AI</div>
-            <div className="brandSub">{tenantName || "Business"}</div>
+            <div className="brandSub">{tenantName || (vertical === "consumer" ? "Personal Vault" : "Business")}</div>
           </div>
         </div>
         <button

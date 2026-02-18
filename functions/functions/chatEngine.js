@@ -62,7 +62,7 @@ const NON_LANE_STATES = new Set([
   'select_vertical', 'raas_onboarding', 'raas_upload_sops', 'raas_build',
   'raas_build_confirm', 'raas_ready', 'consumer_onboarding_promise',
   'biz_collect_company_name', 'biz_collect_company_description',
-  'id_verification_before_publish', 'id_verification',
+  'id_verification_before_publish', 'id_verification', 'select_workspace',
 ]);
 
 function clearLaneData(state) {
@@ -464,6 +464,8 @@ function response(state, message, opts = {}) {
     generateOnboardingPromise: opts.generateOnboardingPromise || false,
     generateMilestone: opts.generateMilestone || false,
     aiContext: opts.aiContext || null,
+    platformRedirect: opts.platformRedirect || false,
+    selectedTenantId: opts.selectedTenantId || null,
   };
 }
 
@@ -509,9 +511,9 @@ async function processMessage(input, services = {}) {
         : "Let's get you set up. This takes about 2 minutes and you'll have your first verified record. What's your name?";
       return response(state, msg);
     }
-    // No explicit context — ask what brings them here
+    // Show audience selection
     state.step = 'choose_audience';
-    return response(state, "What brings you to TitleApp?", {
+    return response(state, null, {
       cards: [{
         type: 'audienceSelect',
         data: {
@@ -537,6 +539,14 @@ async function processMessage(input, services = {}) {
   if (action === 'start_signin') {
     state.step = 'signin_email';
     return response(state, "Welcome back. Enter your email and I'll send you a sign-in link.");
+  }
+
+  if (action === 'workspace_selected') {
+    state.step = 'authenticated';
+    return response(state, "Taking you to your workspace...", {
+      platformRedirect: true,
+      selectedTenantId: actionData.tenantId || null,
+    });
   }
 
   if (action === 'magic_link_clicked') {
@@ -569,6 +579,28 @@ async function processMessage(input, services = {}) {
         state.name = signupResult.existingName || state.name;
         state.termsAcceptedAt = signupResult.termsAcceptedAt;
         state.audienceType = signupResult.existingAccountType || state.audienceType || 'consumer';
+
+        // If user has existing workspace memberships, redirect to platform
+        const memberships = signupResult.memberships || [];
+        if (memberships.length === 1) {
+          state.step = 'authenticated';
+          return response(state, `Welcome back, ${state.name || 'friend'}. Let me take you to your workspace.`, {
+            platformRedirect: true,
+            selectedTenantId: memberships[0].tenantId || null,
+          });
+        }
+        if (memberships.length > 1) {
+          state.pendingMemberships = memberships;
+          state.step = 'select_workspace';
+          return response(state, `Welcome back, ${state.name || 'friend'}. Which workspace would you like to open?`, {
+            cards: [{
+              type: 'workspaceSelect',
+              data: { workspaces: memberships.map(m => ({ id: m.tenantId, name: m.tenantName, role: m.role })) },
+            }],
+          });
+        }
+
+        // No memberships — stay in chat hub
         state.step = 'authenticated';
         const chips = state.audienceType === 'business'
           ? ['Set up my workspace', 'Add a record', 'View my vault']
@@ -614,20 +646,26 @@ async function processMessage(input, services = {}) {
         data: {
           tenantName: state.name || 'Personal',
           tenantType: isBusiness ? 'business' : 'personal',
-          vertical: 'GLOBAL',
+          vertical: isBusiness ? 'GLOBAL' : 'consumer',
           jurisdiction: 'GLOBAL',
         },
       },
     ];
 
     if (isBusiness) {
-      // Business path — go to RAAS onboarding after welcome card
+      // Business path — welcome card + ID check + RAAS onboarding
       state.step = 'raas_onboarding';
       return response(state, null, {
-        cards: [{
-          type: 'welcome',
-          data: { name: state.name, subtitle, bodyText, audienceType: state.audienceType },
-        }],
+        cards: [
+          {
+            type: 'welcome',
+            data: { name: state.name, subtitle, bodyText, audienceType: state.audienceType },
+          },
+          {
+            type: 'idVerification',
+            data: { optional: true, message: 'Quick identity check -- keeps your records secure and verified. You can skip this for now.' },
+          },
+        ],
         generateRaas: true,
         aiContext: {
           companyName: state.companyName,
@@ -638,13 +676,19 @@ async function processMessage(input, services = {}) {
       });
     }
 
-    // Consumer path — generate emotional onboarding promise
+    // Consumer path — welcome card + ID check + onboarding promise
     state.step = 'consumer_onboarding_promise';
     return response(state, null, {
-      cards: [{
-        type: 'welcome',
-        data: { name: state.name, subtitle, bodyText, audienceType: state.audienceType },
-      }],
+      cards: [
+        {
+          type: 'welcome',
+          data: { name: state.name, subtitle, bodyText, audienceType: state.audienceType },
+        },
+        {
+          type: 'idVerification',
+          data: { optional: true, message: 'Quick identity check -- keeps your records secure and verified. You can skip this for now.' },
+        },
+      ],
       generateOnboardingPromise: true,
       aiContext: { type: 'consumer', name: state.name },
       sideEffects,
@@ -804,6 +848,23 @@ async function processMessage(input, services = {}) {
 
     case 'magic_link_sent': {
       return response(state, "Still waiting? Check your spam folder, or I can resend the link.");
+    }
+
+    case 'select_workspace': {
+      // User typed something instead of clicking a workspace card button
+      // Try to match by name
+      const pending = state.pendingMemberships || [];
+      const match = pending.find(m =>
+        m.tenantName && m.tenantName.toLowerCase().includes(lowerMsg)
+      );
+      if (match) {
+        state.step = 'authenticated';
+        return response(state, `Taking you to ${match.tenantName}...`, {
+          platformRedirect: true,
+          selectedTenantId: match.tenantId || null,
+        });
+      }
+      return response(state, "Please select a workspace from the options above, or type the workspace name.");
     }
 
     case 'id_verification_before_publish': {
@@ -2259,37 +2320,11 @@ async function processMessage(input, services = {}) {
 
     case 'raas_ready': {
       // Business user just saw the emotional onboarding promise
-      // Route their response through the authenticated hub
+      // Redirect to platform — onboarding is done
       state.step = 'authenticated';
-
-      // Signal the landing page to redirect to the platform
-      const raasReadyExtra = {
+      return response(state, "Your workspace is ready. Taking you there now.", {
         platformRedirect: true,
-        platformUrl: 'https://title-app-alpha.web.app',
-      };
-
-      if (message && message.trim().length > 0) {
-        const result = processMessage({
-          state,
-          userInput: message,
-          action: null,
-          actionData: {},
-          fileData: input.fileData || null,
-          fileName: input.fileName || null,
-          surface: input.surface || 'landing',
-        }, services);
-        return { ...result, ...raasReadyExtra };
-      }
-      // No message — show workspace prompt chips + platform redirect
-      let noMsgChips = ['Add a record', 'Set up compliance', 'View vault'];
-      if (state.businessVertical === 'real_estate') {
-        noMsgChips = ['Add a property', 'Onboard a tenant', 'Maintenance request', 'View properties'];
-      } else if (state.businessVertical === 'analyst') {
-        noMsgChips = ['Vet a new deal', 'Write a POV', 'View pipeline'];
-      } else if (state.businessVertical === 'auto') {
-        noMsgChips = ['Add a vehicle', 'View inventory', 'Sales pipeline'];
-      }
-      return { ...response(state, null, { promptChips: noMsgChips }), ...raasReadyExtra };
+      });
     }
 
     // ── Consumer Onboarding Promise ──

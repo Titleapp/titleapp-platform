@@ -56,8 +56,9 @@ export default function Login() {
     };
 
     try {
-      await sendSignInLinkToEmail(auth, email, actionCodeSettings);
-      window.localStorage.setItem("emailForSignIn", email);
+      const trimmedEmail = email.trim().toLowerCase();
+      await sendSignInLinkToEmail(auth, trimmedEmail, actionCodeSettings);
+      window.localStorage.setItem("emailForSignIn", trimmedEmail);
       setLinkSent(true);
       setStatus("");
     } catch (err: any) {
@@ -138,7 +139,7 @@ export default function Login() {
       >
         <div style={{ textAlign: "center", marginBottom: "32px" }}>
           <img
-            src="/assets/logo.png"
+            src="/logo.png"
             alt="TitleApp AI"
             style={{ width: "48px", height: "48px", borderRadius: "12px", marginBottom: "16px" }}
           />

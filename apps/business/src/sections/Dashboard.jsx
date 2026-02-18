@@ -46,7 +46,21 @@ export default function Dashboard() {
       const valueSaved = hoursSaved * 35;
       setValueTracker({ actions: actionsCount, hoursSaved, valueSaved });
 
-      if (vertical === "analyst") {
+      if (vertical === "consumer") {
+        // Consumer KPIs — count of items by type
+        const inventoryResult = await api.getInventory({ vertical: "consumer", jurisdiction: "GLOBAL" });
+        const items = inventoryResult.inventory || [];
+        const vehicleCount = items.filter(i => i.metadata?.vin || i.metadata?.make).length;
+        const propertyCount = items.filter(i => i.metadata?.address || i.metadata?.propertyType).length;
+        const docCount = items.filter(i => i.metadata?.credentialName || i.metadata?.school || i.metadata?.issuer).length;
+
+        setKpis({
+          revenue: { value: vehicleCount.toString(), trend: "" },
+          activeDeals: { value: propertyCount.toString(), trend: "" },
+          aiConversations: { value: docCount.toString(), trend: "" },
+          customers: { value: aiActivity.length.toString(), trend: "" },
+        });
+      } else if (vertical === "analyst") {
         // Analyst KPIs
         const inventoryResult = await api.getInventory({ vertical, jurisdiction });
         const deals = inventoryResult.inventory || [];
@@ -136,6 +150,9 @@ export default function Dashboard() {
   }
 
   function getKpiLabels() {
+    if (vertical === "consumer") {
+      return ["My Vehicles", "My Properties", "My Documents", "Logbook Entries"];
+    }
     if (vertical === "analyst") {
       return ["Deals in Pipeline", "Analyzed This Month", "Avg Risk Score", "AI Conversations"];
     }
@@ -158,7 +175,7 @@ export default function Dashboard() {
       <div className="pageHeader">
         <div>
           <h1 className="h1">Dashboard</h1>
-          <p className="subtle">Welcome to {tenantName || "your business"} -- Your overview</p>
+          <p className="subtle">{vertical === "consumer" ? "Your personal vault overview" : `Welcome to ${tenantName || "your business"} -- Your overview`}</p>
         </div>
       </div>
 

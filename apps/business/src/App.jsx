@@ -16,6 +16,10 @@ import Staff from "./sections/Staff";
 import Reports from "./sections/Reports";
 import DataAPIs from "./sections/DataAPIs";
 import Settings from "./sections/Settings";
+import MyVehicles from "./sections/MyVehicles";
+import MyProperties from "./sections/MyProperties";
+import MyDocuments from "./sections/MyDocuments";
+import MyLogbook from "./sections/MyLogbook";
 import { auth } from "./firebase";
 import { signInWithCustomToken } from "firebase/auth";
 
@@ -55,6 +59,14 @@ function AdminShell() {
         return <DataAPIs />;
       case "settings":
         return <Settings />;
+      case "my-vehicles":
+        return <MyVehicles />;
+      case "my-properties":
+        return <MyProperties />;
+      case "my-documents":
+        return <MyDocuments />;
+      case "my-logbook":
+        return <MyLogbook />;
       default:
         return <Dashboard />;
     }
@@ -96,10 +108,15 @@ export default function App() {
     const urlParams = new URLSearchParams(window.location.search);
     const chatToken = urlParams.get("token");
     const chatSid = urlParams.get("sid");
+    const chatTenantId = urlParams.get("tid");
 
     // Store landing page session ID so FloatingChat can resume it
     if (chatSid) {
       sessionStorage.setItem("ta_platform_sid", chatSid);
+    }
+    // Store selected tenant ID from landing page workspace selection
+    if (chatTenantId) {
+      sessionStorage.setItem("ta_preselected_tid", chatTenantId);
     }
 
     if (chatToken) {
@@ -192,23 +209,36 @@ export default function App() {
         if (data.ok && data.memberships) {
           if (data.memberships.length === 0) {
             setNeedsOnboarding(true);
-          } else if (data.memberships.length > 1) {
-            // Multiple accounts — show picker
-            const accounts = data.memberships.map((mem) => {
-              const tenant = data.tenants?.[mem.tenantId] || {};
-              return {
-                tenantId: mem.tenantId,
-                role: mem.role,
-                name: tenant.companyName || tenant.name || mem.tenantId,
-                vertical: tenant.vertical || "",
-                jurisdiction: tenant.jurisdiction || "",
-              };
-            });
-            setAvailableAccounts(accounts);
-            setShowAccountPicker(true);
           } else {
-            const mem = data.memberships[0];
-            selectAccount(mem.tenantId, data.tenants?.[mem.tenantId]);
+            // Check for pre-selected tenant from landing page workspace selection
+            const preselectedTid = sessionStorage.getItem("ta_preselected_tid");
+            if (preselectedTid) {
+              sessionStorage.removeItem("ta_preselected_tid");
+              const match = data.memberships.find((m) => m.tenantId === preselectedTid);
+              if (match) {
+                selectAccount(match.tenantId, data.tenants?.[match.tenantId]);
+                return;
+              }
+            }
+
+            if (data.memberships.length > 1) {
+              // Multiple accounts — show picker
+              const accounts = data.memberships.map((mem) => {
+                const tenant = data.tenants?.[mem.tenantId] || {};
+                return {
+                  tenantId: mem.tenantId,
+                  role: mem.role,
+                  name: tenant.companyName || tenant.name || mem.tenantId,
+                  vertical: tenant.vertical || "",
+                  jurisdiction: tenant.jurisdiction || "",
+                };
+              });
+              setAvailableAccounts(accounts);
+              setShowAccountPicker(true);
+            } else {
+              const mem = data.memberships[0];
+              selectAccount(mem.tenantId, data.tenants?.[mem.tenantId]);
+            }
           }
         } else {
           setNeedsOnboarding(true);
@@ -313,6 +343,25 @@ export default function App() {
     );
   }
 
+  if (needsOnboarding === null) {
+    // Still checking memberships — show loading
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "#f8fafc",
+        }}
+      >
+        <div style={{ textAlign: "center" }}>
+          <div style={{ fontSize: "20px", fontWeight: 600, color: "#7c3aed", marginBottom: "16px" }}>TitleApp</div>
+          <div style={{ fontSize: "16px", color: "#6b7280" }}>Loading...</div>
+        </div>
+      </div>
+    );
+  }
   if (needsOnboarding) {
     return (
       <div className="appShell" style={{ minHeight: "100vh" }}>

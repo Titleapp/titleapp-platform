@@ -1205,8 +1205,9 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
           }
         }
 
-        // Determine final message — engineResult.message now always has a fallback
-        const finalMessage = aiMessage || engineResult.message || "I'm here to help. What would you like to do?";
+        // Determine final message — use empty string if cards are present (message is optional with cards)
+        const hasCards = engineResult.cards && engineResult.cards.length > 0;
+        const finalMessage = aiMessage || engineResult.message || (hasCards ? "" : "I'm here to help. What would you like to do?");
 
         // Write updated state to Firestore
         await sessionRef.set({
@@ -1230,7 +1231,7 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
           // Pass back effective session ID if it changed (session resume)
           ...(effectiveSessionId !== sessionId ? { sessionId: effectiveSessionId } : {}),
           // Pass through platform redirect signal from chatEngine
-          ...(engineResult.platformRedirect ? { platformRedirect: true, platformUrl: engineResult.platformUrl || 'https://title-app-alpha.web.app' } : {}),
+          ...(engineResult.platformRedirect ? { platformRedirect: true, platformUrl: engineResult.platformUrl || 'https://title-app-alpha.web.app', selectedTenantId: engineResult.selectedTenantId || null } : {}),
         });
 
       } catch (e) {
