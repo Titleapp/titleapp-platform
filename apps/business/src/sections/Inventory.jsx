@@ -15,7 +15,7 @@ export default function Inventory() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [formData, setFormData] = useState({
-    type: "vehicle",
+    type: isAnalyst ? "consulting" : "vehicle",
     status: "available",
     metadata: {},
     price: "",
@@ -24,75 +24,7 @@ export default function Inventory() {
 
   const vertical = localStorage.getItem("VERTICAL") || "auto";
   const jurisdiction = localStorage.getItem("JURISDICTION") || "IL";
-
-  // Mock inventory data
-  const mockItems = [
-    {
-      id: "inv-001",
-      type: "vehicle",
-      status: "available",
-      metadata: {
-        vin: "1HGCM82633A654321",
-        year: 2023,
-        make: "Honda",
-        model: "Accord",
-        trim: "EX-L",
-        mileage: "18,500",
-        color: "Silver",
-      },
-      price: 28500,
-      cost: 25000,
-      createdAt: "2026-02-10T09:00:00Z",
-    },
-    {
-      id: "inv-002",
-      type: "vehicle",
-      status: "sold",
-      metadata: {
-        vin: "2T1BURHE5HC123456",
-        year: 2024,
-        make: "Toyota",
-        model: "Camry",
-        trim: "SE",
-        mileage: "12,000",
-        color: "Blue",
-      },
-      price: 26900,
-      cost: 24000,
-      soldDate: "2026-02-12T14:30:00Z",
-      createdAt: "2026-01-20T10:00:00Z",
-    },
-    {
-      id: "inv-003",
-      type: "service",
-      status: "available",
-      metadata: {
-        name: "Premium Oil Change",
-        description: "Full synthetic oil change with filter",
-        duration: "30 minutes",
-      },
-      price: 79.99,
-      cost: 35.00,
-      createdAt: "2026-01-15T08:00:00Z",
-    },
-    {
-      id: "inv-004",
-      type: "vehicle",
-      status: "pending",
-      metadata: {
-        vin: "3VW2B7AJ8FM123789",
-        year: 2022,
-        make: "Volkswagen",
-        model: "Jetta",
-        trim: "S",
-        mileage: "25,300",
-        color: "White",
-      },
-      price: 19500,
-      cost: 17500,
-      createdAt: "2026-02-14T11:00:00Z",
-    },
-  ];
+  const isAnalyst = vertical === "analyst";
 
   useEffect(() => {
     loadInventory();
@@ -151,7 +83,7 @@ export default function Inventory() {
 
       setShowCreateModal(false);
       setEditingItem(null);
-      setFormData({ type: "vehicle", status: "available", metadata: {}, price: "", cost: "" });
+      setFormData({ type: isAnalyst ? "consulting" : "vehicle", status: "available", metadata: {}, price: "", cost: "" });
     } catch (e) {
       setError(e?.message || String(e));
     }
@@ -211,14 +143,14 @@ export default function Inventory() {
     <div>
       <div className="pageHeader">
         <div>
-          <h1 className="h1">Services & Inventory</h1>
-          <p className="subtle">Manage products, services, and pricing</p>
+          <h1 className="h1">{isAnalyst ? "Services & Fees" : "Services & Inventory"}</h1>
+          <p className="subtle">{isAnalyst ? "Manage consulting services, fee structures, and subscriptions" : "Manage products, services, and pricing"}</p>
         </div>
         <button
           className="iconBtn"
           onClick={() => {
             setEditingItem(null);
-            setFormData({ type: "vehicle", status: "available", metadata: {}, price: "", cost: "" });
+            setFormData({ type: isAnalyst ? "consulting" : "vehicle", status: "available", metadata: {}, price: "", cost: "" });
             setShowCreateModal(true);
           }}
           style={{
@@ -227,7 +159,7 @@ export default function Inventory() {
             borderColor: "var(--accent)",
           }}
         >
-          + Add Item
+          {isAnalyst ? "+ Add Service" : "+ Add Item"}
         </button>
       </div>
 
@@ -246,7 +178,7 @@ export default function Inventory() {
           <div className="kpiValue">{stats.sold}</div>
         </div>
         <div className="card kpiCard">
-          <div className="kpiLabel">Inventory Value</div>
+          <div className="kpiLabel">{isAnalyst ? "Total Fees" : "Inventory Value"}</div>
           <div className="kpiValue">${stats.totalValue.toLocaleString()}</div>
         </div>
       </div>
@@ -267,8 +199,19 @@ export default function Inventory() {
             }}
           >
             <option value="all">All Types</option>
-            <option value="vehicle">Vehicles</option>
-            <option value="service">Services</option>
+            {isAnalyst ? (
+              <>
+                <option value="consulting">Consulting</option>
+                <option value="performance_fee">Performance Fee</option>
+                <option value="management_fee">Management Fee</option>
+                <option value="subscription">Research Subscription</option>
+              </>
+            ) : (
+              <>
+                <option value="vehicle">Vehicles</option>
+                <option value="service">Services</option>
+              </>
+            )}
           </select>
         </div>
         <div>
@@ -325,10 +268,10 @@ export default function Inventory() {
               <thead>
                 <tr>
                   <th>Type</th>
-                  <th>Item</th>
-                  <th>Price</th>
-                  <th>Cost</th>
-                  <th>Margin</th>
+                  <th>{isAnalyst ? "Service" : "Item"}</th>
+                  <th>{isAnalyst ? "Rate / Fee" : "Price"}</th>
+                  {!isAnalyst && <th>Cost</th>}
+                  {!isAnalyst && <th>Margin</th>}
                   <th>Status</th>
                   <th>Actions</th>
                 </tr>
@@ -336,30 +279,46 @@ export default function Inventory() {
               <tbody>
                 {filteredItems.map((item) => {
                   const margin = item.price - item.cost;
-                  const marginPercent = ((margin / item.price) * 100).toFixed(1);
+                  const marginPercent = item.price ? ((margin / item.price) * 100).toFixed(1) : "0.0";
+
+                  const typeLabels = {
+                    consulting: "Consulting",
+                    performance_fee: "Performance Fee",
+                    management_fee: "Management Fee",
+                    subscription: "Subscription",
+                    vehicle: "Vehicle",
+                    service: "Service",
+                  };
 
                   return (
                     <tr key={item.id}>
                       <td>
-                        {item.type}
+                        {typeLabels[item.type] || item.type}
                       </td>
                       <td className="tdStrong">
                         {item.type === "vehicle"
                           ? `${item.metadata.year} ${item.metadata.make} ${item.metadata.model}`
-                          : item.metadata.name}
+                          : item.metadata.name || item.metadata.serviceName || "-"}
                         {item.type === "vehicle" && (
                           <div className="tdMuted" style={{ fontSize: "12px" }}>
                             VIN: {item.metadata.vin}
                           </div>
                         )}
+                        {item.metadata.billingFrequency && (
+                          <div className="tdMuted" style={{ fontSize: "12px" }}>
+                            {item.metadata.billingFrequency}
+                          </div>
+                        )}
                       </td>
-                      <td>${item.price.toLocaleString()}</td>
-                      <td className="tdMuted">${item.cost.toLocaleString()}</td>
-                      <td>
-                        <span style={{ color: margin > 0 ? "var(--accent2)" : "var(--danger)" }}>
-                          ${margin.toLocaleString()} ({marginPercent}%)
-                        </span>
-                      </td>
+                      <td>{isAnalyst && item.metadata.rateType === "percentage" ? `${item.price}%` : `$${item.price.toLocaleString()}`}{isAnalyst && item.metadata.rateUnit ? `/${item.metadata.rateUnit}` : ""}</td>
+                      {!isAnalyst && <td className="tdMuted">${item.cost.toLocaleString()}</td>}
+                      {!isAnalyst && (
+                        <td>
+                          <span style={{ color: margin > 0 ? "var(--accent2)" : "var(--danger)" }}>
+                            ${margin.toLocaleString()} ({marginPercent}%)
+                          </span>
+                        </td>
+                      )}
                       <td>
                         <span
                           className={`badge badge-${
@@ -411,9 +370,9 @@ export default function Inventory() {
         onClose={() => {
           setShowCreateModal(false);
           setEditingItem(null);
-          setFormData({ type: "vehicle", status: "available", metadata: {}, price: "", cost: "" });
+          setFormData({ type: isAnalyst ? "consulting" : "vehicle", status: "available", metadata: {}, price: "", cost: "" });
         }}
-        title={editingItem ? "Edit Item" : "Add New Item"}
+        title={editingItem ? "Edit Item" : isAnalyst ? "Add Service" : "Add New Item"}
         onSubmit={handleSubmit}
         submitLabel={editingItem ? "Update" : "Add Item"}
       >
@@ -436,8 +395,19 @@ export default function Inventory() {
               }}
               required
             >
-              <option value="vehicle">Vehicle</option>
-              <option value="service">Service</option>
+              {isAnalyst ? (
+                <>
+                  <option value="consulting">Consulting Service</option>
+                  <option value="performance_fee">Performance Fee</option>
+                  <option value="management_fee">Fund Management Fee</option>
+                  <option value="subscription">Research Subscription</option>
+                </>
+              ) : (
+                <>
+                  <option value="vehicle">Vehicle</option>
+                  <option value="service">Service</option>
+                </>
+              )}
             </select>
           </div>
 
@@ -579,8 +549,73 @@ export default function Inventory() {
             </>
           )}
 
+          {/* Analyst service fields */}
+          {isAnalyst && ["consulting", "performance_fee", "management_fee", "subscription"].includes(formData.type) && (
+            <>
+              <div>
+                <label style={{ display: "block", marginBottom: "6px", fontWeight: 600 }}>
+                  Service Name *
+                </label>
+                <input
+                  type="text"
+                  placeholder={formData.type === "consulting" ? "e.g., Deal Screening & Analysis" : formData.type === "performance_fee" ? "e.g., Carry / Performance Fee" : formData.type === "management_fee" ? "e.g., Annual Management Fee" : "e.g., Monthly Research Brief"}
+                  value={formData.metadata.name || ""}
+                  onChange={(e) => handleMetadataChange("name", e.target.value)}
+                  style={{ width: "100%", padding: "10px", borderRadius: "12px", border: "1px solid var(--line)" }}
+                  required
+                />
+              </div>
+              <div>
+                <label style={{ display: "block", marginBottom: "6px", fontWeight: 600 }}>
+                  Description
+                </label>
+                <textarea
+                  placeholder="Describe the service or fee structure..."
+                  value={formData.metadata.description || ""}
+                  onChange={(e) => handleMetadataChange("description", e.target.value)}
+                  rows={3}
+                  style={{ width: "100%", padding: "10px", borderRadius: "12px", border: "1px solid var(--line)", fontFamily: "inherit", resize: "vertical" }}
+                />
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                <div>
+                  <label style={{ display: "block", marginBottom: "6px", fontWeight: 600 }}>
+                    Rate Type
+                  </label>
+                  <select
+                    value={formData.metadata.rateType || "flat"}
+                    onChange={(e) => handleMetadataChange("rateType", e.target.value)}
+                    style={{ width: "100%", padding: "10px", borderRadius: "12px", border: "1px solid var(--line)" }}
+                  >
+                    <option value="flat">Flat Fee</option>
+                    <option value="hourly">Hourly Rate</option>
+                    <option value="percentage">Percentage</option>
+                    <option value="monthly">Monthly Retainer</option>
+                    <option value="annual">Annual Fee</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: "block", marginBottom: "6px", fontWeight: 600 }}>
+                    Billing Frequency
+                  </label>
+                  <select
+                    value={formData.metadata.billingFrequency || "one_time"}
+                    onChange={(e) => handleMetadataChange("billingFrequency", e.target.value)}
+                    style={{ width: "100%", padding: "10px", borderRadius: "12px", border: "1px solid var(--line)" }}
+                  >
+                    <option value="one_time">One-time</option>
+                    <option value="monthly">Monthly</option>
+                    <option value="quarterly">Quarterly</option>
+                    <option value="annual">Annual</option>
+                    <option value="per_deal">Per Deal</option>
+                  </select>
+                </div>
+              </div>
+            </>
+          )}
+
           {/* Service fields */}
-          {formData.type === "service" && (
+          {!isAnalyst && formData.type === "service" && (
             <>
               <div>
                 <label style={{ display: "block", marginBottom: "6px", fontWeight: 600 }}>
@@ -626,7 +661,7 @@ export default function Inventory() {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
             <div>
               <label style={{ display: "block", marginBottom: "6px", fontWeight: 600 }}>
-                Price * $
+                {isAnalyst ? "Rate / Fee *" : "Price *"} {formData.metadata?.rateType === "percentage" ? "%" : "$"}
               </label>
               <input
                 type="number"

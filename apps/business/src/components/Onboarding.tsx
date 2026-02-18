@@ -16,7 +16,7 @@ interface OnboardingProps {
 }
 
 export default function Onboarding({ onComplete, onStepChange }: OnboardingProps) {
-  const [step, setStepRaw] = useState<"checking" | "terms" | "welcome" | "idVerify" | "details" | "raas" | "criteria" | "sampleDeals" | "dealerData" | "realEstateData" | "brokerage" | "propertyMgmt" | "magic">("checking");
+  const [step, setStepRaw] = useState<"checking" | "terms" | "welcome" | "idVerify" | "details" | "raas" | "aiPersona" | "criteria" | "sampleDeals" | "dealerData" | "realEstateData" | "brokerage" | "propertyMgmt" | "magic">("checking");
 
   function setStep(newStep: typeof step) {
     setStepRaw(newStep);
@@ -27,6 +27,8 @@ export default function Onboarding({ onComplete, onStepChange }: OnboardingProps
   const [jurisdiction, setJurisdiction] = useState("IL");
   const [riskProfile, setRiskProfile] = useState<any>(null);
   const [raasRules, setRaasRules] = useState("");
+  const [aiPersonaName, setAiPersonaName] = useState("");
+  const [aiPersonaTitle, setAiPersonaTitle] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -67,6 +69,10 @@ export default function Onboarding({ onComplete, onStepChange }: OnboardingProps
   }
 
   function handleRaasNext() {
+    setStep("aiPersona");
+  }
+
+  function handlePersonaNext() {
     if (vertical === "analyst") {
       setStep("criteria");
     } else if (vertical === "auto") {
@@ -106,6 +112,12 @@ export default function Onboarding({ onComplete, onStepChange }: OnboardingProps
       }
       if (raasRules.trim()) {
         payload.raasRules = raasRules.trim();
+      }
+      if (aiPersonaName.trim() || aiPersonaTitle.trim()) {
+        payload.aiPersona = {
+          name: aiPersonaName.trim() || "TitleApp AI Assistant",
+          title: aiPersonaTitle.trim() || "AI Assistant",
+        };
       }
 
       const response = await fetch(`${apiBase}/api?path=/v1/onboarding:claimTenant`, {
@@ -165,6 +177,152 @@ export default function Onboarding({ onComplete, onStepChange }: OnboardingProps
           window.location.href = "/";
         }}
       />
+    );
+  }
+
+  if (step === "aiPersona") {
+    return (
+      <div
+        style={{
+          minHeight: "100%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "#f8fafc",
+          fontFamily: "-apple-system, BlinkMacSystemFont, sans-serif",
+          padding: "20px",
+        }}
+      >
+        <div
+          style={{
+            width: "100%",
+            maxWidth: "500px",
+            padding: "40px",
+            background: "white",
+            borderRadius: "16px",
+            border: "1px solid #e5e7eb",
+          }}
+        >
+          <div style={{ marginBottom: "24px" }}>
+            <h2 style={{ margin: "0 0 8px 0", fontSize: "24px", fontWeight: 700 }}>
+              Name Your AI Assistant
+            </h2>
+            <p style={{ margin: 0, color: "#6b7280", fontSize: "15px", lineHeight: 1.5 }}>
+              Your AI assistant handles outreach and follow-ups on your behalf.
+              Give it a name and title that will appear on emails and messages.
+            </p>
+          </div>
+
+          <div style={{ display: "grid", gap: "16px", marginBottom: "24px" }}>
+            <label style={{ display: "grid", gap: "8px" }}>
+              <div style={{ fontSize: "14px", fontWeight: 600 }}>Assistant Name</div>
+              <input
+                type="text"
+                value={aiPersonaName}
+                onChange={(e) => setAiPersonaName(e.target.value)}
+                placeholder="e.g., Rachel Kim, Alex Thompson"
+                style={{
+                  padding: "12px 16px",
+                  fontSize: "15px",
+                  border: "1px solid #e5e7eb",
+                  borderRadius: "8px",
+                  outline: "none",
+                }}
+              />
+            </label>
+
+            <label style={{ display: "grid", gap: "8px" }}>
+              <div style={{ fontSize: "14px", fontWeight: 600 }}>Title</div>
+              <select
+                value={aiPersonaTitle}
+                onChange={(e) => setAiPersonaTitle(e.target.value)}
+                style={{
+                  padding: "12px 16px",
+                  fontSize: "15px",
+                  border: "1px solid #e5e7eb",
+                  borderRadius: "8px",
+                  outline: "none",
+                  background: "white",
+                }}
+              >
+                <option value="">Select a title...</option>
+                <option value="Associate Analyst">Associate Analyst</option>
+                <option value="Analyst">Analyst</option>
+                <option value="Executive Assistant">Executive Assistant</option>
+                <option value="Chief of Staff">Chief of Staff</option>
+                <option value="Operations Associate">Operations Associate</option>
+                <option value="Client Relations">Client Relations</option>
+                <option value="AI Assistant">AI Assistant</option>
+              </select>
+              <input
+                type="text"
+                value={aiPersonaTitle}
+                onChange={(e) => setAiPersonaTitle(e.target.value)}
+                placeholder="Or type a custom title..."
+                style={{
+                  padding: "12px 16px",
+                  fontSize: "15px",
+                  border: "1px solid #e5e7eb",
+                  borderRadius: "8px",
+                  outline: "none",
+                }}
+              />
+            </label>
+          </div>
+
+          {(aiPersonaName.trim() || aiPersonaTitle.trim()) && (
+            <div style={{
+              padding: "16px",
+              background: "#f8f4ff",
+              borderRadius: "12px",
+              border: "1px solid #e9d5ff",
+              marginBottom: "24px",
+              fontSize: "14px",
+              color: "#374151",
+            }}>
+              <div style={{ fontWeight: 600, marginBottom: "4px" }}>Preview</div>
+              <div>Outbound messages will be signed:</div>
+              <div style={{ marginTop: "8px", fontStyle: "italic", color: "#6b7280" }}>
+                {aiPersonaName.trim() || "TitleApp AI Assistant"}{aiPersonaTitle.trim() ? `, ${aiPersonaTitle.trim()}` : ""} -- {companyName || "Your Company"}
+              </div>
+            </div>
+          )}
+
+          <div style={{ display: "flex", gap: "12px" }}>
+            <button
+              onClick={handlePersonaNext}
+              style={{
+                flex: 1,
+                padding: "14px",
+                fontSize: "15px",
+                background: "transparent",
+                border: "1px solid #e5e7eb",
+                borderRadius: "8px",
+                cursor: "pointer",
+                color: "#6b7280",
+              }}
+            >
+              Skip -- use default
+            </button>
+            <button
+              onClick={handlePersonaNext}
+              style={{
+                flex: 1,
+                padding: "14px",
+                fontSize: "15px",
+                fontWeight: 600,
+                background: "rgb(124,58,237)",
+                color: "white",
+                border: "none",
+                borderRadius: "8px",
+                cursor: "pointer",
+              }}
+            >
+              {aiPersonaName.trim() ? "Save & Continue" : "Continue"}
+            </button>
+          </div>
+        </div>
+      </div>
     );
   }
 

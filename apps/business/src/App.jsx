@@ -88,6 +88,8 @@ export default function App() {
     return !!params.get("token");
   });
   const [onboardingStep, setOnboardingStep] = useState(null);
+  const [showAccountPicker, setShowAccountPicker] = useState(false);
+  const [availableAccounts, setAvailableAccounts] = useState([]);
 
   useEffect(() => {
     // Handle custom token + session handoff from landing page chat
@@ -146,6 +148,23 @@ export default function App() {
     };
   }, []);
 
+  function selectAccount(tenantId, tenant) {
+    localStorage.setItem("TENANT_ID", tenantId);
+    if (tenant) {
+      if (tenant.vertical && tenant.vertical !== "GLOBAL") {
+        localStorage.setItem("VERTICAL", tenant.vertical.toLowerCase());
+      }
+      if (tenant.jurisdiction && tenant.jurisdiction !== "GLOBAL") {
+        localStorage.setItem("JURISDICTION", tenant.jurisdiction);
+      }
+      if (tenant.companyName || tenant.name) {
+        localStorage.setItem("COMPANY_NAME", tenant.companyName || tenant.name);
+      }
+    }
+    setShowAccountPicker(false);
+    setNeedsOnboarding(false);
+  }
+
   useEffect(() => {
     if (!token || handoffInProgress) {
       if (!handoffInProgress) setCheckingMemberships(false);
@@ -173,12 +192,23 @@ export default function App() {
         if (data.ok && data.memberships) {
           if (data.memberships.length === 0) {
             setNeedsOnboarding(true);
+          } else if (data.memberships.length > 1) {
+            // Multiple accounts — show picker
+            const accounts = data.memberships.map((mem) => {
+              const tenant = data.tenants?.[mem.tenantId] || {};
+              return {
+                tenantId: mem.tenantId,
+                role: mem.role,
+                name: tenant.companyName || tenant.name || mem.tenantId,
+                vertical: tenant.vertical || "",
+                jurisdiction: tenant.jurisdiction || "",
+              };
+            });
+            setAvailableAccounts(accounts);
+            setShowAccountPicker(true);
           } else {
-            const currentTenantId = localStorage.getItem("TENANT_ID");
-            if (!currentTenantId || currentTenantId === "demo") {
-              localStorage.setItem("TENANT_ID", data.memberships[0].tenantId);
-            }
-            setNeedsOnboarding(false);
+            const mem = data.memberships[0];
+            selectAccount(mem.tenantId, data.tenants?.[mem.tenantId]);
           }
         } else {
           setNeedsOnboarding(true);
@@ -213,6 +243,75 @@ export default function App() {
     );
   }
   if (!token) return <Login />;
+
+  if (showAccountPicker && availableAccounts.length > 0) {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "#f8fafc",
+          padding: "20px",
+        }}
+      >
+        <div
+          style={{
+            maxWidth: "460px",
+            width: "100%",
+            background: "white",
+            borderRadius: "16px",
+            padding: "32px",
+            boxShadow: "0 4px 24px rgba(0,0,0,0.08)",
+          }}
+        >
+          <div style={{ textAlign: "center", marginBottom: "24px" }}>
+            <div style={{ fontSize: "20px", fontWeight: 700, color: "#7c3aed", marginBottom: "8px" }}>
+              TitleApp
+            </div>
+            <div style={{ fontSize: "16px", fontWeight: 600, color: "#1e293b" }}>
+              Which workspace do you want to open?
+            </div>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+            {availableAccounts.map((acct) => (
+              <button
+                key={acct.tenantId}
+                onClick={() => selectAccount(acct.tenantId, { vertical: acct.vertical, jurisdiction: acct.jurisdiction, companyName: acct.name })}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  width: "100%",
+                  padding: "14px 16px",
+                  background: "#f8fafc",
+                  border: "1px solid #e5e7eb",
+                  borderRadius: "12px",
+                  cursor: "pointer",
+                  textAlign: "left",
+                  transition: "border-color 0.15s",
+                  fontSize: "14px",
+                }}
+                onMouseOver={(e) => e.currentTarget.style.borderColor = "#7c3aed"}
+                onMouseOut={(e) => e.currentTarget.style.borderColor = "#e5e7eb"}
+              >
+                <div>
+                  <div style={{ fontWeight: 600, color: "#1e293b" }}>{acct.name}</div>
+                  {acct.vertical && (
+                    <div style={{ fontSize: "12px", color: "#6b7280", marginTop: "2px" }}>
+                      {acct.vertical.charAt(0).toUpperCase() + acct.vertical.slice(1)}{acct.role ? ` \u00B7 ${acct.role}` : ""}
+                    </div>
+                  )}
+                </div>
+                <div style={{ color: "#9ca3af", fontSize: "18px" }}>&rarr;</div>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (needsOnboarding) {
     return (

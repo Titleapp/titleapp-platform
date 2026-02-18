@@ -21,12 +21,27 @@ export default function Analyst() {
     summary: "",
   });
   const [uploadedFile, setUploadedFile] = useState(null);
+  const [dragging, setDragging] = useState(false);
+  const [pinnedAnalysis, setPinnedAnalysis] = useState(null); // { dealInfo, analysis } — persists while chatting
   const [showOutreachModal, setShowOutreachModal] = useState(null); // { dealInfo, analysis }
   const [outreachText, setOutreachText] = useState("");
   const [generatingOutreach, setGeneratingOutreach] = useState(false);
+  const [outreachMethod, setOutreachMethod] = useState("email"); // "email" | "text"
 
   const vertical = localStorage.getItem("VERTICAL") || "analyst";
   const jurisdiction = localStorage.getItem("JURISDICTION") || "GLOBAL";
+
+  const ACCEPTED_TYPES = ".pdf,.xlsx,.xls,.csv,.docx,.doc,.png,.jpg,.jpeg";
+  const ACCEPTED_MIME = [
+    "application/pdf",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "application/vnd.ms-excel",
+    "text/csv",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/msword",
+    "image/png",
+    "image/jpeg",
+  ];
 
   useEffect(() => {
     loadDeals();
@@ -43,6 +58,62 @@ export default function Analyst() {
       console.error("Failed to load deals:", e);
     } finally {
       setLoading(false);
+    }
+  }
+
+  function handleFileSelected(file) {
+    if (!file) return;
+    setUploadedFile(file);
+
+    // Read file content for text-based files and try to auto-populate fields
+    if (file.type === "text/csv" || file.name.endsWith(".csv")) {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const text = ev.target?.result || "";
+        setDealInput((prev) => ({
+          ...prev,
+          summary: prev.summary || text.slice(0, 5000),
+        }));
+      };
+      reader.readAsText(file);
+    } else if (file.type === "application/pdf") {
+      // PDF text extraction requires server-side processing
+      setDealInput((prev) => ({
+        ...prev,
+        summary: prev.summary || `[Uploaded: ${file.name}]`,
+      }));
+    } else {
+      setDealInput((prev) => ({
+        ...prev,
+        summary: prev.summary || `[Uploaded: ${file.name}]`,
+      }));
+    }
+  }
+
+  function handleDragOver(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragging(true);
+  }
+
+  function handleDragLeave(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragging(false);
+  }
+
+  function handleDrop(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragging(false);
+    const file = e.dataTransfer?.files?.[0];
+    if (file) {
+      const ext = "." + file.name.split(".").pop().toLowerCase();
+      if (ACCEPTED_TYPES.split(",").includes(ext) || ACCEPTED_MIME.includes(file.type)) {
+        handleFileSelected(file);
+      } else {
+        setError("Unsupported file type. Please upload PDF, Excel, CSV, Word, or image files.");
+      }
     }
   }
 
@@ -100,6 +171,7 @@ export default function Analyst() {
 
   function generateReportHtml(dealInfo, analysis) {
     const date = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+    const companyName = localStorage.getItem("COMPANY_NAME") || localStorage.getItem("TENANT_NAME") || "";
     const positives = (analysis.evidence?.positive || []).map(t => `<li style="color:#059669">${t}</li>`).join("");
     const negatives = (analysis.evidence?.negative || []).map(t => `<li style="color:#dc2626">${t}</li>`).join("");
     const neutrals = (analysis.evidence?.neutral || []).map(t => `<li style="color:#6b7280">${t}</li>`).join("");
@@ -109,25 +181,49 @@ export default function Analyst() {
       `<tr><td style="padding:6px 12px;border:1px solid #e5e7eb;font-weight:600;text-transform:capitalize">${k.replace(/_/g, " ")}</td><td style="padding:6px 12px;border:1px solid #e5e7eb">${v}</td></tr>`
     ).join("") : "";
 
+    // Multi-angle analysis sections
+    const multiAngle = analysis.multiAngleAnalysis ? Object.entries(analysis.multiAngleAnalysis).map(([angle, assessment]) =>
+      `<div style="margin-bottom:12px"><div style="font-size:12px;font-weight:600;color:#7c3aed;text-transform:uppercase;margin-bottom:4px">${angle.replace(/([A-Z])/g, " $1").trim()}</div><p style="margin:0;font-size:14px">${assessment}</p></div>`
+    ).join("") : "";
+
+    // Risk-scaled alternatives
+    const alternatives = analysis.riskScaledAlternatives ? ["lowRisk", "mediumRisk", "highRisk"].map(level => {
+      const alt = analysis.riskScaledAlternatives[level];
+      if (!alt) return "";
+      const labels = { lowRisk: "Low Risk", mediumRisk: "Medium Risk", highRisk: "High Risk" };
+      return `<div style="margin-bottom:12px;padding:12px;background:#f8fafc;border-radius:8px"><div style="font-size:12px;font-weight:600;text-transform:uppercase;margin-bottom:6px">${labels[level]}</div><div style="font-size:13px"><strong>Structure:</strong> ${alt.structure}</div><div style="font-size:13px"><strong>Terms:</strong> ${alt.terms}</div><div style="font-size:13px"><strong>Expected Return:</strong> ${alt.expectedReturn}</div></div>`;
+    }).join("") : "";
+
     return `<!DOCTYPE html><html><head><title>${dealInfo.companyName || "Deal"} - Analysis Report</title>
-<style>body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:800px;margin:40px auto;padding:0 20px;color:#1e293b;line-height:1.6}
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:800px;margin:40px auto;padding:0 20px;color:#1e293b;line-height:1.6}
 h1{font-size:24px;margin:0}h2{font-size:16px;color:#7c3aed;border-bottom:2px solid #7c3aed;padding-bottom:4px;margin-top:32px}
-.header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #7c3aed;padding-bottom:16px;margin-bottom:24px}
+.header{border-bottom:3px solid #7c3aed;padding-bottom:16px;margin-bottom:24px}
+.header-top{display:flex;justify-content:space-between;align-items:flex-start}
+.branding{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;font-size:13px;color:#6b7280}
 .meta{color:#6b7280;font-size:14px}.score-box{text-align:center;padding:16px 24px;border-radius:12px;border:2px solid}
 .score{font-size:36px;font-weight:700}.rec{font-size:14px;font-weight:600;padding:4px 12px;border-radius:4px;display:inline-block;margin-top:4px}
 table{border-collapse:collapse;width:100%}ul{padding-left:20px}li{margin:4px 0}
 .disclaimer{margin-top:40px;padding:16px;background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;color:#6b7280}
-@media print{body{margin:20px}}</style></head><body>
-<div class="header"><div><h1>${dealInfo.companyName || "Deal"} - Analysis Report</h1>
+.download-btn{display:inline-block;padding:10px 24px;background:#7c3aed;color:white;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;margin-bottom:24px}
+.download-btn:hover{background:#6d28d9}
+@media print{.download-btn{display:none !important}.no-print{display:none !important}body{margin:20px}}
+</style></head><body>
+<button class="download-btn no-print" onclick="window.print()">Download PDF</button>
+<div class="header">
+<div class="branding"><div>${companyName ? `<strong>${companyName}</strong>` : ""}</div><div>Prepared by TitleApp AI</div></div>
+<div class="header-top"><div><h1>${dealInfo.companyName || "Deal"} - Analysis Report</h1>
 <div class="meta">${dealInfo.industry || ""} ${dealInfo.askAmount ? "| " + dealInfo.askAmount : ""} ${dealInfo.dealType ? "| " + dealInfo.dealType.replace(/_/g, " ") : ""}</div>
 <div class="meta">${date}</div></div>
 <div class="score-box" style="border-color:${analysis.riskScore >= 70 ? "#ef4444" : analysis.riskScore >= 40 ? "#f59e0b" : "#10b981"}">
 <div class="score" style="color:${analysis.riskScore >= 70 ? "#ef4444" : analysis.riskScore >= 40 ? "#f59e0b" : "#10b981"}">${analysis.riskScore || 0}/100</div>
 <div class="rec" style="background:${analysis.recommendation === "INVEST" ? "#f0fdf4;color:#059669" : analysis.recommendation === "PASS" ? "#fef2f2;color:#dc2626" : "#fffbeb;color:#d97706"}">${analysis.recommendation || "WAIT"}</div>
-</div></div>
+</div></div></div>
 ${analysis.summary ? `<h2>Executive Summary</h2><p>${analysis.summary}</p>` : ""}
 ${positives || negatives || neutrals ? `<h2>Evidence Analysis</h2><ul>${positives}${negatives}${neutrals}</ul>` : ""}
 ${metrics ? `<h2>Key Metrics</h2><table>${metrics}</table>` : ""}
+${multiAngle ? `<h2>Multi-Angle Analysis</h2>${multiAngle}` : ""}
+${alternatives ? `<h2>Risk-Scaled Deal Structures</h2>${alternatives}` : ""}
 ${steps ? `<h2>Recommended Next Steps</h2><ol>${steps}</ol>` : ""}
 ${missing ? `<h2>Missing Information</h2><ul>${missing}</ul>` : ""}
 <div class="disclaimer">This analysis is AI-generated and should be verified independently. It does not constitute financial advice. Generated by TitleApp AI on ${date}.</div>
@@ -200,6 +296,75 @@ Best regards,
           {error}
         </div>
       )}
+
+      {/* Pinned Analysis — stays visible while discussing with AI */}
+      {pinnedAnalysis && (() => {
+        const pa = pinnedAnalysis.analysis;
+        const pd = pinnedAnalysis.dealInfo;
+        return (
+          <div
+            className="card"
+            style={{ marginBottom: "16px", border: `2px solid ${getRiskColor(pa.riskScore || 0)}` }}
+          >
+            <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "12px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: "16px" }}>{pd.companyName || "Deal"}</div>
+                  <div style={{ fontSize: "13px", color: "var(--textMuted)" }}>
+                    {pd.industry || ""}{pd.askAmount ? " | " + pd.askAmount : ""} | Discussing with AI
+                  </div>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ fontSize: "24px", fontWeight: 700, color: getRiskColor(pa.riskScore || 0) }}>
+                      {pa.riskScore || 0}/100
+                    </div>
+                    <div
+                      className={`badge badge-${pa.recommendation === "INVEST" ? "completed" : pa.recommendation === "PASS" ? "" : "processing"}`}
+                      style={{ fontSize: "12px" }}
+                    >
+                      {pa.recommendation || "WAIT"}
+                    </div>
+                  </div>
+                  <button
+                    className="iconBtn"
+                    onClick={() => setPinnedAnalysis(null)}
+                    style={{ fontSize: "14px", padding: "4px 8px" }}
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+              {pa.summary && (
+                <div style={{ fontSize: "13px", color: "var(--textMuted)", lineHeight: "1.5" }}>
+                  {pa.summary}
+                </div>
+              )}
+              <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                <button
+                  className="iconBtn"
+                  onClick={() => { setSelectedDeal(pinnedAnalysis); setPinnedAnalysis(null); }}
+                  style={{ fontSize: "12px" }}
+                >
+                  View Full Analysis
+                </button>
+                <button
+                  className="iconBtn"
+                  onClick={() => {
+                    const reportHtml = generateReportHtml(pd, pa);
+                    const win = window.open("", "_blank");
+                    win.document.write(reportHtml);
+                    win.document.close();
+                  }}
+                  style={{ fontSize: "12px" }}
+                >
+                  Export Report
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Stats */}
       <div className="kpiRow">
@@ -478,6 +643,14 @@ Best regards,
                     <option value="development">Development</option>
                     <option value="value_add">Value-Add</option>
                     <option value="sale_leaseback">Sale-Leaseback</option>
+                    <option value="multifamily">Multifamily</option>
+                    <option value="office">Office</option>
+                    <option value="retail">Retail</option>
+                    <option value="industrial">Industrial</option>
+                    <option value="hospitality">Hospitality</option>
+                    <option value="mixed_use">Mixed-Use</option>
+                    <option value="land">Land</option>
+                    <option value="sfr_portfolio">Single-Family Portfolio</option>
                   </optgroup>
                   <optgroup label="Debt / Other">
                     <option value="refinance">Refinance</option>
@@ -510,32 +683,51 @@ Best regards,
 
               <div>
                 <label style={{ display: "block", marginBottom: "6px", fontWeight: 600 }}>
-                  Or Upload PDF
+                  Or Upload Document
                 </label>
-                <input
-                  type="file"
-                  accept=".pdf"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      setUploadedFile(file);
-                      // TODO: Extract text from PDF and populate summary field
-                      // For now, just show the filename
-                      setDealInput({ ...dealInput, summary: `[PDF uploaded: ${file.name}] - PDF text extraction coming soon` });
-                    }
-                  }}
+                <div
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  onClick={() => document.getElementById("deal-file-input")?.click()}
                   style={{
                     width: "100%",
-                    padding: "10px",
+                    padding: uploadedFile ? "12px" : "28px 12px",
                     borderRadius: "12px",
-                    border: "1px solid var(--line)",
+                    border: dragging ? "2px dashed var(--accent)" : "2px dashed var(--line)",
+                    background: dragging ? "rgba(124,58,237,0.04)" : "transparent",
+                    textAlign: "center",
+                    cursor: "pointer",
+                    transition: "border-color 0.2s, background 0.2s",
                   }}
+                >
+                  {uploadedFile ? (
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                      <span style={{ fontSize: "13px" }}>
+                        {uploadedFile.name} ({(uploadedFile.size / 1024).toFixed(1)} KB)
+                      </span>
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); setUploadedFile(null); }}
+                        style={{ background: "none", border: "none", cursor: "pointer", fontSize: "16px", color: "var(--textMuted)" }}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{ color: "var(--textMuted)", fontSize: "13px" }}>
+                      <div style={{ marginBottom: "4px", fontWeight: 500 }}>Drag and drop a file here, or click to browse</div>
+                      <div style={{ fontSize: "12px" }}>PDF, Excel, CSV, Word, or images</div>
+                    </div>
+                  )}
+                </div>
+                <input
+                  id="deal-file-input"
+                  type="file"
+                  accept={ACCEPTED_TYPES}
+                  onChange={(e) => handleFileSelected(e.target.files?.[0])}
+                  style={{ display: "none" }}
                 />
-                {uploadedFile && (
-                  <div style={{ marginTop: "8px", fontSize: "13px", color: "var(--textMuted)" }}>
-                    Uploaded: {uploadedFile.name} ({(uploadedFile.size / 1024).toFixed(1)} KB)
-                  </div>
-                )}
               </div>
 
               <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
@@ -663,6 +855,8 @@ Best regards,
                           }
                         }
                       }));
+                      // Pin the analysis so it stays visible while chatting
+                      setPinnedAnalysis({ dealInfo, analysis });
                       setSelectedDeal(null);
                     }}
                     style={{
@@ -949,6 +1143,43 @@ Best regards,
               <button className="iconBtn" onClick={() => setShowOutreachModal(null)}>✕</button>
             </div>
             <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "12px" }}>
+              {/* Send Method Toggle */}
+              <div style={{ display: "flex", gap: "0", borderRadius: "8px", overflow: "hidden", border: "1px solid var(--line)" }}>
+                <button
+                  type="button"
+                  onClick={() => setOutreachMethod("email")}
+                  style={{
+                    flex: 1,
+                    padding: "10px",
+                    border: "none",
+                    background: outreachMethod === "email" ? "var(--accent)" : "transparent",
+                    color: outreachMethod === "email" ? "white" : "inherit",
+                    fontWeight: 600,
+                    fontSize: "13px",
+                    cursor: "pointer",
+                  }}
+                >
+                  Send via Email
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOutreachMethod("text")}
+                  style={{
+                    flex: 1,
+                    padding: "10px",
+                    border: "none",
+                    borderLeft: "1px solid var(--line)",
+                    background: outreachMethod === "text" ? "var(--accent)" : "transparent",
+                    color: outreachMethod === "text" ? "white" : "inherit",
+                    fontWeight: 600,
+                    fontSize: "13px",
+                    cursor: "pointer",
+                  }}
+                >
+                  Send via Text
+                </button>
+              </div>
+
               {generatingOutreach ? (
                 <div style={{ textAlign: "center", padding: "24px", color: "#6b7280" }}>
                   Generating outreach message...
@@ -958,7 +1189,7 @@ Best regards,
                   <textarea
                     value={outreachText}
                     onChange={(e) => setOutreachText(e.target.value)}
-                    rows={16}
+                    rows={outreachMethod === "text" ? 8 : 16}
                     style={{
                       width: "100%",
                       padding: "12px",
@@ -970,6 +1201,11 @@ Best regards,
                       resize: "vertical",
                     }}
                   />
+                  {outreachMethod === "text" && (
+                    <div style={{ fontSize: "12px", color: "var(--textMuted)", textAlign: "right" }}>
+                      {outreachText.length} characters
+                    </div>
+                  )}
                   <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
                     <button
                       className="iconBtn"
@@ -982,17 +1218,30 @@ Best regards,
                     >
                       Copy to Clipboard
                     </button>
-                    <button
-                      className="iconBtn"
-                      onClick={() => {
-                        const subject = encodeURIComponent(`Information Request: ${showOutreachModal.dealInfo?.companyName || "Deal"} Analysis`);
-                        const body = encodeURIComponent(outreachText);
-                        window.open(`mailto:?subject=${subject}&body=${body}`);
-                      }}
-                      style={{ background: "var(--accent)", color: "white", borderColor: "var(--accent)" }}
-                    >
-                      Send via Email
-                    </button>
+                    {outreachMethod === "email" ? (
+                      <button
+                        className="iconBtn"
+                        onClick={() => {
+                          const subject = encodeURIComponent(`Information Request: ${showOutreachModal.dealInfo?.companyName || "Deal"} Analysis`);
+                          const body = encodeURIComponent(outreachText);
+                          window.open(`mailto:?subject=${subject}&body=${body}`);
+                        }}
+                        style={{ background: "var(--accent)", color: "white", borderColor: "var(--accent)" }}
+                      >
+                        Open Email Client
+                      </button>
+                    ) : (
+                      <button
+                        className="iconBtn"
+                        onClick={() => {
+                          const body = encodeURIComponent(outreachText);
+                          window.open(`sms:?&body=${body}`);
+                        }}
+                        style={{ background: "var(--accent)", color: "white", borderColor: "var(--accent)" }}
+                      >
+                        Open Messages
+                      </button>
+                    )}
                   </div>
                 </>
               )}

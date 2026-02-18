@@ -284,6 +284,37 @@ async function signupInternal({ email, name, accountType, companyName, companyDe
 
   const userData = userSnap.exists ? userSnap.data() : {};
   const customToken = await admin.auth().createCustomToken(userRecord.uid);
+
+  // For existing users, check if they have tenant memberships
+  let memberships = [];
+  if (existing) {
+    try {
+      const memSnap = await db.collection("memberships")
+        .where("userId", "==", userRecord.uid)
+        .where("status", "==", "active")
+        .get();
+      if (!memSnap.empty) {
+        for (const doc of memSnap.docs) {
+          const m = doc.data();
+          // Look up tenant name
+          let tenantName = m.tenantId;
+          try {
+            const tSnap = await db.collection("tenants").doc(m.tenantId).get();
+            if (tSnap.exists) tenantName = tSnap.data().name || m.tenantId;
+          } catch (_) { /* ignore */ }
+          memberships.push({
+            tenantId: m.tenantId,
+            tenantName,
+            role: m.role || "owner",
+            vertical: m.vertical || null,
+          });
+        }
+      }
+    } catch (e) {
+      console.warn("signupInternal: membership lookup failed:", e.message);
+    }
+  }
+
   return {
     ok: true,
     uid: userRecord.uid,
@@ -292,6 +323,7 @@ async function signupInternal({ email, name, accountType, companyName, companyDe
     termsAcceptedAt: userData.termsAcceptedAt || null,
     existingName: userData.name || null,
     existingAccountType: userData.accountType || null,
+    memberships,
   };
 }
 
@@ -456,7 +488,14 @@ async function handleAIChatFallthrough(message, userId, tenantId) {
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-5-20250929",
       max_tokens: 2048,
-      system: "You are a helpful assistant for TitleApp, a platform that helps people keep track of important records (car titles, home documents, pet records, student transcripts, etc.). Be concise, friendly, and focus on helping users understand how to organize and protect their important documents.",
+      system: `You are TitleApp AI, a platform that helps people keep track of important records (car titles, home documents, pet records, student transcripts, etc.). Be concise, professional, and focus on helping users understand how to organize and protect their important documents.
+
+Formatting rules — follow these strictly:
+- Never use emojis in your responses.
+- Never use markdown formatting such as asterisks, bold, italic, or headers.
+- Never use bullet points or numbered lists unless the user explicitly asks for a list.
+- Write in complete, clean sentences. Use plain text only.
+- Keep your tone warm but professional — direct, calm, no hype.`,
       messages,
     });
 
@@ -969,10 +1008,10 @@ Respond with ONLY a JSON object:
                 engineResult.state.raasClassification = raasClassification;
 
                 if (raasClassification.hasExistingRaas) {
-                  raasMessage = `Good news -- we have a rules engine built for ${raasClassification.industry}. ${raasClassification.summary} You can start using it right away, or if you have your own standard operating procedures and policies, I can incorporate those too. How would you like to proceed?`;
+                  raasMessage = `We have a rules engine built for ${raasClassification.industry}. Ready to go, or want to upload your own SOPs first?`;
                   raasChips = ["Start with the standard setup", "I have SOPs to upload first", "Tell me more about what's included"];
                 } else {
-                  raasMessage = `We don't have a pre-built configuration for ${raasClassification.industry} yet, but that's what the AI is for. I'll ask you some questions about how your business works -- your records, your compliance needs, your workflows -- and I'll build a custom rules engine for you. It usually takes about 10 minutes. Ready to get started?`;
+                  raasMessage = `No pre-built config for ${raasClassification.industry} yet, but I can build one. I'll ask a few questions about your records and workflows. Takes about 5 minutes. Ready?`;
                   raasChips = ["Let's build it", "Tell me more about how this works"];
                 }
               }
@@ -1028,38 +1067,14 @@ Respond with ONLY a JSON object:
             const anthropic = getAnthropic();
 
             const systemPrompt = ctx.type === "business"
-              ? `You are TitleApp AI. A business owner just set up their workspace. Their business: ${ctx.companyDescription || ctx.companyName}. Their industry: ${ctx.industry || "general"}.
+              ? `You are TitleApp AI. A business owner just set up their workspace. Business: ${ctx.companyDescription || ctx.companyName}. Industry: ${ctx.industry || "general"}.
 
-Generate a short onboarding promise. Write directly to the user. Weave together three ideas in 3-4 sentences TOTAL (not per idea — TOTAL):
-1. Competitive moat — every record from this moment is timestamped and permanent, competitors who start later can never backdate what they don't have
-2. What disappears — the scrambling for documents, the anxiety before audits, the disputes they can't prove
-3. Why now — this is a land grab, verified records compound, the gap between them and everyone who waited starts now
-
-End with an energizing one-line transition into their first action.
-
-Rules:
-- MAXIMUM 3-4 sentences. This appears in a chat bubble — walls of text get ignored.
-- Use their specific industry context
-- No feature names, no jargon, no bullet points, no markdown
-- Warm and professional, no emojis
-- Example of correct length: "We're building something your competitors can't replicate — every record from this moment is timestamped and permanent. The scrambling for documents, the anxiety before audits, the disputes you can't prove — that's done. You're early to something that compounds, and the gap between you and everyone who waited starts now. Let's get your first property in."`
-              : `You are TitleApp AI. A consumer just signed up for personal use. Generate a short welcome promise. Write directly to the user. Weave together three ideas in 3-4 sentences TOTAL (not per idea — TOTAL):
-1. The problem — their important stuff is scattered and unverified, and every time they need to prove something they're scrambling
-2. What changes — verified records mean real money (cars sell for more, credentials are instantly provable, insurance claims have proof)
-3. Why now — everything they add from this point is permanent and builds value they'll cash in later
-
-End with a natural transition into "What would you like to start with?"
-
-Rules:
-- MAXIMUM 3-4 sentences. This appears in a chat bubble — walls of text get ignored.
-- Talk about money, stress, and real situations they can picture
-- No jargon — no blockchain, NFT, DTC, vault, platform, or tech words
-- Warm and direct, no emojis, no bullet points, no markdown
-- Example of correct length: "Right now your important stuff is scattered and none of it is verified — and every time you need to prove something, you're scrambling. A car with documented history sells for thousands more, a credential that's instantly provable gets you the job first, and when insurance pushes back you have timestamped proof instead of an argument. Everything you add from here is permanent. What would you like to start with?"`;
+Write 2 sentences MAX. First sentence: what changes for them now (no more scrambling, records are permanent). Second sentence: a transition to their first action. No jargon, no bullet points, no markdown, no emojis. Direct and warm.`
+              : `You are TitleApp AI. A consumer just signed up. Write 2 sentences MAX. First sentence: what changes for them (verified records = real value). Second sentence: "What would you like to start with?" No jargon, no bullet points, no markdown, no emojis.`;
 
             const promiseResponse = await anthropic.messages.create({
               model: "claude-sonnet-4-5-20250929",
-              max_tokens: 300,
+              max_tokens: 150,
               system: systemPrompt,
               messages: [{ role: "user", content: "Generate the onboarding message." }],
             });
@@ -1109,15 +1124,19 @@ Rules:
             updatedAt: nowServerTs(),
           }, { merge: true });
 
+          // For business users, redirect to platform after showing the promise
+          const isBizPromise = ctx.type === "business";
+
           return res.json({
             ok: true,
             message: engineResult.message || "",
             cards: engineResult.cards || [],
-            promptChips: promiseChips,
+            promptChips: isBizPromise ? [] : promiseChips,
             followUpMessage: promiseMessage,
             conversationState: engineResult.state.step,
             ...(engineResult.state.authToken ? { authToken: engineResult.state.authToken } : {}),
             ...(effectiveSessionId !== sessionId ? { sessionId: effectiveSessionId } : {}),
+            ...(isBizPromise ? { platformRedirect: true, platformUrl: 'https://title-app-alpha.web.app' } : {}),
           });
         }
 
@@ -1299,6 +1318,7 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
         jurisdiction = "GLOBAL",
         riskProfile = null, // Analyst vertical investment criteria
         verticalConfig = null, // Other vertical-specific configs
+        aiPersona = null, // AI assistant name/title for outreach
       } = body || {};
 
       const finalTenantId = (requestedTenantId || slugifyTenantId(tenantName || auth.user.email || auth.user.uid))
@@ -1324,6 +1344,7 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
         // Store vertical-specific parameters
         if (riskProfile) tenantData.riskProfile = riskProfile;
         if (verticalConfig) tenantData.verticalConfig = verticalConfig;
+        if (aiPersona) tenantData.aiPersona = aiPersona;
 
         await tenantRef.set(tenantData);
       }
@@ -1676,7 +1697,27 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
             const response = await anthropic.messages.create({
               model: "claude-sonnet-4-5-20250929",
               max_tokens: 2048,
-              system: `You are the AI assistant for TitleApp, a business intelligence platform. The user's vertical is "${ctx.vertical || "general"}" and they are on the "${(context || {}).currentSection || "dashboard"}" section. Be concise and professional. ${ctx.vertical === "analyst" ? "You specialize in deal analysis, investment screening, risk assessment, and portfolio management. Help analyze deals, discuss risk factors, identify missing information, and provide actionable next steps." : ctx.vertical === "auto" ? "You specialize in automotive dealership operations, inventory management, trade-ins, and compliance." : ctx.vertical === "real-estate" || ctx.vertical === "property-mgmt" ? "You specialize in real estate transactions, property management, compliance, and document management." : "Help with business operations, compliance questions, document management, and platform navigation."} When discussing deals or investments, note that you provide informational analysis only, not financial advice.${(context || {}).dealContext ? `\n\nThe user wants to discuss this deal analysis:\n${JSON.stringify(context.dealContext)}` : ""}`,
+              system: `You are the AI assistant for TitleApp, a business intelligence platform. The user's vertical is "${ctx.vertical || "general"}" and they are on the "${(context || {}).currentSection || "dashboard"}" section.
+
+Formatting rules — follow these strictly:
+- Never use emojis in your responses.
+- Never use markdown formatting such as asterisks, bold, italic, or headers.
+- Never use bullet points or numbered lists unless the user explicitly asks for a list.
+- Write in complete, clean sentences. Use plain text only.
+- Keep your tone warm but professional — direct, calm, no hype.
+
+${ctx.vertical === "analyst" ? "You specialize in deal analysis, investment screening, risk assessment, and portfolio management. Help analyze deals, discuss risk factors, identify missing information, and provide actionable next steps." : ctx.vertical === "auto" ? "You specialize in automotive dealership operations, inventory management, trade-ins, and compliance." : ctx.vertical === "real-estate" || ctx.vertical === "property-mgmt" ? "You specialize in real estate transactions, property management, compliance, and document management." : "Help with business operations, compliance questions, document management, and platform navigation."} When discussing deals or investments, note that you provide informational analysis only, not financial advice.
+
+Platform navigation — when users ask how to do things, give them accurate directions:
+- To analyze a new deal: Go to the Analyst section in the left navigation, then click the "+ Analyze Deal" button at the top right.
+- To view deal history: Go to the Analyst section. All analyzed deals are listed in the table.
+- To change investment criteria or risk profile: Go to Settings in the left navigation.
+- To manage team members: Go to Staff in the left navigation.
+- To view or export reports: Go to the Reports section in the left navigation.
+- To view rules and compliance configuration: Go to Rules & Resources in the left navigation.
+- To manage services or inventory: Go to Services & Inventory in the left navigation.
+- To access the chat assistant: The chat panel is on the right side of the dashboard, always available.
+${(context || {}).dealContext ? `\nThe user wants to discuss this deal analysis:\n${JSON.stringify(context.dealContext)}` : ""}`,
               messages,
             });
 
@@ -1722,7 +1763,22 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
               messages: [
                 {
                   role: "system",
-                  content: "You are a helpful assistant for TitleApp, a platform that helps people keep track of important records (car titles, home documents, pet records, student transcripts, etc.). Be concise, friendly, and focus on helping users understand how to organize and protect their important documents."
+                  content: `You are TitleApp AI, a business intelligence platform. Be concise and professional.
+
+Formatting rules — follow these strictly:
+- Never use emojis in your responses.
+- Never use markdown formatting such as asterisks, bold, italic, or headers.
+- Never use bullet points or numbered lists unless the user explicitly asks for a list.
+- Write in complete, clean sentences. Use plain text only.
+- Keep your tone warm but professional — direct, calm, no hype.
+
+Platform navigation — when users ask how to do things, give them accurate directions:
+- To analyze a new deal: Go to the Analyst section in the left navigation, then click the "+ Analyze Deal" button at the top right.
+- To view deal history: Go to the Analyst section. All analyzed deals are listed in the table.
+- To change investment criteria or risk profile: Go to Settings in the left navigation.
+- To manage team members: Go to Staff in the left navigation.
+- To view or export reports: Go to the Reports section in the left navigation.
+- To access the chat assistant: The chat panel is on the right side of the dashboard, always available.`
                 },
                 ...messages
               ],

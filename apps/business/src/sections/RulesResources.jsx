@@ -15,6 +15,13 @@ export default function RulesResources() {
     rules: "",
     enabled: true,
   });
+  const [showAddRuleModal, setShowAddRuleModal] = useState(false);
+  const [showAddSopModal, setShowAddSopModal] = useState(false);
+  const [newRule, setNewRule] = useState({ name: "", description: "", condition: "", action: "" });
+  const [sopFile, setSopFile] = useState(null);
+  const [sopName, setSopName] = useState("");
+  const [customRules, setCustomRules] = useState([]);
+  const [sopDocs, setSopDocs] = useState([]);
 
   const vertical = localStorage.getItem("VERTICAL") || "auto";
   const jurisdiction = localStorage.getItem("JURISDICTION") || "IL";
@@ -90,9 +97,21 @@ export default function RulesResources() {
           <h1 className="h1">Rules & Resources</h1>
           <p className="subtle">Configure RAAS workflows for your vertical and jurisdiction</p>
         </div>
-        <button className="iconBtn" onClick={() => alert("Create new workflow...")}>
-          + Add Workflow
-        </button>
+        <div style={{ display: "flex", gap: "8px" }}>
+          <button
+            className="iconBtn"
+            onClick={() => setShowAddRuleModal(true)}
+            style={{ background: "var(--accent)", color: "white", borderColor: "var(--accent)" }}
+          >
+            + Add Rule
+          </button>
+          <button
+            className="iconBtn"
+            onClick={() => setShowAddSopModal(true)}
+          >
+            + Add SOP
+          </button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -142,6 +161,60 @@ export default function RulesResources() {
         </div>
       </div>
 
+      {/* Custom Rules */}
+      {customRules.length > 0 && (
+        <div className="card" style={{ marginBottom: "16px" }}>
+          <div className="cardHeader">
+            <div className="cardTitle">Custom Rules ({customRules.length})</div>
+          </div>
+          <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "8px" }}>
+            {customRules.map((rule, i) => (
+              <div key={i} style={{ padding: "12px", background: "#f8fafc", borderRadius: "8px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: "14px" }}>{rule.name}</div>
+                  {rule.description && <div style={{ fontSize: "13px", color: "var(--textMuted)", marginTop: "2px" }}>{rule.description}</div>}
+                  {rule.condition && <div style={{ fontSize: "12px", color: "#7c3aed", marginTop: "4px" }}>When: {rule.condition}</div>}
+                  {rule.action && <div style={{ fontSize: "12px", color: "#059669", marginTop: "2px" }}>Then: {rule.action}</div>}
+                </div>
+                <button
+                  className="iconBtn"
+                  onClick={() => setCustomRules(customRules.filter((_, idx) => idx !== i))}
+                  style={{ fontSize: "12px", padding: "4px 8px", color: "var(--danger)", borderColor: "var(--danger)" }}
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* SOP Documents */}
+      {sopDocs.length > 0 && (
+        <div className="card" style={{ marginBottom: "16px" }}>
+          <div className="cardHeader">
+            <div className="cardTitle">SOP Documents ({sopDocs.length})</div>
+          </div>
+          <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "8px" }}>
+            {sopDocs.map((sop, i) => (
+              <div key={i} style={{ padding: "12px", background: "#f8fafc", borderRadius: "8px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: "14px" }}>{sop.name}</div>
+                  <div style={{ fontSize: "12px", color: "var(--textMuted)" }}>{sop.fileName} ({(sop.fileSize / 1024).toFixed(1)} KB)</div>
+                </div>
+                <button
+                  className="iconBtn"
+                  onClick={() => setSopDocs(sopDocs.filter((_, idx) => idx !== i))}
+                  style={{ fontSize: "12px", padding: "4px 8px", color: "var(--danger)", borderColor: "var(--danger)" }}
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Loading */}
       {loading && (
         <div className="card">
@@ -157,13 +230,21 @@ export default function RulesResources() {
             <div style={{ fontSize: "14px", color: "var(--textMuted)", marginBottom: "16px", maxWidth: "400px", margin: "0 auto 16px" }}>
               Workflows define the rules your AI assistant follows. They are configured per vertical and jurisdiction. Create your first workflow or ask the AI assistant to set one up for you.
             </div>
-            <button
-              className="iconBtn"
-              onClick={() => alert("Create new workflow...")}
-              style={{ background: "var(--accent)", color: "white", borderColor: "var(--accent)" }}
-            >
-              + Create First Workflow
-            </button>
+            <div style={{ display: "flex", gap: "8px", justifyContent: "center" }}>
+              <button
+                className="iconBtn"
+                onClick={() => setShowAddRuleModal(true)}
+                style={{ background: "var(--accent)", color: "white", borderColor: "var(--accent)" }}
+              >
+                + Add Rule
+              </button>
+              <button
+                className="iconBtn"
+                onClick={() => setShowAddSopModal(true)}
+              >
+                + Add SOP Document
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -353,6 +434,118 @@ export default function RulesResources() {
             <div style={{ fontSize: "13px", color: "var(--textMuted)", marginTop: "4px" }}>
               Only enabled workflows will execute
             </div>
+          </div>
+        </div>
+      </FormModal>
+
+      {/* Add Rule Modal */}
+      <FormModal
+        isOpen={showAddRuleModal}
+        onClose={() => { setShowAddRuleModal(false); setNewRule({ name: "", description: "", condition: "", action: "" }); }}
+        title="Add Custom Rule"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (!newRule.name.trim()) return;
+          setCustomRules([...customRules, { ...newRule }]);
+          setNewRule({ name: "", description: "", condition: "", action: "" });
+          setShowAddRuleModal(false);
+        }}
+        submitLabel="Add Rule"
+      >
+        <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+          <div>
+            <label style={{ display: "block", marginBottom: "6px", fontWeight: 600 }}>Rule Name *</label>
+            <input
+              type="text"
+              value={newRule.name}
+              onChange={(e) => setNewRule({ ...newRule, name: e.target.value })}
+              placeholder="e.g., Minimum Deal Size Check"
+              style={{ width: "100%", padding: "10px", borderRadius: "12px", border: "1px solid var(--line)" }}
+              required
+            />
+          </div>
+          <div>
+            <label style={{ display: "block", marginBottom: "6px", fontWeight: 600 }}>Description</label>
+            <input
+              type="text"
+              value={newRule.description}
+              onChange={(e) => setNewRule({ ...newRule, description: e.target.value })}
+              placeholder="What does this rule do?"
+              style={{ width: "100%", padding: "10px", borderRadius: "12px", border: "1px solid var(--line)" }}
+            />
+          </div>
+          <div>
+            <label style={{ display: "block", marginBottom: "6px", fontWeight: 600 }}>Condition (when)</label>
+            <textarea
+              value={newRule.condition}
+              onChange={(e) => setNewRule({ ...newRule, condition: e.target.value })}
+              placeholder="e.g., Deal ask amount is below $500,000"
+              rows={2}
+              style={{ width: "100%", padding: "10px", borderRadius: "12px", border: "1px solid var(--line)", fontFamily: "inherit" }}
+            />
+          </div>
+          <div>
+            <label style={{ display: "block", marginBottom: "6px", fontWeight: 600 }}>Action (then)</label>
+            <textarea
+              value={newRule.action}
+              onChange={(e) => setNewRule({ ...newRule, action: e.target.value })}
+              placeholder="e.g., Auto-pass and notify user"
+              rows={2}
+              style={{ width: "100%", padding: "10px", borderRadius: "12px", border: "1px solid var(--line)", fontFamily: "inherit" }}
+            />
+          </div>
+        </div>
+      </FormModal>
+
+      {/* Add SOP Modal */}
+      <FormModal
+        isOpen={showAddSopModal}
+        onClose={() => { setShowAddSopModal(false); setSopFile(null); setSopName(""); }}
+        title="Add SOP Documentation"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (!sopFile) return;
+          setSopDocs([...sopDocs, { name: sopName.trim() || sopFile.name, fileName: sopFile.name, fileSize: sopFile.size }]);
+          setSopFile(null);
+          setSopName("");
+          setShowAddSopModal(false);
+        }}
+        submitLabel="Upload SOP"
+      >
+        <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+          <div>
+            <label style={{ display: "block", marginBottom: "6px", fontWeight: 600 }}>Document Name</label>
+            <input
+              type="text"
+              value={sopName}
+              onChange={(e) => setSopName(e.target.value)}
+              placeholder="e.g., Deal Screening SOP"
+              style={{ width: "100%", padding: "10px", borderRadius: "12px", border: "1px solid var(--line)" }}
+            />
+          </div>
+          <div>
+            <label style={{ display: "block", marginBottom: "6px", fontWeight: 600 }}>Upload Document *</label>
+            <input
+              type="file"
+              accept=".pdf,.docx,.doc,.txt,.xlsx,.xls,.csv"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  setSopFile(file);
+                  if (!sopName.trim()) setSopName(file.name.replace(/\.[^.]+$/, ""));
+                }
+              }}
+              style={{ width: "100%", padding: "10px", borderRadius: "12px", border: "1px solid var(--line)" }}
+              required
+            />
+            {sopFile && (
+              <div style={{ marginTop: "8px", fontSize: "13px", color: "var(--textMuted)" }}>
+                {sopFile.name} ({(sopFile.size / 1024).toFixed(1)} KB)
+              </div>
+            )}
+          </div>
+          <div style={{ padding: "12px", background: "#f8f4ff", borderRadius: "8px", fontSize: "13px", color: "#6b7280" }}>
+            SOP documents feed into your RAAS engine. The AI assistant will reference these when handling your business operations.
           </div>
         </div>
       </FormModal>
