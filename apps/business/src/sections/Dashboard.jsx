@@ -203,7 +203,7 @@ export default function Dashboard() {
         <div className="cardHeader">
           <div>
             <div className="cardTitle">Recent Activity</div>
-            <div className="cardSub">Latest business actions and AI worker activity</div>
+            <div className="cardSub">{vertical === "consumer" ? "Your recent activity" : "Latest business actions and AI worker activity"}</div>
           </div>
           <button className="iconBtn">View All</button>
         </div>
@@ -234,39 +234,41 @@ export default function Dashboard() {
           </table>
         </div>
       </div>
-      {/* Value Tracker */}
-      <div
-        className="card"
-        style={{
-          marginTop: "14px",
-          borderLeft: "4px solid var(--accent2)",
-        }}
-      >
-        <div className="cardHeader">
-          <div>
-            <div className="cardTitle">Value Tracker</div>
-            <div className="cardSub">AI-powered ROI this month</div>
+      {/* Value Tracker — business only */}
+      {vertical !== "consumer" && (
+        <div
+          className="card"
+          style={{
+            marginTop: "14px",
+            borderLeft: "4px solid var(--accent2)",
+          }}
+        >
+          <div className="cardHeader">
+            <div>
+              <div className="cardTitle">Value Tracker</div>
+              <div className="cardSub">AI-powered ROI this month</div>
+            </div>
+          </div>
+          <div style={{ padding: "16px 20px", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "16px" }}>
+            <div>
+              <div style={{ fontSize: "12px", color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Actions</div>
+              <div style={{ fontSize: "24px", fontWeight: 900, marginTop: "4px" }}>{valueTracker.actions}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: "12px", color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Hours Saved</div>
+              <div style={{ fontSize: "24px", fontWeight: 900, marginTop: "4px" }}>{valueTracker.hoursSaved.toFixed(1)}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: "12px", color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Value at $35/hr</div>
+              <div style={{ fontSize: "24px", fontWeight: 900, marginTop: "4px", color: "var(--accent2)" }}>${valueTracker.valueSaved.toLocaleString()}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: "12px", color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Your Cost</div>
+              <div style={{ fontSize: "24px", fontWeight: 900, marginTop: "4px" }}>$9<span style={{ fontSize: "14px", fontWeight: 400, color: "var(--muted)" }}>/user/mo</span></div>
+            </div>
           </div>
         </div>
-        <div style={{ padding: "16px 20px", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "16px" }}>
-          <div>
-            <div style={{ fontSize: "12px", color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Actions</div>
-            <div style={{ fontSize: "24px", fontWeight: 900, marginTop: "4px" }}>{valueTracker.actions}</div>
-          </div>
-          <div>
-            <div style={{ fontSize: "12px", color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Hours Saved</div>
-            <div style={{ fontSize: "24px", fontWeight: 900, marginTop: "4px" }}>{valueTracker.hoursSaved.toFixed(1)}</div>
-          </div>
-          <div>
-            <div style={{ fontSize: "12px", color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Value at $35/hr</div>
-            <div style={{ fontSize: "24px", fontWeight: 900, marginTop: "4px", color: "var(--accent2)" }}>${valueTracker.valueSaved.toLocaleString()}</div>
-          </div>
-          <div>
-            <div style={{ fontSize: "12px", color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Your Cost</div>
-            <div style={{ fontSize: "24px", fontWeight: 900, marginTop: "4px" }}>$9<span style={{ fontSize: "14px", fontWeight: 400, color: "var(--muted)" }}>/user/mo</span></div>
-          </div>
-        </div>
-      </div>
+      )}
     </div>
   );
 }

@@ -20,6 +20,7 @@ import MyVehicles from "./sections/MyVehicles";
 import MyProperties from "./sections/MyProperties";
 import MyDocuments from "./sections/MyDocuments";
 import MyLogbook from "./sections/MyLogbook";
+import MyCertifications from "./sections/MyCertifications";
 import { auth } from "./firebase";
 import { signInWithCustomToken } from "firebase/auth";
 
@@ -67,6 +68,8 @@ function AdminShell() {
         return <MyDocuments />;
       case "my-logbook":
         return <MyLogbook />;
+      case "my-certifications":
+        return <MyCertifications />;
       default:
         return <Dashboard />;
     }
@@ -170,6 +173,9 @@ export default function App() {
     if (tenant) {
       if (tenant.vertical && tenant.vertical !== "GLOBAL") {
         localStorage.setItem("VERTICAL", tenant.vertical.toLowerCase());
+      } else {
+        // GLOBAL or personal tenant — use consumer nav
+        localStorage.setItem("VERTICAL", "consumer");
       }
       if (tenant.jurisdiction && tenant.jurisdiction !== "GLOBAL") {
         localStorage.setItem("JURISDICTION", tenant.jurisdiction);
@@ -180,6 +186,10 @@ export default function App() {
     }
     setShowAccountPicker(false);
     setNeedsOnboarding(false);
+    // Update URL from /login to /dashboard
+    if (window.location.pathname === "/login" || window.location.pathname === "/") {
+      window.history.replaceState({}, "", "/dashboard");
+    }
   }
 
   useEffect(() => {

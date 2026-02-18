@@ -42,12 +42,15 @@ async function httpJson(
   const url = new URL(apiBase() + "/api");
   url.searchParams.set("path", backendPath);
 
+  const tenantId = localStorage.getItem("TENANT_ID") || "public";
+
   const res = await fetch(url.toString(), {
     method,
     headers: {
       "Content-Type": "application/json",
       Authorization: "Bearer " + getIdToken(),
       "X-Session-Id": sessionId,
+      "X-Tenant-Id": tenantId,
       "X-Vertical": opts.vertical,
       "X-Jurisdiction": opts.jurisdiction,
     },

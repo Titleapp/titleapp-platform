@@ -8,6 +8,8 @@ const NAV_BY_VERTICAL = {
     { id: "my-properties", label: "My Properties" },
     { id: "my-documents", label: "My Documents" },
     { id: "my-logbook", label: "My Logbook" },
+    { id: "my-certifications", label: "My Certifications" },
+    { id: "ai-chats", label: "My AI & GPTs" },
     { id: "settings", label: "Settings" },
   ],
   analyst: [
