@@ -150,12 +150,16 @@ export default function MyCertifications() {
               const badgeColor = expired ? "#dc2626" : expiring ? "#f59e0b" : "#d97706";
               return (
                 <div key={d.id} className="card" style={{ position: "relative", overflow: "hidden" }}>
-                  {/* Icon header */}
-                  <div style={{ height: "100px", background: `linear-gradient(135deg, ${badgeColor}12 0%, ${badgeColor}06 100%)`, display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke={badgeColor} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.6 }}>
-                      <circle cx="12" cy="8" r="7"></circle>
-                      <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline>
-                    </svg>
+                  {/* Icon header / image */}
+                  <div style={{ height: "100px", background: d.imageUrl ? "none" : `linear-gradient(135deg, ${badgeColor}12 0%, ${badgeColor}06 100%)`, display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
+                    {d.imageUrl ? (
+                      <img src={d.imageUrl} alt={d.metadata?.title || "Certification"} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    ) : (
+                      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke={badgeColor} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.6 }}>
+                        <circle cx="12" cy="8" r="7"></circle>
+                        <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline>
+                      </svg>
+                    )}
                     <button
                       onClick={() => handleDelete(d.id)}
                       style={{ position: "absolute", top: "8px", right: "8px", background: "white", border: "1px solid #e5e7eb", borderRadius: "8px", width: "28px", height: "28px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#94a3b8", fontSize: "14px" }}

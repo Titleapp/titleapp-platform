@@ -25,13 +25,19 @@ function formatDate(ts) {
 }
 
 function getAssetValue(item) {
-  return Number(item.metadata?.estimatedValue || item.metadata?.value || item.estimatedValue || item.value || item.price || 0);
+  const m = item.metadata || {};
+  return Number(m.estimatedValue) || Number(m.value) || Number(m.purchasePrice) || Number(item.estimatedValue) || Number(item.value) || Number(item.price) || 0;
 }
 
 function getAssetTitle(item) {
-  return item.metadata?.title || item.metadata?.credentialName || item.metadata?.make
-    ? `${item.metadata?.year || ""} ${item.metadata?.make || ""} ${item.metadata?.model || ""}`.trim()
-    : item.metadata?.address || "Untitled";
+  const m = item.metadata || {};
+  if (m.title) return m.title;
+  if (m.make) return `${m.year || ""} ${m.make} ${m.model || ""}`.trim();
+  if (m.credentialName) return m.credentialName;
+  if (m.documentName) return m.documentName;
+  if (m.address) return m.address;
+  if (m.school) return m.school;
+  return "Untitled";
 }
 
 // ── Consumer Vault Dashboard ────────────────────────────────────

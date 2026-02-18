@@ -457,7 +457,7 @@ body{
 }
 .chatPanelInput textarea{
   flex:1;
-  padding:12px 14px;
+  padding:14px 16px;
   font-size:15px;
   font-family:inherit;
   color:var(--text);
@@ -468,7 +468,9 @@ body{
   outline:none;
   transition:border-color 0.15s ease;
   line-height:1.5;
+  min-height:72px;
   max-height:160px;
+  box-sizing:border-box;
 }
 .chatPanelInput textarea:focus{
   border-color:var(--accent);

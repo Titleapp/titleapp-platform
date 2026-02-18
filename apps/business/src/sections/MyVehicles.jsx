@@ -168,13 +168,17 @@ export default function MyVehicles() {
               const isLight = ["white", "beige", "silver", "yellow"].includes((v.metadata?.color || "").toLowerCase());
               return (
                 <div key={v.id} className="card" style={{ position: "relative", overflow: "hidden" }}>
-                  {/* Icon header */}
-                  <div style={{ height: "100px", background: `linear-gradient(135deg, ${tint}18 0%, ${tint}08 100%)`, display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke={isLight ? "#64748b" : tint} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.7 }}>
-                      <path d="M5 17h14v-6l-2-5H7L5 11v6z"></path>
-                      <circle cx="7.5" cy="17.5" r="1.5"></circle>
-                      <circle cx="16.5" cy="17.5" r="1.5"></circle>
-                    </svg>
+                  {/* Icon header / image */}
+                  <div style={{ height: "100px", background: v.imageUrl ? "none" : `linear-gradient(135deg, ${tint}18 0%, ${tint}08 100%)`, display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
+                    {v.imageUrl ? (
+                      <img src={v.imageUrl} alt={v.metadata?.title || "Vehicle"} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    ) : (
+                      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke={isLight ? "#64748b" : tint} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.7 }}>
+                        <path d="M5 17h14v-6l-2-5H7L5 11v6z"></path>
+                        <circle cx="7.5" cy="17.5" r="1.5"></circle>
+                        <circle cx="16.5" cy="17.5" r="1.5"></circle>
+                      </svg>
+                    )}
                     <button
                       onClick={() => handleDelete(v.id)}
                       style={{ position: "absolute", top: "8px", right: "8px", background: "white", border: "1px solid #e5e7eb", borderRadius: "8px", width: "28px", height: "28px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#94a3b8", fontSize: "14px" }}

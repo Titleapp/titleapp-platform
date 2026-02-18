@@ -1931,9 +1931,10 @@ Platform navigation — when users ask how to do things, give them accurate dire
               userId: ctx.userId,
               type: recordData.type || "document",
               metadata: recordData.metadata || {},
+              imageUrl: uploadedFileUrl || null,
               fileIds: validFileIds,
               blockchainProof: null,
-              logbookCount: 1,
+              logbookCount: uploadedFileUrl ? 2 : 1,
               createdAt: nowServerTs(),
             });
 
@@ -1944,6 +1945,7 @@ Platform navigation — when users ask how to do things, give them accurate dire
               type: recordData.type || "document",
               status: "active",
               metadata: recordData.metadata || {},
+              imageUrl: uploadedFileUrl || null,
               price: 0,
               cost: 0,
               dtcId: dtcRef.id,
@@ -1962,6 +1964,19 @@ Platform navigation — when users ask how to do things, give them accurate dire
               files: validFileIds,
               createdAt: nowServerTs(),
             });
+
+            // If file was uploaded, create a second logbook entry for the attachment
+            if (uploadedFileUrl && uploadedFileName) {
+              await db.collection("logbookEntries").add({
+                dtcId: dtcRef.id,
+                userId: ctx.userId,
+                dtcTitle,
+                entryType: "update",
+                data: { description: `Photo attached: ${uploadedFileName}`, fileUrl: uploadedFileUrl },
+                files: validFileIds,
+                createdAt: nowServerTs(),
+              });
+            }
 
             structuredData = {
               type: "record_created",

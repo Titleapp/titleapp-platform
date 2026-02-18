@@ -151,12 +151,16 @@ export default function MyProperties() {
               const ownerColor = getOwnershipColor(p.metadata?.ownershipType);
               return (
                 <div key={p.id} className="card" style={{ position: "relative", overflow: "hidden" }}>
-                  {/* Icon header */}
-                  <div style={{ height: "100px", background: `linear-gradient(135deg, ${ownerColor}12 0%, ${ownerColor}06 100%)`, display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke={ownerColor} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.6 }}>
-                      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-                      <polyline points="9 22 9 12 15 12 15 22"></polyline>
-                    </svg>
+                  {/* Icon header / image */}
+                  <div style={{ height: "100px", background: p.imageUrl ? "none" : `linear-gradient(135deg, ${ownerColor}12 0%, ${ownerColor}06 100%)`, display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
+                    {p.imageUrl ? (
+                      <img src={p.imageUrl} alt={p.metadata?.title || "Property"} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    ) : (
+                      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke={ownerColor} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.6 }}>
+                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                        <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                      </svg>
+                    )}
                     <button
                       onClick={() => handleDelete(p.id)}
                       style={{ position: "absolute", top: "8px", right: "8px", background: "white", border: "1px solid #e5e7eb", borderRadius: "8px", width: "28px", height: "28px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#94a3b8", fontSize: "14px" }}

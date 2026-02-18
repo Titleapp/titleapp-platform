@@ -501,9 +501,9 @@ export default function ChatPanel({ currentSection, onboardingStep }) {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Ask me anything..."
-            rows={1}
+            rows={3}
             disabled={isSending || fileUploading}
-            style={{ minHeight: '48px' }}
+            style={{ minHeight: '72px' }}
           />
           <button
             type="submit"

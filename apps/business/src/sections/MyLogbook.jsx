@@ -239,17 +239,15 @@ export default function MyLogbook() {
                             </button>
                           )}
                         </div>
-                        <div>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                           <button
                             type="button"
-                            disabled
-                            className="iconBtn"
-                            style={{ fontSize: "12px", opacity: 0.4, cursor: "not-allowed" }}
-                            title="E-signature integration coming soon"
+                            onClick={() => alert("DocuSign / e-signature integration coming soon. This will allow third parties to verify logbook entries.")}
+                            style={{ padding: "8px 16px", background: "#7c3aed", color: "white", border: "none", borderRadius: "8px", cursor: "pointer", fontSize: "13px", fontWeight: 600 }}
                           >
                             Request Signature
                           </button>
-                          <span style={{ fontSize: "11px", color: "#94a3b8", marginLeft: "8px" }}>DocuSign / e-signature coming soon</span>
+                          <span style={{ fontSize: "11px", color: "#94a3b8" }}>DocuSign / e-signature -- coming soon</span>
                         </div>
                         <div style={{ display: "flex", gap: "8px" }}>
                           <button

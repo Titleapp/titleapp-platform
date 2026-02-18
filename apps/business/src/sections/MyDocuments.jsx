@@ -159,9 +159,11 @@ export default function MyDocuments() {
               const cfg = getCategoryConfig(cat);
               return (
                 <div key={d.id} className="card" style={{ position: "relative", overflow: "hidden" }}>
-                  {/* Icon header */}
-                  <div style={{ height: "100px", background: `linear-gradient(135deg, ${cfg.color}12 0%, ${cfg.color}06 100%)`, display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
-                    {cfg.icon(cfg.color)}
+                  {/* Icon header / image */}
+                  <div style={{ height: "100px", background: d.imageUrl ? "none" : `linear-gradient(135deg, ${cfg.color}12 0%, ${cfg.color}06 100%)`, display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
+                    {d.imageUrl ? (
+                      <img src={d.imageUrl} alt={d.metadata?.title || "Item"} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    ) : cfg.icon(cfg.color)}
                     <button
                       onClick={() => handleDelete(d.id)}
                       style={{ position: "absolute", top: "8px", right: "8px", background: "white", border: "1px solid #e5e7eb", borderRadius: "8px", width: "28px", height: "28px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#94a3b8", fontSize: "14px" }}
