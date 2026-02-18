@@ -390,15 +390,21 @@ export default function Dashboard() {
       setValueTracker({ actions: actionsCount, hoursSaved, valueSaved });
 
       if (vertical === "analyst") {
-        // Get analyzed deals from API
-        const analyzedResult = await api.getAnalyzedDeals({ vertical, jurisdiction });
-        const analyzedDeals = analyzedResult.deals || [];
-
-        // Compute dealflow value: COS-found opportunities + analyzed deals
+        // Compute opportunity values (always available, no API needed)
         const oppValueM = opportunities.reduce((s, o) => {
           const val = parseFloat(o.value.replace(/[$M,]/g, ""));
           return s + (isNaN(val) ? 0 : val);
         }, 0);
+
+        // Get analyzed deals from API (may fail gracefully)
+        let analyzedDeals = [];
+        try {
+          const analyzedResult = await api.getAnalyzedDeals({ vertical, jurisdiction });
+          analyzedDeals = analyzedResult.deals || [];
+        } catch (err) {
+          console.warn("Could not load analyzed deals:", err.message);
+        }
+
         const analyzedValueM = analyzedDeals.reduce((s, d) => {
           const raw = (d.dealInput?.askAmount || "").replace(/[$,]/g, "");
           const val = parseFloat(raw);
@@ -418,6 +424,10 @@ export default function Dashboard() {
           aiConversations: { value: dealsAnalyzedCount.toString(), trend: "" },
           customers: { value: avgRisk > 0 ? avgRisk.toString() : "0", trend: "" },
         });
+
+        // Value tracker: 2 hours saved per deal reviewed
+        const analystHours = dealsInPipeline * 2;
+        setValueTracker({ actions: dealsInPipeline, hoursSaved: analystHours, valueSaved: analystHours * 35 });
       } else if (vertical === "property-mgmt") {
         const inventoryResult = await api.getInventory({ vertical, jurisdiction });
         const properties = inventoryResult.inventory || [];
@@ -529,6 +539,42 @@ export default function Dashboard() {
               </div>
             ))
           )}
+        </div>
+      )}
+
+      {/* Value Tracker -- business only */}
+      {!isConsumer && (
+        <div
+          className="card"
+          style={{
+            marginTop: "14px",
+            borderLeft: "4px solid var(--accent2)",
+          }}
+        >
+          <div className="cardHeader">
+            <div>
+              <div className="cardTitle">Value Tracker</div>
+              <div className="cardSub">AI-powered ROI this month</div>
+            </div>
+          </div>
+          <div style={{ padding: "16px 20px", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "16px" }}>
+            <div>
+              <div style={{ fontSize: "12px", color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>{isAnalyst ? "Deals Reviewed" : "Actions"}</div>
+              <div style={{ fontSize: "24px", fontWeight: 900, marginTop: "4px" }}>{valueTracker.actions}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: "12px", color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Hours Saved</div>
+              <div style={{ fontSize: "24px", fontWeight: 900, marginTop: "4px" }}>{valueTracker.hoursSaved.toFixed(1)}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: "12px", color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Value at $35/hr</div>
+              <div style={{ fontSize: "24px", fontWeight: 900, marginTop: "4px", color: "var(--accent2)" }}>${valueTracker.valueSaved.toLocaleString()}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: "12px", color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Your Cost</div>
+              <div style={{ fontSize: "24px", fontWeight: 900, marginTop: "4px" }}>$9<span style={{ fontSize: "14px", fontWeight: 400, color: "var(--muted)" }}>/user/mo</span></div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -664,41 +710,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Value Tracker -- business only */}
-      {!isConsumer && (
-        <div
-          className="card"
-          style={{
-            marginTop: "14px",
-            borderLeft: "4px solid var(--accent2)",
-          }}
-        >
-          <div className="cardHeader">
-            <div>
-              <div className="cardTitle">Value Tracker</div>
-              <div className="cardSub">AI-powered ROI this month</div>
-            </div>
-          </div>
-          <div style={{ padding: "16px 20px", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "16px" }}>
-            <div>
-              <div style={{ fontSize: "12px", color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Actions</div>
-              <div style={{ fontSize: "24px", fontWeight: 900, marginTop: "4px" }}>{valueTracker.actions}</div>
-            </div>
-            <div>
-              <div style={{ fontSize: "12px", color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Hours Saved</div>
-              <div style={{ fontSize: "24px", fontWeight: 900, marginTop: "4px" }}>{valueTracker.hoursSaved.toFixed(1)}</div>
-            </div>
-            <div>
-              <div style={{ fontSize: "12px", color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Value at $35/hr</div>
-              <div style={{ fontSize: "24px", fontWeight: 900, marginTop: "4px", color: "var(--accent2)" }}>${valueTracker.valueSaved.toLocaleString()}</div>
-            </div>
-            <div>
-              <div style={{ fontSize: "12px", color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Your Cost</div>
-              <div style={{ fontSize: "24px", fontWeight: 900, marginTop: "4px" }}>$9<span style={{ fontSize: "14px", fontWeight: 400, color: "var(--muted)" }}>/user/mo</span></div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

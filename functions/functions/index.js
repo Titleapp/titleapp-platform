@@ -1733,6 +1733,30 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
             }
             messages.push({ role: "user", content: userContent });
 
+            // For analyst vertical, fetch deal data to enrich the system prompt
+            let analystDealContext = "";
+            if (ctx.vertical === "analyst") {
+              try {
+                const dealsSnap = await db.collection("analyzedDeals")
+                  .where("tenantId", "==", ctx.tenantId)
+                  .orderBy("createdAt", "desc")
+                  .limit(10)
+                  .get();
+                if (!dealsSnap.empty) {
+                  const dealSummaries = dealsSnap.docs.map(doc => {
+                    const d = doc.data();
+                    const score = d.analysis?.riskScore || "N/A";
+                    const rec = d.analysis?.recommendation || "PENDING";
+                    const name = d.dealInput?.companyName || (d.dealInput?.summary || "Unknown").substring(0, 80);
+                    return `${name} -- Risk: ${score}/100, Rec: ${rec}`;
+                  });
+                  analystDealContext = `\n\nThe user's current analyzed deal pipeline (${dealsSnap.size} deals):\n${dealSummaries.join("\n")}\n\nRefer to these deals by name when the user asks about their pipeline, portfolio, or specific deals.`;
+                }
+              } catch (dealCtxErr) {
+                console.warn("Could not load analyst deals for context:", dealCtxErr.message);
+              }
+            }
+
             // Call Claude API
             const anthropic = getAnthropic();
             const isPersonalVault = (ctx.vertical || "").toLowerCase() === "consumer" || (ctx.vertical || "").toUpperCase() === "GLOBAL";
@@ -1828,7 +1852,7 @@ Platform navigation — when users ask how to do things, give them accurate dire
 - To view rules and compliance configuration: Go to Rules & Resources in the left navigation.
 - To manage services or inventory: Go to Services & Inventory in the left navigation.
 - To access the chat assistant: The chat panel is on the right side of the dashboard, always available.
-${(context || {}).dealContext ? `\nThe user wants to discuss this deal analysis:\n${JSON.stringify(context.dealContext)}` : ""}`;
+${(context || {}).dealContext ? `\nThe user wants to discuss this deal analysis:\n${JSON.stringify(context.dealContext)}` : ""}${analystDealContext}`;
 
             const response = await anthropic.messages.create({
               model: "claude-sonnet-4-5-20250929",

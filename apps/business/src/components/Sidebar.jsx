@@ -17,7 +17,7 @@ const NAV_BY_VERTICAL = {
     { id: "dashboard", label: "Dashboard" },
     { id: "analyst", label: "Analyst" },
     { id: "rules-resources", label: "Rules & Resources" },
-    { id: "inventory", label: "Documents" },
+    { id: "inventory", label: "Services & Fees" },
     { id: "staff", label: "Team" },
     { id: "ai-chats", label: "AI & GPTs" },
     { id: "reports", label: "Reports" },
