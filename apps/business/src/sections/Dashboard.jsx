@@ -14,6 +14,50 @@ export default function Dashboard() {
   const [valueTracker, setValueTracker] = useState({ actions: 0, hoursSaved: 0, valueSaved: 0 });
 
   const vertical = localStorage.getItem("VERTICAL") || "auto";
+  const isAnalyst = vertical.toLowerCase() === "analyst";
+
+  const [opportunities, setOpportunities] = useState([
+    {
+      id: 1,
+      name: "Parkview Apartments — 48 Units",
+      location: "Phoenix, AZ",
+      type: "Multifamily",
+      reason: "CMBS loan matures Aug 2026. Matches your multifamily criteria.",
+      value: "$8.2M",
+      risk: 62,
+      source: "Public Records — Maturing CMBS"
+    },
+    {
+      id: 2,
+      name: "Desert Ridge Office Plaza",
+      location: "Scottsdale, AZ",
+      type: "Office",
+      reason: "Listed by CBRE, below market ask for submarket.",
+      value: "$12.5M",
+      risk: 38,
+      source: "Broker Listing"
+    },
+    {
+      id: 3,
+      name: "Cactus Lane Industrial",
+      location: "Mesa, AZ",
+      type: "Industrial",
+      reason: "Tax lien filed. Potential distressed acquisition.",
+      value: "$3.1M",
+      risk: 78,
+      source: "Public Records — Tax Delinquency"
+    },
+    {
+      id: 4,
+      name: "Sunrise Senior Living Portfolio",
+      location: "Tempe, AZ",
+      type: "Senior Housing",
+      reason: "Notice of Default filed Jan 2026. Lender may accept discount.",
+      value: "$15M",
+      risk: 55,
+      source: "Public Records — Notice of Default"
+    }
+  ]);
   const jurisdiction = localStorage.getItem("JURISDICTION") || "IL";
 
   useEffect(() => {
@@ -197,6 +241,99 @@ export default function Dashboard() {
           ))
         )}
       </div>
+
+      {/* Opportunities — Analyst only */}
+      {isAnalyst && (
+        <div style={{ marginTop: "14px" }}>
+          <div style={{ marginBottom: "12px" }}>
+            <h2 style={{ fontSize: "18px", fontWeight: 700, margin: 0 }}>Opportunities Found by Your Chief of Staff</h2>
+            <p style={{ fontSize: "13px", color: "var(--muted)", margin: "4px 0 0" }}>
+              {opportunities.length > 0
+                ? `${opportunities.length} opportunit${opportunities.length === 1 ? "y" : "ies"} matching your investment criteria`
+                : ""}
+            </p>
+          </div>
+          {opportunities.length > 0 ? (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
+              {opportunities.map((deal) => {
+                const riskLabel = deal.risk < 40 ? "Low Risk" : deal.risk <= 65 ? "Medium Risk" : "High Risk";
+                const riskBg = deal.risk < 40 ? "#dcfce7" : deal.risk <= 65 ? "#fef3c7" : "#fee2e2";
+                const riskColor = deal.risk < 40 ? "#16a34a" : deal.risk <= 65 ? "#d97706" : "#dc2626";
+                return (
+                  <div key={deal.id} className="card" style={{ padding: "20px" }}>
+                    <div style={{ marginBottom: "10px" }}>
+                      <div style={{ fontSize: "16px", fontWeight: 700 }}>{deal.name}</div>
+                      <div style={{ fontSize: "13px", color: "var(--muted)" }}>{deal.location}</div>
+                    </div>
+                    <span style={{
+                      display: "inline-block",
+                      fontSize: "11px",
+                      fontWeight: 600,
+                      padding: "2px 8px",
+                      borderRadius: "9999px",
+                      background: "var(--bg2, #f1f5f9)",
+                      color: "var(--fg, #334155)",
+                      marginBottom: "10px",
+                      letterSpacing: "0.02em",
+                      textTransform: "uppercase",
+                    }}>{deal.type}</span>
+                    <div style={{ fontSize: "14px", color: "var(--fg)", marginBottom: "12px", lineHeight: 1.4 }}>
+                      {deal.reason}
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
+                      <span style={{ fontSize: "18px", fontWeight: 700 }}>{deal.value}</span>
+                      <span style={{
+                        fontSize: "11px",
+                        fontWeight: 600,
+                        padding: "2px 8px",
+                        borderRadius: "9999px",
+                        background: riskBg,
+                        color: riskColor,
+                      }}>{riskLabel} ({deal.risk})</span>
+                    </div>
+                    <div style={{ fontSize: "12px", color: "var(--muted)", marginBottom: "14px" }}>{deal.source}</div>
+                    <div style={{ display: "flex", gap: "8px" }}>
+                      <button
+                        style={{
+                          flex: 1,
+                          padding: "8px 14px",
+                          fontSize: "13px",
+                          fontWeight: 600,
+                          border: "none",
+                          borderRadius: "8px",
+                          cursor: "pointer",
+                          color: "#fff",
+                          background: "linear-gradient(135deg, #7c3aed, #6d28d9)",
+                        }}
+                        onClick={() => window.dispatchEvent(new CustomEvent("ta:chatPrompt", {
+                          detail: { message: "Analyze the opportunity: " + deal.name + " in " + deal.location + ". Value: " + deal.value + ". Risk score: " + deal.risk + ". Source: " + deal.source }
+                        }))}
+                      >Review Analysis</button>
+                      <button
+                        style={{
+                          padding: "8px 14px",
+                          fontSize: "13px",
+                          fontWeight: 600,
+                          border: "1px solid var(--border, #e2e8f0)",
+                          borderRadius: "8px",
+                          cursor: "pointer",
+                          background: "transparent",
+                          color: "var(--muted)",
+                        }}
+                        onClick={() => setOpportunities(prev => prev.filter(d => d.id !== deal.id))}
+                      >Dismiss</button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="card" style={{ padding: "24px", textAlign: "center", color: "var(--muted)", fontSize: "14px" }}>
+              No new opportunities. Your Chief of Staff is scanning for matches.
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Recent Activity */}
       <div className="card">
