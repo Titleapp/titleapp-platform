@@ -37,10 +37,11 @@ const NAV_BY_VERTICAL = {
     { id: "dashboard", label: "Dashboard" },
     { id: "inventory", label: "Inventory" },
     { id: "customers", label: "Customers" },
-    { id: "appointments", label: "Appointments" },
-    { id: "staff", label: "Staff" },
-    { id: "rules-resources", label: "Rules & Resources" },
+    { id: "sales-pipeline", label: "Sales Pipeline" },
+    { id: "fi-products", label: "F&I Products" },
+    { id: "auto-service", label: "Service" },
     { id: "reports", label: "Reports" },
+    { id: "ai-chats", label: "AI & GPTs" },
     { id: "settings", label: "Settings" },
   ],
   "real-estate": [
@@ -69,6 +70,7 @@ export default function Sidebar({ currentSection, onNavigate, onClose, tenantNam
   // For personal Vault, derive first name from tenant/company name
   const companyName = tenantName || localStorage.getItem("COMPANY_NAME") || "";
   const firstName = companyName.split(" ")[0] || "";
+  const isAuto = vertical === "auto";
   const brandLabel = isPersonal && firstName
     ? `${firstName}'s Vault`
     : (tenantName || (isPersonal ? "Personal Vault" : "Business"));
@@ -101,8 +103,8 @@ export default function Sidebar({ currentSection, onNavigate, onClose, tenantNam
             style={{ width: "32px", height: "32px", borderRadius: "8px" }}
           />
           <div>
-            <div className="brandName">{isPersonal ? brandLabel : "TitleApp AI"}</div>
-            <div className="brandSub">{isPersonal ? "TitleApp Vault" : (tenantName || "Business")}</div>
+            <div className="brandName">{isPersonal ? brandLabel : isAuto ? (tenantName || "Demo Motors") : "TitleApp AI"}</div>
+            <div className="brandSub">{isPersonal ? "TitleApp Vault" : isAuto ? "TitleApp Auto" : (tenantName || "Business")}</div>
           </div>
         </div>
         <button

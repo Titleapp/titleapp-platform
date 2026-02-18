@@ -2,6 +2,190 @@ import React, { useState, useEffect } from "react";
 import FormModal from "../components/FormModal";
 import { getInventory, createInventoryItem, updateInventoryItem, deleteInventoryItem, getAnalyzedDeals } from "../api/client";
 
+const NEW_VEHICLES = [
+  { stock: "N25000", year: 2025, make: "Toyota", model: "Camry LE", trim: "LE", color: "Wind Chill Pearl", mileage: 12, price: 28400, msrp: 28400, daysOnLot: 70, status: "available" },
+  { stock: "N25001", year: 2025, make: "Toyota", model: "Camry SE", trim: "SE", color: "Midnight Black", mileage: 8, price: 30200, msrp: 30200, daysOnLot: 45, status: "available" },
+  { stock: "N25002", year: 2025, make: "Toyota", model: "Camry XSE", trim: "XSE", color: "Underground", mileage: 5, price: 32800, msrp: 32800, daysOnLot: 22, status: "available" },
+  { stock: "N25003", year: 2025, make: "Toyota", model: "Corolla LE", trim: "LE", color: "Celestite", mileage: 10, price: 23500, msrp: 23500, daysOnLot: 55, status: "available" },
+  { stock: "N25004", year: 2025, make: "Toyota", model: "Corolla SE", trim: "SE", color: "Blueprint", mileage: 6, price: 25200, msrp: 25200, daysOnLot: 30, status: "available" },
+  { stock: "N25005", year: 2025, make: "Toyota", model: "RAV4 XLE", trim: "XLE", color: "Lunar Rock", mileage: 9, price: 34200, msrp: 34200, daysOnLot: 18, status: "available" },
+  { stock: "N25006", year: 2025, make: "Toyota", model: "RAV4 XLE Premium", trim: "XLE Premium", color: "Ice Cap", mileage: 4, price: 37500, msrp: 37500, daysOnLot: 12, status: "available" },
+  { stock: "N25007", year: 2025, make: "Toyota", model: "Tacoma TRD Sport", trim: "TRD Sport", color: "Magnetic Gray", mileage: 15, price: 42300, msrp: 42300, daysOnLot: 8, status: "available" },
+  { stock: "N25008", year: 2025, make: "Toyota", model: "Highlander XLE", trim: "XLE", color: "Celestial Silver", mileage: 7, price: 42900, msrp: 42900, daysOnLot: 25, status: "available" },
+  { stock: "N25009", year: 2025, make: "Toyota", model: "Tundra SR5 CrewMax", trim: "SR5", color: "Army Green", mileage: 11, price: 48900, msrp: 48900, daysOnLot: 35, status: "available" },
+  { stock: "N25010", year: 2025, make: "Toyota", model: "4Runner TRD Off-Road", trim: "TRD Off-Road", color: "Lunar Rock", mileage: 3, price: 46500, msrp: 46500, daysOnLot: 5, status: "available" },
+  { stock: "N25011", year: 2025, make: "Toyota", model: "Prius LE", trim: "LE", color: "Sea Glass Pearl", mileage: 8, price: 29800, msrp: 29800, daysOnLot: 40, status: "available" },
+  { stock: "N25012", year: 2025, make: "Toyota", model: "GR86 Premium", trim: "Premium", color: "Track bRED", mileage: 2, price: 33500, msrp: 33500, daysOnLot: 14, status: "available" },
+  { stock: "N25013", year: 2025, make: "Toyota", model: "Crown Platinum", trim: "Platinum", color: "Oxygen White", mileage: 6, price: 53400, msrp: 53400, daysOnLot: 50, status: "available" },
+  { stock: "N25014", year: 2025, make: "Toyota", model: "Grand Highlander Platinum", trim: "Platinum", color: "Wind Chill Pearl", mileage: 4, price: 55200, msrp: 55200, daysOnLot: 28, status: "available" },
+];
+
+const USED_VEHICLES = [
+  { stock: "U30000", year: 2021, make: "BMW", model: "X3 xDrive30i", trim: "xDrive30i", color: "Alpine White", mileage: 42500, price: 34169, daysOnLot: 143, status: "available", carfax: "clean", cpo: false },
+  { stock: "U30001", year: 2023, make: "Honda", model: "Accord Sport", trim: "Sport", color: "Still Night Pearl", mileage: 18200, price: 28900, daysOnLot: 35, status: "available", carfax: "clean", cpo: false },
+  { stock: "U30002", year: 2022, make: "Toyota", model: "Camry SE", trim: "SE", color: "Celestial Silver", mileage: 31000, price: 24500, daysOnLot: 22, status: "available", carfax: "clean", cpo: true },
+  { stock: "U30003", year: 2023, make: "Ford", model: "Explorer XLT", trim: "XLT", color: "Agate Black", mileage: 28900, price: 33200, daysOnLot: 86, status: "available", carfax: "minor", cpo: false },
+  { stock: "U30004", year: 2022, make: "Mazda", model: "CX-5 Carbon Edition", trim: "Carbon Edition", color: "Polymetal Gray", mileage: 22100, price: 27800, daysOnLot: 15, status: "available", carfax: "clean", cpo: false },
+  { stock: "U30005", year: 2023, make: "Subaru", model: "Outback Limited", trim: "Limited", color: "Crystal White Pearl", mileage: 19500, price: 31400, daysOnLot: 44, status: "available", carfax: "clean", cpo: false },
+  { stock: "U30006", year: 2022, make: "Hyundai", model: "Tucson SEL", trim: "SEL", color: "Amazon Gray", mileage: 35200, price: 25900, daysOnLot: 28, status: "available", carfax: "clean", cpo: false },
+  { stock: "U30007", year: 2021, make: "Toyota", model: "RAV4 XLE", trim: "XLE", color: "Blueprint", mileage: 45800, price: 27200, daysOnLot: 19, status: "available", carfax: "clean", cpo: true },
+  { stock: "U30008", year: 2023, make: "Kia", model: "Sportage X-Line", trim: "X-Line", color: "Dawning Red", mileage: 15800, price: 29500, daysOnLot: 55, status: "available", carfax: "clean", cpo: false },
+  { stock: "U30009", year: 2022, make: "Chevrolet", model: "Equinox LT", trim: "LT", color: "Summit White", mileage: 38100, price: 22900, daysOnLot: 67, status: "available", carfax: "clean", cpo: false },
+  { stock: "U30010", year: 2022, make: "Ford", model: "Explorer XLT", trim: "XLT", color: "Iconic Silver", mileage: 41200, price: 30500, daysOnLot: 126, status: "available", carfax: "minor", cpo: false },
+  { stock: "U30011", year: 2023, make: "Nissan", model: "Rogue SV", trim: "SV", color: "Super Black", mileage: 21300, price: 28100, daysOnLot: 32, status: "available", carfax: "clean", cpo: false },
+  { stock: "U30012", year: 2021, make: "Toyota", model: "Tacoma SR5", trim: "SR5", color: "Cement", mileage: 52300, price: 31800, daysOnLot: 9, status: "available", carfax: "clean", cpo: true },
+  { stock: "U30013", year: 2022, make: "Lexus", model: "NX 250", trim: "250", color: "Eminent White Pearl", mileage: 28700, price: 36900, daysOnLot: 41, status: "available", carfax: "clean", cpo: false },
+  { stock: "U30014", year: 2023, make: "Audi", model: "Q5 Premium", trim: "Premium", color: "Mythos Black", mileage: 16400, price: 39800, daysOnLot: 95, status: "available", carfax: "clean", cpo: false },
+];
+
+function getDaysColor(days) {
+  if (days < 30) return { bg: "#dcfce7", color: "#16a34a", label: "" };
+  if (days <= 90) return { bg: "#fef3c7", color: "#d97706", label: "" };
+  return { bg: "#fee2e2", color: "#dc2626", label: "AGING" };
+}
+
+function AutoInventory() {
+  const [activeTab, setActiveTab] = useState("new");
+  const vehicles = activeTab === "new" ? NEW_VEHICLES : USED_VEHICLES;
+
+  const totalValue = vehicles.reduce((s, v) => s + v.price, 0);
+  const agingCount = vehicles.filter((v) => v.daysOnLot > 90).length;
+
+  function openChat(prompt) {
+    window.dispatchEvent(new CustomEvent("ta:chatPrompt", {
+      detail: { message: prompt }
+    }));
+  }
+
+  return (
+    <div>
+      <div className="pageHeader">
+        <div>
+          <h1 className="h1">Inventory</h1>
+          <p className="subtle">New and used vehicle inventory management</p>
+        </div>
+        <button
+          className="iconBtn"
+          onClick={() => openChat("What vehicles are aging past 90 days and what should we do about them?")}
+          style={{ background: "linear-gradient(135deg, #7c3aed, #6d28d9)", color: "white", border: "none" }}
+        >
+          Aging Report
+        </button>
+      </div>
+
+      {/* Tabs */}
+      <div style={{ display: "flex", gap: "0", marginBottom: "20px", borderBottom: "2px solid #e2e8f0" }}>
+        {[
+          { id: "new", label: `New (${NEW_VEHICLES.length})` },
+          { id: "used", label: `Used (${USED_VEHICLES.length})` },
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            style={{
+              padding: "10px 20px",
+              fontSize: "14px",
+              fontWeight: 600,
+              border: "none",
+              borderBottom: activeTab === tab.id ? "2px solid #7c3aed" : "2px solid transparent",
+              background: "transparent",
+              color: activeTab === tab.id ? "#7c3aed" : "#64748b",
+              cursor: "pointer",
+              marginBottom: "-2px",
+            }}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Quick Stats */}
+      <div className="kpiRow" style={{ marginBottom: "16px" }}>
+        <div className="card kpiCard">
+          <div className="kpiLabel">Tab Value</div>
+          <div className="kpiValue">${totalValue.toLocaleString()}</div>
+        </div>
+        <div className="card kpiCard">
+          <div className="kpiLabel">Units</div>
+          <div className="kpiValue">{vehicles.length}</div>
+        </div>
+        <div className="card kpiCard">
+          <div className="kpiLabel">Avg Price</div>
+          <div className="kpiValue">${Math.round(totalValue / vehicles.length).toLocaleString()}</div>
+        </div>
+        <div className="card kpiCard">
+          <div className="kpiLabel" style={{ color: agingCount > 0 ? "#dc2626" : undefined }}>Aging (&gt;90d)</div>
+          <div className="kpiValue" style={{ color: agingCount > 0 ? "#dc2626" : undefined }}>{agingCount}</div>
+        </div>
+      </div>
+
+      {/* Vehicle cards */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "14px" }}>
+        {vehicles.map((v) => {
+          const days = getDaysColor(v.daysOnLot);
+          return (
+            <div
+              key={v.stock}
+              className="card"
+              style={{ padding: "16px", cursor: "pointer" }}
+              onClick={() => openChat(`Tell me about Stock ${v.stock} -- ${v.year} ${v.make} ${v.model} ${v.trim}. Price: $${v.price.toLocaleString()}. ${v.daysOnLot} days on lot.`)}
+            >
+              {/* Image placeholder */}
+              <div style={{ height: "120px", background: "#f1f5f9", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "12px", color: "#94a3b8", fontSize: "13px" }}>
+                {v.year} {v.make} {v.model}
+              </div>
+
+              <div style={{ fontWeight: 700, fontSize: "15px", color: "#1e293b", marginBottom: "4px" }}>
+                {v.year} {v.make} {v.model} {v.trim !== v.model.split(" ").pop() ? v.trim : ""}
+              </div>
+              <div style={{ fontSize: "12px", color: "#64748b", marginBottom: "8px" }}>
+                Stock #{v.stock} &middot; {v.color} &middot; {v.mileage.toLocaleString()} mi
+              </div>
+
+              {/* Badges row */}
+              <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginBottom: "8px" }}>
+                {/* Days on lot */}
+                <span style={{
+                  fontSize: "11px", fontWeight: 600, padding: "2px 8px", borderRadius: "9999px",
+                  background: days.bg, color: days.color,
+                }}>
+                  {v.daysOnLot}d {days.label}
+                </span>
+
+                {/* CARFAX badge (used only) */}
+                {v.carfax && (
+                  <span style={{
+                    fontSize: "11px", fontWeight: 600, padding: "2px 8px", borderRadius: "9999px",
+                    background: v.carfax === "clean" ? "#dcfce7" : "#fef3c7",
+                    color: v.carfax === "clean" ? "#16a34a" : "#d97706",
+                  }}>
+                    CARFAX {v.carfax === "clean" ? "Clean" : "Minor Reported"}
+                  </span>
+                )}
+
+                {/* CPO badge */}
+                {v.cpo && (
+                  <span style={{
+                    fontSize: "11px", fontWeight: 600, padding: "2px 8px", borderRadius: "9999px",
+                    background: "#fef3c7", color: "#92400e",
+                  }}>
+                    CPO
+                  </span>
+                )}
+              </div>
+
+              {/* Price */}
+              <div style={{ fontSize: "20px", fontWeight: 900, color: "#1e293b" }}>
+                ${v.price.toLocaleString()}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 /**
  * Inventory - Services & Inventory Management
  * Manage products, services, and pricing for the business
@@ -10,6 +194,7 @@ export default function Inventory() {
   const vertical = localStorage.getItem("VERTICAL") || "auto";
   const jurisdiction = localStorage.getItem("JURISDICTION") || "IL";
   const isAnalyst = vertical === "analyst";
+  const isAuto = vertical === "auto";
 
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -158,6 +343,11 @@ export default function Inventory() {
       .filter((i) => i.status === "available")
       .reduce((sum, i) => sum + i.price, 0),
   };
+
+  // ── Auto Dealer: Inventory with New/Used tabs ──
+  if (isAuto) {
+    return <AutoInventory />;
+  }
 
   // ── Analyst: Services & Fees page ──
   if (isAnalyst) {

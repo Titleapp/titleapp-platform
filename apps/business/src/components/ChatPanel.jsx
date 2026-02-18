@@ -14,6 +14,11 @@ const CONTEXTUAL_MESSAGES = {
   propertyMgmt: "Let's set up your property portfolio. I'll help you track units, leases, and maintenance.",
   dashboard: "Welcome to your workspace. Everything starts from here -- your deals, your analysis, your pipeline.",
   analyst: "Your deal analysis hub. Upload deals and I'll screen them against your criteria.",
+  inventory: "Your inventory hub. I can look up any vehicle, check aging, and recommend pricing actions.",
+  customers: "Your customer database. I can pull up any customer's history, identify outreach opportunities, and draft communications.",
+  "fi-products": "Your F&I product catalog. I can match products to any customer profile and calculate payment impacts.",
+  "auto-service": "Your service schedule. I can identify upsell opportunities, draft service reminders, and flag warranty expirations.",
+  "sales-pipeline": "Your active deals. I can prioritize follow-ups, draft communications, and recommend next steps for each deal.",
 };
 
 const PERSONAL_CONTEXTUAL_MESSAGES = {
@@ -432,6 +437,19 @@ export default function ChatPanel({ currentSection, onboardingStep }) {
                       <p>Please sign in to start chatting.</p>
                     )}
                   </>
+                );
+              }
+              if (v === 'auto') {
+                return currentUser ? (
+                  <>
+                    <p>Good evening. I've been reviewing the lot and customer database. Here's what I found:</p>
+                    <p>Maria Gonzalez's Corolla lease expires in 60 days -- she's a cash buyer. I've matched her to 3 vehicles in stock.</p>
+                    <p>The BMW X3 on the used lot is at 143 days. I recommend marking it down to $31,999 and pushing it to Marketplace.</p>
+                    <p>Charles Cox is due for his 60K service -- his factory warranty is about to expire. Good opportunity to pitch Extra Care Gold.</p>
+                    <p>Want me to start with any of these?</p>
+                  </>
+                ) : (
+                  <p>Please sign in to start chatting.</p>
                 );
               }
               let cosLabel = 'your Chief of Staff';

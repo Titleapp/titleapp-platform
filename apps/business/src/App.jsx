@@ -16,6 +16,9 @@ import Staff from "./sections/Staff";
 import Reports from "./sections/Reports";
 import DataAPIs from "./sections/DataAPIs";
 import Settings from "./sections/Settings";
+import FIProducts from "./sections/FIProducts";
+import AutoService from "./sections/AutoService";
+import SalesPipeline from "./sections/SalesPipeline";
 import MyVehicles from "./sections/MyVehicles";
 import MyProperties from "./sections/MyProperties";
 import MyDocuments from "./sections/MyDocuments";
@@ -59,6 +62,12 @@ function AdminShell() {
         return <Reports />;
       case "data-apis":
         return <DataAPIs />;
+      case "fi-products":
+        return <FIProducts />;
+      case "auto-service":
+        return <AutoService />;
+      case "sales-pipeline":
+        return <SalesPipeline />;
       case "settings":
         return <Settings />;
       case "my-vehicles":

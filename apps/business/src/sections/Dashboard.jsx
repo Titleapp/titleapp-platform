@@ -305,6 +305,7 @@ export default function Dashboard() {
   const vertical = localStorage.getItem("VERTICAL") || "auto";
   const isConsumer = vertical === "consumer";
   const isAnalyst = vertical.toLowerCase() === "analyst";
+  const isAuto = vertical === "auto";
 
   const [kpis, setKpis] = useState({
     revenue: { value: "$0", trend: "+0%" },
@@ -316,6 +317,60 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(false);
   const [tenantName, setTenantName] = useState("");
   const [valueTracker, setValueTracker] = useState({ actions: 0, hoursSaved: 0, valueSaved: 0 });
+
+  const [cosActivity, setCosActivity] = useState([
+    {
+      id: 1,
+      type: "hot_lead",
+      badge: "Hot Lead",
+      badgeColor: "#dc2626",
+      title: "Lease Expiring -- Maria Gonzalez",
+      detail: "2024 Corolla LE lease expires in 60 days. Cash buyer per notes. We have 3 new Corollas and 2 CPO in stock.",
+      action: "Send personalized upgrade offer",
+      potentialRevenue: "$2,800",
+      urgency: "high",
+    },
+    {
+      id: 2,
+      type: "service_upsell",
+      badge: "Service Upsell",
+      badgeColor: "#2563eb",
+      title: "High-Mileage Service -- Charles Cox",
+      detail: "2023 Tacoma TRD Sport, 9 service visits. Due for 60K service ($449). Factory warranty expiring -- candidate for Toyota Extra Care Gold ($2,995).",
+      action: "Schedule service + pitch extended warranty",
+      potentialRevenue: "$3,450",
+      urgency: "medium",
+    },
+    {
+      id: 3,
+      type: "aging_inventory",
+      badge: "Aging Stock",
+      badgeColor: "#d97706",
+      title: "143 Days on Lot -- 2021 BMW X3 xDrive30i",
+      detail: "Stock U30000. Listed $34,169, market says $31,500. Losing $500/month in floor plan interest. Recommend markdown to $31,999 + Facebook Marketplace push.",
+      action: "Reprice + generate listing",
+      potentialRevenue: "Recover $31K",
+      urgency: "high",
+    },
+    {
+      id: 4,
+      type: "conquest",
+      badge: "Conquest",
+      badgeColor: "#16a34a",
+      title: "Trade-Up Opportunity -- Mark Brown",
+      detail: "Excellent satisfaction, 7 service visits. Drives 2025 Corolla Cross LE. Cross-sell to RAV4 upgrade -- we have 4 RAV4s aging 60+ days.",
+      action: "Send trade-in appraisal offer",
+      potentialRevenue: "$4,200",
+      urgency: "medium",
+    },
+  ]);
+
+  const [autoRecentActivity] = useState([
+    "COS sent service reminder to Lawrence Foster -- confirmed for Monday 7:00 AM",
+    "COS generated Facebook listing for 2025 Camry LE (Stock N25000, 70 days)",
+    "Price alert: 2022 Ford Explorer XLT -- 126 days on lot -- markdown recommended",
+    "COS identified 4 lease-expiring customers for Q1 outreach",
+  ]);
 
   const [opportunities, setOpportunities] = useState([
     {
@@ -448,6 +503,14 @@ export default function Dashboard() {
         const totalHoursSaved = hoursSourced + hoursAnalyzed;
         const valueAtRate = totalHoursSaved * 250;
         setValueTracker({ actions: dealsSourced + effectiveAnalyzed, hoursSaved: totalHoursSaved, valueSaved: valueAtRate });
+      } else if (vertical === "auto") {
+        setKpis({
+          revenue: { value: "$8.4M", trend: "" },
+          activeDeals: { value: "235", trend: "85 new + 150 used" },
+          aiConversations: { value: "47", trend: "" },
+          customers: { value: "$187,200", trend: "" },
+        });
+        setValueTracker({ actions: 31, hoursSaved: 34.5, valueSaved: 8625 });
       } else if (vertical === "property-mgmt") {
         const inventoryResult = await api.getInventory({ vertical, jurisdiction });
         const properties = inventoryResult.inventory || [];
@@ -533,6 +596,9 @@ export default function Dashboard() {
     if (vertical === "analyst") {
       return ["Dealflow Value", "Deals in Pipeline", "Analyzed This Month", "Avg Risk Score"];
     }
+    if (vertical === "auto") {
+      return ["Total Inventory Value", "Units in Stock", "Sold This Month", "Gross Profit MTD"];
+    }
     if (vertical === "property-mgmt") {
       return ["Properties", "Total Units", "Occupancy Rate", "Open Requests"];
     }
@@ -589,16 +655,16 @@ export default function Dashboard() {
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "16px", marginTop: "12px" }}>
             <div style={{ textAlign: "center" }}>
-              <div style={{ fontSize: "12px", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em" }}>{isAnalyst ? "Deals Sourced + Analyzed" : "Actions"}</div>
-              <div style={{ fontSize: "28px", fontWeight: 900, marginTop: "4px" }}>{valueTracker.actions}</div>
+              <div style={{ fontSize: "12px", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em" }}>{isAnalyst ? "Deals Sourced + Analyzed" : isAuto ? "Leads Generated" : "Actions"}</div>
+              <div style={{ fontSize: "28px", fontWeight: 900, marginTop: "4px" }}>{isAuto ? 23 : valueTracker.actions}</div>
             </div>
             <div style={{ textAlign: "center" }}>
-              <div style={{ fontSize: "12px", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em" }}>Hours Saved</div>
-              <div style={{ fontSize: "28px", fontWeight: 900, marginTop: "4px" }}>{valueTracker.hoursSaved}</div>
+              <div style={{ fontSize: "12px", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em" }}>{isAuto ? "Appointments Set" : "Hours Saved"}</div>
+              <div style={{ fontSize: "28px", fontWeight: 900, marginTop: "4px" }}>{isAuto ? 8 : valueTracker.hoursSaved}</div>
             </div>
             <div style={{ textAlign: "center" }}>
-              <div style={{ fontSize: "12px", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em" }}>{isAnalyst ? "Value at $250/hr" : "Value at $35/hr"}</div>
-              <div style={{ fontSize: "28px", fontWeight: 900, marginTop: "4px", color: "#16a34a" }}>${valueTracker.valueSaved.toLocaleString()}</div>
+              <div style={{ fontSize: "12px", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em" }}>{isAnalyst ? "Value at $250/hr" : isAuto ? "Hours Saved" : "Value at $35/hr"}</div>
+              <div style={{ fontSize: "28px", fontWeight: 900, marginTop: "4px", color: "#16a34a" }}>{isAuto ? "34.5" : `$${valueTracker.valueSaved.toLocaleString()}`}</div>
             </div>
             <div style={{ textAlign: "center" }}>
               <div style={{ fontSize: "12px", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em" }}>Your Cost</div>
@@ -606,7 +672,7 @@ export default function Dashboard() {
               <div style={{ fontSize: "11px", color: "#64748b" }}>/user/mo</div>
             </div>
           </div>
-          {isAnalyst && valueTracker.valueSaved > 0 && (
+          {(isAnalyst || isAuto) && valueTracker.valueSaved > 0 && (
             <div style={{ marginTop: "12px", padding: "8px 12px", background: "#f0fdf4", borderRadius: "6px", fontSize: "13px", color: "#16a34a", textAlign: "center", fontWeight: 500 }}>
               Your Chief of Staff has delivered ${valueTracker.valueSaved.toLocaleString()} in value this month — a {Math.round(valueTracker.valueSaved / 9)}x return on your $9 investment
             </div>
@@ -707,8 +773,121 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* While You Were Out -- Auto dealer COS activity */}
+      {isAuto && (
+        <div style={{ marginTop: "14px" }}>
+          <div style={{ marginBottom: "12px" }}>
+            <h2 style={{ fontSize: "20px", fontWeight: 700, margin: 0 }}>While You Were Out...</h2>
+            <p style={{ fontSize: "14px", color: "var(--muted)", margin: "4px 0 0" }}>
+              Your Chief of Staff found {cosActivity.length} revenue opportunities overnight
+            </p>
+          </div>
+          {cosActivity.length > 0 ? (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
+              {cosActivity.map((item) => (
+                <div key={item.id} className="card" style={{ padding: "20px" }}>
+                  <div style={{ marginBottom: "10px", display: "flex", alignItems: "center", gap: "8px" }}>
+                    <span style={{
+                      display: "inline-block",
+                      fontSize: "11px",
+                      fontWeight: 600,
+                      padding: "2px 10px",
+                      borderRadius: "9999px",
+                      background: `${item.badgeColor}18`,
+                      color: item.badgeColor,
+                      letterSpacing: "0.02em",
+                    }}>{item.badge}</span>
+                    {item.urgency === "high" && (
+                      <span style={{ fontSize: "11px", fontWeight: 600, color: "#dc2626" }}>URGENT</span>
+                    )}
+                  </div>
+                  <div style={{ fontSize: "16px", fontWeight: 700, marginBottom: "8px" }}>{item.title}</div>
+                  <div style={{ fontSize: "14px", color: "var(--fg, #334155)", marginBottom: "10px", lineHeight: 1.5 }}>
+                    {item.detail}
+                  </div>
+                  <div style={{ fontSize: "13px", color: "#64748b", fontStyle: "italic", marginBottom: "10px" }}>
+                    Suggested: {item.action}
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "14px" }}>
+                    <span style={{ fontSize: "16px", fontWeight: 700, color: "#16a34a" }}>Potential: {item.potentialRevenue}</span>
+                  </div>
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    <button
+                      style={{
+                        flex: 1,
+                        padding: "8px 14px",
+                        fontSize: "13px",
+                        fontWeight: 600,
+                        border: "none",
+                        borderRadius: "8px",
+                        cursor: "pointer",
+                        color: "#fff",
+                        background: "linear-gradient(135deg, #7c3aed, #6d28d9)",
+                      }}
+                      onClick={() => window.dispatchEvent(new CustomEvent("ta:chatPrompt", {
+                        detail: { message: "Draft and send the outreach for " + item.title.split(" -- ")[1] + ". " + item.detail }
+                      }))}
+                    >Let COS Handle It</button>
+                    <button
+                      style={{
+                        padding: "8px 14px",
+                        fontSize: "13px",
+                        fontWeight: 600,
+                        border: "1px solid var(--border, #e2e8f0)",
+                        borderRadius: "8px",
+                        cursor: "pointer",
+                        background: "transparent",
+                        color: "var(--fg, #334155)",
+                      }}
+                      onClick={() => window.dispatchEvent(new CustomEvent("ta:chatPrompt", {
+                        detail: { message: "Show me the details for this opportunity: " + item.title + ". " + item.detail }
+                      }))}
+                    >Review First</button>
+                    <button
+                      style={{
+                        padding: "8px 14px",
+                        fontSize: "13px",
+                        fontWeight: 600,
+                        border: "none",
+                        borderRadius: "8px",
+                        cursor: "pointer",
+                        background: "transparent",
+                        color: "#94a3b8",
+                      }}
+                      onClick={() => setCosActivity(prev => prev.filter(c => c.id !== item.id))}
+                    >Dismiss</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="card" style={{ padding: "24px", textAlign: "center", color: "var(--muted)", fontSize: "14px" }}>
+              No new opportunities. Your Chief of Staff is monitoring the lot and customer database.
+            </div>
+          )}
+
+          {/* Auto Recent Activity Feed */}
+          <div className="card" style={{ marginTop: "14px" }}>
+            <div className="cardHeader">
+              <div>
+                <div className="cardTitle">COS Activity Log</div>
+                <div className="cardSub">What your Chief of Staff has been doing</div>
+              </div>
+            </div>
+            <div style={{ padding: "0 20px 16px" }}>
+              {autoRecentActivity.map((activity, idx) => (
+                <div key={idx} style={{ display: "flex", alignItems: "flex-start", gap: "10px", padding: "10px 0", borderBottom: idx < autoRecentActivity.length - 1 ? "1px solid #f1f5f9" : "none" }}>
+                  <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#7c3aed", marginTop: "7px", flexShrink: 0 }} />
+                  <div style={{ fontSize: "14px", color: "#334155", lineHeight: 1.5 }}>{activity}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Recent Activity -- business only */}
-      {!isConsumer && (
+      {!isConsumer && !isAuto && (
         <div className="card">
           <div className="cardHeader">
             <div>
