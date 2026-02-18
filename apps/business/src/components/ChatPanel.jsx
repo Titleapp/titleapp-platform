@@ -359,7 +359,16 @@ export default function ChatPanel({ currentSection, onboardingStep }) {
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
         </svg>
-        <span>{(localStorage.getItem('VERTICAL') || 'auto') === 'consumer' ? 'Chief of Staff' : 'AI Assistant'}</span>
+        <span>{(() => {
+          const v = localStorage.getItem('VERTICAL') || 'auto';
+          if (v === 'consumer') {
+            try {
+              const cfg = JSON.parse(localStorage.getItem('COS_CONFIG') || '{}');
+              return cfg.name ? `${cfg.name} -- Chief of Staff` : 'Chief of Staff';
+            } catch { return 'Chief of Staff'; }
+          }
+          return 'AI Assistant';
+        })()}</span>
       </div>
 
       <div className="chatPanelMessages" ref={conversationRef}>
@@ -368,9 +377,14 @@ export default function ChatPanel({ currentSection, onboardingStep }) {
             {(() => {
               const v = localStorage.getItem('VERTICAL') || 'auto';
               if (v === 'consumer') {
+                let cosName = 'your personal Chief of Staff';
+                try {
+                  const cfg = JSON.parse(localStorage.getItem('COS_CONFIG') || '{}');
+                  if (cfg.name) cosName = `${cfg.name}, your Chief of Staff`;
+                } catch {}
                 return (
                   <>
-                    <p>Hi. I'm your personal Chief of Staff.</p>
+                    <p>Hi. I'm {cosName}.</p>
                     {currentUser ? (
                       <p>I can help you manage your vehicles, properties, documents, and certifications. What would you like to do?</p>
                     ) : (

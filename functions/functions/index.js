@@ -1723,6 +1723,24 @@ When a user tells you about a vehicle, property, document, certification, or val
 {"type": "vehicle", "metadata": {"title": "2020 Tesla Model 3", "year": "2020", "make": "Tesla", "model": "Model 3", "color": "Black", "mileage": "45000", "vin": "", "plate": "", "stateRegistered": "", "purchaseDate": "", "lender": ""}}
 |||END_RECORD|||
 
+More examples for other record types:
+
+|||CREATE_RECORD|||
+{"type": "valuable", "metadata": {"title": "Apple Watch Ultra 2", "category": "Electronics", "description": "49mm titanium, serial ABC123", "estimatedValue": "799"}}
+|||END_RECORD|||
+
+|||CREATE_RECORD|||
+{"type": "property", "metadata": {"title": "123 Main St, Chicago IL", "address": "123 Main St, Chicago, IL 60601", "propertyType": "Condo", "ownershipType": "Mortgage", "monthlyPayment": "2400", "endDate": "", "company": "Chase"}}
+|||END_RECORD|||
+
+|||CREATE_RECORD|||
+{"type": "certification", "metadata": {"title": "Illinois Real Estate License", "recordType": "Professional License", "issuer": "IDFPR", "issueDate": "2024-01-15", "expiryDate": "2026-01-15"}}
+|||END_RECORD|||
+
+|||CREATE_RECORD|||
+{"type": "document", "metadata": {"title": "2025 Tax Return", "category": "Tax Records", "description": "Federal and state filing", "estimatedValue": ""}}
+|||END_RECORD|||
+
 Supported record types and their metadata fields:
 - vehicle: title, year, make, model, color, mileage, vin, plate, stateRegistered, purchaseDate, lender
 - property: title, address, propertyType, ownershipType, monthlyPayment, endDate, company
@@ -1893,7 +1911,7 @@ Platform navigation — when users ask how to do things, give them accurate dire
               dtcId: dtcRef.id,
               userId: ctx.userId,
               dtcTitle,
-              entryType: "update",
+              entryType: "creation",
               data: { description: "Record created via Chief of Staff chat" },
               files: [],
               createdAt: nowServerTs(),
@@ -2322,7 +2340,7 @@ Platform navigation — when users ask how to do things, give them accurate dire
         const snap = await q.get();
         const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-        return res.json({ ok: true, items });
+        return res.json({ ok: true, inventory: items });
       } catch (e) {
         console.error("❌ inventory:list failed:", e);
         return jsonError(res, 500, "Failed to load inventory");

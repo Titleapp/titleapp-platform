@@ -56,6 +56,8 @@ function PersonalSettings() {
       setTimeout(() => setToast(null), 3000);
     };
     reader.readAsDataURL(file);
+    // Reset file input so re-selecting the same file triggers onChange
+    if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
   function handleBlockchainToggle(checked) {
