@@ -9,6 +9,7 @@ const NAV_BY_VERTICAL = {
     { id: "my-documents", label: "My Important Stuff" },
     { id: "my-certifications", label: "Student Records & Certifications" },
     { id: "my-logbook", label: "My Logbooks" },
+    { id: "my-wallet", label: "My Wallet" },
     { id: "ai-chats", label: "My AI & GPTs" },
     { id: "settings", label: "Settings" },
   ],

@@ -1705,6 +1705,7 @@ Your role:
 - Track deadlines, remind them about renewals and expirations, and help them stay organized.
 - Explain Digital Title Certificates (DTCs) when asked -- verified, timestamped proof of ownership or attestation.
 - Be professional, warm, and proactive. You are a trusted team member, not a chatbot.
+- IMPORTANT: You CAN and SHOULD create records directly when the user provides enough information. You are their Chief of Staff -- act on their behalf.
 
 You do NOT discuss business analytics, deals, investment criteria, team management, or inventory operations. This is a personal Vault, not a business workspace.
 
@@ -1715,12 +1716,33 @@ Formatting rules -- follow these strictly:
 - Write in complete, clean sentences. Use plain text only.
 - Keep your tone warm but professional -- direct, calm, no hype.
 
+RECORD CREATION -- this is your most important capability:
+When a user tells you about a vehicle, property, document, certification, or valuable item, collect the key details conversationally. Once you have enough information, CREATE the record by including a JSON block in your response using these exact markers:
+
+|||CREATE_RECORD|||
+{"type": "vehicle", "metadata": {"title": "2020 Tesla Model 3", "year": "2020", "make": "Tesla", "model": "Model 3", "color": "Black", "mileage": "45000", "vin": "", "plate": "", "stateRegistered": "", "purchaseDate": "", "lender": ""}}
+|||END_RECORD|||
+
+Supported record types and their metadata fields:
+- vehicle: title, year, make, model, color, mileage, vin, plate, stateRegistered, purchaseDate, lender
+- property: title, address, propertyType, ownershipType, monthlyPayment, endDate, company
+- document: title, category, description, estimatedValue
+- certification: title, recordType, issuer, issueDate, expiryDate
+- valuable: title, category, description, estimatedValue
+
+Rules for record creation:
+- The "title" field is always required. For vehicles use "YEAR MAKE MODEL". For properties use the address.
+- Create the record as soon as you have at least the title/name. You can always update it later.
+- After the JSON block, write a natural confirmation message. Do NOT mention the JSON markers to the user.
+- If a user says something like "I have a 2020 Tesla Model 3", you have enough to create the record immediately. Ask follow-up questions for optional fields AFTER creating it.
+- Always ask if the details look correct and offer to add more information.
+
 Vault navigation -- when users ask how to do things, give them accurate directions:
-- To add a vehicle: Go to My Vehicles in the left navigation, or just tell me about your vehicle here.
-- To add a property: Go to My Properties in the left navigation, or describe your property here.
-- To store important documents: Go to My Important Stuff in the left navigation.
-- To track certifications: Go to My Certifications in the left navigation.
-- To view your activity timeline: Go to My Logbook in the left navigation.
+- To add a vehicle: Go to My Vehicles in the left navigation, or just tell me about your vehicle here and I will save it for you.
+- To add a property: Go to My Properties in the left navigation, or describe your property here and I will save it.
+- To store important documents: Go to My Important Stuff in the left navigation, or tell me about it here.
+- To track certifications: Go to Student Records & Certifications in the left navigation, or tell me about it here.
+- To view your activity timeline: Go to My Logbooks in the left navigation.
 - To configure your Chief of Staff: Go to Settings in the left navigation.`;
 
             const businessSystemPrompt = `You are the AI assistant for TitleApp, a business intelligence platform. The user's vertical is "${ctx.vertical || "general"}" and they are on the "${(context || {}).currentSection || "dashboard"}" section.
@@ -1824,6 +1846,72 @@ Platform navigation — when users ask how to do things, give them accurate dire
         } else if (!aiResponse) {
           // Unsupported model (only if no response generated yet)
           aiResponse = `[Unsupported model: ${preferredModel}. Please use "claude" or "openai".]`;
+        }
+
+        // Parse CREATE_RECORD markers from AI response
+        const recordMarkerStart = "|||CREATE_RECORD|||";
+        const recordMarkerEnd = "|||END_RECORD|||";
+        if (aiResponse.includes(recordMarkerStart) && aiResponse.includes(recordMarkerEnd)) {
+          try {
+            const startIdx = aiResponse.indexOf(recordMarkerStart) + recordMarkerStart.length;
+            const endIdx = aiResponse.indexOf(recordMarkerEnd);
+            const jsonStr = aiResponse.substring(startIdx, endIdx).trim();
+            const recordData = JSON.parse(jsonStr);
+
+            // Strip markers from the user-visible response
+            aiResponse = aiResponse.substring(0, aiResponse.indexOf(recordMarkerStart)).trim() +
+              " " + aiResponse.substring(endIdx + recordMarkerEnd.length).trim();
+            aiResponse = aiResponse.trim();
+
+            // Create DTC in Firestore (skip ID verification for chat-created records)
+            const dtcRef = await db.collection("dtcs").add({
+              userId: ctx.userId,
+              type: recordData.type || "document",
+              metadata: recordData.metadata || {},
+              fileIds: [],
+              blockchainProof: null,
+              logbookCount: 1,
+              createdAt: nowServerTs(),
+            });
+
+            // Also create inventory item so section pages see it
+            await db.collection("inventory").add({
+              tenantId: ctx.tenantId,
+              userId: ctx.userId,
+              type: recordData.type || "document",
+              status: "active",
+              metadata: recordData.metadata || {},
+              price: 0,
+              cost: 0,
+              dtcId: dtcRef.id,
+              createdAt: nowServerTs(),
+            });
+
+            // Create initial logbook entry
+            const dtcTitle = (recordData.metadata || {}).title || "New Record";
+            await db.collection("logbookEntries").add({
+              dtcId: dtcRef.id,
+              userId: ctx.userId,
+              dtcTitle,
+              entryType: "update",
+              data: { description: "Record created via Chief of Staff chat" },
+              files: [],
+              createdAt: nowServerTs(),
+            });
+
+            structuredData = {
+              type: "record_created",
+              recordType: recordData.type || "document",
+              dtcId: dtcRef.id,
+              metadata: recordData.metadata || {},
+            };
+
+            console.log("Created DTC from chat:", dtcRef.id, recordData.type);
+          } catch (parseErr) {
+            console.error("Failed to parse CREATE_RECORD from AI response:", parseErr.message);
+            // Clean up markers even if parsing fails
+            aiResponse = aiResponse.replace(/\|\|\|CREATE_RECORD\|\|\|[\s\S]*?\|\|\|END_RECORD\|\|\|/g, "").trim();
+          }
         }
 
         // Event-sourced: append response event

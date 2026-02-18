@@ -1,20 +1,39 @@
 import React, { useState, useEffect } from "react";
 import * as api from "../api/client";
 
+const ENTRY_TYPES = {
+  maintenance: { icon: "M", color: "#06b6d4", label: "Maintenance" },
+  transfer: { icon: "T", color: "#7c3aed", label: "Transfer" },
+  inspection: { icon: "I", color: "#22c55e", label: "Inspection" },
+  update: { icon: "U", color: "#f59e0b", label: "Update" },
+  note: { icon: "N", color: "#64748b", label: "Note" },
+  creation: { icon: "C", color: "#7c3aed", label: "Created" },
+};
+
 export default function MyLogbook() {
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [expandedAssets, setExpandedAssets] = useState({});
 
-  useEffect(() => {
-    loadLogbook();
-  }, []);
+  useEffect(() => { loadLogbook(); }, []);
 
   async function loadLogbook() {
     try {
-      const result = await api.getAIActivity({ vertical: "consumer", jurisdiction: "GLOBAL", limit: 50 });
-      setEntries(result.activity || []);
+      const result = await api.getLogbooks({ vertical: "consumer", jurisdiction: "GLOBAL" });
+      setEntries(result.entries || []);
+      // Auto-expand all assets
+      const expanded = {};
+      (result.entries || []).forEach((e) => { if (e.dtcId) expanded[e.dtcId] = true; });
+      setExpandedAssets(expanded);
     } catch (e) {
       console.error("Failed to load logbook:", e);
+      // Fallback: try AI activity
+      try {
+        const result = await api.getAIActivity({ vertical: "consumer", jurisdiction: "GLOBAL", limit: 50 });
+        setEntries(result.activity || []);
+      } catch (e2) {
+        console.error("Fallback also failed:", e2);
+      }
     } finally {
       setLoading(false);
     }
@@ -25,6 +44,18 @@ export default function MyLogbook() {
     const d = new Date(dateStr);
     return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
   }
+
+  function toggleAsset(dtcId) {
+    setExpandedAssets((prev) => ({ ...prev, [dtcId]: !prev[dtcId] }));
+  }
+
+  // Group entries by dtcId
+  const grouped = {};
+  entries.forEach((entry) => {
+    const key = entry.dtcId || entry.id || "other";
+    if (!grouped[key]) grouped[key] = { title: entry.dtcTitle || entry.workflowId || "Activity", entries: [] };
+    grouped[key].entries.push(entry);
+  });
 
   return (
     <div>
@@ -47,9 +78,9 @@ export default function MyLogbook() {
 
       {loading ? (
         <div className="card" style={{ padding: "24px", textAlign: "center" }}>
-          Loading logbook...
+          Loading logbooks...
         </div>
-      ) : entries.length === 0 ? (
+      ) : Object.keys(grouped).length === 0 ? (
         <div className="card" style={{ padding: "48px 32px", textAlign: "center" }}>
           <div style={{
             width: "64px",
@@ -70,37 +101,89 @@ export default function MyLogbook() {
             No logbook entries yet
           </div>
           <div style={{ fontSize: "14px", color: "#64748b", maxWidth: "420px", margin: "0 auto", lineHeight: "1.6" }}>
-            No logbook entries yet. Add a vehicle, property, or important item to get started. Each item gets its own logbook that tracks everything automatically.
+            Add a vehicle, property, or important item to get started. Each item gets its own logbook that tracks everything automatically.
           </div>
         </div>
       ) : (
-        <div className="card">
-          <div className="tableWrap">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Action</th>
-                  <th>Details</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {entries.map((entry) => (
-                  <tr key={entry.id}>
-                    <td className="tdMuted" style={{ whiteSpace: "nowrap" }}>{formatDate(entry.createdAt)}</td>
-                    <td className="tdStrong">{entry.workflowId || entry.type || "Activity"}</td>
-                    <td>{entry.description || entry.summary || "--"}</td>
-                    <td>
-                      <span className={`badge badge-${entry.status || "completed"}`}>
-                        {entry.status || "completed"}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+          {Object.entries(grouped).map(([dtcId, group]) => (
+            <div key={dtcId} className="card" style={{ overflow: "hidden" }}>
+              <button
+                onClick={() => toggleAsset(dtcId)}
+                style={{
+                  width: "100%",
+                  textAlign: "left",
+                  padding: "16px 20px",
+                  background: "#faf5ff",
+                  border: "none",
+                  borderBottom: expandedAssets[dtcId] ? "1px solid #e9d5ff" : "none",
+                  cursor: "pointer",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: "15px", color: "#1e293b" }}>
+                    Logbook: {group.title}
+                  </div>
+                  <div style={{ fontSize: "12px", color: "#64748b", marginTop: "2px" }}>
+                    {group.entries.length} {group.entries.length === 1 ? "entry" : "entries"}
+                  </div>
+                </div>
+                <span style={{ color: "#7c3aed", fontSize: "18px" }}>{expandedAssets[dtcId] ? "\u25B2" : "\u25BC"}</span>
+              </button>
+
+              {expandedAssets[dtcId] && (
+                <div style={{ padding: "16px 20px" }}>
+                  {group.entries.map((entry, idx) => {
+                    const config = ENTRY_TYPES[entry.entryType] || ENTRY_TYPES.note;
+                    return (
+                      <div key={entry.id || idx} style={{ display: "flex", gap: "14px", padding: "14px 0", borderBottom: idx < group.entries.length - 1 ? "1px solid var(--line)" : "none" }}>
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                          <div style={{
+                            width: "36px",
+                            height: "36px",
+                            borderRadius: "10px",
+                            background: `${config.color}15`,
+                            border: `2px solid ${config.color}35`,
+                            display: "grid",
+                            placeItems: "center",
+                            fontSize: "14px",
+                            fontWeight: 700,
+                            color: config.color,
+                          }}>
+                            {config.icon}
+                          </div>
+                          {idx < group.entries.length - 1 && (
+                            <div style={{ flex: 1, width: "2px", background: "var(--line)", marginTop: "4px" }} />
+                          )}
+                        </div>
+                        <div style={{ flex: 1, paddingTop: "2px" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
+                            <span style={{ fontSize: "12px", fontWeight: 600, padding: "2px 8px", borderRadius: "6px", background: `${config.color}15`, color: config.color }}>
+                              {config.label}
+                            </span>
+                            <span style={{ fontSize: "12px", color: "#94a3b8" }}>
+                              {formatDate(entry.createdAt)}
+                            </span>
+                          </div>
+                          {entry.data && Object.entries(entry.data).map(([key, value]) => (
+                            <div key={key} style={{ fontSize: "13px", marginBottom: "2px" }}>
+                              <span style={{ fontWeight: 600 }}>{key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, " ")}:</span>{" "}
+                              <span style={{ color: "#475569" }}>{value}</span>
+                            </div>
+                          ))}
+                          {entry.description && <div style={{ fontSize: "13px", color: "#475569" }}>{entry.description}</div>}
+                          {entry.summary && <div style={{ fontSize: "13px", color: "#475569" }}>{entry.summary}</div>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       )}
     </div>

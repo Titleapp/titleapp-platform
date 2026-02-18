@@ -216,8 +216,76 @@ export default function ChatPanel({ currentSection, onboardingStep }) {
     }
   }
 
+  const [attachedFile, setAttachedFile] = useState(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const fileInputRef = useRef(null);
+  const recognitionRef = useRef(null);
+
+  function handleFileSelect(e) {
+    const file = e.target.files?.[0];
+    if (file) setAttachedFile(file);
+  }
+
+  function startVoiceInput() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) return;
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = 'en-US';
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      setInput(prev => prev ? prev + ' ' + transcript : transcript);
+      setIsRecording(false);
+    };
+    recognition.onerror = () => setIsRecording(false);
+    recognition.onend = () => setIsRecording(false);
+    recognitionRef.current = recognition;
+    recognition.start();
+    setIsRecording(true);
+  }
+
+  function stopVoiceInput() {
+    recognitionRef.current?.stop();
+    setIsRecording(false);
+  }
+
   function renderStructuredData(data) {
     if (!data || typeof data !== 'object') return null;
+
+    if (data.type === 'record_created') {
+      const typeColors = { vehicle: '#7c3aed', property: '#22c55e', document: '#6366f1', certification: '#d97706', valuable: '#ec4899' };
+      const typeLabels = { vehicle: 'Vehicle', property: 'Real Estate', document: 'Document', certification: 'Certification', valuable: 'Valuable' };
+      const color = typeColors[data.recordType] || '#64748b';
+      const label = typeLabels[data.recordType] || 'Record';
+      const meta = data.metadata || {};
+      const displayFields = Object.entries(meta).filter(([k, v]) => k !== 'title' && v);
+
+      return (
+        <div style={{ border: `2px solid ${color}30`, borderRadius: '14px', overflow: 'hidden', marginTop: '8px' }}>
+          <div style={{ background: `${color}12`, padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ fontWeight: 700, fontSize: '15px', color: '#1e293b' }}>{meta.title || 'New Record'}</div>
+            <span style={{ fontSize: '11px', fontWeight: 600, padding: '3px 10px', borderRadius: '20px', background: `${color}20`, color }}>{label}</span>
+          </div>
+          {displayFields.length > 0 && (
+            <div style={{ padding: '10px 16px' }}>
+              {displayFields.map(([key, value]) => (
+                <div key={key} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: '13px' }}>
+                  <span style={{ color: '#64748b' }}>{key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase())}</span>
+                  <span style={{ fontWeight: 500, color: '#1e293b' }}>{value}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          <div style={{ padding: '8px 16px 12px', borderTop: '1px solid #f1f5f9' }}>
+            <span style={{ fontSize: '12px', fontWeight: 600, color: '#16a34a', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              Saved to Vault
+            </span>
+          </div>
+        </div>
+      );
+    }
 
     if (data.type === 'analyst_result') {
       return (
@@ -348,24 +416,50 @@ export default function ChatPanel({ currentSection, onboardingStep }) {
       </div>
 
       <form className="chatPanelInput" onSubmit={sendMessage}>
-        <textarea
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="Ask me anything..."
-          rows={1}
-          disabled={isSending}
-        />
-        <button
-          type="submit"
-          disabled={isSending || !input.trim()}
-          aria-label="Send message"
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="22" y1="2" x2="11" y2="13"></line>
-            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-          </svg>
-        </button>
+        {attachedFile && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 8px', background: '#f1f5f9', borderRadius: '8px', fontSize: '12px', color: '#64748b', marginBottom: '4px', width: '100%' }}>
+            <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{attachedFile.name}</span>
+            <button type="button" onClick={() => setAttachedFile(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: '14px', padding: '0 2px' }}>x</button>
+          </div>
+        )}
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end', width: '100%' }}>
+          <input ref={fileInputRef} type="file" style={{ display: 'none' }} onChange={handleFileSelect} />
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'transparent', border: '1px solid #e2e8f0', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: '#94a3b8' }}
+            aria-label="Attach file"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
+          </button>
+          <button
+            type="button"
+            onClick={isRecording ? stopVoiceInput : startVoiceInput}
+            style={{ width: '36px', height: '36px', borderRadius: '10px', background: isRecording ? '#ef4444' : 'transparent', border: isRecording ? 'none' : '1px solid #e2e8f0', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: isRecording ? 'white' : '#94a3b8' }}
+            aria-label={isRecording ? 'Stop recording' : 'Voice input'}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+          </button>
+          <textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Ask me anything..."
+            rows={1}
+            disabled={isSending}
+            style={{ minHeight: '48px' }}
+          />
+          <button
+            type="submit"
+            disabled={isSending || !input.trim()}
+            aria-label="Send message"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="22" y1="2" x2="11" y2="13"></line>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+            </svg>
+          </button>
+        </div>
       </form>
     </div>
   );

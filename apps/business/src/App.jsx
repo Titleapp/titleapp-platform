@@ -21,6 +21,7 @@ import MyProperties from "./sections/MyProperties";
 import MyDocuments from "./sections/MyDocuments";
 import MyLogbook from "./sections/MyLogbook";
 import MyCertifications from "./sections/MyCertifications";
+import MyWallet from "./sections/MyWallet";
 import { auth } from "./firebase";
 import { signInWithCustomToken } from "firebase/auth";
 
@@ -70,6 +71,8 @@ function AdminShell() {
         return <MyLogbook />;
       case "my-certifications":
         return <MyCertifications />;
+      case "my-wallet":
+        return <MyWallet />;
       default:
         return <Dashboard />;
     }

@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import FormModal from "../components/FormModal";
 import * as api from "../api/client";
 
+const US_STATES = ["AL","AK","AZ","AR","CA","CO","CT","DE","DC","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY","AS","GU","MP","PR","VI"];
+
 const EMPTY_FORM = { year: "", make: "", model: "", color: "", vin: "", plate: "", state: "", purchaseDate: "", lender: "", mileage: "" };
 
 export default function MyVehicles() {
@@ -39,6 +41,7 @@ export default function MyVehicles() {
     if (!form.make && !form.vin) return;
     setSaving(true);
     try {
+      const title = `${form.year} ${form.make} ${form.model}`.trim() || "Vehicle";
       await api.createInventoryItem({
         vertical: "consumer",
         jurisdiction: "GLOBAL",
@@ -46,7 +49,7 @@ export default function MyVehicles() {
           type: "vehicle",
           status: "active",
           metadata: {
-            year: form.year, make: form.make, model: form.model, color: form.color,
+            title, year: form.year, make: form.make, model: form.model, color: form.color,
             vin: form.vin, plate: form.plate, stateRegistered: form.state,
             purchaseDate: form.purchaseDate, lender: form.lender, mileage: form.mileage,
           },
@@ -68,7 +71,13 @@ export default function MyVehicles() {
     }
   }
 
+  function fmtMileage(val) {
+    if (!val) return "";
+    return Number(val).toLocaleString();
+  }
+
   const inputStyle = { width: "100%", padding: "10px", borderRadius: "12px", border: "1px solid var(--line)" };
+  const selectStyle = { ...inputStyle, background: "white" };
 
   return (
     <div>
@@ -113,24 +122,64 @@ export default function MyVehicles() {
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: "12px" }}>
             {vehicles.map((v) => (
-              <div key={v.id} className="card" style={{ padding: "20px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: "16px", color: "#1e293b" }}>
-                      {v.metadata?.year} {v.metadata?.make} {v.metadata?.model}
+              <div key={v.id} className="card" style={{ position: "relative", overflow: "hidden" }}>
+                <div style={{ background: "#7c3aed12", padding: "16px 20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                    <div style={{ width: "40px", height: "40px", borderRadius: "12px", background: "#7c3aed15", border: "1px solid #7c3aed35", display: "grid", placeItems: "center" }}>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M5 17h14v-6l-2-5H7L5 11v6z"></path>
+                        <circle cx="7.5" cy="17.5" r="1.5"></circle>
+                        <circle cx="16.5" cy="17.5" r="1.5"></circle>
+                      </svg>
                     </div>
-                    {v.metadata?.vin && (
-                      <div style={{ fontSize: "12px", color: "#94a3b8", marginTop: "4px", fontFamily: "monospace" }}>VIN: {v.metadata.vin}</div>
-                    )}
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: "16px", color: "#1e293b" }}>
+                        {v.metadata?.year} {v.metadata?.make} {v.metadata?.model}
+                      </div>
+                      <div style={{ fontSize: "12px", color: "#64748b" }}>Vehicle Certificate</div>
+                    </div>
                   </div>
-                  <span className={`badge badge-${v.status || "draft"}`}>{v.status || "Draft"}</span>
+                  <span style={{ fontSize: "11px", fontWeight: 600, padding: "3px 10px", borderRadius: "20px", background: "#7c3aed20", color: "#7c3aed" }}>Vehicle</span>
                 </div>
-                <div style={{ display: "flex", gap: "12px", marginTop: "14px", fontSize: "13px", color: "#64748b" }}>
-                  {v.metadata?.color && <span>Color: {v.metadata.color}</span>}
-                  {v.metadata?.mileage && <span>Mileage: {Number(v.metadata.mileage).toLocaleString()}</span>}
+                <div style={{ padding: "12px 20px" }}>
+                  {v.metadata?.vin && (
+                    <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", fontSize: "13px" }}>
+                      <span style={{ color: "#64748b" }}>VIN</span>
+                      <span style={{ fontWeight: 500, color: "#1e293b", fontFamily: "monospace", fontSize: "12px" }}>{v.metadata.vin}</span>
+                    </div>
+                  )}
+                  {v.metadata?.color && (
+                    <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", fontSize: "13px" }}>
+                      <span style={{ color: "#64748b" }}>Color</span>
+                      <span style={{ fontWeight: 500, color: "#1e293b" }}>{v.metadata.color}</span>
+                    </div>
+                  )}
+                  {v.metadata?.mileage && (
+                    <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", fontSize: "13px" }}>
+                      <span style={{ color: "#64748b" }}>Mileage</span>
+                      <span style={{ fontWeight: 500, color: "#1e293b" }}>{fmtMileage(v.metadata.mileage)}</span>
+                    </div>
+                  )}
+                  {v.metadata?.plate && (
+                    <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", fontSize: "13px" }}>
+                      <span style={{ color: "#64748b" }}>Plate</span>
+                      <span style={{ fontWeight: 500, color: "#1e293b" }}>{v.metadata.plate} {v.metadata.stateRegistered || ""}</span>
+                    </div>
+                  )}
+                  {v.metadata?.lender && (
+                    <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", fontSize: "13px" }}>
+                      <span style={{ color: "#64748b" }}>Lender</span>
+                      <span style={{ fontWeight: 500, color: "#1e293b" }}>{v.metadata.lender}</span>
+                    </div>
+                  )}
+                  <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", fontSize: "13px" }}>
+                    <span style={{ color: "#64748b" }}>Added</span>
+                    <span style={{ fontWeight: 500, color: "#1e293b" }}>{v.createdAt ? new Date(v.createdAt).toLocaleDateString() : "recently"}</span>
+                  </div>
                 </div>
-                <div style={{ marginTop: "14px" }}>
-                  <button className="iconBtn" onClick={() => openChat(v)} style={{ fontSize: "13px" }}>Ask AI</button>
+                <div style={{ padding: "10px 20px 14px", borderTop: "1px solid #f1f5f9", display: "flex", gap: "8px" }}>
+                  <button className="iconBtn" onClick={() => openChat(v)} style={{ flex: 1, fontSize: "13px" }}>Ask AI</button>
+                  <span className={`badge badge-${v.status || "active"}`} style={{ display: "flex", alignItems: "center" }}>{v.status || "Active"}</span>
                 </div>
               </div>
             ))}
@@ -147,12 +196,18 @@ export default function MyVehicles() {
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
             <div><label style={{ display: "block", marginBottom: "6px", fontWeight: 600, fontSize: "13px" }}>Color</label><input type="text" value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })} style={inputStyle} /></div>
-            <div><label style={{ display: "block", marginBottom: "6px", fontWeight: 600, fontSize: "13px" }}>Mileage</label><input type="number" value={form.mileage} onChange={(e) => setForm({ ...form, mileage: e.target.value })} style={inputStyle} /></div>
+            <div><label style={{ display: "block", marginBottom: "6px", fontWeight: 600, fontSize: "13px" }}>Mileage</label><input type="text" value={form.mileage ? Number(form.mileage).toLocaleString() : ""} onChange={(e) => setForm({ ...form, mileage: e.target.value.replace(/,/g, "") })} placeholder="e.g., 45,000" style={inputStyle} /></div>
           </div>
           <div><label style={{ display: "block", marginBottom: "6px", fontWeight: 600, fontSize: "13px" }}>VIN (optional)</label><input type="text" value={form.vin} onChange={(e) => setForm({ ...form, vin: e.target.value })} placeholder="17 characters" style={inputStyle} /></div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px" }}>
             <div><label style={{ display: "block", marginBottom: "6px", fontWeight: 600, fontSize: "13px" }}>License Plate</label><input type="text" value={form.plate} onChange={(e) => setForm({ ...form, plate: e.target.value })} style={inputStyle} /></div>
-            <div><label style={{ display: "block", marginBottom: "6px", fontWeight: 600, fontSize: "13px" }}>State</label><input type="text" value={form.state} onChange={(e) => setForm({ ...form, state: e.target.value })} placeholder="IL" style={inputStyle} /></div>
+            <div>
+              <label style={{ display: "block", marginBottom: "6px", fontWeight: 600, fontSize: "13px" }}>State</label>
+              <select value={form.state} onChange={(e) => setForm({ ...form, state: e.target.value })} style={selectStyle}>
+                <option value="">--</option>
+                {US_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
             <div><label style={{ display: "block", marginBottom: "6px", fontWeight: 600, fontSize: "13px" }}>Purchase Date</label><input type="date" value={form.purchaseDate} onChange={(e) => setForm({ ...form, purchaseDate: e.target.value })} style={inputStyle} /></div>
           </div>
           <div><label style={{ display: "block", marginBottom: "6px", fontWeight: 600, fontSize: "13px" }}>Lender / Finance Co. (optional)</label><input type="text" value={form.lender} onChange={(e) => setForm({ ...form, lender: e.target.value })} style={inputStyle} /></div>

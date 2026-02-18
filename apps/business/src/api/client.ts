@@ -525,3 +525,56 @@ export async function getMemberships(params: { vertical: string; jurisdiction: s
     jurisdiction: params.jurisdiction,
   });
 }
+
+// ----------------------------
+// Wallet (Tokens & Cap Tables)
+// ----------------------------
+
+export async function getWalletAssets(params: { vertical: string; jurisdiction: string }) {
+  return httpJson("GET", "/v1/wallet:assets", {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+  });
+}
+
+export async function getTokens(params: { vertical: string; jurisdiction: string }) {
+  return httpJson("GET", "/v1/wallet:tokens:list", {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+  });
+}
+
+export async function createToken(params: {
+  vertical: string;
+  jurisdiction: string;
+  token: { name: string; symbol: string; supply: string; network: string };
+}) {
+  return httpJson("POST", "/v1/wallet:token:create", {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+    body: params.token,
+  });
+}
+
+export async function getCapTables(params: { vertical: string; jurisdiction: string }) {
+  return httpJson("GET", "/v1/wallet:captables:list", {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+  });
+}
+
+export async function createCapTable(params: {
+  vertical: string;
+  jurisdiction: string;
+  capTable: {
+    companyName: string;
+    totalShares: number;
+    shareholders: Array<{ name: string; shares: number; percentage: number }>;
+  };
+}) {
+  return httpJson("POST", "/v1/wallet:captable:create", {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+    body: params.capTable,
+  });
+}
