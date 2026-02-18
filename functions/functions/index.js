@@ -2356,17 +2356,42 @@ Platform navigation — when users ask how to do things, give them accurate dire
           return jsonError(res, 400, "Missing required fields");
         }
 
+        // Create DTC record
+        const dtcRef = await db.collection("dtcs").add({
+          userId: ctx.userId,
+          type: type || "document",
+          metadata: metadata || {},
+          fileIds: [],
+          blockchainProof: null,
+          logbookCount: 1,
+          createdAt: nowServerTs(),
+        });
+
         const ref = await db.collection("inventory").add({
           tenantId: ctx.tenantId,
+          userId: ctx.userId,
           type,
           status: status || "available",
           metadata,
           price: parseFloat(price) || 0,
           cost: parseFloat(cost) || 0,
+          dtcId: dtcRef.id,
           createdAt: nowServerTs(),
         });
 
-        return res.json({ ok: true, itemId: ref.id });
+        // Create logbook entry
+        const recordTitle = metadata?.title || metadata?.documentName || metadata?.credentialName || metadata?.address || "New Record";
+        await db.collection("logbookEntries").add({
+          dtcId: dtcRef.id,
+          userId: ctx.userId,
+          dtcTitle: recordTitle,
+          entryType: "creation",
+          data: { description: `Record created: ${recordTitle}` },
+          files: [],
+          createdAt: nowServerTs(),
+        });
+
+        return res.json({ ok: true, itemId: ref.id, dtcId: dtcRef.id });
       } catch (e) {
         console.error("❌ inventory:create failed:", e);
         return jsonError(res, 500, "Failed to create inventory item");

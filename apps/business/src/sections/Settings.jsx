@@ -47,17 +47,34 @@ function PersonalSettings() {
   function handleAvatarChange(e) {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const dataUrl = ev.target.result;
-      setAvatarPreview(dataUrl);
-      localStorage.setItem("VAULT_AVATAR", dataUrl);
-      setToast("Photo updated");
-      setTimeout(() => setToast(null), 3000);
-    };
-    reader.readAsDataURL(file);
     // Reset file input so re-selecting the same file triggers onChange
     if (fileInputRef.current) fileInputRef.current.value = "";
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => {
+        // Resize to 200x200 max to avoid localStorage overflow
+        const canvas = document.createElement("canvas");
+        const maxSize = 200;
+        let w = img.width;
+        let h = img.height;
+        if (w > maxSize || h > maxSize) {
+          if (w > h) { h = Math.round(h * maxSize / w); w = maxSize; }
+          else { w = Math.round(w * maxSize / h); h = maxSize; }
+        }
+        canvas.width = w;
+        canvas.height = h;
+        canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+        const compressed = canvas.toDataURL("image/jpeg", 0.85);
+        setAvatarPreview(compressed);
+        localStorage.setItem("VAULT_AVATAR", compressed);
+        setToast("Photo updated");
+        setTimeout(() => setToast(null), 3000);
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
   }
 
   function handleBlockchainToggle(checked) {

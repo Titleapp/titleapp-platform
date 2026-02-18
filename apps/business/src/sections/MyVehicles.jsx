@@ -6,6 +6,24 @@ const US_STATES = ["AL","AK","AZ","AR","CA","CO","CT","DE","DC","FL","GA","HI","
 
 const EMPTY_FORM = { year: "", make: "", model: "", color: "", vin: "", plate: "", state: "", purchaseDate: "", lender: "", mileage: "" };
 
+const COLOR_MAP = {
+  black: "#1e293b", white: "#e2e8f0", silver: "#94a3b8", gray: "#64748b", grey: "#64748b",
+  red: "#dc2626", blue: "#2563eb", green: "#16a34a", yellow: "#eab308", orange: "#ea580c",
+  brown: "#92400e", gold: "#d97706", beige: "#d4c5a9", purple: "#7c3aed", pink: "#ec4899",
+};
+
+function formatDate(ts) {
+  if (!ts) return "";
+  const d = ts.toDate ? ts.toDate() : ts._seconds ? new Date(ts._seconds * 1000) : new Date(ts);
+  if (isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+function fmtMileage(val) {
+  if (!val) return "";
+  return Number(String(val).replace(/,/g, "")).toLocaleString();
+}
+
 export default function MyVehicles() {
   const [vehicles, setVehicles] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -20,7 +38,7 @@ export default function MyVehicles() {
     try {
       const result = await api.getInventory({ vertical: "consumer", jurisdiction: "GLOBAL" });
       const all = result.inventory || [];
-      setVehicles(all.filter((i) => i.metadata?.vin || i.metadata?.make));
+      setVehicles(all.filter((i) => (i.metadata?.vin || i.metadata?.make) && (i.metadata?.title || i.metadata?.make)));
     } catch (e) {
       console.error("Failed to load vehicles:", e);
     } finally {
@@ -34,6 +52,20 @@ export default function MyVehicles() {
         detail: { message: `Tell me about my ${vehicle.metadata?.year || ""} ${vehicle.metadata?.make || ""} ${vehicle.metadata?.model || ""}`.trim() },
       })
     );
+  }
+
+  async function handleDelete(id) {
+    if (!window.confirm("Delete this vehicle record?")) return;
+    try {
+      await api.deleteInventoryItem({ vertical: "consumer", jurisdiction: "GLOBAL", id });
+      setToast("Record deleted");
+      setTimeout(() => setToast(null), 3000);
+      setVehicles((prev) => prev.filter((v) => v.id !== id));
+    } catch (e) {
+      console.error("Failed to delete:", e);
+      setToast("Failed to delete — " + (e.message || "try again"));
+      setTimeout(() => setToast(null), 4000);
+    }
   }
 
   async function handleSave(e) {
@@ -71,13 +103,13 @@ export default function MyVehicles() {
     }
   }
 
-  function fmtMileage(val) {
-    if (!val) return "";
-    return Number(val).toLocaleString();
-  }
-
   const inputStyle = { width: "100%", padding: "10px", borderRadius: "12px", border: "1px solid var(--line)" };
   const selectStyle = { ...inputStyle, background: "white" };
+
+  function getColorTint(colorName) {
+    if (!colorName) return "#7c3aed";
+    return COLOR_MAP[colorName.toLowerCase()] || "#7c3aed";
+  }
 
   return (
     <div>
@@ -121,68 +153,73 @@ export default function MyVehicles() {
             </button>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: "12px" }}>
-            {vehicles.map((v) => (
-              <div key={v.id} className="card" style={{ position: "relative", overflow: "hidden" }}>
-                <div style={{ background: "#7c3aed12", padding: "16px 20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                    <div style={{ width: "40px", height: "40px", borderRadius: "12px", background: "#7c3aed15", border: "1px solid #7c3aed35", display: "grid", placeItems: "center" }}>
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M5 17h14v-6l-2-5H7L5 11v6z"></path>
-                        <circle cx="7.5" cy="17.5" r="1.5"></circle>
-                        <circle cx="16.5" cy="17.5" r="1.5"></circle>
-                      </svg>
+            {vehicles.map((v) => {
+              const tint = getColorTint(v.metadata?.color);
+              const isLight = ["white", "beige", "silver", "yellow"].includes((v.metadata?.color || "").toLowerCase());
+              return (
+                <div key={v.id} className="card" style={{ position: "relative", overflow: "hidden" }}>
+                  {/* Icon header */}
+                  <div style={{ height: "100px", background: `linear-gradient(135deg, ${tint}18 0%, ${tint}08 100%)`, display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke={isLight ? "#64748b" : tint} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.7 }}>
+                      <path d="M5 17h14v-6l-2-5H7L5 11v6z"></path>
+                      <circle cx="7.5" cy="17.5" r="1.5"></circle>
+                      <circle cx="16.5" cy="17.5" r="1.5"></circle>
+                    </svg>
+                    <button
+                      onClick={() => handleDelete(v.id)}
+                      style={{ position: "absolute", top: "8px", right: "8px", background: "white", border: "1px solid #e5e7eb", borderRadius: "8px", width: "28px", height: "28px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#94a3b8", fontSize: "14px" }}
+                      title="Delete"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                    </button>
+                    <span style={{ position: "absolute", bottom: "8px", right: "10px", fontSize: "11px", fontWeight: 600, padding: "3px 10px", borderRadius: "20px", background: `${tint}20`, color: isLight ? "#64748b" : tint }}>Vehicle</span>
+                  </div>
+                  {/* Content */}
+                  <div style={{ padding: "14px 20px 4px" }}>
+                    <div style={{ fontWeight: 700, fontSize: "16px", color: "#1e293b" }}>
+                      {v.metadata?.title || `${v.metadata?.year || ""} ${v.metadata?.make || ""} ${v.metadata?.model || ""}`.trim() || "Vehicle"}
                     </div>
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: "16px", color: "#1e293b" }}>
-                        {v.metadata?.year} {v.metadata?.make} {v.metadata?.model}
+                    {v.metadata?.color && <div style={{ fontSize: "13px", color: "#64748b", marginTop: "2px" }}>{v.metadata.color}</div>}
+                  </div>
+                  <div style={{ padding: "8px 20px 12px" }}>
+                    {v.metadata?.vin && (
+                      <div style={{ display: "flex", justifyContent: "space-between", padding: "3px 0", fontSize: "13px" }}>
+                        <span style={{ color: "#64748b" }}>VIN</span>
+                        <span style={{ fontWeight: 500, color: "#1e293b", fontFamily: "monospace", fontSize: "12px" }}>{v.metadata.vin}</span>
                       </div>
-                      <div style={{ fontSize: "12px", color: "#64748b" }}>Vehicle Certificate</div>
-                    </div>
+                    )}
+                    {v.metadata?.mileage && (
+                      <div style={{ display: "flex", justifyContent: "space-between", padding: "3px 0", fontSize: "13px" }}>
+                        <span style={{ color: "#64748b" }}>Mileage</span>
+                        <span style={{ fontWeight: 500, color: "#1e293b" }}>{fmtMileage(v.metadata.mileage)}</span>
+                      </div>
+                    )}
+                    {v.metadata?.plate && (
+                      <div style={{ display: "flex", justifyContent: "space-between", padding: "3px 0", fontSize: "13px" }}>
+                        <span style={{ color: "#64748b" }}>Plate</span>
+                        <span style={{ fontWeight: 500, color: "#1e293b" }}>{v.metadata.plate} {v.metadata.stateRegistered || ""}</span>
+                      </div>
+                    )}
+                    {v.metadata?.lender && (
+                      <div style={{ display: "flex", justifyContent: "space-between", padding: "3px 0", fontSize: "13px" }}>
+                        <span style={{ color: "#64748b" }}>Lender</span>
+                        <span style={{ fontWeight: 500, color: "#1e293b" }}>{v.metadata.lender}</span>
+                      </div>
+                    )}
+                    {formatDate(v.createdAt) && (
+                      <div style={{ display: "flex", justifyContent: "space-between", padding: "3px 0", fontSize: "13px" }}>
+                        <span style={{ color: "#64748b" }}>Added</span>
+                        <span style={{ fontWeight: 500, color: "#1e293b" }}>{formatDate(v.createdAt)}</span>
+                      </div>
+                    )}
                   </div>
-                  <span style={{ fontSize: "11px", fontWeight: 600, padding: "3px 10px", borderRadius: "20px", background: "#7c3aed20", color: "#7c3aed" }}>Vehicle</span>
-                </div>
-                <div style={{ padding: "12px 20px" }}>
-                  {v.metadata?.vin && (
-                    <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", fontSize: "13px" }}>
-                      <span style={{ color: "#64748b" }}>VIN</span>
-                      <span style={{ fontWeight: 500, color: "#1e293b", fontFamily: "monospace", fontSize: "12px" }}>{v.metadata.vin}</span>
-                    </div>
-                  )}
-                  {v.metadata?.color && (
-                    <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", fontSize: "13px" }}>
-                      <span style={{ color: "#64748b" }}>Color</span>
-                      <span style={{ fontWeight: 500, color: "#1e293b" }}>{v.metadata.color}</span>
-                    </div>
-                  )}
-                  {v.metadata?.mileage && (
-                    <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", fontSize: "13px" }}>
-                      <span style={{ color: "#64748b" }}>Mileage</span>
-                      <span style={{ fontWeight: 500, color: "#1e293b" }}>{fmtMileage(v.metadata.mileage)}</span>
-                    </div>
-                  )}
-                  {v.metadata?.plate && (
-                    <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", fontSize: "13px" }}>
-                      <span style={{ color: "#64748b" }}>Plate</span>
-                      <span style={{ fontWeight: 500, color: "#1e293b" }}>{v.metadata.plate} {v.metadata.stateRegistered || ""}</span>
-                    </div>
-                  )}
-                  {v.metadata?.lender && (
-                    <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", fontSize: "13px" }}>
-                      <span style={{ color: "#64748b" }}>Lender</span>
-                      <span style={{ fontWeight: 500, color: "#1e293b" }}>{v.metadata.lender}</span>
-                    </div>
-                  )}
-                  <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", fontSize: "13px" }}>
-                    <span style={{ color: "#64748b" }}>Added</span>
-                    <span style={{ fontWeight: 500, color: "#1e293b" }}>{v.createdAt ? new Date(v.createdAt).toLocaleDateString() : "recently"}</span>
+                  <div style={{ padding: "10px 20px 14px", borderTop: "1px solid #f1f5f9", display: "flex", gap: "8px" }}>
+                    <button className="iconBtn" onClick={() => openChat(v)} style={{ flex: 1, fontSize: "13px" }}>Ask AI</button>
+                    <span className={`badge badge-${v.status || "active"}`} style={{ display: "flex", alignItems: "center" }}>{v.status || "Active"}</span>
                   </div>
                 </div>
-                <div style={{ padding: "10px 20px 14px", borderTop: "1px solid #f1f5f9", display: "flex", gap: "8px" }}>
-                  <button className="iconBtn" onClick={() => openChat(v)} style={{ flex: 1, fontSize: "13px" }}>Ask AI</button>
-                  <span className={`badge badge-${v.status || "active"}`} style={{ display: "flex", alignItems: "center" }}>{v.status || "Active"}</span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </>
       )}
@@ -196,7 +233,7 @@ export default function MyVehicles() {
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
             <div><label style={{ display: "block", marginBottom: "6px", fontWeight: 600, fontSize: "13px" }}>Color</label><input type="text" value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })} style={inputStyle} /></div>
-            <div><label style={{ display: "block", marginBottom: "6px", fontWeight: 600, fontSize: "13px" }}>Mileage</label><input type="text" value={form.mileage ? Number(form.mileage).toLocaleString() : ""} onChange={(e) => setForm({ ...form, mileage: e.target.value.replace(/,/g, "") })} placeholder="e.g., 45,000" style={inputStyle} /></div>
+            <div><label style={{ display: "block", marginBottom: "6px", fontWeight: 600, fontSize: "13px" }}>Mileage</label><input type="text" value={form.mileage ? Number(String(form.mileage).replace(/,/g, "")).toLocaleString() : ""} onChange={(e) => setForm({ ...form, mileage: e.target.value.replace(/,/g, "") })} placeholder="e.g., 45,000" style={inputStyle} /></div>
           </div>
           <div><label style={{ display: "block", marginBottom: "6px", fontWeight: 600, fontSize: "13px" }}>VIN (optional)</label><input type="text" value={form.vin} onChange={(e) => setForm({ ...form, vin: e.target.value })} placeholder="17 characters" style={inputStyle} /></div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px" }}>

@@ -2,7 +2,21 @@ import React, { useState, useEffect } from "react";
 import FormModal from "../components/FormModal";
 import * as api from "../api/client";
 
-const EMPTY_FORM = { address: "", ownershipType: "Own", propertyType: "House", monthlyPayment: "", company: "", endDate: "" };
+const EMPTY_FORM = { address: "", address2: "", city: "", state: "", zip: "", ownershipType: "Own", propertyType: "House", monthlyPayment: "", company: "", endDate: "", term: "", interestRate: "" };
+
+const US_STATES = ["AL","AK","AZ","AR","CA","CO","CT","DE","DC","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY"];
+
+function formatDate(ts) {
+  if (!ts) return "";
+  const d = ts.toDate ? ts.toDate() : ts._seconds ? new Date(ts._seconds * 1000) : new Date(ts);
+  if (isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+function fmtPayment(val) {
+  if (!val) return "";
+  return "$" + Number(String(val).replace(/[$,]/g, "")).toLocaleString();
+}
 
 export default function MyProperties() {
   const [properties, setProperties] = useState([]);
@@ -18,11 +32,25 @@ export default function MyProperties() {
     try {
       const result = await api.getInventory({ vertical: "consumer", jurisdiction: "GLOBAL" });
       const all = result.inventory || [];
-      setProperties(all.filter((i) => i.metadata?.address || i.metadata?.propertyType));
+      setProperties(all.filter((i) => (i.type === "property" || i.metadata?.address || i.metadata?.propertyType) && (i.metadata?.title || i.metadata?.address)));
     } catch (e) {
       console.error("Failed to load properties:", e);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleDelete(id) {
+    if (!window.confirm("Delete this property record?")) return;
+    try {
+      await api.deleteInventoryItem({ vertical: "consumer", jurisdiction: "GLOBAL", id });
+      setToast("Record deleted");
+      setTimeout(() => setToast(null), 3000);
+      setProperties((prev) => prev.filter((p) => p.id !== id));
+    } catch (e) {
+      console.error("Failed to delete:", e);
+      setToast("Failed to delete — " + (e.message || "try again"));
+      setTimeout(() => setToast(null), 4000);
     }
   }
 
@@ -31,6 +59,7 @@ export default function MyProperties() {
     if (!form.address) return;
     setSaving(true);
     try {
+      const fullAddress = [form.address, form.address2, form.city, form.state, form.zip].filter(Boolean).join(", ");
       await api.createInventoryItem({
         vertical: "consumer",
         jurisdiction: "GLOBAL",
@@ -38,8 +67,14 @@ export default function MyProperties() {
           type: "property",
           status: "active",
           metadata: {
-            address: form.address, ownershipType: form.ownershipType, propertyType: form.propertyType,
-            monthlyPayment: form.monthlyPayment, company: form.company, endDate: form.endDate,
+            title: fullAddress || form.address,
+            address: fullAddress || form.address,
+            address2: form.address2,
+            city: form.city, stateCode: form.state, zip: form.zip,
+            ownershipType: form.ownershipType, propertyType: form.propertyType,
+            monthlyPayment: form.monthlyPayment.replace(/[$,]/g, ""),
+            company: form.company, endDate: form.endDate,
+            term: form.term, interestRate: form.interestRate,
           },
           price: 0, cost: 0,
         },
@@ -61,6 +96,12 @@ export default function MyProperties() {
 
   const inputStyle = { width: "100%", padding: "10px", borderRadius: "12px", border: "1px solid var(--line)" };
   const selectStyle = { ...inputStyle, background: "white" };
+
+  function getOwnershipColor(type) {
+    if (type === "Own" || type === "Mortgage") return "#16a34a";
+    if (type === "Rent" || type === "Lease") return "#2563eb";
+    return "#64748b";
+  }
 
   return (
     <div>
@@ -89,7 +130,7 @@ export default function MyProperties() {
           </div>
           <div style={{ fontSize: "18px", fontWeight: 600, color: "#1e293b", marginBottom: "10px" }}>Add your first property</div>
           <div style={{ fontSize: "14px", color: "#64748b", maxWidth: "420px", margin: "0 auto 24px", lineHeight: "1.6" }}>
-            Keep track of deeds, leases, mortgage info, tax records, and insurance for every property -- owned or rented. Everything verified and in one place.
+            Keep track of deeds, leases, mortgage info, tax records, and insurance for every property -- owned or rented.
           </div>
           <button onClick={() => setShowForm(true)} style={{ padding: "12px 28px", background: "linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)", color: "white", border: "none", borderRadius: "12px", fontSize: "14px", fontWeight: 600, cursor: "pointer" }}>
             Add Property
@@ -103,27 +144,81 @@ export default function MyProperties() {
             </button>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: "12px" }}>
-            {properties.map((p) => (
-              <div key={p.id} className="card" style={{ padding: "20px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: "16px", color: "#1e293b" }}>{p.metadata?.address || "Unnamed Property"}</div>
-                    {p.metadata?.propertyType && <div style={{ fontSize: "13px", color: "#64748b", marginTop: "4px" }}>{p.metadata.propertyType} {p.metadata?.ownershipType ? `-- ${p.metadata.ownershipType}` : ""}</div>}
+            {properties.map((p) => {
+              const ownerColor = getOwnershipColor(p.metadata?.ownershipType);
+              return (
+                <div key={p.id} className="card" style={{ position: "relative", overflow: "hidden" }}>
+                  {/* Icon header */}
+                  <div style={{ height: "100px", background: `linear-gradient(135deg, ${ownerColor}12 0%, ${ownerColor}06 100%)`, display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke={ownerColor} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.6 }}>
+                      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                      <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                    </svg>
+                    <button
+                      onClick={() => handleDelete(p.id)}
+                      style={{ position: "absolute", top: "8px", right: "8px", background: "white", border: "1px solid #e5e7eb", borderRadius: "8px", width: "28px", height: "28px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#94a3b8", fontSize: "14px" }}
+                      title="Delete"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                    </button>
+                    <span style={{ position: "absolute", bottom: "8px", right: "10px", fontSize: "11px", fontWeight: 600, padding: "3px 10px", borderRadius: "20px", background: `${ownerColor}20`, color: ownerColor }}>
+                      {p.metadata?.propertyType || "Property"}
+                    </span>
                   </div>
-                  <span className={`badge badge-${p.status || "draft"}`}>{p.status || "Draft"}</span>
+                  {/* Content */}
+                  <div style={{ padding: "14px 20px 4px" }}>
+                    <div style={{ fontWeight: 700, fontSize: "16px", color: "#1e293b" }}>
+                      {p.metadata?.title || p.metadata?.address || "Property"}
+                    </div>
+                    <div style={{ fontSize: "13px", color: "#64748b", marginTop: "2px" }}>
+                      {p.metadata?.ownershipType || ""}{p.metadata?.company ? ` -- ${p.metadata.company}` : ""}
+                    </div>
+                  </div>
+                  <div style={{ padding: "8px 20px 12px" }}>
+                    {p.metadata?.monthlyPayment && (
+                      <div style={{ display: "flex", justifyContent: "space-between", padding: "3px 0", fontSize: "13px" }}>
+                        <span style={{ color: "#64748b" }}>Monthly</span>
+                        <span style={{ fontWeight: 500, color: "#1e293b" }}>{fmtPayment(p.metadata.monthlyPayment)}</span>
+                      </div>
+                    )}
+                    {p.metadata?.endDate && (
+                      <div style={{ display: "flex", justifyContent: "space-between", padding: "3px 0", fontSize: "13px" }}>
+                        <span style={{ color: "#64748b" }}>End Date</span>
+                        <span style={{ fontWeight: 500, color: "#1e293b" }}>{p.metadata.endDate}</span>
+                      </div>
+                    )}
+                    {formatDate(p.createdAt) && (
+                      <div style={{ display: "flex", justifyContent: "space-between", padding: "3px 0", fontSize: "13px" }}>
+                        <span style={{ color: "#64748b" }}>Added</span>
+                        <span style={{ fontWeight: 500, color: "#1e293b" }}>{formatDate(p.createdAt)}</span>
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ padding: "10px 20px 14px", borderTop: "1px solid #f1f5f9", display: "flex", gap: "8px" }}>
+                    <span className={`badge badge-${p.status || "active"}`} style={{ display: "flex", alignItems: "center" }}>{p.status || "Active"}</span>
+                  </div>
                 </div>
-                <div style={{ fontSize: "12px", color: "#94a3b8", marginTop: "10px" }}>
-                  Added {p.createdAt ? new Date(p.createdAt).toLocaleDateString() : "recently"}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </>
       )}
 
       <FormModal isOpen={showForm} onClose={() => setShowForm(false)} title="Add Property" onSubmit={handleSave} submitLabel={saving ? "Saving..." : "Save Property"}>
         <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-          <div><label style={{ display: "block", marginBottom: "6px", fontWeight: 600, fontSize: "13px" }}>Property Name / Address</label><input type="text" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="123 Main St, Chicago, IL" style={inputStyle} required /></div>
+          <div><label style={{ display: "block", marginBottom: "6px", fontWeight: 600, fontSize: "13px" }}>Street Address</label><input type="text" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="123 Main St" style={inputStyle} required /></div>
+          <div><label style={{ display: "block", marginBottom: "6px", fontWeight: 600, fontSize: "13px" }}>Apt / Unit (optional)</label><input type="text" value={form.address2} onChange={(e) => setForm({ ...form, address2: e.target.value })} placeholder="Apt 4B" style={inputStyle} /></div>
+          <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: "10px" }}>
+            <div><label style={{ display: "block", marginBottom: "6px", fontWeight: 600, fontSize: "13px" }}>City</label><input type="text" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} placeholder="Chicago" style={inputStyle} /></div>
+            <div>
+              <label style={{ display: "block", marginBottom: "6px", fontWeight: 600, fontSize: "13px" }}>State</label>
+              <select value={form.state} onChange={(e) => setForm({ ...form, state: e.target.value })} style={selectStyle}>
+                <option value="">--</option>
+                {US_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+            <div><label style={{ display: "block", marginBottom: "6px", fontWeight: 600, fontSize: "13px" }}>Zip</label><input type="text" value={form.zip} onChange={(e) => setForm({ ...form, zip: e.target.value })} placeholder="60601" maxLength={10} style={inputStyle} /></div>
+          </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
             <div>
               <label style={{ display: "block", marginBottom: "6px", fontWeight: 600, fontSize: "13px" }}>Ownership</label>
@@ -134,15 +229,29 @@ export default function MyProperties() {
             <div>
               <label style={{ display: "block", marginBottom: "6px", fontWeight: 600, fontSize: "13px" }}>Property Type</label>
               <select value={form.propertyType} onChange={(e) => setForm({ ...form, propertyType: e.target.value })} style={selectStyle}>
-                <option value="House">House</option><option value="Apartment">Apartment</option><option value="Condo">Condo</option><option value="Commercial">Commercial</option><option value="Land">Land</option><option value="Other">Other</option>
+                <option value="House">House</option><option value="Apartment">Apartment</option><option value="Condo">Condo</option><option value="Townhouse">Townhouse</option><option value="Commercial">Commercial</option><option value="Land">Land</option><option value="Other">Other</option>
               </select>
             </div>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-            <div><label style={{ display: "block", marginBottom: "6px", fontWeight: 600, fontSize: "13px" }}>Monthly Payment (optional)</label><input type="number" value={form.monthlyPayment} onChange={(e) => setForm({ ...form, monthlyPayment: e.target.value })} placeholder="$" style={inputStyle} /></div>
-            <div><label style={{ display: "block", marginBottom: "6px", fontWeight: 600, fontSize: "13px" }}>Lease/Mortgage End Date</label><input type="date" value={form.endDate} onChange={(e) => setForm({ ...form, endDate: e.target.value })} style={inputStyle} /></div>
+            <div><label style={{ display: "block", marginBottom: "6px", fontWeight: 600, fontSize: "13px" }}>Monthly Payment</label><input type="text" value={form.monthlyPayment ? "$" + Number(String(form.monthlyPayment).replace(/[$,]/g, "")).toLocaleString() : ""} onChange={(e) => setForm({ ...form, monthlyPayment: e.target.value.replace(/[$,]/g, "") })} placeholder="$3,500" style={inputStyle} /></div>
+            <div>
+              <label style={{ display: "block", marginBottom: "6px", fontWeight: 600, fontSize: "13px" }}>Lease / Mortgage Term</label>
+              <select value={form.term} onChange={(e) => setForm({ ...form, term: e.target.value })} style={selectStyle}>
+                <option value="">--</option>
+                <option value="6 months">6 Months</option><option value="1 year">1 Year</option><option value="2 years">2 Years</option>
+                <option value="5 years">5 Years</option><option value="15 years">15 Years</option><option value="30 years">30 Years</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
           </div>
-          <div><label style={{ display: "block", marginBottom: "6px", fontWeight: 600, fontSize: "13px" }}>Landlord / Mortgage Company (optional)</label><input type="text" value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })} style={inputStyle} /></div>
+          {form.ownershipType === "Own" && (
+            <div><label style={{ display: "block", marginBottom: "6px", fontWeight: 600, fontSize: "13px" }}>Interest Rate % (optional)</label><input type="number" step="0.01" value={form.interestRate} onChange={(e) => setForm({ ...form, interestRate: e.target.value })} placeholder="6.5" style={inputStyle} /></div>
+          )}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+            <div><label style={{ display: "block", marginBottom: "6px", fontWeight: 600, fontSize: "13px" }}>End Date</label><input type="date" value={form.endDate} onChange={(e) => setForm({ ...form, endDate: e.target.value })} style={inputStyle} /></div>
+            <div><label style={{ display: "block", marginBottom: "6px", fontWeight: 600, fontSize: "13px" }}>Landlord / Mortgage Co.</label><input type="text" value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })} style={inputStyle} /></div>
+          </div>
         </div>
       </FormModal>
     </div>

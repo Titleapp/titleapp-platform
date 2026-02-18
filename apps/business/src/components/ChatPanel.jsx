@@ -149,10 +149,18 @@ export default function ChatPanel({ currentSection, onboardingStep }) {
       return;
     }
 
-    const userMessage = input.trim();
+    let userMessage = input.trim();
+    const currentFile = attachedFile;
+    if (currentFile) {
+      userMessage += ` [File attached: ${currentFile.name}]`;
+      setAttachedFile(null);
+    }
     setInput('');
     setIsSending(true);
     setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
+    if (currentFile) {
+      setMessages(prev => [...prev, { role: 'assistant', content: `File received: ${currentFile.name}. The file will be attached to any record created in this conversation.`, isSystem: true }]);
+    }
     setIsTyping(true);
 
     try {
@@ -271,8 +279,8 @@ export default function ChatPanel({ currentSection, onboardingStep }) {
             <div style={{ padding: '10px 16px' }}>
               {displayFields.map(([key, value]) => (
                 <div key={key} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: '13px' }}>
-                  <span style={{ color: '#64748b' }}>{key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase())}</span>
-                  <span style={{ fontWeight: 500, color: '#1e293b' }}>{value}</span>
+                  <span style={{ color: '#64748b', flexShrink: 0, marginRight: '12px' }}>{key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase())}</span>
+                  <span style={{ fontWeight: 500, color: '#1e293b', textAlign: 'right' }}>{value}</span>
                 </div>
               ))}
             </div>

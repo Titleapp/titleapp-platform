@@ -4,6 +4,23 @@ import * as api from "../api/client";
 
 const EMPTY_FORM = { name: "", category: "Document", description: "", estimatedValue: "" };
 
+const CATEGORY_ICONS = {
+  Jewelry: { color: "#d97706", icon: (c) => <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.6 }}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg> },
+  Artwork: { color: "#7c3aed", icon: (c) => <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.6 }}><circle cx="13.5" cy="6.5" r="2.5"></circle><path d="M17.5 10c2 0 3.5 1.5 3.5 3.5S19.5 17 17.5 17c-1 0-1.87-.5-2.5-1.21"></path><path d="M3 19.78C3 16.56 5.56 14 8.78 14H12v3.78C12 20.98 9.98 23 6.78 23 4.56 23 3 21.22 3 19.78z"></path><path d="M12 14v-4"></path><circle cx="12" cy="8" r="2"></circle></svg> },
+  Collectible: { color: "#f59e0b", icon: (c) => <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.6 }}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg> },
+  "Family Heirloom": { color: "#ec4899", icon: (c) => <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.6 }}><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg> },
+  Document: { color: "#6366f1", icon: (c) => <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.6 }}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg> },
+  Electronics: { color: "#0ea5e9", icon: (c) => <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.6 }}><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg> },
+};
+const DEFAULT_ICON = { color: "#64748b", icon: (c) => <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.6 }}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg> };
+
+function formatDate(ts) {
+  if (!ts) return "";
+  const d = ts.toDate ? ts.toDate() : ts._seconds ? new Date(ts._seconds * 1000) : new Date(ts);
+  if (isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
 export default function MyDocuments() {
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -19,13 +36,27 @@ export default function MyDocuments() {
       const result = await api.getInventory({ vertical: "consumer", jurisdiction: "GLOBAL" });
       const all = result.inventory || [];
       setDocuments(all.filter((i) =>
-        i.type === "document" || i.type === "general" || i.type === "valuable" ||
-        (i.metadata?.documentType && !i.metadata?.credentialName && !i.metadata?.school)
+        (i.type === "document" || i.type === "general" || i.type === "valuable") &&
+        (i.metadata?.documentName || i.metadata?.title || i.metadata?.category)
       ));
     } catch (e) {
       console.error("Failed to load documents:", e);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleDelete(id) {
+    if (!window.confirm("Delete this record?")) return;
+    try {
+      await api.deleteInventoryItem({ vertical: "consumer", jurisdiction: "GLOBAL", id });
+      setToast("Record deleted");
+      setTimeout(() => setToast(null), 3000);
+      setDocuments((prev) => prev.filter((d) => d.id !== id));
+    } catch (e) {
+      console.error("Failed to delete:", e);
+      setToast("Failed to delete — " + (e.message || "try again"));
+      setTimeout(() => setToast(null), 4000);
     }
   }
 
@@ -64,6 +95,10 @@ export default function MyDocuments() {
 
   const inputStyle = { width: "100%", padding: "10px", borderRadius: "12px", border: "1px solid var(--line)" };
   const selectStyle = { ...inputStyle, background: "white" };
+
+  function getCategoryConfig(cat) {
+    return CATEGORY_ICONS[cat] || DEFAULT_ICON;
+  }
 
   return (
     <div>
@@ -108,24 +143,53 @@ export default function MyDocuments() {
             </button>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: "12px" }}>
-            {documents.map((d) => (
-              <div key={d.id} className="card" style={{ padding: "20px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: "16px", color: "#1e293b" }}>{d.metadata?.documentName || d.metadata?.title || "Item"}</div>
-                    <div style={{ fontSize: "13px", color: "#64748b", marginTop: "4px" }}>
-                      {d.metadata?.category || d.metadata?.documentType || ""}
-                      {d.metadata?.estimatedValue && ` -- $${Number(d.metadata.estimatedValue).toLocaleString()}`}
-                    </div>
+            {documents.map((d) => {
+              const cat = d.metadata?.category || (d.type === "document" ? "Document" : "Other");
+              const cfg = getCategoryConfig(cat);
+              return (
+                <div key={d.id} className="card" style={{ position: "relative", overflow: "hidden" }}>
+                  {/* Icon header */}
+                  <div style={{ height: "100px", background: `linear-gradient(135deg, ${cfg.color}12 0%, ${cfg.color}06 100%)`, display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
+                    {cfg.icon(cfg.color)}
+                    <button
+                      onClick={() => handleDelete(d.id)}
+                      style={{ position: "absolute", top: "8px", right: "8px", background: "white", border: "1px solid #e5e7eb", borderRadius: "8px", width: "28px", height: "28px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#94a3b8", fontSize: "14px" }}
+                      title="Delete"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                    </button>
+                    <span style={{ position: "absolute", bottom: "8px", right: "10px", fontSize: "11px", fontWeight: 600, padding: "3px 10px", borderRadius: "20px", background: `${cfg.color}20`, color: cfg.color }}>
+                      {cat}
+                    </span>
                   </div>
-                  <span className={`badge badge-${d.status || "draft"}`}>{d.status || "Draft"}</span>
+                  {/* Content */}
+                  <div style={{ padding: "14px 20px 4px" }}>
+                    <div style={{ fontWeight: 700, fontSize: "16px", color: "#1e293b" }}>
+                      {d.metadata?.documentName || d.metadata?.title || "Item"}
+                    </div>
+                    {d.metadata?.estimatedValue && (
+                      <div style={{ fontSize: "13px", color: "#64748b", marginTop: "2px" }}>
+                        Estimated value: ${Number(d.metadata.estimatedValue).toLocaleString()}
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ padding: "8px 20px 12px" }}>
+                    {d.metadata?.description && (
+                      <div style={{ fontSize: "13px", color: "#475569", marginBottom: "6px", lineHeight: "1.5" }}>{d.metadata.description}</div>
+                    )}
+                    {formatDate(d.createdAt) && (
+                      <div style={{ display: "flex", justifyContent: "space-between", padding: "3px 0", fontSize: "13px" }}>
+                        <span style={{ color: "#64748b" }}>Added</span>
+                        <span style={{ fontWeight: 500, color: "#1e293b" }}>{formatDate(d.createdAt)}</span>
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ padding: "10px 20px 14px", borderTop: "1px solid #f1f5f9", display: "flex", gap: "8px" }}>
+                    <span className={`badge badge-${d.status || "active"}`} style={{ display: "flex", alignItems: "center" }}>{d.status || "Active"}</span>
+                  </div>
                 </div>
-                {d.metadata?.description && <div style={{ fontSize: "13px", color: "#94a3b8", marginTop: "8px" }}>{d.metadata.description}</div>}
-                <div style={{ fontSize: "12px", color: "#94a3b8", marginTop: "10px" }}>
-                  Added {d.createdAt ? new Date(d.createdAt).toLocaleDateString() : "recently"}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </>
       )}
@@ -136,11 +200,11 @@ export default function MyDocuments() {
           <div>
             <label style={{ display: "block", marginBottom: "6px", fontWeight: 600, fontSize: "13px" }}>Category</label>
             <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} style={selectStyle}>
-              <option value="Document">Document</option><option value="Jewelry">Jewelry</option><option value="Artwork">Artwork</option><option value="Collectible">Collectible</option><option value="Family Heirloom">Family Heirloom</option><option value="Other">Other</option>
+              <option value="Document">Document</option><option value="Jewelry">Jewelry</option><option value="Artwork">Artwork</option><option value="Electronics">Electronics</option><option value="Collectible">Collectible</option><option value="Family Heirloom">Family Heirloom</option><option value="Other">Other</option>
             </select>
           </div>
           <div><label style={{ display: "block", marginBottom: "6px", fontWeight: 600, fontSize: "13px" }}>Description (optional)</label><textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} style={inputStyle} /></div>
-          <div><label style={{ display: "block", marginBottom: "6px", fontWeight: 600, fontSize: "13px" }}>Estimated Value (optional)</label><input type="number" value={form.estimatedValue} onChange={(e) => setForm({ ...form, estimatedValue: e.target.value })} placeholder="$" style={inputStyle} /></div>
+          <div><label style={{ display: "block", marginBottom: "6px", fontWeight: 600, fontSize: "13px" }}>Estimated Value (optional)</label><input type="text" value={form.estimatedValue ? "$" + Number(String(form.estimatedValue).replace(/[$,]/g, "")).toLocaleString() : ""} onChange={(e) => setForm({ ...form, estimatedValue: e.target.value.replace(/[$,]/g, "") })} placeholder="$" style={inputStyle} /></div>
         </div>
       </FormModal>
     </div>

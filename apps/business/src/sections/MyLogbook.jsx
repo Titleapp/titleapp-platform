@@ -2,18 +2,39 @@ import React, { useState, useEffect } from "react";
 import * as api from "../api/client";
 
 const ENTRY_TYPES = {
+  creation: { icon: "C", color: "#7c3aed", label: "Created" },
   maintenance: { icon: "M", color: "#06b6d4", label: "Maintenance" },
   transfer: { icon: "T", color: "#7c3aed", label: "Transfer" },
   inspection: { icon: "I", color: "#22c55e", label: "Inspection" },
   update: { icon: "U", color: "#f59e0b", label: "Update" },
+  payment: { icon: "P", color: "#16a34a", label: "Payment" },
+  verification: { icon: "V", color: "#6366f1", label: "Verification" },
   note: { icon: "N", color: "#64748b", label: "Note" },
-  creation: { icon: "C", color: "#7c3aed", label: "Created" },
 };
+
+const ADD_ENTRY_TYPES = [
+  { value: "update", label: "Update" },
+  { value: "maintenance", label: "Maintenance" },
+  { value: "payment", label: "Payment" },
+  { value: "note", label: "Note" },
+  { value: "verification", label: "Verification" },
+  { value: "transfer", label: "Transfer" },
+];
+
+function formatDate(ts) {
+  if (!ts) return "";
+  const d = ts.toDate ? ts.toDate() : ts._seconds ? new Date(ts._seconds * 1000) : new Date(ts);
+  if (isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
+}
 
 export default function MyLogbook() {
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expandedAssets, setExpandedAssets] = useState({});
+  const [addingTo, setAddingTo] = useState(null);
+  const [newEntry, setNewEntry] = useState({ entryType: "update", description: "" });
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => { loadLogbook(); }, []);
 
@@ -21,13 +42,11 @@ export default function MyLogbook() {
     try {
       const result = await api.getLogbooks({ vertical: "consumer", jurisdiction: "GLOBAL" });
       setEntries(result.entries || []);
-      // Auto-expand all assets
       const expanded = {};
       (result.entries || []).forEach((e) => { if (e.dtcId) expanded[e.dtcId] = true; });
       setExpandedAssets(expanded);
     } catch (e) {
       console.error("Failed to load logbook:", e);
-      // Fallback: try AI activity
       try {
         const result = await api.getAIActivity({ vertical: "consumer", jurisdiction: "GLOBAL", limit: 50 });
         setEntries(result.activity || []);
@@ -39,14 +58,32 @@ export default function MyLogbook() {
     }
   }
 
-  function formatDate(dateStr) {
-    if (!dateStr) return "";
-    const d = new Date(dateStr);
-    return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
-  }
-
   function toggleAsset(dtcId) {
     setExpandedAssets((prev) => ({ ...prev, [dtcId]: !prev[dtcId] }));
+  }
+
+  async function handleAddEntry(dtcId) {
+    if (!newEntry.description.trim()) return;
+    setSaving(true);
+    try {
+      await api.appendLogbook({
+        vertical: "consumer",
+        jurisdiction: "GLOBAL",
+        entry: {
+          dtcId,
+          entryType: newEntry.entryType,
+          data: { description: newEntry.description },
+        },
+      });
+      setAddingTo(null);
+      setNewEntry({ entryType: "update", description: "" });
+      setLoading(true);
+      await loadLogbook();
+    } catch (e) {
+      console.error("Failed to add entry:", e);
+    } finally {
+      setSaving(false);
+    }
   }
 
   // Group entries by dtcId
@@ -57,6 +94,9 @@ export default function MyLogbook() {
     grouped[key].entries.push(entry);
   });
 
+  const inputStyle = { width: "100%", padding: "10px", borderRadius: "12px", border: "1px solid var(--line)" };
+  const selectStyle = { ...inputStyle, background: "white" };
+
   return (
     <div>
       <div className="pageHeader">
@@ -66,7 +106,6 @@ export default function MyLogbook() {
         </div>
       </div>
 
-      {/* DTC Explanation */}
       <div className="card" style={{ marginBottom: "16px", padding: "20px", background: "#faf5ff", border: "1px solid #e9d5ff" }}>
         <div style={{ fontSize: "15px", fontWeight: 600, color: "#1e293b", marginBottom: "8px" }}>
           How Logbooks Work
@@ -136,6 +175,55 @@ export default function MyLogbook() {
 
               {expandedAssets[dtcId] && (
                 <div style={{ padding: "16px 20px" }}>
+                  {/* Add Entry button */}
+                  {addingTo !== dtcId && (
+                    <div style={{ marginBottom: "14px" }}>
+                      <button
+                        onClick={() => { setAddingTo(dtcId); setNewEntry({ entryType: "update", description: "" }); }}
+                        className="iconBtn"
+                        style={{ fontSize: "13px" }}
+                      >
+                        + Add Entry
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Inline add entry form */}
+                  {addingTo === dtcId && (
+                    <div style={{ padding: "14px", background: "#f8fafc", borderRadius: "12px", border: "1px solid var(--line)", marginBottom: "16px" }}>
+                      <div style={{ fontWeight: 600, fontSize: "14px", color: "#1e293b", marginBottom: "12px" }}>New Entry</div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                        <div>
+                          <label style={{ display: "block", marginBottom: "4px", fontWeight: 600, fontSize: "12px", color: "#64748b" }}>Type</label>
+                          <select value={newEntry.entryType} onChange={(e) => setNewEntry({ ...newEntry, entryType: e.target.value })} style={selectStyle}>
+                            {ADD_ENTRY_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label style={{ display: "block", marginBottom: "4px", fontWeight: 600, fontSize: "12px", color: "#64748b" }}>Description</label>
+                          <textarea
+                            value={newEntry.description}
+                            onChange={(e) => setNewEntry({ ...newEntry, description: e.target.value })}
+                            rows={2}
+                            placeholder="What happened?"
+                            style={inputStyle}
+                          />
+                        </div>
+                        <div style={{ display: "flex", gap: "8px" }}>
+                          <button
+                            onClick={() => handleAddEntry(dtcId)}
+                            disabled={saving || !newEntry.description.trim()}
+                            className="iconBtn"
+                            style={{ background: "var(--accent)", color: "white", borderColor: "var(--accent)", opacity: saving ? 0.6 : 1 }}
+                          >
+                            {saving ? "Saving..." : "Save Entry"}
+                          </button>
+                          <button onClick={() => setAddingTo(null)} className="iconBtn">Cancel</button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {group.entries.map((entry, idx) => {
                     const config = ENTRY_TYPES[entry.entryType] || ENTRY_TYPES.note;
                     return (
@@ -168,7 +256,7 @@ export default function MyLogbook() {
                               {formatDate(entry.createdAt)}
                             </span>
                           </div>
-                          {entry.data && Object.entries(entry.data).map(([key, value]) => (
+                          {entry.data && typeof entry.data === "object" && Object.entries(entry.data).map(([key, value]) => (
                             <div key={key} style={{ fontSize: "13px", marginBottom: "2px" }}>
                               <span style={{ fontWeight: 600 }}>{key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, " ")}:</span>{" "}
                               <span style={{ color: "#475569" }}>{value}</span>

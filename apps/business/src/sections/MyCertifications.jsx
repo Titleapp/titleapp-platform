@@ -4,6 +4,13 @@ import * as api from "../api/client";
 
 const EMPTY_FORM = { name: "", recordType: "Certificate", issuer: "", issueDate: "", expiryDate: "" };
 
+function formatDate(ts) {
+  if (!ts) return "";
+  const d = ts.toDate ? ts.toDate() : ts._seconds ? new Date(ts._seconds * 1000) : new Date(ts);
+  if (isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
 export default function MyCertifications() {
   const [certifications, setCertifications] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -19,13 +26,28 @@ export default function MyCertifications() {
       const result = await api.getInventory({ vertical: "consumer", jurisdiction: "GLOBAL" });
       const all = result.inventory || [];
       setCertifications(all.filter((i) =>
-        i.metadata?.credentialName || i.metadata?.school || i.metadata?.issuer ||
-        i.type === "credential" || i.type === "education" || i.type === "certification"
+        (i.metadata?.credentialName || i.metadata?.school || i.metadata?.issuer ||
+        i.type === "credential" || i.type === "education" || i.type === "certification") &&
+        (i.metadata?.credentialName || i.metadata?.title || i.metadata?.school || i.metadata?.issuer)
       ));
     } catch (e) {
       console.error("Failed to load certifications:", e);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleDelete(id) {
+    if (!window.confirm("Delete this record?")) return;
+    try {
+      await api.deleteInventoryItem({ vertical: "consumer", jurisdiction: "GLOBAL", id });
+      setToast("Record deleted");
+      setTimeout(() => setToast(null), 3000);
+      setCertifications((prev) => prev.filter((c) => c.id !== id));
+    } catch (e) {
+      console.error("Failed to delete:", e);
+      setToast("Failed to delete — " + (e.message || "try again"));
+      setTimeout(() => setToast(null), 4000);
     }
   }
 
@@ -41,7 +63,7 @@ export default function MyCertifications() {
           type: "certification",
           status: "active",
           metadata: {
-            credentialName: form.name, recordType: form.recordType, issuer: form.issuer,
+            credentialName: form.name, title: form.name, recordType: form.recordType, issuer: form.issuer,
             issueDate: form.issueDate, expiryDate: form.expiryDate,
           },
           price: 0, cost: 0,
@@ -64,6 +86,19 @@ export default function MyCertifications() {
 
   const inputStyle = { width: "100%", padding: "10px", borderRadius: "12px", border: "1px solid var(--line)" };
   const selectStyle = { ...inputStyle, background: "white" };
+
+  function isExpiringSoon(dateStr) {
+    if (!dateStr) return false;
+    const expiry = new Date(dateStr);
+    const now = new Date();
+    const diff = expiry.getTime() - now.getTime();
+    return diff > 0 && diff < 90 * 24 * 60 * 60 * 1000;
+  }
+
+  function isExpired(dateStr) {
+    if (!dateStr) return false;
+    return new Date(dateStr) < new Date();
+  }
 
   return (
     <div>
@@ -106,25 +141,66 @@ export default function MyCertifications() {
             </button>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: "12px" }}>
-            {certifications.map((d) => (
-              <div key={d.id} className="card" style={{ padding: "20px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                  <div>
+            {certifications.map((d) => {
+              const expired = isExpired(d.metadata?.expiryDate);
+              const expiring = isExpiringSoon(d.metadata?.expiryDate);
+              const badgeColor = expired ? "#dc2626" : expiring ? "#f59e0b" : "#d97706";
+              return (
+                <div key={d.id} className="card" style={{ position: "relative", overflow: "hidden" }}>
+                  {/* Icon header */}
+                  <div style={{ height: "100px", background: `linear-gradient(135deg, ${badgeColor}12 0%, ${badgeColor}06 100%)`, display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke={badgeColor} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.6 }}>
+                      <circle cx="12" cy="8" r="7"></circle>
+                      <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline>
+                    </svg>
+                    <button
+                      onClick={() => handleDelete(d.id)}
+                      style={{ position: "absolute", top: "8px", right: "8px", background: "white", border: "1px solid #e5e7eb", borderRadius: "8px", width: "28px", height: "28px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#94a3b8", fontSize: "14px" }}
+                      title="Delete"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                    </button>
+                    <span style={{ position: "absolute", bottom: "8px", right: "10px", fontSize: "11px", fontWeight: 600, padding: "3px 10px", borderRadius: "20px", background: `${badgeColor}20`, color: badgeColor }}>
+                      {d.metadata?.recordType || "Certification"}
+                    </span>
+                  </div>
+                  {/* Content */}
+                  <div style={{ padding: "14px 20px 4px" }}>
                     <div style={{ fontWeight: 700, fontSize: "16px", color: "#1e293b" }}>
-                      {d.metadata?.credentialName || d.metadata?.school || d.metadata?.issuer || "Record"}
+                      {d.metadata?.credentialName || d.metadata?.title || d.metadata?.school || "Record"}
                     </div>
-                    <div style={{ fontSize: "13px", color: "#64748b", marginTop: "4px" }}>
-                      {d.metadata?.recordType || d.metadata?.program || d.metadata?.issuer || ""}
-                      {d.metadata?.issueDate && ` -- Issued ${d.metadata.issueDate}`}
-                    </div>
-                    {d.metadata?.expiryDate && (
-                      <div style={{ fontSize: "12px", color: "#ef4444", marginTop: "4px" }}>Expires: {d.metadata.expiryDate}</div>
+                    {d.metadata?.issuer && (
+                      <div style={{ fontSize: "13px", color: "#64748b", marginTop: "2px" }}>{d.metadata.issuer}</div>
                     )}
                   </div>
-                  <span className={`badge badge-${d.status || "draft"}`}>{d.status || "Draft"}</span>
+                  <div style={{ padding: "8px 20px 12px" }}>
+                    {d.metadata?.issueDate && (
+                      <div style={{ display: "flex", justifyContent: "space-between", padding: "3px 0", fontSize: "13px" }}>
+                        <span style={{ color: "#64748b" }}>Issued</span>
+                        <span style={{ fontWeight: 500, color: "#1e293b" }}>{d.metadata.issueDate}</span>
+                      </div>
+                    )}
+                    {d.metadata?.expiryDate && (
+                      <div style={{ display: "flex", justifyContent: "space-between", padding: "3px 0", fontSize: "13px" }}>
+                        <span style={{ color: "#64748b" }}>Expires</span>
+                        <span style={{ fontWeight: 500, color: expired ? "#dc2626" : expiring ? "#f59e0b" : "#1e293b" }}>
+                          {d.metadata.expiryDate}{expired ? " (Expired)" : expiring ? " (Expiring soon)" : ""}
+                        </span>
+                      </div>
+                    )}
+                    {formatDate(d.createdAt) && (
+                      <div style={{ display: "flex", justifyContent: "space-between", padding: "3px 0", fontSize: "13px" }}>
+                        <span style={{ color: "#64748b" }}>Added</span>
+                        <span style={{ fontWeight: 500, color: "#1e293b" }}>{formatDate(d.createdAt)}</span>
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ padding: "10px 20px 14px", borderTop: "1px solid #f1f5f9", display: "flex", gap: "8px" }}>
+                    <span className={`badge badge-${expired ? "expired" : d.status || "active"}`} style={{ display: "flex", alignItems: "center" }}>{expired ? "Expired" : d.status || "Active"}</span>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </>
       )}
