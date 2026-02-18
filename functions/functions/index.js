@@ -1633,7 +1633,7 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
           message,
           context: context || {},
           preferredModel: preferredModel || "claude",
-          fileIds: validFileIds.length > 0 ? validFileIds : undefined,
+          fileIds: validFileIds.length > 0 ? validFileIds : [],
           createdAt: nowServerTs(),
         });
 
