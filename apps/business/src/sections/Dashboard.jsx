@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { getAuth } from "firebase/auth";
-import { getFirestore, collection, query, where, orderBy, limit, getDocs } from "firebase/firestore";
 import * as api from "../api/client";
 
 const PIE_COLORS = ["#7c3aed", "#06b6d4", "#10b981", "#f59e0b", "#ef4444"];
@@ -26,7 +25,11 @@ function formatDate(ts) {
 
 function getAssetValue(item) {
   const m = item.metadata || {};
-  return Number(m.estimatedValue) || Number(m.value) || Number(m.purchasePrice) || Number(item.estimatedValue) || Number(item.value) || Number(item.price) || 0;
+  const direct = Number(m.estimatedValue) || Number(m.value) || Number(m.marketValue) || Number(m.purchasePrice) || Number(item.estimatedValue) || Number(item.value) || Number(item.price) || 0;
+  if (direct > 0) return direct;
+  const monthly = Number(m.monthlyPayment) || 0;
+  if (monthly > 0) return monthly * 12;
+  return 0;
 }
 
 function getAssetTitle(item) {
@@ -43,7 +46,6 @@ function getAssetTitle(item) {
 // ── Consumer Vault Dashboard ────────────────────────────────────
 function ConsumerDashboard() {
   const auth = getAuth();
-  const db = getFirestore();
   const currentUser = auth.currentUser;
 
   const [assets, setAssets] = useState([]);
@@ -63,27 +65,14 @@ function ConsumerDashboard() {
       const items = inventoryResult.inventory || [];
       setAssets(items);
 
-      // Load recent logbook entries from Firestore
+      // Load logbook entries via API (avoids Firestore composite index issues)
       try {
-        const logbookQ = query(
-          collection(db, "logbookEntries"),
-          where("userId", "==", currentUser.uid),
-          orderBy("createdAt", "desc"),
-          limit(5)
-        );
-        const snap = await getDocs(logbookQ);
-        const entries = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        setLogbookEntries(entries);
-
-        // Get total count from all logbook entries
-        const countQ = query(
-          collection(db, "logbookEntries"),
-          where("userId", "==", currentUser.uid)
-        );
-        const countSnap = await getDocs(countQ);
-        setTotalLogbookCount(countSnap.size);
+        const logResult = await api.getLogbooks({ vertical: "consumer", jurisdiction: "GLOBAL" });
+        const allEntries = logResult.entries || [];
+        setLogbookEntries(allEntries.slice(0, 5));
+        setTotalLogbookCount(allEntries.length);
       } catch (logErr) {
-        console.warn("Logbook query failed (index building?):", logErr.message);
+        console.warn("Logbook query failed:", logErr.message);
       }
     } catch (e) {
       console.error("Failed to load consumer dashboard:", e);
@@ -117,15 +106,31 @@ function ConsumerDashboard() {
     <>
       {/* Row 1: Net Worth */}
       <div className="card" style={{ marginBottom: "14px", padding: "28px 24px", background: "linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)", border: "1px solid #e9d5ff" }}>
-        <div style={{ fontSize: "13px", fontWeight: 600, color: "#7c3aed", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "8px" }}>
-          My Net Worth
-        </div>
-        <div style={{ fontSize: "36px", fontWeight: 900, color: "#1e293b", lineHeight: 1.1 }}>
-          ${totalValue.toLocaleString()}
-        </div>
-        <div style={{ fontSize: "13px", color: "#64748b", marginTop: "6px" }}>
-          {hasData ? `Across ${totalDTCs} Digital Title Certificate${totalDTCs !== 1 ? "s" : ""}` : "Add your first item to start tracking your net worth"}
-        </div>
+        {totalValue > 0 ? (
+          <>
+            <div style={{ fontSize: "13px", fontWeight: 600, color: "#7c3aed", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "8px" }}>
+              Total Vault Value
+            </div>
+            <div style={{ fontSize: "36px", fontWeight: 900, color: "#1e293b", lineHeight: 1.1 }}>
+              ${totalValue.toLocaleString()}
+            </div>
+            <div style={{ fontSize: "13px", color: "#64748b", marginTop: "6px" }}>
+              Across {totalDTCs} Digital Title Certificate{totalDTCs !== 1 ? "s" : ""}
+            </div>
+          </>
+        ) : (
+          <>
+            <div style={{ fontSize: "13px", fontWeight: 600, color: "#7c3aed", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "8px" }}>
+              Your Vault
+            </div>
+            <div style={{ fontSize: "36px", fontWeight: 900, color: "#1e293b", lineHeight: 1.1 }}>
+              {totalDTCs} DTC{totalDTCs !== 1 ? "s" : ""}
+            </div>
+            <div style={{ fontSize: "13px", color: "#64748b", marginTop: "6px" }}>
+              {hasData ? "Add estimated values to your records to see your total vault value" : "Add your first item to start building your Vault"}
+            </div>
+          </>
+        )}
       </div>
 
       {/* Row 2: Top Assets + Stats */}

@@ -35,7 +35,7 @@ export default function AIChats() {
                   Your personal assistant that manages vehicles, properties, documents, certifications, and your entire Vault.
                 </div>
                 <button
-                  onClick={() => window.dispatchEvent(new CustomEvent("ta:navigate", { detail: { section: "dashboard" } }))}
+                  onClick={() => window.dispatchEvent(new CustomEvent("ta:chatPrompt", { detail: { message: "Hi, what can you help me with today?" } }))}
                   style={{ padding: "8px 16px", fontSize: "13px", fontWeight: 600, background: "linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)", color: "white", border: "none", borderRadius: "8px", cursor: "pointer" }}
                 >
                   Open Chat
@@ -61,7 +61,7 @@ export default function AIChats() {
                   Screens deals, analyzes risk profiles, evaluates investment opportunities, and generates due diligence reports.
                 </div>
                 <button
-                  onClick={() => window.dispatchEvent(new CustomEvent("ta:navigate", { detail: { section: "dashboard" } }))}
+                  onClick={() => window.dispatchEvent(new CustomEvent("ta:chatPrompt", { detail: { message: "I want to analyze an investment opportunity" } }))}
                   style={{ padding: "8px 16px", fontSize: "13px", fontWeight: 600, background: "linear-gradient(135deg, #059669 0%, #047857 100%)", color: "white", border: "none", borderRadius: "8px", cursor: "pointer" }}
                 >
                   Open Chat
