@@ -328,6 +328,61 @@ function PersonalSettings() {
         </div>
       </div>
 
+      {/* Billing & Subscription */}
+      <div style={{ marginTop: '32px', padding: '24px', background: 'white', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '16px' }}>
+        <h2 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '4px' }}>Billing & Subscription</h2>
+        <p style={{ color: '#64748b', fontSize: '14px', marginBottom: '20px' }}>Manage your plan and premium services</p>
+
+        {/* Current Plan */}
+        <div style={{ padding: '16px', background: '#f0fdf4', borderRadius: '8px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <div style={{ fontSize: '18px', fontWeight: '700' }}>Personal Vault — Free</div>
+            <div style={{ fontSize: '13px', color: '#64748b' }}>Your personal Vault is free forever. No credit card required.</div>
+          </div>
+          <span style={{ padding: '4px 12px', background: '#dcfce7', color: '#16a34a', borderRadius: '20px', fontSize: '13px', fontWeight: '600' }}>Active</span>
+        </div>
+
+        {/* Premium Services */}
+        <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '12px' }}>Optional Premium Services</h3>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          <div style={{ padding: '16px', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+            <div style={{ fontWeight: '600', marginBottom: '4px' }}>Identity Verification</div>
+            <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#7c3aed' }}>$2.99</div>
+            <div style={{ fontSize: '13px', color: '#64748b' }}>Per verification. Government ID + biometric check for high-value DTCs.</div>
+          </div>
+
+          <div style={{ padding: '16px', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+            <div style={{ fontWeight: '600', marginBottom: '4px' }}>Blockchain Recording</div>
+            <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#7c3aed' }}>$0.99</div>
+            <div style={{ fontSize: '13px', color: '#64748b' }}>Per DTC. Permanent record on Polygon blockchain via Venly. Tamper-proof.</div>
+          </div>
+
+          <div style={{ padding: '16px', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+            <div style={{ fontWeight: '600', marginBottom: '4px' }}>E-Signature Requests</div>
+            <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#7c3aed' }}>$1.99</div>
+            <div style={{ fontSize: '13px', color: '#64748b' }}>Per request. DocuSign-powered third-party attestation on logbook entries.</div>
+          </div>
+
+          <div style={{ padding: '16px', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+            <div style={{ fontWeight: '600', marginBottom: '4px' }}>Priority Support</div>
+            <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#7c3aed' }}>$4.99<span style={{ fontSize: '14px', fontWeight: '400' }}>/mo</span></div>
+            <div style={{ fontSize: '13px', color: '#64748b' }}>Dedicated support channel. Response within 1 hour.</div>
+          </div>
+        </div>
+
+        {/* Usage Summary */}
+        <div style={{ marginTop: '20px', padding: '16px', background: '#f8fafc', borderRadius: '8px' }}>
+          <div style={{ fontWeight: '600', marginBottom: '8px' }}>Usage This Month</div>
+          <div style={{ display: 'flex', gap: '24px', fontSize: '14px' }}>
+            <div><span style={{ fontWeight: '600' }}>0</span> ID verifications</div>
+            <div><span style={{ fontWeight: '600' }}>0</span> blockchain recordings</div>
+            <div><span style={{ fontWeight: '600' }}>0</span> e-signature requests</div>
+          </div>
+          <div style={{ fontSize: '13px', color: '#64748b', marginTop: '8px' }}>Total charges this month: $0.00</div>
+        </div>
+      </div>
+
       {/* Blockchain Verification */}
       <div className="card" style={{ marginBottom: "16px" }}>
         <div className="cardHeader">
@@ -828,6 +883,90 @@ function BusinessSettings() {
           </div>
         </div>
       </div>
+
+      {/* Billing & Subscription -- Analyst */}
+      {vertical === 'analyst' && (
+        <div style={{ marginBottom: '16px', padding: '24px', background: 'white', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+          <h2 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '4px' }}>Billing & Subscription</h2>
+          <p style={{ color: '#64748b', fontSize: '14px', marginBottom: '20px' }}>Manage your plan, seats, and billing</p>
+
+          {/* Current Plan */}
+          <div style={{ padding: '16px', background: '#f5f3ff', borderRadius: '8px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <div style={{ fontSize: '18px', fontWeight: '700' }}>TitleApp AI Pro</div>
+              <div style={{ fontSize: '13px', color: '#64748b' }}>$9/user/month · Billed monthly</div>
+            </div>
+            <span style={{ padding: '4px 12px', background: '#ede9fe', color: '#7c3aed', borderRadius: '20px', fontSize: '13px', fontWeight: '600' }}>Active</span>
+          </div>
+
+          {/* Billing Details */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '20px' }}>
+            <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '8px' }}>
+              <div style={{ fontSize: '13px', color: '#64748b' }}>NEXT PAYMENT</div>
+              <div style={{ fontSize: '18px', fontWeight: 'bold' }}>Mar 18, 2026</div>
+              <div style={{ fontSize: '13px', color: '#64748b' }}>$9.00</div>
+            </div>
+
+            <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '8px' }}>
+              <div style={{ fontSize: '13px', color: '#64748b' }}>TEAM SEATS</div>
+              <div style={{ fontSize: '18px', fontWeight: 'bold' }}>1 of 1</div>
+              <div style={{ fontSize: '13px', color: '#7c3aed', cursor: 'pointer' }}>+ Add seat</div>
+            </div>
+
+            <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '8px' }}>
+              <div style={{ fontSize: '13px', color: '#64748b' }}>PLAN STARTED</div>
+              <div style={{ fontSize: '18px', fontWeight: 'bold' }}>Feb 18, 2026</div>
+              <div style={{ fontSize: '13px', color: '#64748b' }}>Monthly billing</div>
+            </div>
+          </div>
+
+          {/* Usage This Month */}
+          <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '12px' }}>Usage This Month</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '12px', marginBottom: '20px' }}>
+            <div style={{ padding: '12px', border: '1px solid #e2e8f0', borderRadius: '8px', textAlign: 'center' }}>
+              <div style={{ fontSize: '20px', fontWeight: 'bold' }}>5</div>
+              <div style={{ fontSize: '12px', color: '#64748b' }}>Deals Analyzed</div>
+            </div>
+            <div style={{ padding: '12px', border: '1px solid #e2e8f0', borderRadius: '8px', textAlign: 'center' }}>
+              <div style={{ fontSize: '20px', fontWeight: 'bold' }}>4</div>
+              <div style={{ fontSize: '12px', color: '#64748b' }}>Opportunities Found</div>
+            </div>
+            <div style={{ padding: '12px', border: '1px solid #e2e8f0', borderRadius: '8px', textAlign: 'center' }}>
+              <div style={{ fontSize: '20px', fontWeight: 'bold' }}>3</div>
+              <div style={{ fontSize: '12px', color: '#64748b' }}>Reports Generated</div>
+            </div>
+            <div style={{ padding: '12px', border: '1px solid #e2e8f0', borderRadius: '8px', textAlign: 'center' }}>
+              <div style={{ fontSize: '20px', fontWeight: 'bold' }}>12</div>
+              <div style={{ fontSize: '12px', color: '#64748b' }}>AI Conversations</div>
+            </div>
+          </div>
+
+          {/* What's Included */}
+          <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '12px' }}>What's Included</h3>
+          <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '8px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '14px' }}>
+              <div>&#10003; Unlimited deal analysis</div>
+              <div>&#10003; AI Chief of Staff</div>
+              <div>&#10003; COS deal sourcing (overnight scans)</div>
+              <div>&#10003; Risk scoring & RAAS validation</div>
+              <div>&#10003; IC-ready report generation</div>
+              <div>&#10003; Email/text outreach from COS</div>
+              <div>&#10003; Team collaboration (per seat)</div>
+              <div>&#10003; Services & fee tracking</div>
+            </div>
+          </div>
+
+          {/* Manage */}
+          <div style={{ marginTop: '20px', display: 'flex', gap: '12px' }}>
+            <button style={{ padding: '10px 20px', backgroundColor: '#7c3aed', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '600' }}>
+              Manage Plan
+            </button>
+            <button style={{ padding: '10px 20px', backgroundColor: 'white', color: '#64748b', border: '1px solid #e2e8f0', borderRadius: '8px', cursor: 'pointer' }}>
+              Billing History
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Developer Tools */}
       <div className="card" style={{ marginBottom: "16px", borderColor: "#e9d5ff" }}>
