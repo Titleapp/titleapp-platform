@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import FormModal from "../components/FormModal";
 import * as api from "../api/client";
 
-const EMPTY_FORM = { address: "", address2: "", city: "", state: "", zip: "", ownershipType: "Own", propertyType: "House", monthlyPayment: "", company: "", endDate: "", term: "", interestRate: "" };
+const EMPTY_FORM = { address: "", address2: "", city: "", state: "", zip: "", ownershipType: "Own", propertyType: "House", monthlyPayment: "", company: "", endDate: "", term: "", interestRate: "", attested: false };
 
 const US_STATES = ["AL","AK","AZ","AR","CA","CO","CT","DE","DC","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY"];
 
@@ -60,7 +60,7 @@ export default function MyProperties() {
     setSaving(true);
     try {
       const fullAddress = [form.address, form.address2, form.city, form.state, form.zip].filter(Boolean).join(", ");
-      await api.createInventoryItem({
+      const result = await api.createInventoryItem({
         vertical: "consumer",
         jurisdiction: "GLOBAL",
         item: {
@@ -79,6 +79,9 @@ export default function MyProperties() {
           price: 0, cost: 0,
         },
       });
+      if (form.attested && result.dtcId) {
+        await api.attestInventoryItem({ vertical: "consumer", jurisdiction: "GLOBAL", dtcId: result.dtcId });
+      }
       setShowForm(false);
       setForm(EMPTY_FORM);
       setToast("Property added");
@@ -251,6 +254,12 @@ export default function MyProperties() {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
             <div><label style={{ display: "block", marginBottom: "6px", fontWeight: 600, fontSize: "13px" }}>End Date</label><input type="date" value={form.endDate} onChange={(e) => setForm({ ...form, endDate: e.target.value })} style={inputStyle} /></div>
             <div><label style={{ display: "block", marginBottom: "6px", fontWeight: 600, fontSize: "13px" }}>Landlord / Mortgage Co.</label><input type="text" value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })} style={inputStyle} /></div>
+          </div>
+          <div style={{ marginTop: "4px", padding: "12px", background: "#f8fafc", borderRadius: "10px", border: "1px solid #e2e8f0" }}>
+            <label style={{ display: "flex", alignItems: "flex-start", gap: "10px", cursor: "pointer", fontSize: "13px", color: "#475569", lineHeight: 1.5 }}>
+              <input type="checkbox" checked={form.attested} onChange={(e) => setForm({ ...form, attested: e.target.checked })} style={{ marginTop: "3px", flexShrink: 0 }} />
+              I represent that I am the lawful owner or authorized tenant of this property and that the information provided is accurate to the best of my knowledge.
+            </label>
           </div>
         </div>
       </FormModal>

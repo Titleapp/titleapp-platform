@@ -184,7 +184,7 @@ export async function getInventory(params: { vertical: string; jurisdiction: str
 export async function createInventoryItem(params: {
   vertical: string;
   jurisdiction: string;
-  item: { type: string; status: string; metadata: any; price: number; cost: number };
+  item: { type: string; status: string; metadata: any; price: number; cost: number; fileIds?: string[] };
 }) {
   return httpJson("POST", "/v1/inventory:create", {
     vertical: params.vertical,
@@ -215,6 +215,18 @@ export async function deleteInventoryItem(params: {
     vertical: params.vertical,
     jurisdiction: params.jurisdiction,
     body: { id: params.id },
+  });
+}
+
+export async function attestInventoryItem(params: {
+  vertical: string;
+  jurisdiction: string;
+  dtcId: string;
+}) {
+  return httpJson("POST", "/v1/inventory:attest", {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+    body: { dtcId: params.dtcId },
   });
 }
 

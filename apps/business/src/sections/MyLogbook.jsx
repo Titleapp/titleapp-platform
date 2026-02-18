@@ -10,6 +10,7 @@ const ENTRY_TYPES = {
   payment: { icon: "P", color: "#16a34a", label: "Payment" },
   verification: { icon: "V", color: "#6366f1", label: "Verification" },
   note: { icon: "N", color: "#64748b", label: "Note" },
+  attestation: { icon: "A", color: "#7c3aed", label: "Attestation" },
 };
 
 const ADD_ENTRY_TYPES = [

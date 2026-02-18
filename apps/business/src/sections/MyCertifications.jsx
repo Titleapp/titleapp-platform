@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import FormModal from "../components/FormModal";
 import * as api from "../api/client";
 
-const EMPTY_FORM = { name: "", recordType: "Certificate", issuer: "", issueDate: "", expiryDate: "" };
+const EMPTY_FORM = { name: "", recordType: "Certificate", issuer: "", issueDate: "", expiryDate: "", attested: false };
 
 function formatDate(ts) {
   if (!ts) return "";
@@ -56,7 +56,7 @@ export default function MyCertifications() {
     if (!form.name) return;
     setSaving(true);
     try {
-      await api.createInventoryItem({
+      const result = await api.createInventoryItem({
         vertical: "consumer",
         jurisdiction: "GLOBAL",
         item: {
@@ -69,6 +69,9 @@ export default function MyCertifications() {
           price: 0, cost: 0,
         },
       });
+      if (form.attested && result.dtcId) {
+        await api.attestInventoryItem({ vertical: "consumer", jurisdiction: "GLOBAL", dtcId: result.dtcId });
+      }
       setShowForm(false);
       setForm(EMPTY_FORM);
       setToast("Record added");
@@ -218,6 +221,12 @@ export default function MyCertifications() {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
             <div><label style={{ display: "block", marginBottom: "6px", fontWeight: 600, fontSize: "13px" }}>Issue Date</label><input type="date" value={form.issueDate} onChange={(e) => setForm({ ...form, issueDate: e.target.value })} style={inputStyle} /></div>
             <div><label style={{ display: "block", marginBottom: "6px", fontWeight: 600, fontSize: "13px" }}>Expiry Date</label><input type="date" value={form.expiryDate} onChange={(e) => setForm({ ...form, expiryDate: e.target.value })} style={inputStyle} /></div>
+          </div>
+          <div style={{ marginTop: "4px", padding: "12px", background: "#f8fafc", borderRadius: "10px", border: "1px solid #e2e8f0" }}>
+            <label style={{ display: "flex", alignItems: "flex-start", gap: "10px", cursor: "pointer", fontSize: "13px", color: "#475569", lineHeight: 1.5 }}>
+              <input type="checkbox" checked={form.attested} onChange={(e) => setForm({ ...form, attested: e.target.checked })} style={{ marginTop: "3px", flexShrink: 0 }} />
+              I represent that I hold this credential and that the information provided is accurate to the best of my knowledge.
+            </label>
           </div>
         </div>
       </FormModal>

@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from "react";
 import FormModal from "../components/FormModal";
+import IDVerifyModal from "../components/IDVerifyModal";
+import useIdVerificationGate from "../hooks/useIdVerificationGate";
 import * as api from "../api/client";
 
 const US_STATES = ["AL","AK","AZ","AR","CA","CO","CT","DE","DC","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY","AS","GU","MP","PR","VI"];
 
-const EMPTY_FORM = { year: "", make: "", model: "", color: "", vin: "", plate: "", state: "", purchaseDate: "", lender: "", mileage: "" };
+const EMPTY_FORM = { year: "", make: "", model: "", color: "", vin: "", plate: "", state: "", purchaseDate: "", lender: "", mileage: "", attested: false };
 
 const COLOR_MAP = {
   black: "#1e293b", white: "#e2e8f0", silver: "#94a3b8", gray: "#64748b", grey: "#64748b",
@@ -31,6 +33,7 @@ export default function MyVehicles() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState(null);
+  const { showModal: showIdVerify, gateAction, onVerified: onIdVerified, onClose: onIdClose } = useIdVerificationGate();
 
   useEffect(() => { loadVehicles(); }, []);
 
@@ -68,13 +71,17 @@ export default function MyVehicles() {
     }
   }
 
-  async function handleSave(e) {
+  function handleSubmit(e) {
     e.preventDefault();
     if (!form.make && !form.vin) return;
+    gateAction("vehicle", {}, doSave);
+  }
+
+  async function doSave() {
     setSaving(true);
     try {
       const title = `${form.year} ${form.make} ${form.model}`.trim() || "Vehicle";
-      await api.createInventoryItem({
+      const result = await api.createInventoryItem({
         vertical: "consumer",
         jurisdiction: "GLOBAL",
         item: {
@@ -88,6 +95,9 @@ export default function MyVehicles() {
           price: 0, cost: 0,
         },
       });
+      if (form.attested && result.dtcId) {
+        await api.attestInventoryItem({ vertical: "consumer", jurisdiction: "GLOBAL", dtcId: result.dtcId });
+      }
       setShowForm(false);
       setForm(EMPTY_FORM);
       setToast("Vehicle added");
@@ -224,7 +234,7 @@ export default function MyVehicles() {
         </>
       )}
 
-      <FormModal isOpen={showForm} onClose={() => setShowForm(false)} title="Add Vehicle" onSubmit={handleSave} submitLabel={saving ? "Saving..." : "Save Vehicle"}>
+      <FormModal isOpen={showForm} onClose={() => setShowForm(false)} title="Add Vehicle" onSubmit={handleSubmit} submitLabel={saving ? "Saving..." : "Save Vehicle"}>
         <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px" }}>
             <div><label style={{ display: "block", marginBottom: "6px", fontWeight: 600, fontSize: "13px" }}>Year</label><input type="text" value={form.year} onChange={(e) => setForm({ ...form, year: e.target.value })} placeholder="2024" style={inputStyle} /></div>
@@ -248,8 +258,16 @@ export default function MyVehicles() {
             <div><label style={{ display: "block", marginBottom: "6px", fontWeight: 600, fontSize: "13px" }}>Purchase Date</label><input type="date" value={form.purchaseDate} onChange={(e) => setForm({ ...form, purchaseDate: e.target.value })} style={inputStyle} /></div>
           </div>
           <div><label style={{ display: "block", marginBottom: "6px", fontWeight: 600, fontSize: "13px" }}>Lender / Finance Co. (optional)</label><input type="text" value={form.lender} onChange={(e) => setForm({ ...form, lender: e.target.value })} style={inputStyle} /></div>
+          <div style={{ marginTop: "4px", padding: "12px", background: "#f8fafc", borderRadius: "10px", border: "1px solid #e2e8f0" }}>
+            <label style={{ display: "flex", alignItems: "flex-start", gap: "10px", cursor: "pointer", fontSize: "13px", color: "#475569", lineHeight: 1.5 }}>
+              <input type="checkbox" checked={form.attested} onChange={(e) => setForm({ ...form, attested: e.target.checked })} style={{ marginTop: "3px", flexShrink: 0 }} />
+              I represent that I am the lawful owner of this vehicle and that the information provided is accurate to the best of my knowledge.
+            </label>
+          </div>
         </div>
       </FormModal>
+
+      {showIdVerify && <IDVerifyModal onVerified={onIdVerified} onClose={onIdClose} />}
     </div>
   );
 }

@@ -1588,7 +1588,8 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
 
     // POST /v1/chat:message
     if (route === "/chat:message" && method === "POST") {
-      const { message, context, preferredModel } = body || {};
+      const { message, context, preferredModel, fileIds } = body || {};
+      const validFileIds = Array.isArray(fileIds) ? fileIds.filter(id => typeof id === "string") : [];
       if (!message) return jsonError(res, 400, "Missing message");
 
       try {
@@ -1886,7 +1887,7 @@ Platform navigation — when users ask how to do things, give them accurate dire
               userId: ctx.userId,
               type: recordData.type || "document",
               metadata: recordData.metadata || {},
-              fileIds: [],
+              fileIds: validFileIds,
               blockchainProof: null,
               logbookCount: 1,
               createdAt: nowServerTs(),
@@ -1902,6 +1903,7 @@ Platform navigation — when users ask how to do things, give them accurate dire
               price: 0,
               cost: 0,
               dtcId: dtcRef.id,
+              fileIds: validFileIds,
               createdAt: nowServerTs(),
             });
 
@@ -1913,7 +1915,7 @@ Platform navigation — when users ask how to do things, give them accurate dire
               dtcTitle,
               entryType: "creation",
               data: { description: "Record created via Chief of Staff chat" },
-              files: [],
+              files: validFileIds,
               createdAt: nowServerTs(),
             });
 
@@ -2350,7 +2352,8 @@ Platform navigation — when users ask how to do things, give them accurate dire
     // POST /v1/inventory:create
     if (route === "/inventory:create" && method === "POST") {
       try {
-        const { type, status, metadata, price, cost } = body;
+        const { type, status, metadata, price, cost, fileIds } = body;
+        const invFileIds = Array.isArray(fileIds) ? fileIds.filter(id => typeof id === "string") : [];
 
         if (!type || !metadata || price === undefined || cost === undefined) {
           return jsonError(res, 400, "Missing required fields");
@@ -2361,7 +2364,7 @@ Platform navigation — when users ask how to do things, give them accurate dire
           userId: ctx.userId,
           type: type || "document",
           metadata: metadata || {},
-          fileIds: [],
+          fileIds: invFileIds,
           blockchainProof: null,
           logbookCount: 1,
           createdAt: nowServerTs(),
@@ -2376,6 +2379,7 @@ Platform navigation — when users ask how to do things, give them accurate dire
           price: parseFloat(price) || 0,
           cost: parseFloat(cost) || 0,
           dtcId: dtcRef.id,
+          fileIds: invFileIds,
           createdAt: nowServerTs(),
         });
 
@@ -2387,7 +2391,7 @@ Platform navigation — when users ask how to do things, give them accurate dire
           dtcTitle: recordTitle,
           entryType: "creation",
           data: { description: `Record created: ${recordTitle}` },
-          files: [],
+          files: invFileIds,
           createdAt: nowServerTs(),
         });
 
@@ -2427,6 +2431,45 @@ Platform navigation — when users ask how to do things, give them accurate dire
       } catch (e) {
         console.error("❌ inventory:update failed:", e);
         return jsonError(res, 500, "Failed to update inventory item");
+      }
+    }
+
+    // POST /v1/inventory:attest
+    if (route === "/inventory:attest" && method === "POST") {
+      try {
+        const { dtcId } = body;
+        if (!dtcId) return jsonError(res, 400, "Missing dtcId");
+
+        const dtcDoc = await db.collection("dtcs").doc(dtcId).get();
+        if (!dtcDoc.exists || dtcDoc.data().userId !== ctx.userId) {
+          return jsonError(res, 403, "DTC not found or access denied");
+        }
+
+        await db.collection("dtcs").doc(dtcId).update({
+          attested: true,
+          attestedAt: nowServerTs(),
+          attestedBy: ctx.userId,
+        });
+
+        const dtcTitle = dtcDoc.data().metadata?.title || "Untitled";
+        await db.collection("logbookEntries").add({
+          dtcId,
+          userId: ctx.userId,
+          dtcTitle,
+          entryType: "attestation",
+          data: { description: "Owner attested to lawful ownership and accuracy of record information" },
+          files: [],
+          createdAt: nowServerTs(),
+        });
+
+        await db.collection("dtcs").doc(dtcId).update({
+          logbookCount: admin.firestore.FieldValue.increment(1),
+        });
+
+        return res.json({ ok: true, attested: true });
+      } catch (e) {
+        console.error("❌ inventory:attest failed:", e);
+        return jsonError(res, 500, "Failed to record attestation");
       }
     }
 

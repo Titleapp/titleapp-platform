@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from "react";
 import FormModal from "../components/FormModal";
+import IDVerifyModal from "../components/IDVerifyModal";
+import useIdVerificationGate from "../hooks/useIdVerificationGate";
 import * as api from "../api/client";
 
-const EMPTY_FORM = { name: "", category: "Document", description: "", estimatedValue: "" };
+const EMPTY_FORM = { name: "", category: "Document", description: "", estimatedValue: "", attested: false };
 
 const CATEGORY_ICONS = {
   Jewelry: { color: "#d97706", icon: (c) => <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.6 }}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg> },
@@ -28,6 +30,7 @@ export default function MyDocuments() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState(null);
+  const { showModal: showIdVerify, gateAction, onVerified: onIdVerified, onClose: onIdClose } = useIdVerificationGate();
 
   useEffect(() => { loadDocuments(); }, []);
 
@@ -60,12 +63,17 @@ export default function MyDocuments() {
     }
   }
 
-  async function handleSave(e) {
+  function handleSubmit(e) {
     e.preventDefault();
     if (!form.name) return;
+    const itemType = form.category === "Document" ? "document" : "valuable";
+    gateAction(itemType, { estimatedValue: form.estimatedValue }, doSave);
+  }
+
+  async function doSave() {
     setSaving(true);
     try {
-      await api.createInventoryItem({
+      const result = await api.createInventoryItem({
         vertical: "consumer",
         jurisdiction: "GLOBAL",
         item: {
@@ -78,6 +86,9 @@ export default function MyDocuments() {
           price: 0, cost: 0,
         },
       });
+      if (form.attested && result.dtcId) {
+        await api.attestInventoryItem({ vertical: "consumer", jurisdiction: "GLOBAL", dtcId: result.dtcId });
+      }
       setShowForm(false);
       setForm(EMPTY_FORM);
       setToast("Item added");
@@ -194,7 +205,7 @@ export default function MyDocuments() {
         </>
       )}
 
-      <FormModal isOpen={showForm} onClose={() => setShowForm(false)} title="Add Item" onSubmit={handleSave} submitLabel={saving ? "Saving..." : "Save"}>
+      <FormModal isOpen={showForm} onClose={() => setShowForm(false)} title="Add Item" onSubmit={handleSubmit} submitLabel={saving ? "Saving..." : "Save"}>
         <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
           <div><label style={{ display: "block", marginBottom: "6px", fontWeight: 600, fontSize: "13px" }}>Item Name</label><input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g., Passport, Grandmother's Ring, Signed Print" style={inputStyle} required /></div>
           <div>
@@ -205,8 +216,16 @@ export default function MyDocuments() {
           </div>
           <div><label style={{ display: "block", marginBottom: "6px", fontWeight: 600, fontSize: "13px" }}>Description (optional)</label><textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} style={inputStyle} /></div>
           <div><label style={{ display: "block", marginBottom: "6px", fontWeight: 600, fontSize: "13px" }}>Estimated Value (optional)</label><input type="text" value={form.estimatedValue ? "$" + Number(String(form.estimatedValue).replace(/[$,]/g, "")).toLocaleString() : ""} onChange={(e) => setForm({ ...form, estimatedValue: e.target.value.replace(/[$,]/g, "") })} placeholder="$" style={inputStyle} /></div>
+          <div style={{ marginTop: "4px", padding: "12px", background: "#f8fafc", borderRadius: "10px", border: "1px solid #e2e8f0" }}>
+            <label style={{ display: "flex", alignItems: "flex-start", gap: "10px", cursor: "pointer", fontSize: "13px", color: "#475569", lineHeight: 1.5 }}>
+              <input type="checkbox" checked={form.attested} onChange={(e) => setForm({ ...form, attested: e.target.checked })} style={{ marginTop: "3px", flexShrink: 0 }} />
+              I represent that I am the lawful owner of this item and that the information provided is accurate to the best of my knowledge.
+            </label>
+          </div>
         </div>
       </FormModal>
+
+      {showIdVerify && <IDVerifyModal onVerified={onIdVerified} onClose={onIdClose} />}
     </div>
   );
 }
