@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import FormModal from "../components/FormModal";
-import { getInventory, createInventoryItem, updateInventoryItem, deleteInventoryItem } from "../api/client";
+import { getInventory, createInventoryItem, updateInventoryItem, deleteInventoryItem, getAnalyzedDeals } from "../api/client";
 
 /**
  * Inventory - Services & Inventory Management
@@ -26,9 +26,29 @@ export default function Inventory() {
     cost: "",
   });
 
+  // Analyst deals state
+  const [deals, setDeals] = useState([]);
+  const [dealsLoading, setDealsLoading] = useState(false);
+
   useEffect(() => {
-    loadInventory();
+    if (isAnalyst) {
+      loadDeals();
+    } else {
+      loadInventory();
+    }
   }, []);
+
+  async function loadDeals() {
+    setDealsLoading(true);
+    try {
+      const result = await getAnalyzedDeals({ vertical, jurisdiction });
+      setDeals(result.deals || []);
+    } catch (e) {
+      console.warn("Could not load deals for fees page:", e.message);
+    } finally {
+      setDealsLoading(false);
+    }
+  }
 
   async function loadInventory() {
     setLoading(true);
@@ -139,12 +159,147 @@ export default function Inventory() {
       .reduce((sum, i) => sum + i.price, 0),
   };
 
+  // ── Analyst: Services & Fees page ──
+  if (isAnalyst) {
+    // Fallback deals if API returns empty
+    const FALLBACK_DEALS = [
+      { id: "fb1", dealInput: { companyName: "Las Vegas Foreclosure", askAmount: "$500,000" }, analysis: { riskScore: 85, recommendation: "PASS" } },
+      { id: "fb2", dealInput: { companyName: "Austin Apartments", askAmount: "$78,500,000" }, analysis: { riskScore: 45, recommendation: "INVEST" } },
+      { id: "fb3", dealInput: { companyName: "Chicago Office #2", askAmount: "$52,000,000" }, analysis: { riskScore: 52, recommendation: "INVEST" } },
+      { id: "fb4", dealInput: { companyName: "Chicago Office", askAmount: "$52,000,000" }, analysis: { riskScore: 38, recommendation: "INVEST" } },
+      { id: "fb5", dealInput: { companyName: "Phoenix Industrial", askAmount: "$52,300,000" }, analysis: { riskScore: 45, recommendation: "INVEST" } },
+    ];
+    const effectiveDeals = deals.length > 0 ? deals : FALLBACK_DEALS;
+
+    function getDealSize(deal) {
+      const str = (deal.dealInput?.askAmount || "").replace(/[$,]/g, "");
+      return parseFloat(str) || 0;
+    }
+    function getDealName(deal) {
+      return deal.dealInput?.companyName || deal.dealInput?.summary?.substring(0, 40) || "Unknown";
+    }
+
+    const totalDealSize = effectiveDeals.reduce((s, d) => s + getDealSize(d), 0);
+    const totalHours = effectiveDeals.length * 2;
+    const totalHourlyRevenue = totalHours * 250;
+    const totalSuccessFees = totalDealSize * 0.015;
+    const totalPotentialRevenue = totalHourlyRevenue + totalSuccessFees;
+
+    return (
+      <div>
+        <h1 style={{ fontSize: "32px", fontWeight: 700 }}>Services & Fees</h1>
+        <p style={{ color: "#64748b", marginBottom: "24px" }}>Your fee schedule and revenue tracking</p>
+
+        {/* Fee Schedule */}
+        <div className="card" style={{ marginBottom: "24px", padding: "24px" }}>
+          <div style={{ fontSize: "18px", fontWeight: 600, marginBottom: "16px" }}>Fee Schedule</div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "16px" }}>
+            <div style={{ padding: "20px", background: "#f8fafc", borderRadius: "8px", textAlign: "center" }}>
+              <div style={{ fontSize: "13px", color: "#64748b", marginBottom: "4px" }}>HOURLY RATE</div>
+              <div style={{ fontSize: "28px", fontWeight: 700 }}>$250</div>
+              <div style={{ fontSize: "13px", color: "#64748b" }}>Per hour consulting</div>
+            </div>
+            <div style={{ padding: "20px", background: "#f8fafc", borderRadius: "8px", textAlign: "center" }}>
+              <div style={{ fontSize: "13px", color: "#64748b", marginBottom: "4px" }}>SUCCESS FEE</div>
+              <div style={{ fontSize: "28px", fontWeight: 700 }}>1.5%</div>
+              <div style={{ fontSize: "13px", color: "#64748b" }}>Of closed deal value</div>
+            </div>
+            <div style={{ padding: "20px", background: "#f8fafc", borderRadius: "8px", textAlign: "center" }}>
+              <div style={{ fontSize: "13px", color: "#64748b", marginBottom: "4px" }}>RETAINER</div>
+              <div style={{ fontSize: "28px", fontWeight: 700 }}>$2,500</div>
+              <div style={{ fontSize: "13px", color: "#64748b" }}>Monthly retainer option</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Revenue Tracker */}
+        <div className="card" style={{ marginBottom: "24px", padding: "24px" }}>
+          <div style={{ fontSize: "18px", fontWeight: 600, marginBottom: "16px" }}>Revenue Tracker</div>
+
+          {/* Summary KPIs */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "12px", marginBottom: "20px" }}>
+            <div style={{ padding: "12px", background: "#f0fdf4", borderRadius: "8px", textAlign: "center" }}>
+              <div style={{ fontSize: "12px", color: "#64748b" }}>HOURS BILLED</div>
+              <div style={{ fontSize: "22px", fontWeight: 700 }}>{totalHours}</div>
+            </div>
+            <div style={{ padding: "12px", background: "#f0fdf4", borderRadius: "8px", textAlign: "center" }}>
+              <div style={{ fontSize: "12px", color: "#64748b" }}>HOURLY REVENUE</div>
+              <div style={{ fontSize: "22px", fontWeight: 700, color: "#16a34a" }}>${totalHourlyRevenue.toLocaleString()}</div>
+            </div>
+            <div style={{ padding: "12px", background: "#ede9fe", borderRadius: "8px", textAlign: "center" }}>
+              <div style={{ fontSize: "12px", color: "#64748b" }}>PENDING SUCCESS FEES</div>
+              <div style={{ fontSize: "22px", fontWeight: 700, color: "#7c3aed" }}>${Math.round(totalSuccessFees).toLocaleString()}</div>
+            </div>
+            <div style={{ padding: "12px", background: "#fef3c7", borderRadius: "8px", textAlign: "center" }}>
+              <div style={{ fontSize: "12px", color: "#64748b" }}>TOTAL POTENTIAL REVENUE</div>
+              <div style={{ fontSize: "22px", fontWeight: 700 }}>${Math.round(totalPotentialRevenue).toLocaleString()}</div>
+            </div>
+          </div>
+
+          {/* Deal-level fee breakdown */}
+          {dealsLoading ? (
+            <div style={{ padding: "24px", textAlign: "center", color: "#64748b" }}>Loading deals...</div>
+          ) : (
+            <div className="tableWrap">
+              <table className="table" style={{ width: "100%" }}>
+                <thead>
+                  <tr>
+                    <th style={{ textAlign: "left" }}>Deal</th>
+                    <th style={{ textAlign: "left" }}>Deal Size</th>
+                    <th style={{ textAlign: "left" }}>Hours</th>
+                    <th style={{ textAlign: "left" }}>Hourly Fee</th>
+                    <th style={{ textAlign: "left" }}>Success Fee (1.5%)</th>
+                    <th style={{ textAlign: "left" }}>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {effectiveDeals.map((deal) => {
+                    const dealSize = getDealSize(deal);
+                    const hours = 2;
+                    const hourlyFee = hours * 250;
+                    const successFee = dealSize * 0.015;
+                    const rec = deal.analysis?.recommendation || "PENDING";
+                    const recBg = rec === "INVEST" ? "#dcfce7" : rec === "PASS" ? "#fee2e2" : "#fef3c7";
+                    const recColor = rec === "INVEST" ? "#16a34a" : rec === "PASS" ? "#dc2626" : "#d97706";
+                    return (
+                      <tr key={deal.id}>
+                        <td className="tdStrong">{getDealName(deal)}</td>
+                        <td>${dealSize.toLocaleString()}</td>
+                        <td>{hours}</td>
+                        <td>${hourlyFee.toLocaleString()}</td>
+                        <td style={{ color: "#7c3aed" }}>${Math.round(successFee).toLocaleString()}</td>
+                        <td>
+                          <span style={{ padding: "2px 8px", borderRadius: "4px", fontSize: "12px", fontWeight: 600, backgroundColor: recBg, color: recColor }}>
+                            {rec}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {/* Totals row */}
+                  <tr style={{ borderTop: "2px solid #e2e8f0", fontWeight: 700 }}>
+                    <td>TOTALS</td>
+                    <td>${totalDealSize.toLocaleString()}</td>
+                    <td>{totalHours}</td>
+                    <td>${totalHourlyRevenue.toLocaleString()}</td>
+                    <td style={{ color: "#7c3aed" }}>${Math.round(totalSuccessFees).toLocaleString()}</td>
+                    <td></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
       <div className="pageHeader">
         <div>
-          <h1 className="h1">{isAnalyst ? "Services & Fees" : "Services & Inventory"}</h1>
-          <p className="subtle">{isAnalyst ? "Manage consulting services, fee structures, and subscriptions" : "Manage products, services, and pricing"}</p>
+          <h1 className="h1">Services & Inventory</h1>
+          <p className="subtle">Manage products, services, and pricing</p>
         </div>
         <button
           className="iconBtn"

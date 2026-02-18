@@ -178,11 +178,28 @@ export default function Staff() {
         </div>
       )}
 
+      {/* Chief of Staff — always present */}
+      <div className="card" style={{ marginBottom: "16px", padding: "16px 20px" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <div style={{ width: "40px", height: "40px", borderRadius: "50%", background: "#7c3aed", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: 700, fontSize: "14px" }}>AI</div>
+            <div>
+              <div style={{ fontWeight: 600, fontSize: "15px" }}>{(() => { try { return JSON.parse(localStorage.getItem("COS_CONFIG") || "{}").name; } catch(e) { return null; } })() || "Fred"}</div>
+              <div style={{ fontSize: "13px", color: "#64748b" }}>Chief of Staff &middot; AI Team Member</div>
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+            <span style={{ padding: "2px 10px", background: "#ede9fe", color: "#7c3aed", borderRadius: "20px", fontSize: "12px", fontWeight: 600 }}>AI</span>
+            <span style={{ padding: "2px 10px", background: "#dcfce7", color: "#16a34a", borderRadius: "20px", fontSize: "12px", fontWeight: 600 }}>Active</span>
+          </div>
+        </div>
+      </div>
+
       {/* Empty state */}
       {!loading && filteredStaff.length === 0 && !searchQuery && (
         <div className="card">
           <div className="empty" style={{ padding: "40px 20px", textAlign: "center" }}>
-            <div style={{ fontSize: "16px", fontWeight: 600, marginBottom: "8px" }}>No team members yet</div>
+            <div style={{ fontSize: "16px", fontWeight: 600, marginBottom: "8px" }}>No additional team members</div>
             <div style={{ fontSize: "14px", color: "var(--textMuted)", marginBottom: "16px" }}>
               Add staff members to manage permissions and track team activity.
             </div>
@@ -195,7 +212,7 @@ export default function Staff() {
               }}
               style={{ background: "var(--accent)", color: "white", borderColor: "var(--accent)" }}
             >
-              + Add Your First Team Member
+              + Add Team Member
             </button>
           </div>
         </div>
