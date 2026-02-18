@@ -249,7 +249,6 @@ function ConsumerDashboard() {
           <div style={{ fontSize: "12px", color: "#64748b", marginBottom: "14px" }}>Your specialized AI assistants</div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "14px" }}>
             <span style={{ fontSize: "12px", fontWeight: 600, padding: "4px 10px", borderRadius: "20px", background: "#f3e8ff", color: "#7c3aed" }}>Chief of Staff</span>
-            <span style={{ fontSize: "12px", fontWeight: 600, padding: "4px 10px", borderRadius: "20px", background: "#ecfdf5", color: "#059669" }}>Investment Analyst</span>
           </div>
           <button
             onClick={() => window.dispatchEvent(new CustomEvent("ta:navigate", { detail: { section: "ai-chats" } }))}
