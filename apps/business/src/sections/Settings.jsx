@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { getAuth } from "firebase/auth";
 import FormModal from "../components/FormModal";
 import * as api from "../api/client";
@@ -7,12 +7,15 @@ import * as api from "../api/client";
 function PersonalSettings() {
   const auth = getAuth();
   const user = auth.currentUser;
+  const fileInputRef = useRef(null);
 
   const [profile, setProfile] = useState({
     name: user?.displayName || localStorage.getItem("COMPANY_NAME") || "",
     email: user?.email || "",
     phone: "",
   });
+
+  const [avatarPreview, setAvatarPreview] = useState(() => localStorage.getItem("VAULT_AVATAR") || null);
 
   const [chiefOfStaff, setChiefOfStaff] = useState(() => {
     const saved = localStorage.getItem("COS_CONFIG");
@@ -26,6 +29,8 @@ function PersonalSettings() {
     };
   });
 
+  const [blockchainEnabled, setBlockchainEnabled] = useState(() => localStorage.getItem("VAULT_BLOCKCHAIN_ENABLED") === "true");
+
   const [notifications, setNotifications] = useState({
     email: true,
     sms: false,
@@ -36,6 +41,23 @@ function PersonalSettings() {
   function saveCOS(updated) {
     setChiefOfStaff(updated);
     localStorage.setItem("COS_CONFIG", JSON.stringify(updated));
+  }
+
+  function handleAvatarChange(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const dataUrl = ev.target.result;
+      setAvatarPreview(dataUrl);
+      localStorage.setItem("VAULT_AVATAR", dataUrl);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function handleBlockchainToggle(checked) {
+    setBlockchainEnabled(checked);
+    localStorage.setItem("VAULT_BLOCKCHAIN_ENABLED", String(checked));
   }
 
   return (
@@ -57,28 +79,49 @@ function PersonalSettings() {
         </div>
         <div style={{ padding: "16px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "16px", marginBottom: "20px" }}>
-            <div style={{
-              width: "64px",
-              height: "64px",
-              borderRadius: "50%",
-              background: "linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "white",
-              fontWeight: 700,
-              fontSize: "24px",
-              flexShrink: 0,
-            }}>
-              {profile.name?.charAt(0)?.toUpperCase() || "?"}
-            </div>
+            {avatarPreview ? (
+              <img
+                src={avatarPreview}
+                alt="Avatar"
+                style={{
+                  width: "64px",
+                  height: "64px",
+                  borderRadius: "50%",
+                  objectFit: "cover",
+                  flexShrink: 0,
+                }}
+              />
+            ) : (
+              <div style={{
+                width: "64px",
+                height: "64px",
+                borderRadius: "50%",
+                background: "linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "white",
+                fontWeight: 700,
+                fontSize: "24px",
+                flexShrink: 0,
+              }}>
+                {profile.name?.charAt(0)?.toUpperCase() || "?"}
+              </div>
+            )}
             <div style={{ flex: 1 }}>
               <div style={{ fontWeight: 600, fontSize: "16px", color: "#1e293b" }}>{profile.name || "Your Name"}</div>
               <div style={{ fontSize: "13px", color: "#64748b" }}>{profile.email}</div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleAvatarChange}
+                style={{ display: "none" }}
+              />
               <button
                 className="iconBtn"
                 style={{ marginTop: "8px", fontSize: "12px" }}
-                onClick={() => {/* TODO: avatar upload */}}
+                onClick={() => fileInputRef.current?.click()}
               >
                 Upload Photo
               </button>
@@ -226,6 +269,40 @@ function PersonalSettings() {
                     <div style={{ fontSize: "12px", color: "#64748b" }}>{opt.desc}</div>
                   </button>
                 ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Blockchain Verification */}
+      <div className="card" style={{ marginBottom: "16px" }}>
+        <div className="cardHeader">
+          <div>
+            <div className="cardTitle">Blockchain Verification</div>
+            <div className="cardSub">Permanent, tamper-proof records</div>
+          </div>
+        </div>
+        <div style={{ padding: "16px" }}>
+          <div style={{ fontSize: "14px", color: "#64748b", lineHeight: "1.7", marginBottom: "20px" }}>
+            Save your most important records on the blockchain so they can never be lost, altered, or forged. Each verified item gets a permanent digital certificate that exists independently of any company or service.
+          </div>
+          <div style={{
+            padding: "14px 16px",
+            background: blockchainEnabled ? "#f0fdf4" : "#f8fafc",
+            border: blockchainEnabled ? "1px solid #86efac" : "1px solid #e5e7eb",
+            borderRadius: "10px",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <input
+                type="checkbox"
+                checked={blockchainEnabled}
+                onChange={(e) => handleBlockchainToggle(e.target.checked)}
+                style={{ width: "20px", height: "20px" }}
+              />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 600, marginBottom: "2px" }}>Enable Blockchain Record Keeping</div>
+                <div style={{ fontSize: "12px", color: "#94a3b8" }}>Additional fee applies. Records are stored on Polygon blockchain via VENLY.</div>
               </div>
             </div>
           </div>

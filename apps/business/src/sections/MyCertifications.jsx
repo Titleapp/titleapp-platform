@@ -36,8 +36,8 @@ export default function MyCertifications() {
     <div>
       <div className="pageHeader">
         <div>
-          <h1 className="h1">My Certifications</h1>
-          <p className="subtle">Professional certifications, licenses, credentials, and education records</p>
+          <h1 className="h1">Student Records & Certifications</h1>
+          <p className="subtle">Academic transcripts, degrees, professional licenses, industry certifications, and credentials</p>
         </div>
       </div>
 
@@ -63,13 +63,13 @@ export default function MyCertifications() {
             </svg>
           </div>
           <div style={{ fontSize: "18px", fontWeight: 600, color: "#1e293b", marginBottom: "10px" }}>
-            Track your certifications and credentials
+            Track your education and credentials
           </div>
           <div style={{ fontSize: "14px", color: "#64748b", maxWidth: "420px", margin: "0 auto 24px", lineHeight: "1.6" }}>
-            Professional licenses, academic degrees, industry certifications -- keep them all current with expiration tracking and renewal reminders.
+            Academic records, degrees, professional licenses, industry certifications -- keep them all current with expiration tracking and renewal reminders.
           </div>
           <button
-            onClick={() => openChat("I want to add a certification to my vault")}
+            onClick={() => openChat("I want to add a record to my vault")}
             style={{
               padding: "12px 28px",
               background: "linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)",
@@ -81,7 +81,7 @@ export default function MyCertifications() {
               cursor: "pointer",
             }}
           >
-            Add Certification
+            Add Record
           </button>
         </div>
       ) : (

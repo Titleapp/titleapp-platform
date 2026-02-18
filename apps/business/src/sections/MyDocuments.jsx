@@ -38,7 +38,7 @@ export default function MyDocuments() {
       <div className="pageHeader">
         <div>
           <h1 className="h1">My Important Stuff</h1>
-          <p className="subtle">Birth certificates, passports, wills, insurance policies, tax records, contracts, and more</p>
+          <p className="subtle">Documents, jewelry, artwork, personal mementos, and anything valuable you want to protect and track</p>
         </div>
       </div>
 
@@ -71,7 +71,7 @@ export default function MyDocuments() {
             Your important documents, all in one place
           </div>
           <div style={{ fontSize: "14px", color: "#64748b", marginBottom: "24px", maxWidth: "420px", margin: "0 auto 24px", lineHeight: "1.6" }}>
-            Store and manage the documents that matter most -- IDs, certificates, contracts, tax records, insurance policies, and anything else you need to keep safe and accessible.
+            Store and manage the things that matter most -- important documents, jewelry, artwork, collectibles, family heirlooms, and anything else you want to keep safe, tracked, and verified.
           </div>
           <button
             onClick={() => openChat("I want to add an important document to my vault")}

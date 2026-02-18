@@ -55,7 +55,7 @@ export default function MyProperties() {
             Add your first property
           </div>
           <div style={{ fontSize: "14px", color: "#64748b", maxWidth: "420px", margin: "0 auto 24px", lineHeight: "1.6" }}>
-            Keep track of deeds, mortgage info, tax records, and insurance for every property you own. Everything verified and in one place.
+            Keep track of deeds, leases, mortgage info, tax records, and insurance for every property -- owned or rented. Everything verified and in one place.
           </div>
           <button
             onClick={() => {

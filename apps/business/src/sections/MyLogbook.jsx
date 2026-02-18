@@ -30,18 +30,18 @@ export default function MyLogbook() {
     <div>
       <div className="pageHeader">
         <div>
-          <h1 className="h1">My Logbook</h1>
-          <p className="subtle">Your permanent activity timeline and Digital Title Certificate records</p>
+          <h1 className="h1">My Logbooks</h1>
+          <p className="subtle">Every important item gets its own permanent timeline</p>
         </div>
       </div>
 
       {/* DTC Explanation */}
       <div className="card" style={{ marginBottom: "16px", padding: "20px", background: "#faf5ff", border: "1px solid #e9d5ff" }}>
         <div style={{ fontSize: "15px", fontWeight: 600, color: "#1e293b", marginBottom: "8px" }}>
-          What is a Digital Title Certificate?
+          How Logbooks Work
         </div>
         <div style={{ fontSize: "14px", color: "#64748b", lineHeight: "1.7" }}>
-          A Digital Title Certificate (DTC) is a verified, timestamped record of ownership or attestation for your assets. Every time you add a vehicle, property, credential, or important document to your Vault, TitleApp creates a DTC that serves as permanent proof of that record. Your Logbook is where every DTC and every action you take -- additions, updates, verifications, transfers -- appears automatically as a permanent timeline.
+          Every important item in your Vault gets its own logbook -- a permanent timeline of everything that happens to it. When you add a vehicle, property, or valuable item, TitleApp automatically starts tracking it. Every update, verification, and change is recorded with a timestamp so you always have proof of what happened and when.
         </div>
       </div>
 
@@ -70,7 +70,7 @@ export default function MyLogbook() {
             No logbook entries yet
           </div>
           <div style={{ fontSize: "14px", color: "#64748b", maxWidth: "420px", margin: "0 auto", lineHeight: "1.6" }}>
-            Add a vehicle, property, or document to get started. Your DTC records and all activity will appear here automatically as a permanent timeline.
+            No logbook entries yet. Add a vehicle, property, or important item to get started. Each item gets its own logbook that tracks everything automatically.
           </div>
         </div>
       ) : (

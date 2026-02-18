@@ -21,11 +21,12 @@ export default function MyVehicles() {
     }
   }
 
-  function openChat(vehicle) {
+  function openChat(promptOrVehicle) {
+    const message = typeof promptOrVehicle === "string"
+      ? promptOrVehicle
+      : `Tell me about my ${promptOrVehicle.metadata?.year || ""} ${promptOrVehicle.metadata?.make || ""} ${promptOrVehicle.metadata?.model || ""}`.trim();
     window.dispatchEvent(
-      new CustomEvent("ta:chatPrompt", {
-        detail: { message: `Tell me about my ${vehicle.metadata?.year || ""} ${vehicle.metadata?.make || ""} ${vehicle.metadata?.model || ""}`.trim() },
-      })
+      new CustomEvent("ta:chatPrompt", { detail: { message } })
     );
   }
 

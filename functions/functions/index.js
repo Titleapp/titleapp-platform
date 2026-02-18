@@ -158,7 +158,9 @@ function getCtx(req, body, user) {
   // NOTE: tenantId is always derived from x-tenant-id header (preferred).
   // body.tenantId remains accepted for backwards compatibility with older clients.
   const tenantId = (req.headers["x-tenant-id"] || body.tenantId || "public").toString().trim();
-  return { tenantId, userId: user.uid, email: user.email || null };
+  const vertical = (req.headers["x-vertical"] || body.vertical || "").toString().trim() || null;
+  const jurisdiction = (req.headers["x-jurisdiction"] || body.jurisdiction || "").toString().trim() || null;
+  return { tenantId, userId: user.uid, email: user.email || null, vertical, jurisdiction };
 }
 
 function sanitizeFilename(name) {
