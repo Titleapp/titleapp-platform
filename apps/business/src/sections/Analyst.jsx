@@ -473,7 +473,7 @@ Best regards,
               </thead>
               <tbody>
                 {filteredDeals.map((deal) => (
-                  <tr key={deal.id}>
+                  <tr key={deal.id} onClick={() => setSelectedDeal(deal)} style={{ cursor: "pointer" }}>
                     <td className="tdStrong">{deal.dealInput?.companyName || "Unknown"}</td>
                     <td>{deal.dealInput?.industry || "-"}</td>
                     <td className="tdMuted">{deal.dealInput?.askAmount || "-"}</td>

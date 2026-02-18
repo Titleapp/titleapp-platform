@@ -46,11 +46,13 @@ export default function ChatPanel({ currentSection, onboardingStep }) {
   // Listen for "discuss with AI" events from other components
   useEffect(() => {
     function handleChatPrompt(e) {
-      if (e.detail?.message) {
-        setInput(e.detail.message);
-      }
+      const msg = e.detail?.message;
       if (e.detail?.dealContext) {
         setDealContext(e.detail.dealContext);
+      }
+      if (msg) {
+        setInput(msg);
+        setTimeout(() => sendMessage(null, msg), 200);
       }
     }
     window.addEventListener('ta:chatPrompt', handleChatPrompt);
@@ -140,9 +142,10 @@ export default function ChatPanel({ currentSection, onboardingStep }) {
     }
   }
 
-  async function sendMessage(e) {
+  async function sendMessage(e, overrideMessage) {
     e?.preventDefault();
-    if (!input.trim() || isSending) return;
+    const messageToSend = (overrideMessage || input).trim();
+    if (!messageToSend || isSending) return;
 
     if (!currentUser) {
       setMessages(prev => [...prev, {
@@ -153,7 +156,7 @@ export default function ChatPanel({ currentSection, onboardingStep }) {
       return;
     }
 
-    let userMessage = input.trim();
+    let userMessage = messageToSend;
     const currentFile = attachedFile;
     if (currentFile) {
       userMessage += ` [File attached: ${currentFile.name}]`;
@@ -402,14 +405,10 @@ export default function ChatPanel({ currentSection, onboardingStep }) {
           <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
         </svg>
         <span>{(() => {
-          const v = localStorage.getItem('VERTICAL') || 'auto';
-          if (v === 'consumer') {
-            try {
-              const cfg = JSON.parse(localStorage.getItem('COS_CONFIG') || '{}');
-              return cfg.name ? `${cfg.name} -- Chief of Staff` : 'Chief of Staff';
-            } catch { return 'Chief of Staff'; }
-          }
-          return 'AI Assistant';
+          try {
+            const cfg = JSON.parse(localStorage.getItem('COS_CONFIG') || '{}');
+            return cfg.name ? `${cfg.name} -- Chief of Staff` : 'Chief of Staff';
+          } catch { return 'Chief of Staff'; }
         })()}</span>
       </div>
 
@@ -435,9 +434,14 @@ export default function ChatPanel({ currentSection, onboardingStep }) {
                   </>
                 );
               }
+              let cosLabel = 'your Chief of Staff';
+              try {
+                const cfg2 = JSON.parse(localStorage.getItem('COS_CONFIG') || '{}');
+                if (cfg2.name) cosLabel = `${cfg2.name}, your Chief of Staff`;
+              } catch {}
               return (
                 <>
-                  <p>Hi. I'm your TitleApp AI assistant.</p>
+                  <p>Hi. I'm {cosLabel}.</p>
                   {currentUser ? (
                     <p>Ask me anything about your records, documents, customers, inventory, or business operations.</p>
                   ) : (

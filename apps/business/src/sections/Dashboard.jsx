@@ -385,22 +385,33 @@ export default function Dashboard() {
       setValueTracker({ actions: actionsCount, hoursSaved, valueSaved });
 
       if (vertical === "analyst") {
-        const inventoryResult = await api.getInventory({ vertical, jurisdiction });
-        const deals = inventoryResult.inventory || [];
-        const avgRisk = deals.length > 0
-          ? Math.round(deals.reduce((s, d) => s + (d.metadata?.riskScore || 0), 0) / deals.length)
+        // Get analyzed deals from API
+        const analyzedResult = await api.getAnalyzedDeals({ vertical, jurisdiction });
+        const analyzedDeals = analyzedResult.deals || [];
+
+        // Compute dealflow value: COS-found opportunities + analyzed deals
+        const oppValueM = opportunities.reduce((s, o) => {
+          const val = parseFloat(o.value.replace(/[$M,]/g, ""));
+          return s + (isNaN(val) ? 0 : val);
+        }, 0);
+        const analyzedValueM = analyzedDeals.reduce((s, d) => {
+          const raw = (d.dealInput?.askAmount || "").replace(/[$,]/g, "");
+          const val = parseFloat(raw);
+          return s + (isNaN(val) ? 0 : val / 1000000);
+        }, 0);
+        const totalDealflowM = oppValueM + analyzedValueM;
+
+        const dealsInPipeline = opportunities.length + analyzedDeals.length;
+        const dealsAnalyzedCount = analyzedDeals.filter(d => d.analysis?.riskScore).length;
+        const avgRisk = dealsAnalyzedCount > 0
+          ? Math.round(analyzedDeals.filter(d => d.analysis?.riskScore).reduce((s, d) => s + d.analysis.riskScore, 0) / dealsAnalyzedCount)
           : 0;
+
         setKpis({
-          revenue: { value: deals.length.toString(), trend: "" },
-          activeDeals: {
-            value: deals.filter(d => {
-              const c = new Date(d.createdAt);
-              return c.getMonth() === now.getMonth() && c.getFullYear() === now.getFullYear();
-            }).length.toString(),
-            trend: "",
-          },
-          aiConversations: { value: avgRisk.toString(), trend: "" },
-          customers: { value: aiActivity.length.toString(), trend: "" },
+          revenue: { value: `$${totalDealflowM.toFixed(1)}M`, trend: "" },
+          activeDeals: { value: dealsInPipeline.toString(), trend: "" },
+          aiConversations: { value: dealsAnalyzedCount.toString(), trend: "" },
+          customers: { value: avgRisk > 0 ? avgRisk.toString() : "0", trend: "" },
         });
       } else if (vertical === "property-mgmt") {
         const inventoryResult = await api.getInventory({ vertical, jurisdiction });
@@ -467,7 +478,7 @@ export default function Dashboard() {
 
   function getKpiLabels() {
     if (vertical === "analyst") {
-      return ["Deals in Pipeline", "Analyzed This Month", "Avg Risk Score", "AI Conversations"];
+      return ["Dealflow Value", "Deals in Pipeline", "Analyzed This Month", "Avg Risk Score"];
     }
     if (vertical === "property-mgmt") {
       return ["Properties", "Total Units", "Occupancy Rate", "Open Requests"];
@@ -520,10 +531,10 @@ export default function Dashboard() {
       {isAnalyst && (
         <div style={{ marginTop: "14px" }}>
           <div style={{ marginBottom: "12px" }}>
-            <h2 style={{ fontSize: "18px", fontWeight: 700, margin: 0 }}>Opportunities Found by Your Chief of Staff</h2>
-            <p style={{ fontSize: "13px", color: "var(--muted)", margin: "4px 0 0" }}>
+            <h2 style={{ fontSize: "20px", fontWeight: 700, margin: 0 }}>While You Were Out...</h2>
+            <p style={{ fontSize: "14px", color: "var(--muted)", margin: "4px 0 0" }}>
               {opportunities.length > 0
-                ? `${opportunities.length} opportunit${opportunities.length === 1 ? "y" : "ies"} matching your investment criteria`
+                ? `Your Chief of Staff found ${opportunities.length} opportunit${opportunities.length === 1 ? "y" : "ies"} matching your investment criteria`
                 : ""}
             </p>
           </div>

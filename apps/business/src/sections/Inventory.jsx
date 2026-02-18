@@ -7,6 +7,10 @@ import { getInventory, createInventoryItem, updateInventoryItem, deleteInventory
  * Manage products, services, and pricing for the business
  */
 export default function Inventory() {
+  const vertical = localStorage.getItem("VERTICAL") || "auto";
+  const jurisdiction = localStorage.getItem("JURISDICTION") || "IL";
+  const isAnalyst = vertical === "analyst";
+
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -21,10 +25,6 @@ export default function Inventory() {
     price: "",
     cost: "",
   });
-
-  const vertical = localStorage.getItem("VERTICAL") || "auto";
-  const jurisdiction = localStorage.getItem("JURISDICTION") || "IL";
-  const isAnalyst = vertical === "analyst";
 
   useEffect(() => {
     loadInventory();
