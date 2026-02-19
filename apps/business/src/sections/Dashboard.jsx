@@ -688,7 +688,94 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Opportunities -- Analyst only */}
+      {/* Analyst Operational Tracks */}
+      {isAnalyst && (
+        <div style={{ marginTop: "14px" }}>
+
+          {/* Research Track */}
+          <div className="card" style={{ marginBottom: "14px", padding: "20px" }}>
+            <div style={{ fontWeight: 700, fontSize: "16px", color: "#1e293b", marginBottom: "4px" }}>Research Track</div>
+            <div style={{ fontSize: "13px", color: "#64748b", marginBottom: "16px" }}>Active research and analysis pipeline</div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "12px" }}>
+              <div onClick={() => nav("research")} style={{ padding: "12px", background: "#f8fafc", borderRadius: "8px", textAlign: "center", cursor: "pointer" }}>
+                <div style={{ fontSize: "24px", fontWeight: 800 }}>15</div>
+                <div style={{ fontSize: "12px", color: "#64748b" }}>Active Items</div>
+              </div>
+              <div onClick={() => nav("research")} style={{ padding: "12px", background: "#f8fafc", borderRadius: "8px", textAlign: "center", cursor: "pointer" }}>
+                <div style={{ fontSize: "24px", fontWeight: 800, color: "#d97706" }}>3</div>
+                <div style={{ fontSize: "12px", color: "#64748b" }}>Earnings This Week</div>
+              </div>
+              <div onClick={() => nav("research")} style={{ padding: "12px", background: "#fef2f2", borderRadius: "8px", textAlign: "center", cursor: "pointer" }}>
+                <div style={{ fontSize: "24px", fontWeight: 800, color: "#dc2626" }}>3</div>
+                <div style={{ fontSize: "12px", color: "#dc2626" }}>Models Need Update</div>
+              </div>
+              <div style={{ padding: "12px", background: "#f8fafc", borderRadius: "8px", textAlign: "center" }}>
+                <div style={{ fontSize: "24px", fontWeight: 800 }}>5</div>
+                <div style={{ fontSize: "12px", color: "#64748b" }}>Sector Alerts</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Portfolio Track + Client Track side by side */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px", marginBottom: "14px" }}>
+            {/* Portfolio Track */}
+            <div className="card" style={{ padding: "20px" }}>
+              <div style={{ fontWeight: 700, fontSize: "16px", color: "#1e293b", marginBottom: "4px" }}>Portfolio Track</div>
+              <div style={{ fontSize: "13px", color: "#64748b", marginBottom: "16px" }}>Positions and market movements</div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                <div onClick={() => nav("portfolio")} style={{ padding: "10px", background: "#f0fdf4", borderRadius: "8px", cursor: "pointer" }}>
+                  <div style={{ fontSize: "20px", fontWeight: 800, color: "#16a34a" }}>+2.4%</div>
+                  <div style={{ fontSize: "12px", color: "#64748b" }}>Top Mover Today</div>
+                </div>
+                <div onClick={() => nav("portfolio")} style={{ padding: "10px", background: "#f8fafc", borderRadius: "8px", cursor: "pointer" }}>
+                  <div style={{ fontSize: "20px", fontWeight: 800 }}>4</div>
+                  <div style={{ fontSize: "12px", color: "#64748b" }}>Near Price Targets</div>
+                </div>
+                <div style={{ padding: "10px", background: "#fef2f2", borderRadius: "8px" }}>
+                  <div style={{ fontSize: "20px", fontWeight: 800, color: "#dc2626" }}>1</div>
+                  <div style={{ fontSize: "12px", color: "#dc2626" }}>Risk Alert</div>
+                </div>
+                <div onClick={() => nav("portfolio")} style={{ padding: "10px", background: "#f8fafc", borderRadius: "8px", cursor: "pointer" }}>
+                  <div style={{ fontSize: "20px", fontWeight: 800 }}>2</div>
+                  <div style={{ fontSize: "12px", color: "#64748b" }}>Rebalance Suggestions</div>
+                </div>
+              </div>
+              <div style={{ marginTop: "12px", padding: "10px", background: "#fef3c7", borderRadius: "8px", fontSize: "13px", color: "#92400e" }}>
+                Sentinel Defense -6.2% on contract delay -- review position
+              </div>
+            </div>
+
+            {/* Client Track */}
+            <div className="card" style={{ padding: "20px" }}>
+              <div style={{ fontWeight: 700, fontSize: "16px", color: "#1e293b", marginBottom: "4px" }}>Client Track</div>
+              <div style={{ fontSize: "13px", color: "#64748b", marginBottom: "16px" }}>LP communications and meetings</div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                <div onClick={() => nav("clients-lps")} style={{ padding: "10px", background: "#f8fafc", borderRadius: "8px", cursor: "pointer" }}>
+                  <div style={{ fontSize: "20px", fontWeight: 800 }}>3</div>
+                  <div style={{ fontSize: "12px", color: "#64748b" }}>Letters Due</div>
+                </div>
+                <div onClick={() => nav("clients-lps")} style={{ padding: "10px", background: "#f8fafc", borderRadius: "8px", cursor: "pointer" }}>
+                  <div style={{ fontSize: "20px", fontWeight: 800 }}>2</div>
+                  <div style={{ fontSize: "12px", color: "#64748b" }}>Meetings This Week</div>
+                </div>
+                <div onClick={() => nav("clients-lps")} style={{ padding: "10px", background: "#fff7ed", borderRadius: "8px", cursor: "pointer" }}>
+                  <div style={{ fontSize: "20px", fontWeight: 800, color: "#d97706" }}>1</div>
+                  <div style={{ fontSize: "12px", color: "#64748b" }}>Quarterly Letters</div>
+                </div>
+                <div style={{ padding: "10px", background: "#f8fafc", borderRadius: "8px" }}>
+                  <div style={{ fontSize: "20px", fontWeight: 800 }}>0</div>
+                  <div style={{ fontSize: "12px", color: "#64748b" }}>Capital Calls</div>
+                </div>
+              </div>
+              <div style={{ marginTop: "12px", padding: "10px", background: "#f0fdf4", borderRadius: "8px", fontSize: "13px", color: "#16a34a" }}>
+                Blackstone LP quarterly letter drafted -- pending compliance review
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* While You Were Out -- Analyst */}
       {isAnalyst && (
         <div style={{ marginTop: "14px" }}>
           <div style={{ marginBottom: "12px" }}>
@@ -957,8 +1044,8 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Recent Activity -- business only */}
-      {!isConsumer && !isAuto && (
+      {/* Recent Activity -- other verticals (not auto, not analyst, not consumer) */}
+      {!isConsumer && !isAuto && !isAnalyst && (
         <div className="card">
           <div className="cardHeader">
             <div>

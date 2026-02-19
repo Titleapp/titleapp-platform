@@ -7,50 +7,139 @@ const AUTONOMY_LEVELS = [
   { level: 4, name: "Full Autopilot", description: "AI runs all operations autonomously. You receive daily briefings and can override at any time." },
 ];
 
-const DEFAULT_RULES = {
-  globalLevel: 1,
-  sales: {
-    respondToLeads: 1,
-    sendOutboundOffers: 1,
-    negotiatePricing: 1,
-    maxDiscount: 500,
-    scheduleTestDrives: 1,
-    generateBuyersOrders: 1,
-    maxAutonomousDealValue: 35000,
+// ── Vertical-specific permission configs ──
+const RULES_CONFIGS = {
+  auto: {
+    defaults: {
+      globalLevel: 1,
+      sales: { respondToLeads: 1, sendOutboundOffers: 1, negotiatePricing: 1, maxDiscount: 500, scheduleTestDrives: 1, generateBuyersOrders: 1, maxAutonomousDealValue: 35000 },
+      service: { bookAppointments: 1, authorizeWarrantyWork: 1, maxWarrantyValue: 500, sendServiceReminders: 1, recommendUpsells: 1, scheduleRecallNotifications: 1 },
+      communication: { sendEmails: true, emailLevel: 1, sendTexts: true, textLevel: 1, makePhoneCalls: false, dailyMessageLimit: 50, disclaimerText: "This message was sent by an AI assistant on behalf of {dealership name}", quietHoursStart: "21:00", quietHoursEnd: "08:00" },
+      marketing: { createCampaigns: 1, maxCampaignBudget: 250, submitCoopClaims: 1, manageBudgetReallocation: 1 },
+      fi: { recommendProducts: 1, modelFinancing: 1, generateDisclosures: 1, maxBundleValue: 5000 },
+    },
+    sections: [
+      {
+        key: "sales", title: "Sales Permissions", accent: "#16a34a", defaultOpen: true,
+        rows: [
+          { key: "respondToLeads", label: "Respond to inbound leads" },
+          { key: "sendOutboundOffers", label: "Send outbound offers" },
+          { key: "negotiatePricing", label: "Negotiate pricing", extra: { label: "Max discount: $", field: "maxDiscount", type: "number" } },
+          { key: "scheduleTestDrives", label: "Schedule test drives" },
+          { key: "generateBuyersOrders", label: "Generate buyer's orders" },
+        ],
+        footer: { label: "Max autonomous deal value", field: "maxAutonomousDealValue", prefix: "$" },
+      },
+      {
+        key: "service", title: "Service Permissions", accent: "#2563eb",
+        rows: [
+          { key: "bookAppointments", label: "Book service appointments" },
+          { key: "authorizeWarrantyWork", label: "Authorize warranty work", extra: { label: "Max value: $", field: "maxWarrantyValue", type: "number" } },
+          { key: "sendServiceReminders", label: "Send service reminders" },
+          { key: "recommendUpsells", label: "Recommend upsells during service" },
+          { key: "scheduleRecallNotifications", label: "Schedule recall notifications" },
+        ],
+      },
+      {
+        key: "communication", title: "Communication Permissions", accent: "#d97706", type: "communication",
+      },
+      {
+        key: "marketing", title: "Marketing Permissions", accent: "#ec4899",
+        rows: [
+          { key: "createCampaigns", label: "Create ad campaigns" },
+        ],
+        footer: { label: "Max campaign budget without approval", field: "maxCampaignBudget", prefix: "$" },
+        postRows: [
+          { key: "submitCoopClaims", label: "Submit co-op reimbursement claims" },
+          { key: "manageBudgetReallocation", label: "Manage channel budget reallocation" },
+        ],
+      },
+      {
+        key: "fi", title: "F&I Permissions", accent: "#7c3aed",
+        rows: [
+          { key: "recommendProducts", label: "Recommend F&I products to customers" },
+          { key: "modelFinancing", label: "Model financing options" },
+          { key: "generateDisclosures", label: "Generate F&I disclosure documents" },
+        ],
+        footer: { label: "Max F&I product bundle value to present", field: "maxBundleValue", prefix: "$" },
+      },
+    ],
+    playbookCategories: [
+      "Sales Process", "Word Tracks / Scripts", "Objection Handling", "F&I Playbook",
+      "Service Advisor Scripts", "Pricing Policies", "Trade-in Process", "Delivery Process",
+      "Customer Communication Guidelines", "Other / General",
+    ],
   },
-  service: {
-    bookAppointments: 1,
-    authorizeWarrantyWork: 1,
-    maxWarrantyValue: 500,
-    sendServiceReminders: 1,
-    recommendUpsells: 1,
-    scheduleRecallNotifications: 1,
-  },
-  communication: {
-    sendEmails: true,
-    emailLevel: 1,
-    sendTexts: true,
-    textLevel: 1,
-    makePhoneCalls: false,
-    dailyMessageLimit: 50,
-    disclaimerText: "This message was sent by an AI assistant on behalf of {dealership name}",
-    quietHoursStart: "21:00",
-    quietHoursEnd: "08:00",
-  },
-  marketing: {
-    createCampaigns: 1,
-    maxCampaignBudget: 250,
-    submitCoopClaims: 1,
-    manageBudgetReallocation: 1,
-  },
-  fi: {
-    recommendProducts: 1,
-    modelFinancing: 1,
-    generateDisclosures: 1,
-    maxBundleValue: 5000,
+  analyst: {
+    defaults: {
+      globalLevel: 1,
+      research: { generateMemos: 1, updateModels: 1, monitorPortfolio: 1, sendMarketAlerts: 1 },
+      clientLp: { draftUpdates: 1, sendQuarterlyLetters: 1, respondToInquiries: 1, scheduleMeetings: 1, maxCommunicationFrequency: 10 },
+      trading: { generateRecommendations: 1, setPriceAlerts: 1, draftICMemos: 1, maxPositionSize: 1000000 },
+      compliance: { preScreenCommunications: 1, flagRegulatoryIssues: 1, maintainComplianceLog: 1, reviewMarketingMaterials: 1 },
+      communication: { sendEmails: true, emailLevel: 1, sendTexts: true, textLevel: 1, makePhoneCalls: false, dailyMessageLimit: 20, disclaimerText: "This message was sent by an AI assistant on behalf of {firm name}", quietHoursStart: "21:00", quietHoursEnd: "08:00" },
+      marketing: { publishThoughtLeadership: 1, manageLinkedIn: 1, createEventMaterials: 1, maxCampaignBudget: 500 },
+    },
+    sections: [
+      {
+        key: "research", title: "Research Permissions", accent: "#16a34a", defaultOpen: true,
+        rows: [
+          { key: "generateMemos", label: "Generate research memos" },
+          { key: "updateModels", label: "Update financial models" },
+          { key: "monitorPortfolio", label: "Monitor portfolio companies" },
+          { key: "sendMarketAlerts", label: "Send market alerts" },
+        ],
+      },
+      {
+        key: "clientLp", title: "Client / LP Permissions", accent: "#2563eb",
+        rows: [
+          { key: "draftUpdates", label: "Draft client updates" },
+          { key: "sendQuarterlyLetters", label: "Send quarterly letters" },
+          { key: "respondToInquiries", label: "Respond to LP inquiries" },
+          { key: "scheduleMeetings", label: "Schedule meetings" },
+        ],
+        footer: { label: "Max outbound communications per week", field: "maxCommunicationFrequency" },
+      },
+      {
+        key: "trading", title: "Trading Permissions", accent: "#d97706",
+        rows: [
+          { key: "generateRecommendations", label: "Generate trade recommendations" },
+          { key: "setPriceAlerts", label: "Set price alerts" },
+          { key: "draftICMemos", label: "Draft investment committee memos" },
+        ],
+        footer: { label: "Max position size for autonomous recommendations", field: "maxPositionSize", prefix: "$" },
+      },
+      {
+        key: "compliance", title: "Compliance Permissions", accent: "#dc2626",
+        rows: [
+          { key: "preScreenCommunications", label: "Pre-screen external communications" },
+          { key: "flagRegulatoryIssues", label: "Flag regulatory issues" },
+          { key: "maintainComplianceLog", label: "Maintain compliance log" },
+          { key: "reviewMarketingMaterials", label: "Review marketing materials" },
+        ],
+      },
+      {
+        key: "communication", title: "Communication Permissions", accent: "#64748b", type: "communication",
+      },
+      {
+        key: "marketing", title: "Marketing Permissions", accent: "#ec4899",
+        rows: [
+          { key: "publishThoughtLeadership", label: "Publish thought leadership content" },
+          { key: "manageLinkedIn", label: "Manage LinkedIn presence" },
+          { key: "createEventMaterials", label: "Create event materials" },
+        ],
+        footer: { label: "Max campaign budget without approval", field: "maxCampaignBudget", prefix: "$" },
+      },
+    ],
+    playbookCategories: [
+      "Investment Thesis Templates", "Due Diligence Checklists", "Client Communication Templates",
+      "Research Methodology", "Risk Assessment Framework", "LP Reporting Templates",
+      "Compliance Guidelines", "Market Analysis Framework", "Other / General",
+    ],
   },
 };
 
+// ── Shared UI Components ──
 function LevelSelector({ value, onChange, size = "normal" }) {
   return (
     <div style={{ display: "flex", gap: "4px" }}>
@@ -155,23 +244,79 @@ function CollapsibleSection({ title, accent, children, defaultOpen = false }) {
   );
 }
 
-const PLAYBOOK_CATEGORIES = [
-  "Sales Process",
-  "Word Tracks / Scripts",
-  "Objection Handling",
-  "F&I Playbook",
-  "Service Advisor Scripts",
-  "Pricing Policies",
-  "Trade-in Process",
-  "Delivery Process",
-  "Customer Communication Guidelines",
-  "Other / General",
-];
+// ── Communication section renderer (shared between verticals) ──
+function CommunicationSection({ rules, updateRules, accent }) {
+  return (
+    <CollapsibleSection title="Communication Permissions" accent={accent}>
+      <TogglePermissionRow label="Send emails" enabled={rules.communication.sendEmails} onToggle={() => updateRules("communication.sendEmails", !rules.communication.sendEmails)} levelValue={rules.communication.emailLevel} onLevelChange={v => updateRules("communication.emailLevel", v)} />
+      <TogglePermissionRow label="Send text messages" enabled={rules.communication.sendTexts} onToggle={() => updateRules("communication.sendTexts", !rules.communication.sendTexts)} levelValue={rules.communication.textLevel} onLevelChange={v => updateRules("communication.textLevel", v)} />
+      <TogglePermissionRow label="Make phone calls" enabled={rules.communication.makePhoneCalls} onToggle={() => {}} badge="Coming Soon" />
+      <div style={{ display: "flex", alignItems: "center", gap: "12px", padding: "10px 0", borderBottom: "1px solid #f1f5f9" }}>
+        <div style={{ flex: 1, fontSize: "14px", color: "#334155" }}>Daily outbound message limit</div>
+        <input type="number" value={rules.communication.dailyMessageLimit} onChange={e => updateRules("communication.dailyMessageLimit", Number(e.target.value))} style={{ width: "80px", padding: "6px 8px", borderRadius: "6px", border: "1px solid #e2e8f0", fontSize: "14px", textAlign: "right" }} />
+      </div>
+      <div style={{ padding: "10px 0", borderBottom: "1px solid #f1f5f9" }}>
+        <div style={{ fontSize: "14px", color: "#334155", marginBottom: "6px" }}>Required disclaimer text</div>
+        <textarea value={rules.communication.disclaimerText} onChange={e => updateRules("communication.disclaimerText", e.target.value)} rows={2} style={{ width: "100%", padding: "8px 10px", borderRadius: "8px", border: "1px solid #e2e8f0", fontSize: "13px", resize: "vertical", fontFamily: "inherit" }} />
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: "12px", padding: "10px 0" }}>
+        <div style={{ flex: 1, fontSize: "14px", color: "#334155" }}>Quiet hours (no outbound)</div>
+        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+          <input type="time" value={rules.communication.quietHoursStart} onChange={e => updateRules("communication.quietHoursStart", e.target.value)} style={{ padding: "4px 6px", borderRadius: "6px", border: "1px solid #e2e8f0", fontSize: "13px" }} />
+          <span style={{ color: "#94a3b8" }}>to</span>
+          <input type="time" value={rules.communication.quietHoursEnd} onChange={e => updateRules("communication.quietHoursEnd", e.target.value)} style={{ padding: "4px 6px", borderRadius: "6px", border: "1px solid #e2e8f0", fontSize: "13px" }} />
+        </div>
+      </div>
+    </CollapsibleSection>
+  );
+}
+
+// ── Generic permission section renderer ──
+function PermissionSection({ section, rules, updateRules }) {
+  if (section.type === "communication") {
+    return <CommunicationSection rules={rules} updateRules={updateRules} accent={section.accent} />;
+  }
+
+  return (
+    <CollapsibleSection title={section.title} accent={section.accent} defaultOpen={section.defaultOpen}>
+      {(section.rows || []).map(row => (
+        <PermissionRow
+          key={row.key}
+          label={row.label}
+          levelValue={rules[section.key]?.[row.key] || 1}
+          onLevelChange={v => updateRules(`${section.key}.${row.key}`, v)}
+          extraLabel={row.extra?.label}
+          extraValue={row.extra ? rules[section.key]?.[row.extra.field] : undefined}
+          onExtraChange={row.extra ? v => updateRules(`${section.key}.${row.extra.field}`, v) : undefined}
+          extraType={row.extra?.type}
+        />
+      ))}
+      {section.footer && (
+        <div style={{ display: "flex", alignItems: "center", gap: "12px", padding: "10px 0" }}>
+          <div style={{ flex: 1, fontSize: "14px", color: "#334155" }}>{section.footer.label}</div>
+          <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+            {section.footer.prefix && <span style={{ fontSize: "14px", color: "#64748b" }}>{section.footer.prefix}</span>}
+            <input type="number" value={rules[section.key]?.[section.footer.field] || 0} onChange={e => updateRules(`${section.key}.${section.footer.field}`, Number(e.target.value))} style={{ width: "100px", padding: "6px 8px", borderRadius: "6px", border: "1px solid #e2e8f0", fontSize: "14px", textAlign: "right" }} />
+          </div>
+        </div>
+      )}
+      {(section.postRows || []).map(row => (
+        <PermissionRow
+          key={row.key}
+          label={row.label}
+          levelValue={rules[section.key]?.[row.key] || 1}
+          onLevelChange={v => updateRules(`${section.key}.${row.key}`, v)}
+        />
+      ))}
+    </CollapsibleSection>
+  );
+}
 
 export default function Rules() {
   const vertical = localStorage.getItem("VERTICAL") || "auto";
   const jurisdiction = localStorage.getItem("JURISDICTION") || "FL";
-  const [rules, setRules] = useState(DEFAULT_RULES);
+  const config = RULES_CONFIGS[vertical] || RULES_CONFIGS.auto;
+  const [rules, setRules] = useState(config.defaults);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -216,7 +361,7 @@ export default function Rules() {
 
   function handlePlaybookFiles(files) {
     const accepted = ["application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "text/plain", "image/png", "image/jpeg", "image/webp"];
-    const maxSize = 10 * 1024 * 1024; // 10MB
+    const maxSize = 10 * 1024 * 1024;
     for (const file of Array.from(files)) {
       if (!accepted.some(t => file.type.startsWith(t.split("/")[0]) || file.type === t)) continue;
       if (file.size > maxSize) continue;
@@ -297,83 +442,12 @@ export default function Rules() {
         </div>
       </div>
 
-      {/* Sales Permissions */}
-      <CollapsibleSection title="Sales Permissions" accent="#16a34a" defaultOpen={true}>
-        <PermissionRow label="Respond to inbound leads" levelValue={rules.sales.respondToLeads} onLevelChange={v => updateRules("sales.respondToLeads", v)} />
-        <PermissionRow label="Send outbound offers" levelValue={rules.sales.sendOutboundOffers} onLevelChange={v => updateRules("sales.sendOutboundOffers", v)} />
-        <PermissionRow label="Negotiate pricing" levelValue={rules.sales.negotiatePricing} onLevelChange={v => updateRules("sales.negotiatePricing", v)} extraLabel="Max discount: $" extraValue={rules.sales.maxDiscount} onExtraChange={v => updateRules("sales.maxDiscount", v)} extraType="number" />
-        <PermissionRow label="Schedule test drives" levelValue={rules.sales.scheduleTestDrives} onLevelChange={v => updateRules("sales.scheduleTestDrives", v)} />
-        <PermissionRow label="Generate buyer's orders" levelValue={rules.sales.generateBuyersOrders} onLevelChange={v => updateRules("sales.generateBuyersOrders", v)} />
-        <div style={{ display: "flex", alignItems: "center", gap: "12px", padding: "10px 0" }}>
-          <div style={{ flex: 1, fontSize: "14px", color: "#334155" }}>Max autonomous deal value</div>
-          <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-            <span style={{ fontSize: "14px", color: "#64748b" }}>$</span>
-            <input type="number" value={rules.sales.maxAutonomousDealValue} onChange={e => updateRules("sales.maxAutonomousDealValue", Number(e.target.value))} style={{ width: "100px", padding: "6px 8px", borderRadius: "6px", border: "1px solid #e2e8f0", fontSize: "14px", textAlign: "right" }} />
-          </div>
-        </div>
-      </CollapsibleSection>
+      {/* Permission Sections — driven by config */}
+      {config.sections.map(section => (
+        <PermissionSection key={section.key} section={section} rules={rules} updateRules={updateRules} />
+      ))}
 
-      {/* Service Permissions */}
-      <CollapsibleSection title="Service Permissions" accent="#2563eb">
-        <PermissionRow label="Book service appointments" levelValue={rules.service.bookAppointments} onLevelChange={v => updateRules("service.bookAppointments", v)} />
-        <PermissionRow label="Authorize warranty work" levelValue={rules.service.authorizeWarrantyWork} onLevelChange={v => updateRules("service.authorizeWarrantyWork", v)} extraLabel="Max value: $" extraValue={rules.service.maxWarrantyValue} onExtraChange={v => updateRules("service.maxWarrantyValue", v)} extraType="number" />
-        <PermissionRow label="Send service reminders" levelValue={rules.service.sendServiceReminders} onLevelChange={v => updateRules("service.sendServiceReminders", v)} />
-        <PermissionRow label="Recommend upsells during service" levelValue={rules.service.recommendUpsells} onLevelChange={v => updateRules("service.recommendUpsells", v)} />
-        <PermissionRow label="Schedule recall notifications" levelValue={rules.service.scheduleRecallNotifications} onLevelChange={v => updateRules("service.scheduleRecallNotifications", v)} />
-      </CollapsibleSection>
-
-      {/* Communication Permissions */}
-      <CollapsibleSection title="Communication Permissions" accent="#d97706">
-        <TogglePermissionRow label="Send emails" enabled={rules.communication.sendEmails} onToggle={() => updateRules("communication.sendEmails", !rules.communication.sendEmails)} levelValue={rules.communication.emailLevel} onLevelChange={v => updateRules("communication.emailLevel", v)} />
-        <TogglePermissionRow label="Send text messages" enabled={rules.communication.sendTexts} onToggle={() => updateRules("communication.sendTexts", !rules.communication.sendTexts)} levelValue={rules.communication.textLevel} onLevelChange={v => updateRules("communication.textLevel", v)} />
-        <TogglePermissionRow label="Make phone calls" enabled={rules.communication.makePhoneCalls} onToggle={() => {}} badge="Coming Soon" />
-        <div style={{ display: "flex", alignItems: "center", gap: "12px", padding: "10px 0", borderBottom: "1px solid #f1f5f9" }}>
-          <div style={{ flex: 1, fontSize: "14px", color: "#334155" }}>Daily outbound message limit</div>
-          <input type="number" value={rules.communication.dailyMessageLimit} onChange={e => updateRules("communication.dailyMessageLimit", Number(e.target.value))} style={{ width: "80px", padding: "6px 8px", borderRadius: "6px", border: "1px solid #e2e8f0", fontSize: "14px", textAlign: "right" }} />
-        </div>
-        <div style={{ padding: "10px 0", borderBottom: "1px solid #f1f5f9" }}>
-          <div style={{ fontSize: "14px", color: "#334155", marginBottom: "6px" }}>Required disclaimer text</div>
-          <textarea value={rules.communication.disclaimerText} onChange={e => updateRules("communication.disclaimerText", e.target.value)} rows={2} style={{ width: "100%", padding: "8px 10px", borderRadius: "8px", border: "1px solid #e2e8f0", fontSize: "13px", resize: "vertical", fontFamily: "inherit" }} />
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "12px", padding: "10px 0" }}>
-          <div style={{ flex: 1, fontSize: "14px", color: "#334155" }}>Quiet hours (no outbound)</div>
-          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-            <input type="time" value={rules.communication.quietHoursStart} onChange={e => updateRules("communication.quietHoursStart", e.target.value)} style={{ padding: "4px 6px", borderRadius: "6px", border: "1px solid #e2e8f0", fontSize: "13px" }} />
-            <span style={{ color: "#94a3b8" }}>to</span>
-            <input type="time" value={rules.communication.quietHoursEnd} onChange={e => updateRules("communication.quietHoursEnd", e.target.value)} style={{ padding: "4px 6px", borderRadius: "6px", border: "1px solid #e2e8f0", fontSize: "13px" }} />
-          </div>
-        </div>
-      </CollapsibleSection>
-
-      {/* Marketing Permissions */}
-      <CollapsibleSection title="Marketing Permissions" accent="#ec4899">
-        <PermissionRow label="Create ad campaigns" levelValue={rules.marketing.createCampaigns} onLevelChange={v => updateRules("marketing.createCampaigns", v)} />
-        <div style={{ display: "flex", alignItems: "center", gap: "12px", padding: "10px 0", borderBottom: "1px solid #f1f5f9" }}>
-          <div style={{ flex: 1, fontSize: "14px", color: "#334155" }}>Max campaign budget without approval</div>
-          <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-            <span style={{ fontSize: "14px", color: "#64748b" }}>$</span>
-            <input type="number" value={rules.marketing.maxCampaignBudget} onChange={e => updateRules("marketing.maxCampaignBudget", Number(e.target.value))} style={{ width: "80px", padding: "6px 8px", borderRadius: "6px", border: "1px solid #e2e8f0", fontSize: "14px", textAlign: "right" }} />
-          </div>
-        </div>
-        <PermissionRow label="Submit co-op reimbursement claims" levelValue={rules.marketing.submitCoopClaims} onLevelChange={v => updateRules("marketing.submitCoopClaims", v)} />
-        <PermissionRow label="Manage channel budget reallocation" levelValue={rules.marketing.manageBudgetReallocation} onLevelChange={v => updateRules("marketing.manageBudgetReallocation", v)} />
-      </CollapsibleSection>
-
-      {/* F&I Permissions */}
-      <CollapsibleSection title="F&I Permissions" accent="#7c3aed">
-        <PermissionRow label="Recommend F&I products to customers" levelValue={rules.fi.recommendProducts} onLevelChange={v => updateRules("fi.recommendProducts", v)} />
-        <PermissionRow label="Model financing options" levelValue={rules.fi.modelFinancing} onLevelChange={v => updateRules("fi.modelFinancing", v)} />
-        <PermissionRow label="Generate F&I disclosure documents" levelValue={rules.fi.generateDisclosures} onLevelChange={v => updateRules("fi.generateDisclosures", v)} />
-        <div style={{ display: "flex", alignItems: "center", gap: "12px", padding: "10px 0" }}>
-          <div style={{ flex: 1, fontSize: "14px", color: "#334155" }}>Max F&I product bundle value to present</div>
-          <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-            <span style={{ fontSize: "14px", color: "#64748b" }}>$</span>
-            <input type="number" value={rules.fi.maxBundleValue} onChange={e => updateRules("fi.maxBundleValue", Number(e.target.value))} style={{ width: "80px", padding: "6px 8px", borderRadius: "6px", border: "1px solid #e2e8f0", fontSize: "14px", textAlign: "right" }} />
-          </div>
-        </div>
-      </CollapsibleSection>
-
-      {/* Business Playbooks */}
+      {/* Custom AI Training / Playbooks */}
       <div className="card" style={{ marginTop: "20px", padding: "24px" }}>
         <div style={{ marginBottom: "4px" }}>
           <div style={{ fontWeight: 700, fontSize: "16px", color: "#1e293b" }}>Custom AI Training</div>
@@ -432,7 +506,7 @@ export default function Rules() {
                         onChange={(e) => updatePlaybookCategory(pb.id, e.target.value)}
                         style={{ padding: "4px 8px", borderRadius: "6px", border: "1px solid #e2e8f0", fontSize: "12px" }}
                       >
-                        {PLAYBOOK_CATEGORIES.map(c => (
+                        {config.playbookCategories.map(c => (
                           <option key={c} value={c}>{c}</option>
                         ))}
                       </select>

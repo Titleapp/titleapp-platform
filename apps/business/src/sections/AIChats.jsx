@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 
+// ── Auto Dealer AI Activity Data ──
 const AUTO_AI_KPIS_ROW1 = [
   { label: "Active Conversations", value: "52" },
   { label: "Sales Conversations", value: "24" },
@@ -19,33 +20,21 @@ const AUTO_CONVERSATION_SUMMARIES = [
     title: "Sales Activity",
     accent: "#16a34a",
     summary: "24 customers in active sales conversations:",
-    details: [
-      "8 in active negotiation",
-      "6 scheduling test drives",
-      "10 in initial inquiry",
-    ],
+    details: ["8 in active negotiation", "6 scheduling test drives", "10 in initial inquiry"],
     highlight: "Top opportunity: Maria Gonzalez -- lease expiring, $2,800 potential",
   },
   {
     title: "Service Activity",
     accent: "#2563eb",
     summary: "4 service customers in communication:",
-    details: [
-      "2 appointment confirmations",
-      "1 recall notification",
-      "1 warranty follow-up",
-    ],
+    details: ["2 appointment confirmations", "1 recall notification", "1 warranty follow-up"],
     highlight: "Next appointment: Charles Cox, 60K Major Service, Monday 8:00 AM",
   },
   {
     title: "Outbound Queue",
     accent: "#d97706",
     summary: "18 follow-ups queued:",
-    details: [
-      "7 post-test-drive follow-ups (24-48hr window)",
-      "5 lease expiration outreach (60-day window)",
-      "6 service reminders (upcoming appointments)",
-    ],
+    details: ["7 post-test-drive follow-ups (24-48hr window)", "5 lease expiration outreach (60-day window)", "6 service reminders (upcoming appointments)"],
     highlight: "Estimated value of queued outreach: $34,200",
   },
 ];
@@ -68,6 +57,99 @@ const AUTO_AI_ACTION_LOG = [
   { time: "5 days ago 3:00 PM", action: "Inventory aging report", context: "Internal -- 12 units over 90 days", channel: "Dashboard", status: "Complete", detail: "Weekly aging report: 12 units over 90 days, estimated carrying cost $6,000/month. Price reduction recommendations for top 5." },
 ];
 
+// ── Analyst AI Activity Data ──
+const ANALYST_AI_KPIS_ROW1 = [
+  { label: "Active Research Tasks", value: "15" },
+  { label: "Client Communications", value: "8" },
+  { label: "Market Alerts Sent", value: "12" },
+  { label: "Models Updated", value: "3" },
+];
+
+const ANALYST_AI_KPIS_ROW2 = [
+  { label: "Messages Today", value: "34" },
+  { label: "Emails Sent Today", value: "11" },
+  { label: "LinkedIn Posts", value: "1" },
+  { label: "Compliance Reviews", value: "4" },
+];
+
+const ANALYST_CONVERSATION_SUMMARIES = [
+  {
+    title: "Research Activity",
+    accent: "#16a34a",
+    summary: "15 active research items:",
+    details: ["6 earnings analyses", "4 sector reviews", "3 deal evaluations", "2 macro briefings"],
+    highlight: "Top priority: Meridian Healthcare earnings tomorrow -- model needs updating",
+  },
+  {
+    title: "Client / LP Activity",
+    accent: "#2563eb",
+    summary: "8 client communications:",
+    details: ["3 quarterly update drafts", "2 meeting prep briefs", "2 LP inquiry responses", "1 capital call notice"],
+    highlight: "Action needed: Blackstone LP quarterly letter due Friday",
+  },
+  {
+    title: "Market Watch",
+    accent: "#d97706",
+    summary: "12 alerts sent today:",
+    details: ["4 price movements", "3 news items", "2 earnings surprises", "2 sector shifts", "1 macro event"],
+    highlight: "Overnight: NovaTech beat estimates by 12%, stock up 8% pre-market",
+  },
+];
+
+const ANALYST_AI_ACTION_LOG = [
+  { time: "6:30 AM", action: "Generated earnings summary", context: "NovaTech Corp -- Q4 Earnings", channel: "Dashboard", status: "Complete", detail: "Revenue $2.1B (+18% YoY), EPS $1.42 vs $1.27 consensus. Raised FY guidance. Updated DCF model -- fair value now $89 vs $76 prior." },
+  { time: "6:15 AM", action: "Drafted LP letter", context: "Blackstone Partners -- Q4 Update", channel: "Email", status: "Queued", detail: "Quarterly performance letter: fund +8.4% YTD, 3 new positions, 1 exit (Apex Industries, +34% realized). Pending compliance review." },
+  { time: "6:00 AM", action: "Flagged price movement", context: "Sentinel Defense -- -6.2%", channel: "Alert", status: "Delivered", detail: "Portfolio position dropped 6.2% on contract delay news. Current position: 4.2% of portfolio. Stop-loss at $42 not triggered ($44.80 current)." },
+  { time: "5:45 AM", action: "Updated DCF model", context: "Meridian Healthcare", channel: "Dashboard", status: "Complete", detail: "Incorporated new CMS reimbursement rates effective Q2. Fair value revised from $156 to $148. Recommendation unchanged: HOLD." },
+  { time: "5:30 AM", action: "Scheduled meeting prep", context: "Atlas Capital -- Due Diligence", channel: "Dashboard", status: "Complete", detail: "Prepared briefing package for Thursday meeting: company overview, financial summary, risk factors, competitive positioning, key questions." },
+  { time: "Yesterday 4:00 PM", action: "Sector analysis", context: "Healthcare IT -- Monthly Review", channel: "Dashboard", status: "Complete", detail: "Sector up 4.2% MTD. Top performers: telehealth (+8%), EHR vendors (+5%). Laggards: medical devices (-2%). 3 portfolio companies in sector." },
+  { time: "Yesterday 2:30 PM", action: "Compliance flag", context: "Marketing draft -- LinkedIn post", channel: "Dashboard", status: "Flagged", detail: "Flagged performance claim in draft post: 'Our fund returned 18% last year.' Requires net-of-fees disclosure and benchmark comparison per SEC rules." },
+  { time: "Yesterday 11:00 AM", action: "LP inquiry response", context: "Smith Family Office", channel: "Email", status: "Delivered", detail: "Responded to capital commitment inquiry with fund overview, performance attribution, and meeting availability. Compliance reviewed." },
+  { time: "2 days ago 3:00 PM", action: "Research gap alert", context: "3 companies need updates", channel: "Dashboard", status: "Flagged", detail: "Models older than 30 days: Apex Industries (42 days), ClearView Analytics (38 days), Summit Energy (35 days). Recommend refreshing before month-end." },
+  { time: "2 days ago 10:00 AM", action: "Deal evaluation", context: "TechBridge Acquisition Target", channel: "Dashboard", status: "Complete", detail: "Screened potential acquisition: $45M revenue, 22% EBITDA margin, 3.2x revenue ask. Risk score: 58/100. Comparable transactions suggest 2.8x fair." },
+];
+
+// ── Vault AI Activity Data ──
+const VAULT_AI_KPIS = [
+  { label: "Documents Stored", value: "12" },
+  { label: "Upcoming Deadlines", value: "3" },
+  { label: "Assets Tracked", value: "5" },
+  { label: "Last Updated", value: "Today" },
+];
+
+const VAULT_SUMMARIES = [
+  {
+    title: "Upcoming Deadlines",
+    accent: "#d97706",
+    summary: "3 items need attention:",
+    details: [
+      "Car registration expires Aug 2026 (6 months)",
+      "Passport expires Mar 2028 (24 months)",
+      "Homeowner's insurance renewal Nov 2026 (9 months)",
+    ],
+    highlight: "Next deadline: Car registration -- Aug 2026",
+  },
+  {
+    title: "Recent Activity",
+    accent: "#16a34a",
+    summary: "Last 7 days:",
+    details: [
+      "2 documents added",
+      "1 market value update (RAV4: $27,500)",
+      "0 expired items",
+    ],
+    highlight: "Your vault is up to date",
+  },
+];
+
+const VAULT_AI_ACTION_LOG = [
+  { time: "Today", action: "Added document", context: "2022 RAV4 -- Registration", channel: "Vault", status: "Complete", detail: "Vehicle registration scanned and filed. Expiration date detected: August 2026. Reminder set for 30 days prior." },
+  { time: "Today", action: "Updated value estimate", context: "2022 RAV4 XLE", channel: "Vault", status: "Complete", detail: "Market value updated to $27,500 based on current KBB and market data. Previous estimate: $28,200 (30 days ago)." },
+  { time: "Yesterday", action: "Added document", context: "Homeowner's Insurance", channel: "Vault", status: "Complete", detail: "Insurance declaration page filed. Coverage: $425,000 dwelling, $100K liability. Renewal date: November 2026." },
+  { time: "3 days ago", action: "Sent reminder", context: "Car Insurance -- Payment Due", channel: "Vault", status: "Delivered", detail: "Monthly auto insurance payment reminder sent. Progressive policy, $142/month due on the 15th." },
+  { time: "5 days ago", action: "Flagged expiration", context: "Passport -- Expires Mar 2028", channel: "Vault", status: "Flagged", detail: "Passport expires in 24 months. Some countries require 6+ months validity. Consider renewal if traveling internationally in 2027." },
+];
+
 const STATUS_COLORS = {
   Delivered: { bg: "#dcfce7", color: "#16a34a" },
   Opened: { bg: "#dbeafe", color: "#2563eb" },
@@ -80,12 +162,17 @@ export default function AIChats() {
   const vertical = localStorage.getItem("VERTICAL") || "auto";
   const isPersonal = vertical === "consumer";
   const isAuto = vertical === "auto";
+  const isAnalyst = vertical === "analyst";
   const [expandedRow, setExpandedRow] = useState(null);
 
+  // Pick data based on vertical
+  const kpisRow1 = isAuto ? AUTO_AI_KPIS_ROW1 : isAnalyst ? ANALYST_AI_KPIS_ROW1 : VAULT_AI_KPIS;
+  const kpisRow2 = isAuto ? AUTO_AI_KPIS_ROW2 : isAnalyst ? ANALYST_AI_KPIS_ROW2 : null;
+  const summaries = isAuto ? AUTO_CONVERSATION_SUMMARIES : isAnalyst ? ANALYST_CONVERSATION_SUMMARIES : VAULT_SUMMARIES;
+  const actionLog = isAuto ? AUTO_AI_ACTION_LOG : isAnalyst ? ANALYST_AI_ACTION_LOG : VAULT_AI_ACTION_LOG;
+
   function openChat(prompt) {
-    window.dispatchEvent(new CustomEvent("ta:chatPrompt", {
-      detail: { message: prompt }
-    }));
+    window.dispatchEvent(new CustomEvent("ta:chatPrompt", { detail: { message: prompt } }));
   }
 
   return (
@@ -110,6 +197,7 @@ export default function AIChats() {
       </div>
 
       {isPersonal ? (
+        /* ── Consumer Vault: Personal AI Apps ── */
         <div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "12px", marginBottom: "16px" }}>
             <div className="card" style={{ overflow: "hidden" }}>
@@ -142,21 +230,12 @@ export default function AIChats() {
             More specialist AIs coming soon. Your conversation history will appear here as you use each tool.
           </div>
         </div>
-      ) : isAuto ? (
+      ) : (
+        /* ── Business AI Activity (auto + analyst) ── */
         <div>
           {/* KPI Row 1 */}
           <div className="kpiRow" style={{ marginBottom: "12px" }}>
-            {AUTO_AI_KPIS_ROW1.map((kpi, i) => (
-              <div key={i} className="card kpiCard">
-                <div className="kpiLabel">{kpi.label}</div>
-                <div className="kpiValue">{kpi.value}</div>
-              </div>
-            ))}
-          </div>
-
-          {/* KPI Row 2 */}
-          <div className="kpiRow" style={{ marginBottom: "20px" }}>
-            {AUTO_AI_KPIS_ROW2.map((kpi, i) => (
+            {kpisRow1.map((kpi, i) => (
               <div key={i} className="card kpiCard">
                 <div className="kpiLabel">{kpi.label}</div>
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
@@ -169,9 +248,26 @@ export default function AIChats() {
             ))}
           </div>
 
+          {/* KPI Row 2 (auto + analyst only) */}
+          {kpisRow2 && (
+            <div className="kpiRow" style={{ marginBottom: "20px" }}>
+              {kpisRow2.map((kpi, i) => (
+                <div key={i} className="card kpiCard">
+                  <div className="kpiLabel">{kpi.label}</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <div className="kpiValue">{kpi.value}</div>
+                    {kpi.badge && (
+                      <span style={{ fontSize: "10px", fontWeight: 600, padding: "2px 6px", borderRadius: "4px", background: "#f1f5f9", color: "#94a3b8" }}>{kpi.badge}</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Conversation Summaries */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "14px", marginBottom: "20px" }}>
-            {AUTO_CONVERSATION_SUMMARIES.map((card, i) => (
+          <div style={{ display: "grid", gridTemplateColumns: summaries.length === 2 ? "1fr 1fr" : "1fr 1fr 1fr", gap: "14px", marginBottom: "20px" }}>
+            {summaries.map((card, i) => (
               <div key={i} className="card" style={{ padding: "20px", borderLeft: `4px solid ${card.accent}` }}>
                 <div style={{ fontWeight: 700, fontSize: "15px", color: "#1e293b", marginBottom: "10px" }}>{card.title}</div>
                 <div style={{ fontSize: "13px", color: "#475569", marginBottom: "8px" }}>{card.summary}</div>
@@ -200,13 +296,13 @@ export default function AIChats() {
                   <tr>
                     <th>Time</th>
                     <th>Action</th>
-                    <th>Customer / Context</th>
+                    <th>{isAnalyst ? "Subject / Context" : "Customer / Context"}</th>
                     <th>Channel</th>
                     <th>Status</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {AUTO_AI_ACTION_LOG.map((row, i) => {
+                  {actionLog.map((row, i) => {
                     const sc = STATUS_COLORS[row.status] || STATUS_COLORS.Complete;
                     return (
                       <React.Fragment key={i}>
@@ -237,12 +333,6 @@ export default function AIChats() {
                 </tbody>
               </table>
             </div>
-          </div>
-        </div>
-      ) : (
-        <div className="card">
-          <div className="empty">
-            <p>No AI conversations yet. AI activity will appear here as you use the platform.</p>
           </div>
         </div>
       )}

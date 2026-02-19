@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import * as api from "../api/client";
 
+// ── Auto data ──
 const AUTO_WEEKLY_REVENUE = [
   { week: "Week 1", sales: 287400, units: 11 },
   { week: "Week 2", sales: 318600, units: 12 },
@@ -33,6 +34,53 @@ const AUTO_SALES_BY_SOURCE = [
   { source: "Direct Mail", sales: 1, revenue: 26600 },
 ];
 
+// ── Analyst data ──
+const ANALYST_WEEKLY_PERFORMANCE = [
+  { week: "Week 1", value: 41200000, pctChange: 1.2 },
+  { week: "Week 2", value: 42100000, pctChange: 2.2 },
+  { week: "Week 3", value: 41800000, pctChange: -0.7 },
+  { week: "Week 4", value: 42800000, pctChange: 2.4 },
+];
+
+const ANALYST_RECENT_EVENTS = [
+  { id: 1, time: "1h ago", text: "NovaTech Corp Q4 earnings beat -- EPS $1.42 vs $1.27 consensus (+12%)", color: "#16a34a" },
+  { id: 2, time: "3h ago", text: "Sentinel Defense dropped 6.2% on contract delay -- position at 4.2% of portfolio", color: "#dc2626" },
+  { id: 3, time: "5h ago", text: "DCF model updated for Meridian Healthcare -- fair value revised to $148 from $156", color: "#7c3aed" },
+  { id: 4, time: "8h ago", text: "LP quarterly letter drafted for Blackstone Partners -- pending compliance review", color: "#2563eb" },
+  { id: 5, time: "1d ago", text: "Healthcare IT sector up 4.2% MTD -- 3 portfolio companies in sector", color: "#16a34a" },
+  { id: 6, time: "1d ago", text: "TechBridge acquisition target screened -- $45M revenue, risk score 58/100", color: "#d97706" },
+  { id: 7, time: "2d ago", text: "Compliance flagged LinkedIn post -- performance claim needs net-of-fees disclosure", color: "#dc2626" },
+  { id: 8, time: "2d ago", text: "Research gap: 3 company models older than 30 days need updating", color: "#d97706" },
+  { id: 9, time: "3d ago", text: "Smith Family Office LP inquiry responded -- meeting scheduled for next week", color: "#7c3aed" },
+  { id: 10, time: "4d ago", text: "Monthly portfolio risk report generated -- VaR within acceptable range", color: "#16a34a" },
+];
+
+const ANALYST_PERFORMANCE_BY_SECTOR = [
+  { sector: "Technology", pctReturn: 12.3, value: 12840000 },
+  { sector: "Healthcare", pctReturn: 6.1, value: 8560000 },
+  { sector: "Industrials", pctReturn: 4.8, value: 6420000 },
+  { sector: "Financial Services", pctReturn: 3.2, value: 5140000 },
+  { sector: "Energy", pctReturn: -2.4, value: 4280000 },
+  { sector: "Consumer", pctReturn: 1.7, value: 3210000 },
+  { sector: "Real Estate", pctReturn: -0.8, value: 2350000 },
+];
+
+// ── Vault data ──
+const VAULT_RECENT_EVENTS = [
+  { id: 1, time: "Today", text: "Vehicle registration scanned -- 2022 RAV4 XLE, expires Aug 2026", color: "#7c3aed" },
+  { id: 2, time: "Today", text: "Market value updated -- 2022 RAV4 XLE now $27,500 (was $28,200)", color: "#d97706" },
+  { id: 3, time: "Yesterday", text: "Homeowner's insurance filed -- $425K dwelling coverage, renews Nov 2026", color: "#16a34a" },
+  { id: 4, time: "3 days ago", text: "Auto insurance payment reminder sent -- $142/month due on the 15th", color: "#2563eb" },
+  { id: 5, time: "5 days ago", text: "Passport expiration flagged -- expires Mar 2028, 24 months remaining", color: "#dc2626" },
+];
+
+const VAULT_ASSETS_BY_CATEGORY = [
+  { category: "Property", value: 425000, count: 1 },
+  { category: "Vehicles", value: 54000, count: 2 },
+  { category: "Financial Accounts", value: 38000, count: 3 },
+  { category: "Documents", value: 0, count: 6 },
+];
+
 export default function Reports() {
   const [dateRange, setDateRange] = useState("30days");
   const [reportData, setReportData] = useState({
@@ -43,6 +91,8 @@ export default function Reports() {
   const vertical = localStorage.getItem("VERTICAL") || "auto";
   const jurisdiction = localStorage.getItem("JURISDICTION") || "IL";
   const isAuto = vertical === "auto";
+  const isAnalyst = vertical === "analyst";
+  const isVault = vertical === "consumer";
 
   useEffect(() => {
     loadReportData();
@@ -86,12 +136,20 @@ export default function Reports() {
   }
 
   function getKpiConfig() {
-    if (vertical === "analyst") {
+    if (isAnalyst) {
       return [
-        { label: "Deals Analyzed", value: reportData.deals.toString() },
-        { label: "Avg Risk Score", value: reportData.avgRisk > 0 ? `${reportData.avgRisk}/100` : "0" },
-        { label: "AI Sessions", value: reportData.sessions.toString() },
-        { label: "Reports Generated", value: reportData.reports.toString() },
+        { label: "Portfolio Value", value: "$42.8M" },
+        { label: "Active Positions", value: "23" },
+        { label: "YTD Return", value: "+8.4%" },
+        { label: "Research Output", value: "15 memos" },
+      ];
+    }
+    if (isVault) {
+      return [
+        { label: "Total Assets Tracked", value: "5" },
+        { label: "Total Documents", value: "12" },
+        { label: "Estimated Net Worth", value: "$382,000" },
+        { label: "Upcoming Deadlines", value: "3" },
       ];
     }
     if (isAuto) {
@@ -110,25 +168,24 @@ export default function Reports() {
     ];
   }
 
+  // Pick the right data sets
+  const weeklyData = isAuto ? AUTO_WEEKLY_REVENUE : isAnalyst ? ANALYST_WEEKLY_PERFORMANCE : null;
+  const recentEvents = isAuto ? AUTO_RECENT_EVENTS : isAnalyst ? ANALYST_RECENT_EVENTS : VAULT_RECENT_EVENTS;
+  const breakdownData = isAuto ? AUTO_SALES_BY_SOURCE : isAnalyst ? ANALYST_PERFORMANCE_BY_SECTOR : VAULT_ASSETS_BY_CATEGORY;
+
   function exportCSV() {
+    const kpis = getKpiConfig();
     const rows = [
       ["TitleApp AI -- Monthly Report"],
       ["Date Range", dateRange],
+      ["Vertical", vertical],
       [""],
       ["KPI", "Value"],
-      ...getKpiConfig().map(k => [k.label, k.value]),
-      [""],
-      ["Revenue Trend"],
-      ["Week", "Revenue", "Units"],
-      ...AUTO_WEEKLY_REVENUE.map(w => [w.week, `$${w.sales.toLocaleString()}`, w.units]),
-      [""],
-      ["Sales by Source"],
-      ["Source", "Sales", "Revenue"],
-      ...AUTO_SALES_BY_SOURCE.map(s => [s.source, s.sales, `$${s.revenue.toLocaleString()}`]),
+      ...kpis.map(k => [k.label, k.value]),
       [""],
       ["Recent Activity"],
       ["Time", "Event"],
-      ...AUTO_RECENT_EVENTS.map(e => [e.time, e.text]),
+      ...recentEvents.map(e => [e.time, e.text]),
     ];
     const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
@@ -157,36 +214,26 @@ export default function Reports() {
       .kpi-value{font-size:24px;font-weight:800;margin-top:4px}
       @media print{body{padding:20px}}
     </style></head><body>`);
-    win.document.write(`<h1>TitleApp AI -- Monthly Report</h1><div class="sub">Generated ${new Date().toLocaleDateString()}</div>`);
+    win.document.write(`<h1>TitleApp AI -- ${isVault ? "Vault" : "Business"} Report</h1><div class="sub">Generated ${new Date().toLocaleDateString()}</div>`);
     win.document.write(`<div class="kpis">${kpis.map(k => `<div class="kpi"><div class="kpi-label">${k.label}</div><div class="kpi-value">${k.value}</div></div>`).join("")}</div>`);
-    win.document.write(`<h2>Revenue Trend</h2><table><tr><th>Week</th><th>Revenue</th><th>Units</th></tr>${AUTO_WEEKLY_REVENUE.map(w => `<tr><td>${w.week}</td><td>$${w.sales.toLocaleString()}</td><td>${w.units}</td></tr>`).join("")}</table>`);
-    win.document.write(`<h2>Sales by Source</h2><table><tr><th>Source</th><th>Sales</th><th>Revenue</th></tr>${AUTO_SALES_BY_SOURCE.map(s => `<tr><td>${s.source}</td><td>${s.sales}</td><td>$${s.revenue.toLocaleString()}</td></tr>`).join("")}</table>`);
-    win.document.write(`<h2>Recent Activity</h2><table><tr><th>Time</th><th>Event</th></tr>${AUTO_RECENT_EVENTS.map(e => `<tr><td>${e.time}</td><td>${e.text}</td></tr>`).join("")}</table>`);
+    win.document.write(`<h2>Recent Activity</h2><table><tr><th>Time</th><th>Event</th></tr>${recentEvents.map(e => `<tr><td>${e.time}</td><td>${e.text}</td></tr>`).join("")}</table>`);
     win.document.write(`</body></html>`);
     win.document.close();
     setTimeout(() => win.print(), 300);
   }
 
   function exportExcel() {
-    // Generate CSV with .xlsx extension as lightweight Excel-compatible export
+    const kpis = getKpiConfig();
     const rows = [
       ["TitleApp AI -- Monthly Report"],
       ["Date Range", dateRange],
       [""],
       ["KPI", "Value"],
-      ...getKpiConfig().map(k => [k.label, k.value]),
-      [""],
-      ["Revenue Trend"],
-      ["Week", "Revenue", "Units"],
-      ...AUTO_WEEKLY_REVENUE.map(w => [w.week, w.sales, w.units]),
-      [""],
-      ["Sales by Source"],
-      ["Source", "Sales", "Revenue"],
-      ...AUTO_SALES_BY_SOURCE.map(s => [s.source, s.sales, s.revenue]),
+      ...kpis.map(k => [k.label, k.value]),
       [""],
       ["Recent Activity"],
       ["Time", "Event"],
-      ...AUTO_RECENT_EVENTS.map(e => [e.time, e.text]),
+      ...recentEvents.map(e => [e.time, e.text]),
     ];
     const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join("\t")).join("\n");
     const blob = new Blob([csv], { type: "application/vnd.ms-excel" });
@@ -199,15 +246,13 @@ export default function Reports() {
   }
 
   const kpis = getKpiConfig();
-  const maxRevenue = Math.max(...AUTO_WEEKLY_REVENUE.map(w => w.sales));
-  const maxSourceSales = Math.max(...AUTO_SALES_BY_SOURCE.map(s => s.sales));
 
   return (
     <div>
       <div className="pageHeader">
         <div>
           <h1 className="h1">Reports</h1>
-          <p className="subtle">Business analytics and performance metrics</p>
+          <p className="subtle">{isVault ? "Vault analytics and asset tracking" : "Business analytics and performance metrics"}</p>
         </div>
         <select
           value={dateRange}
@@ -234,72 +279,74 @@ export default function Reports() {
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "16px" }}>
-        {/* Revenue Trend */}
+        {/* Main Chart Area */}
         <div className="card">
           <div className="cardHeader">
             <div className="cardTitle">
-              {vertical === "analyst" ? "Analysis Activity" : "Revenue Trend"}
+              {isAnalyst ? "Portfolio Performance" : isVault ? "Asset Summary" : "Revenue Trend"}
             </div>
           </div>
-          {isAuto ? (
+          {isAuto && weeklyData ? (
             <div style={{ padding: "16px" }}>
               <div style={{ display: "flex", gap: "16px", alignItems: "flex-end", height: "180px", padding: "0 8px" }}>
-                {AUTO_WEEKLY_REVENUE.map((w, i) => (
-                  <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", height: "100%", justifyContent: "flex-end" }}>
-                    <div style={{ fontSize: "11px", fontWeight: 600, color: "#1e293b" }}>${(w.sales / 1000).toFixed(0)}K</div>
-                    <div style={{ fontSize: "10px", color: "#64748b" }}>{w.units} units</div>
-                    <div style={{ width: "100%", background: "#7c3aed", borderRadius: "4px 4px 0 0", height: `${(w.sales / maxRevenue) * 130}px`, minHeight: "20px" }} />
-                    <div style={{ fontSize: "11px", color: "#64748b", marginTop: "4px" }}>{w.week}</div>
+                {weeklyData.map((w, i) => {
+                  const maxVal = Math.max(...weeklyData.map(x => x.sales));
+                  return (
+                    <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", height: "100%", justifyContent: "flex-end" }}>
+                      <div style={{ fontSize: "11px", fontWeight: 600, color: "#1e293b" }}>${(w.sales / 1000).toFixed(0)}K</div>
+                      <div style={{ fontSize: "10px", color: "#64748b" }}>{w.units} units</div>
+                      <div style={{ width: "100%", background: "#7c3aed", borderRadius: "4px 4px 0 0", height: `${(w.sales / maxVal) * 130}px`, minHeight: "20px" }} />
+                      <div style={{ fontSize: "11px", color: "#64748b", marginTop: "4px" }}>{w.week}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : isAnalyst ? (
+            <div style={{ padding: "16px" }}>
+              <div style={{ display: "flex", gap: "16px", alignItems: "flex-end", height: "180px", padding: "0 8px" }}>
+                {ANALYST_WEEKLY_PERFORMANCE.map((w, i) => {
+                  const maxVal = Math.max(...ANALYST_WEEKLY_PERFORMANCE.map(x => x.value));
+                  const minVal = Math.min(...ANALYST_WEEKLY_PERFORMANCE.map(x => x.value));
+                  const range = maxVal - minVal || 1;
+                  return (
+                    <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", height: "100%", justifyContent: "flex-end" }}>
+                      <div style={{ fontSize: "11px", fontWeight: 600, color: "#1e293b" }}>${(w.value / 1000000).toFixed(1)}M</div>
+                      <div style={{ fontSize: "10px", color: w.pctChange >= 0 ? "#16a34a" : "#dc2626" }}>{w.pctChange >= 0 ? "+" : ""}{w.pctChange}%</div>
+                      <div style={{ width: "100%", background: w.pctChange >= 0 ? "#16a34a" : "#dc2626", borderRadius: "4px 4px 0 0", height: `${40 + ((w.value - minVal) / range) * 100}px`, minHeight: "20px" }} />
+                      <div style={{ fontSize: "11px", color: "#64748b", marginTop: "4px" }}>{w.week}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : isVault ? (
+            <div style={{ padding: "16px" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                {VAULT_ASSETS_BY_CATEGORY.map((cat, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                    <div style={{ width: "120px", fontSize: "13px", fontWeight: 600, color: "#334155" }}>{cat.category}</div>
+                    <div style={{ flex: 1, height: "24px", background: "#f1f5f9", borderRadius: "6px", overflow: "hidden" }}>
+                      {cat.value > 0 && (
+                        <div style={{ height: "100%", width: `${Math.max(5, (cat.value / 425000) * 100)}%`, background: "#7c3aed", borderRadius: "6px" }} />
+                      )}
+                    </div>
+                    <div style={{ width: "100px", textAlign: "right", fontSize: "13px", fontWeight: 600, color: "#1e293b" }}>
+                      {cat.value > 0 ? `$${cat.value.toLocaleString()}` : `${cat.count} docs`}
+                    </div>
+                    <div style={{ width: "40px", textAlign: "right", fontSize: "12px", color: "#64748b" }}>({cat.count})</div>
                   </div>
                 ))}
               </div>
             </div>
-          ) : vertical === "analyst" && reportData.recentDeals.length > 0 ? (
-            <div style={{ padding: "16px" }}>
-              <div className="tableWrap">
-                <table className="table">
-                  <thead>
-                    <tr>
-                      <th>Company</th>
-                      <th>Risk Score</th>
-                      <th>Recommendation</th>
-                      <th>Date</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {reportData.recentDeals.map((deal) => {
-                      const score = deal.analysis?.riskScore || 0;
-                      const at = deal.analyzedAt || deal.createdAt;
-                      let dateStr = "Today";
-                      if (at) {
-                        const d = at.seconds ? new Date(at.seconds * 1000) : at._seconds ? new Date(at._seconds * 1000) : new Date(at);
-                        if (!isNaN(d.getTime())) dateStr = d.toLocaleDateString();
-                      }
-                      return (
-                        <tr key={deal.id}>
-                          <td className="tdStrong">{deal.dealInput?.companyName || "Unknown"}</td>
-                          <td><span style={{ fontWeight: 600, color: getRiskColor(score) }}>{score}/100</span></td>
-                          <td>
-                            <span className={`badge badge-${deal.analysis?.recommendation === "INVEST" ? "completed" : deal.analysis?.recommendation === "PASS" ? "" : "processing"}`}>
-                              {deal.analysis?.recommendation || "WAIT"}
-                            </span>
-                          </td>
-                          <td className="tdMuted">{dateStr}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          ) : !isAuto ? (
+          ) : (
             <div style={{ padding: "32px", display: "flex", alignItems: "center", justifyContent: "center", minHeight: "300px", color: "var(--textMuted)", background: "#f8fafc", borderRadius: "8px", margin: "16px", flexDirection: "column", gap: "12px" }}>
               <div style={{ fontSize: "16px", fontWeight: 600 }}>No data yet</div>
               <div style={{ fontSize: "14px", textAlign: "center", maxWidth: "300px" }}>
                 Reports will populate as you use the platform.
               </div>
             </div>
-          ) : null}
+          )}
         </div>
 
         {/* Recent Activity */}
@@ -307,73 +354,65 @@ export default function Reports() {
           <div className="cardHeader">
             <div className="cardTitle">Recent Activity</div>
           </div>
-          {isAuto ? (
-            <div style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: "2px" }}>
-              {AUTO_RECENT_EVENTS.map((evt) => (
-                <div key={evt.id} style={{ display: "flex", alignItems: "flex-start", gap: "10px", padding: "8px 0", borderBottom: "1px solid #f1f5f9" }}>
-                  <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: evt.color, flexShrink: 0, marginTop: "5px" }} />
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: "13px", color: "#334155", lineHeight: 1.5 }}>{evt.text}</div>
-                    <div style={{ fontSize: "11px", color: "#94a3b8", marginTop: "2px" }}>{evt.time}</div>
-                  </div>
+          <div style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: "2px" }}>
+            {recentEvents.slice(0, 8).map((evt) => (
+              <div key={evt.id} style={{ display: "flex", alignItems: "flex-start", gap: "10px", padding: "8px 0", borderBottom: "1px solid #f1f5f9" }}>
+                <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: evt.color, flexShrink: 0, marginTop: "5px" }} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: "13px", color: "#334155", lineHeight: 1.5 }}>{evt.text}</div>
+                  <div style={{ fontSize: "11px", color: "#94a3b8", marginTop: "2px" }}>{evt.time}</div>
                 </div>
-              ))}
-            </div>
-          ) : vertical === "analyst" && reportData.recentDeals.length > 0 ? (
-            <div style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: "10px" }}>
-              {reportData.recentDeals.slice(0, 4).map((deal) => {
-                const score = deal.analysis?.riskScore || 0;
-                return (
-                  <div key={deal.id} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "8px 0", borderBottom: "1px solid #f1f5f9" }}>
-                    <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: getRiskColor(score), flexShrink: 0 }} />
-                    <div style={{ flex: 1, overflow: "hidden" }}>
-                      <div style={{ fontSize: "13px", fontWeight: 600, color: "#1e293b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {deal.dealInput?.companyName || "Unknown"}
-                      </div>
-                      <div style={{ fontSize: "12px", color: "#64748b" }}>
-                        {deal.analysis?.recommendation || "WAIT"} -- {score}/100
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div style={{ padding: "32px 16px", textAlign: "center", color: "var(--textMuted)", fontSize: "14px" }}>
-              No activity recorded yet.
-            </div>
-          )}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* Sales by Source -- Auto only */}
-      {isAuto && (
+      {/* Breakdown Section */}
+      {(isAuto || isAnalyst) && (
         <div className="card" style={{ marginTop: "16px" }}>
           <div className="cardHeader">
-            <div className="cardTitle">Sales by Source</div>
+            <div className="cardTitle">{isAnalyst ? "Performance by Sector" : "Sales by Source"}</div>
           </div>
           <div style={{ padding: "16px" }}>
             <div className="tableWrap">
               <table className="table" style={{ width: "100%" }}>
                 <thead>
                   <tr>
-                    <th>Source</th>
-                    <th>Sales</th>
-                    <th>Revenue</th>
+                    <th>{isAnalyst ? "Sector" : "Source"}</th>
+                    <th>{isAnalyst ? "YTD Return" : "Sales"}</th>
+                    <th>{isAnalyst ? "Portfolio Value" : "Revenue"}</th>
                     <th style={{ width: "40%" }}></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {AUTO_SALES_BY_SOURCE.map((s, i) => (
-                    <tr key={i}>
-                      <td className="tdStrong">{s.source}</td>
-                      <td>{s.sales}</td>
-                      <td style={{ fontWeight: 600 }}>${s.revenue.toLocaleString()}</td>
-                      <td>
-                        <div style={{ width: `${(s.sales / maxSourceSales) * 100}%`, height: "12px", background: "#7c3aed", borderRadius: "6px", minWidth: "8px" }} />
-                      </td>
-                    </tr>
-                  ))}
+                  {isAuto ? AUTO_SALES_BY_SOURCE.map((s, i) => {
+                    const maxVal = Math.max(...AUTO_SALES_BY_SOURCE.map(x => x.sales));
+                    return (
+                      <tr key={i}>
+                        <td className="tdStrong">{s.source}</td>
+                        <td>{s.sales}</td>
+                        <td style={{ fontWeight: 600 }}>${s.revenue.toLocaleString()}</td>
+                        <td>
+                          <div style={{ width: `${(s.sales / maxVal) * 100}%`, height: "12px", background: "#7c3aed", borderRadius: "6px", minWidth: "8px" }} />
+                        </td>
+                      </tr>
+                    );
+                  }) : ANALYST_PERFORMANCE_BY_SECTOR.map((s, i) => {
+                    const maxVal = Math.max(...ANALYST_PERFORMANCE_BY_SECTOR.map(x => Math.abs(x.pctReturn)));
+                    return (
+                      <tr key={i}>
+                        <td className="tdStrong">{s.sector}</td>
+                        <td style={{ fontWeight: 600, color: s.pctReturn >= 0 ? "#16a34a" : "#dc2626" }}>
+                          {s.pctReturn >= 0 ? "+" : ""}{s.pctReturn}%
+                        </td>
+                        <td style={{ fontWeight: 600 }}>${(s.value / 1000000).toFixed(1)}M</td>
+                        <td>
+                          <div style={{ width: `${(Math.abs(s.pctReturn) / maxVal) * 100}%`, height: "12px", background: s.pctReturn >= 0 ? "#16a34a" : "#dc2626", borderRadius: "6px", minWidth: "8px" }} />
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -392,7 +431,7 @@ export default function Reports() {
         <div style={{ padding: "16px", display: "flex", gap: "12px" }}>
           <button className="iconBtn" onClick={exportCSV}>Export as CSV</button>
           <button className="iconBtn" onClick={exportPDF}>Export as PDF</button>
-          <button className="iconBtn" onClick={exportExcel}>Export as Excel</button>
+          {!isVault && <button className="iconBtn" onClick={exportExcel}>Export as Excel</button>}
         </div>
       </div>
     </div>

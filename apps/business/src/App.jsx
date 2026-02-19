@@ -27,6 +27,13 @@ import MyDocuments from "./sections/MyDocuments";
 import MyLogbook from "./sections/MyLogbook";
 import MyCertifications from "./sections/MyCertifications";
 import MyWallet from "./sections/MyWallet";
+import Portfolio from "./sections/Portfolio";
+import Research from "./sections/Research";
+import ClientsLPs from "./sections/ClientsLPs";
+import DealPipeline from "./sections/DealPipeline";
+import VaultDocuments from "./sections/VaultDocuments";
+import VaultAssets from "./sections/VaultAssets";
+import VaultDeadlines from "./sections/VaultDeadlines";
 import { auth } from "./firebase";
 import { signInWithCustomToken } from "firebase/auth";
 
@@ -94,6 +101,20 @@ function AdminShell({ onBackToHub }) {
         return <MyCertifications />;
       case "my-wallet":
         return <MyWallet />;
+      case "portfolio":
+        return <Portfolio />;
+      case "research":
+        return <Research />;
+      case "clients-lps":
+        return <ClientsLPs />;
+      case "deal-pipeline":
+        return <DealPipeline />;
+      case "vault-documents":
+        return <VaultDocuments />;
+      case "vault-assets":
+        return <VaultAssets />;
+      case "vault-deadlines":
+        return <VaultDeadlines />;
       default:
         return <Dashboard />;
     }
