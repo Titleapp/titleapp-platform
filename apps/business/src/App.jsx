@@ -41,6 +41,15 @@ function AdminShell({ onBackToHub }) {
     }
   }, []);
 
+  useEffect(() => {
+    function handleNav(e) {
+      const section = e.detail?.section;
+      if (section) setCurrentSection(section);
+    }
+    window.addEventListener("ta:navigate", handleNav);
+    return () => window.removeEventListener("ta:navigate", handleNav);
+  }, []);
+
   function renderSection() {
     switch (currentSection) {
       case "dashboard":

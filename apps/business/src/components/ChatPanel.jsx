@@ -48,12 +48,34 @@ export default function ChatPanel({ currentSection, onboardingStep }) {
 
   const [fileUploading, setFileUploading] = useState(false);
 
+  // Conversation queue: pending actions for customers with in-progress discussions
+  const [pendingActions, setPendingActions] = useState([]);
+
   // Listen for "discuss with AI" events from other components
   useEffect(() => {
     function handleChatPrompt(e) {
       const msg = e.detail?.message;
       if (e.detail?.dealContext) {
         setDealContext(e.detail.dealContext);
+      }
+      // Track customer context from dispatched prompts
+      const customer = e.detail?.customerName || extractCustomerName(msg);
+      if (customer) {
+        // If there's an active discussion about a different customer, bookmark it
+        if (dealContext?.customerName && dealContext.customerName !== customer) {
+          setPendingActions(prev => {
+            const exists = prev.find(p => p.customerName === dealContext.customerName);
+            if (exists) return prev;
+            return [...prev, {
+              customerName: dealContext.customerName,
+              actionType: "draft",
+              status: "pending",
+              context: dealContext.summary || "Discussion in progress",
+              createdAt: new Date().toISOString(),
+            }];
+          });
+        }
+        setDealContext(prev => ({ ...prev, customerName: customer, summary: msg }));
       }
       if (msg) {
         setInput(msg);
@@ -62,7 +84,31 @@ export default function ChatPanel({ currentSection, onboardingStep }) {
     }
     window.addEventListener('ta:chatPrompt', handleChatPrompt);
     return () => window.removeEventListener('ta:chatPrompt', handleChatPrompt);
-  }, []);
+  }, [dealContext]);
+
+  function extractCustomerName(msg) {
+    if (!msg) return null;
+    // Match common patterns: "for Maria Gonzalez", "about Amanda Liu", customer names after "--"
+    const patterns = [
+      /(?:for|about|regarding|on)\s+([A-Z][a-z]+ [A-Z][a-z]+)/,
+      /--\s*([A-Z][a-z]+ [A-Z][a-z]+)/,
+    ];
+    for (const p of patterns) {
+      const m = msg.match(p);
+      if (m) return m[1];
+    }
+    return null;
+  }
+
+  function resumePendingAction(action) {
+    setPendingActions(prev => prev.filter(p => p.customerName !== action.customerName));
+    setDealContext({ customerName: action.customerName, summary: action.context });
+    setInput(`Let's get back to ${action.customerName}. ${action.context}`);
+  }
+
+  function dismissPendingAction(customerName) {
+    setPendingActions(prev => prev.filter(p => p.customerName !== customerName));
+  }
 
   const auth = getAuth();
   const db = getFirestore();
@@ -237,6 +283,7 @@ export default function ChatPanel({ currentSection, onboardingStep }) {
             workspaceId: localStorage.getItem('WORKSPACE_ID') || '',
             workspaceName: localStorage.getItem('WORKSPACE_NAME') || '',
             ...(dealContext ? { dealContext } : {}),
+            ...(pendingActions.length > 0 ? { pendingActions: pendingActions.map(a => ({ customerName: a.customerName, actionType: a.actionType, context: a.context })) } : {}),
           },
         }),
       });
@@ -422,6 +469,40 @@ export default function ChatPanel({ currentSection, onboardingStep }) {
       </div>
 
       <div className="chatPanelMessages" ref={conversationRef}>
+        {/* Pending action chips */}
+        {pendingActions.length > 0 && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", padding: "8px 12px", borderBottom: "1px solid #f1f5f9", flexShrink: 0 }}>
+            {pendingActions.map(a => (
+              <div
+                key={a.customerName}
+                onClick={() => resumePendingAction(a)}
+                style={{
+                  display: "flex", alignItems: "center", gap: "6px", padding: "4px 10px",
+                  borderRadius: "20px", fontSize: "12px", fontWeight: 600, cursor: "pointer",
+                  background: "#fef3c7", color: "#92400e", border: "1px solid #fde68a",
+                }}
+              >
+                <span>{a.customerName}</span>
+                <span style={{ fontSize: "10px", opacity: 0.7 }}>draft</span>
+                <button
+                  onClick={(e) => { e.stopPropagation(); dismissPendingAction(a.customerName); }}
+                  style={{ background: "none", border: "none", cursor: "pointer", color: "#92400e", fontSize: "14px", padding: 0, lineHeight: 1 }}
+                >x</button>
+              </div>
+            ))}
+            {dealContext?.customerName && (
+              <div style={{
+                display: "flex", alignItems: "center", gap: "6px", padding: "4px 10px",
+                borderRadius: "20px", fontSize: "12px", fontWeight: 600,
+                background: "#dbeafe", color: "#1e40af", border: "1px solid #bfdbfe",
+              }}>
+                <span>{dealContext.customerName}</span>
+                <span style={{ fontSize: "10px", opacity: 0.7 }}>active</span>
+              </div>
+            )}
+          </div>
+        )}
+
         {messages.length === 0 && !isTyping && (
           <div className="chat-welcome">
             {(() => {

@@ -46,6 +46,7 @@ function getDaysColor(days) {
 
 function AutoInventory() {
   const [activeTab, setActiveTab] = useState("new");
+  const [viewMode, setViewMode] = useState(() => localStorage.getItem("INV_VIEW") || "cards");
   const vehicles = activeTab === "new" ? NEW_VEHICLES : USED_VEHICLES;
 
   const totalValue = vehicles.reduce((s, v) => s + v.price, 0);
@@ -57,6 +58,11 @@ function AutoInventory() {
     }));
   }
 
+  function toggleView(mode) {
+    setViewMode(mode);
+    localStorage.setItem("INV_VIEW", mode);
+  }
+
   return (
     <div>
       <div className="pageHeader">
@@ -64,13 +70,34 @@ function AutoInventory() {
           <h1 className="h1">Inventory</h1>
           <p className="subtle">New and used vehicle inventory management</p>
         </div>
-        <button
-          className="iconBtn"
-          onClick={() => openChat("What vehicles are aging past 90 days and what should we do about them?")}
-          style={{ background: "linear-gradient(135deg, #7c3aed, #6d28d9)", color: "white", border: "none" }}
-        >
-          Aging Report
-        </button>
+        <div style={{ display: "flex", gap: "8px" }}>
+          <div style={{ display: "flex", border: "1px solid #e2e8f0", borderRadius: "8px", overflow: "hidden" }}>
+            <button
+              onClick={() => toggleView("cards")}
+              style={{
+                padding: "8px 14px", fontSize: "13px", fontWeight: 600, border: "none", cursor: "pointer",
+                background: viewMode === "cards" ? "#7c3aed" : "white",
+                color: viewMode === "cards" ? "white" : "#64748b",
+              }}
+            >Cards</button>
+            <button
+              onClick={() => toggleView("list")}
+              style={{
+                padding: "8px 14px", fontSize: "13px", fontWeight: 600, border: "none", cursor: "pointer",
+                borderLeft: "1px solid #e2e8f0",
+                background: viewMode === "list" ? "#7c3aed" : "white",
+                color: viewMode === "list" ? "white" : "#64748b",
+              }}
+            >List</button>
+          </div>
+          <button
+            className="iconBtn"
+            onClick={() => openChat("What vehicles are aging past 90 days and what should we do about them?")}
+            style={{ background: "linear-gradient(135deg, #7c3aed, #6d28d9)", color: "white", border: "none" }}
+          >
+            Aging Report
+          </button>
+        </div>
       </div>
 
       {/* Tabs */}
@@ -120,68 +147,99 @@ function AutoInventory() {
       </div>
 
       {/* Vehicle cards */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "14px" }}>
-        {vehicles.map((v) => {
-          const days = getDaysColor(v.daysOnLot);
-          return (
-            <div
-              key={v.stock}
-              className="card"
-              style={{ padding: "16px", cursor: "pointer" }}
-              onClick={() => openChat(`Tell me about Stock ${v.stock} -- ${v.year} ${v.make} ${v.model} ${v.trim}. Price: $${v.price.toLocaleString()}. ${v.daysOnLot} days on lot.`)}
-            >
-              {/* Image placeholder */}
-              <div style={{ height: "120px", background: "#f1f5f9", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "12px", color: "#94a3b8", fontSize: "13px" }}>
-                {v.year} {v.make} {v.model}
-              </div>
-
-              <div style={{ fontWeight: 700, fontSize: "15px", color: "#1e293b", marginBottom: "4px" }}>
-                {v.year} {v.make} {v.model} {v.trim !== v.model.split(" ").pop() ? v.trim : ""}
-              </div>
-              <div style={{ fontSize: "12px", color: "#64748b", marginBottom: "8px" }}>
-                Stock #{v.stock} &middot; {v.color} &middot; {v.mileage.toLocaleString()} mi
-              </div>
-
-              {/* Badges row */}
-              <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginBottom: "8px" }}>
-                {/* Days on lot */}
-                <span style={{
-                  fontSize: "11px", fontWeight: 600, padding: "2px 8px", borderRadius: "9999px",
-                  background: days.bg, color: days.color,
-                }}>
-                  {v.daysOnLot}d {days.label}
-                </span>
-
-                {/* CARFAX badge (used only) */}
-                {v.carfax && (
-                  <span style={{
-                    fontSize: "11px", fontWeight: 600, padding: "2px 8px", borderRadius: "9999px",
-                    background: v.carfax === "clean" ? "#dcfce7" : "#fef3c7",
-                    color: v.carfax === "clean" ? "#16a34a" : "#d97706",
-                  }}>
-                    CARFAX {v.carfax === "clean" ? "Clean" : "Minor Reported"}
+      {viewMode === "cards" ? (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "14px" }}>
+          {vehicles.map((v) => {
+            const days = getDaysColor(v.daysOnLot);
+            return (
+              <div
+                key={v.stock}
+                className="card"
+                style={{ padding: "16px", cursor: "pointer" }}
+                onClick={() => openChat(`Tell me about Stock ${v.stock} -- ${v.year} ${v.make} ${v.model} ${v.trim}. Price: $${v.price.toLocaleString()}. ${v.daysOnLot} days on lot.`)}
+              >
+                <div style={{ height: "120px", background: "#f1f5f9", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "12px", color: "#94a3b8", fontSize: "13px" }}>
+                  {v.year} {v.make} {v.model}
+                </div>
+                <div style={{ fontWeight: 700, fontSize: "15px", color: "#1e293b", marginBottom: "4px" }}>
+                  {v.year} {v.make} {v.model} {v.trim !== v.model.split(" ").pop() ? v.trim : ""}
+                </div>
+                <div style={{ fontSize: "12px", color: "#64748b", marginBottom: "8px" }}>
+                  Stock #{v.stock} &middot; {v.color} &middot; {v.mileage.toLocaleString()} mi
+                </div>
+                <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginBottom: "8px" }}>
+                  <span style={{ fontSize: "11px", fontWeight: 600, padding: "2px 8px", borderRadius: "9999px", background: days.bg, color: days.color }}>
+                    {v.daysOnLot}d {days.label}
                   </span>
-                )}
-
-                {/* CPO badge */}
-                {v.cpo && (
-                  <span style={{
-                    fontSize: "11px", fontWeight: 600, padding: "2px 8px", borderRadius: "9999px",
-                    background: "#fef3c7", color: "#92400e",
-                  }}>
-                    CPO
-                  </span>
-                )}
+                  {v.carfax && (
+                    <span style={{ fontSize: "11px", fontWeight: 600, padding: "2px 8px", borderRadius: "9999px", background: v.carfax === "clean" ? "#dcfce7" : "#fef3c7", color: v.carfax === "clean" ? "#16a34a" : "#d97706" }}>
+                      CARFAX {v.carfax === "clean" ? "Clean" : "Minor"}
+                    </span>
+                  )}
+                  {v.cpo && (
+                    <span style={{ fontSize: "11px", fontWeight: 600, padding: "2px 8px", borderRadius: "9999px", background: "#fef3c7", color: "#92400e" }}>CPO</span>
+                  )}
+                </div>
+                <div style={{ fontSize: "20px", fontWeight: 900, color: "#1e293b" }}>${v.price.toLocaleString()}</div>
               </div>
-
-              {/* Price */}
-              <div style={{ fontSize: "20px", fontWeight: 900, color: "#1e293b" }}>
-                ${v.price.toLocaleString()}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="card">
+          <div className="tableWrap">
+            <table className="table" style={{ width: "100%" }}>
+              <thead>
+                <tr>
+                  <th>Stock #</th>
+                  <th>Year / Make / Model</th>
+                  <th>Color</th>
+                  <th style={{ textAlign: "right" }}>Mileage</th>
+                  <th style={{ textAlign: "right" }}>Days on Lot</th>
+                  <th style={{ textAlign: "right" }}>Price</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {vehicles.map((v) => {
+                  const days = getDaysColor(v.daysOnLot);
+                  return (
+                    <tr
+                      key={v.stock}
+                      style={{ cursor: "pointer" }}
+                      onClick={() => openChat(`Tell me about Stock ${v.stock} -- ${v.year} ${v.make} ${v.model} ${v.trim}. Price: $${v.price.toLocaleString()}. ${v.daysOnLot} days on lot.`)}
+                    >
+                      <td style={{ fontWeight: 600, whiteSpace: "nowrap" }}>{v.stock}</td>
+                      <td className="tdStrong">{v.year} {v.make} {v.model} {v.trim !== v.model.split(" ").pop() ? v.trim : ""}</td>
+                      <td style={{ fontSize: "13px", color: "#64748b" }}>{v.color}</td>
+                      <td style={{ textAlign: "right", fontSize: "13px" }}>{v.mileage.toLocaleString()}</td>
+                      <td style={{ textAlign: "right" }}>
+                        <span style={{ fontSize: "12px", fontWeight: 600, padding: "2px 8px", borderRadius: "9999px", background: days.bg, color: days.color }}>
+                          {v.daysOnLot}d {days.label}
+                        </span>
+                      </td>
+                      <td style={{ textAlign: "right", fontWeight: 700, fontSize: "14px" }}>${v.price.toLocaleString()}</td>
+                      <td>
+                        <div style={{ display: "flex", gap: "4px" }}>
+                          {v.carfax && (
+                            <span style={{ fontSize: "10px", fontWeight: 600, padding: "1px 6px", borderRadius: "4px", background: v.carfax === "clean" ? "#dcfce7" : "#fef3c7", color: v.carfax === "clean" ? "#16a34a" : "#d97706" }}>
+                              {v.carfax === "clean" ? "Clean" : "Minor"}
+                            </span>
+                          )}
+                          {v.cpo && (
+                            <span style={{ fontSize: "10px", fontWeight: 600, padding: "1px 6px", borderRadius: "4px", background: "#fef3c7", color: "#92400e" }}>CPO</span>
+                          )}
+                          {!v.carfax && !v.cpo && <span style={{ fontSize: "12px", color: "#94a3b8" }}>--</span>}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

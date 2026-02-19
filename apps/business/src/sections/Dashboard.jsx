@@ -420,6 +420,10 @@ export default function Dashboard() {
   ]);
   const jurisdiction = localStorage.getItem("JURISDICTION") || "IL";
 
+  function nav(section) {
+    window.dispatchEvent(new CustomEvent("ta:navigate", { detail: { section } }));
+  }
+
   useEffect(() => {
     if (!isConsumer) loadBusinessDashboard();
   }, []);
@@ -786,19 +790,19 @@ export default function Dashboard() {
             <div style={{ fontWeight: 700, fontSize: "16px", color: "#1e293b", marginBottom: "4px" }}>Sales Track</div>
             <div style={{ fontSize: "13px", color: "#64748b", marginBottom: "16px" }}>Active pipeline and lead activity</div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "12px", marginBottom: "16px" }}>
-              <div style={{ padding: "12px", background: "#f8fafc", borderRadius: "8px", textAlign: "center" }}>
+              <div onClick={() => nav("sales-pipeline")} style={{ padding: "12px", background: "#f8fafc", borderRadius: "8px", textAlign: "center", cursor: "pointer" }}>
                 <div style={{ fontSize: "24px", fontWeight: 800 }}>8</div>
                 <div style={{ fontSize: "12px", color: "#64748b" }}>Active Deals</div>
               </div>
-              <div style={{ padding: "12px", background: "#f8fafc", borderRadius: "8px", textAlign: "center" }}>
+              <div onClick={() => nav("sales-pipeline")} style={{ padding: "12px", background: "#f8fafc", borderRadius: "8px", textAlign: "center", cursor: "pointer" }}>
                 <div style={{ fontSize: "24px", fontWeight: 800 }}>$291,600</div>
                 <div style={{ fontSize: "12px", color: "#64748b" }}>Pipeline Value</div>
               </div>
-              <div style={{ padding: "12px", background: "#f8fafc", borderRadius: "8px", textAlign: "center" }}>
+              <div onClick={() => nav("sales-pipeline")} style={{ padding: "12px", background: "#f8fafc", borderRadius: "8px", textAlign: "center", cursor: "pointer" }}>
                 <div style={{ fontSize: "24px", fontWeight: 800 }}>3</div>
                 <div style={{ fontSize: "12px", color: "#64748b" }}>Appointments Today</div>
               </div>
-              <div style={{ padding: "12px", background: "#f8fafc", borderRadius: "8px", textAlign: "center" }}>
+              <div onClick={() => nav("sales-pipeline")} style={{ padding: "12px", background: "#f8fafc", borderRadius: "8px", textAlign: "center", cursor: "pointer" }}>
                 <div style={{ fontSize: "24px", fontWeight: 800, color: "#dc2626" }}>2</div>
                 <div style={{ fontSize: "12px", color: "#64748b" }}>Hot Leads</div>
               </div>
@@ -813,7 +817,7 @@ export default function Dashboard() {
                 { label: "F&I Desk", count: 1, value: "$48.9K", color: "#16a34a" },
                 { label: "Sold", count: 2, value: "$61.9K", color: "#059669" },
               ].map((s, i) => (
-                <div key={i} style={{ flex: 1, textAlign: "center" }}>
+                <div key={i} onClick={() => nav("sales-pipeline")} style={{ flex: 1, textAlign: "center", cursor: "pointer" }}>
                   <div style={{ fontSize: "10px", fontWeight: 600, color: s.color, marginBottom: "2px" }}>{s.value}</div>
                   <div style={{ height: `${Math.max(12, s.count * 14)}px`, background: s.color, borderRadius: "4px 4px 0 0", marginBottom: "4px" }} />
                   <div style={{ fontSize: "10px", color: "#64748b" }}>{s.label}</div>
@@ -830,7 +834,7 @@ export default function Dashboard() {
               <div style={{ fontWeight: 700, fontSize: "16px", color: "#1e293b", marginBottom: "4px" }}>Service Track</div>
               <div style={{ fontSize: "13px", color: "#64748b", marginBottom: "16px" }}>Today's service operations</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-                <div style={{ padding: "10px", background: "#f8fafc", borderRadius: "8px" }}>
+                <div onClick={() => nav("auto-service")} style={{ padding: "10px", background: "#f8fafc", borderRadius: "8px", cursor: "pointer" }}>
                   <div style={{ fontSize: "20px", fontWeight: 800 }}>8</div>
                   <div style={{ fontSize: "12px", color: "#64748b" }}>Appointments</div>
                 </div>
@@ -838,7 +842,7 @@ export default function Dashboard() {
                   <div style={{ fontSize: "20px", fontWeight: 800 }}>$1,676</div>
                   <div style={{ fontSize: "12px", color: "#64748b" }}>Revenue Today</div>
                 </div>
-                <div style={{ padding: "10px", background: "#fff7ed", borderRadius: "8px" }}>
+                <div onClick={() => nav("auto-service")} style={{ padding: "10px", background: "#fff7ed", borderRadius: "8px", cursor: "pointer" }}>
                   <div style={{ fontSize: "20px", fontWeight: 800, color: "#d97706" }}>5</div>
                   <div style={{ fontSize: "12px", color: "#64748b" }}>Upsell Opps ($8,250)</div>
                 </div>
@@ -857,15 +861,15 @@ export default function Dashboard() {
               <div style={{ fontWeight: 700, fontSize: "16px", color: "#1e293b", marginBottom: "4px" }}>Inventory Track</div>
               <div style={{ fontSize: "13px", color: "#64748b", marginBottom: "16px" }}>Lot status and acquisition</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-                <div style={{ padding: "10px", background: "#f8fafc", borderRadius: "8px" }}>
+                <div onClick={() => nav("inventory")} style={{ padding: "10px", background: "#f8fafc", borderRadius: "8px", cursor: "pointer" }}>
                   <div style={{ fontSize: "20px", fontWeight: 800 }}>85</div>
                   <div style={{ fontSize: "12px", color: "#64748b" }}>New (avg 28 days)</div>
                 </div>
-                <div style={{ padding: "10px", background: "#f8fafc", borderRadius: "8px" }}>
+                <div onClick={() => nav("inventory")} style={{ padding: "10px", background: "#f8fafc", borderRadius: "8px", cursor: "pointer" }}>
                   <div style={{ fontSize: "20px", fontWeight: 800 }}>150</div>
                   <div style={{ fontSize: "12px", color: "#64748b" }}>Used (avg 45 days)</div>
                 </div>
-                <div style={{ padding: "10px", background: "#fef2f2", borderRadius: "8px" }}>
+                <div onClick={() => nav("inventory")} style={{ padding: "10px", background: "#fef2f2", borderRadius: "8px", cursor: "pointer" }}>
                   <div style={{ fontSize: "20px", fontWeight: 800, color: "#dc2626" }}>12</div>
                   <div style={{ fontSize: "12px", color: "#dc2626" }}>Over 90 days</div>
                 </div>

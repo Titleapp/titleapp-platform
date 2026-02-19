@@ -155,12 +155,30 @@ function CollapsibleSection({ title, accent, children, defaultOpen = false }) {
   );
 }
 
+const PLAYBOOK_CATEGORIES = [
+  "Sales Process",
+  "Word Tracks / Scripts",
+  "Objection Handling",
+  "F&I Playbook",
+  "Service Advisor Scripts",
+  "Pricing Policies",
+  "Trade-in Process",
+  "Delivery Process",
+  "Customer Communication Guidelines",
+  "Other / General",
+];
+
 export default function Rules() {
   const vertical = localStorage.getItem("VERTICAL") || "auto";
   const jurisdiction = localStorage.getItem("JURISDICTION") || "FL";
   const [rules, setRules] = useState(DEFAULT_RULES);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  // Playbooks
+  const [playbooks, setPlaybooks] = useState([]);
+  const [dragOver, setDragOver] = useState(false);
+  const playbookInputRef = React.useRef(null);
 
   function updateRules(path, value) {
     setRules(prev => {
@@ -194,6 +212,37 @@ export default function Rules() {
     } finally {
       setSaving(false);
     }
+  }
+
+  function handlePlaybookFiles(files) {
+    const accepted = ["application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "text/plain", "image/png", "image/jpeg", "image/webp"];
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    for (const file of Array.from(files)) {
+      if (!accepted.some(t => file.type.startsWith(t.split("/")[0]) || file.type === t)) continue;
+      if (file.size > maxSize) continue;
+      setPlaybooks(prev => [...prev, {
+        id: `pb_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+        name: file.name,
+        size: file.size,
+        category: "Other / General",
+        uploadedAt: new Date().toISOString(),
+        file,
+      }]);
+    }
+  }
+
+  function updatePlaybookCategory(id, category) {
+    setPlaybooks(prev => prev.map(p => p.id === id ? { ...p, category } : p));
+  }
+
+  function removePlaybook(id) {
+    setPlaybooks(prev => prev.filter(p => p.id !== id));
+  }
+
+  function formatFileSize(bytes) {
+    if (bytes < 1024) return bytes + " B";
+    if (bytes < 1024 * 1024) return Math.round(bytes / 1024) + " KB";
+    return (bytes / (1024 * 1024)).toFixed(1) + " MB";
   }
 
   return (
@@ -324,6 +373,98 @@ export default function Rules() {
         </div>
       </CollapsibleSection>
 
+      {/* Business Playbooks */}
+      <div className="card" style={{ marginTop: "20px", padding: "24px" }}>
+        <div style={{ marginBottom: "4px" }}>
+          <div style={{ fontWeight: 700, fontSize: "16px", color: "#1e293b" }}>Custom AI Training</div>
+          <div style={{ fontSize: "13px", color: "#64748b" }}>Upload your SOPs, scripts, and playbooks. Your AI will follow your processes.</div>
+        </div>
+
+        {/* Upload zone */}
+        <div
+          onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={(e) => { e.preventDefault(); setDragOver(false); handlePlaybookFiles(e.dataTransfer.files); }}
+          onClick={() => playbookInputRef.current?.click()}
+          style={{
+            margin: "16px 0",
+            padding: "32px",
+            border: `2px dashed ${dragOver ? "#7c3aed" : "#e2e8f0"}`,
+            borderRadius: "12px",
+            background: dragOver ? "#faf5ff" : "#f8fafc",
+            textAlign: "center",
+            cursor: "pointer",
+            transition: "all 0.15s",
+          }}
+        >
+          <input
+            ref={playbookInputRef}
+            type="file"
+            multiple
+            accept=".pdf,.docx,.txt,.png,.jpg,.jpeg,.webp"
+            style={{ display: "none" }}
+            onChange={(e) => { handlePlaybookFiles(e.target.files); e.target.value = ""; }}
+          />
+          <div style={{ fontSize: "14px", fontWeight: 600, color: "#475569", marginBottom: "4px" }}>Drop files here or click to browse</div>
+          <div style={{ fontSize: "12px", color: "#94a3b8" }}>PDF, DOCX, TXT, or images (OCR). Max 10 MB per file.</div>
+        </div>
+
+        {/* Document list */}
+        {playbooks.length > 0 && (
+          <div className="tableWrap" style={{ marginBottom: "16px" }}>
+            <table className="table" style={{ width: "100%" }}>
+              <thead>
+                <tr>
+                  <th>Document</th>
+                  <th>Category</th>
+                  <th>Uploaded</th>
+                  <th>Size</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {playbooks.map(pb => (
+                  <tr key={pb.id}>
+                    <td className="tdStrong">{pb.name}</td>
+                    <td>
+                      <select
+                        value={pb.category}
+                        onChange={(e) => updatePlaybookCategory(pb.id, e.target.value)}
+                        style={{ padding: "4px 8px", borderRadius: "6px", border: "1px solid #e2e8f0", fontSize: "12px" }}
+                      >
+                        {PLAYBOOK_CATEGORIES.map(c => (
+                          <option key={c} value={c}>{c}</option>
+                        ))}
+                      </select>
+                    </td>
+                    <td style={{ fontSize: "12px", color: "#64748b", whiteSpace: "nowrap" }}>
+                      {new Date(pb.uploadedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                    </td>
+                    <td style={{ fontSize: "12px", color: "#64748b" }}>{formatFileSize(pb.size)}</td>
+                    <td>
+                      <button
+                        onClick={() => removePlaybook(pb.id)}
+                        className="iconBtn"
+                        style={{ padding: "4px 8px", fontSize: "11px", color: "#dc2626", borderColor: "#dc2626" }}
+                      >Delete</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Create from Scratch */}
+        <button
+          onClick={() => window.dispatchEvent(new CustomEvent("ta:chatPrompt", { detail: { message: "I don't have a written playbook yet. Can you help me create one?" } }))}
+          className="iconBtn"
+          style={{ fontSize: "13px", color: "#7c3aed", borderColor: "#7c3aed" }}
+        >
+          Create from Scratch
+        </button>
+      </div>
+
       {/* Current Configuration */}
       <div className="card" style={{ padding: "20px", marginTop: "8px" }}>
         <div style={{ fontWeight: 700, fontSize: "15px", color: "#1e293b", marginBottom: "12px" }}>Current Configuration</div>
@@ -335,7 +476,7 @@ export default function Rules() {
           <div style={{ color: "#64748b" }}>Active RAAS rule files</div>
           <div style={{ fontWeight: 600 }}>{vertical}/{jurisdiction}/README.md, data-model.md, ownership.md</div>
           <div style={{ color: "#64748b" }}>Custom rules</div>
-          <div style={{ fontWeight: 600, color: "#94a3b8" }}>None set</div>
+          <div style={{ fontWeight: 600, color: "#94a3b8" }}>{playbooks.length > 0 ? `${playbooks.length} playbook${playbooks.length !== 1 ? "s" : ""} uploaded` : "None set"}</div>
         </div>
       </div>
     </div>
