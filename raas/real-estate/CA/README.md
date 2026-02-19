@@ -1,88 +1,37 @@
-RAAS — Real Estate (California)
+# RAAS — Real Estate (California)
+# Path: raas/real-estate/CA/README.md
+# RAAS Level: 2 (Jurisdiction Package)
+# Applies to: Real Estate vertical · California
+# Subordinate to: raas/real-estate/README.md
 
-Path: raas/real-estate/CA/README.md
+---
 
-RAAS Level: 2 (Jurisdiction Package)
-Applies to: Real Estate vertical · California
-Subordinate to:
+## Overview
 
-RAAS Level-0 (AI Style Guide)
+California is the largest and most complex real estate market in the US. Key characteristics:
+- Highest home prices in the continental US (median $800K+)
+- EXTENSIVE disclosure requirements (most in the nation — 10+ required forms)
+- Strong tenant protections including statewide rent control (AB 1482)
+- DRE (Department of Real Estate) licensing and regulation
+- California Association of Realtors (CAR) standard forms (not promulgated like TX, but industry standard)
+- Prop 13: assessed value increases limited to 2% annually until sale
+- Escrow is handled by neutral third-party escrow companies (not attorneys or title companies directly)
+- Community property state
+- Extensive environmental disclosures: earthquake, fire, flood, environmental hazards
+- Natural Hazard Disclosure (NHD) report required
+- Transfer taxes at state AND local level
+- Very diverse markets: Bay Area, LA, San Diego, Central Valley, Inland Empire all very different
+- ADU (Accessory Dwelling Unit) laws — significant for property management
 
-RAAS Level-1 (Core Behavioral Rules)
-
-RAAS Level-2 (Real Estate Vertical Baseline)
-
-Purpose
-
-This directory defines Rules as a Service (RAAS) for California real estate.
-
-It governs how TitleApp handles residential, commercial, HOA, and rental/property-management workflows within California’s regulatory environment.
-
-⚠️ Not legal advice.
-TitleApp provides workflow structure and compliance guardrails, not legal conclusions.
-
-Scope of Coverage
-
-California Real Estate RAAS applies to:
-
-Residential property transactions
-
-Commercial real estate
-
-HOA-governed properties
-
-Rental and property management workflows
-
-Ownership transfers and recordation
-
-Leasing and tenancy disclosures
-
-Encumbrances (liens, easements, CC&Rs)
-
-Title-adjacent research and verification tasks
-
-Core Objectives (California)
-
-Disclosure completeness — required disclosures must be surfaced and tracked
-
-HOA transparency — HOA obligations and restrictions remain visible
-
-Rental continuity — tenancy and management records persist across ownership changes
-
-Record-based clarity — ambiguity is highlighted, not resolved by inference
-
-Design Principles
-
-Parcel-first identification
-
-Event-sourced property lifecycle
-
-Disclosure-explicit sequencing
-
-Encumbrance-aware ownership representation
-
-System-of-record compatibility (county, escrow, title, assessor)
-
-Update Cadence
-
-Regulatory scan: Continuous (AI-assisted)
-
-Human legal review: Required
-
-Release cadence: Monthly or emergency hotfix
-
-Versioning: Semantic
-
-Directory References
-
-See:
-
-contracts/README.md
-
-disclosures/README.md
-
-hoa/README.md
-
-leasing/README.md
-
-workflows/README.md
+## Additional Protected Classes
+California Fair Employment and Housing Act (FEHA) adds:
+- Sexual orientation
+- Gender identity / gender expression
+- Marital status
+- Source of income (Section 8 vouchers — landlords MUST accept)
+- Genetic information
+- Veteran/military status
+- Medical condition
+- Primary language
+- Immigration status
+- AI loads ALL state + federal protected classes for CA properties
