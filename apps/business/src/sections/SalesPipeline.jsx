@@ -10,15 +10,15 @@ const PIPELINE_STAGES = [
 ];
 
 const PIPELINE_DEALS = [
-  { id: 1, customer: "Maria Gonzalez", vehicle: "2025 Corolla LE", value: 24500, stage: "contacted", salesperson: "Jake Rivera", daysInStage: 2, notes: "Lease expiring. Cash buyer. Matched to 3 vehicles.", source: "COS -- Lease Expiring" },
+  { id: 1, customer: "Maria Gonzalez", vehicle: "2025 Corolla LE", value: 24500, stage: "contacted", salesperson: "Jake Rivera", daysInStage: 2, notes: "Lease expiring. Cash buyer. Matched to 3 vehicles.", source: "AI -- Lease Expiring" },
   { id: 2, customer: "Web Lead -- Amanda Liu", vehicle: "2025 RAV4 XLE", value: 34200, stage: "lead", salesperson: "Unassigned", daysInStage: 1, notes: "TrueCar lead. Requested quote on RAV4 XLE in Lunar Rock.", source: "TrueCar" },
   { id: 3, customer: "Robert Chen", vehicle: "2025 Camry XSE", value: 32800, stage: "test-drive", salesperson: "Jake Rivera", daysInStage: 1, notes: "Drove Camry XSE and Crown. Leaning XSE. Coming back Saturday.", source: "Walk-In" },
-  { id: 4, customer: "Mark Brown", vehicle: "2025 RAV4 XLE Premium", value: 37500, stage: "negotiation", salesperson: "Lisa Chen", daysInStage: 3, notes: "Trade-in 2025 Corolla Cross. Approved TMCC Tier 1. Working numbers.", source: "COS -- Trade-Up" },
+  { id: 4, customer: "Mark Brown", vehicle: "2025 RAV4 XLE Premium", value: 37500, stage: "negotiation", salesperson: "Lisa Chen", daysInStage: 3, notes: "Trade-in 2025 Corolla Cross. Approved TMCC Tier 1. Working numbers.", source: "AI -- Trade-Up" },
   { id: 5, customer: "James Mitchell", vehicle: "2024 Tundra SR5 CrewMax", value: 48900, stage: "fi-desk", salesperson: "Jake Rivera", daysInStage: 0, notes: "Approved Chase Auto 5.49%. Presenting warranty menu today.", source: "Referral" },
   { id: 6, customer: "Thomas Garcia", vehicle: "2025 Tacoma TRD Sport", value: 42300, stage: "contacted", salesperson: "Lisa Chen", daysInStage: 4, notes: "Phone inquiry. Wants to compare with Colorado. Invited for Saturday.", source: "Phone" },
   { id: 7, customer: "Kevin O'Brien", vehicle: "2022 Ford Explorer XLT (Used)", value: 28500, stage: "negotiation", salesperson: "Jake Rivera", daysInStage: 2, notes: "Wants $2K off. Stock U30012, 86 days on lot. Room to negotiate.", source: "Facebook Marketplace" },
   { id: 8, customer: "Sandra Lee", vehicle: "2025 Highlander XLE", value: 42900, stage: "lead", salesperson: "Unassigned", daysInStage: 0, notes: "Autotrader lead. Requested info on Highlander lease specials.", source: "Autotrader" },
-  { id: 9, customer: "Patricia Adams", vehicle: "2025 Camry LE", value: 28400, stage: "sold", salesperson: "Lisa Chen", daysInStage: 0, notes: "Delivered yesterday. Extra Care Gold + GAP added. Great deal.", source: "COS -- Service Upsell" },
+  { id: 9, customer: "Patricia Adams", vehicle: "2025 Camry LE", value: 28400, stage: "sold", salesperson: "Lisa Chen", daysInStage: 0, notes: "Delivered yesterday. Extra Care Gold + GAP added. Great deal.", source: "AI -- Service Upsell" },
   { id: 10, customer: "Daniel Green", vehicle: "2025 GR86 Premium", value: 33500, stage: "sold", salesperson: "Jake Rivera", daysInStage: 0, notes: "Cash deal. ToyoGuard added. Enthusiast buyer.", source: "Walk-In" },
 ];
 
@@ -47,7 +47,7 @@ export default function SalesPipeline() {
           onClick={() => openChat("Give me a pipeline summary. What deals are stalling and what should I prioritize today?")}
           style={{ background: "linear-gradient(135deg, #7c3aed, #6d28d9)", color: "white", border: "none" }}
         >
-          COS Pipeline Brief
+          AI Pipeline Brief
         </button>
       </div>
 

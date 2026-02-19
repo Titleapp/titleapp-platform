@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import AddWorkspaceWizard from './AddWorkspaceWizard';
 
-const VERTICAL_ICONS = {
-  consumer: '\u{1F510}',
-  analyst: '\u{1F4CA}',
-  auto: '\u{1F697}',
-  'real-estate': '\u{1F3E0}',
-  aviation: '\u2708\uFE0F',
+const VERTICAL_ABBREVS = {
+  consumer: 'PV',
+  analyst: 'IA',
+  auto: 'AD',
+  'real-estate': 'RE',
+  aviation: 'AV',
 };
 
 function daysLeft(trialEndsAt) {
@@ -31,7 +31,7 @@ function WorkspaceCard({ workspace, onLaunch }) {
     suspended: { label: 'Suspended', color: '#dc2626' },
   }[workspace.status] || { label: workspace.status, color: '#6b7280' };
 
-  const icon = VERTICAL_ICONS[workspace.vertical] || '\u{1F4C1}';
+  const abbrev = VERTICAL_ABBREVS[workspace.vertical] || workspace.vertical?.slice(0, 2).toUpperCase() || '??';
 
   return (
     <div
@@ -50,7 +50,12 @@ function WorkspaceCard({ workspace, onLaunch }) {
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      <div style={{ fontSize: 28, marginBottom: 8 }}>{icon}</div>
+      <div style={{
+        width: 40, height: 40, borderRadius: 8, backgroundColor: '#f1f5f9',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: 14, fontWeight: 700, color: '#475569', marginBottom: 8,
+        letterSpacing: 1,
+      }}>{abbrev}</div>
       <div style={{ fontWeight: 600, fontSize: 16, color: '#1e293b' }}>{workspace.name}</div>
       <div style={{ color: '#64748b', fontSize: 13, marginBottom: 12, minHeight: 18 }}>
         {workspace.tagline || ''}

@@ -174,7 +174,7 @@ export default function FIProducts() {
           onClick={() => openChat("What F&I products should I recommend for a customer with a 680 credit score buying a new Camry?")}
           style={{ background: "linear-gradient(135deg, #7c3aed, #6d28d9)", color: "white", border: "none" }}
         >
-          Ask COS
+          Ask AI
         </button>
       </div>
 

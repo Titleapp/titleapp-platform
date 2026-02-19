@@ -1,9 +1,24 @@
 import React, { useState, useEffect } from "react";
 import * as api from "../api/client";
 
-/**
- * Reports - Business analytics and performance metrics
- */
+const AUTO_WEEKLY_REVENUE = [
+  { week: "Jan 27", sales: 412000, service: 18200 },
+  { week: "Feb 3", sales: 385000, service: 21400 },
+  { week: "Feb 10", sales: 448000, service: 19800 },
+  { week: "Feb 17", sales: 396000, service: 22100 },
+];
+
+const AUTO_RECENT_EVENTS = [
+  { id: 1, time: "2h ago", text: "AI identified upsell for Charles Cox -- $3,450 potential (Extra Care Gold)", color: "#d97706" },
+  { id: 2, time: "4h ago", text: "Trade-in appraisal completed -- 2021 BMW X3 xDrive30i, est. $28,500", color: "#7c3aed" },
+  { id: 3, time: "6h ago", text: "Maria Gonzalez moved to Contacted stage -- lease expiring outreach sent", color: "#2563eb" },
+  { id: 4, time: "Yesterday", text: "Patricia Adams -- Camry LE delivered. Extra Care Gold + GAP added.", color: "#16a34a" },
+  { id: 5, time: "Yesterday", text: "AI sent 4 lease-expiration offers to qualifying customers", color: "#7c3aed" },
+  { id: 6, time: "2 days ago", text: "Price reduction on 2022 Ford Explorer XLT -- $34,169 to $31,999", color: "#dc2626" },
+  { id: 7, time: "2 days ago", text: "Daniel Green -- GR86 Premium cash deal closed. ToyoGuard added.", color: "#16a34a" },
+  { id: 8, time: "3 days ago", text: "AI generated Facebook Marketplace listing for 2025 Camry LE (Stock N25000)", color: "#7c3aed" },
+];
+
 export default function Reports() {
   const [dateRange, setDateRange] = useState("30days");
   const [reportData, setReportData] = useState({
@@ -13,6 +28,7 @@ export default function Reports() {
 
   const vertical = localStorage.getItem("VERTICAL") || "auto";
   const jurisdiction = localStorage.getItem("JURISDICTION") || "IL";
+  const isAuto = vertical === "auto";
 
   useEffect(() => {
     loadReportData();
@@ -64,20 +80,12 @@ export default function Reports() {
         { label: "Reports Generated", value: reportData.reports.toString() },
       ];
     }
-    if (vertical === "property-mgmt") {
+    if (isAuto) {
       return [
-        { label: "Revenue", value: "--" },
-        { label: "Occupancy Rate", value: "--" },
-        { label: "Work Orders", value: "--" },
-        { label: "Lease Renewals", value: "--" },
-      ];
-    }
-    if (vertical === "real-estate") {
-      return [
-        { label: "Active Listings", value: "--" },
-        { label: "Closings", value: "--" },
-        { label: "Commission", value: "--" },
-        { label: "Days on Market", value: "--" },
+        { label: "Total Revenue MTD", value: "$1,641,000" },
+        { label: "Units Sold", value: "47" },
+        { label: "Active Customers", value: "150" },
+        { label: "Avg Deal Size", value: "$34,915" },
       ];
     }
     return [
@@ -89,6 +97,7 @@ export default function Reports() {
   }
 
   const kpis = getKpiConfig();
+  const maxRevenue = Math.max(...AUTO_WEEKLY_REVENUE.map(w => w.sales));
 
   return (
     <div>
@@ -100,11 +109,7 @@ export default function Reports() {
         <select
           value={dateRange}
           onChange={(e) => setDateRange(e.target.value)}
-          style={{
-            padding: "10px 16px",
-            borderRadius: "12px",
-            border: "1px solid var(--line)",
-          }}
+          style={{ padding: "10px 16px", borderRadius: "12px", border: "1px solid var(--line)" }}
         >
           <option value="7days">Last 7 Days</option>
           <option value="30days">Last 30 Days</option>
@@ -126,14 +131,35 @@ export default function Reports() {
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "16px" }}>
-        {/* Analysis Activity */}
+        {/* Revenue Trend (Auto) or Analysis Activity (Analyst) */}
         <div className="card">
           <div className="cardHeader">
             <div className="cardTitle">
               {vertical === "analyst" ? "Analysis Activity" : "Revenue Trend"}
             </div>
           </div>
-          {vertical === "analyst" && reportData.recentDeals.length > 0 ? (
+          {isAuto ? (
+            <div style={{ padding: "16px" }}>
+              <div style={{ display: "flex", gap: "16px", alignItems: "flex-end", height: "180px", padding: "0 8px" }}>
+                {AUTO_WEEKLY_REVENUE.map((w, i) => (
+                  <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", height: "100%", justifyContent: "flex-end" }}>
+                    <div style={{ fontSize: "12px", fontWeight: 600, color: "#1e293b" }}>${(w.sales / 1000).toFixed(0)}K</div>
+                    <div style={{ width: "100%", background: "#7c3aed", borderRadius: "4px 4px 0 0", height: `${(w.sales / maxRevenue) * 120}px`, minHeight: "20px" }} />
+                    <div style={{ width: "100%", background: "#06b6d4", borderRadius: "4px 4px 0 0", height: `${(w.service / maxRevenue) * 120}px`, minHeight: "8px" }} />
+                    <div style={{ fontSize: "11px", color: "#64748b", marginTop: "4px" }}>{w.week}</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ display: "flex", gap: "16px", justifyContent: "center", marginTop: "12px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", color: "#64748b" }}>
+                  <div style={{ width: "10px", height: "10px", borderRadius: "2px", background: "#7c3aed" }} /> Sales
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", color: "#64748b" }}>
+                  <div style={{ width: "10px", height: "10px", borderRadius: "2px", background: "#06b6d4" }} /> Service
+                </div>
+              </div>
+            </div>
+          ) : vertical === "analyst" && reportData.recentDeals.length > 0 ? (
             <div style={{ padding: "16px" }}>
               <div className="tableWrap">
                 <table className="table">
@@ -157,9 +183,7 @@ export default function Reports() {
                       return (
                         <tr key={deal.id}>
                           <td className="tdStrong">{deal.dealInput?.companyName || "Unknown"}</td>
-                          <td>
-                            <span style={{ fontWeight: 600, color: getRiskColor(score) }}>{score}/100</span>
-                          </td>
+                          <td><span style={{ fontWeight: 600, color: getRiskColor(score) }}>{score}/100</span></td>
                           <td>
                             <span className={`badge badge-${deal.analysis?.recommendation === "INVEST" ? "completed" : deal.analysis?.recommendation === "PASS" ? "" : "processing"}`}>
                               {deal.analysis?.recommendation || "WAIT"}
@@ -174,21 +198,7 @@ export default function Reports() {
               </div>
             </div>
           ) : (
-            <div
-              style={{
-                padding: "32px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                minHeight: "300px",
-                color: "var(--textMuted)",
-                background: "#f8fafc",
-                borderRadius: "8px",
-                margin: "16px",
-                flexDirection: "column",
-                gap: "12px",
-              }}
-            >
+            <div style={{ padding: "32px", display: "flex", alignItems: "center", justifyContent: "center", minHeight: "300px", color: "var(--textMuted)", background: "#f8fafc", borderRadius: "8px", margin: "16px", flexDirection: "column", gap: "12px" }}>
               <div style={{ fontSize: "16px", fontWeight: 600 }}>No data yet</div>
               <div style={{ fontSize: "14px", textAlign: "center", maxWidth: "300px" }}>
                 Reports will populate as you use the platform. Start by adding records or running AI workflows.
@@ -197,12 +207,24 @@ export default function Reports() {
           )}
         </div>
 
-        {/* Activity Summary */}
+        {/* Recent Activity */}
         <div className="card">
           <div className="cardHeader">
             <div className="cardTitle">Recent Activity</div>
           </div>
-          {vertical === "analyst" && reportData.recentDeals.length > 0 ? (
+          {isAuto ? (
+            <div style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: "2px" }}>
+              {AUTO_RECENT_EVENTS.map((evt) => (
+                <div key={evt.id} style={{ display: "flex", alignItems: "flex-start", gap: "10px", padding: "8px 0", borderBottom: "1px solid #f1f5f9" }}>
+                  <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: evt.color, flexShrink: 0, marginTop: "5px" }} />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: "13px", color: "#334155", lineHeight: 1.5 }}>{evt.text}</div>
+                    <div style={{ fontSize: "11px", color: "#94a3b8", marginTop: "2px" }}>{evt.time}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : vertical === "analyst" && reportData.recentDeals.length > 0 ? (
             <div style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: "10px" }}>
               {reportData.recentDeals.slice(0, 4).map((deal) => {
                 const score = deal.analysis?.riskScore || 0;

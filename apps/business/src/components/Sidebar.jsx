@@ -10,7 +10,7 @@ const NAV_BY_VERTICAL = {
     { id: "my-certifications", label: "Student Records & Certifications" },
     { id: "my-logbook", label: "My Logbooks" },
     { id: "my-wallet", label: "My Wallet" },
-    { id: "ai-chats", label: "My AI & GPTs" },
+    { id: "ai-chats", label: "My AI Activity" },
     { id: "settings", label: "Settings" },
   ],
   analyst: [
@@ -19,7 +19,7 @@ const NAV_BY_VERTICAL = {
     { id: "rules-resources", label: "Rules & Resources" },
     { id: "inventory", label: "Services & Fees" },
     { id: "staff", label: "Team" },
-    { id: "ai-chats", label: "AI & GPTs" },
+    { id: "ai-chats", label: "AI Activity" },
     { id: "reports", label: "Reports" },
     { id: "data-apis", label: "Data & APIs" },
     { id: "settings", label: "Settings" },
@@ -41,7 +41,7 @@ const NAV_BY_VERTICAL = {
     { id: "fi-products", label: "F&I Products" },
     { id: "auto-service", label: "Service" },
     { id: "reports", label: "Reports" },
-    { id: "ai-chats", label: "AI & GPTs" },
+    { id: "ai-chats", label: "AI Activity" },
     { id: "settings", label: "Settings" },
   ],
   "real-estate": [
@@ -57,7 +57,7 @@ const NAV_BY_VERTICAL = {
 const DEFAULT_NAV = [
   { id: "dashboard", label: "Dashboard" },
   { id: "rules-resources", label: "Rules & Resources" },
-  { id: "ai-chats", label: "AI & GPTs" },
+  { id: "ai-chats", label: "AI Activity" },
   { id: "reports", label: "Reports" },
   { id: "settings", label: "Settings" },
 ];
@@ -67,13 +67,12 @@ export default function Sidebar({ currentSection, onNavigate, onClose, tenantNam
   const sections = NAV_BY_VERTICAL[vertical] || DEFAULT_NAV;
   const isPersonal = vertical === "consumer";
 
-  // For personal Vault, derive first name from tenant/company name
-  const companyName = tenantName || localStorage.getItem("COMPANY_NAME") || "";
+  const workspaceName = localStorage.getItem("WORKSPACE_NAME") || "";
+  const companyName = workspaceName || tenantName || localStorage.getItem("COMPANY_NAME") || "";
   const firstName = companyName.split(" ")[0] || "";
-  const isAuto = vertical === "auto";
   const brandLabel = isPersonal && firstName
     ? `${firstName}'s Vault`
-    : (tenantName || (isPersonal ? "Personal Vault" : "Business"));
+    : (workspaceName || tenantName || (isPersonal ? "Personal Vault" : "Business"));
 
   function handleNavClick(sectionId) {
     onNavigate(sectionId);
@@ -103,8 +102,8 @@ export default function Sidebar({ currentSection, onNavigate, onClose, tenantNam
             style={{ width: "32px", height: "32px", borderRadius: "8px" }}
           />
           <div>
-            <div className="brandName">{isPersonal ? brandLabel : isAuto ? (tenantName || "Demo Motors") : "TitleApp AI"}</div>
-            <div className="brandSub">{isPersonal ? "TitleApp Vault" : isAuto ? "TitleApp Auto" : (tenantName || "Business")}</div>
+            <div className="brandName">{isPersonal ? brandLabel : (workspaceName || "TitleApp AI")}</div>
+            <div className="brandSub">{isPersonal ? "TitleApp Vault" : {auto: "Auto Dealer", analyst: "Investment Analyst", "real-estate": "Real Estate", aviation: "Aviation"}[vertical] || "Business"}</div>
           </div>
         </div>
         <button

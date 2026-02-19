@@ -178,14 +178,14 @@ export default function Staff() {
         </div>
       )}
 
-      {/* Chief of Staff — always present */}
+      {/* AI Assistant — always present */}
       <div className="card" style={{ marginBottom: "16px", padding: "16px 20px" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
             <div style={{ width: "40px", height: "40px", borderRadius: "50%", background: "#7c3aed", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: 700, fontSize: "14px" }}>AI</div>
             <div>
               <div style={{ fontWeight: 600, fontSize: "15px" }}>{(() => { try { return JSON.parse(localStorage.getItem("COS_CONFIG") || "{}").name; } catch(e) { return null; } })() || "Fred"}</div>
-              <div style={{ fontSize: "13px", color: "#64748b" }}>Chief of Staff &middot; AI Team Member</div>
+              <div style={{ fontSize: "13px", color: "#64748b" }}>AI Assistant &middot; AI Team Member</div>
             </div>
           </div>
           <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>

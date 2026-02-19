@@ -215,11 +215,11 @@ function PersonalSettings() {
         </div>
       </div>
 
-      {/* Chief of Staff */}
+      {/* AI Assistant */}
       <div className="card" style={{ marginBottom: "16px", border: "1px solid #e9d5ff" }}>
         <div className="cardHeader">
           <div>
-            <div className="cardTitle">Chief of Staff</div>
+            <div className="cardTitle">AI Assistant</div>
             <div className="cardSub">Your personal AI assistant configuration</div>
           </div>
         </div>
@@ -233,7 +233,7 @@ function PersonalSettings() {
             lineHeight: "1.6",
             marginBottom: "20px",
           }}>
-            Your Chief of Staff manages follow-ups, tracks deadlines, and communicates on your behalf within the boundaries you set. Name them, choose how they reach you, and decide how much autonomy they get.
+            Your AI assistant manages follow-ups, tracks deadlines, and communicates on your behalf within the boundaries you set. Name them, choose how they reach you, and decide how much autonomy they get.
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: "18px" }}>
@@ -255,7 +255,7 @@ function PersonalSettings() {
               <label style={{ display: "block", marginBottom: "6px", fontWeight: 600, fontSize: "13px" }}>Title</label>
               <input
                 type="text"
-                value="Chief of Staff"
+                value="AI Assistant"
                 disabled
                 style={{ width: "100%", padding: "10px", borderRadius: "12px", border: "1px solid var(--line)", background: "#f8fafc", color: "#94a3b8" }}
               />
@@ -563,8 +563,10 @@ function BusinessSettings() {
     marine: "Marine",
   };
 
+  const workspaceName = localStorage.getItem("WORKSPACE_NAME") || "";
+
   const [business, setBusiness] = useState({
-    name: "",
+    name: workspaceName,
     type: VERTICAL_LABELS[vertical] || vertical,
     vertical,
     jurisdiction,
@@ -621,41 +623,17 @@ function BusinessSettings() {
   }, []);
 
   async function loadMyCompanies() {
-    try {
-      const result = await api.getMemberships({ vertical, jurisdiction });
-      if (result.ok && result.memberships?.length > 0) {
-        const companies = result.memberships.map((m) => {
-          const tenant = result.tenants?.[m.tenantId];
-          return {
-            id: m.tenantId,
-            name: tenant?.name || m.tenantId,
-            type: VERTICAL_LABELS[tenant?.vertical || vertical] || tenant?.vertical || vertical,
-            role: m.role || "member",
-          };
-        });
-        setMyCompanies(companies);
-
-        const firstTenant = result.tenants?.[result.memberships[0].tenantId];
-        if (firstTenant) {
-          setBusiness((prev) => ({
-            ...prev,
-            name: firstTenant.name || prev.name,
-            type: VERTICAL_LABELS[firstTenant.vertical || vertical] || prev.type,
-            vertical: firstTenant.vertical || vertical,
-            jurisdiction: firstTenant.jurisdiction || jurisdiction,
-            email: firstTenant.email || prev.email,
-            phone: firstTenant.phone || prev.phone,
-            address: firstTenant.address || prev.address,
-          }));
-        }
-
-        if (!currentTenantId && companies.length > 0) {
-          setCurrentTenantId(companies[0].id);
-        }
-      }
-    } catch (e) {
-      console.error("Failed to load companies:", e);
-    }
+    // Build company list from current workspace context (avoids stale tenant data bleed)
+    const wsId = localStorage.getItem("WORKSPACE_ID") || "";
+    const wsName = localStorage.getItem("WORKSPACE_NAME") || "";
+    const currentCompany = {
+      id: wsId,
+      name: wsName || "Current Workspace",
+      type: VERTICAL_LABELS[vertical] || vertical,
+      role: "admin",
+    };
+    setMyCompanies([currentCompany]);
+    if (!currentTenantId) setCurrentTenantId(wsId);
   }
 
   function switchTenant(tenantId) {
@@ -946,11 +924,11 @@ function BusinessSettings() {
           <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '8px' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '14px' }}>
               <div>&#10003; Unlimited deal analysis</div>
-              <div>&#10003; AI Chief of Staff</div>
-              <div>&#10003; COS deal sourcing (overnight scans)</div>
+              <div>&#10003; AI Assistant</div>
+              <div>&#10003; AI deal sourcing (overnight scans)</div>
               <div>&#10003; Risk scoring & RAAS validation</div>
               <div>&#10003; IC-ready report generation</div>
-              <div>&#10003; Email/text outreach from COS</div>
+              <div>&#10003; Email/text outreach from AI</div>
               <div>&#10003; Team collaboration (per seat)</div>
               <div>&#10003; Services & fee tracking</div>
             </div>

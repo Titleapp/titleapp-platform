@@ -248,7 +248,7 @@ function ConsumerDashboard() {
           <div style={{ fontWeight: 700, fontSize: "15px", color: "#1e293b", marginBottom: "4px" }}>My GPTs</div>
           <div style={{ fontSize: "12px", color: "#64748b", marginBottom: "14px" }}>Your specialized AI assistants</div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "14px" }}>
-            <span style={{ fontSize: "12px", fontWeight: 600, padding: "4px 10px", borderRadius: "20px", background: "#f3e8ff", color: "#7c3aed" }}>Chief of Staff</span>
+            <span style={{ fontSize: "12px", fontWeight: 600, padding: "4px 10px", borderRadius: "20px", background: "#f3e8ff", color: "#7c3aed" }}>AI Assistant</span>
           </div>
           <button
             onClick={() => window.dispatchEvent(new CustomEvent("ta:navigate", { detail: { section: "ai-chats" } }))}
@@ -366,10 +366,10 @@ export default function Dashboard() {
   ]);
 
   const [autoRecentActivity] = useState([
-    "COS sent service reminder to Lawrence Foster -- confirmed for Monday 7:00 AM",
-    "COS generated Facebook listing for 2025 Camry LE (Stock N25000, 70 days)",
+    "AI sent service reminder to Lawrence Foster -- confirmed for Monday 7:00 AM",
+    "AI generated Facebook listing for 2025 Camry LE (Stock N25000, 70 days)",
     "Price alert: 2022 Ford Explorer XLT -- 126 days on lot -- markdown recommended",
-    "COS identified 4 lease-expiring customers for Q1 outreach",
+    "AI identified 4 lease-expiring customers for Q1 outreach",
   ]);
 
   const [opportunities, setOpportunities] = useState([
@@ -674,7 +674,7 @@ export default function Dashboard() {
           </div>
           {(isAnalyst || isAuto) && valueTracker.valueSaved > 0 && (
             <div style={{ marginTop: "12px", padding: "8px 12px", background: "#f0fdf4", borderRadius: "6px", fontSize: "13px", color: "#16a34a", textAlign: "center", fontWeight: 500 }}>
-              Your Chief of Staff has delivered ${valueTracker.valueSaved.toLocaleString()} in value this month — a {Math.round(valueTracker.valueSaved / 9)}x return on your $9 investment
+              Your AI has delivered ${valueTracker.valueSaved.toLocaleString()} in value this month — a {Math.round(valueTracker.valueSaved / 9)}x return on your $9 investment
             </div>
           )}
         </div>
@@ -687,7 +687,7 @@ export default function Dashboard() {
             <h2 style={{ fontSize: "20px", fontWeight: 700, margin: 0 }}>While You Were Out...</h2>
             <p style={{ fontSize: "14px", color: "var(--muted)", margin: "4px 0 0" }}>
               {opportunities.length > 0
-                ? `Your Chief of Staff found ${opportunities.length} opportunit${opportunities.length === 1 ? "y" : "ies"} matching your investment criteria`
+                ? `Your AI found ${opportunities.length} opportunit${opportunities.length === 1 ? "y" : "ies"} matching your investment criteria`
                 : ""}
             </p>
           </div>
@@ -767,19 +767,119 @@ export default function Dashboard() {
             </div>
           ) : (
             <div className="card" style={{ padding: "24px", textAlign: "center", color: "var(--muted)", fontSize: "14px" }}>
-              No new opportunities. Your Chief of Staff is scanning for matches.
+              No new opportunities. Your AI is scanning for matches.
             </div>
           )}
         </div>
       )}
 
-      {/* While You Were Out -- Auto dealer COS activity */}
+      {/* Auto Dealer — Operational Tracks */}
       {isAuto && (
         <div style={{ marginTop: "14px" }}>
+
+          {/* Sales Track */}
+          <div className="card" style={{ marginBottom: "14px", padding: "20px" }}>
+            <div style={{ fontWeight: 700, fontSize: "16px", color: "#1e293b", marginBottom: "4px" }}>Sales Track</div>
+            <div style={{ fontSize: "13px", color: "#64748b", marginBottom: "16px" }}>Active pipeline and lead activity</div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "12px", marginBottom: "16px" }}>
+              <div style={{ padding: "12px", background: "#f8fafc", borderRadius: "8px", textAlign: "center" }}>
+                <div style={{ fontSize: "24px", fontWeight: 800 }}>8</div>
+                <div style={{ fontSize: "12px", color: "#64748b" }}>Active Deals</div>
+              </div>
+              <div style={{ padding: "12px", background: "#f8fafc", borderRadius: "8px", textAlign: "center" }}>
+                <div style={{ fontSize: "24px", fontWeight: 800 }}>$291,600</div>
+                <div style={{ fontSize: "12px", color: "#64748b" }}>Pipeline Value</div>
+              </div>
+              <div style={{ padding: "12px", background: "#f8fafc", borderRadius: "8px", textAlign: "center" }}>
+                <div style={{ fontSize: "24px", fontWeight: 800 }}>3</div>
+                <div style={{ fontSize: "12px", color: "#64748b" }}>Appointments Today</div>
+              </div>
+              <div style={{ padding: "12px", background: "#f8fafc", borderRadius: "8px", textAlign: "center" }}>
+                <div style={{ fontSize: "24px", fontWeight: 800, color: "#dc2626" }}>4</div>
+                <div style={{ fontSize: "12px", color: "#64748b" }}>Hot Leads</div>
+              </div>
+            </div>
+            {/* Mini funnel */}
+            <div style={{ display: "flex", gap: "4px", alignItems: "flex-end", height: "40px" }}>
+              {[
+                { label: "Lead", count: 2, color: "#64748b" },
+                { label: "Contacted", count: 2, color: "#2563eb" },
+                { label: "Test Drive", count: 1, color: "#7c3aed" },
+                { label: "Negotiation", count: 2, color: "#d97706" },
+                { label: "F&I Desk", count: 1, color: "#16a34a" },
+                { label: "Sold", count: 2, color: "#059669" },
+              ].map((s, i) => (
+                <div key={i} style={{ flex: 1, textAlign: "center" }}>
+                  <div style={{ height: `${Math.max(12, s.count * 14)}px`, background: s.color, borderRadius: "4px 4px 0 0", marginBottom: "4px" }} />
+                  <div style={{ fontSize: "10px", color: "#64748b" }}>{s.label}</div>
+                  <div style={{ fontSize: "12px", fontWeight: 700, color: s.color }}>{s.count}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Service Track + Inventory Track side by side */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px", marginBottom: "14px" }}>
+            {/* Service Track */}
+            <div className="card" style={{ padding: "20px" }}>
+              <div style={{ fontWeight: 700, fontSize: "16px", color: "#1e293b", marginBottom: "4px" }}>Service Track</div>
+              <div style={{ fontSize: "13px", color: "#64748b", marginBottom: "16px" }}>Today's service operations</div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                <div style={{ padding: "10px", background: "#f8fafc", borderRadius: "8px" }}>
+                  <div style={{ fontSize: "20px", fontWeight: 800 }}>8</div>
+                  <div style={{ fontSize: "12px", color: "#64748b" }}>Appointments</div>
+                </div>
+                <div style={{ padding: "10px", background: "#f8fafc", borderRadius: "8px" }}>
+                  <div style={{ fontSize: "20px", fontWeight: 800 }}>$1,676</div>
+                  <div style={{ fontSize: "12px", color: "#64748b" }}>Revenue Today</div>
+                </div>
+                <div style={{ padding: "10px", background: "#fff7ed", borderRadius: "8px" }}>
+                  <div style={{ fontSize: "20px", fontWeight: 800, color: "#d97706" }}>5</div>
+                  <div style={{ fontSize: "12px", color: "#64748b" }}>Upsell Opps</div>
+                </div>
+                <div style={{ padding: "10px", background: "#f8fafc", borderRadius: "8px" }}>
+                  <div style={{ fontSize: "20px", fontWeight: 800 }}>6/8</div>
+                  <div style={{ fontSize: "12px", color: "#64748b" }}>Confirmed</div>
+                </div>
+              </div>
+              <div style={{ marginTop: "12px", padding: "10px", background: "#f0fdf4", borderRadius: "8px", fontSize: "13px", color: "#16a34a" }}>
+                2 service customers matched to sales opportunities
+              </div>
+            </div>
+
+            {/* Inventory Track */}
+            <div className="card" style={{ padding: "20px" }}>
+              <div style={{ fontWeight: 700, fontSize: "16px", color: "#1e293b", marginBottom: "4px" }}>Inventory Track</div>
+              <div style={{ fontSize: "13px", color: "#64748b", marginBottom: "16px" }}>Lot status and acquisition</div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                <div style={{ padding: "10px", background: "#f8fafc", borderRadius: "8px" }}>
+                  <div style={{ fontSize: "20px", fontWeight: 800 }}>85</div>
+                  <div style={{ fontSize: "12px", color: "#64748b" }}>New (avg 42 days)</div>
+                </div>
+                <div style={{ padding: "10px", background: "#f8fafc", borderRadius: "8px" }}>
+                  <div style={{ fontSize: "20px", fontWeight: 800 }}>150</div>
+                  <div style={{ fontSize: "12px", color: "#64748b" }}>Used (avg 67 days)</div>
+                </div>
+                <div style={{ padding: "10px", background: "#fef2f2", borderRadius: "8px" }}>
+                  <div style={{ fontSize: "20px", fontWeight: 800, color: "#dc2626" }}>12</div>
+                  <div style={{ fontSize: "12px", color: "#dc2626" }}>Over 90 days</div>
+                </div>
+                <div style={{ padding: "10px", background: "#f8fafc", borderRadius: "8px" }}>
+                  <div style={{ fontSize: "20px", fontWeight: 800 }}>6</div>
+                  <div style={{ fontSize: "12px", color: "#64748b" }}>Acquired This Week</div>
+                </div>
+              </div>
+              <div style={{ marginTop: "12px", fontSize: "13px", color: "#64748b", lineHeight: 1.6 }}>
+                3 trade-ins, 2 auction wins, 1 wholesale purchase. Total acquisition cost: $142,500.
+              </div>
+            </div>
+          </div>
+
+          {/* While You Were Out */}
           <div style={{ marginBottom: "12px" }}>
             <h2 style={{ fontSize: "20px", fontWeight: 700, margin: 0 }}>While You Were Out...</h2>
             <p style={{ fontSize: "14px", color: "var(--muted)", margin: "4px 0 0" }}>
-              Your Chief of Staff found {cosActivity.length} revenue opportunities overnight
+              Your AI found {cosActivity.length} revenue opportunities overnight
             </p>
           </div>
           {cosActivity.length > 0 ? (
@@ -788,14 +888,8 @@ export default function Dashboard() {
                 <div key={item.id} className="card" style={{ padding: "20px" }}>
                   <div style={{ marginBottom: "10px", display: "flex", alignItems: "center", gap: "8px" }}>
                     <span style={{
-                      display: "inline-block",
-                      fontSize: "11px",
-                      fontWeight: 600,
-                      padding: "2px 10px",
-                      borderRadius: "9999px",
-                      background: `${item.badgeColor}18`,
-                      color: item.badgeColor,
-                      letterSpacing: "0.02em",
+                      display: "inline-block", fontSize: "11px", fontWeight: 600, padding: "2px 10px",
+                      borderRadius: "9999px", background: `${item.badgeColor}18`, color: item.badgeColor, letterSpacing: "0.02em",
                     }}>{item.badge}</span>
                     {item.urgency === "high" && (
                       <span style={{ fontSize: "11px", fontWeight: 600, color: "#dc2626" }}>URGENT</span>
@@ -813,47 +907,15 @@ export default function Dashboard() {
                   </div>
                   <div style={{ display: "flex", gap: "8px" }}>
                     <button
-                      style={{
-                        flex: 1,
-                        padding: "8px 14px",
-                        fontSize: "13px",
-                        fontWeight: 600,
-                        border: "none",
-                        borderRadius: "8px",
-                        cursor: "pointer",
-                        color: "#fff",
-                        background: "linear-gradient(135deg, #7c3aed, #6d28d9)",
-                      }}
-                      onClick={() => window.dispatchEvent(new CustomEvent("ta:chatPrompt", {
-                        detail: { message: "Draft and send the outreach for " + item.title.split(" -- ")[1] + ". " + item.detail }
-                      }))}
-                    >Let COS Handle It</button>
+                      style={{ flex: 1, padding: "8px 14px", fontSize: "13px", fontWeight: 600, border: "none", borderRadius: "8px", cursor: "pointer", color: "#fff", background: "linear-gradient(135deg, #7c3aed, #6d28d9)" }}
+                      onClick={() => window.dispatchEvent(new CustomEvent("ta:chatPrompt", { detail: { message: "Draft and send the outreach for " + item.title.split(" -- ")[1] + ". " + item.detail } }))}
+                    >Let AI Handle It</button>
                     <button
-                      style={{
-                        padding: "8px 14px",
-                        fontSize: "13px",
-                        fontWeight: 600,
-                        border: "1px solid var(--border, #e2e8f0)",
-                        borderRadius: "8px",
-                        cursor: "pointer",
-                        background: "transparent",
-                        color: "var(--fg, #334155)",
-                      }}
-                      onClick={() => window.dispatchEvent(new CustomEvent("ta:chatPrompt", {
-                        detail: { message: "Show me the details for this opportunity: " + item.title + ". " + item.detail }
-                      }))}
+                      style={{ padding: "8px 14px", fontSize: "13px", fontWeight: 600, border: "1px solid var(--border, #e2e8f0)", borderRadius: "8px", cursor: "pointer", background: "transparent", color: "var(--fg, #334155)" }}
+                      onClick={() => window.dispatchEvent(new CustomEvent("ta:chatPrompt", { detail: { message: "Show me the details for this opportunity: " + item.title + ". " + item.detail } }))}
                     >Review First</button>
                     <button
-                      style={{
-                        padding: "8px 14px",
-                        fontSize: "13px",
-                        fontWeight: 600,
-                        border: "none",
-                        borderRadius: "8px",
-                        cursor: "pointer",
-                        background: "transparent",
-                        color: "#94a3b8",
-                      }}
+                      style={{ padding: "8px 14px", fontSize: "13px", fontWeight: 600, border: "none", borderRadius: "8px", cursor: "pointer", background: "transparent", color: "#94a3b8" }}
                       onClick={() => setCosActivity(prev => prev.filter(c => c.id !== item.id))}
                     >Dismiss</button>
                   </div>
@@ -862,27 +924,9 @@ export default function Dashboard() {
             </div>
           ) : (
             <div className="card" style={{ padding: "24px", textAlign: "center", color: "var(--muted)", fontSize: "14px" }}>
-              No new opportunities. Your Chief of Staff is monitoring the lot and customer database.
+              No new opportunities. Your AI is monitoring the lot and customer database.
             </div>
           )}
-
-          {/* Auto Recent Activity Feed */}
-          <div className="card" style={{ marginTop: "14px" }}>
-            <div className="cardHeader">
-              <div>
-                <div className="cardTitle">COS Activity Log</div>
-                <div className="cardSub">What your Chief of Staff has been doing</div>
-              </div>
-            </div>
-            <div style={{ padding: "0 20px 16px" }}>
-              {autoRecentActivity.map((activity, idx) => (
-                <div key={idx} style={{ display: "flex", alignItems: "flex-start", gap: "10px", padding: "10px 0", borderBottom: idx < autoRecentActivity.length - 1 ? "1px solid #f1f5f9" : "none" }}>
-                  <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#7c3aed", marginTop: "7px", flexShrink: 0 }} />
-                  <div style={{ fontSize: "14px", color: "#334155", lineHeight: 1.5 }}>{activity}</div>
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
       )}
 

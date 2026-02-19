@@ -16,14 +16,28 @@ const PERSONAL_VAULT = {
 };
 
 async function getUserWorkspaces(userId) {
+  // Simple get — no composite index needed. Max 10 business workspaces per user.
   const snap = await getDb().collection('users').doc(userId)
     .collection('workspaces')
-    .where('status', 'in', ['active', 'trial'])
-    .orderBy('createdAt', 'asc')
     .get();
 
   const workspaces = [PERSONAL_VAULT];
-  snap.forEach(doc => workspaces.push({ id: doc.id, ...doc.data() }));
+  snap.forEach(doc => {
+    const data = { id: doc.id, ...doc.data() };
+    if (data.status === 'active' || data.status === 'trial') {
+      workspaces.push(data);
+    }
+  });
+
+  // Sort by creation time (Personal Vault stays first)
+  workspaces.sort((a, b) => {
+    if (a.isDefault) return -1;
+    if (b.isDefault) return 1;
+    const aTime = a.createdAt?.toMillis ? a.createdAt.toMillis() : (a.createdAt?._seconds ? a.createdAt._seconds * 1000 : 0);
+    const bTime = b.createdAt?.toMillis ? b.createdAt.toMillis() : (b.createdAt?._seconds ? b.createdAt._seconds * 1000 : 0);
+    return aTime - bTime;
+  });
+
   return workspaces;
 }
 
@@ -45,8 +59,27 @@ async function createWorkspace(userId, { vertical, name, tagline, jurisdiction }
     config: {},
   };
 
-  await getDb().collection('users').doc(userId)
-    .collection('workspaces').doc(id).set(workspace);
+  const batch = getDb().batch();
+
+  // Create the workspace doc
+  batch.set(
+    getDb().collection('users').doc(userId).collection('workspaces').doc(id),
+    workspace
+  );
+
+  // Create matching membership so tenant gate passes
+  batch.set(
+    getDb().collection('memberships').doc(),
+    {
+      userId,
+      tenantId: id,
+      role: 'admin',
+      status: 'active',
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    }
+  );
+
+  await batch.commit();
 
   return workspace;
 }

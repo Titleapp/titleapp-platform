@@ -51,14 +51,14 @@ function AutoCustomers() {
       <div className="pageHeader">
         <div>
           <h1 className="h1">Customers</h1>
-          <p className="subtle">{AUTO_CUSTOMERS.length} customers -- {actionableCount} with COS insights</p>
+          <p className="subtle">{AUTO_CUSTOMERS.length} customers -- {actionableCount} with AI insights</p>
         </div>
         <button
           className="iconBtn"
           onClick={() => openChat("Give me a customer outreach priority list. Who should I contact first and why?")}
           style={{ background: "linear-gradient(135deg, #7c3aed, #6d28d9)", color: "white", border: "none" }}
         >
-          COS Outreach Plan
+          AI Outreach Plan
         </button>
       </div>
 
@@ -84,7 +84,7 @@ function AutoCustomers() {
           style={{ padding: "10px 16px", borderRadius: "12px", border: "1px solid var(--line)", fontSize: "14px" }}
         >
           <option value="all">All Customers</option>
-          <option value="actionable">COS Insights Only</option>
+          <option value="actionable">AI Insights Only</option>
         </select>
       </div>
 
@@ -100,7 +100,7 @@ function AutoCustomers() {
                 <th>Last Service</th>
                 <th>Visits</th>
                 <th>Satisfaction</th>
-                <th>COS Insight</th>
+                <th>AI Insight</th>
               </tr>
             </thead>
             <tbody>
@@ -110,7 +110,7 @@ function AutoCustomers() {
                   <tr
                     key={c.id}
                     style={{ cursor: "pointer" }}
-                    onClick={() => openChat(`Tell me about ${c.name} and what we should do. They drive a ${c.vehicle}, purchased ${c.purchaseDate}, ${c.visits} service visits, satisfaction: ${c.satisfaction}.${c.cosInsight ? " COS insight: " + c.cosInsight + "." : ""}`)}
+                    onClick={() => openChat(`Tell me about ${c.name} and what we should do. They drive a ${c.vehicle}, purchased ${c.purchaseDate}, ${c.visits} service visits, satisfaction: ${c.satisfaction}.${c.cosInsight ? " AI insight: " + c.cosInsight + "." : ""}`)}
                   >
                     <td className="tdStrong">{c.name}</td>
                     <td>{c.vehicle}</td>

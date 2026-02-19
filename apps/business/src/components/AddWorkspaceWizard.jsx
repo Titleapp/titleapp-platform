@@ -1,10 +1,16 @@
 import React, { useState } from 'react';
 
+const VERTICAL_ABBREVS = {
+  auto: 'AD',
+  analyst: 'IA',
+  'real-estate': 'RE',
+  aviation: 'AV',
+};
+
 const VERTICALS = [
   {
     id: 'auto',
     label: 'Auto Dealer',
-    icon: '\u{1F697}',
     description: 'Manage inventory, sales, service, and compliance',
     cosManages: [
       'Vehicle inventory and aging alerts',
@@ -16,7 +22,6 @@ const VERTICALS = [
   {
     id: 'analyst',
     label: 'Investment Analyst',
-    icon: '\u{1F4CA}',
     description: 'Analyze deals, portfolio, and risk',
     cosManages: [
       'Deal screening and analysis',
@@ -28,7 +33,6 @@ const VERTICALS = [
   {
     id: 'real-estate',
     label: 'Real Estate',
-    icon: '\u{1F3E0}',
     description: 'Manage listings, tenants, and closings',
     cosManages: [
       'Property listings and showings',
@@ -40,7 +44,6 @@ const VERTICALS = [
   {
     id: 'aviation',
     label: 'Aviation',
-    icon: '\u2708\uFE0F',
     description: 'Track aircraft, flights, and certifications',
     cosManages: [
       'Aircraft records and maintenance',
@@ -209,7 +212,12 @@ export default function AddWorkspaceWizard({ existingWorkspaces, onCreated, onCa
                     e.currentTarget.style.background = 'white';
                   }}
                 >
-                  <div style={{ fontSize: 32, marginBottom: 8 }}>{v.icon}</div>
+                  <div style={{
+                    width: 40, height: 40, borderRadius: 8, backgroundColor: '#f1f5f9',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 14, fontWeight: 700, color: '#475569', marginBottom: 8, margin: '0 auto 8px',
+                    letterSpacing: 1,
+                  }}>{VERTICAL_ABBREVS[v.id] || v.id.slice(0, 2).toUpperCase()}</div>
                   <div style={{ fontWeight: 600, fontSize: 14, color: '#1e293b', marginBottom: 4 }}>
                     {v.label}
                   </div>
@@ -358,7 +366,11 @@ export default function AddWorkspaceWizard({ existingWorkspaces, onCreated, onCa
 
             <div style={{ background: 'white', borderRadius: 12, padding: 24 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-                <span style={{ fontSize: 28 }}>{verticalInfo.icon}</span>
+                <div style={{
+                  width: 36, height: 36, borderRadius: 8, backgroundColor: '#f1f5f9',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 13, fontWeight: 700, color: '#475569', letterSpacing: 1, flexShrink: 0,
+                }}>{VERTICAL_ABBREVS[verticalInfo.id] || verticalInfo.id.slice(0, 2).toUpperCase()}</div>
                 <div>
                   <div style={{ fontWeight: 600, fontSize: 16, color: '#1e293b' }}>{name}</div>
                   <div style={{ fontSize: 13, color: '#64748b' }}>
@@ -373,7 +385,7 @@ export default function AddWorkspaceWizard({ existingWorkspaces, onCreated, onCa
 
               <div style={{ marginBottom: 16 }}>
                 <div style={{ fontSize: 13, fontWeight: 600, color: '#334155', marginBottom: 8 }}>
-                  Your AI Chief of Staff will manage:
+                  Your AI assistant will manage:
                 </div>
                 {verticalInfo.cosManages.map((item, i) => (
                   <div key={i} style={{ fontSize: 13, color: '#475569', padding: '3px 0', paddingLeft: 16, position: 'relative' }}>

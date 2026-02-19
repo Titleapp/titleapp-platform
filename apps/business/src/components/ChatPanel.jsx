@@ -28,7 +28,7 @@ const PERSONAL_CONTEXTUAL_MESSAGES = {
   "my-documents": "Your important documents. I can help you store and organize IDs, contracts, tax records, insurance policies, and anything else that matters.",
   "my-certifications": "Your certifications and credentials. I can help you add licenses, track expiration dates, and set up renewal reminders.",
   "my-logbook": "Your activity logbook. Every Digital Title Certificate and action is recorded here permanently.",
-  settings: "Your Vault settings. You can update your profile, configure your Chief of Staff, and manage notification preferences.",
+  settings: "Your Vault settings. You can update your profile, configure your AI assistant, and manage notification preferences.",
 };
 
 export default function ChatPanel({ currentSection, onboardingStep }) {
@@ -416,8 +416,8 @@ export default function ChatPanel({ currentSection, onboardingStep }) {
         <span>{(() => {
           try {
             const cfg = JSON.parse(localStorage.getItem('COS_CONFIG') || '{}');
-            return cfg.name ? `${cfg.name} -- Chief of Staff` : 'Chief of Staff';
-          } catch { return 'Chief of Staff'; }
+            return cfg.name ? `${cfg.name} -- AI Assistant` : 'AI Assistant';
+          } catch { return 'AI Assistant'; }
         })()}</span>
       </div>
 
@@ -427,10 +427,10 @@ export default function ChatPanel({ currentSection, onboardingStep }) {
             {(() => {
               const v = localStorage.getItem('VERTICAL') || 'auto';
               if (v === 'consumer') {
-                let cosName = 'your personal Chief of Staff';
+                let cosName = 'your AI assistant';
                 try {
                   const cfg = JSON.parse(localStorage.getItem('COS_CONFIG') || '{}');
-                  if (cfg.name) cosName = `${cfg.name}, your Chief of Staff`;
+                  if (cfg.name) cosName = `${cfg.name}, your AI assistant`;
                 } catch {}
                 return (
                   <>
@@ -456,10 +456,10 @@ export default function ChatPanel({ currentSection, onboardingStep }) {
                   <p>Please sign in to start chatting.</p>
                 );
               }
-              let cosLabel = 'your Chief of Staff';
+              let cosLabel = 'your AI assistant';
               try {
                 const cfg2 = JSON.parse(localStorage.getItem('COS_CONFIG') || '{}');
-                if (cfg2.name) cosLabel = `${cfg2.name}, your Chief of Staff`;
+                if (cfg2.name) cosLabel = `${cfg2.name}, your AI assistant`;
               } catch {}
               return (
                 <>

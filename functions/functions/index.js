@@ -151,6 +151,22 @@ async function requireMembershipIfNeeded({ uid, tenantId }, res) {
     .get();
 
   if (snap.empty) {
+    // Auto-repair: if tenantId is a workspace that belongs to this user, create the membership
+    if (tenantId.startsWith("ws_")) {
+      const wsDoc = await db.collection("users").doc(uid)
+        .collection("workspaces").doc(tenantId).get();
+      if (wsDoc.exists) {
+        console.log("Auto-creating missing membership for workspace:", tenantId);
+        const memRef = await db.collection("memberships").add({
+          userId: uid,
+          tenantId,
+          role: "admin",
+          status: "active",
+          createdAt: nowServerTs(),
+        });
+        return { ok: true, membership: { id: memRef.id, userId: uid, tenantId, role: "admin", status: "active" } };
+      }
+    }
     return jsonError(res, 403, "Forbidden", { reason: "No active membership", uid, tenantId });
   }
 
@@ -211,7 +227,7 @@ function setCorsHeaders(req, res) {
   if (ALLOWED_ORIGINS.includes(origin)) {
     res.set('Access-Control-Allow-Origin', origin);
   }
-  res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Tenant-Id, X-Vertical, X-Jurisdiction');
   res.set('Access-Control-Max-Age', '3600');
 }
