@@ -166,6 +166,7 @@ export default function WorkspaceHub({ userName, onLaunch }) {
     localStorage.setItem('VERTICAL', workspace.vertical);
     localStorage.setItem('WORKSPACE_ID', workspace.id);
     localStorage.setItem('WORKSPACE_NAME', workspace.name);
+    localStorage.setItem('COMPANY_NAME', workspace.name);
     localStorage.setItem('TENANT_NAME', workspace.name);
 
     if (workspace.jurisdiction) {

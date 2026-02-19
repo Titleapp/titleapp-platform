@@ -2,21 +2,35 @@ import React, { useState, useEffect } from "react";
 import * as api from "../api/client";
 
 const AUTO_WEEKLY_REVENUE = [
-  { week: "Jan 27", sales: 412000, service: 18200 },
-  { week: "Feb 3", sales: 385000, service: 21400 },
-  { week: "Feb 10", sales: 448000, service: 19800 },
-  { week: "Feb 17", sales: 396000, service: 22100 },
+  { week: "Week 1", sales: 287400, units: 11 },
+  { week: "Week 2", sales: 318600, units: 12 },
+  { week: "Week 3", sales: 265200, units: 10 },
+  { week: "Week 4", sales: 376600, units: 14 },
 ];
 
 const AUTO_RECENT_EVENTS = [
-  { id: 1, time: "2h ago", text: "AI identified upsell for Charles Cox -- $3,450 potential (Extra Care Gold)", color: "#d97706" },
-  { id: 2, time: "4h ago", text: "Trade-in appraisal completed -- 2021 BMW X3 xDrive30i, est. $28,500", color: "#7c3aed" },
-  { id: 3, time: "6h ago", text: "Maria Gonzalez moved to Contacted stage -- lease expiring outreach sent", color: "#2563eb" },
-  { id: 4, time: "Yesterday", text: "Patricia Adams -- Camry LE delivered. Extra Care Gold + GAP added.", color: "#16a34a" },
-  { id: 5, time: "Yesterday", text: "AI sent 4 lease-expiration offers to qualifying customers", color: "#7c3aed" },
-  { id: 6, time: "2 days ago", text: "Price reduction on 2022 Ford Explorer XLT -- $34,169 to $31,999", color: "#dc2626" },
-  { id: 7, time: "2 days ago", text: "Daniel Green -- GR86 Premium cash deal closed. ToyoGuard added.", color: "#16a34a" },
-  { id: 8, time: "3 days ago", text: "AI generated Facebook Marketplace listing for 2025 Camry LE (Stock N25000)", color: "#7c3aed" },
+  { id: 1, time: "2h ago", text: "AI identified lease expiration upsell -- Maria Gonzalez, 2024 Corolla LE. Potential: $2,800", color: "#7c3aed" },
+  { id: 2, time: "5h ago", text: "Jake Rivera closed deal -- Robert Chen, 2025 Camry XSE, $32,800", color: "#16a34a" },
+  { id: 3, time: "8h ago", text: "AI sent service reminder -- Charles Cox, 60K Major Service", color: "#7c3aed" },
+  { id: 4, time: "1d ago", text: "Trade-in appraisal completed -- 2021 BMW X3 xDrive30i, $28,500", color: "#d97706" },
+  { id: 5, time: "1d ago", text: "AI drafted conquest offer -- Amanda Liu, 2025 RAV4 XLE", color: "#7c3aed" },
+  { id: 6, time: "2d ago", text: "Lisa Chen moved Mark Brown to Negotiation -- 2025 RAV4 XLE, $37,500", color: "#2563eb" },
+  { id: 7, time: "2d ago", text: "AI scheduled test drive -- Sandra Lee, 2025 Highlander XLE", color: "#7c3aed" },
+  { id: 8, time: "3d ago", text: "Service-to-sales flag -- Angela Williams, 2021 Prius Prime, hybrid battery aging", color: "#dc2626" },
+  { id: 9, time: "4d ago", text: "AI sent post-purchase follow-up -- 12 customers, 7-day check-in", color: "#7c3aed" },
+  { id: 10, time: "5d ago", text: "Inventory alert -- 2021 BMW X3 hit 143 days on lot, recommend price reduction", color: "#dc2626" },
+];
+
+const AUTO_SALES_BY_SOURCE = [
+  { source: "Walk-In", sales: 12, revenue: 318600 },
+  { source: "Google Ads", sales: 10, revenue: 265500 },
+  { source: "Meta (FB/IG)", sales: 8, revenue: 212400 },
+  { source: "TrueCar", sales: 5, revenue: 132700 },
+  { source: "AutoTrader", sales: 4, revenue: 106200 },
+  { source: "Cars.com", sales: 3, revenue: 79600 },
+  { source: "CarGurus", sales: 2, revenue: 53100 },
+  { source: "Referral", sales: 2, revenue: 53100 },
+  { source: "Direct Mail", sales: 1, revenue: 26600 },
 ];
 
 export default function Reports() {
@@ -82,10 +96,10 @@ export default function Reports() {
     }
     if (isAuto) {
       return [
-        { label: "Total Revenue MTD", value: "$1,641,000" },
-        { label: "Units Sold", value: "47" },
-        { label: "Active Customers", value: "150" },
-        { label: "Avg Deal Size", value: "$34,915" },
+        { label: "Total Revenue", value: "$1,247,800" },
+        { label: "Total Sales", value: "47" },
+        { label: "Active Customers", value: "152" },
+        { label: "Avg Deal Size", value: "$26,549" },
       ];
     }
     return [
@@ -96,8 +110,97 @@ export default function Reports() {
     ];
   }
 
+  function exportCSV() {
+    const rows = [
+      ["TitleApp AI -- Monthly Report"],
+      ["Date Range", dateRange],
+      [""],
+      ["KPI", "Value"],
+      ...getKpiConfig().map(k => [k.label, k.value]),
+      [""],
+      ["Revenue Trend"],
+      ["Week", "Revenue", "Units"],
+      ...AUTO_WEEKLY_REVENUE.map(w => [w.week, `$${w.sales.toLocaleString()}`, w.units]),
+      [""],
+      ["Sales by Source"],
+      ["Source", "Sales", "Revenue"],
+      ...AUTO_SALES_BY_SOURCE.map(s => [s.source, s.sales, `$${s.revenue.toLocaleString()}`]),
+      [""],
+      ["Recent Activity"],
+      ["Time", "Event"],
+      ...AUTO_RECENT_EVENTS.map(e => [e.time, e.text]),
+    ];
+    const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `titleapp-report-${new Date().toISOString().split("T")[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function exportPDF() {
+    const win = window.open("", "_blank");
+    const kpis = getKpiConfig();
+    win.document.write(`<html><head><title>TitleApp AI Report</title><style>
+      body{font-family:system-ui,sans-serif;padding:40px;color:#1e293b}
+      h1{font-size:24px;margin-bottom:4px}
+      h2{font-size:18px;margin-top:24px;margin-bottom:8px;color:#475569}
+      .sub{color:#64748b;font-size:14px;margin-bottom:24px}
+      table{border-collapse:collapse;width:100%;margin-bottom:16px}
+      th,td{text-align:left;padding:8px 12px;border-bottom:1px solid #e2e8f0;font-size:13px}
+      th{font-weight:700;background:#f8fafc}
+      .kpis{display:flex;gap:16px;margin-bottom:24px}
+      .kpi{flex:1;padding:16px;border:1px solid #e2e8f0;border-radius:8px;text-align:center}
+      .kpi-label{font-size:12px;color:#64748b;text-transform:uppercase}
+      .kpi-value{font-size:24px;font-weight:800;margin-top:4px}
+      @media print{body{padding:20px}}
+    </style></head><body>`);
+    win.document.write(`<h1>TitleApp AI -- Monthly Report</h1><div class="sub">Generated ${new Date().toLocaleDateString()}</div>`);
+    win.document.write(`<div class="kpis">${kpis.map(k => `<div class="kpi"><div class="kpi-label">${k.label}</div><div class="kpi-value">${k.value}</div></div>`).join("")}</div>`);
+    win.document.write(`<h2>Revenue Trend</h2><table><tr><th>Week</th><th>Revenue</th><th>Units</th></tr>${AUTO_WEEKLY_REVENUE.map(w => `<tr><td>${w.week}</td><td>$${w.sales.toLocaleString()}</td><td>${w.units}</td></tr>`).join("")}</table>`);
+    win.document.write(`<h2>Sales by Source</h2><table><tr><th>Source</th><th>Sales</th><th>Revenue</th></tr>${AUTO_SALES_BY_SOURCE.map(s => `<tr><td>${s.source}</td><td>${s.sales}</td><td>$${s.revenue.toLocaleString()}</td></tr>`).join("")}</table>`);
+    win.document.write(`<h2>Recent Activity</h2><table><tr><th>Time</th><th>Event</th></tr>${AUTO_RECENT_EVENTS.map(e => `<tr><td>${e.time}</td><td>${e.text}</td></tr>`).join("")}</table>`);
+    win.document.write(`</body></html>`);
+    win.document.close();
+    setTimeout(() => win.print(), 300);
+  }
+
+  function exportExcel() {
+    // Generate CSV with .xlsx extension as lightweight Excel-compatible export
+    const rows = [
+      ["TitleApp AI -- Monthly Report"],
+      ["Date Range", dateRange],
+      [""],
+      ["KPI", "Value"],
+      ...getKpiConfig().map(k => [k.label, k.value]),
+      [""],
+      ["Revenue Trend"],
+      ["Week", "Revenue", "Units"],
+      ...AUTO_WEEKLY_REVENUE.map(w => [w.week, w.sales, w.units]),
+      [""],
+      ["Sales by Source"],
+      ["Source", "Sales", "Revenue"],
+      ...AUTO_SALES_BY_SOURCE.map(s => [s.source, s.sales, s.revenue]),
+      [""],
+      ["Recent Activity"],
+      ["Time", "Event"],
+      ...AUTO_RECENT_EVENTS.map(e => [e.time, e.text]),
+    ];
+    const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join("\t")).join("\n");
+    const blob = new Blob([csv], { type: "application/vnd.ms-excel" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `titleapp-report-${new Date().toISOString().split("T")[0]}.xlsx`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   const kpis = getKpiConfig();
   const maxRevenue = Math.max(...AUTO_WEEKLY_REVENUE.map(w => w.sales));
+  const maxSourceSales = Math.max(...AUTO_SALES_BY_SOURCE.map(s => s.sales));
 
   return (
     <div>
@@ -131,7 +234,7 @@ export default function Reports() {
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "16px" }}>
-        {/* Revenue Trend (Auto) or Analysis Activity (Analyst) */}
+        {/* Revenue Trend */}
         <div className="card">
           <div className="cardHeader">
             <div className="cardTitle">
@@ -143,20 +246,12 @@ export default function Reports() {
               <div style={{ display: "flex", gap: "16px", alignItems: "flex-end", height: "180px", padding: "0 8px" }}>
                 {AUTO_WEEKLY_REVENUE.map((w, i) => (
                   <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", height: "100%", justifyContent: "flex-end" }}>
-                    <div style={{ fontSize: "12px", fontWeight: 600, color: "#1e293b" }}>${(w.sales / 1000).toFixed(0)}K</div>
-                    <div style={{ width: "100%", background: "#7c3aed", borderRadius: "4px 4px 0 0", height: `${(w.sales / maxRevenue) * 120}px`, minHeight: "20px" }} />
-                    <div style={{ width: "100%", background: "#06b6d4", borderRadius: "4px 4px 0 0", height: `${(w.service / maxRevenue) * 120}px`, minHeight: "8px" }} />
+                    <div style={{ fontSize: "11px", fontWeight: 600, color: "#1e293b" }}>${(w.sales / 1000).toFixed(0)}K</div>
+                    <div style={{ fontSize: "10px", color: "#64748b" }}>{w.units} units</div>
+                    <div style={{ width: "100%", background: "#7c3aed", borderRadius: "4px 4px 0 0", height: `${(w.sales / maxRevenue) * 130}px`, minHeight: "20px" }} />
                     <div style={{ fontSize: "11px", color: "#64748b", marginTop: "4px" }}>{w.week}</div>
                   </div>
                 ))}
-              </div>
-              <div style={{ display: "flex", gap: "16px", justifyContent: "center", marginTop: "12px" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", color: "#64748b" }}>
-                  <div style={{ width: "10px", height: "10px", borderRadius: "2px", background: "#7c3aed" }} /> Sales
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", color: "#64748b" }}>
-                  <div style={{ width: "10px", height: "10px", borderRadius: "2px", background: "#06b6d4" }} /> Service
-                </div>
               </div>
             </div>
           ) : vertical === "analyst" && reportData.recentDeals.length > 0 ? (
@@ -197,14 +292,14 @@ export default function Reports() {
                 </table>
               </div>
             </div>
-          ) : (
+          ) : !isAuto ? (
             <div style={{ padding: "32px", display: "flex", alignItems: "center", justifyContent: "center", minHeight: "300px", color: "var(--textMuted)", background: "#f8fafc", borderRadius: "8px", margin: "16px", flexDirection: "column", gap: "12px" }}>
               <div style={{ fontSize: "16px", fontWeight: 600 }}>No data yet</div>
               <div style={{ fontSize: "14px", textAlign: "center", maxWidth: "300px" }}>
-                Reports will populate as you use the platform. Start by adding records or running AI workflows.
+                Reports will populate as you use the platform.
               </div>
             </div>
-          )}
+          ) : null}
         </div>
 
         {/* Recent Activity */}
@@ -245,11 +340,46 @@ export default function Reports() {
             </div>
           ) : (
             <div style={{ padding: "32px 16px", textAlign: "center", color: "var(--textMuted)", fontSize: "14px" }}>
-              No activity recorded yet. Use the AI assistant or add records to see activity here.
+              No activity recorded yet.
             </div>
           )}
         </div>
       </div>
+
+      {/* Sales by Source -- Auto only */}
+      {isAuto && (
+        <div className="card" style={{ marginTop: "16px" }}>
+          <div className="cardHeader">
+            <div className="cardTitle">Sales by Source</div>
+          </div>
+          <div style={{ padding: "16px" }}>
+            <div className="tableWrap">
+              <table className="table" style={{ width: "100%" }}>
+                <thead>
+                  <tr>
+                    <th>Source</th>
+                    <th>Sales</th>
+                    <th>Revenue</th>
+                    <th style={{ width: "40%" }}></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {AUTO_SALES_BY_SOURCE.map((s, i) => (
+                    <tr key={i}>
+                      <td className="tdStrong">{s.source}</td>
+                      <td>{s.sales}</td>
+                      <td style={{ fontWeight: 600 }}>${s.revenue.toLocaleString()}</td>
+                      <td>
+                        <div style={{ width: `${(s.sales / maxSourceSales) * 100}%`, height: "12px", background: "#7c3aed", borderRadius: "6px", minWidth: "8px" }} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Export Options */}
       <div className="card" style={{ marginTop: "16px" }}>
@@ -260,9 +390,9 @@ export default function Reports() {
           </div>
         </div>
         <div style={{ padding: "16px", display: "flex", gap: "12px" }}>
-          <button className="iconBtn">Export as CSV</button>
-          <button className="iconBtn">Export as PDF</button>
-          <button className="iconBtn">Export as Excel</button>
+          <button className="iconBtn" onClick={exportCSV}>Export as CSV</button>
+          <button className="iconBtn" onClick={exportPDF}>Export as PDF</button>
+          <button className="iconBtn" onClick={exportExcel}>Export as Excel</button>
         </div>
       </div>
     </div>

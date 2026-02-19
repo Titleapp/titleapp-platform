@@ -329,6 +329,7 @@ export default function Dashboard() {
       action: "Send personalized upgrade offer",
       potentialRevenue: "$2,800",
       urgency: "high",
+      assignedTo: { type: "ai", name: "Alex (AI)" },
     },
     {
       id: 2,
@@ -340,6 +341,7 @@ export default function Dashboard() {
       action: "Schedule service + pitch extended warranty",
       potentialRevenue: "$3,450",
       urgency: "medium",
+      assignedTo: { type: "human", name: "Jake Rivera" },
     },
     {
       id: 3,
@@ -351,6 +353,7 @@ export default function Dashboard() {
       action: "Reprice + generate listing",
       potentialRevenue: "Recover $31K",
       urgency: "high",
+      assignedTo: { type: "ai", name: "Alex (AI)" },
     },
     {
       id: 4,
@@ -362,6 +365,7 @@ export default function Dashboard() {
       action: "Send trade-in appraisal offer",
       potentialRevenue: "$4,200",
       urgency: "medium",
+      assignedTo: { type: "human", name: "Lisa Chen" },
     },
   ]);
 
@@ -795,21 +799,22 @@ export default function Dashboard() {
                 <div style={{ fontSize: "12px", color: "#64748b" }}>Appointments Today</div>
               </div>
               <div style={{ padding: "12px", background: "#f8fafc", borderRadius: "8px", textAlign: "center" }}>
-                <div style={{ fontSize: "24px", fontWeight: 800, color: "#dc2626" }}>4</div>
+                <div style={{ fontSize: "24px", fontWeight: 800, color: "#dc2626" }}>2</div>
                 <div style={{ fontSize: "12px", color: "#64748b" }}>Hot Leads</div>
               </div>
             </div>
             {/* Mini funnel */}
-            <div style={{ display: "flex", gap: "4px", alignItems: "flex-end", height: "40px" }}>
+            <div style={{ display: "flex", gap: "4px", alignItems: "flex-end", height: "60px" }}>
               {[
-                { label: "Lead", count: 2, color: "#64748b" },
-                { label: "Contacted", count: 2, color: "#2563eb" },
-                { label: "Test Drive", count: 1, color: "#7c3aed" },
-                { label: "Negotiation", count: 2, color: "#d97706" },
-                { label: "F&I Desk", count: 1, color: "#16a34a" },
-                { label: "Sold", count: 2, color: "#059669" },
+                { label: "Lead", count: 2, value: "$77.1K", color: "#64748b" },
+                { label: "Contacted", count: 2, value: "$66.8K", color: "#2563eb" },
+                { label: "Test Drive", count: 1, value: "$32.8K", color: "#7c3aed" },
+                { label: "Negotiation", count: 2, value: "$66.0K", color: "#d97706" },
+                { label: "F&I Desk", count: 1, value: "$48.9K", color: "#16a34a" },
+                { label: "Sold", count: 2, value: "$61.9K", color: "#059669" },
               ].map((s, i) => (
                 <div key={i} style={{ flex: 1, textAlign: "center" }}>
+                  <div style={{ fontSize: "10px", fontWeight: 600, color: s.color, marginBottom: "2px" }}>{s.value}</div>
                   <div style={{ height: `${Math.max(12, s.count * 14)}px`, background: s.color, borderRadius: "4px 4px 0 0", marginBottom: "4px" }} />
                   <div style={{ fontSize: "10px", color: "#64748b" }}>{s.label}</div>
                   <div style={{ fontSize: "12px", fontWeight: 700, color: s.color }}>{s.count}</div>
@@ -835,7 +840,7 @@ export default function Dashboard() {
                 </div>
                 <div style={{ padding: "10px", background: "#fff7ed", borderRadius: "8px" }}>
                   <div style={{ fontSize: "20px", fontWeight: 800, color: "#d97706" }}>5</div>
-                  <div style={{ fontSize: "12px", color: "#64748b" }}>Upsell Opps</div>
+                  <div style={{ fontSize: "12px", color: "#64748b" }}>Upsell Opps ($8,250)</div>
                 </div>
                 <div style={{ padding: "10px", background: "#f8fafc", borderRadius: "8px" }}>
                   <div style={{ fontSize: "20px", fontWeight: 800 }}>6/8</div>
@@ -843,7 +848,7 @@ export default function Dashboard() {
                 </div>
               </div>
               <div style={{ marginTop: "12px", padding: "10px", background: "#f0fdf4", borderRadius: "8px", fontSize: "13px", color: "#16a34a" }}>
-                2 service customers matched to sales opportunities
+                3 service customers matched to sales opportunities
               </div>
             </div>
 
@@ -854,11 +859,11 @@ export default function Dashboard() {
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
                 <div style={{ padding: "10px", background: "#f8fafc", borderRadius: "8px" }}>
                   <div style={{ fontSize: "20px", fontWeight: 800 }}>85</div>
-                  <div style={{ fontSize: "12px", color: "#64748b" }}>New (avg 42 days)</div>
+                  <div style={{ fontSize: "12px", color: "#64748b" }}>New (avg 28 days)</div>
                 </div>
                 <div style={{ padding: "10px", background: "#f8fafc", borderRadius: "8px" }}>
                   <div style={{ fontSize: "20px", fontWeight: 800 }}>150</div>
-                  <div style={{ fontSize: "12px", color: "#64748b" }}>Used (avg 67 days)</div>
+                  <div style={{ fontSize: "12px", color: "#64748b" }}>Used (avg 45 days)</div>
                 </div>
                 <div style={{ padding: "10px", background: "#fef2f2", borderRadius: "8px" }}>
                   <div style={{ fontSize: "20px", fontWeight: 800, color: "#dc2626" }}>12</div>
@@ -869,8 +874,23 @@ export default function Dashboard() {
                   <div style={{ fontSize: "12px", color: "#64748b" }}>Acquired This Week</div>
                 </div>
               </div>
-              <div style={{ marginTop: "12px", fontSize: "13px", color: "#64748b", lineHeight: 1.6 }}>
-                3 trade-ins, 2 auction wins, 1 wholesale purchase. Total acquisition cost: $142,500.
+              {/* Inventory Acquisition */}
+              <div style={{ marginTop: "14px", padding: "12px", background: "#fffbeb", borderRadius: "8px", border: "1px solid #fef3c7" }}>
+                <div style={{ fontSize: "13px", fontWeight: 700, color: "#92400e", marginBottom: "8px" }}>Inventory Acquisition</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "13px", color: "#78350f" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span>Trade-ins this week: 3</span><span style={{ fontWeight: 600 }}>$47,500</span>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span>Auction purchases: 2</span><span style={{ fontWeight: 600 }}>$31,200</span>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span>Wholesale buys: 1</span><span style={{ fontWeight: 600 }}>$18,900</span>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginTop: "4px", paddingTop: "4px", borderTop: "1px solid #fde68a", fontWeight: 700 }}>
+                    <span>Total acquisition</span><span>$97,600</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -894,6 +914,9 @@ export default function Dashboard() {
                     {item.urgency === "high" && (
                       <span style={{ fontSize: "11px", fontWeight: 600, color: "#dc2626" }}>URGENT</span>
                     )}
+                    <span style={{ marginLeft: "auto", fontSize: "11px", fontWeight: 600, padding: "2px 8px", borderRadius: "9999px", background: item.assignedTo?.type === "ai" ? "#f3e8ff" : "#f1f5f9", color: item.assignedTo?.type === "ai" ? "#7c3aed" : "#475569" }}>
+                      {item.assignedTo?.name || "Unassigned"}
+                    </span>
                   </div>
                   <div style={{ fontSize: "16px", fontWeight: 700, marginBottom: "8px" }}>{item.title}</div>
                   <div style={{ fontSize: "14px", color: "var(--fg, #334155)", marginBottom: "10px", lineHeight: 1.5 }}>

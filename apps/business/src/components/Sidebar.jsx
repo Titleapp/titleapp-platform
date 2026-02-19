@@ -42,6 +42,7 @@ const NAV_BY_VERTICAL = {
     { id: "auto-service", label: "Service" },
     { id: "reports", label: "Reports" },
     { id: "ai-chats", label: "AI Activity" },
+    { id: "rules", label: "Rules" },
     { id: "settings", label: "Settings" },
   ],
   "real-estate": [
@@ -67,8 +68,11 @@ export default function Sidebar({ currentSection, onNavigate, onClose, tenantNam
   const sections = NAV_BY_VERTICAL[vertical] || DEFAULT_NAV;
   const isPersonal = vertical === "consumer";
 
-  const workspaceName = localStorage.getItem("WORKSPACE_NAME") || "";
-  const companyName = workspaceName || tenantName || localStorage.getItem("COMPANY_NAME") || "";
+  // Resolve a human-readable name, rejecting raw IDs like ws_1771474949129_ryx41z
+  const rawWsName = localStorage.getItem("WORKSPACE_NAME") || "";
+  const isRawId = /^ws_\d+_[a-z0-9]+$/i.test(rawWsName);
+  const workspaceName = isRawId ? "" : rawWsName;
+  const companyName = workspaceName || tenantName || localStorage.getItem("COMPANY_NAME") || localStorage.getItem("TENANT_NAME") || "";
   const firstName = companyName.split(" ")[0] || "";
   const brandLabel = isPersonal && firstName
     ? `${firstName}'s Vault`

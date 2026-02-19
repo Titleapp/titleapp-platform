@@ -3,26 +3,26 @@ import FormModal from "../components/FormModal";
 import { getCustomers, createCustomer, updateCustomer, deleteCustomer } from "../api/client";
 
 const AUTO_CUSTOMERS = [
-  { id: "ac-001", name: "Maria Gonzalez", vehicle: "2024 Corolla LE", purchaseDate: "2024-03-15", purchaseType: "Leased", lastService: "2025-12-10", visits: 4, satisfaction: "Excellent", cosInsight: "Lease expiring", insightColor: "#dc2626" },
-  { id: "ac-002", name: "Charles Cox", vehicle: "2023 Tacoma TRD Sport", purchaseDate: "2023-06-20", purchaseType: "Financed", lastService: "2026-01-18", visits: 9, satisfaction: "Excellent", cosInsight: "Warranty expiring", insightColor: "#d97706" },
-  { id: "ac-003", name: "Mark Brown", vehicle: "2025 Corolla Cross LE", purchaseDate: "2025-01-10", purchaseType: "Financed", lastService: "2026-02-05", visits: 7, satisfaction: "Excellent", cosInsight: "Upgrade candidate", insightColor: "#16a34a" },
-  { id: "ac-004", name: "Lawrence Foster", vehicle: "2024 Camry SE", purchaseDate: "2024-07-22", purchaseType: "Financed", lastService: "2026-02-10", visits: 3, satisfaction: "Excellent", cosInsight: "", insightColor: "" },
-  { id: "ac-005", name: "Patricia Adams", vehicle: "2023 RAV4 XLE", purchaseDate: "2023-09-05", purchaseType: "Financed", lastService: "2026-01-25", visits: 5, satisfaction: "Good", cosInsight: "", insightColor: "" },
-  { id: "ac-006", name: "James Mitchell", vehicle: "2022 Highlander Limited", purchaseDate: "2022-11-14", purchaseType: "Financed", lastService: "2025-11-30", visits: 8, satisfaction: "Good", cosInsight: "Service overdue", insightColor: "#d97706" },
-  { id: "ac-007", name: "Robert Chen", vehicle: "2025 Corolla Cross LE", purchaseDate: "2025-02-01", purchaseType: "Cash", lastService: "2026-02-01", visits: 1, satisfaction: "Excellent", cosInsight: "", insightColor: "" },
-  { id: "ac-008", name: "Angela Williams", vehicle: "2021 Prius Prime", purchaseDate: "2021-08-18", purchaseType: "Financed", lastService: "2025-09-15", visits: 6, satisfaction: "Good", cosInsight: "Service overdue", insightColor: "#d97706" },
-  { id: "ac-009", name: "Thomas Garcia", vehicle: "2024 Tundra SR5", purchaseDate: "2024-04-10", purchaseType: "Financed", lastService: "2026-01-20", visits: 3, satisfaction: "Excellent", cosInsight: "", insightColor: "" },
-  { id: "ac-010", name: "Diana Brooks", vehicle: "2022 Venza Limited", purchaseDate: "2022-12-22", purchaseType: "Financed", lastService: "2026-02-08", visits: 7, satisfaction: "Excellent", cosInsight: "Upgrade candidate", insightColor: "#16a34a" },
-  { id: "ac-011", name: "Kevin O'Brien", vehicle: "2024 4Runner TRD Off-Road", purchaseDate: "2024-06-15", purchaseType: "Financed", lastService: "2026-01-30", visits: 4, satisfaction: "Excellent", cosInsight: "", insightColor: "" },
-  { id: "ac-012", name: "Sandra Lee", vehicle: "2023 Camry XSE", purchaseDate: "2023-03-28", purchaseType: "Leased", lastService: "2025-12-20", visits: 5, satisfaction: "Good", cosInsight: "Lease expiring", insightColor: "#dc2626" },
-  { id: "ac-013", name: "Michael Wong", vehicle: "2025 RAV4 Hybrid XLE", purchaseDate: "2025-01-22", purchaseType: "Financed", lastService: "2026-02-12", visits: 2, satisfaction: "Excellent", cosInsight: "", insightColor: "" },
-  { id: "ac-014", name: "Lisa Johnson", vehicle: "2022 Corolla LE", purchaseDate: "2022-05-10", purchaseType: "Financed", lastService: "2025-08-14", visits: 4, satisfaction: "Satisfactory", cosInsight: "At risk", insightColor: "#dc2626" },
-  { id: "ac-015", name: "Richard Brown", vehicle: "2023 Tundra Limited", purchaseDate: "2023-10-02", purchaseType: "Cash", lastService: "2026-01-15", visits: 6, satisfaction: "Excellent", cosInsight: "", insightColor: "" },
-  { id: "ac-016", name: "Jennifer Patel", vehicle: "2024 Crown Platinum", purchaseDate: "2024-08-20", purchaseType: "Financed", lastService: "2026-02-06", visits: 3, satisfaction: "Excellent", cosInsight: "", insightColor: "" },
-  { id: "ac-017", name: "William Davis", vehicle: "2025 GR86 Premium", purchaseDate: "2025-02-08", purchaseType: "Cash", lastService: null, visits: 0, satisfaction: "New", cosInsight: "", insightColor: "" },
-  { id: "ac-018", name: "Carol Thompson", vehicle: "2022 Highlander XLE", purchaseDate: "2022-07-30", purchaseType: "Financed", lastService: "2025-10-22", visits: 5, satisfaction: "Good", cosInsight: "Service overdue", insightColor: "#d97706" },
-  { id: "ac-019", name: "George Martinez", vehicle: "2021 Tacoma SR", purchaseDate: "2021-09-15", purchaseType: "Financed", lastService: "2025-11-05", visits: 8, satisfaction: "Good", cosInsight: "Upgrade candidate", insightColor: "#16a34a" },
-  { id: "ac-020", name: "Nancy Wilson", vehicle: "2024 Venza XLE", purchaseDate: "2024-02-14", purchaseType: "Financed", lastService: "2026-02-01", visits: 4, satisfaction: "Excellent", cosInsight: "", insightColor: "" },
+  { id: "ac-001", name: "Maria Gonzalez", vehicle: "2024 Corolla LE", purchaseDate: "2024-03-15", purchaseType: "Leased", lastService: "2025-12-10", visits: 4, satisfaction: "Excellent", cosInsight: "Lease expiring", insightColor: "#dc2626", assignedTo: { type: "ai", name: "Alex (AI)" } },
+  { id: "ac-002", name: "Charles Cox", vehicle: "2023 Tacoma TRD Sport", purchaseDate: "2023-06-20", purchaseType: "Financed", lastService: "2026-01-18", visits: 9, satisfaction: "Excellent", cosInsight: "Warranty expiring", insightColor: "#d97706", assignedTo: { type: "human", name: "Jake Rivera" } },
+  { id: "ac-003", name: "Mark Brown", vehicle: "2025 Corolla Cross LE", purchaseDate: "2025-01-10", purchaseType: "Financed", lastService: "2026-02-05", visits: 7, satisfaction: "Excellent", cosInsight: "Upgrade candidate", insightColor: "#16a34a", assignedTo: { type: "human", name: "Lisa Chen" } },
+  { id: "ac-004", name: "Lawrence Foster", vehicle: "2024 Camry SE", purchaseDate: "2024-07-22", purchaseType: "Financed", lastService: "2026-02-10", visits: 3, satisfaction: "Excellent", cosInsight: "", insightColor: "", assignedTo: { type: "human", name: "Jake Rivera" } },
+  { id: "ac-005", name: "Patricia Adams", vehicle: "2023 RAV4 XLE", purchaseDate: "2023-09-05", purchaseType: "Financed", lastService: "2026-01-25", visits: 5, satisfaction: "Good", cosInsight: "", insightColor: "", assignedTo: { type: "human", name: "Lisa Chen" } },
+  { id: "ac-006", name: "James Mitchell", vehicle: "2022 Highlander Limited", purchaseDate: "2022-11-14", purchaseType: "Financed", lastService: "2025-11-30", visits: 8, satisfaction: "Good", cosInsight: "Service overdue", insightColor: "#d97706", assignedTo: { type: "ai", name: "Alex (AI)" } },
+  { id: "ac-007", name: "Robert Chen", vehicle: "2025 Corolla Cross LE", purchaseDate: "2025-02-01", purchaseType: "Cash", lastService: "2026-02-01", visits: 1, satisfaction: "Excellent", cosInsight: "", insightColor: "", assignedTo: { type: "human", name: "Jake Rivera" } },
+  { id: "ac-008", name: "Angela Williams", vehicle: "2021 Prius Prime", purchaseDate: "2021-08-18", purchaseType: "Financed", lastService: "2025-09-15", visits: 6, satisfaction: "Good", cosInsight: "Service overdue", insightColor: "#d97706", assignedTo: { type: "ai", name: "Alex (AI)" } },
+  { id: "ac-009", name: "Thomas Garcia", vehicle: "2024 Tundra SR5", purchaseDate: "2024-04-10", purchaseType: "Financed", lastService: "2026-01-20", visits: 3, satisfaction: "Excellent", cosInsight: "", insightColor: "", assignedTo: { type: "human", name: "Lisa Chen" } },
+  { id: "ac-010", name: "Diana Brooks", vehicle: "2022 Venza Limited", purchaseDate: "2022-12-22", purchaseType: "Financed", lastService: "2026-02-08", visits: 7, satisfaction: "Excellent", cosInsight: "Upgrade candidate", insightColor: "#16a34a", assignedTo: { type: "ai", name: "Alex (AI)" } },
+  { id: "ac-011", name: "Kevin O'Brien", vehicle: "2024 4Runner TRD Off-Road", purchaseDate: "2024-06-15", purchaseType: "Financed", lastService: "2026-01-30", visits: 4, satisfaction: "Excellent", cosInsight: "", insightColor: "", assignedTo: { type: "human", name: "Jake Rivera" } },
+  { id: "ac-012", name: "Sandra Lee", vehicle: "2023 Camry XSE", purchaseDate: "2023-03-28", purchaseType: "Leased", lastService: "2025-12-20", visits: 5, satisfaction: "Good", cosInsight: "Lease expiring", insightColor: "#dc2626", assignedTo: { type: "ai", name: "Alex (AI)" } },
+  { id: "ac-013", name: "Michael Wong", vehicle: "2025 RAV4 Hybrid XLE", purchaseDate: "2025-01-22", purchaseType: "Financed", lastService: "2026-02-12", visits: 2, satisfaction: "Excellent", cosInsight: "", insightColor: "", assignedTo: { type: "human", name: "Jake Rivera" } },
+  { id: "ac-014", name: "Lisa Johnson", vehicle: "2022 Corolla LE", purchaseDate: "2022-05-10", purchaseType: "Financed", lastService: "2025-08-14", visits: 4, satisfaction: "Satisfactory", cosInsight: "At risk", insightColor: "#dc2626", assignedTo: { type: "ai", name: "Alex (AI)" } },
+  { id: "ac-015", name: "Richard Brown", vehicle: "2023 Tundra Limited", purchaseDate: "2023-10-02", purchaseType: "Cash", lastService: "2026-01-15", visits: 6, satisfaction: "Excellent", cosInsight: "", insightColor: "", assignedTo: { type: "human", name: "Lisa Chen" } },
+  { id: "ac-016", name: "Jennifer Patel", vehicle: "2024 Crown Platinum", purchaseDate: "2024-08-20", purchaseType: "Financed", lastService: "2026-02-06", visits: 3, satisfaction: "Excellent", cosInsight: "", insightColor: "", assignedTo: { type: "human", name: "Jake Rivera" } },
+  { id: "ac-017", name: "William Davis", vehicle: "2025 GR86 Premium", purchaseDate: "2025-02-08", purchaseType: "Cash", lastService: null, visits: 0, satisfaction: "New", cosInsight: "", insightColor: "", assignedTo: { type: "human", name: "Jake Rivera" } },
+  { id: "ac-018", name: "Carol Thompson", vehicle: "2022 Highlander XLE", purchaseDate: "2022-07-30", purchaseType: "Financed", lastService: "2025-10-22", visits: 5, satisfaction: "Good", cosInsight: "Service overdue", insightColor: "#d97706", assignedTo: { type: "ai", name: "Alex (AI)" } },
+  { id: "ac-019", name: "George Martinez", vehicle: "2021 Tacoma SR", purchaseDate: "2021-09-15", purchaseType: "Financed", lastService: "2025-11-05", visits: 8, satisfaction: "Good", cosInsight: "Upgrade candidate", insightColor: "#16a34a", assignedTo: { type: "human", name: "Lisa Chen" } },
+  { id: "ac-020", name: "Nancy Wilson", vehicle: "2024 Venza XLE", purchaseDate: "2024-02-14", purchaseType: "Financed", lastService: "2026-02-01", visits: 4, satisfaction: "Excellent", cosInsight: "", insightColor: "", assignedTo: { type: "human", name: "Lisa Chen" } },
 ];
 
 function AutoCustomers() {
@@ -100,6 +100,7 @@ function AutoCustomers() {
                 <th>Last Service</th>
                 <th>Visits</th>
                 <th>Satisfaction</th>
+                <th>Assigned To</th>
                 <th>AI Insight</th>
               </tr>
             </thead>
@@ -119,6 +120,11 @@ function AutoCustomers() {
                     <td style={{ textAlign: "center" }}>{c.visits}</td>
                     <td>
                       <span style={{ fontSize: "12px", fontWeight: 600, color: satColor }}>{c.satisfaction}</span>
+                    </td>
+                    <td>
+                      <span style={{ fontSize: "11px", fontWeight: 600, padding: "2px 8px", borderRadius: "9999px", background: c.assignedTo?.type === "ai" ? "#f3e8ff" : "#f1f5f9", color: c.assignedTo?.type === "ai" ? "#7c3aed" : "#475569" }}>
+                        {c.assignedTo?.name || "--"}
+                      </span>
                     </td>
                     <td>
                       {c.cosInsight ? (

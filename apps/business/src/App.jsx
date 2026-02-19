@@ -20,6 +20,7 @@ import Settings from "./sections/Settings";
 import FIProducts from "./sections/FIProducts";
 import AutoService from "./sections/AutoService";
 import SalesPipeline from "./sections/SalesPipeline";
+import Rules from "./sections/Rules";
 import MyVehicles from "./sections/MyVehicles";
 import MyProperties from "./sections/MyProperties";
 import MyDocuments from "./sections/MyDocuments";
@@ -68,6 +69,8 @@ function AdminShell({ onBackToHub }) {
         return <AutoService />;
       case "sales-pipeline":
         return <SalesPipeline />;
+      case "rules":
+        return <Rules />;
       case "settings":
         return <Settings />;
       case "my-vehicles":

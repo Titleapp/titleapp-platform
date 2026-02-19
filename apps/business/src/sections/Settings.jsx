@@ -563,7 +563,20 @@ function BusinessSettings() {
     marine: "Marine",
   };
 
-  const workspaceName = localStorage.getItem("WORKSPACE_NAME") || "";
+  // Resolve a human-readable workspace name, rejecting raw IDs like ws_1771474949129_ryx41z
+  function resolveWorkspaceName() {
+    const candidates = [
+      localStorage.getItem("WORKSPACE_NAME"),
+      localStorage.getItem("COMPANY_NAME"),
+      localStorage.getItem("TENANT_NAME"),
+    ];
+    for (const c of candidates) {
+      if (c && !/^ws_\d+_[a-z0-9]+$/i.test(c)) return c;
+    }
+    return "";
+  }
+
+  const workspaceName = resolveWorkspaceName();
 
   const [business, setBusiness] = useState({
     name: workspaceName,
@@ -625,7 +638,7 @@ function BusinessSettings() {
   async function loadMyCompanies() {
     // Build company list from current workspace context (avoids stale tenant data bleed)
     const wsId = localStorage.getItem("WORKSPACE_ID") || "";
-    const wsName = localStorage.getItem("WORKSPACE_NAME") || "";
+    const wsName = resolveWorkspaceName();
     const currentCompany = {
       id: wsId,
       name: wsName || "Current Workspace",
