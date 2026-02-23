@@ -41,6 +41,9 @@ import REProperties from "./sections/REProperties";
 import RETenants from "./sections/RETenants";
 import REMaintenance from "./sections/REMaintenance";
 import REMarketing from "./sections/REMarketing";
+import WorkerPreview from "./sections/WorkerPreview";
+import RAASStore from "./sections/RAASStore";
+import CreatorDashboard from "./sections/CreatorDashboard";
 import { auth } from "./firebase";
 import { signInWithCustomToken } from "firebase/auth";
 
@@ -136,6 +139,12 @@ function AdminShell({ onBackToHub }) {
         return <REMaintenance />;
       case "re-marketing":
         return <REMarketing />;
+      case "worker-preview":
+        return <WorkerPreview />;
+      case "raas-store":
+        return <RAASStore />;
+      case "creator-dashboard":
+        return <CreatorDashboard />;
       default:
         return <Dashboard />;
     }

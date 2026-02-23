@@ -24,6 +24,9 @@ const CONTEXTUAL_MESSAGES = {
   "fi-products": "Your F&I product catalog. I can match products to any customer profile and calculate payment impacts.",
   "auto-service": "Your service schedule. I can identify upsell opportunities, draft service reminders, and flag warranty expirations.",
   "sales-pipeline": "Your active deals. I can prioritize follow-ups, draft communications, and recommend next steps for each deal.",
+  "worker-preview": "This is what I built from our conversation. Review the details and publish when you're ready.",
+  "raas-store": "Browse AI Workers built by domain experts. Each one packages real expertise into a subscribable service.",
+  "creator-dashboard": "Your creator hub. Edit your Workers, adjust pricing, track subscribers, and manage publishing.",
 };
 
 const PERSONAL_CONTEXTUAL_MESSAGES = {
