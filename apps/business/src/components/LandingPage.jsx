@@ -325,6 +325,7 @@ export default function LandingPage() {
   const [chatTyping, setChatTyping] = useState(false);
   const [discoveredContext, setDiscoveredContext] = useState(null);
   const chatRef = useRef(null);
+  const chatEndRef = useRef(null);
   const inputRef = useRef(null);
   const lockedSlide = useRef(getLockedSlideIndex());
   const rotationRef = useRef(null);
@@ -348,7 +349,7 @@ export default function LandingPage() {
 
   // Scroll chat to bottom
   useEffect(() => {
-    if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
+    if (chatEndRef.current) chatEndRef.current.scrollIntoView({ behavior: "smooth" });
   }, [chatMessages, chatTyping]);
 
   // Check for magic link callback on mount
@@ -404,11 +405,24 @@ export default function LandingPage() {
       setChatTyping(false);
 
       if (result.ok && result.message) {
+        // Detect [SHOW_SIGNUP] token — strip it and auto-open auth modal
+        let displayMessage = result.message;
+        let triggerSignup = false;
+        if (displayMessage.includes("[SHOW_SIGNUP]")) {
+          displayMessage = displayMessage.replace(/\s*\[SHOW_SIGNUP\]\s*/g, "").trim();
+          triggerSignup = true;
+        }
+
         setChatMessages((prev) => [...prev, {
           role: "assistant",
-          content: result.message,
+          content: displayMessage,
           showSetupButton: result.suggestSignup || false,
         }]);
+
+        // Auto-open auth modal after a brief delay so user reads the message first
+        if (triggerSignup) {
+          setTimeout(() => { setAuthMode("signup"); setAuthOpen(true); }, 1200);
+        }
       } else {
         setChatMessages((prev) => [...prev, { role: "assistant", content: "Tell me more about what you're looking for." }]);
       }
@@ -640,6 +654,7 @@ export default function LandingPage() {
                   Thinking...
                 </div>
               )}
+              <div ref={chatEndRef} />
             </div>
 
           </div>
