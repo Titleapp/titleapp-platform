@@ -426,24 +426,19 @@ export default function LandingPage() {
       setChatTyping(false);
 
       if (result.ok && result.message) {
-        // Detect [SHOW_SIGNUP] token — strip it and auto-open auth modal
+        // Detect [SHOW_SIGNUP] token — strip it and show setup button (no auto-popup)
         let displayMessage = result.message;
-        let triggerSignup = false;
+        let shouldShowButton = result.suggestSignup || result.showSignup || false;
         if (/\[SHOW[_\s]?SIGNUP\]/i.test(displayMessage)) {
           displayMessage = displayMessage.replace(/\s*\[SHOW[_\s]?SIGNUP\]\s*/gi, "").trim();
-          triggerSignup = true;
+          shouldShowButton = true;
         }
 
         setChatMessages((prev) => [...prev, {
           role: "assistant",
           content: displayMessage,
-          showSetupButton: result.suggestSignup || false,
+          showSetupButton: shouldShowButton,
         }]);
-
-        // Auto-open auth modal after a brief delay so user reads the message first
-        if (triggerSignup || result.showSignup) {
-          setTimeout(() => { setAuthMode("signup"); setAuthOpen(true); }, 1200);
-        }
       } else {
         setChatMessages((prev) => [...prev, { role: "assistant", content: "Tell me more about what you're looking for." }]);
       }
