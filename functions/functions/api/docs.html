@@ -4,26 +4,29 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>TitleApp API Reference</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#128273;</text></svg>">
 <style>
   :root {
     --bg: #fafafa;
     --surface: #ffffff;
-    --border: #e2e2e2;
-    --text: #1a1a1a;
-    --text-secondary: #6b6b6b;
-    --accent: #0a0a0a;
-    --accent-light: #f0f0f0;
-    --get: #0066cc;
-    --post: #16803c;
-    --delete: #cc2200;
-    --code-bg: #0a0a0a;
-    --code-text: #e0e0e0;
-    --sidebar-w: 280px;
-    --mono: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    --border: #e5e7eb;
+    --text: #111827;
+    --text-secondary: #6b7280;
+    --accent: #7C3AED;
+    --accent-light: #f5f3ff;
+    --accent-border: #ddd6fe;
+    --get: #2563eb;
+    --get-bg: #eff6ff;
+    --post: #16a34a;
+    --post-bg: #f0fdf4;
+    --delete: #dc2626;
+    --delete-bg: #fef2f2;
+    --code-bg: #111827;
+    --code-text: #e5e7eb;
+    --sidebar-w: 272px;
+    --mono: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
   }
-
   * { margin: 0; padding: 0; box-sizing: border-box; }
-
   body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
     color: var(--text);
@@ -31,514 +34,805 @@
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
   }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code { font-family: var(--mono); font-size: 0.875em; background: var(--accent-light); padding: 1px 5px; border-radius: 3px; }
 
   /* Layout */
   .layout { display: flex; min-height: 100vh; }
 
   /* Sidebar */
   .sidebar {
-    width: var(--sidebar-w);
-    background: var(--surface);
-    border-right: 1px solid var(--border);
-    position: fixed;
-    top: 0; left: 0; bottom: 0;
-    overflow-y: auto;
-    z-index: 10;
-    padding: 24px 0;
+    width: var(--sidebar-w); background: var(--surface); border-right: 1px solid var(--border);
+    position: fixed; top: 0; left: 0; bottom: 0; overflow-y: auto; z-index: 10; padding: 0 0 24px;
   }
   .sidebar-brand {
-    padding: 0 24px 20px;
-    border-bottom: 1px solid var(--border);
-    margin-bottom: 16px;
+    padding: 20px 20px 16px; border-bottom: 1px solid var(--border); margin-bottom: 12px;
+    display: flex; align-items: center; gap: 10px;
   }
-  .sidebar-brand h1 {
-    font-size: 16px;
-    font-weight: 700;
-    letter-spacing: -0.3px;
-  }
-  .sidebar-brand span {
-    font-size: 12px;
-    color: var(--text-secondary);
-    display: block;
-    margin-top: 2px;
-  }
+  .sidebar-brand .logo { font-size: 24px; }
+  .sidebar-brand h1 { font-size: 15px; font-weight: 700; letter-spacing: -0.3px; }
+  .sidebar-brand h1 span { color: var(--accent); }
+  .sidebar-brand .ver { font-size: 11px; color: var(--text-secondary); background: var(--accent-light); padding: 1px 6px; border-radius: 10px; margin-left: 4px; }
   .sidebar-section {
-    padding: 8px 24px 4px;
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.8px;
-    color: var(--text-secondary);
+    padding: 12px 20px 4px; font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 1px; color: var(--text-secondary);
   }
   .sidebar a {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 6px 24px;
-    font-size: 13px;
-    color: var(--text);
-    text-decoration: none;
-    transition: background 0.1s;
+    display: flex; align-items: center; gap: 8px; padding: 5px 20px; font-size: 12.5px;
+    color: var(--text); text-decoration: none; transition: background 0.1s; border-radius: 0;
   }
-  .sidebar a:hover { background: var(--accent-light); }
-  .sidebar a .method-badge {
-    font-size: 9px;
-    font-weight: 700;
-    font-family: var(--mono);
-    padding: 1px 5px;
-    border-radius: 3px;
-    min-width: 36px;
-    text-align: center;
-    flex-shrink: 0;
+  .sidebar a:hover { background: var(--accent-light); text-decoration: none; }
+  .sidebar a .pill {
+    font-size: 8.5px; font-weight: 700; font-family: var(--mono); padding: 1px 5px;
+    border-radius: 3px; min-width: 32px; text-align: center; flex-shrink: 0;
   }
-  .badge-get { background: #e6f0ff; color: var(--get); }
-  .badge-post { background: #e6f5ec; color: var(--post); }
-  .badge-delete { background: #ffe6e6; color: var(--delete); }
+  .pill-get { background: var(--get-bg); color: var(--get); }
+  .pill-post { background: var(--post-bg); color: var(--post); }
+  .pill-del { background: var(--delete-bg); color: var(--delete); }
 
   /* Main */
-  .main {
-    margin-left: var(--sidebar-w);
-    flex: 1;
-    max-width: 960px;
-    padding: 48px 48px 120px;
-  }
+  .main { margin-left: var(--sidebar-w); flex: 1; max-width: 920px; padding: 48px 48px 120px; }
 
   /* Hero */
-  .hero { margin-bottom: 56px; }
-  .hero h1 { font-size: 32px; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 12px; }
-  .hero p { font-size: 16px; color: var(--text-secondary); max-width: 600px; }
+  .hero { margin-bottom: 48px; }
+  .hero h1 { font-size: 30px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 12px; }
+  .hero h1 span { color: var(--accent); }
+  .hero p { font-size: 15px; color: var(--text-secondary); max-width: 640px; line-height: 1.7; }
 
-  /* Base URL */
-  .base-url {
-    background: var(--code-bg);
-    color: var(--code-text);
-    padding: 14px 20px;
-    border-radius: 8px;
-    font-family: var(--mono);
-    font-size: 13px;
-    margin: 24px 0 40px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
+  .base-url-box {
+    background: var(--code-bg); color: var(--code-text); padding: 14px 20px; border-radius: 8px;
+    font-family: var(--mono); font-size: 12.5px; margin: 20px 0 0; display: flex; align-items: center; gap: 12px;
   }
-  .base-url .label {
-    font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: 0.8px;
-    color: #888;
-    font-family: -apple-system, sans-serif;
-  }
+  .base-url-box .label { font-size: 9px; text-transform: uppercase; letter-spacing: 1px; color: #9ca3af; font-family: -apple-system, sans-serif; font-weight: 600; }
 
   /* Sections */
-  .section { margin-bottom: 56px; }
-  .section-title {
-    font-size: 22px;
-    font-weight: 700;
-    letter-spacing: -0.3px;
-    margin-bottom: 8px;
-    padding-top: 24px;
-  }
-  .section-desc {
-    color: var(--text-secondary);
-    font-size: 14px;
-    margin-bottom: 24px;
-  }
+  .section { margin-bottom: 48px; scroll-margin-top: 24px; }
+  .section-title { font-size: 20px; font-weight: 800; letter-spacing: -0.3px; margin-bottom: 6px; padding-top: 20px; }
+  .section-desc { color: var(--text-secondary); font-size: 13.5px; margin-bottom: 20px; line-height: 1.7; }
 
   /* Endpoint cards */
-  .endpoint {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    margin-bottom: 16px;
-    overflow: hidden;
-  }
-  .endpoint-header {
-    padding: 16px 20px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    cursor: pointer;
-    user-select: none;
-    transition: background 0.1s;
-  }
-  .endpoint-header:hover { background: var(--accent-light); }
-  .endpoint-method {
-    font-family: var(--mono);
-    font-size: 11px;
-    font-weight: 700;
-    padding: 3px 8px;
-    border-radius: 4px;
-    min-width: 52px;
-    text-align: center;
-  }
-  .method-get { background: #e6f0ff; color: var(--get); }
-  .method-post { background: #e6f5ec; color: var(--post); }
-  .method-delete { background: #ffe6e6; color: var(--delete); }
-  .endpoint-path {
-    font-family: var(--mono);
-    font-size: 13px;
-    font-weight: 500;
-  }
-  .endpoint-desc {
-    font-size: 13px;
-    color: var(--text-secondary);
-    margin-left: auto;
-  }
-  .endpoint-chevron {
-    color: var(--text-secondary);
-    font-size: 12px;
-    transition: transform 0.2s;
-  }
-  .endpoint.open .endpoint-chevron { transform: rotate(90deg); }
-  .endpoint-body {
-    display: none;
-    border-top: 1px solid var(--border);
-    padding: 20px;
-  }
-  .endpoint.open .endpoint-body { display: block; }
+  .ep { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 12px; overflow: hidden; }
+  .ep-head { padding: 14px 18px; display: flex; align-items: center; gap: 10px; cursor: pointer; user-select: none; transition: background 0.1s; }
+  .ep-head:hover { background: #f9fafb; }
+  .ep-method { font-family: var(--mono); font-size: 10.5px; font-weight: 700; padding: 3px 8px; border-radius: 4px; min-width: 50px; text-align: center; }
+  .m-get { background: var(--get-bg); color: var(--get); }
+  .m-post { background: var(--post-bg); color: var(--post); }
+  .m-del { background: var(--delete-bg); color: var(--delete); }
+  .ep-path { font-family: var(--mono); font-size: 12.5px; font-weight: 500; }
+  .ep-summary { font-size: 12.5px; color: var(--text-secondary); margin-left: auto; white-space: nowrap; }
+  .ep-chevron { color: #d1d5db; font-size: 11px; transition: transform 0.2s; margin-left: 4px; }
+  .ep.open .ep-chevron { transform: rotate(90deg); }
+  .ep-body { display: none; border-top: 1px solid var(--border); padding: 20px; }
+  .ep.open .ep-body { display: block; }
+  .ep-when { font-size: 13px; color: var(--text-secondary); line-height: 1.7; margin-bottom: 16px; padding: 12px 14px; background: var(--accent-light); border-left: 3px solid var(--accent); border-radius: 0 6px 6px 0; }
 
-  /* Detail tables */
-  .detail-label {
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.6px;
-    color: var(--text-secondary);
-    margin-bottom: 8px;
-    margin-top: 16px;
-  }
-  .detail-label:first-child { margin-top: 0; }
-  .param-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 13px;
-  }
-  .param-table th {
-    text-align: left;
-    padding: 6px 12px;
-    background: var(--accent-light);
-    font-weight: 600;
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: var(--text-secondary);
-  }
-  .param-table td {
-    padding: 8px 12px;
-    border-bottom: 1px solid var(--border);
-    vertical-align: top;
-  }
-  .param-table code {
-    font-family: var(--mono);
-    font-size: 12px;
-    background: var(--accent-light);
-    padding: 1px 5px;
-    border-radius: 3px;
-  }
-  .param-required {
-    font-size: 10px;
-    color: var(--delete);
-    font-weight: 600;
-    text-transform: uppercase;
-  }
-  .param-optional {
-    font-size: 10px;
-    color: var(--text-secondary);
-  }
+  /* Labels & tables */
+  .lbl { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.7px; color: var(--text-secondary); margin: 16px 0 6px; }
+  .lbl:first-child { margin-top: 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th { text-align: left; padding: 6px 10px; background: #f9fafb; font-weight: 600; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); }
+  td { padding: 7px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .req { font-size: 9px; color: var(--delete); font-weight: 700; text-transform: uppercase; }
+  .opt { font-size: 9px; color: var(--text-secondary); }
 
   /* Code blocks */
-  pre {
-    background: var(--code-bg);
-    color: var(--code-text);
-    padding: 16px 20px;
-    border-radius: 6px;
-    overflow-x: auto;
-    font-family: var(--mono);
-    font-size: 12px;
-    line-height: 1.7;
-    margin-top: 8px;
-  }
-  pre .c { color: #6a737d; }
-  pre .s { color: #9ecbff; }
-  pre .k { color: #f97583; }
-  pre .n { color: #b392f0; }
+  pre { background: var(--code-bg); color: var(--code-text); padding: 16px 18px; border-radius: 6px; overflow-x: auto; font-family: var(--mono); font-size: 11.5px; line-height: 1.7; margin-top: 6px; }
+  .s { color: #a5d6ff; }
+  .k { color: #ff7b72; }
+  .n { color: #79c0ff; }
+  .c { color: #8b949e; }
+  .f { color: #d2a8ff; }
+
+  /* Use case cards */
+  .uc { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 24px; margin-bottom: 16px; }
+  .uc h3 { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+  .uc p { font-size: 13px; color: var(--text-secondary); line-height: 1.7; margin-bottom: 12px; }
 
   /* Info boxes */
-  .info-box {
-    padding: 14px 18px;
-    border-radius: 6px;
-    font-size: 13px;
-    margin: 16px 0;
-  }
-  .info-box.note { background: #e6f0ff; border-left: 3px solid var(--get); }
-  .info-box.warn { background: #fff8e6; border-left: 3px solid #c59000; }
+  .note { padding: 12px 14px; border-radius: 6px; font-size: 12.5px; margin: 12px 0; background: var(--accent-light); border-left: 3px solid var(--accent); }
+  .scope-badge { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 3px; background: var(--accent-light); color: var(--accent); border: 1px solid var(--accent-border); margin-bottom: 12px; }
 
-  /* Responsive */
+  /* Footer */
+  .footer { margin-top: 56px; padding-top: 20px; border-top: 1px solid var(--border); color: var(--text-secondary); font-size: 11px; }
+
   @media (max-width: 840px) {
     .sidebar { display: none; }
-    .main { margin-left: 0; padding: 24px 20px 80px; }
+    .main { margin-left: 0; padding: 24px 16px 80px; }
   }
 </style>
 </head>
 <body>
 <div class="layout">
 
-<!-- Sidebar Navigation -->
 <nav class="sidebar">
   <div class="sidebar-brand">
-    <h1>TitleApp API</h1>
-    <span>v1.0.0</span>
+    <span class="logo">&#128273;</span>
+    <h1>Title<span>App</span> API <span class="ver">v1</span></h1>
   </div>
 
   <div class="sidebar-section">Getting Started</div>
   <a href="#authentication">Authentication</a>
   <a href="#rate-limiting">Rate Limiting</a>
-  <a href="#errors">Error Handling</a>
+  <a href="#errors">Errors</a>
+  <a href="#use-cases">Use Cases</a>
+  <a href="#sdk">SDK / Quick Start</a>
 
   <div class="sidebar-section">Core</div>
-  <a href="#list-workspaces"><span class="method-badge badge-get">GET</span> List Workspaces</a>
-  <a href="#get-workspace"><span class="method-badge badge-get">GET</span> Get Workspace</a>
-  <a href="#get-dashboard"><span class="method-badge badge-get">GET</span> Dashboard</a>
-  <a href="#get-insights"><span class="method-badge badge-get">GET</span> Insights</a>
-  <a href="#send-chat"><span class="method-badge badge-post">POST</span> Send Chat</a>
-  <a href="#create-draft"><span class="method-badge badge-post">POST</span> Create Draft</a>
-  <a href="#create-task"><span class="method-badge badge-post">POST</span> Create Task</a>
-  <a href="#list-tasks"><span class="method-badge badge-get">GET</span> List Tasks</a>
-  <a href="#get-activity"><span class="method-badge badge-get">GET</span> Activity Log</a>
-  <a href="#get-reports"><span class="method-badge badge-get">GET</span> Reports</a>
+  <a href="#list-workspaces"><span class="pill pill-get">GET</span> List Workspaces</a>
+  <a href="#get-workspace"><span class="pill pill-get">GET</span> Get Workspace</a>
+  <a href="#get-dashboard"><span class="pill pill-get">GET</span> Dashboard</a>
+  <a href="#get-insights"><span class="pill pill-get">GET</span> Insights</a>
+  <a href="#send-chat"><span class="pill pill-post">POST</span> Send Chat</a>
+  <a href="#create-draft"><span class="pill pill-post">POST</span> Create Draft</a>
+  <a href="#create-task"><span class="pill pill-post">POST</span> Create Task</a>
+  <a href="#list-tasks"><span class="pill pill-get">GET</span> List Tasks</a>
+  <a href="#get-activity"><span class="pill pill-get">GET</span> Activity Log</a>
+  <a href="#get-reports"><span class="pill pill-get">GET</span> Reports</a>
 
   <div class="sidebar-section">Real Estate</div>
-  <a href="#list-listings"><span class="method-badge badge-get">GET</span> Listings</a>
-  <a href="#create-listing"><span class="method-badge badge-post">POST</span> Create Listing</a>
-  <a href="#list-buyers"><span class="method-badge badge-get">GET</span> Buyers</a>
-  <a href="#create-buyer"><span class="method-badge badge-post">POST</span> Create Buyer</a>
-  <a href="#list-transactions"><span class="method-badge badge-get">GET</span> Transactions</a>
-  <a href="#list-properties"><span class="method-badge badge-get">GET</span> Properties</a>
-  <a href="#list-tenants"><span class="method-badge badge-get">GET</span> Tenants</a>
-  <a href="#list-maintenance"><span class="method-badge badge-get">GET</span> Maintenance</a>
-  <a href="#create-maintenance"><span class="method-badge badge-post">POST</span> Create Request</a>
+  <a href="#list-listings"><span class="pill pill-get">GET</span> Listings</a>
+  <a href="#create-listing"><span class="pill pill-post">POST</span> Create Listing</a>
+  <a href="#list-buyers"><span class="pill pill-get">GET</span> Buyers</a>
+  <a href="#create-buyer"><span class="pill pill-post">POST</span> Create Buyer</a>
+  <a href="#list-transactions"><span class="pill pill-get">GET</span> Transactions</a>
+  <a href="#list-properties"><span class="pill pill-get">GET</span> Properties</a>
+  <a href="#list-tenants-re"><span class="pill pill-get">GET</span> Tenants</a>
+  <a href="#list-maintenance"><span class="pill pill-get">GET</span> Maintenance</a>
+  <a href="#create-maintenance"><span class="pill pill-post">POST</span> Create Request</a>
 
   <div class="sidebar-section">Auto Dealer</div>
-  <a href="#list-inventory"><span class="method-badge badge-get">GET</span> Inventory</a>
-  <a href="#create-inventory"><span class="method-badge badge-post">POST</span> Add Vehicle</a>
-  <a href="#list-customers"><span class="method-badge badge-get">GET</span> Customers</a>
-  <a href="#create-customer"><span class="method-badge badge-post">POST</span> Create Lead</a>
-  <a href="#list-deals"><span class="method-badge badge-get">GET</span> Deals</a>
-  <a href="#list-service"><span class="method-badge badge-get">GET</span> Service</a>
+  <a href="#list-inventory"><span class="pill pill-get">GET</span> Inventory</a>
+  <a href="#create-inventory"><span class="pill pill-post">POST</span> Add Vehicle</a>
+  <a href="#list-customers"><span class="pill pill-get">GET</span> Customers</a>
+  <a href="#create-customer"><span class="pill pill-post">POST</span> Create Lead</a>
+  <a href="#list-deals"><span class="pill pill-get">GET</span> Deals</a>
+  <a href="#list-service"><span class="pill pill-get">GET</span> Service</a>
 
   <div class="sidebar-section">Analyst</div>
-  <a href="#list-portfolio"><span class="method-badge badge-get">GET</span> Portfolio</a>
-  <a href="#list-research"><span class="method-badge badge-get">GET</span> Research</a>
-  <a href="#list-lps"><span class="method-badge badge-get">GET</span> LPs</a>
+  <a href="#list-portfolio"><span class="pill pill-get">GET</span> Portfolio</a>
+  <a href="#list-research"><span class="pill pill-get">GET</span> Research</a>
+  <a href="#list-lps"><span class="pill pill-get">GET</span> LPs</a>
 
   <div class="sidebar-section">Vault</div>
-  <a href="#list-assets"><span class="method-badge badge-get">GET</span> Assets</a>
-  <a href="#list-documents"><span class="method-badge badge-get">GET</span> Documents</a>
-  <a href="#list-deadlines"><span class="method-badge badge-get">GET</span> Deadlines</a>
+  <a href="#list-assets"><span class="pill pill-get">GET</span> Assets</a>
+  <a href="#list-documents"><span class="pill pill-get">GET</span> Documents</a>
+  <a href="#list-deadlines"><span class="pill pill-get">GET</span> Deadlines</a>
 
   <div class="sidebar-section">Integration</div>
-  <a href="#post-inbound"><span class="method-badge badge-post">POST</span> Inbound Push</a>
-  <a href="#list-webhooks"><span class="method-badge badge-get">GET</span> Webhooks</a>
-  <a href="#create-webhook"><span class="method-badge badge-post">POST</span> Create Webhook</a>
-  <a href="#delete-webhook"><span class="method-badge badge-delete">DEL</span> Delete Webhook</a>
+  <a href="#post-inbound"><span class="pill pill-post">POST</span> Inbound Push</a>
+  <a href="#list-webhooks"><span class="pill pill-get">GET</span> Webhooks</a>
+  <a href="#create-webhook"><span class="pill pill-post">POST</span> Create Webhook</a>
+  <a href="#delete-webhook"><span class="pill pill-del">DEL</span> Delete Webhook</a>
+  <a href="#webhook-events">Webhook Events</a>
 </nav>
 
-<!-- Main Content -->
 <main class="main">
 
+<!-- ================================================================ -->
+<!-- HERO -->
+<!-- ================================================================ -->
 <div class="hero">
-  <h1>TitleApp API Reference</h1>
-  <p>Connect your tools to TitleApp workspaces. Read inventory, push leads, automate tasks, and integrate with any platform.</p>
-  <div class="base-url">
+  <h1>Title<span>App</span> API Reference</h1>
+  <p>The TitleApp API lets you read and write data to any TitleApp workspace. Push leads from your website. Sync inventory from your DMS. Power a ChatGPT GPT or Claude MCP integration. Build anything.</p>
+  <div class="base-url-box">
     <span class="label">Base URL</span>
-    https://us-central1-title-app-alpha.cloudfunctions.net/publicApi
+    https://publicapi-feyfibglbq-uc.a.run.app
   </div>
 </div>
 
-<!-- ============================================================ -->
+<!-- ================================================================ -->
 <!-- AUTHENTICATION -->
-<!-- ============================================================ -->
+<!-- ================================================================ -->
 <div class="section" id="authentication">
   <h2 class="section-title">Authentication</h2>
-  <p class="section-desc">All API requests require an API key passed in the <code>X-API-Key</code> header. Keys are scoped to specific workspaces and permissions.</p>
+  <p class="section-desc">Every request (except <code>/v1/health</code> and <code>/v1/docs</code>) requires an API key in the <code>X-API-Key</code> header. Keys are scoped to specific workspaces and permission levels.</p>
 
-  <div class="detail-label">Generating a Key</div>
-  <p style="font-size:13px; color:var(--text-secondary); margin-bottom:8px;">Authenticated users create keys via the <code>createApiKey</code> endpoint using their Firebase Bearer token.</p>
+  <p class="lbl">Step 1 &mdash; Generate a key</p>
+  <p style="font-size:12.5px; color:var(--text-secondary); margin-bottom:6px;">Call the <code>createApiKey</code> endpoint with your Firebase Bearer token. You choose which workspaces and scopes the key gets.</p>
 <pre>
-curl -X POST https://us-central1-title-app-alpha.cloudfunctions.net/createApiKey \
+curl -X POST https://createapikey-feyfibglbq-uc.a.run.app \
   -H <span class="s">"Authorization: Bearer YOUR_FIREBASE_TOKEN"</span> \
   -H <span class="s">"Content-Type: application/json"</span> \
   -d <span class="s">'{
-    "name": "My Integration",
-    "workspace_ids": ["ws_abc123"],
+    "name": "Website Lead Form",
+    "workspace_ids": ["ws_1708901234_a8kq2x"],
     "scopes": ["read", "write"]
   }'</span>
 </pre>
-
-  <div class="detail-label" style="margin-top:20px">Using Your Key</div>
 <pre>
-curl https://...publicApi/v1/workspaces \
-  -H <span class="s">"X-API-Key: ta_your_api_key_here"</span>
-</pre>
-
-  <div class="detail-label" style="margin-top:20px">Key Properties</div>
-  <table class="param-table">
-    <tr><th>Field</th><th>Description</th></tr>
-    <tr><td><code>key</code></td><td>The API key string, prefixed with <code>ta_</code></td></tr>
-    <tr><td><code>workspace_ids</code></td><td>Array of workspace IDs this key can access</td></tr>
-    <tr><td><code>scopes</code></td><td><code>read</code>, <code>write</code>, or <code>admin</code></td></tr>
-    <tr><td><code>rate_limit</code></td><td>Requests per hour (default 100)</td></tr>
-  </table>
-</div>
-
-<!-- ============================================================ -->
-<!-- RATE LIMITING -->
-<!-- ============================================================ -->
-<div class="section" id="rate-limiting">
-  <h2 class="section-title">Rate Limiting</h2>
-  <p class="section-desc">Rate limits are tracked per API key per hour. Every response includes rate limit headers.</p>
-  <table class="param-table">
-    <tr><th>Header</th><th>Description</th></tr>
-    <tr><td><code>X-RateLimit-Limit</code></td><td>Maximum requests allowed per hour</td></tr>
-    <tr><td><code>X-RateLimit-Remaining</code></td><td>Requests remaining in current window</td></tr>
-    <tr><td><code>X-RateLimit-Reset</code></td><td>Unix timestamp when the window resets</td></tr>
-  </table>
-  <div class="info-box note">Free tier: 100 requests per hour. Contact us for higher limits.</div>
-</div>
-
-<!-- ============================================================ -->
-<!-- ERRORS -->
-<!-- ============================================================ -->
-<div class="section" id="errors">
-  <h2 class="section-title">Error Handling</h2>
-  <p class="section-desc">All errors return a consistent JSON structure.</p>
-<pre>
+<span class="c">// Response</span>
 {
-  <span class="s">"error"</span>: {
-    <span class="s">"code"</span>: <span class="s">"not_found"</span>,
-    <span class="s">"message"</span>: <span class="s">"Workspace not found"</span>,
-    <span class="s">"status"</span>: <span class="n">404</span>
+  <span class="s">"ok"</span>: <span class="k">true</span>,
+  <span class="s">"api_key"</span>: {
+    <span class="s">"id"</span>: <span class="s">"Kj8x2mPqR4nL"</span>,
+    <span class="s">"key"</span>: <span class="s">"ta_a1b2c3d4e5f6..."</span>,
+    <span class="s">"name"</span>: <span class="s">"Website Lead Form"</span>,
+    <span class="s">"workspace_ids"</span>: [<span class="s">"ws_1708901234_a8kq2x"</span>],
+    <span class="s">"scopes"</span>: [<span class="s">"read"</span>, <span class="s">"write"</span>],
+    <span class="s">"rate_limit"</span>: <span class="n">100</span>
   }
 }
 </pre>
-  <table class="param-table" style="margin-top:16px">
-    <tr><th>Status</th><th>Code</th><th>Meaning</th></tr>
-    <tr><td>400</td><td><code>bad_request</code></td><td>Missing or invalid parameters</td></tr>
-    <tr><td>401</td><td><code>unauthorized</code></td><td>Missing or invalid API key</td></tr>
-    <tr><td>403</td><td><code>forbidden</code></td><td>Key lacks access to this workspace or scope</td></tr>
-    <tr><td>404</td><td><code>not_found</code></td><td>Resource not found</td></tr>
-    <tr><td>429</td><td><code>rate_limited</code></td><td>Rate limit exceeded</td></tr>
-    <tr><td>500</td><td><code>internal_error</code></td><td>Server error</td></tr>
+
+  <p class="lbl">Step 2 &mdash; Use the key</p>
+<pre>
+curl https://publicapi-feyfibglbq-uc.a.run.app/v1/workspaces \
+  -H <span class="s">"X-API-Key: ta_a1b2c3d4e5f6..."</span>
+</pre>
+
+  <p class="lbl">Key properties</p>
+  <table>
+    <tr><th>Field</th><th>Description</th></tr>
+    <tr><td><code>key</code></td><td>The API key string. Prefixed with <code>ta_</code>. Store it securely &mdash; it cannot be retrieved after creation.</td></tr>
+    <tr><td><code>workspace_ids</code></td><td>Array of workspace IDs this key can access. Use <code>"vault"</code> for the personal vault.</td></tr>
+    <tr><td><code>scopes</code></td><td><code>read</code> &mdash; GET endpoints only. <code>write</code> &mdash; GET + POST. <code>admin</code> &mdash; full access to all workspaces.</td></tr>
+    <tr><td><code>rate_limit</code></td><td>Max requests per hour. Default 100 (free tier).</td></tr>
   </table>
 </div>
 
-<!-- ============================================================ -->
-<!-- CORE: WORKSPACES -->
-<!-- ============================================================ -->
-<div class="section" id="core">
-  <h2 class="section-title">Workspaces</h2>
-  <p class="section-desc">Workspaces are the top-level container for all data. Each API key is scoped to one or more workspaces.</p>
+<!-- ================================================================ -->
+<!-- RATE LIMITING -->
+<!-- ================================================================ -->
+<div class="section" id="rate-limiting">
+  <h2 class="section-title">Rate Limiting</h2>
+  <p class="section-desc">Every response includes rate limit headers. When you hit the limit, you get a <code>429</code> until the hourly window resets.</p>
+  <table>
+    <tr><th>Header</th><th>Example</th><th>Description</th></tr>
+    <tr><td><code>X-RateLimit-Limit</code></td><td><code>100</code></td><td>Max requests per hour for this key</td></tr>
+    <tr><td><code>X-RateLimit-Remaining</code></td><td><code>73</code></td><td>Requests left in the current window</td></tr>
+    <tr><td><code>X-RateLimit-Reset</code></td><td><code>1740355200</code></td><td>Unix timestamp when the window resets</td></tr>
+  </table>
+  <div class="note">Free tier: 100 requests per hour. Pro tier: 10,000 per hour. Need more? Contact us.</div>
+</div>
 
-  <div class="endpoint" id="list-workspaces">
-    <div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')">
-      <span class="endpoint-method method-get">GET</span>
-      <span class="endpoint-path">/v1/workspaces</span>
-      <span class="endpoint-desc">List accessible workspaces</span>
-      <span class="endpoint-chevron">&#9654;</span>
-    </div>
-    <div class="endpoint-body">
-      <p style="font-size:13px;color:var(--text-secondary)">Returns all workspace IDs this API key has access to.</p>
-      <div class="detail-label">Response</div>
+<!-- ================================================================ -->
+<!-- ERRORS -->
+<!-- ================================================================ -->
+<div class="section" id="errors">
+  <h2 class="section-title">Errors</h2>
+  <p class="section-desc">All errors return a consistent JSON structure with an error code, human-readable message, and HTTP status.</p>
 <pre>
 {
-  <span class="s">"data"</span>: [{ <span class="s">"id"</span>: <span class="s">"ws_abc123"</span> }, { <span class="s">"id"</span>: <span class="s">"vault"</span> }],
+  <span class="s">"error"</span>: {
+    <span class="s">"code"</span>: <span class="s">"forbidden"</span>,
+    <span class="s">"message"</span>: <span class="s">"Access denied to this workspace"</span>,
+    <span class="s">"status"</span>: <span class="n">403</span>
+  }
+}
+</pre>
+  <table style="margin-top:12px">
+    <tr><th>Status</th><th>Code</th><th>What happened</th><th>How to fix it</th></tr>
+    <tr><td><code>400</code></td><td><code>bad_request</code></td><td>Missing or invalid field in the request body</td><td>Check required fields in the endpoint docs below</td></tr>
+    <tr><td><code>401</code></td><td><code>unauthorized</code></td><td>No API key provided, or the key is invalid/revoked</td><td>Add <code>X-API-Key</code> header. Generate a key at the createApiKey endpoint.</td></tr>
+    <tr><td><code>403</code></td><td><code>forbidden</code></td><td>Key exists but lacks access to this workspace or scope</td><td>Check <code>workspace_ids</code> and <code>scopes</code> on your key</td></tr>
+    <tr><td><code>404</code></td><td><code>not_found</code></td><td>Workspace, resource, or route does not exist</td><td>Verify the workspace ID and endpoint path</td></tr>
+    <tr><td><code>429</code></td><td><code>rate_limited</code></td><td>Exceeded the hourly request limit</td><td>Wait for the reset time in <code>X-RateLimit-Reset</code> header</td></tr>
+    <tr><td><code>500</code></td><td><code>internal_error</code></td><td>Something broke on our end</td><td>Retry after a few seconds. If persistent, contact support.</td></tr>
+  </table>
+</div>
+
+<!-- ================================================================ -->
+<!-- USE CASES -->
+<!-- ================================================================ -->
+<div class="section" id="use-cases">
+  <h2 class="section-title">Use Cases</h2>
+  <p class="section-desc">Real integration scenarios with working code.</p>
+
+  <div class="uc">
+    <h3>Push leads from your website</h3>
+    <p>When someone fills out a contact form on your site, POST it to TitleApp. The workspace AI will auto-categorize and follow up within minutes.</p>
+<pre>
+<span class="c">// When your form submits</span>
+<span class="k">const</span> res = <span class="k">await</span> <span class="f">fetch</span>(<span class="s">'https://publicapi-feyfibglbq-uc.a.run.app/v1/workspaces/ws_abc123/customers'</span>, {
+  method: <span class="s">'POST'</span>,
+  headers: {
+    <span class="s">'X-API-Key'</span>: <span class="s">'ta_your_key'</span>,
+    <span class="s">'Content-Type'</span>: <span class="s">'application/json'</span>
+  },
+  body: JSON.<span class="f">stringify</span>({
+    firstName: <span class="s">'Jennifer'</span>,
+    lastName: <span class="s">'Kim'</span>,
+    email: <span class="s">'jennifer.kim@gmail.com'</span>,
+    phone: <span class="s">'(904) 555-0188'</span>,
+    source: <span class="s">'website_contact_form'</span>,
+    notes: <span class="s">'Interested in the 2024 Toyota Camry, saw it on AutoTrader'</span>
+  })
+});
+</pre>
+  </div>
+
+  <div class="uc">
+    <h3>Sync inventory from a DMS</h3>
+    <p>Connect CDK, Reynolds, or DealerTrack to push new vehicles as they hit the lot. TitleApp decodes the VIN and creates the listing automatically.</p>
+<pre>
+curl -X POST https://publicapi-feyfibglbq-uc.a.run.app/v1/workspaces/ws_abc123/inventory \
+  -H <span class="s">"X-API-Key: ta_your_key"</span> \
+  -H <span class="s">"Content-Type: application/json"</span> \
+  -d <span class="s">'{
+    "type": "vehicle",
+    "metadata": {
+      "vin": "1HGCG5655WA041389",
+      "year": 2024,
+      "make": "Honda",
+      "model": "Accord",
+      "trim": "Sport",
+      "color": "Platinum White Pearl",
+      "mileage": 12
+    },
+    "price": 32450,
+    "cost": 28900,
+    "source": "cdk_global"
+  }'</span>
+</pre>
+  </div>
+
+  <div class="uc">
+    <h3>Power a ChatGPT Custom GPT</h3>
+    <p>Build a GPT that checks your dashboard, searches inventory, and drafts follow-ups &mdash; all through the TitleApp API. Map GPT actions to our endpoints.</p>
+<pre>
+<span class="c"># User asks their GPT: "What's my inventory look like today?"</span>
+<span class="c"># The GPT calls:</span>
+curl https://publicapi-feyfibglbq-uc.a.run.app/v1/workspaces/ws_abc123/dashboard \
+  -H <span class="s">"X-API-Key: ta_your_key"</span>
+
+<span class="c"># User asks: "Draft a follow-up email to the Johnsons about their offer"</span>
+<span class="c"># The GPT calls:</span>
+curl -X POST https://publicapi-feyfibglbq-uc.a.run.app/v1/workspaces/ws_abc123/draft \
+  -H <span class="s">"X-API-Key: ta_your_key"</span> \
+  -H <span class="s">"Content-Type: application/json"</span> \
+  -d <span class="s">'{"type": "email", "recipient": "The Johnsons", "context": "counter-offer on 1893 San Jose Blvd"}'</span>
+</pre>
+  </div>
+
+  <div class="uc">
+    <h3>Build a Claude MCP integration</h3>
+    <p>Give Claude Desktop or any MCP client direct access to your TitleApp workspace. Each API endpoint maps to an MCP tool.</p>
+<pre>
+<span class="c">// MCP tool definition example</span>
+{
+  <span class="s">"name"</span>: <span class="s">"titleapp_get_inventory"</span>,
+  <span class="s">"description"</span>: <span class="s">"List vehicle inventory from TitleApp workspace"</span>,
+  <span class="s">"inputSchema"</span>: {
+    <span class="s">"type"</span>: <span class="s">"object"</span>,
+    <span class="s">"properties"</span>: {
+      <span class="s">"status"</span>: { <span class="s">"type"</span>: <span class="s">"string"</span>, <span class="s">"enum"</span>: [<span class="s">"available"</span>, <span class="s">"sold"</span>, <span class="s">"pending"</span>] }
+    }
+  }
+}
+<span class="c">// Tool handler calls GET /v1/workspaces/{id}/inventory?status=available</span>
+</pre>
+  </div>
+
+  <div class="uc">
+    <h3>Receive real-time alerts via webhooks</h3>
+    <p>Get notified instantly when a tenant is late, a lead comes in, or inventory ages past 60 days.</p>
+<pre>
+curl -X POST https://publicapi-feyfibglbq-uc.a.run.app/v1/webhooks \
+  -H <span class="s">"X-API-Key: ta_your_key"</span> \
+  -H <span class="s">"Content-Type: application/json"</span> \
+  -d <span class="s">'{
+    "url": "https://your-app.com/webhooks/titleapp",
+    "events": ["lead.new", "inventory.sold", "tenant.late", "task.overdue"],
+    "workspace_id": "ws_abc123"
+  }'</span>
+</pre>
+  </div>
+
+  <div class="uc">
+    <h3>Universal inbound &mdash; send anything</h3>
+    <p>Don't want to map to specific endpoints? POST any JSON to <code>/inbound</code> and the AI figures out what to do with it. Flight logs, form submissions, IoT data &mdash; whatever.</p>
+<pre>
+curl -X POST https://publicapi-feyfibglbq-uc.a.run.app/v1/workspaces/ws_abc123/inbound \
+  -H <span class="s">"X-API-Key: ta_your_key"</span> \
+  -H <span class="s">"Content-Type: application/json"</span> \
+  -d <span class="s">'{
+    "source": "typeform",
+    "form_name": "Open House Sign-In",
+    "responses": {
+      "name": "David and Maria Gonzalez",
+      "email": "dgonzalez@outlook.com",
+      "phone": "(904) 555-0234",
+      "budget": "$400k-$500k",
+      "timeline": "3 months",
+      "notes": "Love the backyard, want to see comparable properties"
+    }
+  }'</span>
+</pre>
+  </div>
+</div>
+
+<!-- ================================================================ -->
+<!-- SDK -->
+<!-- ================================================================ -->
+<div class="section" id="sdk">
+  <h2 class="section-title">Quick Start / SDK</h2>
+  <p class="section-desc">Official SDKs are coming. In the meantime, here is a lightweight wrapper you can drop into any JavaScript project.</p>
+<pre>
+<span class="k">const</span> titleapp = {
+  baseUrl: <span class="s">'https://publicapi-feyfibglbq-uc.a.run.app/v1'</span>,
+  apiKey: <span class="s">'ta_your_key_here'</span>,
+
+  <span class="k">async</span> <span class="f">get</span>(path) {
+    <span class="k">const</span> res = <span class="k">await</span> <span class="f">fetch</span>(<span class="k">this</span>.baseUrl + path, {
+      headers: { <span class="s">'X-API-Key'</span>: <span class="k">this</span>.apiKey }
+    });
+    <span class="k">return</span> res.<span class="f">json</span>();
+  },
+
+  <span class="k">async</span> <span class="f">post</span>(path, data) {
+    <span class="k">const</span> res = <span class="k">await</span> <span class="f">fetch</span>(<span class="k">this</span>.baseUrl + path, {
+      method: <span class="s">'POST'</span>,
+      headers: { <span class="s">'X-API-Key'</span>: <span class="k">this</span>.apiKey, <span class="s">'Content-Type'</span>: <span class="s">'application/json'</span> },
+      body: JSON.<span class="f">stringify</span>(data)
+    });
+    <span class="k">return</span> res.<span class="f">json</span>();
+  },
+
+  <span class="k">async</span> <span class="f">del</span>(path) {
+    <span class="k">const</span> res = <span class="k">await</span> <span class="f">fetch</span>(<span class="k">this</span>.baseUrl + path, {
+      method: <span class="s">'DELETE'</span>,
+      headers: { <span class="s">'X-API-Key'</span>: <span class="k">this</span>.apiKey }
+    });
+    <span class="k">return</span> res.<span class="f">json</span>();
+  }
+};
+
+<span class="c">// Get dashboard KPIs</span>
+<span class="k">const</span> dash = <span class="k">await</span> titleapp.<span class="f">get</span>(<span class="s">'/workspaces/ws_abc123/dashboard'</span>);
+console.<span class="f">log</span>(dash.data.kpis.total_inventory); <span class="c">// 47</span>
+
+<span class="c">// Push a buyer lead from Zillow</span>
+<span class="k">await</span> titleapp.<span class="f">post</span>(<span class="s">'/workspaces/ws_abc123/buyers'</span>, {
+  name: <span class="s">'Jennifer Kim'</span>,
+  email: <span class="s">'jennifer.kim@gmail.com'</span>,
+  source: <span class="s">'zillow'</span>,
+  message: <span class="s">'Interested in 1893 San Jose Blvd, pre-approved up to $475k'</span>
+});
+
+<span class="c">// List available inventory</span>
+<span class="k">const</span> inv = <span class="k">await</span> titleapp.<span class="f">get</span>(<span class="s">'/workspaces/ws_abc123/inventory?status=available'</span>);
+</pre>
+
+  <p class="lbl" style="margin-top:20px">Python</p>
+<pre>
+<span class="k">import</span> requests
+
+API_KEY = <span class="s">"ta_your_key_here"</span>
+BASE = <span class="s">"https://publicapi-feyfibglbq-uc.a.run.app/v1"</span>
+headers = {<span class="s">"X-API-Key"</span>: API_KEY}
+
+<span class="c"># Get dashboard</span>
+r = requests.<span class="f">get</span>(f<span class="s">"{BASE}/workspaces/ws_abc123/dashboard"</span>, headers=headers)
+<span class="f">print</span>(r.<span class="f">json</span>()[<span class="s">"data"</span>][<span class="s">"kpis"</span>])
+
+<span class="c"># Push a lead</span>
+requests.<span class="f">post</span>(f<span class="s">"{BASE}/workspaces/ws_abc123/customers"</span>, headers=headers, json={
+    <span class="s">"firstName"</span>: <span class="s">"Marcus"</span>,
+    <span class="s">"lastName"</span>: <span class="s">"Rivera"</span>,
+    <span class="s">"email"</span>: <span class="s">"marcus.r@gmail.com"</span>,
+    <span class="s">"source"</span>: <span class="s">"autotrader"</span>
+})
+</pre>
+</div>
+
+<!-- ================================================================ -->
+<!-- CORE: WORKSPACES -->
+<!-- ================================================================ -->
+<div class="section" id="core">
+  <h2 class="section-title">Workspaces</h2>
+  <p class="section-desc">Workspaces are the top-level container. Every API key is scoped to one or more workspaces. Each workspace has a vertical (auto, real_estate, analyst, consumer) and its own data.</p>
+
+  <div class="ep" id="list-workspaces">
+    <div class="ep-head" onclick="this.parentElement.classList.toggle('open')">
+      <span class="ep-method m-get">GET</span>
+      <span class="ep-path">/v1/workspaces</span>
+      <span class="ep-summary">List accessible workspaces</span>
+      <span class="ep-chevron">&#9654;</span>
+    </div>
+    <div class="ep-body">
+      <div class="ep-when">Use this to discover which workspaces your API key has access to. Call this first when setting up a new integration to get the workspace IDs you need for all other endpoints.</div>
+      <p class="lbl">Response</p>
+<pre>
+{
+  <span class="s">"data"</span>: [
+    { <span class="s">"id"</span>: <span class="s">"ws_1708901234_a8kq2x"</span> },
+    { <span class="s">"id"</span>: <span class="s">"ws_1709442871_m3jc7p"</span> },
+    { <span class="s">"id"</span>: <span class="s">"vault"</span> }
+  ],
+  <span class="s">"total"</span>: <span class="n">3</span>
+}
+</pre>
+    </div>
+  </div>
+
+  <div class="ep" id="get-workspace">
+    <div class="ep-head" onclick="this.parentElement.classList.toggle('open')">
+      <span class="ep-method m-get">GET</span>
+      <span class="ep-path">/v1/workspaces/:workspace_id</span>
+      <span class="ep-summary">Workspace details</span>
+      <span class="ep-chevron">&#9654;</span>
+    </div>
+    <div class="ep-body">
+      <div class="ep-when">Get the name, vertical, plan, and status of a workspace. Useful for displaying workspace info in your UI or routing logic based on the vertical type.</div>
+      <p class="lbl">Response</p>
+<pre>
+{
+  <span class="s">"data"</span>: {
+    <span class="s">"id"</span>: <span class="s">"ws_1708901234_a8kq2x"</span>,
+    <span class="s">"name"</span>: <span class="s">"Riverside Auto Group"</span>,
+    <span class="s">"vertical"</span>: <span class="s">"auto"</span>,
+    <span class="s">"tagline"</span>: <span class="s">"Jacksonville's trusted dealer since 1994"</span>,
+    <span class="s">"jurisdiction"</span>: <span class="s">"FL"</span>,
+    <span class="s">"status"</span>: <span class="s">"trial"</span>,
+    <span class="s">"plan"</span>: <span class="s">"business"</span>,
+    <span class="s">"created_at"</span>: <span class="s">"2026-02-15T14:22:00Z"</span>
+  }
+}
+</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================ -->
+<!-- DASHBOARD & INSIGHTS -->
+<!-- ================================================================ -->
+<div class="section">
+  <h2 class="section-title">Dashboard &amp; Insights</h2>
+  <p class="section-desc">Aggregated KPIs and AI-generated insights for a workspace.</p>
+
+  <div class="ep" id="get-dashboard">
+    <div class="ep-head" onclick="this.parentElement.classList.toggle('open')">
+      <span class="ep-method m-get">GET</span>
+      <span class="ep-path">/v1/workspaces/:workspace_id/dashboard</span>
+      <span class="ep-summary">KPIs, alerts, briefing</span>
+      <span class="ep-chevron">&#9654;</span>
+    </div>
+    <div class="ep-body">
+      <div class="ep-when">Pull the real-time pulse of a workspace in one call. Use this to power a dashboard widget, a daily Slack summary, or the opening context for a ChatGPT GPT that manages a dealership.</div>
+      <p class="lbl">Response</p>
+<pre>
+{
+  <span class="s">"data"</span>: {
+    <span class="s">"workspace_id"</span>: <span class="s">"ws_1708901234_a8kq2x"</span>,
+    <span class="s">"kpis"</span>: {
+      <span class="s">"total_inventory"</span>: <span class="n">47</span>,
+      <span class="s">"available_inventory"</span>: <span class="n">32</span>,
+      <span class="s">"total_inventory_value"</span>: <span class="n">1452800</span>,
+      <span class="s">"total_customers"</span>: <span class="n">215</span>,
+      <span class="s">"total_appointments"</span>: <span class="n">18</span>
+    },
+    <span class="s">"alerts"</span>: [],
+    <span class="s">"briefing"</span>: <span class="s">"Workspace has 47 inventory items, 215 customers, and 18 appointments."</span>
+  }
+}
+</pre>
+    </div>
+  </div>
+
+  <div class="ep" id="get-insights">
+    <div class="ep-head" onclick="this.parentElement.classList.toggle('open')">
+      <span class="ep-method m-get">GET</span>
+      <span class="ep-path">/v1/workspaces/:workspace_id/insights</span>
+      <span class="ep-summary">AI-generated insights</span>
+      <span class="ep-chevron">&#9654;</span>
+    </div>
+    <div class="ep-body">
+      <div class="ep-when">See what the AI has been working on. Use this to surface recent AI actions in your UI, build an audit trail, or check that the AI is processing inbound data correctly.</div>
+      <p class="lbl">Response</p>
+<pre>
+{
+  <span class="s">"data"</span>: [
+    {
+      <span class="s">"id"</span>: <span class="s">"pkg_9xK2mW"</span>,
+      <span class="s">"type"</span>: <span class="s">"deal_screening"</span>,
+      <span class="s">"status"</span>: <span class="s">"completed"</span>,
+      <span class="s">"created_at"</span>: <span class="s">"2026-02-23T09:14:00Z"</span>
+    },
+    {
+      <span class="s">"id"</span>: <span class="s">"pkg_4bN7qR"</span>,
+      <span class="s">"type"</span>: <span class="s">"lead_qualification"</span>,
+      <span class="s">"status"</span>: <span class="s">"completed"</span>,
+      <span class="s">"created_at"</span>: <span class="s">"2026-02-23T08:45:00Z"</span>
+    }
+  ],
   <span class="s">"total"</span>: <span class="n">2</span>
 }
 </pre>
     </div>
   </div>
-
-  <div class="endpoint" id="get-workspace">
-    <div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')">
-      <span class="endpoint-method method-get">GET</span>
-      <span class="endpoint-path">/v1/workspaces/:workspace_id</span>
-      <span class="endpoint-desc">Workspace details</span>
-      <span class="endpoint-chevron">&#9654;</span>
-    </div>
-    <div class="endpoint-body">
-      <div class="detail-label">Path Parameters</div>
-      <table class="param-table">
-        <tr><th>Param</th><th>Description</th></tr>
-        <tr><td><code>workspace_id</code></td><td>Workspace ID (e.g. <code>ws_abc123</code> or <code>vault</code>)</td></tr>
-      </table>
-      <div class="detail-label">Response</div>
-<pre>
-{
-  <span class="s">"data"</span>: {
-    <span class="s">"id"</span>: <span class="s">"ws_abc123"</span>,
-    <span class="s">"name"</span>: <span class="s">"Acme Auto"</span>,
-    <span class="s">"vertical"</span>: <span class="s">"auto"</span>,
-    <span class="s">"tagline"</span>: <span class="s">"Best deals in town"</span>,
-    <span class="s">"jurisdiction"</span>: <span class="s">"IL"</span>,
-    <span class="s">"status"</span>: <span class="s">"trial"</span>,
-    <span class="s">"plan"</span>: <span class="s">"business"</span>,
-    <span class="s">"created_at"</span>: <span class="s">"..."</span>
-  }
-}
-</pre>
-    </div>
-  </div>
 </div>
 
-<!-- ============================================================ -->
-<!-- CORE: DASHBOARD & INSIGHTS -->
-<!-- ============================================================ -->
+<!-- ================================================================ -->
+<!-- AI & TASKS -->
+<!-- ================================================================ -->
 <div class="section">
-  <h2 class="section-title">Dashboard &amp; Insights</h2>
-  <p class="section-desc">Aggregated KPIs and AI-generated insights for a workspace.</p>
+  <h2 class="section-title">AI &amp; Tasks</h2>
+  <p class="section-desc">Send messages to the workspace AI, draft communications, manage tasks, and view the activity log.</p>
 
-  <div class="endpoint" id="get-dashboard">
-    <div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')">
-      <span class="endpoint-method method-get">GET</span>
-      <span class="endpoint-path">/v1/workspaces/:workspace_id/dashboard</span>
-      <span class="endpoint-desc">KPIs, alerts, briefing</span>
-      <span class="endpoint-chevron">&#9654;</span>
+  <div class="ep" id="send-chat">
+    <div class="ep-head" onclick="this.parentElement.classList.toggle('open')">
+      <span class="ep-method m-post">POST</span>
+      <span class="ep-path">/v1/workspaces/:workspace_id/chat</span>
+      <span class="ep-summary">Send message to AI</span>
+      <span class="ep-chevron">&#9654;</span>
     </div>
-    <div class="endpoint-body">
-      <div class="detail-label">Response</div>
+    <div class="ep-body">
+      <span class="scope-badge">write scope</span>
+      <div class="ep-when">Send a natural-language message to the workspace AI. Use this to build a ChatGPT GPT or Slack bot that can ask questions about your business. Messages are queued and processed asynchronously.</div>
+      <p class="lbl">Request body</p>
+      <table>
+        <tr><th>Field</th><th>Type</th><th></th><th>Description</th></tr>
+        <tr><td><code>message</code></td><td>string</td><td><span class="req">required</span></td><td>The message to send to the AI</td></tr>
+        <tr><td><code>conversation_id</code></td><td>string</td><td><span class="opt">optional</span></td><td>Continue an existing conversation thread</td></tr>
+      </table>
+      <p class="lbl">Response <span style="font-weight:400;text-transform:none;letter-spacing:0">(201)</span></p>
 <pre>
 {
   <span class="s">"data"</span>: {
-    <span class="s">"workspace_id"</span>: <span class="s">"ws_abc123"</span>,
-    <span class="s">"kpis"</span>: {
-      <span class="s">"total_inventory"</span>: <span class="n">47</span>,
-      <span class="s">"available_inventory"</span>: <span class="n">32</span>,
-      <span class="s">"total_inventory_value"</span>: <span class="n">1450000</span>,
-      <span class="s">"total_customers"</span>: <span class="n">215</span>,
-      <span class="s">"total_appointments"</span>: <span class="n">18</span>
-    },
-    <span class="s">"alerts"</span>: [],
-    <span class="s">"briefing"</span>: <span class="s">"Workspace has 47 inventory items..."</span>
+    <span class="s">"message_id"</span>: <span class="s">"qR4nL8x2mPj"</span>,
+    <span class="s">"conversation_id"</span>: <span class="s">"conv_1708901234_k9m2xp"</span>,
+    <span class="s">"status"</span>: <span class="s">"queued"</span>,
+    <span class="s">"note"</span>: <span class="s">"Message received. AI processing is async -- poll activity endpoint for response."</span>
   }
 }
 </pre>
     </div>
   </div>
 
-  <div class="endpoint" id="get-insights">
-    <div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')">
-      <span class="endpoint-method method-get">GET</span>
-      <span class="endpoint-path">/v1/workspaces/:workspace_id/insights</span>
-      <span class="endpoint-desc">AI-generated insights</span>
-      <span class="endpoint-chevron">&#9654;</span>
+  <div class="ep" id="create-draft">
+    <div class="ep-head" onclick="this.parentElement.classList.toggle('open')">
+      <span class="ep-method m-post">POST</span>
+      <span class="ep-path">/v1/workspaces/:workspace_id/draft</span>
+      <span class="ep-summary">Draft a communication</span>
+      <span class="ep-chevron">&#9654;</span>
     </div>
-    <div class="endpoint-body">
-      <p style="font-size:13px;color:var(--text-secondary)">Returns recent AI processing activity and generated insights.</p>
-      <div class="detail-label">Response</div>
+    <div class="ep-body">
+      <span class="scope-badge">write scope</span>
+      <div class="ep-when">Ask the AI to draft an email, SMS, or letter. Use this when your GPT needs to write follow-up emails or when you want to batch-generate outreach from a CRM integration.</div>
+      <p class="lbl">Request body</p>
+      <table>
+        <tr><th>Field</th><th>Type</th><th></th><th>Description</th></tr>
+        <tr><td><code>type</code></td><td>string</td><td><span class="req">required</span></td><td><code>email</code>, <code>sms</code>, <code>letter</code></td></tr>
+        <tr><td><code>recipient</code></td><td>string</td><td><span class="req">required</span></td><td>Recipient name or address</td></tr>
+        <tr><td><code>subject</code></td><td>string</td><td><span class="opt">optional</span></td><td>Subject line (email only)</td></tr>
+        <tr><td><code>context</code></td><td>string</td><td><span class="opt">optional</span></td><td>Additional context for the AI</td></tr>
+      </table>
+      <p class="lbl">Response <span style="font-weight:400;text-transform:none;letter-spacing:0">(201)</span></p>
+<pre>
+{
+  <span class="s">"data"</span>: {
+    <span class="s">"draft_id"</span>: <span class="s">"drf_7mKq2xN"</span>,
+    <span class="s">"status"</span>: <span class="s">"pending"</span>
+  }
+}
+</pre>
+    </div>
+  </div>
+
+  <div class="ep" id="create-task">
+    <div class="ep-head" onclick="this.parentElement.classList.toggle('open')">
+      <span class="ep-method m-post">POST</span>
+      <span class="ep-path">/v1/workspaces/:workspace_id/tasks</span>
+      <span class="ep-summary">Create a task</span>
+      <span class="ep-chevron">&#9654;</span>
+    </div>
+    <div class="ep-body">
+      <span class="scope-badge">write scope</span>
+      <div class="ep-when">Create tasks from external systems. Use this to sync Asana or Jira tasks into a workspace, or to create follow-up tasks when a lead comes in from your website.</div>
+      <p class="lbl">Request body</p>
+      <table>
+        <tr><th>Field</th><th>Type</th><th></th><th>Description</th></tr>
+        <tr><td><code>title</code></td><td>string</td><td><span class="req">required</span></td><td>Task title</td></tr>
+        <tr><td><code>description</code></td><td>string</td><td><span class="opt">optional</span></td><td>Detailed description</td></tr>
+        <tr><td><code>due_date</code></td><td>string</td><td><span class="opt">optional</span></td><td>ISO 8601 date (<code>2026-03-15</code>)</td></tr>
+        <tr><td><code>priority</code></td><td>string</td><td><span class="opt">optional</span></td><td><code>low</code>, <code>medium</code> (default), <code>high</code></td></tr>
+        <tr><td><code>assignee</code></td><td>string</td><td><span class="opt">optional</span></td><td>Assigned person's name</td></tr>
+      </table>
+      <p class="lbl">Response <span style="font-weight:400;text-transform:none;letter-spacing:0">(201)</span></p>
+<pre>
+{
+  <span class="s">"data"</span>: {
+    <span class="s">"id"</span>: <span class="s">"tsk_8nRq4mK"</span>,
+    <span class="s">"title"</span>: <span class="s">"Follow up with Jennifer Kim about the Camry"</span>,
+    <span class="s">"status"</span>: <span class="s">"open"</span>
+  }
+}
+</pre>
+    </div>
+  </div>
+
+  <div class="ep" id="list-tasks">
+    <div class="ep-head" onclick="this.parentElement.classList.toggle('open')">
+      <span class="ep-method m-get">GET</span>
+      <span class="ep-path">/v1/workspaces/:workspace_id/tasks</span>
+      <span class="ep-summary">List tasks</span>
+      <span class="ep-chevron">&#9654;</span>
+    </div>
+    <div class="ep-body">
+      <div class="ep-when">Pull tasks to display in your project management tool, or to check what the AI has queued up. Combine with the deadlines endpoint to build a priority view.</div>
+      <p class="lbl">Query parameters</p>
+      <table>
+        <tr><th>Param</th><th>Type</th><th>Default</th><th>Description</th></tr>
+        <tr><td><code>status</code></td><td>string</td><td></td><td><code>open</code>, <code>completed</code>, <code>cancelled</code></td></tr>
+        <tr><td><code>limit</code></td><td>integer</td><td><code>50</code></td><td>Max results per page</td></tr>
+        <tr><td><code>offset</code></td><td>integer</td><td><code>0</code></td><td>Pagination offset</td></tr>
+      </table>
+      <p class="lbl">Response</p>
 <pre>
 {
   <span class="s">"data"</span>: [
-    { <span class="s">"id"</span>: <span class="s">"..."</span>, <span class="s">"type"</span>: <span class="s">"deal_screening"</span>, <span class="s">"status"</span>: <span class="s">"completed"</span>, <span class="s">"created_at"</span>: <span class="s">"..."</span> }
+    {
+      <span class="s">"id"</span>: <span class="s">"tsk_8nRq4mK"</span>,
+      <span class="s">"tenantId"</span>: <span class="s">"ws_1708901234_a8kq2x"</span>,
+      <span class="s">"title"</span>: <span class="s">"Follow up with Jennifer Kim about the Camry"</span>,
+      <span class="s">"description"</span>: <span class="s">"She inquired via AutoTrader. Pre-approved at $35k."</span>,
+      <span class="s">"dueDate"</span>: <span class="s">"2026-02-25"</span>,
+      <span class="s">"priority"</span>: <span class="s">"high"</span>,
+      <span class="s">"assignee"</span>: <span class="s">"Mike Torres"</span>,
+      <span class="s">"status"</span>: <span class="s">"open"</span>,
+      <span class="s">"source"</span>: <span class="s">"api"</span>,
+      <span class="s">"createdAt"</span>: <span class="s">"2026-02-23T14:30:00Z"</span>
+    }
+  ],
+  <span class="s">"total"</span>: <span class="n">1</span>
+}
+</pre>
+    </div>
+  </div>
+
+  <div class="ep" id="get-activity">
+    <div class="ep-head" onclick="this.parentElement.classList.toggle('open')">
+      <span class="ep-method m-get">GET</span>
+      <span class="ep-path">/v1/workspaces/:workspace_id/activity</span>
+      <span class="ep-summary">AI activity log</span>
+      <span class="ep-chevron">&#9654;</span>
+    </div>
+    <div class="ep-body">
+      <div class="ep-when">See what the AI has been doing. Use this as an audit log, to poll for completed chat responses, or to build an activity feed in your dashboard.</div>
+      <p class="lbl">Query parameters</p>
+      <table><tr><th>Param</th><th>Type</th><th>Default</th><th>Description</th></tr>
+        <tr><td><code>limit</code></td><td>integer</td><td><code>50</code></td><td>Max results</td></tr></table>
+      <p class="lbl">Response</p>
+<pre>
+{
+  <span class="s">"data"</span>: [
+    {
+      <span class="s">"id"</span>: <span class="s">"pkg_9xK2mW"</span>,
+      <span class="s">"workflow_id"</span>: <span class="s">"lead_qualification"</span>,
+      <span class="s">"status"</span>: <span class="s">"completed"</span>,
+      <span class="s">"model"</span>: <span class="s">"claude-opus-4"</span>,
+      <span class="s">"created_at"</span>: <span class="s">"2026-02-23T09:14:00Z"</span>,
+      <span class="s">"completed_at"</span>: <span class="s">"2026-02-23T09:14:08Z"</span>
+    }
+  ],
+  <span class="s">"total"</span>: <span class="n">1</span>
+}
+</pre>
+    </div>
+  </div>
+
+  <div class="ep" id="get-reports">
+    <div class="ep-head" onclick="this.parentElement.classList.toggle('open')">
+      <span class="ep-method m-get">GET</span>
+      <span class="ep-path">/v1/workspaces/:workspace_id/reports</span>
+      <span class="ep-summary">Import reports</span>
+      <span class="ep-chevron">&#9654;</span>
+    </div>
+    <div class="ep-body">
+      <div class="ep-when">Check the status of CSV imports and bulk data loads. Use this to confirm that a DMS sync completed successfully or to surface import errors in your admin panel.</div>
+      <p class="lbl">Response</p>
+<pre>
+{
+  <span class="s">"data"</span>: [
+    {
+      <span class="s">"id"</span>: <span class="s">"imp_3kN8mQ"</span>,
+      <span class="s">"tenantId"</span>: <span class="s">"ws_1708901234_a8kq2x"</span>,
+      <span class="s">"type"</span>: <span class="s">"inventory"</span>,
+      <span class="s">"status"</span>: <span class="s">"completed"</span>,
+      <span class="s">"counts"</span>: { <span class="s">"receivedRows"</span>: <span class="n">42</span>, <span class="s">"inserted"</span>: <span class="n">42</span>, <span class="s">"errors"</span>: <span class="n">0</span> },
+      <span class="s">"createdAt"</span>: <span class="s">"2026-02-22T16:00:00Z"</span>
+    }
   ],
   <span class="s">"total"</span>: <span class="n">1</span>
 }
@@ -547,712 +841,548 @@ curl https://...publicApi/v1/workspaces \
   </div>
 </div>
 
-<!-- ============================================================ -->
-<!-- CORE: AI -->
-<!-- ============================================================ -->
-<div class="section">
-  <h2 class="section-title">AI &amp; Tasks</h2>
-  <p class="section-desc">Send messages to the workspace AI, draft communications, and manage tasks.</p>
-
-  <div class="endpoint" id="send-chat">
-    <div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')">
-      <span class="endpoint-method method-post">POST</span>
-      <span class="endpoint-path">/v1/workspaces/:workspace_id/chat</span>
-      <span class="endpoint-desc">Send message to AI</span>
-      <span class="endpoint-chevron">&#9654;</span>
-    </div>
-    <div class="endpoint-body">
-      <div class="info-box note">Requires <code>write</code> scope.</div>
-      <div class="detail-label">Request Body</div>
-      <table class="param-table">
-        <tr><th>Field</th><th>Type</th><th></th><th>Description</th></tr>
-        <tr><td><code>message</code></td><td>string</td><td><span class="param-required">required</span></td><td>The message to send</td></tr>
-        <tr><td><code>conversation_id</code></td><td>string</td><td><span class="param-optional">optional</span></td><td>Continue an existing conversation</td></tr>
-      </table>
-      <div class="detail-label">Example</div>
-<pre>
-curl -X POST .../v1/workspaces/ws_abc123/chat \
-  -H <span class="s">"X-API-Key: ta_..."</span> \
-  -H <span class="s">"Content-Type: application/json"</span> \
-  -d <span class="s">'{"message": "Show me deals closing this week"}'</span>
-</pre>
-      <div class="detail-label">Response</div>
-<pre>
-{
-  <span class="s">"data"</span>: {
-    <span class="s">"message_id"</span>: <span class="s">"abc123"</span>,
-    <span class="s">"conversation_id"</span>: <span class="s">"conv_..."</span>,
-    <span class="s">"status"</span>: <span class="s">"queued"</span>
-  }
-}
-</pre>
-    </div>
-  </div>
-
-  <div class="endpoint" id="create-draft">
-    <div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')">
-      <span class="endpoint-method method-post">POST</span>
-      <span class="endpoint-path">/v1/workspaces/:workspace_id/draft</span>
-      <span class="endpoint-desc">Draft a communication</span>
-      <span class="endpoint-chevron">&#9654;</span>
-    </div>
-    <div class="endpoint-body">
-      <div class="info-box note">Requires <code>write</code> scope.</div>
-      <div class="detail-label">Request Body</div>
-      <table class="param-table">
-        <tr><th>Field</th><th>Type</th><th></th><th>Description</th></tr>
-        <tr><td><code>type</code></td><td>string</td><td><span class="param-required">required</span></td><td>e.g. "email", "sms", "letter"</td></tr>
-        <tr><td><code>recipient</code></td><td>string</td><td><span class="param-required">required</span></td><td>Recipient name or address</td></tr>
-        <tr><td><code>subject</code></td><td>string</td><td><span class="param-optional">optional</span></td><td>Subject line</td></tr>
-        <tr><td><code>context</code></td><td>string</td><td><span class="param-optional">optional</span></td><td>Additional context for the AI</td></tr>
-      </table>
-    </div>
-  </div>
-
-  <div class="endpoint" id="create-task">
-    <div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')">
-      <span class="endpoint-method method-post">POST</span>
-      <span class="endpoint-path">/v1/workspaces/:workspace_id/tasks</span>
-      <span class="endpoint-desc">Create a task</span>
-      <span class="endpoint-chevron">&#9654;</span>
-    </div>
-    <div class="endpoint-body">
-      <div class="info-box note">Requires <code>write</code> scope.</div>
-      <div class="detail-label">Request Body</div>
-      <table class="param-table">
-        <tr><th>Field</th><th>Type</th><th></th><th>Description</th></tr>
-        <tr><td><code>title</code></td><td>string</td><td><span class="param-required">required</span></td><td>Task title</td></tr>
-        <tr><td><code>description</code></td><td>string</td><td><span class="param-optional">optional</span></td><td>Detailed description</td></tr>
-        <tr><td><code>due_date</code></td><td>string</td><td><span class="param-optional">optional</span></td><td>ISO 8601 date</td></tr>
-        <tr><td><code>priority</code></td><td>string</td><td><span class="param-optional">optional</span></td><td>low, medium (default), high</td></tr>
-        <tr><td><code>assignee</code></td><td>string</td><td><span class="param-optional">optional</span></td><td>Assigned person</td></tr>
-      </table>
-    </div>
-  </div>
-
-  <div class="endpoint" id="list-tasks">
-    <div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')">
-      <span class="endpoint-method method-get">GET</span>
-      <span class="endpoint-path">/v1/workspaces/:workspace_id/tasks</span>
-      <span class="endpoint-desc">List tasks</span>
-      <span class="endpoint-chevron">&#9654;</span>
-    </div>
-    <div class="endpoint-body">
-      <div class="detail-label">Query Parameters</div>
-      <table class="param-table">
-        <tr><th>Param</th><th>Default</th><th>Description</th></tr>
-        <tr><td><code>status</code></td><td></td><td>Filter by status (open, completed, etc.)</td></tr>
-        <tr><td><code>limit</code></td><td>50</td><td>Max results</td></tr>
-        <tr><td><code>offset</code></td><td>0</td><td>Pagination offset</td></tr>
-      </table>
-    </div>
-  </div>
-
-  <div class="endpoint" id="get-activity">
-    <div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')">
-      <span class="endpoint-method method-get">GET</span>
-      <span class="endpoint-path">/v1/workspaces/:workspace_id/activity</span>
-      <span class="endpoint-desc">AI activity log</span>
-      <span class="endpoint-chevron">&#9654;</span>
-    </div>
-    <div class="endpoint-body">
-      <div class="detail-label">Query Parameters</div>
-      <table class="param-table">
-        <tr><th>Param</th><th>Default</th><th>Description</th></tr>
-        <tr><td><code>limit</code></td><td>50</td><td>Max results</td></tr>
-      </table>
-      <div class="detail-label">Response</div>
-<pre>
-{
-  <span class="s">"data"</span>: [
-    { <span class="s">"id"</span>: <span class="s">"..."</span>, <span class="s">"workflow_id"</span>: <span class="s">"..."</span>, <span class="s">"status"</span>: <span class="s">"completed"</span>, <span class="s">"model"</span>: <span class="s">"claude-opus-4"</span>, <span class="s">"created_at"</span>: <span class="s">"..."</span> }
-  ]
-}
-</pre>
-    </div>
-  </div>
-
-  <div class="endpoint" id="get-reports">
-    <div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')">
-      <span class="endpoint-method method-get">GET</span>
-      <span class="endpoint-path">/v1/workspaces/:workspace_id/reports</span>
-      <span class="endpoint-desc">Reports data</span>
-      <span class="endpoint-chevron">&#9654;</span>
-    </div>
-    <div class="endpoint-body">
-      <p style="font-size:13px;color:var(--text-secondary)">Returns import reports and data processing history.</p>
-    </div>
-  </div>
-</div>
-
-<!-- ============================================================ -->
+<!-- ================================================================ -->
 <!-- REAL ESTATE -->
-<!-- ============================================================ -->
+<!-- ================================================================ -->
 <div class="section">
   <h2 class="section-title">Real Estate</h2>
-  <p class="section-desc">Listings, buyer leads, transactions, properties, tenants, and maintenance. Connect Zillow, Realtor.com, or any MLS feed.</p>
+  <p class="section-desc">Listings, buyer leads, transactions, properties, tenants, and maintenance requests. Connect Zillow, Realtor.com, your MLS, or any property management tool.</p>
 
-  <div class="endpoint" id="list-listings">
-    <div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')">
-      <span class="endpoint-method method-get">GET</span>
-      <span class="endpoint-path">/v1/workspaces/:workspace_id/listings</span>
-      <span class="endpoint-desc">List property listings</span>
-      <span class="endpoint-chevron">&#9654;</span>
+  <div class="ep" id="list-listings">
+    <div class="ep-head" onclick="this.parentElement.classList.toggle('open')">
+      <span class="ep-method m-get">GET</span>
+      <span class="ep-path">/v1/workspaces/:workspace_id/listings</span>
+      <span class="ep-summary">List property listings</span>
+      <span class="ep-chevron">&#9654;</span>
     </div>
-    <div class="endpoint-body">
-      <div class="detail-label">Query Parameters</div>
-      <table class="param-table">
-        <tr><th>Param</th><th>Default</th><th>Description</th></tr>
-        <tr><td><code>status</code></td><td></td><td>Filter: active, pending, sold, all</td></tr>
-        <tr><td><code>min_price</code></td><td></td><td>Minimum price filter</td></tr>
-        <tr><td><code>max_price</code></td><td></td><td>Maximum price filter</td></tr>
-        <tr><td><code>limit</code></td><td>50</td><td>Max results</td></tr>
-        <tr><td><code>offset</code></td><td>0</td><td>Pagination offset</td></tr>
+    <div class="ep-body">
+      <div class="ep-when">Pull your active listings to display on your website, sync with Zillow, or feed a ChatGPT GPT that answers questions about your inventory.</div>
+      <p class="lbl">Query parameters</p>
+      <table>
+        <tr><th>Param</th><th>Type</th><th>Default</th><th>Description</th></tr>
+        <tr><td><code>status</code></td><td>string</td><td><code>all</code></td><td><code>active</code>, <code>under_contract</code>, <code>sold</code>, <code>all</code></td></tr>
+        <tr><td><code>min_price</code></td><td>number</td><td></td><td>Minimum list price filter</td></tr>
+        <tr><td><code>max_price</code></td><td>number</td><td></td><td>Maximum list price filter</td></tr>
+        <tr><td><code>limit</code></td><td>integer</td><td><code>50</code></td><td>Max results per page</td></tr>
+        <tr><td><code>offset</code></td><td>integer</td><td><code>0</code></td><td>Pagination offset</td></tr>
       </table>
-    </div>
-  </div>
-
-  <div class="endpoint" id="create-listing">
-    <div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')">
-      <span class="endpoint-method method-post">POST</span>
-      <span class="endpoint-path">/v1/workspaces/:workspace_id/listings</span>
-      <span class="endpoint-desc">Create listing (inbound)</span>
-      <span class="endpoint-chevron">&#9654;</span>
-    </div>
-    <div class="endpoint-body">
-      <div class="info-box note">Requires <code>write</code> scope. Accepts any JSON body fields. Automatically sets <code>source</code> and <code>status</code>.</div>
-      <div class="detail-label">Example</div>
-<pre>
-curl -X POST .../v1/workspaces/ws_abc123/listings \
-  -H <span class="s">"X-API-Key: ta_..."</span> \
-  -H <span class="s">"Content-Type: application/json"</span> \
-  -d <span class="s">'{
-    "address": "123 Main St",
-    "price": 450000,
-    "bedrooms": 3,
-    "source": "zillow"
-  }'</span>
-</pre>
-    </div>
-  </div>
-
-  <div class="endpoint" id="list-buyers">
-    <div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')">
-      <span class="endpoint-method method-get">GET</span>
-      <span class="endpoint-path">/v1/workspaces/:workspace_id/buyers</span>
-      <span class="endpoint-desc">List buyer leads</span>
-      <span class="endpoint-chevron">&#9654;</span>
-    </div>
-    <div class="endpoint-body">
-      <div class="detail-label">Query Parameters</div>
-      <table class="param-table">
-        <tr><th>Param</th><th>Default</th><th>Description</th></tr>
-        <tr><td><code>status</code></td><td></td><td>Filter: new, active, closed</td></tr>
-        <tr><td><code>limit</code></td><td>50</td><td>Max results</td></tr>
-        <tr><td><code>offset</code></td><td>0</td><td>Pagination offset</td></tr>
-      </table>
-    </div>
-  </div>
-
-  <div class="endpoint" id="create-buyer">
-    <div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')">
-      <span class="endpoint-method method-post">POST</span>
-      <span class="endpoint-path">/v1/workspaces/:workspace_id/buyers</span>
-      <span class="endpoint-desc">Create buyer lead (inbound)</span>
-      <span class="endpoint-chevron">&#9654;</span>
-    </div>
-    <div class="endpoint-body">
-      <div class="info-box note">Requires <code>write</code> scope. Status auto-set to <code>new</code>.</div>
-    </div>
-  </div>
-
-  <div class="endpoint" id="list-transactions">
-    <div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')">
-      <span class="endpoint-method method-get">GET</span>
-      <span class="endpoint-path">/v1/workspaces/:workspace_id/transactions</span>
-      <span class="endpoint-desc">Transaction pipeline</span>
-      <span class="endpoint-chevron">&#9654;</span>
-    </div>
-    <div class="endpoint-body">
-      <div class="detail-label">Query Parameters</div>
-      <table class="param-table">
-        <tr><th>Param</th><th>Default</th><th>Description</th></tr>
-        <tr><td><code>status</code></td><td></td><td>Filter by transaction status</td></tr>
-        <tr><td><code>limit</code></td><td>50</td><td>Max results</td></tr>
-        <tr><td><code>offset</code></td><td>0</td><td>Pagination offset</td></tr>
-      </table>
-    </div>
-  </div>
-
-  <div class="endpoint" id="list-properties">
-    <div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')">
-      <span class="endpoint-method method-get">GET</span>
-      <span class="endpoint-path">/v1/workspaces/:workspace_id/properties</span>
-      <span class="endpoint-desc">Managed properties</span>
-      <span class="endpoint-chevron">&#9654;</span>
-    </div>
-    <div class="endpoint-body">
-      <div class="detail-label">Query Parameters</div>
-      <table class="param-table">
-        <tr><th>Param</th><th>Default</th><th>Description</th></tr>
-        <tr><td><code>status</code></td><td></td><td>Filter by property status</td></tr>
-        <tr><td><code>limit</code></td><td>50</td><td>Max results</td></tr>
-        <tr><td><code>offset</code></td><td>0</td><td>Pagination offset</td></tr>
-      </table>
-    </div>
-  </div>
-
-  <div class="endpoint" id="list-tenants">
-    <div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')">
-      <span class="endpoint-method method-get">GET</span>
-      <span class="endpoint-path">/v1/workspaces/:workspace_id/tenants</span>
-      <span class="endpoint-desc">Tenants with payment status</span>
-      <span class="endpoint-chevron">&#9654;</span>
-    </div>
-    <div class="endpoint-body">
-      <div class="detail-label">Query Parameters</div>
-      <table class="param-table">
-        <tr><th>Param</th><th>Default</th><th>Description</th></tr>
-        <tr><td><code>status</code></td><td></td><td>Filter by payment status</td></tr>
-        <tr><td><code>limit</code></td><td>50</td><td>Max results</td></tr>
-        <tr><td><code>offset</code></td><td>0</td><td>Pagination offset</td></tr>
-      </table>
-    </div>
-  </div>
-
-  <div class="endpoint" id="list-maintenance">
-    <div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')">
-      <span class="endpoint-method method-get">GET</span>
-      <span class="endpoint-path">/v1/workspaces/:workspace_id/maintenance</span>
-      <span class="endpoint-desc">Maintenance requests</span>
-      <span class="endpoint-chevron">&#9654;</span>
-    </div>
-    <div class="endpoint-body">
-      <div class="detail-label">Query Parameters</div>
-      <table class="param-table">
-        <tr><th>Param</th><th>Default</th><th>Description</th></tr>
-        <tr><td><code>status</code></td><td></td><td>Filter: open, in_progress, closed</td></tr>
-        <tr><td><code>limit</code></td><td>50</td><td>Max results</td></tr>
-        <tr><td><code>offset</code></td><td>0</td><td>Pagination offset</td></tr>
-      </table>
-    </div>
-  </div>
-
-  <div class="endpoint" id="create-maintenance">
-    <div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')">
-      <span class="endpoint-method method-post">POST</span>
-      <span class="endpoint-path">/v1/workspaces/:workspace_id/maintenance</span>
-      <span class="endpoint-desc">Create maintenance request</span>
-      <span class="endpoint-chevron">&#9654;</span>
-    </div>
-    <div class="endpoint-body">
-      <div class="info-box note">Requires <code>write</code> scope. Status auto-set to <code>open</code>.</div>
-    </div>
-  </div>
-</div>
-
-<!-- ============================================================ -->
-<!-- AUTO DEALER -->
-<!-- ============================================================ -->
-<div class="section">
-  <h2 class="section-title">Auto Dealer</h2>
-  <p class="section-desc">Vehicle inventory, customer leads, deal log, and service appointments. Connect DMS, AutoTrader, Cars.com feeds.</p>
-
-  <div class="endpoint" id="list-inventory">
-    <div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')">
-      <span class="endpoint-method method-get">GET</span>
-      <span class="endpoint-path">/v1/workspaces/:workspace_id/inventory</span>
-      <span class="endpoint-desc">Vehicle inventory</span>
-      <span class="endpoint-chevron">&#9654;</span>
-    </div>
-    <div class="endpoint-body">
-      <div class="detail-label">Query Parameters</div>
-      <table class="param-table">
-        <tr><th>Param</th><th>Default</th><th>Description</th></tr>
-        <tr><td><code>type</code></td><td></td><td>Filter: vehicle, service, etc.</td></tr>
-        <tr><td><code>status</code></td><td></td><td>Filter: available, sold, pending</td></tr>
-        <tr><td><code>limit</code></td><td>50</td><td>Max results</td></tr>
-        <tr><td><code>offset</code></td><td>0</td><td>Pagination offset</td></tr>
-      </table>
-    </div>
-  </div>
-
-  <div class="endpoint" id="create-inventory">
-    <div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')">
-      <span class="endpoint-method method-post">POST</span>
-      <span class="endpoint-path">/v1/workspaces/:workspace_id/inventory</span>
-      <span class="endpoint-desc">Add vehicle (inbound from DMS)</span>
-      <span class="endpoint-chevron">&#9654;</span>
-    </div>
-    <div class="endpoint-body">
-      <div class="info-box note">Requires <code>write</code> scope.</div>
-      <div class="detail-label">Request Body</div>
-      <table class="param-table">
-        <tr><th>Field</th><th>Type</th><th></th><th>Description</th></tr>
-        <tr><td><code>type</code></td><td>string</td><td><span class="param-required">required</span></td><td>e.g. "vehicle"</td></tr>
-        <tr><td><code>metadata</code></td><td>object</td><td><span class="param-required">required</span></td><td>Vehicle details (make, model, year, VIN, etc.)</td></tr>
-        <tr><td><code>price</code></td><td>number</td><td><span class="param-optional">optional</span></td><td>Asking price</td></tr>
-        <tr><td><code>cost</code></td><td>number</td><td><span class="param-optional">optional</span></td><td>Dealer cost</td></tr>
-        <tr><td><code>status</code></td><td>string</td><td><span class="param-optional">optional</span></td><td>Default: "available"</td></tr>
-      </table>
-      <div class="detail-label">Example</div>
-<pre>
-curl -X POST .../v1/workspaces/ws_abc123/inventory \
-  -H <span class="s">"X-API-Key: ta_..."</span> \
-  -H <span class="s">"Content-Type: application/json"</span> \
-  -d <span class="s">'{
-    "type": "vehicle",
-    "metadata": {"year": 2024, "make": "Toyota", "model": "Camry", "vin": "1HGCG5655WA041389"},
-    "price": 28500,
-    "cost": 24000,
-    "source": "dms"
-  }'</span>
-</pre>
-    </div>
-  </div>
-
-  <div class="endpoint" id="list-customers">
-    <div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')">
-      <span class="endpoint-method method-get">GET</span>
-      <span class="endpoint-path">/v1/workspaces/:workspace_id/customers</span>
-      <span class="endpoint-desc">Customer list</span>
-      <span class="endpoint-chevron">&#9654;</span>
-    </div>
-    <div class="endpoint-body">
-      <div class="detail-label">Query Parameters</div>
-      <table class="param-table">
-        <tr><th>Param</th><th>Default</th><th>Description</th></tr>
-        <tr><td><code>status</code></td><td></td><td>Filter: new, active, closed</td></tr>
-        <tr><td><code>limit</code></td><td>50</td><td>Max results</td></tr>
-        <tr><td><code>offset</code></td><td>0</td><td>Pagination offset</td></tr>
-      </table>
-    </div>
-  </div>
-
-  <div class="endpoint" id="create-customer">
-    <div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')">
-      <span class="endpoint-method method-post">POST</span>
-      <span class="endpoint-path">/v1/workspaces/:workspace_id/customers</span>
-      <span class="endpoint-desc">Create lead (inbound)</span>
-      <span class="endpoint-chevron">&#9654;</span>
-    </div>
-    <div class="endpoint-body">
-      <div class="info-box note">Requires <code>write</code> scope. At least one of <code>firstName</code>, <code>lastName</code>, or <code>email</code> is required.</div>
-      <div class="detail-label">Request Body</div>
-      <table class="param-table">
-        <tr><th>Field</th><th>Type</th><th></th><th>Description</th></tr>
-        <tr><td><code>firstName</code></td><td>string</td><td><span class="param-optional">optional*</span></td><td>First name</td></tr>
-        <tr><td><code>lastName</code></td><td>string</td><td><span class="param-optional">optional*</span></td><td>Last name</td></tr>
-        <tr><td><code>email</code></td><td>string</td><td><span class="param-optional">optional*</span></td><td>Email address</td></tr>
-        <tr><td><code>phone</code></td><td>string</td><td><span class="param-optional">optional</span></td><td>Phone number</td></tr>
-        <tr><td><code>tags</code></td><td>array</td><td><span class="param-optional">optional</span></td><td>Tags for categorization</td></tr>
-        <tr><td><code>notes</code></td><td>string</td><td><span class="param-optional">optional</span></td><td>Notes about the lead</td></tr>
-      </table>
-    </div>
-  </div>
-
-  <div class="endpoint" id="list-deals">
-    <div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')">
-      <span class="endpoint-method method-get">GET</span>
-      <span class="endpoint-path">/v1/workspaces/:workspace_id/deals</span>
-      <span class="endpoint-desc">Deal log</span>
-      <span class="endpoint-chevron">&#9654;</span>
-    </div>
-    <div class="endpoint-body">
-      <div class="detail-label">Query Parameters</div>
-      <table class="param-table">
-        <tr><th>Param</th><th>Default</th><th>Description</th></tr>
-        <tr><td><code>status</code></td><td></td><td>Filter by deal status</td></tr>
-        <tr><td><code>limit</code></td><td>50</td><td>Max results</td></tr>
-        <tr><td><code>offset</code></td><td>0</td><td>Pagination offset</td></tr>
-      </table>
-    </div>
-  </div>
-
-  <div class="endpoint" id="list-service">
-    <div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')">
-      <span class="endpoint-method method-get">GET</span>
-      <span class="endpoint-path">/v1/workspaces/:workspace_id/service</span>
-      <span class="endpoint-desc">Service appointments</span>
-      <span class="endpoint-chevron">&#9654;</span>
-    </div>
-    <div class="endpoint-body">
-      <div class="detail-label">Query Parameters</div>
-      <table class="param-table">
-        <tr><th>Param</th><th>Default</th><th>Description</th></tr>
-        <tr><td><code>status</code></td><td></td><td>Filter by appointment status</td></tr>
-        <tr><td><code>limit</code></td><td>50</td><td>Max results</td></tr>
-        <tr><td><code>offset</code></td><td>0</td><td>Pagination offset</td></tr>
-      </table>
-    </div>
-  </div>
-</div>
-
-<!-- ============================================================ -->
-<!-- ANALYST -->
-<!-- ============================================================ -->
-<div class="section">
-  <h2 class="section-title">Investment Analyst</h2>
-  <p class="section-desc">Portfolio positions, research pipeline, and LP records.</p>
-
-  <div class="endpoint" id="list-portfolio">
-    <div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')">
-      <span class="endpoint-method method-get">GET</span>
-      <span class="endpoint-path">/v1/workspaces/:workspace_id/portfolio</span>
-      <span class="endpoint-desc">Portfolio positions</span>
-      <span class="endpoint-chevron">&#9654;</span>
-    </div>
-    <div class="endpoint-body">
-      <div class="detail-label">Query Parameters</div>
-      <table class="param-table">
-        <tr><th>Param</th><th>Default</th><th>Description</th></tr>
-        <tr><td><code>limit</code></td><td>50</td><td>Max results</td></tr>
-        <tr><td><code>offset</code></td><td>0</td><td>Pagination offset</td></tr>
-      </table>
-    </div>
-  </div>
-
-  <div class="endpoint" id="list-research">
-    <div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')">
-      <span class="endpoint-method method-get">GET</span>
-      <span class="endpoint-path">/v1/workspaces/:workspace_id/research</span>
-      <span class="endpoint-desc">Research pipeline</span>
-      <span class="endpoint-chevron">&#9654;</span>
-    </div>
-    <div class="endpoint-body">
-      <div class="detail-label">Query Parameters</div>
-      <table class="param-table">
-        <tr><th>Param</th><th>Default</th><th>Description</th></tr>
-        <tr><td><code>status</code></td><td></td><td>Filter by research status</td></tr>
-        <tr><td><code>limit</code></td><td>50</td><td>Max results</td></tr>
-        <tr><td><code>offset</code></td><td>0</td><td>Pagination offset</td></tr>
-      </table>
-    </div>
-  </div>
-
-  <div class="endpoint" id="list-lps">
-    <div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')">
-      <span class="endpoint-method method-get">GET</span>
-      <span class="endpoint-path">/v1/workspaces/:workspace_id/lps</span>
-      <span class="endpoint-desc">LP records</span>
-      <span class="endpoint-chevron">&#9654;</span>
-    </div>
-    <div class="endpoint-body">
-      <div class="detail-label">Query Parameters</div>
-      <table class="param-table">
-        <tr><th>Param</th><th>Default</th><th>Description</th></tr>
-        <tr><td><code>limit</code></td><td>50</td><td>Max results</td></tr>
-        <tr><td><code>offset</code></td><td>0</td><td>Pagination offset</td></tr>
-      </table>
-    </div>
-  </div>
-</div>
-
-<!-- ============================================================ -->
-<!-- VAULT -->
-<!-- ============================================================ -->
-<div class="section">
-  <h2 class="section-title">Personal Vault</h2>
-  <p class="section-desc">Tracked assets, stored documents, and upcoming deadlines.</p>
-
-  <div class="endpoint" id="list-assets">
-    <div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')">
-      <span class="endpoint-method method-get">GET</span>
-      <span class="endpoint-path">/v1/workspaces/:workspace_id/assets</span>
-      <span class="endpoint-desc">Tracked assets (DTCs)</span>
-      <span class="endpoint-chevron">&#9654;</span>
-    </div>
-    <div class="endpoint-body">
-      <div class="detail-label">Query Parameters</div>
-      <table class="param-table">
-        <tr><th>Param</th><th>Default</th><th>Description</th></tr>
-        <tr><td><code>type</code></td><td></td><td>Filter: vehicle, property, credential</td></tr>
-        <tr><td><code>limit</code></td><td>50</td><td>Max results</td></tr>
-        <tr><td><code>offset</code></td><td>0</td><td>Pagination offset</td></tr>
-      </table>
-      <div class="detail-label">Response</div>
+      <p class="lbl">Response</p>
 <pre>
 {
   <span class="s">"data"</span>: [
     {
-      <span class="s">"id"</span>: <span class="s">"dtc_abc"</span>,
-      <span class="s">"type"</span>: <span class="s">"vehicle"</span>,
-      <span class="s">"metadata"</span>: { <span class="s">"year"</span>: <span class="n">2023</span>, <span class="s">"make"</span>: <span class="s">"Tesla"</span>, <span class="s">"model"</span>: <span class="s">"Model 3"</span> },
-      <span class="s">"attested"</span>: <span class="k">true</span>,
-      <span class="s">"created_at"</span>: <span class="s">"..."</span>
+      <span class="s">"id"</span>: <span class="s">"lst_8821"</span>,
+      <span class="s">"tenantId"</span>: <span class="s">"ws_1709442871_m3jc7p"</span>,
+      <span class="s">"address"</span>: <span class="s">"1893 San Jose Blvd"</span>,
+      <span class="s">"city"</span>: <span class="s">"Jacksonville"</span>,
+      <span class="s">"state"</span>: <span class="s">"FL"</span>,
+      <span class="s">"zip"</span>: <span class="s">"32207"</span>,
+      <span class="s">"price"</span>: <span class="n">425000</span>,
+      <span class="s">"status"</span>: <span class="s">"active"</span>,
+      <span class="s">"bedrooms"</span>: <span class="n">3</span>,
+      <span class="s">"bathrooms"</span>: <span class="n">2</span>,
+      <span class="s">"sqft"</span>: <span class="n">1850</span>,
+      <span class="s">"property_type"</span>: <span class="s">"single_family"</span>,
+      <span class="s">"days_on_market"</span>: <span class="n">12</span>,
+      <span class="s">"agent"</span>: <span class="s">"Sarah Chen"</span>,
+      <span class="s">"mls_number"</span>: <span class="s">"MLS-2026-44892"</span>,
+      <span class="s">"source"</span>: <span class="s">"manual"</span>,
+      <span class="s">"createdAt"</span>: <span class="s">"2026-02-11T10:00:00Z"</span>
     }
-  ]
+  ],
+  <span class="s">"total"</span>: <span class="n">1</span>
 }
 </pre>
     </div>
   </div>
 
-  <div class="endpoint" id="list-documents">
-    <div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')">
-      <span class="endpoint-method method-get">GET</span>
-      <span class="endpoint-path">/v1/workspaces/:workspace_id/documents</span>
-      <span class="endpoint-desc">Stored documents</span>
-      <span class="endpoint-chevron">&#9654;</span>
+  <div class="ep" id="create-listing">
+    <div class="ep-head" onclick="this.parentElement.classList.toggle('open')">
+      <span class="ep-method m-post">POST</span>
+      <span class="ep-path">/v1/workspaces/:workspace_id/listings</span>
+      <span class="ep-summary">Create listing (inbound)</span>
+      <span class="ep-chevron">&#9654;</span>
     </div>
-    <div class="endpoint-body">
-      <div class="detail-label">Query Parameters</div>
-      <table class="param-table">
-        <tr><th>Param</th><th>Default</th><th>Description</th></tr>
-        <tr><td><code>limit</code></td><td>50</td><td>Max results</td></tr>
-        <tr><td><code>offset</code></td><td>0</td><td>Pagination offset</td></tr>
-      </table>
-      <div class="detail-label">Response</div>
+    <div class="ep-body">
+      <span class="scope-badge">write scope</span>
+      <div class="ep-when">Push listings from an MLS feed, Zillow, or your own CMS. Accepts any JSON fields. Automatically stamps <code>source</code> and sets <code>status</code> to <code>active</code>.</div>
+      <p class="lbl">Response <span style="font-weight:400;text-transform:none;letter-spacing:0">(201)</span></p>
+<pre>
+{ <span class="s">"data"</span>: { <span class="s">"id"</span>: <span class="s">"lst_9932"</span>, <span class="s">"address"</span>: <span class="s">"742 Evergreen Terrace"</span>, <span class="s">"price"</span>: <span class="n">389000</span>, <span class="s">"status"</span>: <span class="s">"active"</span>, <span class="s">"source"</span>: <span class="s">"mls_feed"</span> } }
+</pre>
+    </div>
+  </div>
+
+  <div class="ep" id="list-buyers">
+    <div class="ep-head" onclick="this.parentElement.classList.toggle('open')">
+      <span class="ep-method m-get">GET</span><span class="ep-path">/v1/workspaces/:workspace_id/buyers</span><span class="ep-summary">List buyer leads</span><span class="ep-chevron">&#9654;</span>
+    </div>
+    <div class="ep-body">
+      <div class="ep-when">Pull all buyer leads to display in your CRM, build a follow-up queue, or feed a reporting dashboard. Filter by status to focus on active prospects.</div>
+      <p class="lbl">Query parameters</p>
+      <table><tr><th>Param</th><th>Type</th><th>Default</th><th>Description</th></tr>
+        <tr><td><code>status</code></td><td>string</td><td></td><td><code>new</code>, <code>active</code>, <code>closed</code></td></tr>
+        <tr><td><code>limit</code></td><td>integer</td><td><code>50</code></td><td>Max results</td></tr>
+        <tr><td><code>offset</code></td><td>integer</td><td><code>0</code></td><td>Pagination offset</td></tr></table>
+      <p class="lbl">Response</p>
 <pre>
 {
   <span class="s">"data"</span>: [
-    { <span class="s">"id"</span>: <span class="s">"..."</span>, <span class="s">"name"</span>: <span class="s">"title_deed.pdf"</span>, <span class="s">"type"</span>: <span class="s">"application/pdf"</span>, <span class="s">"size"</span>: <span class="n">245000</span> }
-  ]
+    {
+      <span class="s">"id"</span>: <span class="s">"byr_44k2"</span>,
+      <span class="s">"tenantId"</span>: <span class="s">"ws_1709442871_m3jc7p"</span>,
+      <span class="s">"name"</span>: <span class="s">"David and Maria Gonzalez"</span>,
+      <span class="s">"email"</span>: <span class="s">"dgonzalez@outlook.com"</span>,
+      <span class="s">"phone"</span>: <span class="s">"(904) 555-0234"</span>,
+      <span class="s">"budget"</span>: <span class="s">"$400k-$500k"</span>,
+      <span class="s">"status"</span>: <span class="s">"new"</span>,
+      <span class="s">"source"</span>: <span class="s">"zillow"</span>,
+      <span class="s">"createdAt"</span>: <span class="s">"2026-02-22T11:30:00Z"</span>
+    }
+  ],
+  <span class="s">"total"</span>: <span class="n">1</span>
 }
 </pre>
     </div>
   </div>
 
-  <div class="endpoint" id="list-deadlines">
-    <div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')">
-      <span class="endpoint-method method-get">GET</span>
-      <span class="endpoint-path">/v1/workspaces/:workspace_id/deadlines</span>
-      <span class="endpoint-desc">Upcoming deadlines</span>
-      <span class="endpoint-chevron">&#9654;</span>
-    </div>
-    <div class="endpoint-body">
-      <div class="detail-label">Query Parameters</div>
-      <table class="param-table">
-        <tr><th>Param</th><th>Default</th><th>Description</th></tr>
-        <tr><td><code>limit</code></td><td>50</td><td>Max results</td></tr>
-      </table>
-      <div class="detail-label">Response</div>
+  <div class="ep" id="create-buyer">
+    <div class="ep-head" onclick="this.parentElement.classList.toggle('open')"><span class="ep-method m-post">POST</span><span class="ep-path">/v1/workspaces/:workspace_id/buyers</span><span class="ep-summary">Create buyer lead</span><span class="ep-chevron">&#9654;</span></div>
+    <div class="ep-body"><span class="scope-badge">write scope</span><div class="ep-when">Push buyer leads from Zillow, Realtor.com, open house sign-in forms, or your website. Status auto-set to <code>new</code>.</div>
+      <p class="lbl">Response <span style="font-weight:400;text-transform:none;letter-spacing:0">(201)</span></p>
+<pre>
+{ <span class="s">"data"</span>: { <span class="s">"id"</span>: <span class="s">"byr_55m3"</span>, <span class="s">"name"</span>: <span class="s">"Jennifer Kim"</span>, <span class="s">"status"</span>: <span class="s">"new"</span>, <span class="s">"source"</span>: <span class="s">"website"</span> } }
+</pre></div>
+  </div>
+
+  <div class="ep" id="list-transactions">
+    <div class="ep-head" onclick="this.parentElement.classList.toggle('open')"><span class="ep-method m-get">GET</span><span class="ep-path">/v1/workspaces/:workspace_id/transactions</span><span class="ep-summary">Transaction pipeline</span><span class="ep-chevron">&#9654;</span></div>
+    <div class="ep-body"><div class="ep-when">Track deals from offer to closing. Use this to build a transaction tracker, sync with your title company, or power a closing countdown dashboard.</div>
+      <p class="lbl">Query parameters</p>
+      <table><tr><th>Param</th><th>Type</th><th>Default</th><th>Description</th></tr><tr><td><code>status</code></td><td>string</td><td></td><td><code>pending</code>, <code>under_contract</code>, <code>closed</code>, <code>cancelled</code></td></tr><tr><td><code>limit</code></td><td>integer</td><td><code>50</code></td><td>Max results</td></tr><tr><td><code>offset</code></td><td>integer</td><td><code>0</code></td><td>Pagination offset</td></tr></table>
+      <p class="lbl">Response</p>
 <pre>
 {
   <span class="s">"data"</span>: [
-    { <span class="s">"id"</span>: <span class="s">"..."</span>, <span class="s">"title"</span>: <span class="s">"Renew registration"</span>, <span class="s">"due_date"</span>: <span class="s">"2026-03-15"</span>, <span class="s">"status"</span>: <span class="s">"open"</span>, <span class="s">"priority"</span>: <span class="s">"high"</span> }
-  ]
+    {
+      <span class="s">"id"</span>: <span class="s">"txn_221b"</span>,
+      <span class="s">"address"</span>: <span class="s">"1893 San Jose Blvd"</span>,
+      <span class="s">"buyer"</span>: <span class="s">"David Gonzalez"</span>,
+      <span class="s">"seller"</span>: <span class="s">"Patricia Hammond"</span>,
+      <span class="s">"price"</span>: <span class="n">418000</span>,
+      <span class="s">"status"</span>: <span class="s">"under_contract"</span>,
+      <span class="s">"closing_date"</span>: <span class="s">"2026-03-28"</span>,
+      <span class="s">"createdAt"</span>: <span class="s">"2026-02-20T09:00:00Z"</span>
+    }
+  ],
+  <span class="s">"total"</span>: <span class="n">1</span>
 }
-</pre>
-    </div>
+</pre></div>
+  </div>
+
+  <div class="ep" id="list-properties">
+    <div class="ep-head" onclick="this.parentElement.classList.toggle('open')"><span class="ep-method m-get">GET</span><span class="ep-path">/v1/workspaces/:workspace_id/properties</span><span class="ep-summary">Managed properties</span><span class="ep-chevron">&#9654;</span></div>
+    <div class="ep-body"><div class="ep-when">Pull your property management portfolio. Use this to sync with AppFolio, Buildium, or display occupancy rates in a dashboard.</div>
+      <p class="lbl">Query: <code>status</code>, <code>limit</code> (50), <code>offset</code> (0)</p></div>
+  </div>
+
+  <div class="ep" id="list-tenants-re">
+    <div class="ep-head" onclick="this.parentElement.classList.toggle('open')"><span class="ep-method m-get">GET</span><span class="ep-path">/v1/workspaces/:workspace_id/tenants</span><span class="ep-summary">Tenants with payment status</span><span class="ep-chevron">&#9654;</span></div>
+    <div class="ep-body"><div class="ep-when">See who is current, late, or in collections. Use this to trigger Slack alerts for late payments or sync with your accounting system.</div>
+      <p class="lbl">Query: <code>status</code> (filters on payment status), <code>limit</code> (50), <code>offset</code> (0)</p>
+      <p class="lbl">Response</p>
+<pre>
+{
+  <span class="s">"data"</span>: [
+    {
+      <span class="s">"id"</span>: <span class="s">"tnt_88q2"</span>,
+      <span class="s">"name"</span>: <span class="s">"James Whitfield"</span>,
+      <span class="s">"unit"</span>: <span class="s">"Unit 4B"</span>,
+      <span class="s">"rent"</span>: <span class="n">1850</span>,
+      <span class="s">"paymentStatus"</span>: <span class="s">"current"</span>,
+      <span class="s">"leaseEnd"</span>: <span class="s">"2026-08-31"</span>,
+      <span class="s">"createdAt"</span>: <span class="s">"2025-09-01T00:00:00Z"</span>
+    }
+  ],
+  <span class="s">"total"</span>: <span class="n">1</span>
+}
+</pre></div>
+  </div>
+
+  <div class="ep" id="list-maintenance">
+    <div class="ep-head" onclick="this.parentElement.classList.toggle('open')"><span class="ep-method m-get">GET</span><span class="ep-path">/v1/workspaces/:workspace_id/maintenance</span><span class="ep-summary">Maintenance requests</span><span class="ep-chevron">&#9654;</span></div>
+    <div class="ep-body"><div class="ep-when">Pull open maintenance requests. Use this to route work orders to contractors or display in a property management dashboard.</div>
+      <p class="lbl">Query: <code>status</code> (open, in_progress, closed), <code>limit</code> (50), <code>offset</code> (0)</p></div>
+  </div>
+
+  <div class="ep" id="create-maintenance">
+    <div class="ep-head" onclick="this.parentElement.classList.toggle('open')"><span class="ep-method m-post">POST</span><span class="ep-path">/v1/workspaces/:workspace_id/maintenance</span><span class="ep-summary">Create maintenance request</span><span class="ep-chevron">&#9654;</span></div>
+    <div class="ep-body"><span class="scope-badge">write scope</span><div class="ep-when">Let tenants submit maintenance requests from your portal or a chatbot. Status auto-set to <code>open</code>.</div></div>
   </div>
 </div>
 
-<!-- ============================================================ -->
-<!-- INTEGRATION -->
-<!-- ============================================================ -->
+<!-- ================================================================ -->
+<!-- AUTO DEALER -->
+<!-- ================================================================ -->
+<div class="section">
+  <h2 class="section-title">Auto Dealer</h2>
+  <p class="section-desc">Vehicle inventory, customer leads, deal log, and service appointments. Connect CDK, Reynolds &amp; Reynolds, AutoTrader, Cars.com, or any DMS.</p>
+
+  <div class="ep" id="list-inventory">
+    <div class="ep-head" onclick="this.parentElement.classList.toggle('open')"><span class="ep-method m-get">GET</span><span class="ep-path">/v1/workspaces/:workspace_id/inventory</span><span class="ep-summary">Vehicle inventory</span><span class="ep-chevron">&#9654;</span></div>
+    <div class="ep-body">
+      <div class="ep-when">Pull your lot inventory to display on your website, feed to AutoTrader/Cars.com, or give a ChatGPT GPT real-time access to your stock. Filter by type and availability.</div>
+      <p class="lbl">Query parameters</p>
+      <table><tr><th>Param</th><th>Type</th><th>Default</th><th>Description</th></tr>
+        <tr><td><code>type</code></td><td>string</td><td></td><td><code>vehicle</code>, <code>service</code></td></tr>
+        <tr><td><code>status</code></td><td>string</td><td></td><td><code>available</code>, <code>sold</code>, <code>pending</code>, <code>hold</code></td></tr>
+        <tr><td><code>limit</code></td><td>integer</td><td><code>50</code></td><td>Max results</td></tr>
+        <tr><td><code>offset</code></td><td>integer</td><td><code>0</code></td><td>Pagination offset</td></tr></table>
+      <p class="lbl">Response</p>
+<pre>
+{
+  <span class="s">"data"</span>: [
+    {
+      <span class="s">"id"</span>: <span class="s">"inv_7kQ2m"</span>,
+      <span class="s">"tenantId"</span>: <span class="s">"ws_1708901234_a8kq2x"</span>,
+      <span class="s">"type"</span>: <span class="s">"vehicle"</span>,
+      <span class="s">"status"</span>: <span class="s">"available"</span>,
+      <span class="s">"metadata"</span>: {
+        <span class="s">"vin"</span>: <span class="s">"1HGCG5655WA041389"</span>,
+        <span class="s">"year"</span>: <span class="n">2024</span>,
+        <span class="s">"make"</span>: <span class="s">"Honda"</span>,
+        <span class="s">"model"</span>: <span class="s">"Accord"</span>,
+        <span class="s">"trim"</span>: <span class="s">"Sport"</span>,
+        <span class="s">"color"</span>: <span class="s">"Platinum White Pearl"</span>,
+        <span class="s">"mileage"</span>: <span class="n">12</span>
+      },
+      <span class="s">"price"</span>: <span class="n">32450</span>,
+      <span class="s">"cost"</span>: <span class="n">28900</span>,
+      <span class="s">"source"</span>: <span class="s">"cdk_global"</span>,
+      <span class="s">"createdAt"</span>: <span class="s">"2026-02-20T08:00:00Z"</span>
+    }
+  ],
+  <span class="s">"total"</span>: <span class="n">1</span>
+}
+</pre>
+    </div>
+  </div>
+
+  <div class="ep" id="create-inventory">
+    <div class="ep-head" onclick="this.parentElement.classList.toggle('open')"><span class="ep-method m-post">POST</span><span class="ep-path">/v1/workspaces/:workspace_id/inventory</span><span class="ep-summary">Add vehicle</span><span class="ep-chevron">&#9654;</span></div>
+    <div class="ep-body"><span class="scope-badge">write scope</span>
+      <div class="ep-when">Push vehicles from your DMS as they hit the lot. TitleApp will decode the VIN and create the record. Requires <code>type</code> and <code>metadata</code>.</div>
+      <p class="lbl">Request body</p>
+      <table><tr><th>Field</th><th>Type</th><th></th><th>Description</th></tr>
+        <tr><td><code>type</code></td><td>string</td><td><span class="req">required</span></td><td><code>vehicle</code>, <code>service</code></td></tr>
+        <tr><td><code>metadata</code></td><td>object</td><td><span class="req">required</span></td><td>Vehicle details (vin, year, make, model, trim, color, mileage)</td></tr>
+        <tr><td><code>price</code></td><td>number</td><td><span class="opt">optional</span></td><td>Asking price</td></tr>
+        <tr><td><code>cost</code></td><td>number</td><td><span class="opt">optional</span></td><td>Dealer cost</td></tr>
+        <tr><td><code>status</code></td><td>string</td><td><span class="opt">optional</span></td><td>Default: <code>available</code></td></tr>
+        <tr><td><code>source</code></td><td>string</td><td><span class="opt">optional</span></td><td>Where this came from (e.g. <code>cdk_global</code>, <code>reynolds</code>)</td></tr></table>
+      <p class="lbl">Response <span style="font-weight:400;text-transform:none;letter-spacing:0">(201)</span></p>
+<pre>
+{ <span class="s">"data"</span>: { <span class="s">"id"</span>: <span class="s">"inv_8mN3k"</span> } }
+</pre></div>
+  </div>
+
+  <div class="ep" id="list-customers">
+    <div class="ep-head" onclick="this.parentElement.classList.toggle('open')"><span class="ep-method m-get">GET</span><span class="ep-path">/v1/workspaces/:workspace_id/customers</span><span class="ep-summary">Customer list</span><span class="ep-chevron">&#9654;</span></div>
+    <div class="ep-body"><div class="ep-when">Pull your CRM contacts. Use this to sync with Salesforce, build a follow-up queue, or power a customer lookup in your GPT.</div>
+      <p class="lbl">Query: <code>status</code> (new, active, closed), <code>limit</code> (50), <code>offset</code> (0)</p>
+      <p class="lbl">Response</p>
+<pre>
+{
+  <span class="s">"data"</span>: [
+    {
+      <span class="s">"id"</span>: <span class="s">"cust_3kN8"</span>,
+      <span class="s">"tenantId"</span>: <span class="s">"ws_1708901234_a8kq2x"</span>,
+      <span class="s">"firstName"</span>: <span class="s">"Jennifer"</span>,
+      <span class="s">"lastName"</span>: <span class="s">"Kim"</span>,
+      <span class="s">"email"</span>: <span class="s">"jennifer.kim@gmail.com"</span>,
+      <span class="s">"phone"</span>: <span class="s">"(904) 555-0188"</span>,
+      <span class="s">"tags"</span>: [<span class="s">"hot_lead"</span>, <span class="s">"pre_approved"</span>],
+      <span class="s">"notes"</span>: <span class="s">"Interested in the 2024 Camry. Pre-approved at $35k."</span>,
+      <span class="s">"status"</span>: <span class="s">"new"</span>,
+      <span class="s">"source"</span>: <span class="s">"autotrader"</span>,
+      <span class="s">"createdAt"</span>: <span class="s">"2026-02-23T10:15:00Z"</span>
+    }
+  ],
+  <span class="s">"total"</span>: <span class="n">1</span>
+}
+</pre></div>
+  </div>
+
+  <div class="ep" id="create-customer">
+    <div class="ep-head" onclick="this.parentElement.classList.toggle('open')"><span class="ep-method m-post">POST</span><span class="ep-path">/v1/workspaces/:workspace_id/customers</span><span class="ep-summary">Create lead</span><span class="ep-chevron">&#9654;</span></div>
+    <div class="ep-body"><span class="scope-badge">write scope</span>
+      <div class="ep-when">Push leads from AutoTrader, Cars.com, Facebook Marketplace, or your website. At least one of <code>firstName</code>, <code>lastName</code>, or <code>email</code> is required.</div>
+      <p class="lbl">Request body</p>
+      <table><tr><th>Field</th><th>Type</th><th></th><th>Description</th></tr>
+        <tr><td><code>firstName</code></td><td>string</td><td><span class="opt">optional*</span></td><td>First name</td></tr>
+        <tr><td><code>lastName</code></td><td>string</td><td><span class="opt">optional*</span></td><td>Last name</td></tr>
+        <tr><td><code>email</code></td><td>string</td><td><span class="opt">optional*</span></td><td>Email</td></tr>
+        <tr><td><code>phone</code></td><td>string</td><td><span class="opt">optional</span></td><td>Phone number</td></tr>
+        <tr><td><code>tags</code></td><td>array</td><td><span class="opt">optional</span></td><td>Tags for categorization</td></tr>
+        <tr><td><code>notes</code></td><td>string</td><td><span class="opt">optional</span></td><td>Free-text notes</td></tr>
+        <tr><td><code>source</code></td><td>string</td><td><span class="opt">optional</span></td><td>Where this lead came from</td></tr></table>
+      <div class="note">* At least one of firstName, lastName, or email is required.</div>
+      <p class="lbl">Response <span style="font-weight:400;text-transform:none;letter-spacing:0">(201)</span></p>
+<pre>
+{ <span class="s">"data"</span>: { <span class="s">"id"</span>: <span class="s">"cust_4mQ9"</span> } }
+</pre></div>
+  </div>
+
+  <div class="ep" id="list-deals">
+    <div class="ep-head" onclick="this.parentElement.classList.toggle('open')"><span class="ep-method m-get">GET</span><span class="ep-path">/v1/workspaces/:workspace_id/deals</span><span class="ep-summary">Deal log</span><span class="ep-chevron">&#9654;</span></div>
+    <div class="ep-body"><div class="ep-when">Track every deal from first pencil to delivery. Use this for sales reporting, commission tracking, or syncing with your F&amp;I system.</div>
+      <p class="lbl">Query: <code>status</code>, <code>limit</code> (50), <code>offset</code> (0)</p></div>
+  </div>
+
+  <div class="ep" id="list-service">
+    <div class="ep-head" onclick="this.parentElement.classList.toggle('open')"><span class="ep-method m-get">GET</span><span class="ep-path">/v1/workspaces/:workspace_id/service</span><span class="ep-summary">Service appointments</span><span class="ep-chevron">&#9654;</span></div>
+    <div class="ep-body"><div class="ep-when">Pull upcoming service appointments. Use this to display a service board, send reminders, or sync with your shop management system.</div>
+      <p class="lbl">Query: <code>status</code>, <code>limit</code> (50), <code>offset</code> (0)</p></div>
+  </div>
+</div>
+
+<!-- ================================================================ -->
+<!-- ANALYST -->
+<!-- ================================================================ -->
+<div class="section">
+  <h2 class="section-title">Investment Analyst</h2>
+  <p class="section-desc">Portfolio positions, research pipeline, and LP records for investment management workspaces.</p>
+
+  <div class="ep" id="list-portfolio">
+    <div class="ep-head" onclick="this.parentElement.classList.toggle('open')"><span class="ep-method m-get">GET</span><span class="ep-path">/v1/workspaces/:workspace_id/portfolio</span><span class="ep-summary">Portfolio positions</span><span class="ep-chevron">&#9654;</span></div>
+    <div class="ep-body"><div class="ep-when">Pull current positions for reporting, risk analysis, or feeding a Claude-powered research assistant that can reference your actual portfolio.</div>
+      <p class="lbl">Query: <code>limit</code> (50), <code>offset</code> (0)</p></div>
+  </div>
+
+  <div class="ep" id="list-research">
+    <div class="ep-head" onclick="this.parentElement.classList.toggle('open')"><span class="ep-method m-get">GET</span><span class="ep-path">/v1/workspaces/:workspace_id/research</span><span class="ep-summary">Research pipeline</span><span class="ep-chevron">&#9654;</span></div>
+    <div class="ep-body"><div class="ep-when">Track research items through your pipeline &mdash; from initial screening to deep dive to investment committee. Filter by status to focus on what needs attention.</div>
+      <p class="lbl">Query: <code>status</code>, <code>limit</code> (50), <code>offset</code> (0)</p></div>
+  </div>
+
+  <div class="ep" id="list-lps">
+    <div class="ep-head" onclick="this.parentElement.classList.toggle('open')"><span class="ep-method m-get">GET</span><span class="ep-path">/v1/workspaces/:workspace_id/lps</span><span class="ep-summary">LP records</span><span class="ep-chevron">&#9654;</span></div>
+    <div class="ep-body"><div class="ep-when">Pull LP records for reporting, capital call tracking, or investor communications.</div>
+      <p class="lbl">Query: <code>limit</code> (50), <code>offset</code> (0)</p></div>
+  </div>
+</div>
+
+<!-- ================================================================ -->
+<!-- VAULT -->
+<!-- ================================================================ -->
+<div class="section">
+  <h2 class="section-title">Personal Vault</h2>
+  <p class="section-desc">Tracked assets (vehicles, property, credentials), stored documents, and upcoming deadlines for consumer vault workspaces.</p>
+
+  <div class="ep" id="list-assets">
+    <div class="ep-head" onclick="this.parentElement.classList.toggle('open')"><span class="ep-method m-get">GET</span><span class="ep-path">/v1/workspaces/:workspace_id/assets</span><span class="ep-summary">Tracked assets (DTCs)</span><span class="ep-chevron">&#9654;</span></div>
+    <div class="ep-body">
+      <div class="ep-when">Pull all Digital Title Certificates. Use this to display assets in a personal finance app, verify ownership, or build a portfolio tracker. Assets are scoped to the API key owner.</div>
+      <p class="lbl">Query parameters</p>
+      <table><tr><th>Param</th><th>Type</th><th>Default</th><th>Description</th></tr>
+        <tr><td><code>type</code></td><td>string</td><td></td><td><code>vehicle</code>, <code>property</code>, <code>credential</code></td></tr>
+        <tr><td><code>limit</code></td><td>integer</td><td><code>50</code></td><td>Max results</td></tr>
+        <tr><td><code>offset</code></td><td>integer</td><td><code>0</code></td><td>Pagination offset</td></tr></table>
+      <p class="lbl">Response</p>
+<pre>
+{
+  <span class="s">"data"</span>: [
+    {
+      <span class="s">"id"</span>: <span class="s">"dtc_Kx8mN2"</span>,
+      <span class="s">"type"</span>: <span class="s">"vehicle"</span>,
+      <span class="s">"metadata"</span>: {
+        <span class="s">"vin"</span>: <span class="s">"5YJ3E1EA8PF384921"</span>,
+        <span class="s">"year"</span>: <span class="n">2023</span>,
+        <span class="s">"make"</span>: <span class="s">"Tesla"</span>,
+        <span class="s">"model"</span>: <span class="s">"Model 3"</span>,
+        <span class="s">"color"</span>: <span class="s">"Midnight Silver"</span>,
+        <span class="s">"value"</span>: <span class="n">38500</span>
+      },
+      <span class="s">"attested"</span>: <span class="k">true</span>,
+      <span class="s">"created_at"</span>: <span class="s">"2026-01-15T12:00:00Z"</span>
+    },
+    {
+      <span class="s">"id"</span>: <span class="s">"dtc_Nm4qR8"</span>,
+      <span class="s">"type"</span>: <span class="s">"credential"</span>,
+      <span class="s">"metadata"</span>: {
+        <span class="s">"credentialName"</span>: <span class="s">"Private Pilot License"</span>,
+        <span class="s">"issuer"</span>: <span class="s">"FAA"</span>,
+        <span class="s">"issued"</span>: <span class="s">"2024-06-10"</span>,
+        <span class="s">"expires"</span>: <span class="s">"2026-06-10"</span>
+      },
+      <span class="s">"attested"</span>: <span class="k">true</span>,
+      <span class="s">"created_at"</span>: <span class="s">"2026-02-01T09:00:00Z"</span>
+    }
+  ],
+  <span class="s">"total"</span>: <span class="n">2</span>
+}
+</pre></div>
+  </div>
+
+  <div class="ep" id="list-documents">
+    <div class="ep-head" onclick="this.parentElement.classList.toggle('open')"><span class="ep-method m-get">GET</span><span class="ep-path">/v1/workspaces/:workspace_id/documents</span><span class="ep-summary">Stored documents</span><span class="ep-chevron">&#9654;</span></div>
+    <div class="ep-body"><div class="ep-when">List uploaded documents. Use this to build a document viewer, check what has been uploaded for a DTC, or audit file storage.</div>
+      <p class="lbl">Query: <code>limit</code> (50), <code>offset</code> (0)</p>
+      <p class="lbl">Response</p>
+<pre>
+{
+  <span class="s">"data"</span>: [
+    {
+      <span class="s">"id"</span>: <span class="s">"file_9kM2n"</span>,
+      <span class="s">"name"</span>: <span class="s">"title_deed_1893_san_jose.pdf"</span>,
+      <span class="s">"type"</span>: <span class="s">"application/pdf"</span>,
+      <span class="s">"size"</span>: <span class="n">245832</span>,
+      <span class="s">"status"</span>: <span class="s">"finalized"</span>,
+      <span class="s">"created_at"</span>: <span class="s">"2026-02-18T14:30:00Z"</span>
+    }
+  ],
+  <span class="s">"total"</span>: <span class="n">1</span>
+}
+</pre></div>
+  </div>
+
+  <div class="ep" id="list-deadlines">
+    <div class="ep-head" onclick="this.parentElement.classList.toggle('open')"><span class="ep-method m-get">GET</span><span class="ep-path">/v1/workspaces/:workspace_id/deadlines</span><span class="ep-summary">Upcoming deadlines</span><span class="ep-chevron">&#9654;</span></div>
+    <div class="ep-body"><div class="ep-when">Pull upcoming deadlines to power calendar reminders, send push notifications, or display in a "What's Due" widget. Sorted by due date ascending.</div>
+      <p class="lbl">Query: <code>limit</code> (50)</p>
+      <p class="lbl">Response</p>
+<pre>
+{
+  <span class="s">"data"</span>: [
+    {
+      <span class="s">"id"</span>: <span class="s">"tsk_2nK8m"</span>,
+      <span class="s">"title"</span>: <span class="s">"Renew vehicle registration - Tesla Model 3"</span>,
+      <span class="s">"due_date"</span>: <span class="s">"2026-03-15"</span>,
+      <span class="s">"status"</span>: <span class="s">"open"</span>,
+      <span class="s">"priority"</span>: <span class="s">"high"</span>
+    },
+    {
+      <span class="s">"id"</span>: <span class="s">"tsk_5qR3n"</span>,
+      <span class="s">"title"</span>: <span class="s">"PPL medical certificate renewal"</span>,
+      <span class="s">"due_date"</span>: <span class="s">"2026-06-10"</span>,
+      <span class="s">"status"</span>: <span class="s">"open"</span>,
+      <span class="s">"priority"</span>: <span class="s">"medium"</span>
+    }
+  ],
+  <span class="s">"total"</span>: <span class="n">2</span>
+}
+</pre></div>
+  </div>
+</div>
+
+<!-- ================================================================ -->
+<!-- INTEGRATION: INBOUND + WEBHOOKS -->
+<!-- ================================================================ -->
 <div class="section">
   <h2 class="section-title">Integration</h2>
-  <p class="section-desc">Universal data ingest and webhook subscriptions for real-time events.</p>
+  <p class="section-desc">Universal inbound data push and webhook subscriptions for real-time event notifications.</p>
 
-  <div class="endpoint" id="post-inbound">
-    <div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')">
-      <span class="endpoint-method method-post">POST</span>
-      <span class="endpoint-path">/v1/workspaces/:workspace_id/inbound</span>
-      <span class="endpoint-desc">Universal data push</span>
-      <span class="endpoint-chevron">&#9654;</span>
-    </div>
-    <div class="endpoint-body">
-      <div class="info-box note">Requires <code>write</code> scope. Accepts any JSON payload. Data is queued for AI processing.</div>
-      <p style="font-size:13px; color:var(--text-secondary); margin: 12px 0;">Push any structured data into a workspace. The AI will process and route it automatically. Use this as a universal integration point when no specific endpoint exists.</p>
-      <div class="detail-label">Request Body</div>
-      <table class="param-table">
-        <tr><th>Field</th><th>Type</th><th></th><th>Description</th></tr>
-        <tr><td><code>source</code></td><td>string</td><td><span class="param-optional">optional</span></td><td>Where this data came from (default: "unknown")</td></tr>
-        <tr><td><code>...</code></td><td>any</td><td></td><td>Any additional JSON fields</td></tr>
-      </table>
-      <div class="detail-label">Example</div>
-<pre>
-curl -X POST .../v1/workspaces/ws_abc123/inbound \
-  -H <span class="s">"X-API-Key: ta_..."</span> \
-  -H <span class="s">"Content-Type: application/json"</span> \
-  -d <span class="s">'{
-    "source": "foreflight",
-    "type": "flight_log",
-    "aircraft": "N12345",
-    "hours": 2.5,
-    "route": "KORD-KMDW"
-  }'</span>
-</pre>
-      <div class="detail-label">Response</div>
+  <div class="ep" id="post-inbound">
+    <div class="ep-head" onclick="this.parentElement.classList.toggle('open')"><span class="ep-method m-post">POST</span><span class="ep-path">/v1/workspaces/:workspace_id/inbound</span><span class="ep-summary">Universal data push</span><span class="ep-chevron">&#9654;</span></div>
+    <div class="ep-body"><span class="scope-badge">write scope</span>
+      <div class="ep-when">Don't want to map to a specific endpoint? POST any JSON here and the AI figures out what to do with it. Flight logs from ForeFlight, form submissions from Typeform, IoT sensor data &mdash; anything.</div>
+      <p class="lbl">Request body</p>
+      <table><tr><th>Field</th><th>Type</th><th></th><th>Description</th></tr>
+        <tr><td><code>source</code></td><td>string</td><td><span class="opt">optional</span></td><td>Where this data came from (default: <code>unknown</code>)</td></tr>
+        <tr><td><code>...</code></td><td>any</td><td></td><td>Any additional JSON fields you want</td></tr></table>
+      <p class="lbl">Response <span style="font-weight:400;text-transform:none;letter-spacing:0">(201)</span></p>
 <pre>
 {
   <span class="s">"data"</span>: {
-    <span class="s">"id"</span>: <span class="s">"abc123"</span>,
+    <span class="s">"id"</span>: <span class="s">"inb_7kM2nQ"</span>,
     <span class="s">"status"</span>: <span class="s">"pending"</span>,
     <span class="s">"message"</span>: <span class="s">"Data received and queued for AI processing"</span>
   }
 }
-</pre>
-    </div>
+</pre></div>
   </div>
 
-  <div class="endpoint" id="list-webhooks">
-    <div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')">
-      <span class="endpoint-method method-get">GET</span>
-      <span class="endpoint-path">/v1/webhooks</span>
-      <span class="endpoint-desc">List webhook subscriptions</span>
-      <span class="endpoint-chevron">&#9654;</span>
-    </div>
-    <div class="endpoint-body">
-      <p style="font-size:13px;color:var(--text-secondary)">Returns all webhooks belonging to this API key.</p>
-      <div class="detail-label">Response</div>
+  <div class="ep" id="list-webhooks">
+    <div class="ep-head" onclick="this.parentElement.classList.toggle('open')"><span class="ep-method m-get">GET</span><span class="ep-path">/v1/webhooks</span><span class="ep-summary">List webhook subscriptions</span><span class="ep-chevron">&#9654;</span></div>
+    <div class="ep-body"><div class="ep-when">See all your active webhook subscriptions. Each API key has its own set of webhooks.</div>
+      <p class="lbl">Response</p>
 <pre>
 {
   <span class="s">"data"</span>: [
     {
-      <span class="s">"id"</span>: <span class="s">"wh_abc"</span>,
-      <span class="s">"url"</span>: <span class="s">"https://your-app.com/webhook"</span>,
-      <span class="s">"events"</span>: [<span class="s">"inventory.created"</span>, <span class="s">"customer.created"</span>],
-      <span class="s">"workspace_id"</span>: <span class="s">"ws_abc123"</span>,
-      <span class="s">"status"</span>: <span class="s">"active"</span>
+      <span class="s">"id"</span>: <span class="s">"wh_3kN8"</span>,
+      <span class="s">"url"</span>: <span class="s">"https://your-app.com/webhooks/titleapp"</span>,
+      <span class="s">"events"</span>: [<span class="s">"lead.new"</span>, <span class="s">"inventory.sold"</span>],
+      <span class="s">"workspace_id"</span>: <span class="s">"ws_1708901234_a8kq2x"</span>,
+      <span class="s">"status"</span>: <span class="s">"active"</span>,
+      <span class="s">"created_at"</span>: <span class="s">"2026-02-23T10:00:00Z"</span>
     }
-  ]
+  ],
+  <span class="s">"total"</span>: <span class="n">1</span>
 }
-</pre>
-    </div>
+</pre></div>
   </div>
 
-  <div class="endpoint" id="create-webhook">
-    <div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')">
-      <span class="endpoint-method method-post">POST</span>
-      <span class="endpoint-path">/v1/webhooks</span>
-      <span class="endpoint-desc">Create webhook subscription</span>
-      <span class="endpoint-chevron">&#9654;</span>
-    </div>
-    <div class="endpoint-body">
-      <div class="info-box note">Requires <code>write</code> scope.</div>
-      <div class="detail-label">Request Body</div>
-      <table class="param-table">
-        <tr><th>Field</th><th>Type</th><th></th><th>Description</th></tr>
-        <tr><td><code>url</code></td><td>string</td><td><span class="param-required">required</span></td><td>HTTPS endpoint to receive events</td></tr>
-        <tr><td><code>events</code></td><td>array</td><td><span class="param-required">required</span></td><td>Event types to subscribe to</td></tr>
-        <tr><td><code>workspace_id</code></td><td>string</td><td><span class="param-optional">optional</span></td><td>Scope to a specific workspace</td></tr>
-      </table>
-    </div>
-  </div>
-
-  <div class="endpoint" id="delete-webhook">
-    <div class="endpoint-header" onclick="this.parentElement.classList.toggle('open')">
-      <span class="endpoint-method method-delete">DELETE</span>
-      <span class="endpoint-path">/v1/webhooks/:id</span>
-      <span class="endpoint-desc">Delete webhook</span>
-      <span class="endpoint-chevron">&#9654;</span>
-    </div>
-    <div class="endpoint-body">
-      <div class="detail-label">Path Parameters</div>
-      <table class="param-table">
-        <tr><th>Param</th><th>Description</th></tr>
-        <tr><td><code>id</code></td><td>Webhook subscription ID</td></tr>
-      </table>
-      <div class="detail-label">Response</div>
+  <div class="ep" id="create-webhook">
+    <div class="ep-head" onclick="this.parentElement.classList.toggle('open')"><span class="ep-method m-post">POST</span><span class="ep-path">/v1/webhooks</span><span class="ep-summary">Create webhook</span><span class="ep-chevron">&#9654;</span></div>
+    <div class="ep-body"><span class="scope-badge">write scope</span>
+      <div class="ep-when">Subscribe to real-time events. When something happens in a workspace, we POST a JSON payload to your URL.</div>
+      <p class="lbl">Request body</p>
+      <table><tr><th>Field</th><th>Type</th><th></th><th>Description</th></tr>
+        <tr><td><code>url</code></td><td>string</td><td><span class="req">required</span></td><td>HTTPS endpoint to receive events</td></tr>
+        <tr><td><code>events</code></td><td>array</td><td><span class="req">required</span></td><td>Event types to subscribe to (see below)</td></tr>
+        <tr><td><code>workspace_id</code></td><td>string</td><td><span class="opt">optional</span></td><td>Scope to a specific workspace</td></tr></table>
+      <p class="lbl">Response <span style="font-weight:400;text-transform:none;letter-spacing:0">(201)</span></p>
 <pre>
-{ <span class="s">"data"</span>: { <span class="s">"id"</span>: <span class="s">"wh_abc"</span>, <span class="s">"deleted"</span>: <span class="k">true</span> } }
-</pre>
-    </div>
+{
+  <span class="s">"data"</span>: {
+    <span class="s">"id"</span>: <span class="s">"wh_4mQ9"</span>,
+    <span class="s">"url"</span>: <span class="s">"https://your-app.com/webhooks/titleapp"</span>,
+    <span class="s">"events"</span>: [<span class="s">"lead.new"</span>, <span class="s">"tenant.late"</span>],
+    <span class="s">"workspace_id"</span>: <span class="s">"ws_1708901234_a8kq2x"</span>,
+    <span class="s">"status"</span>: <span class="s">"active"</span>
+  }
+}
+</pre></div>
+  </div>
+
+  <div class="ep" id="delete-webhook">
+    <div class="ep-head" onclick="this.parentElement.classList.toggle('open')"><span class="ep-method m-del">DELETE</span><span class="ep-path">/v1/webhooks/:id</span><span class="ep-summary">Delete webhook</span><span class="ep-chevron">&#9654;</span></div>
+    <div class="ep-body"><div class="ep-when">Remove a webhook subscription. You can only delete webhooks that belong to your API key.</div>
+      <p class="lbl">Response</p>
+<pre>
+{ <span class="s">"data"</span>: { <span class="s">"id"</span>: <span class="s">"wh_3kN8"</span>, <span class="s">"deleted"</span>: <span class="k">true</span> } }
+</pre></div>
   </div>
 </div>
 
-<div style="margin-top:64px; padding-top:24px; border-top:1px solid var(--border); color:var(--text-secondary); font-size:12px;">
+<!-- ================================================================ -->
+<!-- WEBHOOK EVENTS -->
+<!-- ================================================================ -->
+<div class="section" id="webhook-events">
+  <h2 class="section-title">Webhook Events Reference</h2>
+  <p class="section-desc">Every event that can fire a webhook. Use these event names when creating subscriptions.</p>
+
+  <table>
+    <tr><th>Event</th><th>Fires when</th><th>Example payload</th></tr>
+    <tr><td><code>lead.new</code></td><td>A new customer or buyer lead is created</td><td><code>{ "event": "lead.new", "workspace_id": "ws_...", "data": { "id": "cust_3kN8", "firstName": "Jennifer", "source": "autotrader" } }</code></td></tr>
+    <tr><td><code>lead.status_changed</code></td><td>A lead's status changes (new &rarr; active &rarr; closed)</td><td><code>{ "event": "lead.status_changed", "data": { "id": "cust_3kN8", "old_status": "new", "new_status": "active" } }</code></td></tr>
+    <tr><td><code>inventory.sold</code></td><td>An inventory item status changes to sold</td><td><code>{ "event": "inventory.sold", "data": { "id": "inv_7kQ2m", "type": "vehicle", "price": 32450 } }</code></td></tr>
+    <tr><td><code>inventory.aged</code></td><td>A vehicle has been on the lot 60+ days</td><td><code>{ "event": "inventory.aged", "data": { "id": "inv_7kQ2m", "days_on_lot": 67 } }</code></td></tr>
+    <tr><td><code>tenant.late</code></td><td>A tenant misses their rent payment</td><td><code>{ "event": "tenant.late", "data": { "id": "tnt_88q2", "name": "James Whitfield", "days_late": 5 } }</code></td></tr>
+    <tr><td><code>tenant.lease_expiring</code></td><td>A lease is expiring within 60 days</td><td><code>{ "event": "tenant.lease_expiring", "data": { "id": "tnt_88q2", "leaseEnd": "2026-08-31" } }</code></td></tr>
+    <tr><td><code>maintenance.created</code></td><td>A new maintenance request is submitted</td><td><code>{ "event": "maintenance.created", "data": { "id": "mnt_2k", "unit": "4B", "description": "Leaking faucet" } }</code></td></tr>
+    <tr><td><code>maintenance.overdue</code></td><td>A maintenance request has been open 7+ days</td><td><code>{ "event": "maintenance.overdue", "data": { "id": "mnt_2k", "days_open": 9 } }</code></td></tr>
+    <tr><td><code>transaction.milestone</code></td><td>A transaction hits a milestone (inspection, appraisal, etc.)</td><td><code>{ "event": "transaction.milestone", "data": { "id": "txn_221b", "milestone": "inspection_complete" } }</code></td></tr>
+    <tr><td><code>transaction.closing</code></td><td>A transaction is closing within 7 days</td><td><code>{ "event": "transaction.closing", "data": { "id": "txn_221b", "closing_date": "2026-03-28" } }</code></td></tr>
+    <tr><td><code>document.expiring</code></td><td>A credential or document is expiring within 30 days</td><td><code>{ "event": "document.expiring", "data": { "id": "dtc_Nm4qR8", "title": "PPL", "expires": "2026-06-10" } }</code></td></tr>
+    <tr><td><code>task.overdue</code></td><td>A task is past its due date</td><td><code>{ "event": "task.overdue", "data": { "id": "tsk_8nR", "title": "Follow up with Jennifer Kim", "due_date": "2026-02-25" } }</code></td></tr>
+    <tr><td><code>ai.action_taken</code></td><td>The AI completed an automated action</td><td><code>{ "event": "ai.action_taken", "data": { "workflow_id": "lead_qualification", "status": "completed" } }</code></td></tr>
+    <tr><td><code>portfolio.alert</code></td><td>A portfolio position triggers a threshold alert</td><td><code>{ "event": "portfolio.alert", "data": { "ticker": "NVDA", "alert": "price_target_reached" } }</code></td></tr>
+  </table>
+</div>
+
+<div class="footer">
   TitleApp API v1.0.0 &mdash; Built by TitleApp AI
 </div>
 
