@@ -716,6 +716,21 @@ function analyzeDiscoveryMessage(msg, ctx) {
     const nm = msg.match(/(?:called|named)\s+["']?([A-Z][a-zA-Z0-9\s&'.]+)/);
     if (nm) ctx.businessName = nm[1].trim();
   }
+  // Name extraction — short replies likely answering "what's your name?"
+  if (!ctx.name) {
+    const namePatterns = [
+      /^(?:i'm|im|i am|it's|its|call me|my name is|hey i'm|hi i'm|they call me)\s+([A-Z][a-z]+)/i,
+      /^(?:this is)\s+([A-Z][a-z]+)/i,
+    ];
+    for (const p of namePatterns) {
+      const m = msg.match(p);
+      if (m) { ctx.name = m[1].charAt(0).toUpperCase() + m[1].slice(1).toLowerCase(); break; }
+    }
+    // If message is just a single capitalized word (1-15 chars), likely a name response
+    if (!ctx.name && /^[A-Z][a-z]{1,14}$/.test(msg.trim())) {
+      ctx.name = msg.trim();
+    }
+  }
 }
 
 // ----------------------------
@@ -990,7 +1005,7 @@ exports.api = onRequest(
           if (!sessionState.discoveredContext) {
             sessionState.discoveredContext = {
               intent: null, vertical: null, businessName: null, location: null,
-              scale: null, painPoints: [], currentTools: [], subtype: null,
+              scale: null, painPoints: [], currentTools: [], subtype: null, name: null,
             };
           }
 
@@ -1012,33 +1027,43 @@ exports.api = onRequest(
 
           // Phase-specific guidance for Claude
           const dCtx = sessionState.discoveredContext;
+          const userName = dCtx.name || null;
           let phaseGuidance = '';
+          if (userName) {
+            phaseGuidance += `\nThe user's name is ${userName}. Use it occasionally to keep things personal.`;
+          }
           if (msgCount <= 2) {
-            phaseGuidance = '\nYou are in the early part of the conversation. Just listen, mirror what they said, and ask a natural follow-up question. Do NOT pitch the product yet.';
+            phaseGuidance += '\nThis is early in the conversation. Mirror what they said and ask a follow-up. If you haven\'t asked their name yet, work it in naturally. Do NOT pitch the product.';
           } else if (msgCount <= 5) {
-            phaseGuidance = '\nYou are in the discovery phase. Keep learning about their situation. Ask about specifics like scale, location, pain points, tools they use. One question at a time.';
+            phaseGuidance += '\nYou are in the discovery phase. Keep learning about their situation. Ask about specifics like scale, location, pain points, tools they use. One question at a time. Do NOT suggest signup yet.';
           } else if (dCtx.vertical) {
-            phaseGuidance = `\nYou now know enough to show specific value. Their situation: vertical=${dCtx.vertical}, subtype=${dCtx.subtype || 'unknown'}, scale=${dCtx.scale || 'unknown'}, location=${dCtx.location || 'unknown'}. Show them SPECIFICALLY what TitleApp would do for THEIR situation using their numbers and words. After showing value, gently suggest: "Want me to set this up for you? I can have your workspace ready in about 2 minutes. Just need an email to save it."`;
+            phaseGuidance += `\nYou now know enough to show specific value. Their situation: vertical=${dCtx.vertical}, subtype=${dCtx.subtype || 'unknown'}, scale=${dCtx.scale || 'unknown'}, location=${dCtx.location || 'unknown'}. Show them SPECIFICALLY what TitleApp would do for THEIR situation using their numbers and words. After showing value, you may gently offer to set it up and include [SHOW_SIGNUP] at the end of that message.`;
           } else {
-            phaseGuidance = '\nYou still need more context. Keep the conversation going naturally. Ask what they do or what brought them here.';
+            phaseGuidance += '\nYou still need more context. Keep the conversation going naturally. Ask what they do or what brought them here. Do NOT suggest signup.';
           }
 
-          const discoverySystemPrompt = `You are Alex, TitleApp's AI assistant. You're chatting with someone who just landed on the website. Your job is to have a genuine conversation, learn about their situation, and help them see how TitleApp could help.
+          const discoverySystemPrompt = `You are the TitleApp welcome assistant. You're having a casual, friendly conversation with someone who just visited the website.
 
-Rules:
-- Be warm, casual, and curious. You're a helpful person, not a salesperson.
-- NEVER open with a product description. Ask what brings them here.
-- MIRROR their words. If they say "rental properties" say "rental properties" not "property management portfolio."
-- Ask ONE question at a time. Never overwhelm with multiple questions.
-- After 4-6 exchanges, start showing specific value based on what you've learned. Use their numbers, their situation, their words.
-- After showing value, gently suggest setting up their workspace. "Want me to set this up for you?" Not "Sign up now."
-- If they say no or ignore the suggestion, keep chatting.
-- NEVER block the conversation or require signup to continue.
-- NEVER say "I help you create verified records of the things that matter." That's a tagline, not a conversation.
-- NEVER tell the user to go to a URL or visit a website to sign up. NEVER reference titleapp.com, titleapp.ai/signup, or any signup URL. The user is already on the site.
-- When the user says they want to sign up, create an account, or says "yes" / "sure" / "let's do it" to your setup suggestion, respond enthusiastically like "Awesome, let me set that up for you right now!" and include [SHOW_SIGNUP] at the very end of your response. This token triggers the signup modal automatically. Only use it when the user has clearly agreed to create an account.
-- Keep responses short. 2-3 sentences max. This is a chat, not a presentation.
-- Never use emojis. Never use markdown formatting. Plain text only.${phaseGuidance}`;
+CRITICAL RULES:
+- For the FIRST 4-6 exchanges, just have a conversation. Learn about them. Be curious. Be human.
+- In your SECOND message, ask for their first name. "By the way, what's your name?" or work it in naturally. Once you have it, USE IT occasionally throughout the conversation. Not every message, but enough that it feels personal.
+- DO NOT mention signing up, creating an account, or setting anything up until you have had at least 4 back-and-forth exchanges.
+- DO NOT say "want to get that set up" or "want me to set up a workspace" until you truly understand their situation.
+- DO NOT mention the signup form, email, password, or account creation unprompted.
+- Your first 4 messages should ONLY be asking questions and responding to what they tell you.
+- AFTER 4+ exchanges AND you've shown them specific value for their situation, you can say something like "I can have your workspace ready in 2 minutes, [Name]. Want me to set it up?" and include [SHOW_SIGNUP] at the end.
+- If they say no or ignore it, keep chatting. Don't mention it again for at least 3 more exchanges.
+- Keep every response to 2-3 sentences max. This is a chat, not a pitch.
+- NEVER reference any URL. NEVER say "titleapp.com" or "titleapp.ai". The user is already here.
+- NEVER say "Are you seeing the signup form?" -- you don't control what they see.
+- Never use emojis. Never use markdown formatting. Plain text only.
+
+CONVERSATION FLOW:
+Message 1: "Hey! Welcome to TitleApp. What brings you here today?" (already sent by the system)
+Message 2: Respond to what they said, then ask their name naturally. "That's cool -- by the way, I'm Alex. What's your name?"
+Messages 3-5: Ask about THEIR situation using their name. Mirror their words. Be genuinely curious. "[Name], how long have you been doing that?" or "Nice, [Name] -- what's the most annoying part of that for you?"
+Messages 6-7: Based on what you've learned, show them specifically how TitleApp would help THEIR situation with concrete examples. Use their name.
+Message 8+: If they seem interested, gently offer to set it up. "I can have this ready for you in about 2 minutes, [Name]. Want me to set it up?" Include [SHOW_SIGNUP] at the very end of ONLY that message.${phaseGuidance}`;
 
           try {
             const anthropic = getAnthropic();
@@ -1049,9 +1074,16 @@ Rules:
               messages,
             });
 
-            const aiText = aiResponse.content[0]?.text || "Tell me more about what you're looking for.";
+            let aiText = aiResponse.content[0]?.text || "Tell me more about what you're looking for.";
 
-            // Store in history
+            // Detect and strip [SHOW_SIGNUP] token before returning to frontend
+            let showSignup = false;
+            if (/\[SHOW[_\s]?SIGNUP\]/i.test(aiText)) {
+              showSignup = true;
+              aiText = aiText.replace(/\s*\[SHOW[_\s]?SIGNUP\]\s*/gi, '').trim();
+            }
+
+            // Store in history (without the token)
             sessionState.discoveryHistory.push({ role: 'user', content: userInput });
             sessionState.discoveryHistory.push({ role: 'assistant', content: aiText });
 
@@ -1060,8 +1092,8 @@ Rules:
               sessionState.discoveryHistory = sessionState.discoveryHistory.slice(-30);
             }
 
-            // Suggest signup when enough context is gathered
-            const suggestSignup = msgCount >= 6 && dCtx.vertical !== null;
+            // Suggest signup when enough context or AI triggered it
+            const suggestSignup = showSignup || (msgCount >= 6 && dCtx.vertical !== null);
 
             // Save session state
             await sessionRef.set({
@@ -1077,6 +1109,7 @@ Rules:
               message: aiText,
               discoveredContext: sessionState.discoveredContext,
               suggestSignup,
+              showSignup,
               conversationState: 'discovery',
             });
           } catch (e) {

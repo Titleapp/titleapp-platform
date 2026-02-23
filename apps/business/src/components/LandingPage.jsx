@@ -408,8 +408,8 @@ export default function LandingPage() {
         // Detect [SHOW_SIGNUP] token — strip it and auto-open auth modal
         let displayMessage = result.message;
         let triggerSignup = false;
-        if (displayMessage.includes("[SHOW_SIGNUP]")) {
-          displayMessage = displayMessage.replace(/\s*\[SHOW_SIGNUP\]\s*/g, "").trim();
+        if (/\[SHOW[_\s]?SIGNUP\]/i.test(displayMessage)) {
+          displayMessage = displayMessage.replace(/\s*\[SHOW[_\s]?SIGNUP\]\s*/gi, "").trim();
           triggerSignup = true;
         }
 
@@ -420,7 +420,7 @@ export default function LandingPage() {
         }]);
 
         // Auto-open auth modal after a brief delay so user reads the message first
-        if (triggerSignup) {
+        if (triggerSignup || result.showSignup) {
           setTimeout(() => { setAuthMode("signup"); setAuthOpen(true); }, 1200);
         }
       } else {
