@@ -587,11 +587,16 @@ export default function ChatPanel({ currentSection, onboardingStep }) {
 
         {isTyping && (
           <div className="chat-message assistant">
-            <div className="chat-typing-indicator">
-              <div className="typing-dot"></div>
-              <div className="typing-dot"></div>
-              <div className="typing-dot"></div>
-            </div>
+            <svg width="24" height="24" viewBox="0 0 200 200" fill="none" style={{ animation: "spinKey 1.5s ease-in-out infinite" }}>
+              <circle cx="100" cy="100" r="95" fill="#7c3aed"/>
+              <circle cx="100" cy="100" r="80" fill="#7c3aed" stroke="white" strokeWidth="2"/>
+              <circle cx="100" cy="100" r="70" fill="none" stroke="white" strokeWidth="1" strokeDasharray="3,5"/>
+              <circle cx="100" cy="80" r="18" fill="white"/>
+              <circle cx="100" cy="80" r="8" fill="#7c3aed"/>
+              <rect x="94" y="90" width="12" height="35" fill="white"/>
+              <rect x="94" y="115" width="8" height="4" fill="white"/>
+              <rect x="94" y="122" width="5" height="3" fill="white"/>
+            </svg>
           </div>
         )}
       </div>

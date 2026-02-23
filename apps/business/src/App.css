@@ -570,6 +570,10 @@ body{
   0%,80%,100%{ transform:translateY(0); opacity:0.4; }
   40%{ transform:translateY(-4px); opacity:1; }
 }
+@keyframes spinKey{
+  from{ transform:rotate(0deg); }
+  to{ transform:rotate(360deg); }
+}
 
 /* Mobile chat toggle FAB */
 .chatToggleTab{

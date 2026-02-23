@@ -650,8 +650,17 @@ export default function LandingPage() {
                 </div>
               ))}
               {chatTyping && (
-                <div style={{ marginBottom: "1rem", padding: "1rem", borderRadius: "12px", background: "#f1f5f9", marginRight: "20%", color: "#94a3b8" }}>
-                  Thinking...
+                <div style={{ marginBottom: "1rem", padding: "1rem", borderRadius: "12px", background: "#f1f5f9", marginRight: "20%", display: "flex", alignItems: "center", gap: "10px" }}>
+                  <svg width="28" height="28" viewBox="0 0 200 200" fill="none" style={{ animation: "spinKey 1.5s ease-in-out infinite", flexShrink: 0 }}>
+                    <circle cx="100" cy="100" r="95" fill="#7c3aed"/>
+                    <circle cx="100" cy="100" r="80" fill="#7c3aed" stroke="white" strokeWidth="2"/>
+                    <circle cx="100" cy="100" r="70" fill="none" stroke="white" strokeWidth="1" strokeDasharray="3,5"/>
+                    <circle cx="100" cy="80" r="18" fill="white"/>
+                    <circle cx="100" cy="80" r="8" fill="#7c3aed"/>
+                    <rect x="94" y="90" width="12" height="35" fill="white"/>
+                    <rect x="94" y="115" width="8" height="4" fill="white"/>
+                    <rect x="94" y="122" width="5" height="3" fill="white"/>
+                  </svg>
                 </div>
               )}
               <div ref={chatEndRef} />
@@ -715,6 +724,10 @@ export default function LandingPage() {
         @keyframes slideIn {
           from { opacity: 0; transform: translateY(10px); }
           to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes spinKey {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
         }
       `}</style>
     </div>
