@@ -2,6 +2,9 @@ const { onRequest } = require("firebase-functions/v2/https");
 const admin = require("firebase-admin");
 const crypto = require("crypto");
 
+// Public API (Express app)
+const publicApiApp = require("./api/index");
+
 // Stripe (Identity)
 const Stripe = require("stripe");
 
@@ -4758,5 +4761,77 @@ exports.importCsv = onRequest({ region: "us-central1" }, async (req, res) => {
     successCount: eventIds.length,
     errorCount: errors.length,
     errors: errors.length > 0 ? errors : undefined,
+  });
+});
+
+// ----------------------------
+// PUBLIC REST API (v1)
+// ----------------------------
+// Separate Express app for external API consumers (GPT, MCP, partners, developers).
+// Authenticated via X-API-Key header, rate limited per key.
+exports.publicApi = onRequest({ region: "us-central1" }, publicApiApp);
+
+// ----------------------------
+// API KEY MANAGEMENT
+// ----------------------------
+// Authenticated users create API keys scoped to their workspaces.
+exports.createApiKey = onRequest({ region: "us-central1" }, async (req, res) => {
+  // CORS
+  const origin = req.headers.origin;
+  if (origin) {
+    res.set("Access-Control-Allow-Origin", origin);
+    res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
+    res.set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Tenant-Id");
+  }
+  if (req.method === "OPTIONS") return res.status(204).send("");
+  if (req.method !== "POST") return res.status(405).json({ ok: false, error: "Method not allowed" });
+
+  const auth = await requireFirebaseUser(req, res);
+  if (auth.handled) return;
+
+  const body = req.body || {};
+  const { name, workspace_ids, scopes } = body;
+
+  if (!workspace_ids || !Array.isArray(workspace_ids) || workspace_ids.length === 0) {
+    return res.status(400).json({ ok: false, error: "workspace_ids array is required" });
+  }
+
+  // Verify user owns these workspaces
+  const userId = auth.user.uid;
+  for (const wsId of workspace_ids) {
+    if (wsId === "vault") continue; // personal vault is always accessible
+    const wsDoc = await db.collection("users").doc(userId).collection("workspaces").doc(wsId).get();
+    if (!wsDoc.exists) {
+      return res.status(403).json({ ok: false, error: `You do not own workspace: ${wsId}` });
+    }
+  }
+
+  // Generate API key
+  const key = `ta_${crypto.randomBytes(32).toString("hex")}`;
+
+  const keyDoc = {
+    key,
+    name: name || "API Key",
+    user_id: userId,
+    workspace_ids,
+    scopes: scopes || ["read", "write"],
+    rate_limit: 100,
+    status: "active",
+    created_at: admin.firestore.FieldValue.serverTimestamp(),
+    last_used: null,
+  };
+
+  const ref = await db.collection("api_keys").add(keyDoc);
+
+  return res.json({
+    ok: true,
+    api_key: {
+      id: ref.id,
+      key,
+      name: keyDoc.name,
+      workspace_ids,
+      scopes: keyDoc.scopes,
+      rate_limit: keyDoc.rate_limit,
+    },
   });
 });
