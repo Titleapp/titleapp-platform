@@ -1,5 +1,6 @@
 const express = require("express");
 const cors = require("cors");
+const path = require("path");
 const { validateApiKey } = require("./middleware/auth");
 
 // Route modules
@@ -39,6 +40,11 @@ app.get("/v1/health", (req, res) => {
     version: "1.0.0",
     timestamp: new Date().toISOString(),
   });
+});
+
+// API documentation (no auth required)
+app.get("/v1/docs", (req, res) => {
+  res.sendFile(path.join(__dirname, "docs.html"));
 });
 
 // API key validation on all /v1/ routes except health
