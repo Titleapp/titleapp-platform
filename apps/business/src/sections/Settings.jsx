@@ -631,27 +631,95 @@ function BusinessSettings() {
     setShowEditModal(false);
   }
 
+  function getNotificationItems() {
+    if (vertical === "real-estate") {
+      return [
+        { key: "email", label: "Email Notifications", desc: "Receive updates via email" },
+        { key: "sms", label: "SMS Notifications", desc: "Receive updates via text message" },
+        { key: "vacancyAlerts", label: "Vacancy Alerts", desc: "Get notified when units become vacant" },
+        { key: "lateRentAlerts", label: "Late Rent Alerts", desc: "Get alerted when tenants are past due" },
+        { key: "leaseExpiration", label: "Lease Expiration Alerts", desc: "Get reminded when leases are expiring soon" },
+        { key: "maintenanceOverdue", label: "Maintenance Overdue Alerts", desc: "Get notified when maintenance requests exceed SLA" },
+      ];
+    }
+    if (vertical === "analyst") {
+      return [
+        { key: "email", label: "Email Notifications", desc: "Receive updates via email" },
+        { key: "sms", label: "SMS Notifications", desc: "Receive updates via text message" },
+        { key: "priceAlerts", label: "Price Target Alerts", desc: "Get alerted when positions hit price targets" },
+        { key: "riskAlerts", label: "Risk Alerts", desc: "Get notified of portfolio risk threshold breaches" },
+      ];
+    }
+    // auto / default
+    return [
+      { key: "email", label: "Email Notifications", desc: "Receive updates via email" },
+      { key: "sms", label: "SMS Notifications", desc: "Receive updates via text message" },
+      { key: "lowInventoryAlert", label: "Low Inventory Alerts", desc: "Get notified when inventory is running low" },
+      { key: "appointmentReminders", label: "Appointment Reminders", desc: "Remind staff about upcoming appointments" },
+    ];
+  }
+
   useEffect(() => {
     loadMyCompanies();
   }, []);
 
   async function loadMyCompanies() {
-    // Build company list from current workspace context (avoids stale tenant data bleed)
-    const wsId = localStorage.getItem("WORKSPACE_ID") || "";
+    const companies = [];
+
+    // Current workspace
+    const wsId = localStorage.getItem("WORKSPACE_ID") || localStorage.getItem("TENANT_ID") || "";
     const wsName = resolveWorkspaceName();
-    const currentCompany = {
+    companies.push({
       id: wsId,
       name: wsName || "Current Workspace",
       type: VERTICAL_LABELS[vertical] || vertical,
+      vertical: vertical,
       role: "admin",
-    };
-    setMyCompanies([currentCompany]);
+      current: true,
+    });
+
+    // Try to fetch all memberships from API
+    try {
+      const token = localStorage.getItem("ID_TOKEN");
+      const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+      const response = await fetch(`${apiBase}/api?path=/v1/me:memberships`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json();
+      if (data.ok && data.memberships) {
+        data.memberships.forEach((m) => {
+          if (m.tenantId !== wsId) {
+            const tenant = data.tenants?.[m.tenantId] || {};
+            const v = (tenant.vertical || "auto").toLowerCase();
+            companies.push({
+              id: m.tenantId,
+              name: tenant.companyName || tenant.name || m.tenantId,
+              type: VERTICAL_LABELS[v] || v,
+              vertical: v,
+              role: m.role || "member",
+              current: false,
+            });
+          }
+        });
+      }
+    } catch (err) {
+      console.warn("Could not load all memberships:", err.message);
+    }
+
+    setMyCompanies(companies);
     if (!currentTenantId) setCurrentTenantId(wsId);
   }
 
-  function switchTenant(tenantId) {
-    localStorage.setItem("CURRENT_TENANT_ID", tenantId);
-    setCurrentTenantId(tenantId);
+  function switchTenant(company) {
+    localStorage.setItem("CURRENT_TENANT_ID", company.id);
+    localStorage.setItem("TENANT_ID", company.id);
+    localStorage.setItem("WORKSPACE_ID", company.id);
+    if (company.vertical) localStorage.setItem("VERTICAL", company.vertical);
+    if (company.name) {
+      localStorage.setItem("WORKSPACE_NAME", company.name);
+      localStorage.setItem("COMPANY_NAME", company.name);
+    }
+    setCurrentTenantId(company.id);
     window.location.reload();
   }
 
@@ -709,13 +777,35 @@ function BusinessSettings() {
                 <div style={{ fontWeight: 600 }}>{company.name}</div>
                 <div style={{ fontSize: "13px", color: "var(--textMuted)" }}>
                   {company.type} {company.role ? `\u00B7 ${company.role}` : ""}
-                  {currentTenantId === company.id && (
-                    <span style={{ color: "var(--accent)", marginLeft: "8px" }}>Active</span>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "4px" }}>
+                  <span style={{
+                    fontSize: "10px",
+                    fontWeight: 600,
+                    padding: "2px 8px",
+                    borderRadius: "9999px",
+                    background: {
+                      auto: "#fef3c7",
+                      analyst: "#dbeafe",
+                      "real-estate": "#dcfce7",
+                      consumer: "#f3e8ff",
+                    }[company.vertical] || "#f1f5f9",
+                    color: {
+                      auto: "#d97706",
+                      analyst: "#2563eb",
+                      "real-estate": "#16a34a",
+                      consumer: "#7c3aed",
+                    }[company.vertical] || "#475569",
+                  }}>
+                    {company.type}
+                  </span>
+                  {company.current && (
+                    <span style={{ fontSize: "10px", fontWeight: 600, color: "#7c3aed" }}>Active</span>
                   )}
                 </div>
               </div>
               {currentTenantId !== company.id && (
-                <button className="iconBtn" onClick={() => switchTenant(company.id)}>Switch</button>
+                <button className="iconBtn" onClick={() => switchTenant(company)}>Switch</button>
               )}
             </div>
           ))}
@@ -752,22 +842,12 @@ function BusinessSettings() {
           <button className="iconBtn" onClick={() => handleEditClick("notifications")}>Edit</button>
         </div>
         <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "12px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-            <input type="checkbox" checked={business.notifications.email} readOnly />
-            <div><div style={{ fontWeight: 600 }}>Email Notifications</div><div style={{ fontSize: "13px", color: "var(--textMuted)" }}>Receive updates via email</div></div>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-            <input type="checkbox" checked={business.notifications.sms} readOnly />
-            <div><div style={{ fontWeight: 600 }}>SMS Notifications</div><div style={{ fontSize: "13px", color: "var(--textMuted)" }}>Receive updates via text message</div></div>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-            <input type="checkbox" checked={business.notifications.lowInventoryAlert} readOnly />
-            <div><div style={{ fontWeight: 600 }}>Low Inventory Alerts</div><div style={{ fontSize: "13px", color: "var(--textMuted)" }}>Get notified when inventory is running low</div></div>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-            <input type="checkbox" checked={business.notifications.appointmentReminders} readOnly />
-            <div><div style={{ fontWeight: 600 }}>Appointment Reminders</div><div style={{ fontSize: "13px", color: "var(--textMuted)" }}>Remind staff about upcoming appointments</div></div>
-          </div>
+          {getNotificationItems().map((item) => (
+            <div key={item.key} style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <input type="checkbox" checked={business.notifications[item.key] || false} readOnly />
+              <div><div style={{ fontWeight: 600 }}>{item.label}</div><div style={{ fontSize: "13px", color: "var(--textMuted)" }}>{item.desc}</div></div>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -1047,12 +1127,7 @@ function BusinessSettings() {
         )}
         {editSection === "notifications" && (
           <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-            {[
-              { key: "email", label: "Email Notifications", desc: "Receive updates via email" },
-              { key: "sms", label: "SMS Notifications", desc: "Receive updates via text message" },
-              { key: "lowInventoryAlert", label: "Low Inventory Alerts", desc: "Get notified when inventory is running low" },
-              { key: "appointmentReminders", label: "Appointment Reminders", desc: "Remind staff about upcoming appointments" },
-            ].map((item) => (
+            {getNotificationItems().map((item) => (
               <div key={item.key} style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                 <input type="checkbox" checked={formData[item.key] || false} onChange={(e) => setFormData({ ...formData, [item.key]: e.target.checked })} />
                 <div><div style={{ fontWeight: 600 }}>{item.label}</div><div style={{ fontSize: "13px", color: "var(--textMuted)" }}>{item.desc}</div></div>

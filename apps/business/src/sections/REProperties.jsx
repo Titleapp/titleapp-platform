@@ -135,7 +135,7 @@ export default function REProperties() {
       <div className="pageHeader">
         <div>
           <h1 className="h1">Properties</h1>
-          <p className="subtle">Portfolio overview and unit management</p>
+          <p className="subtle">Managed Properties — Your rental portfolio</p>
         </div>
         <button
           className="iconBtn"
@@ -201,16 +201,28 @@ export default function REProperties() {
                     <div style={{ fontWeight: 700, fontSize: "15px", color: "#1e293b" }}>{prop.name}</div>
                     <div style={{ fontSize: "12px", color: "#64748b", marginTop: "2px" }}>{prop.address}, {prop.city} {prop.zip}</div>
                   </div>
-                  <span style={{
-                    fontSize: "11px",
-                    fontWeight: 600,
-                    padding: "2px 8px",
-                    borderRadius: "9999px",
-                    background: "#f1f5f9",
-                    color: "#475569",
-                  }}>
-                    {prop.type}
-                  </span>
+                  <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
+                    <span style={{
+                      fontSize: "10px",
+                      fontWeight: 600,
+                      padding: "2px 8px",
+                      borderRadius: "9999px",
+                      background: "#dbeafe",
+                      color: "#2563eb",
+                    }}>
+                      Managed
+                    </span>
+                    <span style={{
+                      fontSize: "10px",
+                      fontWeight: 600,
+                      padding: "2px 8px",
+                      borderRadius: "9999px",
+                      background: "#f1f5f9",
+                      color: "#475569",
+                    }}>
+                      {prop.type}
+                    </span>
+                  </div>
                 </div>
 
                 {/* Stats */}

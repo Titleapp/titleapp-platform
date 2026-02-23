@@ -28,6 +28,16 @@ const MAP_DOTS = [
   { id: 8, x: "48%", y: "38%" },
 ];
 
+const PROPERTY_IMAGES = {
+  "Single Family": `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200"><rect width="400" height="200" fill="#f0fdf4"/><path d="M200 40 L320 110 L320 170 L80 170 L80 110 Z" fill="#86efac" stroke="#16a34a" stroke-width="2"/><rect x="110" y="110" width="40" height="60" fill="#fef3c7" stroke="#d97706" stroke-width="1.5"/><rect x="170" y="120" width="30" height="25" fill="#bfdbfe" stroke="#2563eb" stroke-width="1"/><rect x="220" y="120" width="30" height="25" fill="#bfdbfe" stroke="#2563eb" stroke-width="1"/><rect x="260" y="130" width="50" height="40" fill="#e2e8f0" stroke="#64748b" stroke-width="1.5"/><path d="M200 40 L80 110" stroke="#16a34a" stroke-width="3" fill="none"/><path d="M200 40 L320 110" stroke="#16a34a" stroke-width="3" fill="none"/></svg>')}`,
+  "Condo": `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200"><rect width="400" height="200" fill="#eff6ff"/><rect x="120" y="30" width="160" height="140" fill="#bfdbfe" stroke="#2563eb" stroke-width="2" rx="4"/><rect x="140" y="50" width="25" height="20" fill="#dbeafe" stroke="#93c5fd" stroke-width="1"/><rect x="180" y="50" width="25" height="20" fill="#dbeafe" stroke="#93c5fd" stroke-width="1"/><rect x="220" y="50" width="25" height="20" fill="#dbeafe" stroke="#93c5fd" stroke-width="1"/><rect x="140" y="85" width="25" height="20" fill="#dbeafe" stroke="#93c5fd" stroke-width="1"/><rect x="180" y="85" width="25" height="20" fill="#dbeafe" stroke="#93c5fd" stroke-width="1"/><rect x="220" y="85" width="25" height="20" fill="#dbeafe" stroke="#93c5fd" stroke-width="1"/><rect x="140" y="120" width="25" height="20" fill="#fef9c3" stroke="#facc15" stroke-width="1"/><rect x="180" y="130" width="30" height="40" fill="#fef3c7" stroke="#d97706" stroke-width="1.5"/><rect x="220" y="120" width="25" height="20" fill="#dbeafe" stroke="#93c5fd" stroke-width="1"/></svg>')}`,
+  "Townhome": `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200"><rect width="400" height="200" fill="#faf5ff"/><path d="M120 70 L170 35 L220 70" fill="#e9d5ff" stroke="#7c3aed" stroke-width="2"/><rect x="120" y="70" width="100" height="100" fill="#f3e8ff" stroke="#7c3aed" stroke-width="2"/><path d="M220 70 L270 35 L320 70" fill="#e9d5ff" stroke="#7c3aed" stroke-width="2"/><rect x="220" y="70" width="100" height="100" fill="#f3e8ff" stroke="#7c3aed" stroke-width="2"/><rect x="150" y="130" width="25" height="40" fill="#fef3c7" stroke="#d97706" stroke-width="1.5"/><rect x="255" y="130" width="25" height="40" fill="#fef3c7" stroke="#d97706" stroke-width="1.5"/><rect x="140" y="90" width="20" height="18" fill="#bfdbfe" stroke="#2563eb" stroke-width="1"/><rect x="245" y="90" width="20" height="18" fill="#bfdbfe" stroke="#2563eb" stroke-width="1"/><rect x="280" y="90" width="20" height="18" fill="#bfdbfe" stroke="#2563eb" stroke-width="1"/></svg>')}`,
+};
+
+function getPropertyImage(type) {
+  return PROPERTY_IMAGES[type] || PROPERTY_IMAGES["Single Family"];
+}
+
 function statusLabel(s) {
   if (s === "active") return "Active";
   if (s === "under-contract") return "Under Contract";
@@ -158,9 +168,18 @@ export default function REListings() {
               <div
                 key={l.id}
                 className="card"
-                style={{ padding: "16px", cursor: "pointer", borderLeft: `3px solid ${ss.color}` }}
+                style={{ padding: "0", cursor: "pointer", borderLeft: `3px solid ${ss.color}`, overflow: "hidden" }}
                 onClick={() => setSelected(l)}
               >
+                <div style={{
+                  width: "100%",
+                  height: "120px",
+                  backgroundImage: `url("${getPropertyImage(l.type)}")`,
+                  backgroundSize: "cover",
+                  backgroundPosition: "center",
+                  borderBottom: "1px solid #f1f5f9",
+                }} />
+                <div style={{ padding: "16px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "6px" }}>
                   <div>
                     <div style={{ fontWeight: 700, fontSize: "14px", color: "#1e293b" }}>{l.address}</div>
@@ -183,6 +202,7 @@ export default function REListings() {
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <span style={{ fontSize: "11px", color: "#94a3b8" }}>{l.type}</span>
                   <span style={{ fontSize: "11px", color: "#94a3b8" }}>{l.agent}</span>
+                </div>
                 </div>
               </div>
             );

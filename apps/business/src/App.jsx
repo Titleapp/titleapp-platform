@@ -40,6 +40,7 @@ import RETransactions from "./sections/RETransactions";
 import REProperties from "./sections/REProperties";
 import RETenants from "./sections/RETenants";
 import REMaintenance from "./sections/REMaintenance";
+import REMarketing from "./sections/REMarketing";
 import { auth } from "./firebase";
 import { signInWithCustomToken } from "firebase/auth";
 
@@ -133,6 +134,8 @@ function AdminShell({ onBackToHub }) {
         return <RETenants />;
       case "re-maintenance":
         return <REMaintenance />;
+      case "re-marketing":
+        return <REMarketing />;
       default:
         return <Dashboard />;
     }

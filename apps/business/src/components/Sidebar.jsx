@@ -50,6 +50,7 @@ const NAV_BY_VERTICAL = {
     { id: "re-properties", label: "Properties" },
     { id: "re-tenants", label: "Tenants" },
     { id: "re-maintenance", label: "Maintenance" },
+    { id: "re-marketing", label: "Marketing" },
     { id: "reports", label: "Reports" },
     { id: "ai-chats", label: "AI Activity" },
     { id: "rules", label: "Rules" },

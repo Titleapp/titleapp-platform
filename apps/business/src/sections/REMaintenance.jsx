@@ -1,13 +1,13 @@
 import React, { useState } from "react";
 
 const REQUESTS = [
-  { id: 1, title: "Water Heater Replacement", property: "Riverside Apartments", unit: "1A", tenant: "Maria Santos", priority: "emergency", status: "in-progress", created: "2026-02-14", vendor: "ABC Plumbing", cost: 1200, description: "No hot water. Water heater leaking. Emergency dispatch.", flag: "5 days overdue" },
-  { id: 2, title: "Garbage Disposal Repair", property: "San Marco Townhomes", unit: "TH-3", tenant: "Chris Adams", priority: "medium", status: "new", created: "2026-02-18", vendor: null, cost: null, description: "Disposal jammed and making grinding noise." },
-  { id: 3, title: "HVAC Filter Change", property: "Beach Cottages", unit: "C", tenant: "Brian Foster", priority: "low", status: "complete", created: "2026-02-10", vendor: "Cool Air HVAC", cost: 85, description: "Quarterly filter replacement. Completed Feb 15." },
-  { id: 4, title: "Toilet Running", property: "Riverside Apartments", unit: "4B", tenant: "Nicole Johnson", priority: "medium", status: "new", created: "2026-02-17", vendor: null, cost: null, description: "Toilet in master bath runs continuously." },
-  { id: 5, title: "Broken Window Lock", property: "Southside Flats", unit: "1", tenant: "Angela Davis", priority: "high", status: "waiting-vendor", created: "2026-02-15", vendor: "SecureAll Windows", cost: 250, description: "Bedroom window lock broken. Security concern.", scheduledDate: "2026-02-21" },
-  { id: 6, title: "Parking Lot Light Out", property: "Riverside Apartments", unit: "Common", tenant: null, priority: "medium", status: "in-progress", created: "2026-02-16", vendor: "BrightStar Electric", cost: 175, description: "Light pole #3 in parking lot not functioning." },
-  { id: 7, title: "Roof Leak - Unit 2B", property: "Riverside Apartments", unit: "2B", tenant: "Ashley Torres", priority: "high", status: "waiting-vendor", created: "2026-02-13", vendor: "TopNotch Roofing", cost: 800, description: "Ceiling stain growing in bedroom. Roof inspection scheduled.", scheduledDate: "2026-02-22" },
+  { id: 1, title: "Water Heater Replacement", property: "Riverside Apartments", unit: "1A", tenant: "Maria Santos", priority: "emergency", status: "in-progress", created: "2026-02-14", vendor: "ABC Plumbing", cost: 1200, description: "No hot water. Water heater leaking. Emergency dispatch.", flag: "5 days overdue", photos: 2 },
+  { id: 2, title: "Garbage Disposal Repair", property: "San Marco Townhomes", unit: "TH-3", tenant: "Chris Adams", priority: "medium", status: "new", created: "2026-02-18", vendor: null, cost: null, description: "Disposal jammed and making grinding noise.", photos: 1 },
+  { id: 3, title: "HVAC Filter Change", property: "Beach Cottages", unit: "C", tenant: "Brian Foster", priority: "low", status: "complete", created: "2026-02-10", vendor: "Cool Air HVAC", cost: 85, description: "Quarterly filter replacement. Completed Feb 15.", photos: 0 },
+  { id: 4, title: "Toilet Running", property: "Riverside Apartments", unit: "4B", tenant: "Nicole Johnson", priority: "medium", status: "new", created: "2026-02-17", vendor: null, cost: null, description: "Toilet in master bath runs continuously.", photos: 0 },
+  { id: 5, title: "Broken Window Lock", property: "Southside Flats", unit: "1", tenant: "Angela Davis", priority: "high", status: "waiting-vendor", created: "2026-02-15", vendor: "SecureAll Windows", cost: 250, description: "Bedroom window lock broken. Security concern.", scheduledDate: "2026-02-21", photos: 1 },
+  { id: 6, title: "Parking Lot Light Out", property: "Riverside Apartments", unit: "Common", tenant: null, priority: "medium", status: "in-progress", created: "2026-02-16", vendor: "BrightStar Electric", cost: 175, description: "Light pole #3 in parking lot not functioning.", photos: 0 },
+  { id: 7, title: "Roof Leak - Unit 2B", property: "Riverside Apartments", unit: "2B", tenant: "Ashley Torres", priority: "high", status: "waiting-vendor", created: "2026-02-13", vendor: "TopNotch Roofing", cost: 800, description: "Ceiling stain growing in bedroom. Roof inspection scheduled.", scheduledDate: "2026-02-22", photos: 3 },
 ];
 
 const PRIORITY_BADGES = {
@@ -200,6 +200,16 @@ export default function REMaintenance() {
                           Est. ${r.cost.toLocaleString()}
                         </div>
                       )}
+
+                      {/* Photo indicator */}
+                      <div style={{ display: "flex", alignItems: "center", gap: "4px", marginTop: "6px", fontSize: "11px", color: r.photos > 0 ? "#475569" : "#94a3b8" }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={r.photos > 0 ? "#475569" : "#cbd5e1"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                          <circle cx="8.5" cy="8.5" r="1.5" />
+                          <polyline points="21 15 16 10 5 21" />
+                        </svg>
+                        {r.photos > 0 ? `${r.photos} photo${r.photos !== 1 ? "s" : ""}` : "No photos"}
+                      </div>
 
                       {/* Expanded Detail */}
                       {isExpanded && (

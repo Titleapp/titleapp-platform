@@ -514,10 +514,10 @@ export default function Dashboard() {
         setValueTracker({ actions: dealsSourced + effectiveAnalyzed, hoursSaved: totalHoursSaved, valueSaved: valueAtRate });
       } else if (vertical === "real-estate") {
         setKpis({
-          revenue: { value: "8", trend: "5 active, 2 stale, 1 UC" },
-          activeDeals: { value: "10", trend: "4 showing, 3 contacted" },
-          aiConversations: { value: "3", trend: "$1.2M pipeline" },
-          customers: { value: "85.7%", trend: "24 of 28 units" },
+          revenue: { value: "85.7%", trend: "24 of 28 units" },
+          activeDeals: { value: "$37,400", trend: "Monthly rent revenue" },
+          aiConversations: { value: "8", trend: "5 active, 2 stale" },
+          customers: { value: "3", trend: "$1.2M pipeline" },
         });
         setValueTracker({ actions: 42, hoursSaved: 38, valueSaved: 5700 });
       } else if (vertical === "auto") {
@@ -614,7 +614,7 @@ export default function Dashboard() {
       return ["Dealflow Value", "Deals in Pipeline", "Analyzed This Month", "Avg Risk Score"];
     }
     if (vertical === "real-estate") {
-      return ["Active Listings", "Active Buyers", "Pending Transactions", "Occupancy Rate"];
+      return ["Occupancy Rate", "Monthly Revenue", "Active Listings", "Pending Transactions"];
     }
     if (vertical === "auto") {
       return ["Total Inventory Value", "Units in Stock", "Sold This Month", "Gross Profit MTD"];
@@ -1060,56 +1060,56 @@ export default function Dashboard() {
       {isRealEstate && (
         <div style={{ marginTop: "14px" }}>
 
-          {/* Sales Track */}
-          <div className="card" style={{ marginBottom: "14px", padding: "20px", borderLeft: "4px solid #16a34a" }}>
-            <div style={{ fontWeight: 700, fontSize: "16px", color: "#1e293b", marginBottom: "4px" }}>Sales Track</div>
-            <div style={{ fontSize: "13px", color: "#64748b", marginBottom: "16px" }}>Listings, buyers, and active deals</div>
+          {/* PM Track */}
+          <div className="card" style={{ marginBottom: "14px", padding: "20px", borderLeft: "4px solid #2563eb" }}>
+            <div style={{ fontWeight: 700, fontSize: "16px", color: "#1e293b", marginBottom: "4px" }}>Property Management Track</div>
+            <div style={{ fontSize: "13px", color: "#64748b", marginBottom: "16px" }}>Portfolio health and tenant operations</div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "12px" }}>
-              <div onClick={() => nav("re-listings")} style={{ padding: "12px", background: "#f0fdf4", borderRadius: "8px", textAlign: "center", cursor: "pointer" }}>
-                <div style={{ fontSize: "24px", fontWeight: 800, color: "#16a34a" }}>8</div>
-                <div style={{ fontSize: "12px", color: "#64748b" }}>Active Listings</div>
+              <div onClick={() => nav("re-properties")} style={{ padding: "12px", background: "#f8fafc", borderRadius: "8px", textAlign: "center", cursor: "pointer" }}>
+                <div style={{ fontSize: "24px", fontWeight: 800 }}>28</div>
+                <div style={{ fontSize: "12px", color: "#64748b" }}>Total Units</div>
               </div>
-              <div onClick={() => nav("re-buyers")} style={{ padding: "12px", background: "#f8fafc", borderRadius: "8px", textAlign: "center", cursor: "pointer" }}>
-                <div style={{ fontSize: "24px", fontWeight: 800 }}>10</div>
-                <div style={{ fontSize: "12px", color: "#64748b" }}>Active Buyers</div>
+              <div onClick={() => nav("re-tenants")} style={{ padding: "12px", background: "#f8fafc", borderRadius: "8px", textAlign: "center", cursor: "pointer" }}>
+                <div style={{ fontSize: "24px", fontWeight: 800 }}>24</div>
+                <div style={{ fontSize: "12px", color: "#64748b" }}>Active Tenants</div>
               </div>
-              <div onClick={() => nav("re-listings")} style={{ padding: "12px", background: "#fef2f2", borderRadius: "8px", textAlign: "center", cursor: "pointer" }}>
-                <div style={{ fontSize: "24px", fontWeight: 800, color: "#dc2626" }}>2</div>
-                <div style={{ fontSize: "12px", color: "#dc2626" }}>Stale Listings (30+ DOM)</div>
+              <div onClick={() => nav("re-tenants")} style={{ padding: "12px", background: "#fef2f2", borderRadius: "8px", textAlign: "center", cursor: "pointer" }}>
+                <div style={{ fontSize: "24px", fontWeight: 800, color: "#dc2626" }}>1</div>
+                <div style={{ fontSize: "12px", color: "#dc2626" }}>Late on Rent</div>
               </div>
-              <div onClick={() => nav("re-buyers")} style={{ padding: "12px", background: "#fff7ed", borderRadius: "8px", textAlign: "center", cursor: "pointer" }}>
-                <div style={{ fontSize: "24px", fontWeight: 800, color: "#d97706" }}>2</div>
-                <div style={{ fontSize: "12px", color: "#64748b" }}>Uncontacted Leads</div>
+              <div onClick={() => nav("re-maintenance")} style={{ padding: "12px", background: "#fff7ed", borderRadius: "8px", textAlign: "center", cursor: "pointer" }}>
+                <div style={{ fontSize: "24px", fontWeight: 800, color: "#d97706" }}>5</div>
+                <div style={{ fontSize: "12px", color: "#64748b" }}>Open Maintenance</div>
               </div>
+            </div>
+            <div style={{ marginTop: "12px", padding: "10px", background: "#fef2f2", borderRadius: "8px", fontSize: "13px", color: "#dc2626" }}>
+              Overdue: Water heater at Riverside 1A -- 5 days past SLA
             </div>
           </div>
 
-          {/* PM Track + Transaction Track side by side */}
+          {/* Sales Track + Transaction Track side by side */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px", marginBottom: "14px" }}>
-            {/* PM Track */}
-            <div className="card" style={{ padding: "20px", borderLeft: "4px solid #2563eb" }}>
-              <div style={{ fontWeight: 700, fontSize: "16px", color: "#1e293b", marginBottom: "4px" }}>Property Management Track</div>
-              <div style={{ fontSize: "13px", color: "#64748b", marginBottom: "16px" }}>Portfolio health and tenant operations</div>
+            {/* Sales Track */}
+            <div className="card" style={{ padding: "20px", borderLeft: "4px solid #16a34a" }}>
+              <div style={{ fontWeight: 700, fontSize: "16px", color: "#1e293b", marginBottom: "4px" }}>Sales Track</div>
+              <div style={{ fontSize: "13px", color: "#64748b", marginBottom: "16px" }}>Listings, buyers, and active deals</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-                <div onClick={() => nav("re-properties")} style={{ padding: "10px", background: "#f8fafc", borderRadius: "8px", cursor: "pointer" }}>
-                  <div style={{ fontSize: "20px", fontWeight: 800 }}>28</div>
-                  <div style={{ fontSize: "12px", color: "#64748b" }}>Total Units</div>
+                <div onClick={() => nav("re-listings")} style={{ padding: "10px", background: "#f0fdf4", borderRadius: "8px", cursor: "pointer" }}>
+                  <div style={{ fontSize: "20px", fontWeight: 800, color: "#16a34a" }}>8</div>
+                  <div style={{ fontSize: "12px", color: "#64748b" }}>Active Listings</div>
                 </div>
-                <div onClick={() => nav("re-tenants")} style={{ padding: "10px", background: "#f8fafc", borderRadius: "8px", cursor: "pointer" }}>
-                  <div style={{ fontSize: "20px", fontWeight: 800 }}>24</div>
-                  <div style={{ fontSize: "12px", color: "#64748b" }}>Active Tenants</div>
+                <div onClick={() => nav("re-buyers")} style={{ padding: "10px", background: "#f8fafc", borderRadius: "8px", cursor: "pointer" }}>
+                  <div style={{ fontSize: "20px", fontWeight: 800 }}>10</div>
+                  <div style={{ fontSize: "12px", color: "#64748b" }}>Active Buyers</div>
                 </div>
-                <div onClick={() => nav("re-tenants")} style={{ padding: "10px", background: "#fef2f2", borderRadius: "8px", cursor: "pointer" }}>
-                  <div style={{ fontSize: "20px", fontWeight: 800, color: "#dc2626" }}>1</div>
-                  <div style={{ fontSize: "12px", color: "#dc2626" }}>Late on Rent</div>
+                <div onClick={() => nav("re-listings")} style={{ padding: "10px", background: "#fef2f2", borderRadius: "8px", cursor: "pointer" }}>
+                  <div style={{ fontSize: "20px", fontWeight: 800, color: "#dc2626" }}>2</div>
+                  <div style={{ fontSize: "12px", color: "#dc2626" }}>Stale Listings (30+ DOM)</div>
                 </div>
-                <div onClick={() => nav("re-maintenance")} style={{ padding: "10px", background: "#fff7ed", borderRadius: "8px", cursor: "pointer" }}>
-                  <div style={{ fontSize: "20px", fontWeight: 800, color: "#d97706" }}>5</div>
-                  <div style={{ fontSize: "12px", color: "#64748b" }}>Open Maintenance</div>
+                <div onClick={() => nav("re-buyers")} style={{ padding: "10px", background: "#fff7ed", borderRadius: "8px", cursor: "pointer" }}>
+                  <div style={{ fontSize: "20px", fontWeight: 800, color: "#d97706" }}>2</div>
+                  <div style={{ fontSize: "12px", color: "#64748b" }}>Uncontacted Leads</div>
                 </div>
-              </div>
-              <div style={{ marginTop: "12px", padding: "10px", background: "#fef2f2", borderRadius: "8px", fontSize: "13px", color: "#dc2626" }}>
-                Overdue: Water heater at Riverside 1A -- 5 days past SLA
               </div>
             </div>
 
@@ -1151,6 +1151,34 @@ export default function Dashboard() {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
             <div className="card" style={{ padding: "20px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px" }}>
+                <span style={{ fontSize: "11px", fontWeight: 600, padding: "2px 10px", borderRadius: "9999px", background: "#dc262615", color: "#dc2626" }}>Late Rent</span>
+              </div>
+              <div style={{ fontSize: "16px", fontWeight: 700, marginBottom: "8px" }}>30 Days Past Due -- Kevin Williams</div>
+              <div style={{ fontSize: "14px", color: "#334155", marginBottom: "10px", lineHeight: 1.5 }}>
+                Riverside Apartments 2A. Balance $1,850 including $75 late fee. AI sent 3 reminders. Next step: 3-day notice per FL statute.
+              </div>
+              <div style={{ fontSize: "13px", color: "#64748b", fontStyle: "italic", marginBottom: "10px" }}>Suggested: Serve 3-day notice, document for compliance</div>
+              <div style={{ display: "flex", gap: "8px" }}>
+                <button onClick={() => window.dispatchEvent(new CustomEvent("ta:chatPrompt", { detail: { message: "Draft 3-day notice for Kevin Williams at Riverside 2A, $1,850 balance, per Florida Statute 83.56" } }))} style={{ flex: 1, padding: "8px 14px", fontSize: "13px", fontWeight: 600, border: "none", borderRadius: "8px", cursor: "pointer", color: "#fff", background: "linear-gradient(135deg, #7c3aed, #6d28d9)" }}>Draft Notice</button>
+                <button onClick={() => nav("re-tenants")} style={{ padding: "8px 14px", fontSize: "13px", fontWeight: 600, border: "1px solid #e2e8f0", borderRadius: "8px", cursor: "pointer", background: "transparent", color: "#334155" }}>View Tenant</button>
+              </div>
+            </div>
+            <div className="card" style={{ padding: "20px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px" }}>
+                <span style={{ fontSize: "11px", fontWeight: 600, padding: "2px 10px", borderRadius: "9999px", background: "#d9770615", color: "#d97706" }}>Vacancy</span>
+              </div>
+              <div style={{ fontSize: "16px", fontWeight: 700, marginBottom: "8px" }}>45-Day Vacancy -- Southside Flats Unit 3</div>
+              <div style={{ fontSize: "14px", color: "#334155", marginBottom: "10px", lineHeight: 1.5 }}>
+                Costing owner ~$38/day. Rent reduced from $1,250 to $1,150. 2 showing requests pending. Application received yesterday.
+              </div>
+              <div style={{ fontSize: "13px", color: "#64748b", fontStyle: "italic", marginBottom: "10px" }}>Suggested: Screen application, schedule showing for second prospect</div>
+              <div style={{ display: "flex", gap: "8px" }}>
+                <button onClick={() => window.dispatchEvent(new CustomEvent("ta:chatPrompt", { detail: { message: "Screen the rental application for Southside Flats Unit 3 and schedule showings for pending prospects" } }))} style={{ flex: 1, padding: "8px 14px", fontSize: "13px", fontWeight: 600, border: "none", borderRadius: "8px", cursor: "pointer", color: "#fff", background: "linear-gradient(135deg, #7c3aed, #6d28d9)" }}>Let AI Handle It</button>
+                <button onClick={() => nav("re-properties")} style={{ padding: "8px 14px", fontSize: "13px", fontWeight: 600, border: "1px solid #e2e8f0", borderRadius: "8px", cursor: "pointer", background: "transparent", color: "#334155" }}>View Property</button>
+              </div>
+            </div>
+            <div className="card" style={{ padding: "20px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px" }}>
                 <span style={{ fontSize: "11px", fontWeight: 600, padding: "2px 10px", borderRadius: "9999px", background: "#dcfce715", color: "#dc2626" }}>Hot Lead</span>
                 <span style={{ fontSize: "11px", fontWeight: 600, color: "#dc2626" }}>URGENT</span>
               </div>
@@ -1176,34 +1204,6 @@ export default function Dashboard() {
               <div style={{ display: "flex", gap: "8px" }}>
                 <button onClick={() => window.dispatchEvent(new CustomEvent("ta:chatPrompt", { detail: { message: "Draft price reduction proposal for 432 Ponte Vedra Blvd from $725K to $699K with seller communication" } }))} style={{ flex: 1, padding: "8px 14px", fontSize: "13px", fontWeight: 600, border: "none", borderRadius: "8px", cursor: "pointer", color: "#fff", background: "linear-gradient(135deg, #7c3aed, #6d28d9)" }}>Draft Proposal</button>
                 <button onClick={() => nav("re-listings")} style={{ padding: "8px 14px", fontSize: "13px", fontWeight: 600, border: "1px solid #e2e8f0", borderRadius: "8px", cursor: "pointer", background: "transparent", color: "#334155" }}>View Listing</button>
-              </div>
-            </div>
-            <div className="card" style={{ padding: "20px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px" }}>
-                <span style={{ fontSize: "11px", fontWeight: 600, padding: "2px 10px", borderRadius: "9999px", background: "#dc262615", color: "#dc2626" }}>Late Rent</span>
-              </div>
-              <div style={{ fontSize: "16px", fontWeight: 700, marginBottom: "8px" }}>30 Days Past Due -- Kevin Williams</div>
-              <div style={{ fontSize: "14px", color: "#334155", marginBottom: "10px", lineHeight: 1.5 }}>
-                Riverside Apartments 2A. Balance $1,850 including $75 late fee. AI sent 3 reminders. Next step: 3-day notice per FL statute.
-              </div>
-              <div style={{ fontSize: "13px", color: "#64748b", fontStyle: "italic", marginBottom: "10px" }}>Suggested: Serve 3-day notice, document for compliance</div>
-              <div style={{ display: "flex", gap: "8px" }}>
-                <button onClick={() => window.dispatchEvent(new CustomEvent("ta:chatPrompt", { detail: { message: "Draft 3-day notice for Kevin Williams at Riverside 2A, $1,850 balance, per Florida Statute 83.56" } }))} style={{ flex: 1, padding: "8px 14px", fontSize: "13px", fontWeight: 600, border: "none", borderRadius: "8px", cursor: "pointer", color: "#fff", background: "linear-gradient(135deg, #7c3aed, #6d28d9)" }}>Draft Notice</button>
-                <button onClick={() => nav("re-tenants")} style={{ padding: "8px 14px", fontSize: "13px", fontWeight: 600, border: "1px solid #e2e8f0", borderRadius: "8px", cursor: "pointer", background: "transparent", color: "#334155" }}>View Tenant</button>
-              </div>
-            </div>
-            <div className="card" style={{ padding: "20px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px" }}>
-                <span style={{ fontSize: "11px", fontWeight: 600, padding: "2px 10px", borderRadius: "9999px", background: "#d9770615", color: "#d97706" }}>Vacancy</span>
-              </div>
-              <div style={{ fontSize: "16px", fontWeight: 700, marginBottom: "8px" }}>45-Day Vacancy -- Southside Flats Unit 3</div>
-              <div style={{ fontSize: "14px", color: "#334155", marginBottom: "10px", lineHeight: 1.5 }}>
-                Costing owner ~$38/day. Rent reduced from $1,250 to $1,150. 2 showing requests pending. Application received yesterday.
-              </div>
-              <div style={{ fontSize: "13px", color: "#64748b", fontStyle: "italic", marginBottom: "10px" }}>Suggested: Screen application, schedule showing for second prospect</div>
-              <div style={{ display: "flex", gap: "8px" }}>
-                <button onClick={() => window.dispatchEvent(new CustomEvent("ta:chatPrompt", { detail: { message: "Screen the rental application for Southside Flats Unit 3 and schedule showings for pending prospects" } }))} style={{ flex: 1, padding: "8px 14px", fontSize: "13px", fontWeight: 600, border: "none", borderRadius: "8px", cursor: "pointer", color: "#fff", background: "linear-gradient(135deg, #7c3aed, #6d28d9)" }}>Let AI Handle It</button>
-                <button onClick={() => nav("re-properties")} style={{ padding: "8px 14px", fontSize: "13px", fontWeight: 600, border: "1px solid #e2e8f0", borderRadius: "8px", cursor: "pointer", background: "transparent", color: "#334155" }}>View Property</button>
               </div>
             </div>
           </div>

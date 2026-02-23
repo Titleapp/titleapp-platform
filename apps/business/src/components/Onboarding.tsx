@@ -16,7 +16,7 @@ interface OnboardingProps {
 }
 
 export default function Onboarding({ onComplete, onStepChange }: OnboardingProps) {
-  const [step, setStepRaw] = useState<"checking" | "terms" | "welcome" | "idVerify" | "details" | "raas" | "aiPersona" | "criteria" | "sampleDeals" | "dealerData" | "realEstateData" | "brokerage" | "propertyMgmt" | "magic">("checking");
+  const [step, setStepRaw] = useState<"checking" | "terms" | "welcome" | "idVerify" | "details" | "raas" | "aiPersona" | "criteria" | "sampleDeals" | "dealerData" | "realEstateData" | "brokerage" | "propertyMgmt" | "dataChoice" | "magic">("checking");
 
   function setStep(newStep: typeof step) {
     setStepRaw(newStep);
@@ -82,8 +82,67 @@ export default function Onboarding({ onComplete, onStepChange }: OnboardingProps
     } else if (vertical === "property-mgmt") {
       setStep("propertyMgmt");
     } else {
-      handleCreate(null);
+      setStep("dataChoice");
     }
+  }
+
+  const [sampleDataLoading, setSampleDataLoading] = useState(false);
+  const [sampleDataLines, setSampleDataLines] = useState<string[]>([]);
+
+  function getSampleDataSteps(): string[] {
+    if (vertical === "real-estate") {
+      return [
+        "Loading 8 listings...",
+        "Loading 10 buyer profiles...",
+        "Loading 5 managed properties with 28 units...",
+        "Loading 24 tenant records...",
+        "Loading 7 maintenance requests...",
+        "Loading 3 active transactions...",
+      ];
+    }
+    if (vertical === "auto") {
+      return [
+        "Loading 30 vehicles...",
+        "Loading 20 customers...",
+        "Loading service schedule...",
+        "Loading F&I products...",
+        "Loading sales pipeline...",
+      ];
+    }
+    if (vertical === "analyst") {
+      return [
+        "Loading portfolio (17 positions, $42.8M AUM)...",
+        "Loading 13 LP records...",
+        "Loading research pipeline...",
+        "Loading 4 sourced opportunities...",
+      ];
+    }
+    if (vertical === "property-mgmt") {
+      return [
+        "Loading 5 properties with 28 units...",
+        "Loading 24 tenant records...",
+        "Loading 7 maintenance requests...",
+        "Loading lease schedule...",
+      ];
+    }
+    return [
+      "Loading sample vehicles, property, and documents...",
+      "Loading logbook entries...",
+    ];
+  }
+
+  function handleSampleDataLoad() {
+    setSampleDataLoading(true);
+    const steps = getSampleDataSteps();
+    setSampleDataLines([]);
+    steps.forEach((line, i) => {
+      setTimeout(() => {
+        setSampleDataLines(prev => [...prev, line]);
+        if (i === steps.length - 1) {
+          setTimeout(() => handleCreate(riskProfile), 800);
+        }
+      }, (i + 1) * 300);
+    });
   }
 
   function handleCriteriaComplete(criteria: any) {
@@ -383,8 +442,8 @@ export default function Onboarding({ onComplete, onStepChange }: OnboardingProps
         >
           <SampleDealsStep
             criteria={riskProfile}
-            onComplete={() => handleCreate(riskProfile)}
-            onSkip={() => handleCreate(riskProfile)}
+            onComplete={() => setStep("dataChoice")}
+            onSkip={() => setStep("dataChoice")}
           />
         </div>
       </div>
@@ -415,8 +474,8 @@ export default function Onboarding({ onComplete, onStepChange }: OnboardingProps
           }}
         >
           <DealershipDataStep
-            onComplete={() => handleCreate(null)}
-            onSkip={() => handleCreate(null)}
+            onComplete={() => setStep("dataChoice")}
+            onSkip={() => setStep("dataChoice")}
           />
         </div>
       </div>
@@ -614,8 +673,8 @@ export default function Onboarding({ onComplete, onStepChange }: OnboardingProps
           }}
         >
           <BrokerageStep
-            onComplete={() => handleCreate(null)}
-            onSkip={() => handleCreate(null)}
+            onComplete={() => setStep("dataChoice")}
+            onSkip={() => setStep("dataChoice")}
           />
         </div>
       </div>
@@ -646,10 +705,133 @@ export default function Onboarding({ onComplete, onStepChange }: OnboardingProps
           }}
         >
           <PropertyMgmtStep
-            onComplete={() => handleCreate(null)}
-            onSkip={() => handleCreate(null)}
+            onComplete={() => setStep("dataChoice")}
+            onSkip={() => setStep("dataChoice")}
           />
         </div>
+      </div>
+    );
+  }
+
+  if (step === "dataChoice") {
+    return (
+      <div
+        style={{
+          minHeight: "100%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "#f8fafc",
+          fontFamily: "-apple-system, BlinkMacSystemFont, sans-serif",
+          padding: "20px",
+        }}
+      >
+        <div
+          style={{
+            width: "100%",
+            maxWidth: "700px",
+            padding: "40px",
+            background: "white",
+            borderRadius: "16px",
+            border: "1px solid #e5e7eb",
+          }}
+        >
+          <div style={{ marginBottom: "32px", textAlign: "center" }}>
+            <h2 style={{ margin: "0 0 8px 0", fontSize: "28px", fontWeight: 700 }}>
+              Let's get your workspace ready
+            </h2>
+            <p style={{ margin: 0, color: "#6b7280", fontSize: "15px", lineHeight: 1.5 }}>
+              You can upload your own data or explore with realistic sample data
+            </p>
+          </div>
+
+          {sampleDataLoading ? (
+            <div style={{ padding: "32px 24px", background: "#f8fafc", borderRadius: "12px", border: "1px solid #e5e7eb" }}>
+              <div style={{ fontSize: "16px", fontWeight: 600, marginBottom: "16px", color: "#1e293b" }}>Loading sample data...</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                {sampleDataLines.map((line, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", color: "#16a34a", animation: "fadeIn 0.3s ease-out" }}>
+                    <span style={{ fontSize: "16px" }}>&#10003;</span>
+                    <span>{line.replace("...", "")}</span>
+                  </div>
+                ))}
+                {sampleDataLines.length < getSampleDataSteps().length && (
+                  <div style={{ fontSize: "14px", color: "#94a3b8" }}>
+                    {getSampleDataSteps()[sampleDataLines.length]}
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+              {/* Option A: Upload data */}
+              <div
+                onClick={() => handleCreate(riskProfile)}
+                style={{
+                  padding: "32px 24px",
+                  background: "white",
+                  borderRadius: "12px",
+                  border: "2px solid #e5e7eb",
+                  cursor: "pointer",
+                  textAlign: "center",
+                  transition: "border-color 0.2s, box-shadow 0.2s",
+                }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "#7c3aed"; (e.currentTarget as HTMLDivElement).style.boxShadow = "0 0 0 3px rgba(124,58,237,0.1)"; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "#e5e7eb"; (e.currentTarget as HTMLDivElement).style.boxShadow = "none"; }}
+              >
+                <div style={{ fontSize: "36px", marginBottom: "12px" }}>
+                  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ margin: "0 auto" }}>
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="17 8 12 3 7 8" />
+                    <line x1="12" y1="3" x2="12" y2="15" />
+                  </svg>
+                </div>
+                <div style={{ fontSize: "18px", fontWeight: 700, marginBottom: "8px", color: "#1e293b" }}>
+                  I have data to upload
+                </div>
+                <div style={{ fontSize: "14px", color: "#6b7280", lineHeight: 1.5 }}>
+                  Upload your files {"\u2014"} spreadsheets, PDFs, CSVs {"\u2014"} and we'll import everything
+                </div>
+              </div>
+
+              {/* Option B: Sample data */}
+              <div
+                onClick={handleSampleDataLoad}
+                style={{
+                  padding: "32px 24px",
+                  background: "linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)",
+                  borderRadius: "12px",
+                  border: "2px solid #e9d5ff",
+                  cursor: "pointer",
+                  textAlign: "center",
+                  transition: "border-color 0.2s, box-shadow 0.2s",
+                }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "#7c3aed"; (e.currentTarget as HTMLDivElement).style.boxShadow = "0 0 0 3px rgba(124,58,237,0.1)"; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "#e9d5ff"; (e.currentTarget as HTMLDivElement).style.boxShadow = "none"; }}
+              >
+                <div style={{ fontSize: "36px", marginBottom: "12px" }}>
+                  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ margin: "0 auto" }}>
+                    <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                    <path d="M2 17l10 5 10-5" />
+                    <path d="M2 12l10 5 10-5" />
+                  </svg>
+                </div>
+                <div style={{ fontSize: "18px", fontWeight: 700, marginBottom: "8px", color: "#1e293b" }}>
+                  Explore with sample data
+                </div>
+                <div style={{ fontSize: "14px", color: "#6b7280", lineHeight: 1.5 }}>
+                  We'll load realistic demo data so you can see everything in action. You can clear it anytime.
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+        <style>{`
+          @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+        `}</style>
       </div>
     );
   }
@@ -755,7 +937,12 @@ export default function Onboarding({ onComplete, onStepChange }: OnboardingProps
                 type="text"
                 value={companyName}
                 onChange={(e) => setCompanyName(e.target.value)}
-                placeholder="Acme Auto Dealership"
+                placeholder={
+                  vertical === "real-estate" ? "Summit Realty Group" :
+                  vertical === "analyst" ? "Meridian Capital Partners" :
+                  vertical === "property-mgmt" ? "Apex Property Management" :
+                  "Demo Motors"
+                }
                 autoFocus
                 required
                 style={{

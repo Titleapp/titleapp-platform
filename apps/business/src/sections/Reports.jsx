@@ -110,12 +110,56 @@ const RE_PERFORMANCE_BREAKDOWN = [
   { category: "Referral Income", count: 1, revenue: 1500 },
 ];
 
+const RE_PM_MONTHLY_REVENUE = [
+  { month: "Nov", collected: 35200, expected: 37400 },
+  { month: "Dec", collected: 36800, expected: 37400 },
+  { month: "Jan", collected: 36100, expected: 37400 },
+  { month: "Feb", collected: 34600, expected: 37400 },
+];
+
+const RE_PM_METRICS = [
+  { label: "Monthly Rent Revenue", value: "$34,600", subtext: "of $37,400 expected", color: "#16a34a" },
+  { label: "Occupancy Rate", value: "85.7%", subtext: "24 of 28 units", color: "#2563eb" },
+  { label: "Maintenance Cost/Unit", value: "$82", subtext: "Avg this month", color: "#d97706" },
+  { label: "Tenant Retention", value: "91%", subtext: "Last 12 months", color: "#7c3aed" },
+  { label: "Avg Days Vacant", value: "22", subtext: "Current vacancies", color: "#dc2626" },
+  { label: "Delinquency Rate", value: "3.6%", subtext: "1 of 28 units", color: "#dc2626" },
+];
+
+const RE_PM_NOI = [
+  { property: "Riverside Apartments", revenue: 16200, expenses: 4800, noi: 11400 },
+  { property: "San Marco Townhomes", revenue: 10200, expenses: 2100, noi: 8100 },
+  { property: "Beach Cottages", revenue: 5100, expenses: 1800, noi: 3300 },
+  { property: "Mandarin Duplex", revenue: 3500, expenses: 800, noi: 2700 },
+  { property: "Southside Flats", revenue: 2400, expenses: 1200, noi: 1200 },
+];
+
+const RE_PM_EVENTS = [
+  { id: 1, time: "Today", text: "Rent collected -- 22 of 24 tenants paid for February", color: "#16a34a" },
+  { id: 2, time: "Today", text: "Maintenance completed -- HVAC filter change, Beach Cottages C", color: "#16a34a" },
+  { id: 3, time: "Yesterday", text: "Lease renewal sent -- James Lopez, San Marco TH-1, $1,700/mo proposed", color: "#2563eb" },
+  { id: 4, time: "2d ago", text: "Late rent notice -- Kevin Williams, Riverside 2A, 30 days past due", color: "#dc2626" },
+  { id: 5, time: "3d ago", text: "Vacancy marketing -- Southside Flats Unit 3 posted to Zillow, Apartments.com", color: "#d97706" },
+  { id: 6, time: "4d ago", text: "Owner report generated -- Riverside Apartments January, net $11,200", color: "#7c3aed" },
+  { id: 7, time: "5d ago", text: "Move-in scheduled -- Sarah Chen, Beach Cottage D, Feb 28", color: "#16a34a" },
+  { id: 8, time: "6d ago", text: "Maintenance dispatched -- Water heater, Riverside 1A, ABC Plumbing", color: "#dc2626" },
+];
+
+const RE_PM_BREAKDOWN = [
+  { category: "Management Fees (10%)", count: 28, revenue: 3740 },
+  { category: "Lease Placement Fees", count: 2, revenue: 1450 },
+  { category: "Late Fees Collected", count: 1, revenue: 75 },
+  { category: "Maintenance Markup", count: 7, revenue: 460 },
+  { category: "Application Fees", count: 3, revenue: 150 },
+];
+
 export default function Reports() {
   const [dateRange, setDateRange] = useState("30days");
   const [reportData, setReportData] = useState({
     deals: 0, avgRisk: 0, sessions: 0, reports: 0, recentDeals: [],
   });
   const [loading, setLoading] = useState(true);
+  const [reTab, setReTab] = useState("combined");
 
   const vertical = localStorage.getItem("VERTICAL") || "auto";
   const jurisdiction = localStorage.getItem("JURISDICTION") || "IL";
@@ -183,6 +227,22 @@ export default function Reports() {
       ];
     }
     if (isRealEstate) {
+      if (reTab === "pm") {
+        return [
+          { label: "Monthly Rent Revenue", value: "$34,600" },
+          { label: "Occupancy Rate", value: "85.7%" },
+          { label: "Delinquency Rate", value: "3.6%" },
+          { label: "Total NOI", value: "$26,700" },
+        ];
+      }
+      if (reTab === "sales") {
+        return [
+          { label: "Commission YTD", value: "$127,500" },
+          { label: "Deals Closed", value: "8" },
+          { label: "Avg Sale Price", value: "$412K" },
+          { label: "Pipeline Value", value: "$1.2M" },
+        ];
+      }
       return [
         { label: "Commission YTD", value: "$127,500" },
         { label: "Deals Closed", value: "8" },
@@ -208,8 +268,12 @@ export default function Reports() {
 
   // Pick the right data sets
   const weeklyData = isRealEstate ? RE_WEEKLY_COMMISSION : isAuto ? AUTO_WEEKLY_REVENUE : isAnalyst ? ANALYST_WEEKLY_PERFORMANCE : null;
-  const recentEvents = isRealEstate ? RE_RECENT_EVENTS : isAuto ? AUTO_RECENT_EVENTS : isAnalyst ? ANALYST_RECENT_EVENTS : VAULT_RECENT_EVENTS;
-  const breakdownData = isRealEstate ? RE_PERFORMANCE_BREAKDOWN : isAuto ? AUTO_SALES_BY_SOURCE : isAnalyst ? ANALYST_PERFORMANCE_BY_SECTOR : VAULT_ASSETS_BY_CATEGORY;
+  const recentEvents = isRealEstate
+    ? (reTab === "pm" ? RE_PM_EVENTS : reTab === "sales" ? RE_RECENT_EVENTS : [...RE_RECENT_EVENTS, ...RE_PM_EVENTS].sort((a, b) => a.id - b.id).slice(0, 10))
+    : isAuto ? AUTO_RECENT_EVENTS : isAnalyst ? ANALYST_RECENT_EVENTS : VAULT_RECENT_EVENTS;
+  const breakdownData = isRealEstate
+    ? (reTab === "pm" ? RE_PM_BREAKDOWN : RE_PERFORMANCE_BREAKDOWN)
+    : isAuto ? AUTO_SALES_BY_SOURCE : isAnalyst ? ANALYST_PERFORMANCE_BY_SECTOR : VAULT_ASSETS_BY_CATEGORY;
 
   function exportCSV() {
     const kpis = getKpiConfig();
@@ -316,12 +380,23 @@ export default function Reports() {
         ))}
       </div>
 
+      {isRealEstate && (
+        <div style={{ display: "flex", gap: "4px", marginBottom: "16px", marginTop: "16px" }}>
+          {["combined", "sales", "pm"].map((t) => (
+            <button key={t} className="iconBtn" onClick={() => setReTab(t)}
+              style={{ background: reTab === t ? "#1e293b" : "#f1f5f9", color: reTab === t ? "white" : "#475569", border: "none", fontSize: "12px", padding: "6px 14px" }}>
+              {t === "combined" ? "Combined" : t === "sales" ? "Sales" : "Property Management"}
+            </button>
+          ))}
+        </div>
+      )}
+
       <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "16px" }}>
         {/* Main Chart Area */}
         <div className="card">
           <div className="cardHeader">
             <div className="cardTitle">
-              {isRealEstate ? "Commission Trend" : isAnalyst ? "Portfolio Performance" : isVault ? "Asset Summary" : "Revenue Trend"}
+              {isRealEstate ? (reTab === "pm" ? "Rent Collection Trend" : reTab === "sales" ? "Commission Trend" : "Performance Overview") : isAnalyst ? "Portfolio Performance" : isVault ? "Asset Summary" : "Revenue Trend"}
             </div>
           </div>
           {isAuto && weeklyData ? (
@@ -358,7 +433,31 @@ export default function Reports() {
                 })}
               </div>
             </div>
-          ) : isRealEstate && weeklyData ? (
+          ) : isRealEstate && reTab === "pm" ? (
+            <div style={{ padding: "16px" }}>
+              <div style={{ display: "flex", gap: "16px", alignItems: "flex-end", height: "180px", padding: "0 8px" }}>
+                {RE_PM_MONTHLY_REVENUE.map((m, i) => {
+                  const maxVal = Math.max(...RE_PM_MONTHLY_REVENUE.map(x => x.expected));
+                  return (
+                    <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", height: "100%", justifyContent: "flex-end" }}>
+                      <div style={{ fontSize: "11px", fontWeight: 600, color: m.collected >= m.expected ? "#16a34a" : "#d97706" }}>
+                        ${(m.collected / 1000).toFixed(1)}K
+                      </div>
+                      <div style={{ width: "100%", position: "relative" }}>
+                        <div style={{ width: "100%", height: `${(m.expected / maxVal) * 130}px`, background: "#f1f5f9", borderRadius: "4px 4px 0 0", position: "absolute", bottom: 0 }} />
+                        <div style={{ width: "100%", height: `${(m.collected / maxVal) * 130}px`, background: m.collected >= m.expected ? "#16a34a" : "#d97706", borderRadius: "4px 4px 0 0", position: "relative", zIndex: 1, minHeight: "20px" }} />
+                      </div>
+                      <div style={{ fontSize: "11px", color: "#64748b", marginTop: "4px" }}>{m.month}</div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div style={{ display: "flex", gap: "16px", justifyContent: "center", marginTop: "12px", fontSize: "12px", color: "#64748b" }}>
+                <span style={{ display: "flex", alignItems: "center", gap: "4px" }}><span style={{ width: "10px", height: "10px", background: "#16a34a", borderRadius: "2px", display: "inline-block" }} /> Collected</span>
+                <span style={{ display: "flex", alignItems: "center", gap: "4px" }}><span style={{ width: "10px", height: "10px", background: "#f1f5f9", borderRadius: "2px", display: "inline-block", border: "1px solid #e2e8f0" }} /> Expected</span>
+              </div>
+            </div>
+          ) : isRealEstate && reTab === "sales" && weeklyData ? (
             <div style={{ padding: "16px" }}>
               <div style={{ display: "flex", gap: "16px", alignItems: "flex-end", height: "180px", padding: "0 8px" }}>
                 {weeklyData.map((w, i) => {
@@ -372,6 +471,44 @@ export default function Reports() {
                     </div>
                   );
                 })}
+              </div>
+            </div>
+          ) : isRealEstate && reTab === "combined" && weeklyData ? (
+            <div style={{ padding: "16px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+                <div>
+                  <div style={{ fontSize: "12px", fontWeight: 600, color: "#64748b", marginBottom: "8px", textTransform: "uppercase" }}>Commission Trend</div>
+                  <div style={{ display: "flex", gap: "8px", alignItems: "flex-end", height: "140px" }}>
+                    {weeklyData.map((w, i) => {
+                      const maxVal = Math.max(...weeklyData.map(x => x.commission));
+                      return (
+                        <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "2px", height: "100%", justifyContent: "flex-end" }}>
+                          <div style={{ fontSize: "10px", fontWeight: 600, color: "#1e293b" }}>${(w.commission / 1000).toFixed(1)}K</div>
+                          <div style={{ width: "100%", background: "#16a34a", borderRadius: "4px 4px 0 0", height: `${maxVal > 0 ? (w.commission / maxVal) * 100 : 0}px`, minHeight: w.commission > 0 ? "14px" : "4px" }} />
+                          <div style={{ fontSize: "10px", color: "#64748b" }}>{w.week.replace("Week ", "W")}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: "12px", fontWeight: 600, color: "#64748b", marginBottom: "8px", textTransform: "uppercase" }}>Rent Collection</div>
+                  <div style={{ display: "flex", gap: "8px", alignItems: "flex-end", height: "140px" }}>
+                    {RE_PM_MONTHLY_REVENUE.map((m, i) => {
+                      const maxVal = Math.max(...RE_PM_MONTHLY_REVENUE.map(x => x.expected));
+                      return (
+                        <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "2px", height: "100%", justifyContent: "flex-end" }}>
+                          <div style={{ fontSize: "10px", fontWeight: 600, color: m.collected >= m.expected ? "#16a34a" : "#d97706" }}>${(m.collected / 1000).toFixed(1)}K</div>
+                          <div style={{ width: "100%", position: "relative" }}>
+                            <div style={{ width: "100%", height: `${(m.expected / maxVal) * 100}px`, background: "#f1f5f9", borderRadius: "4px 4px 0 0", position: "absolute", bottom: 0 }} />
+                            <div style={{ width: "100%", height: `${(m.collected / maxVal) * 100}px`, background: m.collected >= m.expected ? "#16a34a" : "#d97706", borderRadius: "4px 4px 0 0", position: "relative", zIndex: 1, minHeight: "14px" }} />
+                          </div>
+                          <div style={{ fontSize: "10px", color: "#64748b" }}>{m.month}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
             </div>
           ) : isVault ? (
@@ -426,7 +563,7 @@ export default function Reports() {
       {(isAuto || isAnalyst || isRealEstate) && (
         <div className="card" style={{ marginTop: "16px" }}>
           <div className="cardHeader">
-            <div className="cardTitle">{isRealEstate ? "Revenue Breakdown" : isAnalyst ? "Performance by Sector" : "Sales by Source"}</div>
+            <div className="cardTitle">{isRealEstate ? (reTab === "pm" ? "PM Revenue Breakdown" : "Revenue Breakdown") : isAnalyst ? "Performance by Sector" : "Sales by Source"}</div>
           </div>
           <div style={{ padding: "16px" }}>
             <div className="tableWrap">
@@ -452,8 +589,8 @@ export default function Reports() {
                         </td>
                       </tr>
                     );
-                  }) : isRealEstate ? RE_PERFORMANCE_BREAKDOWN.map((s, i) => {
-                    const maxVal = Math.max(...RE_PERFORMANCE_BREAKDOWN.map(x => x.revenue));
+                  }) : isRealEstate ? breakdownData.map((s, i) => {
+                    const maxVal = Math.max(...breakdownData.map(x => x.revenue));
                     return (
                       <tr key={i}>
                         <td className="tdStrong">{s.category}</td>
@@ -476,6 +613,43 @@ export default function Reports() {
                         <td>
                           <div style={{ width: `${(Math.abs(s.pctReturn) / maxVal) * 100}%`, height: "12px", background: s.pctReturn >= 0 ? "#16a34a" : "#dc2626", borderRadius: "6px", minWidth: "8px" }} />
                         </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isRealEstate && (reTab === "pm" || reTab === "combined") && (
+        <div className="card" style={{ marginTop: "16px" }}>
+          <div className="cardHeader">
+            <div className="cardTitle">NOI by Property</div>
+          </div>
+          <div style={{ padding: "16px" }}>
+            <div className="tableWrap">
+              <table className="table" style={{ width: "100%" }}>
+                <thead>
+                  <tr>
+                    <th>Property</th>
+                    <th>Revenue</th>
+                    <th>Expenses</th>
+                    <th>NOI</th>
+                    <th style={{ width: "30%" }}></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {RE_PM_NOI.map((p, i) => {
+                    const maxNoi = Math.max(...RE_PM_NOI.map(x => x.noi));
+                    return (
+                      <tr key={i}>
+                        <td className="tdStrong">{p.property}</td>
+                        <td>${p.revenue.toLocaleString()}</td>
+                        <td style={{ color: "#dc2626" }}>${p.expenses.toLocaleString()}</td>
+                        <td style={{ fontWeight: 600, color: "#16a34a" }}>${p.noi.toLocaleString()}</td>
+                        <td><div style={{ width: `${(p.noi / maxNoi) * 100}%`, height: "12px", background: "#16a34a", borderRadius: "6px", minWidth: "8px" }} /></td>
                       </tr>
                     );
                   })}
