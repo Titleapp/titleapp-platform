@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import "./App.css";
-import Login from "./auth/login";
+import LandingPage from "./components/LandingPage";
 import OnboardingWizard from "./components/OnboardingWizard";
 import OnboardingTour from "./components/OnboardingTour";
 import AppShell from "./components/AppShell";
@@ -344,7 +344,7 @@ export default function App() {
     );
   }
 
-  if (!token || currentView === "login") return <Login />;
+  if (!token || currentView === "login") return <LandingPage />;
 
   if (currentView === "onboarding") {
     return (
