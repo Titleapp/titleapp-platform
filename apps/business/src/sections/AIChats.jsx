@@ -150,6 +150,60 @@ const VAULT_AI_ACTION_LOG = [
   { time: "5 days ago", action: "Flagged expiration", context: "Passport -- Expires Mar 2028", channel: "Vault", status: "Flagged", detail: "Passport expires in 24 months. Some countries require 6+ months validity. Consider renewal if traveling internationally in 2027." },
 ];
 
+// ── Real Estate AI Activity Data ──
+const RE_AI_KPIS_ROW1 = [
+  { label: "Active Conversations", value: "38" },
+  { label: "Sales Leads", value: "12" },
+  { label: "PM Requests", value: "9" },
+  { label: "Showings Scheduled", value: "6" },
+];
+
+const RE_AI_KPIS_ROW2 = [
+  { label: "Maintenance Dispatched", value: "4" },
+  { label: "Messages Today", value: "67" },
+  { label: "Emails Sent", value: "19" },
+  { label: "Phone Calls", value: "0", badge: "Coming Soon" },
+];
+
+const RE_CONVERSATION_SUMMARIES = [
+  {
+    title: "Sales Activity",
+    accent: "#16a34a",
+    summary: "12 active sales leads:",
+    details: ["3 showing requests pending", "2 offers in progress", "4 new inquiries today", "3 follow-ups due"],
+    highlight: "Hot lead: Amanda Liu -- relocating, needs home by March 1",
+  },
+  {
+    title: "PM Activity",
+    accent: "#2563eb",
+    summary: "9 property management items:",
+    details: ["3 maintenance requests open", "2 lease renewals due this month", "2 rent collection follow-ups", "2 tenant inquiries"],
+    highlight: "Overdue: Water heater replacement at Riverside 1A -- 5 days past SLA",
+  },
+  {
+    title: "Market Watch",
+    accent: "#d97706",
+    summary: "Weekly market activity:",
+    details: ["Median price up 2.1% in 32207", "New listing inventory down 8%", "2 price reductions recommended", "Average DOM: 24 days (market avg 31)"],
+    highlight: "Price reduction needed: 3421 Beach Blvd at 45 DOM, 432 Ponte Vedra at 52 DOM",
+  },
+];
+
+const RE_AI_ACTION_LOG = [
+  { time: "6:15 AM", action: "Sent showing confirmation", context: "Amanda Liu -- 567 Mandarin Rd", channel: "Text", status: "Delivered", detail: "Confirmed showing Saturday 10 AM. Included property summary, school ratings, commute time." },
+  { time: "6:00 AM", action: "Drafted price reduction", context: "3421 Beach Blvd -- 45 DOM", channel: "Dashboard", status: "Flagged", detail: "Recommended reduction from $395K to $379K based on 6 comparable sales. Agent review required." },
+  { time: "5:45 AM", action: "Rent reminder sent", context: "Kevin Williams -- Riverside 2A", channel: "Text", status: "Delivered", detail: "Rent 30 days past due. Balance $1,850. Late fee $75 applied. Payment link included." },
+  { time: "5:30 AM", action: "Maintenance dispatched", context: "Riverside 1A -- Water Heater", channel: "Email", status: "Delivered", detail: "Emergency work order to ABC Plumbing. Est. $1,200. Owner pre-approved up to $1,500." },
+  { time: "5:15 AM", action: "Lead response", context: "Sarah Anderson -- New Inquiry", channel: "Email", status: "Queued", detail: "New Zillow lead. Budget $400-500K. Sent matches: 1247 Palm Ave, 567 Mandarin Rd." },
+  { time: "Yesterday 4:30 PM", action: "CMA generated", context: "432 Ponte Vedra Blvd", channel: "Dashboard", status: "Complete", detail: "8 comps within 1 mile, median $695K. Current $725K is 4.3% above market. Recommend $699K." },
+  { time: "Yesterday 3:00 PM", action: "Lease renewal drafted", context: "James Lopez -- San Marco TH-1", channel: "Email", status: "Queued", detail: "12-month renewal at $1,750 (3% increase). Market supports $1,725-1,800. Sent to owner." },
+  { time: "Yesterday 1:30 PM", action: "Showing feedback collected", context: "Robert Martinez -- 3 properties", channel: "Text", status: "Complete", detail: "Rated Baymeadows 4/5, Palm Ave 3/5, University 2/5. Refining: prefers newer, 3+ beds." },
+  { time: "Yesterday 11:00 AM", action: "Vacancy marketing update", context: "Southside Flats -- Unit 3", channel: "Dashboard", status: "Flagged", detail: "Unit vacant 45 days. Reduced from $1,250 to $1,150. Added to 3 sites. 2 showing requests." },
+  { time: "2 days ago 3:00 PM", action: "Transaction deadline alert", context: "1893 San Jose Blvd", channel: "Dashboard", status: "Flagged", detail: "Inspection contingency expires in 3 days. Report received, 4 items flagged. Repair request ready." },
+  { time: "2 days ago 10:00 AM", action: "Owner monthly report", context: "Riverside Apartments -- January", channel: "Email", status: "Delivered", detail: "Monthly: $15,400 collected of $16,200 gross. 1 vacant, 1 late. Net to owner: $11,200." },
+  { time: "3 days ago 2:00 PM", action: "Fair Housing review", context: "Listing description -- Palm Ave", channel: "Dashboard", status: "Complete", detail: "Removed 'family-friendly neighborhood' (familial status). Approved version ready." },
+];
+
 const STATUS_COLORS = {
   Delivered: { bg: "#dcfce7", color: "#16a34a" },
   Opened: { bg: "#dbeafe", color: "#2563eb" },
@@ -165,11 +219,13 @@ export default function AIChats() {
   const isAnalyst = vertical === "analyst";
   const [expandedRow, setExpandedRow] = useState(null);
 
+  const isRealEstate = vertical === "real-estate";
+
   // Pick data based on vertical
-  const kpisRow1 = isAuto ? AUTO_AI_KPIS_ROW1 : isAnalyst ? ANALYST_AI_KPIS_ROW1 : VAULT_AI_KPIS;
-  const kpisRow2 = isAuto ? AUTO_AI_KPIS_ROW2 : isAnalyst ? ANALYST_AI_KPIS_ROW2 : null;
-  const summaries = isAuto ? AUTO_CONVERSATION_SUMMARIES : isAnalyst ? ANALYST_CONVERSATION_SUMMARIES : VAULT_SUMMARIES;
-  const actionLog = isAuto ? AUTO_AI_ACTION_LOG : isAnalyst ? ANALYST_AI_ACTION_LOG : VAULT_AI_ACTION_LOG;
+  const kpisRow1 = isRealEstate ? RE_AI_KPIS_ROW1 : isAuto ? AUTO_AI_KPIS_ROW1 : isAnalyst ? ANALYST_AI_KPIS_ROW1 : VAULT_AI_KPIS;
+  const kpisRow2 = isRealEstate ? RE_AI_KPIS_ROW2 : isAuto ? AUTO_AI_KPIS_ROW2 : isAnalyst ? ANALYST_AI_KPIS_ROW2 : null;
+  const summaries = isRealEstate ? RE_CONVERSATION_SUMMARIES : isAuto ? AUTO_CONVERSATION_SUMMARIES : isAnalyst ? ANALYST_CONVERSATION_SUMMARIES : VAULT_SUMMARIES;
+  const actionLog = isRealEstate ? RE_AI_ACTION_LOG : isAuto ? AUTO_AI_ACTION_LOG : isAnalyst ? ANALYST_AI_ACTION_LOG : VAULT_AI_ACTION_LOG;
 
   function openChat(prompt) {
     window.dispatchEvent(new CustomEvent("ta:chatPrompt", { detail: { message: prompt } }));

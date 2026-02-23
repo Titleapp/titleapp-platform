@@ -34,6 +34,12 @@ import DealPipeline from "./sections/DealPipeline";
 import VaultDocuments from "./sections/VaultDocuments";
 import VaultAssets from "./sections/VaultAssets";
 import VaultDeadlines from "./sections/VaultDeadlines";
+import REListings from "./sections/REListings";
+import REBuyers from "./sections/REBuyers";
+import RETransactions from "./sections/RETransactions";
+import REProperties from "./sections/REProperties";
+import RETenants from "./sections/RETenants";
+import REMaintenance from "./sections/REMaintenance";
 import { auth } from "./firebase";
 import { signInWithCustomToken } from "firebase/auth";
 
@@ -115,6 +121,18 @@ function AdminShell({ onBackToHub }) {
         return <VaultAssets />;
       case "vault-deadlines":
         return <VaultDeadlines />;
+      case "re-listings":
+        return <REListings />;
+      case "re-buyers":
+        return <REBuyers />;
+      case "re-transactions":
+        return <RETransactions />;
+      case "re-properties":
+        return <REProperties />;
+      case "re-tenants":
+        return <RETenants />;
+      case "re-maintenance":
+        return <REMaintenance />;
       default:
         return <Dashboard />;
     }

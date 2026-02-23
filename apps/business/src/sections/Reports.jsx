@@ -81,6 +81,35 @@ const VAULT_ASSETS_BY_CATEGORY = [
   { category: "Documents", value: 0, count: 6 },
 ];
 
+// ── Real Estate data ──
+const RE_WEEKLY_COMMISSION = [
+  { week: "Week 1", commission: 8500, deals: 1 },
+  { week: "Week 2", commission: 14200, deals: 2 },
+  { week: "Week 3", commission: 0, deals: 0 },
+  { week: "Week 4", commission: 12800, deals: 1 },
+];
+
+const RE_RECENT_EVENTS = [
+  { id: 1, time: "2h ago", text: "AI confirmed showing -- Amanda Liu, 567 Mandarin Rd, Saturday 10 AM", color: "#7c3aed" },
+  { id: 2, time: "5h ago", text: "Price reduction recommended -- 3421 Beach Blvd, 45 DOM, suggest $379K", color: "#dc2626" },
+  { id: 3, time: "8h ago", text: "Lease renewal drafted -- James Lopez, San Marco TH-1, $1,750/mo (+3%)", color: "#2563eb" },
+  { id: 4, time: "1d ago", text: "Rent reminder sent -- Kevin Williams, 30 days past due, $1,850 balance", color: "#d97706" },
+  { id: 5, time: "1d ago", text: "Emergency maintenance dispatched -- Riverside 1A water heater, ABC Plumbing", color: "#dc2626" },
+  { id: 6, time: "2d ago", text: "CMA generated -- 432 Ponte Vedra Blvd, market suggests $695K vs listed $725K", color: "#7c3aed" },
+  { id: 7, time: "2d ago", text: "New lead -- Sarah Anderson, $400-500K budget, Zillow inquiry", color: "#16a34a" },
+  { id: 8, time: "3d ago", text: "Transaction alert -- 1893 San Jose Blvd inspection contingency expires in 3 days", color: "#d97706" },
+  { id: 9, time: "3d ago", text: "Vacancy marketing -- Southside Flats Unit 3, 45 days vacant, rent reduced to $1,150", color: "#dc2626" },
+  { id: 10, time: "4d ago", text: "Owner report sent -- Riverside Apartments January, net to owner $11,200", color: "#16a34a" },
+];
+
+const RE_PERFORMANCE_BREAKDOWN = [
+  { category: "Listing Commissions", count: 4, revenue: 18200 },
+  { category: "Buyer Commissions", count: 4, revenue: 17300 },
+  { category: "PM Management Fees", count: 28, revenue: 3740 },
+  { category: "Leasing Fees", count: 2, revenue: 700 },
+  { category: "Referral Income", count: 1, revenue: 1500 },
+];
+
 export default function Reports() {
   const [dateRange, setDateRange] = useState("30days");
   const [reportData, setReportData] = useState({
@@ -93,6 +122,7 @@ export default function Reports() {
   const isAuto = vertical === "auto";
   const isAnalyst = vertical === "analyst";
   const isVault = vertical === "consumer";
+  const isRealEstate = vertical === "real-estate";
 
   useEffect(() => {
     loadReportData();
@@ -152,6 +182,14 @@ export default function Reports() {
         { label: "Upcoming Deadlines", value: "3" },
       ];
     }
+    if (isRealEstate) {
+      return [
+        { label: "Commission YTD", value: "$127,500" },
+        { label: "Deals Closed", value: "8" },
+        { label: "Monthly PM Revenue", value: "$3,740" },
+        { label: "Occupancy Rate", value: "85.7%" },
+      ];
+    }
     if (isAuto) {
       return [
         { label: "Total Revenue", value: "$1,247,800" },
@@ -169,9 +207,9 @@ export default function Reports() {
   }
 
   // Pick the right data sets
-  const weeklyData = isAuto ? AUTO_WEEKLY_REVENUE : isAnalyst ? ANALYST_WEEKLY_PERFORMANCE : null;
-  const recentEvents = isAuto ? AUTO_RECENT_EVENTS : isAnalyst ? ANALYST_RECENT_EVENTS : VAULT_RECENT_EVENTS;
-  const breakdownData = isAuto ? AUTO_SALES_BY_SOURCE : isAnalyst ? ANALYST_PERFORMANCE_BY_SECTOR : VAULT_ASSETS_BY_CATEGORY;
+  const weeklyData = isRealEstate ? RE_WEEKLY_COMMISSION : isAuto ? AUTO_WEEKLY_REVENUE : isAnalyst ? ANALYST_WEEKLY_PERFORMANCE : null;
+  const recentEvents = isRealEstate ? RE_RECENT_EVENTS : isAuto ? AUTO_RECENT_EVENTS : isAnalyst ? ANALYST_RECENT_EVENTS : VAULT_RECENT_EVENTS;
+  const breakdownData = isRealEstate ? RE_PERFORMANCE_BREAKDOWN : isAuto ? AUTO_SALES_BY_SOURCE : isAnalyst ? ANALYST_PERFORMANCE_BY_SECTOR : VAULT_ASSETS_BY_CATEGORY;
 
   function exportCSV() {
     const kpis = getKpiConfig();
@@ -283,7 +321,7 @@ export default function Reports() {
         <div className="card">
           <div className="cardHeader">
             <div className="cardTitle">
-              {isAnalyst ? "Portfolio Performance" : isVault ? "Asset Summary" : "Revenue Trend"}
+              {isRealEstate ? "Commission Trend" : isAnalyst ? "Portfolio Performance" : isVault ? "Asset Summary" : "Revenue Trend"}
             </div>
           </div>
           {isAuto && weeklyData ? (
@@ -314,6 +352,22 @@ export default function Reports() {
                       <div style={{ fontSize: "11px", fontWeight: 600, color: "#1e293b" }}>${(w.value / 1000000).toFixed(1)}M</div>
                       <div style={{ fontSize: "10px", color: w.pctChange >= 0 ? "#16a34a" : "#dc2626" }}>{w.pctChange >= 0 ? "+" : ""}{w.pctChange}%</div>
                       <div style={{ width: "100%", background: w.pctChange >= 0 ? "#16a34a" : "#dc2626", borderRadius: "4px 4px 0 0", height: `${40 + ((w.value - minVal) / range) * 100}px`, minHeight: "20px" }} />
+                      <div style={{ fontSize: "11px", color: "#64748b", marginTop: "4px" }}>{w.week}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : isRealEstate && weeklyData ? (
+            <div style={{ padding: "16px" }}>
+              <div style={{ display: "flex", gap: "16px", alignItems: "flex-end", height: "180px", padding: "0 8px" }}>
+                {weeklyData.map((w, i) => {
+                  const maxVal = Math.max(...weeklyData.map(x => x.commission));
+                  return (
+                    <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", height: "100%", justifyContent: "flex-end" }}>
+                      <div style={{ fontSize: "11px", fontWeight: 600, color: "#1e293b" }}>${(w.commission / 1000).toFixed(1)}K</div>
+                      <div style={{ fontSize: "10px", color: "#64748b" }}>{w.deals} deal{w.deals !== 1 ? "s" : ""}</div>
+                      <div style={{ width: "100%", background: "#16a34a", borderRadius: "4px 4px 0 0", height: `${maxVal > 0 ? (w.commission / maxVal) * 130 : 0}px`, minHeight: w.commission > 0 ? "20px" : "4px" }} />
                       <div style={{ fontSize: "11px", color: "#64748b", marginTop: "4px" }}>{w.week}</div>
                     </div>
                   );
@@ -369,18 +423,18 @@ export default function Reports() {
       </div>
 
       {/* Breakdown Section */}
-      {(isAuto || isAnalyst) && (
+      {(isAuto || isAnalyst || isRealEstate) && (
         <div className="card" style={{ marginTop: "16px" }}>
           <div className="cardHeader">
-            <div className="cardTitle">{isAnalyst ? "Performance by Sector" : "Sales by Source"}</div>
+            <div className="cardTitle">{isRealEstate ? "Revenue Breakdown" : isAnalyst ? "Performance by Sector" : "Sales by Source"}</div>
           </div>
           <div style={{ padding: "16px" }}>
             <div className="tableWrap">
               <table className="table" style={{ width: "100%" }}>
                 <thead>
                   <tr>
-                    <th>{isAnalyst ? "Sector" : "Source"}</th>
-                    <th>{isAnalyst ? "YTD Return" : "Sales"}</th>
+                    <th>{isRealEstate ? "Category" : isAnalyst ? "Sector" : "Source"}</th>
+                    <th>{isRealEstate ? "Count" : isAnalyst ? "YTD Return" : "Sales"}</th>
                     <th>{isAnalyst ? "Portfolio Value" : "Revenue"}</th>
                     <th style={{ width: "40%" }}></th>
                   </tr>
@@ -395,6 +449,18 @@ export default function Reports() {
                         <td style={{ fontWeight: 600 }}>${s.revenue.toLocaleString()}</td>
                         <td>
                           <div style={{ width: `${(s.sales / maxVal) * 100}%`, height: "12px", background: "#7c3aed", borderRadius: "6px", minWidth: "8px" }} />
+                        </td>
+                      </tr>
+                    );
+                  }) : isRealEstate ? RE_PERFORMANCE_BREAKDOWN.map((s, i) => {
+                    const maxVal = Math.max(...RE_PERFORMANCE_BREAKDOWN.map(x => x.revenue));
+                    return (
+                      <tr key={i}>
+                        <td className="tdStrong">{s.category}</td>
+                        <td>{s.count}</td>
+                        <td style={{ fontWeight: 600 }}>${s.revenue.toLocaleString()}</td>
+                        <td>
+                          <div style={{ width: `${(s.revenue / maxVal) * 100}%`, height: "12px", background: "#16a34a", borderRadius: "6px", minWidth: "8px" }} />
                         </td>
                       </tr>
                     );

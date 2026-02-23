@@ -137,6 +137,61 @@ const RULES_CONFIGS = {
       "Compliance Guidelines", "Market Analysis Framework", "Other / General",
     ],
   },
+  "real-estate": {
+    defaults: {
+      globalLevel: 1,
+      sales: { respondToLeads: 1, sendRecommendations: 1, scheduleShowings: 1, draftOffers: 1, draftDescriptions: 1, generateCMAs: 1, postClosingFollowup: 1, priceAdjustmentRecs: 1 },
+      pm: { respondToTenants: 1, processMaintenanceRequests: 1, maxAutoDispatch: 500, sendRentReminders: 1, serveLateNotices: 1, draftRenewals: 1, maxRentIncrease: 5, marketVacantUnits: 1, screenApplications: 1, ownerCommunication: 1 },
+      communication: { sendEmails: true, emailLevel: 1, sendTexts: true, textLevel: 1, makePhoneCalls: false, dailyMessageLimit: 100, disclaimerText: "This message was sent by an AI assistant on behalf of {brokerage name}", quietHoursStart: "21:00", quietHoursEnd: "08:00" },
+      marketing: { socialMedia: 1, paidAdvertising: 1, directMail: 1, emailCampaigns: 1, maxCampaignBudget: 500 },
+    },
+    sections: [
+      {
+        key: "sales", title: "Sales Permissions", accent: "#16a34a", defaultOpen: true,
+        rows: [
+          { key: "respondToLeads", label: "Respond to inbound leads (5-min target)" },
+          { key: "sendRecommendations", label: "Send property recommendations to buyers" },
+          { key: "scheduleShowings", label: "Schedule showings" },
+          { key: "draftOffers", label: "Draft purchase offers" },
+          { key: "draftDescriptions", label: "Generate listing descriptions" },
+          { key: "generateCMAs", label: "Generate comparative market analyses" },
+          { key: "postClosingFollowup", label: "Post-closing follow-up" },
+          { key: "priceAdjustmentRecs", label: "Recommend price adjustments" },
+        ],
+      },
+      {
+        key: "pm", title: "Property Management Permissions", accent: "#2563eb",
+        rows: [
+          { key: "respondToTenants", label: "Respond to tenant communications" },
+          { key: "processMaintenanceRequests", label: "Process maintenance requests", extra: { label: "Max auto-dispatch: $", field: "maxAutoDispatch", type: "number" } },
+          { key: "sendRentReminders", label: "Send rent reminders" },
+          { key: "serveLateNotices", label: "Serve late payment notices" },
+          { key: "draftRenewals", label: "Draft lease renewals", extra: { label: "Max rent increase: %", field: "maxRentIncrease", type: "number" } },
+          { key: "marketVacantUnits", label: "Market vacant units" },
+          { key: "screenApplications", label: "Screen rental applications" },
+          { key: "ownerCommunication", label: "Owner communication and reporting" },
+        ],
+      },
+      {
+        key: "communication", title: "Communication Permissions", accent: "#d97706", type: "communication",
+      },
+      {
+        key: "marketing", title: "Marketing Permissions", accent: "#ec4899",
+        rows: [
+          { key: "socialMedia", label: "Post to social media" },
+          { key: "paidAdvertising", label: "Create paid advertising" },
+          { key: "directMail", label: "Send direct mail" },
+          { key: "emailCampaigns", label: "Run email campaigns" },
+        ],
+        footer: { label: "Max campaign budget without approval", field: "maxCampaignBudget", prefix: "$" },
+      },
+    ],
+    playbookCategories: [
+      "Listing Process", "Buyer Process", "Showing Procedures", "Offer & Negotiation",
+      "Transaction Management", "Tenant Screening", "Maintenance Procedures", "Lease Management",
+      "Fair Housing Compliance", "Communication Templates", "Marketing Guidelines", "Other / General",
+    ],
+  },
 };
 
 // ── Shared UI Components ──

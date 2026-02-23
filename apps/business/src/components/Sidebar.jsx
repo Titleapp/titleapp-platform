@@ -44,10 +44,15 @@ const NAV_BY_VERTICAL = {
   ],
   "real-estate": [
     { id: "dashboard", label: "Dashboard" },
-    { id: "inventory", label: "Listings" },
-    { id: "customers", label: "Clients" },
-    { id: "rules-resources", label: "Rules & Resources" },
+    { id: "re-listings", label: "Listings" },
+    { id: "re-buyers", label: "Buyers" },
+    { id: "re-transactions", label: "Transactions" },
+    { id: "re-properties", label: "Properties" },
+    { id: "re-tenants", label: "Tenants" },
+    { id: "re-maintenance", label: "Maintenance" },
     { id: "reports", label: "Reports" },
+    { id: "ai-chats", label: "AI Activity" },
+    { id: "rules", label: "Rules" },
     { id: "settings", label: "Settings" },
   ],
 };
