@@ -145,6 +145,14 @@ export default function ChatPanel({ currentSection, onboardingStep }) {
         } catch (e) { /* ignore parse errors */ }
       }
 
+      // Check if user just created a builder workspace
+      const builderPrompt = sessionStorage.getItem("ta_builder_prompt");
+      if (builderPrompt) {
+        sessionStorage.removeItem("ta_builder_prompt");
+        setMessages([{ role: 'assistant', content: "Hey! So you want to build an AI service -- tell me about your idea. What do you know a lot about?", isSystem: true }]);
+        return;
+      }
+
       // Legacy: check sessionStorage discoveredContext
       const rawCtx = sessionStorage.getItem("ta_discovered_context");
       if (rawCtx) {
