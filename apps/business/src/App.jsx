@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import "./App.css";
 import Login from "./auth/login";
-import Onboarding from "./components/Onboarding";
+import OnboardingWizard from "./components/OnboardingWizard";
 import OnboardingTour from "./components/OnboardingTour";
 import AppShell from "./components/AppShell";
 import ChatPanel from "./components/ChatPanel";
@@ -351,7 +351,7 @@ export default function App() {
       <div className="appShell" style={{ minHeight: "100vh" }}>
         <div className="dualPanel" style={{ minHeight: "100vh" }}>
           <div style={{ flex: 1, minWidth: 0, overflowY: "auto", height: "100vh" }}>
-            <Onboarding
+            <OnboardingWizard
               onComplete={() => setCurrentView("hub")}
               onStepChange={setOnboardingStep}
             />

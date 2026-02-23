@@ -3,6 +3,11 @@ import { getAuth } from 'firebase/auth';
 import { getFirestore, collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
 
 const CONTEXTUAL_MESSAGES = {
+  "choose-path": "Welcome. Pick the path that fits -- I'll tailor everything from there.",
+  "business-basics": "Just the essentials. I'll use this to configure your AI assistant and compliance rules.",
+  integrations: "Tell me what you already use. I'll build the connectors so your data flows in automatically.",
+  "data-import": "You can upload your own files or explore with sample data. Either way, you'll see value in about 60 seconds.",
+  "first-value": "I already scanned your data and found a few things worth your attention.",
   terms: "This is our standard terms and liability agreement. Take a look and let me know if you have questions.",
   idVerify: "Quick identity check -- keeps your records secure and verified. $2, once a year.",
   details: "This is where we set your foundation. The jurisdiction matters because compliance rules vary by state.",

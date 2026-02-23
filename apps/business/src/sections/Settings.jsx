@@ -498,6 +498,7 @@ function PersonalSettings() {
                   localStorage.removeItem("TENANT_ID");
                   localStorage.removeItem("VERTICAL");
                   localStorage.removeItem("JURISDICTION");
+                  localStorage.removeItem("ONBOARDING_STATE");
                   window.location.reload();
                 }
               }}
@@ -1061,11 +1062,36 @@ function BusinessSettings() {
                   localStorage.removeItem("TENANT_ID");
                   localStorage.removeItem("VERTICAL");
                   localStorage.removeItem("JURISDICTION");
+                  localStorage.removeItem("ONBOARDING_STATE");
                   window.location.reload();
                 }
               }}
             >
               Reset
+            </button>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div>
+              <div style={{ fontWeight: 600 }}>Clear Sample Data</div>
+              <div style={{ fontSize: "13px", color: "var(--textMuted)" }}>Remove sample data and show empty-state dashboard.</div>
+            </div>
+            <button
+              className="iconBtn"
+              style={{ color: "#d97706", borderColor: "#fcd34d" }}
+              onClick={() => {
+                if (window.confirm("This will clear sample data from your workspace. Continue?")) {
+                  try {
+                    const state = JSON.parse(localStorage.getItem("ONBOARDING_STATE") || "{}");
+                    state.dataSource = "none";
+                    localStorage.setItem("ONBOARDING_STATE", JSON.stringify(state));
+                  } catch {
+                    localStorage.setItem("ONBOARDING_STATE", JSON.stringify({ dataSource: "none" }));
+                  }
+                  window.location.reload();
+                }
+              }}
+            >
+              Clear
             </button>
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -1078,6 +1104,35 @@ function BusinessSettings() {
           </div>
         </div>
       </div>
+
+      {/* Onboarding Integrations */}
+      {(() => {
+        try {
+          const state = JSON.parse(localStorage.getItem("ONBOARDING_STATE") || "{}");
+          const integrations = state?.integrations;
+          if (integrations && Array.isArray(integrations) && integrations.length > 0) {
+            return (
+              <div className="card" style={{ marginTop: "16px", marginBottom: "16px" }}>
+                <div className="cardHeader">
+                  <div>
+                    <div className="cardTitle">Selected Integrations</div>
+                    <div className="cardSub">Tools selected during onboarding</div>
+                  </div>
+                </div>
+                <div style={{ padding: "16px", display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                  {integrations.map((id) => (
+                    <span key={id} style={{
+                      fontSize: "13px", fontWeight: 600, padding: "4px 12px", borderRadius: "20px",
+                      background: "#f3e8ff", color: "#7c3aed",
+                    }}>{id}</span>
+                  ))}
+                </div>
+              </div>
+            );
+          }
+          return null;
+        } catch { return null; }
+      })()}
 
       {/* Danger Zone */}
       <div className="card" style={{ borderColor: "var(--danger)" }}>

@@ -1495,6 +1495,9 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
         riskProfile = null, // Analyst vertical investment criteria
         verticalConfig = null, // Other vertical-specific configs
         aiPersona = null, // AI assistant name/title for outreach
+        integrations = null, // Selected integrations from onboarding wizard
+        onboardingState = null, // Full onboarding state snapshot
+        tagline = null, // Business tagline from onboarding
       } = body || {};
 
       const finalTenantId = (requestedTenantId || slugifyTenantId(tenantName || auth.user.email || auth.user.uid))
@@ -1521,6 +1524,9 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
         if (riskProfile) tenantData.riskProfile = riskProfile;
         if (verticalConfig) tenantData.verticalConfig = verticalConfig;
         if (aiPersona) tenantData.aiPersona = aiPersona;
+        if (integrations) tenantData.integrations = integrations;
+        if (onboardingState) tenantData.onboardingState = onboardingState;
+        if (tagline) tenantData.tagline = tagline;
 
         await tenantRef.set(tenantData);
       }

@@ -308,6 +308,12 @@ export default function Dashboard() {
   const isAuto = vertical === "auto";
   const isRealEstate = vertical === "real-estate";
 
+  // Check onboarding state for "Get Started" empty state
+  const onboardingState = (() => {
+    try { return JSON.parse(localStorage.getItem("ONBOARDING_STATE") || "{}"); } catch { return {}; }
+  })();
+  const showGetStarted = onboardingState.dataSource === "none";
+
   const [kpis, setKpis] = useState({
     revenue: { value: "$0", trend: "+0%" },
     activeDeals: { value: "0", trend: "+0" },
@@ -644,6 +650,42 @@ export default function Dashboard() {
 
       {/* ── Consumer Vault ── */}
       {isConsumer && <ConsumerDashboard />}
+
+      {/* ── Get Started (no data) ── */}
+      {!isConsumer && showGetStarted && (
+        <div style={{
+          padding: "28px 24px", marginBottom: "14px", borderRadius: "14px",
+          background: "linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)",
+          border: "1px solid #e9d5ff",
+        }}>
+          <div style={{ fontSize: "20px", fontWeight: 700, marginBottom: "6px", color: "#1e293b" }}>
+            Welcome to your workspace
+          </div>
+          <div style={{ fontSize: "14px", color: "#6b7280", marginBottom: "16px", lineHeight: 1.5 }}>
+            You skipped data import during setup. Import your data or chat with your AI to get started.
+          </div>
+          <div style={{ display: "flex", gap: "10px" }}>
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent("ta:navigate", { detail: { section: "settings" } }))}
+              style={{
+                padding: "10px 20px", fontSize: "14px", fontWeight: 600, borderRadius: "8px",
+                background: "#7c3aed", color: "white", border: "none", cursor: "pointer",
+              }}
+            >
+              Import Data
+            </button>
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent("ta:chatPrompt", { detail: { message: "Help me get started with my workspace" } }))}
+              style={{
+                padding: "10px 20px", fontSize: "14px", fontWeight: 600, borderRadius: "8px",
+                background: "white", color: "#7c3aed", border: "1px solid #e9d5ff", cursor: "pointer",
+              }}
+            >
+              Chat with AI
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── Business KPIs ── */}
       {!isConsumer && (
