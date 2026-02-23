@@ -10,8 +10,11 @@ const VERTICAL_ABBREVS = {
 };
 
 function daysLeft(trialEndsAt) {
-  if (!trialEndsAt) return 0;
-  const end = trialEndsAt.toDate ? trialEndsAt.toDate() : new Date(trialEndsAt);
+  if (!trialEndsAt) return 14;
+  const end = trialEndsAt.toDate ? trialEndsAt.toDate()
+    : trialEndsAt._seconds ? new Date(trialEndsAt._seconds * 1000)
+    : new Date(trialEndsAt);
+  if (isNaN(end.getTime())) return 14;
   const diff = end - Date.now();
   return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
 }
@@ -134,7 +137,7 @@ function BillingSummary({ workspaces }) {
   );
 }
 
-export default function WorkspaceHub({ userName, onLaunch }) {
+export default function WorkspaceHub({ userName, onLaunch, onBuilderStart }) {
   const [workspaces, setWorkspaces] = useState(null);
   const [error, setError] = useState(null);
   const [showWizard, setShowWizard] = useState(false);
@@ -195,6 +198,7 @@ export default function WorkspaceHub({ userName, onLaunch }) {
         existingWorkspaces={workspaces || []}
         onCreated={handleWorkspaceCreated}
         onCancel={() => setShowWizard(false)}
+        onBuilderStart={onBuilderStart}
       />
     );
   }

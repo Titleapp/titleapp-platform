@@ -73,7 +73,7 @@ const JURISDICTIONS = [
   { code: 'TX', label: 'Texas' },
 ];
 
-export default function AddWorkspaceWizard({ existingWorkspaces, onCreated, onCancel }) {
+export default function AddWorkspaceWizard({ existingWorkspaces, onCreated, onCancel, onBuilderStart }) {
   const [step, setStep] = useState(1);
   const [selectedVertical, setSelectedVertical] = useState(null);
   const [name, setName] = useState('');
@@ -86,46 +86,11 @@ export default function AddWorkspaceWizard({ existingWorkspaces, onCreated, onCa
 
   function handleSelectVertical(id) {
     if (id === 'builder') {
-      handleBuilderSelect();
+      if (onBuilderStart) onBuilderStart();
       return;
     }
     setSelectedVertical(id);
     setStep(2);
-  }
-
-  async function handleBuilderSelect() {
-    setCreating(true);
-    setError(null);
-    try {
-      const token = localStorage.getItem('ID_TOKEN');
-      const apiBase = import.meta.env.VITE_API_BASE || 'https://titleapp-frontdoor.titleapp-core.workers.dev';
-      const resp = await fetch(`${apiBase}/api?path=/v1/workspaces`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          vertical: 'custom',
-          name: 'My AI Service',
-          tagline: '',
-          jurisdiction: 'GLOBAL',
-        }),
-      });
-      const data = await resp.json();
-      if (data.ok) {
-        // Queue the builder chat prompt so ChatPanel picks it up
-        sessionStorage.setItem('ta_builder_prompt', 'true');
-        onCreated(data.workspace);
-      } else {
-        setError(data.error || 'Failed to create workspace');
-        setCreating(false);
-      }
-    } catch (e) {
-      console.error('Builder workspace creation failed:', e);
-      setError('Failed to create workspace');
-      setCreating(false);
-    }
   }
 
   function handleDetailsNext() {

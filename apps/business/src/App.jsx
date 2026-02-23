@@ -6,6 +6,7 @@ import OnboardingTour from "./components/OnboardingTour";
 import AppShell from "./components/AppShell";
 import ChatPanel from "./components/ChatPanel";
 import WorkspaceHub from "./components/WorkspaceHub";
+import BuilderInterview from "./components/BuilderInterview";
 import Dashboard from "./sections/Dashboard";
 import Analyst from "./sections/Analyst";
 import RulesResources from "./sections/RulesResources";
@@ -171,7 +172,7 @@ export default function App() {
   const [token, setToken] = useState(() =>
     typeof window !== "undefined" ? localStorage.getItem("ID_TOKEN") : null
   );
-  const [currentView, setCurrentView] = useState("loading"); // loading | hub | app | onboarding
+  const [currentView, setCurrentView] = useState("loading"); // loading | hub | app | onboarding | builder-interview
   const [handoffInProgress, setHandoffInProgress] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     return !!params.get("token");
@@ -427,6 +428,18 @@ export default function App() {
       <WorkspaceHub
         userName={userName}
         onLaunch={handleWorkspaceLaunch}
+        onBuilderStart={() => setCurrentView("builder-interview")}
+      />
+    );
+  }
+
+  if (currentView === "builder-interview") {
+    return (
+      <BuilderInterview
+        onComplete={(workspace) => {
+          handleWorkspaceLaunch(workspace);
+        }}
+        onCancel={() => setCurrentView("hub")}
       />
     );
   }
