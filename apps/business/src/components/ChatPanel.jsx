@@ -131,7 +131,21 @@ export default function ChatPanel({ currentSection, onboardingStep }) {
 
   useEffect(() => {
     if (currentUser && authReady && messages.length === 0) {
-      // Check if user arrived from landing page discovery chat
+      // Check if user arrived from landing page with conversation context
+      const rawLanding = localStorage.getItem("LANDING_CONTEXT");
+      if (rawLanding) {
+        try {
+          const lCtx = JSON.parse(rawLanding);
+          const greeting = buildLandingGreeting(lCtx);
+          if (greeting) {
+            setMessages([{ role: 'assistant', content: greeting, isSystem: true }]);
+            localStorage.removeItem("LANDING_CONTEXT");
+            return;
+          }
+        } catch (e) { /* ignore parse errors */ }
+      }
+
+      // Legacy: check sessionStorage discoveredContext
       const rawCtx = sessionStorage.getItem("ta_discovered_context");
       if (rawCtx) {
         try {
@@ -147,6 +161,46 @@ export default function ChatPanel({ currentSection, onboardingStep }) {
       loadConversationHistory();
     }
   }, [currentUser, authReady]);
+
+  function buildLandingGreeting(ctx) {
+    const name = ctx.name || "";
+    const nameGreet = name ? `, ${name}` : "";
+    const vertical = ctx.vertical || "";
+    const intent = ctx.intent || "";
+    const chatSummary = ctx.chatSummary || "";
+
+    // Builder intent
+    if (intent === "builder") {
+      return `Great${nameGreet}, I've got the outline of your service. Let me show you what I built -- take a look at the preview and tell me what needs adjusting.`;
+    }
+
+    // Auto / vehicle mentions
+    if (vertical === "auto" || /\b(car|vehicle|vin|truck|suv)\b/i.test(chatSummary)) {
+      return `Alright${nameGreet}, let's get that vehicle recorded. What do you drive? Year, make, and model is all I need to start.`;
+    }
+
+    // Real estate / property mentions
+    if (vertical === "real-estate" || /\b(property|rental|tenant|apartment|building|house)\b/i.test(chatSummary)) {
+      return `OK${nameGreet}, let's get your properties set up. How about we start with your biggest one? What's the address?`;
+    }
+
+    // Analyst / investment mentions
+    if (vertical === "analyst" || /\b(deal|invest|portfolio|fund|analysis)\b/i.test(chatSummary)) {
+      return `Welcome${nameGreet}. Your analysis workspace is ready. Want to start by uploading a deal memo, or should I walk you through the screening criteria first?`;
+    }
+
+    // Consumer / personal vault
+    if (intent === "personal" || vertical === "consumer") {
+      return `Welcome to your Vault${nameGreet}. Based on what we talked about, let's start getting your records organized. What would you like to add first?`;
+    }
+
+    // Generic fallback with context
+    if (chatSummary) {
+      return `Welcome${nameGreet}. I set up your workspace based on our conversation. Let's pick up where we left off -- what would you like to do first?`;
+    }
+
+    return null;
+  }
 
   // Send contextual messages when onboarding step or section changes
   useEffect(() => {

@@ -5,6 +5,7 @@ const VERTICAL_ABBREVS = {
   analyst: 'IA',
   'real-estate': 'RE',
   aviation: 'AV',
+  builder: 'AI',
 };
 
 const VERTICALS = [
@@ -50,6 +51,18 @@ const VERTICALS = [
       'Flight hour tracking',
       'Certification management',
       'Compliance documentation',
+    ],
+  },
+  {
+    id: 'builder',
+    label: 'Build an AI Service',
+    description: 'Turn your expertise into a subscribable AI product',
+    comingSoon: true,
+    cosManages: [
+      'Conversational interview to extract your workflow',
+      'Auto-generated AI Worker from your expertise',
+      'Pricing and subscriber management',
+      'Publish to the RAAS Store',
     ],
   },
 ];
@@ -193,29 +206,41 @@ export default function AddWorkspaceWizard({ existingWorkspaces, onCreated, onCa
               {VERTICALS.map(v => (
                 <div
                   key={v.id}
-                  onClick={() => handleSelectVertical(v.id)}
+                  onClick={() => !v.comingSoon && handleSelectVertical(v.id)}
                   style={{
                     border: '1px solid #e2e8f0',
                     borderRadius: 12,
                     padding: 20,
-                    cursor: 'pointer',
+                    cursor: v.comingSoon ? 'default' : 'pointer',
                     textAlign: 'center',
                     transition: 'all 0.2s',
                     background: 'white',
+                    position: 'relative',
+                    opacity: v.comingSoon ? 0.75 : 1,
                   }}
                   onMouseEnter={e => {
-                    e.currentTarget.style.borderColor = '#7c3aed';
-                    e.currentTarget.style.background = '#faf5ff';
+                    if (!v.comingSoon) {
+                      e.currentTarget.style.borderColor = '#7c3aed';
+                      e.currentTarget.style.background = '#faf5ff';
+                    }
                   }}
                   onMouseLeave={e => {
                     e.currentTarget.style.borderColor = '#e2e8f0';
                     e.currentTarget.style.background = 'white';
                   }}
                 >
+                  {v.comingSoon && (
+                    <div style={{
+                      position: 'absolute', top: 8, right: 8,
+                      fontSize: 10, fontWeight: 700, padding: '2px 8px',
+                      borderRadius: 10, background: '#f3e8ff', color: '#7c3aed',
+                      textTransform: 'uppercase', letterSpacing: '0.5px',
+                    }}>Coming Soon</div>
+                  )}
                   <div style={{
-                    width: 40, height: 40, borderRadius: 8, backgroundColor: '#f1f5f9',
+                    width: 40, height: 40, borderRadius: 8, backgroundColor: v.comingSoon ? '#f3e8ff' : '#f1f5f9',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 14, fontWeight: 700, color: '#475569', marginBottom: 8, margin: '0 auto 8px',
+                    fontSize: 14, fontWeight: 700, color: v.comingSoon ? '#7c3aed' : '#475569', marginBottom: 8, margin: '0 auto 8px',
                     letterSpacing: 1,
                   }}>{VERTICAL_ABBREVS[v.id] || v.id.slice(0, 2).toUpperCase()}</div>
                   <div style={{ fontWeight: 600, fontSize: 14, color: '#1e293b', marginBottom: 4 }}>

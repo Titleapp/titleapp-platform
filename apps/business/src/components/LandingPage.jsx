@@ -359,6 +359,27 @@ export default function LandingPage() {
     }
   }, []);
 
+  // When user signs in, persist landing context for the dashboard to pick up
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (user && chatMessages.length > 0) {
+        const ctx = discoveredContext || {};
+        const chatSummary = chatMessages
+          .filter((m) => m.role === "user")
+          .map((m) => m.content)
+          .join(" | ");
+        const landingContext = {
+          ...ctx,
+          chatSummary,
+          messageCount: chatMessages.length,
+          timestamp: new Date().toISOString(),
+        };
+        localStorage.setItem("LANDING_CONTEXT", JSON.stringify(landingContext));
+      }
+    });
+    return () => unsubscribe();
+  }, [chatMessages, discoveredContext]);
+
   function goToSlide(idx) {
     setCurrentSlide(idx);
     if (rotationRef.current) clearInterval(rotationRef.current);

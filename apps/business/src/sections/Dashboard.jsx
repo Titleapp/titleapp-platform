@@ -127,7 +127,19 @@ function ConsumerDashboard() {
               {totalDTCs} DTC{totalDTCs !== 1 ? "s" : ""}
             </div>
             <div style={{ fontSize: "13px", color: "#64748b", marginTop: "6px" }}>
-              {hasData ? "Add estimated values to your records to see your total vault value" : "Add your first item to start building your Vault"}
+              {hasData
+                ? "Add estimated values to your records to see your total vault value"
+                : (() => {
+                    try {
+                      const lc = JSON.parse(localStorage.getItem("LANDING_CONTEXT") || "null");
+                      if (lc?.chatSummary) {
+                        if (/\b(car|vehicle|vin)\b/i.test(lc.chatSummary)) return "Let's record that vehicle you mentioned. Your AI is ready in the chat panel.";
+                        if (/\b(property|house|rental)\b/i.test(lc.chatSummary)) return "Let's add that property you mentioned. Your AI is ready in the chat panel.";
+                        if (/\b(document|passport|license)\b/i.test(lc.chatSummary)) return "Let's organize those documents you mentioned. Your AI is ready in the chat panel.";
+                      }
+                    } catch {}
+                    return "Add your first item to start building your Vault";
+                  })()}
             </div>
           </>
         )}
@@ -314,6 +326,14 @@ export default function Dashboard() {
   })();
   const showGetStarted = onboardingState.dataSource === "none";
 
+  // Landing context from pre-signup conversation
+  const landingContext = (() => {
+    try { return JSON.parse(localStorage.getItem("LANDING_CONTEXT") || "null"); } catch { return null; }
+  })();
+  const isNewFromChat = !!landingContext;
+  const landingName = landingContext?.name || "";
+  const landingSummary = landingContext?.chatSummary || "";
+
   const [kpis, setKpis] = useState({
     revenue: { value: "$0", trend: "+0%" },
     activeDeals: { value: "0", trend: "+0" },
@@ -429,6 +449,26 @@ export default function Dashboard() {
 
   function nav(section) {
     window.dispatchEvent(new CustomEvent("ta:navigate", { detail: { section } }));
+  }
+
+  function getContextualPrompt(summary, auto, re, analyst) {
+    if (auto || /\b(car|vehicle|vin|truck|suv|inventory)\b/i.test(summary))
+      return "Your AI is ready to help you manage inventory, track leads, and close deals. Let's start by getting your first vehicle on the lot.";
+    if (re || /\b(property|rental|tenant|listing|house|apartment)\b/i.test(summary))
+      return "Your workspace is set up for real estate. Let's get your first listing or property entered so your AI can start working.";
+    if (analyst || /\b(deal|invest|portfolio|fund|analysis)\b/i.test(summary))
+      return "Your analysis workspace is ready. Upload a deal memo or set your screening criteria so your AI can start sourcing opportunities.";
+    return "Your AI assistant is ready. Tell it what you need help with and it'll take it from there.";
+  }
+
+  function getContextualChatPrompt(summary, auto, re, analyst) {
+    if (auto || /\b(car|vehicle|vin|truck|suv|inventory)\b/i.test(summary))
+      return "Help me add my first vehicle to inventory";
+    if (re || /\b(property|rental|tenant|listing|house|apartment)\b/i.test(summary))
+      return "Help me add my first property listing";
+    if (analyst || /\b(deal|invest|portfolio|fund|analysis)\b/i.test(summary))
+      return "Help me set up my deal screening criteria";
+    return "Help me get started with my workspace";
   }
 
   useEffect(() => {
@@ -651,44 +691,53 @@ export default function Dashboard() {
       {/* ── Consumer Vault ── */}
       {isConsumer && <ConsumerDashboard />}
 
-      {/* ── Get Started (no data) ── */}
-      {!isConsumer && showGetStarted && (
+      {/* ── Get Started (contextual based on landing conversation) ── */}
+      {!isConsumer && (showGetStarted || isNewFromChat) && (
         <div style={{
           padding: "28px 24px", marginBottom: "14px", borderRadius: "14px",
           background: "linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)",
           border: "1px solid #e9d5ff",
         }}>
           <div style={{ fontSize: "20px", fontWeight: 700, marginBottom: "6px", color: "#1e293b" }}>
-            Welcome to your workspace
+            {isNewFromChat
+              ? `${landingName ? landingName + ", let's" : "Let's"} pick up where we left off`
+              : "Welcome to your workspace"}
           </div>
           <div style={{ fontSize: "14px", color: "#6b7280", marginBottom: "16px", lineHeight: 1.5 }}>
-            You skipped data import during setup. Import your data or chat with your AI to get started.
+            {isNewFromChat
+              ? getContextualPrompt(landingSummary, isAuto, isRealEstate, isAnalyst)
+              : "You skipped data import during setup. Import your data or chat with your AI to get started."}
           </div>
           <div style={{ display: "flex", gap: "10px" }}>
             <button
-              onClick={() => window.dispatchEvent(new CustomEvent("ta:navigate", { detail: { section: "settings" } }))}
+              onClick={() => {
+                const chatMsg = isNewFromChat
+                  ? getContextualChatPrompt(landingSummary, isAuto, isRealEstate, isAnalyst)
+                  : "Help me get started with my workspace";
+                window.dispatchEvent(new CustomEvent("ta:chatPrompt", { detail: { message: chatMsg } }));
+              }}
               style={{
                 padding: "10px 20px", fontSize: "14px", fontWeight: 600, borderRadius: "8px",
                 background: "#7c3aed", color: "white", border: "none", cursor: "pointer",
               }}
             >
-              Import Data
+              {isNewFromChat ? "Continue with AI" : "Chat with AI"}
             </button>
             <button
-              onClick={() => window.dispatchEvent(new CustomEvent("ta:chatPrompt", { detail: { message: "Help me get started with my workspace" } }))}
+              onClick={() => window.dispatchEvent(new CustomEvent("ta:navigate", { detail: { section: "settings" } }))}
               style={{
                 padding: "10px 20px", fontSize: "14px", fontWeight: 600, borderRadius: "8px",
                 background: "white", color: "#7c3aed", border: "1px solid #e9d5ff", cursor: "pointer",
               }}
             >
-              Chat with AI
+              Import Data
             </button>
           </div>
         </div>
       )}
 
       {/* ── Business KPIs ── */}
-      {!isConsumer && (
+      {!isConsumer && !isNewFromChat && (
         <div className="kpiRow">
           {loading ? (
             <div className="card" style={{ padding: "24px", textAlign: "center" }}>
