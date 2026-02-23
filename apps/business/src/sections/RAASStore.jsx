@@ -241,8 +241,8 @@ export default function RAASStore() {
                   {worker.description || "No description provided."}
                 </div>
 
-                {/* Category badge */}
-                <div style={{ marginBottom: "12px" }}>
+                {/* Category badge + titled badge */}
+                <div style={{ marginBottom: "12px", display: "flex", flexWrap: "wrap", gap: "6px", alignItems: "center" }}>
                   <span style={{
                     display: "inline-block",
                     fontSize: "11px",
@@ -256,6 +256,21 @@ export default function RAASStore() {
                   }}>
                     {category}
                   </span>
+                  {worker.titled && (
+                    <span style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "4px",
+                      fontSize: "11px",
+                      fontWeight: 600,
+                      color: "#7c3aed",
+                      background: "#f5f3ff",
+                      padding: "3px 8px",
+                      borderRadius: "9999px",
+                    }}>
+                      Titled on Polygon
+                    </span>
+                  )}
                 </div>
 
                 {/* Price + subscribers + rating row */}

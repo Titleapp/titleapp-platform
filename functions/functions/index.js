@@ -1600,6 +1600,35 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       }
     }
 
+    // GET /v1/title/:recordId — PUBLIC title lookup (no auth required)
+    if (/^\/title\/[^/]+$/.test(route) && method === "GET") {
+      try {
+        const recordId = route.split("/")[2];
+        const snap = await db.collection("titleRecords").doc(recordId).get();
+        if (!snap.exists) return jsonError(res, 404, "Title record not found");
+        const d = snap.data();
+        return res.json({
+          ok: true,
+          record_id: snap.id,
+          worker: {
+            id: d.workerId,
+            name: d.workerName,
+            description: d.workerDescription,
+            author: d.authorName || "",
+            created_at: d.mintedAt,
+          },
+          chain: d.chain,
+          tx_hash: d.txHash,
+          verification_url: `https://polygonscan.com/tx/${d.txHash}`,
+          metadata_hash: d.metadataHash,
+          status: d.status || "active",
+        });
+      } catch (e) {
+        console.error("title:lookup failed:", e);
+        return jsonError(res, 500, "Failed to look up title record");
+      }
+    }
+
     // All other routes require Firebase auth
     const auth = await requireFirebaseUser(req, res);
     if (auth.handled) return;
@@ -4654,6 +4683,157 @@ Analyze now:`;
     if (route === "/raas:packages:create" && method === "POST") return handleRaasPackagesCreate(req, res, ctx);
     if (route === "/raas:packages:bindFiles" && method === "POST") return handleRaasPackagesBindFiles(req, res, ctx);
     if (route === "/raas:packages:get" && method === "GET") return handleRaasPackagesGet(req, res, ctx);
+
+    // ----------------------------
+    // TITLE / PROVENANCE (Bearer token access for frontend)
+    // ----------------------------
+    const { mintTitleRecord: doMintTitle, computeHash: doComputeHash } = require("./api/utils/titleMint");
+
+    // POST /v1/workers/import
+    if (route === "/workers/import" && method === "POST") {
+      try {
+        const { name, description, source, capabilities, rules, category, pricing, mint_title } = body;
+        if (!name || !description) return jsonError(res, 400, "name and description are required");
+
+        const rulesHash = doComputeHash(rules || []);
+        const metadataHash = doComputeHash({ name, description, capabilities, rules_hash: rulesHash, created_at: new Date().toISOString() });
+        const workerId = "wkr_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+
+        const workerData = {
+          name: String(name).substring(0, 200),
+          description: String(description).substring(0, 2000),
+          source: source || { platform: "custom" },
+          capabilities: Array.isArray(capabilities) ? capabilities.slice(0, 20) : [],
+          rules: Array.isArray(rules) ? rules.slice(0, 50) : [],
+          category: category ? String(category).substring(0, 50) : "other",
+          pricing: pricing || { model: "subscription", amount: 0, currency: "USD" },
+          status: "registered",
+          imported: true,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          createdBy: auth.user.uid,
+          rulesHash,
+          metadataHash,
+        };
+
+        await db.doc(`tenants/${ctx.tenantId}/workers/${workerId}`).set(workerData);
+
+        let titleRecord = null;
+        if (mint_title) {
+          titleRecord = await doMintTitle(ctx.tenantId, workerId, workerData);
+        }
+
+        return res.status(201).json({
+          ok: true,
+          worker: {
+            id: workerId,
+            name: workerData.name,
+            status: workerData.status,
+            imported: true,
+            created_at: new Date().toISOString(),
+            ...(titleRecord ? { title_record: titleRecord } : {}),
+          },
+        });
+      } catch (e) {
+        console.error("workers:import failed:", e);
+        return jsonError(res, 500, "Failed to import worker");
+      }
+    }
+
+    // POST /v1/workers/:workerId/mint
+    if (/^\/workers\/[^/]+\/mint$/.test(route) && method === "POST") {
+      try {
+        const workerId = route.split("/")[2];
+        const workerSnap = await db.doc(`tenants/${ctx.tenantId}/workers/${workerId}`).get();
+        if (!workerSnap.exists) return jsonError(res, 404, "Worker not found");
+
+        const workerData = workerSnap.data();
+        const titleRecord = await doMintTitle(ctx.tenantId, workerId, workerData, body.memo || "");
+
+        return res.json({ ok: true, title_record: titleRecord });
+      } catch (e) {
+        console.error("workers:mint failed:", e);
+        return jsonError(res, 500, "Failed to mint title record");
+      }
+    }
+
+    // GET /v1/workers/:workerId/title
+    if (/^\/workers\/[^/]+\/title$/.test(route) && method === "GET") {
+      try {
+        const workerId = route.split("/")[2];
+        const workerSnap = await db.doc(`tenants/${ctx.tenantId}/workers/${workerId}`).get();
+        if (!workerSnap.exists) return jsonError(res, 404, "Worker not found");
+
+        const workerData = workerSnap.data();
+        const recordsSnap = await db
+          .collection(`tenants/${ctx.tenantId}/workers/${workerId}/titleRecords`)
+          .orderBy("version", "desc")
+          .get();
+
+        const titleHistory = [];
+        recordsSnap.forEach((doc) => {
+          const d = doc.data();
+          titleHistory.push({
+            record_id: doc.id,
+            version: d.version,
+            tx_hash: d.txHash,
+            chain: d.chain,
+            minted_at: d.mintedAt?.toDate ? d.mintedAt.toDate().toISOString() : d.mintedAt,
+            metadata_hash: d.metadataHash,
+            rules_hash: d.rulesHash,
+            memo: d.memo || "",
+            previous_version_tx: d.previousVersionTx || null,
+          });
+        });
+
+        return res.json({ ok: true, worker_id: workerId, name: workerData.name, title_history: titleHistory });
+      } catch (e) {
+        console.error("workers:title failed:", e);
+        return jsonError(res, 500, "Failed to get title history");
+      }
+    }
+
+    // POST /v1/workers/:workerId/verify
+    if (/^\/workers\/[^/]+\/verify$/.test(route) && method === "POST") {
+      try {
+        const workerId = route.split("/")[2];
+        const workerSnap = await db.doc(`tenants/${ctx.tenantId}/workers/${workerId}`).get();
+        if (!workerSnap.exists) return jsonError(res, 404, "Worker not found");
+
+        const workerData = workerSnap.data();
+        const latestTitle = workerData.latestTitleRecord;
+        if (!latestTitle) return res.json({ ok: true, verified: false, reason: "No title record exists" });
+
+        if (body.rules_hash) {
+          const currentRulesHash = doComputeHash(workerData.rules || []);
+          return res.json({
+            ok: true,
+            verified: body.rules_hash === currentRulesHash,
+            matches_version: latestTitle.version,
+            minted_at: latestTitle.mintedAt,
+          });
+        }
+
+        const freshHash = doComputeHash({
+          worker_id: workerId,
+          name: workerData.name,
+          description: workerData.description,
+          capabilities: workerData.capabilities || [],
+          rules_hash: doComputeHash(workerData.rules || []),
+          created_at: workerData.createdAt || "",
+          version: latestTitle.version,
+        });
+
+        return res.json({
+          ok: true,
+          verified: freshHash === latestTitle.metadataHash,
+          matches_version: latestTitle.version,
+          minted_at: latestTitle.mintedAt,
+        });
+      } catch (e) {
+        console.error("workers:verify failed:", e);
+        return jsonError(res, 500, "Failed to verify worker");
+      }
+    }
 
     return jsonError(res, 404, "Not Found", { route, method });
   }

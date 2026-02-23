@@ -25,6 +25,7 @@ const documentsRouter = require("./routes/documents");
 const deadlinesRouter = require("./routes/deadlines");
 const inboundRouter = require("./routes/inbound");
 const webhooksRouter = require("./routes/webhooks");
+const titleRouter = require("./routes/title");
 
 const app = express();
 
@@ -47,7 +48,43 @@ app.get("/v1/docs", (req, res) => {
   res.sendFile(path.join(__dirname, "docs.html"));
 });
 
-// API key validation on all /v1/ routes except health
+// Public title lookup (no auth required)
+app.get("/v1/title/:recordId", async (req, res) => {
+  try {
+    const admin = require("firebase-admin");
+    const db = admin.firestore();
+    const snap = await db.collection("titleRecords").doc(req.params.recordId).get();
+    if (!snap.exists) {
+      return res.status(404).json({
+        error: { code: "not_found", message: "Title record not found", status: 404 },
+      });
+    }
+    const d = snap.data();
+    return res.json({
+      ok: true,
+      record_id: snap.id,
+      worker: {
+        id: d.workerId,
+        name: d.workerName,
+        description: d.workerDescription,
+        author: d.authorName || "",
+        created_at: d.mintedAt,
+      },
+      chain: d.chain,
+      tx_hash: d.txHash,
+      verification_url: `https://polygonscan.com/tx/${d.txHash}`,
+      metadata_hash: d.metadataHash,
+      status: d.status || "active",
+    });
+  } catch (err) {
+    console.error("GET /title/:recordId error:", err);
+    return res.status(500).json({
+      error: { code: "internal_error", message: err.message, status: 500 },
+    });
+  }
+});
+
+// API key validation on all /v1/ routes except health and public title
 app.use("/v1", validateApiKey);
 
 // Phase 1 — Core
@@ -84,6 +121,10 @@ app.use("/v1/workspaces", inboundRouter);      // /:workspace_id/inbound
 
 // Phase 7 — Webhooks
 app.use("/v1/webhooks", webhooksRouter);
+
+// Phase 8 — Title / Provenance
+app.use("/v1", titleRouter);              // /workers/import
+app.use("/v1/workspaces", titleRouter);   // /:workspace_id/workers/:workerId/mint, /title, /verify
 
 // 404 fallback
 app.use((req, res) => {

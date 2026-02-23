@@ -17,7 +17,9 @@ export default function WorkerPreview() {
   const [workerDocId, setWorkerDocId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [publishing, setPublishing] = useState(false);
+  const [minting, setMinting] = useState(false);
   const [userName, setUserName] = useState("");
+  const blockchainEnabled = localStorage.getItem("BLOCKCHAIN_ENABLED") === "true";
 
   useEffect(() => {
     // Inject keyframes for spinner
@@ -91,6 +93,43 @@ export default function WorkerPreview() {
 
   function handlePreviewLink() {
     console.log("[WorkerPreview] Preview subscriber view for worker:", workerDocId, workerDoc);
+  }
+
+  async function handleMintTitle() {
+    if (!workerDocId || minting) return;
+    setMinting(true);
+    try {
+      const user = auth.currentUser;
+      if (!user) return;
+      const token = await user.getIdToken();
+      const tenantId = localStorage.getItem("TENANT_ID") || localStorage.getItem("WORKSPACE_ID") || "";
+      const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+      const resp = await fetch(`${apiBase}/api?path=/v1/workers/${workerDocId}/mint`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+          "X-Tenant-Id": tenantId,
+        },
+        body: JSON.stringify({ memo: "Minted from Worker Preview" }),
+      });
+      const data = await resp.json();
+      if (data.ok && data.title_record) {
+        setWorkerDoc((prev) => ({
+          ...prev,
+          titled: true,
+          latestTitleRecord: {
+            version: data.title_record.version,
+            txHash: data.title_record.tx_hash,
+            mintedAt: data.title_record.minted_at,
+          },
+        }));
+      }
+    } catch (err) {
+      console.error("Mint title failed:", err);
+    } finally {
+      setMinting(false);
+    }
   }
 
   // Loading state
@@ -286,6 +325,27 @@ export default function WorkerPreview() {
           </button>
         </div>
 
+        {/* Title record status */}
+        {workerDoc.titled && workerDoc.latestTitleRecord && (
+          <div style={{
+            display: "flex", alignItems: "center", gap: "8px",
+            padding: "12px 16px", background: "#f0fdf4", borderRadius: "10px",
+            border: "1px solid #bbf7d0", marginBottom: "16px",
+          }}>
+            <span style={{ fontSize: "14px", fontWeight: 600, color: "#16a34a" }}>
+              Titled on Polygon (v{workerDoc.latestTitleRecord.version})
+            </span>
+            <a
+              href={`https://polygonscan.com/tx/${workerDoc.latestTitleRecord.txHash}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ fontSize: "13px", color: "#7c3aed", marginLeft: "auto", textDecoration: "none" }}
+            >
+              View on PolygonScan
+            </a>
+          </div>
+        )}
+
         {/* Action buttons */}
         <div style={{ display: "flex", gap: "12px" }}>
           <button
@@ -309,6 +369,26 @@ export default function WorkerPreview() {
           >
             {publishing ? "Publishing..." : "Publish to Store"}
           </button>
+          {blockchainEnabled && !workerDoc.titled && (
+            <button
+              onClick={handleMintTitle}
+              disabled={minting}
+              style={{
+                padding: "14px 24px",
+                fontSize: "15px",
+                fontWeight: 700,
+                borderRadius: "10px",
+                border: "2px solid #7c3aed",
+                cursor: minting ? "not-allowed" : "pointer",
+                color: "#7c3aed",
+                background: "white",
+                opacity: minting ? 0.7 : 1,
+                transition: "opacity 0.2s",
+              }}
+            >
+              {minting ? "Minting..." : "Mint Title Record"}
+            </button>
+          )}
           <button
             onClick={handleEdit}
             style={{

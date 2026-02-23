@@ -893,48 +893,85 @@ function BusinessSettings() {
         </div>
       </div>
 
-      {/* Blockchain */}
+      {/* Blockchain Title Records */}
       <div className="card" style={{ marginBottom: "16px" }}>
         <div className="cardHeader">
           <div>
-            <div className="cardTitle">Blockchain Verification</div>
-            <div className="cardSub">NFT records for inventory and deals via VENLY</div>
+            <div className="cardTitle">Blockchain Title Records</div>
+            <div className="cardSub">Mint immutable proof of authorship for your AI Workers on Polygon via Venly</div>
           </div>
-          <span className={`badge ${business.blockchain.enabled ? "badge-completed" : ""}`} style={{ fontSize: "11px" }}>
-            {business.blockchain.enabled ? "Active" : "Inactive"}
-          </span>
+          <label style={{ position: "relative", display: "inline-block", width: 48, height: 26, flexShrink: 0 }}>
+            <input
+              type="checkbox"
+              checked={business.blockchain.enabled}
+              onChange={(e) => {
+                setBusiness({ ...business, blockchain: { ...business.blockchain, enabled: e.target.checked } });
+                localStorage.setItem("BLOCKCHAIN_ENABLED", String(e.target.checked));
+              }}
+              style={{ opacity: 0, width: 0, height: 0 }}
+            />
+            <span style={{
+              position: "absolute", cursor: "pointer", top: 0, left: 0, right: 0, bottom: 0,
+              backgroundColor: business.blockchain.enabled ? "#7c3aed" : "#cbd5e1",
+              borderRadius: 26, transition: "0.3s",
+            }}>
+              <span style={{
+                position: "absolute", height: 20, width: 20, left: business.blockchain.enabled ? 24 : 4, bottom: 3,
+                backgroundColor: "white", borderRadius: "50%", transition: "0.3s",
+              }} />
+            </span>
+          </label>
         </div>
         <div style={{ padding: "16px" }}>
-          <div style={{
-            padding: "16px",
-            background: business.blockchain.enabled ? "#f0fdf4" : "#f8fafc",
-            border: business.blockchain.enabled ? "1px solid #86efac" : "1px solid #e5e7eb",
-            borderRadius: "12px",
-            marginBottom: "16px",
-          }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "12px" }}>
-              <input
-                type="checkbox"
-                checked={business.blockchain.enabled}
-                onChange={(e) => setBusiness({ ...business, blockchain: { ...business.blockchain, enabled: e.target.checked } })}
-                style={{ width: "20px", height: "20px" }}
-              />
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 600, marginBottom: "4px" }}>Enable Blockchain Records</div>
-                <div style={{ fontSize: "13px", color: "var(--textMuted)" }}>Create immutable NFT records of inventory and customer deals on Polygon</div>
+          {business.blockchain.enabled && (
+            <div>
+              <div style={{ fontSize: "13px", color: "#64748b", marginBottom: "16px", lineHeight: 1.6 }}>
+                When enabled, a title record is minted when you publish a Worker.
+                Anyone can verify your authorship at your title URL.
               </div>
+              <div style={{ fontSize: "13px", color: "#94a3b8", marginBottom: "12px" }}>
+                Wallet: TitleApp via Venly (gas fees covered)
+              </div>
+
+              {/* Title Records List */}
+              {business.blockchain.titleRecords && business.blockchain.titleRecords.length > 0 && (
+                <div style={{ borderTop: "1px solid #f1f5f9", paddingTop: "12px" }}>
+                  <div style={{ fontSize: "13px", fontWeight: 600, color: "#475569", marginBottom: "8px" }}>Your Title Records</div>
+                  {business.blockchain.titleRecords.map((record, idx) => (
+                    <div key={record.record_id || idx} style={{
+                      display: "flex", justifyContent: "space-between", alignItems: "center",
+                      padding: "8px 0", borderBottom: "1px solid #f8fafc",
+                    }}>
+                      <div>
+                        <div style={{ fontSize: "14px", fontWeight: 600, color: "#1e293b" }}>{record.workerName || "Worker"}</div>
+                        <div style={{ fontSize: "12px", color: "#94a3b8" }}>
+                          v{record.version} · Minted {record.minted_at ? new Date(record.minted_at).toLocaleDateString() : ""}
+                        </div>
+                      </div>
+                      <a
+                        href={record.polygonscan_url || `https://polygonscan.com/tx/${record.tx_hash}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ fontSize: "12px", color: "#7c3aed", textDecoration: "none" }}
+                      >
+                        View on PolygonScan
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {(!business.blockchain.titleRecords || business.blockchain.titleRecords.length === 0) && (
+                <div style={{ fontSize: "13px", color: "#94a3b8", fontStyle: "italic" }}>
+                  No title records minted yet. Publish a Worker to create your first title.
+                </div>
+              )}
             </div>
-            {business.blockchain.enabled && (
-              <div style={{ paddingTop: "12px", borderTop: "1px solid #e5e7eb", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", fontSize: "13px" }}>
-                <div><div style={{ color: "var(--textMuted)", marginBottom: "4px" }}>Inventory on Chain</div><div style={{ fontWeight: 600, fontSize: "18px" }}>{business.blockchain.inventoryOnChain}</div></div>
-                <div><div style={{ color: "var(--textMuted)", marginBottom: "4px" }}>Deals on Chain</div><div style={{ fontWeight: 600, fontSize: "18px" }}>{business.blockchain.dealsOnChain}</div></div>
-              </div>
-            )}
-          </div>
-          <div style={{ padding: "12px", background: "#fff5f5", border: "1px solid #fecaca", borderRadius: "8px", fontSize: "13px", marginBottom: "12px" }}>
-            <div style={{ fontWeight: 600, marginBottom: "4px" }}>Cost Notice</div>
-            <div style={{ color: "#dc2626" }}>VENLY blockchain integration costs $700/month when active. Requires 30+ active clients to justify the expense. Only enable when you have scale.</div>
-          </div>
+          )}
+          {!business.blockchain.enabled && (
+            <div style={{ fontSize: "13px", color: "#94a3b8" }}>
+              Enable to mint blockchain title records for your AI Workers on Polygon.
+            </div>
+          )}
         </div>
       </div>
 
