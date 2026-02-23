@@ -323,6 +323,7 @@ export default function LandingPage() {
   const [chatInput, setChatInput] = useState("");
   const [chatMessages, setChatMessages] = useState([]);
   const [chatTyping, setChatTyping] = useState(false);
+  const [discoveredContext, setDiscoveredContext] = useState(null);
   const chatRef = useRef(null);
   const inputRef = useRef(null);
   const lockedSlide = useRef(getLockedSlideIndex());
@@ -376,11 +377,14 @@ export default function LandingPage() {
     setChatActive(true);
     if (rotationRef.current) clearInterval(rotationRef.current);
 
+    const welcome = { role: "assistant", content: "Hey! Welcome to TitleApp. What brings you here today?" };
     const msg = initialMessage || chatInput.trim();
     if (msg) {
-      setChatMessages((prev) => [...prev, { role: "user", content: msg }]);
+      setChatMessages([welcome, { role: "user", content: msg }]);
       setChatInput("");
       sendChatMessage(msg);
+    } else {
+      setChatMessages([welcome]);
     }
   }
 
@@ -400,14 +404,24 @@ export default function LandingPage() {
       setChatTyping(false);
 
       if (result.ok && result.message) {
-        setChatMessages((prev) => [...prev, { role: "assistant", content: result.message }]);
+        setChatMessages((prev) => [...prev, {
+          role: "assistant",
+          content: result.message,
+          showSetupButton: result.suggestSignup || false,
+        }]);
       } else {
-        setChatMessages((prev) => [...prev, { role: "assistant", content: "I'd love to help with that. Create a free account to get started." }]);
+        setChatMessages((prev) => [...prev, { role: "assistant", content: "Tell me more about what you're looking for." }]);
+      }
+
+      // Track discovered context
+      if (result.discoveredContext) {
+        setDiscoveredContext(result.discoveredContext);
+        sessionStorage.setItem("ta_discovered_context", JSON.stringify(result.discoveredContext));
       }
     } catch (err) {
       console.error("Chat error:", err);
       setChatTyping(false);
-      setChatMessages((prev) => [...prev, { role: "assistant", content: "I'm having trouble connecting. Please try again or sign up to get started." }]);
+      setChatMessages((prev) => [...prev, { role: "assistant", content: "I'm having trouble connecting. Let me try that again." }]);
     }
   }
 
@@ -590,18 +604,35 @@ export default function LandingPage() {
           <div style={{ maxWidth: "800px", margin: "0 auto", padding: "1rem 2rem", paddingBottom: "100px" }}>
             <div ref={chatRef} style={{ display: "flex", flexDirection: "column" }}>
               {chatMessages.map((msg, i) => (
-                <div
-                  key={i}
-                  style={{
-                    marginBottom: "1rem", padding: "1rem", borderRadius: "12px",
-                    animation: "slideIn 0.3s ease",
-                    ...(msg.role === "user"
-                      ? { background: "#7c3aed", color: "white", marginLeft: "20%" }
-                      : { background: "#f1f5f9", color: "#1a202c", marginRight: "20%" }),
-                    whiteSpace: "pre-line",
-                  }}
-                >
-                  {msg.content}
+                <div key={i} style={{ marginBottom: "1rem" }}>
+                  <div
+                    style={{
+                      padding: "1rem", borderRadius: "12px",
+                      animation: "slideIn 0.3s ease",
+                      ...(msg.role === "user"
+                        ? { background: "#7c3aed", color: "white", marginLeft: "20%" }
+                        : { background: "#f1f5f9", color: "#1a202c", marginRight: "20%" }),
+                      whiteSpace: "pre-line",
+                    }}
+                  >
+                    {msg.content}
+                  </div>
+                  {msg.showSetupButton && (
+                    <div style={{ marginRight: "20%", marginTop: "8px" }}>
+                      <button
+                        onClick={() => { setAuthMode("signup"); setAuthOpen(true); }}
+                        style={{
+                          padding: "10px 20px", fontSize: "14px", fontWeight: 600,
+                          background: "#7c3aed", color: "white", border: "none",
+                          borderRadius: "8px", cursor: "pointer", transition: "all 0.3s",
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = "#6d28d9"; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = "#7c3aed"; }}
+                      >
+                        Set up my workspace
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))}
               {chatTyping && (
@@ -611,29 +642,6 @@ export default function LandingPage() {
               )}
             </div>
 
-            {/* Sign-up nudge after 2 messages */}
-            {chatMessages.length >= 3 && (
-              <div style={{
-                padding: "16px", background: "linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)",
-                borderRadius: "12px", border: "1px solid #e9d5ff", textAlign: "center", marginTop: "8px",
-              }}>
-                <div style={{ fontSize: "15px", fontWeight: 600, marginBottom: "8px", color: "#1e293b" }}>
-                  Create your free account to continue
-                </div>
-                <div style={{ fontSize: "13px", color: "#6b7280", marginBottom: "12px" }}>
-                  Get your own AI assistant, workspace, and secure vault
-                </div>
-                <button
-                  onClick={() => { setAuthMode("signup"); setAuthOpen(true); }}
-                  style={{
-                    padding: "10px 24px", fontSize: "14px", fontWeight: 600, borderRadius: "8px",
-                    background: "#7c3aed", color: "white", border: "none", cursor: "pointer",
-                  }}
-                >
-                  Start Free
-                </button>
-              </div>
-            )}
           </div>
         )}
       </div>

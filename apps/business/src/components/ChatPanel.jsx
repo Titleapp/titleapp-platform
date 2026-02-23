@@ -128,6 +128,19 @@ export default function ChatPanel({ currentSection, onboardingStep }) {
 
   useEffect(() => {
     if (currentUser && authReady && messages.length === 0) {
+      // Check if user arrived from landing page discovery chat
+      const rawCtx = sessionStorage.getItem("ta_discovered_context");
+      if (rawCtx) {
+        try {
+          const dCtx = JSON.parse(rawCtx);
+          if (dCtx.vertical) {
+            const greeting = "Welcome! I set up your workspace based on our conversation. Take a look around and let me know if anything needs adjusting.";
+            setMessages([{ role: 'assistant', content: greeting, isSystem: true }]);
+            sessionStorage.removeItem("ta_discovered_context");
+            return;
+          }
+        } catch (e) { /* ignore parse errors */ }
+      }
       loadConversationHistory();
     }
   }, [currentUser, authReady]);

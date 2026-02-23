@@ -293,6 +293,55 @@ export default function App() {
 
         const data = await response.json();
         if (data.ok && data.memberships && data.memberships.length === 0) {
+          // Check if landing page chat discovered enough context to auto-create workspace
+          const rawCtx = sessionStorage.getItem("ta_discovered_context");
+          if (rawCtx) {
+            try {
+              const dCtx = JSON.parse(rawCtx);
+              if (dCtx.vertical) {
+                // Map discovery vertical to platform vertical name
+                const verticalMap = { "real-estate": "real-estate", "auto": "auto", "analyst": "analyst", "aviation": "aviation" };
+                const vertical = verticalMap[dCtx.vertical] || dCtx.vertical;
+                const tenantName = dCtx.businessName || (dCtx.intent === "personal" ? "My Vault" : "My Workspace");
+                const tenantType = dCtx.intent === "personal" ? "personal" : "business";
+
+                const createRes = await fetch(`${apiBase}/api?path=/v1/onboarding:claimTenant`, {
+                  method: "POST",
+                  headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({
+                    tenantName,
+                    tenantType,
+                    vertical,
+                    jurisdiction: dCtx.location || "GLOBAL",
+                    onboardingState: { path: "discovery", vertical, dataSource: "sample" },
+                    verticalConfig: dCtx.subtype ? { subtype: dCtx.subtype } : {},
+                  }),
+                });
+                const createData = await createRes.json();
+                if (createData.ok && createData.tenantId) {
+                  localStorage.setItem("TENANT_ID", createData.tenantId);
+                  localStorage.setItem("VERTICAL", vertical);
+                  if (dCtx.location) localStorage.setItem("JURISDICTION", dCtx.location);
+                  if (dCtx.businessName) {
+                    localStorage.setItem("COMPANY_NAME", dCtx.businessName);
+                    localStorage.setItem("WORKSPACE_NAME", dCtx.businessName);
+                  }
+                  localStorage.setItem("ONBOARDING_STATE", JSON.stringify({
+                    path: "discovery", vertical, dataSource: "sample",
+                    completedAt: new Date().toISOString(),
+                  }));
+                  sessionStorage.removeItem("ta_discovered_context");
+                  setCurrentView("app");
+                  return;
+                }
+              }
+            } catch (e) {
+              console.error("Auto-workspace from discovery failed:", e);
+            }
+          }
           setCurrentView("onboarding");
         } else {
           setCurrentView("hub");

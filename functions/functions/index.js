@@ -675,6 +675,50 @@ Formatting rules — follow these strictly:
 }
 
 // ----------------------------
+// Discovery Context Analysis (landing page conversational onboarding)
+// ----------------------------
+
+function analyzeDiscoveryMessage(msg, ctx) {
+  const lower = msg.toLowerCase();
+  if (!ctx.intent) {
+    if (/\b(business|company|dealership|agency|firm|office|shop|store)\b/.test(lower)) ctx.intent = 'business';
+    else if (/\b(personal|my car|my house|my documents|my stuff|organize)\b/.test(lower)) ctx.intent = 'personal';
+    else if (/\b(build|create|launch|ai service|saas|product)\b/.test(lower)) ctx.intent = 'builder';
+  }
+  if (!ctx.vertical) {
+    if (/\b(rental|property manag|landlord|tenant|units?|apartment|lease|rent)\b/.test(lower)) { ctx.vertical = 'real-estate'; ctx.subtype = ctx.subtype || 'pm'; }
+    else if (/\b(real estate|realtor|listing|buyer|showing|mls|broker)\b/.test(lower)) { ctx.vertical = 'real-estate'; ctx.subtype = ctx.subtype || 'sales'; }
+    else if (/\b(car dealer|dealership|auto dealer|inventory|used car|new car)\b/.test(lower)) ctx.vertical = 'auto';
+    else if (/\b(invest|analyst|portfolio|fund|private equity|venture|hedge|deal)\b/.test(lower)) ctx.vertical = 'analyst';
+    else if (/\b(pilot|aviation|flight|aircraft|faa)\b/.test(lower)) ctx.vertical = 'aviation';
+  }
+  if (!ctx.location) {
+    const places = { florida: 'FL', texas: 'TX', california: 'CA', illinois: 'IL', 'new york': 'NY', georgia: 'GA', arizona: 'AZ', colorado: 'CO', nevada: 'NV', austin: 'TX', houston: 'TX', dallas: 'TX', miami: 'FL', chicago: 'IL', 'los angeles': 'CA', 'san francisco': 'CA', denver: 'CO', seattle: 'WA', atlanta: 'GA', phoenix: 'AZ', nashville: 'TN', boston: 'MA', detroit: 'MI' };
+    for (const [name, code] of Object.entries(places)) {
+      if (lower.includes(name)) { ctx.location = code; break; }
+    }
+  }
+  if (!ctx.scale) {
+    const m = lower.match(/(\d+)\s*(units?|cars?|vehicles?|properties|listings?|employees?|agents?)/);
+    if (m) ctx.scale = m[0];
+  }
+  if (ctx.vertical === 'auto' && !ctx.subtype) {
+    if (/franchise/.test(lower)) ctx.subtype = 'franchise';
+    else if (/independent/.test(lower)) ctx.subtype = 'independent';
+    else if (/bhph|buy here pay here/.test(lower)) ctx.subtype = 'bhph';
+  }
+  if (ctx.vertical === 'real-estate' && !ctx.subtype) {
+    if (/sales|selling|listing/.test(lower)) ctx.subtype = 'sales';
+    else if (/manag|rental|landlord/.test(lower)) ctx.subtype = 'pm';
+  }
+  if (ctx.vertical === 'real-estate' && /both/.test(lower) && /sales?|manag/.test(lower)) ctx.subtype = 'both';
+  if (!ctx.businessName) {
+    const nm = msg.match(/(?:called|named)\s+["']?([A-Z][a-zA-Z0-9\s&'.]+)/);
+    if (nm) ctx.businessName = nm[1].trim();
+  }
+}
+
+// ----------------------------
 // RAAS Validation Gate
 // ----------------------------
 
@@ -934,6 +978,109 @@ exports.api = onRequest(
         // If authenticated and session has no userId, attach it
         if (authUser && !sessionState.userId) {
           sessionState.userId = authUser.uid;
+        }
+
+        // ── Discovery Mode: free-form AI conversation for landing visitors ──
+        // Bypasses the chatEngine state machine for natural conversation.
+        // Only triggers for text input (no actions) when session is new or in discovery.
+        if (surface === 'landing' && !action && userInput &&
+            (!sessionState.step || sessionState.step === 'idle' || sessionState.step === 'discovery')) {
+
+          if (!sessionState.discoveryHistory) sessionState.discoveryHistory = [];
+          if (!sessionState.discoveredContext) {
+            sessionState.discoveredContext = {
+              intent: null, vertical: null, businessName: null, location: null,
+              scale: null, painPoints: [], currentTools: [], subtype: null,
+            };
+          }
+
+          sessionState.step = 'discovery';
+          const msgCount = sessionState.discoveryHistory.filter(h => h.role === 'user').length + 1;
+
+          // Analyze user message for context keywords
+          analyzeDiscoveryMessage(userInput, sessionState.discoveredContext);
+
+          // Build conversation for Claude — include the frontend welcome as first message
+          const messages = [];
+          if (sessionState.discoveryHistory.length === 0) {
+            messages.push({ role: 'assistant', content: 'Hey! Welcome to TitleApp. What brings you here today?' });
+          }
+          for (const h of sessionState.discoveryHistory) {
+            messages.push({ role: h.role, content: h.content });
+          }
+          messages.push({ role: 'user', content: userInput });
+
+          // Phase-specific guidance for Claude
+          const dCtx = sessionState.discoveredContext;
+          let phaseGuidance = '';
+          if (msgCount <= 2) {
+            phaseGuidance = '\nYou are in the early part of the conversation. Just listen, mirror what they said, and ask a natural follow-up question. Do NOT pitch the product yet.';
+          } else if (msgCount <= 5) {
+            phaseGuidance = '\nYou are in the discovery phase. Keep learning about their situation. Ask about specifics like scale, location, pain points, tools they use. One question at a time.';
+          } else if (dCtx.vertical) {
+            phaseGuidance = `\nYou now know enough to show specific value. Their situation: vertical=${dCtx.vertical}, subtype=${dCtx.subtype || 'unknown'}, scale=${dCtx.scale || 'unknown'}, location=${dCtx.location || 'unknown'}. Show them SPECIFICALLY what TitleApp would do for THEIR situation using their numbers and words. After showing value, gently suggest: "Want me to set this up for you? I can have your workspace ready in about 2 minutes. Just need an email to save it."`;
+          } else {
+            phaseGuidance = '\nYou still need more context. Keep the conversation going naturally. Ask what they do or what brought them here.';
+          }
+
+          const discoverySystemPrompt = `You are Alex, TitleApp's AI assistant. You're chatting with someone who just landed on the website. Your job is to have a genuine conversation, learn about their situation, and help them see how TitleApp could help.
+
+Rules:
+- Be warm, casual, and curious. You're a helpful person, not a salesperson.
+- NEVER open with a product description. Ask what brings them here.
+- MIRROR their words. If they say "rental properties" say "rental properties" not "property management portfolio."
+- Ask ONE question at a time. Never overwhelm with multiple questions.
+- After 4-6 exchanges, start showing specific value based on what you've learned. Use their numbers, their situation, their words.
+- After showing value, gently suggest setting up their workspace. "Want me to set this up for you?" Not "Sign up now."
+- If they say no or ignore the suggestion, keep chatting.
+- NEVER block the conversation or require signup to continue.
+- NEVER say "I help you create verified records of the things that matter." That's a tagline, not a conversation.
+- Keep responses short. 2-3 sentences max. This is a chat, not a presentation.
+- Never use emojis. Never use markdown formatting. Plain text only.${phaseGuidance}`;
+
+          try {
+            const anthropic = getAnthropic();
+            const aiResponse = await anthropic.messages.create({
+              model: 'claude-sonnet-4-5-20250929',
+              max_tokens: 300,
+              system: discoverySystemPrompt,
+              messages,
+            });
+
+            const aiText = aiResponse.content[0]?.text || "Tell me more about what you're looking for.";
+
+            // Store in history
+            sessionState.discoveryHistory.push({ role: 'user', content: userInput });
+            sessionState.discoveryHistory.push({ role: 'assistant', content: aiText });
+
+            // Trim history to last 30 messages to prevent bloat
+            if (sessionState.discoveryHistory.length > 30) {
+              sessionState.discoveryHistory = sessionState.discoveryHistory.slice(-30);
+            }
+
+            // Suggest signup when enough context is gathered
+            const suggestSignup = msgCount >= 6 && dCtx.vertical !== null;
+
+            // Save session state
+            await sessionRef.set({
+              state: sessionState,
+              surface: 'landing',
+              userId: authUser ? authUser.uid : null,
+              ...(sessionSnap.exists ? {} : { createdAt: nowServerTs() }),
+              updatedAt: nowServerTs(),
+            }, { merge: true });
+
+            return res.json({
+              ok: true,
+              message: aiText,
+              discoveredContext: sessionState.discoveredContext,
+              suggestSignup,
+              conversationState: 'discovery',
+            });
+          } catch (e) {
+            console.error('Discovery AI failed:', e.message);
+            // Fall through to chatEngine on failure
+          }
         }
 
         // Build services for chatEngine (called during processing)
