@@ -319,6 +319,7 @@ export default function Dashboard() {
   const isAnalyst = vertical.toLowerCase() === "analyst";
   const isAuto = vertical === "auto";
   const isRealEstate = vertical === "real-estate";
+  const isBuilder = vertical === "custom";
 
   // Check onboarding state for "Get Started" empty state
   const onboardingState = (() => {
@@ -472,7 +473,7 @@ export default function Dashboard() {
   }
 
   useEffect(() => {
-    if (!isConsumer) loadBusinessDashboard();
+    if (!isConsumer && !isBuilder) loadBusinessDashboard();
   }, []);
 
   async function loadBusinessDashboard() {
@@ -683,16 +684,52 @@ export default function Dashboard() {
     <div>
       <div className="pageHeader">
         <div>
-          <h1 className="h1">Dashboard</h1>
-          <p className="subtle">{isConsumer ? "Your personal Vault" : `Welcome to ${tenantName || "your business"} -- Your overview`}</p>
+          <h1 className="h1">{isBuilder ? "AI Service Builder" : "Dashboard"}</h1>
+          <p className="subtle">{isConsumer ? "Your personal Vault" : isBuilder ? "Build a subscribable AI service from your expertise" : `Welcome to ${tenantName || "your business"} -- Your overview`}</p>
         </div>
       </div>
+
+      {/* ── Builder (custom vertical) ── */}
+      {isBuilder && (
+        <div style={{
+          padding: "40px 32px", borderRadius: "16px",
+          background: "linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)",
+          border: "1px solid #e9d5ff", textAlign: "center",
+        }}>
+          <div style={{ marginBottom: "16px" }}>
+            <svg width="48" height="48" viewBox="0 0 200 200" fill="none">
+              <circle cx="100" cy="100" r="95" fill="#7c3aed"/>
+              <circle cx="100" cy="100" r="80" fill="#7c3aed" stroke="white" strokeWidth="2"/>
+              <circle cx="100" cy="80" r="18" fill="white"/>
+              <circle cx="100" cy="80" r="8" fill="#7c3aed"/>
+              <rect x="94" y="90" width="12" height="35" fill="white"/>
+              <rect x="94" y="115" width="8" height="4" fill="white"/>
+              <rect x="94" y="122" width="5" height="3" fill="white"/>
+            </svg>
+          </div>
+          <div style={{ fontSize: "22px", fontWeight: 700, color: "#1e293b", marginBottom: "8px" }}>
+            Let's build your AI service
+          </div>
+          <div style={{ fontSize: "15px", color: "#64748b", lineHeight: 1.6, maxWidth: "460px", margin: "0 auto 24px" }}>
+            Use the chat panel on the right to describe your expertise. The AI will interview you, extract your workflow, and generate a publishable service.
+          </div>
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent("ta:chatPrompt", { detail: { message: "I want to build an AI service" } }))}
+            style={{
+              padding: "12px 28px", fontSize: "15px", fontWeight: 600, borderRadius: "10px",
+              background: "#7c3aed", color: "white", border: "none", cursor: "pointer",
+            }}
+          >
+            Start the interview
+          </button>
+        </div>
+      )}
 
       {/* ── Consumer Vault ── */}
       {isConsumer && <ConsumerDashboard />}
 
       {/* ── Get Started (contextual based on landing conversation) ── */}
-      {!isConsumer && (showGetStarted || isNewFromChat) && (
+      {!isConsumer && !isBuilder && (showGetStarted || isNewFromChat) && (
         <div style={{
           padding: "28px 24px", marginBottom: "14px", borderRadius: "14px",
           background: "linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)",
@@ -737,7 +774,7 @@ export default function Dashboard() {
       )}
 
       {/* ── Business KPIs ── */}
-      {!isConsumer && !isNewFromChat && (
+      {!isConsumer && !isBuilder && !isNewFromChat && (
         <div className="kpiRow">
           {loading ? (
             <div className="card" style={{ padding: "24px", textAlign: "center" }}>
@@ -757,8 +794,8 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Value Tracker -- business only */}
-      {!isConsumer && (
+      {/* Value Tracker -- business only (not builder) */}
+      {!isConsumer && !isBuilder && (
         <div style={{ padding: "20px", background: "white", borderRadius: "12px", border: "2px solid #16a34a", marginTop: "14px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
             <div style={{ fontSize: "16px", fontWeight: 700 }}>Value Tracker</div>
