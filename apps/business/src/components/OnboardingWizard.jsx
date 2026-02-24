@@ -28,6 +28,7 @@ const VERTICAL_PLACEHOLDERS = {
   auto: { name: "Demo Motors", tagline: "Your trusted dealer since 1998" },
   "real-estate": { name: "Summit Realty Group", tagline: "Full-service brokerage and property management" },
   analyst: { name: "Meridian Capital Partners", tagline: "Data-driven investment decisions" },
+  aviation: { name: "SkyOps Aviation", tagline: "Part 135 charter operations" },
 };
 
 const INTEGRATIONS_CATALOG = {
@@ -64,6 +65,14 @@ const INTEGRATIONS_CATALOG = {
     { id: "quickbooks", name: "QuickBooks", abbr: "QB", category: "Accounting", comingSoon: true },
     { id: "docusign", name: "DocuSign", abbr: "DS", category: "E-Sign", comingSoon: true },
   ],
+  aviation: [
+    { id: "foreflight", name: "ForeFlight", abbr: "FF", category: "EFB", comingSoon: true },
+    { id: "camp", name: "CAMP Systems", abbr: "CP", category: "Maintenance", comingSoon: true },
+    { id: "avinode", name: "Avinode", abbr: "AV", category: "Charter", comingSoon: true },
+    { id: "flightaware", name: "FlightAware", abbr: "FA", category: "Tracking", comingSoon: true },
+    { id: "fbo-one", name: "FBO One", abbr: "F1", category: "FBO", comingSoon: true },
+    { id: "quickbooks", name: "QuickBooks", abbr: "QB", category: "Accounting", comingSoon: true },
+  ],
 };
 
 const SAMPLE_DATA_STEPS = {
@@ -88,6 +97,13 @@ const SAMPLE_DATA_STEPS = {
     "Loading research pipeline...",
     "Loading 4 sourced opportunities...",
   ],
+  aviation: [
+    "Loading 4 aircraft...",
+    "Loading 12 pilots and crew...",
+    "Loading maintenance schedules...",
+    "Loading flight hour logs...",
+    "Loading certification records...",
+  ],
 };
 
 const FIRST_VALUE_INSIGHTS = {
@@ -106,11 +122,16 @@ const FIRST_VALUE_INSIGHTS = {
     { color: "#dc2626", badge: "Risk Alert", text: "Sentinel Defense position is down 6.2% on a contract delay. Review position and consider trimming exposure." },
     { color: "#16a34a", badge: "LP Update", text: "Blackstone LP quarterly letter has been drafted and is pending your compliance review before distribution." },
   ],
+  aviation: [
+    { color: "#dc2626", badge: "Maintenance", text: "N123AB is due for its annual inspection in 45 days. Book now to avoid scheduling conflicts." },
+    { color: "#d97706", badge: "Certification", text: "Captain Smith's medical certificate expires in 30 days. Renewal appointment recommended." },
+    { color: "#2563eb", badge: "Utilization", text: "N456CD has flown 12 hours this month vs. 28-hour target. Consider adding to the charter schedule." },
+  ],
 };
 
 // ── Component ──────────────────────────────────────────────────────
 
-export default function OnboardingWizard({ onComplete, onStepChange }) {
+export default function OnboardingWizard({ onComplete, onStepChange, vertical: propsVertical, skipToStep }) {
   const [currentStep, setCurrentStep] = useState(-1); // -1 = checking
   const [path, setPath] = useState(null); // "business" | "vault"
   const [vertical, setVertical] = useState("auto");
@@ -142,6 +163,16 @@ export default function OnboardingWizard({ onComplete, onStepChange }) {
 
   // Check existing progress on mount
   useEffect(() => {
+    if (skipToStep != null) {
+      // Coming from AddWorkspaceWizard — workspace already created
+      setPath("business");
+      setVertical(propsVertical || localStorage.getItem("VERTICAL") || "auto");
+      setCompanyName(localStorage.getItem("COMPANY_NAME") || "");
+      setJurisdiction(localStorage.getItem("JURISDICTION") || "IL");
+      setTermsAccepted(true);
+      goToStep(skipToStep);
+      return;
+    }
     async function checkExistingProgress() {
       try {
         const user = auth.currentUser;
@@ -252,6 +283,27 @@ export default function OnboardingWizard({ onComplete, onStepChange }) {
     }
   }
 
+  // ── Finish Onboarding (for existing workspaces) ────────────────
+
+  function handleFinishOnboarding() {
+    if (skipToStep != null) {
+      // Workspace already exists — save state and show magic
+      const onboardingState = {
+        path: "business",
+        vertical,
+        dataSource: dataSource || "none",
+        integrations: Object.keys(selectedIntegrations).filter(k => selectedIntegrations[k]),
+        completedAt: new Date().toISOString(),
+      };
+      localStorage.setItem("ONBOARDING_STATE", JSON.stringify(onboardingState));
+      goToStep(5);
+      setTimeout(() => onComplete(), 2500);
+    } else {
+      // First-time signup — create workspace via API
+      handleCreate();
+    }
+  }
+
   // ── Sample Data Animation ───────────────────────────────────────
 
   function handleSampleDataLoad() {
@@ -263,7 +315,7 @@ export default function OnboardingWizard({ onComplete, onStepChange }) {
       setTimeout(() => {
         setSampleDataLines(prev => [...prev, line]);
         if (i === steps.length - 1) {
-          setTimeout(() => handleCreate(), 800);
+          setTimeout(() => goToStep(4), 800);
         }
       }, (i + 1) * 300);
     });
@@ -851,7 +903,7 @@ export default function OnboardingWizard({ onComplete, onStepChange }) {
                   Back
                 </button>
                 <button
-                  onClick={() => { setDataSource("upload"); handleCreate(); }}
+                  onClick={() => { setDataSource("upload"); handleFinishOnboarding(); }}
                   disabled={loading}
                   style={{
                     flex: 1, padding: "12px 20px", fontSize: "15px", fontWeight: 600,
@@ -859,7 +911,7 @@ export default function OnboardingWizard({ onComplete, onStepChange }) {
                     border: "none", borderRadius: "10px", cursor: loading ? "not-allowed" : "pointer",
                   }}
                 >
-                  {loading ? "Creating workspace..." : uploadedFiles.length > 0 ? "Upload & Continue" : "Continue without files"}
+                  {loading ? "Setting up..." : uploadedFiles.length > 0 ? "Upload & Continue" : "Continue without files"}
                 </button>
               </div>
             </div>
@@ -913,14 +965,14 @@ export default function OnboardingWizard({ onComplete, onStepChange }) {
 
               <div style={{ textAlign: "center" }}>
                 <button
-                  onClick={() => { setDataSource("none"); handleCreate(); }}
+                  onClick={() => { setDataSource("none"); handleFinishOnboarding(); }}
                   disabled={loading}
                   style={{
                     padding: "8px 16px", fontSize: "13px", color: "#94a3b8",
                     background: "none", border: "none", cursor: "pointer",
                   }}
                 >
-                  {loading ? "Creating..." : "Skip for now"}
+                  {loading ? "Setting up..." : "Skip for now"}
                 </button>
               </div>
             </div>
@@ -983,7 +1035,7 @@ export default function OnboardingWizard({ onComplete, onStepChange }) {
 
           <div style={{ textAlign: "center" }}>
             <button
-              onClick={() => goToStep(5)}
+              onClick={() => handleFinishOnboarding()}
               style={{
                 padding: "14px 48px", fontSize: "16px", fontWeight: 600,
                 background: "#7c3aed", color: "white", border: "none", borderRadius: "10px", cursor: "pointer",

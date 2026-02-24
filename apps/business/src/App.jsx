@@ -178,6 +178,7 @@ export default function App() {
     return !!params.get("token");
   });
   const [onboardingStep, setOnboardingStep] = useState(null);
+  const [needsOnboarding, setNeedsOnboarding] = useState(false);
   const [userName, setUserName] = useState("");
 
   useEffect(() => {
@@ -371,6 +372,9 @@ export default function App() {
     if (workspace.id !== "vault") {
       localStorage.setItem("TENANT_ID", workspace.id);
     }
+    // Check if this workspace needs onboarding (newly created or incomplete)
+    const shouldOnboard = workspace._needsOnboarding === true || workspace.onboardingComplete === false;
+    setNeedsOnboarding(shouldOnboard);
     setCurrentView("app");
     if (window.location.pathname === "/login" || window.location.pathname === "/") {
       window.history.replaceState({}, "", "/dashboard");
@@ -441,6 +445,30 @@ export default function App() {
         }}
         onCancel={() => setCurrentView("hub")}
       />
+    );
+  }
+
+  if (currentView === "app" && needsOnboarding) {
+    const onboardingVertical = localStorage.getItem("VERTICAL") || "auto";
+    return (
+      <div className="appShell" style={{ minHeight: "100vh" }}>
+        <div className="dualPanel" style={{ minHeight: "100vh" }}>
+          <div style={{ flex: 1, minWidth: 0, overflowY: "auto", height: "100vh" }}>
+            <OnboardingWizard
+              vertical={onboardingVertical}
+              skipToStep={2}
+              onComplete={() => {
+                localStorage.setItem("ONBOARDING_COMPLETE", "true");
+                setNeedsOnboarding(false);
+              }}
+              onStepChange={setOnboardingStep}
+            />
+          </div>
+          <aside className="chatSidebar">
+            <ChatPanel currentSection="onboarding" onboardingStep={onboardingStep} />
+          </aside>
+        </div>
+      </div>
     );
   }
 

@@ -188,7 +188,7 @@ export default function WorkspaceHub({ userName, onLaunch, onBuilderStart }) {
   function handleWorkspaceCreated(workspace) {
     setShowWizard(false);
     loadWorkspaces().then(() => {
-      handleLaunch(workspace);
+      handleLaunch({ ...workspace, _needsOnboarding: true });
     });
   }
 

@@ -581,6 +581,27 @@ export default function ChatPanel({ currentSection, onboardingStep }) {
         {messages.length === 0 && !isTyping && (
           <div className="chat-welcome">
             {(() => {
+              // Check if user just completed onboarding — personalize greeting
+              try {
+                const obs = JSON.parse(localStorage.getItem('ONBOARDING_STATE') || 'null');
+                if (obs?.completedAt && obs?.dataSource) {
+                  const elapsed = Date.now() - new Date(obs.completedAt).getTime();
+                  if (elapsed < 300000) { // Within 5 minutes of onboarding
+                    const v = localStorage.getItem('VERTICAL') || 'auto';
+                    const noun = v === 'auto' ? 'vehicles' : v === 'real-estate' ? 'listings' : v === 'analyst' ? 'deals' : v === 'aviation' ? 'aircraft' : 'records';
+                    if (obs.dataSource === 'sample') {
+                      return <p>I've loaded some sample data so you can explore. Want me to walk you through your dashboard?</p>;
+                    }
+                    if (obs.dataSource === 'upload') {
+                      return <p>Your data is importing. While that's processing, want me to show you around?</p>;
+                    }
+                    if (obs.dataSource === 'none') {
+                      return <p>Clean slate. What's the first thing you'd like to set up? I can help you add your first {noun} or configure your workflow.</p>;
+                    }
+                  }
+                }
+              } catch (e) { /* ignore */ }
+
               const v = localStorage.getItem('VERTICAL') || 'auto';
               if (v === 'consumer') {
                 let cosName = 'your AI assistant';

@@ -66,6 +66,33 @@ const VERTICALS = [
   },
 ];
 
+const VERTICAL_PLACEHOLDERS = {
+  auto: {
+    name: 'Demo Motors',
+    tagline: 'Toyota Dealership — Houston, TX',
+    stateLabel: 'What state do you operate in?',
+    stateHelp: 'This determines your compliance rules and tax structure',
+  },
+  'real-estate': {
+    name: 'Sunrise Realty',
+    tagline: 'Full-service brokerage — Miami, FL',
+    stateLabel: 'What state do you operate in?',
+    stateHelp: 'This determines your compliance rules and commission structure',
+  },
+  analyst: {
+    name: 'Verbier Capital',
+    tagline: 'Growth equity & venture analysis',
+    stateLabel: 'Where is your firm based?',
+    stateHelp: 'This determines your regulatory framework',
+  },
+  aviation: {
+    name: 'SkyOps Aviation',
+    tagline: 'Part 135 Charter Operations',
+    stateLabel: 'Where is your primary base?',
+    stateHelp: 'This determines your FSDO jurisdiction',
+  },
+};
+
 const JURISDICTIONS = [
   { code: 'IL', label: 'Illinois' },
   { code: 'FL', label: 'Florida' },
@@ -132,6 +159,7 @@ export default function AddWorkspaceWizard({ existingWorkspaces, onCreated, onCa
           name: name.trim(),
           tagline: tagline.trim(),
           jurisdiction,
+          onboardingComplete: false,
         }),
       });
       const data = await resp.json();
@@ -248,7 +276,9 @@ export default function AddWorkspaceWizard({ existingWorkspaces, onCreated, onCa
         )}
 
         {/* Step 2: Business details */}
-        {step === 2 && (
+        {step === 2 && (() => {
+          const ph = VERTICAL_PLACEHOLDERS[selectedVertical] || VERTICAL_PLACEHOLDERS.auto;
+          return (
           <div>
             <div style={{ fontSize: 18, fontWeight: 600, color: '#1e293b', marginBottom: 20 }}>
               Tell us about your business
@@ -263,7 +293,7 @@ export default function AddWorkspaceWizard({ existingWorkspaces, onCreated, onCa
                   type="text"
                   value={name}
                   onChange={e => setName(e.target.value)}
-                  placeholder="Demo Motors"
+                  placeholder={ph.name}
                   maxLength={200}
                   style={{
                     width: '100%',
@@ -287,7 +317,7 @@ export default function AddWorkspaceWizard({ existingWorkspaces, onCreated, onCa
                   type="text"
                   value={tagline}
                   onChange={e => setTagline(e.target.value)}
-                  placeholder="Toyota Dealership \u2014 Houston, TX"
+                  placeholder={ph.tagline}
                   maxLength={500}
                   style={{
                     width: '100%',
@@ -305,7 +335,7 @@ export default function AddWorkspaceWizard({ existingWorkspaces, onCreated, onCa
 
               <div style={{ marginBottom: 8 }}>
                 <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#334155', marginBottom: 6 }}>
-                  What state do you operate in?
+                  {ph.stateLabel}
                 </label>
                 <select
                   value={jurisdiction}
@@ -329,7 +359,7 @@ export default function AddWorkspaceWizard({ existingWorkspaces, onCreated, onCa
                   ))}
                 </select>
                 <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 6 }}>
-                  This determines your compliance rules and tax structure
+                  {ph.stateHelp}
                 </div>
               </div>
 
@@ -371,7 +401,8 @@ export default function AddWorkspaceWizard({ existingWorkspaces, onCreated, onCa
               </button>
             </div>
           </div>
-        )}
+          );
+        })()}
 
         {/* Step 3: Confirm + Start Trial */}
         {step === 3 && verticalInfo && (
