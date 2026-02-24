@@ -585,6 +585,14 @@ export default function Dashboard() {
           aiConversations: { value: "95%", trend: "" },
           customers: { value: "0", trend: "" },
         });
+      } else if (vertical === "investor") {
+        setKpis({
+          revenue: { value: "$300K", trend: "of $1.5M target" },
+          activeDeals: { value: "10", trend: "3 committed" },
+          aiConversations: { value: "97", trend: "24 unique viewers" },
+          customers: { value: "$1.7M", trend: "5 active prospects" },
+        });
+        setValueTracker({ actions: 18, hoursSaved: 22, valueSaved: 5500 });
       } else {
         const inventoryResult = await api.getInventory({ vertical, jurisdiction });
         const inventory = inventoryResult.inventory || [];
@@ -668,6 +676,9 @@ export default function Dashboard() {
     }
     if (vertical === "property-mgmt") {
       return ["Properties", "Total Units", "Occupancy Rate", "Open Requests"];
+    }
+    if (vertical === "investor") {
+      return ["Raised to Date", "Investors", "Data Room Views", "Pipeline Value"];
     }
     return ["Inventory Value", "Available Units", "AI Conversations", "Total Customers"];
   }

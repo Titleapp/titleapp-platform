@@ -53,6 +53,39 @@ RULES:
 - Keep messages conversational length — 2-4 short paragraphs max. Not walls of text.
 - The [CREATE_WORKSPACE] token must ONLY appear ONCE, at the very end of Phase 3, AFTER the user has confirmed the concept.`;
 
+const REGULATED_DOMAINS = [
+  {
+    keywords: ["financial", "investment", "securities", "trading", "portfolio", "hedge fund", "wealth management"],
+    domain: "financial",
+    notice: "Platform notice: AI services in financial domains must include a disclaimer that they do not provide investment advice. This will be automatically added to your Worker.",
+  },
+  {
+    keywords: ["medical", "health", "diagnosis", "treatment", "clinical", "patient", "therapy", "prescription"],
+    domain: "medical",
+    notice: "Platform notice: AI services in health domains must include a disclaimer that they do not provide medical advice. This will be automatically added to your Worker.",
+  },
+  {
+    keywords: ["legal", "attorney", "law firm", "contract review", "litigation", "compliance"],
+    domain: "legal",
+    notice: "Platform notice: AI services in legal domains must include a disclaimer that they do not provide legal advice. This will be automatically added to your Worker.",
+  },
+  {
+    keywords: ["real estate", "property", "mortgage", "title", "brokerage", "listings"],
+    domain: "real-estate",
+    notice: "Platform notice: AI services in real estate must include appropriate licensing disclaimers. This will be automatically added to your Worker.",
+  },
+];
+
+function detectRegulatedDomain(text) {
+  const lower = text.toLowerCase();
+  for (const domain of REGULATED_DOMAINS) {
+    if (domain.keywords.some(kw => lower.includes(kw))) {
+      return domain;
+    }
+  }
+  return null;
+}
+
 export default function BuilderInterview({ onComplete, onCancel }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
@@ -60,6 +93,7 @@ export default function BuilderInterview({ onComplete, onCancel }) {
   const [isTyping, setIsTyping] = useState(false);
   const [creating, setCreating] = useState(false);
   const [createStatus, setCreateStatus] = useState('');
+  const [regulatedDomainWarned, setRegulatedDomainWarned] = useState(null);
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
 
@@ -247,11 +281,29 @@ export default function BuilderInterview({ onComplete, onCancel }) {
       const displayText = stripCreateToken(aiText);
 
       if (displayText) {
-        setMessages(prev => [...prev, { role: 'assistant', content: displayText }]);
+        setMessages(prev => {
+          const updated = [...prev, { role: 'assistant', content: displayText }];
+
+          // Check for regulated domain keywords across entire conversation
+          if (!regulatedDomainWarned) {
+            const allText = updated.map(m => m.content).join(' ');
+            const detected = detectRegulatedDomain(allText);
+            if (detected) {
+              setRegulatedDomainWarned(detected.domain);
+              updated.push({ role: 'system', content: detected.notice });
+            }
+          }
+
+          return updated;
+        });
       }
 
       // If the AI included [CREATE_WORKSPACE], trigger workspace creation
       if (spec) {
+        // Include compliance flags if regulated domain was detected
+        if (regulatedDomainWarned) {
+          spec.complianceFlags = { regulatedDomain: regulatedDomainWarned, disclaimerRequired: true };
+        }
         await createWorkspaceAndWorker(spec);
       }
     } catch (err) {
@@ -368,6 +420,20 @@ export default function BuilderInterview({ onComplete, onCancel }) {
         boxSizing: 'border-box',
       }}>
         {messages.map((msg, idx) => (
+          msg.role === 'system' ? (
+            <div key={idx} style={{
+              margin: '8px 0 16px',
+              padding: '10px 14px',
+              background: '#fefce8',
+              border: '1px solid #fde68a',
+              borderRadius: 8,
+              fontSize: 12,
+              color: '#92400e',
+              lineHeight: 1.5,
+            }}>
+              {msg.content}
+            </div>
+          ) : (
           <div
             key={idx}
             style={{
@@ -390,6 +456,7 @@ export default function BuilderInterview({ onComplete, onCancel }) {
               {msg.content}
             </div>
           </div>
+          )
         ))}
 
         {isTyping && (

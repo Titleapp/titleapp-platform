@@ -1629,6 +1629,35 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       }
     }
 
+    // GET /v1/raas:catalog — public RAAS store catalog
+    if (route === "/raas:catalog" && method === "GET") {
+      try {
+        const snap = await db.collection("workers")
+          .where("published", "==", true)
+          .orderBy("created_at", "desc")
+          .get();
+        const workers = [];
+        snap.forEach((doc) => {
+          const d = doc.data();
+          workers.push({
+            id: doc.id,
+            name: d.name || "",
+            description: d.description || "",
+            category: d.category || "Other",
+            price: d.price || null,
+            creator: d.creator || "",
+            published: true,
+            created_at: d.created_at || null,
+          });
+        });
+        return res.json({ ok: true, workers });
+      } catch (e) {
+        console.error("raas:catalog failed:", e);
+        // Return empty array instead of error — store is optional
+        return res.json({ ok: true, workers: [] });
+      }
+    }
+
     // All other routes require Firebase auth
     const auth = await requireFirebaseUser(req, res);
     if (auth.handled) return;
@@ -1791,7 +1820,7 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
     // POST /v1/workspaces
     if (route === "/workspaces" && method === "POST") {
       try {
-        const { vertical, name, tagline, jurisdiction } = body;
+        const { vertical, name, tagline, jurisdiction, onboardingComplete } = body;
 
         if (!vertical || !name) {
           return jsonError(res, 400, "vertical and name are required");
@@ -1818,6 +1847,7 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
           name: String(name).substring(0, 200),
           tagline: tagline ? String(tagline).substring(0, 500) : '',
           jurisdiction: jurisdiction ? String(jurisdiction).substring(0, 10) : null,
+          onboardingComplete: onboardingComplete === true,
         });
 
         return res.json({ ok: true, workspace });
@@ -1827,13 +1857,42 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       }
     }
 
-    // DELETE /v1/workspaces — soft-delete (set status to canceled)
+    // DELETE /v1/workspaces/{id} — soft-delete (set status to canceled)
     if (route.startsWith("/workspaces/") && method === "DELETE") {
       try {
         const workspaceId = route.replace("/workspaces/", "");
         if (!workspaceId) return jsonError(res, 400, "Missing workspace ID");
         if (workspaceId === "vault") return jsonError(res, 400, "Cannot remove Personal Vault");
 
+        // First, check memberships collection (workspaces created via onboarding:claimTenant)
+        const membershipSnap = await db.collection("memberships")
+          .where("uid", "==", auth.user.uid)
+          .where("tenantId", "==", workspaceId)
+          .limit(1)
+          .get();
+
+        if (!membershipSnap.empty) {
+          // Cancel the membership
+          const membershipDoc = membershipSnap.docs[0];
+          await membershipDoc.ref.update({
+            status: "canceled",
+            canceledAt: nowServerTs(),
+          });
+
+          // If this user is the tenant creator, also cancel the tenant doc
+          const tenantRef = db.collection("tenants").doc(workspaceId);
+          const tenantSnap = await tenantRef.get();
+          if (tenantSnap.exists && tenantSnap.data().createdBy === auth.user.uid) {
+            await tenantRef.update({
+              status: "canceled",
+              canceledAt: nowServerTs(),
+            });
+          }
+
+          return res.json({ ok: true });
+        }
+
+        // Fallback: check users/{uid}/workspaces/{id} (legacy path)
         const wsRef = db.collection("users").doc(auth.user.uid)
           .collection("workspaces").doc(workspaceId);
         const wsSnap = await wsRef.get();
@@ -1848,6 +1907,35 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       } catch (e) {
         console.error("workspaces:delete failed:", e);
         return jsonError(res, 500, "Failed to cancel workspace");
+      }
+    }
+
+    // POST /v1/workspace:acceptDisclaimer
+    if (route === "/workspace:acceptDisclaimer" && method === "POST") {
+      try {
+        const tenantId = ctx.tenantId || body.tenantId;
+        const disclaimerData = {
+          disclaimerAccepted: true,
+          disclaimerAcceptedAt: admin.firestore.FieldValue.serverTimestamp(),
+          disclaimerVersion: body.disclaimerVersion || '2026-02-24-v2',
+          termsAccepted: body.termsAccepted === true,
+          liabilityAccepted: body.liabilityAccepted === true,
+          acceptedByUid: auth.user.uid,
+          acceptedByEmail: auth.user.email || null,
+        };
+        if (tenantId) {
+          await db.collection("tenants").doc(tenantId).set(disclaimerData, { merge: true });
+        }
+        // Also store on user doc as audit trail
+        await db.collection("users").doc(auth.user.uid).set({
+          disclaimerAccepted: true,
+          disclaimerAcceptedAt: admin.firestore.FieldValue.serverTimestamp(),
+          disclaimerVersion: body.disclaimerVersion || '2026-02-24-v2',
+        }, { merge: true });
+        return json(res, { ok: true });
+      } catch (e) {
+        console.error("workspace:acceptDisclaimer failed:", e);
+        return jsonError(res, 500, "Failed to store disclaimer acceptance");
       }
     }
 
@@ -2325,7 +2413,21 @@ Service: Every service visit is a sales touchpoint. Check warranty expiration, c
 
 Outbound communications: ALWAYS use customer first name, reference their specific vehicle, reference their history, include specific reason to come in, clear CTA with date/time. Texts under 160 chars, emails under 200 words.
 
-You NEVER say: "I cannot access your inventory" (you can), "Go to the inventory section" (YOU look it up), "I am just an assistant" (you are the CHIEF OF STAFF), "I cannot send messages" (you DRAFT and SEND them), "Check with your F&I manager" (YOU are the F&I expert).` : ctx.vertical === "real-estate" || ctx.vertical === "property-mgmt" ? "You specialize in real estate transactions, property management, compliance, and document management." : "Help with business operations, compliance questions, document management, and platform navigation."} When discussing deals or investments, note that you provide informational analysis only, not financial advice.
+You NEVER say: "I cannot access your inventory" (you can), "Go to the inventory section" (YOU look it up), "I am just an assistant" (you are the CHIEF OF STAFF), "I cannot send messages" (you DRAFT and SEND them), "Check with your F&I manager" (YOU are the F&I expert).` : ctx.vertical === "investor" ? `You are the Chief of Staff for an Investor Relations workspace. You help the company manage their fundraise, investor communications, cap table, and data room.
+
+You manage: the data room (pitch deck, financials, legal docs, team info), cap table (shareholders, SAFEs, options), investor pipeline (prospects at various stages from contacted to invested), round configuration and compliance tracking.
+
+Core responsibilities:
+- Help draft and refine investor communications (updates, follow-ups, Q&A responses).
+- Answer questions about the fundraise structure, round terms, and compliance requirements.
+- Track investor pipeline status and suggest follow-up actions.
+- Provide guidance on RegCF, RegD, and RegA+ compliance requirements at a high level.
+- Help organize data room documents and track viewer activity.
+
+IMPORTANT COMPLIANCE DISCLAIMER -- include this when discussing securities, investment terms, or regulatory matters:
+"This is informational guidance only. TitleApp does not act as a registered funding portal, broker-dealer, or investment advisor. Consult qualified legal counsel for securities compliance."
+
+You NEVER provide specific legal advice about securities regulations. You provide general guidance and always recommend consulting a securities attorney for specific compliance questions.` : ctx.vertical === "real-estate" || ctx.vertical === "property-mgmt" ? "You specialize in real estate transactions, property management, compliance, and document management." : "Help with business operations, compliance questions, document management, and platform navigation."} When discussing deals or investments, note that you provide informational analysis only, not financial advice.
 
 Platform navigation — when users ask how to do things, give them accurate directions:
 - To analyze a new deal: Go to the Analyst section in the left navigation, then click the "+ Analyze Deal" button at the top right.

@@ -495,11 +495,12 @@ function PersonalSettings() {
               style={{ color: "#f59e0b", borderColor: "#fcd34d" }}
               onClick={() => {
                 if (window.confirm("This will reset your onboarding flow. Your existing data will be preserved. Continue?")) {
+                  localStorage.removeItem("ONBOARDING_STATE");
+                  localStorage.removeItem("ONBOARDING_COMPLETE");
                   localStorage.removeItem("TENANT_ID");
                   localStorage.removeItem("VERTICAL");
                   localStorage.removeItem("JURISDICTION");
-                  localStorage.removeItem("ONBOARDING_STATE");
-                  window.location.reload();
+                  window.location.href = "/";
                 }
               }}
             >
@@ -1089,18 +1090,18 @@ function BusinessSettings() {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div>
               <div style={{ fontWeight: 600 }}>Reset Onboarding</div>
-              <div style={{ fontSize: "13px", color: "var(--textMuted)" }}>Clear onboarding state and restart the setup flow.</div>
+              <div style={{ fontSize: "13px", color: "var(--textMuted)" }}>Clear onboarding state and restart the setup flow for this workspace.</div>
             </div>
             <button
               className="iconBtn"
               style={{ color: "#f59e0b", borderColor: "#fcd34d" }}
               onClick={() => {
-                if (window.confirm("This will reset your onboarding flow. Your existing data will be preserved. Continue?")) {
-                  localStorage.removeItem("TENANT_ID");
-                  localStorage.removeItem("VERTICAL");
-                  localStorage.removeItem("JURISDICTION");
+                if (window.confirm("This will reset your onboarding flow and re-run the setup wizard. Your existing data will be preserved. Continue?")) {
+                  const currentVertical = localStorage.getItem("VERTICAL") || "auto";
                   localStorage.removeItem("ONBOARDING_STATE");
-                  window.location.reload();
+                  localStorage.removeItem("ONBOARDING_COMPLETE");
+                  localStorage.setItem("PENDING_ONBOARDING", currentVertical);
+                  window.location.href = "/";
                 }
               }}
             >
@@ -1181,7 +1182,54 @@ function BusinessSettings() {
         </div>
         <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "12px" }}>
           <button className="iconBtn" style={{ width: "fit-content", color: "var(--danger)" }}>Export All Data</button>
-          <button className="iconBtn" style={{ width: "fit-content", color: "var(--danger)" }}>Delete Business Account</button>
+          <button
+            className="iconBtn"
+            style={{ width: "fit-content", color: "var(--danger)" }}
+            onClick={async () => {
+              const wsId = localStorage.getItem("WORKSPACE_ID") || localStorage.getItem("TENANT_ID");
+              const wsName = resolveWorkspaceName() || "this workspace";
+              if (!wsId || wsId === "vault") {
+                alert("Cannot delete the Personal Vault.");
+                return;
+              }
+              if (!window.confirm(`Permanently delete "${wsName}"? This cannot be undone. All data in this workspace will be lost.`)) return;
+              // Double-confirm
+              const typed = window.prompt(`Type "${wsName}" to confirm deletion:`);
+              if (typed !== wsName) {
+                alert("Deletion canceled. The name did not match.");
+                return;
+              }
+              try {
+                const token = localStorage.getItem("ID_TOKEN");
+                const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+                const resp = await fetch(`${apiBase}/api?path=/v1/workspaces/${wsId}`, {
+                  method: "DELETE",
+                  headers: { Authorization: `Bearer ${token}` },
+                });
+                const data = await resp.json();
+                if (data.ok) {
+                  localStorage.removeItem("WORKSPACE_ID");
+                  localStorage.removeItem("WORKSPACE_NAME");
+                  localStorage.removeItem("TENANT_ID");
+                  localStorage.removeItem("TENANT_NAME");
+                  localStorage.removeItem("COMPANY_NAME");
+                  localStorage.removeItem("VERTICAL");
+                  localStorage.removeItem("JURISDICTION");
+                  localStorage.removeItem("ONBOARDING_STATE");
+                  localStorage.removeItem("ONBOARDING_COMPLETE");
+                  localStorage.removeItem("COS_CONFIG");
+                  window.location.href = "/";
+                } else {
+                  alert(data.error || "Failed to delete workspace.");
+                }
+              } catch (err) {
+                console.error("Delete workspace failed:", err);
+                alert("Failed to delete workspace. Please try again.");
+              }
+            }}
+          >
+            Delete Business Account
+          </button>
         </div>
       </div>
 

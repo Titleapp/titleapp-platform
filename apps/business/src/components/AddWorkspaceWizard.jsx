@@ -5,6 +5,7 @@ const VERTICAL_ABBREVS = {
   analyst: 'IA',
   'real-estate': 'RE',
   aviation: 'AV',
+  investor: 'IR',
   builder: 'AI',
 };
 
@@ -54,6 +55,17 @@ const VERTICALS = [
     ],
   },
   {
+    id: 'investor',
+    label: 'Investor Relations',
+    description: 'Manage fundraise, cap table, and investor communications',
+    cosManages: [
+      'Data room and document management',
+      'Cap table and ownership tracking',
+      'Investor pipeline and communications',
+      'Compliance and RegCF filing assistance',
+    ],
+  },
+  {
     id: 'builder',
     label: 'Build an AI Service',
     description: 'Turn your expertise into a subscribable AI product',
@@ -90,6 +102,12 @@ const VERTICAL_PLACEHOLDERS = {
     tagline: 'Part 135 Charter Operations',
     stateLabel: 'Where is your primary base?',
     stateHelp: 'This determines your FSDO jurisdiction',
+  },
+  investor: {
+    name: 'Acme Ventures',
+    tagline: 'Series A fundraise',
+    stateLabel: 'Where is your company incorporated?',
+    stateHelp: 'This determines your securities regulation framework',
   },
 };
 
@@ -164,6 +182,8 @@ export default function AddWorkspaceWizard({ existingWorkspaces, onCreated, onCa
       });
       const data = await resp.json();
       if (data.ok) {
+        // Signal that this workspace needs onboarding before dashboard
+        localStorage.setItem("PENDING_ONBOARDING", selectedVertical);
         onCreated(data.workspace);
       } else {
         setError(data.error || 'Failed to create workspace');

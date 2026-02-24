@@ -395,9 +395,9 @@ body{
   min-width:0;
 }
 .chatSidebar{
-  width:35%;
-  max-width:480px;
-  min-width:320px;
+  width:40%;
+  max-width:560px;
+  min-width:340px;
   border-left:2px solid var(--line);
   box-shadow:-4px 0 16px rgba(15,23,42,0.04);
   display:flex;

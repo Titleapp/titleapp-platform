@@ -41,7 +41,7 @@ async function getUserWorkspaces(userId) {
   return workspaces;
 }
 
-async function createWorkspace(userId, { vertical, name, tagline, jurisdiction }) {
+async function createWorkspace(userId, { vertical, name, tagline, jurisdiction, onboardingComplete }) {
   const id = `ws_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
   const workspace = {
     id,
@@ -52,6 +52,7 @@ async function createWorkspace(userId, { vertical, name, tagline, jurisdiction }
     status: 'trial',
     plan: 'business',
     monthlyPrice: 900,
+    onboardingComplete: onboardingComplete === true ? true : false,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
     trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
     billingId: null,

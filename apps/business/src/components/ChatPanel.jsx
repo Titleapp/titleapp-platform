@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { getAuth } from 'firebase/auth';
 import { getFirestore, collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
+import { fireMilestone } from '../utils/celebrations';
+
+// ── Contextual Messages ─────────────────────────────────────────
 
 const CONTEXTUAL_MESSAGES = {
   "choose-path": "Welcome. Pick the path that fits -- I'll tailor everything from there.",
@@ -17,7 +20,6 @@ const CONTEXTUAL_MESSAGES = {
   dealerData: "Upload your dealership data. The more I know about your inventory and customers, the more I can help.",
   brokerage: "Tell me about your brokerage. I'll help you track listings, manage documents, and stay compliant.",
   propertyMgmt: "Let's set up your property portfolio. I'll help you track units, leases, and maintenance.",
-  dashboard: "Welcome to your workspace. Everything starts from here -- your deals, your analysis, your pipeline.",
   analyst: "Your deal analysis hub. Upload deals and I'll screen them against your criteria.",
   inventory: "Your inventory hub. I can look up any vehicle, check aging, and recommend pricing actions.",
   customers: "Your customer database. I can pull up any customer's history, identify outreach opportunities, and draft communications.",
@@ -39,7 +41,102 @@ const PERSONAL_CONTEXTUAL_MESSAGES = {
   settings: "Your Vault settings. You can update your profile, configure your AI assistant, and manage notification preferences.",
 };
 
-export default function ChatPanel({ currentSection, onboardingStep }) {
+// ── Celebration Messages ────────────────────────────────────────
+
+const CELEBRATION_MESSAGES = {
+  analyst: {
+    celebration: "Your workspace is ready! I've already started working -- scanned your pipeline, checked your portfolio positions, and drafted an LP letter. Not bad for 60 seconds, right?",
+    followUp: "Here's what I'd suggest we do first:",
+    suggestions: [
+      "Show me around my workspace",
+      "How do you analyze deals?",
+      "Let me set my investment rules",
+      "Tell me about the risk alert",
+    ],
+  },
+  auto: {
+    celebration: "Your workspace is ready! I've already scanned your inventory, checked your pricing against market, and found a customer lead to follow up on. Your lot just got smarter.",
+    followUp: "What do you want to do first?",
+    suggestions: [
+      "Show me around my workspace",
+      "How do you price my inventory?",
+      "Let me set my dealership rules",
+      "Tell me about that lead",
+    ],
+  },
+  "real-estate": {
+    celebration: "Your workspace is ready! I've already matched a listing to buyers, flagged a DOM concern, and I'm tracking your closing deadlines. Your brokerage just got a 24/7 assistant.",
+    followUp: "Where do you want to start?",
+    suggestions: [
+      "Show me around my workspace",
+      "How do you match buyers to listings?",
+      "Let me set my brokerage rules",
+      "Tell me about that closing deadline",
+    ],
+  },
+  aviation: {
+    celebration: "Your workspace is ready! I've already found a charter opportunity, flagged an upcoming inspection, and I'm tracking your crew certifications. Your operation just leveled up.",
+    followUp: "What's first?",
+    suggestions: [
+      "Show me around my workspace",
+      "How do you track maintenance?",
+      "Let me set my ops rules",
+      "Tell me about that charter opportunity",
+    ],
+  },
+};
+
+// ── Tour Responses ──────────────────────────────────────────────
+
+const TOUR_RESPONSES = {
+  analyst: `Here's the quick tour:\n\n**Dashboard** -- Your command center. KPIs, alerts, and the Value Tracker showing your AI ROI.\n\n**Portfolio** -- Your positions, market movements, and price targets. I monitor these daily.\n\n**Research** -- Your active research pipeline. I track earnings, sector alerts, and flag models that need updating.\n\n**Clients & LPs** -- Your investor relationships, meeting notes, and communications. I can draft quarterly letters for you.\n\n**Deal Pipeline** -- Active deals I'm analyzing. This is where I flag opportunities and risks.\n\n**Rules** -- This is where the magic happens. You set the rules -- like "flag any deal over $5M in multifamily" or "alert me when a position drops more than 5%" -- and I follow them. The more rules you give me, the more I can do for you.\n\nWant to dive into any of these?`,
+  auto: `Here's the quick tour:\n\n**Dashboard** -- Your command center. KPIs, alerts, and daily action items.\n\n**Inventory** -- Your full lot view. I track aging, pricing, and market comps for every unit.\n\n**Customers** -- Your buyer and prospect database. I identify follow-up opportunities and draft outreach.\n\n**Sales Pipeline** -- Active deals from first contact to delivery. I prioritize your hottest leads.\n\n**F&I Products** -- Your product catalog. I match products to buyer profiles and calculate payment impacts.\n\n**Service** -- Your service schedule. I flag warranty expirations and upsell opportunities.\n\n**Rules** -- This is where the magic happens. You set the rules -- like "alert me when a unit hits 60 days" or "auto-draft follow-ups for stale leads" -- and I follow them.\n\nWant to dive into any of these?`,
+  "real-estate": `Here's the quick tour:\n\n**Dashboard** -- Your command center. KPIs, pipeline status, and daily priorities.\n\n**Listings** -- Your active and pending listings. I track DOM, price changes, and showings.\n\n**Buyers** -- Your buyer pipeline with saved searches and match criteria.\n\n**Transactions** -- Active deals from offer to close. I track deadlines and contingencies.\n\n**Properties** -- Your managed properties with units, leases, and financials.\n\n**Tenants** -- Tenant records, rent rolls, and payment history.\n\n**Rules** -- This is where the magic happens. You set the rules -- like "alert me at 45 DOM" or "flag any lease expiring in 90 days" -- and I follow them.\n\nWant to dive into any of these?`,
+  aviation: `Here's the quick tour:\n\n**Dashboard** -- Your ops center. Fleet status, upcoming flights, and maintenance alerts.\n\n**Inventory** -- Your aircraft fleet with airframe hours, engine time, and availability.\n\n**Staff** -- Pilots, crew, and maintenance personnel with certification tracking.\n\n**Appointments** -- Flight schedule, charter bookings, and maintenance windows.\n\n**Rules** -- This is where the magic happens. You set the rules -- like "alert 60 days before any medical expires" or "flag aircraft under 50 hours to next inspection" -- and I follow them.\n\nWant to dive into any of these?`,
+};
+
+// ── Rules Responses ─────────────────────────────────────────────
+
+const RULES_RESPONSES = {
+  analyst: `Great idea -- the rules are what make me work for YOU specifically, not just any analyst.\n\nHere's how it works: you tell me things like:\n- "Flag any multifamily deal over $5M in the Southwest"\n- "Alert me when a position drops more than 5% in a day"\n- "Auto-draft LP letters every quarter"\n- "Never recommend deals in the oil & gas sector"\n\nThe more specific you are, the better I get. You can set these in **Settings > Rules**, or just tell me right here in the chat and I'll remember.\n\nWant to set some rules now, or explore the workspace first?`,
+  auto: `Smart move -- the rules are what make me work for YOUR dealership specifically.\n\nHere's how it works: you tell me things like:\n- "Alert me when any unit hits 60 days on lot"\n- "Auto-draft follow-ups for leads that go cold for 5 days"\n- "Flag any vehicle priced more than 5% below market"\n- "Never discount vehicles in the first 30 days"\n\nThe more specific you are, the better I get. You can set these in **Settings > Rules**, or just tell me right here.\n\nWant to set some rules now?`,
+  "real-estate": `Good call -- the rules are what make me work for YOUR brokerage specifically.\n\nHere's how it works: you tell me things like:\n- "Alert me at 45 days on market"\n- "Flag any lease expiring in 90 days"\n- "Auto-match new listings to my buyer pipeline"\n- "Send me a daily summary of all pending deadlines"\n\nThe more specific you are, the better I get. You can set these in **Settings > Rules**, or just tell me right here.\n\nWant to set some rules now?`,
+  aviation: `Smart -- the rules are what make me work for YOUR operation specifically.\n\nHere's how it works: you tell me things like:\n- "Alert 60 days before any medical certificate expires"\n- "Flag aircraft under 50 hours to next inspection"\n- "Auto-notify dispatch when a charter request matches availability"\n- "Send weekly utilization reports every Monday"\n\nYou can set these in **Settings > Rules**, or just tell me right here.\n\nWant to set some rules now?`,
+};
+
+// ── Vertical Disclaimers ────────────────────────────────────────
+
+const VERTICAL_DISCLAIMERS = {
+  analyst: {
+    title: 'Investment & Financial Services Notice',
+    text: 'This workspace provides AI-powered deal analysis, portfolio monitoring, and investment research tools. These are informational tools ONLY. Nothing provided constitutes investment advice or a recommendation to buy, sell, or hold any security. TitleApp is not a registered investment adviser or broker-dealer. All investment decisions should be made with the guidance of qualified financial professionals.',
+  },
+  auto: {
+    title: 'Automotive Industry Notice',
+    text: 'This workspace provides AI-powered inventory management, pricing, and compliance tools for auto dealers. You are responsible for compliance with FTC regulations (Safeguards Rule, Used Car Rule, CARS Rule), state DMV requirements, advertising laws, and all other applicable regulations.',
+  },
+  "real-estate": {
+    title: 'Real Estate Industry Notice',
+    text: 'This workspace provides AI-powered tools for brokerages. Property valuations are estimates only -- not formal appraisals. You must comply with Fair Housing laws, RESPA, TILA, and all state real estate commission regulations.',
+  },
+  aviation: {
+    title: 'Aviation Industry Notice',
+    text: 'This workspace provides AI-powered operations management tools. It does not replace FAA-required documentation, approved checklists, or professional aeronautical judgment. All flight safety decisions must follow 14 CFR.',
+  },
+};
+
+// ── ID Verify Messages ──────────────────────────────────────────
+
+const ID_VERIFY_MESSAGES = {
+  analyst: "One more thing -- since you'll be working with deal analysis and portfolio data, I recommend verifying your identity soon. It's a quick ID check ($2, takes 60 seconds) and it unlocks features like the data room, advanced reporting, and the ability to share analyses with LPs. Want to do it now or later?",
+  auto: "By the way -- at some point you'll want to verify your identity. It's a quick ID check ($2) that unlocks some features and keeps your account secure. No rush on that -- I'll remind you when it matters.",
+  "real-estate": "By the way -- at some point you'll want to verify your identity. It's a quick ID check ($2) that unlocks some features and keeps your account secure. No rush on that -- I'll remind you when it matters.",
+  aviation: "By the way -- at some point you'll want to verify your identity. It's a quick ID check ($2) that unlocks some features like crew management and compliance reporting. No rush -- I'll remind you when it matters.",
+};
+
+// ── Component ───────────────────────────────────────────────────
+
+export default function ChatPanel({ currentSection, onboardingStep, disclaimerAccepted: propDisclaimerAccepted }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -53,11 +150,23 @@ export default function ChatPanel({ currentSection, onboardingStep }) {
   const [isRecording, setIsRecording] = useState(false);
   const fileInputRef = useRef(null);
   const recognitionRef = useRef(null);
-
   const [fileUploading, setFileUploading] = useState(false);
-
-  // Conversation queue: pending actions for customers with in-progress discussions
   const [pendingActions, setPendingActions] = useState([]);
+
+  // Disclaimer state
+  const [disclaimerAccepted, setDisclaimerAccepted] = useState(() => {
+    if (propDisclaimerAccepted) return true;
+    return localStorage.getItem('DISCLAIMER_ACCEPTED') === 'true';
+  });
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [acceptedDisclaimer, setAcceptedDisclaimer] = useState(false);
+  const [acceptedLiability, setAcceptedLiability] = useState(false);
+  const [showDisclaimer, setShowDisclaimer] = useState(false);
+
+  // Celebration state
+  const [celebrationFired, setCelebrationFired] = useState(() => {
+    return sessionStorage.getItem('ta_onboarding_celebrated') === 'true';
+  });
 
   // Listen for "discuss with AI" events from other components
   useEffect(() => {
@@ -66,10 +175,8 @@ export default function ChatPanel({ currentSection, onboardingStep }) {
       if (e.detail?.dealContext) {
         setDealContext(e.detail.dealContext);
       }
-      // Track customer context from dispatched prompts
       const customer = e.detail?.customerName || extractCustomerName(msg);
       if (customer) {
-        // If there's an active discussion about a different customer, bookmark it
         if (dealContext?.customerName && dealContext.customerName !== customer) {
           setPendingActions(prev => {
             const exists = prev.find(p => p.customerName === dealContext.customerName);
@@ -94,9 +201,23 @@ export default function ChatPanel({ currentSection, onboardingStep }) {
     return () => window.removeEventListener('ta:chatPrompt', handleChatPrompt);
   }, [dealContext]);
 
+  // Listen for onboarding completion to fire celebration
+  useEffect(() => {
+    function handleOnboardingComplete() {
+      // Small delay to let the App re-render (hide onboarding, show dashboard)
+      setTimeout(() => {
+        setCelebrationFired(false);
+        sessionStorage.removeItem('ta_onboarding_celebrated');
+        sessionStorage.removeItem('ta_milestone_onboarding_complete');
+        fireCelebration();
+      }, 500);
+    }
+    window.addEventListener('ta:onboarding-complete', handleOnboardingComplete);
+    return () => window.removeEventListener('ta:onboarding-complete', handleOnboardingComplete);
+  }, []);
+
   function extractCustomerName(msg) {
     if (!msg) return null;
-    // Match common patterns: "for Maria Gonzalez", "about Amanda Liu", customer names after "--"
     const patterns = [
       /(?:for|about|regarding|on)\s+([A-Z][a-z]+ [A-Z][a-z]+)/,
       /--\s*([A-Z][a-z]+ [A-Z][a-z]+)/,
@@ -118,20 +239,36 @@ export default function ChatPanel({ currentSection, onboardingStep }) {
     setPendingActions(prev => prev.filter(p => p.customerName !== customerName));
   }
 
-  const auth = getAuth();
+  const authInstance = getAuth();
   const db = getFirestore();
-  const currentUser = auth?.currentUser;
+  const currentUser = authInstance?.currentUser;
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged(() => {
+    const unsubscribe = authInstance.onAuthStateChanged(() => {
       setAuthReady(true);
     });
     return () => unsubscribe();
   }, []);
 
+  // ── Celebration + initial messages on mount ───────────────────
+
   useEffect(() => {
     if (currentUser && authReady && messages.length === 0) {
-      // Check if user arrived from landing page with conversation context
+      // Check if we should fire celebration (just completed onboarding)
+      if (!celebrationFired) {
+        try {
+          const obs = JSON.parse(localStorage.getItem('ONBOARDING_STATE') || 'null');
+          if (obs?.completedAt) {
+            const elapsed = Date.now() - new Date(obs.completedAt).getTime();
+            if (elapsed < 300000) { // Within 5 minutes
+              fireCelebration();
+              return;
+            }
+          }
+        } catch (e) { /* ignore */ }
+      }
+
+      // Check for landing page context
       const rawLanding = localStorage.getItem("LANDING_CONTEXT");
       if (rawLanding) {
         try {
@@ -142,25 +279,123 @@ export default function ChatPanel({ currentSection, onboardingStep }) {
             localStorage.removeItem("LANDING_CONTEXT");
             return;
           }
-        } catch (e) { /* ignore parse errors */ }
+        } catch (e) { /* ignore */ }
       }
 
-      // Legacy: check sessionStorage discoveredContext
+      // Legacy: sessionStorage discoveredContext
       const rawCtx = sessionStorage.getItem("ta_discovered_context");
       if (rawCtx) {
         try {
           const dCtx = JSON.parse(rawCtx);
           if (dCtx.vertical) {
-            const greeting = "Welcome! I set up your workspace based on our conversation. Take a look around and let me know if anything needs adjusting.";
-            setMessages([{ role: 'assistant', content: greeting, isSystem: true }]);
+            setMessages([{ role: 'assistant', content: "Welcome! I set up your workspace based on our conversation. Take a look around and let me know if anything needs adjusting.", isSystem: true }]);
             sessionStorage.removeItem("ta_discovered_context");
             return;
           }
-        } catch (e) { /* ignore parse errors */ }
+        } catch (e) { /* ignore */ }
       }
+
+      // Check if disclaimer needed on existing workspace
+      if (!disclaimerAccepted) {
+        loadDisclaimerFlow();
+        return;
+      }
+
       loadConversationHistory();
     }
   }, [currentUser, authReady]);
+
+  function fireCelebration() {
+    const v = localStorage.getItem('VERTICAL') || 'auto';
+    const config = CELEBRATION_MESSAGES[v] || CELEBRATION_MESSAGES.auto;
+
+    // Fire confetti
+    fireMilestone('onboarding_complete');
+
+    const celebrationMsgs = [
+      { role: 'assistant', content: config.celebration, isSystem: true, isCelebration: true },
+    ];
+
+    // If disclaimer not yet accepted, show disclaimer before suggestions
+    if (!disclaimerAccepted) {
+      celebrationMsgs.push({
+        role: 'assistant',
+        content: "One quick thing before we dive in -- I need you to review and accept our terms. This is standard for any AI-powered business platform:",
+        isSystem: true,
+        disclaimer: true,
+      });
+    } else {
+      celebrationMsgs.push({
+        role: 'assistant',
+        content: config.followUp,
+        isSystem: true,
+        suggestions: config.suggestions,
+      });
+    }
+
+    setMessages(celebrationMsgs);
+    setCelebrationFired(true);
+    sessionStorage.setItem('ta_onboarding_celebrated', 'true');
+    if (!disclaimerAccepted) setShowDisclaimer(true);
+  }
+
+  function loadDisclaimerFlow() {
+    const msgs = [
+      {
+        role: 'assistant',
+        content: "Welcome to your workspace. Before we get started, I need you to review and accept our terms:",
+        isSystem: true,
+        disclaimer: true,
+      },
+    ];
+    setMessages(msgs);
+    setShowDisclaimer(true);
+  }
+
+  async function handleAcceptDisclaimer() {
+    const v = localStorage.getItem('VERTICAL') || 'auto';
+    localStorage.setItem('DISCLAIMER_ACCEPTED', 'true');
+    localStorage.setItem('DISCLAIMER_VERSION', '2026-02-24-v2');
+    localStorage.setItem('DISCLAIMER_ACCEPTED_AT', new Date().toISOString());
+    setDisclaimerAccepted(true);
+    setShowDisclaimer(false);
+
+    // Store in Firestore via API
+    try {
+      const token = await currentUser.getIdToken();
+      const tenantId = localStorage.getItem('TENANT_ID') || '';
+      const apiBase = import.meta.env.VITE_API_BASE || 'https://titleapp-frontdoor.titleapp-core.workers.dev';
+      await fetch(`${apiBase}/api?path=/v1/workspace:acceptDisclaimer`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'X-Tenant-Id': tenantId,
+        },
+        body: JSON.stringify({
+          disclaimerAccepted: true,
+          disclaimerVersion: '2026-02-24-v2',
+          termsAccepted: true,
+          liabilityAccepted: true,
+        }),
+      });
+    } catch (err) {
+      console.error('Failed to store disclaimer acceptance:', err);
+    }
+
+    // Show celebration suggestions + ID verify
+    const config = CELEBRATION_MESSAGES[v] || CELEBRATION_MESSAGES.auto;
+    const followUpMsgs = [
+      { role: 'assistant', content: "You're all set. Now -- " + config.followUp, isSystem: true, suggestions: config.suggestions },
+    ];
+
+    // Add ID verify message after a delay
+    setMessages(prev => [...prev.filter(m => !m.disclaimer), ...followUpMsgs]);
+    setTimeout(() => {
+      const idMsg = ID_VERIFY_MESSAGES[v] || ID_VERIFY_MESSAGES.auto;
+      setMessages(prev => [...prev, { role: 'assistant', content: idMsg, isSystem: true, suggestions: v === 'analyst' ? ["Verify now ($2)", "Remind me later"] : undefined }]);
+    }, 2000);
+  }
 
   function buildLandingGreeting(ctx) {
     const name = ctx.name || "";
@@ -169,36 +404,24 @@ export default function ChatPanel({ currentSection, onboardingStep }) {
     const intent = ctx.intent || "";
     const chatSummary = ctx.chatSummary || "";
 
-    // Builder intent
     if (intent === "builder") {
       return `Great${nameGreet}, I've got the outline of your service. Let me show you what I built -- take a look at the preview and tell me what needs adjusting.`;
     }
-
-    // Auto / vehicle mentions
     if (vertical === "auto" || /\b(car|vehicle|vin|truck|suv)\b/i.test(chatSummary)) {
       return `Alright${nameGreet}, let's get that vehicle recorded. What do you drive? Year, make, and model is all I need to start.`;
     }
-
-    // Real estate / property mentions
     if (vertical === "real-estate" || /\b(property|rental|tenant|apartment|building|house)\b/i.test(chatSummary)) {
       return `OK${nameGreet}, let's get your properties set up. How about we start with your biggest one? What's the address?`;
     }
-
-    // Analyst / investment mentions
     if (vertical === "analyst" || /\b(deal|invest|portfolio|fund|analysis)\b/i.test(chatSummary)) {
       return `Welcome${nameGreet}. Your analysis workspace is ready. Want to start by uploading a deal memo, or should I walk you through the screening criteria first?`;
     }
-
-    // Consumer / personal vault
     if (intent === "personal" || vertical === "consumer") {
       return `Welcome to your Vault${nameGreet}. Based on what we talked about, let's start getting your records organized. What would you like to add first?`;
     }
-
-    // Generic fallback with context
     if (chatSummary) {
       return `Welcome${nameGreet}. I set up your workspace based on our conversation. Let's pick up where we left off -- what would you like to do first?`;
     }
-
     return null;
   }
 
@@ -207,6 +430,8 @@ export default function ChatPanel({ currentSection, onboardingStep }) {
     const stepKey = onboardingStep || currentSection;
     const vertical = localStorage.getItem('VERTICAL') || 'auto';
     const isPersonal = vertical === 'consumer';
+    // Don't fire contextual messages for dashboard if celebration just fired
+    if (stepKey === 'dashboard' && celebrationFired && !disclaimerAccepted) return;
     if (stepKey && stepKey !== lastContextStep && stepKey !== 'checking' && stepKey !== 'welcome' && stepKey !== 'magic') {
       const contextMsg = isPersonal
         ? (PERSONAL_CONTEXTUAL_MESSAGES[stepKey] || CONTEXTUAL_MESSAGES[stepKey])
@@ -225,12 +450,11 @@ export default function ChatPanel({ currentSection, onboardingStep }) {
     if (conversationRef.current) {
       conversationRef.current.scrollTop = conversationRef.current.scrollHeight;
     }
-  }, [messages, isTyping]);
+  }, [messages, isTyping, showDisclaimer]);
 
   async function loadConversationHistory() {
     try {
       const platformSid = sessionStorage.getItem('ta_platform_sid');
-
       const tenantIdFilter = localStorage.getItem('TENANT_ID') || localStorage.getItem('WORKSPACE_ID');
       const constraints = [
         where('userId', '==', currentUser.uid),
@@ -238,15 +462,12 @@ export default function ChatPanel({ currentSection, onboardingStep }) {
         orderBy('createdAt', 'asc'),
         limit(50),
       ];
-
       if (platformSid) {
         constraints.splice(tenantIdFilter ? 2 : 1, 0, where('sessionId', '==', platformSid));
       }
-
       const q = query(collection(db, 'messageEvents'), ...constraints);
       const snapshot = await getDocs(q);
       const loadedMessages = [];
-
       snapshot.forEach((doc) => {
         const evt = doc.data();
         if (evt.type === 'chat:message:received') {
@@ -255,7 +476,6 @@ export default function ChatPanel({ currentSection, onboardingStep }) {
           loadedMessages.push({ role: 'assistant', content: evt.response });
         }
       });
-
       if (platformSid && loadedMessages.length > 0) {
         loadedMessages.push({
           role: 'assistant',
@@ -263,17 +483,136 @@ export default function ChatPanel({ currentSection, onboardingStep }) {
           isSystem: true,
         });
       }
-
       setMessages(loadedMessages);
     } catch (error) {
       console.error('Failed to load conversation history:', error);
     }
   }
 
+  // ── Check for local responses (tour, rules, etc.) ─────────────
+
+  function getLocalResponse(message) {
+    const v = localStorage.getItem('VERTICAL') || 'auto';
+    const lower = message.toLowerCase();
+
+    if (lower.includes('show me around') || lower.includes('tour') || lower.includes('walk me through')) {
+      return TOUR_RESPONSES[v] || TOUR_RESPONSES.auto;
+    }
+    if (lower.includes('set my') && lower.includes('rule') || lower.includes('set my dealership rule') || lower.includes('set my investment rule') || lower.includes('set my brokerage rule') || lower.includes('set my ops rule')) {
+      return RULES_RESPONSES[v] || RULES_RESPONSES.auto;
+    }
+    if (lower.includes('sample data') || lower.includes('use sample') || lower.includes('demo data') || lower.includes('load sample') || lower.includes('explore with sample')) {
+      // Trigger sample data loading inline in chat
+      triggerSampleDataInChat();
+      return '__SAMPLE_DATA_TRIGGERED__';
+    }
+    if (lower.includes('verify now')) {
+      return "Identity verification is coming soon. We'll notify you when it's ready. For now, you can explore everything else in your workspace.";
+    }
+    if (lower.includes('remind me later') && lower.includes('verify') || lower === 'remind me later') {
+      return "No problem -- I'll bring it up again when you need it. Let's explore your workspace.";
+    }
+    return null;
+  }
+
+  function triggerSampleDataInChat() {
+    const v = localStorage.getItem('VERTICAL') || 'auto';
+    const SAMPLE_STEPS = {
+      auto: [
+        "Loading 24 vehicles...",
+        "Loading 15 customer records...",
+        "Loading 12 open deals...",
+        "Loading service schedule...",
+        "Loading F&I products...",
+        "Loading sales pipeline...",
+      ],
+      "real-estate": [
+        "Loading 8 listings...",
+        "Loading 10 buyer profiles...",
+        "Loading 5 managed properties with 28 units...",
+        "Loading 24 tenant records...",
+        "Loading 7 maintenance requests...",
+        "Loading 3 active transactions...",
+      ],
+      analyst: [
+        "Loading portfolio (17 positions, $42.8M AUM)...",
+        "Loading 13 LP records...",
+        "Loading research pipeline...",
+        "Loading 4 sourced opportunities...",
+      ],
+      aviation: [
+        "Loading 4 aircraft...",
+        "Loading 12 pilots and crew...",
+        "Loading maintenance schedules...",
+        "Loading flight hour logs...",
+        "Loading certification records...",
+      ],
+    };
+    const steps = SAMPLE_STEPS[v] || SAMPLE_STEPS.auto;
+
+    setMessages(prev => [...prev, { role: 'assistant', content: "Loading sample data into your account...", isSystem: true }]);
+
+    steps.forEach((step, i) => {
+      setTimeout(() => {
+        setMessages(prev => {
+          const last = prev[prev.length - 1];
+          if (last?.isSystem && last.content.startsWith("Loading sample data")) {
+            const lines = (last._loadedLines || []).concat(step.replace("...", ""));
+            return [...prev.slice(0, -1), {
+              ...last,
+              _loadedLines: lines,
+              content: "Loading sample data into your account...\n\n" + lines.map(l => `${l}`).join("\n"),
+            }];
+          }
+          return prev;
+        });
+
+        // After last step, show completion
+        if (i === steps.length - 1) {
+          setTimeout(() => {
+            // Update onboarding state
+            try {
+              const obs = JSON.parse(localStorage.getItem('ONBOARDING_STATE') || '{}');
+              obs.dataSource = 'sample';
+              localStorage.setItem('ONBOARDING_STATE', JSON.stringify(obs));
+            } catch (e) { /* ignore */ }
+
+            setMessages(prev => [...prev, {
+              role: 'assistant',
+              content: "Sample data loaded. I'm scanning everything now -- give me a moment to find what matters.",
+              isSystem: true,
+            }]);
+
+            // After a beat, show the insights
+            setTimeout(() => {
+              const INSIGHTS = {
+                auto: "I found 3 things in your sample inventory:\n\n1. **Pricing Opportunity** -- 2024 Toyota Camry XSE is listed at $28,500 but market avg is $30,200. That's $1,700 you could be capturing.\n\n2. **Aging Alert** -- 2023 Honda CR-V has been on the lot 67 days (your target is 45). Consider a price adjustment.\n\n3. **Lead Follow-Up** -- Sarah Chen viewed the 2024 Highlander 3 times this week. Nobody has reached out yet.\n\nThis is what I do 24/7 when you connect your real inventory. Want me to show you around the dashboard?",
+                "real-estate": "I found 3 things in your sample brokerage data:\n\n1. **Buyer Match** -- 742 Oak Street ($425K, 3BR) matches criteria for the Martinez family and Johnson couple.\n\n2. **Days on Market** -- 1205 Elm Drive is at 52 days (area avg is 28). Consider a price reduction strategy.\n\n3. **Closing Deadline** -- 456 Pine Road closing has an inspection contingency expiring in 3 days.\n\nThis is what I do 24/7 when you connect your real listings. Want me to show you around the dashboard?",
+                analyst: "I found 3 things in your sample portfolio:\n\n1. **Deal Opportunity** -- Parkview Apartments (48 units, Phoenix) has a CMBS loan maturing Aug 2026. Matches your multifamily criteria at $8.2M.\n\n2. **Risk Alert** -- Sentinel Defense position is down 6.2% on a contract delay. Consider trimming exposure.\n\n3. **Action Item** -- Quarterly LP letter drafted and ready for your compliance review.\n\nThis is what I do 24/7 when you connect your real data. Want me to show you around the dashboard?",
+                aviation: "I found 3 things in your sample fleet data:\n\n1. **Charter Opportunity** -- PHX to SFO request for Mar 15 matches N456TA (Citation CJ3) availability. Estimated revenue: $8,200.\n\n2. **Maintenance Due** -- N789TB Phase 2 inspection due in 42 hours.\n\n3. **Certification Expiring** -- Captain Williams medical certificate expires in 21 days.\n\nThis is what I do 24/7 when you connect your real operations data. Want me to show you around the dashboard?",
+              };
+              setMessages(prev => [...prev, {
+                role: 'assistant',
+                content: INSIGHTS[v] || INSIGHTS.auto,
+                isSystem: true,
+                suggestions: ["Show me around", "Set my rules", "Go to dashboard"],
+              }]);
+            }, 2000);
+          }, 800);
+        }
+      }, (i + 1) * 400);
+    });
+  }
+
   async function sendMessage(e, overrideMessage) {
     e?.preventDefault();
     const messageToSend = (overrideMessage || input).trim();
     if (!messageToSend || isSending) return;
+
+    if (!disclaimerAccepted) {
+      // Don't allow sending messages until disclaimer accepted
+      return;
+    }
 
     if (!currentUser) {
       setMessages(prev => [...prev, {
@@ -293,6 +632,18 @@ export default function ChatPanel({ currentSection, onboardingStep }) {
     setInput('');
     setIsSending(true);
     setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
+
+    // Check for local response first (tour, rules, etc.)
+    const localResp = getLocalResponse(userMessage);
+    if (localResp) {
+      setIsSending(false);
+      if (localResp !== '__SAMPLE_DATA_TRIGGERED__') {
+        setTimeout(() => {
+          setMessages(prev => [...prev, { role: 'assistant', content: localResp, isSystem: true }]);
+        }, 400);
+      }
+      return;
+    }
 
     // Read file as base64 if attached
     let filePayload = null;
@@ -364,14 +715,10 @@ export default function ChatPanel({ currentSection, onboardingStep }) {
       });
 
       const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Request failed');
-      }
+      if (!response.ok) throw new Error(data.error || 'Request failed');
 
       setIsTyping(false);
       setDealContext(null);
-
       setMessages(prev => [...prev, {
         role: 'assistant',
         content: data.response || 'No response received.',
@@ -388,6 +735,11 @@ export default function ChatPanel({ currentSection, onboardingStep }) {
     } finally {
       setIsSending(false);
     }
+  }
+
+  function handleSuggestionClick(suggestion) {
+    setInput(suggestion);
+    setTimeout(() => sendMessage(null, suggestion), 100);
   }
 
   function handleKeyDown(e) {
@@ -436,7 +788,6 @@ export default function ChatPanel({ currentSection, onboardingStep }) {
       const label = typeLabels[data.recordType] || 'Record';
       const meta = data.metadata || {};
       const displayFields = Object.entries(meta).filter(([k, v]) => k !== 'title' && v);
-
       return (
         <div style={{ border: `2px solid ${color}30`, borderRadius: '14px', overflow: 'hidden', marginTop: '8px' }}>
           <div style={{ background: `${color}12`, padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -475,11 +826,7 @@ export default function ChatPanel({ currentSection, onboardingStep }) {
           {data.key_findings && data.key_findings.length > 0 && (
             <div className="analyst-findings">
               <h5>Key Findings:</h5>
-              <ul>
-                {data.key_findings.map((finding, i) => (
-                  <li key={i}>{finding}</li>
-                ))}
-              </ul>
+              <ul>{data.key_findings.map((finding, i) => <li key={i}>{finding}</li>)}</ul>
             </div>
           )}
         </div>
@@ -528,6 +875,91 @@ export default function ChatPanel({ currentSection, onboardingStep }) {
       </div>
     );
   }
+
+  // ── Disclaimer Widget ─────────────────────────────────────────
+
+  function renderDisclaimerWidget() {
+    const v = localStorage.getItem('VERTICAL') || 'auto';
+    const vd = VERTICAL_DISCLAIMERS[v];
+    const allChecked = acceptedTerms && acceptedDisclaimer && acceptedLiability;
+
+    return (
+      <div style={{
+        background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 12,
+        padding: 20, marginTop: 8, fontSize: 13, lineHeight: 1.7,
+      }}>
+        <div style={{ maxHeight: 250, overflowY: 'auto', marginBottom: 16, color: '#475569', paddingRight: 8 }}>
+          <p style={{ fontWeight: 700, fontSize: 14, color: '#1e293b', margin: '0 0 12px 0' }}>TitleApp AI -- Terms of Use & Disclaimer</p>
+
+          <p style={{ margin: '0 0 10px 0' }}><strong>AI-Generated Content.</strong> All outputs, recommendations, analyses, suggestions, reports, alerts, risk scores, valuations, projections, and other content provided by TitleApp AI ("Platform") are generated by artificial intelligence and are provided for informational and operational purposes only. AI outputs may contain errors, omissions, hallucinations, or inaccuracies. You are solely responsible for independently verifying any information before relying on it or acting upon it.</p>
+
+          <p style={{ margin: '0 0 10px 0' }}><strong>Not Financial or Investment Advice.</strong> Nothing provided by the Platform constitutes financial advice, investment advice, tax advice, accounting advice, or any recommendation to buy, sell, hold, or otherwise transact in any security, commodity, cryptocurrency, real property, or other financial instrument. The Platform is not a registered investment adviser, broker-dealer, transfer agent, funding portal, commodity trading advisor, or financial planner under any federal, state, or international law. Always consult a qualified, licensed financial professional before making any investment or financial decision.</p>
+
+          <p style={{ margin: '0 0 10px 0' }}><strong>Not Legal Advice.</strong> Nothing provided by the Platform constitutes legal advice, legal opinion, or legal representation. The Platform is not a law firm, and no attorney-client relationship is created by use of the Platform. Always consult a licensed attorney for legal matters.</p>
+
+          <p style={{ margin: '0 0 10px 0' }}><strong>Not Medical Advice.</strong> Nothing provided by the Platform constitutes medical advice, diagnosis, or treatment recommendation. Always consult a qualified healthcare professional.</p>
+
+          <p style={{ margin: '0 0 10px 0' }}><strong>Securities & Investment Activities.</strong> The Platform may provide tools for tracking investments, managing cap tables, viewing data rooms, and monitoring portfolios. These tools are administrative and informational only. The Platform does not offer, sell, broker, recommend, or solicit the purchase or sale of any securities. Past performance data, projections, risk scores, and valuations are not guarantees or predictions of future results. Investment involves significant risk, including the possible loss of your entire investment.</p>
+
+          <p style={{ margin: '0 0 10px 0' }}><strong>Real Estate.</strong> Property valuations, market analyses, and comparable data are computational estimates only and do not constitute formal appraisals. The Platform complies with and requires all users to comply with the Fair Housing Act and all applicable state fair housing laws.</p>
+
+          <p style={{ margin: '0 0 10px 0' }}><strong>Automotive.</strong> Vehicle valuations, pricing recommendations, and market data are estimates only. Users are responsible for compliance with all applicable FTC regulations, state DMV requirements, lemon laws, and advertising regulations.</p>
+
+          <p style={{ margin: '0 0 10px 0' }}><strong>Aviation.</strong> The Platform is not a substitute for FAA-required documentation, approved checklists, or professional aeronautical judgment. All flight operations, maintenance, and safety decisions must be made in accordance with 14 CFR.</p>
+
+          <p style={{ margin: '0 0 10px 0' }}><strong>No Fiduciary Duty.</strong> Use of the Platform does not create any fiduciary, advisory, agency, partnership, or professional-client relationship between you and TitleApp, Inc.</p>
+
+          <p style={{ margin: '0 0 10px 0' }}><strong>Limitation of Liability.</strong> To the maximum extent permitted by applicable law, TitleApp, Inc. shall not be liable for any direct, indirect, incidental, special, consequential, or punitive damages arising from or related to your use of the Platform.</p>
+
+          <p style={{ margin: '0 0 10px 0' }}><strong>Data & Privacy.</strong> Your data is stored securely and processed in accordance with our Privacy Policy. You retain ownership of your data and can export or delete it at any time via Settings.</p>
+
+          <p style={{ margin: '0 0 0 0' }}><strong>Changes.</strong> TitleApp reserves the right to modify these terms at any time. Continued use constitutes acceptance of modified terms.</p>
+        </div>
+
+        {vd && (
+          <div style={{
+            background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8,
+            padding: '12px 16px', marginBottom: 16, fontSize: 12, color: '#92400e',
+          }}>
+            <strong>{vd.title}:</strong> {vd.text}
+          </div>
+        )}
+
+        <label style={{ display: 'flex', gap: 10, marginBottom: 10, cursor: 'pointer', fontSize: 13, alignItems: 'flex-start' }}>
+          <input type="checkbox" checked={acceptedTerms} onChange={e => setAcceptedTerms(e.target.checked)} style={{ marginTop: 3, flexShrink: 0 }} />
+          <span>I have read and agree to the Terms of Service and Privacy Policy</span>
+        </label>
+
+        <label style={{ display: 'flex', gap: 10, marginBottom: 10, cursor: 'pointer', fontSize: 13, alignItems: 'flex-start' }}>
+          <input type="checkbox" checked={acceptedDisclaimer} onChange={e => setAcceptedDisclaimer(e.target.checked)} style={{ marginTop: 3, flexShrink: 0 }} />
+          <span>I understand that all AI outputs are for informational purposes only and do not constitute professional advice of any kind</span>
+        </label>
+
+        <label style={{ display: 'flex', gap: 10, marginBottom: 16, cursor: 'pointer', fontSize: 13, alignItems: 'flex-start' }}>
+          <input type="checkbox" checked={acceptedLiability} onChange={e => setAcceptedLiability(e.target.checked)} style={{ marginTop: 3, flexShrink: 0 }} />
+          <span>I accept full responsibility for any decisions I make based on Platform outputs and acknowledge the limitation of liability</span>
+        </label>
+
+        <button
+          disabled={!allChecked}
+          onClick={handleAcceptDisclaimer}
+          style={{
+            width: '100%', padding: '12px', borderRadius: 8, border: 'none',
+            background: allChecked ? '#7c3aed' : '#cbd5e1',
+            color: 'white', fontWeight: 600, fontSize: 14,
+            cursor: allChecked ? 'pointer' : 'not-allowed',
+            transition: 'background 0.2s',
+          }}
+        >
+          I Accept -- Let's Go
+        </button>
+      </div>
+    );
+  }
+
+  // ── Render ────────────────────────────────────────────────────
+
+  const chatDisabled = !disclaimerAccepted || isSending || fileUploading;
 
   return (
     <div className="chatPanelContainer">
@@ -578,30 +1010,10 @@ export default function ChatPanel({ currentSection, onboardingStep }) {
           </div>
         )}
 
-        {messages.length === 0 && !isTyping && (
+        {/* Empty state — only show if no messages AND no disclaimer pending */}
+        {messages.length === 0 && !isTyping && !showDisclaimer && (
           <div className="chat-welcome">
             {(() => {
-              // Check if user just completed onboarding — personalize greeting
-              try {
-                const obs = JSON.parse(localStorage.getItem('ONBOARDING_STATE') || 'null');
-                if (obs?.completedAt && obs?.dataSource) {
-                  const elapsed = Date.now() - new Date(obs.completedAt).getTime();
-                  if (elapsed < 300000) { // Within 5 minutes of onboarding
-                    const v = localStorage.getItem('VERTICAL') || 'auto';
-                    const noun = v === 'auto' ? 'vehicles' : v === 'real-estate' ? 'listings' : v === 'analyst' ? 'deals' : v === 'aviation' ? 'aircraft' : 'records';
-                    if (obs.dataSource === 'sample') {
-                      return <p>I've loaded some sample data so you can explore. Want me to walk you through your dashboard?</p>;
-                    }
-                    if (obs.dataSource === 'upload') {
-                      return <p>Your data is importing. While that's processing, want me to show you around?</p>;
-                    }
-                    if (obs.dataSource === 'none') {
-                      return <p>Clean slate. What's the first thing you'd like to set up? I can help you add your first {noun} or configure your workflow.</p>;
-                    }
-                  }
-                }
-              } catch (e) { /* ignore */ }
-
               const v = localStorage.getItem('VERTICAL') || 'auto';
               if (v === 'consumer') {
                 let cosName = 'your AI assistant';
@@ -618,19 +1030,6 @@ export default function ChatPanel({ currentSection, onboardingStep }) {
                       <p>Please sign in to start chatting.</p>
                     )}
                   </>
-                );
-              }
-              if (v === 'auto') {
-                return currentUser ? (
-                  <>
-                    <p>Good evening. I've been reviewing the lot and customer database. Here's what I found:</p>
-                    <p>Maria Gonzalez's Corolla lease expires in 60 days -- she's a cash buyer. I've matched her to 3 vehicles in stock.</p>
-                    <p>The BMW X3 on the used lot is at 143 days. I recommend marking it down to $31,999 and pushing it to Marketplace.</p>
-                    <p>Charles Cox is due for his 60K service -- his factory warranty is about to expire. Good opportunity to pitch Extra Care Gold.</p>
-                    <p>Want me to start with any of these?</p>
-                  </>
-                ) : (
-                  <p>Please sign in to start chatting.</p>
                 );
               }
               let cosLabel = 'your AI assistant';
@@ -652,12 +1051,43 @@ export default function ChatPanel({ currentSection, onboardingStep }) {
           </div>
         )}
 
+        {/* Messages */}
         {messages.map((msg, idx) => (
-          <div key={idx} className={`chat-message ${msg.role} ${msg.isError ? 'error' : ''}`}>
-            <div className="chat-bubble">{msg.content}</div>
-            {msg.structuredData && (
-              <div className="chat-structured-data">
-                {renderStructuredData(msg.structuredData)}
+          <div key={idx}>
+            <div className={`chat-message ${msg.role} ${msg.isError ? 'error' : ''}`}>
+              <div className="chat-bubble" style={msg.isCelebration ? { background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)', border: '1px solid #e9d5ff' } : undefined}>
+                {msg.content}
+              </div>
+              {msg.structuredData && (
+                <div className="chat-structured-data">
+                  {renderStructuredData(msg.structuredData)}
+                </div>
+              )}
+            </div>
+
+            {/* Disclaimer widget */}
+            {msg.disclaimer && showDisclaimer && !disclaimerAccepted && (
+              renderDisclaimerWidget()
+            )}
+
+            {/* Suggestion bubbles */}
+            {msg.suggestions && msg.suggestions.length > 0 && disclaimerAccepted && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '10px', marginBottom: '4px' }}>
+                {msg.suggestions.map((s, si) => (
+                  <button
+                    key={si}
+                    onClick={() => handleSuggestionClick(s)}
+                    style={{
+                      padding: '8px 14px', fontSize: '13px', fontWeight: 500,
+                      background: 'white', border: '1px solid #e2e8f0', borderRadius: '20px',
+                      color: '#7c3aed', cursor: 'pointer', transition: 'all 0.2s',
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#7c3aed'; e.currentTarget.style.background = '#faf5ff'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.background = 'white'; }}
+                  >
+                    {s}
+                  </button>
+                ))}
               </div>
             )}
           </div>
@@ -691,7 +1121,8 @@ export default function ChatPanel({ currentSection, onboardingStep }) {
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'transparent', border: '1px solid #e2e8f0', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: '#94a3b8' }}
+            disabled={!disclaimerAccepted}
+            style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'transparent', border: '1px solid #e2e8f0', cursor: disclaimerAccepted ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: '#94a3b8', opacity: disclaimerAccepted ? 1 : 0.4 }}
             aria-label="Attach file"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
@@ -699,7 +1130,8 @@ export default function ChatPanel({ currentSection, onboardingStep }) {
           <button
             type="button"
             onClick={isRecording ? stopVoiceInput : startVoiceInput}
-            style={{ width: '36px', height: '36px', borderRadius: '10px', background: isRecording ? '#ef4444' : 'transparent', border: isRecording ? 'none' : '1px solid #e2e8f0', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: isRecording ? 'white' : '#94a3b8' }}
+            disabled={!disclaimerAccepted}
+            style={{ width: '36px', height: '36px', borderRadius: '10px', background: isRecording ? '#ef4444' : 'transparent', border: isRecording ? 'none' : '1px solid #e2e8f0', cursor: disclaimerAccepted ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: isRecording ? 'white' : '#94a3b8', opacity: disclaimerAccepted ? 1 : 0.4 }}
             aria-label={isRecording ? 'Stop recording' : 'Voice input'}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
@@ -708,14 +1140,14 @@ export default function ChatPanel({ currentSection, onboardingStep }) {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Ask me anything..."
+            placeholder={disclaimerAccepted ? "Ask me anything..." : "Please accept the terms above to continue"}
             rows={3}
-            disabled={isSending || fileUploading}
-            style={{ minHeight: '72px' }}
+            disabled={chatDisabled}
+            style={{ minHeight: '72px', opacity: disclaimerAccepted ? 1 : 0.5 }}
           />
           <button
             type="submit"
-            disabled={isSending || fileUploading || !input.trim()}
+            disabled={chatDisabled || !input.trim()}
             aria-label="Send message"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -725,7 +1157,6 @@ export default function ChatPanel({ currentSection, onboardingStep }) {
           </button>
         </div>
       </form>
-
     </div>
   );
 }

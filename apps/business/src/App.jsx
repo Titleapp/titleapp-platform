@@ -45,6 +45,10 @@ import REMarketing from "./sections/REMarketing";
 import WorkerPreview from "./sections/WorkerPreview";
 import RAASStore from "./sections/RAASStore";
 import CreatorDashboard from "./sections/CreatorDashboard";
+import InvestorDataRoom from "./sections/InvestorDataRoom";
+import InvestorCapTable from "./sections/InvestorCapTable";
+import InvestorPipeline from "./sections/InvestorPipeline";
+import VaultTools from "./sections/VaultTools";
 import { auth } from "./firebase";
 import { signInWithCustomToken } from "firebase/auth";
 
@@ -146,6 +150,14 @@ function AdminShell({ onBackToHub }) {
         return <RAASStore />;
       case "creator-dashboard":
         return <CreatorDashboard />;
+      case "investor-data-room":
+        return <InvestorDataRoom />;
+      case "investor-cap-table":
+        return <InvestorCapTable />;
+      case "investor-pipeline":
+        return <InvestorPipeline />;
+      case "vault-tools":
+        return <VaultTools />;
       default:
         return <Dashboard />;
     }
@@ -355,7 +367,14 @@ export default function App() {
           }
           setCurrentView("onboarding");
         } else {
-          setCurrentView("hub");
+          // Check if we were in the middle of onboarding a new workspace
+          const pendingOnboarding = localStorage.getItem("PENDING_ONBOARDING");
+          if (pendingOnboarding) {
+            setNeedsOnboarding(true);
+            setCurrentView("app");
+          } else {
+            setCurrentView("hub");
+          }
         }
       } catch (err) {
         console.error("Failed to resolve view:", err);
@@ -373,7 +392,9 @@ export default function App() {
       localStorage.setItem("TENANT_ID", workspace.id);
     }
     // Check if this workspace needs onboarding (newly created or incomplete)
-    const shouldOnboard = workspace._needsOnboarding === true || workspace.onboardingComplete === false;
+    // Use both the prop flag AND localStorage (localStorage is the reliable signal)
+    const pendingOnboarding = localStorage.getItem("PENDING_ONBOARDING");
+    const shouldOnboard = workspace._needsOnboarding === true || !!pendingOnboarding;
     setNeedsOnboarding(shouldOnboard);
     setCurrentView("app");
     if (window.location.pathname === "/login" || window.location.pathname === "/") {
@@ -449,7 +470,7 @@ export default function App() {
   }
 
   if (currentView === "app" && needsOnboarding) {
-    const onboardingVertical = localStorage.getItem("VERTICAL") || "auto";
+    const onboardingVertical = localStorage.getItem("PENDING_ONBOARDING") || localStorage.getItem("VERTICAL") || "auto";
     return (
       <div className="appShell" style={{ minHeight: "100vh" }}>
         <div className="dualPanel" style={{ minHeight: "100vh" }}>
@@ -458,6 +479,7 @@ export default function App() {
               vertical={onboardingVertical}
               skipToStep={2}
               onComplete={() => {
+                localStorage.removeItem("PENDING_ONBOARDING");
                 localStorage.setItem("ONBOARDING_COMPLETE", "true");
                 setNeedsOnboarding(false);
               }}

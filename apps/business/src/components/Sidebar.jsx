@@ -7,6 +7,7 @@ const NAV_BY_VERTICAL = {
     { id: "vault-documents", label: "Documents" },
     { id: "vault-assets", label: "Assets" },
     { id: "vault-deadlines", label: "Deadlines" },
+    { id: "vault-tools", label: "AI Tools" },
     { id: "reports", label: "Reports" },
     { id: "raas-store", label: "RAAS Store" },
     { id: "settings", label: "Settings" },
@@ -54,6 +55,17 @@ const NAV_BY_VERTICAL = {
     { id: "re-tenants", label: "Tenants" },
     { id: "re-maintenance", label: "Maintenance" },
     { id: "re-marketing", label: "Marketing" },
+    { id: "reports", label: "Reports" },
+    { id: "ai-chats", label: "AI Activity" },
+    { id: "rules", label: "Rules" },
+    { id: "raas-store", label: "RAAS Store" },
+    { id: "settings", label: "Settings" },
+  ],
+  investor: [
+    { id: "dashboard", label: "Dashboard" },
+    { id: "investor-data-room", label: "Data Room" },
+    { id: "investor-cap-table", label: "Cap Table" },
+    { id: "investor-pipeline", label: "Investor Pipeline" },
     { id: "reports", label: "Reports" },
     { id: "ai-chats", label: "AI Activity" },
     { id: "rules", label: "Rules" },
@@ -115,7 +127,7 @@ export default function Sidebar({ currentSection, onNavigate, onClose, tenantNam
           />
           <div>
             <div className="brandName">{isPersonal ? brandLabel : (workspaceName || "TitleApp AI")}</div>
-            <div className="brandSub">{isPersonal ? "TitleApp Vault" : {auto: "Auto Dealer", analyst: "Investment Analyst", "real-estate": "Real Estate", aviation: "Aviation"}[vertical] || "Business"}</div>
+            <div className="brandSub">{isPersonal ? "TitleApp Vault" : {auto: "Auto Dealer", analyst: "Investment Analyst", "real-estate": "Real Estate", aviation: "Aviation", investor: "Investor Relations"}[vertical] || "Business"}</div>
           </div>
         </div>
         <button

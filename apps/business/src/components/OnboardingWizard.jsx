@@ -29,6 +29,16 @@ const VERTICAL_PLACEHOLDERS = {
   "real-estate": { name: "Summit Realty Group", tagline: "Full-service brokerage and property management" },
   analyst: { name: "Meridian Capital Partners", tagline: "Data-driven investment decisions" },
   aviation: { name: "SkyOps Aviation", tagline: "Part 135 charter operations" },
+  investor: { name: "TechCo Inc", tagline: "Raising our seed round" },
+};
+
+const VERTICAL_DISCLAIMERS = {
+  auto: "TitleApp provides tools for managing dealership operations. It does not replace licensed dealer management systems or compliance with state motor vehicle regulations.",
+  "real-estate": "TitleApp provides tools for real estate operations. It does not replace licensed brokerage compliance, MLS membership requirements, or state real estate commission regulations.",
+  analyst: "TitleApp provides analytical tools only. It does not provide investment advice, portfolio management services, or broker-dealer functions. Always consult a qualified financial advisor.",
+  investor: "TitleApp provides tools to manage investor communications and data rooms. It does not act as a registered funding portal, broker-dealer, or investment advisor. Securities offerings must comply with applicable SEC regulations (RegCF, RegD, RegA+). Consult qualified legal counsel before conducting any securities offering.",
+  aviation: "TitleApp provides tools for aviation operations management. It does not replace FAA-mandated record keeping systems or certified maintenance tracking programs.",
+  _default: "TitleApp provides AI-powered workspace tools. The platform does not provide professional advice in regulated fields. Consult qualified professionals for domain-specific guidance.",
 };
 
 const INTEGRATIONS_CATALOG = {
@@ -73,6 +83,14 @@ const INTEGRATIONS_CATALOG = {
     { id: "fbo-one", name: "FBO One", abbr: "F1", category: "FBO", comingSoon: true },
     { id: "quickbooks", name: "QuickBooks", abbr: "QB", category: "Accounting", comingSoon: true },
   ],
+  investor: [
+    { id: "dealmaker", name: "DealMaker", abbr: "DM", category: "Funding Portal", comingSoon: true },
+    { id: "wefunder", name: "Wefunder", abbr: "WF", category: "Funding Portal", comingSoon: true },
+    { id: "carta", name: "Carta", abbr: "CT", category: "Cap Table", comingSoon: true },
+    { id: "docusign", name: "DocuSign", abbr: "DS", category: "E-Sign", comingSoon: true },
+    { id: "stripe", name: "Stripe", abbr: "ST", category: "Payments", comingSoon: true },
+    { id: "quickbooks", name: "QuickBooks", abbr: "QB", category: "Accounting", comingSoon: true },
+  ],
 };
 
 const SAMPLE_DATA_STEPS = {
@@ -104,29 +122,125 @@ const SAMPLE_DATA_STEPS = {
     "Loading flight hour logs...",
     "Loading certification records...",
   ],
+  investor: [
+    "Loading cap table (5 shareholders)...",
+    "Loading investor pipeline (8 prospects)...",
+    "Loading data room documents...",
+    "Loading round configuration...",
+  ],
 };
 
-const FIRST_VALUE_INSIGHTS = {
-  auto: [
-    { color: "#dc2626", badge: "Revenue", text: "Maria Gonzalez's lease expires in 60 days. She's a cash buyer. You have 3 matching vehicles in stock." },
-    { color: "#d97706", badge: "Aging", text: "The 2021 BMW X3 has been on your lot for 143 days. Markdown to $31,999 could recover $31K before floor plan interest eats more margin." },
-    { color: "#2563eb", badge: "Service", text: "Charles Cox is due for his 60K service. His factory warranty is about to expire -- perfect time to pitch Extra Care Gold ($2,995)." },
-  ],
-  "real-estate": [
-    { color: "#dc2626", badge: "Late Rent", text: "Kevin Williams at Riverside 2A is 30 days past due ($1,850). Three reminders sent. Next step: 3-day notice per state statute." },
-    { color: "#d97706", badge: "Vacancy", text: "Southside Flats Unit 3 has been vacant 45 days, costing ~$38/day. One application received yesterday." },
-    { color: "#16a34a", badge: "Hot Lead", text: "Amanda Liu is relocating, pre-approved $350-450K, matched to 3 of your listings. Showing scheduled Saturday." },
-  ],
-  analyst: [
-    { color: "#d97706", badge: "Opportunity", text: "Parkview Apartments (48 units, Phoenix) -- CMBS loan matures Aug 2026. Matches your multifamily criteria. $8.2M." },
-    { color: "#dc2626", badge: "Risk Alert", text: "Sentinel Defense position is down 6.2% on a contract delay. Review position and consider trimming exposure." },
-    { color: "#16a34a", badge: "LP Update", text: "Blackstone LP quarterly letter has been drafted and is pending your compliance review before distribution." },
-  ],
-  aviation: [
-    { color: "#dc2626", badge: "Maintenance", text: "N123AB is due for its annual inspection in 45 days. Book now to avoid scheduling conflicts." },
-    { color: "#d97706", badge: "Certification", text: "Captain Smith's medical certificate expires in 30 days. Renewal appointment recommended." },
-    { color: "#2563eb", badge: "Utilization", text: "N456CD has flown 12 hours this month vs. 28-hour target. Consider adding to the charter schedule." },
-  ],
+const MAGIC_MOMENT_CONFIG = {
+  auto: {
+    headline: "You chose to explore with sample data. Here's what I found.",
+    subtitle: "I loaded a realistic dealership inventory into your account -- 24 vehicles, 15 customers, and an active sales pipeline. In 60 seconds, I scanned everything and flagged 3 things that need attention right now.",
+    insights: [
+      {
+        color: "#16a34a", badge: "Pricing Opportunity",
+        detail: "I compared every unit to current market prices and found one that's leaving money on the table.",
+        example: "2024 Toyota Camry XSE -- your price $28,500, market avg $30,200. Potential $1,700 upside.",
+      },
+      {
+        color: "#dc2626", badge: "Aging Inventory Alert",
+        detail: "I flagged a unit that's been sitting too long based on your 45-day target.",
+        example: "2023 Honda CR-V -- 67 days on lot (your target: 45 days). Consider price adjustment or promotion.",
+      },
+      {
+        color: "#d97706", badge: "Follow-Up Queued",
+        detail: "I found a customer who viewed a unit 3 times online but nobody has reached out yet.",
+        example: "Sarah Chen viewed the 2024 Highlander 3 times this week. Suggested follow-up drafted.",
+      },
+    ],
+    explainer: "When you upload your real inventory, I do this same analysis every day, automatically -- pricing, aging, lead follow-ups, all of it. You set the rules in Settings. I do the work.",
+  },
+  "real-estate": {
+    headline: "You chose to explore with sample data. Here's what I found.",
+    subtitle: "I loaded a realistic brokerage into your account -- 8 listings, 10 buyers, 3 active transactions, and a property management portfolio. In 60 seconds, I scanned everything and flagged 3 things.",
+    insights: [
+      {
+        color: "#16a34a", badge: "Buyer Match Found",
+        detail: "I cross-referenced every listing against your buyer criteria and found a match.",
+        example: "742 Oak Street ($425K, 3BR) matches criteria for buyers: Martinez family and Johnson couple.",
+      },
+      {
+        color: "#dc2626", badge: "Days on Market Alert",
+        detail: "I flagged a listing that's approaching your DOM threshold.",
+        example: "1205 Elm Drive -- 52 days on market (avg in area: 28 days). Consider price reduction strategy.",
+      },
+      {
+        color: "#d97706", badge: "Closing Deadline",
+        detail: "I'm tracking all active transactions and found one with an upcoming deadline.",
+        example: "456 Pine Road closing -- inspection contingency expires in 3 days. Remind buyer agent.",
+      },
+    ],
+    explainer: "When you connect your real listings, I do this same analysis every day, automatically -- matching buyers, tracking deadlines, flagging risks. You set the rules in Settings. I do the work.",
+  },
+  analyst: {
+    headline: "You chose to explore with sample data. Here's what I found.",
+    subtitle: "I loaded a realistic portfolio into your account -- 17 positions ($42.8M AUM), 13 LPs, and an active deal pipeline. In 60 seconds, I scanned everything and flagged 3 things.",
+    insights: [
+      {
+        color: "#16a34a", badge: "Deal Opportunity Flagged",
+        detail: "I scanned your pipeline and found a deal that matches your investment criteria.",
+        example: "Parkview Apartments (48 units, Phoenix) -- CMBS loan matures Aug 2026. Matches your multifamily criteria. $8.2M.",
+      },
+      {
+        color: "#dc2626", badge: "Risk Alert Detected",
+        detail: "I monitor your portfolio positions and flagged one that needs attention.",
+        example: "Sentinel Defense position is down 6.2% on a contract delay. Review position and consider trimming exposure.",
+      },
+      {
+        color: "#d97706", badge: "Action Item Queued",
+        detail: "I drafted a quarterly LP letter and queued it for your compliance review.",
+        example: "Blackstone LP quarterly letter drafted -- pending your compliance review before distribution.",
+      },
+    ],
+    explainer: "When you upload your real data, I do this same analysis every day, automatically -- scanning deals, monitoring risk, drafting communications. You set the rules in Settings. I do the work.",
+  },
+  aviation: {
+    headline: "You chose to explore with sample data. Here's what I found.",
+    subtitle: "I loaded a realistic flight operation into your account -- 4 aircraft, 12 crew members, maintenance schedules, and certification records. In 60 seconds, I scanned everything and flagged 3 things.",
+    insights: [
+      {
+        color: "#16a34a", badge: "Charter Opportunity",
+        detail: "I found a charter request that matches your aircraft availability.",
+        example: "PHX to SFO request for Mar 15 -- N456TA (Citation CJ3) available. Estimated revenue: $8,200.",
+      },
+      {
+        color: "#dc2626", badge: "Maintenance Due",
+        detail: "I checked airframe and engine hours and flagged an upcoming inspection.",
+        example: "N789TB -- Phase 2 inspection due in 42 hours. Schedule with MX provider.",
+      },
+      {
+        color: "#d97706", badge: "Certification Expiring",
+        detail: "I track pilot and crew certifications and found one expiring soon.",
+        example: "Captain Williams -- medical certificate expires in 21 days. Remind to schedule AME appointment.",
+      },
+    ],
+    explainer: "When you connect your real operations data, I do this same analysis every day, automatically -- tracking aircraft, monitoring maintenance, managing crew compliance. You set the rules in Settings. I do the work.",
+  },
+  investor: {
+    headline: "You chose to explore with sample data. Here's what I found.",
+    subtitle: "I loaded a realistic fundraise into your account -- 5 shareholders, 8 investor prospects, and a data room. In 60 seconds, I scanned everything and flagged 3 things.",
+    insights: [
+      {
+        color: "#16a34a", badge: "Investor Match",
+        detail: "I cross-referenced your investor pipeline against your ideal profile and found a match.",
+        example: "Sarah Chen, Angel investor -- $50K-200K check size, fintech focus. Matches your round parameters.",
+      },
+      {
+        color: "#dc2626", badge: "Compliance Flag",
+        detail: "I checked your raise structure against RegCF requirements.",
+        example: "Your $2M target is within the $5M annual RegCF limit. Ensure Form C is filed before accepting investments.",
+      },
+      {
+        color: "#d97706", badge: "Follow-Up Queued",
+        detail: "I found an investor who viewed your data room multiple times but hasn't been contacted.",
+        example: "Mark Johnson viewed your pitch deck 3 times this week. Suggested follow-up drafted.",
+      },
+    ],
+    explainer: "When you upload your real data, I do this same analysis every day, automatically -- tracking investors, monitoring compliance, drafting communications. You set the rules in Settings. I do the work.",
+  },
 };
 
 // ── Component ──────────────────────────────────────────────────────
@@ -140,6 +254,8 @@ export default function OnboardingWizard({ onComplete, onStepChange, vertical: p
   // Step 0 state
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [showVerticalPicker, setShowVerticalPicker] = useState(false);
+  const [showDisclaimer, setShowDisclaimer] = useState(false);
+  const [disclaimerAccepted, setDisclaimerAccepted] = useState(false);
 
   // Step 1 state (conversational form)
   const [subQuestion, setSubQuestion] = useState(0);
@@ -167,10 +283,12 @@ export default function OnboardingWizard({ onComplete, onStepChange, vertical: p
       // Coming from AddWorkspaceWizard — workspace already created
       setPath("business");
       setVertical(propsVertical || localStorage.getItem("VERTICAL") || "auto");
-      setCompanyName(localStorage.getItem("COMPANY_NAME") || "");
+      const existingName = localStorage.getItem("COMPANY_NAME") || "";
+      setCompanyName(existingName);
       setJurisdiction(localStorage.getItem("JURISDICTION") || "IL");
       setTermsAccepted(true);
-      goToStep(skipToStep);
+      // If company name is missing, start at business-basics (step 1) to collect it
+      goToStep(existingName ? skipToStep : 1);
       return;
     }
     async function checkExistingProgress() {
@@ -247,6 +365,7 @@ export default function OnboardingWizard({ onComplete, onStepChange, vertical: p
         vertical: path === "vault" ? "consumer" : vertical,
         dataSource: dataSource || "none",
         completedAt: new Date().toISOString(),
+        disclaimerAcceptedAt: new Date().toISOString(),
       };
       payload.onboardingState = onboardingState;
 
@@ -269,13 +388,17 @@ export default function OnboardingWizard({ onComplete, onStepChange, vertical: p
       localStorage.setItem("VERTICAL", path === "vault" ? "consumer" : vertical);
       localStorage.setItem("JURISDICTION", jurisdiction);
       localStorage.setItem("ONBOARDING_STATE", JSON.stringify(onboardingState));
+      localStorage.removeItem("PENDING_ONBOARDING");
       if (companyName.trim()) {
         localStorage.setItem("COMPANY_NAME", companyName.trim());
         localStorage.setItem("WORKSPACE_NAME", companyName.trim());
       }
 
       goToStep(5);
-      setTimeout(() => onComplete(data.tenantId), 2500);
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('ta:onboarding-complete'));
+        onComplete(data.tenantId);
+      }, 2500);
     } catch (err) {
       console.error(err);
       setError(err?.message || String(err));
@@ -296,8 +419,12 @@ export default function OnboardingWizard({ onComplete, onStepChange, vertical: p
         completedAt: new Date().toISOString(),
       };
       localStorage.setItem("ONBOARDING_STATE", JSON.stringify(onboardingState));
+      localStorage.removeItem("PENDING_ONBOARDING");
       goToStep(5);
-      setTimeout(() => onComplete(), 2500);
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('ta:onboarding-complete'));
+        onComplete();
+      }, 2500);
     } else {
       // First-time signup — create workspace via API
       handleCreate();
@@ -462,7 +589,7 @@ export default function OnboardingWizard({ onComplete, onStepChange, vertical: p
                   { id: "auto", label: "Automotive", icon: "A" },
                   { id: "real-estate", label: "Real Estate", icon: "R" },
                   { id: "analyst", label: "Investment", icon: "I" },
-                  { id: "more", label: "More coming soon", icon: "+", disabled: true },
+                  { id: "investor", label: "Investor Relations", icon: "IR" },
                 ].map((v) => (
                   <button
                     key={v.id}
@@ -495,7 +622,7 @@ export default function OnboardingWizard({ onComplete, onStepChange, vertical: p
           )}
 
           {/* Terms + Continue */}
-          {(path === "business" || path === "vault") && (
+          {(path === "business" || path === "vault") && !showDisclaimer && (
             <div style={{ textAlign: "center" }}>
               <label style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", marginBottom: "16px", cursor: "pointer" }}>
                 <input
@@ -510,13 +637,7 @@ export default function OnboardingWizard({ onComplete, onStepChange, vertical: p
               </label>
               <button
                 disabled={!termsAccepted}
-                onClick={() => {
-                  if (path === "vault") {
-                    goToStep(3); // Skip business basics + integrations
-                  } else {
-                    goToStep(1);
-                  }
-                }}
+                onClick={() => setShowDisclaimer(true)}
                 style={{
                   padding: "14px 48px", fontSize: "15px", fontWeight: 600, borderRadius: "10px",
                   border: "none", cursor: termsAccepted ? "pointer" : "not-allowed",
@@ -526,6 +647,70 @@ export default function OnboardingWizard({ onComplete, onStepChange, vertical: p
               >
                 Continue
               </button>
+            </div>
+          )}
+
+          {/* Disclaimer sub-step */}
+          {(path === "business" || path === "vault") && showDisclaimer && (
+            <div style={{ animation: "fadeIn 0.2s ease-out" }}>
+              <div style={{
+                background: "white", borderRadius: "12px", border: "1px solid #e5e7eb",
+                padding: "24px", marginBottom: "20px",
+              }}>
+                <div style={{ fontSize: "14px", fontWeight: 600, color: "#374151", marginBottom: "12px" }}>
+                  Important Disclaimer
+                </div>
+                <div style={{
+                  fontSize: "13px", color: "#4b5563", lineHeight: 1.6,
+                  padding: "16px", background: "#f9fafb", borderRadius: "8px",
+                  border: "1px solid #e5e7eb",
+                }}>
+                  {VERTICAL_DISCLAIMERS[path === "vault" ? "_default" : vertical] || VERTICAL_DISCLAIMERS._default}
+                </div>
+              </div>
+              <div style={{ textAlign: "center" }}>
+                <label style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", marginBottom: "16px", cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={disclaimerAccepted}
+                    onChange={(e) => setDisclaimerAccepted(e.target.checked)}
+                    style={{ width: "18px", height: "18px" }}
+                  />
+                  <span style={{ fontSize: "13px", color: "#6b7280" }}>
+                    I understand and acknowledge this disclaimer
+                  </span>
+                </label>
+                <div style={{ display: "flex", gap: "12px", justifyContent: "center" }}>
+                  <button
+                    onClick={() => { setShowDisclaimer(false); setDisclaimerAccepted(false); }}
+                    style={{
+                      padding: "14px 28px", fontSize: "15px", fontWeight: 600, borderRadius: "10px",
+                      border: "1px solid #e5e7eb", background: "white", color: "#64748b",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Back
+                  </button>
+                  <button
+                    disabled={!disclaimerAccepted}
+                    onClick={() => {
+                      if (path === "vault") {
+                        goToStep(3);
+                      } else {
+                        goToStep(1);
+                      }
+                    }}
+                    style={{
+                      padding: "14px 48px", fontSize: "15px", fontWeight: 600, borderRadius: "10px",
+                      border: "none", cursor: disclaimerAccepted ? "pointer" : "not-allowed",
+                      background: disclaimerAccepted ? "#7c3aed" : "#d1d5db", color: "white",
+                      transition: "background 0.2s",
+                    }}
+                  >
+                    Continue
+                  </button>
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -988,49 +1173,69 @@ export default function OnboardingWizard({ onComplete, onStepChange, vertical: p
     );
   }
 
-  // ── Step 4: First Value Moment ──────────────────────────────────
+  // ── Step 4: Magic Moment ────────────────────────────────────────
 
   if (currentStep === 4) {
-    const insights = FIRST_VALUE_INSIGHTS[vertical] || FIRST_VALUE_INSIGHTS.auto;
+    const config = MAGIC_MOMENT_CONFIG[vertical] || MAGIC_MOMENT_CONFIG.auto;
 
     return (
       <div style={{
         minHeight: "100%", display: "flex", alignItems: "center", justifyContent: "center",
         background: "#f8fafc", fontFamily: "-apple-system, BlinkMacSystemFont, sans-serif", padding: "20px",
       }}>
-        <div style={{ width: "100%", maxWidth: "600px" }}>
+        <div style={{ width: "100%", maxWidth: "640px" }}>
           <ProgressBar />
           <div style={{ textAlign: "center", marginBottom: "28px" }}>
-            <h2 style={{ margin: "0 0 8px 0", fontSize: "24px", fontWeight: 700 }}>Your AI already found some things</h2>
-            <p style={{ margin: 0, color: "#6b7280", fontSize: "15px" }}>
-              Based on your sample data, here's what caught our attention
+            <h2 style={{ margin: "0 0 8px 0", fontSize: "26px", fontWeight: 700, color: "#1e293b" }}>
+              {config.headline}
+            </h2>
+            <p style={{ margin: 0, color: "#6b7280", fontSize: "15px", lineHeight: 1.5 }}>
+              {config.subtitle}
             </p>
           </div>
 
           <div style={{
             padding: "24px", background: "white", borderRadius: "16px", border: "1px solid #e5e7eb",
-            marginBottom: "24px",
+            marginBottom: "20px",
           }}>
-            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-              {insights.map((item, i) => (
+            <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+              {config.insights.map((item, i) => (
                 <div
                   key={i}
                   style={{
-                    padding: "16px", borderRadius: "12px",
+                    padding: "16px 18px", borderRadius: "12px",
                     borderLeft: `4px solid ${item.color}`,
                     background: "#fafafa",
                     animation: `fadeIn 0.3s ease-out ${i * 0.15}s both`,
                   }}
                 >
                   <span style={{
-                    display: "inline-block", fontSize: "11px", fontWeight: 600,
-                    padding: "2px 8px", borderRadius: "8px", marginBottom: "8px",
-                    background: `${item.color}15`, color: item.color,
+                    display: "inline-block", fontSize: "11px", fontWeight: 700,
+                    padding: "3px 10px", borderRadius: "8px", marginBottom: "8px",
+                    background: `${item.color}15`, color: item.color, letterSpacing: "0.02em",
                   }}>{item.badge}</span>
-                  <div style={{ fontSize: "14px", color: "#374151", lineHeight: 1.5 }}>{item.text}</div>
+                  <div style={{ fontSize: "13px", color: "#6b7280", lineHeight: 1.5, marginBottom: "6px" }}>
+                    {item.detail}
+                  </div>
+                  <div style={{
+                    fontSize: "14px", color: "#1e293b", lineHeight: 1.5, fontWeight: 500,
+                    padding: "10px 12px", background: "white", borderRadius: "8px",
+                    border: "1px solid #e5e7eb",
+                  }}>
+                    {item.example}
+                  </div>
                 </div>
               ))}
             </div>
+          </div>
+
+          {/* Explainer */}
+          <div style={{
+            padding: "16px 20px", background: "linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)",
+            borderRadius: "12px", border: "1px solid #e9d5ff", marginBottom: "24px",
+            fontSize: "14px", color: "#4c1d95", lineHeight: 1.6,
+          }}>
+            {config.explainer}
           </div>
 
           <div style={{ textAlign: "center" }}>
@@ -1039,7 +1244,10 @@ export default function OnboardingWizard({ onComplete, onStepChange, vertical: p
               style={{
                 padding: "14px 48px", fontSize: "16px", fontWeight: 600,
                 background: "#7c3aed", color: "white", border: "none", borderRadius: "10px", cursor: "pointer",
+                transition: "all 0.2s",
               }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "#6d28d9"; e.currentTarget.style.transform = "translateY(-1px)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "#7c3aed"; e.currentTarget.style.transform = "none"; }}
             >
               Let's go!
             </button>
