@@ -1,5 +1,4 @@
 # TitleApp RAAS — Rules as a Service
-
 ## Documentation & Architecture
 
 ---
@@ -32,7 +31,6 @@ RAAS (Rules as a Service) is TitleApp's platform for creating, publishing, and s
 ### For Developers (API)
 
 Workers can also be accessed via the TitleApp API:
-
 - `POST /v1/workers/import` — Register a Worker built on another platform
 - `POST /v1/workers/{id}/mint` — Mint a blockchain title record
 - `GET /v1/workers/{id}/title` — Look up provenance history
@@ -49,16 +47,16 @@ Full API docs: https://us-central1-title-app-alpha.cloudfunctions.net/publicApi/
 
 ```
 Worker {
-  id: string              // Unique identifier (wkr_xxx)
-  name: string            // Display name
-  description: string     // One-line description
-  capabilities: string[]  // What it can do
-  rules: string[]         // The encoded expertise/decision rules
-  audience: string        // Who it's for
-  category: string        // Store categorization
+  id: string                    // Unique identifier (wkr_xxx)
+  name: string                  // Display name
+  description: string           // One-line description
+  capabilities: string[]        // What it can do
+  rules: string[]               // The encoded expertise/decision rules
+  audience: string              // Who it's for
+  category: string              // Store categorization
   pricing: {
     model: 'subscription' | 'per-use' | 'free'
-    amount: number        // Monthly price in USD
+    amount: number              // Monthly price in USD
     currency: 'USD'
   }
   author: {
@@ -67,10 +65,10 @@ Worker {
     verified: boolean
   }
   status: 'draft' | 'published' | 'archived'
-  titled: boolean         // Has blockchain provenance record
-  latestTitleRecord: { ... }  // Most recent title record
-  source: {               // For imported Workers
-    platform: string      // 'titleapp' | 'openai-gpt' | 'langchain' | 'custom'
+  titled: boolean               // Has blockchain provenance record
+  latestTitleRecord: { ... }    // Most recent title record
+  source: {                     // For imported Workers
+    platform: string            // 'titleapp' | 'openai-gpt' | 'langchain' | 'custom'
     external_id: string
     external_url: string
   }
@@ -87,11 +85,11 @@ Worker {
 ### Firestore Schema
 
 ```
-tenants/{tenantId}/workers/{workerId}              — Worker document
-tenants/{tenantId}/workers/{workerId}/rules/        — Detailed rule documents
+tenants/{tenantId}/workers/{workerId}          — Worker document
+tenants/{tenantId}/workers/{workerId}/rules/   — Detailed rule documents
 tenants/{tenantId}/workers/{workerId}/titleRecords/ — Blockchain provenance records
-titleRecords/{recordId}                             — Top-level for public lookups
-raasSubscriptions/{subscriptionId}                  — User subscriptions to Workers
+titleRecords/{recordId}                         — Top-level for public lookups
+raasSubscriptions/{subscriptionId}             — User subscriptions to Workers
 ```
 
 ---
@@ -103,7 +101,6 @@ When a user wants to create a Worker, the AI conducts a structured interview:
 ### Phase 1 — Discovery (4-5 exchanges minimum)
 
 The AI asks about:
-
 - **Expertise area** — "What do people always come to you for?"
 - **Target audience** — "Who needs this knowledge? Who would pay?"
 - **Process/workflow** — "Walk me through how you approach this"
@@ -114,7 +111,6 @@ The AI is warm, curious, and genuinely excited. It reflects back what it hears a
 ### Phase 2 — Synthesis (1-2 exchanges)
 
 The AI proposes the Worker concept:
-
 - Suggested name
 - One-line description
 - Key capabilities (3-5)
@@ -128,7 +124,6 @@ After confirmation, the AI creates the workspace and generates the Worker. The u
 ### System Prompt
 
 The builder interview uses a specialized system prompt (see `raas/diy-builder/builder-prompt.md`). Key rules:
-
 - Minimum 4 user exchanges before proposing a Worker
 - Never mention workspaces, dashboards, or technical details during the interview
 - Be warm and conversational, not corporate
@@ -139,7 +134,7 @@ The builder interview uses a specialized system prompt (see `raas/diy-builder/bu
 
 ## Blockchain Provenance
 
-**"Build it anywhere. Title it here."**
+### "Build it anywhere. Title it here."
 
 Every Worker can be minted as a blockchain record on Polygon via Venly. This provides:
 
@@ -172,14 +167,14 @@ The `metadata_hash` of this object is stored on-chain. The actual rules never to
 ```
 TitleRecord {
   version: number
-  txHash: string           // Polygon transaction hash
+  txHash: string                // Polygon transaction hash
   chain: 'polygon'
   tokenId: string
   mintedAt: timestamp
-  metadataHash: string     // SHA-256 of the metadata JSON
-  rulesHash: string        // SHA-256 of the rules array
-  memo: string             // Optional note
-  previousVersionTx: string // Link to previous version
+  metadataHash: string          // SHA-256 of the metadata JSON
+  rulesHash: string             // SHA-256 of the rules array
+  memo: string                  // Optional note
+  previousVersionTx: string     // Link to previous version
   status: 'minted'
 }
 ```
@@ -187,7 +182,6 @@ TitleRecord {
 ### Wallet Strategy
 
 Most creators don't have crypto wallets. Venly handles this:
-
 - Custodial wallet created automatically on first mint
 - Tied to TitleApp account (no seed phrases)
 - Gas costs negligible on Polygon, absorbed by TitleApp
@@ -206,7 +200,6 @@ Blockchain minting is opt-in via a toggle in workspace Settings under "Blockchai
 The RAAS Store is a browsable grid of published Workers, accessible from any workspace sidebar or from the Personal Vault.
 
 Each card shows:
-
 - Worker name and author
 - One-line description
 - Category badge
@@ -242,7 +235,6 @@ Each card shows:
 Creators manage their Workers from the Creator Dashboard, accessible from the sidebar.
 
 ### Dashboard Shows:
-
 - Published Workers with status
 - Subscriber counts and trends
 - Revenue (total, this month, per Worker)
@@ -306,28 +298,24 @@ curl -X POST https://api.titleapp.ai/v1/workers/import \
 When used for fundraising (Investor Relations workspace), Workers and the RAAS infrastructure support investment instruments:
 
 ### SAFE (Simple Agreement for Future Equity)
-
 - Pre-share issuance
 - Converts to equity on triggering event (priced round, IPO, acquisition)
 - Stored as a signed document in investor's Vault
 - No tokens minted until conversion
 
 ### SAFT (Simple Agreement for Future Tokens)
-
 - Pre-token issuance
 - Converts to tokens on triggering event (token launch)
 - Stored as a signed document in investor's Vault
 - Tokens minted to investor's wallet on conversion
 
 ### Token (Direct Issuance)
-
 - Shares have been issued / cap table is defined
 - Ownership tokens minted immediately on investment
 - Tokens appear in investor's Vault wallet
 - Represent actual equity/ownership units
 
 ### Configuration
-
 The company selects their instrument type during Investor Relations workspace setup. The AI explains the tradeoffs and helps them choose.
 
 ---
@@ -335,25 +323,21 @@ The company selects their instrument type during Investor Relations workspace se
 ## Pricing
 
 ### For Workspace Users
-
 - **Personal Vault**: Free
 - **Business Workspaces**: $9/seat/month + AI usage (our cost + 50% margin)
 - **14-day free trial** on all business workspaces
 
 ### For RAAS Creators
-
 - Free to build and publish Workers
 - 75/25 revenue split (creator keeps 75%)
 - Blockchain title minting: free (gas absorbed by TitleApp)
 
 ### For RAAS Subscribers
-
 - Price set by creator ($5-49/month typical)
 - Cancel anytime
 - Access via Personal Vault → AI Tools & GPTs
 
 ### For API Users
-
 - API key authentication
 - Rate limited (see API docs for limits)
 - Usage-based pricing (future)
@@ -378,27 +362,31 @@ The company selects their instrument type during Investor Relations workspace se
 
 ```
 raas/
-├── README.md                  ← This file
+├── README.md                          ← This file
 ├── diy-builder/
-│   └── builder-prompt.md      ← System prompt for builder interview
+│   └── builder-prompt.md             ← System prompt for builder interview
 ├── store/
-│   └── store-categories.md    ← RAAS Store category definitions
+│   └── store-categories.md           ← RAAS Store category definitions
 ├── auto/
-│   └── auto-rules.md          ← Auto dealer vertical rules
+│   └── auto-rules.md                 ← Auto dealer vertical rules
 ├── real-estate/
-│   └── re-rules.md            ← Real estate vertical rules
+│   └── re-rules.md                   ← Real estate vertical rules
 ├── analyst/
-│   └── analyst-rules.md       ← Investment analyst vertical rules
+│   └── analyst-rules.md              ← Investment analyst vertical rules
 ├── vault/
-│   └── vault-rules.md         ← Personal vault rules
+│   └── vault-rules.md                ← Personal vault rules
 ├── investor/
-│   └── investor-rules.md      ← Investor relations vertical rules
+│   └── investor-rules.md             ← Investor relations vertical rules
 ├── onboarding/
-│   ├── universal-onboarding.md ← Onboarding wizard spec
-│   └── integrations-catalog.md ← Integration options per vertical
+│   ├── universal-onboarding.md       ← Onboarding wizard spec
+│   ├── integrations-catalog.md       ← Integration options per vertical
+│   └── milestones.md                 ← Milestone celebration definitions
+├── compliance/
+│   ├── disclaimers.md                ← Platform + vertical disclaimers
+│   └── guardrails.md                 ← RAAS compliance guardrail rules
 └── blockchain/
-    ├── title-minting.md       ← Blockchain provenance spec
-    └── venly-integration.md   ← Venly/Polygon integration details
+    ├── title-minting.md              ← Blockchain provenance spec
+    └── venly-integration.md          ← Venly/Polygon integration details
 ```
 
 ---
@@ -412,9 +400,129 @@ raas/
 
 ---
 
+## Universal Onboarding Wizard
+
+Every new workspace goes through a structured onboarding wizard. The wizard is universal (same structure for all verticals) with vertical-specific content.
+
+### Wizard Steps
+
+| Step | Name | What Happens |
+|------|------|-------------|
+| 1 | **Vertical Selection** | Choose workspace type (Auto, RE, Analyst, Aviation, Investor, Builder) |
+| 2 | **Business Details** | Company name, tagline, state/jurisdiction (contextual placeholders per vertical) |
+| 3 | **Disclaimer & Terms** | Platform disclaimer + vertical-specific compliance notice. MANDATORY — cannot be skipped. Checkboxes for ToS, AI disclaimer, compliance acknowledgment |
+| 4 | **Integrations** | "What tools do you use?" — vertical-specific integration catalog (Bloomberg, PitchBook, DMS, MLS, etc.) |
+| 5 | **Data Import** | Three choices: Import your data / Use sample data / Start empty |
+| 6 | **Magic Moment** | AI shows what it already found in the data. Vertical-specific insight cards with explanations. Explainer: "You set the rules in Settings, and Alex does the work." |
+| 7 | **Dashboard** | Confetti celebration 🎉 + chat panel fires celebration message + clickable suggestion bubbles for guided next steps |
+
+### Magic Moment Insight Cards
+
+Each vertical shows 3 AI-generated insights from the sample data to demonstrate value immediately:
+
+| Vertical | Opportunity | Risk Alert | Action Item |
+|----------|------------|------------|-------------|
+| **Analyst** | Deal matching investment criteria | Portfolio position down on news | LP letter drafted for review |
+| **Auto** | Underpriced inventory unit | Aging inventory alert (>45 days) | Customer lead needs follow-up |
+| **Real Estate** | Buyer matched to listing | Days-on-market threshold hit | Closing deadline approaching |
+| **Aviation** | Charter opportunity matching aircraft | Maintenance inspection due | Crew certification expiring |
+| **Investor** | New investor completed KYC | Investment approaching RegCF limit | Quarterly update due |
+
+### Guided Next Steps (Chat Suggestions)
+
+After the magic moment, the chat offers 4 clickable suggestions:
+1. "Show me around my workspace" → AI gives a tour of sidebar sections
+2. "How do you [core action]?" → AI explains the primary value prop for the vertical
+3. "Let me set my rules" → AI explains the rules system and navigates to Settings
+4. "Tell me about [the alert/opportunity]" → AI dives into one of the insight cards
+
+### Onboarding State in Firestore
+
+```
+workspace: {
+  onboardingComplete: boolean,
+  disclaimerAccepted: boolean,
+  disclaimerAcceptedAt: timestamp,
+  disclaimerVersion: string,           // e.g., '2026-02-24-v1'
+  termsAccepted: boolean,
+  complianceAckAccepted: boolean,
+  dataSetup: 'sample' | 'import' | 'empty',
+  selectedIntegrations: string[],
+  celebratedMilestones: string[],     // tracks which celebrations have fired
+}
+```
+
+---
+
+## Milestone Celebrations
+
+TitleApp uses a milestone celebration system to reward engagement and create stickiness. Celebrations are confetti animations + chat messages that fire at key moments throughout the user's journey. Each milestone fires ONCE (tracked in Firestore) and respects accessibility preferences.
+
+### Celebration Levels
+
+| Level | Animation | When |
+|-------|-----------|------|
+| **Big** | Full confetti burst (2 waves, 120 particles) | Major product moments |
+| **Medium** | Medium burst (60 particles) | Feature adoption moments |
+| **Subtle** | Small burst (30 particles) | Engagement nudges |
+
+### Defined Milestones
+
+**Onboarding:**
+- `onboarding_complete` — BIG — First dashboard load after setup
+
+**Data & Engagement:**
+- `first_data_import` — MEDIUM — First data uploaded/imported
+- `first_csv_upload` — SUBTLE — First CSV file uploaded
+- `first_rule_created` — MEDIUM — First rule saved in Settings
+- `tenth_chat_message` — SUBTLE — 10th message with the AI
+- `first_report_generated` — MEDIUM — First report created
+
+**RAAS Creator Revenue:**
+- `first_subscriber` — BIG — First paying subscriber on a Worker
+- `first_revenue` — BIG — First dollar earned
+- `ten_subscribers` — BIG — 10 subscribers milestone
+
+**Vertical-Specific:**
+- `first_deal_closed` — BIG — First deal/transaction closed (Auto, RE, Analyst)
+- `first_listing_sold` — BIG — First listing sold (RE)
+- `first_investment_received` — BIG — First investment in a raise (Investor Relations)
+
+**Blockchain:**
+- `first_title_minted` — MEDIUM — First Worker title minted on Polygon
+
+### Implementation
+
+Milestones are tracked in Firestore on the workspace document:
+
+```
+workspace.celebratedMilestones: ['onboarding_complete', 'first_data_import', ...]
+```
+
+The utility `apps/business/src/utils/celebrations.js` handles detection, animation (via `canvas-confetti`), Firestore tracking, and chat message delivery. Confetti uses TitleApp brand colors (#7c3aed purple, #a78bfa light purple, #fbbf24 gold, #34d399 green).
+
+### Adding New Milestones
+
+To add a milestone, add an entry to the `MILESTONES` object in `celebrations.js` and hook `checkMilestone()` at the trigger point:
+
+```javascript
+// In celebrations.js
+const MILESTONES = {
+  ...existing,
+  my_new_milestone: { level: 'medium', message: '🎉 You did the thing!' },
+};
+
+// At the trigger point
+const msg = await checkMilestone('my_new_milestone', workspaceRef);
+if (msg) pushChatMessage(msg);
+```
+
+---
+
 ## Revision History
 
 | Date | Version | Changes |
 |------|---------|---------|
 | 2026-02-23 | 1.0 | Initial RAAS documentation (Session 15) |
 | 2026-02-24 | 2.0 | Added blockchain provenance, Worker import, investor instruments, fee comparison, Wefunder hybrid approach (Session 16) |
+| 2026-02-24 | 2.1 | Added milestone celebration system, onboarding wizard structure, compliance guardrails (Session 16-17) |
