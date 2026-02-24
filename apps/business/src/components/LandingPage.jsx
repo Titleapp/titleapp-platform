@@ -331,6 +331,68 @@ export default function LandingPage() {
   const rotationRef = useRef(null);
   const pausedRef = useRef(false);
 
+  // Inline auth state (for sign-in rendered inside chat)
+  const [inlineAuthMode, setInlineAuthMode] = useState("magic"); // "magic" | "password"
+  const [inlineEmail, setInlineEmail] = useState("");
+  const [inlinePassword, setInlinePassword] = useState("");
+  const [inlineStatus, setInlineStatus] = useState("");
+  const [inlineLinkSent, setInlineLinkSent] = useState(false);
+
+  // ── Inline auth handlers (for chat-embedded sign-in) ──────────
+
+  async function handleInlineMagicLink(e) {
+    e.preventDefault();
+    setInlineStatus("Sending magic link...");
+    const actionCodeSettings = { url: window.location.origin + "/", handleCodeInApp: true };
+    try {
+      const trimmedEmail = inlineEmail.trim().toLowerCase();
+      await sendSignInLinkToEmail(auth, trimmedEmail, actionCodeSettings);
+      window.localStorage.setItem("emailForSignIn", trimmedEmail);
+      setInlineLinkSent(true);
+      setInlineStatus("");
+    } catch (err) {
+      console.error(err);
+      setInlineStatus("Failed to send link: " + (err?.message || String(err)));
+    }
+  }
+
+  async function handleInlinePasswordLogin(e) {
+    e.preventDefault();
+    setInlineStatus("Signing in...");
+    try {
+      const cred = await signInWithEmailAndPassword(auth, inlineEmail, inlinePassword);
+      const token = await cred.user.getIdToken(true);
+      localStorage.setItem("ID_TOKEN", token);
+      setInlineStatus("Signed in successfully");
+    } catch (err) {
+      console.error(err);
+      const code = err?.code || "";
+      if (code === "auth/wrong-password" || code === "auth/user-not-found" || code === "auth/invalid-credential" || code === "auth/invalid-login-credentials") {
+        setInlineStatus("No password set for this account. Use Magic Link or Google instead.");
+      } else {
+        setInlineStatus("Login failed: " + (err?.message || String(err)));
+      }
+    }
+  }
+
+  async function handleInlineGoogleLogin() {
+    setInlineStatus("Signing in with Google...");
+    try {
+      const provider = new GoogleAuthProvider();
+      const cred = await signInWithPopup(auth, provider);
+      const token = await cred.user.getIdToken(true);
+      localStorage.setItem("ID_TOKEN", token);
+      setInlineStatus("Signed in successfully");
+    } catch (err) {
+      console.error(err);
+      if (err?.code === "auth/popup-closed-by-user") {
+        setInlineStatus("");
+      } else {
+        setInlineStatus("Google sign-in failed: " + (err?.message || String(err)));
+      }
+    }
+  }
+
   // Auto-rotate slides
   useEffect(() => {
     if (lockedSlide.current !== null) {
@@ -497,7 +559,29 @@ export default function LandingPage() {
           <LogoIcon size={40} />
           <span>TitleApp AI</span>
         </div>
-        <div style={{ display: "flex", gap: "1rem" }}>
+        <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
+          <a
+            href="https://us-central1-title-app-alpha.cloudfunctions.net/publicApi/v1/docs"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ fontSize: "14px", color: "#64748b", textDecoration: "none", cursor: "pointer", transition: "color 0.2s" }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = "#7c3aed"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = "#64748b"; }}
+          >
+            Developers
+          </a>
+          <span
+            onClick={() => {
+              const investorMsg = "Tell me about investing in TitleApp";
+              setChatInput(investorMsg);
+              activateChat(investorMsg);
+            }}
+            style={{ fontSize: "14px", color: "#64748b", textDecoration: "none", cursor: "pointer", transition: "color 0.2s" }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = "#7c3aed"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = "#64748b"; }}
+          >
+            Investors
+          </span>
           <button
             onClick={() => { setAuthMode("magic"); setAuthOpen(true); }}
             style={{ padding: "0.75rem 1.5rem", borderRadius: "8px", fontWeight: 600, cursor: "pointer", border: "2px solid transparent", background: "transparent", color: "#7c3aed", fontSize: "1rem", transition: "all 0.3s" }}
@@ -648,19 +732,138 @@ export default function LandingPage() {
                     {msg.content}
                   </div>
                   {msg.showSetupButton && (
-                    <div style={{ marginRight: "20%", marginTop: "8px" }}>
-                      <button
-                        onClick={() => { setAuthMode("signup"); setAuthOpen(true); }}
-                        style={{
-                          padding: "10px 20px", fontSize: "14px", fontWeight: 600,
-                          background: "#7c3aed", color: "white", border: "none",
-                          borderRadius: "8px", cursor: "pointer", transition: "all 0.3s",
-                        }}
-                        onMouseEnter={(e) => { e.currentTarget.style.background = "#6d28d9"; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.background = "#7c3aed"; }}
-                      >
-                        Set up my workspace
-                      </button>
+                    <div style={{ marginRight: "10%", marginTop: "12px" }}>
+                      <div style={{
+                        background: "white", borderRadius: "16px", border: "1px solid #e5e7eb",
+                        padding: "24px", animation: "slideIn 0.3s ease",
+                        boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
+                      }}>
+                        {inlineLinkSent ? (
+                          <div style={{ padding: "8px", textAlign: "center" }}>
+                            <div style={{ width: "48px", height: "48px", borderRadius: "50%", background: "#f0fdf4", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px", fontSize: "24px" }}>&#10003;</div>
+                            <div style={{ fontSize: "16px", fontWeight: 600, marginBottom: "8px" }}>Check your email</div>
+                            <div style={{ fontSize: "14px", color: "#6b7280" }}>We sent a sign-in link to <strong>{inlineEmail}</strong></div>
+                            <div style={{ fontSize: "13px", color: "#6b7280", marginTop: "8px" }}>Click the link in your email to continue</div>
+                            <button
+                              onClick={() => { setInlineLinkSent(false); setInlineEmail(""); }}
+                              style={{ marginTop: "16px", padding: "8px 16px", background: "white", border: "1px solid #e5e7eb", borderRadius: "8px", cursor: "pointer", fontSize: "13px" }}
+                            >
+                              Use different email
+                            </button>
+                          </div>
+                        ) : (
+                          <>
+                            <div style={{ fontSize: "16px", fontWeight: 700, marginBottom: "4px", color: "#1e293b" }}>
+                              Create your free account
+                            </div>
+                            <div style={{ fontSize: "13px", color: "#6b7280", marginBottom: "16px" }}>
+                              Sign in to set up your workspace
+                            </div>
+
+                            {/* Mode toggle */}
+                            <div style={{ display: "flex", gap: "6px", marginBottom: "14px" }}>
+                              {["magic", "password"].map((m) => (
+                                <button
+                                  key={m}
+                                  onClick={() => setInlineAuthMode(m)}
+                                  style={{
+                                    padding: "7px 14px", borderRadius: "8px", cursor: "pointer", fontSize: "13px",
+                                    background: inlineAuthMode === m ? "rgba(124,58,237,0.1)" : "white",
+                                    border: inlineAuthMode === m ? "1px solid rgba(124,58,237,0.3)" : "1px solid #e5e7eb",
+                                    fontWeight: inlineAuthMode === m ? 600 : 400,
+                                  }}
+                                >
+                                  {m === "magic" ? "Magic Link" : "Password"}
+                                </button>
+                              ))}
+                            </div>
+
+                            {/* Magic Link form */}
+                            {inlineAuthMode === "magic" && (
+                              <form onSubmit={handleInlineMagicLink} style={{ display: "grid", gap: "10px" }}>
+                                <input
+                                  type="email" value={inlineEmail}
+                                  onChange={(e) => setInlineEmail(e.target.value)}
+                                  placeholder="you@example.com" autoComplete="email" required
+                                  style={{ padding: "11px 14px", fontSize: "14px", border: "1px solid #e5e7eb", borderRadius: "8px", outline: "none" }}
+                                  onFocus={(e) => { e.target.style.borderColor = "#7c3aed"; }}
+                                  onBlur={(e) => { e.target.style.borderColor = "#e5e7eb"; }}
+                                />
+                                <button type="submit" style={{
+                                  padding: "11px", fontSize: "14px", fontWeight: 600,
+                                  background: "#7c3aed", color: "white", border: "none", borderRadius: "8px", cursor: "pointer",
+                                }}>
+                                  Send Magic Link
+                                </button>
+                              </form>
+                            )}
+
+                            {/* Password form */}
+                            {inlineAuthMode === "password" && (
+                              <form onSubmit={handleInlinePasswordLogin} style={{ display: "grid", gap: "10px" }}>
+                                <input
+                                  type="email" value={inlineEmail}
+                                  onChange={(e) => setInlineEmail(e.target.value)}
+                                  placeholder="you@example.com" autoComplete="email" required
+                                  style={{ padding: "11px 14px", fontSize: "14px", border: "1px solid #e5e7eb", borderRadius: "8px", outline: "none" }}
+                                  onFocus={(e) => { e.target.style.borderColor = "#7c3aed"; }}
+                                  onBlur={(e) => { e.target.style.borderColor = "#e5e7eb"; }}
+                                />
+                                <input
+                                  type="password" value={inlinePassword}
+                                  onChange={(e) => setInlinePassword(e.target.value)}
+                                  placeholder="Password" autoComplete="current-password" required
+                                  style={{ padding: "11px 14px", fontSize: "14px", border: "1px solid #e5e7eb", borderRadius: "8px", outline: "none" }}
+                                  onFocus={(e) => { e.target.style.borderColor = "#7c3aed"; }}
+                                  onBlur={(e) => { e.target.style.borderColor = "#e5e7eb"; }}
+                                />
+                                <button type="submit" style={{
+                                  padding: "11px", fontSize: "14px", fontWeight: 600,
+                                  background: "#7c3aed", color: "white", border: "none", borderRadius: "8px", cursor: "pointer",
+                                }}>
+                                  Sign In
+                                </button>
+                              </form>
+                            )}
+
+                            {/* Status message */}
+                            {inlineStatus && (
+                              <div style={{
+                                marginTop: "10px", padding: "10px", borderRadius: "8px", fontSize: "13px",
+                                background: inlineStatus.includes("ailed") || inlineStatus.includes("No password") ? "#fff5f5" : "#f0fdf4",
+                                border: inlineStatus.includes("ailed") || inlineStatus.includes("No password") ? "1px solid #fecaca" : "1px solid #86efac",
+                                color: inlineStatus.includes("ailed") || inlineStatus.includes("No password") ? "#dc2626" : "#16a34a",
+                              }}>
+                                {inlineStatus}
+                              </div>
+                            )}
+
+                            {/* Google divider + button */}
+                            <div style={{ marginTop: "14px", paddingTop: "14px", borderTop: "1px solid #e5e7eb" }}>
+                              <div style={{ fontSize: "12px", color: "#94a3b8", textAlign: "center", marginBottom: "10px" }}>or continue with</div>
+                              <button
+                                onClick={handleInlineGoogleLogin}
+                                style={{
+                                  width: "100%", padding: "11px", fontSize: "14px", fontWeight: 500,
+                                  background: "white", border: "1px solid #e5e7eb", borderRadius: "8px", cursor: "pointer",
+                                  display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",
+                                  transition: "all 0.2s",
+                                }}
+                                onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#7c3aed"; e.currentTarget.style.background = "#faf5ff"; }}
+                                onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#e5e7eb"; e.currentTarget.style.background = "white"; }}
+                              >
+                                <svg width="18" height="18" viewBox="0 0 24 24">
+                                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
+                                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                                  <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                                  <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                                </svg>
+                                Google
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -719,6 +922,47 @@ export default function LandingPage() {
             </svg>
           </button>
         </div>
+      )}
+
+      {/* Footer */}
+      {!chatActive && (
+        <footer style={{
+          background: "#f8fafc", padding: "24px 2rem", textAlign: "center",
+          borderTop: "1px solid #e2e8f0", fontSize: "13px", color: "#94a3b8",
+        }}>
+          <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "16px", flexWrap: "wrap", marginBottom: "8px" }}>
+            <span style={{ fontWeight: 600, color: "#64748b" }}>TitleApp AI</span>
+            <span style={{ color: "#cbd5e1" }}>&middot;</span>
+            <a
+              href="https://us-central1-title-app-alpha.cloudfunctions.net/publicApi/v1/docs"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: "#64748b", textDecoration: "none", transition: "color 0.2s" }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = "#7c3aed"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = "#64748b"; }}
+            >
+              Developers
+            </a>
+            <span style={{ color: "#cbd5e1" }}>&middot;</span>
+            <span
+              onClick={() => {
+                const investorMsg = "Tell me about investing in TitleApp";
+                setChatInput(investorMsg);
+                activateChat(investorMsg);
+              }}
+              style={{ color: "#64748b", textDecoration: "none", cursor: "pointer", transition: "color 0.2s" }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = "#7c3aed"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = "#64748b"; }}
+            >
+              Investors
+            </span>
+            <span style={{ color: "#cbd5e1" }}>&middot;</span>
+            <span style={{ color: "#94a3b8" }}>Privacy</span>
+            <span style={{ color: "#cbd5e1" }}>&middot;</span>
+            <span style={{ color: "#94a3b8" }}>Terms</span>
+          </div>
+          <div>&copy; 2026 TitleApp AI</div>
+        </footer>
       )}
 
       {/* Auth Modal */}
