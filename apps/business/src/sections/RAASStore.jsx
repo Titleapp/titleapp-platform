@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { getFirestore, collection, query, where, orderBy, getDocs } from "firebase/firestore";
 
 const CATEGORIES = ["All", "Healthcare", "Real Estate", "Auto", "Finance", "Consulting", "Other"];
 
@@ -19,21 +18,18 @@ export default function RAASStore() {
     setLoading(true);
     setError("");
     try {
-      const db = getFirestore();
-      const q = query(
-        collection(db, "workers"),
-        where("published", "==", true),
-        orderBy("created_at", "desc")
-      );
-      const snapshot = await getDocs(q);
-      const results = [];
-      snapshot.forEach((doc) => {
-        results.push({ id: doc.id, ...doc.data() });
-      });
-      setWorkers(results);
+      const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+      const resp = await fetch(`${apiBase}/api?path=/v1/raas:catalog`);
+      const data = await resp.json();
+      if (data.ok && data.workers) {
+        setWorkers(data.workers);
+      } else {
+        setWorkers([]);
+      }
     } catch (e) {
       console.error("Failed to load RAAS Store workers:", e);
-      setError(e?.message || String(e));
+      setError("");
+      setWorkers([]);
     } finally {
       setLoading(false);
     }
