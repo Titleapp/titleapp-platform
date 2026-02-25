@@ -50,6 +50,7 @@ import InvestorCapTable from "./sections/InvestorCapTable";
 import InvestorPipeline from "./sections/InvestorPipeline";
 import VaultTools from "./sections/VaultTools";
 import DeveloperSandbox from "./pages/DeveloperSandbox";
+import MarketplaceListing from "./pages/MarketplaceListing";
 import { auth } from "./firebase";
 import { signInWithCustomToken } from "firebase/auth";
 
@@ -201,6 +202,12 @@ export default function App() {
   // ── /sandbox route intercept ──────────────────────────────
   // Standalone developer sandbox — split-pane layout with Alex chat + workspace
   const isSandbox = window.location.pathname === "/sandbox" || window.location.pathname === "/sandbox/";
+
+  // ── /marketplace/:slug route intercept ─────────────────────
+  // Public marketplace listing page — no auth required
+  const marketplaceMatch = window.location.pathname.match(/^\/marketplace\/([a-z0-9-]+)\/?$/);
+  const isMarketplace = !!marketplaceMatch;
+  const marketplaceSlug = marketplaceMatch ? marketplaceMatch[1] : null;
   const [sandboxReady, setSandboxReady] = useState(isSandbox ? false : null);
 
   const [token, setToken] = useState(() =>
@@ -564,6 +571,11 @@ export default function App() {
     return <DeveloperSandbox />;
   }
 
+  // ── Marketplace Listing: public, no auth required ───────────
+  if (isMarketplace) {
+    return <MarketplaceListing slug={marketplaceSlug} />;
+  }
+
   if (handoffInProgress || currentView === "loading") {
     return (
       <div
@@ -589,15 +601,15 @@ export default function App() {
     return (
       <div className="appShell" style={{ minHeight: "100vh" }}>
         <div className="dualPanel" style={{ minHeight: "100vh" }}>
+          <aside className="chatSidebar">
+            <ChatPanel currentSection="onboarding" onboardingStep={onboardingStep} />
+          </aside>
           <div style={{ flex: 1, minWidth: 0, overflowY: "auto", height: "100vh" }}>
             <OnboardingWizard
               onComplete={() => setCurrentView("hub")}
               onStepChange={setOnboardingStep}
             />
           </div>
-          <aside className="chatSidebar">
-            <ChatPanel currentSection="onboarding" onboardingStep={onboardingStep} />
-          </aside>
         </div>
       </div>
     );
@@ -634,6 +646,9 @@ export default function App() {
     return (
       <div className="appShell" style={{ minHeight: "100vh" }}>
         <div className="dualPanel" style={{ minHeight: "100vh" }}>
+          <aside className="chatSidebar">
+            <ChatPanel currentSection="onboarding" onboardingStep={onboardingStep} />
+          </aside>
           <div style={{ flex: 1, minWidth: 0, overflowY: "auto", height: "100vh" }}>
             <OnboardingWizard
               vertical={onboardingVertical}
@@ -646,9 +661,6 @@ export default function App() {
               onStepChange={setOnboardingStep}
             />
           </div>
-          <aside className="chatSidebar">
-            <ChatPanel currentSection="onboarding" onboardingStep={onboardingStep} />
-          </aside>
         </div>
       </div>
     );

@@ -119,12 +119,12 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
         />
       </div>
 
-      {/* Dual-panel: main content + chat sidebar */}
+      {/* Dual-panel: chat sidebar + main content */}
       <div className="dualPanel">
-        <main className="main">{children}</main>
         <aside className="chatSidebar">
           <ChatPanel currentSection={currentSection} />
         </aside>
+        <main className="main">{children}</main>
       </div>
 
       {/* Mobile chat toggle */}

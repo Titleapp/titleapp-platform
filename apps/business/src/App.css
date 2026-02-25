@@ -398,8 +398,8 @@ body{
   width:40%;
   max-width:560px;
   min-width:340px;
-  border-left:2px solid var(--line);
-  box-shadow:-4px 0 16px rgba(15,23,42,0.04);
+  border-right:2px solid var(--line);
+  box-shadow:4px 0 16px rgba(15,23,42,0.04);
   display:flex;
   flex-direction:column;
   height:100vh;
