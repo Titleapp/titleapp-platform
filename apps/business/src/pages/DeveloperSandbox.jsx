@@ -146,17 +146,18 @@ export default function DeveloperSandbox() {
       const resp = await fetch(`${API_BASE}/api?path=/v1/chat:message`, {
         method: "POST",
         headers,
-        body: JSON.stringify({ sessionId, surface: "sandbox", message: text }),
+        body: JSON.stringify({ sessionId, surface: "sandbox", userInput: text }),
       });
       const result = await resp.json();
-      if (result.ok && result.reply) {
-        setMessages((prev) => [...prev, { role: "assistant", text: result.reply, cards: result.cards }]);
+      const reply = result.message || result.reply;
+      if (result.ok && reply) {
+        setMessages((prev) => [...prev, { role: "assistant", text: reply, cards: result.cards }]);
         // If a RAAS Worker was created, refresh the list
         if (result.buildAnimation || result.cards?.some((c) => c.type === "workerCard")) {
           setTimeout(() => loadWorkers(), 500);
         }
       } else {
-        addAssistantMessage(result.reply || "Something went wrong. Try again.");
+        addAssistantMessage(reply || "Something went wrong. Try again.");
       }
     } catch (e) {
       console.error("Chat error:", e);

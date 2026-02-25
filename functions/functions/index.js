@@ -1042,7 +1042,7 @@ exports.api = onRequest(
         // Session continuity: if session is empty and user is authenticated,
         // try to resume their most recent session from any surface.
         // SKIP for special surfaces — they always get a fresh session.
-        if (!sessionSnap.exists && authUser && surface !== 'invest' && surface !== 'developer' && surface !== 'privacy' && surface !== 'contact') {
+        if (!sessionSnap.exists && authUser && surface !== 'invest' && surface !== 'developer' && surface !== 'sandbox' && surface !== 'privacy' && surface !== 'contact') {
           try {
             const recentSnap = await db.collection("chatSessions")
               .where("userId", "==", authUser.uid)
