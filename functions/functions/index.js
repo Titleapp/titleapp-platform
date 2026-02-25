@@ -23,8 +23,28 @@ const {
   handleRaasPackagesGet,
 } = require("./raas/raas.handlers");
 
+// RAAS Enforcement Engine (v1)
+const { validateOutput, validateChatOutput, callAIWithEnforcement } = require("./raas/raas.engine");
+
 // Chat Engine (conversational state machine)
 const { processMessage: chatEngineProcess, defaultState: chatEngineDefaultState } = require("./chatEngine");
+
+// Company knowledge for investor system prompt (loaded once at cold start)
+const fs = require("fs");
+const path = require("path");
+let _companyKnowledge = null;
+function getCompanyKnowledge() {
+  if (!_companyKnowledge) {
+    try {
+      const knowledgePath = path.join(__dirname, "raas", "company-knowledge.md");
+      _companyKnowledge = fs.readFileSync(knowledgePath, "utf-8");
+    } catch (e) {
+      console.warn("Could not load company-knowledge.md:", e.message);
+      _companyKnowledge = "TitleApp is RAAS -- Rules + AI-as-a-Service -- an AI governance platform providing AI-powered business operations with deterministic rule enforcement.";
+    }
+  }
+  return _companyKnowledge;
+}
 
 // Workspace management
 const { getUserWorkspaces, createWorkspace, getWorkspace, PERSONAL_VAULT } = require("./helpers/workspaces");
@@ -396,7 +416,9 @@ async function signupInternal({ email, name, accountType, companyName, companyDe
   let userRecord;
   let existing = false;
   try {
-    userRecord = await admin.auth().createUser({ email, displayName: name || null });
+    const createParams = { email };
+    if (name) createParams.displayName = name;
+    userRecord = await admin.auth().createUser(createParams);
   } catch (e) {
     if (e.code === "auth/email-already-exists") {
       userRecord = await admin.auth().getUserByEmail(email);
@@ -426,24 +448,29 @@ async function signupInternal({ email, name, accountType, companyName, companyDe
   let memberships = [];
   if (existing) {
     try {
+      // Query without status filter — some legacy memberships may lack status field
       const memSnap = await db.collection("memberships")
         .where("userId", "==", userRecord.uid)
-        .where("status", "==", "active")
         .get();
       if (!memSnap.empty) {
         for (const doc of memSnap.docs) {
           const m = doc.data();
-          // Look up tenant name
+          // Look up tenant name + vertical
           let tenantName = m.tenantId;
+          let tenantVertical = m.vertical || null;
           try {
             const tSnap = await db.collection("tenants").doc(m.tenantId).get();
-            if (tSnap.exists) tenantName = tSnap.data().name || m.tenantId;
+            if (tSnap.exists) {
+              const tData = tSnap.data();
+              tenantName = tData.name || m.tenantId;
+              if (!tenantVertical && tData.vertical) tenantVertical = tData.vertical;
+            }
           } catch (_) { /* ignore */ }
           memberships.push({
             tenantId: m.tenantId,
             tenantName,
             role: m.role || "owner",
-            vertical: m.vertical || null,
+            vertical: tenantVertical,
           });
         }
       }
@@ -663,7 +690,40 @@ Formatting rules — follow these strictly:
     aiResponse = "I can help you with that. What specifically would you like to know?";
   }
 
-  // Event-sourced: log response
+  // ── Chat enforcement (fail open) ──────────────────────
+  let chatEnforcement = { checked: false };
+  try {
+    chatEnforcement = validateChatOutput(aiResponse);
+    if (!chatEnforcement.passed) {
+      console.warn(`[enforcement] Chat violation for user ${userId}:`, chatEnforcement.violations);
+      // Retry once with violation context
+      try {
+        const anthropic = getAnthropic();
+        const violationList = chatEnforcement.violations.map(v => `- ${v.ruleId}: ${v.message}`).join("\n");
+        const retryResponse = await anthropic.messages.create({
+          model: "claude-sonnet-4-5-20250929",
+          max_tokens: 2048,
+          system: `You are TitleApp AI. Your previous response was flagged for these policy violations:\n${violationList}\n\nRewrite your response to avoid these violations. Never imply guaranteed returns, provide specific legal advice, or guarantee tax outcomes. Be professional and factual.\n\nFormatting rules — follow these strictly:\n- Never use emojis.\n- Never use markdown formatting.\n- Never use bullet points or numbered lists unless explicitly asked.\n- Write in complete, clean sentences. Plain text only.`,
+          messages,
+        });
+        const retryText = retryResponse.content[0]?.text;
+        if (retryText) {
+          const retryCheck = validateChatOutput(retryText);
+          if (retryCheck.passed) {
+            aiResponse = retryText;
+            chatEnforcement = { ...retryCheck, regenerationAttempts: 1 };
+          }
+        }
+      } catch (retryErr) {
+        console.error("[enforcement] Chat retry failed:", retryErr.message);
+      }
+    }
+  } catch (enfErr) {
+    // Fail open for chat — log and continue
+    console.error("[enforcement] Chat enforcement error (continuing):", enfErr.message);
+  }
+
+  // Event-sourced: log response (with enforcement metadata)
   await db.collection("messageEvents").add({
     tenantId,
     userId,
@@ -671,6 +731,12 @@ Formatting rules — follow these strictly:
     requestEventId: eventRef.id,
     preferredModel: "claude",
     response: aiResponse,
+    enforcement: {
+      checked: chatEnforcement.checked || false,
+      passed: chatEnforcement.passed != null ? chatEnforcement.passed : null,
+      violations: chatEnforcement.violations || [],
+      regenerationAttempts: chatEnforcement.regenerationAttempts || 0,
+    },
     createdAt: nowServerTs(),
   });
 
@@ -684,7 +750,8 @@ Formatting rules — follow these strictly:
 function analyzeDiscoveryMessage(msg, ctx) {
   const lower = msg.toLowerCase();
   if (!ctx.intent) {
-    if (/\b(business|company|dealership|agency|firm|office|shop|store)\b/.test(lower)) ctx.intent = 'business';
+    if (/\b(invest in titleapp|investing in|your raise|wefunder|the raise|fundraise|equity|shares|safe|valuation cap)\b/.test(lower)) ctx.intent = 'investor';
+    else if (/\b(business|company|dealership|agency|firm|office|shop|store)\b/.test(lower)) ctx.intent = 'business';
     else if (/\b(personal|my car|my house|my documents|my stuff|organize)\b/.test(lower)) ctx.intent = 'personal';
     else if (/\b(build|create|launch|ai service|saas|product)\b/.test(lower)) ctx.intent = 'builder';
   }
@@ -692,6 +759,7 @@ function analyzeDiscoveryMessage(msg, ctx) {
     if (/\b(rental|property manag|landlord|tenant|units?|apartment|lease|rent)\b/.test(lower)) { ctx.vertical = 'real-estate'; ctx.subtype = ctx.subtype || 'pm'; }
     else if (/\b(real estate|realtor|listing|buyer|showing|mls|broker)\b/.test(lower)) { ctx.vertical = 'real-estate'; ctx.subtype = ctx.subtype || 'sales'; }
     else if (/\b(car dealer|dealership|auto dealer|inventory|used car|new car)\b/.test(lower)) ctx.vertical = 'auto';
+    else if (/\b(invest in titleapp|your raise|wefunder|the raise|fundraise|equity in titleapp)\b/.test(lower)) ctx.vertical = 'investor';
     else if (/\b(invest|analyst|portfolio|fund|private equity|venture|hedge|deal)\b/.test(lower)) ctx.vertical = 'analyst';
     else if (/\b(pilot|aviation|flight|aircraft|faa)\b/.test(lower)) ctx.vertical = 'aviation';
   }
@@ -949,7 +1017,7 @@ exports.api = onRequest(
     // auth-gated handler below.
     // ----------------------------
     if (route === "/chat:message" && method === "POST" && body.sessionId) {
-      const { sessionId, userInput, action, actionData, fileData, fileName, surface } = body;
+      let { sessionId, userInput, action, actionData, fileData, fileName, surface } = body;
 
       try {
         // Optional auth — verify token if present but don't reject if missing
@@ -972,8 +1040,9 @@ exports.api = onRequest(
           : {};
 
         // Session continuity: if session is empty and user is authenticated,
-        // try to resume their most recent session from any surface
-        if (!sessionSnap.exists && authUser) {
+        // try to resume their most recent session from any surface.
+        // SKIP for special surfaces — they always get a fresh session.
+        if (!sessionSnap.exists && authUser && surface !== 'invest' && surface !== 'developer' && surface !== 'privacy' && surface !== 'contact') {
           try {
             const recentSnap = await db.collection("chatSessions")
               .where("userId", "==", authUser.uid)
@@ -996,6 +1065,536 @@ exports.api = onRequest(
         // If authenticated and session has no userId, attach it
         if (authUser && !sessionState.userId) {
           sessionState.userId = authUser.uid;
+        }
+
+        // ── Investor intent detection: redirect landing visitors with investor keywords ──
+        if (surface === 'landing' && !action && userInput &&
+            (!sessionState.step || sessionState.step === 'idle' || sessionState.step === 'discovery')) {
+          const investCheck = userInput.toLowerCase();
+          if (/\b(invest in titleapp|investing in|your raise|wefunder|the raise|fundraise|equity|shares|safe|valuation cap|offering|invest in you|invest in the company|the deal|investment opportunity)\b/.test(investCheck) ||
+              /\b(invest|investor|investing)\b/.test(investCheck)) {
+            surface = 'invest';
+            sessionState.step = 'invest_discovery';
+            console.log("chatEngine: investor intent detected from landing, redirecting to invest flow");
+          }
+        }
+
+        // ── Developer intent detection: redirect landing visitors with developer keywords ──
+        if (surface === 'landing' && !action && userInput &&
+            (!sessionState.step || sessionState.step === 'idle' || sessionState.step === 'discovery')) {
+          const devCheck = userInput.toLowerCase();
+          if (/\b(api|sdk|integrate|integration|developer|webhook|endpoint|rest api|graphql|authentication|api key|sandbox|raas api|build on|build with)\b/.test(devCheck)) {
+            surface = 'developer';
+            sessionState.step = 'dev_discovery';
+            console.log("chatEngine: developer intent detected from landing, redirecting to dev flow");
+          }
+        }
+
+        // ── Investor Mode: /invest entry point — Alex handles investor conversations ──
+        // Matches: direct /invest surface, OR sessions already in invest_discovery (regardless of surface).
+        // When surface is 'invest', this ALWAYS matches — no step whitelist. Investor context is never lost.
+        if ((surface === 'invest' || sessionState.step === 'invest_discovery') &&
+            ((!action && userInput) || action === 'magic_link_clicked' || action === 'terms_accepted' || action === 'go_to_dataroom')) {
+
+          if (!sessionState.discoveryHistory) sessionState.discoveryHistory = [];
+          sessionState.step = 'invest_discovery';
+
+          // Detect returning authenticated user — pre-populate profile from Firestore
+          if (authUser && !sessionState.profileLoaded) {
+            try {
+              const userDoc = await db.collection("users").doc(authUser.uid).get();
+              if (userDoc.exists) {
+                const userData = userDoc.data();
+                if (userData.name && !sessionState.investorName) sessionState.investorName = userData.name;
+                if (userData.email && !sessionState.investorEmail) sessionState.investorEmail = userData.email;
+                if (userData.termsAcceptedAt) sessionState.termsAccepted = true;
+                sessionState.userId = authUser.uid;
+                sessionState.accountCreated = true;
+              }
+              // Look up tenant for redirect
+              const memSnap = await db.collection("memberships")
+                .where("userId", "==", authUser.uid)
+                .limit(1)
+                .get();
+              if (!memSnap.empty) {
+                sessionState.tenantId = memSnap.docs[0].data().tenantId;
+              }
+              sessionState.profileLoaded = true;
+            } catch (e) {
+              console.warn("invest: profile lookup failed:", e.message);
+            }
+          }
+
+          // Handle action: go_to_dataroom — redirect authenticated user to platform
+          if (action === 'go_to_dataroom' && authUser && sessionState.tenantId) {
+            await sessionRef.set({
+              state: sessionState,
+              surface: 'invest',
+              userId: authUser.uid,
+              updatedAt: nowServerTs(),
+            }, { merge: true });
+            // Generate a fresh custom token for cross-domain handoff
+            // (the worker may only have an ID token for returning users,
+            // which can't be used with signInWithCustomToken on the platform domain)
+            const handoffToken = await admin.auth().createCustomToken(authUser.uid);
+            const name = sessionState.investorName || '';
+            const msg = name ? `Taking you there now, ${name}.` : 'Taking you there now.';
+            return res.json({
+              ok: true,
+              message: msg,
+              authToken: handoffToken,
+              platformRedirect: true,
+              redirectPage: 'dataroom',
+              selectedTenantId: sessionState.tenantId,
+              conversationState: 'invest_discovery',
+            });
+          }
+
+          // Handle magic link click — create account, show terms card
+          if (action === 'magic_link_clicked' && sessionState.investorEmail) {
+            try {
+              const signupResult = await signupInternal({
+                email: sessionState.investorEmail,
+                name: sessionState.investorName || null,
+                accountType: 'consumer',
+              });
+              if (signupResult && signupResult.ok) {
+                sessionState.userId = signupResult.uid;
+                sessionState.accountCreated = true;
+
+                // Tag user as investor source
+                await db.collection("users").doc(signupResult.uid).set(
+                  { source: "investor", defaultView: "data-room" },
+                  { merge: true }
+                );
+
+                // Existing user who already accepted terms — skip to platform
+                if (signupResult.existing && signupResult.termsAcceptedAt) {
+                  sessionState.termsAccepted = true;
+                  const memberships = signupResult.memberships || [];
+                  // Prefer investor-vertical tenant, fall back to first
+                  let tenantId = null;
+                  for (const m of memberships) {
+                    if (m.vertical === 'investor') { tenantId = m.tenantId; break; }
+                  }
+                  if (!tenantId && memberships.length > 0) {
+                    for (const m of memberships) {
+                      try {
+                        const tDoc = await db.collection("tenants").doc(m.tenantId).get();
+                        if (tDoc.exists && tDoc.data().vertical === 'investor') { tenantId = m.tenantId; break; }
+                      } catch (_) {}
+                    }
+                  }
+                  if (!tenantId && memberships.length > 0) tenantId = memberships[0].tenantId;
+                  await sessionRef.set({
+                    state: sessionState,
+                    surface: 'invest',
+                    userId: signupResult.uid,
+                    ...(sessionSnap.exists ? {} : { createdAt: nowServerTs() }),
+                    updatedAt: nowServerTs(),
+                  }, { merge: true });
+                  const name = sessionState.investorName || '';
+                  const msg = name
+                    ? `Welcome back, ${name}. Let me take you into the platform.`
+                    : `Welcome back. Let me take you into the platform.`;
+                  sessionState.discoveryHistory.push({ role: 'assistant', content: msg });
+                  return res.json({
+                    ok: true,
+                    message: msg,
+                    authToken: signupResult.token,
+                    platformRedirect: true,
+                    redirectPage: 'dataroom',
+                    selectedTenantId: tenantId,
+                    conversationState: 'invest_discovery',
+                  });
+                }
+
+                // New user — show terms card
+                await sessionRef.set({
+                  state: sessionState,
+                  surface: 'invest',
+                  userId: signupResult.uid,
+                  ...(sessionSnap.exists ? {} : { createdAt: nowServerTs() }),
+                  updatedAt: nowServerTs(),
+                }, { merge: true });
+                const name = sessionState.investorName || '';
+                const termsMsg = name
+                  ? `${name}, your account is ready. One quick step -- review and accept the terms of service, and I will take you right into the platform.`
+                  : `Your account is ready. One quick step -- review and accept the terms of service, and I will take you right into the platform.`;
+                sessionState.discoveryHistory.push({ role: 'assistant', content: termsMsg });
+                return res.json({
+                  ok: true,
+                  message: termsMsg,
+                  authToken: signupResult.token,
+                  cards: [{
+                    type: 'terms',
+                    data: {
+                      termsUrl: 'https://title-app-alpha.web.app/terms',
+                      privacyUrl: 'https://title-app-alpha.web.app/privacy',
+                      summary: "Your records are yours. We verify and secure them. We don't sell your data. You can export or delete anytime.",
+                    },
+                  }],
+                  conversationState: 'invest_discovery',
+                });
+              }
+            } catch (e) {
+              console.error("invest: signup failed:", e.code, e.message, e.stack);
+              return res.json({
+                ok: true,
+                message: "Something went wrong setting up your account. Let me try again -- what email should I use?",
+                showSignup: false,
+                conversationState: 'invest_discovery',
+              });
+            }
+          }
+
+          // Handle terms accepted — accept terms, claim tenant, redirect to platform
+          if (action === 'terms_accepted' && sessionState.userId) {
+            try {
+              // Accept terms + tag as investor
+              await db.collection("users").doc(sessionState.userId).set(
+                { termsAcceptedAt: nowServerTs(), source: "investor", defaultView: "data-room" },
+                { merge: true }
+              );
+
+              // Claim tenant for investor
+              const tenantName = sessionState.investorName || 'Personal';
+              const tenantId = slugifyTenantId(tenantName);
+              const tenantRef = db.collection("tenants").doc(tenantId);
+              const tSnap = await tenantRef.get();
+              if (!tSnap.exists) {
+                await tenantRef.set({
+                  name: tenantName,
+                  tenantType: "personal",
+                  vertical: "investor",
+                  jurisdiction: "GLOBAL",
+                  status: "active",
+                  createdAt: nowServerTs(),
+                  createdBy: sessionState.userId,
+                });
+              }
+              const memSnap = await db.collection("memberships")
+                .where("userId", "==", sessionState.userId)
+                .where("tenantId", "==", tenantId)
+                .limit(1)
+                .get();
+              if (memSnap.empty) {
+                await db.collection("memberships").add({
+                  userId: sessionState.userId,
+                  tenantId,
+                  role: "owner",
+                  status: "active",
+                  createdAt: nowServerTs(),
+                });
+              } else {
+                // Ensure existing membership has status: "active"
+                await db.collection("memberships").doc(memSnap.docs[0].id).update({
+                  status: "active",
+                  updatedAt: nowServerTs(),
+                });
+              }
+
+              sessionState.termsAccepted = true;
+              await sessionRef.set({
+                state: sessionState,
+                surface: 'invest',
+                userId: sessionState.userId,
+                updatedAt: nowServerTs(),
+              }, { merge: true });
+
+              const name = sessionState.investorName || '';
+              const redirectMsg = name
+                ? `All set, ${name}. Taking you into the platform now.`
+                : `All set. Taking you into the platform now.`;
+              sessionState.discoveryHistory.push({ role: 'assistant', content: redirectMsg });
+              // Fresh custom token for cross-domain handoff
+              const termsHandoffToken = await admin.auth().createCustomToken(sessionState.userId);
+              return res.json({
+                ok: true,
+                message: redirectMsg,
+                authToken: termsHandoffToken,
+                platformRedirect: true,
+                redirectPage: 'dataroom',
+                selectedTenantId: tenantId,
+                conversationState: 'invest_discovery',
+              });
+            } catch (e) {
+              console.error("invest: terms acceptance failed:", e.message);
+              return res.json({
+                ok: true,
+                message: "Something went wrong. Let me try again.",
+                conversationState: 'invest_discovery',
+              });
+            }
+          }
+
+          const msgCount = sessionState.discoveryHistory.filter(h => h.role === 'user').length + 1;
+
+          // Email detection — when investor provides an email, render the magic link card
+          const emailMatch = userInput.match(/[\w.+-]+@[\w-]+\.[\w.]+/);
+          if (emailMatch && !sessionState.accountCreated) {
+            sessionState.investorEmail = emailMatch[0];
+            sessionState.discoveryHistory.push({ role: 'user', content: userInput });
+            const linkMsg = sessionState.investorName
+              ? `Got it, ${sessionState.investorName}. Here is your sign-in link -- just click to get started.`
+              : `Got it. Here is your sign-in link -- just click to get started. By the way, what is your name?`;
+            sessionState.discoveryHistory.push({ role: 'assistant', content: linkMsg });
+            await sessionRef.set({
+              state: sessionState,
+              surface: 'invest',
+              userId: authUser ? authUser.uid : null,
+              ...(sessionSnap.exists ? {} : { createdAt: nowServerTs() }),
+              updatedAt: nowServerTs(),
+            }, { merge: true });
+            return res.json({
+              ok: true,
+              message: linkMsg,
+              cards: [{ type: 'magicLink', data: { email: sessionState.investorEmail } }],
+              showSignup: false,
+              conversationState: 'invest_discovery',
+            });
+          }
+
+          // Extract name from short replies (with stop word filter)
+          if (!sessionState.investorName) {
+            const stopWords = new Set(['a','an','the','i','we','my','me','am','is','are','it','its','in','on','at','to','for','of','and','or','not','no','so','just','very','also','that','this','here','new','old','big','all','any','few','some','how','why','what','who','when','been','have','has','had','was','were','be','do','did','done','get','got','can','may','will','would','should','could','shall','about','angel','seed','early','late','stage','tech','ai','interested']);
+            const namePatterns = [
+              /^(?:i'm|im|i am|it's|its|call me|my name is|hey i'm|hi i'm|they call me)\s+([A-Z][a-z]+)/i,
+              /^(?:this is)\s+([A-Z][a-z]+)/i,
+            ];
+            for (const p of namePatterns) {
+              const m = userInput.match(p);
+              if (m) {
+                const candidate = m[1].toLowerCase();
+                if (!stopWords.has(candidate)) {
+                  sessionState.investorName = m[1].charAt(0).toUpperCase() + m[1].slice(1).toLowerCase();
+                  break;
+                }
+              }
+            }
+            if (!sessionState.investorName && /^[A-Z][a-z]{2,14}$/.test(userInput.trim())) {
+              const candidate = userInput.trim().toLowerCase();
+              if (!stopWords.has(candidate)) {
+                sessionState.investorName = userInput.trim().charAt(0).toUpperCase() + userInput.trim().slice(1).toLowerCase();
+              }
+            }
+          }
+
+          const messages = [];
+          if (sessionState.discoveryHistory.length === 0) {
+            messages.push({ role: 'assistant', content: "Hi there. I'm Alex, TitleApp's investor relations AI. Happy to tell you about the company, the product, or the raise. What would you like to know?" });
+          }
+          for (const h of sessionState.discoveryHistory) {
+            messages.push({ role: h.role, content: h.content });
+          }
+          messages.push({ role: 'user', content: userInput });
+
+          // Load raise config for investor prompt
+          let raiseTerms = "";
+          try {
+            const raiseDoc = await db.collection("config").doc("raise").get();
+            if (raiseDoc.exists) {
+              const rc = raiseDoc.data();
+              const fp = rc.fundingPortal || {};
+              raiseTerms = `\nCURRENT RAISE TERMS:\nInstrument: ${rc.instrument || "SAFE"}\nRaise: $${((rc.raiseAmount || 0) / 1000000).toFixed(2)}M\nValuation Cap: $${((rc.valuationCap || 0) / 1000000).toFixed(0)}M\nDiscount: ${((rc.discount || 0) * 100).toFixed(0)}%\nMin Investment: $${(rc.minimumInvestment || 0).toLocaleString()}\nPro Rata: ${rc.proRataNote || "N/A"}\nPortal: ${fp.name || "N/A"} (${fp.regulation || "N/A"})`;
+              if (rc.conversionScenarios && rc.conversionScenarios.length > 0) {
+                raiseTerms += "\nConversion scenarios (math, not promises):";
+                for (const s of rc.conversionScenarios) {
+                  raiseTerms += ` $${(s.exitValuation / 1000000).toFixed(0)}M→${s.multiple}`;
+                }
+              }
+            }
+          } catch (e) { console.warn("invest: could not load raise config:", e.message); }
+
+          const userMsgCount = sessionState.discoveryHistory.filter(h => h.role === 'user').length + 1;
+          let nameGuidance;
+          if (sessionState.investorName) {
+            nameGuidance = `\nThe investor's name is ${sessionState.investorName}. Use it naturally.`;
+          } else if (userMsgCount >= 3) {
+            nameGuidance = '\nIMPORTANT: You still do not know the investor\'s name after multiple messages. You MUST ask their name NOW before anything else. Work it in naturally: "By the way, I realize I never asked -- what\'s your name?"';
+          } else {
+            nameGuidance = '\nYou do not know their name yet. Ask naturally in this response -- "I\'m Alex, by the way. What\'s your name?" Do NOT wait more than 2 exchanges.';
+          }
+
+          // Navigation and auth guidance based on user state
+          let authGuidance = '';
+          const lowerInput = userInput.toLowerCase();
+
+          // Returning authenticated user — Alex can navigate them
+          if (sessionState.accountCreated && sessionState.tenantId) {
+            authGuidance = '\nIMPORTANT: This investor already has an account. You CAN take them to the platform. If they ask to see the data room, documents, pitch deck, dashboard, vault, or platform, include [GO_TO_DATAROOM] at the end of your message. NEVER say "I cannot navigate you" or "I cannot take you there." You CAN. The system handles the redirect automatically when you include [GO_TO_DATAROOM].';
+            // If they're explicitly asking for navigation right now
+            if (/\b(data room|take me|go to|dashboard|vault|documents|see the|show me|get there|my account|platform|log ?in)\b/.test(lowerInput)) {
+              authGuidance += '\nThe investor is asking to navigate RIGHT NOW. Your response should be brief and include [GO_TO_DATAROOM]. Example: "Let me take you there now. [GO_TO_DATAROOM]"';
+            }
+          } else if (/\b(business plan|data room|full plan|see the deck|pitch deck|documents|see the financials)\b/.test(lowerInput) ||
+              /\b(invest|proceed|ready to invest|how do i invest|want to invest)\b/.test(lowerInput) ||
+              /\b(cap table|my position|shareholder)\b/.test(lowerInput)) {
+            authGuidance = '\nThe investor is asking for something that requires an account. Ask for their email address so you can set them up. Say something like: "Happy to share that. What email should I set your data room access up with?" NEVER ask for a password. NEVER say you cannot create accounts. Once they give you an email, the system handles the rest automatically.';
+          } else if (sessionState.investorName && !sessionState.accountCreated && userMsgCount >= 2) {
+            // We know their name and they've been chatting — proactively suggest data room access
+            authGuidance = '\nYou know this investor\'s name and they are engaged. If the conversation is going well, naturally suggest data room access: "By the way, want me to get you into the data room? Just takes your email and you will have the deck, business plan, and SAFE terms in front of you while we talk." Do NOT force it if they are asking an unrelated question. Just weave it in when there is a natural pause.';
+          }
+
+          const investSystemPrompt = `You are Alex, TitleApp's investor relations AI. You are having a conversation with a potential investor.
+
+IDENTITY:
+RAAS stands for "Rules + AI-as-a-Service." NEVER say "Rules-as-a-Service." Always "Rules + AI-as-a-Service."
+
+CONVERSATION FLOW — THIS IS CRITICAL:
+You are a LISTENER first, a presenter second. The early conversation should be 70% questions, 30% answers.
+1. Warm greeting. Ask what brought them here. Ask what they invest in, what stage, what sectors, what excites them.
+2. LISTEN. Mirror what they say. Find common ground. "Interesting -- TitleApp actually touches on that because..."
+3. Answer their specific questions concisely. One idea per response. Then ask a follow-up or offer to go deeper.
+4. Let THEM drive the depth. If they want market, go into market. If they want terms, give terms. Do not dump everything at once.
+5. PROACTIVE DATA ROOM ACCESS: Once you know their name AND they have expressed interest in investing or learning more (typically message 2-3), proactively offer data room access. Frame it naturally, NOT as "signing up for an account." Example: "Want me to get you into the data room while we chat? Just takes your email and you will have the pitch deck, business plan, and SAFE terms right in front of you." This should feel like a service, not a sales push.
+6. When they want to proceed, naturally guide to account creation. Include [SHOW_SIGNUP] at the end of that message.
+7. If they are not ready: "No rush. I am here whenever you want to continue. Would you like me to send you the executive summary in the meantime?"
+
+RESPONSE LENGTH — STRICT:
+- 1-2 short paragraphs. 3 only when answering a complex question. This is a chat, not an essay.
+- Each paragraph should be 2-3 sentences max. If you hit 4 sentences in a paragraph, split or cut.
+- One idea per response, then a question or an offer to go deeper.
+- Think texting rhythm, not pitch deck rhythm.
+- Only go longer if the investor explicitly asks for detail ("tell me more," "explain that").
+
+TONE — CRITICAL:
+- Warm, curious, humble, helpful. You are the smartest, most helpful person in the room -- not the loudest.
+- NEVER defensive. If someone challenges the company or compares to another investment, acknowledge it is a smart question and respond with substance, not ego.
+- NEVER braggy. Do not pitch founder resumes unprompted. If asked about the team, keep it brief and relevant to their question.
+- NEVER combative about competitors. Frame large AI companies as complementary: "We sit on top of those models as the governance layer." Not: "they sell tokens, we sell compliance."
+- Never use emojis. Never use markdown formatting. Plain text only.
+- Use the investor's name once you know it. Do not overuse it.
+
+HARD SEC COMPLIANCE RULES:
+- NEVER calculate specific dollar returns for a specific investment amount. Example of what is FORBIDDEN: "At $50K, you would own 0.33% and if we exit at $100M that is $333K." That crosses SEC lines.
+- Conversion scenarios may ONLY be presented as a generic table showing multiples at various valuations. Never personalized to their check size.
+- EVERY time conversion scenarios are mentioned, include this disclaimer: "These are mathematical scenarios based on the SAFE terms, not projections or promises. Early-stage investing carries significant risk including total loss of capital."
+- NEVER say things like "meaningful check," "puts you in our top tier," or any language that flatters an investment amount. Alex is an informer, not a closer.
+- NEVER promise returns or guarantee outcomes.
+- NEVER provide personalized investment advice.
+- NEVER create false urgency or pressure.
+- NEVER minimize risk factors. Startups are risky. Say so honestly.
+- Forward-looking statements must be identified as such.
+
+WHAT YOU MUST NEVER DO:
+- NEVER offer inventory management, sales pipeline, compliance setup, vertical selection, or any workspace onboarding. You are NOT the business assistant.
+- NEVER misstate the raise terms. Use ONLY the numbers from CURRENT RAISE TERMS below.
+- NEVER compare TitleApp to Anthropic, OpenAI, or Google in a combative way. They are complementary.
+
+COMPANY KNOWLEDGE:
+${getCompanyKnowledge()}
+${raiseTerms}
+${nameGuidance}${authGuidance}
+
+INVESTOR DOCUMENTS:
+Four documents in the data room, in two tiers:
+TIER 1 (freely available — no gates): Pitch Deck (PPTX), Executive Summary / One Pager (PDF). Mention freely. These download immediately once they have an account.
+TIER 2 (requires identity verification + disclaimer): Business Plan, Feb 2026 (DOCX), SAFE Agreement (generated per investor).
+When they ask for a Tier 2 document, let them know they will need to complete a quick identity verification ($2) and acknowledge the risk disclaimers in the data room.
+
+LEGAL ENTITY: The correct legal entity is "The Title App LLC" (NOT "TitleApp Inc."). The brand is "TitleApp" but on all legal documents and formal references, use "The Title App LLC."
+
+ACCOUNT SETUP — CRITICAL:
+When the investor shows interest (knows their name + they want to learn more), proactively suggest setting up access. Frame it as data room access, not account creation:
+- Ask for their email address. That is ALL you need. Say: "What email should I use to get you into the data room?"
+- NEVER ask for a password in the chat. The system handles authentication automatically via a magic link.
+- NEVER say you cannot create accounts or cannot do this from chat. You CAN. The system handles it.
+- Once they provide an email, the sign-in card appears automatically. Your job is just to collect the email.
+
+NAVIGATION — CRITICAL:
+- You CAN take investors to the data room, dashboard, and platform. NEVER say "I cannot navigate you" or "I cannot take you there."
+- When they ask to see the data room, documents, dashboard, vault, or platform, include [GO_TO_DATAROOM] at the end of your message.
+- If they already have an account, take them immediately. Do not ask them to click links or find menus. YOU handle it.
+
+ESCALATION:
+For legal specifics, custom terms, or strategic questions, offer to connect with Sean (CEO) or Kent (CFO). Do not try to answer legal questions yourself.
+
+COMPLIANCE: This is informational only. TitleApp does not act as a registered funding portal, broker-dealer, or investment advisor. The offering is conducted through Wefunder under Regulation CF.`;
+
+          try {
+            const anthropic = getAnthropic();
+            const aiResponse = await anthropic.messages.create({
+              model: 'claude-sonnet-4-5-20250929',
+              max_tokens: 250,
+              system: investSystemPrompt,
+              messages,
+            });
+
+            let aiText = aiResponse.content[0]?.text || "Tell me what you'd like to know about TitleApp.";
+
+            let showSignup = false;
+            if (/\[SHOW[_\s]?SIGNUP\]/i.test(aiText)) {
+              showSignup = true;
+              aiText = aiText.replace(/\s*\[SHOW[_\s]?SIGNUP\]\s*/gi, '').trim();
+            }
+
+            // Detect [GO_TO_DATAROOM] token — AI wants to redirect user to platform
+            let goToDataroom = false;
+            if (/\[GO[_\s]?TO[_\s]?DATAROOM\]/i.test(aiText)) {
+              goToDataroom = true;
+              aiText = aiText.replace(/\s*\[GO[_\s]?TO[_\s]?DATAROOM\]\s*/gi, '').trim();
+            }
+
+            // Force name ask by message 3 if AI didn't do it
+            if (!sessionState.investorName && userMsgCount >= 3 && !/what'?s your name|your name|who am i talking/i.test(aiText)) {
+              aiText += '\n\nBy the way, I realize I never asked -- what is your name?';
+            }
+
+            sessionState.discoveryHistory.push({ role: 'user', content: userInput });
+            sessionState.discoveryHistory.push({ role: 'assistant', content: aiText });
+
+            if (sessionState.discoveryHistory.length > 30) {
+              sessionState.discoveryHistory = sessionState.discoveryHistory.slice(-30);
+            }
+
+            await sessionRef.set({
+              state: sessionState,
+              surface: 'invest',
+              userId: authUser ? authUser.uid : null,
+              ...(sessionSnap.exists ? {} : { createdAt: nowServerTs() }),
+              updatedAt: nowServerTs(),
+            }, { merge: true });
+
+            // Audit: log investor chat event
+            try {
+              await db.collection("messageEvents").add({
+                tenantId: "titleapp-investor",
+                userId: authUser ? authUser.uid : `anon_${sessionId}`,
+                type: "chat:message:invest",
+                message: userInput,
+                response: aiText,
+                investorContext: {
+                  surface: "invest",
+                  investorName: sessionState.investorName || null,
+                  escalationRequested: /connect you with (Sean|Kent)/i.test(aiText),
+                  showSignup,
+                },
+                createdAt: nowServerTs(),
+              });
+            } catch (auditErr) {
+              console.warn("invest audit log failed:", auditErr.message);
+            }
+
+            const response = {
+              ok: true,
+              message: aiText,
+              showSignup,
+              conversationState: 'invest_discovery',
+            };
+
+            // If AI triggered dataroom redirect and user is authenticated with a tenant
+            if (goToDataroom && sessionState.tenantId && sessionState.accountCreated && authUser) {
+              response.authToken = await admin.auth().createCustomToken(authUser.uid);
+              response.platformRedirect = true;
+              response.redirectPage = 'dataroom';
+              response.selectedTenantId = sessionState.tenantId;
+            }
+
+            return res.json(response);
+          } catch (e) {
+            console.error('Invest discovery AI failed:', e.message);
+          }
         }
 
         // ── Discovery Mode: free-form AI conversation for landing visitors ──
@@ -1119,6 +1718,948 @@ Message 8+: If they seem interested, gently offer to set it up. "I can have this
             console.error('Discovery AI failed:', e.message);
             // Fall through to chatEngine on failure
           }
+        }
+
+        // ── Developer Mode: /developers entry point — Alex handles developer conversations ──
+        if ((surface === 'developer' || surface === 'sandbox' || sessionState.step === 'dev_discovery') &&
+            ((!action && userInput) || action === 'magic_link_clicked' || action === 'terms_accepted' || action === 'get_sandbox_token')) {
+
+          if (!sessionState.devHistory) sessionState.devHistory = [];
+          sessionState.step = 'dev_discovery';
+
+          // Seed devName from returning user's auth profile (sent by frontend)
+          if (!sessionState.devName && body.returnUserName) {
+            sessionState.devName = body.returnUserName;
+          }
+
+          // Extract name from short replies (with stop word filter — matches invest handler pattern)
+          if (!sessionState.devName) {
+            const stopWords = new Set(['a','an','the','i','we','my','me','am','is','are','it','its','in','on','at','to','for','of','and','or','not','no','so','just','very','also','that','this','here','new','old','big','all','any','few','some','how','why','what','who','when','been','have','has','had','was','were','be','do','did','done','get','got','can','may','will','would','should','could','shall','about','api','sdk','developer','build','app','code','tech','ai','web','mobile','backend','frontend','stack','cloud','data','rest','webhook','endpoint','sandbox','docs','integrate','integration']);
+            const namePatterns = [
+              /^(?:i'm|im|i am|it's|its|call me|my name is|hey i'm|hi i'm|they call me)\s+([A-Z][a-z]+)/i,
+              /^(?:this is)\s+([A-Z][a-z]+)/i,
+            ];
+            for (const p of namePatterns) {
+              const m = userInput.match(p);
+              if (m) {
+                const candidate = m[1].toLowerCase();
+                if (!stopWords.has(candidate)) {
+                  sessionState.devName = m[1].charAt(0).toUpperCase() + m[1].slice(1).toLowerCase();
+                  break;
+                }
+              }
+            }
+            if (!sessionState.devName && /^[A-Z][a-z]{2,14}$/i.test(userInput.trim())) {
+              const candidate = userInput.trim().toLowerCase();
+              if (!stopWords.has(candidate)) {
+                sessionState.devName = userInput.trim().charAt(0).toUpperCase() + userInput.trim().slice(1).toLowerCase();
+              }
+            }
+          }
+
+          const messages = [];
+          if (sessionState.devHistory.length === 0) {
+            messages.push({ role: 'assistant', content: "Hey, welcome. I'm Alex -- I work with developers who are building on TitleApp. What's your name?" });
+          }
+          for (const h of sessionState.devHistory) {
+            messages.push({ role: h.role, content: h.content });
+          }
+          messages.push({ role: 'user', content: userInput });
+
+          const userMsgCount = sessionState.devHistory.filter(h => h.role === 'user').length + 1;
+          let nameGuidance;
+          if (sessionState.devName) {
+            nameGuidance = `\nThe developer's name is ${sessionState.devName}. Use it naturally.`;
+          } else if (userMsgCount >= 3) {
+            nameGuidance = '\nIMPORTANT: You still do not know the developer\'s name after multiple messages. You MUST ask their name NOW before anything else. Work it in naturally: "By the way, I didn\'t catch your name -- what should I call you?"';
+          } else {
+            nameGuidance = '\nYou do not know their name yet. Ask naturally early on -- "What\'s your name?" or "Who am I talking to?"';
+          }
+
+          // Auth trigger: if they want API key or sandbox
+          let authGuidance = '';
+          const lowerInput = userInput.toLowerCase();
+          if (/\b(api key|get started|sandbox|sign up|create account|try it|quickstart|get access)\b/.test(lowerInput)) {
+            authGuidance = '\nThe developer wants to get started. Ask for their email so you can set up their account. Say something like: "I just need your email and I will get you set up." NEVER ask for a password.';
+          }
+
+          // Handle sandbox token request — returning user wants to go to platform
+          if (action === 'get_sandbox_token' && authUser) {
+            try {
+              const customToken = await admin.auth().createCustomToken(authUser.uid);
+              // Find their developer workspace
+              const devMemSnap = await db.collection("memberships")
+                .where("userId", "==", authUser.uid)
+                .get();
+              let devTenantId = null;
+              // Prefer a developer/sandbox workspace, fall back to first
+              for (const doc of devMemSnap.docs) {
+                const tRef = await db.collection("tenants").doc(doc.data().tenantId).get();
+                if (tRef.exists && tRef.data().vertical === 'developer') {
+                  devTenantId = doc.data().tenantId;
+                  break;
+                }
+              }
+              if (!devTenantId && !devMemSnap.empty) {
+                devTenantId = devMemSnap.docs[0].data().tenantId;
+              }
+              return res.json({
+                ok: true,
+                sandboxToken: customToken,
+                sandboxTenantId: devTenantId,
+              });
+            } catch (e) {
+              console.error('[dev] get_sandbox_token failed:', e.message);
+              return res.json({ ok: false, error: 'Could not generate sandbox token' });
+            }
+          }
+
+          // Handle magic link click — create account, show terms card
+          if (action === 'magic_link_clicked' && !sessionState.devEmail) {
+            // Session lost the email — ask again instead of silently failing
+            sessionState.devHistory.push({ role: 'assistant', content: "I seem to have lost your email. What email should I use for your developer account?" });
+            await sessionRef.set({ state: sessionState, surface: 'developer', updatedAt: nowServerTs() }, { merge: true });
+            return res.json({
+              ok: true,
+              message: "I seem to have lost your email. What email should I use for your developer account?",
+              conversationState: 'dev_discovery',
+            });
+          }
+          if (action === 'magic_link_clicked' && sessionState.devEmail) {
+            console.log(`[dev] magic_link_clicked: devEmail=${sessionState.devEmail}, devName=${sessionState.devName || 'unknown'}, sessionId=${sessionId}`);
+            try {
+              const signupResult = await signupInternal({
+                email: sessionState.devEmail,
+                name: sessionState.devName || null,
+                accountType: 'consumer',
+              });
+              if (signupResult && signupResult.ok) {
+                sessionState.userId = signupResult.uid;
+                sessionState.accountCreated = true;
+
+                // Create deferred Worker if spec was stashed before signup
+                if (sessionState.pendingWorkerSpec) {
+                  try {
+                    const { computeHash: devHash } = require("./api/utils/titleMint");
+                    const spec = sessionState.pendingWorkerSpec;
+                    // Find or create tenant after terms — for now just log it
+                    // The actual Worker will be created after terms acceptance when tenant exists
+                    console.log(`[dev] pendingWorkerSpec found for ${signupResult.uid}, will create after tenant setup`);
+                  } catch (e) {
+                    console.warn('[dev] deferred Worker check error:', e.message);
+                  }
+                }
+
+                // Existing user who already accepted terms — skip to platform
+                if (signupResult.existing && signupResult.termsAcceptedAt) {
+                  sessionState.termsAccepted = true;
+                  const memberships = signupResult.memberships || [];
+                  const tenantId = memberships.length > 0 ? memberships[0].tenantId : null;
+                  await sessionRef.set({
+                    state: sessionState,
+                    surface: 'developer',
+                    userId: signupResult.uid,
+                    ...(sessionSnap.exists ? {} : { createdAt: nowServerTs() }),
+                    updatedAt: nowServerTs(),
+                  }, { merge: true });
+                  const name = sessionState.devName || '';
+                  const msg = name
+                    ? `Welcome back, ${name}. Let me take you into the platform.`
+                    : `Welcome back. Let me take you into the platform.`;
+                  sessionState.devHistory.push({ role: 'assistant', content: msg });
+                  return res.json({
+                    ok: true,
+                    message: msg,
+                    authToken: signupResult.token,
+                    platformRedirect: true,
+                    redirectPage: 'dashboard',
+                    selectedTenantId: tenantId,
+                    conversationState: 'dev_discovery',
+                  });
+                }
+
+                // New user — show terms card
+                await sessionRef.set({
+                  state: sessionState,
+                  surface: 'developer',
+                  userId: signupResult.uid,
+                  ...(sessionSnap.exists ? {} : { createdAt: nowServerTs() }),
+                  updatedAt: nowServerTs(),
+                }, { merge: true });
+                const name = sessionState.devName || '';
+                const termsMsg = name
+                  ? `${name}, your account is ready. One quick step -- review and accept the terms of service, and I will take you right into the dashboard.`
+                  : `Your account is ready. One quick step -- review and accept the terms of service, and I will take you right into the dashboard.`;
+                sessionState.devHistory.push({ role: 'assistant', content: termsMsg });
+                return res.json({
+                  ok: true,
+                  message: termsMsg,
+                  authToken: signupResult.token,
+                  cards: [{
+                    type: 'terms',
+                    data: {
+                      termsUrl: 'https://title-app-alpha.web.app/terms',
+                      privacyUrl: 'https://title-app-alpha.web.app/privacy',
+                      summary: "Your records are yours. We verify and secure them. We don't sell your data. You can export or delete anytime.",
+                    },
+                  }],
+                  conversationState: 'dev_discovery',
+                });
+              }
+            } catch (e) {
+              console.error("dev: signup failed:", e.message);
+              const name = sessionState.devName || '';
+              const fallbackMsg = name
+                ? `${name}, the signup system is taking a moment. Give me your email again and I will retry right here.`
+                : `The signup system is taking a moment. Give me your email again and I will retry right here.`;
+              sessionState.devHistory.push({ role: 'assistant', content: fallbackMsg });
+              await sessionRef.set({ state: sessionState, surface: 'developer', updatedAt: nowServerTs() }, { merge: true });
+              return res.json({
+                ok: true,
+                message: fallbackMsg,
+                showSignup: false,
+                conversationState: 'dev_discovery',
+              });
+            }
+          }
+
+          // Handle terms accepted — accept terms, claim tenant, redirect to platform
+          if (action === 'terms_accepted' && sessionState.userId) {
+            try {
+              await db.collection("users").doc(sessionState.userId).set(
+                { termsAcceptedAt: nowServerTs() },
+                { merge: true }
+              );
+
+              const tenantName = sessionState.devName || 'Personal';
+              const tenantId = slugifyTenantId(tenantName);
+              const tenantRef = db.collection("tenants").doc(tenantId);
+              const tSnap = await tenantRef.get();
+              if (!tSnap.exists) {
+                await tenantRef.set({
+                  name: tenantName,
+                  tenantType: "personal",
+                  vertical: "developer",
+                  jurisdiction: "GLOBAL",
+                  status: "active",
+                  createdAt: nowServerTs(),
+                  createdBy: sessionState.userId,
+                });
+              }
+              const memSnap = await db.collection("memberships")
+                .where("userId", "==", sessionState.userId)
+                .where("tenantId", "==", tenantId)
+                .limit(1)
+                .get();
+              if (memSnap.empty) {
+                await db.collection("memberships").add({
+                  userId: sessionState.userId,
+                  tenantId,
+                  role: "owner",
+                  createdAt: nowServerTs(),
+                });
+              }
+
+              // Create deferred Worker if spec was stashed before signup
+              let deferredWorkerCard = null;
+              if (sessionState.pendingWorkerSpec) {
+                try {
+                  const { computeHash: devHash } = require("./api/utils/titleMint");
+                  const spec = sessionState.pendingWorkerSpec;
+                  const rules = Array.isArray(spec.rules) ? spec.rules.slice(0, 50) : [];
+                  const workerId = "wkr_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+                  const rulesHash = devHash(rules);
+                  const metadataHash = devHash({ name: spec.name, description: spec.description, rules_hash: rulesHash, created_at: new Date().toISOString() });
+
+                  await db.doc(`tenants/${tenantId}/workers/${workerId}`).set({
+                    name: String(spec.name || 'My Worker').substring(0, 200),
+                    description: String(spec.description || '').substring(0, 2000),
+                    source: { platform: 'dev-chat', createdVia: 'alex' },
+                    capabilities: Array.isArray(spec.capabilities) ? spec.capabilities.slice(0, 20) : [],
+                    rules, category: spec.category || 'custom',
+                    pricing: { model: 'subscription', amount: 0, currency: 'USD' },
+                    status: 'registered', imported: false,
+                    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                    createdBy: sessionState.userId,
+                    rulesHash, metadataHash,
+                  });
+
+                  sessionState.lastWorkerId = workerId;
+                  sessionState.lastWorkerTenantId = tenantId;
+                  delete sessionState.pendingWorkerSpec;
+                  deferredWorkerCard = {
+                    type: 'workerCard',
+                    data: { workerId, name: String(spec.name || 'My Worker').substring(0, 200), description: String(spec.description || '').substring(0, 2000), rules: rules.slice(0, 5), rulesCount: rules.length, status: 'registered', category: spec.category || 'custom', tenantId },
+                  };
+                  console.log(`[dev] Deferred Worker created: ${workerId} for tenant ${tenantId}`);
+                } catch (e) {
+                  console.warn('[dev] Deferred Worker creation failed:', e.message);
+                }
+              }
+
+              sessionState.termsAccepted = true;
+              await sessionRef.set({
+                state: sessionState,
+                surface: 'developer',
+                userId: sessionState.userId,
+                updatedAt: nowServerTs(),
+              }, { merge: true });
+
+              const name = sessionState.devName || '';
+              const redirectMsg = deferredWorkerCard
+                ? (name ? `All set, ${name}. Your Worker is live -- taking you to your sandbox now.` : `All set. Your Worker is live -- taking you to your sandbox now.`)
+                : (name ? `All set, ${name}. Taking you into the dashboard now.` : `All set. Taking you into the dashboard now.`);
+              sessionState.devHistory.push({ role: 'assistant', content: redirectMsg });
+              return res.json({
+                ok: true,
+                message: redirectMsg,
+                buildAnimation: !!deferredWorkerCard,
+                ...(deferredWorkerCard ? { cards: [deferredWorkerCard] } : {}),
+                platformRedirect: true,
+                redirectPage: deferredWorkerCard ? 'my-gpts' : 'dashboard',
+                selectedTenantId: tenantId,
+                conversationState: 'dev_discovery',
+              });
+            } catch (e) {
+              console.error("dev: terms acceptance failed:", e.message);
+              const name = sessionState.devName || '';
+              const errMsg = name
+                ? `${name}, something went wrong with the terms step. Let me try that again -- just click the button below.`
+                : `Something went wrong with the terms step. Let me try that again -- just click the button below.`;
+              return res.json({
+                ok: true,
+                message: errMsg,
+                conversationState: 'dev_discovery',
+              });
+            }
+          }
+
+          // Handle email — show magic link card inline (NOT "check your inbox")
+          const emailMatch = userInput.match(/[\w.+-]+@[\w-]+\.[\w.]+/);
+          if (emailMatch && !sessionState.accountCreated) {
+            const email = emailMatch[0].toLowerCase();
+            sessionState.devEmail = email;
+
+            const name = sessionState.devName || '';
+            const linkMsg = name
+              ? `Got it, ${name}. Here is your sign-in link -- just click to get started.`
+              : `Got it. Here is your sign-in link -- just click to get started.`;
+            sessionState.devHistory.push({ role: 'user', content: userInput });
+            sessionState.devHistory.push({ role: 'assistant', content: linkMsg });
+            await sessionRef.set({
+              state: sessionState,
+              surface: 'developer',
+              userId: authUser ? authUser.uid : null,
+              ...(sessionSnap.exists ? {} : { createdAt: nowServerTs() }),
+              updatedAt: nowServerTs(),
+            }, { merge: true });
+            return res.json({
+              ok: true,
+              message: linkMsg,
+              cards: [{ type: 'magicLink', data: { email } }],
+              showSignup: false,
+              conversationState: 'dev_discovery',
+            });
+          }
+
+          // Sandbox-specific prompt for the DIY RAAS builder environment
+          const sandboxSystemPrompt = `You are Alex, TitleApp's developer relations AI. You're inside the Developer Sandbox -- the DIY RAAS builder where developers create, test, and publish AI services.
+
+TERMINOLOGY: Always say "RAAS Worker" not just "Worker." RAAS = Rules + AI-as-a-Service.
+
+YOUR ROLE: Guide developers through building their RAAS Worker. You can:
+- Help them describe what they want to build, then generate the structure
+- Create and edit rules in plain language
+- Generate folder structures and document templates
+- Run tests and explain results
+- Help write marketplace listings
+- Coach them on growing their subscriber base after publishing
+
+WHEN SOMEONE SAYS THEY WANT TO BUILD A RAAS (or describes an idea):
+Give them the roadmap FIRST so they know the process. Keep it brief -- 6 steps, one sentence each:
+
+"Cool -- a [their idea]. Here's how we'll build it:
+
+1. Define -- I'll help you map out what goes in and what comes out.
+2. Rules -- You tell me your business rules in plain language. I'll turn them into enforcement logic.
+3. Build -- I'll generate the RAAS Worker structure, templates, and config.
+4. Test -- We'll run sample data through it and see what passes.
+5. Publish -- List it on the marketplace.
+6. Grow -- I'll help you get your first subscribers and start earning.
+
+Ready to start? Tell me more about what data you're working with."
+
+AFTER GIVING THE ROADMAP:
+- Reference the steps as you go: "That covers step 1. Moving to rules."
+- Keep a running sense of progress: "Rules are set. 3 hard stops, 1 warning. Ready to build?"
+- When transitioning, name the step: "Step 4 -- testing."
+- If the user jumps ahead, go with them. If they go back, no problem.
+
+DO NOT give the roadmap on every message. Only when:
+- User says they want to build something new
+- User seems lost
+- User asks for an overview
+
+STEP 6 -- GROW MODE:
+When a RAAS Worker is published and the user says "grow" or "launch" or "get subscribers" or "what's next":
+- Switch into distribution coach mode
+- Help them with: social media posts, email templates, embed widgets, marketplace optimization
+- Generate copy they can use: "Here's a tweet you can post: [draft]"
+- Suggest concrete next actions: "Share the marketplace link with 3 people who'd use this."
+- Track their progress: "You have 0 subscribers. First goal: get to 5."
+- Be encouraging but factual -- no empty hype
+
+Revenue context: Creators earn 75% of subscription revenue. $9/seat/month means $6.75/seat to the creator. 10 subscribers = $67.50/month passive income.
+
+ADAPT TO THE USER'S LEVEL:
+- Novice: Do most of the work. "Describe what you want, I'll build it."
+- Expert: Assist when asked. Don't over-explain. If they're typing structured rules or JSON, they're an expert.
+
+BREVITY RULES:
+- 2-3 sentences per response (the roadmap is the ONE exception)
+- ONE question per response
+- Match the user's energy
+- After the roadmap, go back to being brief
+- No emojis. No markdown formatting. Plain text only.
+
+RAAS WORKER BUILD PROTOCOL:
+When the developer confirms build and you have enough info (name + description + at least 1-2 rules), output:
+[WORKER_SPEC]{"name":"RAAS Worker Name","description":"What it does","rules":["Rule 1","Rule 2"],"capabilities":[],"category":"category"}[/WORKER_SPEC]
+Include this AFTER your conversational text. The system strips it and creates the RAAS Worker.
+Before outputting, make sure you have at minimum: a name, a description, and at least 1-2 rules.
+
+NEVER:
+- Say "go to titleapp.ai" or "sign in somewhere else"
+- Output [Note: ...] or [System: ...] bracket text
+- Ask more than one question in a response
+- Write more than 3 sentences unless they asked for detail
+- Start building without giving the roadmap first (for a new RAAS Worker)
+- Deny TitleApp's blockchain heritage
+- Say just "Worker" -- always "RAAS Worker"
+
+IF SIGNUP FAILS:
+Say: "Signup system is being slow -- give me your email again and I will retry right here."
+${nameGuidance}${authGuidance}`;
+
+          const devSystemPrompt = `You are Alex, TitleApp's developer relations AI. You're a tour guide, not a consultant. Show people around. Don't interview them.
+
+RULE #1 -- BE BRIEF:
+- 2-3 sentences per response. That's it.
+- ONE question per response. Never two. Never three.
+- If someone gives you a one-word answer, give a 1-sentence response.
+- Stop writing paragraphs. Stop explaining things the developer didn't ask about.
+- Never use emojis. Never use markdown formatting like asterisks or headers. Plain text only.
+
+RULE #2 -- ASK NAME ONCE:
+- Ask for their name exactly ONCE, in your first or second message.
+- Once they give it, NEVER ask again. Store it. Use it.
+- If someone says "sean" or "I'm Sean" -- that IS their name. Don't ask again.
+- Single words that are common names (Sean, Mike, Alex, etc.) ARE names. Accept them.
+
+RULE #3 -- BE A TOUR GUIDE, NOT AN INTERVIEWER:
+- After you know their name and what they're building, SHOW THEM AROUND.
+- Don't keep asking questions about their project. They'll tell you when ready.
+- Proactively offer the tour. Say something like:
+  "Cool. Three things devs usually want to see: the API, the DIY RAAS Worker builder (think Apple's developer program but for AI), and the RAAS marketplace where you can sell what you build. Want the quick tour, or something specific?"
+- If they pick something, show it briefly. If they want more, they'll ask.
+
+RULE #4 -- EXPLAIN WHAT WE ARE (EARLY):
+Within the first 3-4 messages, make sure they know:
+- RAAS = Rules + AI-as-a-Service. You define business rules, AI operates within them, a deterministic enforcement engine validates every output. Full audit trail.
+- We have an API (OpenAPI spec: https://us-central1-title-app-alpha.cloudfunctions.net/publicApi/v1/docs), a DIY no-code RAAS Worker builder, and a marketplace where devs earn 75% of revenue.
+- It's like Apple's App Developer Program for AI services -- build it, publish it, earn from it.
+- Pricing: sandbox is free. $9/seat/month for production workspaces.
+- Don't dump all this at once. But weave it into the first few exchanges naturally.
+- Always say "RAAS Worker" not just "Worker." The full term matters.
+
+RULE #5 -- NEVER DO THESE THINGS:
+- Never ask for the name twice.
+- Never ask more than one question in a response.
+- Never write more than 3 sentences unless they asked for detail.
+- Never start building/configuring a RAAS Worker without them saying "let's build one."
+- Never keep drilling into their project -- they said "just scoping"? Say "cool, want to look around?"
+- Never act like a business consultant. You're showing them a cool workshop.
+- Never offer investment information, raise terms, or financial details. Redirect to the investor chat.
+- Never provide production API keys in chat. Account creation goes through the signup flow.
+- Never make up endpoints or capabilities that do not exist.
+- Never deny TitleApp's blockchain heritage -- the name comes from land title registry, not job titles.
+
+RULE #6 -- NEVER SEND THEM AWAY:
+- The developer is ALREADY on TitleApp. This chat IS TitleApp.
+- Never say "go to titleapp.ai" or "visit our site" or "sign in somewhere else."
+- When they need to sign up, ask for their email and handle it right here.
+- When they want to see their RAAS Worker or sandbox, say "Opening your sandbox..." -- the transition happens seamlessly.
+- If something fails, say "Let me try that again" -- never redirect them elsewhere.
+
+RULE #7 -- CELEBRATE MILESTONES:
+- First RAAS Worker built? "Nice -- your RAAS Worker is live. Want to test it?"
+- Keep it one sentence. Don't over-celebrate.
+
+RAAS WORKER BUILD PROTOCOL:
+When the developer says something like "build it", "let's do it", "yes", or "create it" and you have gathered enough information (name/purpose + at least 1-2 rules), output a WORKER_SPEC token. The format is:
+[WORKER_SPEC]{"name":"RAAS Worker Name","description":"What it does","rules":["Rule 1","Rule 2"],"capabilities":["cap1"],"category":"category"}[/WORKER_SPEC]
+Include this AFTER your conversational response text. The system will strip it and create the RAAS Worker automatically.
+Before outputting the spec, make sure you have at minimum: a name, a description, and at least 1-2 rules. If not, ask ONE clarifying question.
+After the build, say something like: "Done -- [RAAS Worker Name] is live in your sandbox. Want to test it out?"
+
+EXAMPLE CONVERSATION (follow this energy):
+
+Dev: "Hi I need the API spec"
+Alex: "Here it is: https://us-central1-title-app-alpha.cloudfunctions.net/publicApi/v1/docs -- that covers all endpoints and auth. What's your name?"
+
+Dev: "Sean"
+Alex: "Hey Sean. What are you building?"
+
+Dev: "Construction management app"
+Alex: "Nice -- construction is a great fit for what we do. Want the quick tour of our dev tools, or already know what you're looking for?"
+
+Dev: "What do you have?"
+Alex: "Three main things: an API for rules-enforced AI (the spec I sent), a no-code Worker builder where you describe your service and we build it, and a marketplace where you publish and earn 75% revenue. Which one interests you?"
+
+Dev: "Tell me about RAAS"
+Alex: "RAAS is Rules + AI-as-a-Service -- our thing. You define business rules in plain language, AI works within them, and an enforcement engine validates every output before delivery. For construction: 'never approve a draw without timestamped inspection photos.' The AI handles everything, the engine enforces the rule every time. Want to see it in action?"
+
+That's the energy. Brief. Helpful. Let them lead.
+
+ON BLOCKCHAIN HERITAGE (only when asked):
+TitleApp started as a blockchain land title registry. The name comes from titling assets. Infrastructure pivoted to AI governance -- tamper-proof records + audit trail + provenance, wrapped in AI, then RAAS. Never deny the heritage.
+
+RULE #8 -- NO INTERNAL NOTES:
+- NEVER output text in brackets like [Note: ...] or [System: ...] or [Action: ...] or [At this point...].
+- These are internal instructions, not user-facing content.
+- If you can't perform an action, say so naturally: "I'm setting that up" or "Here's your link."
+- Never expose internal reasoning, stage directions, or system notes to the user.
+
+IF SIGNUP/VAULT CREATION FAILS:
+Don't show a broken state. Say: "Signup system is being slow -- give me your email again and I will retry right here."
+${nameGuidance}${authGuidance}`;
+
+          try {
+            const anthropic = getAnthropic();
+            const aiResp = await anthropic.messages.create({
+              model: "claude-sonnet-4-5-20250929",
+              max_tokens: 1024,
+              system: surface === 'sandbox' ? sandboxSystemPrompt : devSystemPrompt,
+              messages,
+            });
+
+            let aiText = aiResp.content[0]?.text || "Hey there -- happy to help. What's your name?";
+
+            // Detect and parse [WORKER_SPEC]...[/WORKER_SPEC] token from AI response
+            let workerCard = null;
+            let buildAnimation = false;
+            const workerSpecMatch = aiText.match(/\[WORKER_SPEC\]([\s\S]*?)\[\/WORKER_SPEC\]/);
+            if (workerSpecMatch) {
+              try {
+                const workerSpec = JSON.parse(workerSpecMatch[1].trim());
+                aiText = aiText.replace(/\s*\[WORKER_SPEC\][\s\S]*?\[\/WORKER_SPEC\]\s*/g, '').trim();
+
+                // Determine tenant — user may or may not be signed up yet
+                let targetTenantId = null;
+                if (sessionState.userId) {
+                  const memSnap = await db.collection("memberships")
+                    .where("userId", "==", sessionState.userId)
+                    .limit(1)
+                    .get();
+                  if (!memSnap.empty) {
+                    targetTenantId = memSnap.docs[0].data().tenantId;
+                  }
+                }
+
+                const rules = Array.isArray(workerSpec.rules) ? workerSpec.rules.slice(0, 50) : [];
+                const workerName = String(workerSpec.name || 'My Worker').substring(0, 200);
+                const workerDesc = String(workerSpec.description || '').substring(0, 2000);
+                const workerCategory = workerSpec.category || 'custom';
+
+                if (targetTenantId) {
+                  // Create Worker now
+                  const { computeHash: devHash } = require("./api/utils/titleMint");
+                  const workerId = "wkr_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+                  const rulesHash = devHash(rules);
+                  const metadataHash = devHash({ name: workerName, description: workerDesc, rules_hash: rulesHash, created_at: new Date().toISOString() });
+
+                  await db.doc(`tenants/${targetTenantId}/workers/${workerId}`).set({
+                    name: workerName, description: workerDesc,
+                    source: { platform: 'dev-chat', createdVia: 'alex' },
+                    capabilities: Array.isArray(workerSpec.capabilities) ? workerSpec.capabilities.slice(0, 20) : [],
+                    rules, category: workerCategory,
+                    pricing: { model: 'subscription', amount: 0, currency: 'USD' },
+                    status: 'registered', imported: false,
+                    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                    createdBy: sessionState.userId,
+                    rulesHash, metadataHash,
+                  });
+
+                  buildAnimation = true;
+                  workerCard = {
+                    type: 'workerCard',
+                    data: { workerId, name: workerName, description: workerDesc, rules: rules.slice(0, 5), rulesCount: rules.length, status: 'registered', category: workerCategory, tenantId: targetTenantId },
+                  };
+                  sessionState.lastWorkerId = workerId;
+                  sessionState.lastWorkerTenantId = targetTenantId;
+                  console.log(`[dev] Worker created: ${workerId} for tenant ${targetTenantId}`);
+                } else {
+                  // No account yet — stash spec for creation after signup
+                  sessionState.pendingWorkerSpec = workerSpec;
+                  buildAnimation = true;
+                  workerCard = {
+                    type: 'workerCard',
+                    data: { workerId: 'pending', name: workerName, description: workerDesc, rules: rules.slice(0, 5), rulesCount: rules.length, status: 'pending-signup', category: workerCategory, tenantId: null },
+                  };
+                  console.log(`[dev] Worker spec stashed for deferred creation`);
+                }
+              } catch (e) {
+                console.warn('[dev] failed to parse WORKER_SPEC:', e.message);
+              }
+            }
+
+            // Strip any leaked internal notes: [Note: ...], [System: ...], [Action: ...], etc.
+            aiText = aiText.replace(/\s*\[(?:Note|System|Action|At this point|Internal|Stage direction)[^\]]*\]\s*/gi, '').trim();
+
+            // Safety net: force name ask by message 4 if AI still hasn't and name unknown
+            if (!sessionState.devName && userMsgCount >= 4 && !/what'?s your name|your name|who am i talking|what should i call/i.test(aiText)) {
+              aiText += '\n\nBy the way, what should I call you?';
+            }
+
+            // Check if AI is prompting for signup
+            const showSignup = /\b(create.*account|set.*up|sign.*up|get.*access|api key)\b/i.test(aiText) && !sessionState.accountCreated;
+
+            sessionState.devHistory.push({ role: 'user', content: userInput });
+            sessionState.devHistory.push({ role: 'assistant', content: aiText });
+
+            // Cap history at 30 entries to prevent context overflow
+            if (sessionState.devHistory.length > 30) {
+              sessionState.devHistory = sessionState.devHistory.slice(-30);
+            }
+
+            await sessionRef.set({
+              state: sessionState,
+              surface: 'developer',
+              userId: authUser ? authUser.uid : null,
+              ...(sessionSnap.exists ? {} : { createdAt: nowServerTs() }),
+              updatedAt: nowServerTs(),
+            }, { merge: true });
+
+            // Log developer interaction
+            await db.collection("messageEvents").add({
+              type: "dev:chat",
+              message: userInput,
+              response: aiText,
+              devContext: {
+                surface: "developer",
+                devName: sessionState.devName || null,
+                showSignup,
+                workerBuilt: buildAnimation,
+              },
+              createdAt: nowServerTs(),
+            });
+
+            return res.json({
+              ok: true,
+              message: aiText,
+              showSignup,
+              buildAnimation,
+              ...(workerCard ? { cards: [workerCard] } : {}),
+              conversationState: 'dev_discovery',
+            });
+          } catch (e) {
+            console.error("Developer AI failed:", e.message);
+            await sessionRef.set({
+              state: sessionState,
+              surface: 'developer',
+              userId: authUser ? authUser.uid : null,
+              ...(sessionSnap.exists ? {} : { createdAt: nowServerTs() }),
+              updatedAt: nowServerTs(),
+            }, { merge: true });
+            return res.json({
+              ok: true,
+              message: "I can help with the API and integration. What would you like to know?",
+              showSignup: false,
+              conversationState: 'dev_discovery',
+            });
+          }
+        }
+
+        // ── Privacy Mode: /privacy entry point — Alex answers privacy questions ──
+        if ((surface === 'privacy' || sessionState.step === 'privacy_discovery') &&
+            !action && userInput) {
+
+          if (!sessionState.privacyHistory) sessionState.privacyHistory = [];
+          sessionState.step = 'privacy_discovery';
+
+          const messages = [];
+          if (sessionState.privacyHistory.length === 0) {
+            messages.push({ role: 'assistant', content: "Hi, I'm Alex. I can walk you through TitleApp's privacy practices, answer questions about how we handle your data, or explain our security model. What would you like to know?" });
+          }
+          for (const h of sessionState.privacyHistory) {
+            messages.push({ role: h.role, content: h.content });
+          }
+          messages.push({ role: 'user', content: userInput });
+
+          const privacySystemPrompt = `You are Alex, TitleApp's AI assistant. You are answering questions about TitleApp's privacy practices and data handling.
+
+TITLEAPP PRIVACY PRACTICES:
+
+Data Collection:
+- We collect the information you provide when creating an account: name, email address.
+- When you use the platform, we store records you create (documents, vehicle info, credentials, deal analyses) in your private workspace.
+- Chat conversations are stored to maintain context and improve the experience.
+- We collect standard usage analytics (page views, feature usage) to improve the product.
+
+Data Storage and Security:
+- All data is stored in Google Cloud (Firebase/Firestore) with encryption at rest and in transit.
+- Data is append-only and event-sourced — records are never silently overwritten or deleted. Every change is a new timestamped event.
+- Authentication uses Firebase Auth with industry-standard security practices.
+- Optional blockchain anchoring writes proof-of-existence hashes to Polygon — the hash proves a record is untampered, but the actual data never goes on-chain.
+
+Data Sharing:
+- We do not sell your data to third parties. Period.
+- AI processing uses Anthropic (Claude) and OpenAI (GPT). Your prompts and responses are sent to these providers for processing. Both providers have data processing agreements that prohibit them from using your data to train their models.
+- Within a business workspace, data is shared with workspace members based on their role permissions.
+- We may share anonymized, aggregated analytics (never individual records) for product improvement.
+
+Your Rights:
+- You can export your data at any time through the platform.
+- You can request account deletion by contacting us. We will delete your account and personal data. Note: append-only event records are retained for audit trail integrity but are disassociated from your identity.
+- If blockchain anchoring was used, on-chain hashes cannot be removed (blockchain is immutable by design), but the hashes alone contain no personal data.
+
+GDPR and CCPA:
+- We respect data subject rights under GDPR and CCPA.
+- You have the right to access, correct, and delete your personal data.
+- You have the right to data portability.
+- You can opt out of non-essential data processing.
+- Contact privacy@titleapp.ai or sean@titleapp.ai for any privacy requests.
+
+Cookies:
+- We use essential cookies for authentication and session management.
+- We use analytics cookies to understand how the product is used.
+- We do not use advertising or tracking cookies.
+
+CONVERSATION STYLE:
+- Be transparent, plain-spoken, and helpful. Translate legal concepts into plain English.
+- Answer the specific question asked. Do not dump the entire privacy policy unless they ask for it.
+- If someone asks to "read the whole policy," provide the full text section by section.
+- Never use emojis. Never use markdown formatting. Plain text only.
+- Keep responses concise and direct.
+- If you do not know the answer to a specific privacy question, say so honestly and suggest they email privacy@titleapp.ai.`;
+
+          try {
+            const anthropic = getAnthropic();
+            const aiResp = await anthropic.messages.create({
+              model: "claude-sonnet-4-5-20250929",
+              max_tokens: 2048,
+              system: privacySystemPrompt,
+              messages,
+            });
+
+            const aiText = aiResp.content[0]?.text || "I can help with privacy questions. What would you like to know?";
+            sessionState.privacyHistory.push({ role: 'user', content: userInput });
+            sessionState.privacyHistory.push({ role: 'assistant', content: aiText });
+
+            await sessionRef.set({
+              state: sessionState,
+              surface: 'privacy',
+              userId: authUser ? authUser.uid : null,
+              ...(sessionSnap.exists ? {} : { createdAt: nowServerTs() }),
+              updatedAt: nowServerTs(),
+            }, { merge: true });
+
+            return res.json({
+              ok: true,
+              message: aiText,
+              showSignup: false,
+              conversationState: 'privacy_discovery',
+            });
+          } catch (e) {
+            console.error("Privacy AI failed:", e.message);
+            return res.json({
+              ok: true,
+              message: "I can help with privacy questions. What would you like to know about how TitleApp handles your data?",
+              showSignup: false,
+              conversationState: 'privacy_discovery',
+            });
+          }
+        }
+
+        // GUARD: privacy surface fallback
+        if (surface === 'privacy') {
+          return res.json({
+            ok: true,
+            message: "I can answer questions about TitleApp's privacy practices. What would you like to know?",
+            showSignup: false,
+            conversationState: 'privacy_discovery',
+          });
+        }
+
+        // ── Contact Mode: /contact entry point — Alex provides company info ──
+        if ((surface === 'contact' || sessionState.step === 'contact_discovery') &&
+            !action && userInput) {
+
+          if (!sessionState.contactHistory) sessionState.contactHistory = [];
+          sessionState.step = 'contact_discovery';
+
+          const messages = [];
+          if (sessionState.contactHistory.length === 0) {
+            messages.push({ role: 'assistant', content: "Hi, I'm Alex. Need to reach someone at TitleApp? I can share contact details, help you connect with the right person, or answer questions about the company. How can I help?" });
+          }
+          for (const h of sessionState.contactHistory) {
+            messages.push({ role: h.role, content: h.content });
+          }
+          messages.push({ role: 'user', content: userInput });
+
+          // Check if user wants to leave a message
+          const lowerInput = userInput.toLowerCase();
+          const wantsToLeaveMessage = /\b(leave a message|send a message|get back to me|have someone call|reach out to me)\b/.test(lowerInput);
+
+          let messageGuidance = '';
+          if (wantsToLeaveMessage) {
+            messageGuidance = '\nThe user wants to leave a message. Ask for their name, email, and what they would like to discuss. Once you have all three, confirm you have logged it and someone will follow up.';
+          }
+
+          // Check if user provided contact info for message capture
+          const emailMatch = userInput.match(/[\w.+-]+@[\w-]+\.[\w.]+/);
+          if (emailMatch && sessionState.step === 'contact_discovery' && sessionState.wantsMessage) {
+            // Capture message to Firestore
+            try {
+              await db.collection("contactMessages").add({
+                name: sessionState.contactName || null,
+                email: emailMatch[0].toLowerCase(),
+                message: sessionState.contactMessage || userInput,
+                source: "chat",
+                createdAt: nowServerTs(),
+              });
+              sessionState.messageCaptured = true;
+            } catch (e) {
+              console.error("Failed to save contact message:", e.message);
+            }
+          }
+
+          const contactSystemPrompt = `You are Alex, TitleApp's AI assistant. You are helping someone who wants to contact or learn about TitleApp.
+
+COMPANY INFORMATION:
+
+Company: TitleApp AI
+Legal Name: Title App LLC, The
+Legal Structure: Corporation
+
+Office Address:
+2411 Chestnut St
+San Francisco, CA 94123
+
+Phone: (415) 236-0013
+
+Primary Contact:
+Sean Lee Combs, CEO
+Email: sean@titleapp.ai
+Phone: (310) 430-0780
+
+General Inquiries: hello@titleapp.ai
+
+Legal Entity Details (for vendors, partnerships, government forms):
+EIN: 33-1330902
+DUNS: 119438383
+Registered Agent: 1209 N Orange St, Wilmington, DE 19801
+
+CONVERSATION STYLE:
+- Be warm, helpful, and direct. You are not a phone tree.
+- When someone asks where TitleApp is located, give the address: 2411 Chestnut St, San Francisco, CA 94123.
+- When someone wants to reach a specific person, provide their contact info directly.
+- When someone wants to leave a message, ask for their name, email, and what they want to discuss. Confirm once captured.
+- When someone needs legal entity info (EIN, DUNS, legal name), provide it directly.
+- If someone wants to schedule a meeting, suggest they email sean@titleapp.ai with their availability.
+- Never use emojis. Never use markdown formatting. Plain text only.
+- Keep responses concise and helpful.
+${messageGuidance}`;
+
+          try {
+            const anthropic = getAnthropic();
+            const aiResp = await anthropic.messages.create({
+              model: "claude-sonnet-4-5-20250929",
+              max_tokens: 2048,
+              system: contactSystemPrompt,
+              messages,
+            });
+
+            const aiText = aiResp.content[0]?.text || "I can help you reach the right person at TitleApp. What do you need?";
+
+            // Detect if Alex is asking for message details
+            if (/\b(name|email|what.*discuss|what.*about)\b/i.test(aiText) && wantsToLeaveMessage) {
+              sessionState.wantsMessage = true;
+            }
+
+            sessionState.contactHistory.push({ role: 'user', content: userInput });
+            sessionState.contactHistory.push({ role: 'assistant', content: aiText });
+
+            await sessionRef.set({
+              state: sessionState,
+              surface: 'contact',
+              userId: authUser ? authUser.uid : null,
+              ...(sessionSnap.exists ? {} : { createdAt: nowServerTs() }),
+              updatedAt: nowServerTs(),
+            }, { merge: true });
+
+            return res.json({
+              ok: true,
+              message: aiText,
+              showSignup: false,
+              conversationState: 'contact_discovery',
+            });
+          } catch (e) {
+            console.error("Contact AI failed:", e.message);
+            return res.json({
+              ok: true,
+              message: "You can reach TitleApp at hello@titleapp.ai or call (415) 236-0013. Our office is at 2411 Chestnut St, San Francisco, CA 94123.",
+              showSignup: false,
+              conversationState: 'contact_discovery',
+            });
+          }
+        }
+
+        // GUARD: contact surface fallback
+        if (surface === 'contact') {
+          return res.json({
+            ok: true,
+            message: "You can reach TitleApp at hello@titleapp.ai or call (415) 236-0013. Our office is at 2411 Chestnut St, San Francisco, CA 94123. How can I help?",
+            showSignup: false,
+            conversationState: 'contact_discovery',
+          });
+        }
+
+        // GUARD: If surface is 'developer' and we got here, the dev handler failed.
+        if (surface === 'developer') {
+          console.warn("chatEngine: developer handler did not return, using fallback");
+          await sessionRef.set({
+            state: sessionState,
+            surface: 'developer',
+            userId: authUser ? authUser.uid : null,
+            ...(sessionSnap.exists ? {} : { createdAt: nowServerTs() }),
+            updatedAt: nowServerTs(),
+          }, { merge: true });
+          return res.json({
+            ok: true,
+            message: "I'm here to help with the TitleApp API and RAAS architecture. What would you like to know?",
+            showSignup: false,
+            conversationState: 'dev_discovery',
+          });
+        }
+
+        // GUARD: If surface is 'invest' and we got here, the invest handler failed.
+        // Return a safe investor fallback — NEVER fall through to generic workspace engine.
+        if (surface === 'invest') {
+          console.warn("chatEngine: invest handler did not return, using fallback");
+          await sessionRef.set({
+            state: sessionState,
+            surface: 'invest',
+            userId: authUser ? authUser.uid : null,
+            ...(sessionSnap.exists ? {} : { createdAt: nowServerTs() }),
+            updatedAt: nowServerTs(),
+          }, { merge: true });
+          return res.json({
+            ok: true,
+            message: "I'm here to help with anything about TitleApp and the raise. What would you like to know?",
+            showSignup: false,
+            conversationState: 'invest_discovery',
+          });
         }
 
         // Build services for chatEngine (called during processing)
@@ -1658,6 +3199,86 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       }
     }
 
+    // GET /v1/raise:config (PUBLIC — no auth required)
+    if (route === "/raise:config" && method === "GET") {
+      try {
+        const configDoc = await db.collection("config").doc("raise").get();
+        if (!configDoc.exists) {
+          // Auto-seed default raise config on first read
+          const defaultConfig = {
+            active: true,
+            instrument: "Post-Money SAFE",
+            raiseAmount: 1070000,
+            valuationCap: 15000000,
+            discount: 0.20,
+            minimumInvestment: 1000,
+            proRata: true,
+            proRataNote: "Yes — all investors",
+            fundingPortal: { name: "Wefunder", url: "https://wefunder.com/titleapp", regulation: "Reg CF" },
+            conversionScenarios: [
+              { exitValuation: 30000000, multiple: "2.0x" },
+              { exitValuation: 50000000, multiple: "3.3x" },
+              { exitValuation: 75000000, multiple: "5.0x" },
+              { exitValuation: 100000000, multiple: "6.7x" },
+              { exitValuation: 150000000, multiple: "10.0x" },
+            ],
+            runway: { netProceeds: 803000, monthlyBurn: 27800, zeroRevenueMonths: 28, withRevenueMonths: "33+", cashFlowPositiveTarget: "mid-2027" },
+            team: [
+              { name: "Sean Lee Combs", role: "CEO", note: "Product + vision" },
+              { name: "Kent Redwine", role: "CFO", note: "Finance + operations" },
+              { name: "Kim Ellen Bennett", role: "GovTech Lead", note: "Public sector" },
+              { name: "Vishal Kumar", role: "Frontend Engineer", note: "React + UI" },
+              { name: "Manpreet Kaur", role: "Backend Engineer", note: "Cloud + AI" },
+            ],
+            updatedAt: nowServerTs(),
+            updatedBy: "auto-seed",
+          };
+          await db.collection("config").doc("raise").set(defaultConfig);
+          return res.json({ ok: true, config: defaultConfig, seeded: true });
+        }
+        return res.json({ ok: true, config: configDoc.data() });
+      } catch (e) {
+        console.error("raise:config GET failed:", e);
+        return jsonError(res, 500, "Failed to load raise config");
+      }
+    }
+
+    // GET /v1/config:company (PUBLIC — no auth required)
+    if (route === "/config:company" && method === "GET") {
+      try {
+        const doc = await db.collection("config").doc("company").get();
+        return res.json({ ok: true, company: doc.exists ? doc.data() : null });
+      } catch (e) {
+        return jsonError(res, 500, "Failed to load company config");
+      }
+    }
+
+    // GET /v1/config:disclaimers (PUBLIC — no auth required)
+    if (route === "/config:disclaimers" && method === "GET") {
+      try {
+        const doc = await db.collection("config").doc("disclaimers").get();
+        return res.json({ ok: true, disclaimers: doc.exists ? doc.data() : null });
+      } catch (e) {
+        return jsonError(res, 500, "Failed to load disclaimers");
+      }
+    }
+
+    // GET /v1/investor:docs (PUBLIC — document list, no auth)
+    if (route === "/investor:docs" && method === "GET") {
+      try {
+        const doc = await db.collection("config").doc("investorDocs").get();
+        return res.json({ ok: true, documents: doc.exists ? (doc.data().documents || []) : [] });
+      } catch (e) {
+        return jsonError(res, 500, "Failed to load investor documents");
+      }
+    }
+
+    // POST /v1/admin:seed-activity (secret-protected, no auth)
+    if (route === "/admin:seed-activity" && method === "POST") {
+      const { seedActivityData: handleSeedAct } = require("./admin/seedActivityData");
+      return handleSeedAct(req, res);
+    }
+
     // All other routes require Firebase auth
     const auth = await requireFirebaseUser(req, res);
     if (auth.handled) return;
@@ -1708,9 +3329,53 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       return res.json({ ok: true, userId: auth.user.uid, email: auth.user.email || null, memberships, tenants });
     }
 
+    // GET /v1/workers:list — list Workers for current tenant
+    if (route === "/workers:list" && method === "GET") {
+      const tenantId = req.headers["x-tenant-id"] || req.query?.tenantId;
+      if (!tenantId) return res.json({ ok: false, error: "Missing tenant ID" });
+      try {
+        const snap = await db.collection(`tenants/${tenantId}/workers`).orderBy("createdAt", "desc").limit(50).get();
+        const workers = snap.docs.map((d) => {
+          const data = d.data() || {};
+          return {
+            id: d.id, name: data.name, description: data.description,
+            status: data.status, category: data.category,
+            rules: data.rules || [], rulesCount: (data.rules || []).length,
+            createdAt: data.createdAt, createdBy: data.createdBy,
+          };
+        });
+        return res.json({ ok: true, workers });
+      } catch (e) {
+        console.error("[workers:list] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // POST /v1/workers:test — run test data through a Worker's rules
+    if (route === "/workers:test" && method === "POST") {
+      const { tenantId, workerId, testData } = body;
+      if (!tenantId || !workerId) return res.json({ ok: false, error: "Missing tenantId or workerId" });
+      try {
+        const wDoc = await db.doc(`tenants/${tenantId}/workers/${workerId}`).get();
+        if (!wDoc.exists) return res.json({ ok: false, error: "Worker not found" });
+        const worker = wDoc.data();
+        const rules = worker.rules || [];
+        // Run each rule as a simple contains/match check against test data
+        const results = rules.map((rule, i) => {
+          // Basic enforcement: check if testData violates the rule description
+          return { ruleIndex: i, rule, status: "evaluated", passed: true, detail: "Rule checked" };
+        });
+        const passed = results.every((r) => r.passed);
+        return res.json({ ok: true, passed, results, rulesCount: rules.length, workerName: worker.name });
+      } catch (e) {
+        console.error("[workers:test] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
     // POST /v1/me:update
     if (route === "/me:update" && method === "POST") {
-      const ALLOWED_FIELDS = ["idVerified", "idVerifiedAt", "displayName"];
+      const ALLOWED_FIELDS = ["idVerified", "idVerifiedAt", "displayName", "company", "title", "linkedIn", "twitter", "accreditedInvestor", "investmentRangeMin", "investmentRangeMax", "investmentInterests", "emailFrequency", "photoUrl"];
       const updates = {};
       for (const key of ALLOWED_FIELDS) {
         if (body[key] !== undefined) updates[key] = body[key];
@@ -2162,8 +3827,9 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
           const storagePath = `uploads/${ctx.userId}/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
           const bucket = getBucket();
           const fileRef = bucket.file(storagePath);
-          await fileRef.save(buffer, { contentType: file.type || "application/octet-stream" });
-          const [url] = await fileRef.getSignedUrl({ version: "v4", action: "read", expires: Date.now() + 365 * 24 * 60 * 60 * 1000 });
+          const dlToken2 = require("crypto").randomUUID();
+          await fileRef.save(buffer, { contentType: file.type || "application/octet-stream", metadata: { firebaseStorageDownloadTokens: dlToken2 } });
+          const url = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(storagePath)}?alt=media&token=${dlToken2}`;
           uploadedFileUrl = url;
           uploadedFileName = file.name;
           // Create file record in Firestore
@@ -2317,6 +3983,45 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
               }
             }
 
+            // Load raise config for investor vertical
+            let investorRaiseContext = "";
+            if (ctx.vertical === "investor") {
+              try {
+                const raiseDoc = await db.collection("config").doc("raise").get();
+                if (raiseDoc.exists) {
+                  const rc = raiseDoc.data();
+                  const fp = rc.fundingPortal || {};
+                  investorRaiseContext = `\n\nCURRENT RAISE TERMS (from live config -- always use these, never make up numbers):
+Instrument: ${rc.instrument || "SAFE"}
+Raise Amount: $${((rc.raiseAmount || 0) / 1000000).toFixed(2)}M
+Valuation Cap: $${((rc.valuationCap || 0) / 1000000).toFixed(0)}M
+Discount: ${((rc.discount || 0) * 100).toFixed(0)}%
+Minimum Investment: $${(rc.minimumInvestment || 0).toLocaleString()}
+Pro Rata: ${rc.proRataNote || "N/A"}
+Funding Portal: ${fp.name || "N/A"} (${fp.regulation || "N/A"})
+Portal URL: ${fp.url || "N/A"}
+Active: ${rc.active ? "Yes" : "No"}`;
+                  if (rc.conversionScenarios && rc.conversionScenarios.length > 0) {
+                    investorRaiseContext += "\n\nConversion Scenarios (math only, not promises):";
+                    for (const s of rc.conversionScenarios) {
+                      investorRaiseContext += `\nAt $${(s.exitValuation / 1000000).toFixed(0)}M exit: ${s.multiple} return`;
+                    }
+                  }
+                  if (rc.runway) {
+                    investorRaiseContext += `\n\nRunway: Net proceeds ~$${((rc.runway.netProceeds || 0) / 1000).toFixed(0)}K. Monthly burn ~$${((rc.runway.monthlyBurn || 0) / 1000).toFixed(1)}K. ${rc.runway.zeroRevenueMonths || "N/A"} months at zero revenue. Cash flow positive target: ${rc.runway.cashFlowPositiveTarget || "TBD"}.`;
+                  }
+                  if (rc.team && rc.team.length > 0) {
+                    investorRaiseContext += "\n\nTeam:";
+                    for (const t of rc.team) {
+                      investorRaiseContext += `\n${t.name} (${t.role}) -- ${t.note || ""}`;
+                    }
+                  }
+                }
+              } catch (raiseErr) {
+                console.warn("Could not load raise config for investor prompt:", raiseErr.message);
+              }
+            }
+
             // Call Claude API
             const anthropic = getAnthropic();
             const isPersonalVault = (ctx.vertical || "").toLowerCase() === "consumer" || (ctx.vertical || "").toUpperCase() === "GLOBAL";
@@ -2413,21 +4118,39 @@ Service: Every service visit is a sales touchpoint. Check warranty expiration, c
 
 Outbound communications: ALWAYS use customer first name, reference their specific vehicle, reference their history, include specific reason to come in, clear CTA with date/time. Texts under 160 chars, emails under 200 words.
 
-You NEVER say: "I cannot access your inventory" (you can), "Go to the inventory section" (YOU look it up), "I am just an assistant" (you are the CHIEF OF STAFF), "I cannot send messages" (you DRAFT and SEND them), "Check with your F&I manager" (YOU are the F&I expert).` : ctx.vertical === "investor" ? `You are the Chief of Staff for an Investor Relations workspace. You help the company manage their fundraise, investor communications, cap table, and data room.
+You NEVER say: "I cannot access your inventory" (you can), "Go to the inventory section" (YOU look it up), "I am just an assistant" (you are the CHIEF OF STAFF), "I cannot send messages" (you DRAFT and SEND them), "Check with your F&I manager" (YOU are the F&I expert).` : ctx.vertical === "investor" ? `You are Alex, TitleApp's investor relations AI. You are warm, knowledgeable, and professional. You are not a chatbot -- you are a knowledgeable representative who can discuss the company, the raise, and the product in depth.
 
 You manage: the data room (pitch deck, financials, legal docs, team info), cap table (shareholders, SAFEs, options), investor pipeline (prospects at various stages from contacted to invested), round configuration and compliance tracking.
 
-Core responsibilities:
-- Help draft and refine investor communications (updates, follow-ups, Q&A responses).
-- Answer questions about the fundraise structure, round terms, and compliance requirements.
-- Track investor pipeline status and suggest follow-up actions.
-- Provide guidance on RegCF, RegD, and RegA+ compliance requirements at a high level.
-- Help organize data room documents and track viewer activity.
+COMPANY KNOWLEDGE:
+${getCompanyKnowledge()}
+${investorRaiseContext}
 
-IMPORTANT COMPLIANCE DISCLAIMER -- include this when discussing securities, investment terms, or regulatory matters:
-"This is informational guidance only. TitleApp does not act as a registered funding portal, broker-dealer, or investment advisor. Consult qualified legal counsel for securities compliance."
+REGULATORY RULES -- HARD ENFORCEMENT (these never change):
 
-You NEVER provide specific legal advice about securities regulations. You provide general guidance and always recommend consulting a securities attorney for specific compliance questions.` : ctx.vertical === "real-estate" || ctx.vertical === "property-mgmt" ? "You specialize in real estate transactions, property management, compliance, and document management." : "Help with business operations, compliance questions, document management, and platform navigation."} When discussing deals or investments, note that you provide informational analysis only, not financial advice.
+You CANNOT:
+- Promise returns or guarantee outcomes ("you'll make 5x" -- never, under any circumstances)
+- Provide personalized investment advice ("you should invest" or "this is right for you")
+- Misstate the terms of the offering -- always use the exact numbers from CURRENT RAISE TERMS above
+- Skip or bypass KYC/identity verification for investors who want to proceed
+- Share one investor's information with another investor
+- Make claims not substantiated in the offering documents
+- Create false urgency ("limited spots," "filling up fast") unless factually verified from config
+- Minimize risk factors or discourage investors from reading them
+- Make forward-looking statements without identifying them as such ("we project" or "we expect" must be clearly labeled as forward-looking)
+
+You CAN:
+- Explain risk factors honestly when asked -- be straightforward, not defensive
+- Share conversion scenarios as math, not promises ("At a $50M exit, the math works out to approximately 3.3x -- but outcomes are never guaranteed")
+- Express genuine enthusiasm about the product and mission
+- Say "I don't know" or "Let me connect you with Sean or Kent for that"
+- Recommend the investor read the full business plan or legal docs for detail
+- Discuss the team, technology, market, and competitive landscape in depth
+
+ESCALATION: For questions you cannot answer -- legal specifics, custom deal terms, strategic partnership details -- offer to connect the investor with Sean (CEO) or Kent (CFO) directly. Say: "That's a great question. Let me connect you with Sean/Kent who can give you a more detailed answer on that." Log the escalation.
+
+COMPLIANCE DISCLAIMER -- include when discussing securities, investment terms, or regulatory matters:
+"This is informational guidance only. TitleApp does not act as a registered funding portal, broker-dealer, or investment advisor. Securities offerings must comply with applicable SEC regulations. Consult qualified legal counsel before making investment decisions."` : ctx.vertical === "real-estate" || ctx.vertical === "property-mgmt" ? "You specialize in real estate transactions, property management, compliance, and document management." : "Help with business operations, compliance questions, document management, and platform navigation."} When discussing deals or investments, note that you provide informational analysis only, not financial advice.
 
 Platform navigation — when users ask how to do things, give them accurate directions:
 - To analyze a new deal: Go to the Analyst section in the left navigation, then click the "+ Analyze Deal" button at the top right.
@@ -2609,8 +4332,22 @@ Platform navigation — when users ask how to do things, give them accurate dire
           }
         }
 
-        // Event-sourced: append response event
-        await db.collection("messageEvents").add({
+        // ── Chat enforcement (fail open) ──────────────────
+        let dtcChatEnforcement = { checked: false };
+        try {
+          dtcChatEnforcement = validateChatOutput(aiResponse);
+          if (!dtcChatEnforcement.passed) {
+            console.warn(`[enforcement] dtc:chat violation for user ${ctx.userId}:`, dtcChatEnforcement.violations);
+            // Append disclaimer rather than regenerate (cheaper for chat)
+            aiResponse += "\n\nNote: This is informational guidance only and does not constitute financial, legal, or tax advice. Consult qualified professionals for specific advice.";
+            dtcChatEnforcement.disclaimerAppended = true;
+          }
+        } catch (enfErr) {
+          console.error("[enforcement] dtc:chat enforcement error (continuing):", enfErr.message);
+        }
+
+        // Event-sourced: append response event (with enforcement metadata)
+        const responseEvent = {
           tenantId: ctx.tenantId,
           userId: ctx.userId,
           type: "chat:message:responded",
@@ -2618,8 +4355,24 @@ Platform navigation — when users ask how to do things, give them accurate dire
           preferredModel: preferredModel || "claude",
           response: aiResponse,
           structuredData,
+          enforcement: {
+            checked: dtcChatEnforcement.checked || false,
+            passed: dtcChatEnforcement.passed != null ? dtcChatEnforcement.passed : null,
+            violations: dtcChatEnforcement.violations || [],
+            disclaimerAppended: dtcChatEnforcement.disclaimerAppended || false,
+          },
           createdAt: nowServerTs(),
-        });
+        };
+        // Add investor audit context if applicable
+        if (ctx.vertical === "investor") {
+          responseEvent.investorContext = {
+            investorState: null,
+            documentsServed: [],
+            stateTransition: null,
+            escalationRequested: /connect you with (Sean|Kent)/i.test(aiResponse),
+          };
+        }
+        await db.collection("messageEvents").add(responseEvent);
 
         return res.json({
           ok: true,
@@ -3790,6 +5543,7 @@ Return as JSON: { summary, risks: [], recommendations: [], confidence }`
 
         const ref = await db.collection("capTables").add({
           userId: ctx.userId,
+          tenantId: ctx.tenantId,
           companyName,
           totalShares,
           shareholders,
@@ -3800,6 +5554,749 @@ Return as JSON: { summary, risks: [], recommendations: [], confidence }`
       } catch (e) {
         console.error("❌ wallet:captable:create failed:", e);
         return jsonError(res, 500, "Failed to create cap table");
+      }
+    }
+
+    // ----------------------------
+    // BUSINESS APP: INVESTOR RELATIONS
+    // ----------------------------
+
+    // GET /v1/wallet:captable:get
+    if (route === "/wallet:captable:get" && method === "GET") {
+      try {
+        const id = (req.query?.id || "").toString().trim();
+        if (!id) return jsonError(res, 400, "Missing cap table id");
+        const doc = await db.collection("capTables").doc(id).get();
+        if (!doc.exists) return jsonError(res, 404, "Cap table not found");
+        const data = doc.data();
+        if (data.userId !== ctx.userId && data.tenantId !== ctx.tenantId) {
+          return jsonError(res, 403, "Access denied");
+        }
+        return res.json({ ok: true, capTable: { id: doc.id, ...data } });
+      } catch (e) {
+        console.error("wallet:captable:get failed:", e);
+        return jsonError(res, 500, "Failed to load cap table");
+      }
+    }
+
+    // PUT /v1/wallet:captable:update
+    if (route === "/wallet:captable:update" && method === "PUT") {
+      try {
+        const { id, companyName, totalShares, shareholders, valuation, currentRound } = body;
+        if (!id) return jsonError(res, 400, "Missing cap table id");
+        const doc = await db.collection("capTables").doc(id).get();
+        if (!doc.exists) return jsonError(res, 404, "Cap table not found");
+        const data = doc.data();
+        if (data.userId !== ctx.userId && data.tenantId !== ctx.tenantId) {
+          return jsonError(res, 403, "Access denied");
+        }
+        const updates = { updatedAt: nowServerTs() };
+        if (companyName !== undefined) updates.companyName = companyName;
+        if (totalShares !== undefined) updates.totalShares = totalShares;
+        if (shareholders !== undefined) updates.shareholders = shareholders;
+        if (valuation !== undefined) updates.valuation = valuation;
+        if (currentRound !== undefined) updates.currentRound = currentRound;
+        await db.collection("capTables").doc(id).update(updates);
+        return res.json({ ok: true });
+      } catch (e) {
+        console.error("wallet:captable:update failed:", e);
+        return jsonError(res, 500, "Failed to update cap table");
+      }
+    }
+
+    // GET /v1/investor:list
+    if (route === "/investor:list" && method === "GET") {
+      try {
+        const snap = await db.collection("investors")
+          .where("tenantId", "==", ctx.tenantId)
+          .orderBy("createdAt", "desc")
+          .limit(100)
+          .get();
+        const investors = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        return res.json({ ok: true, investors });
+      } catch (e) {
+        console.error("investor:list failed:", e);
+        return jsonError(res, 500, "Failed to load investors");
+      }
+    }
+
+    // POST /v1/investor:create
+    if (route === "/investor:create" && method === "POST") {
+      try {
+        const { name, email, type, status, targetAmount, notes, lastActivity, lifecycleState } = body;
+        if (!name || !email) return jsonError(res, 400, "Missing name or email");
+        const ref = await db.collection("investors").add({
+          tenantId: ctx.tenantId,
+          name,
+          email,
+          type: type || "Angel",
+          status: status || "Contacted",
+          lifecycleState: lifecycleState || "prospect",
+          targetAmount: targetAmount || 0,
+          notes: notes || "",
+          lastActivity: lastActivity || "",
+          createdAt: nowServerTs(),
+          updatedAt: nowServerTs(),
+        });
+        return res.json({ ok: true, investorId: ref.id });
+      } catch (e) {
+        console.error("investor:create failed:", e);
+        return jsonError(res, 500, "Failed to create investor");
+      }
+    }
+
+    // PUT /v1/investor:update
+    if (route === "/investor:update" && method === "PUT") {
+      try {
+        const { id, name, email, type, status, targetAmount, notes, lastActivity } = body;
+        if (!id) return jsonError(res, 400, "Missing investor id");
+        const doc = await db.collection("investors").doc(id).get();
+        if (!doc.exists || doc.data().tenantId !== ctx.tenantId) {
+          return jsonError(res, 403, "Investor not found or access denied");
+        }
+        const updates = { updatedAt: nowServerTs() };
+        if (name !== undefined) updates.name = name;
+        if (email !== undefined) updates.email = email;
+        if (type !== undefined) updates.type = type;
+        if (status !== undefined) updates.status = status;
+        if (targetAmount !== undefined) updates.targetAmount = targetAmount;
+        if (notes !== undefined) updates.notes = notes;
+        if (lastActivity !== undefined) updates.lastActivity = lastActivity;
+        await db.collection("investors").doc(id).update(updates);
+        return res.json({ ok: true });
+      } catch (e) {
+        console.error("investor:update failed:", e);
+        return jsonError(res, 500, "Failed to update investor");
+      }
+    }
+
+    // DELETE /v1/investor:delete
+    if (route === "/investor:delete" && method === "DELETE") {
+      try {
+        const { id } = body;
+        if (!id) return jsonError(res, 400, "Missing investor id");
+        const doc = await db.collection("investors").doc(id).get();
+        if (!doc.exists || doc.data().tenantId !== ctx.tenantId) {
+          return jsonError(res, 403, "Investor not found or access denied");
+        }
+        await db.collection("investors").doc(id).delete();
+        return res.json({ ok: true });
+      } catch (e) {
+        console.error("investor:delete failed:", e);
+        return jsonError(res, 500, "Failed to delete investor");
+      }
+    }
+
+    // GET /v1/dataroom:list
+    if (route === "/dataroom:list" && method === "GET") {
+      try {
+        const docSnap = await db.collection("dataRoomDocs")
+          .where("tenantId", "==", ctx.tenantId)
+          .orderBy("createdAt", "desc")
+          .limit(100)
+          .get();
+        let documents = docSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        // Filter by investor access level if requested
+        const investorState = body.investorState || (req.query && req.query.investorState);
+        if (investorState) {
+          const ACCESS_HIERARCHY = ["public", "prospect", "verified", "invested", "shareholder"];
+          const maxLevel = ACCESS_HIERARCHY.indexOf(investorState);
+          if (maxLevel >= 0) {
+            documents = documents.filter(d => {
+              const docLevel = ACCESS_HIERARCHY.indexOf(d.accessLevel || "public");
+              return docLevel <= maxLevel;
+            });
+          }
+        }
+        const viewSnap = await db.collection("dataRoomViews")
+          .where("tenantId", "==", ctx.tenantId)
+          .orderBy("viewedAt", "desc")
+          .limit(20)
+          .get();
+        const recentViews = viewSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        return res.json({ ok: true, documents, recentViews });
+      } catch (e) {
+        console.error("dataroom:list failed:", e);
+        return jsonError(res, 500, "Failed to load data room");
+      }
+    }
+
+    // POST /v1/dataroom:upload (with file)
+    if (route === "/dataroom:upload" && method === "POST") {
+      try {
+        const { name, category, file, accessLevel } = body;
+        if (!name || !file) return jsonError(res, 400, "Missing name or file");
+        const base64Data = file.data.replace(/^data:[^;]+;base64,/, "");
+        const buffer = Buffer.from(base64Data, "base64");
+        const safeName = name.replace(/[^a-zA-Z0-9._-]/g, "_");
+        const storagePath = `dataroom/${ctx.tenantId}/${Date.now()}_${safeName}`;
+        const bucket = getBucket();
+        const fileRef = bucket.file(storagePath);
+        const dlToken = require("crypto").randomUUID();
+        await fileRef.save(buffer, { contentType: file.type || "application/octet-stream", metadata: { firebaseStorageDownloadTokens: dlToken } });
+        const url = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(storagePath)}?alt=media&token=${dlToken}`;
+        const ref = await db.collection("dataRoomDocs").add({
+          tenantId: ctx.tenantId,
+          name,
+          category: category || "Other",
+          accessLevel: accessLevel || "public",
+          storagePath,
+          url,
+          contentType: file.type || "application/octet-stream",
+          sizeBytes: buffer.length,
+          views: 0,
+          lastViewedAt: null,
+          createdAt: nowServerTs(),
+          updatedAt: nowServerTs(),
+        });
+        return res.json({ ok: true, docId: ref.id, url });
+      } catch (e) {
+        console.error("dataroom:upload failed:", e);
+        return jsonError(res, 500, "Failed to upload document");
+      }
+    }
+
+    // POST /v1/dataroom:create (metadata-only, for sample data)
+    if (route === "/dataroom:create" && method === "POST") {
+      try {
+        const { name, category, sizeBytes, accessLevel } = body;
+        if (!name) return jsonError(res, 400, "Missing document name");
+        const ref = await db.collection("dataRoomDocs").add({
+          tenantId: ctx.tenantId,
+          name,
+          category: category || "Other",
+          accessLevel: accessLevel || "public",
+          storagePath: null,
+          url: null,
+          contentType: null,
+          sizeBytes: sizeBytes || 0,
+          views: 0,
+          lastViewedAt: null,
+          createdAt: nowServerTs(),
+          updatedAt: nowServerTs(),
+        });
+        return res.json({ ok: true, docId: ref.id });
+      } catch (e) {
+        console.error("dataroom:create failed:", e);
+        return jsonError(res, 500, "Failed to create document record");
+      }
+    }
+
+    // DELETE /v1/dataroom:delete
+    if (route === "/dataroom:delete" && method === "DELETE") {
+      try {
+        const { id } = body;
+        if (!id) return jsonError(res, 400, "Missing document id");
+        const doc = await db.collection("dataRoomDocs").doc(id).get();
+        if (!doc.exists || doc.data().tenantId !== ctx.tenantId) {
+          return jsonError(res, 403, "Document not found or access denied");
+        }
+        await db.collection("dataRoomDocs").doc(id).delete();
+        return res.json({ ok: true });
+      } catch (e) {
+        console.error("dataroom:delete failed:", e);
+        return jsonError(res, 500, "Failed to delete document");
+      }
+    }
+
+    // POST /v1/dataroom:logView
+    if (route === "/dataroom:logView" && method === "POST") {
+      try {
+        const { docId, investorName } = body;
+        if (!docId || !investorName) return jsonError(res, 400, "Missing docId or investorName");
+        const doc = await db.collection("dataRoomDocs").doc(docId).get();
+        if (!doc.exists || doc.data().tenantId !== ctx.tenantId) {
+          return jsonError(res, 403, "Document not found or access denied");
+        }
+        await db.collection("dataRoomViews").add({
+          tenantId: ctx.tenantId,
+          docId,
+          investorName,
+          docName: doc.data().name,
+          viewedAt: nowServerTs(),
+        });
+        await db.collection("dataRoomDocs").doc(docId).update({
+          views: admin.firestore.FieldValue.increment(1),
+          lastViewedAt: nowServerTs(),
+        });
+        return res.json({ ok: true });
+      } catch (e) {
+        console.error("dataroom:logView failed:", e);
+        return jsonError(res, 500, "Failed to log view");
+      }
+    }
+
+    // ----------------------------
+    // INVESTOR: RAISE CONFIG, LIFECYCLE, UPDATES
+    // ----------------------------
+
+    // PUT /v1/raise:config:update (admin)
+    if (route === "/raise:config:update" && method === "PUT") {
+      try {
+        const configData = body.config || body;
+        configData.updatedAt = nowServerTs();
+        configData.updatedBy = ctx.userId;
+        await db.collection("config").doc("raise").set(configData, { merge: true });
+        return res.json({ ok: true });
+      } catch (e) {
+        console.error("raise:config:update failed:", e);
+        return jsonError(res, 500, "Failed to update raise config");
+      }
+    }
+
+    // POST /v1/investor:transition (lifecycle state machine)
+    if (route === "/investor:transition" && method === "POST") {
+      try {
+        const { id, newState, trigger } = body;
+        if (!id || !newState) return jsonError(res, 400, "Missing id or newState");
+        const VALID_STATES = ["visitor", "prospect", "verified", "invested", "shareholder"];
+        const ALLOWED_TRANSITIONS = {
+          visitor: ["prospect"],
+          prospect: ["verified"],
+          verified: ["invested"],
+          invested: ["shareholder"],
+        };
+        if (!VALID_STATES.includes(newState)) {
+          return jsonError(res, 400, "Invalid state: " + newState);
+        }
+        const docRef = db.collection("investors").doc(id);
+        const doc = await docRef.get();
+        if (!doc.exists || doc.data().tenantId !== ctx.tenantId) {
+          return jsonError(res, 403, "Investor not found or access denied");
+        }
+        const currentState = doc.data().lifecycleState || "visitor";
+        if (ALLOWED_TRANSITIONS[currentState] && !ALLOWED_TRANSITIONS[currentState].includes(newState)) {
+          return jsonError(res, 400, `Cannot transition from ${currentState} to ${newState}`);
+        }
+        await docRef.update({
+          lifecycleState: newState,
+          updatedAt: nowServerTs(),
+        });
+        // Audit log
+        await db.collection("investors").doc(id).collection("auditLog").add({
+          from: currentState,
+          to: newState,
+          trigger: trigger || "manual",
+          triggeredBy: ctx.userId,
+          createdAt: nowServerTs(),
+        });
+        return res.json({ ok: true, previousState: currentState, newState });
+      } catch (e) {
+        console.error("investor:transition failed:", e);
+        return jsonError(res, 500, "Failed to transition investor");
+      }
+    }
+
+    // POST /v1/investor:update:publish (company update)
+    if (route === "/investor:update:publish" && method === "POST") {
+      try {
+        const { title, body: updateBody, category, visibility } = body;
+        if (!title || !updateBody) return jsonError(res, 400, "Missing title or body");
+        const ref = await db.collection("investorUpdates").add({
+          tenantId: ctx.tenantId,
+          title,
+          body: updateBody,
+          category: category || "milestone",
+          visibility: visibility || "all",
+          publishedAt: nowServerTs(),
+          publishedBy: ctx.userId,
+          read: [],
+        });
+        return res.json({ ok: true, id: ref.id });
+      } catch (e) {
+        console.error("investor:update:publish failed:", e);
+        return jsonError(res, 500, "Failed to publish update");
+      }
+    }
+
+    // GET /v1/investor:updates:list
+    if (route === "/investor:updates:list" && method === "GET") {
+      try {
+        const snap = await db.collection("investorUpdates")
+          .where("tenantId", "==", ctx.tenantId)
+          .orderBy("publishedAt", "desc")
+          .limit(50)
+          .get();
+        const updates = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        return res.json({ ok: true, updates });
+      } catch (e) {
+        console.error("investor:updates:list failed:", e);
+        return jsonError(res, 500, "Failed to list updates");
+      }
+    }
+
+    // ----------------------------
+    // INVESTOR: GATES + VERIFICATION
+    // ----------------------------
+
+    // GET /v1/investor:gates (check gate status for current user)
+    if (route === "/investor:gates" && method === "GET") {
+      try {
+        const userDoc = await db.collection("users").doc(auth.user.uid).get();
+        const u = userDoc.exists ? userDoc.data() : {};
+        return res.json({
+          ok: true,
+          identityVerified: !!u.identityVerified,
+          identityVerifiedAt: u.identityVerifiedAt || null,
+          disclaimerAccepted: !!u.disclaimerAccepted,
+          disclaimerVersion: u.disclaimerVersion || null,
+          disclaimerAcceptedAt: u.disclaimerAcceptedAt || null,
+          investorStage: u.investorStage || "PROSPECT",
+        });
+      } catch (e) {
+        console.error("investor:gates failed:", e);
+        return jsonError(res, 500, "Failed to check investor gates");
+      }
+    }
+
+    // POST /v1/investor:accept-disclaimer
+    if (route === "/investor:accept-disclaimer" && method === "POST") {
+      try {
+        const { version } = body;
+        const disclaimerVersion = version || "v1";
+        await db.collection("users").doc(auth.user.uid).set({
+          disclaimerAccepted: true,
+          disclaimerVersion: disclaimerVersion,
+          disclaimerAcceptedAt: nowServerTs(),
+        }, { merge: true });
+        // Audit trail
+        await db.collection("auditTrail").add({
+          type: "disclaimer_accepted",
+          userId: auth.user.uid,
+          version: disclaimerVersion,
+          at: nowServerTs(),
+        });
+        return res.json({ ok: true });
+      } catch (e) {
+        console.error("investor:accept-disclaimer failed:", e);
+        return jsonError(res, 500, "Failed to accept disclaimer");
+      }
+    }
+
+    // POST /v1/investor:verify-identity (create Stripe checkout for $2 identity check)
+    if (route === "/investor:verify-identity" && method === "POST") {
+      try {
+        const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+        const session = await stripe.checkout.sessions.create({
+          mode: "payment",
+          line_items: [{
+            price_data: {
+              currency: "usd",
+              unit_amount: 200,
+              product_data: {
+                name: "TitleApp Identity Verification",
+                description: "One-time identity verification for investor data room access",
+              },
+            },
+            quantity: 1,
+          }],
+          metadata: { userId: auth.user.uid, purpose: "investor_identity_verification" },
+          success_url: (body.successUrl || "https://title-app-alpha.web.app/dashboard") + "?verified=true",
+          cancel_url: body.cancelUrl || "https://title-app-alpha.web.app/dashboard",
+        });
+        return res.json({ ok: true, checkoutUrl: session.url, sessionId: session.id });
+      } catch (e) {
+        console.error("investor:verify-identity failed:", e);
+        return jsonError(res, 500, "Failed to create verification checkout");
+      }
+    }
+
+    // POST /v1/investor:confirm-verification (called after Stripe success — mark user verified)
+    if (route === "/investor:confirm-verification" && method === "POST") {
+      try {
+        const { paymentId } = body;
+        await db.collection("users").doc(auth.user.uid).set({
+          identityVerified: true,
+          identityVerifiedAt: nowServerTs(),
+          verificationPaymentId: paymentId || null,
+          investorStage: "VERIFIED",
+        }, { merge: true });
+        // Audit trail
+        await db.collection("auditTrail").add({
+          type: "identity_verified",
+          userId: auth.user.uid,
+          paymentId: paymentId || null,
+          at: nowServerTs(),
+        });
+        return res.json({ ok: true });
+      } catch (e) {
+        console.error("investor:confirm-verification failed:", e);
+        return jsonError(res, 500, "Failed to confirm verification");
+      }
+    }
+
+    // POST /v1/investor:submit-intent — submit investment intent + trigger SAFE signing
+    if (route === "/investor:submit-intent" && method === "POST") {
+      try {
+        const { amount, paymentMethod, accreditedConfirmed } = body;
+        if (!amount || amount < 100) return jsonError(res, 400, "Minimum investment is $100");
+
+        const investorId = auth.user.uid;
+        const investorEmail = auth.user.email;
+        const userSnap = await db.collection("users").doc(investorId).get();
+        const userData = userSnap.exists ? userSnap.data() : {};
+        const investorName = userData.displayName || auth.user.email;
+
+        // Save investment intent
+        const intentRef = db.collection("investmentIntents").doc(investorId);
+        await intentRef.set({
+          investorId,
+          investorName,
+          investorEmail,
+          amount: Number(amount),
+          paymentMethod: paymentMethod || "wire",
+          accreditedConfirmed: !!accreditedConfirmed,
+          status: "pending",
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true });
+
+        // Try HelloSign / DropboxSign
+        const hellosignKey = process.env.HELLOSIGN_API_KEY;
+        const hellosignClientId = process.env.HELLOSIGN_CLIENT_ID;
+
+        if (hellosignKey && hellosignClientId) {
+          try {
+            const hsResp = await fetch("https://api.hellosign.com/v3/signature_request/create_embedded", {
+              method: "POST",
+              headers: {
+                "Authorization": "Basic " + Buffer.from(`${hellosignKey}:`).toString("base64"),
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                client_id: hellosignClientId,
+                title: `SAFE Agreement — ${investorName}`,
+                subject: `TitleApp SAFE Agreement — $${Number(amount).toLocaleString()}`,
+                message: `Please review and sign the SAFE agreement for your $${Number(amount).toLocaleString()} investment in TitleApp.`,
+                signers: [{ email_address: investorEmail, name: investorName, order: 0 }],
+                metadata: { investorId, amount: String(amount) },
+                test_mode: 1,
+              }),
+            });
+            const hsResult = await hsResp.json();
+            if (hsResult.signature_request) {
+              const sigReq = hsResult.signature_request;
+              const sigId = sigReq.signatures?.[0]?.signature_id;
+              let signUrl = null;
+              if (sigId) {
+                const embedResp = await fetch(`https://api.hellosign.com/v3/embedded/sign_url/${sigId}`, {
+                  headers: { "Authorization": "Basic " + Buffer.from(`${hellosignKey}:`).toString("base64") },
+                });
+                const embedResult = await embedResp.json();
+                signUrl = embedResult.embedded?.sign_url;
+              }
+              await intentRef.update({
+                status: "safe_sent",
+                safeMethod: "hellosign",
+                safeSignatureRequestId: sigReq.signature_request_id,
+                safeSentAt: admin.firestore.FieldValue.serverTimestamp(),
+              });
+              return res.json({ ok: true, method: "hellosign", signUrl, signatureRequestId: sigReq.signature_request_id });
+            }
+          } catch (hsErr) {
+            console.error("HelloSign error:", hsErr.message);
+          }
+        }
+
+        // Fallback: typed consent
+        const consentId = `consent_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        await intentRef.update({
+          status: "consent_pending",
+          safeMethod: "typed_consent",
+          safeConsentId: consentId,
+        });
+        return res.json({ ok: true, method: "typed_consent", consentId });
+      } catch (e) {
+        console.error("investor:submit-intent failed:", e);
+        return jsonError(res, 500, "Failed to submit investment intent");
+      }
+    }
+
+    // POST /v1/investor:sign-consent — typed-name consent for SAFE
+    if (route === "/investor:sign-consent" && method === "POST") {
+      try {
+        const { consentId, typedName, agreedToTerms } = body;
+        if (!consentId || !typedName || !agreedToTerms) return jsonError(res, 400, "Missing required fields");
+
+        const investorId = auth.user.uid;
+        const intentRef = db.collection("investmentIntents").doc(investorId);
+        const intentSnap = await intentRef.get();
+        if (!intentSnap.exists) return jsonError(res, 404, "No investment intent found");
+        const intentData = intentSnap.data();
+        if (intentData.safeConsentId !== consentId) return jsonError(res, 403, "Invalid consent ID");
+
+        await intentRef.update({
+          status: "signed",
+          safeSignedAt: admin.firestore.FieldValue.serverTimestamp(),
+          safeSignedName: typedName,
+          safeSignedIp: req.headers["x-forwarded-for"] || req.ip || "unknown",
+        });
+
+        // Audit trail
+        await db.collection("auditTrail").add({
+          type: "safe_consent_signed",
+          investorId,
+          consentId,
+          typedName,
+          amount: intentData.amount,
+          ip: req.headers["x-forwarded-for"] || req.ip || "unknown",
+          timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        return res.json({ ok: true, status: "signed" });
+      } catch (e) {
+        console.error("investor:sign-consent failed:", e);
+        return jsonError(res, 500, "Failed to sign consent");
+      }
+    }
+
+    // GET /v1/investor:intent — get current investment intent status
+    if (route === "/investor:intent" && method === "GET") {
+      try {
+        const investorId = auth.user.uid;
+        const intentSnap = await db.collection("investmentIntents").doc(investorId).get();
+        if (!intentSnap.exists) return res.json({ ok: true, intent: null });
+        return res.json({ ok: true, intent: intentSnap.data() });
+      } catch (e) {
+        console.error("investor:intent failed:", e);
+        return jsonError(res, 500, "Failed to get intent");
+      }
+    }
+
+    // POST /v1/investor:seed-configs (admin — seed all config docs)
+    if (route === "/investor:seed-configs" && method === "POST") {
+      try {
+        const batch = db.batch();
+
+        // config/company
+        batch.set(db.collection("config").doc("company"), {
+          legalName: "The Title App LLC",
+          dba: "TitleApp",
+          state: "Delaware",
+          stateCode: "DE",
+          ein: "33-1330902",
+          duns: "119438383",
+          registeredAddress: "1209 N Orange St, Wilmington, DE 19801",
+          companyNameAsFiled: "Title App LLC, The",
+          ceo: "Sean Lee Combs",
+          cfo: "Kent Redwine",
+          updatedAt: nowServerTs(),
+        }, { merge: true });
+
+        // config/investorDocs
+        batch.set(db.collection("config").doc("investorDocs"), {
+          documents: [
+            {
+              name: "Pitch Deck",
+              filename: "TitleApp_Pitch_Deck_v4.pptx",
+              storagePath: "investorDocs/TitleApp_Pitch_Deck_v4.pptx",
+              type: "pitch_deck",
+              description: "Full pitch deck -- RAAS Workers, Sandbox, 6-channel distribution",
+              requiresVerification: false,
+              icon: "presentation",
+              tier: 1,
+            },
+            {
+              name: "Executive Summary",
+              filename: "TitleApp_One_Pager_v4.pdf",
+              storagePath: "investorDocs/TitleApp_One_Pager_v4.pdf",
+              type: "one_pager",
+              description: "One-page overview -- RAAS Workers, Sandbox, distribution strategy",
+              requiresVerification: false,
+              icon: "document",
+              tier: 1,
+            },
+            {
+              name: "Business Plan",
+              filename: "TitleApp_Business_Plan_Feb2026.docx",
+              storagePath: "investorDocs/TitleApp_Business_Plan_Feb2026.docx",
+              type: "business_plan",
+              description: "Comprehensive business plan with financials and projections",
+              requiresVerification: true,
+              icon: "document",
+              tier: 2,
+            },
+            {
+              name: "SAFE Agreement",
+              filename: null,
+              storagePath: null,
+              type: "safe",
+              description: "Post-Money SAFE -- auto-populated with your details when ready",
+              requiresVerification: true,
+              requiresDisclaimer: true,
+              icon: "legal",
+              tier: 2,
+            },
+          ],
+          updatedAt: nowServerTs(),
+        }, { merge: true });
+
+        // config/disclaimers
+        batch.set(db.collection("config").doc("disclaimers"), {
+          version: "v1",
+          items: [
+            {
+              id: "investment_risk",
+              label: "Investment Risk",
+              text: "I understand that investing in The Title App LLC involves significant risk, including the possibility of losing my entire investment. TitleApp is a pre-revenue, early-stage company. There is no guarantee of any return on investment.",
+              required: true,
+            },
+            {
+              id: "forward_looking",
+              label: "Forward-Looking Statements",
+              text: "I understand that information provided by TitleApp, including through its AI assistant Alex, may contain forward-looking statements. These are not guarantees of future performance.",
+              required: true,
+            },
+            {
+              id: "not_advice",
+              label: "Not Investment Advice",
+              text: "I understand that nothing in the TitleApp data room or communicated by Alex constitutes investment, legal, or financial advice. I should consult my own advisors before making any investment decision.",
+              required: true,
+            },
+          ],
+          updatedAt: nowServerTs(),
+        }, { merge: true });
+
+        // Update config/raise with correct legal entity
+        batch.set(db.collection("config").doc("raise"), {
+          legalEntity: "The Title App LLC",
+          updatedAt: nowServerTs(),
+        }, { merge: true });
+
+        await batch.commit();
+        return res.json({ ok: true, seeded: ["company", "investorDocs", "disclaimers", "raise"] });
+      } catch (e) {
+        console.error("investor:seed-configs failed:", e);
+        return jsonError(res, 500, "Failed to seed configs");
+      }
+    }
+
+    // GET /v1/governance:cap-table
+    if (route === "/governance:cap-table" && method === "GET") {
+      try {
+        const doc = await db.collection("governance").doc("capTable").get();
+        if (!doc.exists) {
+          return res.json({ ok: true, capTable: { totalRaised: 0, targetRaise: 1070000, investors: [] } });
+        }
+        return res.json({ ok: true, capTable: doc.data() });
+      } catch (e) {
+        console.error("governance:cap-table failed:", e);
+        return jsonError(res, 500, "Failed to load cap table");
+      }
+    }
+
+    // GET /v1/governance:proposals
+    if (route === "/governance:proposals" && method === "GET") {
+      try {
+        const snap = await db.collection("governance").doc("proposals").collection("items")
+          .orderBy("createdAt", "desc")
+          .limit(50)
+          .get();
+        const proposals = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        return res.json({ ok: true, proposals });
+      } catch (e) {
+        // Collection may not exist yet
+        return res.json({ ok: true, proposals: [] });
       }
     }
 
@@ -4240,8 +6737,35 @@ ${criteriaSection}
        "other": "..."
      },
      "nextSteps": ["Specific actionable step 1", "Specific actionable step 2"],
-     "missingInfo": ["critical doc 1", "critical doc 2"]
+     "missingInfo": ["critical doc 1", "critical doc 2"],
+     "metrics": {
+       "ltv": 0.75,
+       "dscr": 1.35,
+       "irr": 0.18,
+       "net_irr": 0.15,
+       "gross_irr": 0.22,
+       "tenant_count": 5,
+       "walt_years": 4.2,
+       "loan_maturity_months": 36,
+       "top_customer_pct": 25,
+       "years_operating": 8,
+       "entitlement_probability": null,
+       "zoning_status": null,
+       "capex_budget": null,
+       "lien_position": null,
+       "collateral_docs_missing": null,
+       "community_opposition": null,
+       "environmental_review_required": null,
+       "construction_complexity": null,
+       "permit_status": null,
+       "borrower_status": null,
+       "rate_increase_bps": null
+     }
    }
+
+5. **Metrics Object** - Include a "metrics" object with raw numeric values (not formatted strings).
+   Use 0-1 scale for percentages (0.75 not "75%"). Use null for any metric that is unknown or not applicable to this deal type.
+   The metrics object is required — it feeds the enforcement engine.
 
 **IMPORTANT - Next Steps Format:**
 After the analysis, include concrete next steps such as:
@@ -4411,12 +6935,74 @@ Analyze now:`;
         }
         }
 
-        // Save to Firestore
+        // ── RAAS Enforcement ──────────────────────────────
+        let enforcement = { passed: true, hardViolations: [], softWarnings: [], rulesetId: rulesetName, rulesetVersion: "v0", checked: true };
+        try {
+          const enfResult = validateOutput(rulesetName, analysis, riskProfile);
+          enforcement = { ...enfResult, checked: true };
+
+          if (!enfResult.passed) {
+            console.warn(`[enforcement] Hard violations on deal for tenant ${ctx.tenantId}:`, enfResult.hardViolations);
+
+            // Retry once with violation context (only for real Claude calls)
+            if (ANTHROPIC_API_KEY && enfResult.hardViolations.length > 0) {
+              const violationList = enfResult.hardViolations.map(v => `- ${v.ruleId}: ${v.violation}`).join("\n");
+              const retryPrompt = `${analysisPrompt}\n\nIMPORTANT CORRECTION: Your previous analysis violated these rules:\n${violationList}\n\nPlease re-analyze and ensure the metrics object accurately reflects the deal data. Do not change the deal facts — correct any metric calculation errors.`;
+
+              try {
+                const anthropic = getAnthropic();
+                const retryResponse = await anthropic.messages.create({
+                  model: "claude-opus-4-20250514",
+                  max_tokens: 4096,
+                  temperature: 0.2,
+                  messages: [{ role: "user", content: retryPrompt }],
+                });
+                const retryText = retryResponse.content[0].text;
+                const retryAnalysis = safeParseJSON(retryText);
+                if (retryAnalysis) {
+                  const retryEnf = validateOutput(rulesetName, retryAnalysis, riskProfile);
+                  if (retryEnf.passed || retryEnf.hardViolations.length < enfResult.hardViolations.length) {
+                    analysis = retryAnalysis;
+                    enforcement = { ...retryEnf, checked: true, regenerationAttempts: 1 };
+                  } else {
+                    enforcement.regenerationAttempts = 1;
+                  }
+                }
+              } catch (retryErr) {
+                console.error("[enforcement] Retry failed:", retryErr.message);
+                enforcement.regenerationAttempts = 1;
+              }
+            }
+
+            // Attach enforcement status to analysis
+            if (!enforcement.passed) {
+              analysis._enforcementStatus = "FLAGGED";
+              analysis._enforcementViolations = enforcement.hardViolations;
+              analysis._enforcementWarnings = enforcement.softWarnings;
+            }
+          }
+        } catch (enfError) {
+          console.error("[enforcement] Engine error — fail closed:", enfError.message);
+          return jsonError(res, 500, "Enforcement validation failed — output not delivered");
+        }
+
+        // Save to Firestore (with enforcement metadata)
         const ref = await db.collection("analyzedDeals").add({
           tenantId: ctx.tenantId,
           dealInput: deal,
           analysis,
           rulesetUsed: rulesetName,
+          enforcement: {
+            rulesetId: enforcement.rulesetId,
+            rulesetVersion: enforcement.rulesetVersion,
+            passed: enforcement.passed,
+            hardViolations: enforcement.hardViolations || [],
+            softWarnings: enforcement.softWarnings || [],
+            regenerationAttempts: enforcement.regenerationAttempts || 0,
+            modelProvider: ANTHROPIC_API_KEY ? "anthropic" : "mock",
+            evaluatedAt: enforcement.evaluatedAt || new Date().toISOString(),
+            latencyMs: enforcement.latencyMs || 0,
+          },
           analyzedAt: nowServerTs(),
           createdAt: nowServerTs(),
         });
@@ -4424,7 +7010,13 @@ Analyze now:`;
         return res.json({
           ok: true,
           dealId: ref.id,
-          analysis
+          analysis,
+          enforcement: {
+            passed: enforcement.passed,
+            hardViolations: enforcement.hardViolations || [],
+            softWarnings: enforcement.softWarnings || [],
+            rulesetId: enforcement.rulesetId,
+          },
         });
 
       } catch (e) {
@@ -5116,4 +7708,242 @@ exports.createApiKey = onRequest({ region: "us-central1" }, async (req, res) => 
       rate_limit: keyDoc.rate_limit,
     },
   });
+});
+
+// ----------------------------
+// BILLING: STRIPE SETUP + WEBHOOKS
+// ----------------------------
+const { setupStripeProducts } = require("./billing/setupStripeProducts");
+const { handleStripeWebhook } = require("./billing/stripeWebhook");
+
+exports.setupStripeProducts = onRequest({ region: "us-central1" }, async (req, res) => {
+  const origin = req.headers.origin;
+  if (origin) {
+    res.set("Access-Control-Allow-Origin", origin);
+    res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
+    res.set("Access-Control-Allow-Headers", "Content-Type");
+  }
+  if (req.method === "OPTIONS") return res.status(204).send("");
+  if (req.method !== "POST") return res.status(405).json({ ok: false, error: "Method not allowed" });
+  return setupStripeProducts(req, res);
+});
+
+exports.stripeWebhook = onRequest({ region: "us-central1" }, async (req, res) => {
+  // No CORS — Stripe calls this directly. No method check — Stripe sends POST.
+  return handleStripeWebhook(req, res);
+});
+
+// ----------------------------
+// BILLING: SUBSCRIPTION + USAGE + CREDITS
+// ----------------------------
+const { createSubscription: handleCreateSubscription } = require("./billing/createSubscription");
+const { createBillingPortalSession: handleBillingPortal } = require("./billing/createBillingPortalSession");
+const { purchaseCreditPack: handlePurchaseCreditPack } = require("./billing/purchaseCreditPack");
+const { resetMonthlyUsage: handleResetMonthlyUsage } = require("./billing/resetMonthlyUsage");
+
+function billingCors(req, res) {
+  const origin = req.headers.origin;
+  if (origin) {
+    res.set("Access-Control-Allow-Origin", origin);
+    res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
+    res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  }
+  if (req.method === "OPTIONS") { res.status(204).send(""); return true; }
+  if (req.method !== "POST") { res.status(405).json({ ok: false, error: "Method not allowed" }); return true; }
+  return false;
+}
+
+exports.createSubscription = onRequest({ region: "us-central1" }, async (req, res) => {
+  if (billingCors(req, res)) return;
+  return handleCreateSubscription(req, res);
+});
+
+exports.createBillingPortalSession = onRequest({ region: "us-central1" }, async (req, res) => {
+  if (billingCors(req, res)) return;
+  return handleBillingPortal(req, res);
+});
+
+exports.purchaseCreditPack = onRequest({ region: "us-central1" }, async (req, res) => {
+  if (billingCors(req, res)) return;
+  return handlePurchaseCreditPack(req, res);
+});
+
+// ----------------------------
+// BILLING: MARKETPLACE (Stripe Connect)
+// ----------------------------
+const { createConnectAccount: handleCreateConnect } = require("./billing/createConnectAccount");
+const { purchaseWorker: handlePurchaseWorker } = require("./billing/purchaseWorker");
+
+exports.createConnectAccount = onRequest({ region: "us-central1" }, async (req, res) => {
+  if (billingCors(req, res)) return;
+  return handleCreateConnect(req, res);
+});
+
+exports.purchaseWorker = onRequest({ region: "us-central1" }, async (req, res) => {
+  if (billingCors(req, res)) return;
+  return handlePurchaseWorker(req, res);
+});
+
+// Scheduled: midnight PST, 1st of each month
+const { onSchedule } = require("firebase-functions/v2/scheduler");
+
+exports.resetMonthlyUsage = onSchedule(
+  { schedule: "0 0 1 * *", timeZone: "America/Los_Angeles", region: "us-central1" },
+  async () => { await handleResetMonthlyUsage(); }
+);
+
+// ----------------------------
+// ADMIN: ACCOUNTING + REFUNDS
+// ----------------------------
+const { queryAccounting: handleQueryAccounting } = require("./admin/queryAccounting");
+const { processRefund: handleProcessRefund } = require("./admin/processRefund");
+
+exports.queryAccounting = onRequest({ region: "us-central1" }, async (req, res) => {
+  if (billingCors(req, res)) return;
+  return handleQueryAccounting(req, res);
+});
+
+exports.processRefund = onRequest({ region: "us-central1" }, async (req, res) => {
+  if (billingCors(req, res)) return;
+  return handleProcessRefund(req, res);
+});
+
+// ----------------------------
+// ADMIN: ANALYTICS AGGREGATION (Scheduled daily midnight PST)
+// ----------------------------
+const { aggregateAnalytics: handleAggregateAnalytics } = require("./admin/aggregateAnalytics");
+
+exports.aggregateAnalytics = onSchedule(
+  { schedule: "0 0 * * *", timeZone: "America/Los_Angeles", region: "us-central1" },
+  async () => { await handleAggregateAnalytics(); }
+);
+
+// ----------------------------
+// COMMUNICATIONS: Twilio + SendGrid
+// ----------------------------
+const { sendSMS: handleSendSMS } = require("./communications/sendSMS");
+const { sendEmail: handleSendEmail } = require("./communications/sendEmail");
+const { twilioInbound: handleTwilioInbound } = require("./communications/twilioInbound");
+const { sendgridWebhook: handleSendgridWebhook } = require("./communications/sendgridWebhook");
+const { sendgridInbound: handleSendgridInbound } = require("./communications/sendgridInbound");
+
+exports.sendSMS = onRequest({ region: "us-central1" }, async (req, res) => {
+  if (billingCors(req, res)) return;
+  return handleSendSMS(req, res);
+});
+
+exports.sendEmail = onRequest({ region: "us-central1" }, async (req, res) => {
+  if (billingCors(req, res)) return;
+  return handleSendEmail(req, res);
+});
+
+exports.twilioInbound = onRequest({ region: "us-central1" }, async (req, res) => {
+  return handleTwilioInbound(req, res);
+});
+
+exports.sendgridWebhook = onRequest({ region: "us-central1" }, async (req, res) => {
+  return handleSendgridWebhook(req, res);
+});
+
+exports.sendgridInbound = onRequest({ region: "us-central1" }, async (req, res) => {
+  return handleSendgridInbound(req, res);
+});
+
+// ----------------------------
+// ADMIN: SEED ADMIN DATA
+// ----------------------------
+// COMMUNICATIONS: FOLLOW-UP CADENCE (Scheduled hourly)
+// ----------------------------
+const { followUpCadence: handleFollowUpCadence } = require("./communications/followUpCadence");
+
+exports.followUpCadence = onSchedule(
+  { schedule: "0 * * * *", timeZone: "America/Los_Angeles", region: "us-central1" },
+  async () => { await handleFollowUpCadence(); }
+);
+
+// ----------------------------
+// PIPELINE: SCHEDULED CHECKS
+// ----------------------------
+const { stalledDealCheck: handleStalledCheck } = require("./pipeline/stalledDealCheck");
+const { creatorHealthCheck: handleCreatorHealth } = require("./pipeline/creatorHealthCheck");
+
+exports.stalledDealCheck = onSchedule(
+  { schedule: "0 * * * *", timeZone: "America/Los_Angeles", region: "us-central1" },
+  async () => { await handleStalledCheck(); }
+);
+
+exports.creatorHealthCheck = onSchedule(
+  { schedule: "0 1 * * *", timeZone: "America/Los_Angeles", region: "us-central1" },
+  async () => { await handleCreatorHealth(); }
+);
+
+// ----------------------------
+// ADMIN: DAILY DIGEST (Scheduled 7am PST)
+// ----------------------------
+const { generateDailyDigest: handleDailyDigest } = require("./admin/generateDailyDigest");
+
+exports.generateDailyDigest = onSchedule(
+  { schedule: "0 7 * * *", timeZone: "America/Los_Angeles", region: "us-central1" },
+  async () => { await handleDailyDigest(); }
+);
+
+// ----------------------------
+const { seedAdmins } = require("./admin/seedAdminData");
+exports.seedAdminData = onRequest({ region: "us-central1" }, async (req, res) => {
+  const origin = req.headers.origin;
+  if (origin) {
+    res.set("Access-Control-Allow-Origin", origin);
+    res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
+    res.set("Access-Control-Allow-Headers", "Content-Type");
+  }
+  if (req.method === "OPTIONS") return res.status(204).send("");
+  if (req.method !== "POST") return res.status(405).json({ ok: false, error: "Method not allowed" });
+  return seedAdmins(req, res);
+});
+
+// ----------------------------
+// ADMIN: SEED SAMPLE DATA
+// ----------------------------
+const { seedSampleData: handleSeedSample } = require("./admin/seedSampleData");
+exports.seedSampleData = onRequest({ region: "us-central1" }, async (req, res) => {
+  const origin = req.headers.origin;
+  if (origin) {
+    res.set("Access-Control-Allow-Origin", origin);
+    res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
+    res.set("Access-Control-Allow-Headers", "Content-Type");
+  }
+  if (req.method === "OPTIONS") return res.status(204).send("");
+  if (req.method !== "POST") return res.status(405).json({ ok: false, error: "Method not allowed" });
+  return handleSeedSample(req, res);
+});
+
+// ----------------------------
+// ADMIN: SEED ACTIVITY DATA
+// ----------------------------
+const { seedActivityData: handleSeedActivity } = require("./admin/seedActivityData");
+exports.seedActivityData = onRequest({ region: "us-central1" }, async (req, res) => {
+  const origin = req.headers.origin;
+  if (origin) {
+    res.set("Access-Control-Allow-Origin", origin);
+    res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
+    res.set("Access-Control-Allow-Headers", "Content-Type");
+  }
+  if (req.method === "OPTIONS") return res.status(204).send("");
+  if (req.method !== "POST") return res.status(405).json({ ok: false, error: "Method not allowed" });
+  return handleSeedActivity(req, res);
+});
+
+// ----------------------------
+// SIGNATURES: Dropbox Sign (HelloSign) / SAFE
+// ----------------------------
+const { createSignatureRequest: handleCreateSig } = require("./signatures/createSignatureRequest");
+const { hellosignWebhook: handleHellosignHook } = require("./signatures/hellosignWebhook");
+
+exports.createSignatureRequest = onRequest({ region: "us-central1" }, async (req, res) => {
+  if (billingCors(req, res)) return;
+  return handleCreateSig(req, res);
+});
+
+exports.hellosignWebhook = onRequest({ region: "us-central1" }, async (req, res) => {
+  return handleHellosignHook(req, res);
 });

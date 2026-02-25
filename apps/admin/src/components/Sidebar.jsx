@@ -9,6 +9,7 @@ export default function Sidebar({ currentSection, onNavigate, onClose }) {
     { id: "pilot-records", label: "Pilot Records" },
     { id: "my-gpts", label: "My GPTs" },
     { id: "reports", label: "Reports" },
+    { id: "dataroom", label: "Data Room" },
     { id: "escrow", label: "Escrow" },
     { id: "wallet", label: "Wallet" },
     { id: "profile", label: "Profile" },

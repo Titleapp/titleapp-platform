@@ -9,21 +9,25 @@
   "hard_stops": [
     {
       "id": "lien_position_unclear",
-      "logic": "lien_position == UNKNOWN"
+      "logic": "lien_position == UNKNOWN",
+      "eval": { "field": "metrics.lien_position", "operator": "==", "threshold": "UNKNOWN" }
     },
     {
       "id": "collateral_incomplete",
-      "logic": "collateral_docs_missing == true"
+      "logic": "collateral_docs_missing == true",
+      "eval": { "field": "metrics.collateral_docs_missing", "operator": "==", "threshold": true }
     }
   ],
   "soft_flags": [
     {
       "id": "junior_position",
-      "logic": "lien_position > 1"
+      "logic": "lien_position > 1",
+      "eval": { "field": "metrics.lien_position", "operator": ">", "threshold": 1 }
     },
     {
       "id": "borrower_distress",
-      "logic": "borrower_status == distressed"
+      "logic": "borrower_status == distressed",
+      "eval": { "field": "metrics.borrower_status", "operator": "==", "threshold": "distressed" }
     }
   ],
   "outputs": [

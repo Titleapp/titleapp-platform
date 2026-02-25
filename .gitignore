@@ -1,3 +1,11 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Firebase cache
+.firebase/
 
 # Local env files (never commit)
 .env
@@ -10,5 +18,5 @@ functions/**/.env.*
 # Backup / temp files
 *.bak
 *.bak.*
-*~ 
+*~
 .DS_Store

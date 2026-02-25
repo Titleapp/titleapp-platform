@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { auth, db } from "../firebase";
 import { doc, getDoc } from "firebase/firestore";
+import { createInvestor, createCapTable, createDataRoomDoc } from "../api/client";
 
 // ── Data Constants ─────────────────────────────────────────────────
 
@@ -438,6 +439,12 @@ export default function OnboardingWizard({ onComplete, onStepChange, vertical: p
     setSampleDataLoading(true);
     const steps = SAMPLE_DATA_STEPS[vertical] || SAMPLE_DATA_STEPS.auto;
     setSampleDataLines([]);
+
+    // Fire real sample data creation in the background for investor vertical
+    if (vertical === "investor") {
+      seedInvestorSampleData().catch(e => console.error("Sample data seeding error:", e));
+    }
+
     steps.forEach((line, i) => {
       setTimeout(() => {
         setSampleDataLines(prev => [...prev, line]);
@@ -446,6 +453,51 @@ export default function OnboardingWizard({ onComplete, onStepChange, vertical: p
         }
       }, (i + 1) * 300);
     });
+  }
+
+  async function seedInvestorSampleData() {
+    const v = "investor";
+    const j = "GLOBAL";
+
+    // 8 sample investors
+    const investors = [
+      { name: "Sarah Chen", email: "sarah@angelgroup.co", type: "Angel", status: "Interested", targetAmount: 100000, notes: "Fintech focus, $50K-200K check size" },
+      { name: "Mark Johnson", email: "mark@vcpartners.com", type: "VC", status: "Contacted", targetAmount: 500000, notes: "Series A focus, met at demo day" },
+      { name: "David Park", email: "david@parkventures.co", type: "VC", status: "Verified", targetAmount: 250000, notes: "B2B SaaS specialist" },
+      { name: "Lisa Wang", email: "lisa@wangcapital.com", type: "Angel", status: "Interested", targetAmount: 75000, notes: "Former CTO, technical due diligence" },
+      { name: "Robert Kim", email: "robert@kimfund.com", type: "Fund", status: "Committed", targetAmount: 200000, notes: "Family office, long-term holder" },
+      { name: "Emily Torres", email: "emily@torrescap.com", type: "Angel", status: "Contacted", targetAmount: 50000, notes: "RegCF investor, repeat backer" },
+      { name: "James Wright", email: "james@wrightvc.com", type: "VC", status: "Interested", targetAmount: 300000, notes: "Deep tech focus" },
+      { name: "Nina Patel", email: "nina@patelfamily.co", type: "Fund", status: "Invested", targetAmount: 150000, notes: "Early believer, converted from SAFE" },
+    ];
+
+    // 1 sample cap table
+    const capTable = {
+      name: "TechCo Cap Table",
+      totalShares: 10000000,
+      valuation: 5000000,
+      currentRound: "Seed",
+      shareholders: [
+        { name: "Founder 1 (CEO)", shares: 4000000, type: "Common", vesting: "4yr / 1yr cliff", vestingPct: 75, notes: "Full-time since inception" },
+        { name: "Founder 2 (CTO)", shares: 3000000, type: "Common", vesting: "4yr / 1yr cliff", vestingPct: 75, notes: "Full-time since inception" },
+        { name: "Employee Pool", shares: 1500000, type: "Options", vesting: "4yr / 1yr cliff", vestingPct: 20, notes: "750K allocated, 750K reserved" },
+        { name: "Angel Group (Seed)", shares: 1000000, type: "SAFE", vesting: "N/A", vestingPct: 100, notes: "$500K at $5M cap, MFN" },
+        { name: "Advisor 1", shares: 250000, type: "Common", vesting: "2yr / 6mo cliff", vestingPct: 50, notes: "Industry advisor, quarterly calls" },
+      ],
+    };
+
+    // 3 sample data room docs (metadata only, no files)
+    const docs = [
+      { name: "Pitch Deck v3.2", category: "Pitch Deck", sizeBytes: 4400000 },
+      { name: "Financial Projections 2026-2028", category: "Financials", sizeBytes: 1900000 },
+      { name: "SAFE Agreement Template", category: "Legal", sizeBytes: 540000 },
+    ];
+
+    await Promise.all([
+      ...investors.map(inv => createInvestor({ vertical: v, jurisdiction: j, investor: inv })),
+      createCapTable({ vertical: v, jurisdiction: j, capTable }),
+      ...docs.map(d => createDataRoomDoc({ vertical: v, jurisdiction: j, doc: d })),
+    ]);
   }
 
   // ── File Drop Handlers ──────────────────────────────────────────

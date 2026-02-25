@@ -1,0 +1,40 @@
+{
+  "id": "conversion_screen_v0",
+  "version": "v0",
+  "domain": "conversion",
+  "required_inputs": [
+    "existing_use",
+    "proposed_use",
+    "capex_budget"
+  ],
+  "hard_stops": [
+    {
+      "id": "capex_unknown",
+      "logic": "capex_budget == UNKNOWN",
+      "eval": { "field": "metrics.capex_budget", "operator": "==", "threshold": "UNKNOWN" }
+    },
+    {
+      "id": "returns_below_target",
+      "logic": "if tenant.min_gross_irr provided AND deal.gross_irr < tenant.min_gross_irr",
+      "eval": { "field": "metrics.gross_irr", "operator": "<", "threshold": "tenant.min_gross_irr", "conditional": true }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "construction_complexity",
+      "logic": "construction_complexity == high",
+      "eval": { "field": "metrics.construction_complexity", "operator": "==", "threshold": "high" }
+    },
+    {
+      "id": "permit_uncertainty",
+      "logic": "permit_status == uncertain",
+      "eval": { "field": "metrics.permit_status", "operator": "==", "threshold": "uncertain" }
+    }
+  ],
+  "outputs": [
+    "ic_memo_lite",
+    "risk_summary",
+    "assumptions_register",
+    "evidence_table"
+  ]
+}

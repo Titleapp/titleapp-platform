@@ -15,11 +15,17 @@ import Reports from "./sections/Reports";
 import Escrow from "./sections/Escrow";
 import Wallet from "./sections/Wallet";
 import Profile from "./sections/Profile";
+import DataRoom from "./sections/DataRoom";
 import { auth } from "./firebase";
 import { signInWithCustomToken } from "firebase/auth";
 
-function AdminShell() {
-  const [currentSection, setCurrentSection] = useState("dashboard");
+// Admin Command Center
+import AdminRoute from "./admin/AdminRoute";
+import AdminCommandCenter from "./admin/AdminShell";
+import "./admin/admin.css";
+
+function AdminShell({ initialSection }) {
+  const [currentSection, setCurrentSection] = useState(initialSection || "dashboard");
   const [showTour, setShowTour] = useState(false);
 
   useEffect(() => {
@@ -52,6 +58,8 @@ function AdminShell() {
         return <Wallet />;
       case "profile":
         return <Profile />;
+      case "dataroom":
+        return <DataRoom />;
       default:
         return <Dashboard />;
     }
@@ -72,6 +80,15 @@ function AdminShell() {
 // Route /vault/onboarding and /biz/onboarding based on URL path
 function AppRouter() {
   const path = window.location.pathname;
+
+  // Admin Command Center — /admin or /admin/*
+  if (path === "/admin" || path.startsWith("/admin/")) {
+    return (
+      <AdminRoute>
+        <AdminCommandCenter />
+      </AdminRoute>
+    );
+  }
 
   if (path === "/vault/onboarding") {
     return <VaultOnboarding />;
@@ -120,6 +137,10 @@ export default function App() {
     const params = new URLSearchParams(window.location.search);
     return !!params.get("token");
   });
+  const [initialPage] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("page") || null;
+  });
 
   useEffect(() => {
     // Handle custom token + session handoff from landing page chat
@@ -130,6 +151,12 @@ export default function App() {
     // Store landing page session ID so FloatingChat can resume it
     if (chatSid) {
       sessionStorage.setItem("ta_platform_sid", chatSid);
+    }
+
+    // Set tenant ID from URL param (chat handoff passes tid for direct workspace access)
+    const chatTid = urlParams.get("tid");
+    if (chatTid) {
+      localStorage.setItem("TENANT_ID", chatTid);
     }
 
     if (chatToken) {
@@ -265,5 +292,5 @@ export default function App() {
   if (needsOnboarding) {
     return <Onboarding onComplete={() => setNeedsOnboarding(false)} />;
   }
-  return <AdminShell />;
+  return <AdminShell initialSection={initialPage} />;
 }

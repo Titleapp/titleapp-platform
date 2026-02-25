@@ -433,6 +433,33 @@ export async function getConversationReplay(params: {
 }
 
 // ----------------------------
+// Workers (Developer Sandbox)
+// ----------------------------
+
+export async function getWorkers() {
+  return httpJson("GET", "/v1/workers:list", {
+    vertical: "developer",
+    jurisdiction: "GLOBAL",
+  });
+}
+
+export async function testWorkerRules(params: {
+  tenantId: string;
+  workerId: string;
+  testData: any;
+}) {
+  return httpJson("POST", "/v1/workers:test", {
+    vertical: "developer",
+    jurisdiction: "GLOBAL",
+    body: {
+      tenantId: params.tenantId,
+      workerId: params.workerId,
+      testData: params.testData,
+    },
+  });
+}
+
+// ----------------------------
 // Integrations & APIs
 // ----------------------------
 
@@ -583,11 +610,185 @@ export async function createCapTable(params: {
     companyName: string;
     totalShares: number;
     shareholders: Array<{ name: string; shares: number; percentage: number }>;
+    valuation?: number;
+    currentRound?: string;
   };
 }) {
   return httpJson("POST", "/v1/wallet:captable:create", {
     vertical: params.vertical,
     jurisdiction: params.jurisdiction,
     body: params.capTable,
+  });
+}
+
+export async function getCapTable(params: { vertical: string; jurisdiction: string; id: string }) {
+  return httpJson("GET", `/v1/wallet:captable:get?id=${encodeURIComponent(params.id)}`, {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+  });
+}
+
+export async function updateCapTable(params: {
+  vertical: string;
+  jurisdiction: string;
+  id: string;
+  capTable: { companyName?: string; totalShares?: number; shareholders?: any[]; valuation?: number; currentRound?: string };
+}) {
+  return httpJson("PUT", "/v1/wallet:captable:update", {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+    body: { id: params.id, ...params.capTable },
+  });
+}
+
+// ----------------------------
+// Investor Pipeline
+// ----------------------------
+
+export async function getInvestors(params: { vertical: string; jurisdiction: string }) {
+  return httpJson("GET", "/v1/investor:list", {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+  });
+}
+
+export async function createInvestor(params: {
+  vertical: string;
+  jurisdiction: string;
+  investor: { name: string; email: string; type?: string; status?: string; targetAmount?: number; notes?: string; lastActivity?: string };
+}) {
+  return httpJson("POST", "/v1/investor:create", {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+    body: params.investor,
+  });
+}
+
+export async function updateInvestor(params: {
+  vertical: string;
+  jurisdiction: string;
+  id: string;
+  investor: { name?: string; email?: string; type?: string; status?: string; targetAmount?: number; notes?: string; lastActivity?: string };
+}) {
+  return httpJson("PUT", "/v1/investor:update", {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+    body: { id: params.id, ...params.investor },
+  });
+}
+
+export async function deleteInvestor(params: { vertical: string; jurisdiction: string; id: string }) {
+  return httpJson("DELETE", "/v1/investor:delete", {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+    body: { id: params.id },
+  });
+}
+
+// ----------------------------
+// Data Room
+// ----------------------------
+
+export async function getDataRoom(params: { vertical: string; jurisdiction: string }) {
+  return httpJson("GET", "/v1/dataroom:list", {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+  });
+}
+
+export async function uploadDataRoomDoc(params: {
+  vertical: string;
+  jurisdiction: string;
+  doc: { name: string; category: string; file: { name: string; type: string; data: string } };
+}) {
+  return httpJson("POST", "/v1/dataroom:upload", {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+    body: params.doc,
+  });
+}
+
+export async function createDataRoomDoc(params: {
+  vertical: string;
+  jurisdiction: string;
+  doc: { name: string; category: string; sizeBytes?: number };
+}) {
+  return httpJson("POST", "/v1/dataroom:create", {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+    body: params.doc,
+  });
+}
+
+export async function deleteDataRoomDoc(params: { vertical: string; jurisdiction: string; id: string }) {
+  return httpJson("DELETE", "/v1/dataroom:delete", {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+    body: { id: params.id },
+  });
+}
+
+export async function logDataRoomView(params: {
+  vertical: string;
+  jurisdiction: string;
+  docId: string;
+  investorName: string;
+}) {
+  return httpJson("POST", "/v1/dataroom:logView", {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+    body: { docId: params.docId, investorName: params.investorName },
+  });
+}
+
+// ── Raise Config ──────────────────────────────────────────────────
+
+export async function getRaiseConfig() {
+  return httpJson("GET", "/v1/raise:config", {});
+}
+
+export async function updateRaiseConfig(params: { config: Record<string, unknown> }) {
+  return httpJson("PUT", "/v1/raise:config:update", {
+    body: { config: params.config },
+  });
+}
+
+// ── Investor Lifecycle ────────────────────────────────────────────
+
+export async function transitionInvestor(params: {
+  vertical: string;
+  jurisdiction: string;
+  id: string;
+  newState: string;
+  trigger?: string;
+}) {
+  return httpJson("POST", "/v1/investor:transition", {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+    body: { id: params.id, newState: params.newState, trigger: params.trigger },
+  });
+}
+
+// ── Company Updates ───────────────────────────────────────────────
+
+export async function publishInvestorUpdate(params: {
+  vertical: string;
+  jurisdiction: string;
+  title: string;
+  body: string;
+  category?: string;
+  visibility?: string;
+}) {
+  return httpJson("POST", "/v1/investor:update:publish", {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+    body: { title: params.title, body: params.body, category: params.category, visibility: params.visibility },
+  });
+}
+
+export async function getInvestorUpdates(params: { vertical: string; jurisdiction: string }) {
+  return httpJson("GET", "/v1/investor:updates:list", {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
   });
 }

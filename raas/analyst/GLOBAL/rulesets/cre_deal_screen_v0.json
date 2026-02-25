@@ -10,25 +10,30 @@
   "hard_stops": [
     {
       "id": "missing_core_docs",
-      "logic": "any required_inputs missing"
+      "logic": "any required_inputs missing",
+      "eval": { "type": "required_inputs_check" }
     },
     {
       "id": "ltv_exceeds_max",
-      "logic": "if tenant.max_ltv provided AND deal.ltv > tenant.max_ltv"
+      "logic": "if tenant.max_ltv provided AND deal.ltv > tenant.max_ltv",
+      "eval": { "field": "metrics.ltv", "operator": ">", "threshold": "tenant.max_ltv", "conditional": true }
     },
     {
       "id": "dscr_below_min",
-      "logic": "if tenant.min_dscr provided AND deal.dscr < tenant.min_dscr"
+      "logic": "if tenant.min_dscr provided AND deal.dscr < tenant.min_dscr",
+      "eval": { "field": "metrics.dscr", "operator": "<", "threshold": "tenant.min_dscr", "conditional": true }
     }
   ],
   "soft_flags": [
     {
       "id": "single_tenant_risk",
-      "logic": "tenant_count == 1"
+      "logic": "tenant_count == 1",
+      "eval": { "field": "metrics.tenant_count", "operator": "==", "threshold": 1 }
     },
     {
       "id": "short_walt",
-      "logic": "walt_years < 2"
+      "logic": "walt_years < 2",
+      "eval": { "field": "metrics.walt_years", "operator": "<", "threshold": 2 }
     }
   ],
   "outputs": [

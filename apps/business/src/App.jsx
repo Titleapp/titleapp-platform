@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import "./App.css";
 import LandingPage from "./components/LandingPage";
 import OnboardingWizard from "./components/OnboardingWizard";
@@ -49,11 +49,23 @@ import InvestorDataRoom from "./sections/InvestorDataRoom";
 import InvestorCapTable from "./sections/InvestorCapTable";
 import InvestorPipeline from "./sections/InvestorPipeline";
 import VaultTools from "./sections/VaultTools";
+import DeveloperSandbox from "./pages/DeveloperSandbox";
 import { auth } from "./firebase";
 import { signInWithCustomToken } from "firebase/auth";
 
+// Admin Command Center
+import AdminCommandCenter from "./admin/AdminShell";
+import "./admin/admin.css";
+
 function AdminShell({ onBackToHub }) {
-  const [currentSection, setCurrentSection] = useState("dashboard");
+  const [currentSection, setCurrentSection] = useState(() => {
+    const redirectPage = sessionStorage.getItem("ta_redirect_page");
+    if (redirectPage) {
+      sessionStorage.removeItem("ta_redirect_page");
+      return redirectPage;
+    }
+    return "dashboard";
+  });
   const [showTour, setShowTour] = useState(false);
 
   useEffect(() => {
@@ -181,6 +193,16 @@ function AdminShell({ onBackToHub }) {
 }
 
 export default function App() {
+  // ── /invest/room route intercept ──────────────────────────
+  // Completely standalone investor experience — bypasses AdminShell, WorkspaceHub, etc.
+  const isInvestorRoom = window.location.pathname === "/invest/room" || window.location.pathname === "/invest/room/";
+  const [investorReady, setInvestorReady] = useState(isInvestorRoom ? false : null);
+
+  // ── /sandbox route intercept ──────────────────────────────
+  // Standalone developer sandbox — split-pane layout with Alex chat + workspace
+  const isSandbox = window.location.pathname === "/sandbox" || window.location.pathname === "/sandbox/";
+  const [sandboxReady, setSandboxReady] = useState(isSandbox ? false : null);
+
   const [token, setToken] = useState(() =>
     typeof window !== "undefined" ? localStorage.getItem("ID_TOKEN") : null
   );
@@ -192,6 +214,7 @@ export default function App() {
   const [onboardingStep, setOnboardingStep] = useState(null);
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
   const [userName, setUserName] = useState("");
+  const viewResolvedRef = useRef(false);
 
   useEffect(() => {
     // Handle custom token + session handoff from landing page chat
@@ -199,12 +222,19 @@ export default function App() {
     const chatToken = urlParams.get("token");
     const chatSid = urlParams.get("sid");
     const chatTenantId = urlParams.get("tid");
+    const redirectPage = urlParams.get("page");
 
     if (chatSid) {
       sessionStorage.setItem("ta_platform_sid", chatSid);
     }
     if (chatTenantId) {
       sessionStorage.setItem("ta_preselected_tid", chatTenantId);
+      localStorage.setItem("TENANT_ID", chatTenantId);
+    }
+    if (redirectPage) {
+      // Map generic page names to business app section IDs
+      const pageMap = { dataroom: "investor-data-room", "investor-data-room": "investor-data-room", "cap-table": "investor-cap-table", pipeline: "investor-pipeline" };
+      sessionStorage.setItem("ta_redirect_page", pageMap[redirectPage] || redirectPage);
     }
 
     if (chatToken) {
@@ -218,6 +248,13 @@ export default function App() {
         })
         .catch((err) => {
           console.error("Custom token sign-in failed:", err);
+          // If signInWithCustomToken fails (e.g. ID token passed instead of custom token),
+          // check if user already has an active session on this domain
+          const existingToken = localStorage.getItem("ID_TOKEN");
+          if (existingToken) {
+            setToken(existingToken);
+          }
+          window.history.replaceState({}, "", window.location.pathname);
           setHandoffInProgress(false);
         });
     }
@@ -254,12 +291,44 @@ export default function App() {
     };
   }, []);
 
+  // ── Investor room: mark ready once auth completes ──
+  useEffect(() => {
+    if (!isInvestorRoom) return;
+    if (handoffInProgress) return; // still signing in
+    if (token) {
+      setInvestorReady(true);
+    } else {
+      // No token and no handoff — redirect to /invest to sign in
+      setInvestorReady(true); // will render redirect below
+    }
+  }, [isInvestorRoom, token, handoffInProgress]);
+
+  // ── Sandbox: mark ready once auth completes ──
+  useEffect(() => {
+    if (!isSandbox) return;
+    if (handoffInProgress) return;
+    if (token) {
+      // Store display name for sandbox greeting
+      if (auth.currentUser?.displayName) {
+        localStorage.setItem("DISPLAY_NAME", auth.currentUser.displayName);
+      }
+      setSandboxReady(true);
+    } else {
+      setSandboxReady(true); // will render redirect below
+    }
+  }, [isSandbox, token, handoffInProgress]);
+
   // After auth resolves, decide where to go
   useEffect(() => {
     if (!token || handoffInProgress) {
       if (!handoffInProgress) setCurrentView("login");
       return;
     }
+
+    // Prevent re-running after successful resolution (race condition:
+    // onAuthStateChanged fires after signInWithCustomToken, re-triggering
+    // this effect after sessionStorage items have been consumed)
+    if (viewResolvedRef.current) return;
 
     async function resolveView() {
       try {
@@ -297,6 +366,23 @@ export default function App() {
                 localStorage.setItem("COMPANY_NAME", tenant.companyName || tenant.name);
                 localStorage.setItem("WORKSPACE_NAME", tenant.companyName || tenant.name);
               }
+              viewResolvedRef.current = true;
+              setCurrentView("app");
+              return;
+            }
+            // Preselected tid didn't match — if redirect page is set, pick best available tenant
+            if (sessionStorage.getItem("ta_redirect_page") && data.memberships.length > 0) {
+              const bestMem = data.memberships[0];
+              const tenant = data.tenants?.[bestMem.tenantId] || {};
+              localStorage.setItem("TENANT_ID", bestMem.tenantId);
+              if (tenant.vertical && tenant.vertical !== "GLOBAL") {
+                localStorage.setItem("VERTICAL", tenant.vertical.toLowerCase());
+              }
+              if (tenant.companyName || tenant.name) {
+                localStorage.setItem("COMPANY_NAME", tenant.companyName || tenant.name);
+                localStorage.setItem("WORKSPACE_NAME", tenant.companyName || tenant.name);
+              }
+              viewResolvedRef.current = true;
               setCurrentView("app");
               return;
             }
@@ -357,6 +443,7 @@ export default function App() {
                     completedAt: new Date().toISOString(),
                   }));
                   sessionStorage.removeItem("ta_discovered_context");
+                  viewResolvedRef.current = true;
                   setCurrentView("app");
                   return;
                 }
@@ -371,6 +458,34 @@ export default function App() {
           const pendingOnboarding = localStorage.getItem("PENDING_ONBOARDING");
           if (pendingOnboarding) {
             setNeedsOnboarding(true);
+            viewResolvedRef.current = true;
+            setCurrentView("app");
+          } else if (sessionStorage.getItem("ta_redirect_page")) {
+            // Redirect page is set (e.g., investor coming from /invest) — bypass hub
+            // Auto-select the best tenant: prefer investor vertical, fall back to first
+            const mems = data.memberships || [];
+            const tenants = data.tenants || {};
+            let bestTid = null;
+            for (const m of mems) {
+              const t = tenants[m.tenantId] || {};
+              if (t.vertical === "investor" || (t.vertical && t.vertical.toLowerCase() === "investor")) {
+                bestTid = m.tenantId;
+                break;
+              }
+            }
+            if (!bestTid && mems.length > 0) bestTid = mems[0].tenantId;
+            if (bestTid) {
+              const tenant = tenants[bestTid] || {};
+              localStorage.setItem("TENANT_ID", bestTid);
+              if (tenant.vertical && tenant.vertical !== "GLOBAL") {
+                localStorage.setItem("VERTICAL", tenant.vertical.toLowerCase());
+              }
+              if (tenant.companyName || tenant.name) {
+                localStorage.setItem("COMPANY_NAME", tenant.companyName || tenant.name);
+                localStorage.setItem("WORKSPACE_NAME", tenant.companyName || tenant.name);
+              }
+            }
+            viewResolvedRef.current = true;
             setCurrentView("app");
           } else {
             setCurrentView("hub");
@@ -403,10 +518,50 @@ export default function App() {
   }
 
   function handleBackToHub() {
+    viewResolvedRef.current = false;
     setCurrentView("hub");
     if (window.location.pathname !== "/") {
       window.history.replaceState({}, "", "/");
     }
+  }
+
+  // ── Investor Data Room: standalone experience ──────────────
+  if (isInvestorRoom) {
+    if (!investorReady || handoffInProgress) {
+      return (
+        <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#f6f7fb" }}>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontSize: 20, fontWeight: 600, color: "#7c3aed", marginBottom: 16 }}>TitleApp</div>
+            <div style={{ fontSize: 16, color: "#6b7280" }}>Loading data room...</div>
+          </div>
+        </div>
+      );
+    }
+    if (!token) {
+      // No auth — send to /invest to sign up/in via Alex
+      window.location.href = "/invest";
+      return null;
+    }
+    return <InvestorDataRoom />;
+  }
+
+  // ── Developer Sandbox: standalone experience ────────────────
+  if (isSandbox) {
+    if (!sandboxReady || handoffInProgress) {
+      return (
+        <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#0f0f14" }}>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontSize: 20, fontWeight: 600, color: "#7c3aed", marginBottom: 16 }}>TitleApp</div>
+            <div style={{ fontSize: 16, color: "#94a3b8" }}>Loading sandbox...</div>
+          </div>
+        </div>
+      );
+    }
+    if (!token) {
+      window.location.href = "/developers";
+      return null;
+    }
+    return <DeveloperSandbox />;
   }
 
   if (handoffInProgress || currentView === "loading") {
@@ -454,8 +609,13 @@ export default function App() {
         userName={userName}
         onLaunch={handleWorkspaceLaunch}
         onBuilderStart={() => setCurrentView("builder-interview")}
+        onAdminLaunch={() => setCurrentView("admin")}
       />
     );
+  }
+
+  if (currentView === "admin") {
+    return <AdminCommandCenter onBackToHub={handleBackToHub} />;
   }
 
   if (currentView === "builder-interview") {

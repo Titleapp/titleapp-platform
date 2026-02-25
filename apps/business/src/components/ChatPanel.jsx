@@ -29,6 +29,13 @@ const CONTEXTUAL_MESSAGES = {
   "worker-preview": "This is what I built from our conversation. Review the details and publish when you're ready.",
   "raas-store": "Browse AI Workers built by domain experts. Each one packages real expertise into a subscribable service.",
   "creator-dashboard": "Your creator hub. Edit your Workers, adjust pricing, track subscribers, and manage publishing.",
+  "investor-overview": "This is your data room overview. I can walk you through the raise terms, conversion math, or introduce you to the team.",
+  "investor-investor-docs": "Here are the investor documents. Tier 1 docs are open to everyone. Tier 2 requires identity verification and disclaimer acceptance. Ask me about any document and I'll summarize it.",
+  "investor-subscription": "This section has the SAFE terms and subscription docs. I can explain the Post-Money SAFE structure, valuation cap mechanics, or pro rata rights.",
+  "investor-governance": "Governance and voting. Once the raise closes and shares convert, this is where proposals and cap table details live.",
+  "investor-id-check": "Identity verification and risk acknowledgment. Both are required for full access to investor materials.",
+  "investor-wallet": "Your investment position and ownership tokens. After investing and share conversion, your ownership record will appear here.",
+  "investor-profile": "Your investor profile. You can update your information and preferences here.",
 };
 
 const PERSONAL_CONTEXTUAL_MESSAGES = {
@@ -84,6 +91,16 @@ const CELEBRATION_MESSAGES = {
       "Tell me about that charter opportunity",
     ],
   },
+  investor: {
+    celebration: "Your investor data room is ready. I've loaded the current raise terms, available documents, and governance details.",
+    followUp: "What would you like to explore first?",
+    suggestions: [
+      "Show me around the data room",
+      "What are the terms of the raise?",
+      "Tell me about TitleApp",
+      "How do I invest?",
+    ],
+  },
 };
 
 // ── Tour Responses ──────────────────────────────────────────────
@@ -93,6 +110,7 @@ const TOUR_RESPONSES = {
   auto: `Here's the quick tour:\n\n**Dashboard** -- Your command center. KPIs, alerts, and daily action items.\n\n**Inventory** -- Your full lot view. I track aging, pricing, and market comps for every unit.\n\n**Customers** -- Your buyer and prospect database. I identify follow-up opportunities and draft outreach.\n\n**Sales Pipeline** -- Active deals from first contact to delivery. I prioritize your hottest leads.\n\n**F&I Products** -- Your product catalog. I match products to buyer profiles and calculate payment impacts.\n\n**Service** -- Your service schedule. I flag warranty expirations and upsell opportunities.\n\n**Rules** -- This is where the magic happens. You set the rules -- like "alert me when a unit hits 60 days" or "auto-draft follow-ups for stale leads" -- and I follow them.\n\nWant to dive into any of these?`,
   "real-estate": `Here's the quick tour:\n\n**Dashboard** -- Your command center. KPIs, pipeline status, and daily priorities.\n\n**Listings** -- Your active and pending listings. I track DOM, price changes, and showings.\n\n**Buyers** -- Your buyer pipeline with saved searches and match criteria.\n\n**Transactions** -- Active deals from offer to close. I track deadlines and contingencies.\n\n**Properties** -- Your managed properties with units, leases, and financials.\n\n**Tenants** -- Tenant records, rent rolls, and payment history.\n\n**Rules** -- This is where the magic happens. You set the rules -- like "alert me at 45 DOM" or "flag any lease expiring in 90 days" -- and I follow them.\n\nWant to dive into any of these?`,
   aviation: `Here's the quick tour:\n\n**Dashboard** -- Your ops center. Fleet status, upcoming flights, and maintenance alerts.\n\n**Inventory** -- Your aircraft fleet with airframe hours, engine time, and availability.\n\n**Staff** -- Pilots, crew, and maintenance personnel with certification tracking.\n\n**Appointments** -- Flight schedule, charter bookings, and maintenance windows.\n\n**Rules** -- This is where the magic happens. You set the rules -- like "alert 60 days before any medical expires" or "flag aircraft under 50 hours to next inspection" -- and I follow them.\n\nWant to dive into any of these?`,
+  investor: `Here's the quick tour of your data room:\n\n**Overview** -- The raise dashboard. Current funding progress, key terms at a glance, and quick actions.\n\n**Investor Docs** -- Pitch deck, executive summary, and business plan. Tier 1 docs are always available. Tier 2 requires verification.\n\n**Subscription Docs** -- The SAFE agreement terms, conversion scenarios, and the link to invest via Wefunder.\n\n**Governance & Voting** -- Cap table, share registry, and governance proposals once the raise closes.\n\n**ID Verification** -- One-time identity check and risk disclaimers. Unlocks full document access.\n\n**Wallet** -- Your investment position and ownership tokens after investing.\n\n**Profile** -- Your investor profile and account settings.\n\nWhat would you like to know more about?`,
 };
 
 // ── Rules Responses ─────────────────────────────────────────────
@@ -102,6 +120,7 @@ const RULES_RESPONSES = {
   auto: `Smart move -- the rules are what make me work for YOUR dealership specifically.\n\nHere's how it works: you tell me things like:\n- "Alert me when any unit hits 60 days on lot"\n- "Auto-draft follow-ups for leads that go cold for 5 days"\n- "Flag any vehicle priced more than 5% below market"\n- "Never discount vehicles in the first 30 days"\n\nThe more specific you are, the better I get. You can set these in **Settings > Rules**, or just tell me right here.\n\nWant to set some rules now?`,
   "real-estate": `Good call -- the rules are what make me work for YOUR brokerage specifically.\n\nHere's how it works: you tell me things like:\n- "Alert me at 45 days on market"\n- "Flag any lease expiring in 90 days"\n- "Auto-match new listings to my buyer pipeline"\n- "Send me a daily summary of all pending deadlines"\n\nThe more specific you are, the better I get. You can set these in **Settings > Rules**, or just tell me right here.\n\nWant to set some rules now?`,
   aviation: `Smart -- the rules are what make me work for YOUR operation specifically.\n\nHere's how it works: you tell me things like:\n- "Alert 60 days before any medical certificate expires"\n- "Flag aircraft under 50 hours to next inspection"\n- "Auto-notify dispatch when a charter request matches availability"\n- "Send weekly utilization reports every Monday"\n\nYou can set these in **Settings > Rules**, or just tell me right here.\n\nWant to set some rules now?`,
+  investor: `As an investor, you don't set rules in the traditional sense -- but here's what you can customize:\n\n- **Notification preferences** -- Choose how you want to receive company updates\n- **Communication preferences** -- Email frequency, update categories you care about\n- **Profile details** -- Company info, social links, and investment preferences\n\nYou can update these in your Profile section, or just tell me what you'd like to change.`,
 };
 
 // ── Vertical Disclaimers ────────────────────────────────────────
@@ -123,6 +142,10 @@ const VERTICAL_DISCLAIMERS = {
     title: 'Aviation Industry Notice',
     text: 'This workspace provides AI-powered operations management tools. It does not replace FAA-required documentation, approved checklists, or professional aeronautical judgment. All flight safety decisions must follow 14 CFR.',
   },
+  investor: {
+    title: 'Investment Risk Notice',
+    text: 'This data room provides information about an early-stage investment opportunity. Investing in startups involves significant risk, including the possible loss of your entire investment. Past performance and projections are not guarantees of future results. TitleApp is not a registered investment adviser or broker-dealer. All investment decisions should be made after reviewing the full offering documents and consulting qualified financial and legal advisors.',
+  },
 };
 
 // ── ID Verify Messages ──────────────────────────────────────────
@@ -132,6 +155,7 @@ const ID_VERIFY_MESSAGES = {
   auto: "By the way -- at some point you'll want to verify your identity. It's a quick ID check ($2) that unlocks some features and keeps your account secure. No rush on that -- I'll remind you when it matters.",
   "real-estate": "By the way -- at some point you'll want to verify your identity. It's a quick ID check ($2) that unlocks some features and keeps your account secure. No rush on that -- I'll remind you when it matters.",
   aviation: "By the way -- at some point you'll want to verify your identity. It's a quick ID check ($2) that unlocks some features like crew management and compliance reporting. No rush -- I'll remind you when it matters.",
+  investor: "To access the full set of investor documents -- including the business plan and SAFE agreement -- you'll need to verify your identity. It's a one-time $2 check. You can do it from the ID Verification section in the sidebar.",
 };
 
 // ── Component ───────────────────────────────────────────────────

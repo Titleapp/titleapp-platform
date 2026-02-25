@@ -9,21 +9,25 @@
   "hard_stops": [
     {
       "id": "dscr_below_min",
-      "logic": "if tenant.min_dscr provided AND projected.dscr < tenant.min_dscr"
+      "logic": "if tenant.min_dscr provided AND projected.dscr < tenant.min_dscr",
+      "eval": { "field": "metrics.dscr", "operator": "<", "threshold": "tenant.min_dscr", "conditional": true }
     },
     {
       "id": "ltv_exceeds_max",
-      "logic": "if tenant.max_ltv provided AND projected.ltv > tenant.max_ltv"
+      "logic": "if tenant.max_ltv provided AND projected.ltv > tenant.max_ltv",
+      "eval": { "field": "metrics.ltv", "operator": ">", "threshold": "tenant.max_ltv", "conditional": true }
     }
   ],
   "soft_flags": [
     {
       "id": "near_term_maturity",
-      "logic": "loan_maturity_months < 12"
+      "logic": "loan_maturity_months < 12",
+      "eval": { "field": "metrics.loan_maturity_months", "operator": "<", "threshold": 12 }
     },
     {
       "id": "rate_shock",
-      "logic": "rate_increase_bps > 200"
+      "logic": "rate_increase_bps > 200",
+      "eval": { "field": "metrics.rate_increase_bps", "operator": ">", "threshold": 200 }
     }
   ],
   "outputs": [

@@ -693,9 +693,15 @@ function BusinessSettings() {
           if (m.tenantId !== wsId) {
             const tenant = data.tenants?.[m.tenantId] || {};
             const v = (tenant.vertical || "auto").toLowerCase();
+            // Resolve a human-readable name, skipping raw IDs
+            const rawName = tenant.companyName || tenant.name || m.tenantId || "";
+            const isRawId = /^(ws_\d+_[a-z0-9]+|[a-z0-9_-]{20,})$/i.test(rawName);
+            const displayName = isRawId
+              ? (VERTICAL_LABELS[v] || "Business") + " Workspace"
+              : rawName;
             companies.push({
               id: m.tenantId,
-              name: tenant.companyName || tenant.name || m.tenantId,
+              name: displayName,
               type: VERTICAL_LABELS[v] || v,
               vertical: v,
               role: m.role || "member",

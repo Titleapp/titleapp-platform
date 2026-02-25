@@ -1,4 +1,7 @@
 import React, { useEffect, useState } from 'react';
+import { auth, db } from '../firebase';
+import { onAuthStateChanged } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
 import AddWorkspaceWizard from './AddWorkspaceWizard';
 
 const VERTICAL_ABBREVS = {
@@ -137,10 +140,30 @@ function BillingSummary({ workspaces }) {
   );
 }
 
-export default function WorkspaceHub({ userName, onLaunch, onBuilderStart }) {
+export default function WorkspaceHub({ userName, onLaunch, onBuilderStart, onAdminLaunch }) {
   const [workspaces, setWorkspaces] = useState(null);
   const [error, setError] = useState(null);
   const [showWizard, setShowWizard] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        getDoc(doc(db, 'admins', user.uid))
+          .then(snap => {
+            console.log('[AdminCheck] uid:', user.uid, 'exists:', snap.exists());
+            if (snap.exists()) setIsAdmin(true);
+          })
+          .catch(err => {
+            console.warn('[AdminCheck] Firestore read failed:', err.message);
+            // Firestore rules may block — try hardcoded UID fallback
+            const ADMIN_UIDS = ['4WHjuUgEseQfBr0Tg92YXXhu6Mj1', 'fPlJ76VM5kQaEtxlMVifVlzeOmq1'];
+            if (ADMIN_UIDS.includes(user.uid)) setIsAdmin(true);
+          });
+      }
+    });
+    return () => unsub();
+  }, []);
 
   async function loadWorkspaces() {
     try {
@@ -251,6 +274,73 @@ export default function WorkspaceHub({ userName, onLaunch, onBuilderStart }) {
               {workspaces.map(w => (
                 <WorkspaceCard key={w.id} workspace={w} onLaunch={handleLaunch} />
               ))}
+            </div>
+          )}
+
+          {/* Investor Data Room card — show if any workspace is investor vertical */}
+          {workspaces && workspaces.some(w => w.vertical === 'investor' || w.vertical === 'Investor') && (
+            <div style={{ marginTop: 16 }}>
+              <div
+                onClick={() => { window.location.href = '/invest/room'; }}
+                style={{
+                  border: '1px solid #5b21b6',
+                  borderRadius: 12,
+                  padding: 20,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 16,
+                }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = '#a78bfa'; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = '#5b21b6'; }}
+              >
+                <div style={{
+                  width: 40, height: 40, borderRadius: 8, backgroundColor: '#7c3aed',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 14, fontWeight: 700, color: '#fff', letterSpacing: 1,
+                  flexShrink: 0,
+                }}>DR</div>
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: 16, color: '#e2e8f0' }}>Investor Data Room</div>
+                  <div style={{ color: '#a5b4fc', fontSize: 13 }}>Investment documents, governance, and portfolio</div>
+                </div>
+                <div style={{ marginLeft: 'auto', color: '#a78bfa', fontWeight: 600, fontSize: 14 }}>&rarr;</div>
+              </div>
+            </div>
+          )}
+
+          {isAdmin && (
+            <div style={{ marginTop: 16 }}>
+              <div
+                onClick={() => { if (onAdminLaunch) onAdminLaunch(); }}
+                style={{
+                  border: '1px solid #1e293b',
+                  borderRadius: 12,
+                  padding: 20,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  background: '#0f172a',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 16,
+                }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = '#7c3aed'; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = '#1e293b'; }}
+              >
+                <div style={{
+                  width: 40, height: 40, borderRadius: 8, backgroundColor: '#7c3aed',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 14, fontWeight: 700, color: '#fff', letterSpacing: 1,
+                  flexShrink: 0,
+                }}>CC</div>
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: 16, color: '#e2e8f0' }}>Command Center</div>
+                  <div style={{ color: '#94a3b8', fontSize: 13 }}>Admin operations, analytics, pipeline</div>
+                </div>
+                <div style={{ marginLeft: 'auto', color: '#7c3aed', fontWeight: 600, fontSize: 14 }}>&rarr;</div>
+              </div>
             </div>
           )}
         </div>

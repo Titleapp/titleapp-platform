@@ -9,21 +9,25 @@
   "hard_stops": [
     {
       "id": "unknown_zoning",
-      "logic": "zoning_status == UNKNOWN"
+      "logic": "zoning_status == UNKNOWN",
+      "eval": { "field": "metrics.zoning_status", "operator": "==", "threshold": "UNKNOWN" }
     },
     {
       "id": "no_path_to_entitlement",
-      "logic": "entitlement_probability < 0.5"
+      "logic": "entitlement_probability < 0.5",
+      "eval": { "field": "metrics.entitlement_probability", "operator": "<", "threshold": 0.5 }
     }
   ],
   "soft_flags": [
     {
       "id": "community_opposition",
-      "logic": "community_opposition == true"
+      "logic": "community_opposition == true",
+      "eval": { "field": "metrics.community_opposition", "operator": "==", "threshold": true }
     },
     {
       "id": "environmental_constraints",
-      "logic": "environmental_review_required == true"
+      "logic": "environmental_review_required == true",
+      "eval": { "field": "metrics.environmental_review_required", "operator": "==", "threshold": true }
     }
   ],
   "outputs": [
