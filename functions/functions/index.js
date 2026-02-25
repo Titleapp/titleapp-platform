@@ -3279,6 +3279,32 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       return handleSeedAct(req, res);
     }
 
+    // POST /v1/marketplace:view — public, no auth required
+    if (route === "/marketplace:view" && method === "POST") {
+      const { slug: viewSlug } = body;
+      if (!viewSlug) return res.json({ ok: false, error: "Missing slug" });
+      try {
+        const listingSnap = await db.doc(`marketplace/${viewSlug}`).get();
+        if (!listingSnap.exists) return res.json({ ok: false, error: "Listing not found" });
+        const listing = listingSnap.data();
+        return res.json({ ok: true, listing: {
+          name: listing.name,
+          description: listing.description,
+          category: listing.category,
+          rules: listing.rules || [],
+          rulesCount: listing.rulesCount || 0,
+          pricePerSeat: listing.pricePerSeat || 9,
+          subscribers: listing.subscribers || 0,
+          creatorName: listing.creatorName || null,
+          creatorBio: listing.creatorBio || null,
+          publishedAt: listing.publishedAt,
+        }});
+      } catch (e) {
+        console.error("[marketplace:view] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
     // All other routes require Firebase auth
     const auth = await requireFirebaseUser(req, res);
     if (auth.handled) return;
@@ -3369,6 +3395,42 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
         return res.json({ ok: true, passed, results, rulesCount: rules.length, workerName: worker.name });
       } catch (e) {
         console.error("[workers:test] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // POST /v1/marketplace:publish — publish a Worker to the marketplace
+    if (route === "/marketplace:publish" && method === "POST") {
+      const { tenantId, workerId, slug, pricePerSeat } = body;
+      if (!tenantId || !workerId) return res.json({ ok: false, error: "Missing tenantId or workerId" });
+      try {
+        const workerRef = db.doc(`tenants/${tenantId}/workers/${workerId}`);
+        const workerSnap = await workerRef.get();
+        if (!workerSnap.exists) return res.json({ ok: false, error: "RAAS Worker not found" });
+        const worker = workerSnap.data();
+        const autoSlug = slug || (worker.name || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+        // Write marketplace listing doc
+        await db.doc(`marketplace/${autoSlug}`).set({
+          slug: autoSlug,
+          workerId,
+          tenantId,
+          name: worker.name,
+          description: worker.description,
+          category: worker.category || "custom",
+          rules: worker.rules || [],
+          rulesCount: (worker.rules || []).length,
+          pricePerSeat: pricePerSeat || 9,
+          creatorName: worker.createdBy || null,
+          subscribers: 0,
+          published: true,
+          publishedAt: nowServerTs(),
+          updatedAt: nowServerTs(),
+        }, { merge: true });
+        // Mark worker as published
+        await workerRef.update({ published: true, marketplaceSlug: autoSlug, publishedAt: nowServerTs() });
+        return res.json({ ok: true, slug: autoSlug, url: `/marketplace/${autoSlug}` });
+      } catch (e) {
+        console.error("[marketplace:publish] error:", e.message);
         return res.json({ ok: false, error: e.message });
       }
     }

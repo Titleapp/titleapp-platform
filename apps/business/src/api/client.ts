@@ -460,6 +460,36 @@ export async function testWorkerRules(params: {
 }
 
 // ----------------------------
+// Marketplace
+// ----------------------------
+
+export async function publishWorker(params: {
+  tenantId: string;
+  workerId: string;
+  slug?: string;
+  pricePerSeat?: number;
+}) {
+  return httpJson("POST", "/v1/marketplace:publish", {
+    vertical: "developer",
+    jurisdiction: "GLOBAL",
+    body: {
+      tenantId: params.tenantId,
+      workerId: params.workerId,
+      slug: params.slug,
+      pricePerSeat: params.pricePerSeat,
+    },
+  });
+}
+
+export async function getMarketplaceListing(slug: string) {
+  return httpJson("POST", "/v1/marketplace:view", {
+    vertical: "developer",
+    jurisdiction: "GLOBAL",
+    body: { slug },
+  });
+}
+
+// ----------------------------
 // Integrations & APIs
 // ----------------------------
 
