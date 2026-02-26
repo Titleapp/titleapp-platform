@@ -986,7 +986,7 @@ function BusinessSettings() {
       <div className="card" style={{ marginBottom: "16px" }}>
         <div className="cardHeader">
           <div>
-            <div className="cardTitle">AI Assistant Rules (RAAS)</div>
+            <div className="cardTitle">AI Assistant Rules</div>
             <div className="cardSub">Custom rules and compliance settings for your AI assistant</div>
           </div>
         </div>
@@ -1064,7 +1064,7 @@ function BusinessSettings() {
               <div>&#10003; Unlimited deal analysis</div>
               <div>&#10003; AI Assistant</div>
               <div>&#10003; AI deal sourcing (overnight scans)</div>
-              <div>&#10003; Risk scoring & RAAS validation</div>
+              <div>&#10003; Risk scoring & validation</div>
               <div>&#10003; IC-ready report generation</div>
               <div>&#10003; Email/text outreach from AI</div>
               <div>&#10003; Team collaboration (per seat)</div>

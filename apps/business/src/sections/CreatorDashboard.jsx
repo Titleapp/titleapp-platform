@@ -124,7 +124,7 @@ export default function CreatorDashboard() {
         <div className="pageHeader">
           <div>
             <h1 className="h1">Creator Dashboard</h1>
-            <p className="subtle">Loading your workers...</p>
+            <p className="subtle">Loading your Digital Workers...</p>
           </div>
         </div>
         <div style={{ padding: "60px", textAlign: "center", background: "#fff", borderRadius: "12px", border: "1px solid #f1f5f9" }}>
@@ -146,21 +146,21 @@ export default function CreatorDashboard() {
         <div className="pageHeader">
           <div>
             <h1 className="h1">Creator Dashboard</h1>
-            <p className="subtle">Manage your AI Workers</p>
+            <p className="subtle">Manage your Digital Workers</p>
           </div>
         </div>
         <div style={{ padding: "60px 24px", textAlign: "center", background: "#fff", borderRadius: "12px", border: "1px solid #f1f5f9" }}>
           <div style={{ fontSize: "18px", fontWeight: 600, color: "#1e293b", marginBottom: "8px" }}>
-            No Workers yet
+            No Digital Workers yet
           </div>
           <div style={{ fontSize: "14px", color: "#64748b", marginBottom: "20px", maxWidth: "380px", margin: "0 auto 20px" }}>
-            Start a conversation about your expertise on the landing page. The AI will interview you and build a publishable Worker.
+            Start a conversation about your expertise on the landing page. The AI will interview you and build a publishable Digital Worker.
           </div>
           <button
             onClick={() => window.dispatchEvent(new CustomEvent("ta:navigate", { detail: { section: "raas-store" } }))}
             style={{ padding: "10px 24px", fontSize: "14px", fontWeight: 600, borderRadius: "8px", border: "2px solid #7c3aed", background: "transparent", color: "#7c3aed", cursor: "pointer" }}
           >
-            Browse the RAAS Store
+            Browse the Marketplace
           </button>
         </div>
       </div>
@@ -172,7 +172,7 @@ export default function CreatorDashboard() {
       <div className="pageHeader">
         <div>
           <h1 className="h1">Creator Dashboard</h1>
-          <p className="subtle">Manage your AI Workers. Edit content, adjust pricing, and track performance.</p>
+          <p className="subtle">Manage your Digital Workers. Edit content, adjust pricing, and track performance.</p>
         </div>
       </div>
 

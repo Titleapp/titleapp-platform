@@ -9,7 +9,7 @@ const NAV_BY_VERTICAL = {
     { id: "vault-deadlines", label: "Deadlines" },
     { id: "vault-tools", label: "AI Tools" },
     { id: "reports", label: "Reports" },
-    { id: "raas-store", label: "RAAS Store" },
+    { id: "raas-store", label: "Marketplace" },
     { id: "settings", label: "Settings" },
   ],
   analyst: [
@@ -21,7 +21,7 @@ const NAV_BY_VERTICAL = {
     { id: "reports", label: "Reports" },
     { id: "ai-chats", label: "AI Activity" },
     { id: "rules", label: "Rules" },
-    { id: "raas-store", label: "RAAS Store" },
+    { id: "raas-store", label: "Marketplace" },
     { id: "settings", label: "Settings" },
   ],
   "property-mgmt": [
@@ -43,7 +43,7 @@ const NAV_BY_VERTICAL = {
     { id: "reports", label: "Reports" },
     { id: "ai-chats", label: "AI Activity" },
     { id: "rules", label: "Rules" },
-    { id: "raas-store", label: "RAAS Store" },
+    { id: "raas-store", label: "Marketplace" },
     { id: "settings", label: "Settings" },
   ],
   "real-estate": [
@@ -58,7 +58,7 @@ const NAV_BY_VERTICAL = {
     { id: "reports", label: "Reports" },
     { id: "ai-chats", label: "AI Activity" },
     { id: "rules", label: "Rules" },
-    { id: "raas-store", label: "RAAS Store" },
+    { id: "raas-store", label: "Marketplace" },
     { id: "settings", label: "Settings" },
   ],
   investor: [
@@ -69,7 +69,7 @@ const NAV_BY_VERTICAL = {
     { id: "reports", label: "Reports" },
     { id: "ai-chats", label: "AI Activity" },
     { id: "rules", label: "Rules" },
-    { id: "raas-store", label: "RAAS Store" },
+    { id: "raas-store", label: "Marketplace" },
     { id: "settings", label: "Settings" },
   ],
 };
@@ -79,7 +79,7 @@ const DEFAULT_NAV = [
   { id: "rules-resources", label: "Rules & Resources" },
   { id: "ai-chats", label: "AI Activity" },
   { id: "reports", label: "Reports" },
-  { id: "raas-store", label: "RAAS Store" },
+  { id: "raas-store", label: "Marketplace" },
   { id: "settings", label: "Settings" },
 ];
 

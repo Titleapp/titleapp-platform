@@ -59,10 +59,10 @@ export default function RAASStore() {
       {/* Header */}
       <div style={{ marginBottom: "28px" }}>
         <h1 style={{ fontSize: "32px", fontWeight: 800, color: "#1e293b", margin: "0 0 6px 0" }}>
-          RAAS Store
+          Marketplace
         </h1>
         <p style={{ fontSize: "15px", color: "#64748b", margin: 0, lineHeight: 1.5 }}>
-          AI-powered services built by experts. Subscribe to add them to your workspace.
+          AI-powered services built by experts. Hire them for your workspace.
         </p>
       </div>
 
@@ -316,7 +316,7 @@ export default function RAASStore() {
                       textAlign: "center",
                       lineHeight: 1.4,
                     }}>
-                      Coming soon -- subscribe notifications launching next month
+                      Coming soon -- hire notifications launching next month
                     </div>
                   ) : (
                     <button
@@ -334,7 +334,7 @@ export default function RAASStore() {
                         transition: "all 0.15s ease",
                       }}
                     >
-                      Add to Vault
+                      Hire
                     </button>
                   )}
                 </div>

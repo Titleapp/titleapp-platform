@@ -51,6 +51,7 @@ import InvestorPipeline from "./sections/InvestorPipeline";
 import VaultTools from "./sections/VaultTools";
 import DeveloperSandbox from "./pages/DeveloperSandbox";
 import MarketplaceListing from "./pages/MarketplaceListing";
+import CreatorApplication from "./pages/CreatorApplication";
 import { auth } from "./firebase";
 import { signInWithCustomToken } from "firebase/auth";
 
@@ -208,6 +209,9 @@ export default function App() {
   const marketplaceMatch = window.location.pathname.match(/^\/marketplace\/([a-z0-9-]+)\/?$/);
   const isMarketplace = !!marketplaceMatch;
   const marketplaceSlug = marketplaceMatch ? marketplaceMatch[1] : null;
+
+  // ── /apply route intercept ────────────────────────────────
+  const isApply = window.location.pathname === "/apply" || window.location.pathname === "/apply/";
   const [sandboxReady, setSandboxReady] = useState(isSandbox ? false : null);
 
   const [token, setToken] = useState(() =>
@@ -574,6 +578,11 @@ export default function App() {
   // ── Marketplace Listing: public, no auth required ───────────
   if (isMarketplace) {
     return <MarketplaceListing slug={marketplaceSlug} />;
+  }
+
+  // ── Creator Application: public, no auth required ──────────
+  if (isApply) {
+    return <CreatorApplication />;
   }
 
   if (handoffInProgress || currentView === "loading") {

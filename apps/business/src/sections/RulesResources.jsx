@@ -95,7 +95,7 @@ export default function RulesResources() {
       <div className="pageHeader">
         <div>
           <h1 className="h1">Rules & Resources</h1>
-          <p className="subtle">Configure RAAS workflows for your vertical and jurisdiction</p>
+          <p className="subtle">Configure enforcement workflows for your vertical and jurisdiction</p>
         </div>
         <div style={{ display: "flex", gap: "8px" }}>
           <button
@@ -149,7 +149,7 @@ export default function RulesResources() {
             <div className="v">{jurisdiction.toUpperCase()}</div>
           </div>
           <div className="kvRow">
-            <div className="k">RAAS Version</div>
+            <div className="k">Rules Version</div>
             <div className="v">2.1.0</div>
           </div>
           {localStorage.getItem("RAAS_RULES") && (
@@ -545,7 +545,7 @@ export default function RulesResources() {
             )}
           </div>
           <div style={{ padding: "12px", background: "#f8f4ff", borderRadius: "8px", fontSize: "13px", color: "#6b7280" }}>
-            SOP documents feed into your RAAS engine. The AI assistant will reference these when handling your business operations.
+            SOP documents feed into your enforcement engine. The AI assistant will reference these when handling your business operations.
           </div>
         </div>
       </FormModal>

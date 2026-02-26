@@ -90,13 +90,13 @@ export default function VaultTools() {
       <div className="pageHeader">
         <div>
           <h1 className="h1">AI Tools</h1>
-          <p className="subtle">Your subscriptions and built-in tools</p>
+          <p className="subtle">Your Digital Workers and built-in tools</p>
         </div>
       </div>
 
       {/* Subscriptions */}
       <div style={{ marginBottom: 32 }}>
-        <div style={{ fontSize: 14, fontWeight: 600, color: "#374151", marginBottom: 12 }}>My Subscriptions</div>
+        <div style={{ fontSize: 14, fontWeight: 600, color: "#374151", marginBottom: 12 }}>My Digital Workers</div>
         {SAMPLE_SUBSCRIPTIONS.length > 0 ? (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 16 }}>
             {SAMPLE_SUBSCRIPTIONS.map(sub => (
@@ -141,7 +141,7 @@ export default function VaultTools() {
               onClick={() => handleNavigate("raas-store")}
               style={{ color: "#7c3aed", cursor: "pointer", textDecoration: "underline" }}
             >
-              Browse the RAAS Store
+              Browse the Marketplace
             </span>
           </div>
         )}
@@ -205,7 +205,7 @@ export default function VaultTools() {
             cursor: "pointer",
           }}
         >
-          Browse RAAS Store
+          Browse Marketplace
         </button>
       </div>
     </div>

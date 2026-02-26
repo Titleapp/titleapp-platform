@@ -490,6 +490,29 @@ export async function getMarketplaceListing(slug: string) {
 }
 
 // ----------------------------
+// Creator Applications
+// ----------------------------
+
+export async function submitCreatorApplication(params: {
+    name: string; email: string; linkedin: string;
+    expertise: string; description: string; audience: string;
+}) {
+    return httpJson("POST", "/v1/creator:apply", {
+        vertical: "developer", jurisdiction: "GLOBAL",
+        body: params,
+    });
+}
+
+export async function reviewCreatorApplication(params: {
+    applicationId: string; decision: "accepted" | "rejected"; reason?: string;
+}) {
+    return httpJson("POST", "/v1/creator:review", {
+        vertical: "developer", jurisdiction: "GLOBAL",
+        body: params,
+    });
+}
+
+// ----------------------------
 // Integrations & APIs
 // ----------------------------
 

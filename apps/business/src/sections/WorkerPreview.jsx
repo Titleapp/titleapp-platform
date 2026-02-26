@@ -111,7 +111,7 @@ export default function WorkerPreview() {
           "Content-Type": "application/json",
           "X-Tenant-Id": tenantId,
         },
-        body: JSON.stringify({ memo: "Minted from Worker Preview" }),
+        body: JSON.stringify({ memo: "Minted from Digital Worker Preview" }),
       });
       const data = await resp.json();
       if (data.ok && data.title_record) {
@@ -138,7 +138,7 @@ export default function WorkerPreview() {
       <div>
         <div className="pageHeader">
           <div>
-            <h1 className="h1">Worker Preview</h1>
+            <h1 className="h1">Digital Worker Preview</h1>
             <p className="subtle">Preparing your workspace</p>
           </div>
         </div>
@@ -184,7 +184,7 @@ export default function WorkerPreview() {
     <div>
       <div className="pageHeader">
         <div>
-          <h1 className="h1">Worker Preview</h1>
+          <h1 className="h1">Digital Worker Preview</h1>
           <p className="subtle">Review what your AI built before going live</p>
         </div>
       </div>

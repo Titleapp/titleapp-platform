@@ -74,7 +74,7 @@ export default function MarketplaceListing({ slug }) {
     return (
       <div style={S.error}>
         <div style={{ fontSize: 20, fontWeight: 600, color: "#7c3aed" }}>TitleApp Marketplace</div>
-        <div style={{ fontSize: 16, color: "#6b7280" }}>{error || "This RAAS Worker was not found."}</div>
+        <div style={{ fontSize: 16, color: "#6b7280" }}>{error || "This Digital Worker was not found."}</div>
         <a href="/" style={{ color: "#7c3aed", fontSize: 14 }}>Back to TitleApp</a>
       </div>
     );
@@ -108,7 +108,7 @@ export default function MarketplaceListing({ slug }) {
       <div style={S.hero}>
         <div style={S.heroTitle}>{listing.name}</div>
         <div style={S.heroDesc}>{listing.description}</div>
-        <div style={S.heroBadge}>{listing.category || "custom"} RAAS Worker</div>
+        <div style={S.heroBadge}>{listing.category || "custom"} Digital Worker</div>
       </div>
 
       {/* Main Content */}
@@ -121,7 +121,7 @@ export default function MarketplaceListing({ slug }) {
           </div>
           <div style={{ ...S.stat, borderLeft: "1px solid #e5e7eb", borderRight: "1px solid #e5e7eb" }}>
             <div style={S.statValue}>{listing.subscribers || 0}</div>
-            <div style={S.statLabel}>Subscribers</div>
+            <div style={S.statLabel}>Users</div>
           </div>
           <div style={S.stat}>
             <div style={S.statValue}>${(listing.pricePerSeat || 9).toFixed(0)}/seat</div>
@@ -134,7 +134,7 @@ export default function MarketplaceListing({ slug }) {
           <div style={S.sectionTitle}>How It Works</div>
           <div style={S.card}>
             <div style={{ fontSize: 14, color: "#374151", lineHeight: 1.7 }}>
-              This RAAS Worker uses TitleApp's enforcement engine to validate every AI output against {listing.rulesCount || rules.length} rules before delivery. You define your inputs, the AI processes them, and the enforcement engine ensures compliance. Full audit trail on every transaction.
+              This Digital Worker uses TitleApp's enforcement engine to validate every AI output against {listing.rulesCount || rules.length} rules before delivery. You define your inputs, the AI processes them, and the enforcement engine ensures compliance. Full audit trail on every transaction.
             </div>
           </div>
         </div>
@@ -167,7 +167,7 @@ export default function MarketplaceListing({ slug }) {
 
         {/* CTA */}
         <div style={S.cta}>
-          <div style={{ fontSize: 14, color: "#6b7280", marginBottom: 12 }}>Subscribe to use this RAAS Worker in your workspace.</div>
+          <div style={{ fontSize: 14, color: "#6b7280", marginBottom: 12 }}>Hire this Digital Worker for your workspace.</div>
           <button style={S.ctaBtn} onClick={() => { window.location.href = "/developers"; }}>Get Started</button>
         </div>
       </div>

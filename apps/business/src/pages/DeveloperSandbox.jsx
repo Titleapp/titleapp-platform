@@ -49,7 +49,7 @@ const S = {
   checkPending: { width: 18, height: 18, borderRadius: 4, border: "2px solid #3a3a4a", flexShrink: 0 },
 };
 
-const TABS = ["My RAAS Workers", "Builder", "Rules", "Test Console", "Marketplace", "Grow"];
+const TABS = ["My Digital Workers", "Builder", "Rules", "Test Console", "Marketplace", "Grow"];
 const STEPS = ["Define", "Rules", "Build", "Test", "Publish", "Grow"];
 
 // ── Main Component ────────────────────────────────────────────
@@ -94,7 +94,7 @@ export default function DeveloperSandbox() {
       const userName = localStorage.getItem("DISPLAY_NAME") || "";
       const first = userName ? userName.split(" ")[0] : "";
       if (first) {
-        addAssistantMessage("Welcome back, " + first + ". Your RAAS Workers are on the right. What do you want to work on?");
+        addAssistantMessage("Welcome back, " + first + ". Your Digital Workers are on the right. What do you want to work on?");
       } else {
         addAssistantMessage("This is your sandbox. Describe what you want to build, and I'll help you create it. What kind of AI service are you thinking about?");
       }
@@ -152,7 +152,7 @@ export default function DeveloperSandbox() {
       const reply = result.message || result.reply;
       if (result.ok && reply) {
         setMessages((prev) => [...prev, { role: "assistant", text: reply, cards: result.cards }]);
-        // If a RAAS Worker was created, refresh the list
+        // If a Digital Worker was created, refresh the list
         if (result.buildAnimation || result.cards?.some((c) => c.type === "workerCard")) {
           setTimeout(() => loadWorkers(), 500);
         }
@@ -319,7 +319,7 @@ export default function DeveloperSandbox() {
               </span>
             </>
           ) : (
-            <span>No RAAS Worker selected</span>
+            <span>No Digital Worker selected</span>
           )}
         </div>
       </div>
@@ -337,7 +337,7 @@ function WorkerMiniCard({ data, onClick }) {
       onMouseEnter={(e) => { e.currentTarget.style.background = "#3a3a4a"; }}
       onMouseLeave={(e) => { e.currentTarget.style.background = "#2a2a3a"; }}
     >
-      <div style={{ fontSize: 13, fontWeight: 600, color: "#e2e8f0" }}>{data.name || "RAAS Worker"}</div>
+      <div style={{ fontSize: 13, fontWeight: 600, color: "#e2e8f0" }}>{data.name || "Digital Worker"}</div>
       <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>{data.rulesCount || 0} rules — {data.status || "draft"}</div>
     </div>
   );
@@ -345,14 +345,14 @@ function WorkerMiniCard({ data, onClick }) {
 
 function MyWorkersTab({ workers, loading, selected, onSelect, onCreateNew }) {
   if (loading) {
-    return <div style={S.empty}><div style={S.emptyTitle}>Loading RAAS Workers...</div></div>;
+    return <div style={S.empty}><div style={S.emptyTitle}>Loading Digital Workers...</div></div>;
   }
   if (workers.length === 0) {
     return (
       <div style={S.empty}>
         <div style={{ fontSize: 48, marginBottom: 16, opacity: 0.3 }}>+</div>
-        <div style={S.emptyTitle}>No RAAS Workers yet</div>
-        <div style={S.emptyDesc}>Describe what you want to build in the chat on the left.<br />Alex will help you create your first RAAS Worker.</div>
+        <div style={S.emptyTitle}>No Digital Workers yet</div>
+        <div style={S.emptyDesc}>Describe what you want to build in the chat on the left.<br />Alex will help you create your first Digital Worker.</div>
         <button style={{ ...S.btnPrimary, marginTop: 20 }} onClick={onCreateNew}>Start building</button>
       </div>
     );
@@ -386,7 +386,7 @@ function MyWorkersTab({ workers, loading, selected, onSelect, onCreateNew }) {
       >
         <div style={{ textAlign: "center", color: "#64748b" }}>
           <div style={{ fontSize: 32, marginBottom: 8 }}>+</div>
-          <div style={{ fontSize: 13, fontWeight: 600 }}>New RAAS Worker</div>
+          <div style={{ fontSize: 13, fontWeight: 600 }}>New Digital Worker</div>
         </div>
       </div>
     </div>
@@ -395,11 +395,11 @@ function MyWorkersTab({ workers, loading, selected, onSelect, onCreateNew }) {
 
 function BuilderTab({ worker }) {
   if (!worker) {
-    return <div style={S.empty}><div style={S.emptyTitle}>Select a RAAS Worker to see its structure</div></div>;
+    return <div style={S.empty}><div style={S.emptyTitle}>Select a Digital Worker to see its structure</div></div>;
   }
   const rules = worker.rules || [];
   const structure = [
-    { name: worker.name || "RAAS Worker", type: "root", children: [
+    { name: worker.name || "Digital Worker", type: "root", children: [
       { name: "Inputs", type: "folder", children: [
         { name: "User Request", type: "file" },
         { name: "Context Data", type: "file" },
@@ -431,7 +431,7 @@ function BuilderTab({ worker }) {
 
   return (
     <div>
-      <div style={{ fontSize: 16, fontWeight: 600, color: "#e2e8f0", marginBottom: 16 }}>RAAS Worker Structure</div>
+      <div style={{ fontSize: 16, fontWeight: 600, color: "#e2e8f0", marginBottom: 16 }}>Digital Worker Structure</div>
       <div style={{ background: "#16161e", borderRadius: 10, padding: 16, border: "1px solid #2a2a3a", fontFamily: "monospace" }}>
         {renderTree(structure)}
       </div>
@@ -441,14 +441,14 @@ function BuilderTab({ worker }) {
 
 function RulesTab({ worker, onAddRule }) {
   if (!worker) {
-    return <div style={S.empty}><div style={S.emptyTitle}>Select a RAAS Worker to see its rules</div></div>;
+    return <div style={S.empty}><div style={S.emptyTitle}>Select a Digital Worker to see its rules</div></div>;
   }
   const rules = worker.rules || [];
   if (rules.length === 0) {
     return (
       <div style={S.empty}>
         <div style={S.emptyTitle}>No rules defined</div>
-        <div style={S.emptyDesc}>Rules are the enforcement logic for your RAAS Worker. Tell Alex what should never be allowed.</div>
+        <div style={S.emptyDesc}>Rules are the enforcement logic for your Digital Worker. Tell Alex what should never be allowed.</div>
         <button style={{ ...S.btnPrimary, marginTop: 16 }} onClick={onAddRule}>Add a rule</button>
       </div>
     );
@@ -476,7 +476,7 @@ function RulesTab({ worker, onAddRule }) {
 
 function TestConsoleTab({ worker, testInput, setTestInput, testResults, testRunning, onRunTest }) {
   if (!worker) {
-    return <div style={S.empty}><div style={S.emptyTitle}>Select a RAAS Worker to test</div></div>;
+    return <div style={S.empty}><div style={S.emptyTitle}>Select a Digital Worker to test</div></div>;
   }
   return (
     <div>
@@ -524,7 +524,7 @@ function TestConsoleTab({ worker, testInput, setTestInput, testResults, testRunn
 
 function MarketplaceTab({ worker }) {
   if (!worker) {
-    return <div style={S.empty}><div style={S.emptyTitle}>Select a RAAS Worker to publish</div></div>;
+    return <div style={S.empty}><div style={S.emptyTitle}>Select a Digital Worker to publish</div></div>;
   }
   return (
     <div>
@@ -548,12 +548,12 @@ function MarketplaceTab({ worker }) {
         </div>
         <div style={{ marginBottom: 24 }}>
           <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#94a3b8", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.5px" }}>Revenue Split</label>
-          <div style={{ padding: "10px 12px", background: "#0f0f14", borderRadius: 6, border: "1px solid #2a2a3a", color: "#10b981", fontSize: 14, fontWeight: 600 }}>You earn 75% of subscription revenue</div>
+          <div style={{ padding: "10px 12px", background: "#0f0f14", borderRadius: 6, border: "1px solid #2a2a3a", color: "#10b981", fontSize: 14, fontWeight: 600 }}>You earn 75% of revenue. $9/mo per hire.</div>
         </div>
         <div style={{ display: "flex", gap: 12, borderTop: "1px solid #2a2a3a", paddingTop: 20 }}>
-          <button style={{ ...S.btnPrimary, flex: 1, opacity: 0.5, cursor: "not-allowed" }} disabled>Publish to Marketplace</button>
+          <button style={{ ...S.btnPrimary, flex: 1 }} onClick={() => window.open('/apply', '_blank')}>Apply to Publish</button>
         </div>
-        <div style={{ fontSize: 12, color: "#64748b", marginTop: 12, textAlign: "center" }}>Publishing will be available once your RAAS Worker passes all tests.</div>
+        <div style={{ fontSize: 12, color: "#64748b", marginTop: 12, textAlign: "center" }}>Publishing will be available once your Digital Worker passes all tests and you have a creator license.</div>
       </div>
     </div>
   );
@@ -565,7 +565,7 @@ function GrowTab({ worker, onAskAlex }) {
   const [copied, setCopied] = useState(null);
 
   if (!worker) {
-    return <div style={S.empty}><div style={S.emptyTitle}>Select a RAAS Worker to grow</div><div style={S.emptyDesc}>Build and publish a RAAS Worker first, then come here to launch it.</div></div>;
+    return <div style={S.empty}><div style={S.emptyTitle}>Select a Digital Worker to grow</div><div style={S.emptyDesc}>Build and publish a Digital Worker first, then come here to launch it.</div></div>;
   }
 
   const slug = (worker.name || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
@@ -574,7 +574,7 @@ function GrowTab({ worker, onAskAlex }) {
 
   const socialPosts = {
     twitter: `Just launched "${worker.name}" on TitleApp Marketplace -- an AI service with built-in rules enforcement. Every output is validated before delivery. Try it: ${marketplaceUrl}`,
-    linkedin: `Excited to share my new RAAS Worker on TitleApp: "${worker.name}"\n\n${worker.description || "An AI service with deterministic rules enforcement."}\n\nRAAS = Rules + AI-as-a-Service. You define the rules, AI operates within them, and every output is validated by an enforcement engine.\n\n${marketplaceUrl}`,
+    linkedin: `Excited to share my new Digital Worker on TitleApp: "${worker.name}"\n\n${worker.description || "An AI service with deterministic rules enforcement."}\n\nDigital Workers are AI services with built-in rules enforcement. You define the rules, AI operates within them, and every output is validated by an enforcement engine.\n\n${marketplaceUrl}`,
     email: `Subject: Check out ${worker.name} on TitleApp\n\nHi,\n\nI built an AI service called "${worker.name}" on TitleApp's RAAS platform.\n\n${worker.description || "It uses rules enforcement to validate every AI output before delivery."}\n\nYou can try it here: ${marketplaceUrl}\n\nLet me know what you think.`,
   };
 
@@ -656,7 +656,7 @@ function GrowTab({ worker, onAskAlex }) {
       {/* Embed Widget */}
       <div style={S.growCard}>
         <span style={S.growLabel}>Embed Widget</span>
-        <div style={{ fontSize: 13, color: "#94a3b8", marginBottom: 8 }}>Add this to your website to embed your RAAS Worker directly.</div>
+        <div style={{ fontSize: 13, color: "#94a3b8", marginBottom: 8 }}>Add this to your website to embed your Digital Worker directly.</div>
         <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
           <div style={{ flex: 1, padding: "10px 12px", background: "#0f0f14", borderRadius: 6, border: "1px solid #2a2a3a", color: "#7c3aed", fontSize: 12, fontFamily: "monospace", wordBreak: "break-all" }}>{embedCode}</div>
           <button style={{ ...S.copyBtn, alignSelf: "flex-start" }} onClick={() => copyText("embed", embedCode)}>{copied === "embed" ? "Copied" : "Copy"}</button>

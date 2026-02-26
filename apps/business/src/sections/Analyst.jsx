@@ -267,7 +267,7 @@ Best regards,
       <div className="pageHeader">
         <div>
           <h1 className="h1">Analyst</h1>
-          <p className="subtle">AI-powered deal vetting with RAAS validation</p>
+          <p className="subtle">AI-powered deal vetting with enforcement validation</p>
         </div>
         <button
           className="iconBtn"
@@ -442,7 +442,7 @@ Best regards,
             No deals analyzed yet
           </p>
           <p style={{ color: "var(--textMuted)", marginBottom: "16px" }}>
-            Upload your first deal to see AI-powered analysis with RAAS validation
+            Upload your first deal to see AI-powered analysis with enforcement validation
           </p>
           <button
             className="iconBtn"
