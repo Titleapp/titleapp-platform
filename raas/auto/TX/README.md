@@ -1,6 +1,6 @@
-# RAAS -- Auto -- Texas (TX)
+# Digital Worker Rules -- Auto -- Texas (TX)
 
-This directory defines the **Rules as a Service (RAAS)** package for **automotive dealership
+This directory defines the **Digital Worker rules** package for **automotive dealership
 operations in the State of Texas**.
 
 It is designed for **new vehicle dealers, used vehicle dealers, service departments,
@@ -14,7 +14,7 @@ final statutory compliance and TxDMV filings.
 
 ## 1) Scope of Coverage (Texas)
 
-Auto RAAS for Texas supports:
+Auto Digital Worker rules for Texas support:
 
 ### Sales
 - New vehicle sales
@@ -50,9 +50,9 @@ Auto RAAS for Texas supports:
 
 ---
 
-## 2) What This RAAS Does NOT Do (Explicitly)
+## 2) What These Rules Do NOT Do (Explicitly)
 
-Texas Auto RAAS does **not**:
+Texas Auto Digital Worker rules do **not**:
 - File title or registration documents with TxDMV
 - Interact with webDEALER directly
 - Replace Dealer Management Systems (DMS)
@@ -68,7 +68,7 @@ TitleApp operates as a **neutral record, workflow, and audit layer**.
 
 ## 3) Regulatory Referencing Model (Texas)
 
-RAAS references, but does not restate:
+Digital Worker rules reference, but do not restate:
 - Texas Transportation Code (Title 7)
 - Texas Tax Code (Chapter 152, Motor Vehicle Sales Tax)
 - TxDMV dealer licensing and bond requirements
@@ -161,7 +161,7 @@ raas/auto/TX/
 
 - Jurisdiction: Texas
 - Vertical: Auto
-- RAAS Version: v1.0
+- Rules Version: v1.0
 - Review cadence: Monthly
 - Emergency updates permitted for material changes
 - Last Reviewed: 2026-02-18

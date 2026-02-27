@@ -174,7 +174,7 @@ export default function MarketplaceListing({ slug }) {
 
       {/* Footer */}
       <div style={S.footer}>
-        TitleApp Marketplace — Rules + AI-as-a-Service
+        TitleApp — The Digital Worker Platform
       </div>
     </div>
   );

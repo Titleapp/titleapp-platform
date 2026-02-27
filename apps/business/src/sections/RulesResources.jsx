@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import FormModal from "../components/FormModal";
 
 /**
- * RulesResources - Configure RAAS workflows for vertical and jurisdiction
+ * RulesResources - Configure Digital Worker workflows for vertical and jurisdiction
  */
 export default function RulesResources() {
   const [workflows, setWorkflows] = useState([]);

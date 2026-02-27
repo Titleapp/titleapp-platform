@@ -1,6 +1,6 @@
-# RAAS — Real Estate (Texas)
+# Digital Worker Rules — Real Estate (Texas)
 # Path: raas/real-estate/TX/README.md
-# RAAS Level: 2 (Jurisdiction Package)
+# Rules Level: 2 (Jurisdiction Package)
 # Applies to: Real Estate vertical · Texas
 # Subordinate to: raas/real-estate/README.md
 

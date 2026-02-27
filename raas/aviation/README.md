@@ -1,4 +1,4 @@
-# Aviation Vertical — RAAS
+# Aviation Vertical — Digital Worker Rules
 
 This vertical handles pilot credentials, flight training, and ongoing logbook records.
 

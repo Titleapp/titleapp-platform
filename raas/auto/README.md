@@ -1,14 +1,14 @@
-# RAAS — Auto (Vertical)
+# Digital Worker Rules — Auto (Vertical)
 
-RAAS Level:** 2 (Vertical Baseline)  
-Applies to:** Auto vertical, all jurisdictions  
-Subordinate to:** RAAS Level-0 (AI Style Guide), RAAS Level-1 (Core Behavioral Rules)
+Rules Level:** 2 (Vertical Baseline)
+Applies to:** Auto vertical, all jurisdictions
+Subordinate to:** Rules Level-0 (AI Style Guide), Rules Level-1 (Core Behavioral Rules)
 Authoritative over:** Auto jurisdiction packages (`raas/auto/<STATE>/`)
 
-This directory defines the **Rules as a Service (RAAS)** baseline for the **Auto vertical**
+This directory defines the **Digital Worker rules** baseline for the **Auto vertical**
 across supported jurisdictions.
 
-Auto RAAS is designed for real dealership operations, including:
+Auto Digital Worker rules are designed for real dealership operations, including:
 - New & used vehicle sales
 - Finance and lease deals (encumbrances)
 - Trade-ins
@@ -26,7 +26,7 @@ Auto RAAS is designed for real dealership operations, including:
 **Sales → Service continuity** is the primary wedge:
 A vehicle’s history should not “break” when it is sold, traded, or reassigned.
 
-TitleApp Auto RAAS enforces:
+TitleApp Auto Digital Worker rules enforce:
 - append-only vehicle history
 - explicit ownership transition events
 - visible encumbrances (lien/lease)
@@ -45,7 +45,7 @@ TitleApp Auto RAAS enforces:
    - Events are never silently deleted. Corrections are made via superseding events.
 
 3. **Workflow-gated**
-   - Automated actions require a declared workflow in RAAS.
+   - Automated actions require a declared workflow in the rules engine.
    - Unsupported workflows must be flagged and halted.
 
 4. **Encumbrance-aware**
@@ -61,7 +61,7 @@ TitleApp Auto RAAS enforces:
 
 ## 3) Jurisdiction Packages
 
-Jurisdiction-specific RAAS lives under:
+Jurisdiction-specific rules live under:
 
 raas/auto/<STATE>/
 
@@ -93,13 +93,13 @@ Copy code
 
 ## 4) Regulatory Referencing (Avoid Doom Loops)
 
-RAAS references authorities without restating statutes:
+Digital Worker rules reference authorities without restating statutes:
 - state motor vehicle codes (by name)
 - attorney general consumer guidance
 - FTC consumer rules (used car, warranties, etc.)
 - agency bulletins where applicable
 
-RAAS changes are:
+Rules changes are:
 - reviewed by humans
 - versioned
 - released on a scheduled cadence (monthly) with emergency hotfix capability
@@ -108,13 +108,13 @@ RAAS changes are:
 
 ## 5) Data & Customer Privacy Posture (Baseline)
 
-Auto RAAS distinguishes:
+Auto Digital Worker rules distinguish:
 - **Customer** (person or business interacting with dealer)
 - **Owner** (legal owner of vehicle record)
 - **Driver** (authorized operator; common in fleet)
 - **Dealer** (service provider and/or seller)
 
-Visibility and transfer rules are governed by jurisdiction RAAS and client policy,
+Visibility and transfer rules are governed by jurisdiction rules and client policy,
 with audit logs for all access/ownership transitions.
 
 ---
@@ -122,7 +122,7 @@ with audit logs for all access/ownership transitions.
 ## 6) Status
 
 - Vertical: Auto
-- RAAS Status: Active (baseline)
+- Rules Status: Active (baseline)
 - Next: establish first jurisdiction package (IL) and then extend.
 
 ---

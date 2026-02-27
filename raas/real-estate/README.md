@@ -1,4 +1,4 @@
-# RAAS — Real Estate Vertical
+# Digital Worker Rules — Real Estate Vertical
 # Path: raas/real-estate/README.md
 
 ---
@@ -46,7 +46,7 @@ Many businesses do both. A real estate agent sells homes AND manages rental prop
 - Marketing automation: listings, vacancy ads, sphere nurturing, seasonal campaigns
 - Financial reporting: commission income, management fees, expense tracking
 
-## RAAS Hierarchy
+## Rules Hierarchy
 
 This vertical loads rules in this order:
 1. `raas/real-estate/` — Global real estate rules (this folder)

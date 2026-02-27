@@ -41,7 +41,7 @@ All HTTP routes live in one `onRequest` handler. Key helpers:
 - `requireFirebaseUser(req, res)` — verifies bearer token
 - `getCtx(req, body, user)` — extracts `tenantId` from `x-tenant-id` header or body
 
-RAAS routes delegate to `raas/raas.handlers.js` and `raas/raas.store.js`.
+Digital Worker routes delegate to `raas/raas.handlers.js` and `raas/raas.store.js`.
 
 ### Firestore Data Model (Append-Only)
 
@@ -53,7 +53,7 @@ Key collections:
 - `raasCatalog/{vertical}__{jurisdiction}` — workflow/ruleset catalog
 - `raasPackages/{packageId}` — execution instances with bound files
 
-### RAAS (Rules as a Service)
+### Digital Workers (powered by RAAS — Rules + AI-as-a-Service)
 
 Located in `raas/`. Three-level hierarchy:
 - **Level 0:** AI style guide (global)
@@ -72,16 +72,16 @@ Located in `raas/`. Three-level hierarchy:
 ### Core Architectural Invariants
 
 1. **Append-only Firestore** — all canonical records are event-sourced; never overwrite.
-2. **AI agents are stateless executors** — agents propose actions, RAAS validates, events append. Agent logic stays model-agnostic (OpenAI, Claude, Gemini interchangeable).
-3. **RAAS is the constraint engine** — business logic lives in rule definitions, not prompts. Rules are tenant-configurable and portable.
-4. **Defensive IP** is the append-only record model, RAAS, and ownership/transfer semantics — NOT the UI, model provider, or cloud vendor.
+2. **AI agents are stateless executors** — agents propose actions, the rules engine validates, events append. Agent logic stays model-agnostic (OpenAI, Claude, Gemini interchangeable).
+3. **RAAS is the constraint engine** — business logic lives in rule definitions, not prompts. Rules are tenant-configurable and portable. User-facing name: "Digital Workers."
+4. **Defensive IP** is the append-only record model, the rules engine, and ownership/transfer semantics — NOT the UI, model provider, or cloud vendor.
 
 ## Door 2 Multi-Model Strategy
 
 The chat interface is the **primary user experience** — Door 1 (admin dashboard) is fallback visibility only.
 
 - **Model routing:** The chat entry point routes to either Anthropic Claude or OpenAI GPT based on user preference. Both are treated as interchangeable executors.
-- **RAAS validation:** All AI outputs are validated by RAAS regardless of which model produced them. Business logic lives in rules, not prompts.
+- **Rules validation:** All AI outputs are validated by the rules engine regardless of which model produced them. Business logic lives in rules, not prompts.
 - **Inline structured objects:** After AI proposes an action, the UI renders structured objects (Trade Summary, DTC, etc.) inline within the chat conversation — pending user consent.
 - **Explicit approval gate:** Nothing is shared or committed until the user explicitly approves. Agents propose; users confirm; only then do events append to Firestore.
 
@@ -90,8 +90,8 @@ The chat interface is the **primary user experience** — Door 1 (admin dashboar
 | File | Purpose |
 |------|---------|
 | `functions/functions/index.js` | Main API handler — all routes |
-| `functions/functions/raas/raas.handlers.js` | RAAS endpoint implementations |
-| `functions/functions/raas/raas.store.js` | RAAS Firestore operations |
+| `functions/functions/raas/raas.handlers.js` | Digital Worker endpoint implementations |
+| `functions/functions/raas/raas.store.js` | Digital Worker Firestore operations |
 | `contracts/capabilities.json` | Capability registry (source of truth) |
 | `raas/RECORD_ANCHORS.md` | Anchor abstraction (notary/escrow/blockchain) |
 | `docs/STATE.md` | Cloudflare Frontdoor routing — locked |
@@ -107,3 +107,9 @@ The chat interface is the **primary user experience** — Door 1 (admin dashboar
 - **Auth:** Firebase Authentication (email/password) + Stripe Identity (KYC)
 - **Edge:** Cloudflare Workers
 - **Node version:** 20 (enforced via `.nvmrc`)
+
+## Terminology
+
+- **Digital Worker** — user-facing name for AI agents with rule-based governance (what users see)
+- **RAAS** — internal architecture name (Rules + AI-as-a-Service). Use "Digital Worker" in all user-facing text.
+- Firestore collections still use `raasCatalog`, `raasPackages` etc. — do not rename these.

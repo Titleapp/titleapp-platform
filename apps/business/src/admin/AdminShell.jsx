@@ -13,6 +13,7 @@ import Communications from "./pages/Communications";
 import Campaigns from "./pages/Campaigns";
 import Accounting from "./pages/Accounting";
 import Settings from "./pages/Settings";
+import Inventory from "./pages/Inventory";
 import AdminChatPanel from "./components/AdminChatPanel";
 
 const NAV_SECTIONS = [
@@ -66,6 +67,16 @@ const NAV_SECTIONS = [
     label: null,
     items: [
       {
+        id: "inventory",
+        label: "Inventory",
+        permission: "all",
+      },
+    ],
+  },
+  {
+    label: null,
+    items: [
+      {
         id: "accounting",
         label: "Billing & Accounting",
         permission: "all",
@@ -94,6 +105,8 @@ function renderPage(page) {
       return <Communications />;
     case "campaigns":
       return <Campaigns />;
+    case "inventory":
+      return <Inventory />;
     case "accounting":
       return <Accounting />;
     case "settings":

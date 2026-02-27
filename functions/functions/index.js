@@ -40,7 +40,7 @@ function getCompanyKnowledge() {
       _companyKnowledge = fs.readFileSync(knowledgePath, "utf-8");
     } catch (e) {
       console.warn("Could not load company-knowledge.md:", e.message);
-      _companyKnowledge = "TitleApp is RAAS -- Rules + AI-as-a-Service -- an AI governance platform providing AI-powered business operations with deterministic rule enforcement.";
+      _companyKnowledge = "TitleApp is the Digital Worker platform -- AI agents governed by human-defined rules with deterministic enforcement and immutable audit trails. The underlying architecture is called RAAS (Rules + AI-as-a-Service).";
     }
   }
   return _companyKnowledge;
@@ -1083,7 +1083,7 @@ exports.api = onRequest(
         if (surface === 'landing' && !action && userInput &&
             (!sessionState.step || sessionState.step === 'idle' || sessionState.step === 'discovery')) {
           const devCheck = userInput.toLowerCase();
-          if (/\b(api|sdk|integrate|integration|developer|webhook|endpoint|rest api|graphql|authentication|api key|sandbox|raas api|build on|build with)\b/.test(devCheck)) {
+          if (/\b(api|sdk|integrate|integration|developer|webhook|endpoint|rest api|graphql|authentication|api key|sandbox|raas api|digital worker api|build on|build with)\b/.test(devCheck)) {
             surface = 'developer';
             sessionState.step = 'dev_discovery';
             console.log("chatEngine: developer intent detected from landing, redirecting to dev flow");
@@ -1439,7 +1439,7 @@ exports.api = onRequest(
           const investSystemPrompt = `You are Alex, TitleApp's investor relations AI. You are having a conversation with a potential investor.
 
 IDENTITY:
-RAAS stands for "Rules + AI-as-a-Service." NEVER say "Rules-as-a-Service." Always "Rules + AI-as-a-Service."
+TitleApp is the Digital Worker platform. The underlying architecture is called RAAS (Rules + AI-as-a-Service). When talking to investors, use "Digital Worker" as the primary term. You may explain RAAS as the technical architecture name if asked about the technology: "TitleApp is the Digital Worker platform. The underlying architecture is called RAAS — Rules plus AI-as-a-Service. Every Digital Worker operates within defined rules with a complete audit trail."
 
 CONVERSATION FLOW — THIS IS CRITICAL:
 You are a LISTENER first, a presenter second. The early conversation should be 70% questions, 30% answers.
@@ -2643,7 +2643,7 @@ ${messageGuidance}`;
           }, { merge: true });
           return res.json({
             ok: true,
-            message: "I'm here to help with the TitleApp API and RAAS architecture. What would you like to know?",
+            message: "I'm here to help with the TitleApp API and Digital Worker platform. What would you like to know?",
             showSignup: false,
             conversationState: 'dev_discovery',
           });
@@ -2832,7 +2832,7 @@ Be generous in interpretation. If someone says 'I manage apartments in Austin' t
               const qResponse = await anthropic.messages.create({
                 model: "claude-sonnet-4-5-20250929",
                 max_tokens: 512,
-                system: `You are helping build a custom RAAS configuration for a business. Based on their description: "${ctx.companyDescription}". Company: ${ctx.companyName}. Ask them the first of 3-5 questions that would help you understand their key record types, compliance requirements, and workflows. Ask one question at a time. Keep questions conversational and specific to their industry. Respond with ONLY the question text, nothing else.`,
+                system: `You are helping build a custom Digital Worker configuration for a business. Based on their description: "${ctx.companyDescription}". Company: ${ctx.companyName}. Ask them the first of 3-5 questions that would help you understand their key record types, compliance requirements, and workflows. Ask one question at a time. Keep questions conversational and specific to their industry. Respond with ONLY the question text, nothing else.`,
                 messages: [{ role: "user", content: "What should I ask first?" }],
               });
               raasMessage = qResponse.content[0]?.text || "What types of records does your business need to track?";
@@ -2850,7 +2850,7 @@ Be generous in interpretation. If someone says 'I manage apartments in Austin' t
               const qResponse = await anthropic.messages.create({
                 model: "claude-sonnet-4-5-20250929",
                 max_tokens: 512,
-                system: `You are helping build a custom RAAS configuration for "${ctx.companyName}" (${ctx.companyDescription}). Here are the questions asked and answers so far:\n\n${answersText}\n\nAsk the next question to understand their record types, compliance requirements, or workflows. Keep it conversational and specific to their industry. Respond with ONLY the question text.`,
+                system: `You are helping build a custom Digital Worker configuration for "${ctx.companyName}" (${ctx.companyDescription}). Here are the questions asked and answers so far:\n\n${answersText}\n\nAsk the next question to understand their record types, compliance requirements, or workflows. Keep it conversational and specific to their industry. Respond with ONLY the question text.`,
                 messages: [{ role: "user", content: "What should I ask next?" }],
               });
               raasMessage = qResponse.content[0]?.text || "What compliance requirements does your business need to track?";
@@ -2868,7 +2868,7 @@ Be generous in interpretation. If someone says 'I manage apartments in Austin' t
               const sResponse = await anthropic.messages.create({
                 model: "claude-sonnet-4-5-20250929",
                 max_tokens: 1024,
-                system: `You are TitleApp AI. Based on the following conversation with "${ctx.companyName}" (${ctx.companyDescription}), summarize the RAAS configuration you'd set up for them. Write 2-3 sentences describing what their workspace will include — record types, compliance rules, and workflows. Write directly to the user in second person. No bullet points, no jargon.`,
+                system: `You are TitleApp AI. Based on the following conversation with "${ctx.companyName}" (${ctx.companyDescription}), summarize the Digital Worker configuration you'd set up for them. Write 2-3 sentences describing what their workspace will include — record types, compliance rules, and workflows. Write directly to the user in second person. No bullet points, no jargon.`,
                 messages: [{ role: "user", content: answersText }],
               });
               const summary = sResponse.content[0]?.text || "Your workspace will include custom record management, compliance tracking, and automated workflows.";
@@ -2891,15 +2891,15 @@ Be generous in interpretation. If someone says 'I manage apartments in Austin' t
 
 1. What industry or business type this is
 2. What kinds of records, compliance requirements, and workflows they likely need
-3. Whether TitleApp has a pre-built RAAS (Rules as a Service) configuration that fits
+3. Whether TitleApp has a pre-built Digital Worker configuration that fits
 
-TitleApp currently has pre-built RAAS configurations for: consumer (vehicles, credentials, student records), property management (rentals, tenants, leases, maintenance, HOA), and deal analysis (investment vetting, memos, pipeline). More are being built.
+TitleApp currently has pre-built Digital Worker configurations for: consumer (vehicles, credentials, student records), property management (rentals, tenants, leases, maintenance, HOA), and deal analysis (investment vetting, memos, pipeline). More are being built.
 
 Respond with ONLY a JSON object:
 {
   "industry": "the industry or business type",
   "hasExistingRaas": true/false,
-  "raasMatch": "which existing RAAS fits, or null",
+  "raasMatch": "which existing Digital Worker config fits, or null",
   "summary": "a 2-3 sentence description of what their workspace would include, written directly to the user in second person",
   "suggestedNextStep": "what to do first in their workspace"
 }`,
@@ -3462,7 +3462,7 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       try {
         const workerRef = db.doc(`tenants/${tenantId}/workers/${workerId}`);
         const workerSnap = await workerRef.get();
-        if (!workerSnap.exists) return res.json({ ok: false, error: "RAAS Worker not found" });
+        if (!workerSnap.exists) return res.json({ ok: false, error: "Digital Worker not found" });
         const worker = workerSnap.data();
         const autoSlug = slug || (worker.name || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
         // Write marketplace listing doc
@@ -3484,6 +3484,41 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
         }, { merge: true });
         // Mark worker as published
         await workerRef.update({ published: true, marketplaceSlug: autoSlug, publishedAt: nowServerTs() });
+        // Update digitalWorkers inventory collection
+        const digitalWorkerId = autoSlug;
+        await db.doc(`digitalWorkers/${digitalWorkerId}`).set({
+          id: digitalWorkerId,
+          name: worker.name,
+          shortName: (worker.name || "").substring(0, 30),
+          suite: worker.suite || worker.category || "General",
+          industry: (worker.industry || worker.category || "general").toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+          category: worker.category || "custom",
+          state: worker.state || null,
+          tags: worker.tags || [],
+          description: worker.description || "",
+          shortDescription: (worker.description || "").substring(0, 100),
+          price: pricePerSeat || 9,
+          priceDisplay: `$${pricePerSeat || 9}/mo`,
+          trialDays: 7,
+          status: "available",
+          featured: false,
+          published: true,
+          creatorId: worker.createdBy || user.uid,
+          creatorName: worker.createdByName || user.email || "TitleApp",
+          cloneOf: worker.cloneOf || null,
+          raasConfigId: workerId,
+          publishedAt: nowServerTs(),
+          updatedAt: nowServerTs(),
+        }, { merge: true });
+        // Log to activity feed
+        await db.collection("activityLog").add({
+          type: "worker_published",
+          workerId: digitalWorkerId,
+          workerName: worker.name,
+          creatorId: user.uid,
+          tenantId,
+          timestamp: nowServerTs(),
+        });
         return res.json({ ok: true, slug: autoSlug, url: `/marketplace/${autoSlug}` });
       } catch (e) {
         console.error("[marketplace:publish] error:", e.message);
@@ -4513,7 +4548,7 @@ Platform navigation — when users ask how to do things, give them accurate dire
         // RAAS validation gate
         const raasResult = await validateAgainstRaas(ctx.tenantId, "workflow_input", input || {});
         if (!raasResult.valid) {
-          return jsonError(res, 422, "RAAS validation failed", { reason: raasResult.reason });
+          return jsonError(res, 422, "Validation failed", { reason: raasResult.reason });
         }
 
         // Event-sourced: append workflow initiated event
@@ -6309,7 +6344,7 @@ Return as JSON: { summary, risks: [], recommendations: [], confidence }`
               filename: "TitleApp_Pitch_Deck_v4.pptx",
               storagePath: "investorDocs/TitleApp_Pitch_Deck_v4.pptx",
               type: "pitch_deck",
-              description: "Full pitch deck -- RAAS Workers, Sandbox, 6-channel distribution",
+              description: "Full pitch deck -- Digital Workers, Sandbox, 6-channel distribution",
               requiresVerification: false,
               icon: "presentation",
               tier: 1,
@@ -6319,7 +6354,7 @@ Return as JSON: { summary, risks: [], recommendations: [], confidence }`
               filename: "TitleApp_One_Pager_v4.pdf",
               storagePath: "investorDocs/TitleApp_One_Pager_v4.pdf",
               type: "one_pager",
-              description: "One-page overview -- RAAS Workers, Sandbox, distribution strategy",
+              description: "One-page overview -- Digital Workers, Sandbox, distribution strategy",
               requiresVerification: false,
               icon: "document",
               tier: 1,

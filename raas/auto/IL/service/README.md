@@ -1,7 +1,7 @@
-# RAAS — Auto — Illinois (IL) — Service
+# Digital Worker Rules — Auto — Illinois (IL) — Service
 
 This document defines the **service department rules and workflows** for Illinois dealerships
-under TitleApp **Rules as a Service (RAAS)**.
+under TitleApp **Digital Worker rules**.
 
 Primary objective:
 - Preserve **service history continuity** across ownership changes
@@ -28,7 +28,7 @@ TitleApp does not replace a DMS. It records:
 
 ## 2) Service Objects (from Data Model)
 
-Service RAAS uses:
+Service rules use:
 - Vehicle (VIN)
 - Customer (service customer)
 - Service Appointment

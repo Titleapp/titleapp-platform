@@ -1,6 +1,6 @@
-# RAAS -- Auto -- Florida (FL)
+# Digital Worker Rules -- Auto -- Florida (FL)
 
-This directory defines the **Rules as a Service (RAAS)** package for **automotive dealership
+This directory defines the **Digital Worker rules** package for **automotive dealership
 operations in the State of Florida**.
 
 It is designed for **new vehicle dealers, used vehicle dealers, service departments,
@@ -14,7 +14,7 @@ final statutory compliance and FLHSMV filings.
 
 ## 1) Scope of Coverage (Florida)
 
-Auto RAAS for Florida supports:
+Auto Digital Worker rules for Florida support:
 
 ### Sales
 - New vehicle sales
@@ -50,9 +50,9 @@ Auto RAAS for Florida supports:
 
 ---
 
-## 2) What This RAAS Does NOT Do (Explicitly)
+## 2) What These Rules Do NOT Do (Explicitly)
 
-Florida Auto RAAS does **not**:
+Florida Auto Digital Worker rules do **not**:
 - File title or registration documents with FLHSMV
 - Replace Dealer Management Systems (DMS)
 - Adjudicate warranty claims
@@ -68,7 +68,7 @@ TitleApp operates as a **neutral record, workflow, and audit layer**.
 
 ## 3) Regulatory Referencing Model (Florida)
 
-RAAS references, but does not restate:
+Digital Worker rules reference, but do not restate:
 - Fla. Stat. Ch. 319 (Certificates of Title)
 - Fla. Stat. Ch. 320 (Motor Vehicle Registration)
 - FLHSMV dealer licensing and bond requirements
@@ -144,7 +144,7 @@ raas/auto/FL/
 
 - Jurisdiction: Florida
 - Vertical: Auto
-- RAAS Version: v1.0
+- Rules Version: v1.0
 - Review cadence: Monthly
 - Emergency updates permitted for material changes
 - Last Reviewed: 2026-02-18

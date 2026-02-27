@@ -1,6 +1,6 @@
-# RAAS -- Auto -- California (CA)
+# Digital Worker Rules -- Auto -- California (CA)
 
-This directory defines the **Rules as a Service (RAAS)** package for **automotive dealership
+This directory defines the **Digital Worker rules** package for **automotive dealership
 operations in the State of California**.
 
 It is designed for **new vehicle dealers, used vehicle dealers, service departments,
@@ -14,7 +14,7 @@ final statutory compliance and DMV filings.
 
 ## 1) Scope of Coverage (California)
 
-Auto RAAS for California supports:
+Auto Digital Worker rules for California support:
 
 ### Sales
 - New vehicle sales
@@ -51,9 +51,9 @@ Auto RAAS for California supports:
 
 ---
 
-## 2) What This RAAS Does NOT Do (Explicitly)
+## 2) What These Rules Do NOT Do (Explicitly)
 
-California Auto RAAS does **not**:
+California Auto Digital Worker rules do **not**:
 - File title or registration documents with the California DMV
 - Submit Business Partner Automation (BPA) transactions
 - Replace Dealer Management Systems (DMS)
@@ -69,7 +69,7 @@ TitleApp operates as a **neutral record, workflow, and audit layer**.
 
 ## 3) Regulatory Referencing Model (California)
 
-RAAS references, but does not restate:
+Digital Worker rules reference, but do not restate:
 - California Vehicle Code (CVC)
 - California Department of Tax and Fee Administration (CDTFA) motor vehicle tax rules
 - Bureau of Automotive Repair (BAR) smog certification requirements
@@ -153,7 +153,7 @@ raas/auto/CA/
 
 - Jurisdiction: California
 - Vertical: Auto
-- RAAS Version: v1.0
+- Rules Version: v1.0
 - Review cadence: Monthly
 - Emergency updates permitted for material changes
 - Last Reviewed: 2026-02-18

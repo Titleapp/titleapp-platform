@@ -1,6 +1,6 @@
-# RAAS — Analyst — GLOBAL
+# Digital Worker Rules — Analyst — GLOBAL
 
-This is the GLOBAL (non-jurisdiction-specific) RAAS package
+This is the GLOBAL (non-jurisdiction-specific) rules package
 for the Analyst vertical.
 
 It contains:

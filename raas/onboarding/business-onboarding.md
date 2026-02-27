@@ -1,12 +1,12 @@
 # TitleApp AI — Business Onboarding
-# RAAS Rule Document
+# Digital Worker Rule Document
 # raas/onboarding/business-onboarding.md
 
 ---
 
 ## PURPOSE
 
-This document defines the onboarding rules and sequence that the AI follows when a new business workspace is created. It is a RAAS rule document — the AI reads this and follows it during onboarding conversations.
+This document defines the onboarding rules and sequence that the AI follows when a new business workspace is created. It is a Digital Worker rule document — the AI reads this and follows it during onboarding conversations.
 
 The AI handles onboarding entirely through chat. There are no tutorial modals, no setup wizards, no "getting started" checklists in the sidebar. The AI IS the onboarding.
 

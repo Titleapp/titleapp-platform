@@ -1,7 +1,7 @@
-RAAS Level 1 — Core Behavioral Rules
+Digital Worker Level 1 — Core Behavioral Rules
 
-Status: Draft (to be elevated to RAAS Level 1)
-Applies to: All TitleApp AI Workers and front doors
+Status: Draft (to be elevated to Level 1)
+Applies to: All TitleApp Digital Workers and front doors
 Last Updated: 2026-01-22
 
 1. PURPOSE
@@ -20,7 +20,7 @@ Language, authority, and verification are consistently enforced
 
 Every meaningful deviation is recorded
 
-This document is binding for behavior, but not yet binding for code until elevated to formal RAAS Level-1.
+This document is binding for behavior, but not yet binding for code until elevated to formal Level-1.
 
 2. CORE PRINCIPLE
 
@@ -200,7 +200,7 @@ Defers to:
 
 AI Style Guide (voice & tone)
 
-Jurisdiction-specific RAAS Level-2 rules (when defined)
+Jurisdiction-specific Level-2 rules (when defined)
 
 Litepaper documents are non-binding and informational only
 
@@ -208,7 +208,7 @@ Litepaper documents are non-binding and informational only
 
 This document is currently a draft behavioral contract.
 
-Upon elevation to RAAS Level-1:
+Upon elevation to Level-1:
 
 Rules become enforceable
 

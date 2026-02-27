@@ -1,5 +1,5 @@
 # TitleApp AI — Personal Vault Onboarding
-# RAAS Rule Document
+# Digital Worker Rule Document
 # raas/onboarding/personal-onboarding.md
 
 ---

@@ -1,6 +1,6 @@
-# RAAS — Auto — Illinois (IL)
+# Digital Worker Rules — Auto — Illinois (IL)
 
-This directory defines the **Rules as a Service (RAAS)** package for **automotive dealership
+This directory defines the **Digital Worker rules** package for **automotive dealership
 operations in the State of Illinois**.
 
 It is designed for **new vehicle dealers, used vehicle dealers, service departments,
@@ -14,7 +14,7 @@ final statutory compliance and DMV filings.
 
 ## 1) Scope of Coverage (Illinois)
 
-Auto RAAS for Illinois supports:
+Auto Digital Worker rules for Illinois support:
 
 ### Sales
 - New vehicle sales
@@ -47,9 +47,9 @@ Auto RAAS for Illinois supports:
 
 ---
 
-## 2) What This RAAS Does NOT Do (Explicitly)
+## 2) What These Rules Do NOT Do (Explicitly)
 
-Illinois Auto RAAS does **not**:
+Illinois Auto Digital Worker rules do **not**:
 - File title or registration documents with the Secretary of State
 - Replace Dealer Management Systems (DMS)
 - Adjudicate warranty claims
@@ -62,7 +62,7 @@ TitleApp operates as a **neutral record, workflow, and audit layer**.
 
 ## 3) Regulatory Referencing Model (Illinois)
 
-RAAS references, but does not restate:
+Digital Worker rules reference, but do not restate:
 - Illinois Vehicle Code
 - Illinois Attorney General consumer guidance
 - FTC Used Car Rule
@@ -105,7 +105,7 @@ Copy code
 
 - Jurisdiction: Illinois
 - Vertical: Auto
-- RAAS Version: v1.0 (baseline)
+- Rules Version: v1.0 (baseline)
 - Review cadence: Monthly
 - Emergency updates permitted for material changes
 

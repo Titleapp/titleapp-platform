@@ -65,7 +65,7 @@ cd apps/business && npm run dev
 
 ### Business - 10 Sections
 1. **Dashboard** - Business metrics
-2. **Rules & Resources** - RAAS workflows
+2. **Rules & Resources** - Digital Worker workflows
 3. **Services & Inventory** - Product management
 4. **AI, GPTs & Chats** - AI activity log
 5. **Customers** - CRM

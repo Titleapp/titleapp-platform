@@ -54,7 +54,7 @@ Vehicle advertising is regulated at the state level. The AI must include require
 - Florida: documentary stamp fee disclosures
 - Texas: advertising price must include all dealer-installed accessories
 - Illinois: specific rules about "internet price" vs "selling price"
-- Every state has variations — RAAS rules loaded by jurisdiction selection
+- Every state has variations — Digital Worker rules loaded by jurisdiction selection
 
 ### Key Metrics (auto-specific):
 - Cost per sold unit (by source)

@@ -220,7 +220,7 @@ npm run dev
 #### Test 7: AI Activity Log
 1. Navigate to "AI, GPTs & Chats"
 2. Click "Activity" tab
-3. **Expected:** Shows RAAS workflow executions
+3. **Expected:** Shows Digital Worker workflow executions
 4. Click "Conversations" tab
 5. **Expected:** Shows conversation history with message counts
 

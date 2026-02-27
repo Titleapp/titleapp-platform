@@ -1,8 +1,8 @@
-# DIY RAAS Builder — Conversation Arc
+# DIY Digital Worker Builder — Conversation Arc
 
 ## Overview
 
-When the landing page AI detects someone wants to BUILD an AI service (not use an existing vertical), the conversation transitions into the DIY RAAS builder flow. The conversation IS the builder. No separate UI needed. The AI interviews them, extracts their expertise, and after signup generates a publishable AI Worker.
+When the landing page AI detects someone wants to BUILD an AI service (not use an existing vertical), the conversation transitions into the DIY Digital Worker builder flow. The conversation IS the builder. No separate UI needed. The AI interviews them, extracts their expertise, and after signup generates a publishable AI Worker.
 
 ## Intent Detection
 
@@ -54,7 +54,7 @@ Let them name the price. Don't suggest one.
 
 - "[Name], I've got a pretty clear picture of what your service would look like. Want me to build it? Takes about 2 minutes to set up and you could have your first subscriber this week."
 - Include [SHOW_SIGNUP] token
-- After signup, transition to RAAS generation
+- After signup, transition to Digital Worker generation
 
 ## Worker Firestore Schema
 
@@ -110,9 +110,9 @@ Collection: `workers`
 3. Shows WorkerPreview section instead of dashboard
 4. User can "Publish to Store" or "Edit First"
 
-## RAAS Store
+## Digital Worker Marketplace
 
-Browsable grid of published Workers. Visible to all authenticated users via sidebar nav "RAAS Store".
+Browsable grid of published Workers. Visible to all authenticated users via sidebar nav "Marketplace".
 
 Cards show: name, creator, description, price, category, subscriber count, rating.
 

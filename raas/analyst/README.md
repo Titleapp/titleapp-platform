@@ -1,6 +1,6 @@
-# RAAS — Analyst (Vertical Baseline)
+# Digital Worker Rules — Analyst (Vertical Baseline)
 
-This directory defines the Rules as a Service (RAAS) baseline
+This directory defines the Digital Worker rules baseline
 for the Analyst vertical.
 
 Purpose:
@@ -9,5 +9,5 @@ Purpose:
 - tenant risk-profile enforcement
 - standardized analyst outputs
 
-This vertical is used as the primary testbed for RAAS expansion
+This vertical is used as the primary testbed for Digital Worker expansion
 into other verticals.

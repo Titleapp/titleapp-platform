@@ -31,7 +31,7 @@ All use TitleApp brand colors: #7c3aed (purple), #a78bfa (light purple), #c4b5fd
 | `tenth_chat_message` | SUBTLE | 💬 We're getting into a groove! | 10th user message in chat |
 | `first_report_generated` | MEDIUM | 📄 First report generated! | Report created in Reports section |
 
-### RAAS Creator Revenue
+### Digital Worker Creator Revenue
 | Key | Level | Message | Trigger |
 |-----|-------|---------|---------|
 | `first_subscriber` | BIG | 🎉 You got your first subscriber! Someone is paying for your expertise. | Worker gets first paying subscriber |

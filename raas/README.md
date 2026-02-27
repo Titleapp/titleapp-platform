@@ -1,11 +1,11 @@
-# TitleApp RAAS — Rules as a Service
+# TitleApp Digital Workers — powered by RAAS (Rules + AI-as-a-Service)
 ## Documentation & Architecture
 
 ---
 
-## What is RAAS?
+## What is a Digital Worker?
 
-RAAS (Rules as a Service) is TitleApp's platform for creating, publishing, and subscribing to AI-powered services called **Workers**. A Worker is an AI service built from someone's expertise — their rules, workflows, decision-making processes, and domain knowledge — packaged into a subscribable product.
+A Digital Worker is an AI-powered service built from someone's expertise — their rules, workflows, decision-making processes, and domain knowledge — packaged into a subscribable product. The architecture is called RAAS (Rules + AI-as-a-Service).
 
 **The core idea:** Anyone can turn what they know into an AI service that others pay to use. No code. No technical skills. Just a conversation with the AI.
 
@@ -19,14 +19,14 @@ RAAS (Rules as a Service) is TitleApp's platform for creating, publishing, and s
 2. **The AI interviews you** — It asks about your expertise, your process, who needs it, what makes you different
 3. **The AI proposes a Worker** — Based on the conversation, it suggests a name, description, capabilities, target audience, and pricing
 4. **Review and adjust** — Tweak anything you want
-5. **Publish to the RAAS Store** — Your Worker goes live and people can subscribe
+5. **Publish to the Marketplace** — Your Digital Worker goes live and people can subscribe
 6. **Earn revenue** — You keep 75% of subscription revenue. TitleApp keeps 25%.
 
 ### For Subscribers (Using a Worker)
 
-1. **Browse the RAAS Store** — Find Workers by category, rating, or search
-2. **Subscribe** — Pick a Worker, pay the monthly fee
-3. **Use it** — The Worker appears in your Vault under AI Tools & GPTs. Talk to it like any AI — but this one has the creator's expertise baked in.
+1. **Browse the Marketplace** — Find Digital Workers by category, rating, or search
+2. **Subscribe** — Pick a Digital Worker, pay the monthly fee
+3. **Use it** — The Digital Worker appears in your Vault under AI Tools & GPTs. Talk to it like any AI — but this one has the creator's expertise baked in.
 
 ### For Developers (API)
 
@@ -193,11 +193,11 @@ Blockchain minting is opt-in via a toggle in workspace Settings under "Blockchai
 
 ---
 
-## RAAS Store
+## Digital Worker Marketplace
 
-### Store Layout
+### Marketplace Layout
 
-The RAAS Store is a browsable grid of published Workers, accessible from any workspace sidebar or from the Personal Vault.
+The Digital Worker Marketplace is a browsable grid of published Workers, accessible from any workspace sidebar or from the Personal Vault.
 
 Each card shows:
 - Worker name and author
@@ -288,14 +288,14 @@ curl -X POST https://api.titleapp.ai/v1/workers/import \
 
 1. Creates a Worker document in Firestore
 2. Optionally mints a blockchain title record
-3. Optionally lists on the RAAS Store
+3. Optionally lists on the Digital Worker Marketplace
 4. Provides API access for the Worker
 
 ---
 
 ## Investment Instruments (Investor Relations Vertical)
 
-When used for fundraising (Investor Relations workspace), Workers and the RAAS infrastructure support investment instruments:
+When used for fundraising (Investor Relations workspace), Workers and the Digital Worker infrastructure support investment instruments:
 
 ### SAFE (Simple Agreement for Future Equity)
 - Pre-share issuance
@@ -327,12 +327,12 @@ The company selects their instrument type during Investor Relations workspace se
 - **Business Workspaces**: $9/seat/month + AI usage (our cost + 50% margin)
 - **14-day free trial** on all business workspaces
 
-### For RAAS Creators
+### For Digital Worker Creators
 - Free to build and publish Workers
 - 75/25 revenue split (creator keeps 75%)
 - Blockchain title minting: free (gas absorbed by TitleApp)
 
-### For RAAS Subscribers
+### For Digital Worker Subscribers
 - Price set by creator ($5-49/month typical)
 - Cancel anytime
 - Access via Personal Vault → AI Tools & GPTs
@@ -366,7 +366,7 @@ raas/
 ├── diy-builder/
 │   └── builder-prompt.md             ← System prompt for builder interview
 ├── store/
-│   └── store-categories.md           ← RAAS Store category definitions
+│   └── store-categories.md           ← Marketplace category definitions
 ├── auto/
 │   └── auto-rules.md                 ← Auto dealer vertical rules
 ├── real-estate/
@@ -383,7 +383,7 @@ raas/
 │   └── milestones.md                 ← Milestone celebration definitions
 ├── compliance/
 │   ├── disclaimers.md                ← Platform + vertical disclaimers
-│   └── guardrails.md                 ← RAAS compliance guardrail rules
+│   └── guardrails.md                 ← Digital Worker compliance guardrail rules
 └── blockchain/
     ├── title-minting.md              ← Blockchain provenance spec
     └── venly-integration.md          ← Venly/Polygon integration details
@@ -478,7 +478,7 @@ TitleApp uses a milestone celebration system to reward engagement and create sti
 - `tenth_chat_message` — SUBTLE — 10th message with the AI
 - `first_report_generated` — MEDIUM — First report created
 
-**RAAS Creator Revenue:**
+**Digital Worker Creator Revenue:**
 - `first_subscriber` — BIG — First paying subscriber on a Worker
 - `first_revenue` — BIG — First dollar earned
 - `ten_subscribers` — BIG — 10 subscribers milestone

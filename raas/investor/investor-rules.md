@@ -174,7 +174,7 @@ These features start in the Investor vertical but are useful across ALL workspac
 
 ### Payment Processing Module
 
-- Stripe Connect for marketplace payments (RAAS creator payouts)
+- Stripe Connect for marketplace payments (Digital Worker creator payouts)
 - ACH/wire for investments
 - Crypto payments (via Venly)
 - Subscription billing ($9/seat/month)
@@ -195,7 +195,7 @@ The Vault started as "your digital life, organized." It's evolving into the **co
 - AI Assistant — general purpose chat
 
 **New — AI Tools & GPTs:**
-A section in the Vault where users can access modular AI-powered tools and their RAAS Worker subscriptions. Think of it as an app drawer.
+A section in the Vault where users can access modular AI-powered tools and their Digital Worker subscriptions. Think of it as an app drawer.
 
 ```
 ┌─────────────────────────────────────────┐
@@ -225,7 +225,7 @@ A section in the Vault where users can access modular AI-powered tools and their
 │  │          │  │ ments    │             │
 │  └──────────┘  └──────────┘             │
 │                                          │
-│  [Browse RAAS Store →]                   │
+│  [Browse Marketplace →]                  │
 └─────────────────────────────────────────┘
 ```
 
@@ -262,9 +262,9 @@ A section in the Vault where users can access modular AI-powered tools and their
 - Distributions received
 - Upcoming votes/decisions
 
-### RAAS Worker Subscriptions
+### Digital Worker Subscriptions
 
-- Workers you've subscribed to from the RAAS Store
+- Workers you've subscribed to from the Marketplace
 - Launch any Worker directly from the Vault
 - Manage subscriptions (cancel, billing)
 
@@ -297,7 +297,7 @@ Auto Dealers     About            API Docs
 Real Estate      Blog             OpenAPI Spec
 Analysts         Careers          SDKs
 Personal Vault   Press            Status
-RAAS Store       Contact          Changelog
+Marketplace      Contact          Changelog
 
 Investors        Legal
 ─────────        ─────────
@@ -325,11 +325,11 @@ BUSINESS WORKSPACES              PERSONAL VAULT
 │ Analyst         │◄───────────►│ AI Tools & GPTs │
 │ Aviation        │  shared     │  - Cap Table    │
 │ Investor Rels   │  modules    │  - My Tokens    │
-│ RAAS Builder    │             │  - Voting       │
+│ DW Builder      │             │  - Voting       │
 │ [Custom]        │             │  - My Identity  │
 └────────┬────────┘             │  - Investments  │
          │                      │  - Data Rooms   │
-         │                      │  - RAAS Subs    │
+         │                      │  - DW Subs      │
          │                      └────────┬────────┘
          │                               │
          ▼                               ▼
@@ -361,7 +361,7 @@ BUSINESS WORKSPACES              PERSONAL VAULT
 
 ### Now (Session 16)
 
-- [x] 16a: Chat-first RAAS builder onboarding
+- [x] 16a: Chat-first Digital Worker builder onboarding
 - [x] 16b: Blockchain provenance API spec (Venly/Polygon)
 - [x] 16c: Blockchain API Claude Code prompt
 - [x] 16d: Fix universal onboarding + delete/reset buttons
@@ -389,7 +389,7 @@ BUSINESS WORKSPACES              PERSONAL VAULT
 - [ ] Secondary market for tokens
 - [ ] Funding portal partnership or registration
 - [ ] Multi-company investor portfolio view in Vault
-- [ ] Investor RAAS as a publishable vertical (any company can enable it)
+- [ ] Investor Relations as a publishable vertical (any company can enable it)
 
 ---
 

@@ -29,7 +29,7 @@ so Analyst workflows can run deterministically.
 
 ## Integration with Analysis
 
-When analyzing deals, RAAS rules reference tenant parameters:
+When analyzing deals, Digital Worker rules reference tenant parameters:
 
 **Example from `pe_deal_screen_v0.json`:**
 ```json

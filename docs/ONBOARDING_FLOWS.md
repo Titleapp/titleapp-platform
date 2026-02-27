@@ -109,7 +109,7 @@ TitleApp AI now has comprehensive onboarding flows for both business and consume
 }
 ```
 
-### RAAS Integration:
+### Digital Worker Integration:
 
 When analyzing deals, backend:
 1. Fetches `tenant.riskProfile` from Firestore
@@ -192,9 +192,9 @@ When analyzing deals, backend:
 
 ---
 
-## Aviation RAAS Structure (NEW)
+## Aviation Digital Worker Structure (NEW)
 
-Created comprehensive RAAS for pilot credentials:
+Created comprehensive Digital Worker rules for pilot credentials:
 
 **Location:** `/raas/aviation/GLOBAL/`
 
@@ -358,7 +358,7 @@ Each flight log entry triggers:
 - [ ] Pilot data stored in localStorage
 - [ ] Redirects to dashboard
 
-### RAAS Verification
+### Digital Worker Verification
 
 - [ ] `/raas/aviation/` directory created
 - [ ] Onboarding questionnaire JSON is valid

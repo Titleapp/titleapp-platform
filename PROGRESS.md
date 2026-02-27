@@ -17,7 +17,7 @@
 - [x] All API handlers implemented in `/functions/functions/index.js`
 - [x] Multi-tenant data isolation (userId, tenantId)
 - [x] Firestore append-only event model
-- [x] RAAS validation framework integrated
+- [x] Digital Worker validation framework integrated
 
 ### Consumer App (My Vault) - All 9 Sections
 
@@ -72,7 +72,7 @@
    - Mixed activity feed from inventory, AI, and appointments
 
 2. **Rules & Resources** ✅
-   - RAAS workflow management
+   - Digital Worker workflow management
    - Catalog configuration
 
 3. **Services & Inventory** ✅ - Connected to backend
@@ -285,7 +285,7 @@ functions/functions/
 ### Multi-Tenant Architecture
 - `userId` for consumer data isolation
 - `tenantId` for business data isolation
-- RAAS validation per vertical/jurisdiction
+- Digital Worker rules validation per vertical/jurisdiction
 
 ### AI-First Approach
 - FloatingChat is "Door 2" (primary UX)

@@ -4,7 +4,7 @@ This document defines the **Record Anchors** abstraction used across all TitleAp
 verticals (Real Estate, Auto, Aviation, etc.).
 
 Record Anchors provide **proof, integrity, notarization, and fund controls**
-without coupling RAAS to any single storage or vendor system.
+without coupling Digital Workers to any single storage or vendor system.
 
 ---
 
@@ -17,7 +17,7 @@ Record Anchors exist to:
 - reference authoritative external registries
 - preserve auditability across ownership transitions
 
-RAAS workflows may **require anchors**, but never dictate vendor choice.
+Digital Worker workflows may **require anchors**, but never dictate vendor choice.
 
 ---
 
@@ -134,8 +134,8 @@ store timestamps
 
 never attempt to mirror registry data
 
-4) RAAS Enforcement Rules
-RAAS may declare:
+4) Digital Worker Enforcement Rules
+Digital Worker rules may declare:
 
 "This workflow requires a notary anchor"
 
@@ -168,7 +168,7 @@ Google Cloud (storage, OCR)
 
 ForeFlight / FAA (aviation references)
 
-Clients may replace any adapter without modifying RAAS.
+Clients may replace any adapter without modifying the rules engine.
 
 6) Versioning
 Scope: Global

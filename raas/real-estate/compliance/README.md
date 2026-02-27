@@ -14,8 +14,8 @@ Real estate is one of the most heavily regulated industries in the United States
 3. **ADA** — see `ada.md`
 4. **Environmental** — see `environmental.md`
 5. **FCRA** (Fair Credit Reporting Act) — tenant screening
-6. **TCPA** — marketing communications (see global marketing RAAS)
-7. **CAN-SPAM** — email marketing (see global marketing RAAS)
+6. **TCPA** — marketing communications (see global marketing rules)
+7. **CAN-SPAM** — email marketing (see global marketing rules)
 8. **ECOA** (Equal Credit Opportunity Act) — lending discrimination
 9. **Truth in Lending (TILA)** — mortgage disclosures (see mortgage vertical)
 

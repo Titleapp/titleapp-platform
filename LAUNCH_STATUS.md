@@ -9,7 +9,7 @@
 - ✅ **Git repository initialized** and committed
 - ⚠️ **DNS routing pending**: titleapp.ai domain needs Cloudflare route configuration (dashboard)
 
-### 2. Marketing RAAS Created (Dogfooding)
+### 2. Marketing Digital Worker Created (Dogfooding)
 - ✅ **8 files committed** to `raas/marketing/titleapp/GLOBAL/`
 - ✅ **Workflows**: Lead qualification, sales conversation, onboarding
 - ✅ **Rules**: Lead scoring (A/B/C/D grading), customer health scoring
@@ -19,7 +19,7 @@
 
 ### 3. Git Commits Pushed
 - ✅ **19 commits pushed** to GitHub (main branch)
-- ✅ **Includes**: Onboarding flows, aviation RAAS, analyst improvements, marketing RAAS
+- ✅ **Includes**: Onboarding flows, aviation Digital Worker rules, analyst improvements, marketing Digital Worker rules
 
 ---
 
@@ -30,7 +30,7 @@
 
 **Backend Chat Endpoint:** `/v1/chat:message`
 - ✅ Accepts: `message`, `context`, `preferredModel` (claude|openai)
-- ✅ Routes to Analyst RAAS when deal analysis detected
+- ✅ Routes to Analyst Digital Worker when deal analysis detected
 - ✅ Supports both Claude Opus and OpenAI GPT
 - ✅ Returns `response` + optional `structuredData` for inline rendering
 - ✅ Event-sourced (appends to `messageEvents` collection)
@@ -59,7 +59,7 @@
 
 ### Task 9: Complete Chat Verification
 **What needs testing:**
-1. Chat on `titleapp.ai` → Routes to marketing RAAS (sales agent)
+1. Chat on `titleapp.ai` → Routes to marketing Digital Worker (sales agent)
 2. Chat on `titleapp.io` platform → Routes to vertical-specific agents
 3. Chat in Door 1 admin → Embedded panel with inline rendering
 4. Structured objects render inline (not external links)
@@ -119,7 +119,7 @@ if (BLOCKCHAIN_MINT_ENABLED) {
 - **Door 2 (Chat):** PRIMARY experience - conversation → structured objects → inline rendering
 - **Door 1 (Dashboard):** Fallback visibility - traditional UI for viewing records
 
-### RAAS Verticals (All Implemented)
+### Digital Worker Verticals (All Implemented)
 1. **Marketing** (`raas/marketing/titleapp/GLOBAL/`) - NEW: TitleApp self-sale
 2. **Analyst** (`raas/analyst/GLOBAL/`) - Investment screening, risk profiling
 3. **Auto** (`raas/auto/IL/`) - Dealer revenue engine, VIN-first
@@ -137,8 +137,8 @@ if (BLOCKCHAIN_MINT_ENABLED) {
 
 ## 📊 Today's Metrics
 
-- **Files Created:** 8 (Marketing RAAS)
-- **Lines of Code:** 1,544+ (Marketing RAAS only)
+- **Files Created:** 8 (Marketing Digital Worker rules)
+- **Lines of Code:** 1,544+ (Marketing Digital Worker rules only)
 - **Commits:** 19 pushed to GitHub
 - **Deployments:** 1 (Cloudflare Worker)
 - **Tasks Completed:** 2/11

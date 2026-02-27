@@ -27,7 +27,7 @@ export default function RAASStore() {
         setWorkers([]);
       }
     } catch (e) {
-      console.error("Failed to load RAAS Store workers:", e);
+      console.error("Failed to load marketplace workers:", e);
       setError("");
       setWorkers([]);
     } finally {

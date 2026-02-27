@@ -1,14 +1,14 @@
 # TitleApp AI — Marketing Automation Platform
-# RAAS Guiding Document
+# Digital Worker Guiding Document
 # raas/marketing/README.md
 
 ---
 
 ## PURPOSE
 
-This is a guiding document for TitleApp's marketing automation capability. It describes what the marketing module does, how it fits into the RAAS architecture, and what rules govern AI behavior when managing marketing across all verticals.
+This is a guiding document for TitleApp's marketing automation capability. It describes what the marketing module does, how it fits into the rules engine architecture, and what rules govern AI behavior when managing marketing across all verticals.
 
-This is NOT an implementation spec. It defines the conceptual framework and rules that each vertical's marketing RAAS files will follow. Think of it as the constitution — each vertical's marketing rules are the laws.
+This is NOT an implementation spec. It defines the conceptual framework and rules that each vertical's marketing rule files will follow. Think of it as the constitution — each vertical's marketing rules are the laws.
 
 ---
 
@@ -218,7 +218,7 @@ When a workspace first accesses Marketing (or when AI recommends a campaign and 
 
 ## CROSS-MODULE INTEGRATION
 
-Marketing connects to every other RAAS module:
+Marketing connects to every other Digital Worker module:
 
 - **Inventory/Listings → Marketing:** Aging triggers campaigns. New items trigger launch campaigns. Price changes update creative.
 - **Customers → Marketing:** Expirations trigger outreach. History informs targeting.
@@ -229,9 +229,9 @@ Marketing connects to every other RAAS module:
 
 ---
 
-## DIY RAAS CONNECTION
+## DIY DIGITAL WORKER CONNECTION
 
-When the DIY RAAS configurator is built, marketing rules assemble from composable blocks:
+When the DIY Digital Worker configurator is built, marketing rules assemble from composable blocks:
 
 1. **Compliance modules:** FTC (everyone), Fair Housing (housing), TILA/Reg Z (lending), SEC/FINRA (investment), state insurance regs, education rules, attorney advertising, HIPAA
 2. **Channels:** Meta, Google, LinkedIn, GBP, email, SMS, industry platforms
@@ -270,5 +270,5 @@ Each vertical adds its own compliance layer on top of the universal rules:
 - **Stickiness:** Connected ad accounts + performance history = high switching cost
 - **Upsell:** Marketing could be premium tier ($19-29/mo) or included to drive adoption
 - **Data moat:** Cross-vertical campaign data improves recommendations for all users
-- **Vertical expansion:** Marketing module already built — only compliance RAAS needed per new vertical
+- **Vertical expansion:** Marketing module already built — only compliance rules needed per new vertical
 - **Dogfooding:** TitleApp uses its own marketing module for customer acquisition

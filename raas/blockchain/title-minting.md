@@ -1,6 +1,6 @@
 # Blockchain Title Minting — Venly / Polygon
 
-See the main RAAS README for the blockchain provenance architecture.
+See the main Digital Workers README for the blockchain provenance architecture.
 
 Implementation: Phase 1 uses Firestore stubs with mock tx hashes.
 Phase 2 wires up actual Venly API calls for on-chain minting on Polygon.

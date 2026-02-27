@@ -54,7 +54,7 @@ Chat functionality has been verified and fixed across all surfaces. Both admin a
 1. User sends message via FloatingChat
 2. POST `/api?path=/v1/chat:message` to Cloudflare Frontdoor
 3. Backend routes to Firebase Functions
-4. Analyst detection: If message mentions deal/investment → RAAS analysis
+4. Analyst detection: If message mentions deal/investment → Digital Worker analysis
 5. Response includes:
    - `response` (string) - AI text response
    - `structuredData` (object, optional) - Structured data for inline rendering
@@ -109,7 +109,7 @@ Chat functionality has been verified and fixed across all surfaces. Both admin a
 **Endpoint:** `/api/chat` (different from platform)
 **Behavior:** Demo responses for unauthenticated users, routes to backend for authenticated
 
-**Note:** Landing page chat uses the Marketing RAAS prompt (`prompts/sales-agent-system-prompt.md`)
+**Note:** Landing page chat uses the Marketing Digital Worker prompt (`prompts/sales-agent-system-prompt.md`)
 
 ### Admin App (Door 1 - Consumer)
 **Status:** ✅ Fixed and tested
@@ -136,17 +136,17 @@ The backend automatically detects vertical based on message content:
 
 **Auto Vertical:**
 - Triggers: "vehicle", "VIN", "trade", "car", "dealership"
-- Action: Routes to auto RAAS handlers
+- Action: Routes to auto Digital Worker handlers
 - Returns: Trade summaries, DTC previews
 
 **Real Estate Vertical:**
 - Triggers: "property", "home", "parcel", "title", "deed"
-- Action: Routes to real estate RAAS handlers
+- Action: Routes to real estate Digital Worker handlers
 - Returns: Property DTCs, escrow status
 
 **Aviation Vertical:**
 - Triggers: "pilot", "aircraft", "logbook", "rating", "certificate"
-- Action: Routes to aviation RAAS handlers
+- Action: Routes to aviation Digital Worker handlers
 - Returns: Pilot credentials, flight log previews
 
 ---
@@ -174,7 +174,7 @@ The backend automatically detects vertical based on message content:
 - [ ] Chat widget on titleapp.ai landing page
 - [ ] Demo responses for unauthenticated users
 - [ ] Routes to backend when authenticated
-- [ ] Uses Marketing RAAS system prompt
+- [ ] Uses Marketing Digital Worker system prompt
 
 ---
 
@@ -182,7 +182,7 @@ The backend automatically detects vertical based on message content:
 
 ### Immediate
 1. **Test live deployment**: Deploy apps and test chat end-to-end
-2. **Verify Analyst integration**: Send sample deals, confirm RAAS routing
+2. **Verify Analyst integration**: Send sample deals, confirm Digital Worker routing
 3. **Test mobile**: Confirm chat works on phones/tablets
 
 ### Future Enhancements

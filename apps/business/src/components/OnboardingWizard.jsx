@@ -602,7 +602,7 @@ export default function OnboardingWizard({ onComplete, onStepChange, vertical: p
                 <path d="M2 12l10 5 10-5"></path>
               </svg>
               <div style={{ fontSize: "16px", fontWeight: 700, marginBottom: "6px", color: "#94a3b8" }}>Build an AI service</div>
-              <div style={{ fontSize: "13px", color: "#94a3b8", lineHeight: 1.4 }}>Deploy custom AI agents with RAAS</div>
+              <div style={{ fontSize: "13px", color: "#94a3b8", lineHeight: 1.4 }}>Deploy custom AI agents as Digital Workers</div>
             </div>
 
             {/* Vault */}

@@ -575,7 +575,7 @@ function GrowTab({ worker, onAskAlex }) {
   const socialPosts = {
     twitter: `Just launched "${worker.name}" on TitleApp Marketplace -- an AI service with built-in rules enforcement. Every output is validated before delivery. Try it: ${marketplaceUrl}`,
     linkedin: `Excited to share my new Digital Worker on TitleApp: "${worker.name}"\n\n${worker.description || "An AI service with deterministic rules enforcement."}\n\nDigital Workers are AI services with built-in rules enforcement. You define the rules, AI operates within them, and every output is validated by an enforcement engine.\n\n${marketplaceUrl}`,
-    email: `Subject: Check out ${worker.name} on TitleApp\n\nHi,\n\nI built an AI service called "${worker.name}" on TitleApp's RAAS platform.\n\n${worker.description || "It uses rules enforcement to validate every AI output before delivery."}\n\nYou can try it here: ${marketplaceUrl}\n\nLet me know what you think.`,
+    email: `Subject: Check out ${worker.name} on TitleApp\n\nHi,\n\nI built a Digital Worker called "${worker.name}" on TitleApp.\n\n${worker.description || "It uses rules enforcement to validate every AI output before delivery."}\n\nYou can try it here: ${marketplaceUrl}\n\nLet me know what you think.`,
   };
 
   const checklist = [

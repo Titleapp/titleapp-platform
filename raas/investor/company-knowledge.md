@@ -5,11 +5,11 @@
 
 ## What TitleApp Is
 
-TitleApp is RAAS -- Rules + AI-as-a-Service -- an AI governance platform that gives every business an autonomous Chief of Staff. Instead of selling software features, TitleApp sells AI workers that follow configurable business rules. Each worker runs 24/7, monitoring data, enforcing compliance, executing workflows, and reporting back to the owner.
+TitleApp is the Digital Worker platform -- AI agents governed by human-defined rules with deterministic enforcement and immutable audit trails. Instead of selling software features, TitleApp sells Digital Workers that follow configurable business rules. Each worker runs 24/7, monitoring data, enforcing compliance, executing workflows, and reporting back to the owner.
 
-The platform sits between the AI model and the business outcome. Any AI model (Claude, GPT, Gemini) can be plugged in as the execution engine. TitleApp's value is the rules layer on top -- the governance, the audit trail, the compliance enforcement, the domain-specific knowledge that makes AI outputs trustworthy enough to act on.
+The underlying architecture is called RAAS (Rules + AI-as-a-Service). The platform sits between the AI model and the business outcome. Any AI model (Claude, GPT, Gemini) can be plugged in as the execution engine. TitleApp's value is the rules layer on top -- the governance, the audit trail, the compliance enforcement, the domain-specific knowledge that makes AI outputs trustworthy enough to act on.
 
-Think of it as the compliance infrastructure that lets businesses actually trust AI in regulated environments. The AI does the work. RAAS makes sure the work is done right.
+Think of it as the compliance infrastructure that lets businesses actually trust AI in regulated environments. The AI does the work. The rules engine makes sure the work is done right.
 
 ---
 
@@ -19,9 +19,9 @@ TitleApp started as a blockchain-based land title verification system -- the ide
 
 The Custom GPT wave revealed the governance gap. Everyone could build AI tools, but nobody could constrain them. A real estate GPT could hallucinate property values. A medical GPT could give dangerous advice. There was no rules layer.
 
-The pattern that emerged was bigger than any single vertical: every industry has records that need to be trustworthy, workflows that need to be followed, and compliance rules that need to be enforced. The blockchain anchor was the first version of "provenance." RAAS is the full realization -- AI-powered operations with deterministic rule enforcement and an immutable audit trail.
+The pattern that emerged was bigger than any single vertical: every industry has records that need to be trustworthy, workflows that need to be followed, and compliance rules that need to be enforced. The blockchain anchor was the first version of "provenance." The Digital Worker platform is the full realization -- AI-powered operations with deterministic rule enforcement and an immutable audit trail.
 
-The pivot from "title verification" to "AI governance platform" happened when the team realized that the hardest problem in enterprise AI adoption is not the intelligence of the model -- it is trust. Businesses will not let AI make decisions unless there is a system ensuring those decisions follow the rules. That system is RAAS.
+The pivot from "title verification" to "Digital Worker platform" happened when the team realized that the hardest problem in enterprise AI adoption is not the intelligence of the model -- it is trust. Businesses will not let AI make decisions unless there is a system ensuring those decisions follow the rules. That system is what we call RAAS -- Rules + AI-as-a-Service.
 
 ---
 
@@ -33,7 +33,7 @@ TitleApp has three layers:
 
 2. Door 2 (Chat / Alex): The primary user interface. Users talk to Alex, their AI Chief of Staff. Alex handles everything -- data import, analysis, communications, compliance checks, reporting. The dashboard shows what Alex did. Alex is the one doing it.
 
-3. RAAS Engine (Backend): The rules enforcement layer. Every AI output passes through deterministic validation before reaching the user. Hard stops (must-not-violate rules) fail closed. Soft flags (warnings) get logged. The engine supports tenant-configurable risk profiles, so each business can tune their compliance thresholds.
+3. Rules Engine (Backend): The RAAS enforcement layer. Every AI output passes through deterministic validation before reaching the user. Hard stops (must-not-violate rules) fail closed. Soft flags (warnings) get logged. The engine supports tenant-configurable risk profiles, so each business can tune their compliance thresholds.
 
 How it works: Human-defined rules constrain every AI interaction. The rules are deterministic -- not suggestions, not guardrails, but hard enforcement. Cross-model enforcement means the same rules work regardless of whether Claude, GPT, or Gemini is the execution engine. Every action produces an immutable audit trail.
 
@@ -46,11 +46,11 @@ Supporting infrastructure:
 
 ---
 
-## DIY RAAS — The Wedge
+## The Marketplace — The Wedge
 
-The marketplace play: domain experts (not developers) build "Workers" -- AI agents with custom rule packages. A real estate compliance expert builds a Worker that enforces fair housing rules on every listing. A dealership F&I manager builds a Worker that matches customers to financing products based on credit profiles.
+The marketplace play: domain experts (not developers) build Digital Workers -- AI agents with custom rule packages. A real estate compliance expert builds a Digital Worker that enforces fair housing rules on every listing. A dealership F&I manager builds a Digital Worker that matches customers to financing products based on credit profiles.
 
-Creators set their price. TitleApp takes a 25% platform fee (75/25 split to creators). Every Worker inherits the RAAS enforcement layer -- provenance, audit trail, compliance. This is the network effect: more creators mean more verticals mean more subscribers.
+Creators set their price. TitleApp takes a 25% platform fee (75/25 split to creators). Every Digital Worker inherits the RAAS enforcement layer -- provenance, audit trail, compliance. This is the network effect: more creators mean more verticals mean more subscribers.
 
 ---
 
@@ -70,13 +70,13 @@ TitleApp serves multiple verticals, each with vertical-specific rules, workflows
 
 6. Healthcare (planned): Patient record governance, HIPAA compliance enforcement, clinical workflow automation.
 
-Each vertical has its own RAAS ruleset, system prompts, and domain-specific workflows. New verticals can be built by defining rules and workflows -- the AI execution layer is shared.
+Each vertical has its own Digital Worker ruleset, system prompts, and domain-specific workflows. New verticals can be built by defining rules and workflows -- the AI execution layer is shared.
 
 ---
 
 ## The Team
 
-Sean Lee Combs (CEO): Product vision, platform architecture, go-to-market strategy. Sean designed the RAAS concept and leads product development. Has raised over $1.5B in capital across his career. Holds patents in blockchain record-keeping and is filing additional patents around the RAAS framework and the intersection of blockchain provenance with AI governance. Airline and medevac pilot -- brings firsthand understanding of regulated, safety-critical operations to the platform design.
+Sean Lee Combs (CEO): Product vision, platform architecture, go-to-market strategy. Sean designed the Digital Worker platform concept and leads product development. Has raised over $1.5B in capital across his career. Holds patents in blockchain record-keeping and is filing additional patents around the RAAS framework and the intersection of blockchain provenance with AI governance. Airline and medevac pilot -- brings firsthand understanding of regulated, safety-critical operations to the platform design.
 
 Kent Redwine (CFO): Finance, operations, fundraise execution. Over $20B in M&A experience. 19 years in Climate Tech. Kent manages the company's financial model, runway planning, and investor relations.
 
@@ -84,7 +84,7 @@ Kim Ellen Bennett (GovTech & Real Estate Lead): Public sector strategy, governme
 
 Vishal Kumar (Frontend Engineer): 8 years experience. React architecture, UI/UX implementation, component library development. Built the admin dashboard, onboarding wizard, and chat interface.
 
-Manpreet Kaur (Backend Engineer): 8 years experience. Cloud infrastructure, AI integration, API development. Built the Firebase Functions backend, RAAS engine, and multi-model AI routing.
+Manpreet Kaur (Backend Engineer): 8 years experience. Cloud infrastructure, AI integration, API development. Built the Firebase Functions backend, rules engine, and multi-model AI routing.
 
 AI Development: Built on Claude (Anthropic), OpenAI GPT, and Google Gemini -- model-agnostic by design.
 
@@ -132,7 +132,7 @@ TitleApp generates revenue through three streams:
 
 1. Subscription: Accessible per-seat pricing for access to the platform and Alex. This is the base layer -- every user gets an AI Chief of Staff. Pricing scales with value delivered.
 
-2. RAAS Marketplace: Creators build and sell AI Workers (rule packages + workflows) on the TitleApp marketplace. TitleApp takes a 25% platform fee (75/25 split to creators). This is the network effect -- more creators mean more verticals mean more subscribers.
+2. Digital Worker Marketplace: Creators build and sell Digital Workers (rule packages + workflows) on the TitleApp marketplace. TitleApp takes a 25% platform fee (75/25 split to creators). This is the network effect -- more creators mean more verticals mean more subscribers.
 
 3. AI Usage Fees: Heavy AI usage (large document analysis, complex multi-step workflows, high-volume automation) incurs usage-based fees on top of the base subscription.
 
@@ -142,7 +142,7 @@ TitleApp generates revenue through three streams:
 
 From the current raise (net proceeds approximately $803K after Wefunder fees):
 
-- Product Development (45%): Complete vertical build-out, RAAS marketplace launch, blockchain provenance integration, and Public API for third-party developers.
+- Product Development (45%): Complete vertical build-out, Digital Worker marketplace launch, blockchain provenance integration, and Public API for third-party developers.
 - Go-to-Market (25%): Targeted outreach to auto dealerships (first vertical to market), content marketing, and partnership development with industry associations.
 - Operations (20%): Cloud infrastructure, AI API costs, legal and compliance (securities, data privacy), and accounting.
 - Reserve (10%): Working capital buffer for unexpected costs or extended runway.
@@ -164,7 +164,7 @@ Alex can reference these documents and offer to share them when relevant. The ex
 
 Near-term (Q1-Q2 2026):
 - Complete investor relations vertical (in progress -- dogfooding the raise)
-- Launch RAAS marketplace with creator tools
+- Launch Digital Worker marketplace with creator tools
 - Auto dealership pilot program (first paying customers)
 - Public API v1 with developer documentation
 
@@ -177,5 +177,5 @@ Mid-term (Q3-Q4 2026):
 Long-term (2027+):
 - Government/GovTech partnerships (DMV integrations, municipal records)
 - International expansion (UK, EU regulatory frameworks)
-- Enterprise tier with custom RAAS rulesets and dedicated support
+- Enterprise tier with custom Digital Worker rulesets and dedicated support
 - Cash flow positive target: mid-2027

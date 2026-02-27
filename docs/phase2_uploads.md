@@ -68,7 +68,7 @@ Response JSON:
 - `path`
 
 ### 4) POST /v1/files:readUrl
-Returns a short-lived signed read URL so workers/GPT/RaaS can fetch the content when needed.
+Returns a short-lived signed read URL so Digital Workers/GPT can fetch the content when needed.
 
 Request JSON:
 - `fileId` (required)
@@ -83,4 +83,4 @@ Response JSON:
 ## Notes
 - No OCR/extraction in MVP. Files are stored and addressable.
 - Tenant partitioning is enforced via membership checks.
-- This upload capability is the foundation for Analyst RaaS file binding and explainable workflows.
+- This upload capability is the foundation for Analyst Digital Worker file binding and explainable workflows.

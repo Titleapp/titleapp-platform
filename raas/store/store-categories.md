@@ -1,4 +1,4 @@
-# RAAS Store Categories
+# Digital Worker Marketplace Categories
 
 - Business & Operations
 - Finance & Investing

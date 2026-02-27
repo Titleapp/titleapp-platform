@@ -93,7 +93,7 @@ We often say: Without rules, AI is clever chaos. With rules, it is disciplined i
   9. Architecture – How It All Fits Together
 TitleApp runs on three simple layers working in harmony:
 1. Conversation Layer – Software you talk to. Natural and human.
-2. Governance Layer – The Rules & Resources Library, our true north. We provide our clients with a standard RAAS structure for their business and then can add and append is in our application based on their specific needs. 
+2. Governance Layer – The Rules & Resources Library, our true north. We provide our clients with a standard Digital Worker structure for their business and then can add and append is in our application based on their specific needs. 
 3. Verification Layer – The Record of Truth, a reliable log of what happened and why.
 Together they form a closed loop of clarity: understand → act → prove. Nothing is hidden, nothing is forgotten.
 10. The Meta Worker – The AI That Builds AI Workers

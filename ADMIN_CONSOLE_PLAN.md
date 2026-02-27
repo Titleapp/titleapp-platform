@@ -10,7 +10,7 @@ Building full-featured admin consoles to match the user's navigation designs. Th
 - Both apps have basic auth flow, FloatingChat component, and demo workflow tester
 - Existing design system in App.css with CSS variables and responsive layout classes
 - API client uses httpJson helper pattern with Bearer token auth
-- Backend has RAAS endpoints for workflows, packages, and chat
+- Backend has Digital Worker endpoints for workflows, packages, and chat
 
 **Goal:** Transform both apps from simple demo screens into full admin consoles matching the provided screenshots.
 
@@ -33,7 +33,7 @@ Building full-featured admin consoles to match the user's navigation designs. Th
 ### Business Console Sections (in order)
 
 1. **Dashboard** - Business metrics and KPIs
-2. **Rules & Resources** - Modify RAAS rules for vertical/jurisdiction
+2. **Rules & Resources** - Modify rules for vertical/jurisdiction
 3. **Services & Inventory** - Products, services, pricing management
 4. **AI, GPTs & Chats** - AI worker activity log and conversation history
 5. **Customers** - CRM functionality
@@ -301,7 +301,7 @@ export async function createDTC(params: {
 **Goal:** Rules, Inventory, Customers, Appointments functional with mock data
 
 **Tasks:**
-1. Create RulesResources.jsx (RAAS workflow editor)
+1. Create RulesResources.jsx (Digital Worker workflow editor)
 2. Create ServicesInventory.jsx with product table
 3. Create Customers.jsx with CRM table and search
 4. Create Appointments.jsx with calendar view
@@ -326,7 +326,7 @@ export async function createDTC(params: {
 **Tasks:**
 1. Add route handlers in `/functions/functions/index.js`
 2. Create Firestore collections: `dtcs`, `logbookEntries`, `inventory`, `customers`, `appointments`, `staff`
-3. Implement RAAS validation gates
+3. Implement Digital Worker validation gates
 4. Connect frontend to real endpoints
 5. Add loading states and error handling
 6. Test multi-tenant isolation
@@ -613,7 +613,7 @@ if (route === "/logbook:append" && method === "POST") {
 - [ ] Append logbook entry saves
 
 ### Phase 3 Verification (Business)
-- [ ] RAAS workflows load and display
+- [ ] Digital Worker workflows load and display
 - [ ] Inventory table shows products
 - [ ] Customer search filters results
 - [ ] Appointments calendar displays
@@ -622,7 +622,7 @@ if (route === "/logbook:append" && method === "POST") {
 ### Phase 4 Verification (Backend)
 - [ ] Firestore writes succeed
 - [ ] Multi-tenant isolation works
-- [ ] RAAS validation blocks invalid data
+- [ ] Digital Worker validation blocks invalid data
 - [ ] Error messages display correctly
 - [ ] Loading states show during API calls
 

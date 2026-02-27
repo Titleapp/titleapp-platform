@@ -1,6 +1,6 @@
-# RAAS — Real Estate (California)
+# Digital Worker Rules — Real Estate (California)
 # Path: raas/real-estate/CA/README.md
-# RAAS Level: 2 (Jurisdiction Package)
+# Rules Level: 2 (Jurisdiction Package)
 # Applies to: Real Estate vertical · California
 # Subordinate to: raas/real-estate/README.md
 

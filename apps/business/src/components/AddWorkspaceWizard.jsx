@@ -73,7 +73,7 @@ const VERTICALS = [
       'Conversational interview to extract your workflow',
       'Auto-generated AI Worker from your expertise',
       'Pricing and subscriber management',
-      'Publish to the RAAS Store',
+      'Publish to the Marketplace',
     ],
   },
 ];

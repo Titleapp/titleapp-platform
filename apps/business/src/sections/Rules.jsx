@@ -602,7 +602,7 @@ export default function Rules() {
           <div style={{ fontWeight: 600 }}>{vertical}</div>
           <div style={{ color: "#64748b" }}>Jurisdiction</div>
           <div style={{ fontWeight: 600 }}>{jurisdiction}</div>
-          <div style={{ color: "#64748b" }}>Active RAAS rule files</div>
+          <div style={{ color: "#64748b" }}>Active rule files</div>
           <div style={{ fontWeight: 600 }}>{vertical}/{jurisdiction}/README.md, data-model.md, ownership.md</div>
           <div style={{ color: "#64748b" }}>Custom rules</div>
           <div style={{ fontWeight: 600, color: "#94a3b8" }}>{playbooks.length > 0 ? `${playbooks.length} playbook${playbooks.length !== 1 ? "s" : ""} uploaded` : "None set"}</div>

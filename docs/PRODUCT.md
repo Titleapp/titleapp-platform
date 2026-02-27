@@ -134,7 +134,7 @@ System:
 
 - Account created
 - Tenant auto-generated
-- Auto RAAS template applied
+- Auto Digital Worker template applied
 
 ---
 
@@ -211,7 +211,7 @@ Door 2 leads.
 
 - Major actions append events.
 - Canonical state derived from event log.
-- RAAS enforces guardrails.
+- Digital Worker rules enforce guardrails.
 - AI remains advisory, not authoritative.
 - Blockchain is infrastructure, not UX.
 

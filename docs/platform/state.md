@@ -127,14 +127,14 @@ There are:
 
 ---
 
-## 7. Rules-as-a-Service (RaaS) Layer (Locked)
+## 7. Digital Worker Layer (powered by RAAS -- Rules + AI-as-a-Service) (Locked)
 
 ### Location
 - Lives in GitHub
 - Versioned, reviewable, auditable
 
 ### Purpose
-RaaS defines:
+The Digital Worker platform defines:
 - What actions are allowed
 - Under what conditions
 - For which roles
@@ -255,7 +255,7 @@ These integrations are **done**, not hypothetical.
 ### Locked (Do Not Rebuild)
 - Cloudflare Worker gateway
 - Firebase Auth + Firestore tenancy model
-- RaaS layer
+- Digital Worker layer
 - API contracts
 - Blockchain / DTC / Logbook logic
 - Payment & identity flows
@@ -292,7 +292,7 @@ Same backend. Same rules. Different schemas.
 
 1. Paste this file.
 2. State:
-   - Which layer you’re working on (UI / API / RaaS / GPT)
+   - Which layer you’re working on (UI / API / Digital Workers / GPT)
    - Which tenant scenario
    - Which entity type
 

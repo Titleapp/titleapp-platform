@@ -1,6 +1,6 @@
-# RAAS — Real Estate (Florida)
+# Digital Worker Rules — Real Estate (Florida)
 # Path: raas/real-estate/FL/README.md
-# RAAS Level: 2 (Jurisdiction Package)
+# Rules Level: 2 (Jurisdiction Package)
 # Applies to: Real Estate vertical · Florida
 # Subordinate to: raas/real-estate/README.md
 

@@ -1,16 +1,16 @@
-# TitleApp Marketing RAAS - GLOBAL
+# TitleApp Marketing Digital Worker - GLOBAL
 
 ## Overview
 
-This is TitleApp's **marketing, sales, and customer success RAAS** — the AI-powered engine that acquires, onboards, and retains TitleApp customers.
+This is TitleApp's **marketing, sales, and customer success Digital Worker** — the AI-powered engine that acquires, onboards, and retains TitleApp customers.
 
-**Dogfooding:** TitleApp uses its own RAAS platform to sell TitleApp. This vertical proves that RAAS works at scale.
+**Dogfooding:** TitleApp uses its own Digital Worker platform to sell TitleApp. This vertical proves that Digital Workers work at scale.
 
 ---
 
 ## Purpose
 
-The Marketing RAAS handles the complete customer lifecycle:
+The Marketing Digital Worker handles the complete customer lifecycle:
 
 1. **Lead Qualification** — Identify high-intent prospects via chat
 2. **Sales Conversation** — Guide prospects through value prop, objection handling, demo
@@ -175,4 +175,4 @@ curl -X POST http://localhost:5001/titleapp-platform/us-central1/api/v1/marketin
 ---
 
 **Last Updated:** 2026-02-16
-**Owner:** TitleApp Marketing Team (dogfooding RAAS)
+**Owner:** TitleApp Marketing Team (dogfooding Digital Workers)

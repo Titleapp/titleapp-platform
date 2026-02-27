@@ -1,10 +1,10 @@
 # Vertical-Specific Onboarding Architecture
 
-This document explains how TitleApp AI uses vertical-specific onboarding to configure RAAS (Rules as a Service) for personalized analysis.
+This document explains how TitleApp AI uses vertical-specific onboarding to configure Digital Workers (powered by RAAS -- Rules + AI-as-a-Service) for personalized analysis.
 
 ## Overview
 
-Each vertical (Analyst, Auto, Real Estate, etc.) can have its own onboarding questionnaire that collects parameters RAAS uses to enforce tenant-specific rules. This ensures the AI analysis is personalized to each business's criteria.
+Each vertical (Analyst, Auto, Real Estate, etc.) can have its own onboarding questionnaire that collects parameters the Digital Worker platform uses to enforce tenant-specific rules. This ensures the AI analysis is personalized to each business's criteria.
 
 ## Current Implementation
 
@@ -43,7 +43,7 @@ Each vertical (Analyst, Auto, Real Estate, etc.) can have its own onboarding que
 }
 ```
 
-**RAAS Integration:**
+**Digital Worker Integration:**
 When analyzing deals, the backend:
 1. Fetches tenant's `riskProfile` from Firestore
 2. Injects criteria into AI prompt as "Investor's Target Box"
@@ -76,7 +76,7 @@ it is an automatic PASS. Mark it with 💩 emoji and high risk score (80+).
 - Currently: Simple setup
 - Future: Vertical-specific parameters as needed
 
-## RAAS Source Files
+## Digital Worker Source Files
 
 Onboarding questionnaires are defined in `/raas/{vertical}/{jurisdiction}/onboarding/`:
 
@@ -88,7 +88,7 @@ Onboarding questionnaires are defined in `/raas/{vertical}/{jurisdiction}/onboar
 Example: `/raas/analyst/GLOBAL/onboarding/risk_profile_questions_v0.json`
 
 These JSON files are machine-readable and version-controlled, allowing:
-- Frontend to dynamically render forms from RAAS definitions
+- Frontend to dynamically render forms from Digital Worker definitions
 - Backend to validate parameters against schema
 - Versioned rollout of new parameters (v0 → v1)
 
@@ -151,7 +151,7 @@ const analysisPrompt = `
 ### 2. Evidence-First
 - All parameters are optional except risk tolerance
 - Missing parameters don't block analysis
-- RAAS uses provided parameters as gates, not requirements
+- Digital Workers use provided parameters as gates, not requirements
 
 ### 3. Versioned Evolution
 - Onboarding questionnaires are versioned (v0, v1, etc.)
@@ -161,7 +161,7 @@ const analysisPrompt = `
 ### 4. Multi-Vertical Ready
 - Architecture supports any vertical having custom onboarding
 - Each vertical's parameters are isolated in `riskProfile` or `verticalConfig`
-- RAAS rules reference tenant parameters via dot notation (e.g., `tenant.min_net_irr`)
+- Digital Worker rules reference tenant parameters via dot notation (e.g., `tenant.min_net_irr`)
 
 ## Future Enhancements
 
@@ -184,7 +184,7 @@ const analysisPrompt = `
    - Price/cap rate ranges
 
 3. **Dynamic Questionnaire Rendering**:
-   - Frontend reads RAAS JSON files directly
+   - Frontend reads Digital Worker JSON files directly
    - Automatically renders forms from schema
    - No hard-coded questions in UI
 
@@ -222,7 +222,7 @@ firebase firestore get tenants/{tenantId}
 
 ## Key Invariant
 
-**RAAS rules use tenant parameters, NOT hard-coded assumptions.**
+**Digital Worker rules use tenant parameters, NOT hard-coded assumptions.**
 
 Example from `pe_deal_screen_v0.json`:
 ```json
