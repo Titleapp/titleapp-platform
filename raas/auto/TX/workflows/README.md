@@ -1,7 +1,7 @@
-# RAAS -- Auto -- Texas (TX) -- Workflows
+# Digital Worker Rules -- Auto -- Texas (TX) -- Workflows
 
 This document defines the **authorized end-to-end automotive workflows**
-for Texas dealerships under TitleApp **Rules as a Service (RAAS)**.
+for Texas dealerships under TitleApp **Digital Worker rules**.
 
 If a workflow is not defined here, it **must not execute automatically**.
 
@@ -10,7 +10,7 @@ If a workflow is not defined here, it **must not execute automatically**.
 ## 1) Workflow Governance
 
 All workflows must:
-- comply with Texas Auto RAAS modules
+- comply with Texas Auto Digital Worker rules
 - reference the Texas data model
 - halt on missing required components
 - create append-only audit events
@@ -273,6 +273,6 @@ Unsupported requests must:
 
 - Jurisdiction: TX
 - Vertical: Auto
-- RAAS Module: Workflows
+- Rules Module: Workflows
 - Version: v1.0
 - Last Reviewed: 2026-02-18

@@ -1,9 +1,9 @@
-# RAAS — Auto — Illinois (IL) — Fleet
+# Digital Worker Rules — Auto — Illinois (IL) — Fleet
 
 This document defines **fleet ownership, assignment, and maintenance workflows**
-under TitleApp **Rules as a Service (RAAS)** for Illinois.
+under TitleApp **Digital Worker rules** for Illinois.
 
-Fleet RAAS supports:
+Fleet rules support:
 - corporate fleets
 - municipal fleets
 - dealer loaner fleets
@@ -16,7 +16,7 @@ Fleet RAAS supports:
 A **fleet vehicle** is a vehicle owned by a business or organization
 and assigned to one or more drivers over time.
 
-Fleet RAAS distinguishes:
+Fleet rules distinguish:
 - Fleet owner (legal owner)
 - Assigned driver (authorized operator)
 - Managing entity (dealer or fleet manager)
@@ -116,6 +116,6 @@ Unsupported actions must:
 
 - Jurisdiction: IL
 - Vertical: Auto
-- RAAS Module: Fleet
+- Rules Module: Fleet
 - Version: v1.0
 - Last Reviewed: 2026-01-21

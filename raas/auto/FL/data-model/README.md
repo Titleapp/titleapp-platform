@@ -1,7 +1,7 @@
-# RAAS -- Auto -- Florida (FL) -- Data Model
+# Digital Worker Rules -- Auto -- Florida (FL) -- Data Model
 
 This document defines the **canonical data model** for automotive operations under
-the TitleApp **Rules as a Service (RAAS)** framework in Florida.
+the TitleApp **Digital Worker rules** framework in Florida.
 
 All Auto workflows (sales, service, ownership, fleet) depend on this model.
 
@@ -247,7 +247,7 @@ This avoids data duplication and conflict.
 ## 5) Compliance Posture
 
 This data model:
-- Supports Florida Auto RAAS workflows
+- Supports Florida Auto Digital Worker workflows
 - Enables auditability without replacing dealer systems
 - Avoids statutory interpretation
 - Fails closed if required fields are missing

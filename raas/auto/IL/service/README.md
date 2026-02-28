@@ -134,7 +134,7 @@ Unsupported (must be flagged/logged):
 - odometer fraud detection conclusions
 
 If requested, the system returns:
-- “This action is not supported under RAAS.”
+- “This action is not supported under Digital Worker rules.”
 - logs the request for review
 
 ---
@@ -143,6 +143,6 @@ If requested, the system returns:
 
 - Jurisdiction: IL
 - Vertical: Auto
-- RAAS Module: Service
+- Rules Module: Service
 - Version: v1.0
 - Last Reviewed: 2026-01-21

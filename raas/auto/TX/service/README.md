@@ -1,7 +1,7 @@
-# RAAS -- Auto -- Texas (TX) -- Service
+# Digital Worker Rules -- Auto -- Texas (TX) -- Service
 
 This document defines the **service department rules and workflows** for Texas dealerships
-under TitleApp **Rules as a Service (RAAS)**.
+under TitleApp **Digital Worker rules**.
 
 Primary objective:
 - Preserve **service history continuity** across ownership changes
@@ -28,7 +28,7 @@ TitleApp does not replace a DMS. It records:
 
 ## 2) Service Objects (from Data Model)
 
-Service RAAS uses:
+Service rules use:
 - Vehicle (VIN)
 - Customer (service customer)
 - Service Appointment
@@ -153,7 +153,7 @@ Unsupported (must be flagged/logged):
 - emissions compliance determinations
 
 If requested, the system returns:
-- "This action is not supported under RAAS."
+- "This action is not supported under Digital Worker rules."
 - logs the request for review
 
 ---
@@ -162,6 +162,6 @@ If requested, the system returns:
 
 - Jurisdiction: TX
 - Vertical: Auto
-- RAAS Module: Service
+- Rules Module: Service
 - Version: v1.0
 - Last Reviewed: 2026-02-18

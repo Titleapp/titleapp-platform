@@ -52,6 +52,40 @@ const S = {
 const TABS = ["My Digital Workers", "Builder", "Rules", "Test Console", "Marketplace", "Grow"];
 const STEPS = ["Define", "Rules", "Build", "Test", "Publish", "Grow"];
 
+const US_STATES = [
+  "AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD",
+  "MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC",
+  "SD","TN","TX","UT","VT","VA","WA","WV","WI","WY","DC"
+];
+const VERTICALS = [
+  { value: "auto", label: "Auto Dealerships" },
+  { value: "real-estate", label: "Real Estate & Mortgage" },
+  { value: "investment", label: "Investment & Finance" },
+  { value: "aviation", label: "Aviation" },
+  { value: "healthcare", label: "Healthcare" },
+  { value: "construction", label: "Construction" },
+  { value: "insurance", label: "Insurance" },
+  { value: "custom", label: "Custom / Other" },
+];
+
+// Helper for Worker #1 API calls
+async function w1Api(endpoint, payload) {
+  const token = localStorage.getItem("ID_TOKEN");
+  const tenantId = localStorage.getItem("TENANT_ID");
+  const res = await fetch(`${API_BASE}/api?path=/v1/${endpoint}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+      "X-Tenant-Id": tenantId,
+      "X-Vertical": "developer",
+      "X-Jurisdiction": "GLOBAL",
+    },
+    body: JSON.stringify({ tenantId, ...payload }),
+  });
+  return res.json();
+}
+
 // ── Main Component ────────────────────────────────────────────
 export default function DeveloperSandbox() {
   const [messages, setMessages] = useState([]);
@@ -221,10 +255,17 @@ export default function DeveloperSandbox() {
     if (typeof tab === "number") setActiveTab(tab);
   }
 
-  // Compute build step for status bar
+  // Compute build step for status bar (phase-aware)
   function getBuildStep(w) {
     if (!w) return 0;
-    if (w.published) return 6;
+    const phase = w.buildPhase;
+    if (phase === "live" || w.published) return 6;
+    if (phase === "review" || phase === "publishing") return 5;
+    if (phase === "prePublish") return 4;
+    if (phase === "library") return 3;
+    if (phase === "brief" || phase === "researching") return 2;
+    if (phase === "intake") return 1;
+    // Legacy workers without buildPhase
     if (w.status === "registered" || w.status === "tested") return 5;
     if (w.rulesCount > 0) return 3;
     return 1;
@@ -298,10 +339,10 @@ export default function DeveloperSandbox() {
         </div>
         <div style={S.tabContent}>
           {activeTab === 0 && <MyWorkersTab workers={workers} loading={loadingWorkers} selected={selectedWorker} onSelect={(w) => setSelectedWorker(w)} onCreateNew={() => { chatInputRef.current?.focus(); }} />}
-          {activeTab === 1 && <BuilderTab worker={selectedWorker} />}
+          {activeTab === 1 && <BuilderTab worker={selectedWorker} onWorkerUpdate={(updated) => { setSelectedWorker(updated); loadWorkers(); }} onSwitchTab={setActiveTab} />}
           {activeTab === 2 && <RulesTab worker={selectedWorker} onAddRule={() => { setInput("I want to add a rule: "); chatInputRef.current?.focus(); }} />}
           {activeTab === 3 && <TestConsoleTab worker={selectedWorker} testInput={testInput} setTestInput={setTestInput} testResults={testResults} testRunning={testRunning} onRunTest={runTest} />}
-          {activeTab === 4 && <MarketplaceTab worker={selectedWorker} />}
+          {activeTab === 4 && <MarketplaceTab worker={selectedWorker} onWorkerUpdate={(updated) => { setSelectedWorker(updated); loadWorkers(); }} />}
           {activeTab === 5 && <GrowTab worker={selectedWorker} onAskAlex={(msg) => { setInput(msg); chatInputRef.current?.focus(); }} />}
         </div>
         {/* Status Bar with 6-step progress */}
@@ -393,10 +434,31 @@ function MyWorkersTab({ workers, loading, selected, onSelect, onCreateNew }) {
   );
 }
 
-function BuilderTab({ worker }) {
+function BuilderTab({ worker, onWorkerUpdate, onSwitchTab }) {
   if (!worker) {
     return <div style={S.empty}><div style={S.emptyTitle}>Select a Digital Worker to see its structure</div></div>;
   }
+  const phase = worker.buildPhase;
+
+  // Phase-aware rendering
+  if (!phase || phase === "registered") {
+    // No build phase yet — show intake form to start the Worker #1 pipeline
+    return <IntakeInterview worker={worker} onWorkerUpdate={onWorkerUpdate} />;
+  }
+  if (phase === "intake") {
+    return <IntakeInterview worker={worker} onWorkerUpdate={onWorkerUpdate} />;
+  }
+  if (phase === "researching") {
+    return <ResearchProgress worker={worker} onWorkerUpdate={onWorkerUpdate} />;
+  }
+  if (phase === "brief") {
+    return <ComplianceBrief worker={worker} onWorkerUpdate={onWorkerUpdate} />;
+  }
+  if (phase === "library" || phase === "prePublish" || phase === "publishing" || phase === "review" || phase === "live") {
+    return <RaasLibraryEditor worker={worker} onWorkerUpdate={onWorkerUpdate} onSwitchTab={onSwitchTab} />;
+  }
+
+  // Fallback — show structure tree for legacy workers
   const rules = worker.rules || [];
   const structure = [
     { name: worker.name || "Digital Worker", type: "root", children: [
@@ -522,38 +584,84 @@ function TestConsoleTab({ worker, testInput, setTestInput, testResults, testRunn
   );
 }
 
-function MarketplaceTab({ worker }) {
+function MarketplaceTab({ worker, onWorkerUpdate }) {
   if (!worker) {
     return <div style={S.empty}><div style={S.emptyTitle}>Select a Digital Worker to publish</div></div>;
   }
+  const phase = worker.buildPhase;
+
+  // Phase-aware rendering
+  if (phase === "review") {
+    return (
+      <div style={{ maxWidth: 560 }}>
+        <div style={{ fontSize: 16, fontWeight: 600, color: "#e2e8f0", marginBottom: 16 }}>Review Status</div>
+        <div style={{ background: "#16161e", borderRadius: 10, padding: 24, border: "1px solid #2a2a3a", textAlign: "center" }}>
+          <div style={{ fontSize: 48, marginBottom: 16, opacity: 0.5 }}>&#9203;</div>
+          <div style={{ fontSize: 18, fontWeight: 600, color: "#f59e0b", marginBottom: 8 }}>Under Review</div>
+          <div style={{ fontSize: 14, color: "#94a3b8", lineHeight: 1.6 }}>Your Digital Worker has been submitted for review. The TitleApp team will review your rules library, compliance brief, and pre-publish check results. You will be notified when a decision is made.</div>
+          {worker.review?.notes && (
+            <div style={{ marginTop: 16, padding: 12, background: "#0f0f14", borderRadius: 8, border: "1px solid #2a2a3a", textAlign: "left" }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: "#94a3b8", marginBottom: 4 }}>Reviewer Notes</div>
+              <div style={{ fontSize: 13, color: "#e2e8f0" }}>{worker.review.notes}</div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (phase === "live") {
+    // Published — show listing view
+    return (
+      <div style={{ maxWidth: 560 }}>
+        <div style={{ fontSize: 16, fontWeight: 600, color: "#e2e8f0", marginBottom: 16 }}>Published on Marketplace</div>
+        <div style={{ background: "#16161e", borderRadius: 10, padding: 24, border: "1px solid #10b981" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+            <span style={S.badge("#065f46", "#d1fae5")}>Live</span>
+            <span style={{ fontSize: 14, fontWeight: 600, color: "#e2e8f0" }}>{worker.name}</span>
+          </div>
+          <div style={{ fontSize: 13, color: "#94a3b8", marginBottom: 16, lineHeight: 1.5 }}>{worker.description || "No description"}</div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            <div style={{ padding: 12, background: "#0f0f14", borderRadius: 8, textAlign: "center" }}>
+              <div style={{ fontSize: 18, fontWeight: 700, color: "#e2e8f0" }}>{worker.subscribers || 0}</div>
+              <div style={{ fontSize: 11, color: "#64748b" }}>Subscribers</div>
+            </div>
+            <div style={{ padding: 12, background: "#0f0f14", borderRadius: 8, textAlign: "center" }}>
+              <div style={{ fontSize: 18, fontWeight: 700, color: "#10b981" }}>$9/mo</div>
+              <div style={{ fontSize: 11, color: "#64748b" }}>Per Hire</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Pre-publish and publish flow
+  if (phase === "prePublish" || phase === "library") {
+    return <PrePublishCheck worker={worker} onWorkerUpdate={onWorkerUpdate} />;
+  }
+
+  if (phase === "publishing") {
+    return <PublishFlow worker={worker} onWorkerUpdate={onWorkerUpdate} />;
+  }
+
+  // Default — not ready yet
   return (
-    <div>
+    <div style={{ maxWidth: 560 }}>
       <div style={{ fontSize: 16, fontWeight: 600, color: "#e2e8f0", marginBottom: 16 }}>Marketplace Listing</div>
-      <div style={{ background: "#16161e", borderRadius: 10, padding: 24, border: "1px solid #2a2a3a", maxWidth: 560 }}>
-        <div style={{ marginBottom: 20 }}>
-          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#94a3b8", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.5px" }}>Name</label>
-          <div style={{ padding: "10px 12px", background: "#0f0f14", borderRadius: 6, border: "1px solid #2a2a3a", color: "#e2e8f0", fontSize: 14 }}>{worker.name}</div>
+      <div style={{ background: "#16161e", borderRadius: 10, padding: 24, border: "1px solid #2a2a3a" }}>
+        <div style={{ fontSize: 14, color: "#94a3b8", lineHeight: 1.6, marginBottom: 16 }}>
+          Before publishing to the marketplace, your Digital Worker must complete the Worker #1 pipeline:
         </div>
-        <div style={{ marginBottom: 20 }}>
-          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#94a3b8", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.5px" }}>Description</label>
-          <div style={{ padding: "10px 12px", background: "#0f0f14", borderRadius: 6, border: "1px solid #2a2a3a", color: "#e2e8f0", fontSize: 14, lineHeight: 1.5 }}>{worker.description || "No description"}</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {["Intake Interview", "Regulatory Research", "Compliance Brief", "Rules Library", "Pre-Publish Check", "Publish"].map((step, i) => (
+            <div key={i} style={S.checklist}>
+              <span style={S.checkPending} />
+              <span style={{ fontSize: 13, color: "#e2e8f0" }}>{step}</span>
+            </div>
+          ))}
         </div>
-        <div style={{ marginBottom: 20 }}>
-          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#94a3b8", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.5px" }}>Category</label>
-          <div style={{ padding: "10px 12px", background: "#0f0f14", borderRadius: 6, border: "1px solid #2a2a3a", color: "#e2e8f0", fontSize: 14 }}>{worker.category || "custom"}</div>
-        </div>
-        <div style={{ marginBottom: 20 }}>
-          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#94a3b8", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.5px" }}>Rules</label>
-          <div style={{ padding: "10px 12px", background: "#0f0f14", borderRadius: 6, border: "1px solid #2a2a3a", color: "#e2e8f0", fontSize: 14 }}>{worker.rulesCount || 0} enforcement rules</div>
-        </div>
-        <div style={{ marginBottom: 24 }}>
-          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#94a3b8", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.5px" }}>Revenue Split</label>
-          <div style={{ padding: "10px 12px", background: "#0f0f14", borderRadius: 6, border: "1px solid #2a2a3a", color: "#10b981", fontSize: 14, fontWeight: 600 }}>You earn 75% of revenue. $9/mo per hire.</div>
-        </div>
-        <div style={{ display: "flex", gap: 12, borderTop: "1px solid #2a2a3a", paddingTop: 20 }}>
-          <button style={{ ...S.btnPrimary, flex: 1 }} onClick={() => window.open('/apply', '_blank')}>Apply to Publish</button>
-        </div>
-        <div style={{ fontSize: 12, color: "#64748b", marginTop: 12, textAlign: "center" }}>Publishing will be available once your Digital Worker passes all tests and you have a creator license.</div>
+        <div style={{ fontSize: 12, color: "#64748b", marginTop: 16 }}>Start in the Builder tab to begin the process.</div>
       </div>
     </div>
   );
@@ -685,6 +793,545 @@ function GrowTab({ worker, onAskAlex }) {
         <button style={S.btnSecondary} onClick={() => onAskAlex("Help me grow " + worker.name + " -- what should I do next?")}>
           Ask Alex for growth advice
         </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Worker #1 Pipeline Components ─────────────────────────────
+
+function IntakeInterview({ worker, onWorkerUpdate }) {
+  const [vertical, setVertical] = useState(worker.intake?.vertical || "");
+  const [jurisdiction, setJurisdiction] = useState(worker.intake?.jurisdiction || "");
+  const [description, setDescription] = useState(worker.intake?.description || worker.description || "");
+  const [sopsText, setSopsText] = useState((worker.intake?.sops || []).join("\n"));
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  async function handleStartResearch() {
+    if (!vertical || !jurisdiction) { setError("Select a vertical and jurisdiction."); return; }
+    setLoading(true);
+    setError(null);
+    try {
+      const sops = sopsText.split("\n").map(s => s.trim()).filter(Boolean);
+      // Step 1: Save intake
+      const intakeRes = await w1Api("worker1:intake", {
+        workerId: worker.id, vertical, jurisdiction, description, sops,
+      });
+      if (!intakeRes.ok) { setError(intakeRes.error || "Failed to save intake."); setLoading(false); return; }
+      // Step 2: Start research
+      const researchRes = await w1Api("worker1:research", { workerId: worker.id });
+      if (!researchRes.ok) { setError(researchRes.error || "Research failed."); setLoading(false); return; }
+      // Update parent with new worker state
+      onWorkerUpdate({ ...worker, buildPhase: "brief", intake: { vertical, jurisdiction, description, sops }, complianceBrief: researchRes.brief, raasLibrary: { tier0: [], tier1: [], tier2: [], tier3: sops } });
+    } catch (e) {
+      setError(e.message || "Something went wrong.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const labelStyle = { display: "block", fontSize: 12, fontWeight: 600, color: "#94a3b8", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.5px" };
+  const inputStyle = { width: "100%", padding: "10px 12px", background: "#0f0f14", border: "1px solid #2a2a3a", borderRadius: 8, color: "#e2e8f0", fontSize: 14, outline: "none" };
+  const selectStyle = { ...inputStyle, appearance: "none", cursor: "pointer" };
+
+  return (
+    <div style={{ maxWidth: 600 }}>
+      <div style={{ fontSize: 18, fontWeight: 700, color: "#e2e8f0", marginBottom: 4 }}>Worker #1 — Intake Interview</div>
+      <div style={{ fontSize: 14, color: "#94a3b8", marginBottom: 24, lineHeight: 1.5 }}>
+        Tell us about the Digital Worker you want to build. Worker #1 will research the regulatory landscape and generate a compliance scaffold.
+      </div>
+
+      <div style={{ marginBottom: 20 }}>
+        <label style={labelStyle}>Industry / Vertical</label>
+        <select style={selectStyle} value={vertical} onChange={(e) => setVertical(e.target.value)}>
+          <option value="">Select an industry...</option>
+          {VERTICALS.map(v => <option key={v.value} value={v.value}>{v.label}</option>)}
+        </select>
+      </div>
+
+      <div style={{ marginBottom: 20 }}>
+        <label style={labelStyle}>Jurisdiction</label>
+        <select style={selectStyle} value={jurisdiction} onChange={(e) => setJurisdiction(e.target.value)}>
+          <option value="">Select a jurisdiction...</option>
+          <option value="National">National (US)</option>
+          {US_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+          <option value="International">International</option>
+        </select>
+      </div>
+
+      <div style={{ marginBottom: 20 }}>
+        <label style={labelStyle}>What does this Digital Worker do?</label>
+        <textarea
+          style={{ ...inputStyle, minHeight: 100, resize: "vertical" }}
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="Describe what your Digital Worker will handle. Example: Manages vehicle inventory, pricing, and customer outreach for auto dealerships."
+        />
+      </div>
+
+      <div style={{ marginBottom: 24 }}>
+        <label style={labelStyle}>Your existing SOPs / business rules (optional)</label>
+        <textarea
+          style={{ ...inputStyle, minHeight: 80, resize: "vertical", fontFamily: "monospace", fontSize: 13 }}
+          value={sopsText}
+          onChange={(e) => setSopsText(e.target.value)}
+          placeholder={"One rule per line. Example:\nNever quote a price below invoice cost\nAll trade-ins require manager approval over $10,000\nCustomer must sign disclosure before F&I products"}
+        />
+        <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>These become Tier 3 (your custom rules). One per line.</div>
+      </div>
+
+      {error && <div style={{ color: "#f87171", fontSize: 13, marginBottom: 12 }}>{error}</div>}
+
+      <button
+        style={{ ...S.btnPrimary, width: "100%", padding: "14px 20px", fontSize: 15 }}
+        onClick={handleStartResearch}
+        disabled={loading}
+      >
+        {loading ? "Researching regulations..." : "Start Regulatory Research"}
+      </button>
+      <div style={{ fontSize: 12, color: "#64748b", marginTop: 8, textAlign: "center" }}>
+        Worker #1 will research regulations for {vertical || "your industry"} in {jurisdiction || "your jurisdiction"} and generate a compliance scaffold.
+      </div>
+    </div>
+  );
+}
+
+function ResearchProgress({ worker, onWorkerUpdate }) {
+  const [steps, setSteps] = useState([
+    { label: "Analyzing industry requirements", done: true },
+    { label: `Researching ${worker.intake?.jurisdiction || "jurisdiction"} regulations`, done: true },
+    { label: "Identifying compliance requirements", done: false },
+    { label: "Generating enforcement rules", done: false },
+    { label: "Building best practices library", done: false },
+    { label: "Compiling compliance brief", done: false },
+  ]);
+
+  useEffect(() => {
+    // Animate steps completing
+    let i = 2;
+    const interval = setInterval(() => {
+      if (i >= 6) { clearInterval(interval); return; }
+      setSteps(prev => prev.map((s, idx) => idx <= i ? { ...s, done: true } : s));
+      i++;
+    }, 1200);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Poll for completion
+  useEffect(() => {
+    const poll = setInterval(async () => {
+      try {
+        const token = localStorage.getItem("ID_TOKEN");
+        const tenantId = localStorage.getItem("TENANT_ID");
+        const res = await fetch(`${API_BASE}/api?path=/v1/workers:list`, {
+          headers: { Authorization: `Bearer ${token}`, "X-Tenant-Id": tenantId, "X-Vertical": "developer", "X-Jurisdiction": "GLOBAL" },
+        });
+        const data = await res.json();
+        if (data.ok && data.workers) {
+          const updated = data.workers.find(w => w.id === worker.id);
+          if (updated && updated.buildPhase === "brief") {
+            onWorkerUpdate(updated);
+            clearInterval(poll);
+          }
+        }
+      } catch {}
+    }, 3000);
+    return () => clearInterval(poll);
+  }, [worker.id]);
+
+  return (
+    <div style={{ maxWidth: 500 }}>
+      <div style={{ fontSize: 18, fontWeight: 700, color: "#e2e8f0", marginBottom: 4 }}>Worker #1 — Researching</div>
+      <div style={{ fontSize: 14, color: "#94a3b8", marginBottom: 24 }}>Analyzing regulations for {worker.intake?.vertical || "your industry"} in {worker.intake?.jurisdiction || "your jurisdiction"}.</div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {steps.map((step, i) => (
+          <div key={i} style={S.checklist}>
+            {step.done ? <span style={S.checkDone}>&#10003;</span> : <span style={{ ...S.checkPending, borderColor: "#7c3aed", animation: "pulse 1.5s ease-in-out infinite" }} />}
+            <span style={{ fontSize: 13, color: step.done ? "#94a3b8" : "#e2e8f0" }}>{step.label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ComplianceBrief({ worker, onWorkerUpdate }) {
+  const brief = worker.complianceBrief || {};
+  const lib = worker.raasLibrary || {};
+  const [acknowledging, setAcknowledging] = useState(false);
+
+  async function handleAcknowledge() {
+    setAcknowledging(true);
+    try {
+      // Save rules (which triggers buildPhase: "library")
+      await w1Api("worker1:rules:save", {
+        workerId: worker.id,
+        tier2: lib.tier2 || [],
+        tier3: lib.tier3 || [],
+      });
+      onWorkerUpdate({ ...worker, buildPhase: "library", complianceBrief: { ...brief, acknowledgedAt: new Date().toISOString() } });
+    } catch {
+      setAcknowledging(false);
+    }
+  }
+
+  return (
+    <div style={{ maxWidth: 700 }}>
+      <div style={{ fontSize: 18, fontWeight: 700, color: "#e2e8f0", marginBottom: 4 }}>Compliance Brief</div>
+      <div style={{ fontSize: 14, color: "#94a3b8", marginBottom: 24 }}>Worker #1 completed its regulatory research. Review the findings below.</div>
+
+      {/* Summary */}
+      <div style={S.growCard}>
+        <span style={S.growLabel}>Research Summary</span>
+        <div style={{ fontSize: 14, color: "#e2e8f0", lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{brief.summary || "No summary available."}</div>
+        {brief.jurisdictionNotes && (
+          <div style={{ marginTop: 12, padding: 12, background: "#0f0f14", borderRadius: 8, border: "1px solid #2a2a3a" }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: "#f59e0b", marginBottom: 4 }}>Jurisdiction Notes</div>
+            <div style={{ fontSize: 13, color: "#e2e8f0", lineHeight: 1.5 }}>{brief.jurisdictionNotes}</div>
+          </div>
+        )}
+      </div>
+
+      {/* Tier 1 — Regulatory (locked) */}
+      <div style={S.growCard}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+          <span style={S.growLabel}>Tier 1 — Regulatory Rules ({(lib.tier1 || []).length})</span>
+          <span style={S.badge("#f87171", "rgba(248,113,113,0.1)")}>Locked</span>
+        </div>
+        {(lib.tier1 || []).map((rule, i) => (
+          <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "8px 0", borderBottom: i < (lib.tier1 || []).length - 1 ? "1px solid #2a2a3a" : "none" }}>
+            <span style={{ color: "#f87171", fontSize: 12, marginTop: 2, flexShrink: 0 }}>&#128274;</span>
+            <span style={{ fontSize: 13, color: "#e2e8f0", lineHeight: 1.5 }}>{rule}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Tier 2 — Best Practices (editable) */}
+      <div style={S.growCard}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+          <span style={S.growLabel}>Tier 2 — Best Practices ({(lib.tier2 || []).length})</span>
+          <span style={S.badge("#f59e0b", "rgba(245,158,11,0.1)")}>Editable</span>
+        </div>
+        {(lib.tier2 || []).map((rule, i) => (
+          <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "8px 0", borderBottom: i < (lib.tier2 || []).length - 1 ? "1px solid #2a2a3a" : "none" }}>
+            <span style={{ color: "#f59e0b", fontSize: 12, marginTop: 2, flexShrink: 0 }}>&#9998;</span>
+            <span style={{ fontSize: 13, color: "#e2e8f0", lineHeight: 1.5 }}>{rule}</span>
+          </div>
+        ))}
+      </div>
+
+      <button
+        style={{ ...S.btnPrimary, width: "100%", padding: "14px 20px", fontSize: 15, marginTop: 8 }}
+        onClick={handleAcknowledge}
+        disabled={acknowledging}
+      >
+        {acknowledging ? "Saving..." : "I've reviewed this brief — proceed to rules editor"}
+      </button>
+    </div>
+  );
+}
+
+function RaasLibraryEditor({ worker, onWorkerUpdate, onSwitchTab }) {
+  const lib = worker.raasLibrary || {};
+  const [tier2, setTier2] = useState(lib.tier2 || []);
+  const [tier3, setTier3] = useState(lib.tier3 || []);
+  const [saving, setSaving] = useState(false);
+  const [newRule, setNewRule] = useState("");
+  const [editWarning, setEditWarning] = useState(null);
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      const res = await w1Api("worker1:rules:save", { workerId: worker.id, tier2, tier3 });
+      if (res.ok) {
+        onWorkerUpdate({ ...worker, buildPhase: "library", raasLibrary: { ...lib, tier2, tier3 } });
+      }
+    } catch {}
+    setSaving(false);
+  }
+
+  function addTier3Rule() {
+    if (!newRule.trim()) return;
+    setTier3([...tier3, newRule.trim()]);
+    setNewRule("");
+  }
+
+  function removeTier3Rule(idx) {
+    setTier3(tier3.filter((_, i) => i !== idx));
+  }
+
+  function editTier2Rule(idx, value) {
+    setEditWarning("Modifying best practices may reduce compliance coverage. Proceed with care.");
+    setTier2(tier2.map((r, i) => i === idx ? value : r));
+  }
+
+  const tierHeaderStyle = { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 };
+
+  return (
+    <div style={{ maxWidth: 700 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+        <div style={{ fontSize: 18, fontWeight: 700, color: "#e2e8f0" }}>Rules Library</div>
+        <button style={S.btnPrimary} onClick={handleSave} disabled={saving}>{saving ? "Saving..." : "Save Rules"}</button>
+      </div>
+      <div style={{ fontSize: 14, color: "#94a3b8", marginBottom: 24 }}>4-tier enforcement architecture. Edit Tier 2 and Tier 3 rules. Tier 0 and Tier 1 are locked.</div>
+
+      {editWarning && (
+        <div style={{ padding: "10px 14px", background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)", borderRadius: 8, marginBottom: 16, fontSize: 13, color: "#f59e0b" }}>
+          {editWarning}
+          <button style={{ marginLeft: 12, background: "none", border: "none", color: "#64748b", cursor: "pointer", fontSize: 12 }} onClick={() => setEditWarning(null)}>Dismiss</button>
+        </div>
+      )}
+
+      {/* Tier 0 — Platform */}
+      <div style={{ ...S.growCard, opacity: 0.7 }}>
+        <div style={tierHeaderStyle}>
+          <span style={S.growLabel}>Tier 0 — Platform ({(lib.tier0 || []).length} rules)</span>
+          <span style={S.badge("#64748b", "rgba(100,116,139,0.1)")}>Locked</span>
+        </div>
+        <div style={{ fontSize: 12, color: "#64748b" }}>Platform-level invariants. Applied to all Digital Workers automatically.</div>
+      </div>
+
+      {/* Tier 1 — Regulatory */}
+      <div style={S.growCard}>
+        <div style={tierHeaderStyle}>
+          <span style={S.growLabel}>Tier 1 — Regulatory ({(lib.tier1 || []).length} rules)</span>
+          <span style={S.badge("#f87171", "rgba(248,113,113,0.1)")}>Locked</span>
+        </div>
+        {(lib.tier1 || []).map((rule, i) => (
+          <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "8px 0", borderBottom: i < (lib.tier1 || []).length - 1 ? "1px solid #2a2a3a" : "none" }}>
+            <span style={{ color: "#f87171", fontSize: 12, marginTop: 2, flexShrink: 0 }}>&#128274;</span>
+            <span style={{ fontSize: 13, color: "#e2e8f0", lineHeight: 1.5 }}>{rule}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Tier 2 — Best Practices (editable) */}
+      <div style={S.growCard}>
+        <div style={tierHeaderStyle}>
+          <span style={S.growLabel}>Tier 2 — Best Practices ({tier2.length} rules)</span>
+          <span style={S.badge("#f59e0b", "rgba(245,158,11,0.1)")}>Editable</span>
+        </div>
+        {tier2.map((rule, i) => (
+          <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "6px 0", borderBottom: "1px solid #2a2a3a" }}>
+            <span style={{ color: "#f59e0b", fontSize: 12, marginTop: 6, flexShrink: 0 }}>&#9998;</span>
+            <input
+              style={{ flex: 1, background: "#0f0f14", border: "1px solid #2a2a3a", borderRadius: 6, padding: "6px 10px", color: "#e2e8f0", fontSize: 13, outline: "none" }}
+              value={rule}
+              onChange={(e) => editTier2Rule(i, e.target.value)}
+            />
+          </div>
+        ))}
+      </div>
+
+      {/* Tier 3 — SOPs (fully customizable) */}
+      <div style={S.growCard}>
+        <div style={tierHeaderStyle}>
+          <span style={S.growLabel}>Tier 3 — Your SOPs ({tier3.length} rules)</span>
+          <span style={S.badge("#10b981", "rgba(16,185,129,0.1)")}>Customizable</span>
+        </div>
+        {tier3.map((rule, i) => (
+          <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "6px 0", borderBottom: "1px solid #2a2a3a" }}>
+            <span style={{ color: "#10b981", fontSize: 13, marginTop: 6, flexShrink: 0 }}>&#9679;</span>
+            <input
+              style={{ flex: 1, background: "#0f0f14", border: "1px solid #2a2a3a", borderRadius: 6, padding: "6px 10px", color: "#e2e8f0", fontSize: 13, outline: "none" }}
+              value={rule}
+              onChange={(e) => setTier3(tier3.map((r, idx) => idx === i ? e.target.value : r))}
+            />
+            <button style={{ background: "none", border: "none", color: "#f87171", cursor: "pointer", fontSize: 16, padding: "4px 8px" }} onClick={() => removeTier3Rule(i)}>&#215;</button>
+          </div>
+        ))}
+        <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+          <input
+            style={{ flex: 1, background: "#0f0f14", border: "1px solid #2a2a3a", borderRadius: 6, padding: "8px 10px", color: "#e2e8f0", fontSize: 13, outline: "none" }}
+            value={newRule}
+            onChange={(e) => setNewRule(e.target.value)}
+            placeholder="Add a new rule..."
+            onKeyDown={(e) => { if (e.key === "Enter") addTier3Rule(); }}
+          />
+          <button style={S.btnSecondary} onClick={addTier3Rule}>Add</button>
+        </div>
+      </div>
+
+      {/* Action bar */}
+      <div style={{ display: "flex", gap: 12, marginTop: 8 }}>
+        <button style={{ ...S.btnPrimary, flex: 1 }} onClick={handleSave} disabled={saving}>{saving ? "Saving..." : "Save Rules"}</button>
+        <button style={{ ...S.btnSecondary, flex: 1 }} onClick={() => onSwitchTab(4)}>Run Pre-Publish Check</button>
+      </div>
+    </div>
+  );
+}
+
+function PrePublishCheck({ worker, onWorkerUpdate }) {
+  const [checks, setChecks] = useState(worker.prePublishCheck?.checks || []);
+  const [running, setRunning] = useState(false);
+  const [score, setScore] = useState(worker.prePublishCheck?.score || null);
+  const [passed, setPassed] = useState(worker.prePublishCheck?.passed || false);
+
+  async function runCheck() {
+    setRunning(true);
+    try {
+      const res = await w1Api("worker1:prePublish", { workerId: worker.id });
+      if (res.ok) {
+        setChecks(res.checks || []);
+        setScore(res.score);
+        setPassed(res.passed);
+        onWorkerUpdate({ ...worker, buildPhase: "prePublish", prePublishCheck: { score: res.score, passed: res.passed, checks: res.checks } });
+      }
+    } catch {}
+    setRunning(false);
+  }
+
+  const statusColors = { pass: "#10b981", warning: "#f59e0b", fail: "#f87171" };
+  const statusLabels = { pass: "Pass", warning: "Warning", fail: "Fail" };
+
+  return (
+    <div style={{ maxWidth: 600 }}>
+      <div style={{ fontSize: 18, fontWeight: 700, color: "#e2e8f0", marginBottom: 4 }}>Pre-Publish Check</div>
+      <div style={{ fontSize: 14, color: "#94a3b8", marginBottom: 24 }}>7-point acceptance criteria. All checks must pass (warnings are acceptable) before publishing.</div>
+
+      {checks.length === 0 && (
+        <div style={{ textAlign: "center", padding: "40px 20px" }}>
+          <div style={{ fontSize: 14, color: "#94a3b8", marginBottom: 16 }}>Run the pre-publish check to validate your Digital Worker against the 7-point acceptance criteria.</div>
+          <button style={{ ...S.btnPrimary, padding: "14px 32px", fontSize: 15 }} onClick={runCheck} disabled={running}>
+            {running ? "Running checks..." : "Run Pre-Publish Check"}
+          </button>
+        </div>
+      )}
+
+      {checks.length > 0 && (
+        <>
+          {/* Score summary */}
+          <div style={{ ...S.growCard, textAlign: "center", marginBottom: 20 }}>
+            <div style={{ fontSize: 36, fontWeight: 700, color: passed ? "#10b981" : "#f87171" }}>{score}/7</div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: passed ? "#10b981" : "#f87171" }}>{passed ? "Ready to publish" : "Needs attention"}</div>
+          </div>
+
+          {/* Individual checks */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {checks.map((check, i) => (
+              <div key={i} style={{ ...S.growCard, marginBottom: 0, display: "flex", alignItems: "flex-start", gap: 12 }}>
+                <div style={{ width: 10, height: 10, borderRadius: "50%", background: statusColors[check.status] || "#64748b", marginTop: 4, flexShrink: 0 }} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: "#e2e8f0" }}>{check.name}</span>
+                    <span style={S.badge(statusColors[check.status], `${statusColors[check.status]}20`)}>{statusLabels[check.status]}</span>
+                  </div>
+                  <div style={{ fontSize: 13, color: "#94a3b8", marginTop: 4 }}>{check.details}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Actions */}
+          <div style={{ display: "flex", gap: 12, marginTop: 20 }}>
+            <button style={S.btnSecondary} onClick={runCheck} disabled={running}>{running ? "Re-running..." : "Re-run Check"}</button>
+            {passed && (
+              <button style={{ ...S.btnPrimary, flex: 1 }} onClick={() => onWorkerUpdate({ ...worker, buildPhase: "publishing" })}>
+                Proceed to Publish
+              </button>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function PublishFlow({ worker, onWorkerUpdate }) {
+  const flow = worker.publishFlow || {};
+  const [step, setStep] = useState(flow.waiverSigned ? (flow.identityVerified ? 3 : 2) : 1);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState(null);
+
+  async function handleSubmitForReview() {
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await w1Api("worker1:submit", {
+        workerId: worker.id,
+        waiverSigned: true,
+        identityVerified: true,
+        paymentComplete: true,
+      });
+      if (res.ok) {
+        onWorkerUpdate({ ...worker, buildPhase: "review" });
+      } else {
+        setError(res.error || "Submission failed.");
+      }
+    } catch (e) {
+      setError(e.message);
+    }
+    setSubmitting(false);
+  }
+
+  const stepStyle = (active, completed) => ({
+    padding: "20px 24px",
+    background: completed ? "rgba(16,185,129,0.05)" : active ? "#16161e" : "#0f0f14",
+    border: `1px solid ${completed ? "#10b981" : active ? "#7c3aed" : "#2a2a3a"}`,
+    borderRadius: 10,
+    marginBottom: 12,
+    opacity: active || completed ? 1 : 0.5,
+  });
+
+  return (
+    <div style={{ maxWidth: 560 }}>
+      <div style={{ fontSize: 18, fontWeight: 700, color: "#e2e8f0", marginBottom: 4 }}>Publish to Marketplace</div>
+      <div style={{ fontSize: 14, color: "#94a3b8", marginBottom: 24 }}>Complete these steps to submit your Digital Worker for review.</div>
+
+      {/* Step 1: Developer Waiver */}
+      <div style={stepStyle(step === 1, step > 1)}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: "#e2e8f0" }}>Step 1: Developer Waiver</div>
+          {step > 1 ? <span style={S.badge("#065f46", "#d1fae5")}>Signed</span> : <span style={S.badge("#64748b", "rgba(100,116,139,0.1)")}>Required</span>}
+        </div>
+        <div style={{ fontSize: 13, color: "#94a3b8", lineHeight: 1.6 }}>
+          Acknowledge the shared liability framework. TitleApp warrants reasonable regulatory research. You warrant review and domain expertise. End-users acknowledge AI tool limitations.
+        </div>
+        {step === 1 && (
+          <button style={{ ...S.btnPrimary, marginTop: 12 }} onClick={() => setStep(2)}>
+            Acknowledge &amp; Sign Waiver
+          </button>
+        )}
+      </div>
+
+      {/* Step 2: Identity Verification */}
+      <div style={stepStyle(step === 2, step > 2)}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: "#e2e8f0" }}>Step 2: Identity Verification</div>
+          {step > 2 ? <span style={S.badge("#065f46", "#d1fae5")}>Verified</span> : <span style={S.badge("#64748b", "rgba(100,116,139,0.1)")}>Required</span>}
+        </div>
+        <div style={{ fontSize: 13, color: "#94a3b8", lineHeight: 1.6 }}>
+          Verify your identity via Stripe Identity. This is required for marketplace trust and accountability.
+        </div>
+        {step === 2 && (
+          <button style={{ ...S.btnPrimary, marginTop: 12 }} onClick={() => setStep(3)}>
+            Verify Identity
+          </button>
+        )}
+      </div>
+
+      {/* Step 3: Submit for Review */}
+      <div style={stepStyle(step === 3, false)}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: "#e2e8f0" }}>Step 3: Submit for Review</div>
+          <span style={S.badge("#64748b", "rgba(100,116,139,0.1)")}>Final</span>
+        </div>
+        <div style={{ fontSize: 13, color: "#94a3b8", lineHeight: 1.6 }}>
+          Submit your Digital Worker for review by the TitleApp team. Once approved, it will be published to the marketplace.
+        </div>
+        {step === 3 && (
+          <>
+            {error && <div style={{ color: "#f87171", fontSize: 13, marginTop: 8 }}>{error}</div>}
+            <button style={{ ...S.btnPrimary, marginTop: 12, width: "100%", padding: "14px 20px", fontSize: 15 }} onClick={handleSubmitForReview} disabled={submitting}>
+              {submitting ? "Submitting..." : "Submit for Review"}
+            </button>
+          </>
+        )}
+      </div>
+
+      <div style={{ fontSize: 12, color: "#64748b", textAlign: "center", marginTop: 8 }}>
+        Revenue split: You earn 75% of subscription revenue. $9/mo per hire = $6.75/mo to you.
       </div>
     </div>
   );

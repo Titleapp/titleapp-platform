@@ -1,7 +1,7 @@
-# RAAS — Auto — Illinois (IL) — Workflows
+# Digital Worker Rules — Auto — Illinois (IL) — Workflows
 
 This document defines the **authorized end-to-end automotive workflows**
-for Illinois dealerships under TitleApp **Rules as a Service (RAAS)**.
+for Illinois dealerships under TitleApp **Digital Worker rules**.
 
 If a workflow is not defined here, it **must not execute automatically**.
 
@@ -10,7 +10,7 @@ If a workflow is not defined here, it **must not execute automatically**.
 ## 1) Workflow Governance
 
 All workflows must:
-- comply with Illinois Auto RAAS modules
+- comply with Illinois Auto Digital Worker rules
 - reference the Illinois data model
 - halt on missing required components
 - create append-only audit events
@@ -189,10 +189,10 @@ Unsupported requests must:
 
 - Jurisdiction: IL
 - Vertical: Auto
-- RAAS Module: Workflows
+- Rules Module: Workflows
 - Version: v1.0
 - Last Reviewed: 2026-01-21
 
 ---
 
-_End of Illinois Auto Workflows RAAS_
+_End of Illinois Auto Workflows Rules_

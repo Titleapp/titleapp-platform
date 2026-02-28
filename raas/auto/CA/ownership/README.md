@@ -1,9 +1,9 @@
-# RAAS -- Auto -- California (CA) -- Ownership
+# Digital Worker Rules -- Auto -- California (CA) -- Ownership
 
 This document defines **ownership, title-state, and encumbrance rules** for vehicles
-under TitleApp **Rules as a Service (RAAS)** in California.
+under TitleApp **Digital Worker rules** in California.
 
-Ownership RAAS ensures that vehicle records:
+Ownership rules ensure that vehicle records:
 - reflect legal reality
 - preserve historical continuity
 - never imply clean title when encumbrances exist
@@ -70,7 +70,7 @@ Before an ownership transition can finalize, the following must be satisfied:
 - Diesel-powered vehicles (model year 1997 and older)
 - Electric, hydrogen, and other zero-emission vehicles
 - Vehicles four model years old or newer
-- Transfers between certain family members (buyer's responsibility to claim; RAAS records the declaration)
+- Transfers between certain family members (buyer's responsibility to claim; the system records the declaration)
 
 If smog status is `required` and no `smogCertRef` is present, the ownership transition workflow must halt.
 
@@ -134,14 +134,14 @@ California law requires certain title conditions to be permanently branded on th
 - Vehicles repurchased under Song-Beverly must be branded `lemon_buyback`
 - The lemon buyback brand is permanent and must be disclosed on all subsequent transfers
 - TitleApp records the brand as an immutable attribute on the vehicle record
-- RAAS does not adjudicate lemon law claims; it records the resulting title brand
+- Digital Worker rules do not adjudicate lemon law claims; they record the resulting title brand
 
 ### Rules
 - Title brands are immutable once set by a state authority
 - Title brands must remain visible to all parties in any transaction
 - A vehicle with a `salvage` brand cannot be represented as `clean`
 - Brand history is append-only and auditable
-- RAAS does not assign title brands; it records declarations from authorized sources
+- Digital Worker rules do not assign title brands; they record declarations from authorized sources
 
 ---
 
@@ -176,7 +176,7 @@ Restrictions must:
 
 ## 8) Unsupported Actions
 
-Not supported under RAAS:
+Not supported under Digital Worker rules:
 - legal ownership determinations
 - dispute resolution
 - title fraud conclusions
@@ -195,6 +195,6 @@ Unsupported requests must:
 
 - Jurisdiction: CA
 - Vertical: Auto
-- RAAS Module: Ownership
+- Rules Module: Ownership
 - Version: v1.0
 - Last Reviewed: 2026-02-18

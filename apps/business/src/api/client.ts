@@ -845,3 +845,68 @@ export async function getInvestorUpdates(params: { vertical: string; jurisdictio
     jurisdiction: params.jurisdiction,
   });
 }
+
+// ── Worker #1 — Digital Worker Creator Pipeline ───────────────────
+
+export async function worker1Intake(params: {
+  tenantId: string; workerId: string;
+  vertical: string; jurisdiction: string;
+  description: string; sops?: string[];
+}) {
+  return httpJson("POST", "/v1/worker1:intake", {
+    vertical: "developer", jurisdiction: "GLOBAL",
+    body: params,
+  });
+}
+
+export async function worker1Research(params: { tenantId: string; workerId: string }) {
+  return httpJson("POST", "/v1/worker1:research", {
+    vertical: "developer", jurisdiction: "GLOBAL",
+    body: params,
+  });
+}
+
+export async function worker1RulesSave(params: {
+  tenantId: string; workerId: string;
+  tier2?: string[]; tier3?: string[];
+}) {
+  return httpJson("POST", "/v1/worker1:rules:save", {
+    vertical: "developer", jurisdiction: "GLOBAL",
+    body: params,
+  });
+}
+
+export async function worker1PrePublish(params: { tenantId: string; workerId: string }) {
+  return httpJson("POST", "/v1/worker1:prePublish", {
+    vertical: "developer", jurisdiction: "GLOBAL",
+    body: params,
+  });
+}
+
+export async function worker1Submit(params: {
+  tenantId: string; workerId: string;
+  waiverSigned?: boolean; waiverSignatureId?: string;
+  identityVerified?: boolean; identitySessionId?: string;
+  paymentComplete?: boolean; paymentIntentId?: string;
+}) {
+  return httpJson("POST", "/v1/worker1:submit", {
+    vertical: "developer", jurisdiction: "GLOBAL",
+    body: params,
+  });
+}
+
+export async function adminReviewList() {
+  return httpJson("GET", "/v1/admin:workers:review:list", {
+    vertical: "developer", jurisdiction: "GLOBAL",
+  });
+}
+
+export async function adminReviewWorker(params: {
+  workerId: string; tenantId: string;
+  decision: "approved" | "rejected"; notes?: string;
+}) {
+  return httpJson("POST", "/v1/admin:worker:review", {
+    vertical: "developer", jurisdiction: "GLOBAL",
+    body: params,
+  });
+}

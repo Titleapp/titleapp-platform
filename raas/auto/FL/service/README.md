@@ -1,7 +1,7 @@
-# RAAS -- Auto -- Florida (FL) -- Service
+# Digital Worker Rules -- Auto -- Florida (FL) -- Service
 
 This document defines the **service department rules and workflows** for Florida dealerships
-under TitleApp **Rules as a Service (RAAS)**.
+under TitleApp **Digital Worker rules**.
 
 Primary objective:
 - Preserve **service history continuity** across ownership changes
@@ -28,7 +28,7 @@ TitleApp does not replace a DMS. It records:
 
 ## 2) Service Objects (from Data Model)
 
-Service RAAS uses:
+Service rules use:
 - Vehicle (VIN)
 - Customer (service customer)
 - Service Appointment
@@ -128,7 +128,7 @@ TitleApp does not:
 
 ### Recall Compliance
 - Florida does not impose state-level recall completion mandates beyond federal requirements
-- RAAS follows federal recall documentation standards
+- Digital Worker rules follow federal recall documentation standards
 - Recall events are recorded per the standard RO lifecycle
 
 ---
@@ -154,7 +154,7 @@ Unsupported (must be flagged/logged):
 - FLHSMV inspection certifications
 
 If requested, the system returns:
-- "This action is not supported under RAAS."
+- "This action is not supported under Digital Worker rules."
 - logs the request for review
 
 ---
@@ -163,6 +163,6 @@ If requested, the system returns:
 
 - Jurisdiction: FL
 - Vertical: Auto
-- RAAS Module: Service
+- Rules Module: Service
 - Version: v1.0
 - Last Reviewed: 2026-02-18

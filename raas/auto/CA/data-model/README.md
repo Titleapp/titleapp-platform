@@ -1,7 +1,7 @@
-# RAAS -- Auto -- California (CA) -- Data Model
+# Digital Worker Rules -- Auto -- California (CA) -- Data Model
 
 This document defines the **canonical data model** for automotive operations under
-the TitleApp **Rules as a Service (RAAS)** framework in California.
+the TitleApp **Digital Worker rules** framework in California.
 
 All Auto workflows (sales, service, ownership, fleet) depend on this model.
 
@@ -248,7 +248,7 @@ This avoids data duplication and conflict.
 ## 5) Compliance Posture
 
 This data model:
-- Supports California Auto RAAS workflows
+- Supports California Auto Digital Worker workflows
 - Enables auditability without replacing dealer systems
 - Avoids statutory interpretation
 - Fails closed if required fields are missing

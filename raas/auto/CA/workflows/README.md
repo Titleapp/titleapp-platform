@@ -1,7 +1,7 @@
-# RAAS -- Auto -- California (CA) -- Workflows
+# Digital Worker Rules -- Auto -- California (CA) -- Workflows
 
 This document defines the **authorized end-to-end automotive workflows**
-for California dealerships under TitleApp **Rules as a Service (RAAS)**.
+for California dealerships under TitleApp **Digital Worker rules**.
 
 If a workflow is not defined here, it **must not execute automatically**.
 
@@ -10,7 +10,7 @@ If a workflow is not defined here, it **must not execute automatically**.
 ## 1) Workflow Governance
 
 All workflows must:
-- comply with California Auto RAAS modules
+- comply with California Auto Digital Worker rules
 - reference the California data model
 - halt on missing required components
 - create append-only audit events
@@ -284,6 +284,6 @@ Unsupported requests must:
 
 - Jurisdiction: CA
 - Vertical: Auto
-- RAAS Module: Workflows
+- Rules Module: Workflows
 - Version: v1.0
 - Last Reviewed: 2026-02-18

@@ -14,6 +14,7 @@ import Campaigns from "./pages/Campaigns";
 import Accounting from "./pages/Accounting";
 import Settings from "./pages/Settings";
 import Inventory from "./pages/Inventory";
+import ReviewQueue from "./pages/ReviewQueue";
 import AdminChatPanel from "./components/AdminChatPanel";
 
 const NAV_SECTIONS = [
@@ -38,6 +39,11 @@ const NAV_SECTIONS = [
       {
         id: "pipeline-creators",
         label: "Creator Funnel",
+        permission: "pipeline",
+      },
+      {
+        id: "review-queue",
+        label: "Review Queue",
         permission: "pipeline",
       },
       {
@@ -99,6 +105,8 @@ function renderPage(page) {
       return <PipelineB2B />;
     case "pipeline-creators":
       return <PipelineCreators />;
+    case "review-queue":
+      return <ReviewQueue />;
     case "pipeline-investors":
       return <PipelineInvestors />;
     case "communications":

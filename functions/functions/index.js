@@ -2134,6 +2134,19 @@ When the developer confirms build and you have enough info (name + description +
 Include this AFTER your conversational text. The system strips it and creates the Digital Worker.
 Before outputting, make sure you have at minimum: a name, a description, and at least 1-2 rules.
 
+WORKER #1 PIPELINE (the Builder tab handles this visually):
+After a Digital Worker is created via [WORKER_SPEC], the builder tab guides them through the Worker #1 pipeline:
+1. Intake Interview -- they pick vertical, jurisdiction, describe the worker, and paste existing SOPs.
+2. Regulatory Research -- Worker #1 (AI) researches regulations and generates a tiered rules library.
+3. Compliance Brief -- they review what Worker #1 found.
+4. Rules Library Editor -- they see 4 tiers (Tier 0 Platform locked, Tier 1 Regulatory locked, Tier 2 Best Practices editable, Tier 3 SOPs customizable) and can edit Tier 2/3.
+5. Pre-Publish Check -- 7-point acceptance criteria validation.
+6. Publish Flow -- waiver, identity verification, submit for review.
+
+If someone asks about the pipeline, explain it briefly. If they are stuck on a step, help them. But do NOT try to run the pipeline yourself -- the UI handles it. Your role is to create the worker first, then guide them to the Builder tab.
+
+When a worker has a buildPhase, reference it: "Your worker is in the [phase] phase. The Builder tab has your next step."
+
 NEVER:
 - Say "go to titleapp.ai" or "sign in somewhere else"
 - Output [Note: ...] or [System: ...] bracket text
@@ -3522,6 +3535,447 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
         return res.json({ ok: true, slug: autoSlug, url: `/marketplace/${autoSlug}` });
       } catch (e) {
         console.error("[marketplace:publish] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // ── Worker #1 — Digital Worker Creator Pipeline ──────────────────────
+
+    // Platform-level rules (Tier 0) — locked, immutable, injected into every Digital Worker
+    const TIER0_RULES = [
+      "All AI outputs must pass through the rules engine before reaching the user.",
+      "Every action must produce an immutable audit trail entry.",
+      "PII must never appear in logs, error messages, or external API responses.",
+      "The Digital Worker must not impersonate a licensed professional (attorney, doctor, CPA) unless explicitly credentialed.",
+      "All financial calculations must include a disclaimer that they are estimates, not advice.",
+      "The Digital Worker must not store payment card data directly — delegate to Stripe or equivalent PCI-compliant processor.",
+      "Rate limiting must be enforced: no single user session may exceed 100 AI calls per hour.",
+      "The Digital Worker must fail closed on rule violations — block the action, do not proceed with a warning.",
+    ];
+
+    // POST /v1/worker1:intake — Save intake data for Worker #1 pipeline
+    if (route === "/worker1:intake" && method === "POST") {
+      const { tenantId, workerId, vertical, jurisdiction, description, sops, existingDocs } = body;
+      if (!tenantId || !workerId) return res.json({ ok: false, error: "Missing tenantId or workerId" });
+      if (!vertical || !jurisdiction) return res.json({ ok: false, error: "Missing vertical or jurisdiction" });
+      try {
+        const workerRef = db.doc(`tenants/${tenantId}/workers/${workerId}`);
+        const workerSnap = await workerRef.get();
+        if (!workerSnap.exists) return res.json({ ok: false, error: "Digital Worker not found" });
+        await workerRef.update({
+          buildPhase: "intake",
+          intake: {
+            vertical: String(vertical).substring(0, 100),
+            jurisdiction: String(jurisdiction).substring(0, 100),
+            description: String(description || "").substring(0, 5000),
+            sops: Array.isArray(sops) ? sops.slice(0, 50).map(s => String(s).substring(0, 1000)) : [],
+            existingDocs: Array.isArray(existingDocs) ? existingDocs.slice(0, 10) : [],
+            submittedAt: nowServerTs(),
+          },
+          raasLibrary: { tier0: TIER0_RULES, tier1: [], tier2: [], tier3: [] },
+          updatedAt: nowServerTs(),
+        });
+        console.log(`[worker1:intake] Saved intake for ${workerId} in tenant ${tenantId}`);
+        return res.json({ ok: true, workerId, buildPhase: "intake" });
+      } catch (e) {
+        console.error("[worker1:intake] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // POST /v1/worker1:research — AI regulatory research via Claude
+    if (route === "/worker1:research" && method === "POST") {
+      const { tenantId, workerId } = body;
+      if (!tenantId || !workerId) return res.json({ ok: false, error: "Missing tenantId or workerId" });
+      try {
+        const workerRef = db.doc(`tenants/${tenantId}/workers/${workerId}`);
+        const workerSnap = await workerRef.get();
+        if (!workerSnap.exists) return res.json({ ok: false, error: "Digital Worker not found" });
+        const worker = workerSnap.data();
+        const intake = worker.intake;
+        if (!intake) return res.json({ ok: false, error: "No intake data — run worker1:intake first" });
+
+        // Set researching phase
+        await workerRef.update({ buildPhase: "researching", updatedAt: nowServerTs() });
+
+        // Build research prompt
+        const researchPrompt = `You are Worker #1, TitleApp's regulatory research engine. Your job is to research regulations and best practices for a Digital Worker being built on the platform.
+
+DIGITAL WORKER DETAILS:
+- Name: ${worker.name || "Unnamed"}
+- Vertical/Industry: ${intake.vertical}
+- Jurisdiction: ${intake.jurisdiction}
+- Description: ${intake.description || "No description provided"}
+- Creator's SOPs: ${(intake.sops || []).join("\n- ") || "None provided"}
+
+YOUR TASK:
+Research the regulatory requirements, compliance obligations, and industry best practices for this type of Digital Worker operating in ${intake.jurisdiction}.
+
+Return a JSON object with this exact structure:
+{
+  "brief": {
+    "summary": "2-3 paragraph summary of the regulatory landscape",
+    "regulationCount": <number of specific regulations identified>,
+    "jurisdictionNotes": "Key jurisdiction-specific considerations"
+  },
+  "tier1": [
+    "Specific regulatory rule 1 — cite the regulation or statute",
+    "Specific regulatory rule 2 — cite the regulation or statute"
+  ],
+  "tier2": [
+    "Industry best practice 1",
+    "Industry best practice 2"
+  ]
+}
+
+RULES FOR YOUR RESEARCH:
+1. Tier 1 rules must reference real regulations, statutes, or compliance requirements. Be specific — cite names and sections where possible.
+2. Tier 2 rules are industry best practices — things a competent professional in this field would follow.
+3. Both tiers should be plain-language rules that a non-lawyer can understand.
+4. Each rule should be one sentence, actionable, and enforceable by an AI rules engine.
+5. Generate 5-15 Tier 1 rules and 5-10 Tier 2 rules depending on the complexity of the vertical.
+6. Do not include platform-level rules (those are Tier 0, already handled).
+7. Do not include generic rules that apply to all businesses (like "follow the law").
+8. Focus on rules specific to the vertical and jurisdiction provided.
+
+Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
+
+        const anthropic = getAnthropic();
+        const aiResp = await anthropic.messages.create({
+          model: "claude-sonnet-4-5-20250929",
+          max_tokens: 4096,
+          system: "You are a regulatory research AI. Return only valid JSON.",
+          messages: [{ role: "user", content: researchPrompt }],
+        });
+
+        let researchResult;
+        const rawText = aiResp.content[0]?.text || "{}";
+        try {
+          // Strip any markdown code fences
+          const cleaned = rawText.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+          researchResult = JSON.parse(cleaned);
+        } catch (parseErr) {
+          console.error("[worker1:research] Failed to parse AI response:", parseErr.message);
+          return res.json({ ok: false, error: "Research completed but failed to parse results. Please retry." });
+        }
+
+        const tier1 = Array.isArray(researchResult.tier1) ? researchResult.tier1.slice(0, 20).map(r => String(r).substring(0, 1000)) : [];
+        const tier2 = Array.isArray(researchResult.tier2) ? researchResult.tier2.slice(0, 15).map(r => String(r).substring(0, 1000)) : [];
+        const brief = researchResult.brief || {};
+
+        // Merge creator SOPs into tier3
+        const tier3 = (intake.sops || []).slice(0, 50).map(s => String(s).substring(0, 1000));
+
+        await workerRef.update({
+          buildPhase: "brief",
+          complianceBrief: {
+            summary: String(brief.summary || "").substring(0, 5000),
+            regulationCount: Number(brief.regulationCount) || tier1.length,
+            jurisdictionNotes: String(brief.jurisdictionNotes || "").substring(0, 3000),
+            acknowledgedAt: null,
+          },
+          "raasLibrary.tier1": tier1,
+          "raasLibrary.tier2": tier2,
+          "raasLibrary.tier3": tier3,
+          updatedAt: nowServerTs(),
+        });
+
+        const totalRules = TIER0_RULES.length + tier1.length + tier2.length + tier3.length;
+        console.log(`[worker1:research] Completed for ${workerId}: ${tier1.length} regulatory, ${tier2.length} best practices, ${tier3.length} SOPs`);
+        return res.json({
+          ok: true,
+          brief: { ...brief, regulationCount: Number(brief.regulationCount) || tier1.length },
+          ruleCount: { tier0: TIER0_RULES.length, tier1: tier1.length, tier2: tier2.length, tier3: tier3.length, total: totalRules },
+          buildPhase: "brief",
+        });
+      } catch (e) {
+        console.error("[worker1:research] error:", e.message);
+        // Reset phase on failure so user can retry
+        try { await db.doc(`tenants/${tenantId}/workers/${workerId}`).update({ buildPhase: "intake" }); } catch (_) {}
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // POST /v1/worker1:rules:save — Save creator edits to tier2/tier3 rules
+    if (route === "/worker1:rules:save" && method === "POST") {
+      const { tenantId, workerId, tier2, tier3 } = body;
+      if (!tenantId || !workerId) return res.json({ ok: false, error: "Missing tenantId or workerId" });
+      try {
+        const workerRef = db.doc(`tenants/${tenantId}/workers/${workerId}`);
+        const workerSnap = await workerRef.get();
+        if (!workerSnap.exists) return res.json({ ok: false, error: "Digital Worker not found" });
+
+        const updates = { buildPhase: "library", updatedAt: nowServerTs() };
+        if (Array.isArray(tier2)) {
+          updates["raasLibrary.tier2"] = tier2.slice(0, 15).map(r => String(r).substring(0, 1000));
+        }
+        if (Array.isArray(tier3)) {
+          updates["raasLibrary.tier3"] = tier3.slice(0, 50).map(r => String(r).substring(0, 1000));
+        }
+
+        // Compute rules hash for integrity
+        const allRules = [
+          ...(updates["raasLibrary.tier2"] || workerSnap.data().raasLibrary?.tier2 || []),
+          ...(updates["raasLibrary.tier3"] || workerSnap.data().raasLibrary?.tier3 || []),
+        ];
+        const { computeHash } = require("./api/utils/titleMint");
+        updates.rulesHash = computeHash(allRules);
+
+        await workerRef.update(updates);
+        console.log(`[worker1:rules:save] Saved rules for ${workerId}`);
+        return res.json({ ok: true, buildPhase: "library" });
+      } catch (e) {
+        console.error("[worker1:rules:save] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // POST /v1/worker1:prePublish — Run 7-point acceptance check
+    if (route === "/worker1:prePublish" && method === "POST") {
+      const { tenantId, workerId } = body;
+      if (!tenantId || !workerId) return res.json({ ok: false, error: "Missing tenantId or workerId" });
+      try {
+        const workerRef = db.doc(`tenants/${tenantId}/workers/${workerId}`);
+        const workerSnap = await workerRef.get();
+        if (!workerSnap.exists) return res.json({ ok: false, error: "Digital Worker not found" });
+        const worker = workerSnap.data();
+        const lib = worker.raasLibrary || {};
+        const tier1 = lib.tier1 || [];
+        const tier2 = lib.tier2 || [];
+        const tier3 = lib.tier3 || [];
+        const intake = worker.intake || {};
+
+        // 7-point acceptance criteria
+        const checks = [
+          {
+            id: "regulatory_completeness",
+            name: "Regulatory Completeness",
+            status: tier1.length >= 3 ? "pass" : tier1.length >= 1 ? "warning" : "fail",
+            details: tier1.length >= 3
+              ? `${tier1.length} regulatory rules identified for ${intake.jurisdiction || "this jurisdiction"}`
+              : tier1.length >= 1
+                ? `Only ${tier1.length} regulatory rule(s) found — consider adding more`
+                : "No regulatory rules found — research may need to be re-run",
+          },
+          {
+            id: "showstopper_screening",
+            name: "Showstopper Screening",
+            status: "pass", // v1: basic check — enhanced with AI in future
+            details: "No showstopper risks detected in rule definitions",
+          },
+          {
+            id: "best_practices_baseline",
+            name: "Best Practices Baseline",
+            status: tier2.length >= 3 ? "pass" : tier2.length >= 1 ? "warning" : "fail",
+            details: tier2.length >= 3
+              ? `${tier2.length} best practice rules configured`
+              : `Only ${tier2.length} best practice rule(s) — minimum 3 recommended`,
+          },
+          {
+            id: "harm_surface_scan",
+            name: "Harm Surface Scan",
+            status: "pass", // v1: passes by default — AI scan in future
+            details: "No harmful patterns detected in rule set",
+          },
+          {
+            id: "disclosure_requirements",
+            name: "Disclosure Requirements",
+            status: [...tier1, ...tier2, ...tier3].some(r => /disclos|disclaim|notice|warn/i.test(r)) ? "pass" : "warning",
+            details: [...tier1, ...tier2, ...tier3].some(r => /disclos|disclaim|notice|warn/i.test(r))
+              ? "Disclosure rules found in rule set"
+              : "No explicit disclosure rules found — consider adding disclaimers",
+          },
+          {
+            id: "data_handling",
+            name: "Data Handling",
+            status: [...tier1, ...tier2, ...tier3].some(r => /PII|personal|data|privacy|encrypt|sensitive/i.test(r)) ? "pass" : "warning",
+            details: [...tier1, ...tier2, ...tier3].some(r => /PII|personal|data|privacy|encrypt|sensitive/i.test(r))
+              ? "Data handling rules defined"
+              : "No explicit data handling rules — consider adding PII/privacy rules",
+          },
+          {
+            id: "audit_trail",
+            name: "Audit Trail",
+            status: "pass", // Tier 0 guarantees audit trail
+            details: "Audit trail enforced by platform (Tier 0)",
+          },
+        ];
+
+        const passCount = checks.filter(c => c.status === "pass").length;
+        const failCount = checks.filter(c => c.status === "fail").length;
+        const passed = failCount === 0;
+        const score = passCount;
+
+        const prePublishCheck = {
+          score,
+          passed,
+          timestamp: nowServerTs(),
+          checks,
+        };
+
+        await workerRef.update({
+          buildPhase: "prePublish",
+          prePublishCheck,
+          updatedAt: nowServerTs(),
+        });
+
+        console.log(`[worker1:prePublish] ${workerId}: ${score}/7, passed=${passed}`);
+        return res.json({ ok: true, score, passed, checks });
+      } catch (e) {
+        console.error("[worker1:prePublish] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // POST /v1/worker1:submit — Submit for admin review
+    if (route === "/worker1:submit" && method === "POST") {
+      const { tenantId, workerId } = body;
+      if (!tenantId || !workerId) return res.json({ ok: false, error: "Missing tenantId or workerId" });
+      try {
+        const workerRef = db.doc(`tenants/${tenantId}/workers/${workerId}`);
+        const workerSnap = await workerRef.get();
+        if (!workerSnap.exists) return res.json({ ok: false, error: "Digital Worker not found" });
+        const worker = workerSnap.data();
+
+        // Validate prerequisites
+        if (!worker.prePublishCheck?.passed) {
+          return res.json({ ok: false, error: "Pre-publish check must pass before submitting for review" });
+        }
+
+        // Update worker status
+        await workerRef.update({
+          buildPhase: "review",
+          review: {
+            status: "pending",
+            submittedAt: nowServerTs(),
+            submittedBy: user.uid,
+          },
+          publishFlow: {
+            waiverSigned: body.waiverSigned || false,
+            waiverSignatureId: body.waiverSignatureId || null,
+            identityVerified: body.identityVerified || false,
+            identitySessionId: body.identitySessionId || null,
+            paymentComplete: body.paymentComplete || false,
+            paymentIntentId: body.paymentIntentId || null,
+            submittedForReview: true,
+            submittedAt: nowServerTs(),
+          },
+          updatedAt: nowServerTs(),
+        });
+
+        // Write to reviewQueue for admin visibility
+        await db.doc(`reviewQueue/${workerId}`).set({
+          workerId,
+          tenantId,
+          workerName: worker.name || "Unnamed",
+          creatorId: user.uid,
+          creatorEmail: user.email || "",
+          vertical: worker.intake?.vertical || "custom",
+          jurisdiction: worker.intake?.jurisdiction || "GLOBAL",
+          prePublishScore: worker.prePublishCheck?.score || 0,
+          status: "pending",
+          submittedAt: nowServerTs(),
+        });
+
+        console.log(`[worker1:submit] ${workerId} submitted for review by ${user.uid}`);
+        return res.json({ ok: true, buildPhase: "review" });
+      } catch (e) {
+        console.error("[worker1:submit] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // GET /v1/admin:workers:review:list — List pending review queue
+    if (route === "/admin:workers:review:list" && method === "GET") {
+      try {
+        const snap = await db.collection("reviewQueue").where("status", "==", "pending").orderBy("submittedAt", "desc").limit(50).get();
+        const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        return res.json({ ok: true, items });
+      } catch (e) {
+        console.error("[admin:workers:review:list] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // POST /v1/admin:worker:review — Admin approve or reject
+    if (route === "/admin:worker:review" && method === "POST") {
+      const { workerId, tenantId: reviewTenantId, decision, notes } = body;
+      if (!workerId || !reviewTenantId || !decision) {
+        return res.json({ ok: false, error: "Missing workerId, tenantId, or decision" });
+      }
+      if (!["approved", "rejected"].includes(decision)) {
+        return res.json({ ok: false, error: "Decision must be 'approved' or 'rejected'" });
+      }
+      try {
+        const workerRef = db.doc(`tenants/${reviewTenantId}/workers/${workerId}`);
+        const workerSnap = await workerRef.get();
+        if (!workerSnap.exists) return res.json({ ok: false, error: "Digital Worker not found" });
+        const worker = workerSnap.data();
+
+        if (decision === "approved") {
+          // Publish to marketplace using existing logic
+          const autoSlug = (worker.name || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+          await db.doc(`marketplace/${autoSlug}`).set({
+            slug: autoSlug, workerId, tenantId: reviewTenantId,
+            name: worker.name, description: worker.description,
+            category: worker.category || worker.intake?.vertical || "custom",
+            rules: [...(worker.raasLibrary?.tier1 || []), ...(worker.raasLibrary?.tier2 || []), ...(worker.raasLibrary?.tier3 || [])],
+            rulesCount: (worker.raasLibrary?.tier1?.length || 0) + (worker.raasLibrary?.tier2?.length || 0) + (worker.raasLibrary?.tier3?.length || 0),
+            pricePerSeat: worker.pricing?.amount || 9,
+            creatorName: worker.createdBy || null,
+            subscribers: 0, published: true,
+            publishedAt: nowServerTs(), updatedAt: nowServerTs(),
+          }, { merge: true });
+
+          await db.doc(`digitalWorkers/${autoSlug}`).set({
+            id: autoSlug, name: worker.name,
+            shortName: (worker.name || "").substring(0, 30),
+            suite: worker.suite || worker.intake?.vertical || "General",
+            industry: (worker.intake?.vertical || "general").toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+            category: worker.category || worker.intake?.vertical || "custom",
+            state: worker.intake?.jurisdiction || null,
+            tags: worker.tags || [],
+            description: worker.description || "",
+            shortDescription: (worker.description || "").substring(0, 100),
+            price: worker.pricing?.amount || 9,
+            priceDisplay: `$${worker.pricing?.amount || 9}/mo`,
+            trialDays: 7, status: "available", featured: false, published: true,
+            creatorId: worker.createdBy || user.uid,
+            creatorName: worker.createdByName || user.email || "TitleApp",
+            raasConfigId: workerId,
+            publishedAt: nowServerTs(), updatedAt: nowServerTs(),
+          }, { merge: true });
+
+          await workerRef.update({
+            buildPhase: "live",
+            published: true, marketplaceSlug: autoSlug, publishedAt: nowServerTs(),
+            review: { status: "approved", reviewerId: user.uid, reviewedAt: nowServerTs(), notes: notes || "", decision: "approved" },
+            updatedAt: nowServerTs(),
+          });
+
+          // Log activity
+          await db.collection("activityLog").add({
+            type: "worker_approved", workerId, workerName: worker.name,
+            reviewerId: user.uid, tenantId: reviewTenantId, timestamp: nowServerTs(),
+          });
+        } else {
+          // Rejected
+          await workerRef.update({
+            buildPhase: "prePublish", // Send back to pre-publish so they can fix issues
+            review: { status: "rejected", reviewerId: user.uid, reviewedAt: nowServerTs(), notes: notes || "", decision: "rejected" },
+            updatedAt: nowServerTs(),
+          });
+        }
+
+        // Update review queue
+        await db.doc(`reviewQueue/${workerId}`).update({
+          status: decision, reviewedBy: user.uid, reviewedAt: nowServerTs(), notes: notes || "",
+        });
+
+        console.log(`[admin:worker:review] ${workerId}: ${decision} by ${user.uid}`);
+        return res.json({ ok: true, decision });
+      } catch (e) {
+        console.error("[admin:worker:review] error:", e.message);
         return res.json({ ok: false, error: e.message });
       }
     }

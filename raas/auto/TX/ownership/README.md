@@ -1,9 +1,9 @@
-# RAAS -- Auto -- Texas (TX) -- Ownership
+# Digital Worker Rules -- Auto -- Texas (TX) -- Ownership
 
 This document defines **ownership, title-state, and encumbrance rules** for vehicles
-under TitleApp **Rules as a Service (RAAS)** in Texas.
+under TitleApp **Digital Worker rules** in Texas.
 
-Ownership RAAS ensures that vehicle records:
+Ownership rules ensure that vehicle records:
 - reflect legal reality
 - preserve historical continuity
 - never imply clean title when encumbrances exist
@@ -131,7 +131,7 @@ Restrictions must:
 
 ## 7) Unsupported Actions
 
-Not supported under RAAS:
+Not supported under Digital Worker rules:
 - legal ownership determinations
 - dispute resolution
 - title fraud conclusions
@@ -150,6 +150,6 @@ Unsupported requests must:
 
 - Jurisdiction: TX
 - Vertical: Auto
-- RAAS Module: Ownership
+- Rules Module: Ownership
 - Version: v1.0
 - Last Reviewed: 2026-02-18
