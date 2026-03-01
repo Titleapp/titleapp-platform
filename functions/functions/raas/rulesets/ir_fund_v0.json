@@ -1,0 +1,91 @@
+{
+  "id": "ir_fund_v0",
+  "version": "v0",
+  "domain": "fund-formation",
+  "description": "Fund formation screening — management fees, carry, GP commitment, fund structure",
+  "required_inputs": ["fund_size", "strategy", "target_raise"],
+  "hard_stops": [
+    {
+      "id": "gp_commit_below_min",
+      "logic": "if tenant.min_gp_commit_pct provided AND gp_commit_pct < tenant.min_gp_commit_pct",
+      "eval": {
+        "field": "metrics.gpCommitPct",
+        "operator": "<",
+        "threshold": "tenant.min_gp_commit_pct",
+        "conditional": true
+      }
+    },
+    {
+      "id": "mgmt_fee_above_max",
+      "logic": "if tenant.max_mgmt_fee provided AND management_fee > tenant.max_mgmt_fee",
+      "eval": {
+        "field": "metrics.managementFee",
+        "operator": ">",
+        "threshold": "tenant.max_mgmt_fee",
+        "conditional": true
+      }
+    },
+    {
+      "id": "missing_lpa",
+      "logic": "Fund formation requires Limited Partnership Agreement",
+      "eval": {
+        "field": "docs.lpa",
+        "operator": "==",
+        "threshold": false
+      }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "high_carry_no_hurdle",
+      "logic": "Carry above 20% with no hurdle rate — misaligned incentives",
+      "eval": {
+        "field": "metrics.carry",
+        "operator": ">",
+        "threshold": 0.20
+      }
+    },
+    {
+      "id": "short_fund_life",
+      "logic": "Fund life under 5 years — limited deployment period",
+      "eval": {
+        "field": "metrics.fundLife",
+        "operator": "<",
+        "threshold": 5
+      }
+    },
+    {
+      "id": "low_gp_commit",
+      "logic": "GP commitment below 2% — limited GP alignment",
+      "eval": {
+        "field": "metrics.gpCommitPct",
+        "operator": "<",
+        "threshold": 0.02
+      }
+    },
+    {
+      "id": "high_mgmt_fee",
+      "logic": "Management fee above 2% — above market norms",
+      "eval": {
+        "field": "metrics.managementFee",
+        "operator": ">",
+        "threshold": 0.02
+      }
+    },
+    {
+      "id": "no_clawback",
+      "logic": "No GP clawback provision — LP downside risk",
+      "eval": {
+        "field": "terms.gpClawback",
+        "operator": "==",
+        "threshold": false
+      }
+    }
+  ],
+  "outputs": [
+    "fund_overview",
+    "fee_analysis",
+    "waterfall_structure",
+    "lp_terms_summary"
+  ]
+}

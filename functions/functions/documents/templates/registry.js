@@ -151,6 +151,112 @@ const TEMPLATES = {
     ],
     defaultStyles: { ...DEFAULT_STYLES },
   },
+
+  // ─── IR Document Templates ──────────────────────────────────
+
+  "ir-waterfall-report": {
+    id: "ir-waterfall-report",
+    name: "Waterfall Distribution Report",
+    description: "Detailed waterfall analysis with tier-by-tier LP/GP splits, IRR, and investor allocations",
+    version: "v1",
+    category: "ir",
+    supportedFormats: ["pdf"],
+    defaultFormat: "pdf",
+    sections: [
+      { id: "dealSummary", name: "Deal Summary", required: true },
+      { id: "waterfallTiers", name: "Waterfall Tiers", required: true },
+      { id: "distributionBreakdown", name: "Distribution Breakdown", required: false },
+      { id: "investorAllocations", name: "Investor Allocations", required: false },
+    ],
+    defaultStyles: { ...DEFAULT_STYLES },
+  },
+
+  "ir-capital-call": {
+    id: "ir-capital-call",
+    name: "Capital Call Notice",
+    description: "Formal capital call notice with amount, due date, wire instructions, and investor allocation",
+    version: "v1",
+    category: "ir",
+    supportedFormats: ["pdf"],
+    defaultFormat: "pdf",
+    sections: [
+      { id: "header", name: "Fund/Deal Header", required: true },
+      { id: "callDetails", name: "Call Details", required: true },
+      { id: "wireInstructions", name: "Wire Instructions", required: false },
+      { id: "investorAllocation", name: "Investor Allocation", required: false },
+    ],
+    defaultStyles: { ...DEFAULT_STYLES },
+  },
+
+  "ir-quarterly-report": {
+    id: "ir-quarterly-report",
+    name: "Quarterly Investor Report",
+    description: "Quarterly LP report with portfolio summary, deal updates, financials, and outlook",
+    version: "v1",
+    category: "ir",
+    supportedFormats: ["pdf"],
+    defaultFormat: "pdf",
+    sections: [
+      { id: "coverPage", name: "Cover Page", required: true },
+      { id: "portfolioSummary", name: "Portfolio Summary", required: true },
+      { id: "dealUpdates", name: "Deal Updates", required: false },
+      { id: "financialSummary", name: "Financial Summary", required: false },
+      { id: "outlook", name: "Outlook", required: false },
+    ],
+    defaultStyles: { ...DEFAULT_STYLES },
+  },
+
+  "ir-investor-summary": {
+    id: "ir-investor-summary",
+    name: "Investor Portfolio Summary",
+    description: "Individual investor view showing commitments, distributions, and documents across deals",
+    version: "v1",
+    category: "ir",
+    supportedFormats: ["pdf"],
+    defaultFormat: "pdf",
+    sections: [
+      { id: "investorProfile", name: "Investor Profile", required: true },
+      { id: "commitments", name: "Commitments", required: true },
+      { id: "distributions", name: "Distributions", required: false },
+      { id: "documents", name: "Documents", required: false },
+    ],
+    defaultStyles: { ...DEFAULT_STYLES },
+  },
+
+  "ir-deal-memo": {
+    id: "ir-deal-memo",
+    name: "Investment Deal Memo",
+    description: "IC-style deal memo with financial analysis, risk factors, projections, and recommendation",
+    version: "v1",
+    category: "ir",
+    supportedFormats: ["pdf", "docx"],
+    defaultFormat: "pdf",
+    sections: [
+      { id: "dealOverview", name: "Deal Overview", required: true },
+      { id: "financialAnalysis", name: "Financial Analysis", required: true },
+      { id: "riskFactors", name: "Risk Factors", required: false },
+      { id: "projections", name: "Projections", required: false },
+      { id: "recommendation", name: "Recommendation", required: false },
+    ],
+    defaultStyles: { ...DEFAULT_STYLES },
+  },
+
+  "ir-subscription-agreement": {
+    id: "ir-subscription-agreement",
+    name: "Subscription Agreement",
+    description: "Investor subscription agreement with representations, terms, and signature blocks",
+    version: "v1",
+    category: "ir",
+    supportedFormats: ["docx", "pdf"],
+    defaultFormat: "docx",
+    sections: [
+      { id: "parties", name: "Parties", required: true },
+      { id: "representations", name: "Representations", required: true },
+      { id: "subscriptionTerms", name: "Subscription Terms", required: true },
+      { id: "signatures", name: "Signature Blocks", required: true },
+    ],
+    defaultStyles: { ...DEFAULT_STYLES, fontFamily: "Times-Roman", fontFamilyBold: "Times-Bold" },
+  },
 };
 
 function getTemplate(id) {

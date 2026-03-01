@@ -1,0 +1,18 @@
+{
+  "id": "capital_call_notice_v0",
+  "name": "Capital Call Notice",
+  "version": "v0",
+  "domain": "investor-relations",
+  "description": "Formal capital call notice with amount due, due date, purpose, wire instructions, and investor-specific allocation",
+  "sections": [
+    "header",
+    "call_details",
+    "investor_allocation",
+    "wire_instructions",
+    "compliance_notice"
+  ],
+  "required_data": ["deal", "capitalCall", "investor"],
+  "output_format": "pdf",
+  "template_id": "ir-capital-call",
+  "compliance_note": "This capital call is made pursuant to the terms of the governing documents. Failure to fund may result in dilution or default penalties as outlined in the partnership agreement."
+}

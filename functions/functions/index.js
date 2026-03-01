@@ -1,4 +1,9 @@
 const { onRequest } = require("firebase-functions/v2/https");
+const { setGlobalOptions } = require("firebase-functions/v2");
+
+// Default all functions to fractional CPU to stay within Cloud Run quota (24 CPUs).
+// Only the main api function overrides this with cpu: 1 for AI workloads.
+setGlobalOptions({ region: "us-central1", cpu: "gcf_gen1", memory: "256MiB" });
 const admin = require("firebase-admin");
 const crypto = require("crypto");
 
@@ -846,7 +851,8 @@ async function validateAgainstRaas(tenantId, type, row) {
 
 exports.api = onRequest(
   // IMPORTANT: we need rawBody for Stripe webhook signature verification
-  { region: "us-central1" },
+  // Override global cpu: "gcf_gen1" — this function runs Claude/OpenAI calls and needs full CPU.
+  { region: "us-central1", cpu: 1, memory: "512MiB" },
   async (req, res) => {
     console.log("✅ API_VERSION", "2026-03-01-document-engine");
 
@@ -4100,7 +4106,7 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
     // POST /v1/workspaces
     if (route === "/workspaces" && method === "POST") {
       try {
-        const { vertical, name, tagline, jurisdiction, onboardingComplete } = body;
+        const { vertical, name, tagline, jurisdiction, onboardingComplete, type, workerIds } = body;
 
         if (!vertical || !name) {
           return jsonError(res, 400, "vertical and name are required");
@@ -4110,17 +4116,20 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
         }
 
         const existing = await getUserWorkspaces(auth.user.uid);
-        const businessCount = existing.filter(w => w.plan !== 'free').length;
+        const businessCount = existing.filter(w => w.plan !== 'free' && w.type !== 'shared').length;
         if (businessCount >= 10) {
           return jsonError(res, 400, "Maximum 10 business workspaces per account");
         }
 
         const duplicate = existing.find(w =>
-          w.vertical === vertical && w.jurisdiction === jurisdiction
+          w.vertical === vertical && w.jurisdiction === jurisdiction && w.type !== 'shared'
         );
         if (duplicate) {
           return jsonError(res, 400, `You already have a ${vertical} workspace for ${jurisdiction}`);
         }
+
+        const validTypes = ['org', 'personal'];
+        const wsType = validTypes.includes(type) ? type : 'org';
 
         const workspace = await createWorkspace(auth.user.uid, {
           vertical: String(vertical).substring(0, 50),
@@ -4128,6 +4137,8 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
           tagline: tagline ? String(tagline).substring(0, 500) : '',
           jurisdiction: jurisdiction ? String(jurisdiction).substring(0, 10) : null,
           onboardingComplete: onboardingComplete === true,
+          type: wsType,
+          workerIds: Array.isArray(workerIds) ? workerIds.slice(0, 20) : undefined,
         });
 
         return res.json({ ok: true, workspace });
@@ -4187,6 +4198,167 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       } catch (e) {
         console.error("workspaces:delete failed:", e);
         return jsonError(res, 500, "Failed to cancel workspace");
+      }
+    }
+
+    // POST /v1/b2b:deploy — deploy workers to a recipient (internal, Bearer auth)
+    if (route === "/b2b:deploy" && method === "POST") {
+      try {
+        const { recipientEmail, workerIds, workerName, permissions } = body;
+        const tenantId = ctx.tenantId;
+
+        if (!recipientEmail || !workerIds || !workerIds.length) {
+          return jsonError(res, 400, "recipientEmail and workerIds are required");
+        }
+        if (!tenantId) {
+          return jsonError(res, 400, "x-tenant-id header is required");
+        }
+
+        // Look up sender org name
+        const wsDoc = await db.collection("users").doc(auth.user.uid)
+          .collection("workspaces").doc(tenantId).get();
+        const senderOrgName = wsDoc.exists ? (wsDoc.data().name || "Unknown") : "Unknown";
+
+        const deploymentId = `dep_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+
+        let recipientUserId = null;
+        try {
+          const userRecord = await admin.auth().getUserByEmail(recipientEmail);
+          recipientUserId = userRecord.uid;
+        } catch (_) {}
+
+        const deployment = {
+          id: deploymentId,
+          senderTenantId: tenantId,
+          senderOrgName,
+          workerIds,
+          workerName: workerName || "Shared Worker",
+          permissions: {
+            recipientCanExport: permissions?.recipientCanExport ?? false,
+            recipientCanRemove: permissions?.recipientCanRemove ?? true,
+            dataRetentionDays: permissions?.dataRetentionDays ?? 365,
+          },
+          status: "active",
+          recipientCount: 1,
+          activeRecipientCount: recipientUserId ? 1 : 0,
+          analytics: { totalInteractions: 0, avgInteractionsPerRecipient: 0 },
+          tier: "starter",
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        };
+
+        const recipientDoc = {
+          deploymentId,
+          senderTenantId: tenantId,
+          senderOrgName,
+          recipientEmail,
+          recipientUserId,
+          workerIds,
+          workerName: workerName || "Shared Worker",
+          vertical: "consumer",
+          permissions: deployment.permissions,
+          status: recipientUserId ? "active" : "pending",
+          deployedAt: admin.firestore.FieldValue.serverTimestamp(),
+          acceptedAt: null,
+        };
+
+        const batch = db.batch();
+        batch.set(db.collection("b2bDeployments").doc(deploymentId), deployment);
+        batch.set(db.collection("b2bRecipients").doc(), recipientDoc);
+        await batch.commit();
+
+        return res.json({ ok: true, deployment });
+      } catch (e) {
+        console.error("b2b:deploy failed:", e);
+        return jsonError(res, 500, "Failed to deploy workers");
+      }
+    }
+
+    // GET /v1/b2b:deployments — list deployments for current tenant
+    if (route === "/b2b:deployments" && method === "GET") {
+      try {
+        const tenantId = ctx.tenantId;
+        if (!tenantId) return jsonError(res, 400, "x-tenant-id header is required");
+
+        const snap = await db.collection("b2bDeployments")
+          .where("senderTenantId", "==", tenantId)
+          .orderBy("createdAt", "desc")
+          .limit(50)
+          .get();
+
+        const deployments = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        return res.json({ ok: true, deployments });
+      } catch (e) {
+        console.error("b2b:deployments failed:", e);
+        return jsonError(res, 500, "Failed to fetch deployments");
+      }
+    }
+
+    // POST /v1/b2b:revoke — revoke a deployment
+    if (route === "/b2b:revoke" && method === "POST") {
+      try {
+        const { deploymentId } = body;
+        if (!deploymentId) return jsonError(res, 400, "deploymentId is required");
+
+        const ref = db.collection("b2bDeployments").doc(deploymentId);
+        const doc = await ref.get();
+        if (!doc.exists) return jsonError(res, 404, "Deployment not found");
+
+        await ref.update({
+          status: "revoked",
+          revokedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        // Revoke all recipient entries
+        const recipSnap = await db.collection("b2bRecipients")
+          .where("deploymentId", "==", deploymentId)
+          .get();
+        const batch = db.batch();
+        recipSnap.docs.forEach(r => {
+          batch.update(r.ref, { status: "revoked", revokedAt: admin.firestore.FieldValue.serverTimestamp() });
+        });
+        await batch.commit();
+
+        return res.json({ ok: true });
+      } catch (e) {
+        console.error("b2b:revoke failed:", e);
+        return jsonError(res, 500, "Failed to revoke deployment");
+      }
+    }
+
+    // GET /v1/b2b:analytics — aggregate B2B analytics for current tenant
+    if (route === "/b2b:analytics" && method === "GET") {
+      try {
+        const tenantId = ctx.tenantId;
+        if (!tenantId) return jsonError(res, 400, "x-tenant-id header is required");
+
+        const depSnap = await db.collection("b2bDeployments")
+          .where("senderTenantId", "==", tenantId)
+          .get();
+
+        let totalDeployments = 0, activeDeployments = 0, totalRecipients = 0, activeRecipients = 0, totalInteractions = 0;
+        depSnap.docs.forEach(d => {
+          const data = d.data();
+          totalDeployments++;
+          if (data.status === "active") activeDeployments++;
+          totalRecipients += data.recipientCount || 0;
+          activeRecipients += data.activeRecipientCount || 0;
+          totalInteractions += data.analytics?.totalInteractions || 0;
+        });
+
+        return res.json({
+          ok: true,
+          analytics: {
+            totalDeployments,
+            activeDeployments,
+            totalRecipients,
+            activeRecipients,
+            totalInteractions,
+            avgInteractionsPerRecipient: activeRecipients > 0 ? Math.round(totalInteractions / activeRecipients * 10) / 10 : 0,
+          },
+        });
+      } catch (e) {
+        console.error("b2b:analytics failed:", e);
+        return jsonError(res, 500, "Failed to fetch analytics");
       }
     }
 
@@ -4791,6 +4963,23 @@ Active: ${rc.active ? "Yes" : "No"}`;
               } catch (raiseErr) {
                 console.warn("Could not load raise config for investor prompt:", raiseErr.message);
               }
+
+              // Load active IR deals for this tenant
+              try {
+                const dealsSnap = await db.collection("irDeals")
+                  .where("tenantId", "==", ctx.tenantId)
+                  .where("status", "in", ["draft", "active", "raising", "funded"])
+                  .limit(10).get();
+                if (!dealsSnap.empty) {
+                  investorRaiseContext += "\n\nACTIVE DEALS:";
+                  for (const d of dealsSnap.docs) {
+                    const deal = d.data();
+                    investorRaiseContext += `\n- ${deal.name} (${deal.typeName || deal.type}, ${deal.status}): Target $${((deal.targetRaise || 0) / 1000000).toFixed(1)}M, Committed $${((deal.committedAmount || 0) / 1000000).toFixed(1)}M, ${deal.investorCount || 0} investors [ID: ${d.id}]`;
+                  }
+                }
+              } catch (dealErr) {
+                console.warn("Could not load IR deals for investor prompt:", dealErr.message);
+              }
             }
 
             // Call Claude API
@@ -4939,7 +5128,29 @@ You CAN:
 ESCALATION: For questions you cannot answer -- legal specifics, custom deal terms, strategic partnership details -- offer to connect the investor with Sean (CEO) or Kent (CFO) directly. Say: "That's a great question. Let me connect you with Sean/Kent who can give you a more detailed answer on that." Log the escalation.
 
 COMPLIANCE DISCLAIMER -- include when discussing securities, investment terms, or regulatory matters:
-"This is informational guidance only. TitleApp does not act as a registered funding portal, broker-dealer, or investment advisor. Securities offerings must comply with applicable SEC regulations. Consult qualified legal counsel before making investment decisions."` : ctx.vertical === "real-estate" || ctx.vertical === "property-mgmt" ? "You specialize in real estate transactions, property management, compliance, and document management." : "Help with business operations, compliance questions, document management, and platform navigation."} When discussing deals or investments, note that you provide informational analysis only, not financial advice.
+"This is informational guidance only. TitleApp does not act as a registered funding portal, broker-dealer, or investment advisor. Securities offerings must comply with applicable SEC regulations. Consult qualified legal counsel before making investment decisions."
+
+DEAL MANAGEMENT:
+You can manage multiple investment deals simultaneously. When the user asks about a specific deal, reference it by name or ID from the ACTIVE DEALS list above. Available deal types: CRE Syndication, Startup Equity, Fund Formation, M&A/PE, Opportunity Zone, EB-5, Real Estate Debt, Revenue Share. You can create deals, add investors, track commitments, and close deals.
+
+WATERFALL CALCULATIONS:
+When the user asks about distributions, returns, waterfalls, or "how the money flows," you can run waterfall calculations. Use the |||GENERATE_DOCUMENT||| markers with the ir-waterfall-report template to generate a formatted waterfall analysis PDF. Standard waterfall: Return of Capital → Preferred Return → GP Catch-Up → Carried Interest Split.
+
+CAPITAL CALLS:
+When the user asks to "call capital," "send a capital call," or "request funding," confirm the deal, amount, and due date. The system will calculate pro-rata allocations automatically.
+
+DISTRIBUTIONS:
+When the user wants to distribute proceeds, confirm the deal, amount, and source (sale, refinance, operating cash flow). The system runs the waterfall automatically and allocates to each investor.
+
+IR COMMUNICATIONS:
+When the user asks to "send an update," "notify investors," or "send a capital call notice," draft the message and confirm before sending. Available templates: capital_call_notice, distribution_notice, quarterly_update, k1_reminder, deal_announcement, closing_notice, custom.
+
+IR ACTION MARKERS -- use these to execute IR actions. The system processes them automatically:
+|||IR_ACTION|||
+{"action": "create_deal", "data": {"type": "cre_syndication", "name": "Deal Name", "targetRaise": 5000000, "purchasePrice": 15000000}}
+|||END_IR_ACTION|||
+
+Available actions: create_deal, close_deal, add_investor, create_capital_call, create_distribution, send_communication, run_compliance_check. After the markers, confirm to the user what was done. Do NOT mention the markers to the user.` : ctx.vertical === "real-estate" || ctx.vertical === "property-mgmt" ? "You specialize in real estate transactions, property management, compliance, and document management." : "Help with business operations, compliance questions, document management, and platform navigation."} When discussing deals or investments, note that you provide informational analysis only, not financial advice.
 
 Platform navigation — when users ask how to do things, give them accurate directions:
 - To analyze a new deal: Go to the Analyst section in the left navigation, then click the "+ Analyze Deal" button at the top right.
@@ -5190,6 +5401,75 @@ Never attempt to output an entire multi-page document in a single response. For 
           } catch (docParseErr) {
             console.error("Failed to parse GENERATE_DOCUMENT from AI response:", docParseErr.message);
             aiResponse = aiResponse.replace(/\|\|\|GENERATE_DOCUMENT\|\|\|[\s\S]*?\|\|\|END_DOCUMENT\|\|\|/g, "").trim();
+          }
+        }
+
+        // ── IR Action marker parsing ────────────────────────
+        const irMarkerStart = "|||IR_ACTION|||";
+        const irMarkerEnd = "|||END_IR_ACTION|||";
+        if (aiResponse.includes(irMarkerStart) && aiResponse.includes(irMarkerEnd)) {
+          try {
+            const irStart = aiResponse.indexOf(irMarkerStart) + irMarkerStart.length;
+            const irEnd = aiResponse.indexOf(irMarkerEnd);
+            const irJsonStr = aiResponse.substring(irStart, irEnd).trim();
+            const irPayload = JSON.parse(irJsonStr);
+            const irAction = irPayload.action;
+            const irData = irPayload.data || {};
+
+            let irResult = null;
+            if (irAction === "create_deal") {
+              const { createDeal } = require("./ir/deals");
+              irResult = await createDeal(ctx.tenantId, irData);
+            } else if (irAction === "close_deal") {
+              const { closeDeal } = require("./ir/deals");
+              irResult = await closeDeal(ctx.tenantId, irData.dealId);
+            } else if (irAction === "add_investor") {
+              const { addDealInvestor } = require("./ir/deals");
+              irResult = await addDealInvestor(ctx.tenantId, irData.dealId, irData);
+            } else if (irAction === "create_capital_call") {
+              const { createCapitalCall } = require("./ir/capitalCalls");
+              irResult = await createCapitalCall(ctx.tenantId, irData.dealId, irData);
+            } else if (irAction === "create_distribution") {
+              const { createDistribution } = require("./ir/distributions");
+              irResult = await createDistribution(ctx.tenantId, irData.dealId, irData);
+            } else if (irAction === "send_communication") {
+              const { buildMessage, sendToInvestors } = require("./ir/communications");
+              const msg = buildMessage(irData.templateType || "custom", irData);
+              if (msg.ok) {
+                irResult = await sendToInvestors(ctx.tenantId, irData.dealId || null, msg, {
+                  channel: irData.channel || "platform",
+                  investorIds: irData.investorIds,
+                });
+              } else {
+                irResult = msg;
+              }
+            } else if (irAction === "run_compliance_check") {
+              const { getDeal, getDealInvestors } = require("./ir/deals");
+              const dealResult = await getDeal(ctx.tenantId, irData.dealId);
+              if (dealResult.ok) {
+                const investorsResult = await getDealInvestors(ctx.tenantId, irData.dealId);
+                const investors = investorsResult.ok ? investorsResult.investors : [];
+                const nonAccredited = investors.filter((i) => !i.accredited).length;
+                irResult = { ok: true, regulation: dealResult.deal.regulation, investorCount: investors.length, nonAccredited };
+              } else {
+                irResult = dealResult;
+              }
+            }
+
+            // Strip markers from visible response
+            aiResponse = aiResponse.replace(/\|\|\|IR_ACTION\|\|\|[\s\S]*?\|\|\|END_IR_ACTION\|\|\|/g, "").trim();
+
+            if (irResult) {
+              structuredData.irAction = {
+                type: "ir_action_executed",
+                action: irAction,
+                result: irResult,
+              };
+              console.log("Executed IR action from chat:", irAction, irResult.ok ? "OK" : irResult.error);
+            }
+          } catch (irParseErr) {
+            console.error("Failed to parse IR_ACTION from AI response:", irParseErr.message);
+            aiResponse = aiResponse.replace(/\|\|\|IR_ACTION\|\|\|[\s\S]*?\|\|\|END_IR_ACTION\|\|\|/g, "").trim();
           }
         }
 
@@ -7158,6 +7438,511 @@ Return as JSON: { summary, risks: [], recommendations: [], confidence }`
       } catch (e) {
         // Collection may not exist yet
         return res.json({ ok: true, proposals: [] });
+      }
+    }
+
+    // ----------------------------
+    // INVESTOR RELATIONS: DEALS, WATERFALL, CAPITAL CALLS, DISTRIBUTIONS, COMMS
+    // ----------------------------
+
+    // POST /v1/ir:deal:create
+    if (route === "/ir:deal:create" && method === "POST") {
+      try {
+        const { createDeal } = require("./ir/deals");
+        const result = await createDeal(ctx.tenantId, body);
+        if (!result.ok) return jsonError(res, 400, result.error);
+        return res.json(result);
+      } catch (e) {
+        console.error("ir:deal:create failed:", e);
+        return jsonError(res, 500, "Failed to create deal");
+      }
+    }
+
+    // GET /v1/ir:deal:get
+    if (route === "/ir:deal:get" && method === "GET") {
+      try {
+        const dealId = body.dealId || (req.query && req.query.dealId);
+        if (!dealId) return jsonError(res, 400, "Missing dealId");
+        const { getDeal } = require("./ir/deals");
+        const result = await getDeal(ctx.tenantId, dealId);
+        if (!result.ok) return jsonError(res, 404, result.error);
+        return res.json(result);
+      } catch (e) {
+        console.error("ir:deal:get failed:", e);
+        return jsonError(res, 500, "Failed to get deal");
+      }
+    }
+
+    // GET /v1/ir:deals:list
+    if (route === "/ir:deals:list" && method === "GET") {
+      try {
+        const { listDeals } = require("./ir/deals");
+        const opts = {
+          status: body.status || (req.query && req.query.status),
+          type: body.type || (req.query && req.query.type),
+          limit: parseInt(body.limit || (req.query && req.query.limit) || "50"),
+        };
+        const result = await listDeals(ctx.tenantId, opts);
+        return res.json(result);
+      } catch (e) {
+        console.error("ir:deals:list failed:", e);
+        return jsonError(res, 500, "Failed to list deals");
+      }
+    }
+
+    // PUT /v1/ir:deal:update
+    if (route === "/ir:deal:update" && method === "PUT") {
+      try {
+        const { dealId, ...updates } = body;
+        if (!dealId) return jsonError(res, 400, "Missing dealId");
+        const { updateDeal } = require("./ir/deals");
+        const result = await updateDeal(ctx.tenantId, dealId, updates);
+        if (!result.ok) return jsonError(res, 400, result.error);
+        return res.json(result);
+      } catch (e) {
+        console.error("ir:deal:update failed:", e);
+        return jsonError(res, 500, "Failed to update deal");
+      }
+    }
+
+    // POST /v1/ir:deal:close
+    if (route === "/ir:deal:close" && method === "POST") {
+      try {
+        const { dealId } = body;
+        if (!dealId) return jsonError(res, 400, "Missing dealId");
+        const { closeDeal } = require("./ir/deals");
+        const result = await closeDeal(ctx.tenantId, dealId);
+        if (!result.ok) return jsonError(res, 400, result.error);
+        return res.json(result);
+      } catch (e) {
+        console.error("ir:deal:close failed:", e);
+        return jsonError(res, 500, "Failed to close deal");
+      }
+    }
+
+    // POST /v1/ir:deal:add-investor
+    if (route === "/ir:deal:add-investor" && method === "POST") {
+      try {
+        const { dealId, ...investorData } = body;
+        if (!dealId) return jsonError(res, 400, "Missing dealId");
+        const { addDealInvestor } = require("./ir/deals");
+        const result = await addDealInvestor(ctx.tenantId, dealId, investorData);
+        if (!result.ok) return jsonError(res, 400, result.error);
+        return res.json(result);
+      } catch (e) {
+        console.error("ir:deal:add-investor failed:", e);
+        return jsonError(res, 500, "Failed to add investor to deal");
+      }
+    }
+
+    // POST /v1/ir:waterfall:calculate
+    if (route === "/ir:waterfall:calculate" && method === "POST") {
+      try {
+        const { dealId, cashFlows } = body;
+        if (!dealId) return jsonError(res, 400, "Missing dealId");
+        if (!cashFlows || !Array.isArray(cashFlows)) return jsonError(res, 400, "Missing cashFlows array");
+        const { getDeal, getDealInvestors } = require("./ir/deals");
+        const { calculateWaterfall, allocateToInvestors } = require("./ir/waterfall");
+
+        const dealResult = await getDeal(ctx.tenantId, dealId);
+        if (!dealResult.ok) return jsonError(res, 404, dealResult.error);
+        const deal = dealResult.deal;
+
+        const investorsResult = await getDealInvestors(ctx.tenantId, dealId);
+        const investors = investorsResult.ok ? investorsResult.investors : [];
+        const lpInvested = investors.reduce((sum, inv) => sum + (inv.commitmentAmount || 0), 0);
+
+        const result = calculateWaterfall(
+          { lpInvested, gpInvested: deal.gpInvested || 0, waterfallTiers: deal.waterfallTiers || [] },
+          cashFlows
+        );
+        if (!result.ok) return jsonError(res, 400, result.error);
+
+        // Add investor allocations
+        if (result.summary && investors.length > 0) {
+          result.investorAllocations = allocateToInvestors(result.summary.lpDistributed, investors);
+        }
+
+        return res.json(result);
+      } catch (e) {
+        console.error("ir:waterfall:calculate failed:", e);
+        return jsonError(res, 500, "Failed to calculate waterfall");
+      }
+    }
+
+    // GET /v1/ir:performance
+    if (route === "/ir:performance" && method === "GET") {
+      try {
+        const { listDeals } = require("./ir/deals");
+        const { listDistributions } = require("./ir/distributions");
+        const dealsResult = await listDeals(ctx.tenantId, {});
+        const distsResult = await listDistributions(ctx.tenantId, null);
+
+        const deals = dealsResult.ok ? dealsResult.deals : [];
+        const dists = distsResult.ok ? distsResult.distributions : [];
+
+        const totalCommitted = deals.reduce((s, d) => s + (d.committedAmount || 0), 0);
+        const totalDistributed = dists.reduce((s, d) => s + (d.totalAmount || 0), 0);
+        const activeDeals = deals.filter((d) => d.status !== "closed").length;
+
+        return res.json({
+          ok: true,
+          portfolio: {
+            totalDeals: deals.length,
+            activeDeals,
+            closedDeals: deals.length - activeDeals,
+            totalCommitted,
+            totalDistributed,
+            dpi: totalCommitted > 0 ? Math.round((totalDistributed / totalCommitted) * 100) / 100 : 0,
+          },
+        });
+      } catch (e) {
+        console.error("ir:performance failed:", e);
+        return jsonError(res, 500, "Failed to get performance");
+      }
+    }
+
+    // POST /v1/ir:distribution:create
+    if (route === "/ir:distribution:create" && method === "POST") {
+      try {
+        const { dealId, totalAmount, source, date, memo } = body;
+        if (!dealId) return jsonError(res, 400, "Missing dealId");
+        if (!totalAmount) return jsonError(res, 400, "Missing totalAmount");
+        const { createDistribution } = require("./ir/distributions");
+        const result = await createDistribution(ctx.tenantId, dealId, { totalAmount, source, date, memo });
+        if (!result.ok) return jsonError(res, 400, result.error);
+        return res.json(result);
+      } catch (e) {
+        console.error("ir:distribution:create failed:", e);
+        return jsonError(res, 500, "Failed to create distribution");
+      }
+    }
+
+    // GET /v1/ir:distributions:list
+    if (route === "/ir:distributions:list" && method === "GET") {
+      try {
+        const dealId = body.dealId || (req.query && req.query.dealId);
+        const { listDistributions } = require("./ir/distributions");
+        const result = await listDistributions(ctx.tenantId, dealId || null);
+        return res.json(result);
+      } catch (e) {
+        console.error("ir:distributions:list failed:", e);
+        return jsonError(res, 500, "Failed to list distributions");
+      }
+    }
+
+    // POST /v1/ir:capitalcall:create
+    if (route === "/ir:capitalcall:create" && method === "POST") {
+      try {
+        const { dealId, amount, dueDate, purpose, memo } = body;
+        if (!dealId) return jsonError(res, 400, "Missing dealId");
+        const { createCapitalCall } = require("./ir/capitalCalls");
+        const result = await createCapitalCall(ctx.tenantId, dealId, { amount, dueDate, purpose, memo });
+        if (!result.ok) return jsonError(res, 400, result.error);
+        return res.json(result);
+      } catch (e) {
+        console.error("ir:capitalcall:create failed:", e);
+        return jsonError(res, 500, "Failed to create capital call");
+      }
+    }
+
+    // GET /v1/ir:capitalcalls:list
+    if (route === "/ir:capitalcalls:list" && method === "GET") {
+      try {
+        const dealId = body.dealId || (req.query && req.query.dealId);
+        const { listCapitalCalls } = require("./ir/capitalCalls");
+        const result = await listCapitalCalls(ctx.tenantId, dealId || null);
+        return res.json(result);
+      } catch (e) {
+        console.error("ir:capitalcalls:list failed:", e);
+        return jsonError(res, 500, "Failed to list capital calls");
+      }
+    }
+
+    // POST /v1/ir:capitalcall:record-payment
+    if (route === "/ir:capitalcall:record-payment" && method === "POST") {
+      try {
+        const { callId, investorId, amount, method: payMethod, date } = body;
+        if (!callId || !investorId) return jsonError(res, 400, "Missing callId or investorId");
+        const { recordPayment } = require("./ir/capitalCalls");
+        const result = await recordPayment(ctx.tenantId, callId, investorId, { amount, method: payMethod, date });
+        if (!result.ok) return jsonError(res, 400, result.error);
+        return res.json(result);
+      } catch (e) {
+        console.error("ir:capitalcall:record-payment failed:", e);
+        return jsonError(res, 500, "Failed to record payment");
+      }
+    }
+
+    // POST /v1/ir:comms:send
+    if (route === "/ir:comms:send" && method === "POST") {
+      try {
+        const { dealId, templateType, data, channel, investorIds } = body;
+        const { buildMessage, sendToInvestors } = require("./ir/communications");
+        const msg = buildMessage(templateType || "custom", data || body);
+        if (!msg.ok) return jsonError(res, 400, msg.error);
+        const result = await sendToInvestors(ctx.tenantId, dealId || null, msg, { channel, investorIds });
+        if (!result.ok) return jsonError(res, 400, result.error);
+        return res.json(result);
+      } catch (e) {
+        console.error("ir:comms:send failed:", e);
+        return jsonError(res, 500, "Failed to send communication");
+      }
+    }
+
+    // GET /v1/ir:comms:list
+    if (route === "/ir:comms:list" && method === "GET") {
+      try {
+        const dealId = body.dealId || (req.query && req.query.dealId);
+        const { listCommunications } = require("./ir/communications");
+        const result = await listCommunications(ctx.tenantId, dealId || null);
+        return res.json(result);
+      } catch (e) {
+        console.error("ir:comms:list failed:", e);
+        return jsonError(res, 500, "Failed to list communications");
+      }
+    }
+
+    // GET /v1/ir:comms:templates
+    if (route === "/ir:comms:templates" && method === "GET") {
+      try {
+        const { COMM_TEMPLATES } = require("./ir/communications");
+        const templates = Object.values(COMM_TEMPLATES).map((t) => ({
+          id: t.id,
+          name: t.name,
+          requiredFields: t.requiredFields,
+          optionalFields: t.optionalFields,
+        }));
+        return res.json({ ok: true, templates });
+      } catch (e) {
+        console.error("ir:comms:templates failed:", e);
+        return jsonError(res, 500, "Failed to list templates");
+      }
+    }
+
+    // POST /v1/ir:report:generate
+    if (route === "/ir:report:generate" && method === "POST") {
+      try {
+        const { templateId, format, title, content: docContent } = body;
+        if (!templateId) return jsonError(res, 400, "Missing templateId");
+        const { generateDocument } = require("./documents");
+        const result = await generateDocument({
+          tenantId: ctx.tenantId,
+          userId: ctx.userId,
+          templateId,
+          format: format || null,
+          content: docContent || {},
+          title: title || templateId,
+          metadata: { source: "ir_module" },
+        });
+        if (!result.ok) return jsonError(res, 400, result.error);
+        return res.json(result);
+      } catch (e) {
+        console.error("ir:report:generate failed:", e);
+        return jsonError(res, 500, "Failed to generate report");
+      }
+    }
+
+    // GET /v1/ir:compliance:check
+    if (route === "/ir:compliance:check" && method === "GET") {
+      try {
+        const dealId = body.dealId || (req.query && req.query.dealId);
+        if (!dealId) return jsonError(res, 400, "Missing dealId");
+        const { getDeal, getDealInvestors } = require("./ir/deals");
+        const dealResult = await getDeal(ctx.tenantId, dealId);
+        if (!dealResult.ok) return jsonError(res, 404, dealResult.error);
+
+        const investorsResult = await getDealInvestors(ctx.tenantId, dealId);
+        const investors = investorsResult.ok ? investorsResult.investors : [];
+        const nonAccredited = investors.filter((i) => !i.accredited).length;
+
+        const deal = dealResult.deal;
+        const checks = [];
+
+        // 506(c) check
+        if (deal.regulation === "506c" && nonAccredited > 0) {
+          checks.push({ id: "unaccredited_506c", status: "FAIL", message: `506(c) requires all accredited investors. Found ${nonAccredited} non-accredited.` });
+        }
+        // 506(b) check
+        if (deal.regulation === "506b" && nonAccredited > 35) {
+          checks.push({ id: "exceed_nonaccredited_506b", status: "FAIL", message: `506(b) max 35 non-accredited. Found ${nonAccredited}.` });
+        }
+        // Reg CF limit
+        if (deal.regulation === "reg_cf" && (deal.committedAmount || 0) > 5000000) {
+          checks.push({ id: "exceed_reg_cf_limit", status: "FAIL", message: `Reg CF max $5M. Current: $${deal.committedAmount.toLocaleString()}.` });
+        }
+        // Concentration check
+        const maxCommitment = investors.length > 0 ? Math.max(...investors.map((i) => i.commitmentAmount || 0)) : 0;
+        const totalCommitted = deal.committedAmount || 0;
+        if (totalCommitted > 0 && maxCommitment / totalCommitted > 0.25) {
+          checks.push({ id: "large_single_investor", status: "WARN", message: `Single investor has ${((maxCommitment / totalCommitted) * 100).toFixed(0)}% of raise — concentration risk.` });
+        }
+
+        if (checks.length === 0) {
+          checks.push({ id: "all_clear", status: "PASS", message: "No compliance issues detected." });
+        }
+
+        return res.json({ ok: true, dealId, regulation: deal.regulation, investorCount: investors.length, nonAccredited, checks });
+      } catch (e) {
+        console.error("ir:compliance:check failed:", e);
+        return jsonError(res, 500, "Failed to run compliance check");
+      }
+    }
+
+    // GET /v1/ir:investor:portfolio
+    if (route === "/ir:investor:portfolio" && method === "GET") {
+      try {
+        const investorId = body.investorId || (req.query && req.query.investorId);
+        if (!investorId) return jsonError(res, 400, "Missing investorId");
+
+        // Get investor distributions
+        const { getInvestorDistributions } = require("./ir/distributions");
+        const distResult = await getInvestorDistributions(ctx.tenantId, investorId);
+
+        // Get deals where this investor participates
+        const { listDeals } = require("./ir/deals");
+        const dealsResult = await listDeals(ctx.tenantId, {});
+        const allDeals = dealsResult.ok ? dealsResult.deals : [];
+
+        // Find deals with this investor (check subcollections)
+        const investorDeals = [];
+        for (const deal of allDeals) {
+          const invSnap = await db.collection("irDeals").doc(deal.id)
+            .collection("investors")
+            .where("investorId", "==", investorId)
+            .limit(1).get();
+          if (!invSnap.empty) {
+            const invData = invSnap.docs[0].data();
+            investorDeals.push({
+              dealId: deal.id,
+              dealName: deal.name,
+              dealType: deal.typeName,
+              status: deal.status,
+              commitmentAmount: invData.commitmentAmount,
+              fundedAmount: invData.fundedAmount || 0,
+            });
+          }
+        }
+
+        const totalCommitted = investorDeals.reduce((s, d) => s + (d.commitmentAmount || 0), 0);
+        const totalFunded = investorDeals.reduce((s, d) => s + (d.fundedAmount || 0), 0);
+
+        return res.json({
+          ok: true,
+          investorId,
+          deals: investorDeals,
+          totalCommitted,
+          totalFunded,
+          totalDistributed: distResult.ok ? distResult.totalReceived : 0,
+          distributionCount: distResult.ok ? distResult.distributionCount : 0,
+        });
+      } catch (e) {
+        console.error("ir:investor:portfolio failed:", e);
+        return jsonError(res, 500, "Failed to get investor portfolio");
+      }
+    }
+
+    // POST /v1/ir:subscription:process
+    if (route === "/ir:subscription:process" && method === "POST") {
+      try {
+        const { dealId, investorId, name, email, amount, accredited } = body;
+        if (!dealId || !name || !amount) return jsonError(res, 400, "Missing dealId, name, or amount");
+        const { getDeal, addDealInvestor } = require("./ir/deals");
+
+        const dealResult = await getDeal(ctx.tenantId, dealId);
+        if (!dealResult.ok) return jsonError(res, 404, dealResult.error);
+        const deal = dealResult.deal;
+
+        // Compliance check
+        if (deal.regulation === "506c" && !accredited) {
+          return jsonError(res, 400, "506(c) offerings require accredited investors only");
+        }
+
+        // Add investor to deal
+        const result = await addDealInvestor(ctx.tenantId, dealId, {
+          investorId: investorId || null,
+          name,
+          email: email || "",
+          commitmentAmount: Number(amount),
+          accredited: !!accredited,
+        });
+
+        if (!result.ok) return jsonError(res, 400, result.error);
+
+        // Record subscription event
+        await db.collection("irSubscriptions").add({
+          tenantId: ctx.tenantId,
+          dealId,
+          dealName: deal.name,
+          investorId: investorId || null,
+          investorName: name,
+          amount: Number(amount),
+          accredited: !!accredited,
+          status: "pending_review",
+          createdAt: nowServerTs(),
+        });
+
+        return res.json({ ok: true, dealInvestorId: result.dealInvestorId, subscriptionStatus: "pending_review" });
+      } catch (e) {
+        console.error("ir:subscription:process failed:", e);
+        return jsonError(res, 500, "Failed to process subscription");
+      }
+    }
+
+    // POST /v1/governance:proposal:create
+    if (route === "/governance:proposal:create" && method === "POST") {
+      try {
+        const { title, description, type, options, votingDeadline } = body;
+        if (!title || !description) return jsonError(res, 400, "Missing title or description");
+        const ref = await db.collection("governance").doc("proposals").collection("items").add({
+          tenantId: ctx.tenantId,
+          title,
+          description,
+          type: type || "general",
+          options: options || ["Approve", "Reject"],
+          votingDeadline: votingDeadline || null,
+          status: "open",
+          votes: [],
+          createdBy: ctx.userId,
+          createdAt: nowServerTs(),
+        });
+        return res.json({ ok: true, proposalId: ref.id });
+      } catch (e) {
+        console.error("governance:proposal:create failed:", e);
+        return jsonError(res, 500, "Failed to create proposal");
+      }
+    }
+
+    // POST /v1/governance:proposal:vote
+    if (route === "/governance:proposal:vote" && method === "POST") {
+      try {
+        const { proposalId, vote } = body;
+        if (!proposalId || !vote) return jsonError(res, 400, "Missing proposalId or vote");
+        const proposalRef = db.collection("governance").doc("proposals").collection("items").doc(proposalId);
+        const proposalDoc = await proposalRef.get();
+        if (!proposalDoc.exists) return jsonError(res, 404, "Proposal not found");
+
+        const proposal = proposalDoc.data();
+        if (proposal.status !== "open") return jsonError(res, 400, "Voting is closed on this proposal");
+
+        // Check if user already voted
+        const existingVote = (proposal.votes || []).find((v) => v.userId === ctx.userId);
+        if (existingVote) return jsonError(res, 400, "You have already voted on this proposal");
+
+        const admin = require("firebase-admin");
+        await proposalRef.update({
+          votes: admin.firestore.FieldValue.arrayUnion({
+            userId: ctx.userId,
+            vote,
+            votedAt: new Date().toISOString(),
+          }),
+          updatedAt: nowServerTs(),
+        });
+
+        return res.json({ ok: true });
+      } catch (e) {
+        console.error("governance:proposal:vote failed:", e);
+        return jsonError(res, 500, "Failed to record vote");
       }
     }
 

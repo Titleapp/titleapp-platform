@@ -277,6 +277,291 @@ async function generatePdf(templateDef, content, branding) {
         }
       }
 
+    } else if (templateId === "ir-waterfall-report") {
+      // Waterfall Distribution Report
+      embedLogo();
+      heading(content.dealSummary?.title || "Waterfall Distribution Report", 1);
+      if (content.dealSummary) {
+        const ds = content.dealSummary;
+        if (ds.dealName) body(`Deal: ${ds.dealName}`);
+        if (ds.dealType) body(`Type: ${ds.dealType}`);
+        if (ds.totalInvested) body(`Total Invested: $${Number(ds.totalInvested).toLocaleString()}`);
+        if (ds.lpInvested) body(`LP Invested: $${Number(ds.lpInvested).toLocaleString()}`);
+        if (ds.gpInvested) body(`GP Invested: $${Number(ds.gpInvested).toLocaleString()}`);
+        doc.moveDown(0.3);
+      }
+
+      // Performance metrics
+      if (content.dealSummary?.irr || content.dealSummary?.equityMultiple) {
+        heading("Performance Summary", 2);
+        const perf = content.dealSummary;
+        const perfMetrics = [
+          perf.irr ? `IRR: ${perf.irr}` : null,
+          perf.equityMultiple ? `Equity Multiple: ${perf.equityMultiple}x` : null,
+          perf.dpi ? `DPI: ${perf.dpi}x` : null,
+        ].filter(Boolean);
+        for (const m of perfMetrics) body(m);
+        doc.moveDown(0.3);
+      }
+
+      // Waterfall tiers table
+      if (content.waterfallTiers && content.waterfallTiers.length > 0) {
+        heading("Waterfall Structure", 2);
+        renderTable({
+          headers: ["Tier", "Type", "LP Split", "GP Split", "Threshold"],
+          rows: content.waterfallTiers.map((t) => [
+            t.name || "",
+            t.type || "",
+            t.lpSplit != null ? `${(t.lpSplit * 100).toFixed(0)}%` : "",
+            t.gpSplit != null ? `${(t.gpSplit * 100).toFixed(0)}%` : "",
+            t.threshold != null ? (t.type === "preferred" ? `${(t.threshold * 100).toFixed(1)}%` : `${(t.threshold * 100).toFixed(0)}%`) : "",
+          ]),
+        });
+      }
+
+      // Distribution breakdown
+      if (content.distributionBreakdown && content.distributionBreakdown.length > 0) {
+        doc.moveDown(0.3);
+        heading("Distribution Breakdown", 2);
+        renderTable({
+          headers: ["Period", "Cash Flow", "LP Amount", "GP Amount"],
+          rows: content.distributionBreakdown.map((p) => [
+            p.label || p.period || "",
+            `$${Number(p.netCashFlow || 0).toLocaleString()}`,
+            `$${Number(p.lpTotal || 0).toLocaleString()}`,
+            `$${Number(p.gpTotal || 0).toLocaleString()}`,
+          ]),
+        });
+      }
+
+      // Investor allocations
+      if (content.investorAllocations && content.investorAllocations.length > 0) {
+        doc.moveDown(0.3);
+        heading("Investor Allocations", 2);
+        renderTable({
+          headers: ["Investor", "Commitment", "Share", "Distribution"],
+          rows: content.investorAllocations.map((inv) => [
+            inv.name || "",
+            `$${Number(inv.commitmentAmount || 0).toLocaleString()}`,
+            inv.share ? `${(inv.share * 100).toFixed(1)}%` : "",
+            `$${Number(inv.distributionAmount || 0).toLocaleString()}`,
+          ]),
+        });
+      }
+
+      // Disclaimer
+      doc.moveDown(1);
+      muted("This is a projection based on stated assumptions. Actual returns may vary. Past performance does not guarantee future results. This document does not constitute an offer to sell or a solicitation to buy securities.");
+
+    } else if (templateId === "ir-capital-call") {
+      // Capital Call Notice
+      embedLogo();
+      heading("CAPITAL CALL NOTICE", 1);
+      hr();
+      const hdr = content.header || {};
+      if (hdr.fundName) {
+        doc.fillColor(textColor).fontSize(fontSize).font("Helvetica-Bold")
+          .text("Fund: ", { continued: true });
+        doc.font("Helvetica").text(hdr.fundName);
+      }
+      if (hdr.dealName) {
+        doc.fillColor(textColor).fontSize(fontSize).font("Helvetica-Bold")
+          .text("Deal: ", { continued: true });
+        doc.font("Helvetica").text(hdr.dealName);
+      }
+      if (hdr.date) {
+        doc.fillColor(textColor).fontSize(fontSize).font("Helvetica-Bold")
+          .text("Date: ", { continued: true });
+        doc.font("Helvetica").text(hdr.date);
+      }
+      hr();
+
+      const cd = content.callDetails || {};
+      doc.moveDown(0.3);
+      heading("Call Details", 2);
+      if (cd.amount) body(`Amount: $${Number(cd.amount).toLocaleString()}`);
+      if (cd.dueDate) body(`Due Date: ${cd.dueDate}`);
+      if (cd.purpose) body(`Purpose: ${cd.purpose}`);
+      if (cd.memo) { doc.moveDown(0.3); body(cd.memo); }
+
+      if (content.wireInstructions) {
+        doc.moveDown(0.5);
+        heading("Wire Instructions", 2);
+        // Wire box
+        const boxY = doc.y;
+        doc.rect(margins.left, boxY, contentWidth, 80).stroke();
+        doc.fillColor(textColor).fontSize(9).font("Helvetica")
+          .text(content.wireInstructions, margins.left + 10, boxY + 10, { width: contentWidth - 20 });
+        doc.y = boxY + 90;
+      }
+
+      if (content.investorAllocation) {
+        doc.moveDown(0.5);
+        heading("Your Allocation", 2);
+        const ia = content.investorAllocation;
+        if (ia.investorName) body(`Investor: ${ia.investorName}`);
+        if (ia.commitmentAmount) body(`Total Commitment: $${Number(ia.commitmentAmount).toLocaleString()}`);
+        if (ia.callAmount) body(`This Call: $${Number(ia.callAmount).toLocaleString()}`);
+        if (ia.share) body(`Pro-Rata Share: ${(ia.share * 100).toFixed(2)}%`);
+      }
+
+      doc.moveDown(1);
+      muted("Failure to fund may result in dilution or default penalties as outlined in the governing documents.");
+
+    } else if (templateId === "ir-quarterly-report") {
+      // Quarterly Investor Report
+      embedLogo();
+      doc.y = 400;
+      const cp = content.coverPage || {};
+      doc.fillColor(accentColor).fontSize(28).font("Helvetica-Bold")
+        .text(cp.title || "Quarterly Investor Report", { align: "left" });
+      doc.moveDown(0.3);
+      if (cp.subtitle) doc.fillColor(textColor).fontSize(16).font("Helvetica").text(cp.subtitle);
+      if (cp.quarter) muted(`Q${cp.quarter} ${cp.year || ""}`);
+      if (cp.date) muted(cp.date);
+
+      doc.addPage();
+      heading("Portfolio Summary", 1);
+      const ps = content.portfolioSummary || {};
+      if (ps.totalAUM) body(`Total AUM: $${Number(ps.totalAUM).toLocaleString()}`);
+      if (ps.activeDeals) body(`Active Deals: ${ps.activeDeals}`);
+      if (ps.totalDistributed) body(`Total Distributed: $${Number(ps.totalDistributed).toLocaleString()}`);
+      if (ps.portfolioIRR) body(`Portfolio IRR: ${ps.portfolioIRR}`);
+      if (ps.narrative) { doc.moveDown(0.3); body(ps.narrative); }
+
+      if (content.dealUpdates && content.dealUpdates.length > 0) {
+        doc.moveDown(0.5);
+        heading("Deal Updates", 1);
+        for (const update of content.dealUpdates) {
+          heading(update.dealName || "Deal", 2);
+          if (update.status) body(`Status: ${update.status}`);
+          if (update.narrative) body(update.narrative);
+          doc.moveDown(0.2);
+        }
+      }
+
+      if (content.financialSummary) {
+        doc.moveDown(0.5);
+        heading("Financial Summary", 1);
+        body(typeof content.financialSummary === "string" ? content.financialSummary : JSON.stringify(content.financialSummary, null, 2));
+      }
+
+      if (content.outlook) {
+        doc.moveDown(0.5);
+        heading("Outlook", 1);
+        body(content.outlook);
+      }
+
+    } else if (templateId === "ir-investor-summary") {
+      // Investor Portfolio Summary
+      embedLogo();
+      const ip = content.investorProfile || {};
+      heading(ip.name || "Investor Summary", 1);
+      if (ip.email) muted(ip.email);
+      if (ip.accreditationStatus) muted(`Accreditation: ${ip.accreditationStatus}`);
+      if (ip.joinDate) muted(`Investor Since: ${ip.joinDate}`);
+      hr();
+
+      if (content.commitments && content.commitments.length > 0) {
+        heading("Active Commitments", 2);
+        renderTable({
+          headers: ["Deal", "Type", "Committed", "Funded", "Status"],
+          rows: content.commitments.map((c) => [
+            c.dealName || "",
+            c.dealType || "",
+            `$${Number(c.commitmentAmount || 0).toLocaleString()}`,
+            `$${Number(c.fundedAmount || 0).toLocaleString()}`,
+            c.status || "",
+          ]),
+        });
+      }
+
+      if (content.distributions && content.distributions.length > 0) {
+        doc.moveDown(0.5);
+        heading("Distribution History", 2);
+        renderTable({
+          headers: ["Date", "Deal", "Amount", "Source"],
+          rows: content.distributions.map((d) => [
+            d.date || "",
+            d.dealName || "",
+            `$${Number(d.amount || 0).toLocaleString()}`,
+            d.source || "",
+          ]),
+        });
+        const totalDist = content.distributions.reduce((s, d) => s + (d.amount || 0), 0);
+        doc.moveDown(0.3);
+        doc.fillColor(accentColor).fontSize(fontSize).font("Helvetica-Bold")
+          .text(`Total Distributions: $${totalDist.toLocaleString()}`);
+      }
+
+    } else if (templateId === "ir-deal-memo") {
+      // Investment Deal Memo
+      embedLogo();
+      doc.y = 400;
+      const ov = content.dealOverview || {};
+      doc.fillColor(accentColor).fontSize(28).font("Helvetica-Bold")
+        .text(ov.title || "Investment Memo", { align: "left" });
+      doc.moveDown(0.3);
+      if (ov.dealType) doc.fillColor(textColor).fontSize(16).font("Helvetica").text(ov.dealType);
+      if (ov.date) muted(ov.date);
+      muted("CONFIDENTIAL");
+
+      doc.addPage();
+      heading("Deal Overview", 1);
+      if (ov.summary) body(ov.summary);
+      if (ov.keyTerms) {
+        doc.moveDown(0.3);
+        for (const [label, val] of Object.entries(ov.keyTerms)) {
+          doc.fillColor(textColor).fontSize(fontSize).font("Helvetica-Bold")
+            .text(`${label}: `, { continued: true });
+          doc.font("Helvetica").text(String(val));
+        }
+      }
+
+      if (content.financialAnalysis) {
+        doc.moveDown(0.5);
+        heading("Financial Analysis", 1);
+        if (typeof content.financialAnalysis === "string") {
+          body(content.financialAnalysis);
+        } else {
+          if (content.financialAnalysis.narrative) body(content.financialAnalysis.narrative);
+          if (content.financialAnalysis.table) renderTable(content.financialAnalysis.table);
+        }
+      }
+
+      if (content.riskFactors) {
+        doc.moveDown(0.5);
+        heading("Risk Factors", 1);
+        if (Array.isArray(content.riskFactors)) {
+          for (const rf of content.riskFactors) {
+            doc.fillColor(textColor).fontSize(fontSize).font("Helvetica-Bold")
+              .text(`${rf.risk || rf.name || "Risk"}: `, { continued: true });
+            doc.font("Helvetica").text(rf.mitigation || rf.description || "");
+          }
+        } else {
+          body(String(content.riskFactors));
+        }
+      }
+
+      if (content.projections) {
+        doc.moveDown(0.5);
+        heading("Projections", 1);
+        if (typeof content.projections === "string") {
+          body(content.projections);
+        } else if (content.projections.table) {
+          renderTable(content.projections.table);
+        }
+      }
+
+      if (content.recommendation) {
+        doc.moveDown(0.5);
+        heading("Recommendation", 1);
+        body(content.recommendation);
+      }
+
+      doc.moveDown(1);
+      muted("This memo is for informational purposes only and does not constitute investment advice or an offer to sell securities.");
+
     } else {
       // Fallback
       heading(content.title || templateId, 1);

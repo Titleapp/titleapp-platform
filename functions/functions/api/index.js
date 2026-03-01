@@ -27,6 +27,7 @@ const deadlinesRouter = require("./routes/deadlines");
 const inboundRouter = require("./routes/inbound");
 const webhooksRouter = require("./routes/webhooks");
 const titleRouter = require("./routes/title");
+const b2bRouter = require("./routes/b2b");
 
 const app = express();
 
@@ -129,6 +130,9 @@ app.use("/v1/workspaces", titleRouter);   // /:workspace_id/workers/:workerId/mi
 
 // Phase 9 — Document Engine
 app.use("/v1/workspaces", generatedDocsRouter); // /:workspace_id/documents/generate, /generated, /templates
+
+// Phase 10 — B2B Distribution
+app.use("/v1/workspaces", b2bRouter);           // /:workspace_id/b2b/deploy, /deployments, /analytics, /accept
 
 // 404 fallback
 app.use((req, res) => {

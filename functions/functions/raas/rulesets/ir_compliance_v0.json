@@ -1,0 +1,118 @@
+{
+  "id": "ir_compliance_v0",
+  "version": "v0",
+  "domain": "investor-relations",
+  "description": "Securities compliance rules for investor relations — accreditation, investor limits, raise caps",
+  "required_inputs": ["investor_type", "deal_type", "amount"],
+  "hard_stops": [
+    {
+      "id": "unaccredited_506c",
+      "logic": "506(c) offerings require all investors to be accredited — no exceptions",
+      "eval": {
+        "field": "investor.accredited",
+        "operator": "==",
+        "threshold": false,
+        "conditional_field": "deal.regulation",
+        "conditional_value": "506c"
+      }
+    },
+    {
+      "id": "exceed_nonaccredited_506b",
+      "logic": "506(b) max 35 non-accredited investors per offering",
+      "eval": {
+        "field": "deal.nonAccreditedCount",
+        "operator": ">",
+        "threshold": 35,
+        "conditional_field": "deal.regulation",
+        "conditional_value": "506b"
+      }
+    },
+    {
+      "id": "exceed_reg_cf_limit",
+      "logic": "Regulation Crowdfunding max $5M per 12-month period",
+      "eval": {
+        "field": "deal.totalRaised",
+        "operator": ">",
+        "threshold": 5000000,
+        "conditional_field": "deal.regulation",
+        "conditional_value": "reg_cf"
+      }
+    },
+    {
+      "id": "exceed_reg_a_tier1",
+      "logic": "Reg A Tier 1 max $20M per 12-month period",
+      "eval": {
+        "field": "deal.totalRaised",
+        "operator": ">",
+        "threshold": 20000000,
+        "conditional_field": "deal.regulation",
+        "conditional_value": "reg_a_tier1"
+      }
+    },
+    {
+      "id": "exceed_reg_a_tier2",
+      "logic": "Reg A+ Tier 2 max $75M per 12-month period",
+      "eval": {
+        "field": "deal.totalRaised",
+        "operator": ">",
+        "threshold": 75000000,
+        "conditional_field": "deal.regulation",
+        "conditional_value": "reg_a_tier2"
+      }
+    },
+    {
+      "id": "missing_kyc",
+      "logic": "Investor must complete identity verification before investment",
+      "eval": {
+        "field": "investor.kycVerified",
+        "operator": "==",
+        "threshold": false
+      }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "large_single_investor",
+      "logic": "Single investor committing > 25% of total raise — concentration risk",
+      "eval": {
+        "field": "metrics.maxInvestorPct",
+        "operator": ">",
+        "threshold": 0.25
+      }
+    },
+    {
+      "id": "missing_ppm",
+      "logic": "No Private Placement Memorandum uploaded for Reg D offering",
+      "eval": {
+        "field": "docs.ppm",
+        "operator": "==",
+        "threshold": false
+      }
+    },
+    {
+      "id": "missing_subscription_agreement",
+      "logic": "No subscription agreement template configured",
+      "eval": {
+        "field": "docs.subscriptionAgreement",
+        "operator": "==",
+        "threshold": false
+      }
+    },
+    {
+      "id": "approaching_investor_limit",
+      "logic": "506(b) at 80%+ of 35 non-accredited investor limit",
+      "eval": {
+        "field": "deal.nonAccreditedCount",
+        "operator": ">",
+        "threshold": 28,
+        "conditional_field": "deal.regulation",
+        "conditional_value": "506b"
+      }
+    }
+  ],
+  "outputs": [
+    "compliance_checklist",
+    "investor_summary",
+    "accreditation_report"
+  ]
+}

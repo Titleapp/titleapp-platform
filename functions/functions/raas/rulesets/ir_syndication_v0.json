@@ -1,0 +1,101 @@
+{
+  "id": "ir_syndication_v0",
+  "version": "v0",
+  "domain": "cre-syndication",
+  "description": "CRE syndication deal screening — underwriting thresholds for real estate syndications",
+  "required_inputs": ["purchase_price", "noi", "target_raise"],
+  "hard_stops": [
+    {
+      "id": "cap_rate_below_min",
+      "logic": "if tenant.min_cap_rate provided AND deal.cap_rate < tenant.min_cap_rate",
+      "eval": {
+        "field": "metrics.capRate",
+        "operator": "<",
+        "threshold": "tenant.min_cap_rate",
+        "conditional": true
+      }
+    },
+    {
+      "id": "ltv_above_max",
+      "logic": "if tenant.max_ltv provided AND deal.ltv > tenant.max_ltv",
+      "eval": {
+        "field": "metrics.ltv",
+        "operator": ">",
+        "threshold": "tenant.max_ltv",
+        "conditional": true
+      }
+    },
+    {
+      "id": "dscr_below_min",
+      "logic": "if tenant.min_dscr provided AND deal.dscr < tenant.min_dscr",
+      "eval": {
+        "field": "metrics.dscr",
+        "operator": "<",
+        "threshold": "tenant.min_dscr",
+        "conditional": true
+      }
+    },
+    {
+      "id": "missing_rent_roll",
+      "logic": "CRE syndication requires rent roll for underwriting",
+      "eval": {
+        "field": "docs.rentRoll",
+        "operator": "==",
+        "threshold": false
+      }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "single_tenant_risk",
+      "logic": "Single-tenant property — concentration risk",
+      "eval": {
+        "field": "metrics.tenantCount",
+        "operator": "==",
+        "threshold": 1
+      }
+    },
+    {
+      "id": "short_hold",
+      "logic": "Hold period under 3 years — limited appreciation potential",
+      "eval": {
+        "field": "metrics.holdPeriod",
+        "operator": "<",
+        "threshold": 3
+      }
+    },
+    {
+      "id": "high_vacancy",
+      "logic": "Vacancy rate above 15% — lease-up risk",
+      "eval": {
+        "field": "metrics.vacancyRate",
+        "operator": ">",
+        "threshold": 0.15
+      }
+    },
+    {
+      "id": "low_dscr_warning",
+      "logic": "DSCR below 1.25 — tight debt service coverage",
+      "eval": {
+        "field": "metrics.dscr",
+        "operator": "<",
+        "threshold": 1.25
+      }
+    },
+    {
+      "id": "high_leverage",
+      "logic": "LTV above 70% — elevated leverage risk",
+      "eval": {
+        "field": "metrics.ltv",
+        "operator": ">",
+        "threshold": 0.70
+      }
+    }
+  ],
+  "outputs": [
+    "deal_summary",
+    "waterfall_projection",
+    "risk_assessment",
+    "investor_offering_memo"
+  ]
+}

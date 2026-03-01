@@ -1,0 +1,19 @@
+{
+  "id": "quarterly_report_v0",
+  "name": "Quarterly Investor Report",
+  "version": "v0",
+  "domain": "investor-relations",
+  "description": "Quarterly LP report with portfolio summary, deal updates, financial performance, and outlook",
+  "sections": [
+    "cover_page",
+    "portfolio_summary",
+    "deal_updates",
+    "financial_summary",
+    "distributions_summary",
+    "outlook"
+  ],
+  "required_data": ["deals", "distributions", "performance"],
+  "output_format": "pdf",
+  "template_id": "ir-quarterly-report",
+  "compliance_note": "This report contains forward-looking statements based on current expectations. Actual results may differ materially. This is not an offer to sell or a solicitation to buy securities."
+}

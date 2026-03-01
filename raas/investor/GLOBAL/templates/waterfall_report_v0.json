@@ -1,0 +1,18 @@
+{
+  "id": "waterfall_report_v0",
+  "name": "Waterfall Distribution Report",
+  "version": "v0",
+  "domain": "investor-relations",
+  "description": "Detailed waterfall distribution analysis showing tier-by-tier LP/GP splits, IRR, equity multiple, and investor allocations",
+  "sections": [
+    "deal_summary",
+    "waterfall_tiers",
+    "distribution_breakdown",
+    "investor_allocations",
+    "performance_metrics"
+  ],
+  "required_data": ["deal", "cashFlows", "investors"],
+  "output_format": "pdf",
+  "template_id": "ir-waterfall-report",
+  "compliance_note": "This is a projection based on stated assumptions. Actual returns may vary. Past performance does not guarantee future results."
+}
