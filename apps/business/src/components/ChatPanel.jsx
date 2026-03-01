@@ -170,7 +170,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
   const conversationRef = useRef(null);
 
   const [dealContext, setDealContext] = useState(null);
-  const [attachedFile, setAttachedFile] = useState(null);
+  const [attachedFiles, setAttachedFiles] = useState([]);
   const [isRecording, setIsRecording] = useState(false);
   const fileInputRef = useRef(null);
   const recognitionRef = useRef(null);
@@ -648,10 +648,10 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
     }
 
     let userMessage = messageToSend;
-    const currentFile = attachedFile;
-    if (currentFile) {
-      userMessage += ` [File attached: ${currentFile.name}]`;
-      setAttachedFile(null);
+    const currentFiles = [...attachedFiles];
+    if (currentFiles.length > 0) {
+      userMessage += ` [Files attached: ${currentFiles.map(f => f.name).join(', ')}]`;
+      setAttachedFiles([]);
     }
     setInput('');
     setIsSending(true);
@@ -669,23 +669,27 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
       return;
     }
 
-    // Read file as base64 if attached
+    // Read files as base64 if attached
     let filePayload = null;
-    if (currentFile) {
+    let filesPayload = null;
+    if (currentFiles.length > 0) {
       setFileUploading(true);
-      setMessages(prev => [...prev, { role: 'assistant', content: `Uploading ${currentFile.name}...`, isSystem: true }]);
+      setMessages(prev => [...prev, { role: 'assistant', content: `Uploading ${currentFiles.length} file${currentFiles.length > 1 ? 's' : ''}...`, isSystem: true }]);
       try {
-        filePayload = await new Promise((resolve, reject) => {
+        const readFile = (file) => new Promise((resolve, reject) => {
           const reader = new FileReader();
-          reader.onload = () => resolve({ name: currentFile.name, type: currentFile.type, data: reader.result });
-          reader.onerror = () => reject(new Error('Failed to read file'));
-          reader.readAsDataURL(currentFile);
+          reader.onload = () => resolve({ name: file.name, type: file.type, data: reader.result });
+          reader.onerror = () => reject(new Error(`Failed to read ${file.name}`));
+          reader.readAsDataURL(file);
         });
+        const results = await Promise.all(currentFiles.map(readFile));
+        filePayload = results[0];
+        filesPayload = results;
         setMessages(prev => {
           const updated = [...prev];
           const uploadIdx = updated.findLastIndex(m => m.isSystem && m.content.startsWith('Uploading '));
           if (uploadIdx >= 0) {
-            updated[uploadIdx] = { ...updated[uploadIdx], content: `File ready: ${currentFile.name}` };
+            updated[uploadIdx] = { ...updated[uploadIdx], content: `${results.length} file${results.length > 1 ? 's' : ''} ready: ${results.map(r => r.name).join(', ')}` };
           }
           return updated;
         });
@@ -695,7 +699,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
           const updated = [...prev];
           const uploadIdx = updated.findLastIndex(m => m.isSystem && m.content.startsWith('Uploading '));
           if (uploadIdx >= 0) {
-            updated[uploadIdx] = { ...updated[uploadIdx], content: `Could not read ${currentFile.name}. Message sent without file.` };
+            updated[uploadIdx] = { ...updated[uploadIdx], content: `Some files could not be read. Message sent without files.` };
           }
           return updated;
         });
@@ -725,6 +729,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
         body: JSON.stringify({
           message: userMessage,
           ...(filePayload ? { file: filePayload } : {}),
+          ...(filesPayload && filesPayload.length > 1 ? { files: filesPayload } : {}),
           context: {
             source: 'business_portal',
             currentSection: currentSection || 'dashboard',
@@ -774,8 +779,9 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
   }
 
   function handleFileSelect(e) {
-    const file = e.target.files?.[0];
-    if (file) setAttachedFile(file);
+    const files = Array.from(e.target.files || []);
+    if (files.length > 0) setAttachedFiles(prev => [...prev, ...files]);
+    e.target.value = '';
   }
 
   function startVoiceInput() {
@@ -888,6 +894,36 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
             <div className="trade-field"><strong>New Vehicle:</strong> {data.new_vehicle}</div>
             <div className="trade-field"><strong>Price:</strong> ${data.new_price?.toLocaleString()}</div>
             <div className="trade-field"><strong>Net Cost:</strong> ${data.net_cost?.toLocaleString()}</div>
+          </div>
+        </div>
+      );
+    }
+
+    // Document generated — render download card
+    const docData = data.type === 'document_generated' ? data : data.document?.type === 'document_generated' ? data.document : null;
+    if (docData) {
+      const ext = (docData.format || docData.filename?.split('.').pop() || 'pdf').toUpperCase();
+      const sizeKB = docData.sizeBytes ? Math.round(docData.sizeBytes / 1024) : null;
+      return (
+        <div style={{ border: '2px solid #7c3aed30', borderRadius: '14px', overflow: 'hidden', marginTop: '8px', background: '#faf5ff' }}>
+          <div style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#7c3aed18', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 600, fontSize: '14px', color: '#1e293b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{docData.filename || 'Document'}</div>
+              <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
+                {ext}{docData.pageCount ? ` \u00b7 ${docData.pageCount} pages` : ''}{sizeKB ? ` \u00b7 ${sizeKB} KB` : ''}
+              </div>
+            </div>
+            <a
+              href={docData.downloadUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ padding: '8px 16px', borderRadius: '8px', background: '#7c3aed', color: 'white', fontSize: '13px', fontWeight: 600, textDecoration: 'none', flexShrink: 0 }}
+            >
+              Download
+            </a>
           </div>
         </div>
       );
@@ -1076,15 +1112,31 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
         )}
 
         {/* Messages */}
-        {messages.map((msg, idx) => (
+        {messages.map((msg, idx) => {
+          // Detect document JSON embedded in message content
+          let displayContent = msg.content;
+          let embeddedDoc = null;
+          if (typeof displayContent === 'string' && displayContent.includes('"document_generated"') && displayContent.includes('"downloadUrl"')) {
+            try {
+              const jsonMatch = displayContent.match(/\{[\s\S]*"type"\s*:\s*"document_generated"[\s\S]*\}/);
+              if (jsonMatch) {
+                const parsed = JSON.parse(jsonMatch[0]);
+                if (parsed.downloadUrl || parsed.document?.downloadUrl) {
+                  embeddedDoc = parsed.document || parsed;
+                  displayContent = displayContent.replace(jsonMatch[0], '').trim();
+                }
+              }
+            } catch {}
+          }
+          return (
           <div key={idx}>
             <div className={`chat-message ${msg.role} ${msg.isError ? 'error' : ''}`}>
               <div className="chat-bubble" style={msg.isCelebration ? { background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)', border: '1px solid #e9d5ff' } : undefined}>
-                {msg.content}
+                {displayContent}
               </div>
-              {msg.structuredData && (
+              {(msg.structuredData || embeddedDoc) && (
                 <div className="chat-structured-data">
-                  {renderStructuredData(msg.structuredData)}
+                  {renderStructuredData(msg.structuredData || embeddedDoc)}
                 </div>
               )}
             </div>
@@ -1115,7 +1167,8 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
               </div>
             )}
           </div>
-        ))}
+          );
+        })}
 
         {isTyping && (
           <div className="chat-message assistant">
@@ -1134,14 +1187,18 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
       </div>
 
       <form className="chatPanelInput" onSubmit={sendMessage}>
-        {attachedFile && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 8px', background: '#f1f5f9', borderRadius: '8px', fontSize: '12px', color: '#64748b', marginBottom: '4px', width: '100%' }}>
-            <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{attachedFile.name}</span>
-            <button type="button" onClick={() => setAttachedFile(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: '14px', padding: '0 2px' }}>x</button>
+        {attachedFiles.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '4px', width: '100%' }}>
+            {attachedFiles.map((file, fi) => (
+              <div key={fi} style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '3px 8px', background: '#f1f5f9', borderRadius: '8px', fontSize: '12px', color: '#64748b' }}>
+                <span style={{ maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{file.name}</span>
+                <button type="button" onClick={() => setAttachedFiles(prev => prev.filter((_, i) => i !== fi))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: '14px', padding: '0 2px', lineHeight: 1 }}>x</button>
+              </div>
+            ))}
           </div>
         )}
         <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end', width: '100%' }}>
-          <input ref={fileInputRef} type="file" style={{ display: 'none' }} onChange={handleFileSelect} />
+          <input ref={fileInputRef} type="file" multiple accept=".pdf,.xlsx,.xls,.csv,.doc,.docx,.txt,.png,.jpg,.jpeg" style={{ display: 'none' }} onChange={handleFileSelect} />
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}

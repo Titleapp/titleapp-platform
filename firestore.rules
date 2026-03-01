@@ -108,6 +108,12 @@ service cloud.firestore {
       allow read, write: if request.auth != null;
     }
 
+    // Message events — authenticated users can read their own conversation history
+    match /messageEvents/{docId} {
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow write: if false; // server-only writes
+    }
+
     // Chat sessions — authenticated users can read/write their own conversation history
     match /chatSessions/{docId} {
       allow read: if request.auth != null && resource.data.userId == request.auth.uid;

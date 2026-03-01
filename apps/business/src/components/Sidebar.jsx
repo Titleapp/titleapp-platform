@@ -336,91 +336,99 @@ export default function Sidebar({
         </nav>
       </div>
 
-      {/* Worker Groups Section */}
-      {(workerGroups.length > 0 || activeWorkers.length > 0) && (
-        <div className="sidebarSection">
-          <div className="sidebarLabel">Your Workers</div>
-          <nav className="nav">
-            {/* Chief of Staff */}
-            {chiefOfStaff?.enabled && (
-              <button
-                className={`navItem ${currentSection === "chief-of-staff" ? "navItemActive" : ""}`}
-                onClick={() => handleNavClick("chief-of-staff")}
-                style={{
-                  width: "100%", textAlign: "left", cursor: "pointer",
-                  background: currentSection === "chief-of-staff"
-                    ? "rgba(124,58,237,0.16)"
-                    : "linear-gradient(135deg, rgba(124,58,237,0.08) 0%, rgba(99,102,241,0.08) 100%)",
-                  borderRadius: 10, padding: "8px 10px", marginBottom: 4,
-                  display: "flex", alignItems: "center", gap: 8,
-                }}
-              >
-                <span style={{ fontSize: 14 }}>&#x1F916;</span>
-                <span style={{ fontWeight: 600, color: "#c4b5fd" }}>{chiefOfStaff.name || "Alex"}</span>
-                <span style={{ fontSize: 10, color: "#7c3aed", marginLeft: "auto" }}>CoS</span>
-              </button>
-            )}
+      {/* Digital Workers Section — always visible */}
+      <div className="sidebarSection">
+        <div className="sidebarLabel">Digital Workers</div>
+        <nav className="nav">
+          {/* Chief of Staff */}
+          {chiefOfStaff?.enabled && (
+            <button
+              className={`navItem ${currentSection === "chief-of-staff" ? "navItemActive" : ""}`}
+              onClick={() => handleNavClick("chief-of-staff")}
+              style={{
+                width: "100%", textAlign: "left", cursor: "pointer",
+                background: currentSection === "chief-of-staff"
+                  ? "rgba(124,58,237,0.16)"
+                  : "linear-gradient(135deg, rgba(124,58,237,0.08) 0%, rgba(99,102,241,0.08) 100%)",
+                borderRadius: 10, padding: "8px 10px", marginBottom: 4,
+                display: "flex", alignItems: "center", gap: 8,
+              }}
+            >
+              <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#22c55e", flexShrink: 0 }} />
+              <span style={{ fontWeight: 600, color: "#c4b5fd" }}>{chiefOfStaff.name || "Alex"}</span>
+              <span style={{ fontSize: 10, color: "#7c3aed", marginLeft: "auto" }}>CoS</span>
+            </button>
+          )}
 
-            {/* Worker Groups */}
-            {workerGroups.map((group) => {
-              const isCollapsed = collapsedGroups.has(group.id);
-              return (
-                <div key={group.id}>
-                  <div
-                    onClick={() => toggleGroup(group.id)}
-                    style={{
-                      display: "flex", alignItems: "center", gap: 8,
-                      padding: "8px 10px", cursor: "pointer", borderRadius: 10,
-                      fontSize: 13, fontWeight: 600,
-                      color: "rgba(226,232,240,0.8)",
-                    }}
-                    onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
-                  >
-                    <svg
-                      width="12" height="12" viewBox="0 0 12 12" fill="none"
-                      style={{ transform: isCollapsed ? "rotate(-90deg)" : "none", transition: "transform 150ms ease", flexShrink: 0 }}
-                    >
-                      <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                    </svg>
-                    <span style={{ color: group.color || "#94a3b8", fontSize: 10 }}>{"\u25CF"}</span>
-                    <span>{group.name}</span>
-                    <span style={{ fontSize: 11, color: "#475569", marginLeft: "auto" }}>{group.workerIds?.length || 0}</span>
-                  </div>
-                  {!isCollapsed && group.workerIds?.map(wId => (
-                    <button
-                      key={wId}
-                      className={`navItem ${currentSection === `worker-${wId}` ? "navItemActive" : ""}`}
-                      onClick={() => handleNavClick(`worker-${wId}`)}
-                      style={{
-                        width: "100%", textAlign: "left", cursor: "pointer",
-                        paddingLeft: 28, fontSize: 13,
-                      }}
-                    >
-                      {wId}
-                    </button>
-                  ))}
-                </div>
-              );
-            })}
-
-            {/* Ungrouped Workers */}
-            {activeWorkers
-              .filter(wId => !workerGroups.some(g => g.workerIds?.includes(wId)))
-              .map(wId => (
-                <button
-                  key={wId}
-                  className={`navItem ${currentSection === `worker-${wId}` ? "navItemActive" : ""}`}
-                  onClick={() => handleNavClick(`worker-${wId}`)}
-                  style={{ width: "100%", textAlign: "left", cursor: "pointer", fontSize: 13 }}
+          {/* Worker Groups */}
+          {workerGroups.map((group) => {
+            const isCollapsed = collapsedGroups.has(group.id);
+            return (
+              <div key={group.id}>
+                <div
+                  onClick={() => toggleGroup(group.id)}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 8,
+                    padding: "8px 10px", cursor: "pointer", borderRadius: 10,
+                    fontSize: 13, fontWeight: 600,
+                    color: "rgba(226,232,240,0.8)",
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
                 >
-                  {wId}
-                </button>
-              ))
-            }
-          </nav>
-        </div>
-      )}
+                  <svg
+                    width="12" height="12" viewBox="0 0 12 12" fill="none"
+                    style={{ transform: isCollapsed ? "rotate(-90deg)" : "none", transition: "transform 150ms ease", flexShrink: 0 }}
+                  >
+                    <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                  </svg>
+                  <span style={{ color: group.color || "#94a3b8", fontSize: 10 }}>{"\u25CF"}</span>
+                  <span>{group.name}</span>
+                  <span style={{ fontSize: 11, color: "#475569", marginLeft: "auto" }}>{group.workerIds?.length || 0}</span>
+                </div>
+                {!isCollapsed && group.workerIds?.map(wId => (
+                  <button
+                    key={wId}
+                    className={`navItem ${currentSection === `worker-${wId}` ? "navItemActive" : ""}`}
+                    onClick={() => handleNavClick(`worker-${wId}`)}
+                    style={{
+                      width: "100%", textAlign: "left", cursor: "pointer",
+                      paddingLeft: 28, fontSize: 13,
+                    }}
+                  >
+                    {wId}
+                  </button>
+                ))}
+              </div>
+            );
+          })}
+
+          {/* Ungrouped Workers */}
+          {activeWorkers
+            .filter(wId => !workerGroups.some(g => g.workerIds?.includes(wId)))
+            .map(wId => (
+              <button
+                key={wId}
+                className={`navItem ${currentSection === `worker-${wId}` ? "navItemActive" : ""}`}
+                onClick={() => handleNavClick(`worker-${wId}`)}
+                style={{ width: "100%", textAlign: "left", cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", gap: 8 }}
+              >
+                <span style={{ width: 6, height: 6, borderRadius: "50%", border: "1.5px solid #64748b", flexShrink: 0 }} />
+                {wId}
+              </button>
+            ))
+          }
+
+          {/* Add Workers link */}
+          <button
+            className="navItem"
+            onClick={() => handleNavClick("raas-store")}
+            style={{ width: "100%", textAlign: "left", cursor: "pointer", fontSize: 13, color: "#7c3aed", opacity: 0.8 }}
+          >
+            + Add Workers
+          </button>
+        </nav>
+      </div>
 
       <div className="sidebarFooter">
         <button

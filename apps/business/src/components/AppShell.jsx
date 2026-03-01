@@ -125,6 +125,15 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
 
   const currentWorkspaceId = localStorage.getItem("WORKSPACE_ID") || "vault";
 
+  // Load worker data from current workspace
+  const currentWs = workspaces.find(w => w.id === currentWorkspaceId) || {};
+  const workerGroups = currentWs.workerGroups || [];
+  const activeWorkers = currentWs.activeWorkers || [];
+  const chiefOfStaffConfig = (() => {
+    try { return JSON.parse(localStorage.getItem("COS_CONFIG") || "{}"); } catch { return {}; }
+  })();
+  const chiefOfStaff = chiefOfStaffConfig.name ? { enabled: true, ...chiefOfStaffConfig } : null;
+
   return (
     <div className="appShell">
       {/* Mobile topbar */}
@@ -215,6 +224,9 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
           workspaces={workspaces}
           currentWorkspaceId={currentWorkspaceId}
           onSwitchWorkspace={handleSwitchWorkspace}
+          workerGroups={workerGroups}
+          activeWorkers={activeWorkers}
+          chiefOfStaff={chiefOfStaff}
         />
       </div>
 

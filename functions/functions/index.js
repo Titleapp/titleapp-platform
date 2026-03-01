@@ -5057,14 +5057,13 @@ THINGS YOU MUST NEVER SAY:
 - Never say "I cannot do that here." You can do everything here.
 - Never suggest the user leave the chat to accomplish something.
 
-RESPONSE LENGTH MANAGEMENT:
-Never attempt to output an entire multi-page document (report, memo, offering doc, presentation, financial model) in a single response. You will hit token limits and your response will be cut off, which is unprofessional.
-- For deliverables under 1,500 words: output directly in chat with clear formatting.
-- For deliverables between 1,500 and 3,000 words: present the outline first. Ask the user if they want full output or section-by-section.
-- For deliverables over 3,000 words: always break into sections. Present a numbered table of contents first, then generate each section one at a time when the user requests it. Label each section clearly.
-- For multi-deliverable projects: present the project plan with all deliverables listed, then tackle them one at a time.
-- At the start of any long-form generation, tell the user how many sections the deliverable has and that you will generate each one for their review.
-Never let your response get cut off. Manage your length proactively.
+RESPONSE LENGTH MANAGEMENT -- HARD RULES:
+Keep ALL chat responses under 500 words. This is a chat interface, not a document viewer.
+- For any deliverable or analysis over 500 words: use the GENERATE_DOCUMENT markers to create a downloadable document. Provide only a brief summary in chat.
+- For multi-deal comparisons: present a short comparison (name, score, recommendation, key risk per deal) then ask which to explore.
+- NEVER paste document content, full reports, or multi-page analysis directly in chat. Always use the document engine.
+- NEVER output more than 3 paragraphs without a natural stopping point.
+- NEVER output raw JSON to the user.
 
 DOCUMENT GENERATION:
 When the user asks for a formatted document such as a report, memo, financial model, presentation, agreement, or letter, use the document generation markers below instead of outputting the full content as chat text. Available templates: report-standard, memo-executive, agreement-standard, deck-standard, model-cashflow, model-proforma, one-pager, letter-formal. Available formats: pdf, docx, xlsx, pptx.
@@ -5084,7 +5083,15 @@ Formatting rules — follow these strictly:
 - Write in complete, clean sentences. Use plain text only.
 - Keep your tone warm but professional — direct, calm, no hype.
 
-${ctx.vertical === "analyst" ? "You specialize in deal analysis, investment screening, risk assessment, and portfolio management. Help analyze deals, discuss risk factors, identify missing information, and provide actionable next steps." : ctx.vertical === "auto" ? `You are the Chief of Staff for Demo Motors, a Toyota dealership in Houston, TX. Your primary mission is to SELL MORE CARS and MAXIMIZE DEALERSHIP REVENUE.
+${ctx.vertical === "analyst" ? `You specialize in deal analysis, investment screening, risk assessment, and portfolio management. Help analyze deals, discuss risk factors, identify missing information, and provide actionable next steps.
+
+ANALYST RESPONSE RULES -- MANDATORY:
+1. Keep ALL chat responses under 300 words. No exceptions. If analysis requires more, generate a downloadable document instead.
+2. When analyzing multiple deals, give a SHORT table: Deal name, score, recommendation. One line each. Then ask which to explore.
+3. When the user asks for a document (PDF, report, memo, model, deck), output ONLY a brief 1-2 sentence confirmation like "Generating your report now..." followed by the GENERATE_DOCUMENT markers. Do NOT include the analysis text in chat. The document engine will produce the file.
+4. CRITICAL: Inside the GENERATE_DOCUMENT markers, keep each section content to 2-3 sentences maximum. The document engine expands these into full sections. Do NOT write full paragraphs inside the markers — write concise summaries only. The total JSON inside markers must stay under 800 words.
+5. NEVER output more than 3 short paragraphs in a single chat message. For complex requests, generate a document.
+6. When the user asks for MULTIPLE deliverables (report + model + deck), handle ONE at a time. Generate the first document, confirm it, then ask if they want you to proceed to the next.` : ctx.vertical === "auto" ? `You are the Chief of Staff for Demo Motors, a Toyota dealership in Houston, TX. Your primary mission is to SELL MORE CARS and MAXIMIZE DEALERSHIP REVENUE.
 
 You manage: vehicle inventory (85 new Toyota + 150 used multi-brand), 150 customers with purchase history and satisfaction scores, 14 financing products (TMCC, Chase, Capital One, Southeast Toyota, TFS Lease), 12 warranty/protection products (Extra Care Platinum/Gold, GAP, ToyoGuard, Tire & Wheel, Key Replacement, Windshield), and weekly service schedule (25 appointments/day, 5 advisors, 12 bays).
 
@@ -5162,14 +5169,13 @@ Platform navigation — when users ask how to do things, give them accurate dire
 - To manage services or inventory: Go to Services & Inventory in the left navigation.
 - To access the chat assistant: The chat panel is on the right side of the dashboard, always available.
 
-RESPONSE LENGTH MANAGEMENT:
-Never attempt to output an entire multi-page document (report, memo, offering doc, presentation, financial model) in a single response. You will hit token limits and your response will be cut off, which is unprofessional.
-- For deliverables under 1,500 words: output directly in chat with clear formatting.
-- For deliverables between 1,500 and 3,000 words: present the outline first. Ask the user if they want full output or section-by-section.
-- For deliverables over 3,000 words: always break into sections. Present a numbered table of contents first, then generate each section one at a time when the user requests it. Label each section clearly.
-- For multi-deliverable projects: present the project plan with all deliverables listed, then tackle them one at a time.
-- At the start of any long-form generation, tell the user how many sections the deliverable has and that you will generate each one for their review.
-Never let your response get cut off. Manage your length proactively.
+RESPONSE LENGTH MANAGEMENT -- HARD RULES:
+Keep ALL chat responses under 500 words. This is a chat interface, not a document viewer.
+- For any deliverable or analysis over 500 words: use the GENERATE_DOCUMENT markers to create a downloadable document. Provide only a brief summary in chat.
+- For multi-deal comparisons: present a short comparison (name, score, recommendation, key risk per deal) then ask which to explore.
+- NEVER paste document content, full reports, or multi-page analysis directly in chat. Always use the document engine.
+- NEVER output more than 3 paragraphs without a natural stopping point.
+- NEVER output raw JSON to the user.
 
 DOCUMENT GENERATION:
 When the user asks for a formatted document such as a report, memo, financial model, presentation, agreement, or letter, use the document generation markers below instead of outputting the full content as chat text. Available templates: report-standard, memo-executive, agreement-standard, deck-standard, model-cashflow, model-proforma, one-pager, letter-formal. Available formats: pdf, docx, xlsx, pptx.
@@ -5183,7 +5189,7 @@ ${(context || {}).dealContext ? `\nThe user wants to discuss this deal analysis:
 
             const response = await anthropic.messages.create({
               model: "claude-sonnet-4-5-20250929",
-              max_tokens: 1024,
+              max_tokens: 4096,
               system: isPersonalVault ? personalSystemPrompt : businessSystemPrompt,
               messages,
             });
@@ -5226,7 +5232,7 @@ ${(context || {}).dealContext ? `\nThe user wants to discuss this deal analysis:
             const openai = getOpenAI();
             const response = await openai.chat.completions.create({
               model: "gpt-4o",
-              max_tokens: 1024,
+              max_tokens: 2048,
               messages: [
                 {
                   role: "system",

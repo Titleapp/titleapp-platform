@@ -653,6 +653,8 @@ body{
   .mobileChatPanel{ display:flex; }
 }
 
+.mobileBottomNav{ display:none; }
+
 @media (max-width: 860px){
   .topbar{ display:flex; }
   .main{ padding:18px 14px 100px; width:100%; }
