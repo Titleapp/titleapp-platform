@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { getAuth, signOut } from "firebase/auth";
 
 const NAV_BY_VERTICAL = {
@@ -113,6 +113,7 @@ export default function Sidebar({
 }) {
   const [showSwitcher, setShowSwitcher] = useState(false);
   const [collapsedGroups, setCollapsedGroups] = useState(new Set());
+  const [workerFilter, setWorkerFilter] = useState("work");
   const vertical = localStorage.getItem("VERTICAL") || "auto";
   const sections = NAV_BY_VERTICAL[vertical] || DEFAULT_NAV;
   const isPersonal = vertical === "consumer";
@@ -152,6 +153,25 @@ export default function Sidebar({
       return next;
     });
   }
+
+  // Filter workers by tab
+  const filteredWorkers = useMemo(() => {
+    switch (workerFilter) {
+      case "work": return activeWorkers;
+      case "personal": return [];
+      case "shared": return [];
+      default: return activeWorkers;
+    }
+  }, [workerFilter, activeWorkers]);
+
+  const filteredGroups = useMemo(() => {
+    switch (workerFilter) {
+      case "work": return workerGroups;
+      case "personal": return [];
+      case "shared": return [];
+      default: return workerGroups;
+    }
+  }, [workerFilter, workerGroups]);
 
   // Group workspaces for the switcher
   const ownWorkspaces = workspaces.filter(w => w.type !== "shared");
@@ -319,29 +339,62 @@ export default function Sidebar({
         )}
       </div>
 
-      {/* Navigation Section */}
-      <div className="sidebarSection">
-        <div className="sidebarLabel">Navigation</div>
+      {/* Dashboard — first nav item */}
+      <div className="sidebarSection" style={{ paddingBottom: 0 }}>
         <nav className="nav">
-          {sections.map((section) => (
-            <button
-              key={section.id}
-              className={`navItem ${currentSection === section.id ? "navItemActive" : ""}`}
-              onClick={() => handleNavClick(section.id)}
-              style={{ width: "100%", textAlign: "left", cursor: "pointer" }}
-            >
-              {section.label}
-            </button>
-          ))}
+          <button
+            className={`navItem ${currentSection === "dashboard" ? "navItemActive" : ""}`}
+            onClick={() => handleNavClick("dashboard")}
+            style={{ width: "100%", textAlign: "left", cursor: "pointer" }}
+          >
+            Dashboard
+          </button>
         </nav>
       </div>
 
-      {/* Digital Workers Section — always visible */}
+      {/* Digital Workers — second position */}
       <div className="sidebarSection">
         <div className="sidebarLabel">Digital Workers</div>
+
+        {/* Work / Personal / Shared tabs */}
+        <div style={{
+          display: "flex",
+          gap: "2px",
+          padding: "4px",
+          background: "rgba(255,255,255,0.05)",
+          borderRadius: "6px",
+          margin: "4px 12px 8px",
+        }}>
+          {["Work", "Personal", "Shared"].map(tab => (
+            <button
+              key={tab}
+              onClick={() => setWorkerFilter(tab.toLowerCase())}
+              style={{
+                flex: 1,
+                padding: "4px 6px",
+                fontSize: "10px",
+                fontWeight: 600,
+                letterSpacing: "0.3px",
+                border: "none",
+                borderRadius: "4px",
+                cursor: "pointer",
+                background: workerFilter === tab.toLowerCase()
+                  ? "rgba(124, 58, 237, 0.3)"
+                  : "transparent",
+                color: workerFilter === tab.toLowerCase()
+                  ? "#ffffff"
+                  : "rgba(255,255,255,0.4)",
+                transition: "all 0.15s ease",
+              }}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
+
         <nav className="nav">
-          {/* Chief of Staff */}
-          {chiefOfStaff?.enabled && (
+          {/* Chief of Staff — show on Work tab */}
+          {workerFilter === "work" && chiefOfStaff?.enabled && (
             <button
               className={`navItem ${currentSection === "chief-of-staff" ? "navItemActive" : ""}`}
               onClick={() => handleNavClick("chief-of-staff")}
@@ -361,7 +414,7 @@ export default function Sidebar({
           )}
 
           {/* Worker Groups */}
-          {workerGroups.map((group) => {
+          {filteredGroups.map((group) => {
             const isCollapsed = collapsedGroups.has(group.id);
             return (
               <div key={group.id}>
@@ -404,8 +457,8 @@ export default function Sidebar({
           })}
 
           {/* Ungrouped Workers */}
-          {activeWorkers
-            .filter(wId => !workerGroups.some(g => g.workerIds?.includes(wId)))
+          {filteredWorkers
+            .filter(wId => !filteredGroups.some(g => g.workerIds?.includes(wId)))
             .map(wId => (
               <button
                 key={wId}
@@ -419,6 +472,20 @@ export default function Sidebar({
             ))
           }
 
+          {/* Empty state for Personal and Shared */}
+          {workerFilter !== "work" && filteredWorkers.length === 0 && !filteredGroups.length && (
+            <div style={{
+              padding: "12px 16px",
+              fontSize: "12px",
+              color: "rgba(255,255,255,0.35)",
+              fontStyle: "italic",
+            }}>
+              {workerFilter === "personal"
+                ? "No personal workers yet"
+                : "No shared workers yet"}
+            </div>
+          )}
+
           {/* Add Workers link */}
           <button
             className="navItem"
@@ -427,6 +494,29 @@ export default function Sidebar({
           >
             + Add Workers
           </button>
+        </nav>
+      </div>
+
+      {/* Divider */}
+      <div style={{
+        height: "1px",
+        background: "rgba(255,255,255,0.08)",
+        margin: "0 16px",
+      }} />
+
+      {/* Remaining Navigation */}
+      <div className="sidebarSection">
+        <nav className="nav">
+          {sections.filter(s => s.id !== "dashboard").map((section) => (
+            <button
+              key={section.id}
+              className={`navItem ${currentSection === section.id ? "navItemActive" : ""}`}
+              onClick={() => handleNavClick(section.id)}
+              style={{ width: "100%", textAlign: "left", cursor: "pointer" }}
+            >
+              {section.label}
+            </button>
+          ))}
         </nav>
       </div>
 
