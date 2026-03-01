@@ -269,13 +269,62 @@ export default function WorkspaceHub({ userName, onLaunch, onBuilderStart, onAdm
             <div style={{ textAlign: 'center', color: '#dc2626', padding: 40 }}>{error}</div>
           )}
 
-          {workspaces && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
-              {workspaces.map(w => (
-                <WorkspaceCard key={w.id} workspace={w} onLaunch={handleLaunch} />
-              ))}
-            </div>
-          )}
+          {workspaces && (() => {
+            const personal = workspaces.filter(w => w.type === 'personal' || w.id === 'vault');
+            const org = workspaces.filter(w => (w.type === 'org' || (!w.type && w.id !== 'vault')) && w.type !== 'shared');
+            const shared = workspaces.filter(w => w.type === 'shared');
+
+            return (
+              <>
+                {personal.length > 0 && (
+                  <>
+                    <div style={{
+                      fontSize: 12, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase',
+                      letterSpacing: 1, marginBottom: 12,
+                    }}>Personal</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginBottom: 24 }}>
+                      {personal.map(w => (
+                        <WorkspaceCard key={w.id} workspace={w} onLaunch={handleLaunch} />
+                      ))}
+                    </div>
+                  </>
+                )}
+
+                {org.length > 0 && (
+                  <>
+                    <div style={{
+                      fontSize: 12, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase',
+                      letterSpacing: 1, marginBottom: 12,
+                    }}>Your Workspaces</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginBottom: 24 }}>
+                      {org.map(w => (
+                        <WorkspaceCard key={w.id} workspace={w} onLaunch={handleLaunch} />
+                      ))}
+                    </div>
+                  </>
+                )}
+
+                {shared.length > 0 && (
+                  <>
+                    <div style={{
+                      fontSize: 12, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase',
+                      letterSpacing: 1, marginBottom: 12,
+                    }}>Shared With You</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginBottom: 24 }}>
+                      {shared.map(w => (
+                        <div key={w.id} style={{ flex: '1 1 180px', maxWidth: 240 }}>
+                          <WorkspaceCard workspace={w} onLaunch={handleLaunch} />
+                          <div style={{ fontSize: 11, color: '#64748b', marginTop: 4, paddingLeft: 4 }}>
+                            From {w.senderOrgName || 'Unknown'}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </>
+            );
+          })()}
 
           {/* Investor Data Room card — show if any workspace is investor vertical */}
           {workspaces && workspaces.some(w => w.vertical === 'investor' || w.vertical === 'Investor') && (

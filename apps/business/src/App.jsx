@@ -49,6 +49,7 @@ import InvestorDataRoom from "./sections/InvestorDataRoom";
 import InvestorCapTable from "./sections/InvestorCapTable";
 import InvestorPipeline from "./sections/InvestorPipeline";
 import VaultTools from "./sections/VaultTools";
+import B2BAnalytics from "./sections/B2BAnalytics";
 import DeveloperSandbox from "./pages/DeveloperSandbox";
 import MarketplaceListing from "./pages/MarketplaceListing";
 import CreatorApplication from "./pages/CreatorApplication";
@@ -172,6 +173,8 @@ function AdminShell({ onBackToHub }) {
         return <InvestorPipeline />;
       case "vault-tools":
         return <VaultTools />;
+      case "b2b-analytics":
+        return <B2BAnalytics />;
       default:
         return <Dashboard />;
     }

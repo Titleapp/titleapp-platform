@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { getAuth, signOut } from "firebase/auth";
 
 const NAV_BY_VERTICAL = {
@@ -21,6 +21,7 @@ const NAV_BY_VERTICAL = {
     { id: "reports", label: "Reports" },
     { id: "ai-chats", label: "AI Activity" },
     { id: "rules", label: "Rules" },
+    { id: "b2b-analytics", label: "B2B Distribution" },
     { id: "raas-store", label: "Marketplace" },
     { id: "settings", label: "Settings" },
   ],
@@ -31,6 +32,7 @@ const NAV_BY_VERTICAL = {
     { id: "appointments", label: "Maintenance" },
     { id: "rules-resources", label: "Rules & Resources" },
     { id: "reports", label: "Reports" },
+    { id: "b2b-analytics", label: "B2B Distribution" },
     { id: "settings", label: "Settings" },
   ],
   auto: [
@@ -43,6 +45,7 @@ const NAV_BY_VERTICAL = {
     { id: "reports", label: "Reports" },
     { id: "ai-chats", label: "AI Activity" },
     { id: "rules", label: "Rules" },
+    { id: "b2b-analytics", label: "B2B Distribution" },
     { id: "raas-store", label: "Marketplace" },
     { id: "settings", label: "Settings" },
   ],
@@ -58,6 +61,7 @@ const NAV_BY_VERTICAL = {
     { id: "reports", label: "Reports" },
     { id: "ai-chats", label: "AI Activity" },
     { id: "rules", label: "Rules" },
+    { id: "b2b-analytics", label: "B2B Distribution" },
     { id: "raas-store", label: "Marketplace" },
     { id: "settings", label: "Settings" },
   ],
@@ -69,6 +73,7 @@ const NAV_BY_VERTICAL = {
     { id: "reports", label: "Reports" },
     { id: "ai-chats", label: "AI Activity" },
     { id: "rules", label: "Rules" },
+    { id: "b2b-analytics", label: "B2B Distribution" },
     { id: "raas-store", label: "Marketplace" },
     { id: "settings", label: "Settings" },
   ],
@@ -83,12 +88,35 @@ const DEFAULT_NAV = [
   { id: "settings", label: "Settings" },
 ];
 
-export default function Sidebar({ currentSection, onNavigate, onClose, tenantName, onBackToHub }) {
+const VERTICAL_LABELS = {
+  auto: "Auto Dealer",
+  analyst: "Investment Analyst",
+  "real-estate": "Real Estate",
+  aviation: "Aviation",
+  investor: "Investor Relations",
+  "property-mgmt": "Property Management",
+  consumer: "Personal Vault",
+};
+
+export default function Sidebar({
+  currentSection,
+  onNavigate,
+  onClose,
+  tenantName,
+  onBackToHub,
+  workspaces = [],
+  currentWorkspaceId,
+  onSwitchWorkspace,
+  workerGroups = [],
+  activeWorkers = [],
+  chiefOfStaff,
+}) {
+  const [showSwitcher, setShowSwitcher] = useState(false);
+  const [collapsedGroups, setCollapsedGroups] = useState(new Set());
   const vertical = localStorage.getItem("VERTICAL") || "auto";
   const sections = NAV_BY_VERTICAL[vertical] || DEFAULT_NAV;
   const isPersonal = vertical === "consumer";
 
-  // Resolve a human-readable name, rejecting raw IDs like ws_1771474949129_ryx41z
   const rawWsName = localStorage.getItem("WORKSPACE_NAME") || "";
   const isRawId = /^ws_\d+_[a-z0-9]+$/i.test(rawWsName);
   const workspaceName = isRawId ? "" : rawWsName;
@@ -116,44 +144,191 @@ export default function Sidebar({ currentSection, onNavigate, onClose, tenantNam
     });
   }
 
+  function toggleGroup(groupId) {
+    setCollapsedGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(groupId)) next.delete(groupId);
+      else next.add(groupId);
+      return next;
+    });
+  }
+
+  // Group workspaces for the switcher
+  const ownWorkspaces = workspaces.filter(w => w.type !== "shared");
+  const sharedWorkspaces = workspaces.filter(w => w.type === "shared");
+
   return (
     <div className="sidebar">
-      <div className="sidebarHeader">
-        <div className="brand">
-          <img
-            src="/logo.png"
-            alt="TitleApp AI"
-            style={{ width: "32px", height: "32px", borderRadius: "8px" }}
-          />
-          <div>
-            <div className="brandName">{isPersonal ? brandLabel : (workspaceName || "TitleApp AI")}</div>
-            <div className="brandSub">{isPersonal ? "TitleApp Vault" : {auto: "Auto Dealer", analyst: "Investment Analyst", "real-estate": "Real Estate", aviation: "Aviation", investor: "Investor Relations"}[vertical] || "Business"}</div>
-          </div>
-        </div>
-        <button
-          className="sidebarClose iconBtn"
-          onClick={onClose}
-          aria-label="Close menu"
+      {/* Workspace Switcher Header */}
+      <div className="sidebarHeader" style={{ position: "relative" }}>
+        <div
+          className="brand"
+          onClick={() => workspaces.length > 1 && setShowSwitcher(!showSwitcher)}
+          style={{ cursor: workspaces.length > 1 ? "pointer" : "default", flex: 1 }}
         >
+          <div style={{
+            width: 32, height: 32, borderRadius: 8,
+            background: "linear-gradient(135deg, #7c3aed 0%, #6366f1 100%)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            color: "white", fontWeight: 700, fontSize: 14, flexShrink: 0,
+          }}>
+            {(brandLabel || "T").charAt(0).toUpperCase()}
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div className="brandName" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {isPersonal ? brandLabel : (workspaceName || "TitleApp AI")}
+            </div>
+            <div className="brandSub">{VERTICAL_LABELS[vertical] || "Business"}</div>
+          </div>
+          {workspaces.length > 1 && (
+            <svg
+              width="16" height="16" viewBox="0 0 16 16" fill="none"
+              style={{
+                flexShrink: 0, color: "rgba(226,232,240,0.6)",
+                transform: showSwitcher ? "rotate(180deg)" : "none",
+                transition: "transform 150ms ease",
+              }}
+            >
+              <path d="M4 6L8 10L12 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          )}
+        </div>
+        <button className="sidebarClose iconBtn" onClick={onClose} aria-label="Close menu">
           ✕
         </button>
+
+        {/* Workspace Switcher Dropdown */}
+        {showSwitcher && (
+          <div style={{
+            position: "absolute", top: "100%", left: 0, right: 0, zIndex: 100,
+            background: "#0f172a", borderRadius: "0 0 12px 12px",
+            borderTop: "1px solid rgba(255,255,255,0.08)",
+            boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
+            maxHeight: 320, overflowY: "auto",
+          }}>
+            {ownWorkspaces.length > 0 && (
+              <div style={{ padding: "8px 12px 4px", fontSize: 11, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                Your Workspaces
+              </div>
+            )}
+            {ownWorkspaces.map(ws => (
+              <div
+                key={ws.id}
+                onClick={() => { setShowSwitcher(false); if (ws.id !== currentWorkspaceId) onSwitchWorkspace(ws); }}
+                style={{
+                  display: "flex", alignItems: "center", gap: 10,
+                  padding: "8px 12px", cursor: "pointer",
+                  background: ws.id === currentWorkspaceId ? "rgba(124,58,237,0.15)" : "transparent",
+                  borderRadius: 8, margin: "2px 8px",
+                }}
+                onMouseEnter={e => { if (ws.id !== currentWorkspaceId) e.currentTarget.style.background = "rgba(255,255,255,0.05)"; }}
+                onMouseLeave={e => { if (ws.id !== currentWorkspaceId) e.currentTarget.style.background = "transparent"; }}
+              >
+                <div style={{
+                  width: 28, height: 28, borderRadius: 6,
+                  background: ws.id === currentWorkspaceId ? "#7c3aed" : "#1e293b",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  color: "white", fontWeight: 600, fontSize: 12, flexShrink: 0,
+                }}>
+                  {(ws.name || "?").charAt(0).toUpperCase()}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "#e2e8f0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {ws.name}
+                  </div>
+                  <div style={{ fontSize: 11, color: "#64748b" }}>
+                    {VERTICAL_LABELS[ws.vertical] || ws.vertical}
+                  </div>
+                </div>
+                {ws.id === currentWorkspaceId && (
+                  <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#22c55e", flexShrink: 0 }} />
+                )}
+              </div>
+            ))}
+
+            {sharedWorkspaces.length > 0 && (
+              <>
+                <div style={{ padding: "12px 12px 4px", fontSize: 11, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                  Shared With You
+                </div>
+                {sharedWorkspaces.map(ws => (
+                  <div
+                    key={ws.id}
+                    onClick={() => { setShowSwitcher(false); if (ws.id !== currentWorkspaceId) onSwitchWorkspace(ws); }}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 10,
+                      padding: "8px 12px", cursor: "pointer",
+                      background: ws.id === currentWorkspaceId ? "rgba(124,58,237,0.15)" : "transparent",
+                      borderRadius: 8, margin: "2px 8px",
+                    }}
+                    onMouseEnter={e => { if (ws.id !== currentWorkspaceId) e.currentTarget.style.background = "rgba(255,255,255,0.05)"; }}
+                    onMouseLeave={e => { if (ws.id !== currentWorkspaceId) e.currentTarget.style.background = "transparent"; }}
+                  >
+                    <div style={{
+                      width: 28, height: 28, borderRadius: 6,
+                      background: "#0f766e",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      color: "white", fontWeight: 600, fontSize: 12, flexShrink: 0,
+                    }}>
+                      {(ws.senderOrgName || "?").charAt(0).toUpperCase()}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: "#e2e8f0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {ws.name}
+                      </div>
+                      <div style={{ fontSize: 11, color: "#64748b" }}>
+                        From {ws.senderOrgName}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </>
+            )}
+
+            <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", margin: "4px 0" }} />
+
+            {onBackToHub && (
+              <div
+                onClick={() => { setShowSwitcher(false); onBackToHub(); }}
+                style={{
+                  display: "flex", alignItems: "center", gap: 10,
+                  padding: "8px 12px", cursor: "pointer", margin: "2px 8px", borderRadius: 8,
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+              >
+                <div style={{ width: 28, height: 28, borderRadius: 6, border: "1px dashed #475569", display: "flex", alignItems: "center", justifyContent: "center", color: "#7c3aed", fontSize: 16, fontWeight: 600 }}>+</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "#7c3aed" }}>Add Workspace</div>
+              </div>
+            )}
+
+            {onBackToHub && (
+              <div
+                onClick={() => { setShowSwitcher(false); onBackToHub(); }}
+                style={{
+                  padding: "6px 12px 10px", cursor: "pointer",
+                  fontSize: 12, color: "#64748b", textAlign: "center",
+                }}
+                onMouseEnter={e => { e.currentTarget.style.color = "#94a3b8"; }}
+                onMouseLeave={e => { e.currentTarget.style.color = "#64748b"; }}
+              >
+                Manage Workspaces
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
+      {/* Navigation Section */}
       <div className="sidebarSection">
         <div className="sidebarLabel">Navigation</div>
         <nav className="nav">
           {sections.map((section) => (
             <button
               key={section.id}
-              className={`navItem ${
-                currentSection === section.id ? "navItemActive" : ""
-              }`}
+              className={`navItem ${currentSection === section.id ? "navItemActive" : ""}`}
               onClick={() => handleNavClick(section.id)}
-              style={{
-                width: "100%",
-                textAlign: "left",
-                cursor: "pointer",
-              }}
+              style={{ width: "100%", textAlign: "left", cursor: "pointer" }}
             >
               {section.label}
             </button>
@@ -161,16 +336,93 @@ export default function Sidebar({ currentSection, onNavigate, onClose, tenantNam
         </nav>
       </div>
 
+      {/* Worker Groups Section */}
+      {(workerGroups.length > 0 || activeWorkers.length > 0) && (
+        <div className="sidebarSection">
+          <div className="sidebarLabel">Your Workers</div>
+          <nav className="nav">
+            {/* Chief of Staff */}
+            {chiefOfStaff?.enabled && (
+              <button
+                className={`navItem ${currentSection === "chief-of-staff" ? "navItemActive" : ""}`}
+                onClick={() => handleNavClick("chief-of-staff")}
+                style={{
+                  width: "100%", textAlign: "left", cursor: "pointer",
+                  background: currentSection === "chief-of-staff"
+                    ? "rgba(124,58,237,0.16)"
+                    : "linear-gradient(135deg, rgba(124,58,237,0.08) 0%, rgba(99,102,241,0.08) 100%)",
+                  borderRadius: 10, padding: "8px 10px", marginBottom: 4,
+                  display: "flex", alignItems: "center", gap: 8,
+                }}
+              >
+                <span style={{ fontSize: 14 }}>&#x1F916;</span>
+                <span style={{ fontWeight: 600, color: "#c4b5fd" }}>{chiefOfStaff.name || "Alex"}</span>
+                <span style={{ fontSize: 10, color: "#7c3aed", marginLeft: "auto" }}>CoS</span>
+              </button>
+            )}
+
+            {/* Worker Groups */}
+            {workerGroups.map((group) => {
+              const isCollapsed = collapsedGroups.has(group.id);
+              return (
+                <div key={group.id}>
+                  <div
+                    onClick={() => toggleGroup(group.id)}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 8,
+                      padding: "8px 10px", cursor: "pointer", borderRadius: 10,
+                      fontSize: 13, fontWeight: 600,
+                      color: "rgba(226,232,240,0.8)",
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+                  >
+                    <svg
+                      width="12" height="12" viewBox="0 0 12 12" fill="none"
+                      style={{ transform: isCollapsed ? "rotate(-90deg)" : "none", transition: "transform 150ms ease", flexShrink: 0 }}
+                    >
+                      <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                    </svg>
+                    <span style={{ color: group.color || "#94a3b8", fontSize: 10 }}>{"\u25CF"}</span>
+                    <span>{group.name}</span>
+                    <span style={{ fontSize: 11, color: "#475569", marginLeft: "auto" }}>{group.workerIds?.length || 0}</span>
+                  </div>
+                  {!isCollapsed && group.workerIds?.map(wId => (
+                    <button
+                      key={wId}
+                      className={`navItem ${currentSection === `worker-${wId}` ? "navItemActive" : ""}`}
+                      onClick={() => handleNavClick(`worker-${wId}`)}
+                      style={{
+                        width: "100%", textAlign: "left", cursor: "pointer",
+                        paddingLeft: 28, fontSize: 13,
+                      }}
+                    >
+                      {wId}
+                    </button>
+                  ))}
+                </div>
+              );
+            })}
+
+            {/* Ungrouped Workers */}
+            {activeWorkers
+              .filter(wId => !workerGroups.some(g => g.workerIds?.includes(wId)))
+              .map(wId => (
+                <button
+                  key={wId}
+                  className={`navItem ${currentSection === `worker-${wId}` ? "navItemActive" : ""}`}
+                  onClick={() => handleNavClick(`worker-${wId}`)}
+                  style={{ width: "100%", textAlign: "left", cursor: "pointer", fontSize: 13 }}
+                >
+                  {wId}
+                </button>
+              ))
+            }
+          </nav>
+        </div>
+      )}
+
       <div className="sidebarFooter">
-        {onBackToHub && (
-          <button
-            onClick={onBackToHub}
-            className="iconBtn"
-            style={{ width: "100%", marginTop: "10px", color: "#7c3aed" }}
-          >
-            Switch Workspace
-          </button>
-        )}
         <button
           onClick={handleSignOut}
           className="iconBtn"

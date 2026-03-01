@@ -395,9 +395,6 @@ body{
   min-width:0;
 }
 .chatSidebar{
-  width:40%;
-  max-width:560px;
-  min-width:340px;
   border-right:2px solid var(--line);
   box-shadow:4px 0 16px rgba(15,23,42,0.04);
   display:flex;
@@ -406,6 +403,33 @@ body{
   position:sticky;
   top:0;
   background:#f8f9fb;
+}
+.resizeHandle{
+  width:6px;
+  cursor:col-resize;
+  background:transparent;
+  position:relative;
+  flex-shrink:0;
+  z-index:10;
+}
+.resizeHandle:hover,
+.resizeHandle.active{
+  background:rgba(124,58,237,0.12);
+}
+.resizeHandle::after{
+  content:'';
+  position:absolute;
+  top:50%;
+  left:50%;
+  transform:translate(-50%,-50%);
+  width:2px;
+  height:24px;
+  background:#cbd5e1;
+  border-radius:1px;
+}
+.resizeHandle:hover::after,
+.resizeHandle.active::after{
+  background:var(--accent);
 }
 
 /* ChatPanel embedded styles */
@@ -624,13 +648,14 @@ body{
 
 @media (max-width: 768px){
   .chatSidebar{ display:none; }
+  .resizeHandle{ display:none; }
   .chatToggleTab{ display:flex; }
   .mobileChatPanel{ display:flex; }
 }
 
 @media (max-width: 860px){
   .topbar{ display:flex; }
-  .main{ padding:18px 14px 60px; width:100%; }
+  .main{ padding:18px 14px 100px; width:100%; }
   .sidebar{
     position:fixed;
     left:0;
@@ -646,4 +671,37 @@ body{
   .sidebarClose{ display:inline-flex; }
   .pageHeader{ flex-direction:column; align-items:flex-start; }
   .h1{ font-size:38px; }
+  .mobileBottomNav{
+    position:fixed;
+    bottom:0;
+    left:0;
+    right:0;
+    height:64px;
+    background:white;
+    border-top:1px solid var(--line);
+    display:flex;
+    align-items:center;
+    justify-content:space-around;
+    z-index:100;
+    padding-bottom:env(safe-area-inset-bottom);
+  }
+  .mobileBottomNavItem{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:2px;
+    font-size:11px;
+    color:var(--muted);
+    cursor:pointer;
+    padding:4px 12px;
+    background:none;
+    border:none;
+  }
+  .mobileBottomNavItem.active{
+    color:var(--accent);
+  }
+  .mobileBottomNavItem svg{
+    width:22px;
+    height:22px;
+  }
 }
