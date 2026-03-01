@@ -53,6 +53,8 @@ import B2BAnalytics from "./sections/B2BAnalytics";
 import DeveloperSandbox from "./pages/DeveloperSandbox";
 import MarketplaceListing from "./pages/MarketplaceListing";
 import CreatorApplication from "./pages/CreatorApplication";
+import WorkerWaitlistPage from "./pages/WorkerWaitlistPage";
+import WorkerMarketplace, { WORKER_ROUTES } from "./pages/WorkerMarketplace";
 import { auth } from "./firebase";
 import { signInWithCustomToken } from "firebase/auth";
 
@@ -215,6 +217,15 @@ export default function App() {
 
   // ── /apply route intercept ────────────────────────────────
   const isApply = window.location.pathname === "/apply" || window.location.pathname === "/apply/";
+
+  // ── /workers routes ─────────────────────────────────────
+  const isWorkersIndex = /^\/workers\/?$/.test(window.location.pathname);
+  const workersSlugMatch = window.location.pathname.match(/^\/workers\/([a-z0-9-]+)\/?$/);
+  const workerSlug = workersSlugMatch ? workersSlugMatch[1] : null;
+  const workerRoute = workerSlug ? WORKER_ROUTES.find((w) => w.slug === workerSlug) : null;
+  const isLiveWorker = workerRoute && workerRoute.status === "live";
+  const isPlannedWorker = workerRoute && workerRoute.status === "planned";
+
   const [sandboxReady, setSandboxReady] = useState(isSandbox ? false : null);
 
   const [token, setToken] = useState(() =>
@@ -586,6 +597,39 @@ export default function App() {
   // ── Creator Application: public, no auth required ──────────
   if (isApply) {
     return <CreatorApplication />;
+  }
+
+  // ── Workers: marketplace index, no auth required ──────────
+  if (isWorkersIndex) {
+    return <WorkerMarketplace />;
+  }
+
+  // ── Workers: planned worker waitlist, no auth required ────
+  if (isPlannedWorker) {
+    return (
+      <WorkerWaitlistPage
+        name={workerRoute.name}
+        description={workerRoute.description}
+        slug={workerRoute.slug}
+        suite={workerRoute.suite}
+      />
+    );
+  }
+
+  // ── Workers: unknown slug ─────────────────────────────────
+  if (workerSlug && !workerRoute) {
+    return (
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#f8fafc", flexDirection: "column", gap: 16 }}>
+        <div style={{ fontSize: 20, fontWeight: 600, color: "#7c3aed" }}>TitleApp</div>
+        <div style={{ fontSize: 16, color: "#6b7280" }}>This Digital Worker was not found.</div>
+        <a href="/workers" style={{ color: "#7c3aed", fontSize: 14 }}>Browse all workers</a>
+      </div>
+    );
+  }
+
+  // ── Workers: live worker → auth required, auto-open chat ──
+  if (isLiveWorker) {
+    sessionStorage.setItem("ta_auto_worker", workerSlug);
   }
 
   if (handoffInProgress || currentView === "loading") {
