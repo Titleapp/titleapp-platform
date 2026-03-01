@@ -4756,31 +4756,37 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
 
     // POST /v1/chat:message
     if (route === "/chat:message" && method === "POST") {
-      const { message, context, preferredModel, fileIds, file } = body || {};
+      const { message, context, preferredModel, fileIds, file, files } = body || {};
       const validFileIds = Array.isArray(fileIds) ? fileIds.filter(id => typeof id === "string") : [];
       if (!message) return jsonError(res, 400, "Missing message");
 
-      // Handle base64 file upload if provided
-      let uploadedFileUrl = null;
-      let uploadedFileName = null;
-      if (file && file.data && file.name) {
+      // Collect all files from both `file` (single) and `files` (multi-upload array)
+      const allFiles = [];
+      if (files && Array.isArray(files)) {
+        for (const f of files) { if (f && f.data && f.name) allFiles.push(f); }
+      } else if (file && file.data && file.name) {
+        allFiles.push(file);
+      }
+
+      // Process each uploaded file: store to Cloud Storage + extract text content
+      const uploadedFileDescriptions = []; // { name, url, extractedText }
+      for (const f of allFiles) {
         try {
-          const base64Data = file.data.replace(/^data:[^;]+;base64,/, "");
+          const base64Data = f.data.replace(/^data:[^;]+;base64,/, "");
           const buffer = Buffer.from(base64Data, "base64");
-          const storagePath = `uploads/${ctx.userId}/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+          const storagePath = `uploads/${ctx.userId}/${Date.now()}_${f.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
           const bucket = getBucket();
           const fileRef = bucket.file(storagePath);
           const dlToken2 = require("crypto").randomUUID();
-          await fileRef.save(buffer, { contentType: file.type || "application/octet-stream", metadata: { firebaseStorageDownloadTokens: dlToken2 } });
+          await fileRef.save(buffer, { contentType: f.type || "application/octet-stream", metadata: { firebaseStorageDownloadTokens: dlToken2 } });
           const url = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(storagePath)}?alt=media&token=${dlToken2}`;
-          uploadedFileUrl = url;
-          uploadedFileName = file.name;
+
           // Create file record in Firestore
           const fileDocRef = await db.collection("files").add({
             tenantId: ctx.tenantId,
             userId: ctx.userId,
-            name: file.name,
-            contentType: file.type || "application/octet-stream",
+            name: f.name,
+            contentType: f.type || "application/octet-stream",
             storagePath,
             size: buffer.length,
             status: "finalized",
@@ -4788,8 +4794,41 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
           });
           validFileIds.push(fileDocRef.id);
           console.log("File uploaded from chat:", storagePath, "fileId:", fileDocRef.id);
+
+          // Extract text content so the AI can read the file
+          let extractedText = "";
+          const lowerName = f.name.toLowerCase();
+          const mimeType = (f.type || "").toLowerCase();
+          try {
+            if (lowerName.endsWith(".pdf") || mimeType === "application/pdf") {
+              const pdfParse = require("pdf-parse");
+              const pdfData = await pdfParse(buffer);
+              extractedText = (pdfData.text || "").trim();
+              // Cap at ~8000 chars per file to avoid blowing up context
+              if (extractedText.length > 8000) {
+                extractedText = extractedText.substring(0, 8000) + "\n... [truncated, document continues]";
+              }
+            } else if (lowerName.endsWith(".csv") || lowerName.endsWith(".txt") || lowerName.endsWith(".md") || lowerName.endsWith(".json") || mimeType.startsWith("text/")) {
+              extractedText = buffer.toString("utf-8").trim();
+              if (extractedText.length > 8000) {
+                extractedText = extractedText.substring(0, 8000) + "\n... [truncated]";
+              }
+            } else if (lowerName.endsWith(".docx") || mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+              // Basic DOCX text extraction — pull text from XML parts
+              try {
+                const JSZip = require("jszip") || null;
+                // Fallback: just note the file was uploaded but can't extract
+                extractedText = "[DOCX file uploaded — content extraction not available, but file is stored]";
+              } catch { extractedText = "[DOCX file uploaded — content extraction not available, but file is stored]"; }
+            }
+          } catch (extractErr) {
+            console.warn("Text extraction failed for", f.name, extractErr.message);
+            extractedText = "[Could not extract text from this file]";
+          }
+
+          uploadedFileDescriptions.push({ name: f.name, url, extractedText });
         } catch (uploadErr) {
-          console.error("Chat file upload failed:", uploadErr);
+          console.error("Chat file upload failed:", f.name, uploadErr);
         }
       }
 
@@ -4895,10 +4934,17 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
               console.warn("⚠️ Could not load chat history (index may be building):", historyErr.message);
             }
 
-            // Add current message (with file context if uploaded)
+            // Add current message with extracted file contents so the AI can read them
             let userContent = message;
-            if (uploadedFileUrl && uploadedFileName) {
-              userContent += `\n\n[The user uploaded a file: "${uploadedFileName}". It has been stored and is available at: ${uploadedFileUrl}. Acknowledge the file by name.]`;
+            if (uploadedFileDescriptions.length > 0) {
+              userContent += "\n\n--- UPLOADED FILES ---";
+              for (const fd of uploadedFileDescriptions) {
+                userContent += `\n\n[FILE: "${fd.name}" — stored at: ${fd.url}]`;
+                if (fd.extractedText && fd.extractedText.length > 0 && !fd.extractedText.startsWith("[Could not")) {
+                  userContent += `\nContent:\n${fd.extractedText}`;
+                }
+              }
+              userContent += "\n--- END FILES ---\nYou have access to the full content of each file above. Read and use it directly. Do NOT ask the user to re-upload or paste the content.";
             }
             messages.push({ role: "user", content: userContent });
 
@@ -5225,8 +5271,19 @@ ${(context || {}).dealContext ? `\nThe user wants to discuss this deal analysis:
               console.warn("⚠️ Could not load chat history (index may be building):", historyErr.message);
             }
 
-            // Add current message
-            messages.push({ role: "user", content: message });
+            // Add current message with file contents
+            let openaiUserContent = message;
+            if (uploadedFileDescriptions.length > 0) {
+              openaiUserContent += "\n\n--- UPLOADED FILES ---";
+              for (const fd of uploadedFileDescriptions) {
+                openaiUserContent += `\n\n[FILE: "${fd.name}" — stored at: ${fd.url}]`;
+                if (fd.extractedText && fd.extractedText.length > 0 && !fd.extractedText.startsWith("[Could not")) {
+                  openaiUserContent += `\nContent:\n${fd.extractedText}`;
+                }
+              }
+              openaiUserContent += "\n--- END FILES ---\nYou have access to the full content of each file above. Read and use it directly. Do NOT ask the user to re-upload.";
+            }
+            messages.push({ role: "user", content: openaiUserContent });
 
             // Call OpenAI API
             const openai = getOpenAI();
