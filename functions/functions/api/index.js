@@ -22,6 +22,7 @@ const researchRouter = require("./routes/research");
 const lpsRouter = require("./routes/lps");
 const assetsRouter = require("./routes/assets");
 const documentsRouter = require("./routes/documents");
+const generatedDocsRouter = require("./routes/generated-documents");
 const deadlinesRouter = require("./routes/deadlines");
 const inboundRouter = require("./routes/inbound");
 const webhooksRouter = require("./routes/webhooks");
@@ -125,6 +126,9 @@ app.use("/v1/webhooks", webhooksRouter);
 // Phase 8 — Title / Provenance
 app.use("/v1", titleRouter);              // /workers/import
 app.use("/v1/workspaces", titleRouter);   // /:workspace_id/workers/:workerId/mint, /title, /verify
+
+// Phase 9 — Document Engine
+app.use("/v1/workspaces", generatedDocsRouter); // /:workspace_id/documents/generate, /generated, /templates
 
 // 404 fallback
 app.use((req, res) => {

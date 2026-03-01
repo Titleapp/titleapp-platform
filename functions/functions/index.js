@@ -26,6 +26,14 @@ const {
 // RAAS Enforcement Engine (v1)
 const { validateOutput, validateChatOutput, callAIWithEnforcement } = require("./raas/raas.engine");
 
+// Document Engine (Tier 0 platform service)
+const {
+  generateDocument,
+  getDownloadUrl: docGetDownloadUrl,
+  listDocuments: docListDocuments,
+  listTemplates: docListTemplates,
+} = require("./services/documentEngine");
+
 // Chat Engine (conversational state machine)
 const { processMessage: chatEngineProcess, defaultState: chatEngineDefaultState } = require("./chatEngine");
 
@@ -840,7 +848,7 @@ exports.api = onRequest(
   // IMPORTANT: we need rawBody for Stripe webhook signature verification
   { region: "us-central1" },
   async (req, res) => {
-    console.log("✅ API_VERSION", "2026-02-15-chat-wiring");
+    console.log("✅ API_VERSION", "2026-03-01-document-engine");
 
     // CORS — approved origins only (no wildcard)
     setCorsHeaders(req, res);
@@ -4316,6 +4324,93 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
     }
 
     // ----------------------------
+    // DOCUMENT ENGINE (Tier 0)
+    // ----------------------------
+
+    // POST /v1/docs:generate — Generate a document from a template
+    if (route === "/docs:generate" && method === "POST") {
+      try {
+        const { templateId, data: docData, overrideBrand } = body || {};
+        if (!templateId) return jsonError(res, 400, "Missing templateId");
+        if (!docData || typeof docData !== "object") return jsonError(res, 400, "Missing or invalid data object");
+
+        const result = await generateDocument({
+          tenantId: ctx.tenantId,
+          userId: ctx.userId,
+          templateId,
+          data: docData,
+          overrideBrand: overrideBrand || null,
+        });
+
+        if (result.error) {
+          const status = result.error === "unknown_template" ? 404
+            : result.error === "missing_fields" ? 400
+            : result.error === "unsupported_format" ? 400
+            : 500;
+          return jsonError(res, status, result.error, { message: result.message, missing: result.missing });
+        }
+
+        return res.json(result);
+      } catch (e) {
+        console.error("❌ docs:generate failed:", e);
+        return jsonError(res, 500, "Document generation failed");
+      }
+    }
+
+    // POST /v1/docs:download — Get a signed download URL
+    if (route === "/docs:download" && method === "POST") {
+      try {
+        const { docId, expiresInSec } = body || {};
+        if (!docId) return jsonError(res, 400, "Missing docId");
+
+        const result = await docGetDownloadUrl({
+          tenantId: ctx.tenantId,
+          userId: ctx.userId,
+          docId,
+          expiresInSec,
+        });
+
+        if (result.error === "not_found") return jsonError(res, 404, "Document not found");
+        if (result.error === "forbidden") return jsonError(res, 403, "Access denied");
+        if (result.error) return jsonError(res, 500, result.error);
+
+        return res.json({ ok: true, url: result.url, expiresInSec: result.expiresInSec });
+      } catch (e) {
+        console.error("❌ docs:download failed:", e);
+        return jsonError(res, 500, "Failed to generate download URL");
+      }
+    }
+
+    // POST /v1/docs:list — List generated documents for this tenant
+    if (route === "/docs:list" && method === "POST") {
+      try {
+        const { limit, offset, templateId } = body || {};
+        const docs = await docListDocuments({
+          tenantId: ctx.tenantId,
+          limit: Math.min(Number(limit) || 50, 200),
+          offset: Number(offset) || 0,
+          templateId: templateId || null,
+        });
+
+        return res.json({ ok: true, documents: docs, count: docs.length });
+      } catch (e) {
+        console.error("❌ docs:list failed:", e);
+        return jsonError(res, 500, "Failed to list documents");
+      }
+    }
+
+    // POST /v1/docs:templates — List available document templates
+    if (route === "/docs:templates" && method === "POST") {
+      try {
+        const templates = await docListTemplates(ctx.tenantId);
+        return res.json({ ok: true, templates });
+      } catch (e) {
+        console.error("❌ docs:templates failed:", e);
+        return jsonError(res, 500, "Failed to list templates");
+      }
+    }
+
+    // ----------------------------
     // FILE UPLOADS (general)
     // ----------------------------
 
@@ -4412,6 +4507,75 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
         });
 
       return res.json({ ok: true, url, expiresInSec: exp });
+    }
+
+    // ----------------------------
+    // DOCUMENT ENGINE (Tier 0 Platform Service)
+    // ----------------------------
+
+    // POST /v1/documents:generate
+    if (route === "/documents:generate" && method === "POST") {
+      const { templateId, format, title, content: docContent, metadata: docMeta } = body;
+      if (!templateId) return jsonError(res, 400, "Missing templateId");
+      if (!docContent) return jsonError(res, 400, "Missing content");
+      try {
+        const { generateDocument } = require("./documents");
+        const result = await generateDocument({
+          tenantId: ctx.tenantId,
+          userId: auth.user.uid,
+          templateId,
+          format: format || null,
+          content: docContent,
+          title: title || templateId,
+          metadata: docMeta || {},
+        });
+        if (!result.ok) return jsonError(res, 400, result.error);
+        return res.json(result);
+      } catch (e) {
+        console.error("[documents:generate] error:", e.message);
+        return jsonError(res, 500, "Document generation failed: " + e.message);
+      }
+    }
+
+    // POST /v1/documents:download
+    if (route === "/documents:download" && method === "POST") {
+      const { docId, expiresInSec } = body || {};
+      if (!docId) return jsonError(res, 400, "Missing docId");
+      try {
+        const { getDocumentUrl } = require("./documents/storage");
+        const result = await getDocumentUrl(docId, ctx.tenantId, expiresInSec || 300);
+        if (!result) return jsonError(res, 404, "Document not found");
+        return res.json({ ok: true, ...result });
+      } catch (e) {
+        console.error("[documents:download] error:", e.message);
+        return jsonError(res, 500, "Download failed: " + e.message);
+      }
+    }
+
+    // POST /v1/documents:list
+    if (route === "/documents:list" && method === "POST") {
+      try {
+        const { listDocuments } = require("./documents");
+        const result = await listDocuments(ctx.tenantId, {
+          limit: body.limit || 20,
+          offset: body.offset || 0,
+        });
+        return res.json(result);
+      } catch (e) {
+        console.error("[documents:list] error:", e.message);
+        return jsonError(res, 500, "List failed: " + e.message);
+      }
+    }
+
+    // POST /v1/documents:templates
+    if (route === "/documents:templates" && method === "POST") {
+      try {
+        const { getTemplates } = require("./documents");
+        return res.json(getTemplates(body.category || null));
+      } catch (e) {
+        console.error("[documents:templates] error:", e.message);
+        return jsonError(res, 500, "Templates failed: " + e.message);
+      }
     }
 
     // ----------------------------
@@ -4702,7 +4866,25 @@ THINGS YOU MUST NEVER SAY:
 - Never say "You can do that in the left navigation."
 - Never say "The dashboard has that feature."
 - Never say "I cannot do that here." You can do everything here.
-- Never suggest the user leave the chat to accomplish something.`;
+- Never suggest the user leave the chat to accomplish something.
+
+RESPONSE LENGTH MANAGEMENT:
+Never attempt to output an entire multi-page document (report, memo, offering doc, presentation, financial model) in a single response. You will hit token limits and your response will be cut off, which is unprofessional.
+- For deliverables under 1,500 words: output directly in chat with clear formatting.
+- For deliverables between 1,500 and 3,000 words: present the outline first. Ask the user if they want full output or section-by-section.
+- For deliverables over 3,000 words: always break into sections. Present a numbered table of contents first, then generate each section one at a time when the user requests it. Label each section clearly.
+- For multi-deliverable projects: present the project plan with all deliverables listed, then tackle them one at a time.
+- At the start of any long-form generation, tell the user how many sections the deliverable has and that you will generate each one for their review.
+Never let your response get cut off. Manage your length proactively.
+
+DOCUMENT GENERATION:
+When the user asks for a formatted document such as a report, memo, financial model, presentation, agreement, or letter, use the document generation markers below instead of outputting the full content as chat text. Available templates: report-standard, memo-executive, agreement-standard, deck-standard, model-cashflow, model-proforma, one-pager, letter-formal. Available formats: pdf, docx, xlsx, pptx.
+
+|||GENERATE_DOCUMENT|||
+{"templateId": "report-standard", "format": "pdf", "title": "Document Title", "content": {"coverPage": {"title": "...", "subtitle": "...", "author": "...", "date": "..."}, "executiveSummary": "...", "sections": [{"heading": "...", "content": "..."}]}}
+|||END_DOCUMENT|||
+
+After the markers, confirm to the user that their document is ready for download. Do NOT mention the markers to the user.`;
 
             const businessSystemPrompt = `You are the AI assistant for TitleApp, a business intelligence platform. The user's vertical is "${ctx.vertical || "general"}" and they are on the "${(context || {}).currentSection || "dashboard"}" section.
 
@@ -4768,11 +4950,29 @@ Platform navigation — when users ask how to do things, give them accurate dire
 - To view rules and compliance configuration: Go to Rules & Resources in the left navigation.
 - To manage services or inventory: Go to Services & Inventory in the left navigation.
 - To access the chat assistant: The chat panel is on the right side of the dashboard, always available.
+
+RESPONSE LENGTH MANAGEMENT:
+Never attempt to output an entire multi-page document (report, memo, offering doc, presentation, financial model) in a single response. You will hit token limits and your response will be cut off, which is unprofessional.
+- For deliverables under 1,500 words: output directly in chat with clear formatting.
+- For deliverables between 1,500 and 3,000 words: present the outline first. Ask the user if they want full output or section-by-section.
+- For deliverables over 3,000 words: always break into sections. Present a numbered table of contents first, then generate each section one at a time when the user requests it. Label each section clearly.
+- For multi-deliverable projects: present the project plan with all deliverables listed, then tackle them one at a time.
+- At the start of any long-form generation, tell the user how many sections the deliverable has and that you will generate each one for their review.
+Never let your response get cut off. Manage your length proactively.
+
+DOCUMENT GENERATION:
+When the user asks for a formatted document such as a report, memo, financial model, presentation, agreement, or letter, use the document generation markers below instead of outputting the full content as chat text. Available templates: report-standard, memo-executive, agreement-standard, deck-standard, model-cashflow, model-proforma, one-pager, letter-formal. Available formats: pdf, docx, xlsx, pptx.
+
+|||GENERATE_DOCUMENT|||
+{"templateId": "report-standard", "format": "pdf", "title": "Document Title", "content": {"coverPage": {"title": "...", "subtitle": "...", "author": "...", "date": "..."}, "executiveSummary": "...", "sections": [{"heading": "...", "content": "..."}]}}
+|||END_DOCUMENT|||
+
+After the markers, confirm to the user that their document is ready for download. Do NOT mention the markers to the user.
 ${(context || {}).dealContext ? `\nThe user wants to discuss this deal analysis:\n${JSON.stringify(context.dealContext)}` : ""}${analystDealContext}`;
 
             const response = await anthropic.messages.create({
               model: "claude-sonnet-4-5-20250929",
-              max_tokens: 2048,
+              max_tokens: 1024,
               system: isPersonalVault ? personalSystemPrompt : businessSystemPrompt,
               messages,
             });
@@ -4815,7 +5015,7 @@ ${(context || {}).dealContext ? `\nThe user wants to discuss this deal analysis:
             const openai = getOpenAI();
             const response = await openai.chat.completions.create({
               model: "gpt-4o",
-              max_tokens: 2048,
+              max_tokens: 1024,
               messages: [
                 {
                   role: "system",
@@ -4834,7 +5034,10 @@ Platform navigation — when users ask how to do things, give them accurate dire
 - To change investment criteria or risk profile: Go to Settings in the left navigation.
 - To manage team members: Go to Staff in the left navigation.
 - To view or export reports: Go to the Reports section in the left navigation.
-- To access the chat assistant: The chat panel is on the right side of the dashboard, always available.`
+- To access the chat assistant: The chat panel is on the right side of the dashboard, always available.
+
+RESPONSE LENGTH MANAGEMENT:
+Never attempt to output an entire multi-page document in a single response. For deliverables under 1,500 words, output directly with clear formatting. For 1,500 to 3,000 words, present the outline first and ask if the user wants full output or section-by-section. For deliverables over 3,000 words, always break into sections with a numbered table of contents first. Never let your response get cut off.`
                 },
                 ...messages
               ],
@@ -4936,6 +5139,57 @@ Platform navigation — when users ask how to do things, give them accurate dire
             console.error("Failed to parse CREATE_RECORD from AI response:", parseErr.message);
             // Clean up markers even if parsing fails
             aiResponse = aiResponse.replace(/\|\|\|CREATE_RECORD\|\|\|[\s\S]*?\|\|\|END_RECORD\|\|\|/g, "").trim();
+          }
+        }
+
+        // Parse GENERATE_DOCUMENT markers from AI response
+        const docMarkerStart = "|||GENERATE_DOCUMENT|||";
+        const docMarkerEnd = "|||END_DOCUMENT|||";
+        if (aiResponse.includes(docMarkerStart) && aiResponse.includes(docMarkerEnd)) {
+          try {
+            const docStartIdx = aiResponse.indexOf(docMarkerStart) + docMarkerStart.length;
+            const docEndIdx = aiResponse.indexOf(docMarkerEnd);
+            const docJsonStr = aiResponse.substring(docStartIdx, docEndIdx).trim();
+            const docRequest = safeParseJSON(docJsonStr, { required: ["templateId"] });
+            if (!docRequest) throw new Error("Invalid document request from AI");
+
+            // Strip markers from visible response
+            aiResponse = aiResponse.substring(0, aiResponse.indexOf(docMarkerStart)).trim() +
+              " " + aiResponse.substring(docEndIdx + docMarkerEnd.length).trim();
+            aiResponse = aiResponse.trim();
+
+            // Generate the document
+            const { generateDocument } = require("./documents");
+            const docResult = await generateDocument({
+              tenantId: ctx.tenantId,
+              userId: ctx.userId,
+              templateId: docRequest.templateId,
+              format: docRequest.format || null,
+              content: docRequest.content || {},
+              title: docRequest.title || docRequest.templateId,
+              metadata: { source: "chat", ...(docRequest.metadata || {}) },
+            });
+
+            if (docResult.ok) {
+              aiResponse += `\n\nYour document is ready: ${docResult.filename} (${docResult.format.toUpperCase()}, ${Math.round(docResult.sizeBytes / 1024)} KB)`;
+              structuredData = structuredData || {};
+              structuredData.document = {
+                type: "document_generated",
+                docId: docResult.docId,
+                filename: docResult.filename,
+                format: docResult.format,
+                downloadUrl: docResult.downloadUrl,
+                sizeBytes: docResult.sizeBytes,
+                pageCount: docResult.pageCount,
+              };
+              console.log("Generated document from chat:", docResult.docId, docResult.format);
+            } else {
+              aiResponse += "\n\nI was unable to generate the document: " + docResult.error;
+              console.error("Document generation failed in chat:", docResult.error);
+            }
+          } catch (docParseErr) {
+            console.error("Failed to parse GENERATE_DOCUMENT from AI response:", docParseErr.message);
+            aiResponse = aiResponse.replace(/\|\|\|GENERATE_DOCUMENT\|\|\|[\s\S]*?\|\|\|END_DOCUMENT\|\|\|/g, "").trim();
           }
         }
 
