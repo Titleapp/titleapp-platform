@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { getAuth, signOut } from "firebase/auth";
+import WorkerIcon from "../utils/workerIcons";
 
 // Worker slug → additional "My Work" nav items
 const WORKER_NAV_MAP = {
@@ -408,12 +409,20 @@ export default function Sidebar({
                         } : {}),
                       }}
                     >
-                      <span style={{
-                        width: 8, height: 8, borderRadius: "50%",
-                        background: worker.active ? "#22c55e" : "transparent",
-                        border: worker.active ? "none" : "1.5px solid rgba(255,255,255,0.3)",
-                        flexShrink: 0,
-                      }} />
+                      <span style={{ position: "relative", flexShrink: 0, width: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <WorkerIcon
+                          slug={worker.slug}
+                          size={16}
+                          color={worker.isChiefOfStaff ? "#c4b5fd" : (isSelected ? "#ddd6fe" : "rgba(255,255,255,0.55)")}
+                        />
+                        {worker.active && (
+                          <span style={{
+                            position: "absolute", bottom: -1, right: -1,
+                            width: 6, height: 6, borderRadius: "50%",
+                            background: "#22c55e", border: "1.5px solid #0b1020",
+                          }} />
+                        )}
+                      </span>
                       <span style={{
                         flex: 1,
                         color: worker.isChiefOfStaff ? "#c4b5fd" : "rgba(255,255,255,0.85)",

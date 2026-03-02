@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { auth, db } from '../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
+import WorkerIcon, { VERTICAL_COLORS, VERTICAL_ICON_SLUGS } from '../utils/workerIcons';
 const VERTICAL_ABBREVS = {
   consumer: 'PV',
   analyst: 'IA',
@@ -46,7 +47,8 @@ function WorkspaceCard({ workspace, onLaunch }) {
     suspended: { label: 'Suspended', color: '#dc2626' },
   }[workspace.status] || { label: workspace.status, color: '#6b7280' };
 
-  const abbrev = VERTICAL_ABBREVS[workspace.vertical] || workspace.vertical?.slice(0, 2).toUpperCase() || '??';
+  const iconSlug = VERTICAL_ICON_SLUGS[workspace.vertical] || "chief-of-staff";
+  const iconColor = VERTICAL_COLORS[workspace.vertical] || "#7c3aed";
 
   return (
     <div
@@ -66,11 +68,13 @@ function WorkspaceCard({ workspace, onLaunch }) {
       onMouseLeave={() => setHovered(false)}
     >
       <div style={{
-        width: 40, height: 40, borderRadius: 8, backgroundColor: '#f1f5f9',
+        width: 40, height: 40, borderRadius: 10,
+        background: iconColor + "12",
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: 14, fontWeight: 700, color: '#475569', marginBottom: 8,
-        letterSpacing: 1,
-      }}>{abbrev}</div>
+        marginBottom: 8,
+      }}>
+        <WorkerIcon slug={iconSlug} size={22} color={iconColor} />
+      </div>
       <div style={{ fontWeight: 600, fontSize: 16, color: '#1e293b' }}>{workspace.name}</div>
       <div style={{ color: '#7c3aed', fontSize: 11, fontWeight: 600, marginBottom: 2 }}>
         {VERTICAL_LABELS[workspace.vertical] || workspace.vertical || ''}

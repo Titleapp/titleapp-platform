@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import WorkerIcon, { SUITE_COLORS } from "../utils/workerIcons";
 
 export const WORKER_ROUTES = [
   // Phase 1: Acquisition
@@ -172,6 +173,14 @@ export default function WorkerMarketplace({ authenticated, userName, onSubscribe
               onMouseLeave={(e) => { e.currentTarget.style.boxShadow = "none"; }}
             >
               <div style={S.cardTop}>
+                <div style={{
+                  width: 44, height: 44, borderRadius: 12,
+                  background: (SUITE_COLORS[w.suite] || "#7c3aed") + "12",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  marginBottom: 12,
+                }}>
+                  <WorkerIcon slug={w.slug} size={24} color={SUITE_COLORS[w.suite] || "#7c3aed"} />
+                </div>
                 <div style={S.badges}>
                   <span style={S.suiteBadge}>{w.suite}</span>
                   <span style={w.status === "live" ? S.liveBadge : S.plannedBadge}>
