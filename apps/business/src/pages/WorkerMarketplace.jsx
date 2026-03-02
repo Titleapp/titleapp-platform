@@ -5,16 +5,21 @@ export const WORKER_ROUTES = [
   // Phase 1: Acquisition
   { slug: "cre-analyst", name: "CRE Deal Analyst", description: "Screen and model commercial real estate investment opportunities.", suite: "Real Estate", status: "live", price: 2900 },
   { slug: "investor-relations", name: "Investor Relations", description: "Investor communications, reporting, and capital raising.", suite: "Finance & Investment", status: "live", price: 4900 },
-  { slug: "title-escrow", name: "Title & Escrow Worker", description: "Pull, analyze, and verify title in minutes. Chain of title on blockchain. Escrow managed from open to close.", suite: "Real Estate", status: "planned", price: 2900 },
-  { slug: "environmental-review", name: "Environmental Review Worker", description: "Phase I through remediation. Biological surveys. Archaeological review. Cultural impact assessment.", suite: "Real Estate", status: "planned", price: 2900 },
+  { slug: "title-escrow", name: "Title & Escrow Worker", description: "Clean title, clean closing. Title commitment review, exception analysis, escrow coordination, and closing management.", suite: "Real Estate", status: "planned", price: 5900 },
+  { slug: "environmental-cultural-review", name: "Environmental & Cultural Review Worker", description: "Phase I through remediation. Biological surveys. Archaeological review. Cultural impact. NEPA/CEQA compliance.", suite: "Real Estate", status: "live", price: 2900 },
+  { slug: "mortgage-senior-debt", name: "Mortgage & Senior Debt Worker", description: "Know your best loan before the broker calls. Term sheet analysis, loan sizing from binding constraints, comparison across agency, CMBS, and life company.", suite: "Finance & Investment", status: "planned", price: 7900 },
   { slug: "mortgage-broker", name: "Mortgage Broker Worker", description: "Source the best debt. Acquisition loans, construction financing, bridge, perm, refi.", suite: "Finance & Investment", status: "planned", price: 4900 },
   { slug: "construction-lending", name: "Construction Lending Worker", description: "Compare loan terms, build draw schedules, model interest reserves, track utilization through perm conversion.", suite: "Finance & Investment", status: "live", price: 7900 },
   { slug: "capital-stack-optimizer", name: "Capital Stack Optimizer", description: "Build optimal debt/equity mix, model LP/GP waterfalls, run sensitivity analysis, and generate investor-ready materials.", suite: "Finance & Investment", status: "live", price: 9900 },
 
   // Phase 2: Entitlement & Pre-Construction
   { slug: "entitlement-analyst", name: "Entitlement Analyst Worker", description: "Zoning analysis, entitlement strategy, and approval tracking. Know what you can build before you buy.", suite: "Real Estate", status: "planned", price: 2900 },
-  { slug: "engineering-review", name: "Engineering Review Worker", description: "Civil, structural, traffic, utilities. Every engineering discipline reviewed, coordinated, and tracked.", suite: "Construction", status: "planned", price: 2900 },
-  { slug: "architecture-review", name: "Architecture & Plan Review Worker", description: "Plan analysis, building code compliance, AHJ coordination. From schematic design through construction documents.", suite: "Construction", status: "planned", price: 2900 },
+  { slug: "engineering-review", name: "Engineering Review Worker", description: "Civil, structural, traffic, utilities. Every engineering discipline reviewed, coordinated, and tracked.", suite: "Construction", status: "live", price: 2900 },
+  { slug: "architecture-review", name: "Architecture & Design Review Worker", description: "Plan analysis, building code compliance, AHJ coordination. From schematic design through construction documents.", suite: "Construction", status: "live", price: 2900 },
+  { slug: "energy-sustainability", name: "Energy & Sustainability Worker", description: "LEED, ENERGY STAR, Title 24, energy modeling — certifications that reduce operating costs and increase value.", suite: "Construction", status: "live", price: 2900 },
+  { slug: "accessibility-fair-housing", name: "Accessibility & Fair Housing Worker", description: "ADA compliance, Fair Housing Act, Section 504 — accessibility audits and remediation tracking.", suite: "Real Estate", status: "live", price: 2900 },
+  { slug: "government-relations", name: "Government Relations Worker", description: "Council agendas, public comment prep, stakeholder mapping, and entitlement strategy.", suite: "Real Estate", status: "live", price: 4900 },
+  { slug: "fire-life-safety", name: "Fire & Life Safety Worker", description: "Fire code compliance, life safety plans, egress analysis, and fire protection system review.", suite: "Construction", status: "live", price: 2900 },
   { slug: "permit-tracker", name: "Permit Submission Worker", description: "File permits, track review cycles, respond to deficiency notices, and manage approvals across every jurisdiction.", suite: "Construction", status: "planned", price: 2900 },
 
   // Phase 3: Construction
@@ -29,10 +34,14 @@ export const WORKER_ROUTES = [
   { slug: "materials-supply-chain", name: "Materials & Supply Chain Worker", description: "No material delays. Procurement scheduling, long-lead tracking, price escalation, stored materials, and substitution management.", suite: "Construction", status: "planned", price: 4900 },
 
   // Phase 3: Financing (additional)
+  { slug: "tax-credit-incentive", name: "Tax Credit & Incentive Worker", description: "Find every dollar the government will give you. LIHTC, Historic, OZ, NMTC, Energy credits — screening, modeling, compliance, and syndicator packages.", suite: "Finance & Investment", status: "planned", price: 9900 },
   { slug: "mezzanine-preferred-equity", name: "Mezzanine & Preferred Equity Worker", description: "Fill the gap. Structure comparison, waterfall modeling, intercreditor tracking, and investor reporting for subordinate capital.", suite: "Finance & Investment", status: "planned", price: 7900 },
   { slug: "crowdfunding-regd", name: "Crowdfunding & Reg D Worker", description: "Raise capital legally. Exemption analysis, investor qualification, subscription management, compliance calendar, and cap table.", suite: "Finance & Investment", status: "planned", price: 7900 },
+  { slug: "opportunity-zone", name: "Opportunity Zone Worker", description: "QOF compliance, substantial improvement test, investment timeline tracking, and tax benefit modeling.", suite: "Finance & Investment", status: "live", price: 9900 },
 
-  // Phase 0: Site Selection
+  // Phase 0: Site Selection & Market Research
+  { slug: "market-research", name: "Market Research Worker", description: "Demographics, absorption rates, supply pipeline, and competitive landscape — know your market before you commit.", suite: "Real Estate", status: "live", price: 2900 },
+  { slug: "appraisal-valuation", name: "Appraisal & Valuation Review Worker", description: "Appraisal review, comp validation, valuation methodology analysis, and USPAP compliance tracking.", suite: "Real Estate", status: "live", price: 4900 },
   { slug: "site-due-diligence", name: "Site Due Diligence Worker", description: "Know what you're buying. Environmental, survey, zoning, utility assessment — complete DD management with go/no-go summary.", suite: "Real Estate", status: "planned", price: 5900 },
 
   // Phase 1: Design & Entitlement (additional)
@@ -44,21 +53,74 @@ export const WORKER_ROUTES = [
   // Phase 5: Stabilization
   { slug: "lease-up-marketing", name: "Lease-Up & Marketing Worker", description: "Fill your building faster. Marketing strategy, lead management, absorption forecasting, concession analysis, and lender reporting.", suite: "Real Estate", status: "planned", price: 5900 },
   { slug: "property-management", name: "Property Management Worker", description: "Run your property like a business. Tenant comms, work orders, lease renewals, vendor management, and operational reporting.", suite: "Real Estate", status: "planned", price: 5900 },
+  { slug: "tenant-screening", name: "Tenant Screening Worker", description: "Credit analysis, background checks, income verification, and rental history — consistent screening every time.", suite: "Real Estate", status: "live", price: 2900 },
+  { slug: "rent-roll-revenue", name: "Rent Roll & Revenue Worker", description: "Rent roll analysis, revenue forecasting, lease abstraction, vacancy tracking, and renewal management.", suite: "Real Estate", status: "live", price: 4900 },
+  { slug: "maintenance-work-order", name: "Maintenance & Work Order Worker", description: "Work orders, preventive maintenance scheduling, vendor dispatch, and cost tracking.", suite: "Real Estate", status: "live", price: 2900 },
+  { slug: "utility-management", name: "Utility Management Worker", description: "Utility cost tracking, consumption analysis, rate optimization, and sustainability reporting.", suite: "Real Estate", status: "live", price: 2900 },
+  { slug: "hoa-association", name: "HOA & Association Worker", description: "Board management, assessment tracking, CC&R compliance, reserve studies, and violation tracking.", suite: "Real Estate", status: "live", price: 2900 },
+  { slug: "warranty-defect", name: "Warranty & Defect Worker", description: "Warranty tracking, defect claims, builder liability analysis, and statute of repose management.", suite: "Construction", status: "live", price: 2900 },
 
   // Phase 6: Operations
   { slug: "accounting", name: "Accounting Worker", description: "Books that are always audit-ready. GAAP financials, job cost reporting, AP/AR, bank reconciliation, and investor packages.", suite: "Finance & Investment", status: "planned", price: 5900 },
   { slug: "insurance-coi", name: "Insurance & COI Worker", description: "Policy management, COI tracking, claims handling, and renewal coordination. Never miss a coverage gap.", suite: "General Business", status: "planned", price: 2900 },
-  { slug: "tax-assessment", name: "Tax & Assessment Worker", description: "Property tax monitoring, assessment appeals, and tax planning. Save 10-30% on your tax bill.", suite: "Finance & Investment", status: "planned", price: 2900 },
+  { slug: "tax-assessment", name: "Tax & Assessment Worker", description: "Property tax monitoring, assessment review, appeal preparation, exemption tracking, and tax planning.", suite: "Finance & Investment", status: "live", price: 2900 },
+  { slug: "vendor-contract", name: "Vendor & Contract Worker", description: "Vendor qualification, contract management, performance tracking, and renewal management.", suite: "General Business", status: "live", price: 2900 },
+  { slug: "investor-reporting", name: "Investor Reporting & Distributions Worker", description: "Quarterly reports, distribution calculations, K-1 coordination, and investor communications.", suite: "Finance & Investment", status: "live", price: 7900 },
+  { slug: "debt-service", name: "Debt Service & Loan Compliance Worker", description: "Loan payment tracking, covenant monitoring, compliance reporting, and refinance analysis.", suite: "Finance & Investment", status: "live", price: 7900 },
 
-  // Phase 5: Disposition
+  // Phase 7: Disposition
+  { slug: "disposition-preparation", name: "Disposition Preparation Worker", description: "Sale prep, property positioning, due diligence assembly, and buyer qualification.", suite: "Real Estate", status: "live", price: 4900 },
+  { slug: "disposition-marketing", name: "Disposition Marketing & Data Room Worker", description: "Marketing materials, virtual data room setup, buyer outreach, and offer management.", suite: "Real Estate", status: "live", price: 4900 },
+  { slug: "exchange-1031", name: "1031 Exchange Worker", description: "Exchange qualification, timeline tracking, replacement property identification, and QI coordination.", suite: "Finance & Investment", status: "live", price: 9900 },
   { slug: "real-estate-sales", name: "Real Estate Sales Worker", description: "Listings, buyer qualification, showing management, offer negotiation, and transaction coordination.", suite: "Real Estate", status: "planned", price: 2900 },
 
   // Horizontal
-  { slug: "compliance-tracker", name: "Compliance & Deadline Tracker", description: "Every deadline, every filing, every renewal. Across every deal, every phase, every jurisdiction. Nothing slips.", suite: "General Business", status: "planned", price: 2900 },
-  { slug: "legal-contracts", name: "Legal & Contract Worker", description: "Contracts, agreements, and legal compliance across every phase. Draft, review, redline, and track.", suite: "Legal", status: "planned", price: 4900 },
+  { slug: "compliance-tracker", name: "Compliance & Deadline Tracker", description: "Never miss a deadline that costs you money. Unified calendar across all workers, multi-tier alerts, cross-worker conflict detection, and compliance reporting.", suite: "General Business", status: "planned", price: 3900 },
+  { slug: "legal-contracts", name: "Legal & Contract Worker", description: "Every contract reviewed. Every risk flagged. PSAs, construction contracts, loan docs, leases — risk scoring, amendment tracking, and mechanics lien management.", suite: "Legal", status: "planned", price: 7900 },
 
-  // Automotive
-  { slug: "car-sales", name: "Car Sales Worker", description: "Inventory management, lead qualification, deal structuring, F&I product presentation, and delivery coordination.", suite: "Automotive", status: "planned", price: 2900 },
+  { slug: "entity-formation", name: "Entity & Formation Worker", description: "Entity structure analysis, formation filings, operating agreement review, and compliance tracking.", suite: "Legal", status: "live", price: 4900 },
+  { slug: "property-insurance", name: "Property Insurance & Risk Worker", description: "Policy management, coverage analysis, claims tracking, and property risk assessment.", suite: "General Business", status: "live", price: 4900 },
+
+  // Automotive — Phase 0: Dealership Setup
+  { slug: "ad-dealer-licensing", name: "Dealer Licensing & Compliance", description: "Stay licensed. Stay open. License tracking, FTC Safeguards compliance, OFAC screening, CARS Rule, and regulatory calendar.", suite: "Automotive", status: "planned", price: 0, vertical: "auto-dealer", commission: true },
+  { slug: "ad-facility-operations", name: "Facility & Operations Setup", description: "Set up right from day one. Franchise compliance, ADA, OSHA, environmental, DMS configuration, and departmental P&L.", suite: "Automotive", status: "planned", price: 0, vertical: "auto-dealer", commission: true },
+  // Automotive — Phase 1: Inventory Acquisition
+  { slug: "ad-new-car-allocation", name: "New Car Allocation & Ordering", description: "Get the right units from the factory. Allocation tracking, turn-and-earn, pipeline management, and incentive tracking.", suite: "Automotive", status: "planned", price: 0, vertical: "auto-dealer", commission: true },
+  { slug: "ad-used-car-acquisition", name: "Used Car Acquisition", description: "Buy smarter at auction and off the street. Appraisal support, vehicle history, recon estimation, and acquisition cost tracking.", suite: "Automotive", status: "planned", price: 0, vertical: "auto-dealer", commission: true },
+  { slug: "ad-wholesale-disposition", name: "Wholesale & Disposition", description: "Move aged inventory before it eats your floor plan. Aging dashboard, holding costs, wholesale P&L, and auction strategy.", suite: "Automotive", status: "planned", price: 0, vertical: "auto-dealer", commission: true },
+  // Automotive — Phase 2: Merchandising & Pricing
+  { slug: "ad-used-car-pricing", name: "Used Car Pricing & Market Position", description: "Price to market in minutes. Competitive set analysis, price-to-market ratio, margin optimization, and aging adjustments.", suite: "Automotive", status: "planned", price: 0, vertical: "auto-dealer", commission: true },
+  { slug: "ad-vehicle-merchandising", name: "Vehicle Merchandising & Photography", description: "Better listings. More clicks. More leads. Photo standards, descriptions, listing quality scoring, and syndication tracking.", suite: "Automotive", status: "planned", price: 0, vertical: "auto-dealer", commission: true },
+  { slug: "ad-reconditioning", name: "Reconditioning Management", description: "Get cars frontline-ready faster. Recon workflow, cost tracking, cycle time, vendor management, and recall compliance.", suite: "Automotive", status: "planned", price: 0, vertical: "auto-dealer", commission: true },
+  // Automotive — Phase 3: Sales & Desking
+  { slug: "ad-lead-management", name: "Lead Management & BDC", description: "Every lead answered in 5 minutes or less. Speed-to-lead, follow-up cadence, conversion funnel, and source ROI.", suite: "Automotive", status: "planned", price: 0, vertical: "auto-dealer", commission: true },
+  { slug: "ad-desking", name: "Desking & Deal Structure", description: "Structure deals that hold gross and get approved. Payment quoting, trade equity, lender matching, and incentive stacking.", suite: "Automotive", status: "planned", price: 0, vertical: "auto-dealer", commission: true },
+  { slug: "ad-inventory-turn", name: "Inventory Turn & Stocking Guide", description: "Stock what your market wants to buy. Market demand analysis, optimal mix, turn rates, and competitive gaps.", suite: "Automotive", status: "planned", price: 0, vertical: "auto-dealer", commission: true },
+  // Automotive — Phase 4: F&I
+  { slug: "ad-fi-menu", name: "F&I Menu & Product Presentation", description: "Digital menu building, product recommendation, PVR tracking, and penetration analysis with full compliance documentation.", suite: "Automotive", status: "planned", price: 0, vertical: "auto-dealer", commission: true },
+  { slug: "ad-fi-compliance", name: "F&I Compliance", description: "Deal jacket verification, equal treatment monitoring, adverse action management, MLA screening, and audit trail.", suite: "Automotive", status: "planned", price: 0, vertical: "auto-dealer", commission: true },
+  { slug: "ad-lender-relations", name: "Lender Relations & Funding", description: "Lender program management, deal-to-lender matching, stip tracking, funding acceleration, and flat prevention.", suite: "Automotive", status: "planned", price: 0, vertical: "auto-dealer", commission: true },
+  { slug: "ad-aftermarket-admin", name: "Aftermarket Product Administration", description: "F&I product contract tracking, claims processing, cancellation handling, and remittance management.", suite: "Automotive", status: "planned", price: 0, vertical: "auto-dealer", commission: true },
+
+  // Automotive — Phase 5: Service & Parts
+  { slug: "ad-service-scheduling", name: "Service Scheduling & Workflow", description: "Appointment scheduling, shop loading, RO lifecycle tracking, technician dispatch, and cycle time management.", suite: "Automotive", status: "planned", price: 0, vertical: "auto-dealer", commission: true },
+  { slug: "ad-service-upsell", name: "Service Upsell & MPI", description: "Multi-point inspection management, service advisor coaching, declined service follow-up, and service-to-sales conversion.", suite: "Automotive", status: "planned", price: 0, vertical: "auto-dealer", commission: true },
+  { slug: "ad-parts-inventory", name: "Parts Inventory & Ordering", description: "Parts stocking, fill rate optimization, obsolescence management, and emergency sourcing.", suite: "Automotive", status: "planned", price: 0, vertical: "auto-dealer", commission: true },
+  { slug: "ad-warranty-admin", name: "Warranty Administration", description: "Warranty claim optimization, op code management, rejection tracking, parts return compliance, and factory audit preparation.", suite: "Automotive", status: "planned", price: 0, vertical: "auto-dealer", commission: true },
+  { slug: "ad-body-shop", name: "Body Shop Management", description: "Collision repair operations — estimate review, supplement tracking, DRP compliance, cycle time, and sublet management.", suite: "Automotive", status: "planned", price: 0, vertical: "auto-dealer", commission: true },
+
+  // Automotive — Phase 6: Retention & Marketing
+  { slug: "ad-customer-retention", name: "Customer Retention & Lifecycle", description: "Service retention campaigns, equity mining, lease maturity management, service-to-sales pipeline, and CSI management.", suite: "Automotive", status: "planned", price: 0, vertical: "auto-dealer", commission: true },
+  { slug: "ad-reputation", name: "Reputation Management", description: "Review solicitation, response management, sentiment analysis, and rating improvement strategy.", suite: "Automotive", status: "planned", price: 0, vertical: "auto-dealer", commission: true },
+  { slug: "ad-digital-marketing", name: "Digital Marketing & Advertising", description: "Ad spend tracking, lead source attribution, cost-per-sale analysis, and co-op management.", suite: "Automotive", status: "planned", price: 0, vertical: "auto-dealer", commission: true },
+
+  // Automotive — Phase 7: Compliance & Back Office
+  { slug: "ad-title-registration", name: "Title & Registration", description: "Title application tracking, temp tag management, out-of-state processing, lien perfection, and DMV reject resolution.", suite: "Automotive", status: "planned", price: 0, vertical: "auto-dealer", commission: true },
+  { slug: "ad-deal-accounting", name: "Deal Accounting & Posting", description: "Deal posting, commission calculation, floor plan payoff, receivables tracking, and daily operating control.", suite: "Automotive", status: "planned", price: 0, vertical: "auto-dealer", commission: true },
+  { slug: "ad-regulatory-compliance", name: "Regulatory Compliance & Audit", description: "FTC, state AG, factory, and IRS audit readiness with self-assessments and remediation tracking.", suite: "Automotive", status: "planned", price: 0, vertical: "auto-dealer", commission: true },
+  { slug: "ad-hr-payroll", name: "HR & Payroll Compliance", description: "Commission pay plan administration, minimum wage compliance, overtime tracking, and employee licensing.", suite: "Automotive", status: "planned", price: 0, vertical: "auto-dealer", commission: true },
+  { slug: "ad-floor-plan", name: "Floor Plan & Cash Management", description: "Floor plan interest tracking, cash flow forecasting, AP management, and dealership financial statements.", suite: "Automotive", status: "planned", price: 0, vertical: "auto-dealer", commission: true },
+  { slug: "ad-dms-technology", name: "DMS & Technology Management", description: "DMS optimization, integration monitoring, data integrity, user access management, and vendor contracts.", suite: "Automotive", status: "planned", price: 0, vertical: "auto-dealer", commission: true },
 
   // Platform
   { slug: "chief-of-staff", name: "Alex — Chief of Staff", description: "Your AI coordinator. Manages all your workers, plans pipelines, tracks progress. Free with 3+ worker subscriptions.", suite: "Platform", status: "live", price: 0 },

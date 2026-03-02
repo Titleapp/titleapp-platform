@@ -590,6 +590,70 @@ async function runRaasTests() {
 
   sectionSummary();
 
+  // ── 25 New Workers — Data-Driven Ruleset Tests ──
+  const newWorkerRulesets = [
+    { id: "W-001", name: "Market Research", rulesetId: "market_research_v0", domain: "market-research", hardStops: 3, softFlags: 4, prefix: "mr-" },
+    { id: "W-005", name: "Architecture & Design Review", rulesetId: "architecture_design_review_v0", domain: "architecture-design-review", hardStops: 3, softFlags: 4, prefix: "adr-" },
+    { id: "W-006", name: "Engineering Review", rulesetId: "engineering_review_v0", domain: "engineering-review", hardStops: 3, softFlags: 3, prefix: "er-" },
+    { id: "W-007", name: "Environmental & Cultural Review", rulesetId: "environmental_cultural_review_v0", domain: "environmental-review", hardStops: 4, softFlags: 4, prefix: "ecr-" },
+    { id: "W-008", name: "Energy & Sustainability", rulesetId: "energy_sustainability_v0", domain: "energy-sustainability", hardStops: 2, softFlags: 4, prefix: "es-" },
+    { id: "W-009", name: "Accessibility & Fair Housing", rulesetId: "accessibility_fair_housing_v0", domain: "accessibility-compliance", hardStops: 4, softFlags: 3, prefix: "afh-" },
+    { id: "W-010", name: "Government Relations", rulesetId: "government_relations_v0", domain: "government-relations", hardStops: 3, softFlags: 3, prefix: "gr-" },
+    { id: "W-011", name: "Fire & Life Safety", rulesetId: "fire_life_safety_v0", domain: "fire-life-safety", hardStops: 3, softFlags: 4, prefix: "fls-" },
+    { id: "W-020", name: "Opportunity Zone", rulesetId: "opportunity_zone_v0", domain: "opportunity-zone", hardStops: 4, softFlags: 4, prefix: "oz-" },
+    { id: "W-030", name: "Appraisal & Valuation Review", rulesetId: "appraisal_valuation_review_v0", domain: "appraisal-review", hardStops: 2, softFlags: 4, prefix: "avr-" },
+    { id: "W-032", name: "Tenant Screening", rulesetId: "tenant_screening_v0", domain: "tenant-screening", hardStops: 4, softFlags: 4, prefix: "ts-" },
+    { id: "W-034", name: "Rent Roll & Revenue", rulesetId: "rent_roll_revenue_v0", domain: "rent-roll", hardStops: 3, softFlags: 4, prefix: "rr-" },
+    { id: "W-035", name: "Maintenance & Work Order", rulesetId: "maintenance_work_order_v0", domain: "maintenance", hardStops: 3, softFlags: 4, prefix: "mwo-" },
+    { id: "W-036", name: "Utility Management", rulesetId: "utility_management_v0", domain: "utility-management", hardStops: 2, softFlags: 4, prefix: "um-" },
+    { id: "W-037", name: "HOA & Association", rulesetId: "hoa_association_v0", domain: "hoa-management", hardStops: 3, softFlags: 4, prefix: "hoa-" },
+    { id: "W-038", name: "Warranty & Defect", rulesetId: "warranty_defect_v0", domain: "warranty-management", hardStops: 3, softFlags: 4, prefix: "wd-" },
+    { id: "W-040", name: "Tax & Assessment", rulesetId: "tax_assessment_v0", domain: "tax-assessment", hardStops: 2, softFlags: 4, prefix: "ta-" },
+    { id: "W-041", name: "Vendor & Contract", rulesetId: "vendor_contract_v0", domain: "vendor-management", hardStops: 3, softFlags: 4, prefix: "vc-" },
+    { id: "W-042", name: "Disposition Preparation", rulesetId: "disposition_preparation_v0", domain: "disposition", hardStops: 3, softFlags: 4, prefix: "dp-" },
+    { id: "W-043", name: "1031 Exchange", rulesetId: "exchange_1031_v0", domain: "1031-exchange", hardStops: 4, softFlags: 4, prefix: "ex-" },
+    { id: "W-046", name: "Entity & Formation", rulesetId: "entity_formation_v0", domain: "entity-management", hardStops: 3, softFlags: 4, prefix: "ef-" },
+    { id: "W-049", name: "Property Insurance & Risk", rulesetId: "property_insurance_risk_v0", domain: "property-insurance", hardStops: 4, softFlags: 4, prefix: "pir-" },
+    { id: "W-050", name: "Disposition Marketing & Data Room", rulesetId: "disposition_marketing_v0", domain: "disposition-marketing", hardStops: 3, softFlags: 4, prefix: "dmdr-" },
+    { id: "W-051", name: "Investor Reporting & Distributions", rulesetId: "investor_reporting_distributions_v0", domain: "investor-distributions", hardStops: 3, softFlags: 4, prefix: "ird-" },
+    { id: "W-052", name: "Debt Service & Loan Compliance", rulesetId: "debt_service_loan_compliance_v0", domain: "debt-compliance", hardStops: 4, softFlags: 4, prefix: "dslc-" },
+  ];
+
+  for (const w of newWorkerRulesets) {
+    section(`${w.id} ${w.name} — Ruleset`);
+
+    test("Ruleset loads successfully", () => {
+      const rs = loadRuleset(w.rulesetId);
+      assert.ok(rs, `${w.rulesetId} should load`);
+      assert.strictEqual(rs.id, w.rulesetId);
+      assert.strictEqual(rs.domain, w.domain);
+    });
+
+    test(`Has ${w.hardStops} hard stops and ${w.softFlags} soft flags`, () => {
+      const rs = loadRuleset(w.rulesetId);
+      assert.strictEqual(rs.hard_stops.length, w.hardStops, `${w.hardStops} hard stops`);
+      assert.strictEqual(rs.soft_flags.length, w.softFlags, `${w.softFlags} soft flags`);
+    });
+
+    test("All rules have eval specs", () => {
+      const rs = loadRuleset(w.rulesetId);
+      for (const hs of rs.hard_stops) {
+        assert.ok(hs.eval, `Hard stop ${hs.id} missing eval`);
+      }
+      for (const sf of rs.soft_flags) {
+        assert.ok(sf.eval, `Soft flag ${sf.id} missing eval`);
+      }
+    });
+
+    test(`Outputs use ${w.prefix} prefix`, () => {
+      const rs = loadRuleset(w.rulesetId);
+      assert.ok(rs.outputs.length > 0, "Should have outputs");
+      rs.outputs.forEach(o => assert.ok(o.startsWith(w.prefix), `Output ${o} should start with ${w.prefix}`));
+    });
+
+    sectionSummary();
+  }
+
   // ── 6 Deal Screen Rulesets — Output Cross-Reference ──
   section("Deal Screen Rulesets — Output Prefix Check");
 
@@ -1302,6 +1366,74 @@ async function runGeneratorTests() {
   });
 
   sectionSummary();
+
+  // ── 25 New Workers — Data-Driven Generator Tests ──
+  const newWorkerTemplates = {
+    "W-001 Market Research": ["mr-market-study", "mr-comp-analysis", "mr-submarket-ranking", "mr-demographic-profile"],
+    "W-005 Architecture & Design Review": ["adr-design-review", "adr-code-compliance", "adr-ve-log"],
+    "W-006 Engineering Review": ["er-engineering-review", "er-special-inspection-program", "er-design-change-log"],
+    "W-007 Environmental & Cultural Review": ["ecr-environmental-summary", "ecr-remediation-tracker", "ecr-permit-tracker", "ecr-section-106-log"],
+    "W-008 Energy & Sustainability": ["es-energy-compliance", "es-certification-tracker", "es-incentive-summary"],
+    "W-009 Accessibility & Fair Housing": ["afh-compliance-review", "afh-accommodation-tracker", "afh-unit-classification"],
+    "W-010 Government Relations": ["gr-stakeholder-map", "gr-community-outreach-plan", "gr-meeting-preparation"],
+    "W-011 Fire & Life Safety": ["fls-fire-code-review", "fls-egress-analysis", "fls-fire-system-tracker"],
+    "W-020 Opportunity Zone": ["oz-compliance-dashboard", "oz-asset-test", "oz-substantial-improvement", "oz-investor-180-day"],
+    "W-030 Appraisal & Valuation Review": ["avr-appraisal-review", "avr-comp-analysis", "avr-rebuttal-memo"],
+    "W-032 Tenant Screening": ["ts-screening-report", "ts-adverse-action", "ts-criteria-summary"],
+    "W-034 Rent Roll & Revenue": ["rr-rent-roll", "rr-revenue-forecast", "rr-loss-to-lease", "rr-lease-expiration-matrix"],
+    "W-035 Maintenance & Work Order": ["mwo-work-order", "mwo-pm-schedule", "mwo-maintenance-report"],
+    "W-036 Utility Management": ["um-utility-report", "um-rubs-calculation", "um-benchmarking-report"],
+    "W-037 HOA & Association": ["hoa-board-package", "hoa-assessment-tracker", "hoa-reserve-analysis", "hoa-transition-checklist"],
+    "W-038 Warranty & Defect": ["wd-warranty-register", "wd-defect-log", "wd-warranty-claim", "wd-walkthrough-report"],
+    "W-040 Tax & Assessment": ["ta-assessment-summary", "ta-appeal-evidence", "ta-payment-tracker", "ta-projection"],
+    "W-041 Vendor & Contract": ["vc-vendor-registry", "vc-contract-tracker", "vc-bid-comparison", "vc-spend-report"],
+    "W-042 Disposition Preparation": ["dp-disposition-analysis", "dp-broker-comparison", "dp-offer-comparison", "dp-closing-checklist"],
+    "W-043 1031 Exchange": ["ex-exchange-analysis", "ex-timeline-tracker", "ex-identification-notice", "ex-basis-calculation"],
+    "W-046 Entity & Formation": ["ef-entity-analysis", "ef-formation-checklist", "ef-entity-registry", "ef-annual-compliance"],
+    "W-049 Property Insurance & Risk": ["pir-policy-summary", "pir-coverage-review", "pir-claims-log", "pir-renewal-comparison"],
+    "W-050 Disposition Marketing & Data Room": ["dmdr-om-template", "dmdr-data-room-index", "dmdr-buyer-tracker", "dmdr-dd-checklist"],
+    "W-051 Investor Reporting & Distributions": ["ird-distribution-schedule", "ird-distribution-notice", "ird-capital-account", "ird-investor-package"],
+    "W-052 Debt Service & Loan Compliance": ["dslc-covenant-dashboard", "dslc-payment-schedule", "dslc-reserve-tracker", "dslc-lender-compliance-cert"],
+  };
+
+  for (const [workerLabel, templateIds] of Object.entries(newWorkerTemplates)) {
+    section(`${workerLabel} — Generators`);
+
+    for (const tid of templateIds) {
+      const tmpl = SYSTEM_TEMPLATES[tid];
+      if (!tmpl) {
+        test(`${tid} template found in registry`, () => { assert.fail(`Template ${tid} not in registry`); });
+        continue;
+      }
+
+      if (tmpl.format === "pdf") {
+        await testAsync(`${tid} generates valid PDF buffer`, async () => {
+          const data = { title: `Test ${tid}` };
+          if (tmpl.requiredFields) {
+            for (const f of tmpl.requiredFields) {
+              if (!(f in data)) data[f] = f === "title" ? data.title : `Test ${f}`;
+            }
+          }
+          const buf = await generatePdf({ template: tmpl, data, brand: defaultBrand, logoBuffer: null });
+          assert.ok(Buffer.isBuffer(buf), "Should return a Buffer");
+          assert.ok(buf.length > 200, `PDF should have content: ${buf.length} bytes`);
+        });
+      } else if (tmpl.format === "xlsx") {
+        await testAsync(`${tid} generates valid XLSX buffer`, async () => {
+          const data = { title: `Test ${tid}` };
+          if (tmpl.requiredFields) {
+            for (const f of tmpl.requiredFields) {
+              if (!(f in data)) data[f] = f === "title" ? data.title : `Test ${f}`;
+            }
+          }
+          const buf = await generateXlsx({ template: tmpl, data, brand: defaultBrand });
+          assert.ok(buf, "Should return buffer");
+        });
+      }
+    }
+
+    sectionSummary();
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1428,6 +1560,51 @@ function runRegistryTests() {
 
   sectionSummary();
 
+  // ── 25 New Worker Templates ──
+  section("Template Registry — 25 New Worker templates");
+
+  const newWorkerTemplateIds = {
+    "W-001": { prefix: "mr-", templates: ["mr-market-study", "mr-comp-analysis", "mr-submarket-ranking", "mr-demographic-profile"] },
+    "W-005": { prefix: "adr-", templates: ["adr-design-review", "adr-code-compliance", "adr-ve-log"] },
+    "W-006": { prefix: "er-", templates: ["er-engineering-review", "er-special-inspection-program", "er-design-change-log"] },
+    "W-007": { prefix: "ecr-", templates: ["ecr-environmental-summary", "ecr-remediation-tracker", "ecr-permit-tracker", "ecr-section-106-log"] },
+    "W-008": { prefix: "es-", templates: ["es-energy-compliance", "es-certification-tracker", "es-incentive-summary"] },
+    "W-009": { prefix: "afh-", templates: ["afh-compliance-review", "afh-accommodation-tracker", "afh-unit-classification"] },
+    "W-010": { prefix: "gr-", templates: ["gr-stakeholder-map", "gr-community-outreach-plan", "gr-meeting-preparation"] },
+    "W-011": { prefix: "fls-", templates: ["fls-fire-code-review", "fls-egress-analysis", "fls-fire-system-tracker"] },
+    "W-020": { prefix: "oz-", templates: ["oz-compliance-dashboard", "oz-asset-test", "oz-substantial-improvement", "oz-investor-180-day"] },
+    "W-030": { prefix: "avr-", templates: ["avr-appraisal-review", "avr-comp-analysis", "avr-rebuttal-memo"] },
+    "W-032": { prefix: "ts-", templates: ["ts-screening-report", "ts-adverse-action", "ts-criteria-summary"] },
+    "W-034": { prefix: "rr-", templates: ["rr-rent-roll", "rr-revenue-forecast", "rr-loss-to-lease", "rr-lease-expiration-matrix"] },
+    "W-035": { prefix: "mwo-", templates: ["mwo-work-order", "mwo-pm-schedule", "mwo-maintenance-report"] },
+    "W-036": { prefix: "um-", templates: ["um-utility-report", "um-rubs-calculation", "um-benchmarking-report"] },
+    "W-037": { prefix: "hoa-", templates: ["hoa-board-package", "hoa-assessment-tracker", "hoa-reserve-analysis", "hoa-transition-checklist"] },
+    "W-038": { prefix: "wd-", templates: ["wd-warranty-register", "wd-defect-log", "wd-warranty-claim", "wd-walkthrough-report"] },
+    "W-040": { prefix: "ta-", templates: ["ta-assessment-summary", "ta-appeal-evidence", "ta-payment-tracker", "ta-projection"] },
+    "W-041": { prefix: "vc-", templates: ["vc-vendor-registry", "vc-contract-tracker", "vc-bid-comparison", "vc-spend-report"] },
+    "W-042": { prefix: "dp-", templates: ["dp-disposition-analysis", "dp-broker-comparison", "dp-offer-comparison", "dp-closing-checklist"] },
+    "W-043": { prefix: "ex-", templates: ["ex-exchange-analysis", "ex-timeline-tracker", "ex-identification-notice", "ex-basis-calculation"] },
+    "W-046": { prefix: "ef-", templates: ["ef-entity-analysis", "ef-formation-checklist", "ef-entity-registry", "ef-annual-compliance"] },
+    "W-049": { prefix: "pir-", templates: ["pir-policy-summary", "pir-coverage-review", "pir-claims-log", "pir-renewal-comparison"] },
+    "W-050": { prefix: "dmdr-", templates: ["dmdr-om-template", "dmdr-data-room-index", "dmdr-buyer-tracker", "dmdr-dd-checklist"] },
+    "W-051": { prefix: "ird-", templates: ["ird-distribution-schedule", "ird-distribution-notice", "ird-capital-account", "ird-investor-package"] },
+    "W-052": { prefix: "dslc-", templates: ["dslc-covenant-dashboard", "dslc-payment-schedule", "dslc-reserve-tracker", "dslc-lender-compliance-cert"] },
+  };
+
+  for (const [workerId, info] of Object.entries(newWorkerTemplateIds)) {
+    for (const tid of info.templates) {
+      test(`${tid} exists in registry`, () => {
+        assert.ok(SYSTEM_TEMPLATES[tid], `Template ${tid} not found`);
+        assert.strictEqual(SYSTEM_TEMPLATES[tid].id, tid);
+        assert.ok(SYSTEM_TEMPLATES[tid].format, "Should have format");
+        assert.ok(SYSTEM_TEMPLATES[tid].requiredFields, "Should have requiredFields");
+        assert.strictEqual(SYSTEM_TEMPLATES[tid].system, true);
+      });
+    }
+  }
+
+  sectionSummary();
+
   // Cross-check: every template in ALL rulesets' outputs exists in the registry
   section("Template Registry — Ruleset output cross-reference");
 
@@ -1437,6 +1614,15 @@ function runRegistryTests() {
     "entitlement_screen_v0", "refinance_screen_v0", "conversion_screen_v0",
     "ir_compliance_v0", "ir_fund_v0", "ir_syndication_v0",
     "chief_of_staff_v0",
+    "market_research_v0", "architecture_design_review_v0", "engineering_review_v0",
+    "environmental_cultural_review_v0", "energy_sustainability_v0", "accessibility_fair_housing_v0",
+    "government_relations_v0", "fire_life_safety_v0", "opportunity_zone_v0",
+    "appraisal_valuation_review_v0", "tenant_screening_v0", "rent_roll_revenue_v0",
+    "maintenance_work_order_v0", "utility_management_v0", "hoa_association_v0",
+    "warranty_defect_v0", "tax_assessment_v0", "vendor_contract_v0",
+    "disposition_preparation_v0", "exchange_1031_v0", "entity_formation_v0",
+    "property_insurance_risk_v0", "disposition_marketing_v0", "investor_reporting_distributions_v0",
+    "debt_service_loan_compliance_v0",
   ];
   for (const rsId of rulesets) {
     const rs = require(`../raas/rulesets/${rsId}.json`);
@@ -1459,7 +1645,7 @@ function runFrontendTests() {
 
   const fs = require("fs");
 
-  section("Marketplace — all 7 workers listed and live");
+  section("Marketplace — all 32 workers listed and live");
 
   const marketplaceSrc = fs.readFileSync(path.join(__dirname, "../../../apps/business/src/pages/WorkerMarketplace.jsx"), "utf8");
 
@@ -1470,6 +1656,31 @@ function runFrontendTests() {
     "cre-analyst",
     "investor-relations",
     "chief-of-staff",
+    "market-research",
+    "architecture-review",
+    "engineering-review",
+    "environmental-cultural-review",
+    "energy-sustainability",
+    "accessibility-fair-housing",
+    "government-relations",
+    "fire-life-safety",
+    "opportunity-zone",
+    "appraisal-valuation",
+    "tenant-screening",
+    "rent-roll-revenue",
+    "maintenance-work-order",
+    "utility-management",
+    "hoa-association",
+    "warranty-defect",
+    "tax-assessment",
+    "vendor-contract",
+    "disposition-preparation",
+    "exchange-1031",
+    "entity-formation",
+    "property-insurance",
+    "disposition-marketing",
+    "investor-reporting",
+    "debt-service",
   ];
 
   for (const slug of allWorkerSlugs) {
@@ -1478,7 +1689,15 @@ function runFrontendTests() {
     });
   }
 
-  const liveWorkers = ["construction-manager", "construction-lending", "capital-stack-optimizer", "cre-analyst", "investor-relations", "chief-of-staff"];
+  const liveWorkers = [
+    "construction-manager", "construction-lending", "capital-stack-optimizer", "cre-analyst", "investor-relations", "chief-of-staff",
+    "market-research", "architecture-review", "engineering-review", "environmental-cultural-review",
+    "energy-sustainability", "accessibility-fair-housing", "government-relations", "fire-life-safety",
+    "opportunity-zone", "appraisal-valuation", "tenant-screening", "rent-roll-revenue",
+    "maintenance-work-order", "utility-management", "hoa-association", "warranty-defect",
+    "tax-assessment", "vendor-contract", "disposition-preparation", "exchange-1031",
+    "entity-formation", "property-insurance", "disposition-marketing", "investor-reporting", "debt-service",
+  ];
   for (const slug of liveWorkers) {
     test(`${slug} marketplace status is "live"`, () => {
       const regex = new RegExp(`slug:\\s*"${slug}"[^}]*status:\\s*"(\\w+)"`);
@@ -1507,6 +1726,31 @@ function runFrontendTests() {
     "cre-analyst": ["deal-screening", "portfolio", "assumptions", "evidence"],
     "investor-relations": ["investor-pipeline", "compliance", "waterfall", "investor-data-room", "reporting"],
     "chief-of-staff": ["pipelines", "task-board", "worker-status"],
+    "market-research": ["market-analysis", "demographics", "supply-pipeline", "absorption"],
+    "architecture-review": ["plan-review", "code-compliance", "ahj-comments"],
+    "engineering-review": ["civil-review", "structural-review", "traffic-review", "utility-review"],
+    "environmental-cultural-review": ["phase-i", "biological", "archaeological", "cultural-impact"],
+    "energy-sustainability": ["energy-model", "leed-scorecard", "certifications"],
+    "accessibility-fair-housing": ["ada-audit", "fair-housing", "remediation"],
+    "government-relations": ["hearings", "stakeholder-map", "public-comment"],
+    "fire-life-safety": ["fire-code", "egress-plan", "fire-protection"],
+    "opportunity-zone": ["qof-compliance", "improvement-test", "oz-timeline", "tax-benefits"],
+    "appraisal-valuation": ["appraisal-review", "comp-analysis", "valuation-methods"],
+    "tenant-screening": ["applications", "screening-reports", "criteria"],
+    "rent-roll-revenue": ["rent-roll", "revenue-forecast", "lease-abstracts", "renewals"],
+    "maintenance-work-order": ["work-orders", "preventive-schedule", "vendor-dispatch"],
+    "utility-management": ["utility-costs", "consumption", "rate-optimization"],
+    "hoa-association": ["assessments", "ccr-compliance", "reserve-study", "violations"],
+    "warranty-defect": ["warranty-claims", "defect-tracking", "builder-liability"],
+    "tax-assessment": ["tax-appeals"],
+    "vendor-contract": ["vendors", "contracts", "performance", "vendor-renewals"],
+    "disposition-preparation": ["sale-prep", "dd-assembly", "buyer-qual"],
+    "exchange-1031": ["exchange-timeline", "replacement-props", "qi-coordination"],
+    "entity-formation": ["entity-structure", "filings", "operating-agreements"],
+    "property-insurance": ["policies", "coverage-analysis", "claims", "risk-assessment"],
+    "disposition-marketing": ["marketing-materials", "data-room", "buyer-outreach", "offers"],
+    "investor-reporting": ["quarterly-reports", "distributions", "k1-coordination", "lp-comms"],
+    "debt-service": ["loan-payments", "covenant-monitor", "compliance-reports", "refinance-analysis"],
   };
 
   for (const [slug, navIds] of Object.entries(expectedNavMaps)) {
@@ -1528,6 +1772,31 @@ function runFrontendTests() {
     "cre-analyst": "CRE Analyst",
     "investor-relations": "IR Worker",
     "chief-of-staff": "Alex — Chief of Staff",
+    "market-research": "Market Research",
+    "architecture-review": "Architecture & Design Review",
+    "engineering-review": "Engineering Review",
+    "environmental-cultural-review": "Environmental & Cultural Review",
+    "energy-sustainability": "Energy & Sustainability",
+    "accessibility-fair-housing": "Accessibility & Fair Housing",
+    "government-relations": "Government Relations",
+    "fire-life-safety": "Fire & Life Safety",
+    "opportunity-zone": "Opportunity Zone",
+    "appraisal-valuation": "Appraisal & Valuation",
+    "tenant-screening": "Tenant Screening",
+    "rent-roll-revenue": "Rent Roll & Revenue",
+    "maintenance-work-order": "Maintenance & Work Order",
+    "utility-management": "Utility Management",
+    "hoa-association": "HOA & Association",
+    "warranty-defect": "Warranty & Defect",
+    "tax-assessment": "Tax Assessment",
+    "vendor-contract": "Vendor & Contract",
+    "disposition-preparation": "Disposition Prep",
+    "exchange-1031": "1031 Exchange",
+    "entity-formation": "Entity & Formation",
+    "property-insurance": "Property Insurance & Risk",
+    "disposition-marketing": "Disposition Marketing",
+    "investor-reporting": "Investor Reporting",
+    "debt-service": "Debt Service & Loan Compliance",
   };
 
   for (const [slug, name] of Object.entries(expectedDisplayNames)) {
@@ -1538,11 +1807,19 @@ function runFrontendTests() {
 
   sectionSummary();
 
-  section("Worker Icons — all workers with icons");
+  section("Worker Icons — all 32 workers with icons");
 
   const iconsSrc = fs.readFileSync(path.join(__dirname, "../../../apps/business/src/utils/workerIcons.jsx"), "utf8");
 
-  for (const slug of ["construction-manager", "construction-lending", "capital-stack-optimizer", "cre-analyst", "investor-relations", "chief-of-staff"]) {
+  for (const slug of [
+    "construction-manager", "construction-lending", "capital-stack-optimizer", "cre-analyst", "investor-relations", "chief-of-staff",
+    "market-research", "architecture-review", "engineering-review", "environmental-cultural-review",
+    "energy-sustainability", "accessibility-fair-housing", "government-relations", "fire-life-safety",
+    "opportunity-zone", "appraisal-valuation", "tenant-screening", "rent-roll-revenue",
+    "maintenance-work-order", "utility-management", "hoa-association", "warranty-defect",
+    "tax-assessment", "vendor-contract", "disposition-preparation", "exchange-1031",
+    "entity-formation", "property-insurance", "disposition-marketing", "investor-reporting", "debt-service",
+  ]) {
     test(`${slug} has icon defined`, () => {
       assert.ok(iconsSrc.includes(`"${slug}"`), `Should have icon for ${slug}`);
     });
@@ -1550,17 +1827,33 @@ function runFrontendTests() {
 
   sectionSummary();
 
-  section("App.jsx — WORKER_DETAIL_CONTENT for all 7 workers");
+  section("App.jsx — WORKER_DETAIL_CONTENT for all 32 workers");
 
   const appSrc = fs.readFileSync(path.join(__dirname, "../../../apps/business/src/App.jsx"), "utf8");
 
-  for (const slug of ["construction-manager", "construction-lending", "capital-stack-optimizer", "cre-analyst", "investor-relations", "chief-of-staff"]) {
+  for (const slug of [
+    "construction-manager", "construction-lending", "capital-stack-optimizer", "cre-analyst", "investor-relations", "chief-of-staff",
+    "market-research", "architecture-review", "engineering-review", "environmental-cultural-review",
+    "energy-sustainability", "accessibility-fair-housing", "government-relations", "fire-life-safety",
+    "opportunity-zone", "appraisal-valuation", "tenant-screening", "rent-roll-revenue",
+    "maintenance-work-order", "utility-management", "hoa-association", "warranty-defect",
+    "tax-assessment", "vendor-contract", "disposition-preparation", "exchange-1031",
+    "entity-formation", "property-insurance", "disposition-marketing", "investor-reporting", "debt-service",
+  ]) {
     test(`${slug} has WORKER_DETAIL_CONTENT entry`, () => {
       assert.ok(appSrc.includes(`"${slug}"`), `Should have detail content for ${slug}`);
     });
   }
 
-  for (const slug of ["capital-stack-optimizer", "cre-analyst", "investor-relations", "chief-of-staff"]) {
+  for (const slug of [
+    "capital-stack-optimizer", "cre-analyst", "investor-relations", "chief-of-staff",
+    "market-research", "architecture-review", "engineering-review", "environmental-cultural-review",
+    "energy-sustainability", "accessibility-fair-housing", "government-relations", "fire-life-safety",
+    "opportunity-zone", "appraisal-valuation", "tenant-screening", "rent-roll-revenue",
+    "maintenance-work-order", "utility-management", "hoa-association", "warranty-defect",
+    "tax-assessment", "vendor-contract", "disposition-preparation", "exchange-1031",
+    "entity-formation", "property-insurance", "disposition-marketing", "investor-reporting", "debt-service",
+  ]) {
     test(`${slug} has headline, steps, bridge, valueProps, faq`, () => {
       const match = appSrc.match(new RegExp(`"${slug}":\\s*\\{[\\s\\S]*?headline[\\s\\S]*?steps[\\s\\S]*?bridge[\\s\\S]*?valueProps[\\s\\S]*?faq`));
       assert.ok(match, `${slug} should have all required content sections`);
@@ -1569,12 +1862,19 @@ function runFrontendTests() {
 
   sectionSummary();
 
-  section("System Prompt Files — all 7 workers");
+  section("System Prompt Files — all 32 workers");
 
   const constructionPromptDir = path.join(__dirname, "../../../raas/construction/GLOBAL/prompts");
   const analystPromptDir = path.join(__dirname, "../../../raas/analyst/GLOBAL/prompts");
   const investorPromptDir = path.join(__dirname, "../../../raas/investor/GLOBAL/prompts");
   const cosPromptDir = path.join(__dirname, "../../../raas/chief-of-staff/GLOBAL/prompts");
+  const siteSelectionPromptDir = path.join(__dirname, "../../../raas/site-selection/GLOBAL/prompts");
+  const permittingPromptDir = path.join(__dirname, "../../../raas/permitting/GLOBAL/prompts");
+  const entitlementPromptDir = path.join(__dirname, "../../../raas/entitlement/GLOBAL/prompts");
+  const financingPromptDir = path.join(__dirname, "../../../raas/financing/GLOBAL/prompts");
+  const realEstatePromptDir = path.join(__dirname, "../../../raas/real-estate/GLOBAL/prompts");
+  const propertyMgmtPromptDir = path.join(__dirname, "../../../raas/property-management/GLOBAL/prompts");
+  const operationsPromptDir = path.join(__dirname, "../../../raas/operations/GLOBAL/prompts");
 
   const allPromptFiles = [
     { dir: constructionPromptDir, file: "construction-manager-system-prompt.md" },
@@ -1583,6 +1883,31 @@ function runFrontendTests() {
     { dir: analystPromptDir, file: "cre-analyst-system-prompt.md" },
     { dir: investorPromptDir, file: "investor-relations-system-prompt.md" },
     { dir: cosPromptDir, file: "chief-of-staff-system-prompt.md" },
+    { dir: siteSelectionPromptDir, file: "market-research-system-prompt.md" },
+    { dir: permittingPromptDir, file: "architecture-design-review-system-prompt.md" },
+    { dir: constructionPromptDir, file: "engineering-review-system-prompt.md" },
+    { dir: entitlementPromptDir, file: "environmental-cultural-review-system-prompt.md" },
+    { dir: constructionPromptDir, file: "energy-sustainability-system-prompt.md" },
+    { dir: entitlementPromptDir, file: "accessibility-fair-housing-system-prompt.md" },
+    { dir: entitlementPromptDir, file: "government-relations-system-prompt.md" },
+    { dir: constructionPromptDir, file: "fire-life-safety-system-prompt.md" },
+    { dir: financingPromptDir, file: "opportunity-zone-system-prompt.md" },
+    { dir: realEstatePromptDir, file: "appraisal-valuation-review-system-prompt.md" },
+    { dir: propertyMgmtPromptDir, file: "tenant-screening-system-prompt.md" },
+    { dir: propertyMgmtPromptDir, file: "rent-roll-revenue-system-prompt.md" },
+    { dir: operationsPromptDir, file: "maintenance-work-order-system-prompt.md" },
+    { dir: operationsPromptDir, file: "utility-management-system-prompt.md" },
+    { dir: propertyMgmtPromptDir, file: "hoa-association-system-prompt.md" },
+    { dir: constructionPromptDir, file: "warranty-defect-system-prompt.md" },
+    { dir: operationsPromptDir, file: "tax-assessment-system-prompt.md" },
+    { dir: operationsPromptDir, file: "vendor-contract-system-prompt.md" },
+    { dir: realEstatePromptDir, file: "disposition-preparation-system-prompt.md" },
+    { dir: financingPromptDir, file: "exchange-1031-system-prompt.md" },
+    { dir: operationsPromptDir, file: "entity-formation-system-prompt.md" },
+    { dir: operationsPromptDir, file: "property-insurance-risk-system-prompt.md" },
+    { dir: realEstatePromptDir, file: "disposition-marketing-system-prompt.md" },
+    { dir: investorPromptDir, file: "investor-reporting-distributions-system-prompt.md" },
+    { dir: financingPromptDir, file: "debt-service-loan-compliance-system-prompt.md" },
   ];
 
   for (const { dir, file } of allPromptFiles) {
@@ -1607,18 +1932,410 @@ function runFrontendTests() {
 }
 
 // ═══════════════════════════════════════════════════════════════
+//  W-048 ALEX UNIVERSAL ORCHESTRATION TESTS
+// ═══════════════════════════════════════════════════════════════
+
+function runAlexTests() {
+  // ── Catalog Schema ──
+  section("W-048 Alex — Catalog Schema");
+
+  test("Schema module loads", () => {
+    const schema = require("../services/alex/catalogs/schema");
+    assert.ok(schema.validateWorkerEntry);
+    assert.ok(schema.toRoutingIndex);
+    assert.ok(schema.toActiveWorkerDetail);
+  });
+
+  test("LIFECYCLE_TEMPLATE has 8 phases", () => {
+    const { LIFECYCLE_TEMPLATE } = require("../services/alex/catalogs/schema");
+    assert.strictEqual(LIFECYCLE_TEMPLATE.length, 8);
+    assert.strictEqual(LIFECYCLE_TEMPLATE[0].phase, 0);
+    assert.strictEqual(LIFECYCLE_TEMPLATE[7].phase, 7);
+  });
+
+  test("Valid worker entry passes validation", () => {
+    const { validateWorkerEntry } = require("../services/alex/catalogs/schema");
+    const result = validateWorkerEntry({
+      id: "W-002", slug: "cre-analyst", name: "CRE Deal Analyst",
+      type: "standalone", status: "live", temporalType: "always_on",
+      pricing: { monthly: 79 },
+    });
+    assert.ok(result.valid, `Validation errors: ${result.errors.join(", ")}`);
+  });
+
+  test("Invalid worker entry fails validation", () => {
+    const { validateWorkerEntry } = require("../services/alex/catalogs/schema");
+    const result = validateWorkerEntry({ id: "BAD", slug: "", name: "", type: "invalid", status: "unknown", temporalType: "nope", pricing: {} });
+    assert.strictEqual(result.valid, false);
+    assert.ok(result.errors.length > 0);
+  });
+
+  sectionSummary();
+
+  // ── Catalog Loader ──
+  section("W-048 Alex — Catalog Loader");
+
+  test("Loader module loads", () => {
+    const loader = require("../services/alex/catalogs/loader");
+    assert.ok(loader.loadCatalog);
+    assert.ok(loader.listVerticals);
+    assert.ok(loader.getRoutingIndex);
+  });
+
+  test("RE Development catalog loads with 52 workers", () => {
+    const { loadCatalog } = require("../services/alex/catalogs/loader");
+    const catalog = loadCatalog("real-estate-development");
+    assert.ok(catalog, "Catalog should load");
+    assert.strictEqual(catalog.workers.length, 52);
+    assert.strictEqual(catalog.vertical, "real-estate-development");
+  });
+
+  test("Catalog has 8 lifecycle phases", () => {
+    const { loadCatalog } = require("../services/alex/catalogs/loader");
+    const catalog = loadCatalog("real-estate-development");
+    assert.strictEqual(catalog.lifecycle.length, 8);
+  });
+
+  test("Catalog has bundles", () => {
+    const { loadCatalog } = require("../services/alex/catalogs/loader");
+    const catalog = loadCatalog("real-estate-development");
+    assert.ok(catalog.bundles.length >= 3);
+  });
+
+  test("getRoutingIndex returns compact format", () => {
+    const { getRoutingIndex } = require("../services/alex/catalogs/loader");
+    const index = getRoutingIndex("real-estate-development");
+    assert.ok(index.length > 0);
+    assert.ok(index.includes("W-002"));
+    assert.ok(index.includes("W-048"));
+    // Should have one line per worker
+    const lines = index.split("\n");
+    assert.strictEqual(lines.length, 52);
+  });
+
+  test("getActiveWorkerDetails returns details for subscribed workers", () => {
+    const { getActiveWorkerDetails, getWorker: gw } = require("../services/alex/catalogs/loader");
+    const w002 = gw("real-estate-development", "W-002");
+    const details = getActiveWorkerDetails("real-estate-development", [w002.slug]);
+    assert.ok(details.includes("CRE Deal Analyst"));
+    assert.ok(details.includes("W-002"));
+  });
+
+  test("getWorker finds by slug", () => {
+    const { getWorker, loadCatalog } = require("../services/alex/catalogs/loader");
+    const cat = loadCatalog("real-estate-development");
+    const w002slug = cat.workers.find(w => w.id === "W-002").slug;
+    const w = getWorker("real-estate-development", w002slug);
+    assert.ok(w);
+    assert.strictEqual(w.id, "W-002");
+  });
+
+  test("getWorker finds by ID", () => {
+    const { getWorker } = require("../services/alex/catalogs/loader");
+    const w = getWorker("real-estate-development", "W-048");
+    assert.ok(w);
+    assert.strictEqual(w.slug, "chief-of-staff");
+  });
+
+  test("listVerticals includes real-estate-development", () => {
+    const { listVerticals } = require("../services/alex/catalogs/loader");
+    const verts = listVerticals();
+    assert.ok(verts.includes("real-estate-development"));
+  });
+
+  test("filterWorkers by phase", () => {
+    const { filterWorkers } = require("../services/alex/catalogs/loader");
+    const phase0 = filterWorkers("real-estate-development", { phase: 0 });
+    assert.ok(phase0.length >= 3); // W-001, W-002, W-003, W-030
+  });
+
+  sectionSummary();
+
+  // ── Prompt Builder ──
+  section("W-048 Alex — Prompt Builder");
+
+  test("Prompt builder module loads", () => {
+    const builder = require("../services/alex/promptBuilder");
+    assert.ok(builder.assemblePrompt);
+    assert.ok(builder.estimateTokens);
+  });
+
+  test("assemblePrompt returns non-empty string for business surface", () => {
+    const { assemblePrompt } = require("../services/alex/promptBuilder");
+    const prompt = assemblePrompt({
+      surface: "business",
+      activeWorkerSlugs: ["cre-deal-analyst"],
+      vertical: "real-estate-development",
+    });
+    assert.ok(prompt.length > 100);
+  });
+
+  test("Prompt includes catalog routing index", () => {
+    const { assemblePrompt } = require("../services/alex/promptBuilder");
+    const prompt = assemblePrompt({
+      surface: "business",
+      vertical: "real-estate-development",
+    });
+    assert.ok(prompt.includes("WORKER CATALOG"));
+    assert.ok(prompt.includes("W-002"));
+  });
+
+  test("Prompt includes active worker details when provided", () => {
+    const { assemblePrompt } = require("../services/alex/promptBuilder");
+    const prompt = assemblePrompt({
+      surface: "business",
+      activeWorkerSlugs: ["cre-deal-analyst"],
+      vertical: "real-estate-development",
+    });
+    // Active worker details section should include the worker name or its details
+    assert.ok(prompt.includes("CRE Deal Analyst") || prompt.includes("ACTIVE WORKER"), "Should include active worker info");
+  });
+
+  test("Prompt stays under token budget", () => {
+    const { assemblePrompt, estimateTokens, MAX_TOKEN_BUDGET } = require("../services/alex/promptBuilder");
+    const prompt = assemblePrompt({
+      surface: "business",
+      activeWorkerSlugs: ["cre-analyst", "capital-stack-optimizer", "construction-manager"],
+      vertical: "real-estate-development",
+    });
+    const tokens = estimateTokens(prompt);
+    assert.ok(tokens <= MAX_TOKEN_BUDGET, `Prompt is ${tokens} tokens, budget is ${MAX_TOKEN_BUDGET}`);
+  });
+
+  sectionSummary();
+
+  // ── Router ──
+  section("W-048 Alex — Routing");
+
+  test("Router module loads", () => {
+    const router = require("../services/alex/capabilities/router");
+    assert.ok(router.parseRoutingTag);
+    assert.ok(router.getRoutingHint);
+  });
+
+  test("Parses handle_directly route tag", () => {
+    const { parseRoutingTag } = require("../services/alex/capabilities/router");
+    const result = parseRoutingTag("Here is your answer. [ROUTE:handle_directly]");
+    assert.strictEqual(result.route.type, "handle_directly");
+    assert.strictEqual(result.cleanResponse, "Here is your answer.");
+  });
+
+  test("Parses route_to_worker tag with target", () => {
+    const { parseRoutingTag } = require("../services/alex/capabilities/router");
+    const result = parseRoutingTag("Let me route you. [ROUTE:route_to_worker:cre-analyst]");
+    assert.strictEqual(result.route.type, "route_to_worker");
+    assert.strictEqual(result.route.target, "cre-analyst");
+    assert.strictEqual(result.cleanResponse, "Let me route you.");
+  });
+
+  test("Parses recommend_worker tag", () => {
+    const { parseRoutingTag } = require("../services/alex/capabilities/router");
+    const result = parseRoutingTag("You need this. [ROUTE:recommend_worker:construction-manager]");
+    assert.strictEqual(result.route.type, "recommend_worker");
+    assert.strictEqual(result.route.target, "construction-manager");
+  });
+
+  test("Returns null route when no tag present", () => {
+    const { parseRoutingTag } = require("../services/alex/capabilities/router");
+    const result = parseRoutingTag("Just a normal response.");
+    assert.strictEqual(result.route, null);
+    assert.strictEqual(result.cleanResponse, "Just a normal response.");
+  });
+
+  test("getRoutingHint identifies platform questions", () => {
+    const { getRoutingHint, ROUTE_TYPES } = require("../services/alex/capabilities/router");
+    const hint = getRoutingHint("How much does W-021 cost?");
+    assert.strictEqual(hint.hint, ROUTE_TYPES.HANDLE_DIRECTLY);
+  });
+
+  sectionSummary();
+
+  // ── Recommendation Engine ──
+  section("W-048 Alex — Recommendation Engine");
+
+  test("Recommend module loads", () => {
+    const rec = require("../services/alex/capabilities/recommend");
+    assert.ok(rec.getRecommendations);
+    assert.ok(rec.COMPLIANCE_TRIGGERS);
+  });
+
+  test("Generates recommendations for new user", () => {
+    const { getRecommendations } = require("../services/alex/capabilities/recommend");
+    const result = getRecommendations({
+      vertical: "real-estate-development",
+      currentPhase: 0,
+      activeWorkerSlugs: [],
+    });
+    assert.ok(result.recommendations);
+    assert.ok(result.pricing);
+    assert.ok(result.recommendations.core.length > 0 || result.recommendations.mandatory.length > 0);
+  });
+
+  test("Federal funding triggers mandatory workers", () => {
+    const { getRecommendations } = require("../services/alex/capabilities/recommend");
+    const result = getRecommendations({
+      vertical: "real-estate-development",
+      currentPhase: 4,
+      activeWorkerSlugs: [],
+      complianceTriggers: ["federal_funding"],
+    });
+    const mandatorySlugs = result.recommendations.mandatory.map(w => w.slug);
+    assert.ok(mandatorySlugs.includes("labor-staffing"), "Federal funding should trigger labor-staffing worker");
+  });
+
+  test("Pricing calculation includes projections", () => {
+    const { getRecommendations } = require("../services/alex/capabilities/recommend");
+    const result = getRecommendations({
+      vertical: "real-estate-development",
+      currentPhase: 0,
+      activeWorkerSlugs: ["cre-deal-analyst"],
+    });
+    assert.ok(result.pricing.currentMonthly >= 0);
+    assert.ok(result.pricing.peakMonthly > 0);
+  });
+
+  sectionSummary();
+
+  // ── Temporal Awareness ──
+  section("W-048 Alex — Temporal Awareness");
+
+  test("Temporal module loads", () => {
+    const temporal = require("../services/alex/capabilities/temporal");
+    assert.ok(temporal.getTemporalStatus);
+  });
+
+  test("Identifies workers to activate for current phase", () => {
+    const { getTemporalStatus } = require("../services/alex/capabilities/temporal");
+    const status = getTemporalStatus({
+      vertical: "real-estate-development",
+      currentPhase: 4, // Construction
+      activeWorkerSlugs: [],
+    });
+    // Construction phase should suggest activating construction workers
+    assert.ok(status.activate.length > 0, "Should suggest activating workers for Phase 4");
+  });
+
+  sectionSummary();
+
+  // ── Ruleset v1 ──
+  section("W-048 Alex — Ruleset v1");
+
+  test("Chief of Staff v1 ruleset loads successfully", () => {
+    const rs = loadRuleset("chief_of_staff_v1");
+    assert.ok(rs);
+    assert.strictEqual(rs.domain, "platform-operations");
+  });
+
+  test("v1 has 5 hard stops and 8 soft flags", () => {
+    const rs = loadRuleset("chief_of_staff_v1");
+    assert.strictEqual(rs.hard_stops.length, 5);
+    assert.strictEqual(rs.soft_flags.length, 8);
+  });
+
+  test("v1 includes new hard stops (intake_required, pipeline_approval_gate)", () => {
+    const rs = loadRuleset("chief_of_staff_v1");
+    const hardStopIds = rs.hard_stops.map(h => h.id);
+    assert.ok(hardStopIds.includes("intake_required"));
+    assert.ok(hardStopIds.includes("pipeline_approval_gate"));
+  });
+
+  test("v1 includes new soft flags (coverage_gap, temporal_mismatch)", () => {
+    const rs = loadRuleset("chief_of_staff_v1");
+    const softFlagIds = rs.soft_flags.map(s => s.id);
+    assert.ok(softFlagIds.includes("coverage_gap"));
+    assert.ok(softFlagIds.includes("temporal_mismatch"));
+    assert.ok(softFlagIds.includes("recommendation_stale"));
+    assert.ok(softFlagIds.includes("value_report_due"));
+  });
+
+  test("v1 outputs include all 10 templates", () => {
+    const rs = loadRuleset("chief_of_staff_v1");
+    assert.strictEqual(rs.outputs.length, 10);
+    assert.ok(rs.outputs.includes("cos-pipeline-status"));
+    assert.ok(rs.outputs.includes("alex-user-profile"));
+    assert.ok(rs.outputs.includes("alex-monthly-value-report"));
+  });
+
+  sectionSummary();
+
+  // ── Document Templates ──
+  section("W-048 Alex — Document Templates");
+
+  test("All 10 Alex templates registered in registry", () => {
+    const { SYSTEM_TEMPLATES } = require("../services/documentEngine/templates/registry");
+    const alexTemplates = ["cos-pipeline-status", "cos-weekly-digest", "cos-task-tracker", "cos-handoff-memo",
+      "alex-user-profile", "alex-project-profile", "alex-worker-plan", "alex-daily-briefing",
+      "alex-executive-summary", "alex-monthly-value-report"];
+    for (const tid of alexTemplates) {
+      assert.ok(SYSTEM_TEMPLATES[tid], `Template ${tid} should be in registry`);
+    }
+  });
+
+  test("New alex-* templates have correct format", () => {
+    const { SYSTEM_TEMPLATES } = require("../services/documentEngine/templates/registry");
+    const newTemplates = ["alex-user-profile", "alex-project-profile", "alex-worker-plan",
+      "alex-daily-briefing", "alex-executive-summary", "alex-monthly-value-report"];
+    for (const tid of newTemplates) {
+      assert.strictEqual(SYSTEM_TEMPLATES[tid].format, "pdf", `${tid} should be PDF`);
+      assert.strictEqual(SYSTEM_TEMPLATES[tid].category, "operations", `${tid} should be operations category`);
+      assert.ok(SYSTEM_TEMPLATES[tid].system === true, `${tid} should be system template`);
+    }
+  });
+
+  sectionSummary();
+
+  // ── Service Facade ──
+  section("W-048 Alex — Service Facade");
+
+  test("Alex service module loads", () => {
+    const alex = require("../services/alex");
+    assert.ok(alex.buildAlexPrompt);
+    assert.ok(alex.getRecommendations);
+    assert.ok(alex.parseRoutingTag);
+    assert.ok(alex.getCatalog);
+    assert.ok(alex.getWorker);
+    assert.ok(alex.getAvailableVerticals);
+  });
+
+  test("getCatalog returns RE Development catalog", () => {
+    const alex = require("../services/alex");
+    const catalog = alex.getCatalog("real-estate-development");
+    assert.ok(catalog);
+    assert.strictEqual(catalog.workers.length, 52);
+  });
+
+  test("getWorker finds W-048 Alex", () => {
+    const alex = require("../services/alex");
+    const worker = alex.getWorker("real-estate-development", "W-048");
+    assert.ok(worker);
+    assert.strictEqual(worker.slug, "chief-of-staff");
+    assert.strictEqual(worker.pricing.monthly, 0);
+  });
+
+  test("getAvailableVerticals returns at least one vertical", () => {
+    const alex = require("../services/alex");
+    const verticals = alex.getAvailableVerticals();
+    assert.ok(verticals.length >= 1);
+    assert.ok(verticals.includes("real-estate-development"));
+  });
+
+  sectionSummary();
+}
+
+// ═══════════════════════════════════════════════════════════════
 //  MAIN
 // ═══════════════════════════════════════════════════════════════
 
 async function main() {
   console.log("\n╔══════════════════════════════════════════════╗");
-  console.log("║  WORKER TEST SUITE — 7 Workers (Full)        ║");
+  console.log("║  WORKER TEST SUITE — 32 Workers + Alex (Full) ║");
   console.log("╚══════════════════════════════════════════════╝");
 
   await runRaasTests();
   await runGeneratorTests();
   runRegistryTests();
   runFrontendTests();
+  runAlexTests();
 
   console.log("\n╔══════════════════════════════════════════════╗");
   console.log(`║  TOTAL: ${passed} passed, ${failed} failed${" ".repeat(Math.max(0, 24 - String(passed).length - String(failed).length))}║`);

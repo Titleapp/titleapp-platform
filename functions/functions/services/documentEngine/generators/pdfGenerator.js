@@ -159,6 +159,169 @@ async function generatePdf({ template, data, brand, logoBuffer }) {
         case "mep-cx-checklist":
           renderCxChecklist(doc, data, brand, logoBuffer);
           break;
+        // W-001 Market Research
+        case "mr-market-study":
+          renderMarketStudy(doc, data, brand, logoBuffer);
+          break;
+        case "mr-demographic-profile":
+          renderDemographicProfile(doc, data, brand, logoBuffer);
+          break;
+        // W-005 Architecture & Design Review
+        case "adr-design-review":
+          renderDesignReview(doc, data, brand, logoBuffer);
+          break;
+        // W-006 Engineering Review
+        case "er-engineering-review":
+          renderEngineeringReview(doc, data, brand, logoBuffer);
+          break;
+        case "er-special-inspection-program":
+          renderSpecialInspectionProgram(doc, data, brand, logoBuffer);
+          break;
+        // W-007 Environmental & Cultural Review
+        case "ecr-environmental-summary":
+          renderEnvironmentalSummary(doc, data, brand, logoBuffer);
+          break;
+        case "ecr-section-106-log":
+          renderSection106Log(doc, data, brand, logoBuffer);
+          break;
+        // W-008 Energy & Sustainability
+        case "es-energy-compliance":
+          renderEnergyCompliance(doc, data, brand, logoBuffer);
+          break;
+        case "es-incentive-summary":
+          renderIncentiveSummary(doc, data, brand, logoBuffer);
+          break;
+        // W-009 Accessibility & Fair Housing
+        case "afh-compliance-review":
+          renderAfhComplianceReview(doc, data, brand, logoBuffer);
+          break;
+        // W-010 Government Relations
+        case "gr-stakeholder-map":
+          renderStakeholderMap(doc, data, brand, logoBuffer);
+          break;
+        case "gr-community-outreach-plan":
+          renderCommunityOutreachPlan(doc, data, brand, logoBuffer);
+          break;
+        case "gr-meeting-preparation":
+          renderMeetingPreparation(doc, data, brand, logoBuffer);
+          break;
+        // W-011 Fire & Life Safety
+        case "fls-fire-code-review":
+          renderFireCodeReview(doc, data, brand, logoBuffer);
+          break;
+        case "fls-egress-analysis":
+          renderEgressAnalysis(doc, data, brand, logoBuffer);
+          break;
+        // W-020 Opportunity Zone
+        case "oz-compliance-dashboard":
+          renderOzComplianceDashboard(doc, data, brand, logoBuffer);
+          break;
+        // W-030 Appraisal & Valuation Review
+        case "avr-appraisal-review":
+          renderAppraisalReview(doc, data, brand, logoBuffer);
+          break;
+        case "avr-rebuttal-memo":
+          renderRebuttalMemo(doc, data, brand, logoBuffer);
+          break;
+        // W-032 Tenant Screening
+        case "ts-screening-report":
+          renderScreeningReport(doc, data, brand, logoBuffer);
+          break;
+        case "ts-adverse-action":
+          renderAdverseAction(doc, data, brand, logoBuffer);
+          break;
+        case "ts-criteria-summary":
+          renderCriteriaSummary(doc, data, brand, logoBuffer);
+          break;
+        // W-034 Revenue & Rent Roll
+        case "rr-loss-to-lease":
+          renderLossToLease(doc, data, brand, logoBuffer);
+          break;
+        // W-035 Maintenance & Work Order
+        case "mwo-work-order":
+          renderWorkOrder(doc, data, brand, logoBuffer);
+          break;
+        case "mwo-maintenance-report":
+          renderMaintenanceReport(doc, data, brand, logoBuffer);
+          break;
+        // W-036 Utility Management
+        case "um-utility-report":
+          renderUtilityReport(doc, data, brand, logoBuffer);
+          break;
+        case "um-benchmarking-report":
+          renderBenchmarkingReport(doc, data, brand, logoBuffer);
+          break;
+        // W-037 HOA & Association
+        case "hoa-board-package":
+          renderBoardPackage(doc, data, brand, logoBuffer);
+          break;
+        case "hoa-reserve-analysis":
+          renderReserveAnalysis(doc, data, brand, logoBuffer);
+          break;
+        case "hoa-transition-checklist":
+          renderTransitionChecklist(doc, data, brand, logoBuffer);
+          break;
+        // W-038 Warranty & Defect
+        case "wd-warranty-claim":
+          renderWarrantyClaim(doc, data, brand, logoBuffer);
+          break;
+        case "wd-walkthrough-report":
+          renderWalkthroughReport(doc, data, brand, logoBuffer);
+          break;
+        // W-040 Tax & Assessment
+        case "ta-assessment-summary":
+          renderAssessmentSummary(doc, data, brand, logoBuffer);
+          break;
+        case "ta-appeal-evidence":
+          renderAppealEvidence(doc, data, brand, logoBuffer);
+          break;
+        // W-041 Vendor & Contract
+        case "vc-spend-report":
+          renderSpendReport(doc, data, brand, logoBuffer);
+          break;
+        // W-042 Disposition Preparation
+        case "dp-disposition-analysis":
+          renderDispositionAnalysis(doc, data, brand, logoBuffer);
+          break;
+        // W-043 1031 Exchange
+        case "ex-exchange-analysis":
+          renderExchangeAnalysis(doc, data, brand, logoBuffer);
+          break;
+        case "ex-timeline-tracker":
+          renderTimelineTracker(doc, data, brand, logoBuffer);
+          break;
+        case "ex-identification-notice":
+          renderIdentificationNotice(doc, data, brand, logoBuffer);
+          break;
+        // W-050 Disposition Marketing & Data Room
+        case "dmdr-om-template":
+          renderOmTemplate(doc, data, brand, logoBuffer);
+          break;
+        // W-051 Investor Reporting & Distributions
+        case "ird-distribution-notice":
+          renderDistributionNotice(doc, data, brand, logoBuffer);
+          break;
+        case "ird-investor-package":
+          renderInvestorPackage(doc, data, brand, logoBuffer);
+          break;
+        // W-052 Debt Service & Loan Compliance
+        case "dslc-covenant-dashboard":
+          renderCovenantDashboard(doc, data, brand, logoBuffer);
+          break;
+        case "dslc-lender-compliance-cert":
+          renderLenderComplianceCert(doc, data, brand, logoBuffer);
+          break;
+        // W-046 Entity & Formation
+        case "ef-entity-analysis":
+          renderEntityAnalysis(doc, data, brand, logoBuffer);
+          break;
+        // W-049 Property Insurance & Risk
+        case "pir-policy-summary":
+          renderPolicySummary(doc, data, brand, logoBuffer);
+          break;
+        case "pir-coverage-review":
+          renderCoverageReview(doc, data, brand, logoBuffer);
+          break;
         case "report-standard":
         default:
           renderReport(doc, data, brand, logoBuffer);
@@ -3499,6 +3662,1861 @@ function renderCxChecklist(doc, data, brand, logoBuffer) {
   doc.moveDown(2);
   doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
     .text("This commissioning checklist is for project management purposes. All systems must be verified by a qualified commissioning agent.", { align: "center" });
+}
+
+// ── W-001 Market Research PDF renderers ──
+
+function renderMarketStudy(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+
+  doc.fontSize(16)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text("MARKET STUDY", { align: "center" });
+  doc.moveDown(0.3);
+
+  if (data.marketName) {
+    doc.fontSize(FONTS.body.size).font(FONTS.body.font).fillColor(COLORS.textLight)
+      .text(data.marketName, { align: "center" });
+  }
+  if (data.assetType) {
+    doc.text(`Asset Type: ${data.assetType}`, { align: "center" });
+  }
+  doc.moveDown(1);
+
+  // Key Demographics
+  doc.fontSize(FONTS.subheading.size).font(FONTS.subheading.font).fillColor(primaryColor(brand)).text("Market Overview");
+  doc.moveDown(0.3);
+  const overviewRows = [
+    data.msa ? ["MSA", data.msa] : null,
+    data.population ? ["Population", String(data.population).replace(/\B(?=(\d{3})+(?!\d))/g, ",")] : null,
+    data.jobGrowth != null ? ["Job Growth", data.jobGrowth + "%"] : null,
+    data.rentGrowth != null ? ["Rent Growth", data.rentGrowth + "%"] : null,
+    data.vacancy != null ? ["Vacancy", data.vacancy + "%"] : null,
+    data.pipeline != null ? ["Pipeline (units)", String(data.pipeline)] : null,
+    data.absorption != null ? ["Absorption (units)", String(data.absorption)] : null,
+  ].filter(Boolean);
+  if (overviewRows.length > 0) renderSimpleTable(doc, { headers: ["Metric", "Value"], rows: overviewRows }, brand);
+  doc.moveDown(0.5);
+
+  // Supply & Demand
+  if (data.supplyDemand) {
+    doc.fontSize(FONTS.subheading.size).font(FONTS.subheading.font).fillColor(primaryColor(brand)).text("Supply & Demand");
+    doc.moveDown(0.3);
+    doc.fontSize(FONTS.body.size).font(FONTS.body.font).fillColor(COLORS.text)
+      .text(typeof data.supplyDemand === "string" ? data.supplyDemand : JSON.stringify(data.supplyDemand), { lineGap: 3 });
+    doc.moveDown(0.5);
+  }
+
+  // Sections (generic)
+  const sections = data.sections || [];
+  for (const section of sections) {
+    doc.fontSize(FONTS.subheading.size).font(FONTS.subheading.font).fillColor(primaryColor(brand)).text(section.title || "Section");
+    doc.moveDown(0.3);
+    doc.fontSize(FONTS.body.size).font(FONTS.body.font).fillColor(COLORS.text);
+    if (section.content) doc.text(section.content, { lineGap: 3 });
+    doc.moveDown(0.5);
+  }
+
+  // Recommendation
+  if (data.recommendation) {
+    doc.fontSize(FONTS.subheading.size).font(FONTS.subheading.font).fillColor(primaryColor(brand)).text("Recommendation");
+    doc.moveDown(0.3);
+    doc.fontSize(FONTS.body.size).font(FONTS.body.font).fillColor(COLORS.text).text(data.recommendation, { lineGap: 3 });
+  }
+
+  doc.moveDown(2);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("This market study is for informational purposes only. Data sources should be independently verified.", { align: "center" });
+}
+
+function renderDemographicProfile(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+
+  doc.fontSize(16)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text("DEMOGRAPHIC PROFILE", { align: "center" });
+  doc.moveDown(0.3);
+
+  if (data.marketName) {
+    doc.fontSize(FONTS.body.size).font(FONTS.body.font).fillColor(COLORS.textLight)
+      .text(data.marketName, { align: "center" });
+  }
+  if (data.radius) {
+    doc.text(`Radius: ${data.radius}`, { align: "center" });
+  }
+  doc.moveDown(1);
+
+  // Demographics table
+  const demoRows = [
+    data.population ? ["Population", String(data.population).replace(/\B(?=(\d{3})+(?!\d))/g, ",")] : null,
+    data.medianIncome ? ["Median Household Income", "$" + String(data.medianIncome).replace(/\B(?=(\d{3})+(?!\d))/g, ",")] : null,
+    data.medianAge ? ["Median Age", String(data.medianAge)] : null,
+    data.householdCount ? ["Households", String(data.householdCount).replace(/\B(?=(\d{3})+(?!\d))/g, ",")] : null,
+    data.avgHouseholdSize ? ["Avg Household Size", String(data.avgHouseholdSize)] : null,
+    data.ownerOccupied ? ["Owner-Occupied", data.ownerOccupied + "%"] : null,
+    data.renterOccupied ? ["Renter-Occupied", data.renterOccupied + "%"] : null,
+  ].filter(Boolean);
+  if (demoRows.length > 0) renderSimpleTable(doc, { headers: ["Metric", "Value"], rows: demoRows }, brand);
+  doc.moveDown(0.5);
+
+  // Employment Sectors
+  const sectors = data.employmentSectors || [];
+  if (sectors.length > 0) {
+    doc.fontSize(FONTS.subheading.size).font(FONTS.subheading.font).fillColor(primaryColor(brand)).text("Employment Sectors");
+    doc.moveDown(0.3);
+    const sectorRows = sectors.map(s => [
+      typeof s === "string" ? s : s.name || s.sector || "",
+      typeof s === "string" ? "" : (s.share ? s.share + "%" : s.employees ? String(s.employees) : ""),
+    ]);
+    renderSimpleTable(doc, { headers: ["Sector", "Share / Employees"], rows: sectorRows }, brand);
+  }
+
+  doc.moveDown(2);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("Demographic data is for informational purposes only. Sources should be independently verified.", { align: "center" });
+}
+
+// ── W-005 Architecture & Design Review PDF renderers ──
+
+function renderDesignReview(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+
+  doc.fontSize(16)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text("DESIGN PHASE REVIEW", { align: "center" });
+  doc.moveDown(0.3);
+
+  doc.fontSize(10).font("Helvetica").fillColor(COLORS.textLight)
+    .text(`Project: ${data.projectName || "\u2014"} | Phase: ${data.designPhase || "\u2014"}`, { align: "center" });
+  doc.moveDown(1.5);
+
+  // Findings
+  const findings = data.findings || [];
+  if (findings.length > 0) {
+    doc.fontSize(FONTS.subheading.size).font(FONTS.subheading.font).fillColor(primaryColor(brand)).text("Review Findings");
+    doc.moveDown(0.3);
+    const findRows = findings.map(f => [
+      typeof f === "string" ? f : f.category || f.discipline || "",
+      typeof f === "string" ? "" : f.finding || f.description || "",
+      typeof f === "string" ? "" : f.severity || "\u2014",
+      typeof f === "string" ? "" : f.status || "Open",
+    ]);
+    renderSimpleTable(doc, { headers: ["Category", "Finding", "Severity", "Status"], rows: findRows }, brand);
+    doc.moveDown(0.5);
+  }
+
+  // Code Compliance Items
+  const codeItems = data.codeItems || [];
+  if (codeItems.length > 0) {
+    doc.fontSize(FONTS.subheading.size).font(FONTS.subheading.font).fillColor(primaryColor(brand)).text("Code Compliance Items");
+    doc.moveDown(0.3);
+    const codeRows = codeItems.map(c => [
+      typeof c === "string" ? c : c.code || c.section || "",
+      typeof c === "string" ? "" : c.requirement || "",
+      typeof c === "string" ? "" : c.status || "Open",
+    ]);
+    renderSimpleTable(doc, { headers: ["Code Section", "Requirement", "Status"], rows: codeRows }, brand);
+    doc.moveDown(0.5);
+  }
+
+  // Program Deviations
+  const deviations = data.programDeviations || [];
+  if (deviations.length > 0) {
+    doc.fontSize(FONTS.subheading.size).font(FONTS.subheading.font).fillColor(primaryColor(brand)).text("Program Deviations");
+    doc.moveDown(0.3);
+    deviations.forEach(d => doc.fontSize(FONTS.body.size).font(FONTS.body.font).fillColor(COLORS.text).text(`  - ${typeof d === "string" ? d : d.deviation || d.description || ""}`));
+  }
+
+  doc.moveDown(2);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("This design review is for coordination purposes. All design decisions require review by the architect of record.", { align: "center" });
+}
+
+// ── W-006 Engineering Review PDF renderers ──
+
+function renderEngineeringReview(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+
+  doc.fontSize(16)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text("ENGINEERING REVIEW", { align: "center" });
+  doc.moveDown(0.3);
+
+  doc.fontSize(10).font("Helvetica").fillColor(COLORS.textLight)
+    .text(`Project: ${data.projectName || "\u2014"}`, { align: "center" });
+  doc.moveDown(1.5);
+
+  // Findings by discipline
+  const findings = data.findings || [];
+  if (findings.length > 0) {
+    doc.fontSize(FONTS.subheading.size).font(FONTS.subheading.font).fillColor(primaryColor(brand)).text("Review Findings");
+    doc.moveDown(0.3);
+    const findRows = findings.map(f => [
+      typeof f === "string" ? f : f.discipline || "",
+      typeof f === "string" ? "" : f.finding || f.description || "",
+      typeof f === "string" ? "" : f.severity || "\u2014",
+      typeof f === "string" ? "" : f.status || "Open",
+    ]);
+    renderSimpleTable(doc, { headers: ["Discipline", "Finding", "Severity", "Status"], rows: findRows }, brand);
+    doc.moveDown(0.5);
+  }
+
+  // Disciplines breakdown
+  const disciplines = data.disciplines || [];
+  if (disciplines.length > 0) {
+    for (const d of disciplines) {
+      doc.fontSize(FONTS.subheading.size).font(FONTS.subheading.font).fillColor(primaryColor(brand)).text(d.name || d.discipline || "Discipline");
+      doc.moveDown(0.3);
+      doc.fontSize(FONTS.body.size).font(FONTS.body.font).fillColor(COLORS.text);
+      if (d.summary) doc.text(d.summary, { lineGap: 3 });
+      if (d.items && Array.isArray(d.items)) {
+        d.items.forEach(item => doc.text(`  - ${typeof item === "string" ? item : item.description || ""}`));
+      }
+      doc.moveDown(0.5);
+    }
+  }
+
+  doc.moveDown(2);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("This review is for informational purposes. All engineering decisions require a licensed professional engineer.", { align: "center" });
+}
+
+function renderSpecialInspectionProgram(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+
+  doc.fontSize(16)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text("SPECIAL INSPECTION PROGRAM", { align: "center" });
+  doc.moveDown(0.3);
+
+  doc.fontSize(10).font("Helvetica").fillColor(COLORS.textLight)
+    .text(`Project: ${data.projectName || "\u2014"}`, { align: "center" });
+  doc.moveDown(1.5);
+
+  // Inspections table
+  const inspections = data.inspections || [];
+  if (inspections.length > 0) {
+    const inspRows = inspections.map(i => [
+      typeof i === "string" ? i : i.type || i.inspection || "",
+      typeof i === "string" ? "" : i.scope || "",
+      typeof i === "string" ? "" : i.frequency || "",
+      typeof i === "string" ? "" : i.responsibleParty || i.inspector || "",
+      typeof i === "string" ? "" : i.status || "Pending",
+    ]);
+    renderSimpleTable(doc, { headers: ["Inspection Type", "Scope", "Frequency", "Responsible", "Status"], rows: inspRows }, brand);
+  } else {
+    doc.fontSize(FONTS.body.size).font(FONTS.body.font).fillColor(COLORS.text)
+      .text("Special inspection program requirements to be determined based on structural and geotechnical reports.");
+  }
+
+  doc.moveDown(2);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("This program is for coordination purposes. Special inspections must be performed by qualified inspectors per IBC Chapter 17.", { align: "center" });
+}
+
+// ── W-007 Environmental & Cultural Review PDF renderers ──
+
+function renderEnvironmentalSummary(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+
+  doc.fontSize(16)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text("ENVIRONMENTAL RISK SUMMARY", { align: "center" });
+  doc.moveDown(0.3);
+
+  doc.fontSize(10).font("Helvetica").fillColor(COLORS.textLight)
+    .text(`Project: ${data.projectName || "\u2014"}`, { align: "center" });
+  doc.moveDown(1.5);
+
+  // RECs and CRECs
+  const recs = data.recs || [];
+  const crecs = data.crecs || [];
+  if (recs.length > 0 || crecs.length > 0) {
+    doc.fontSize(FONTS.subheading.size).font(FONTS.subheading.font).fillColor(primaryColor(brand)).text("Environmental Findings");
+    doc.moveDown(0.3);
+    const envRows = [];
+    recs.forEach(r => envRows.push([typeof r === "string" ? r : r.finding || "", "REC", typeof r === "string" ? "" : r.status || "Open"]));
+    crecs.forEach(c => envRows.push([typeof c === "string" ? c : c.finding || "", "CREC", typeof c === "string" ? "" : c.status || "Open"]));
+    renderSimpleTable(doc, { headers: ["Finding", "Type", "Status"], rows: envRows }, brand);
+    doc.moveDown(0.5);
+  }
+
+  // Remediation
+  if (data.remediation) {
+    doc.fontSize(FONTS.subheading.size).font(FONTS.subheading.font).fillColor(primaryColor(brand)).text("Remediation Status");
+    doc.moveDown(0.3);
+    doc.fontSize(FONTS.body.size).font(FONTS.body.font).fillColor(COLORS.text)
+      .text(typeof data.remediation === "string" ? data.remediation : JSON.stringify(data.remediation), { lineGap: 3 });
+    doc.moveDown(0.5);
+  }
+
+  doc.moveDown(2);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("This summary is for informational purposes. Environmental assessments must be performed by qualified environmental professionals.", { align: "center" });
+}
+
+function renderSection106Log(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+
+  doc.fontSize(16)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text("SECTION 106 CONSULTATION LOG", { align: "center" });
+  doc.moveDown(0.3);
+
+  doc.fontSize(10).font("Helvetica").fillColor(COLORS.textLight)
+    .text(`Project: ${data.projectName || "\u2014"}`, { align: "center" });
+  doc.moveDown(1.5);
+
+  // Consultations
+  const consultations = data.consultations || [];
+  if (consultations.length > 0) {
+    const conRows = consultations.map(c => [
+      typeof c === "string" ? c : c.party || c.agency || "",
+      typeof c === "string" ? "" : c.type || "",
+      typeof c === "string" ? "" : c.date || "",
+      typeof c === "string" ? "" : c.status || "Pending",
+      typeof c === "string" ? "" : c.notes || "",
+    ]);
+    renderSimpleTable(doc, { headers: ["Consulting Party", "Type", "Date", "Status", "Notes"], rows: conRows }, brand);
+  } else {
+    doc.fontSize(FONTS.body.size).font(FONTS.body.font).fillColor(COLORS.text)
+      .text("No Section 106 consultations recorded.");
+  }
+
+  doc.moveDown(2);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("This log is for tracking purposes. Section 106 compliance requires consultation with SHPO/THPO and tribal authorities.", { align: "center" });
+}
+
+// ── W-008 Energy & Sustainability PDF renderers ──
+
+function renderEnergyCompliance(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+
+  doc.fontSize(16)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text("ENERGY CODE COMPLIANCE", { align: "center" });
+  doc.moveDown(0.3);
+
+  doc.fontSize(10).font("Helvetica").fillColor(COLORS.textLight)
+    .text(`Project: ${data.projectName || "\u2014"} | Code: ${data.codeEdition || "\u2014"} | Pathway: ${data.pathway || "\u2014"}`, { align: "center" });
+  doc.moveDown(1.5);
+
+  // Compliance items
+  const items = data.items || [];
+  if (items.length > 0) {
+    const itemRows = items.map(i => [
+      typeof i === "string" ? i : i.section || i.category || "",
+      typeof i === "string" ? "" : i.requirement || "",
+      typeof i === "string" ? "" : i.proposed || i.value || "",
+      typeof i === "string" ? "" : i.status || "Pending",
+    ]);
+    renderSimpleTable(doc, { headers: ["Section", "Requirement", "Proposed", "Status"], rows: itemRows }, brand);
+  } else {
+    doc.fontSize(FONTS.body.size).font(FONTS.body.font).fillColor(COLORS.text)
+      .text("Energy code compliance items to be determined based on project design.");
+  }
+
+  doc.moveDown(2);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("This review is for coordination purposes. Energy code compliance requires verification by a qualified energy analyst.", { align: "center" });
+}
+
+function renderIncentiveSummary(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+
+  doc.fontSize(16)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text("ENERGY INCENTIVE SUMMARY", { align: "center" });
+  doc.moveDown(0.3);
+
+  doc.fontSize(10).font("Helvetica").fillColor(COLORS.textLight)
+    .text(`Project: ${data.projectName || "\u2014"}`, { align: "center" });
+  doc.moveDown(1.5);
+
+  // Incentives table
+  const incentives = data.incentives || [];
+  if (incentives.length > 0) {
+    const incRows = incentives.map(i => [
+      typeof i === "string" ? i : i.name || i.program || "",
+      typeof i === "string" ? "" : i.type || "",
+      typeof i === "string" ? "" : i.amount ? fmtCurrency(i.amount) : "\u2014",
+      typeof i === "string" ? "" : i.status || "Available",
+    ]);
+    renderSimpleTable(doc, { headers: ["Program", "Type", "Estimated Value", "Status"], rows: incRows }, brand);
+    doc.moveDown(0.5);
+  }
+
+  // Total savings
+  if (data.totalSavings) {
+    doc.fontSize(FONTS.body.size).font("Helvetica-Bold").fillColor(primaryColor(brand))
+      .text("Estimated Total Savings: " + fmtCurrency(data.totalSavings));
+  }
+
+  doc.moveDown(2);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("Incentive availability and amounts are subject to change. Consult program administrators for current terms.", { align: "center" });
+}
+
+// ── W-009 Accessibility & Fair Housing PDF renderers ──
+
+function renderAfhComplianceReview(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+
+  doc.fontSize(16)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text("ACCESSIBILITY COMPLIANCE REVIEW", { align: "center" });
+  doc.moveDown(0.3);
+
+  doc.fontSize(10).font("Helvetica").fillColor(COLORS.textLight)
+    .text(`Project: ${data.projectName || "\u2014"} | Units: ${data.unitCount || "\u2014"}`, { align: "center" });
+  doc.moveDown(1.5);
+
+  // Findings
+  const findings = data.findings || [];
+  if (findings.length > 0) {
+    const findRows = findings.map(f => [
+      typeof f === "string" ? f : f.standard || f.code || "",
+      typeof f === "string" ? "" : f.finding || f.description || "",
+      typeof f === "string" ? "" : f.severity || "\u2014",
+      typeof f === "string" ? "" : f.correction || f.remedy || "",
+      typeof f === "string" ? "" : f.status || "Open",
+    ]);
+    renderSimpleTable(doc, { headers: ["Standard", "Finding", "Severity", "Required Correction", "Status"], rows: findRows }, brand);
+  } else {
+    doc.fontSize(FONTS.body.size).font(FONTS.body.font).fillColor(COLORS.text)
+      .text("No accessibility findings recorded.");
+  }
+
+  doc.moveDown(2);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("This review is for informational purposes. Accessibility compliance requires verification by a qualified accessibility consultant.", { align: "center" });
+}
+
+// ── W-010 Government Relations PDF renderers ──
+
+function renderStakeholderMap(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+
+  doc.fontSize(16)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text("STAKEHOLDER MAP", { align: "center" });
+  doc.moveDown(0.3);
+
+  doc.fontSize(10).font("Helvetica").fillColor(COLORS.textLight)
+    .text(`Project: ${data.projectName || "\u2014"} | Jurisdiction: ${data.jurisdiction || "\u2014"}`, { align: "center" });
+  doc.moveDown(1.5);
+
+  // Stakeholders
+  const stakeholders = data.stakeholders || [];
+  if (stakeholders.length > 0) {
+    const sRows = stakeholders.map(s => [
+      typeof s === "string" ? s : s.name || "",
+      typeof s === "string" ? "" : s.role || s.title || "",
+      typeof s === "string" ? "" : s.organization || s.office || "",
+      typeof s === "string" ? "" : s.influence || "\u2014",
+      typeof s === "string" ? "" : s.position || "\u2014",
+    ]);
+    renderSimpleTable(doc, { headers: ["Name", "Role", "Organization", "Influence", "Position"], rows: sRows }, brand);
+  } else {
+    doc.fontSize(FONTS.body.size).font(FONTS.body.font).fillColor(COLORS.text)
+      .text("Stakeholder identification in progress.");
+  }
+
+  doc.moveDown(2);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("This stakeholder map is for strategic planning purposes. Contact information should be verified before outreach.", { align: "center" });
+}
+
+function renderCommunityOutreachPlan(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+
+  doc.fontSize(16)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text("COMMUNITY OUTREACH PLAN", { align: "center" });
+  doc.moveDown(0.3);
+
+  doc.fontSize(10).font("Helvetica").fillColor(COLORS.textLight)
+    .text(`Project: ${data.projectName || "\u2014"}`, { align: "center" });
+  doc.moveDown(1.5);
+
+  // Meetings
+  const meetings = data.meetings || [];
+  if (meetings.length > 0) {
+    doc.fontSize(FONTS.subheading.size).font(FONTS.subheading.font).fillColor(primaryColor(brand)).text("Planned Meetings");
+    doc.moveDown(0.3);
+    const mtgRows = meetings.map(m => [
+      typeof m === "string" ? m : m.name || m.type || "",
+      typeof m === "string" ? "" : m.date || "",
+      typeof m === "string" ? "" : m.venue || m.location || "",
+      typeof m === "string" ? "" : m.audience || "",
+      typeof m === "string" ? "" : m.status || "Planned",
+    ]);
+    renderSimpleTable(doc, { headers: ["Meeting", "Date", "Venue", "Audience", "Status"], rows: mtgRows }, brand);
+    doc.moveDown(0.5);
+  }
+
+  // Notifications
+  const notifications = data.notifications || [];
+  if (notifications.length > 0) {
+    doc.fontSize(FONTS.subheading.size).font(FONTS.subheading.font).fillColor(primaryColor(brand)).text("Notification Strategy");
+    doc.moveDown(0.3);
+    notifications.forEach(n => doc.fontSize(FONTS.body.size).font(FONTS.body.font).fillColor(COLORS.text).text(`  - ${typeof n === "string" ? n : n.method || n.description || ""}`));
+  }
+
+  doc.moveDown(2);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("This outreach plan is for coordination purposes. Notification requirements vary by jurisdiction.", { align: "center" });
+}
+
+function renderMeetingPreparation(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+
+  doc.fontSize(16)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text("PUBLIC MEETING PREPARATION", { align: "center" });
+  doc.moveDown(0.3);
+
+  doc.fontSize(10).font("Helvetica").fillColor(COLORS.textLight)
+    .text(`Project: ${data.projectName || "\u2014"} | Date: ${data.meetingDate || "\u2014"}`, { align: "center" });
+  doc.moveDown(1.5);
+
+  // Testimony
+  if (data.testimony) {
+    doc.fontSize(FONTS.subheading.size).font(FONTS.subheading.font).fillColor(primaryColor(brand)).text("Prepared Testimony");
+    doc.moveDown(0.3);
+    doc.fontSize(FONTS.body.size).font(FONTS.body.font).fillColor(COLORS.text)
+      .text(typeof data.testimony === "string" ? data.testimony : JSON.stringify(data.testimony), { lineGap: 3 });
+    doc.moveDown(0.5);
+  }
+
+  // Anticipated Questions
+  const questions = data.anticipatedQuestions || [];
+  if (questions.length > 0) {
+    doc.fontSize(FONTS.subheading.size).font(FONTS.subheading.font).fillColor(primaryColor(brand)).text("Anticipated Questions & Responses");
+    doc.moveDown(0.3);
+    const qaRows = questions.map(q => [
+      typeof q === "string" ? q : q.question || "",
+      typeof q === "string" ? "" : q.response || q.answer || "",
+    ]);
+    renderSimpleTable(doc, { headers: ["Question", "Prepared Response"], rows: qaRows }, brand);
+  }
+
+  doc.moveDown(2);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("This preparation is for strategic planning purposes. All public representations should be reviewed by counsel.", { align: "center" });
+}
+
+// ── W-011 Fire & Life Safety PDF renderers ──
+
+function renderFireCodeReview(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+
+  doc.fontSize(16)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text("FIRE CODE REVIEW", { align: "center" });
+  doc.moveDown(0.3);
+
+  doc.fontSize(10).font("Helvetica").fillColor(COLORS.textLight)
+    .text(`Project: ${data.projectName || "\u2014"} | Occupancy: ${data.occupancyType || "\u2014"}`, { align: "center" });
+  doc.moveDown(1.5);
+
+  // Findings
+  const findings = data.findings || [];
+  if (findings.length > 0) {
+    const findRows = findings.map(f => [
+      typeof f === "string" ? f : f.category || f.system || "",
+      typeof f === "string" ? "" : f.finding || f.description || "",
+      typeof f === "string" ? "" : f.codeRef || f.reference || "",
+      typeof f === "string" ? "" : f.severity || "\u2014",
+      typeof f === "string" ? "" : f.status || "Open",
+    ]);
+    renderSimpleTable(doc, { headers: ["System", "Finding", "Code Ref", "Severity", "Status"], rows: findRows }, brand);
+  } else {
+    doc.fontSize(FONTS.body.size).font(FONTS.body.font).fillColor(COLORS.text)
+      .text("No fire code review findings at this time.");
+  }
+
+  doc.moveDown(2);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("This review is for coordination purposes. Fire code compliance requires approval by the AHJ fire marshal.", { align: "center" });
+}
+
+function renderEgressAnalysis(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+
+  doc.fontSize(16)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text("EGRESS ANALYSIS", { align: "center" });
+  doc.moveDown(0.3);
+
+  doc.fontSize(10).font("Helvetica").fillColor(COLORS.textLight)
+    .text(`Project: ${data.projectName || "\u2014"}`, { align: "center" });
+  doc.moveDown(1.5);
+
+  // Occupant Load
+  if (data.occupantLoad != null) {
+    doc.fontSize(FONTS.subheading.size).font(FONTS.subheading.font).fillColor(primaryColor(brand)).text("Occupant Load");
+    doc.moveDown(0.3);
+    doc.fontSize(FONTS.body.size).font(FONTS.body.font).fillColor(COLORS.text).text(`Total Occupant Load: ${data.occupantLoad}`);
+    doc.moveDown(0.5);
+  }
+
+  // Floor data
+  const floors = data.floors || [];
+  if (floors.length > 0) {
+    doc.fontSize(FONTS.subheading.size).font(FONTS.subheading.font).fillColor(primaryColor(brand)).text("Egress by Floor");
+    doc.moveDown(0.3);
+    const floorRows = floors.map(f => [
+      typeof f === "string" ? f : f.floor || f.level || "",
+      typeof f === "string" ? "" : String(f.occupantLoad || ""),
+      typeof f === "string" ? "" : String(f.exitWidth || ""),
+      typeof f === "string" ? "" : String(f.travelDistance || ""),
+      typeof f === "string" ? "" : f.compliant ? "Yes" : "No",
+    ]);
+    renderSimpleTable(doc, { headers: ["Floor", "Occupant Load", "Exit Width (in)", "Travel Distance (ft)", "Compliant"], rows: floorRows }, brand);
+  }
+
+  doc.moveDown(2);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("This analysis is for design coordination. Egress compliance requires verification by a licensed fire protection engineer.", { align: "center" });
+}
+
+// ── W-020 Opportunity Zone PDF renderers ──
+
+function renderOzComplianceDashboard(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+
+  doc.fontSize(16)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text("OZ COMPLIANCE DASHBOARD", { align: "center" });
+  doc.moveDown(0.3);
+
+  if (data.fundName) {
+    doc.fontSize(FONTS.body.size).font(FONTS.body.font).fillColor(COLORS.textLight)
+      .text(data.fundName, { align: "center" });
+  }
+  doc.moveDown(1);
+
+  // Key metrics
+  const metricRows = [
+    data.assetTestPercent != null ? ["90% Asset Test", data.assetTestPercent + "%"] : null,
+    data.improvementProgress != null ? ["Substantial Improvement Progress", data.improvementProgress + "%"] : null,
+    data.investorCount != null ? ["Total Investors", String(data.investorCount)] : null,
+  ].filter(Boolean);
+  if (metricRows.length > 0) renderSimpleTable(doc, { headers: ["Metric", "Value"], rows: metricRows }, brand);
+  doc.moveDown(0.5);
+
+  // Compliance status
+  const assetPct = data.assetTestPercent || 0;
+  const statusColor = assetPct >= 90 ? "#16a34a" : assetPct >= 70 ? "#d97706" : "#dc2626";
+  doc.fontSize(FONTS.body.size).font("Helvetica-Bold").fillColor(statusColor)
+    .text(assetPct >= 90 ? "90% Asset Test: COMPLIANT" : "90% Asset Test: ATTENTION REQUIRED");
+
+  doc.moveDown(2);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("This dashboard is for monitoring purposes. Consult your QOF tax counsel for compliance determinations.", { align: "center" });
+}
+
+// ── W-030 Appraisal & Valuation Review PDF renderers ──
+
+function renderAppraisalReview(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+
+  doc.fontSize(16)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text("APPRAISAL REVIEW MEMO", { align: "center" });
+  doc.moveDown(0.3);
+
+  doc.fontSize(10).font("Helvetica").fillColor(COLORS.textLight)
+    .text(`Property: ${data.propertyName || "\u2014"}`, { align: "center" });
+  doc.moveDown(1.5);
+
+  // Summary
+  const summaryRows = [
+    data.appraiserName ? ["Appraiser", data.appraiserName] : null,
+    data.appraisedValue ? ["Appraised Value", fmtCurrency(data.appraisedValue)] : null,
+    data.internalValue ? ["Internal Value", fmtCurrency(data.internalValue)] : null,
+    data.appraisedValue && data.internalValue ? ["Variance", fmtCurrency(data.internalValue - data.appraisedValue)] : null,
+  ].filter(Boolean);
+  if (summaryRows.length > 0) renderSimpleTable(doc, { headers: ["Item", "Value"], rows: summaryRows }, brand);
+  doc.moveDown(0.5);
+
+  // Sections
+  const sections = data.sections || [];
+  for (const section of sections) {
+    doc.fontSize(FONTS.subheading.size).font(FONTS.subheading.font).fillColor(primaryColor(brand)).text(section.title || "Section");
+    doc.moveDown(0.3);
+    doc.fontSize(FONTS.body.size).font(FONTS.body.font).fillColor(COLORS.text);
+    if (section.content) doc.text(section.content, { lineGap: 3 });
+    doc.moveDown(0.5);
+  }
+
+  doc.moveDown(2);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("This review is for internal analysis only. It does not constitute an appraisal.", { align: "center" });
+}
+
+function renderRebuttalMemo(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+
+  doc.fontSize(16)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text("APPRAISAL REBUTTAL MEMO", { align: "center" });
+  doc.moveDown(0.3);
+
+  doc.fontSize(10).font("Helvetica").fillColor(COLORS.textLight)
+    .text(`Property: ${data.propertyName || "\u2014"}`, { align: "center" });
+  doc.moveDown(1.5);
+
+  // Value comparison
+  const valRows = [
+    data.appraisedValue ? ["Appraised Value", fmtCurrency(data.appraisedValue)] : null,
+    data.requestedValue ? ["Requested Value", fmtCurrency(data.requestedValue)] : null,
+  ].filter(Boolean);
+  if (valRows.length > 0) renderSimpleTable(doc, { headers: ["Item", "Amount"], rows: valRows }, brand);
+  doc.moveDown(0.5);
+
+  // Additional comps
+  const comps = data.additionalComps || [];
+  if (comps.length > 0) {
+    doc.fontSize(FONTS.subheading.size).font(FONTS.subheading.font).fillColor(primaryColor(brand)).text("Additional Comparables");
+    doc.moveDown(0.3);
+    const compRows = comps.map(c => [
+      typeof c === "string" ? c : c.address || c.name || "",
+      typeof c === "string" ? "" : c.salePrice ? fmtCurrency(c.salePrice) : "",
+      typeof c === "string" ? "" : c.pricePerUnit || c.pricePsf || "",
+      typeof c === "string" ? "" : c.saleDate || "",
+    ]);
+    renderSimpleTable(doc, { headers: ["Property", "Sale Price", "Price/Unit or PSF", "Sale Date"], rows: compRows }, brand);
+  }
+
+  doc.moveDown(2);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("This rebuttal is for lender submission. It does not constitute an appraisal.", { align: "center" });
+}
+
+// ── W-032 Tenant Screening PDF renderers ──
+
+function renderScreeningReport(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+
+  doc.fontSize(16)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text("TENANT SCREENING REPORT", { align: "center" });
+  doc.moveDown(0.5);
+
+  // Applicant info
+  const infoRows = [
+    data.applicantName ? ["Applicant", data.applicantName] : null,
+    data.unitNumber ? ["Unit", data.unitNumber] : null,
+    data.creditScore != null ? ["Credit Score", String(data.creditScore)] : null,
+    data.incomeRatio != null ? ["Income Ratio", data.incomeRatio + "x"] : null,
+    data.recommendation ? ["Recommendation", data.recommendation] : null,
+  ].filter(Boolean);
+  renderSimpleTable(doc, { headers: ["Item", "Detail"], rows: infoRows }, brand);
+
+  doc.moveDown(0.5);
+
+  // Sections
+  const sections = data.sections || [];
+  for (const section of sections) {
+    doc.fontSize(FONTS.subheading.size).font(FONTS.subheading.font).fillColor(primaryColor(brand)).text(section.title || "Section");
+    doc.moveDown(0.3);
+    doc.fontSize(FONTS.body.size).font(FONTS.body.font).fillColor(COLORS.text);
+    if (section.content) doc.text(section.content, { lineGap: 3 });
+    doc.moveDown(0.5);
+  }
+
+  doc.moveDown(2);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("This report is for internal use only. All screening must comply with FCRA and applicable fair housing laws.", { align: "center" });
+}
+
+function renderAdverseAction(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+
+  doc.fontSize(16)
+    .font("Helvetica-Bold")
+    .fillColor("#dc2626")
+    .text("ADVERSE ACTION NOTICE", { align: "center" });
+  doc.moveDown(0.5);
+
+  // Applicant
+  doc.fontSize(FONTS.body.size).font(FONTS.body.font).fillColor(COLORS.text);
+  doc.text(`To: ${data.applicantName || "\u2014"}`);
+  doc.text(`Date: ${data.date || new Date().toLocaleDateString()}`);
+  doc.moveDown(1);
+
+  doc.text("Your application has been denied based on the following reason(s):", { lineGap: 3 });
+  doc.moveDown(0.5);
+
+  // Reasons
+  const reasons = data.reasons || [];
+  if (reasons.length > 0) {
+    reasons.forEach(r => doc.text(`  - ${typeof r === "string" ? r : r.reason || ""}`, { lineGap: 3 }));
+    doc.moveDown(0.5);
+  }
+
+  // CRA Information
+  doc.fontSize(FONTS.subheading.size).font(FONTS.subheading.font).fillColor(primaryColor(brand)).text("Consumer Reporting Agency");
+  doc.moveDown(0.3);
+  doc.fontSize(FONTS.body.size).font(FONTS.body.font).fillColor(COLORS.text);
+  if (data.craName) doc.text(data.craName);
+  if (data.craAddress) doc.text(data.craAddress);
+  if (data.craPhone) doc.text(data.craPhone);
+  doc.moveDown(0.5);
+
+  // Dispute rights
+  doc.fontSize(FONTS.subheading.size).font(FONTS.subheading.font).fillColor(primaryColor(brand)).text("Your Rights");
+  doc.moveDown(0.3);
+  doc.fontSize(FONTS.body.size).font(FONTS.body.font).fillColor(COLORS.text)
+    .text("Under the Fair Credit Reporting Act, you have the right to obtain a free copy of your consumer report from the above agency within 60 days and to dispute the accuracy or completeness of any information in your report.", { lineGap: 3 });
+
+  doc.moveDown(2);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("This notice is provided pursuant to the Fair Credit Reporting Act (15 U.S.C. 1681). Consult legal counsel for compliance.", { align: "center" });
+}
+
+function renderCriteriaSummary(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+
+  doc.fontSize(16)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text("SCREENING CRITERIA SUMMARY", { align: "center" });
+  doc.moveDown(0.3);
+
+  if (data.propertyName) {
+    doc.fontSize(FONTS.body.size).font(FONTS.body.font).fillColor(COLORS.textLight)
+      .text(data.propertyName, { align: "center" });
+  }
+  doc.moveDown(1);
+
+  // Criteria
+  const criteria = data.criteria || [];
+  if (criteria.length > 0) {
+    const critRows = criteria.map(c => [
+      typeof c === "string" ? c : c.category || "",
+      typeof c === "string" ? "" : c.requirement || c.standard || "",
+    ]);
+    renderSimpleTable(doc, { headers: ["Category", "Standard"], rows: critRows }, brand);
+  } else {
+    doc.fontSize(FONTS.body.size).font(FONTS.body.font).fillColor(COLORS.text)
+      .text("Screening criteria to be published.");
+  }
+
+  doc.moveDown(2);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("Screening criteria must comply with all applicable fair housing laws and regulations.", { align: "center" });
+}
+
+// ── W-034 Revenue & Rent Roll PDF renderers ──
+
+function renderLossToLease(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+
+  doc.fontSize(16)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text("LOSS TO LEASE ANALYSIS", { align: "center" });
+  doc.moveDown(0.3);
+
+  doc.fontSize(10).font("Helvetica").fillColor(COLORS.textLight)
+    .text(`Property: ${data.propertyName || "\u2014"}`, { align: "center" });
+  doc.moveDown(1.5);
+
+  // Summary
+  if (data.lossToLeasePercent != null) {
+    doc.fontSize(FONTS.body.size).font("Helvetica-Bold").fillColor(primaryColor(brand))
+      .text(`Overall Loss to Lease: ${data.lossToLeasePercent}%`);
+    doc.moveDown(0.5);
+  }
+
+  // By unit type
+  const unitTypes = data.unitTypes || [];
+  if (unitTypes.length > 0) {
+    doc.fontSize(FONTS.subheading.size).font(FONTS.subheading.font).fillColor(primaryColor(brand)).text("By Unit Type");
+    doc.moveDown(0.3);
+    const typeRows = unitTypes.map(u => [
+      typeof u === "string" ? u : u.type || u.name || "",
+      typeof u === "string" ? "" : u.marketRent ? fmtCurrency(u.marketRent) : "\u2014",
+      typeof u === "string" ? "" : u.avgInPlace ? fmtCurrency(u.avgInPlace) : "\u2014",
+      typeof u === "string" ? "" : u.lossPercent != null ? u.lossPercent + "%" : "\u2014",
+      typeof u === "string" ? "" : String(u.units || ""),
+    ]);
+    renderSimpleTable(doc, { headers: ["Unit Type", "Market Rent", "Avg In-Place", "Loss %", "Units"], rows: typeRows }, brand);
+  }
+
+  doc.moveDown(2);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("This analysis is for revenue management purposes. Market rents are estimates and should be verified.", { align: "center" });
+}
+
+// ── W-035 Maintenance & Work Order PDF renderers ──
+
+function renderWorkOrder(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+
+  doc.fontSize(16)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text("WORK ORDER", { align: "center" });
+  doc.moveDown(0.5);
+
+  // Work order details
+  const woRows = [
+    data.unitNumber ? ["Unit", data.unitNumber] : null,
+    data.tenantName ? ["Tenant", data.tenantName] : null,
+    data.priority ? ["Priority", data.priority] : null,
+    data.vendor ? ["Vendor", data.vendor] : null,
+    data.cost ? ["Cost", fmtCurrency(data.cost)] : null,
+    data.status ? ["Status", data.status] : null,
+  ].filter(Boolean);
+  renderSimpleTable(doc, { headers: ["Field", "Detail"], rows: woRows }, brand);
+  doc.moveDown(0.5);
+
+  // Description
+  if (data.description) {
+    doc.fontSize(FONTS.subheading.size).font(FONTS.subheading.font).fillColor(primaryColor(brand)).text("Description");
+    doc.moveDown(0.3);
+    doc.fontSize(FONTS.body.size).font(FONTS.body.font).fillColor(COLORS.text)
+      .text(data.description, { lineGap: 3 });
+  }
+
+  doc.moveDown(2);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("This work order is for property maintenance tracking.", { align: "center" });
+}
+
+function renderMaintenanceReport(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+
+  doc.fontSize(16)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text("MONTHLY MAINTENANCE REPORT", { align: "center" });
+  doc.moveDown(0.3);
+
+  doc.fontSize(10).font("Helvetica").fillColor(COLORS.textLight)
+    .text(`Property: ${data.propertyName || "\u2014"} | Period: ${data.period || "\u2014"}`, { align: "center" });
+  doc.moveDown(1.5);
+
+  // Summary metrics
+  const metricRows = [
+    data.totalOrders != null ? ["Total Work Orders", String(data.totalOrders)] : null,
+    data.avgResponseTime ? ["Avg Response Time", data.avgResponseTime] : null,
+    data.totalCost != null ? ["Total Cost", fmtCurrency(data.totalCost)] : null,
+    data.pmCompliance != null ? ["PM Compliance", data.pmCompliance + "%"] : null,
+  ].filter(Boolean);
+  if (metricRows.length > 0) renderSimpleTable(doc, { headers: ["Metric", "Value"], rows: metricRows }, brand);
+
+  doc.moveDown(2);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("This report is for property management purposes.", { align: "center" });
+}
+
+// ── W-036 Utility Management PDF renderers ──
+
+function renderUtilityReport(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+
+  doc.fontSize(16)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text("UTILITY REPORT", { align: "center" });
+  doc.moveDown(0.3);
+
+  doc.fontSize(10).font("Helvetica").fillColor(COLORS.textLight)
+    .text(`Property: ${data.propertyName || "\u2014"} | Period: ${data.period || "\u2014"}`, { align: "center" });
+  doc.moveDown(1.5);
+
+  // Utilities table
+  const utilities = data.utilities || [];
+  if (utilities.length > 0) {
+    const utilRows = utilities.map(u => [
+      typeof u === "string" ? u : u.type || u.name || "",
+      typeof u === "string" ? "" : u.consumption || "",
+      typeof u === "string" ? "" : u.cost ? fmtCurrency(u.cost) : "",
+      typeof u === "string" ? "" : u.variance || "\u2014",
+    ]);
+    renderSimpleTable(doc, { headers: ["Utility", "Consumption", "Cost", "Variance"], rows: utilRows }, brand);
+    doc.moveDown(0.5);
+  }
+
+  // Total
+  if (data.totalCost) {
+    doc.fontSize(FONTS.body.size).font("Helvetica-Bold").fillColor(primaryColor(brand))
+      .text("Total Utility Cost: " + fmtCurrency(data.totalCost));
+  }
+
+  doc.moveDown(2);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("This report is for utility management and cost tracking purposes.", { align: "center" });
+}
+
+function renderBenchmarkingReport(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+
+  doc.fontSize(16)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text("ENERGY BENCHMARKING REPORT", { align: "center" });
+  doc.moveDown(0.3);
+
+  doc.fontSize(10).font("Helvetica").fillColor(COLORS.textLight)
+    .text(`Property: ${data.propertyName || "\u2014"}`, { align: "center" });
+  doc.moveDown(1.5);
+
+  // Key metrics
+  const metricRows = [
+    data.energyStarScore != null ? ["ENERGY STAR Score", String(data.energyStarScore)] : null,
+    data.eui != null ? ["EUI (kBtu/sf/yr)", String(data.eui)] : null,
+  ].filter(Boolean);
+  if (metricRows.length > 0) renderSimpleTable(doc, { headers: ["Metric", "Value"], rows: metricRows }, brand);
+  doc.moveDown(0.5);
+
+  // Recommendations
+  const recs = data.recommendations || [];
+  if (recs.length > 0) {
+    doc.fontSize(FONTS.subheading.size).font(FONTS.subheading.font).fillColor(primaryColor(brand)).text("Recommendations");
+    doc.moveDown(0.3);
+    recs.forEach(r => doc.fontSize(FONTS.body.size).font(FONTS.body.font).fillColor(COLORS.text).text(`  - ${typeof r === "string" ? r : r.recommendation || r.description || ""}`));
+  }
+
+  doc.moveDown(2);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("This benchmarking report is for energy management purposes. ENERGY STAR scores are based on Portfolio Manager data.", { align: "center" });
+}
+
+// ── W-037 HOA & Association PDF renderers ──
+
+function renderBoardPackage(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+
+  doc.fontSize(16)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text("BOARD MEETING PACKAGE", { align: "center" });
+  doc.moveDown(0.3);
+
+  doc.fontSize(10).font("Helvetica").fillColor(COLORS.textLight)
+    .text(`Association: ${data.associationName || "\u2014"} | Meeting Date: ${data.meetingDate || "\u2014"}`, { align: "center" });
+  doc.moveDown(1.5);
+
+  // Financials
+  if (data.financials) {
+    doc.fontSize(FONTS.subheading.size).font(FONTS.subheading.font).fillColor(primaryColor(brand)).text("Financial Summary");
+    doc.moveDown(0.3);
+    if (typeof data.financials === "string") {
+      doc.fontSize(FONTS.body.size).font(FONTS.body.font).fillColor(COLORS.text).text(data.financials, { lineGap: 3 });
+    } else {
+      const finRows = Object.entries(data.financials).map(([k, v]) => [k, typeof v === "number" ? fmtCurrency(v) : String(v)]);
+      renderSimpleTable(doc, { headers: ["Item", "Amount"], rows: finRows }, brand);
+    }
+    doc.moveDown(0.5);
+  }
+
+  // Action items
+  const actionItems = data.actionItems || [];
+  if (actionItems.length > 0) {
+    doc.fontSize(FONTS.subheading.size).font(FONTS.subheading.font).fillColor(primaryColor(brand)).text("Action Items");
+    doc.moveDown(0.3);
+    actionItems.forEach(a => doc.fontSize(FONTS.body.size).font(FONTS.body.font).fillColor(COLORS.text).text(`  - ${typeof a === "string" ? a : a.item || a.description || ""}`));
+  }
+
+  doc.moveDown(2);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("This board package is prepared for meeting purposes. Official minutes should be recorded separately.", { align: "center" });
+}
+
+function renderReserveAnalysis(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+
+  doc.fontSize(16)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text("RESERVE ANALYSIS SUMMARY", { align: "center" });
+  doc.moveDown(0.3);
+
+  doc.fontSize(10).font("Helvetica").fillColor(COLORS.textLight)
+    .text(`Association: ${data.associationName || "\u2014"}`, { align: "center" });
+  doc.moveDown(1.5);
+
+  // Funded status
+  if (data.fundedPercent != null) {
+    const statusColor = data.fundedPercent >= 70 ? "#16a34a" : data.fundedPercent >= 40 ? "#d97706" : "#dc2626";
+    doc.fontSize(FONTS.body.size).font("Helvetica-Bold").fillColor(statusColor)
+      .text(`Funded Status: ${data.fundedPercent}%`);
+    doc.moveDown(0.5);
+  }
+
+  // Components
+  const components = data.components || [];
+  if (components.length > 0) {
+    doc.fontSize(FONTS.subheading.size).font(FONTS.subheading.font).fillColor(primaryColor(brand)).text("Reserve Components");
+    doc.moveDown(0.3);
+    const compRows = components.map(c => [
+      typeof c === "string" ? c : c.component || c.name || "",
+      typeof c === "string" ? "" : c.usefulLife ? c.usefulLife + " yrs" : "",
+      typeof c === "string" ? "" : c.remainingLife ? c.remainingLife + " yrs" : "",
+      typeof c === "string" ? "" : c.replacementCost ? fmtCurrency(c.replacementCost) : "",
+    ]);
+    renderSimpleTable(doc, { headers: ["Component", "Useful Life", "Remaining Life", "Replacement Cost"], rows: compRows }, brand);
+  }
+
+  doc.moveDown(2);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("This summary is for planning purposes. A full reserve study should be performed by a qualified reserve analyst.", { align: "center" });
+}
+
+function renderTransitionChecklist(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+
+  doc.fontSize(16)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text("DECLARANT TRANSITION CHECKLIST", { align: "center" });
+  doc.moveDown(0.3);
+
+  doc.fontSize(10).font("Helvetica").fillColor(COLORS.textLight)
+    .text(`Association: ${data.associationName || "\u2014"} | Transition Date: ${data.transitionDate || "\u2014"}`, { align: "center" });
+  doc.moveDown(1.5);
+
+  // Completion progress
+  if (data.completionPercent != null) {
+    doc.fontSize(FONTS.body.size).font("Helvetica-Bold").fillColor(primaryColor(brand))
+      .text(`Transition Progress: ${data.completionPercent}%`);
+    doc.moveDown(0.5);
+  }
+
+  // Checklist sections
+  const sections = data.sections || [];
+  for (const section of sections) {
+    doc.fontSize(FONTS.subheading.size).font(FONTS.subheading.font).fillColor(primaryColor(brand)).text(section.title || "Section");
+    doc.moveDown(0.3);
+    const items = section.items || [];
+    if (items.length > 0) {
+      const itemRows = items.map(i => [
+        typeof i === "string" ? i : i.item || i.description || "",
+        typeof i === "string" ? "Pending" : i.status || "Pending",
+      ]);
+      renderSimpleTable(doc, { headers: ["Requirement", "Status"], rows: itemRows }, brand);
+    }
+    doc.moveDown(0.5);
+  }
+
+  doc.moveDown(2);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("This checklist is for transition coordination. Consult association counsel for legal requirements.", { align: "center" });
+}
+
+// ── W-038 Warranty & Defect PDF renderers ──
+
+function renderWarrantyClaim(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+
+  doc.fontSize(16)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text("WARRANTY CLAIM", { align: "center" });
+  doc.moveDown(0.3);
+
+  doc.fontSize(10).font("Helvetica").fillColor(COLORS.textLight)
+    .text(`Project: ${data.projectName || "\u2014"} | Warrantor: ${data.warrantor || "\u2014"}`, { align: "center" });
+  doc.moveDown(1.5);
+
+  // Claim details
+  const claimRows = [
+    data.discoveryDate ? ["Discovery Date", data.discoveryDate] : null,
+    data.defectDescription ? ["Defect Description", data.defectDescription] : null,
+    data.location ? ["Location", data.location] : null,
+  ].filter(Boolean);
+  if (claimRows.length > 0) renderSimpleTable(doc, { headers: ["Item", "Detail"], rows: claimRows }, brand);
+  doc.moveDown(0.5);
+
+  // Requested remedy
+  if (data.requestedRemedy) {
+    doc.fontSize(FONTS.subheading.size).font(FONTS.subheading.font).fillColor(primaryColor(brand)).text("Requested Remedy");
+    doc.moveDown(0.3);
+    doc.fontSize(FONTS.body.size).font(FONTS.body.font).fillColor(COLORS.text)
+      .text(data.requestedRemedy, { lineGap: 3 });
+  }
+
+  doc.moveDown(2);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("This warranty claim is for formal submission to the warrantor. Retain copies for your records.", { align: "center" });
+}
+
+function renderWalkthroughReport(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+
+  doc.fontSize(16)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text("WARRANTY WALKTHROUGH REPORT", { align: "center" });
+  doc.moveDown(0.3);
+
+  doc.fontSize(10).font("Helvetica").fillColor(COLORS.textLight)
+    .text(`Project: ${data.projectName || "\u2014"} | Date: ${data.walkthroughDate || "\u2014"}`, { align: "center" });
+  doc.moveDown(1.5);
+
+  // Findings
+  const findings = data.findings || [];
+  if (findings.length > 0) {
+    const findRows = findings.map((f, idx) => [
+      String(idx + 1),
+      typeof f === "string" ? f : f.location || "",
+      typeof f === "string" ? "" : f.description || "",
+      typeof f === "string" ? "" : f.severity || "\u2014",
+      typeof f === "string" ? "" : f.status || "Open",
+    ]);
+    renderSimpleTable(doc, { headers: ["#", "Location", "Finding", "Severity", "Status"], rows: findRows }, brand);
+  } else {
+    doc.fontSize(FONTS.body.size).font(FONTS.body.font).fillColor(COLORS.text)
+      .text("No findings recorded during walkthrough.");
+  }
+
+  doc.moveDown(2);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("This walkthrough report is for warranty tracking. All defects should be formally submitted as warranty claims.", { align: "center" });
+}
+
+// ── W-040 Tax & Assessment PDF renderers ──
+
+function renderAssessmentSummary(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+
+  doc.fontSize(16)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text("PROPERTY TAX ASSESSMENT ANALYSIS", { align: "center" });
+  doc.moveDown(0.3);
+
+  doc.fontSize(10).font("Helvetica").fillColor(COLORS.textLight)
+    .text(`Property: ${data.propertyName || "\u2014"}`, { align: "center" });
+  doc.moveDown(1.5);
+
+  // Assessment vs market
+  const valRows = [
+    data.assessedValue ? ["Assessed Value", fmtCurrency(data.assessedValue)] : null,
+    data.marketValue ? ["Market Value", fmtCurrency(data.marketValue)] : null,
+    data.assessedValue && data.marketValue ? ["Variance", fmtCurrency(data.assessedValue - data.marketValue)] : null,
+    data.appealRecommendation ? ["Appeal Recommendation", data.appealRecommendation] : null,
+  ].filter(Boolean);
+  if (valRows.length > 0) renderSimpleTable(doc, { headers: ["Item", "Value"], rows: valRows }, brand);
+
+  doc.moveDown(2);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("This analysis is for informational purposes. Consult a property tax consultant for appeal strategy.", { align: "center" });
+}
+
+function renderAppealEvidence(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+
+  doc.fontSize(16)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text("TAX APPEAL EVIDENCE PACKAGE", { align: "center" });
+  doc.moveDown(0.3);
+
+  doc.fontSize(10).font("Helvetica").fillColor(COLORS.textLight)
+    .text(`Property: ${data.propertyName || "\u2014"}`, { align: "center" });
+  doc.moveDown(1.5);
+
+  // Comparable assessments
+  const comps = data.comparableAssessments || [];
+  if (comps.length > 0) {
+    doc.fontSize(FONTS.subheading.size).font(FONTS.subheading.font).fillColor(primaryColor(brand)).text("Comparable Assessments");
+    doc.moveDown(0.3);
+    const compRows = comps.map(c => [
+      typeof c === "string" ? c : c.address || c.name || "",
+      typeof c === "string" ? "" : c.assessedValue ? fmtCurrency(c.assessedValue) : "",
+      typeof c === "string" ? "" : c.perUnit || c.perSf || "",
+    ]);
+    renderSimpleTable(doc, { headers: ["Property", "Assessed Value", "Per Unit/SF"], rows: compRows }, brand);
+    doc.moveDown(0.5);
+  }
+
+  // Income approach
+  if (data.noi || data.capRate) {
+    doc.fontSize(FONTS.subheading.size).font(FONTS.subheading.font).fillColor(primaryColor(brand)).text("Income Approach");
+    doc.moveDown(0.3);
+    const incRows = [
+      data.noi ? ["NOI", fmtCurrency(data.noi)] : null,
+      data.capRate ? ["Cap Rate", (data.capRate * 100).toFixed(2) + "%"] : null,
+      data.noi && data.capRate ? ["Indicated Value", fmtCurrency(data.noi / data.capRate)] : null,
+    ].filter(Boolean);
+    renderSimpleTable(doc, { headers: ["Item", "Value"], rows: incRows }, brand);
+  }
+
+  doc.moveDown(2);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("This evidence package is for property tax appeal proceedings. Consult a tax consultant for filing requirements.", { align: "center" });
+}
+
+// ── W-041 Vendor & Contract PDF renderers ──
+
+function renderSpendReport(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+
+  doc.fontSize(16)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text("VENDOR SPEND REPORT", { align: "center" });
+  doc.moveDown(0.3);
+
+  doc.fontSize(10).font("Helvetica").fillColor(COLORS.textLight)
+    .text(`Property: ${data.propertyName || "\u2014"} | Period: ${data.period || "\u2014"}`, { align: "center" });
+  doc.moveDown(1.5);
+
+  // Total spend
+  if (data.totalSpend) {
+    doc.fontSize(FONTS.body.size).font("Helvetica-Bold").fillColor(primaryColor(brand))
+      .text("Total Spend: " + fmtCurrency(data.totalSpend));
+    doc.moveDown(0.5);
+  }
+
+  // By category
+  const categories = data.categories || [];
+  if (categories.length > 0) {
+    doc.fontSize(FONTS.subheading.size).font(FONTS.subheading.font).fillColor(primaryColor(brand)).text("Spend by Category");
+    doc.moveDown(0.3);
+    const catRows = categories.map(c => [
+      typeof c === "string" ? c : c.name || c.category || "",
+      typeof c === "string" ? "" : c.amount ? fmtCurrency(c.amount) : "",
+      typeof c === "string" ? "" : c.vendors ? String(c.vendors) : "",
+    ]);
+    renderSimpleTable(doc, { headers: ["Category", "Spend", "Vendors"], rows: catRows }, brand);
+  }
+
+  doc.moveDown(2);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("This report is for vendor management and cost analysis purposes.", { align: "center" });
+}
+
+// ── W-042 Disposition Preparation PDF renderers ──
+
+function renderDispositionAnalysis(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+
+  doc.fontSize(16)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text("DISPOSITION ANALYSIS", { align: "center" });
+  doc.moveDown(0.3);
+
+  doc.fontSize(10).font("Helvetica").fillColor(COLORS.textLight)
+    .text(`Property: ${data.propertyName || "\u2014"}`, { align: "center" });
+  doc.moveDown(1.5);
+
+  // Hold vs Sell
+  const compRows = [
+    data.holdIrr != null ? ["Hold IRR", data.holdIrr + "%"] : null,
+    data.salePrice ? ["Estimated Sale Price", fmtCurrency(data.salePrice)] : null,
+    data.sellIrr != null ? ["Sell IRR", data.sellIrr + "%"] : null,
+    data.taxImpact ? ["Tax Impact", typeof data.taxImpact === "number" ? fmtCurrency(data.taxImpact) : data.taxImpact] : null,
+  ].filter(Boolean);
+  if (compRows.length > 0) {
+    doc.fontSize(FONTS.subheading.size).font(FONTS.subheading.font).fillColor(primaryColor(brand)).text("Hold vs Sell Comparison");
+    doc.moveDown(0.3);
+    renderSimpleTable(doc, { headers: ["Metric", "Value"], rows: compRows }, brand);
+    doc.moveDown(0.5);
+  }
+
+  // Recommendation
+  if (data.recommendation) {
+    doc.fontSize(FONTS.subheading.size).font(FONTS.subheading.font).fillColor(primaryColor(brand)).text("Recommendation");
+    doc.moveDown(0.3);
+    doc.fontSize(FONTS.body.size).font(FONTS.body.font).fillColor(COLORS.text).text(data.recommendation, { lineGap: 3 });
+  }
+
+  doc.moveDown(2);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("This analysis is for informational purposes. Consult your tax and legal advisors before making disposition decisions.", { align: "center" });
+}
+
+// ── W-043 1031 Exchange PDF renderers ──
+
+function renderExchangeAnalysis(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+
+  doc.fontSize(16)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text("1031 EXCHANGE ANALYSIS", { align: "center" });
+  doc.moveDown(0.5);
+
+  // Relinquished property
+  const infoRows = [
+    data.relinquishedProperty ? ["Relinquished Property", data.relinquishedProperty] : null,
+    data.estimatedValue ? ["Estimated Value", fmtCurrency(data.estimatedValue)] : null,
+    data.taxDeferral ? ["Estimated Tax Deferral", fmtCurrency(data.taxDeferral)] : null,
+    data.structureType ? ["Exchange Structure", data.structureType] : null,
+  ].filter(Boolean);
+  if (infoRows.length > 0) renderSimpleTable(doc, { headers: ["Item", "Detail"], rows: infoRows }, brand);
+  doc.moveDown(0.5);
+
+  // Sections
+  const sections = data.sections || [];
+  for (const section of sections) {
+    doc.fontSize(FONTS.subheading.size).font(FONTS.subheading.font).fillColor(primaryColor(brand)).text(section.title || "Section");
+    doc.moveDown(0.3);
+    doc.fontSize(FONTS.body.size).font(FONTS.body.font).fillColor(COLORS.text);
+    if (section.content) doc.text(section.content, { lineGap: 3 });
+    doc.moveDown(0.5);
+  }
+
+  doc.moveDown(2);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("This analysis is for informational purposes. 1031 exchanges require a qualified intermediary and tax counsel.", { align: "center" });
+}
+
+function renderTimelineTracker(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+
+  doc.fontSize(16)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text("1031 EXCHANGE TIMELINE", { align: "center" });
+  doc.moveDown(0.5);
+
+  // Key dates
+  const dateRows = [
+    data.closingDate ? ["Relinquished Property Closing", data.closingDate] : null,
+    data.identificationDeadline ? ["45-Day Identification Deadline", data.identificationDeadline] : null,
+    data.exchangeDeadline ? ["180-Day Exchange Deadline", data.exchangeDeadline] : null,
+  ].filter(Boolean);
+  if (dateRows.length > 0) renderSimpleTable(doc, { headers: ["Milestone", "Date"], rows: dateRows }, brand);
+  doc.moveDown(0.5);
+
+  // Milestones
+  const milestones = data.milestones || [];
+  if (milestones.length > 0) {
+    doc.fontSize(FONTS.subheading.size).font(FONTS.subheading.font).fillColor(primaryColor(brand)).text("Milestones");
+    doc.moveDown(0.3);
+    const msRows = milestones.map(m => [
+      typeof m === "string" ? m : m.milestone || m.name || "",
+      typeof m === "string" ? "" : m.date || "",
+      typeof m === "string" ? "" : m.status || "Pending",
+    ]);
+    renderSimpleTable(doc, { headers: ["Milestone", "Date", "Status"], rows: msRows }, brand);
+  }
+
+  doc.moveDown(2);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("This timeline is for tracking purposes. Exchange deadlines are strict and cannot be extended. Consult your QI.", { align: "center" });
+}
+
+function renderIdentificationNotice(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+
+  doc.fontSize(16)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text("REPLACEMENT PROPERTY IDENTIFICATION NOTICE", { align: "center" });
+  doc.moveDown(0.5);
+
+  // Notice header
+  doc.fontSize(FONTS.body.size).font(FONTS.body.font).fillColor(COLORS.text);
+  doc.text(`To: ${data.qiName || "\u2014"} (Qualified Intermediary)`);
+  doc.text(`Date: ${data.date || new Date().toLocaleDateString()}`);
+  if (data.ruleApplied) doc.text(`Rule Applied: ${data.ruleApplied}`);
+  doc.moveDown(1);
+
+  // Properties
+  const properties = data.properties || [];
+  if (properties.length > 0) {
+    doc.fontSize(FONTS.subheading.size).font(FONTS.subheading.font).fillColor(primaryColor(brand)).text("Identified Replacement Properties");
+    doc.moveDown(0.3);
+    const propRows = properties.map((p, idx) => [
+      String(idx + 1),
+      typeof p === "string" ? p : p.address || p.name || "",
+      typeof p === "string" ? "" : p.estimatedValue ? fmtCurrency(p.estimatedValue) : "",
+    ]);
+    renderSimpleTable(doc, { headers: ["#", "Property", "Estimated Value"], rows: propRows }, brand);
+  }
+
+  doc.moveDown(2);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("This identification notice must be delivered to the QI within 45 days of the relinquished property closing. This is a legal document.", { align: "center" });
+}
+
+// ── W-050 Disposition Marketing & Data Room PDF renderers ──
+
+function renderOmTemplate(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+  doc.moveDown(3);
+
+  doc.fontSize(26)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text(data.title || "Offering Memorandum", { align: "center" });
+
+  if (data.propertyName) {
+    doc.moveDown(0.5);
+    doc.fontSize(FONTS.subheading.size).font("Helvetica").fillColor(secondaryColor(brand))
+      .text(data.propertyName, { align: "center" });
+  }
+  doc.moveDown(2);
+
+  // Key metrics
+  const omRows = [
+    data.askingPrice ? ["Asking Price", fmtCurrency(data.askingPrice)] : null,
+    data.noi ? ["NOI", fmtCurrency(data.noi)] : null,
+    data.capRate ? ["Cap Rate", (typeof data.capRate === "number" && data.capRate < 1 ? (data.capRate * 100).toFixed(2) : data.capRate) + "%"] : null,
+    data.pricePerUnit ? ["Price Per Unit", fmtCurrency(data.pricePerUnit)] : null,
+    data.occupancy ? ["Occupancy", data.occupancy + "%"] : null,
+    data.yearBuilt ? ["Year Built", String(data.yearBuilt)] : null,
+    data.units ? ["Units", String(data.units)] : null,
+  ].filter(Boolean);
+  if (omRows.length > 0) renderSimpleTable(doc, { headers: ["Metric", "Value"], rows: omRows }, brand);
+
+  // Sections
+  const sections = data.sections || [];
+  for (const section of sections) {
+    doc.addPage();
+    addHeader(doc, brand, logoBuffer);
+    doc.fontSize(FONTS.heading.size).font(FONTS.heading.font).fillColor(primaryColor(brand)).text(section.title || "Section");
+    doc.moveDown(0.5);
+    doc.fontSize(FONTS.body.size).font(FONTS.body.font).fillColor(COLORS.text);
+    if (section.content) doc.text(section.content, { lineGap: 4 });
+    if (section.table && Array.isArray(section.table.rows)) {
+      doc.moveDown(0.5);
+      renderSimpleTable(doc, section.table, brand);
+    }
+  }
+
+  doc.moveDown(2);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("This offering memorandum is for informational purposes only and does not constitute an offer to sell. All information should be independently verified.", { align: "center" });
+}
+
+// ── W-051 Investor Reporting & Distributions PDF renderers ──
+
+function renderDistributionNotice(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+
+  doc.fontSize(16)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text("DISTRIBUTION NOTICE", { align: "center" });
+  doc.moveDown(0.5);
+
+  // Notice details
+  const noticeRows = [
+    data.investorName ? ["Investor", data.investorName] : null,
+    data.fundName ? ["Fund / Deal", data.fundName] : null,
+    data.grossAmount ? ["Gross Distribution", fmtCurrency(data.grossAmount)] : null,
+    data.withholding ? ["Withholding", fmtCurrency(data.withholding)] : null,
+    data.netAmount ? ["Net Distribution", fmtCurrency(data.netAmount)] : null,
+    data.paymentMethod ? ["Payment Method", data.paymentMethod] : null,
+    data.paymentDate ? ["Payment Date", data.paymentDate] : null,
+  ].filter(Boolean);
+  renderSimpleTable(doc, { headers: ["Item", "Detail"], rows: noticeRows }, brand);
+
+  doc.moveDown(2);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("This distribution notice is provided pursuant to the governing documents. Tax reporting will follow on applicable Schedule K-1.", { align: "center" });
+}
+
+function renderInvestorPackage(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+  doc.moveDown(3);
+
+  doc.fontSize(26)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text(data.title || "Quarterly Investor Package", { align: "center" });
+
+  if (data.fundName) {
+    doc.moveDown(0.5);
+    doc.fontSize(FONTS.subheading.size).font("Helvetica").fillColor(secondaryColor(brand))
+      .text(data.fundName, { align: "center" });
+  }
+  if (data.period) {
+    doc.moveDown(0.3);
+    doc.fontSize(FONTS.body.size).font(FONTS.body.font).fillColor(COLORS.textLight)
+      .text(`Period: ${data.period}`, { align: "center" });
+  }
+  doc.moveDown(2);
+
+  // Performance summary
+  const perfRows = [
+    data.nav ? ["NAV", fmtCurrency(data.nav)] : null,
+    data.irr ? ["IRR", data.irr + "%"] : null,
+    data.equity_multiple ? ["Equity Multiple", data.equity_multiple + "x"] : null,
+  ].filter(Boolean);
+  if (perfRows.length > 0) {
+    doc.fontSize(FONTS.subheading.size).font(FONTS.subheading.font).fillColor(primaryColor(brand)).text("Performance Summary");
+    doc.moveDown(0.3);
+    renderSimpleTable(doc, { headers: ["Metric", "Value"], rows: perfRows }, brand);
+    doc.moveDown(0.5);
+  }
+
+  // Sections
+  const sections = data.sections || [];
+  for (const section of sections) {
+    doc.addPage();
+    addHeader(doc, brand, logoBuffer);
+    doc.fontSize(FONTS.heading.size).font(FONTS.heading.font).fillColor(primaryColor(brand)).text(section.title || "Section");
+    doc.moveDown(0.5);
+    doc.fontSize(FONTS.body.size).font(FONTS.body.font).fillColor(COLORS.text);
+    if (section.content) doc.text(section.content, { lineGap: 4 });
+    if (section.table && Array.isArray(section.table.rows)) {
+      doc.moveDown(0.5);
+      renderSimpleTable(doc, section.table, brand);
+    }
+  }
+
+  doc.moveDown(2);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("This investor package contains forward-looking statements. Actual results may differ. Not an offer to sell securities.", { align: "center" });
+}
+
+// ── W-052 Debt Service & Loan Compliance PDF renderers ──
+
+function renderCovenantDashboard(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+
+  doc.fontSize(16)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text("COVENANT COMPLIANCE DASHBOARD", { align: "center" });
+  doc.moveDown(0.3);
+
+  doc.fontSize(10).font("Helvetica").fillColor(COLORS.textLight)
+    .text(`Lender: ${data.lenderName || "\u2014"} | Loan: ${data.loanAmount ? fmtCurrency(data.loanAmount) : "\u2014"}`, { align: "center" });
+  doc.moveDown(1.5);
+
+  // Covenant table
+  const covenantRows = [
+    data.dscr != null ? ["DSCR", String(data.dscr), data.dscrThreshold ? String(data.dscrThreshold) : "1.25x", data.dscr >= (data.dscrThreshold || 1.25) ? "Compliant" : "Non-Compliant"] : null,
+    data.ltv != null ? ["LTV", data.ltv + "%", data.ltvThreshold ? data.ltvThreshold + "%" : "75%", data.ltv <= (data.ltvThreshold || 75) ? "Compliant" : "Non-Compliant"] : null,
+    data.occupancy != null ? ["Occupancy", data.occupancy + "%", data.occupancyThreshold ? data.occupancyThreshold + "%" : "90%", data.occupancy >= (data.occupancyThreshold || 90) ? "Compliant" : "Non-Compliant"] : null,
+  ].filter(Boolean);
+
+  // Additional covenants
+  const covenants = data.covenants || [];
+  covenants.forEach(c => {
+    covenantRows.push([
+      typeof c === "string" ? c : c.name || "",
+      typeof c === "string" ? "" : String(c.current || ""),
+      typeof c === "string" ? "" : String(c.threshold || ""),
+      typeof c === "string" ? "" : c.status || "Pending",
+    ]);
+  });
+
+  if (covenantRows.length > 0) renderSimpleTable(doc, { headers: ["Covenant", "Current", "Threshold", "Status"], rows: covenantRows }, brand);
+
+  // Overall status
+  const allCompliant = covenantRows.every(r => r[3] === "Compliant");
+  doc.moveDown(0.5);
+  doc.fontSize(FONTS.body.size).font("Helvetica-Bold").fillColor(allCompliant ? "#16a34a" : "#dc2626")
+    .text(allCompliant ? "All covenants COMPLIANT" : "ATTENTION: One or more covenants require review");
+
+  doc.moveDown(2);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("This dashboard is for monitoring purposes. Consult your lender and legal counsel for covenant compliance requirements.", { align: "center" });
+}
+
+function renderLenderComplianceCert(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+
+  doc.fontSize(16)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text("LENDER COMPLIANCE CERTIFICATE", { align: "center" });
+  doc.moveDown(0.3);
+
+  doc.fontSize(10).font("Helvetica").fillColor(COLORS.textLight)
+    .text(`Lender: ${data.lenderName || "\u2014"} | Certification Date: ${data.certificationDate || "\u2014"}`, { align: "center" });
+  doc.moveDown(1.5);
+
+  // Certification statement
+  doc.fontSize(FONTS.body.size).font(FONTS.body.font).fillColor(COLORS.text)
+    .text(`The undersigned officer of the Borrower hereby certifies to ${data.lenderName || "the Lender"} that, as of the date set forth above:`, { lineGap: 3 });
+  doc.moveDown(0.5);
+
+  // Covenants
+  const covenants = data.covenants || [];
+  if (covenants.length > 0) {
+    doc.fontSize(FONTS.subheading.size).font(FONTS.subheading.font).fillColor(primaryColor(brand)).text("Covenant Calculations");
+    doc.moveDown(0.3);
+    const covRows = covenants.map(c => [
+      typeof c === "string" ? c : c.name || "",
+      typeof c === "string" ? "" : String(c.required || ""),
+      typeof c === "string" ? "" : String(c.actual || ""),
+      typeof c === "string" ? "" : c.status || "Compliant",
+    ]);
+    renderSimpleTable(doc, { headers: ["Covenant", "Required", "Actual", "Status"], rows: covRows }, brand);
+    doc.moveDown(0.5);
+  }
+
+  // Signature block
+  doc.moveDown(1.5);
+  const sigW = contentWidth() / 2 - 20;
+  const sigY = doc.y;
+
+  doc.moveTo(MARGINS.standard.left, sigY).lineTo(MARGINS.standard.left + sigW, sigY).strokeColor(COLORS.border).lineWidth(0.5).stroke();
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text(`${data.officerName || "Officer Name"} / Date`, MARGINS.standard.left, sigY + 4, { width: sigW });
+
+  doc.moveDown(3);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("This certificate is for lender compliance purposes. Officer signature required for formal submission.", { align: "center" });
+}
+
+// ── W-046 Entity & Formation PDF renderers ──
+
+function renderEntityAnalysis(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+
+  doc.fontSize(16)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text("ENTITY STRUCTURE ANALYSIS", { align: "center" });
+  doc.moveDown(0.5);
+
+  // Purpose
+  if (data.entityPurpose) {
+    doc.fontSize(FONTS.body.size).font(FONTS.body.font).fillColor(COLORS.text)
+      .text(`Purpose: ${data.entityPurpose}`);
+    doc.moveDown(0.5);
+  }
+
+  // Options comparison
+  const options = data.options || [];
+  if (options.length > 0) {
+    doc.fontSize(FONTS.subheading.size).font(FONTS.subheading.font).fillColor(primaryColor(brand)).text("Entity Options");
+    doc.moveDown(0.3);
+    const optRows = options.map(o => [
+      typeof o === "string" ? o : o.type || o.name || "",
+      typeof o === "string" ? "" : o.liability || "",
+      typeof o === "string" ? "" : o.taxTreatment || "",
+      typeof o === "string" ? "" : o.recommended ? "Recommended" : "",
+    ]);
+    renderSimpleTable(doc, { headers: ["Entity Type", "Liability", "Tax Treatment", "Note"], rows: optRows }, brand);
+    doc.moveDown(0.5);
+  }
+
+  // Sections
+  const sections = data.sections || [];
+  for (const section of sections) {
+    doc.fontSize(FONTS.subheading.size).font(FONTS.subheading.font).fillColor(primaryColor(brand)).text(section.title || "Section");
+    doc.moveDown(0.3);
+    doc.fontSize(FONTS.body.size).font(FONTS.body.font).fillColor(COLORS.text);
+    if (section.content) doc.text(section.content, { lineGap: 3 });
+    doc.moveDown(0.5);
+  }
+
+  doc.moveDown(2);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("This analysis is for informational purposes. Entity formation requires legal counsel.", { align: "center" });
+}
+
+// ── W-049 Property Insurance & Risk PDF renderers ──
+
+function renderPolicySummary(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+
+  doc.fontSize(16)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text("INSURANCE POLICY SUMMARY", { align: "center" });
+  doc.moveDown(0.3);
+
+  doc.fontSize(10).font("Helvetica").fillColor(COLORS.textLight)
+    .text(`Property: ${data.propertyName || "\u2014"}`, { align: "center" });
+  doc.moveDown(1.5);
+
+  // Policies
+  const policies = data.policies || [];
+  if (policies.length > 0) {
+    const polRows = policies.map(p => [
+      typeof p === "string" ? p : p.type || p.name || "",
+      typeof p === "string" ? "" : p.carrier || "",
+      typeof p === "string" ? "" : p.limit || p.coverage || "",
+      typeof p === "string" ? "" : p.deductible || "",
+      typeof p === "string" ? "" : p.premium ? fmtCurrency(p.premium) : "",
+      typeof p === "string" ? "" : p.expiration || "",
+    ]);
+    renderSimpleTable(doc, { headers: ["Policy", "Carrier", "Limit", "Deductible", "Premium", "Expiration"], rows: polRows }, brand);
+    doc.moveDown(0.5);
+  }
+
+  // Total premium
+  if (data.totalPremium) {
+    doc.fontSize(FONTS.body.size).font("Helvetica-Bold").fillColor(primaryColor(brand))
+      .text("Total Annual Premium: " + fmtCurrency(data.totalPremium));
+  }
+
+  doc.moveDown(2);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("This summary is for portfolio management purposes. Consult your insurance broker for coverage details.", { align: "center" });
+}
+
+function renderCoverageReview(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+
+  doc.fontSize(16)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text("COVERAGE ADEQUACY REVIEW", { align: "center" });
+  doc.moveDown(0.3);
+
+  doc.fontSize(10).font("Helvetica").fillColor(COLORS.textLight)
+    .text(`Property: ${data.propertyName || "\u2014"}`, { align: "center" });
+  doc.moveDown(1.5);
+
+  // Replacement cost vs insured
+  const valRows = [
+    data.replacementCost ? ["Replacement Cost", fmtCurrency(data.replacementCost)] : null,
+    data.insuredValue ? ["Insured Value", fmtCurrency(data.insuredValue)] : null,
+    data.replacementCost && data.insuredValue ? ["Coverage Ratio", ((data.insuredValue / data.replacementCost) * 100).toFixed(1) + "%"] : null,
+  ].filter(Boolean);
+  if (valRows.length > 0) renderSimpleTable(doc, { headers: ["Item", "Value"], rows: valRows }, brand);
+  doc.moveDown(0.5);
+
+  // Gaps
+  const gaps = data.gaps || [];
+  if (gaps.length > 0) {
+    doc.fontSize(FONTS.subheading.size).font(FONTS.subheading.font).fillColor("#dc2626").text("Coverage Gaps");
+    doc.moveDown(0.3);
+    gaps.forEach(g => doc.fontSize(FONTS.body.size).font(FONTS.body.font).fillColor(COLORS.text).text(`  - ${typeof g === "string" ? g : g.gap || g.description || ""}`));
+    doc.moveDown(0.5);
+  }
+
+  // Recommendations
+  const recs = data.recommendations || [];
+  if (recs.length > 0) {
+    doc.fontSize(FONTS.subheading.size).font(FONTS.subheading.font).fillColor(primaryColor(brand)).text("Recommendations");
+    doc.moveDown(0.3);
+    recs.forEach(r => doc.fontSize(FONTS.body.size).font(FONTS.body.font).fillColor(COLORS.text).text(`  - ${typeof r === "string" ? r : r.recommendation || r.description || ""}`));
+  }
+
+  doc.moveDown(2);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("This coverage review is for risk management purposes. Consult your insurance broker for binding coverage decisions.", { align: "center" });
 }
 
 module.exports = { generatePdf };

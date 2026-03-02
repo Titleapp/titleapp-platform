@@ -85,6 +85,161 @@ async function generateXlsx({ template, data, brand }) {
     case "mep-clash-log":
       buildClashLog(workbook, data, brand);
       break;
+    // W-001 Market Research
+    case "mr-comp-analysis":
+      buildCompAnalysis(workbook, data, brand);
+      break;
+    case "mr-submarket-ranking":
+      buildSubmarketRanking(workbook, data, brand);
+      break;
+    // W-005 ADA Compliance
+    case "adr-code-compliance":
+      buildCodeCompliance(workbook, data, brand);
+      break;
+    case "adr-ve-log":
+      buildVeLog(workbook, data, brand);
+      break;
+    // W-006 Engineering Review
+    case "er-design-change-log":
+      buildDesignChangeLog(workbook, data, brand);
+      break;
+    // W-007 Environmental Compliance
+    case "ecr-remediation-tracker":
+      buildRemediationTracker(workbook, data, brand);
+      break;
+    case "ecr-permit-tracker":
+      buildPermitTracker(workbook, data, brand);
+      break;
+    // W-008 Energy & Sustainability
+    case "es-certification-tracker":
+      buildCertificationTracker(workbook, data, brand);
+      break;
+    // W-009 Affordable Housing
+    case "afh-accommodation-tracker":
+      buildAccommodationTracker(workbook, data, brand);
+      break;
+    case "afh-unit-classification":
+      buildUnitClassification(workbook, data, brand);
+      break;
+    // W-011 Fire & Life Safety
+    case "fls-fire-system-tracker":
+      buildFireSystemTracker(workbook, data, brand);
+      break;
+    // W-020 Opportunity Zone
+    case "oz-asset-test":
+      buildOzAssetTest(workbook, data, brand);
+      break;
+    case "oz-substantial-improvement":
+      buildOzSubstantialImprovement(workbook, data, brand);
+      break;
+    case "oz-investor-180-day":
+      buildOzInvestor180Day(workbook, data, brand);
+      break;
+    // W-030 Automated Valuation
+    case "avr-comp-analysis":
+      buildAvrCompAnalysis(workbook, data, brand);
+      break;
+    // W-034 Rent Roll & Revenue
+    case "rr-rent-roll":
+      buildRentRoll(workbook, data, brand);
+      break;
+    case "rr-revenue-forecast":
+      buildRevenueForecast(workbook, data, brand);
+      break;
+    case "rr-lease-expiration-matrix":
+      buildLeaseExpirationMatrix(workbook, data, brand);
+      break;
+    // W-035 Maintenance & Work Orders
+    case "mwo-pm-schedule":
+      buildPmSchedule(workbook, data, brand);
+      break;
+    // W-036 Utility Management
+    case "um-rubs-calculation":
+      buildRubsCalculation(workbook, data, brand);
+      break;
+    // W-037 HOA & Association
+    case "hoa-assessment-tracker":
+      buildHoaAssessmentTracker(workbook, data, brand);
+      break;
+    // W-038 Warranty & Defect
+    case "wd-warranty-register":
+      buildWarrantyRegister(workbook, data, brand);
+      break;
+    case "wd-defect-log":
+      buildWdDefectLog(workbook, data, brand);
+      break;
+    // W-040 Tax Appeal
+    case "ta-payment-tracker":
+      buildTaPaymentTracker(workbook, data, brand);
+      break;
+    case "ta-projection":
+      buildTaProjection(workbook, data, brand);
+      break;
+    // W-041 Vendor Compliance
+    case "vc-vendor-registry":
+      buildVendorRegistry(workbook, data, brand);
+      break;
+    case "vc-contract-tracker":
+      buildContractTracker(workbook, data, brand);
+      break;
+    case "vc-bid-comparison":
+      buildVcBidComparison(workbook, data, brand);
+      break;
+    // W-051 Investor Reporting & Distributions
+    case "ird-distribution-schedule":
+      buildDistributionSchedule(workbook, data, brand);
+      break;
+    case "ird-capital-account":
+      buildCapitalAccount(workbook, data, brand);
+      break;
+    // W-052 Debt Service & Loan Compliance
+    case "dslc-payment-schedule":
+      buildPaymentSchedule(workbook, data, brand);
+      break;
+    case "dslc-reserve-tracker":
+      buildReserveTracker(workbook, data, brand);
+      break;
+    // W-042 Disposition Planning
+    case "dp-broker-comparison":
+      buildBrokerComparison(workbook, data, brand);
+      break;
+    case "dp-offer-comparison":
+      buildOfferComparison(workbook, data, brand);
+      break;
+    case "dp-closing-checklist":
+      buildClosingChecklist(workbook, data, brand);
+      break;
+    // W-043 Exchange (1031)
+    case "ex-basis-calculation":
+      buildBasisCalculation(workbook, data, brand);
+      break;
+    // W-050 Deal Management & Data Room
+    case "dmdr-data-room-index":
+      buildDataRoomIndex(workbook, data, brand);
+      break;
+    case "dmdr-buyer-tracker":
+      buildBuyerTracker(workbook, data, brand);
+      break;
+    case "dmdr-dd-checklist":
+      buildDdChecklist(workbook, data, brand);
+      break;
+    // W-046 Entity Formation
+    case "ef-formation-checklist":
+      buildFormationChecklist(workbook, data, brand);
+      break;
+    case "ef-entity-registry":
+      buildEntityRegistry(workbook, data, brand);
+      break;
+    case "ef-annual-compliance":
+      buildAnnualCompliance(workbook, data, brand);
+      break;
+    // W-049 Property Insurance Review
+    case "pir-claims-log":
+      buildClaimsLog(workbook, data, brand);
+      break;
+    case "pir-renewal-comparison":
+      buildRenewalComparison(workbook, data, brand);
+      break;
     case "model-cashflow":
     default:
       buildCashflow(workbook, data, brand);
@@ -2900,6 +3055,1446 @@ function buildClashLog(workbook, data, brand) {
   sheet.addRow(["Minor", minorCount]);
 
   addDisclosureRow(sheet, brand, colCount);
+}
+
+// ── W-001 Market Research XLSX builders ──
+
+function buildCompAnalysis(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("Comp Analysis");
+  sheet.columns = [
+    { width: 30 }, { width: 18 }, { width: 14 }, { width: 14 },
+    { width: 14 }, { width: 14 }, { width: 14 }, { width: 18 },
+  ];
+  const headerRow = sheet.addRow(["Property", "Address", "Sale Price", "Price/SF", "Cap Rate", "Year Built", "SF", "Sale Date"]);
+  styleHeaderRow(headerRow, brand);
+  sheet.getColumn(3).numFmt = currencyFormat();
+  sheet.getColumn(4).numFmt = currencyFormat();
+  sheet.getColumn(5).numFmt = percentFormat();
+
+  const comps = data.comps || data.comparables || [];
+  for (const c of comps) {
+    sheet.addRow([
+      c.property || c.name || "",
+      c.address || "",
+      c.salePrice || c.price || 0,
+      c.priceSf || c.pricePerSf || 0,
+      c.capRate || 0,
+      c.yearBuilt || "",
+      c.sf || c.squareFeet || 0,
+      c.saleDate || "",
+    ]);
+  }
+
+  // Summary tab
+  const sumSheet = workbook.addWorksheet("Summary Statistics");
+  sumSheet.columns = [{ width: 25 }, { width: 18 }];
+  const sumHeader = sumSheet.addRow(["Metric", "Value"]);
+  styleHeaderRow(sumHeader, brand);
+  const prices = comps.map(c => c.salePrice || c.price || 0).filter(v => v > 0);
+  const caps = comps.map(c => c.capRate || 0).filter(v => v > 0);
+  sumSheet.addRow(["Total Comps", comps.length]);
+  sumSheet.addRow(["Avg Sale Price", prices.length ? prices.reduce((a, b) => a + b, 0) / prices.length : 0]);
+  sumSheet.addRow(["Median Sale Price", prices.length ? [...prices].sort((a, b) => a - b)[Math.floor(prices.length / 2)] : 0]);
+  sumSheet.addRow(["Avg Cap Rate", caps.length ? caps.reduce((a, b) => a + b, 0) / caps.length : 0]);
+  addDisclosureRow(sumSheet, brand, 2);
+  addDisclosureRow(sheet, brand, 8);
+}
+
+function buildSubmarketRanking(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("Submarket Ranking");
+  sheet.columns = [
+    { width: 8 }, { width: 28 }, { width: 14 }, { width: 14 },
+    { width: 14 }, { width: 14 }, { width: 14 }, { width: 16 },
+  ];
+  const headerRow = sheet.addRow(["Rank", "Submarket", "Vacancy (%)", "Avg Rent/SF", "Absorption", "New Supply", "Population Growth", "Overall Score"]);
+  styleHeaderRow(headerRow, brand);
+  sheet.getColumn(3).numFmt = percentFormat();
+  sheet.getColumn(4).numFmt = currencyFormat();
+
+  const submarkets = data.submarkets || [];
+  submarkets.forEach((s, i) => {
+    sheet.addRow([
+      s.rank || i + 1,
+      s.name || s.submarket || "",
+      s.vacancy || 0,
+      s.avgRent || s.rentPerSf || 0,
+      s.absorption || 0,
+      s.newSupply || 0,
+      s.populationGrowth || "",
+      s.score || s.overallScore || 0,
+    ]);
+  });
+  addDisclosureRow(sheet, brand, 8);
+}
+
+// ── W-005 ADA Compliance XLSX builders ──
+
+function buildCodeCompliance(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("Code Compliance");
+  sheet.columns = [
+    { width: 8 }, { width: 18 }, { width: 35 }, { width: 14 },
+    { width: 14 }, { width: 22 }, { width: 14 },
+  ];
+  const headerRow = sheet.addRow(["ID", "Code Section", "Requirement", "Status", "Priority", "Responsible Party", "Due Date"]);
+  styleHeaderRow(headerRow, brand);
+
+  const items = data.items || data.requirements || [];
+  items.forEach((item, i) => {
+    const row = sheet.addRow([
+      item.id || i + 1,
+      item.codeSection || item.section || "",
+      item.requirement || item.description || "",
+      item.status || "Open",
+      item.priority || "Medium",
+      item.responsibleParty || item.assignee || "",
+      item.dueDate || "",
+    ]);
+    if ((item.status || "").toLowerCase() === "non-compliant") {
+      row.getCell(4).font = { bold: true, color: { argb: "FFDC2626" }, name: "Arial" };
+    }
+  });
+  addDisclosureRow(sheet, brand, 7);
+}
+
+function buildVeLog(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("Value Engineering Log");
+  sheet.columns = [
+    { width: 8 }, { width: 30 }, { width: 14 }, { width: 18 },
+    { width: 18 }, { width: 14 }, { width: 25 },
+  ];
+  const headerRow = sheet.addRow(["ID", "Description", "Category", "Cost Savings", "Impact", "Status", "Notes"]);
+  styleHeaderRow(headerRow, brand);
+  sheet.getColumn(4).numFmt = currencyFormat();
+
+  const items = data.items || data.veItems || [];
+  items.forEach((item, i) => {
+    sheet.addRow([
+      item.id || i + 1,
+      item.description || "",
+      item.category || "",
+      item.costSavings || item.savings || 0,
+      item.impact || "Low",
+      item.status || "Proposed",
+      item.notes || "",
+    ]);
+  });
+  addDisclosureRow(sheet, brand, 7);
+}
+
+// ── W-006 Engineering Review XLSX builder ──
+
+function buildDesignChangeLog(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("Design Change Log");
+  sheet.columns = [
+    { width: 8 }, { width: 14 }, { width: 30 }, { width: 16 },
+    { width: 18 }, { width: 14 }, { width: 14 }, { width: 25 },
+  ];
+  const headerRow = sheet.addRow(["ID", "Date", "Description", "Discipline", "Cost Impact", "Schedule Impact", "Status", "Approved By"]);
+  styleHeaderRow(headerRow, brand);
+  sheet.getColumn(5).numFmt = currencyFormat();
+
+  const changes = data.changes || data.items || [];
+  changes.forEach((c, i) => {
+    sheet.addRow([
+      c.id || i + 1,
+      c.date || "",
+      c.description || "",
+      c.discipline || "",
+      c.costImpact || 0,
+      c.scheduleImpact || "",
+      c.status || "Pending",
+      c.approvedBy || "",
+    ]);
+  });
+  addDisclosureRow(sheet, brand, 8);
+}
+
+// ── W-007 Environmental Compliance XLSX builders ──
+
+function buildRemediationTracker(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("Remediation Tracker");
+  sheet.columns = [
+    { width: 8 }, { width: 28 }, { width: 18 }, { width: 16 },
+    { width: 14 }, { width: 18 }, { width: 14 }, { width: 14 },
+  ];
+  const headerRow = sheet.addRow(["ID", "Contaminant", "Location", "Method", "Start Date", "Est. Completion", "Cost", "Status"]);
+  styleHeaderRow(headerRow, brand);
+  sheet.getColumn(7).numFmt = currencyFormat();
+
+  const items = data.items || data.remediations || [];
+  items.forEach((item, i) => {
+    const row = sheet.addRow([
+      item.id || i + 1,
+      item.contaminant || "",
+      item.location || "",
+      item.method || "",
+      item.startDate || "",
+      item.estCompletion || item.targetDate || "",
+      item.cost || 0,
+      item.status || "In Progress",
+    ]);
+    if ((item.status || "").toLowerCase() === "overdue") {
+      row.getCell(8).font = { bold: true, color: { argb: "FFDC2626" }, name: "Arial" };
+    }
+  });
+  addDisclosureRow(sheet, brand, 8);
+}
+
+function buildPermitTracker(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("Permit Tracker");
+  sheet.columns = [
+    { width: 8 }, { width: 25 }, { width: 18 }, { width: 16 },
+    { width: 14 }, { width: 14 }, { width: 14 }, { width: 25 },
+  ];
+  const headerRow = sheet.addRow(["ID", "Permit Type", "Issuing Agency", "Application Date", "Expiration", "Status", "Fee", "Notes"]);
+  styleHeaderRow(headerRow, brand);
+  sheet.getColumn(7).numFmt = currencyFormat();
+
+  const permits = data.permits || data.items || [];
+  permits.forEach((p, i) => {
+    const row = sheet.addRow([
+      p.id || i + 1,
+      p.permitType || p.type || "",
+      p.agency || p.issuingAgency || "",
+      p.applicationDate || p.appDate || "",
+      p.expiration || p.expirationDate || "",
+      p.status || "Pending",
+      p.fee || 0,
+      p.notes || "",
+    ]);
+    if ((p.status || "").toLowerCase() === "expired") {
+      row.getCell(6).font = { bold: true, color: { argb: "FFDC2626" }, name: "Arial" };
+    }
+  });
+  addDisclosureRow(sheet, brand, 8);
+}
+
+// ── W-008 Energy & Sustainability XLSX builder ──
+
+function buildCertificationTracker(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("Certification Tracker");
+  sheet.columns = [
+    { width: 8 }, { width: 25 }, { width: 18 }, { width: 16 },
+    { width: 14 }, { width: 14 }, { width: 14 }, { width: 25 },
+  ];
+  const headerRow = sheet.addRow(["ID", "Certification", "Standard", "Target Level", "Current Score", "Required Score", "Status", "Notes"]);
+  styleHeaderRow(headerRow, brand);
+
+  const certs = data.certifications || data.items || [];
+  certs.forEach((c, i) => {
+    sheet.addRow([
+      c.id || i + 1,
+      c.certification || c.name || "",
+      c.standard || "",
+      c.targetLevel || "",
+      c.currentScore || 0,
+      c.requiredScore || 0,
+      c.status || "In Progress",
+      c.notes || "",
+    ]);
+  });
+
+  // Credits tab
+  const credSheet = workbook.addWorksheet("Credits");
+  credSheet.columns = [{ width: 25 }, { width: 14 }, { width: 14 }, { width: 14 }];
+  const credHeader = credSheet.addRow(["Credit Category", "Points Available", "Points Targeted", "Points Achieved"]);
+  styleHeaderRow(credHeader, brand);
+  const credits = data.credits || [];
+  for (const cr of credits) {
+    credSheet.addRow([cr.category || "", cr.available || 0, cr.targeted || 0, cr.achieved || 0]);
+  }
+  addDisclosureRow(credSheet, brand, 4);
+  addDisclosureRow(sheet, brand, 8);
+}
+
+// ── W-009 Affordable Housing XLSX builders ──
+
+function buildAccommodationTracker(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("Accommodation Tracker");
+  sheet.columns = [
+    { width: 8 }, { width: 25 }, { width: 18 }, { width: 14 },
+    { width: 14 }, { width: 14 }, { width: 18 }, { width: 25 },
+  ];
+  const headerRow = sheet.addRow(["ID", "Tenant/Unit", "Request Type", "Date Requested", "Date Completed", "Cost", "Status", "Notes"]);
+  styleHeaderRow(headerRow, brand);
+  sheet.getColumn(6).numFmt = currencyFormat();
+
+  const items = data.accommodations || data.items || [];
+  items.forEach((item, i) => {
+    sheet.addRow([
+      item.id || i + 1,
+      item.tenant || item.unit || "",
+      item.requestType || item.type || "",
+      item.dateRequested || "",
+      item.dateCompleted || "",
+      item.cost || 0,
+      item.status || "Pending",
+      item.notes || "",
+    ]);
+  });
+  addDisclosureRow(sheet, brand, 8);
+}
+
+function buildUnitClassification(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("Unit Classification");
+  sheet.columns = [
+    { width: 12 }, { width: 14 }, { width: 14 }, { width: 18 },
+    { width: 18 }, { width: 18 }, { width: 14 }, { width: 18 },
+  ];
+  const headerRow = sheet.addRow(["Unit #", "Bedrooms", "Sq Ft", "AMI Level (%)", "Max Rent", "Current Rent", "Status", "Program"]);
+  styleHeaderRow(headerRow, brand);
+  sheet.getColumn(5).numFmt = currencyFormat();
+  sheet.getColumn(6).numFmt = currencyFormat();
+
+  const units = data.units || data.items || [];
+  for (const u of units) {
+    sheet.addRow([
+      u.unit || u.unitNumber || "",
+      u.bedrooms || u.beds || 0,
+      u.sqFt || u.squareFeet || 0,
+      u.amiLevel || u.ami || "",
+      u.maxRent || 0,
+      u.currentRent || 0,
+      u.status || "Compliant",
+      u.program || "",
+    ]);
+  }
+
+  // Summary tab
+  const sumSheet = workbook.addWorksheet("AMI Summary");
+  sumSheet.columns = [{ width: 20 }, { width: 14 }, { width: 14 }];
+  const sumHeader = sumSheet.addRow(["AMI Level", "Unit Count", "Avg Rent"]);
+  styleHeaderRow(sumHeader, brand);
+  const amiGroups = {};
+  for (const u of units) {
+    const ami = u.amiLevel || u.ami || "Unknown";
+    if (!amiGroups[ami]) amiGroups[ami] = { count: 0, totalRent: 0 };
+    amiGroups[ami].count++;
+    amiGroups[ami].totalRent += u.currentRent || 0;
+  }
+  for (const [ami, g] of Object.entries(amiGroups)) {
+    sumSheet.addRow([ami, g.count, g.count ? g.totalRent / g.count : 0]);
+  }
+  addDisclosureRow(sumSheet, brand, 3);
+  addDisclosureRow(sheet, brand, 8);
+}
+
+// ── W-011 Fire & Life Safety XLSX builder ──
+
+function buildFireSystemTracker(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("Fire System Tracker");
+  sheet.columns = [
+    { width: 8 }, { width: 25 }, { width: 18 }, { width: 16 },
+    { width: 16 }, { width: 14 }, { width: 14 }, { width: 25 },
+  ];
+  const headerRow = sheet.addRow(["ID", "System", "Location", "Last Inspection", "Next Due", "Vendor", "Status", "Notes"]);
+  styleHeaderRow(headerRow, brand);
+
+  const systems = data.systems || data.items || [];
+  systems.forEach((s, i) => {
+    const row = sheet.addRow([
+      s.id || i + 1,
+      s.system || s.name || "",
+      s.location || "",
+      s.lastInspection || "",
+      s.nextDue || s.nextInspection || "",
+      s.vendor || "",
+      s.status || "Current",
+      s.notes || "",
+    ]);
+    if ((s.status || "").toLowerCase() === "overdue" || (s.status || "").toLowerCase() === "expired") {
+      row.getCell(7).font = { bold: true, color: { argb: "FFDC2626" }, name: "Arial" };
+    }
+  });
+  addDisclosureRow(sheet, brand, 8);
+}
+
+// ── W-020 Opportunity Zone XLSX builders ──
+
+function buildOzAssetTest(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("90% Asset Test");
+  sheet.columns = [
+    { width: 30 }, { width: 18 }, { width: 18 }, { width: 14 },
+    { width: 14 }, { width: 14 },
+  ];
+  const headerRow = sheet.addRow(["Asset Description", "Total Value", "OZ Qualified Value", "OZ %", "Test Date", "Pass/Fail"]);
+  styleHeaderRow(headerRow, brand);
+  sheet.getColumn(2).numFmt = currencyFormat();
+  sheet.getColumn(3).numFmt = currencyFormat();
+  sheet.getColumn(4).numFmt = percentFormat();
+
+  const assets = data.assets || data.items || [];
+  let totalValue = 0, totalQualified = 0;
+  for (const a of assets) {
+    const val = a.totalValue || a.value || 0;
+    const qVal = a.qualifiedValue || a.ozValue || 0;
+    totalValue += val;
+    totalQualified += qVal;
+    sheet.addRow([
+      a.description || a.name || "",
+      val,
+      qVal,
+      val > 0 ? qVal / val : 0,
+      a.testDate || "",
+      a.pass ? "Pass" : "Fail",
+    ]);
+  }
+
+  sheet.addRow([]);
+  const totRow = sheet.addRow(["TOTALS", totalValue, totalQualified, totalValue > 0 ? totalQualified / totalValue : 0, "", totalQualified / totalValue >= 0.9 ? "Pass" : "Fail"]);
+  totRow.font = { bold: true, name: "Arial" };
+  addDisclosureRow(sheet, brand, 6);
+}
+
+function buildOzSubstantialImprovement(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("Substantial Improvement");
+  sheet.columns = [
+    { width: 30 }, { width: 18 }, { width: 18 }, { width: 18 },
+    { width: 14 }, { width: 14 },
+  ];
+  const headerRow = sheet.addRow(["Property", "Original Basis", "Improvement Spend", "Required (100%)", "Deadline", "Status"]);
+  styleHeaderRow(headerRow, brand);
+  sheet.getColumn(2).numFmt = currencyFormat();
+  sheet.getColumn(3).numFmt = currencyFormat();
+  sheet.getColumn(4).numFmt = currencyFormat();
+
+  const properties = data.properties || data.items || [];
+  for (const p of properties) {
+    const basis = p.originalBasis || p.basis || 0;
+    const spend = p.improvementSpend || p.spend || 0;
+    const row = sheet.addRow([
+      p.property || p.name || "",
+      basis,
+      spend,
+      basis,
+      p.deadline || "",
+      spend >= basis ? "Met" : "Not Met",
+    ]);
+    if (spend < basis) {
+      row.getCell(6).font = { bold: true, color: { argb: "FFDC2626" }, name: "Arial" };
+    }
+  }
+  addDisclosureRow(sheet, brand, 6);
+}
+
+function buildOzInvestor180Day(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("180-Day Tracker");
+  sheet.columns = [
+    { width: 25 }, { width: 16 }, { width: 16 }, { width: 14 },
+    { width: 18 }, { width: 14 }, { width: 25 },
+  ];
+  const headerRow = sheet.addRow(["Investor", "Gain Date", "180-Day Deadline", "Days Left", "Investment Amount", "Status", "Notes"]);
+  styleHeaderRow(headerRow, brand);
+  sheet.getColumn(5).numFmt = currencyFormat();
+
+  const investors = data.investors || data.items || [];
+  for (const inv of investors) {
+    const row = sheet.addRow([
+      inv.investor || inv.name || "",
+      inv.gainDate || "",
+      inv.deadline || "",
+      inv.daysLeft || "",
+      inv.amount || inv.investmentAmount || 0,
+      inv.status || "Pending",
+      inv.notes || "",
+    ]);
+    const days = inv.daysLeft || 999;
+    if (typeof days === "number" && days <= 30) {
+      row.getCell(4).font = { bold: true, color: { argb: "FFDC2626" }, name: "Arial" };
+    }
+  }
+  addDisclosureRow(sheet, brand, 7);
+}
+
+// ── W-030 Automated Valuation XLSX builder ──
+
+function buildAvrCompAnalysis(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("AVR Comp Analysis");
+  sheet.columns = [
+    { width: 30 }, { width: 30 }, { width: 14 }, { width: 14 },
+    { width: 14 }, { width: 12 }, { width: 14 }, { width: 14 },
+  ];
+  const headerRow = sheet.addRow(["Property", "Address", "Sale Price", "Price/SF", "Cap Rate", "GRM", "Distance (mi)", "Adj. Value"]);
+  styleHeaderRow(headerRow, brand);
+  sheet.getColumn(3).numFmt = currencyFormat();
+  sheet.getColumn(4).numFmt = currencyFormat();
+  sheet.getColumn(5).numFmt = percentFormat();
+  sheet.getColumn(8).numFmt = currencyFormat();
+
+  const comps = data.comps || data.comparables || [];
+  for (const c of comps) {
+    sheet.addRow([
+      c.property || c.name || "",
+      c.address || "",
+      c.salePrice || c.price || 0,
+      c.priceSf || c.pricePerSf || 0,
+      c.capRate || 0,
+      c.grm || 0,
+      c.distance || 0,
+      c.adjustedValue || c.adjValue || 0,
+    ]);
+  }
+
+  // Adjustments tab
+  const adjSheet = workbook.addWorksheet("Adjustments");
+  adjSheet.columns = [{ width: 30 }, { width: 25 }, { width: 18 }, { width: 18 }];
+  const adjHeader = adjSheet.addRow(["Property", "Adjustment Type", "Amount", "Adjusted Price"]);
+  styleHeaderRow(adjHeader, brand);
+  adjSheet.getColumn(3).numFmt = currencyFormat();
+  adjSheet.getColumn(4).numFmt = currencyFormat();
+  const adjustments = data.adjustments || [];
+  for (const a of adjustments) {
+    adjSheet.addRow([a.property || "", a.type || a.adjustmentType || "", a.amount || 0, a.adjustedPrice || 0]);
+  }
+  addDisclosureRow(adjSheet, brand, 4);
+  addDisclosureRow(sheet, brand, 8);
+}
+
+// ── W-034 Rent Roll & Revenue XLSX builders ──
+
+function buildRentRoll(workbook, data, brand) {
+  // Tab 1: Rent Roll
+  const sheet = workbook.addWorksheet("Rent Roll");
+  sheet.columns = [
+    { width: 12 }, { width: 20 }, { width: 14 }, { width: 10 },
+    { width: 14 }, { width: 14 }, { width: 14 }, { width: 14 }, { width: 14 },
+  ];
+  const headerRow = sheet.addRow(["Unit #", "Tenant", "Lease Start", "Lease End", "Sq Ft", "Monthly Rent", "Annual Rent", "Rent/SF", "Status"]);
+  styleHeaderRow(headerRow, brand);
+  sheet.getColumn(6).numFmt = currencyFormat();
+  sheet.getColumn(7).numFmt = currencyFormat();
+  sheet.getColumn(8).numFmt = currencyFormat();
+
+  const units = data.units || data.items || [];
+  let totalMonthly = 0, totalAnnual = 0, totalSf = 0;
+  for (const u of units) {
+    const monthly = u.monthlyRent || u.rent || 0;
+    const annual = u.annualRent || monthly * 12;
+    const sf = u.sqFt || u.squareFeet || 0;
+    totalMonthly += monthly;
+    totalAnnual += annual;
+    totalSf += sf;
+    sheet.addRow([
+      u.unit || u.unitNumber || "",
+      u.tenant || u.name || "",
+      u.leaseStart || "",
+      u.leaseEnd || "",
+      sf,
+      monthly,
+      annual,
+      sf > 0 ? annual / sf : 0,
+      u.status || "Occupied",
+    ]);
+  }
+  sheet.addRow([]);
+  const totRow = sheet.addRow(["TOTALS", "", "", "", totalSf, totalMonthly, totalAnnual, totalSf > 0 ? totalAnnual / totalSf : 0, ""]);
+  totRow.font = { bold: true, name: "Arial" };
+
+  // Tab 2: Summary
+  const sumSheet = workbook.addWorksheet("Summary");
+  sumSheet.columns = [{ width: 25 }, { width: 18 }];
+  const sumHeader = sumSheet.addRow(["Metric", "Value"]);
+  styleHeaderRow(sumHeader, brand);
+  const occupied = units.filter(u => (u.status || "Occupied") !== "Vacant").length;
+  sumSheet.addRow(["Total Units", units.length]);
+  sumSheet.addRow(["Occupied", occupied]);
+  sumSheet.addRow(["Vacant", units.length - occupied]);
+  sumSheet.addRow(["Occupancy Rate", units.length > 0 ? `${((occupied / units.length) * 100).toFixed(1)}%` : "0%"]);
+  sumSheet.addRow(["Monthly Revenue", totalMonthly]);
+  sumSheet.addRow(["Annual Revenue", totalAnnual]);
+  addDisclosureRow(sumSheet, brand, 2);
+  addDisclosureRow(sheet, brand, 9);
+}
+
+function buildRevenueForecast(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("Revenue Forecast");
+  const periods = data.periods || ["Year 1", "Year 2", "Year 3", "Year 4", "Year 5"];
+  const headers = ["Revenue Source", ...periods];
+  const headerRow = sheet.addRow(headers);
+  styleHeaderRow(headerRow, brand);
+  sheet.getColumn(1).width = 28;
+  for (let i = 2; i <= headers.length; i++) {
+    sheet.getColumn(i).width = 16;
+    sheet.getColumn(i).numFmt = currencyFormat();
+  }
+
+  const sources = data.sources || data.items || [];
+  const totals = new Array(periods.length).fill(0);
+  for (const s of sources) {
+    const values = s.values || s.amounts || [];
+    values.forEach((v, idx) => { if (idx < totals.length) totals[idx] += (typeof v === "number" ? v : parseFloat(v) || 0); });
+    sheet.addRow([s.name || s.source || "", ...values]);
+  }
+  sheet.addRow([]);
+  const totRow = sheet.addRow(["TOTAL REVENUE", ...totals]);
+  totRow.font = { bold: true, name: "Arial" };
+  addDisclosureRow(sheet, brand, headers.length);
+}
+
+function buildLeaseExpirationMatrix(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("Lease Expiration Matrix");
+  const years = data.years || data.periods || ["2026", "2027", "2028", "2029", "2030"];
+  const headers = ["Tenant", "Unit", "SF", ...years];
+  const headerRow = sheet.addRow(headers);
+  styleHeaderRow(headerRow, brand);
+  sheet.getColumn(1).width = 25;
+  sheet.getColumn(2).width = 12;
+  sheet.getColumn(3).width = 12;
+  for (let i = 4; i <= headers.length; i++) {
+    sheet.getColumn(i).width = 14;
+    sheet.getColumn(i).numFmt = currencyFormat();
+  }
+
+  const leases = data.leases || data.items || [];
+  for (const l of leases) {
+    const expirations = l.expirations || l.values || [];
+    sheet.addRow([
+      l.tenant || l.name || "",
+      l.unit || "",
+      l.sf || l.squareFeet || 0,
+      ...expirations,
+    ]);
+  }
+
+  // Summary by year
+  const sumSheet = workbook.addWorksheet("Expiration Summary");
+  sumSheet.columns = [{ width: 14 }, { width: 14 }, { width: 18 }, { width: 14 }];
+  const sumHeader = sumSheet.addRow(["Year", "# Expiring", "SF Expiring", "% of Total SF"]);
+  styleHeaderRow(sumHeader, brand);
+  const summaries = data.expirationSummary || [];
+  for (const s of summaries) {
+    sumSheet.addRow([s.year || "", s.count || 0, s.sf || 0, s.pctTotal || ""]);
+  }
+  addDisclosureRow(sumSheet, brand, 4);
+  addDisclosureRow(sheet, brand, headers.length);
+}
+
+// ── W-035 Maintenance & Work Orders XLSX builder ──
+
+function buildPmSchedule(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("PM Schedule");
+  sheet.columns = [
+    { width: 8 }, { width: 28 }, { width: 18 }, { width: 14 },
+    { width: 14 }, { width: 16 }, { width: 14 }, { width: 14 },
+  ];
+  const headerRow = sheet.addRow(["ID", "Task", "Equipment", "Frequency", "Last Done", "Next Due", "Assigned To", "Status"]);
+  styleHeaderRow(headerRow, brand);
+
+  const tasks = data.tasks || data.items || [];
+  tasks.forEach((t, i) => {
+    const row = sheet.addRow([
+      t.id || i + 1,
+      t.task || t.description || "",
+      t.equipment || "",
+      t.frequency || "Monthly",
+      t.lastDone || t.lastCompleted || "",
+      t.nextDue || "",
+      t.assignedTo || t.assignee || "",
+      t.status || "Scheduled",
+    ]);
+    if ((t.status || "").toLowerCase() === "overdue") {
+      row.getCell(8).font = { bold: true, color: { argb: "FFDC2626" }, name: "Arial" };
+    }
+  });
+  addDisclosureRow(sheet, brand, 8);
+}
+
+// ── W-036 Utility Management XLSX builder ──
+
+function buildRubsCalculation(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("RUBS Calculation");
+  sheet.columns = [
+    { width: 12 }, { width: 20 }, { width: 12 }, { width: 14 },
+    { width: 14 }, { width: 14 }, { width: 14 }, { width: 14 },
+  ];
+  const headerRow = sheet.addRow(["Unit #", "Tenant", "Sq Ft", "Occupants", "Water Share", "Electric Share", "Gas Share", "Total Bill-Back"]);
+  styleHeaderRow(headerRow, brand);
+  sheet.getColumn(5).numFmt = currencyFormat();
+  sheet.getColumn(6).numFmt = currencyFormat();
+  sheet.getColumn(7).numFmt = currencyFormat();
+  sheet.getColumn(8).numFmt = currencyFormat();
+
+  const units = data.units || data.items || [];
+  let totalBillback = 0;
+  for (const u of units) {
+    const total = (u.waterShare || 0) + (u.electricShare || 0) + (u.gasShare || 0);
+    totalBillback += total;
+    sheet.addRow([
+      u.unit || u.unitNumber || "",
+      u.tenant || "",
+      u.sqFt || 0,
+      u.occupants || 0,
+      u.waterShare || 0,
+      u.electricShare || 0,
+      u.gasShare || 0,
+      u.totalBillBack || total,
+    ]);
+  }
+  sheet.addRow([]);
+  const totRow = sheet.addRow(["TOTAL", "", "", "", "", "", "", totalBillback]);
+  totRow.font = { bold: true, name: "Arial" };
+
+  // Utility costs tab
+  const utilSheet = workbook.addWorksheet("Utility Costs");
+  utilSheet.columns = [{ width: 20 }, { width: 18 }, { width: 18 }, { width: 14 }];
+  const utilHeader = utilSheet.addRow(["Utility", "Total Cost", "Recoverable", "Recovery %"]);
+  styleHeaderRow(utilHeader, brand);
+  utilSheet.getColumn(2).numFmt = currencyFormat();
+  utilSheet.getColumn(3).numFmt = currencyFormat();
+  const utilities = data.utilities || [];
+  for (const ut of utilities) {
+    utilSheet.addRow([ut.name || "", ut.totalCost || 0, ut.recoverable || 0, ut.recoveryPct || ""]);
+  }
+  addDisclosureRow(utilSheet, brand, 4);
+  addDisclosureRow(sheet, brand, 8);
+}
+
+// ── W-037 HOA & Association XLSX builder ──
+
+function buildHoaAssessmentTracker(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("Assessment Tracker");
+  sheet.columns = [
+    { width: 12 }, { width: 22 }, { width: 18 }, { width: 14 },
+    { width: 14 }, { width: 14 }, { width: 14 }, { width: 25 },
+  ];
+  const headerRow = sheet.addRow(["Unit/Lot", "Owner", "Assessment Type", "Amount Due", "Amount Paid", "Balance", "Due Date", "Status"]);
+  styleHeaderRow(headerRow, brand);
+  sheet.getColumn(4).numFmt = currencyFormat();
+  sheet.getColumn(5).numFmt = currencyFormat();
+  sheet.getColumn(6).numFmt = currencyFormat();
+
+  const assessments = data.assessments || data.items || [];
+  let totalDue = 0, totalPaid = 0;
+  for (const a of assessments) {
+    const due = a.amountDue || a.amount || 0;
+    const paid = a.amountPaid || 0;
+    totalDue += due;
+    totalPaid += paid;
+    const row = sheet.addRow([
+      a.unit || a.lot || "",
+      a.owner || "",
+      a.assessmentType || a.type || "Regular",
+      due,
+      paid,
+      a.balance || due - paid,
+      a.dueDate || "",
+      a.status || (paid >= due ? "Paid" : "Outstanding"),
+    ]);
+    if (paid < due) {
+      row.getCell(8).font = { bold: true, color: { argb: "FFDC2626" }, name: "Arial" };
+    }
+  }
+  sheet.addRow([]);
+  const totRow = sheet.addRow(["TOTALS", "", "", totalDue, totalPaid, totalDue - totalPaid, "", ""]);
+  totRow.font = { bold: true, name: "Arial" };
+  addDisclosureRow(sheet, brand, 8);
+}
+
+// ── W-038 Warranty & Defect XLSX builders ──
+
+function buildWarrantyRegister(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("Warranty Register");
+  sheet.columns = [
+    { width: 8 }, { width: 22 }, { width: 20 }, { width: 16 },
+    { width: 14 }, { width: 14 }, { width: 14 }, { width: 25 },
+  ];
+  const headerRow = sheet.addRow(["ID", "Item/System", "Contractor", "Warranty Type", "Start Date", "End Date", "Days Left", "Notes"]);
+  styleHeaderRow(headerRow, brand);
+
+  const warranties = data.warranties || data.items || [];
+  warranties.forEach((w, i) => {
+    const row = sheet.addRow([
+      w.id || i + 1,
+      w.item || w.system || "",
+      w.contractor || w.vendor || "",
+      w.warrantyType || w.type || "Standard",
+      w.startDate || "",
+      w.endDate || "",
+      w.daysLeft || "",
+      w.notes || "",
+    ]);
+    const days = w.daysLeft || 999;
+    if (typeof days === "number" && days <= 30) {
+      row.getCell(7).font = { bold: true, color: { argb: "FFDC2626" }, name: "Arial" };
+    }
+  });
+  addDisclosureRow(sheet, brand, 8);
+}
+
+function buildWdDefectLog(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("Defect Log");
+  sheet.columns = [
+    { width: 8 }, { width: 30 }, { width: 18 }, { width: 14 },
+    { width: 14 }, { width: 20 }, { width: 14 }, { width: 14 },
+  ];
+  const headerRow = sheet.addRow(["ID", "Description", "Location", "Severity", "Reported Date", "Responsible Party", "Due Date", "Status"]);
+  styleHeaderRow(headerRow, brand);
+
+  const defects = data.defects || data.items || [];
+  defects.forEach((d, i) => {
+    const row = sheet.addRow([
+      d.id || i + 1,
+      d.description || "",
+      d.location || "",
+      d.severity || "Minor",
+      d.reportedDate || d.date || "",
+      d.responsibleParty || d.contractor || "",
+      d.dueDate || "",
+      d.status || "Open",
+    ]);
+    if ((d.severity || "").toLowerCase() === "critical") {
+      row.getCell(4).font = { bold: true, color: { argb: "FFDC2626" }, name: "Arial" };
+    }
+  });
+  addDisclosureRow(sheet, brand, 8);
+}
+
+// ── W-040 Tax Appeal XLSX builders ──
+
+function buildTaPaymentTracker(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("Tax Payment Tracker");
+  sheet.columns = [
+    { width: 25 }, { width: 14 }, { width: 18 }, { width: 18 },
+    { width: 14 }, { width: 14 }, { width: 14 },
+  ];
+  const headerRow = sheet.addRow(["Property", "Tax Year", "Assessed Value", "Tax Amount", "Due Date", "Paid Date", "Status"]);
+  styleHeaderRow(headerRow, brand);
+  sheet.getColumn(3).numFmt = currencyFormat();
+  sheet.getColumn(4).numFmt = currencyFormat();
+
+  const payments = data.payments || data.items || [];
+  let totalTax = 0;
+  for (const p of payments) {
+    const tax = p.taxAmount || p.amount || 0;
+    totalTax += tax;
+    sheet.addRow([
+      p.property || p.name || "",
+      p.taxYear || "",
+      p.assessedValue || 0,
+      tax,
+      p.dueDate || "",
+      p.paidDate || "",
+      p.status || "Due",
+    ]);
+  }
+  sheet.addRow([]);
+  const totRow = sheet.addRow(["TOTAL", "", "", totalTax, "", "", ""]);
+  totRow.font = { bold: true, name: "Arial" };
+  addDisclosureRow(sheet, brand, 7);
+}
+
+function buildTaProjection(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("Tax Projection");
+  const years = data.years || data.periods || ["2026", "2027", "2028", "2029", "2030"];
+  const headers = ["Property", ...years];
+  const headerRow = sheet.addRow(headers);
+  styleHeaderRow(headerRow, brand);
+  sheet.getColumn(1).width = 28;
+  for (let i = 2; i <= headers.length; i++) {
+    sheet.getColumn(i).width = 16;
+    sheet.getColumn(i).numFmt = currencyFormat();
+  }
+
+  const properties = data.properties || data.items || [];
+  const totals = new Array(years.length).fill(0);
+  for (const p of properties) {
+    const values = p.values || p.projectedTax || [];
+    values.forEach((v, idx) => { if (idx < totals.length) totals[idx] += (typeof v === "number" ? v : parseFloat(v) || 0); });
+    sheet.addRow([p.property || p.name || "", ...values]);
+  }
+  sheet.addRow([]);
+  const totRow = sheet.addRow(["TOTAL", ...totals]);
+  totRow.font = { bold: true, name: "Arial" };
+  addDisclosureRow(sheet, brand, headers.length);
+}
+
+// ── W-041 Vendor Compliance XLSX builders ──
+
+function buildVendorRegistry(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("Vendor Registry");
+  sheet.columns = [
+    { width: 8 }, { width: 25 }, { width: 18 }, { width: 16 },
+    { width: 16 }, { width: 14 }, { width: 14 }, { width: 14 },
+  ];
+  const headerRow = sheet.addRow(["ID", "Vendor", "Category", "License #", "Insurance Exp.", "W-9 on File", "COI Current", "Status"]);
+  styleHeaderRow(headerRow, brand);
+
+  const vendors = data.vendors || data.items || [];
+  vendors.forEach((v, i) => {
+    const row = sheet.addRow([
+      v.id || i + 1,
+      v.vendor || v.name || "",
+      v.category || v.trade || "",
+      v.licenseNumber || v.license || "",
+      v.insuranceExp || v.insuranceExpiration || "",
+      v.w9 ? "Yes" : "No",
+      v.coiCurrent ? "Yes" : "No",
+      v.status || "Active",
+    ]);
+    if (!(v.coiCurrent)) {
+      row.getCell(7).font = { bold: true, color: { argb: "FFDC2626" }, name: "Arial" };
+    }
+  });
+  addDisclosureRow(sheet, brand, 8);
+}
+
+function buildContractTracker(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("Contract Tracker");
+  sheet.columns = [
+    { width: 8 }, { width: 25 }, { width: 22 }, { width: 18 },
+    { width: 14 }, { width: 14 }, { width: 14 }, { width: 14 },
+  ];
+  const headerRow = sheet.addRow(["ID", "Vendor", "Contract Desc.", "Value", "Start Date", "End Date", "Renewal", "Status"]);
+  styleHeaderRow(headerRow, brand);
+  sheet.getColumn(4).numFmt = currencyFormat();
+
+  const contracts = data.contracts || data.items || [];
+  contracts.forEach((c, i) => {
+    sheet.addRow([
+      c.id || i + 1,
+      c.vendor || c.name || "",
+      c.description || c.contractDesc || "",
+      c.value || c.amount || 0,
+      c.startDate || "",
+      c.endDate || "",
+      c.renewal || "Annual",
+      c.status || "Active",
+    ]);
+  });
+  addDisclosureRow(sheet, brand, 8);
+}
+
+function buildVcBidComparison(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("Bid Comparison");
+  sheet.columns = [
+    { width: 8 }, { width: 28 }, { width: 22 }, { width: 18 },
+    { width: 14 }, { width: 14 }, { width: 14 }, { width: 25 },
+  ];
+  const headerRow = sheet.addRow(["#", "Scope/Service", "Vendor", "Bid Amount", "Terms", "Rating", "Recommended", "Notes"]);
+  styleHeaderRow(headerRow, brand);
+  sheet.getColumn(4).numFmt = currencyFormat();
+
+  const bids = data.bids || data.items || [];
+  bids.forEach((b, i) => {
+    sheet.addRow([
+      b.id || i + 1,
+      b.scope || b.service || "",
+      b.vendor || b.name || "",
+      b.bidAmount || b.amount || 0,
+      b.terms || "",
+      b.rating || "",
+      b.recommended ? "Yes" : "No",
+      b.notes || "",
+    ]);
+  });
+  addDisclosureRow(sheet, brand, 8);
+}
+
+// ── W-051 Investor Reporting & Distributions XLSX builders ──
+
+function buildDistributionSchedule(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("Distribution Schedule");
+  sheet.columns = [
+    { width: 25 }, { width: 14 }, { width: 18 }, { width: 18 },
+    { width: 18 }, { width: 14 }, { width: 14 },
+  ];
+  const headerRow = sheet.addRow(["Investor", "Ownership %", "Capital Contributed", "Preferred Return", "Distribution Amount", "Period", "Status"]);
+  styleHeaderRow(headerRow, brand);
+  sheet.getColumn(2).numFmt = percentFormat();
+  sheet.getColumn(3).numFmt = currencyFormat();
+  sheet.getColumn(4).numFmt = currencyFormat();
+  sheet.getColumn(5).numFmt = currencyFormat();
+
+  const investors = data.investors || data.items || [];
+  let totalDist = 0;
+  for (const inv of investors) {
+    const dist = inv.distributionAmount || inv.distribution || 0;
+    totalDist += dist;
+    sheet.addRow([
+      inv.investor || inv.name || "",
+      inv.ownership || inv.ownershipPct || 0,
+      inv.capitalContributed || inv.capital || 0,
+      inv.preferredReturn || inv.prefReturn || 0,
+      dist,
+      inv.period || "",
+      inv.status || "Scheduled",
+    ]);
+  }
+  sheet.addRow([]);
+  const totRow = sheet.addRow(["TOTAL", "", "", "", totalDist, "", ""]);
+  totRow.font = { bold: true, name: "Arial" };
+  addDisclosureRow(sheet, brand, 7);
+}
+
+function buildCapitalAccount(workbook, data, brand) {
+  // Tab 1: Capital Accounts
+  const sheet = workbook.addWorksheet("Capital Accounts");
+  sheet.columns = [
+    { width: 25 }, { width: 18 }, { width: 18 }, { width: 18 },
+    { width: 18 }, { width: 18 },
+  ];
+  const headerRow = sheet.addRow(["Investor", "Beginning Balance", "Contributions", "Distributions", "Allocation", "Ending Balance"]);
+  styleHeaderRow(headerRow, brand);
+  for (let i = 2; i <= 6; i++) sheet.getColumn(i).numFmt = currencyFormat();
+
+  const accounts = data.accounts || data.items || [];
+  for (const a of accounts) {
+    const begin = a.beginningBalance || a.beginBal || 0;
+    const contrib = a.contributions || 0;
+    const dist = a.distributions || 0;
+    const alloc = a.allocation || 0;
+    sheet.addRow([
+      a.investor || a.name || "",
+      begin,
+      contrib,
+      dist,
+      alloc,
+      a.endingBalance || (begin + contrib - dist + alloc),
+    ]);
+  }
+
+  // Tab 2: Transaction History
+  const txSheet = workbook.addWorksheet("Transactions");
+  txSheet.columns = [{ width: 14 }, { width: 25 }, { width: 18 }, { width: 18 }, { width: 20 }];
+  const txHeader = txSheet.addRow(["Date", "Investor", "Type", "Amount", "Description"]);
+  styleHeaderRow(txHeader, brand);
+  txSheet.getColumn(4).numFmt = currencyFormat();
+  const transactions = data.transactions || [];
+  for (const tx of transactions) {
+    txSheet.addRow([tx.date || "", tx.investor || "", tx.type || "", tx.amount || 0, tx.description || ""]);
+  }
+  addDisclosureRow(txSheet, brand, 5);
+  addDisclosureRow(sheet, brand, 6);
+}
+
+// ── W-052 Debt Service & Loan Compliance XLSX builders ──
+
+function buildPaymentSchedule(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("Payment Schedule");
+  sheet.columns = [
+    { width: 8 }, { width: 14 }, { width: 18 }, { width: 18 },
+    { width: 18 }, { width: 18 }, { width: 18 },
+  ];
+  const headerRow = sheet.addRow(["#", "Date", "Payment", "Principal", "Interest", "Balance", "DSCR"]);
+  styleHeaderRow(headerRow, brand);
+  sheet.getColumn(3).numFmt = currencyFormat();
+  sheet.getColumn(4).numFmt = currencyFormat();
+  sheet.getColumn(5).numFmt = currencyFormat();
+  sheet.getColumn(6).numFmt = currencyFormat();
+
+  const payments = data.payments || data.items || [];
+  payments.forEach((p, i) => {
+    const row = sheet.addRow([
+      p.number || i + 1,
+      p.date || "",
+      p.payment || p.totalPayment || 0,
+      p.principal || 0,
+      p.interest || 0,
+      p.balance || p.remainingBalance || 0,
+      p.dscr || "",
+    ]);
+    if (typeof p.dscr === "number" && p.dscr < 1.25) {
+      row.getCell(7).font = { bold: true, color: { argb: "FFDC2626" }, name: "Arial" };
+    }
+  });
+  addDisclosureRow(sheet, brand, 7);
+}
+
+function buildReserveTracker(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("Reserve Tracker");
+  sheet.columns = [
+    { width: 25 }, { width: 18 }, { width: 18 }, { width: 18 },
+    { width: 18 }, { width: 14 }, { width: 25 },
+  ];
+  const headerRow = sheet.addRow(["Reserve Account", "Required Balance", "Current Balance", "Shortfall", "Next Funding Date", "Status", "Notes"]);
+  styleHeaderRow(headerRow, brand);
+  sheet.getColumn(2).numFmt = currencyFormat();
+  sheet.getColumn(3).numFmt = currencyFormat();
+  sheet.getColumn(4).numFmt = currencyFormat();
+
+  const reserves = data.reserves || data.items || [];
+  for (const r of reserves) {
+    const required = r.requiredBalance || r.required || 0;
+    const current = r.currentBalance || r.current || 0;
+    const shortfall = r.shortfall || Math.max(0, required - current);
+    const row = sheet.addRow([
+      r.account || r.name || "",
+      required,
+      current,
+      shortfall,
+      r.nextFundingDate || r.nextDate || "",
+      r.status || (shortfall > 0 ? "Underfunded" : "Funded"),
+      r.notes || "",
+    ]);
+    if (shortfall > 0) {
+      row.getCell(4).font = { bold: true, color: { argb: "FFDC2626" }, name: "Arial" };
+      row.getCell(6).font = { bold: true, color: { argb: "FFDC2626" }, name: "Arial" };
+    }
+  }
+  addDisclosureRow(sheet, brand, 7);
+}
+
+// ── W-042 Disposition Planning XLSX builders ──
+
+function buildBrokerComparison(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("Broker Comparison");
+  sheet.columns = [
+    { width: 25 }, { width: 22 }, { width: 14 }, { width: 18 },
+    { width: 14 }, { width: 16 }, { width: 14 }, { width: 25 },
+  ];
+  const headerRow = sheet.addRow(["Broker/Firm", "Market Specialty", "Commission %", "Est. Sale Price", "Track Record", "Marketing Plan", "Rating", "Notes"]);
+  styleHeaderRow(headerRow, brand);
+  sheet.getColumn(3).numFmt = percentFormat();
+  sheet.getColumn(4).numFmt = currencyFormat();
+
+  const brokers = data.brokers || data.items || [];
+  for (const b of brokers) {
+    sheet.addRow([
+      b.broker || b.firm || b.name || "",
+      b.specialty || b.marketSpecialty || "",
+      b.commission || b.commissionPct || 0,
+      b.estSalePrice || b.estimatedPrice || 0,
+      b.trackRecord || "",
+      b.marketingPlan || "",
+      b.rating || "",
+      b.notes || "",
+    ]);
+  }
+  addDisclosureRow(sheet, brand, 8);
+}
+
+function buildOfferComparison(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("Offer Comparison");
+  sheet.columns = [
+    { width: 22 }, { width: 18 }, { width: 14 }, { width: 16 },
+    { width: 14 }, { width: 16 }, { width: 14 }, { width: 25 },
+  ];
+  const headerRow = sheet.addRow(["Buyer", "Offer Price", "Earnest $", "Financing", "Close Date", "Contingencies", "Net Proceeds", "Notes"]);
+  styleHeaderRow(headerRow, brand);
+  sheet.getColumn(2).numFmt = currencyFormat();
+  sheet.getColumn(3).numFmt = currencyFormat();
+  sheet.getColumn(7).numFmt = currencyFormat();
+
+  const offers = data.offers || data.items || [];
+  for (const o of offers) {
+    sheet.addRow([
+      o.buyer || o.name || "",
+      o.offerPrice || o.price || 0,
+      o.earnest || o.earnestMoney || 0,
+      o.financing || "Cash",
+      o.closeDate || "",
+      o.contingencies || "",
+      o.netProceeds || 0,
+      o.notes || "",
+    ]);
+  }
+  addDisclosureRow(sheet, brand, 8);
+}
+
+function buildClosingChecklist(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("Closing Checklist");
+  sheet.columns = [
+    { width: 8 }, { width: 35 }, { width: 18 }, { width: 14 },
+    { width: 14 }, { width: 20 }, { width: 25 },
+  ];
+  const headerRow = sheet.addRow(["#", "Task", "Category", "Due Date", "Status", "Responsible Party", "Notes"]);
+  styleHeaderRow(headerRow, brand);
+
+  const tasks = data.tasks || data.items || [];
+  tasks.forEach((t, i) => {
+    sheet.addRow([
+      t.id || i + 1,
+      t.task || t.description || "",
+      t.category || "",
+      t.dueDate || "",
+      t.status || "Pending",
+      t.responsibleParty || t.assignee || "",
+      t.notes || "",
+    ]);
+  });
+  addDisclosureRow(sheet, brand, 7);
+}
+
+// ── W-043 Exchange (1031) XLSX builder ──
+
+function buildBasisCalculation(workbook, data, brand) {
+  // Tab 1: Basis Calculation
+  const sheet = workbook.addWorksheet("Basis Calculation");
+  sheet.columns = [
+    { width: 30 }, { width: 18 }, { width: 18 }, { width: 18 },
+    { width: 18 }, { width: 18 },
+  ];
+  const headerRow = sheet.addRow(["Property", "Original Basis", "Improvements", "Depreciation", "Adj. Basis", "FMV"]);
+  styleHeaderRow(headerRow, brand);
+  for (let i = 2; i <= 6; i++) sheet.getColumn(i).numFmt = currencyFormat();
+
+  const properties = data.properties || data.items || [];
+  for (const p of properties) {
+    const origBasis = p.originalBasis || p.basis || 0;
+    const improvements = p.improvements || 0;
+    const depreciation = p.depreciation || 0;
+    sheet.addRow([
+      p.property || p.name || "",
+      origBasis,
+      improvements,
+      depreciation,
+      p.adjustedBasis || (origBasis + improvements - depreciation),
+      p.fmv || p.fairMarketValue || 0,
+    ]);
+  }
+
+  // Tab 2: Exchange Summary
+  const exSheet = workbook.addWorksheet("Exchange Summary");
+  exSheet.columns = [{ width: 30 }, { width: 22 }];
+  const exHeader = exSheet.addRow(["Item", "Amount"]);
+  styleHeaderRow(exHeader, brand);
+  exSheet.getColumn(2).numFmt = currencyFormat();
+  const summary = data.exchangeSummary || data.summary || {};
+  exSheet.addRow(["Relinquished Property FMV", summary.relinquishedFmv || 0]);
+  exSheet.addRow(["Adjusted Basis", summary.adjustedBasis || 0]);
+  exSheet.addRow(["Realized Gain", summary.realizedGain || 0]);
+  exSheet.addRow(["Recognized Gain (Boot)", summary.recognizedGain || summary.boot || 0]);
+  exSheet.addRow(["Deferred Gain", summary.deferredGain || 0]);
+  exSheet.addRow(["Replacement Property Basis", summary.replacementBasis || 0]);
+  addDisclosureRow(exSheet, brand, 2);
+  addDisclosureRow(sheet, brand, 6);
+}
+
+// ── W-050 Deal Management & Data Room XLSX builders ──
+
+function buildDataRoomIndex(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("Data Room Index");
+  sheet.columns = [
+    { width: 8 }, { width: 22 }, { width: 35 }, { width: 14 },
+    { width: 16 }, { width: 14 }, { width: 14 },
+  ];
+  const headerRow = sheet.addRow(["#", "Folder", "Document", "Date Uploaded", "Uploaded By", "Version", "Status"]);
+  styleHeaderRow(headerRow, brand);
+
+  const documents = data.documents || data.items || [];
+  documents.forEach((d, i) => {
+    sheet.addRow([
+      d.id || i + 1,
+      d.folder || d.category || "",
+      d.document || d.name || "",
+      d.dateUploaded || d.uploadDate || "",
+      d.uploadedBy || "",
+      d.version || "1.0",
+      d.status || "Current",
+    ]);
+  });
+  addDisclosureRow(sheet, brand, 7);
+}
+
+function buildBuyerTracker(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("Buyer Tracker");
+  sheet.columns = [
+    { width: 8 }, { width: 25 }, { width: 22 }, { width: 14 },
+    { width: 16 }, { width: 14 }, { width: 14 }, { width: 25 },
+  ];
+  const headerRow = sheet.addRow(["#", "Buyer", "Contact", "CA Signed", "Data Room Access", "LOI Status", "Stage", "Notes"]);
+  styleHeaderRow(headerRow, brand);
+
+  const buyers = data.buyers || data.items || [];
+  buyers.forEach((b, i) => {
+    sheet.addRow([
+      b.id || i + 1,
+      b.buyer || b.name || "",
+      b.contact || b.email || "",
+      b.caSigned ? "Yes" : "No",
+      b.dataRoomAccess ? "Granted" : "Pending",
+      b.loiStatus || "None",
+      b.stage || "Prospect",
+      b.notes || "",
+    ]);
+  });
+  addDisclosureRow(sheet, brand, 8);
+}
+
+function buildDdChecklist(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("DD Checklist");
+  sheet.columns = [
+    { width: 8 }, { width: 22 }, { width: 30 }, { width: 14 },
+    { width: 14 }, { width: 20 }, { width: 25 },
+  ];
+  const headerRow = sheet.addRow(["#", "Category", "Item", "Status", "Due Date", "Responsible Party", "Notes"]);
+  styleHeaderRow(headerRow, brand);
+
+  const items = data.items || data.checklist || [];
+  items.forEach((item, i) => {
+    const row = sheet.addRow([
+      item.id || i + 1,
+      item.category || "",
+      item.item || item.description || "",
+      item.status || "Pending",
+      item.dueDate || "",
+      item.responsibleParty || item.assignee || "",
+      item.notes || "",
+    ]);
+    if ((item.status || "").toLowerCase() === "overdue") {
+      row.getCell(4).font = { bold: true, color: { argb: "FFDC2626" }, name: "Arial" };
+    }
+  });
+  addDisclosureRow(sheet, brand, 7);
+}
+
+// ── W-046 Entity Formation XLSX builders ──
+
+function buildFormationChecklist(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("Formation Checklist");
+  sheet.columns = [
+    { width: 8 }, { width: 30 }, { width: 18 }, { width: 14 },
+    { width: 14 }, { width: 20 }, { width: 25 },
+  ];
+  const headerRow = sheet.addRow(["#", "Task", "Category", "Due Date", "Status", "Responsible Party", "Notes"]);
+  styleHeaderRow(headerRow, brand);
+
+  const tasks = data.tasks || data.items || [];
+  tasks.forEach((t, i) => {
+    sheet.addRow([
+      t.id || i + 1,
+      t.task || t.description || "",
+      t.category || "",
+      t.dueDate || "",
+      t.status || "Pending",
+      t.responsibleParty || t.assignee || "",
+      t.notes || "",
+    ]);
+  });
+  addDisclosureRow(sheet, brand, 7);
+}
+
+function buildEntityRegistry(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("Entity Registry");
+  sheet.columns = [
+    { width: 8 }, { width: 28 }, { width: 14 }, { width: 16 },
+    { width: 18 }, { width: 14 }, { width: 16 }, { width: 14 },
+  ];
+  const headerRow = sheet.addRow(["ID", "Entity Name", "Type", "State", "EIN", "Formation Date", "Registered Agent", "Status"]);
+  styleHeaderRow(headerRow, brand);
+
+  const entities = data.entities || data.items || [];
+  entities.forEach((e, i) => {
+    sheet.addRow([
+      e.id || i + 1,
+      e.entityName || e.name || "",
+      e.type || e.entityType || "LLC",
+      e.state || e.jurisdiction || "",
+      e.ein || "",
+      e.formationDate || "",
+      e.registeredAgent || e.agent || "",
+      e.status || "Active",
+    ]);
+  });
+  addDisclosureRow(sheet, brand, 8);
+}
+
+function buildAnnualCompliance(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("Annual Compliance");
+  sheet.columns = [
+    { width: 25 }, { width: 22 }, { width: 14 }, { width: 14 },
+    { width: 14 }, { width: 14 }, { width: 25 },
+  ];
+  const headerRow = sheet.addRow(["Entity", "Filing Type", "Jurisdiction", "Due Date", "Fee", "Status", "Notes"]);
+  styleHeaderRow(headerRow, brand);
+  sheet.getColumn(5).numFmt = currencyFormat();
+
+  const filings = data.filings || data.items || [];
+  for (const f of filings) {
+    const row = sheet.addRow([
+      f.entity || f.entityName || "",
+      f.filingType || f.type || "Annual Report",
+      f.jurisdiction || f.state || "",
+      f.dueDate || "",
+      f.fee || 0,
+      f.status || "Due",
+      f.notes || "",
+    ]);
+    if ((f.status || "").toLowerCase() === "overdue") {
+      row.getCell(6).font = { bold: true, color: { argb: "FFDC2626" }, name: "Arial" };
+    }
+  }
+  addDisclosureRow(sheet, brand, 7);
+}
+
+// ── W-049 Property Insurance Review XLSX builders ──
+
+function buildClaimsLog(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("Claims Log");
+  sheet.columns = [
+    { width: 8 }, { width: 14 }, { width: 28 }, { width: 18 },
+    { width: 18 }, { width: 18 }, { width: 14 }, { width: 14 },
+  ];
+  const headerRow = sheet.addRow(["Claim #", "Date Filed", "Description", "Property", "Amount Claimed", "Amount Paid", "Carrier", "Status"]);
+  styleHeaderRow(headerRow, brand);
+  sheet.getColumn(5).numFmt = currencyFormat();
+  sheet.getColumn(6).numFmt = currencyFormat();
+
+  const claims = data.claims || data.items || [];
+  let totalClaimed = 0, totalPaid = 0;
+  for (const c of claims) {
+    const claimed = c.amountClaimed || c.amount || 0;
+    const paid = c.amountPaid || 0;
+    totalClaimed += claimed;
+    totalPaid += paid;
+    sheet.addRow([
+      c.claimNumber || c.id || "",
+      c.dateFiled || c.date || "",
+      c.description || "",
+      c.property || "",
+      claimed,
+      paid,
+      c.carrier || c.insurer || "",
+      c.status || "Open",
+    ]);
+  }
+  sheet.addRow([]);
+  const totRow = sheet.addRow(["TOTALS", "", "", "", totalClaimed, totalPaid, "", ""]);
+  totRow.font = { bold: true, name: "Arial" };
+  addDisclosureRow(sheet, brand, 8);
+}
+
+function buildRenewalComparison(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("Renewal Comparison");
+  sheet.columns = [
+    { width: 22 }, { width: 22 }, { width: 18 }, { width: 18 },
+    { width: 18 }, { width: 14 }, { width: 14 }, { width: 25 },
+  ];
+  const headerRow = sheet.addRow(["Coverage Type", "Carrier", "Current Premium", "Renewal Premium", "Change ($)", "Change (%)", "Deductible", "Notes"]);
+  styleHeaderRow(headerRow, brand);
+  sheet.getColumn(3).numFmt = currencyFormat();
+  sheet.getColumn(4).numFmt = currencyFormat();
+  sheet.getColumn(5).numFmt = currencyFormat();
+  sheet.getColumn(7).numFmt = currencyFormat();
+
+  const policies = data.policies || data.items || [];
+  let totalCurrent = 0, totalRenewal = 0;
+  for (const p of policies) {
+    const current = p.currentPremium || p.current || 0;
+    const renewal = p.renewalPremium || p.renewal || 0;
+    const changeDollar = renewal - current;
+    const changePct = current > 0 ? ((renewal - current) / current * 100).toFixed(1) + "%" : "N/A";
+    totalCurrent += current;
+    totalRenewal += renewal;
+    const row = sheet.addRow([
+      p.coverageType || p.type || "",
+      p.carrier || p.insurer || "",
+      current,
+      renewal,
+      changeDollar,
+      changePct,
+      p.deductible || 0,
+      p.notes || "",
+    ]);
+    if (changeDollar > 0) {
+      row.getCell(5).font = { bold: true, color: { argb: "FFDC2626" }, name: "Arial" };
+    }
+  }
+  sheet.addRow([]);
+  const totChange = totalRenewal - totalCurrent;
+  const totRow = sheet.addRow(["TOTALS", "", totalCurrent, totalRenewal, totChange, totalCurrent > 0 ? ((totChange / totalCurrent) * 100).toFixed(1) + "%" : "", "", ""]);
+  totRow.font = { bold: true, name: "Arial" };
+  addDisclosureRow(sheet, brand, 8);
 }
 
 module.exports = { generateXlsx };
