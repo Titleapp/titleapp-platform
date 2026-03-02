@@ -146,7 +146,7 @@ function ConsumerDashboard() {
       </div>
 
       {/* Row 2: Top Assets + Stats */}
-      <div style={{ display: "grid", gridTemplateColumns: "3fr 2fr", gap: "14px", marginBottom: "14px" }}>
+      <div className="consumerRow2" style={{ marginBottom: "14px" }}>
         {/* Left: Top Valued Assets */}
         <div className="card" style={{ padding: "20px" }}>
           <div style={{ fontWeight: 700, fontSize: "16px", color: "#1e293b", marginBottom: "4px" }}>Top Valued Assets</div>
@@ -235,7 +235,7 @@ function ConsumerDashboard() {
       </div>
 
       {/* Row 3: Three cards */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "14px" }}>
+      <div className="consumerRow3" style={{ marginBottom: "14px" }}>
         {/* Wallet Summary */}
         <div className="card" style={{ padding: "20px" }}>
           <div style={{ fontWeight: 700, fontSize: "15px", color: "#1e293b", marginBottom: "4px" }}>Wallet Summary</div>
@@ -812,7 +812,7 @@ export default function Dashboard() {
             <div style={{ fontSize: "16px", fontWeight: 700 }}>Value Tracker</div>
             <span style={{ fontSize: "13px", color: "#64748b" }}>AI-powered ROI this month</span>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "16px", marginTop: "12px" }}>
+          <div className="valueTrackerGrid">
             <div style={{ textAlign: "center" }}>
               <div style={{ fontSize: "12px", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em" }}>{isAnalyst ? "Deals Sourced + Analyzed" : isAuto ? "Leads Generated" : "Actions"}</div>
               <div style={{ fontSize: "28px", fontWeight: 900, marginTop: "4px" }}>{isAuto ? 23 : valueTracker.actions}</div>
@@ -847,7 +847,7 @@ export default function Dashboard() {
           <div className="card" style={{ marginBottom: "14px", padding: "20px" }}>
             <div style={{ fontWeight: 700, fontSize: "16px", color: "#1e293b", marginBottom: "4px" }}>Research Track</div>
             <div style={{ fontSize: "13px", color: "#64748b", marginBottom: "16px" }}>Active research and analysis pipeline</div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "12px" }}>
+            <div className="trackGrid4">
               <div onClick={() => nav("research")} style={{ padding: "12px", background: "#f8fafc", borderRadius: "8px", textAlign: "center", cursor: "pointer" }}>
                 <div style={{ fontSize: "24px", fontWeight: 800 }}>15</div>
                 <div style={{ fontSize: "12px", color: "#64748b" }}>Active Items</div>
@@ -868,7 +868,7 @@ export default function Dashboard() {
           </div>
 
           {/* Portfolio Track + Client Track side by side */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px", marginBottom: "14px" }}>
+          <div className="trackGrid2" style={{ marginBottom: "14px" }}>
             {/* Portfolio Track */}
             <div className="card" style={{ padding: "20px" }}>
               <div style={{ fontWeight: 700, fontSize: "16px", color: "#1e293b", marginBottom: "4px" }}>Portfolio Track</div>
@@ -938,7 +938,7 @@ export default function Dashboard() {
             </p>
           </div>
           {opportunities.length > 0 ? (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
+            <div className="trackGrid2">
               {opportunities.map((deal) => {
                 const riskLabel = deal.risk < 40 ? "Low Risk" : deal.risk <= 65 ? "Medium Risk" : "High Risk";
                 const riskBg = deal.risk < 40 ? "#dcfce7" : deal.risk <= 65 ? "#fef3c7" : "#fee2e2";
@@ -1027,7 +1027,7 @@ export default function Dashboard() {
           <div className="card" style={{ marginBottom: "14px", padding: "20px" }}>
             <div style={{ fontWeight: 700, fontSize: "16px", color: "#1e293b", marginBottom: "4px" }}>Sales Track</div>
             <div style={{ fontSize: "13px", color: "#64748b", marginBottom: "16px" }}>Active pipeline and lead activity</div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "12px", marginBottom: "16px" }}>
+            <div className="trackGrid4" style={{ marginBottom: "16px" }}>
               <div onClick={() => nav("sales-pipeline")} style={{ padding: "12px", background: "#f8fafc", borderRadius: "8px", textAlign: "center", cursor: "pointer" }}>
                 <div style={{ fontSize: "24px", fontWeight: 800 }}>8</div>
                 <div style={{ fontSize: "12px", color: "#64748b" }}>Active Deals</div>
@@ -1066,7 +1066,7 @@ export default function Dashboard() {
           </div>
 
           {/* Service Track + Inventory Track side by side */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px", marginBottom: "14px" }}>
+          <div className="trackGrid2" style={{ marginBottom: "14px" }}>
             {/* Service Track */}
             <div className="card" style={{ padding: "20px" }}>
               <div style={{ fontWeight: 700, fontSize: "16px", color: "#1e293b", marginBottom: "4px" }}>Service Track</div>
@@ -1145,7 +1145,7 @@ export default function Dashboard() {
             </p>
           </div>
           {cosActivity.length > 0 ? (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
+            <div className="trackGrid2">
               {cosActivity.map((item) => (
                 <div key={item.id} className="card" style={{ padding: "20px" }}>
                   <div style={{ marginBottom: "10px", display: "flex", alignItems: "center", gap: "8px" }}>
@@ -1203,7 +1203,7 @@ export default function Dashboard() {
           <div className="card" style={{ marginBottom: "14px", padding: "20px", borderLeft: "4px solid #2563eb" }}>
             <div style={{ fontWeight: 700, fontSize: "16px", color: "#1e293b", marginBottom: "4px" }}>Property Management Track</div>
             <div style={{ fontSize: "13px", color: "#64748b", marginBottom: "16px" }}>Portfolio health and tenant operations</div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "12px" }}>
+            <div className="trackGrid4">
               <div onClick={() => nav("re-properties")} style={{ padding: "12px", background: "#f8fafc", borderRadius: "8px", textAlign: "center", cursor: "pointer" }}>
                 <div style={{ fontSize: "24px", fontWeight: 800 }}>28</div>
                 <div style={{ fontSize: "12px", color: "#64748b" }}>Total Units</div>
@@ -1221,13 +1221,13 @@ export default function Dashboard() {
                 <div style={{ fontSize: "12px", color: "#64748b" }}>Open Maintenance</div>
               </div>
             </div>
-            <div style={{ marginTop: "12px", padding: "10px", background: "#fef2f2", borderRadius: "8px", fontSize: "13px", color: "#dc2626" }}>
-              Overdue: Water heater at Riverside 1A -- 5 days past SLA
+            <div style={{ marginTop: "12px", padding: "10px", background: "#fef2f2", borderRadius: "8px", fontSize: "13px", color: "#dc2626", minWidth: 0, wordBreak: "break-word" }}>
+              Overdue: Water heater at Riverside 1A — 5 days past SLA
             </div>
           </div>
 
           {/* Sales Track + Transaction Track side by side */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px", marginBottom: "14px" }}>
+          <div className="trackGrid2" style={{ marginBottom: "14px" }}>
             {/* Sales Track */}
             <div className="card" style={{ padding: "20px", borderLeft: "4px solid #16a34a" }}>
               <div style={{ fontWeight: 700, fontSize: "16px", color: "#1e293b", marginBottom: "4px" }}>Sales Track</div>
@@ -1287,7 +1287,7 @@ export default function Dashboard() {
               Your AI handled 42 actions overnight across sales and property management
             </p>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
+          <div className="trackGrid2">
             <div className="card" style={{ padding: "20px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px" }}>
                 <span style={{ fontSize: "11px", fontWeight: 600, padding: "2px 10px", borderRadius: "9999px", background: "#dc262615", color: "#dc2626" }}>Late Rent</span>
