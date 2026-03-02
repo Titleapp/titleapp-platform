@@ -177,7 +177,10 @@ function AdminShell({ onBackToHub }) {
         return <VaultTools />;
       case "b2b-analytics":
         return <B2BAnalytics />;
+      case "chief-of-staff":
+        return <Dashboard />;
       default:
+        if (currentSection.startsWith("worker-")) return <Dashboard />;
         return <Dashboard />;
     }
   }

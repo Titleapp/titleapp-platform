@@ -97,6 +97,8 @@ export default function Sidebar({
 }) {
   const [showSwitcher, setShowSwitcher] = useState(false);
   const [workerFilter, setWorkerFilter] = useState("work");
+  const [selectedWorker, setSelectedWorker] = useState(null);
+  const [workersExpanded, setWorkersExpanded] = useState(false);
   const vertical = localStorage.getItem("VERTICAL") || "auto";
   const isPersonal = vertical === "consumer";
 
@@ -111,6 +113,12 @@ export default function Sidebar({
 
   function handleNavClick(sectionId) {
     onNavigate(sectionId);
+    if (onClose) onClose();
+  }
+
+  function handleWorkerClick(worker) {
+    setSelectedWorker(worker.slug);
+    window.dispatchEvent(new CustomEvent("ta:select-worker", { detail: { slug: worker.slug, name: worker.name } }));
     if (onClose) onClose();
   }
 
@@ -412,43 +420,79 @@ export default function Sidebar({
         </div>
 
         <nav className="nav">
-          {/* Worker list */}
-          {filteredWorkers.map(worker => (
-            <button
-              key={worker.slug}
-              className={`navItem ${currentSection === worker.slug ? "navItemActive" : ""}`}
-              onClick={() => handleNavClick(worker.slug === "chief-of-staff" ? "chief-of-staff" : `worker-${worker.slug}`)}
-              style={{
-                width: "100%", textAlign: "left", cursor: "pointer",
-                display: "flex", alignItems: "center", gap: 8,
-                padding: "7px 10px", fontSize: 13,
-                ...(worker.isChiefOfStaff ? {
-                  background: currentSection === "chief-of-staff"
-                    ? "rgba(124,58,237,0.16)"
-                    : "linear-gradient(135deg, rgba(124,58,237,0.08) 0%, rgba(99,102,241,0.08) 100%)",
-                  borderRadius: 10,
-                  marginBottom: 2,
-                } : {}),
-              }}
-            >
-              <span style={{
-                width: 8, height: 8, borderRadius: "50%",
-                background: worker.active ? "#22c55e" : "transparent",
-                border: worker.active ? "none" : "1.5px solid rgba(255,255,255,0.3)",
-                flexShrink: 0,
-              }} />
-              <span style={{
-                flex: 1,
-                color: worker.isChiefOfStaff ? "#c4b5fd" : "rgba(255,255,255,0.85)",
-                fontWeight: worker.isChiefOfStaff ? 600 : 400,
-              }}>
-                {worker.name}
-              </span>
-              {worker.isChiefOfStaff && (
-                <span style={{ fontSize: 10, color: "#7c3aed", fontWeight: 600 }}>CoS</span>
-              )}
-            </button>
-          ))}
+          {/* Worker list — collapsible when >6 */}
+          {(() => {
+            const COLLAPSE_THRESHOLD = 6;
+            const COLLAPSED_SHOW = 3;
+            const shouldCollapse = filteredWorkers.length > COLLAPSE_THRESHOLD;
+            const visibleWorkers = shouldCollapse && !workersExpanded
+              ? filteredWorkers.slice(0, COLLAPSED_SHOW)
+              : filteredWorkers;
+            const hiddenCount = filteredWorkers.length - COLLAPSED_SHOW;
+
+            return (
+              <div style={shouldCollapse && workersExpanded ? {
+                maxHeight: 240, overflowY: "auto", overflowX: "hidden",
+              } : undefined}>
+                {visibleWorkers.map(worker => {
+                  const isSelected = selectedWorker === worker.slug;
+                  return (
+                    <button
+                      key={worker.slug}
+                      className={`navItem ${isSelected ? "navItemActive" : ""}`}
+                      onClick={() => handleWorkerClick(worker)}
+                      style={{
+                        width: "100%", textAlign: "left", cursor: "pointer",
+                        display: "flex", alignItems: "center", gap: 8,
+                        padding: "7px 10px", fontSize: 13,
+                        ...(worker.isChiefOfStaff ? {
+                          background: isSelected
+                            ? "rgba(124,58,237,0.16)"
+                            : "linear-gradient(135deg, rgba(124,58,237,0.08) 0%, rgba(99,102,241,0.08) 100%)",
+                          borderRadius: 10,
+                          marginBottom: 2,
+                        } : {}),
+                      }}
+                    >
+                      <span style={{
+                        width: 8, height: 8, borderRadius: "50%",
+                        background: worker.active ? "#22c55e" : "transparent",
+                        border: worker.active ? "none" : "1.5px solid rgba(255,255,255,0.3)",
+                        flexShrink: 0,
+                      }} />
+                      <span style={{
+                        flex: 1,
+                        color: worker.isChiefOfStaff ? "#c4b5fd" : "rgba(255,255,255,0.85)",
+                        fontWeight: worker.isChiefOfStaff ? 600 : 400,
+                      }}>
+                        {worker.name}
+                      </span>
+                      {worker.isChiefOfStaff && (
+                        <span style={{ fontSize: 10, color: "#7c3aed", fontWeight: 600 }}>CoS</span>
+                      )}
+                    </button>
+                  );
+                })}
+
+                {/* Collapse/expand toggle */}
+                {shouldCollapse && (
+                  <button
+                    onClick={() => setWorkersExpanded(!workersExpanded)}
+                    style={{
+                      width: "100%", textAlign: "left", cursor: "pointer",
+                      background: "none", border: "none",
+                      fontSize: 11, color: "rgba(255,255,255,0.4)", fontWeight: 500,
+                      padding: "5px 10px",
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.color = "rgba(255,255,255,0.7)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.color = "rgba(255,255,255,0.4)"; }}
+                  >
+                    {workersExpanded ? "Show less" : `+ ${hiddenCount} more workers`}
+                  </button>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Empty state for Personal and Shared */}
           {filteredWorkers.length === 0 && (
@@ -525,12 +569,33 @@ export default function Sidebar({
         </nav>
       </div>
 
-      {/* Sign Out */}
+      {/* Footer: Switch Workspace + Sign Out */}
       <div className="sidebarFooter">
+        {onBackToHub && (
+          <button
+            onClick={onBackToHub}
+            className="iconBtn"
+            style={{
+              width: "100%", marginBottom: 4, fontSize: 12,
+              color: "rgba(255,255,255,0.5)", background: "none", border: "none",
+              cursor: "pointer", padding: "8px 0",
+            }}
+            onMouseEnter={e => { e.currentTarget.style.color = "rgba(255,255,255,0.8)"; }}
+            onMouseLeave={e => { e.currentTarget.style.color = "rgba(255,255,255,0.5)"; }}
+          >
+            Switch Workspace
+          </button>
+        )}
         <button
           onClick={handleSignOut}
           className="iconBtn"
-          style={{ width: "100%", marginTop: "10px" }}
+          style={{
+            width: "100%", fontSize: 12,
+            color: "rgba(255,255,255,0.4)", background: "none", border: "none",
+            cursor: "pointer", padding: "8px 0",
+          }}
+          onMouseEnter={e => { e.currentTarget.style.color = "rgba(255,255,255,0.7)"; }}
+          onMouseLeave={e => { e.currentTarget.style.color = "rgba(255,255,255,0.4)"; }}
         >
           Sign Out
         </button>
