@@ -1,0 +1,81 @@
+{
+  "id": "construction_lending_v0",
+  "version": "v0",
+  "domain": "construction-lending",
+  "required_inputs": [
+    "term_sheet",
+    "construction_budget",
+    "draw_schedule"
+  ],
+  "hard_stops": [
+    {
+      "id": "no_term_sheet",
+      "logic": "at least one term sheet must be provided before loan analysis can begin",
+      "eval": { "type": "required_inputs_check" }
+    },
+    {
+      "id": "draws_exceed_commitment",
+      "logic": "cumulative draw amount cannot exceed construction loan commitment",
+      "eval": { "field": "loan.cumulative_drawn", "operator": ">", "threshold": "tenant.loan_commitment", "conditional": true }
+    },
+    {
+      "id": "interest_reserve_exhausted",
+      "logic": "interest reserve balance has reached zero — out-of-pocket interest required",
+      "eval": { "field": "loan.interest_reserve_balance", "operator": "<=", "threshold": 0 }
+    },
+    {
+      "id": "ltc_covenant_breached",
+      "logic": "loan-to-cost ratio exceeds covenant maximum",
+      "eval": { "field": "loan.current_ltc", "operator": ">", "threshold": "tenant.ltc_covenant", "conditional": true }
+    },
+    {
+      "id": "loan_past_maturity",
+      "logic": "construction loan has passed maturity date without conversion, extension, or payoff",
+      "eval": { "field": "loan.days_past_maturity", "operator": ">", "threshold": 0 }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "interest_reserve_tight",
+      "logic": "interest reserve projected to be insufficient under delay scenario",
+      "eval": { "field": "loan.reserve_delay_surplus", "operator": "<", "threshold": 0 }
+    },
+    {
+      "id": "utilization_high",
+      "logic": "loan utilization exceeds alert threshold",
+      "eval": { "field": "loan.utilization_pct", "operator": ">", "threshold": 85 }
+    },
+    {
+      "id": "maturity_approaching",
+      "logic": "construction loan matures within 6 months",
+      "eval": { "field": "loan.months_to_maturity", "operator": "<", "threshold": 6 }
+    },
+    {
+      "id": "ltc_near_limit",
+      "logic": "LTC ratio within 2% of covenant limit — change orders may trigger breach",
+      "eval": { "field": "loan.ltc_headroom_pct", "operator": "<", "threshold": 2 }
+    },
+    {
+      "id": "contingency_covenant_risk",
+      "logic": "hard cost contingency below lender's minimum requirement",
+      "eval": { "field": "loan.contingency_pct", "operator": "<", "threshold": "tenant.contingency_covenant_min", "conditional": true }
+    },
+    {
+      "id": "rate_risk_reserve",
+      "logic": "floating rate increase of 100bps would exhaust interest reserve",
+      "eval": { "field": "loan.reserve_rate_100_surplus", "operator": "<", "threshold": 0 }
+    },
+    {
+      "id": "draw_pace_ahead",
+      "logic": "draw pace significantly ahead of construction progress — overbilling risk",
+      "eval": { "field": "loan.draw_vs_construction_gap", "operator": ">", "threshold": 15 }
+    }
+  ],
+  "outputs": [
+    "cl-loan-comparison",
+    "cl-draw-schedule",
+    "cl-interest-reserve",
+    "cl-utilization-dashboard",
+    "cl-conversion-checklist"
+  ]
+}

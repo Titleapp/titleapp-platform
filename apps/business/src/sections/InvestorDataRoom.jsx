@@ -538,14 +538,14 @@ function OverviewSection({ raiseConfig, capTable, updates, gates, isVerified, ti
             { label: "Minimum", value: formatCurrency(raiseConfig.minimumInvestment) },
             { label: "Pro Rata", value: raiseConfig.proRataNote || "Yes" },
             { label: "Regulation", value: raiseConfig.fundingPortal?.regulation || "Reg CF" },
-            { label: "Runway", value: raiseConfig.runway?.withRevenueMonths || "33+ mo" },
+            { label: "Runway", value: raiseConfig.runway?.displayText || `${raiseConfig.runway?.zeroRevenueMonths || 29} mo (zero rev) | ${raiseConfig.runway?.withRevenueMonths || "33+"} w/ revenue`, small: true },
           ].map((item, i) => (
             <div key={i} style={{
               background: "white", borderRadius: 12, padding: "16px 18px",
               boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
             }}>
               <div style={{ fontSize: 11, color: "#94a3b8", fontWeight: 500, marginBottom: 4 }}>{item.label}</div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: "#0f172a" }}>{item.value}</div>
+              <div style={{ fontSize: item.small ? 13 : 16, fontWeight: 700, color: "#0f172a" }}>{item.value}</div>
             </div>
           ))}
         </div>

@@ -1,0 +1,54 @@
+{
+  "id": "chief_of_staff_v0",
+  "version": "v0",
+  "domain": "platform-operations",
+  "description": "Chief of Staff orchestration rules — pipeline management, handoff validation, worker routing",
+  "required_inputs": [
+    "workspace_id"
+  ],
+  "hard_stops": [
+    {
+      "id": "no_workspace",
+      "logic": "workspace must be initialized before orchestration can begin",
+      "eval": { "type": "required_inputs_check" }
+    },
+    {
+      "id": "worker_not_subscribed",
+      "logic": "cannot route to a worker the user does not have an active subscription for",
+      "eval": { "field": "pipeline.unsubscribedWorkerCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "specialist_hard_stop_override",
+      "logic": "Alex cannot override a specialist worker hard stop — if a specialist blocks, Alex must respect it",
+      "eval": { "field": "pipeline.overriddenHardStops", "operator": ">", "threshold": 0 }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "pipeline_stalled",
+      "logic": "pipeline has a step with no progress for more than 48 hours",
+      "eval": { "field": "pipeline.maxStallHours", "operator": ">", "threshold": 48 }
+    },
+    {
+      "id": "handoff_pending_approval",
+      "logic": "handoff waiting for user approval for more than 24 hours",
+      "eval": { "field": "pipeline.maxPendingApprovalHours", "operator": ">", "threshold": 24 }
+    },
+    {
+      "id": "task_overdue",
+      "logic": "one or more tasks are past their due date",
+      "eval": { "field": "tasks.overdueCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "conflicting_outputs",
+      "logic": "two or more workers produced conflicting results on the same deal",
+      "eval": { "field": "pipeline.conflictCount", "operator": ">", "threshold": 0 }
+    }
+  ],
+  "outputs": [
+    "cos-pipeline-status",
+    "cos-weekly-digest",
+    "cos-task-tracker",
+    "cos-handoff-memo"
+  ]
+}

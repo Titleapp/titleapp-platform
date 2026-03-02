@@ -1,0 +1,59 @@
+{
+  "id": "environmental_cultural_review_v0",
+  "version": "v0",
+  "domain": "environmental-review",
+  "required_inputs": [
+    "project_info",
+    "site_info"
+  ],
+  "hard_stops": [
+    {
+      "id": "no_project_record",
+      "logic": "project must be initialized before any environmental or cultural review activities begin",
+      "eval": { "type": "required_inputs_check" }
+    },
+    {
+      "id": "rec_unresolved",
+      "logic": "recognized environmental conditions from Phase I/II remain unresolved — cannot proceed to closing or construction",
+      "eval": { "field": "environmental.unresolved_recs", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "endangered_species_violation",
+      "logic": "project activity may impact endangered species habitat — Endangered Species Act compliance required before proceeding",
+      "eval": { "field": "environmental.esa_violation", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "section_106_non_compliant",
+      "logic": "Section 106 historic preservation review is incomplete — required for any project involving federal funding or permits",
+      "eval": { "field": "environmental.section_106_incomplete", "operator": "==", "threshold": true }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "remediation_behind_schedule",
+      "logic": "environmental remediation is behind schedule — may impact project timeline",
+      "eval": { "field": "environmental.remediation_days_behind", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "permit_expiring",
+      "logic": "environmental permits expiring within 30 days — renewal action required",
+      "eval": { "field": "environmental.permits_expiring_30_days", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "brownfield_enrollment_pending",
+      "logic": "brownfield program enrollment is still pending — track status for liability protection",
+      "eval": { "field": "environmental.brownfield_status", "operator": "==", "threshold": "pending" }
+    },
+    {
+      "id": "wetland_mitigation_incomplete",
+      "logic": "wetland mitigation requirements have not been fully satisfied — Army Corps compliance at risk",
+      "eval": { "field": "environmental.mitigation_complete_percent", "operator": "<", "threshold": 100 }
+    }
+  ],
+  "outputs": [
+    "ecr-environmental-summary",
+    "ecr-remediation-tracker",
+    "ecr-permit-tracker",
+    "ecr-section-106-log"
+  ]
+}

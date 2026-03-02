@@ -111,8 +111,8 @@
     }
   ],
   "outputs": [
-    "compliance_checklist",
-    "investor_summary",
-    "accreditation_report"
+    "ir-compliance-checklist",
+    "ir-investor-summary",
+    "ir-accreditation-report"
   ]
 }

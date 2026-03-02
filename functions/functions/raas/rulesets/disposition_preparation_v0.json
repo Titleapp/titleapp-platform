@@ -1,0 +1,54 @@
+{
+  "id": "disposition_preparation_v0",
+  "version": "v0",
+  "domain": "disposition",
+  "required_inputs": [
+    "property_info",
+    "disposition_strategy"
+  ],
+  "hard_stops": [
+    {
+      "id": "no_property",
+      "logic": "property information is required before disposition preparation can proceed",
+      "eval": { "type": "required_inputs_check" }
+    },
+    {
+      "id": "undisclosed_material_defect",
+      "logic": "material defects exist that have not been disclosed — legal liability risk",
+      "eval": { "field": "disposition.undisclosed_defects", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "securities_non_compliant",
+      "logic": "entity sale structure lacks required securities exemption — cannot proceed without legal clearance",
+      "eval": { "field": "disposition.entity_sale_without_exemption", "operator": "==", "threshold": true }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "data_room_incomplete",
+      "logic": "data room is less than 90% complete — buyers may delay due diligence or reduce offers",
+      "eval": { "field": "disposition.data_room_completion_percent", "operator": "<", "threshold": 90 }
+    },
+    {
+      "id": "below_target_price",
+      "logic": "best offer is below 95% of target price — consider adjusting strategy or timing",
+      "eval": { "field": "disposition.best_offer_vs_target_percent", "operator": "<", "threshold": 95 }
+    },
+    {
+      "id": "environmental_disclosure_pending",
+      "logic": "environmental disclosures are pending — must be resolved before closing",
+      "eval": { "field": "disposition.environmental_disclosures_pending", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "tenant_notification_required",
+      "logic": "tenant notifications for the sale are pending — may be required by lease or statute",
+      "eval": { "field": "disposition.tenant_notifications_pending", "operator": ">", "threshold": 0 }
+    }
+  ],
+  "outputs": [
+    "dp-disposition-analysis",
+    "dp-broker-comparison",
+    "dp-offer-comparison",
+    "dp-closing-checklist"
+  ]
+}

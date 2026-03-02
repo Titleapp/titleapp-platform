@@ -1,0 +1,52 @@
+{
+  "id": "maintenance_work_order_v0",
+  "version": "v0",
+  "domain": "maintenance",
+  "required_inputs": [
+    "property_info"
+  ],
+  "hard_stops": [
+    {
+      "id": "no_property",
+      "logic": "property must be initialized before any maintenance or work order activities begin",
+      "eval": { "type": "required_inputs_check" }
+    },
+    {
+      "id": "habitability_violation",
+      "logic": "unresolved habitability issues exist — implied warranty of habitability violation with legal liability and potential rent withholding",
+      "eval": { "field": "maintenance.unresolved_habitability", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "lead_paint_uncertified",
+      "logic": "lead paint remediation being performed by uncertified contractor — EPA RRP Rule violation with penalties up to $37,500 per day",
+      "eval": { "field": "maintenance.lead_paint_uncertified_contractor", "operator": "==", "threshold": true }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "emergency_response_overdue",
+      "logic": "emergency maintenance requests are overdue — tenant safety and liability risk",
+      "eval": { "field": "maintenance.emergency_overdue", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "pm_compliance_low",
+      "logic": "preventive maintenance completion rate is below 80% — asset deterioration and warranty voiding risk",
+      "eval": { "field": "maintenance.pm_completion_percent", "operator": "<", "threshold": 80 }
+    },
+    {
+      "id": "repair_cost_over_threshold",
+      "logic": "pending repair cost exceeds tenant's vendor dispatch threshold — owner approval required before dispatch",
+      "eval": { "field": "maintenance.pending_cost", "operator": ">", "threshold": "tenant.vendor_dispatch_threshold", "conditional": true }
+    },
+    {
+      "id": "repeat_issue",
+      "logic": "same unit or system has more than 3 work orders for the same issue — root cause analysis recommended",
+      "eval": { "field": "maintenance.repeat_work_orders", "operator": ">", "threshold": 3 }
+    }
+  ],
+  "outputs": [
+    "mwo-work-order",
+    "mwo-pm-schedule",
+    "mwo-maintenance-report"
+  ]
+}

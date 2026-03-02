@@ -1,0 +1,54 @@
+{
+  "id": "warranty_defect_v0",
+  "version": "v0",
+  "domain": "warranty-management",
+  "required_inputs": [
+    "project_info",
+    "substantial_completion_date"
+  ],
+  "hard_stops": [
+    {
+      "id": "no_project",
+      "logic": "project information is required before warranty tracking can proceed",
+      "eval": { "type": "required_inputs_check" }
+    },
+    {
+      "id": "statute_of_repose_imminent",
+      "logic": "statute of repose deadline is within 90 days — legal exposure must be addressed immediately",
+      "eval": { "field": "warranty.repose_days_remaining", "operator": "<", "threshold": 90 }
+    },
+    {
+      "id": "critical_defect_unresolved",
+      "logic": "one or more critical defects remain open — life safety or structural issue must be resolved",
+      "eval": { "field": "warranty.critical_defects_open", "operator": ">", "threshold": 0 }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "warranty_expiring_soon",
+      "logic": "one or more warranties expire within 60 days — schedule inspections and file claims",
+      "eval": { "field": "warranty.warranties_expiring_60_days", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "claim_pending",
+      "logic": "open warranty claims require follow-up with subcontractors or manufacturers",
+      "eval": { "field": "warranty.open_claims", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "walkthrough_overdue",
+      "logic": "scheduled warranty walkthrough is overdue — delays may forfeit claim eligibility",
+      "eval": { "field": "warranty.walkthrough_overdue", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "reserve_depleted",
+      "logic": "warranty reserve is below 20% — insufficient funds to cover remaining defect remediation",
+      "eval": { "field": "warranty.reserve_remaining_percent", "operator": "<", "threshold": 20 }
+    }
+  ],
+  "outputs": [
+    "wd-warranty-register",
+    "wd-defect-log",
+    "wd-warranty-claim",
+    "wd-walkthrough-report"
+  ]
+}

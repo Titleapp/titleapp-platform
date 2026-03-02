@@ -1,0 +1,48 @@
+{
+  "id": "utility_management_v0",
+  "version": "v0",
+  "domain": "utility-management",
+  "required_inputs": [
+    "property_info",
+    "utility_accounts"
+  ],
+  "hard_stops": [
+    {
+      "id": "no_property",
+      "logic": "property information is required before utility management can proceed",
+      "eval": { "type": "required_inputs_check" }
+    },
+    {
+      "id": "rubs_non_compliant",
+      "logic": "RUBS allocation violates local utility billing regulations — cannot proceed until resolved",
+      "eval": { "field": "utility.rubs_violation", "operator": "==", "threshold": true }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "consumption_anomaly",
+      "logic": "one or more utility accounts show abnormal consumption patterns — investigate for leaks or meter errors",
+      "eval": { "field": "utility.anomaly_count", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "benchmarking_overdue",
+      "logic": "utility benchmarking report is overdue — may affect compliance or ESG reporting",
+      "eval": { "field": "utility.benchmarking_overdue_days", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "cost_recovery_gap",
+      "logic": "utility cost recovery is below target — tenant reimbursements not covering actual costs",
+      "eval": { "field": "utility.recovery_gap_percent", "operator": ">", "threshold": 10 }
+    },
+    {
+      "id": "conservation_target_missed",
+      "logic": "property is behind on conservation targets — may affect green certification or rebates",
+      "eval": { "field": "utility.conservation_behind_percent", "operator": ">", "threshold": 5 }
+    }
+  ],
+  "outputs": [
+    "um-utility-report",
+    "um-rubs-calculation",
+    "um-benchmarking-report"
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "id": "appraisal_valuation_review_v0",
+  "version": "v0",
+  "domain": "appraisal-review",
+  "required_inputs": [
+    "appraisal_report"
+  ],
+  "hard_stops": [
+    {
+      "id": "no_appraisal",
+      "logic": "appraisal report must be provided before any valuation review activities begin",
+      "eval": { "type": "required_inputs_check" }
+    },
+    {
+      "id": "appraiser_pressure",
+      "logic": "target value was communicated to the appraiser — FIRREA and USPAP independence violation, appraisal is compromised",
+      "eval": { "field": "appraisal.target_value_communicated", "operator": "==", "threshold": true }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "variance_above_threshold",
+      "logic": "appraisal value variance exceeds tenant's rebuttal threshold — rebuttal or second opinion may be warranted",
+      "eval": { "field": "appraisal.variance_percent", "operator": ">", "threshold": "tenant.rebuttal_threshold", "conditional": true }
+    },
+    {
+      "id": "weak_comps",
+      "logic": "comparable sale quality score is below 60 — comps may not adequately support the value conclusion",
+      "eval": { "field": "appraisal.comp_quality_score", "operator": "<", "threshold": 60 }
+    },
+    {
+      "id": "cap_rate_outlier",
+      "logic": "applied cap rate deviates more than 50 basis points from market consensus — justification should be reviewed",
+      "eval": { "field": "appraisal.cap_rate_deviation", "operator": ">", "threshold": 50 }
+    },
+    {
+      "id": "missing_approach",
+      "logic": "one or more standard valuation approaches (income, sales comparison, cost) are missing from the appraisal — USPAP completeness concern",
+      "eval": { "field": "appraisal.missing_valuation_approaches", "operator": ">", "threshold": 0 }
+    }
+  ],
+  "outputs": [
+    "avr-appraisal-review",
+    "avr-comp-analysis",
+    "avr-rebuttal-memo"
+  ]
+}

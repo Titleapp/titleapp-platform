@@ -1,0 +1,53 @@
+{
+  "id": "hoa_association_v0",
+  "version": "v0",
+  "domain": "hoa-management",
+  "required_inputs": [
+    "association_info"
+  ],
+  "hard_stops": [
+    {
+      "id": "no_association",
+      "logic": "association information is required before HOA management can proceed",
+      "eval": { "type": "required_inputs_check" }
+    },
+    {
+      "id": "reserve_critically_underfunded",
+      "logic": "reserve fund is critically underfunded below 30% — special assessment or emergency funding required",
+      "eval": { "field": "hoa.reserve_funded_percent", "operator": "<", "threshold": 30 }
+    },
+    {
+      "id": "dissolution_risk",
+      "logic": "association has missed more than 2 required filings — dissolution risk is imminent",
+      "eval": { "field": "hoa.missed_filings", "operator": ">", "threshold": 2 }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "reserve_below_target",
+      "logic": "reserve funding is below the association's target threshold — plan contribution increases",
+      "eval": { "field": "hoa.reserve_funded_percent", "operator": "<", "threshold": "tenant.reserve_funding_target", "conditional": true }
+    },
+    {
+      "id": "delinquency_high",
+      "logic": "assessment delinquency rate exceeds 10% — collection enforcement may be needed",
+      "eval": { "field": "hoa.delinquency_rate", "operator": ">", "threshold": 10 }
+    },
+    {
+      "id": "transition_deadline_approaching",
+      "logic": "developer-to-owner transition deadline is within 90 days — ensure turnover preparation",
+      "eval": { "field": "hoa.transition_deadline_days", "operator": "<", "threshold": 90 }
+    },
+    {
+      "id": "board_meeting_overdue",
+      "logic": "more than 90 days since last board meeting — governance compliance risk",
+      "eval": { "field": "hoa.days_since_board_meeting", "operator": ">", "threshold": 90 }
+    }
+  ],
+  "outputs": [
+    "hoa-board-package",
+    "hoa-assessment-tracker",
+    "hoa-reserve-analysis",
+    "hoa-transition-checklist"
+  ]
+}

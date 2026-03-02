@@ -1,0 +1,70 @@
+{
+  "id": "insurance_risk_v0",
+  "version": "v0",
+  "domain": "insurance-risk",
+  "required_inputs": [
+    "project_info",
+    "subcontractor_registry",
+    "insurance_policies"
+  ],
+  "hard_stops": [
+    {
+      "id": "missing_workers_comp",
+      "logic": "subcontractor is active on site without verified workers compensation coverage — statutory WC is required for every sub with no exceptions",
+      "eval": { "field": "sub.workers_comp_status", "operator": "==", "threshold": "missing" }
+    },
+    {
+      "id": "expired_coi_active_sub",
+      "logic": "subcontractor has an expired certificate of insurance and is currently active on site",
+      "eval": { "field": "sub.coi_expired_and_active", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "missing_additional_insured",
+      "logic": "GC is not named as additional insured on subcontractor's general liability policy — required before sub mobilizes",
+      "eval": { "field": "sub.additional_insured_status", "operator": "==", "threshold": "missing" }
+    },
+    {
+      "id": "missing_builders_risk",
+      "logic": "project does not have a verified builder's risk policy in place — required before construction begins",
+      "eval": { "field": "project.builders_risk_status", "operator": "==", "threshold": "missing" }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "emr_exceeds_max",
+      "logic": "subcontractor EMR exceeds maximum threshold of 1.25 — elevated risk",
+      "eval": { "field": "sub.emr", "operator": ">", "threshold": 1.25 }
+    },
+    {
+      "id": "coi_expiring_30_days",
+      "logic": "certificate of insurance expiring within 30 days — renewal needed",
+      "eval": { "field": "sub.coi_days_to_expiration", "operator": "<", "threshold": 30 }
+    },
+    {
+      "id": "coverage_below_minimum",
+      "logic": "subcontractor coverage limits are below project minimum requirements but policy is not expired",
+      "eval": { "field": "sub.coverage_meets_minimum", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "missing_waiver_subrogation",
+      "logic": "contract requires waiver of subrogation endorsement but it is not verified on the COI",
+      "eval": { "field": "sub.waiver_subrogation_status", "operator": "==", "threshold": "missing" }
+    },
+    {
+      "id": "pollution_liability_missing",
+      "logic": "subcontractor performing hazmat or environmental remediation scope without pollution liability coverage",
+      "eval": { "field": "sub.pollution_liability_required_missing", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "professional_liability_missing",
+      "logic": "design-build subcontractor or engineer without professional liability coverage",
+      "eval": { "field": "sub.professional_liability_required_missing", "operator": "==", "threshold": true }
+    }
+  ],
+  "outputs": [
+    "ir-insurance-matrix",
+    "ir-coi-deficiency",
+    "ir-lender-report",
+    "ir-risk-summary"
+  ]
+}

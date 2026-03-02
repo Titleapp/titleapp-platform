@@ -177,6 +177,8 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
   const recognitionRef = useRef(null);
   const [fileUploading, setFileUploading] = useState(false);
   const [pendingActions, setPendingActions] = useState([]);
+  const [showMobileExtras, setShowMobileExtras] = useState(false);
+  const chatPanelRef = useRef(null);
 
   // Disclaimer state
   const [disclaimerAccepted, setDisclaimerAccepted] = useState(() => {
@@ -192,6 +194,26 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
   const [celebrationFired, setCelebrationFired] = useState(() => {
     return sessionStorage.getItem('ta_onboarding_celebrated') === 'true';
   });
+
+  // Adjust mobile chat panel when virtual keyboard opens/closes
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    function onResize() {
+      const panel = chatPanelRef.current?.closest('.mobileChatPanel');
+      if (!panel) return;
+      const keyboardHeight = window.innerHeight - vv.height;
+      if (keyboardHeight > 100) {
+        panel.style.height = `${vv.height * 0.85}px`;
+        panel.style.bottom = `${keyboardHeight}px`;
+      } else {
+        panel.style.height = '';
+        panel.style.bottom = '';
+      }
+    }
+    vv.addEventListener('resize', onResize);
+    return () => vv.removeEventListener('resize', onResize);
+  }, []);
 
   // Listen for "discuss with AI" events from other components
   useEffect(() => {
@@ -1206,7 +1228,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
         )}
       </div>
 
-      <form className="chatPanelInput" onSubmit={sendMessage}>
+      <form className="chatPanelInput" onSubmit={sendMessage} ref={chatPanelRef}>
         {attachedFiles.length > 0 && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '4px', width: '100%' }}>
             {attachedFiles.map((file, fi) => (
@@ -1217,11 +1239,11 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
             ))}
           </div>
         )}
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end', width: '100%' }}>
-          <input ref={fileInputRef} type="file" multiple accept=".pdf,.xlsx,.xls,.csv,.doc,.docx,.txt,.png,.jpg,.jpeg" style={{ display: 'none' }} onChange={handleFileSelect} />
+        {/* Mobile extras row — attach & mic shown here when toggled open */}
+        <div className={`mobileExtrasRow${showMobileExtras ? ' open' : ''}`}>
           <button
             type="button"
-            onClick={() => fileInputRef.current?.click()}
+            onClick={() => { fileInputRef.current?.click(); setShowMobileExtras(false); }}
             disabled={!disclaimerAccepted}
             style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'transparent', border: '1px solid #e2e8f0', cursor: disclaimerAccepted ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: '#94a3b8', opacity: disclaimerAccepted ? 1 : 0.4 }}
             aria-label="Attach file"
@@ -1230,6 +1252,31 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
           </button>
           <button
             type="button"
+            onClick={() => { (isRecording ? stopVoiceInput : startVoiceInput)(); setShowMobileExtras(false); }}
+            disabled={!disclaimerAccepted}
+            style={{ width: '36px', height: '36px', borderRadius: '10px', background: isRecording ? '#ef4444' : 'transparent', border: isRecording ? 'none' : '1px solid #e2e8f0', cursor: disclaimerAccepted ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: isRecording ? 'white' : '#94a3b8', opacity: disclaimerAccepted ? 1 : 0.4 }}
+            aria-label={isRecording ? 'Stop recording' : 'Voice input'}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+          </button>
+        </div>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end', width: '100%' }}>
+          <input ref={fileInputRef} type="file" multiple accept=".pdf,.xlsx,.xls,.csv,.doc,.docx,.txt,.png,.jpg,.jpeg" style={{ display: 'none' }} onChange={handleFileSelect} />
+          {/* Desktop inline attach button */}
+          <button
+            type="button"
+            className="mobileInputExtras"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={!disclaimerAccepted}
+            style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'transparent', border: '1px solid #e2e8f0', cursor: disclaimerAccepted ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: '#94a3b8', opacity: disclaimerAccepted ? 1 : 0.4 }}
+            aria-label="Attach file"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
+          </button>
+          {/* Desktop inline mic button */}
+          <button
+            type="button"
+            className="mobileInputExtras"
             onClick={isRecording ? stopVoiceInput : startVoiceInput}
             disabled={!disclaimerAccepted}
             style={{ width: '36px', height: '36px', borderRadius: '10px', background: isRecording ? '#ef4444' : 'transparent', border: isRecording ? 'none' : '1px solid #e2e8f0', cursor: disclaimerAccepted ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: isRecording ? 'white' : '#94a3b8', opacity: disclaimerAccepted ? 1 : 0.4 }}
@@ -1237,14 +1284,24 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
           </button>
+          {/* Mobile "+" toggle for attach/mic */}
+          <button
+            type="button"
+            className="mobileInputToggle"
+            onClick={() => setShowMobileExtras(v => !v)}
+            style={{ width: '36px', height: '36px', borderRadius: '10px', background: showMobileExtras ? '#f1f5f9' : 'transparent', border: '1px solid #e2e8f0', cursor: 'pointer', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: '#94a3b8', transition: 'transform 0.15s ease', transform: showMobileExtras ? 'rotate(45deg)' : 'none' }}
+            aria-label="More options"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          </button>
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={disclaimerAccepted ? "Ask me anything..." : "Please accept the terms above to continue"}
-            rows={3}
+            rows={2}
             disabled={chatDisabled}
-            style={{ minHeight: '72px', opacity: disclaimerAccepted ? 1 : 0.5 }}
+            style={{ opacity: disclaimerAccepted ? 1 : 0.5 }}
           />
           <button
             type="submit"

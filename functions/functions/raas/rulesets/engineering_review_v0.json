@@ -1,0 +1,48 @@
+{
+  "id": "engineering_review_v0",
+  "version": "v0",
+  "domain": "engineering-review",
+  "required_inputs": [
+    "project_info",
+    "structural_design"
+  ],
+  "hard_stops": [
+    {
+      "id": "no_project_record",
+      "logic": "project must be initialized before any engineering review activities begin",
+      "eval": { "type": "required_inputs_check" }
+    },
+    {
+      "id": "structural_deficiency",
+      "logic": "structural engineering review has identified critical findings — cannot proceed without resolution",
+      "eval": { "field": "engineering.critical_findings", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "geotech_not_incorporated",
+      "logic": "geotechnical recommendations have not been incorporated into structural design — foundation integrity at risk",
+      "eval": { "field": "engineering.geotech_discrepancies", "operator": ">", "threshold": 0 }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "special_inspections_pending",
+      "logic": "special inspections required but not yet scheduled — must be in place before affected work begins",
+      "eval": { "field": "engineering.unplanned_special_inspections", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "mep_coordination_issue",
+      "logic": "more than 5 MEP clash detections unresolved — coordination meeting recommended",
+      "eval": { "field": "engineering.mep_clashes", "operator": ">", "threshold": 5 }
+    },
+    {
+      "id": "design_change_budget_impact",
+      "logic": "design change cost exceeds tenant's design change threshold — budget review required",
+      "eval": { "field": "engineering.design_change_cost", "operator": ">", "threshold": "tenant.design_change_threshold", "conditional": true }
+    }
+  ],
+  "outputs": [
+    "er-engineering-review",
+    "er-special-inspection-program",
+    "er-design-change-log"
+  ]
+}

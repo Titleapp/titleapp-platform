@@ -1,0 +1,53 @@
+{
+  "id": "entity_formation_v0",
+  "version": "v0",
+  "domain": "entity-management",
+  "required_inputs": [
+    "entity_purpose"
+  ],
+  "hard_stops": [
+    {
+      "id": "no_purpose",
+      "logic": "entity purpose is required before entity formation analysis can proceed",
+      "eval": { "type": "required_inputs_check" }
+    },
+    {
+      "id": "dissolution_risk",
+      "logic": "entity has missed annual filings — state may administratively dissolve",
+      "eval": { "field": "entity.missed_annual_filings", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "boi_non_compliant",
+      "logic": "beneficial ownership information report is overdue — FinCEN compliance violation",
+      "eval": { "field": "entity.boi_report_overdue", "operator": "==", "threshold": true }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "annual_filing_due",
+      "logic": "annual filings are due within 30 days — prepare and submit to maintain good standing",
+      "eval": { "field": "entity.filings_due_30_days", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "foreign_qualification_needed",
+      "logic": "entity is operating in states where it is not registered as a foreign entity",
+      "eval": { "field": "entity.unregistered_foreign_states", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "tax_election_deadline",
+      "logic": "tax election deadline is within 30 days — S-corp, partnership, or REIT election may be needed",
+      "eval": { "field": "entity.tax_election_due_days", "operator": "<", "threshold": 30 }
+    },
+    {
+      "id": "registered_agent_expiring",
+      "logic": "registered agent service renewal is due within 60 days — lapse may cause missed legal service",
+      "eval": { "field": "entity.agent_renewal_due_days", "operator": "<", "threshold": 60 }
+    }
+  ],
+  "outputs": [
+    "ef-entity-analysis",
+    "ef-formation-checklist",
+    "ef-entity-registry",
+    "ef-annual-compliance"
+  ]
+}

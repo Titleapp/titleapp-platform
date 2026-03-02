@@ -1,0 +1,54 @@
+{
+  "id": "investor_reporting_distributions_v0",
+  "version": "v0",
+  "domain": "investor-distributions",
+  "required_inputs": [
+    "fund_info",
+    "waterfall_terms"
+  ],
+  "hard_stops": [
+    {
+      "id": "no_fund",
+      "logic": "fund information is required before distribution calculations can proceed",
+      "eval": { "type": "required_inputs_check" }
+    },
+    {
+      "id": "waterfall_miscalculation",
+      "logic": "distribution waterfall calculation contains errors — cannot distribute until reconciled",
+      "eval": { "field": "distribution.calculation_error", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "withholding_non_compliant",
+      "logic": "required tax withholding is missing for one or more investors — regulatory violation",
+      "eval": { "field": "distribution.missing_withholding", "operator": ">", "threshold": 0 }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "preferred_return_accruing",
+      "logic": "preferred return is accruing unpaid — investors are owed cumulative preferred",
+      "eval": { "field": "distribution.preferred_accrued", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "cash_insufficient",
+      "logic": "available cash is insufficient to cover the calculated distribution — shortfall exists",
+      "eval": { "field": "distribution.cash_shortfall", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "capital_account_discrepancy",
+      "logic": "capital account balances show variance exceeding $100 — reconciliation needed",
+      "eval": { "field": "distribution.account_variance", "operator": ">", "threshold": 100 }
+    },
+    {
+      "id": "erisa_distribution_flag",
+      "logic": "ERISA-subject investors are affected by this distribution — special compliance rules apply",
+      "eval": { "field": "distribution.erisa_investors_affected", "operator": ">", "threshold": 0 }
+    }
+  ],
+  "outputs": [
+    "ird-distribution-schedule",
+    "ird-distribution-notice",
+    "ird-capital-account",
+    "ird-investor-package"
+  ]
+}

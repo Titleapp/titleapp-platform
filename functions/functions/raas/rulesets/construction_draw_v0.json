@@ -1,0 +1,82 @@
+{
+  "id": "construction_draw_v0",
+  "version": "v0",
+  "domain": "construction-lending",
+  "required_inputs": [
+    "schedule_of_values",
+    "pay_applications",
+    "lien_waivers"
+  ],
+  "hard_stops": [
+    {
+      "id": "missing_lien_waivers",
+      "logic": "all subs billing this period must provide conditional lien waivers",
+      "eval": { "type": "required_inputs_check" }
+    },
+    {
+      "id": "draw_exceeds_loan_commitment",
+      "logic": "cumulative draw amount cannot exceed construction loan commitment",
+      "eval": { "field": "draw.cumulative_amount", "operator": ">", "threshold": "tenant.loan_commitment", "conditional": true }
+    },
+    {
+      "id": "sov_total_mismatch",
+      "logic": "total scheduled values must equal contract sum including approved COs",
+      "eval": { "field": "draw.sov_total", "operator": "!=", "threshold": "draw.contract_sum_to_date", "conditional": true }
+    },
+    {
+      "id": "line_item_exceeds_100_percent",
+      "logic": "no SOV line item can exceed 100% complete",
+      "eval": { "field": "draw.max_line_item_percent", "operator": ">", "threshold": 100 }
+    },
+    {
+      "id": "unconditional_waiver_before_payment",
+      "logic": "unconditional waiver submitted before payment is confirmed — reject",
+      "eval": { "field": "draw.premature_unconditional_count", "operator": ">", "threshold": 0 }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "interest_reserve_depleting",
+      "logic": "interest reserve balance below 10% of original amount",
+      "eval": { "field": "draw.interest_reserve_percent", "operator": "<", "threshold": 10 }
+    },
+    {
+      "id": "contingency_low",
+      "logic": "contingency remaining below 3% of original budget",
+      "eval": { "field": "draw.contingency_percent", "operator": "<", "threshold": 3 }
+    },
+    {
+      "id": "front_loading_detected",
+      "logic": "early divisions billing >70% while late divisions are at 0%",
+      "eval": { "field": "draw.front_loading_score", "operator": ">", "threshold": 70 }
+    },
+    {
+      "id": "overbilling_detected",
+      "logic": "billing percentage significantly exceeds physical completion percentage",
+      "eval": { "field": "draw.overbilling_variance", "operator": ">", "threshold": 15 }
+    },
+    {
+      "id": "retainage_milestone_approaching",
+      "logic": "project approaching 50% complete — review retainage reduction eligibility",
+      "eval": { "field": "draw.overall_percent_complete", "operator": ">", "threshold": 45 }
+    },
+    {
+      "id": "missing_unconditional_waiver_overdue",
+      "logic": "unconditional waiver for previous draw missing >15 days — lien risk",
+      "eval": { "field": "draw.max_unconditional_overdue_days", "operator": ">", "threshold": 15 }
+    },
+    {
+      "id": "loan_utilization_high",
+      "logic": "cumulative draws exceed 90% of loan commitment",
+      "eval": { "field": "draw.loan_utilization_percent", "operator": ">", "threshold": 90 }
+    }
+  ],
+  "outputs": [
+    "g702_summary",
+    "g703_continuation",
+    "lien_waiver_matrix",
+    "retainage_tracking",
+    "draw_reconciliation",
+    "lender_submission_checklist"
+  ]
+}

@@ -1,0 +1,54 @@
+{
+  "id": "market_research_v0",
+  "version": "v0",
+  "domain": "market-research",
+  "required_inputs": [
+    "target_market",
+    "asset_type"
+  ],
+  "hard_stops": [
+    {
+      "id": "no_market_record",
+      "logic": "market must be identified before any research activities begin",
+      "eval": { "type": "required_inputs_check" }
+    },
+    {
+      "id": "discriminatory_criteria",
+      "logic": "analysis references or relies on protected class demographics — Fair Housing Act violation",
+      "eval": { "field": "analysis.uses_protected_class_demographics", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "unsourced_projection",
+      "logic": "analysis contains revenue or growth projections without cited data sources — cannot be published",
+      "eval": { "field": "analysis.unsourced_claims", "operator": ">", "threshold": 0 }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "small_market",
+      "logic": "MSA population is below tenant's minimum population threshold — limited data availability and liquidity risk",
+      "eval": { "field": "market.msa_population", "operator": "<", "threshold": "tenant.minimum_population", "conditional": true }
+    },
+    {
+      "id": "high_vacancy",
+      "logic": "market vacancy rate exceeds 15% — elevated supply risk",
+      "eval": { "field": "market.vacancy_rate", "operator": ">", "threshold": 15 }
+    },
+    {
+      "id": "negative_absorption",
+      "logic": "market absorption rate is negative — demand is declining",
+      "eval": { "field": "market.absorption_rate", "operator": "<", "threshold": 0 }
+    },
+    {
+      "id": "stale_data",
+      "logic": "market data is more than 6 months old — refresh recommended before reliance",
+      "eval": { "field": "market.data_age_months", "operator": ">", "threshold": 6 }
+    }
+  ],
+  "outputs": [
+    "mr-market-study",
+    "mr-comp-analysis",
+    "mr-submarket-ranking",
+    "mr-demographic-profile"
+  ]
+}

@@ -1,0 +1,87 @@
+{
+  "id": "construction_manager_v0",
+  "version": "v0",
+  "domain": "construction-management",
+  "required_inputs": [
+    "project_info",
+    "construction_budget",
+    "construction_schedule"
+  ],
+  "hard_stops": [
+    {
+      "id": "no_project_record",
+      "logic": "project must be initialized before any tracking activities begin",
+      "eval": { "type": "required_inputs_check" }
+    },
+    {
+      "id": "co_exceeds_authority",
+      "logic": "change order amount exceeds user's approval authority level — must escalate",
+      "eval": { "field": "project.co_amount", "operator": ">", "threshold": "tenant.co_authority_limit", "conditional": true }
+    },
+    {
+      "id": "cumulative_co_exceeds_10_percent",
+      "logic": "cumulative approved + pending change orders exceed 10% of original contract — critical escalation required",
+      "eval": { "field": "project.cumulative_co_percent", "operator": ">", "threshold": 10 }
+    },
+    {
+      "id": "schedule_past_substantial_completion",
+      "logic": "project has passed substantial completion date without achieving substantial completion",
+      "eval": { "field": "project.days_past_substantial", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "budget_line_exceeds_100_percent",
+      "logic": "no budget division can exceed 100% of revised budget without approved change order",
+      "eval": { "field": "project.max_division_percent", "operator": ">", "threshold": 100 }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "division_at_risk",
+      "logic": "budget division exceeding 90% of allocated budget — at risk for overrun",
+      "eval": { "field": "project.max_division_percent", "operator": ">", "threshold": 90 }
+    },
+    {
+      "id": "cumulative_co_warning",
+      "logic": "cumulative approved change orders exceed 5% of original contract — owner review recommended",
+      "eval": { "field": "project.approved_co_percent", "operator": ">", "threshold": 5 }
+    },
+    {
+      "id": "rfi_overdue",
+      "logic": "RFI with schedule impact is >5 days overdue — escalate to Alex",
+      "eval": { "field": "project.max_rfi_overdue_days", "operator": ">", "threshold": 5 }
+    },
+    {
+      "id": "critical_path_delay",
+      "logic": "critical path activity is behind schedule",
+      "eval": { "field": "project.critical_path_delay_days", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "contingency_low",
+      "logic": "hard cost contingency remaining below 3% of original contract",
+      "eval": { "field": "project.contingency_percent", "operator": "<", "threshold": 3 }
+    },
+    {
+      "id": "near_critical_float",
+      "logic": "activity has total float less than 5 days — near-critical",
+      "eval": { "field": "project.min_near_critical_float", "operator": "<", "threshold": 5 }
+    },
+    {
+      "id": "inspection_upcoming",
+      "logic": "required inspection within 48 hours — ensure readiness",
+      "eval": { "field": "project.next_inspection_hours", "operator": "<", "threshold": 48 }
+    },
+    {
+      "id": "submittal_resubmit_count",
+      "logic": "submittal on 3rd+ resubmission — flag for design team coordination",
+      "eval": { "field": "project.max_resubmit_count", "operator": ">", "threshold": 2 }
+    }
+  ],
+  "outputs": [
+    "cm-monthly-progress",
+    "cm-budget-tracker",
+    "cm-rfi-log",
+    "cm-co-log",
+    "cm-weekly-oac",
+    "cm-punchlist"
+  ]
+}

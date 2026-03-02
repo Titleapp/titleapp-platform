@@ -1,0 +1,64 @@
+{
+  "id": "mep_coordination_v0",
+  "version": "v0",
+  "domain": "mep-coordination",
+  "required_inputs": [
+    "project_info",
+    "mep_drawings",
+    "construction_schedule"
+  ],
+  "hard_stops": [
+    {
+      "id": "code_clearance_violation",
+      "logic": "MEP routing violates code-required clearances — NEC 110.26 electrical panel access (36\" deep, 30\" wide, clear to ceiling), mechanical service access, plumbing cleanout access, or NFPA 13 sprinkler head clearances (18\" minimum below deflector)",
+      "eval": { "field": "clash.code_clearance_violated", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "unfirestopped_penetration",
+      "logic": "MEP penetration through a fire-rated assembly (wall, floor, ceiling) without documented UL-listed firestopping — life-safety code violation",
+      "eval": { "field": "penetration.firestop_documented", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "missing_seismic_bracing",
+      "logic": "project is in seismic design category C-F and MEP systems (equipment, ductwork, piping, conduit) are missing required seismic bracing per ASCE 7 and IBC",
+      "eval": { "field": "system.seismic_bracing_required_missing", "operator": "==", "threshold": true }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "unresolved_clash_14_days",
+      "logic": "clash identified more than 14 days ago remains unresolved — likely schedule impact",
+      "eval": { "field": "clash.days_unresolved", "operator": ">", "threshold": 14 }
+    },
+    {
+      "id": "submittal_rejected_resubmit_pending",
+      "logic": "MEP submittal was rejected and resubmission has not been received — may delay procurement and installation",
+      "eval": { "field": "submittal.rejected_resubmit_pending", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "commissioning_incomplete",
+      "logic": "commissioning functional performance testing incomplete and substantial completion is within 30 days",
+      "eval": { "field": "commissioning.days_to_substantial_incomplete", "operator": "<", "threshold": 30 }
+    },
+    {
+      "id": "ceiling_space_conflict",
+      "logic": "combined MEP trade space requirements exceed available ceiling depth in a zone — coordination meeting required",
+      "eval": { "field": "zone.ceiling_space_exceeded", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "long_lead_item_at_risk",
+      "logic": "MEP equipment with long lead time (>8 weeks) has not been ordered and the installation date is approaching",
+      "eval": { "field": "equipment.order_deadline_days", "operator": "<", "threshold": 0 }
+    },
+    {
+      "id": "energy_code_noncompliance",
+      "logic": "MEP system does not meet ASHRAE 90.1 or IECC energy code requirements (insulation, efficiency, controls, lighting power density)",
+      "eval": { "field": "system.energy_code_compliant", "operator": "==", "threshold": false }
+    }
+  ],
+  "outputs": [
+    "mep-clash-log",
+    "mep-meeting-minutes",
+    "mep-cx-checklist"
+  ]
+}

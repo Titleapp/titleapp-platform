@@ -1,0 +1,58 @@
+{
+  "id": "tenant_screening_v0",
+  "version": "v0",
+  "domain": "tenant-screening",
+  "required_inputs": [
+    "applicant_info",
+    "screening_criteria"
+  ],
+  "hard_stops": [
+    {
+      "id": "no_applicant",
+      "logic": "applicant information must be provided before any screening activities begin",
+      "eval": { "type": "required_inputs_check" }
+    },
+    {
+      "id": "discriminatory_criteria",
+      "logic": "screening criteria reference protected class characteristics — Fair Housing Act violation",
+      "eval": { "field": "screening.protected_class_criteria", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "blanket_criminal_denial",
+      "logic": "blanket denial based on criminal history without individualized assessment — HUD guidance violation and disparate impact risk",
+      "eval": { "field": "screening.blanket_criminal_denial", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "fcra_non_compliant",
+      "logic": "adverse action notice not provided to denied applicant — Fair Credit Reporting Act violation",
+      "eval": { "field": "screening.adverse_action_missing", "operator": ">", "threshold": 0 }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "income_below_threshold",
+      "logic": "applicant income ratio is below tenant's minimum income requirement — may not meet qualification criteria",
+      "eval": { "field": "screening.income_ratio", "operator": "<", "threshold": "tenant.income_requirement", "conditional": true }
+    },
+    {
+      "id": "credit_below_minimum",
+      "logic": "applicant credit score is below tenant's minimum credit score requirement — additional review recommended",
+      "eval": { "field": "screening.credit_score", "operator": "<", "threshold": "tenant.credit_score_minimum", "conditional": true }
+    },
+    {
+      "id": "eviction_history",
+      "logic": "applicant has prior eviction filings — individualized assessment required per fair housing guidance",
+      "eval": { "field": "screening.eviction_count", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "incomplete_application",
+      "logic": "application is missing required documents — cannot complete screening until all materials are received",
+      "eval": { "field": "screening.missing_documents", "operator": ">", "threshold": 0 }
+    }
+  ],
+  "outputs": [
+    "ts-screening-report",
+    "ts-adverse-action",
+    "ts-criteria-summary"
+  ]
+}

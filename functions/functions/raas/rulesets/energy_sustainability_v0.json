@@ -1,0 +1,48 @@
+{
+  "id": "energy_sustainability_v0",
+  "version": "v0",
+  "domain": "energy-sustainability",
+  "required_inputs": [
+    "project_info",
+    "energy_code_edition"
+  ],
+  "hard_stops": [
+    {
+      "id": "no_project_record",
+      "logic": "project must be initialized before any energy or sustainability review activities begin",
+      "eval": { "type": "required_inputs_check" }
+    },
+    {
+      "id": "energy_code_non_compliant",
+      "logic": "design has unresolved energy code violations — cannot obtain building permit or certificate of occupancy",
+      "eval": { "field": "energy.code_violations", "operator": ">", "threshold": 0 }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "certification_behind",
+      "logic": "green building certification items are overdue — LEED, ENERGY STAR, or other certification timeline at risk",
+      "eval": { "field": "energy.certification_items_overdue", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "incentive_deadline_approaching",
+      "logic": "energy incentive application deadline is within 30 days — action required to preserve financial benefit",
+      "eval": { "field": "energy.incentive_deadline_days", "operator": "<", "threshold": 30 }
+    },
+    {
+      "id": "solar_not_evaluated",
+      "logic": "solar feasibility has not been evaluated — may be required by local code or beneficial for project economics",
+      "eval": { "field": "energy.solar_evaluation_done", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "ev_charging_below_req",
+      "logic": "EV charging infrastructure is below tenant's requirements — local code or lender requirements may apply",
+      "eval": { "field": "energy.ev_charging_percent", "operator": "<", "threshold": "tenant.ev_charging_requirements", "conditional": true }
+    }
+  ],
+  "outputs": [
+    "es-energy-compliance",
+    "es-certification-tracker",
+    "es-incentive-summary"
+  ]
+}

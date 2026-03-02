@@ -1,0 +1,59 @@
+{
+  "id": "debt_service_loan_compliance_v0",
+  "version": "v0",
+  "domain": "debt-compliance",
+  "required_inputs": [
+    "loan_info",
+    "financial_data"
+  ],
+  "hard_stops": [
+    {
+      "id": "no_loan",
+      "logic": "loan information is required before debt compliance monitoring can proceed",
+      "eval": { "type": "required_inputs_check" }
+    },
+    {
+      "id": "dscr_below_covenant",
+      "logic": "DSCR has fallen below the loan covenant minimum — lender default trigger",
+      "eval": { "field": "loan.dscr", "operator": "<", "threshold": "loan.dscr_covenant_minimum", "conditional": true }
+    },
+    {
+      "id": "payment_default",
+      "logic": "loan payment is more than 30 days past due — default event",
+      "eval": { "field": "loan.days_past_due", "operator": ">", "threshold": 30 }
+    },
+    {
+      "id": "reserve_below_required",
+      "logic": "lender-required reserves are in deficit — covenant violation",
+      "eval": { "field": "loan.reserve_deficit", "operator": ">", "threshold": 0 }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "dscr_approaching_covenant",
+      "logic": "DSCR is approaching the covenant minimum — proactive action recommended",
+      "eval": { "field": "loan.dscr", "operator": "<", "threshold": "tenant.dscr_alert_threshold", "conditional": true }
+    },
+    {
+      "id": "maturity_within_18_months",
+      "logic": "loan maturity is within 18 months — begin refinance or extension planning",
+      "eval": { "field": "loan.maturity_months", "operator": "<", "threshold": 18 }
+    },
+    {
+      "id": "lender_report_due",
+      "logic": "lender compliance report is due within the reporting lead time — prepare submission",
+      "eval": { "field": "loan.report_due_days", "operator": "<", "threshold": "tenant.reporting_lead_time", "conditional": true }
+    },
+    {
+      "id": "ucc_continuation_due",
+      "logic": "UCC continuation statement is due within 180 days — filing required to maintain lien priority",
+      "eval": { "field": "loan.ucc_continuation_due_days", "operator": "<", "threshold": 180 }
+    }
+  ],
+  "outputs": [
+    "dslc-covenant-dashboard",
+    "dslc-payment-schedule",
+    "dslc-reserve-tracker",
+    "dslc-lender-compliance-cert"
+  ]
+}

@@ -44,8 +44,9 @@ async function main() {
       runway: {
         netProceeds: 803000,
         monthlyBurn: 27800,
-        zeroRevenueMonths: 28,
+        zeroRevenueMonths: 29,
         withRevenueMonths: "33+",
+        displayText: "29 months (zero revenue) | 33+ with revenue",
         cashFlowPositiveTarget: "mid-2027",
       },
       team: [
@@ -66,9 +67,10 @@ async function main() {
   // Seed data room document metadata (files to be uploaded via UI)
   console.log("\nSeeding data room document entries...");
   const docs = [
-    { name: "TitleApp Executive Summary", category: "Pitch Deck", accessLevel: "public", sizeBytes: 29595 },
-    { name: "TitleApp Pitch Deck", category: "Pitch Deck", accessLevel: "prospect", sizeBytes: 772839 },
-    { name: "TitleApp Business Plan (Feb 2026)", category: "Financials", accessLevel: "verified", sizeBytes: 50722 },
+    { name: "TitleApp One-Pager v6", category: "Pitch Deck", accessLevel: "public", sizeBytes: 67742, description: "One-page overview — market, product, team, terms" },
+    { name: "TitleApp Pitch Deck v6", category: "Pitch Deck", accessLevel: "prospect", sizeBytes: 349651, description: "Full investor pitch deck — March 2026" },
+    { name: "TitleApp Business Plan v4", category: "Financials", accessLevel: "verified", sizeBytes: 19401, description: "Business plan — March 2026 update" },
+    { name: "TitleApp Financial Model v1", category: "Financials", accessLevel: "verified", sizeBytes: 39982, description: "36-month, 3-scenario cash flow model" },
   ];
 
   for (const doc of docs) {

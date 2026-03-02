@@ -1,0 +1,49 @@
+{
+  "id": "tax_assessment_v0",
+  "version": "v0",
+  "domain": "tax-assessment",
+  "required_inputs": [
+    "property_info",
+    "assessment_data"
+  ],
+  "hard_stops": [
+    {
+      "id": "no_property",
+      "logic": "property information is required before tax assessment analysis can proceed",
+      "eval": { "type": "required_inputs_check" }
+    },
+    {
+      "id": "appeal_deadline_missed",
+      "logic": "tax assessment appeal deadline has passed — no further administrative remedy available",
+      "eval": { "field": "tax.appeal_deadline_passed", "operator": "==", "threshold": true }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "assessment_increase_high",
+      "logic": "assessment increase exceeds the tenant's appeal threshold — consider filing an appeal",
+      "eval": { "field": "tax.increase_percent", "operator": ">", "threshold": "tenant.appeal_threshold", "conditional": true }
+    },
+    {
+      "id": "abatement_expiring",
+      "logic": "tax abatement expires within 180 days — plan for increased tax liability",
+      "eval": { "field": "tax.abatement_expiry_days", "operator": "<", "threshold": 180 }
+    },
+    {
+      "id": "payment_overdue",
+      "logic": "property tax payment is past due — penalties and interest are accruing",
+      "eval": { "field": "tax.days_past_due", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "transfer_tax_due",
+      "logic": "pending transfer tax obligation exists — must be resolved before or at closing",
+      "eval": { "field": "tax.pending_transfer_tax", "operator": ">", "threshold": 0 }
+    }
+  ],
+  "outputs": [
+    "ta-assessment-summary",
+    "ta-appeal-evidence",
+    "ta-payment-tracker",
+    "ta-projection"
+  ]
+}

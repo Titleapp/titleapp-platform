@@ -1,0 +1,53 @@
+{
+  "id": "architecture_design_review_v0",
+  "version": "v0",
+  "domain": "architecture-design-review",
+  "required_inputs": [
+    "project_info",
+    "design_phase"
+  ],
+  "hard_stops": [
+    {
+      "id": "no_project_record",
+      "logic": "project must be initialized before any design review activities begin",
+      "eval": { "type": "required_inputs_check" }
+    },
+    {
+      "id": "code_violation_unresolved",
+      "logic": "design contains unresolved building code violations — cannot advance to next phase",
+      "eval": { "field": "design.unresolved_code_violations", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "ada_non_compliant",
+      "logic": "design has ADA accessibility violations — must be resolved before permit submission",
+      "eval": { "field": "design.ada_violations", "operator": ">", "threshold": 0 }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "ve_target_not_met",
+      "logic": "value engineering savings target has not been achieved — review VE log for opportunities",
+      "eval": { "field": "design.ve_savings_gap_percent", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "late_deliverable",
+      "logic": "one or more design deliverables are past due — schedule impact possible",
+      "eval": { "field": "design.late_deliverables", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "program_deviation",
+      "logic": "design deviates more than 5% from approved program — owner review recommended",
+      "eval": { "field": "design.program_deviation_percent", "operator": ">", "threshold": 5 }
+    },
+    {
+      "id": "rfi_backlog",
+      "logic": "more than 20 open RFIs — design team response capacity may be strained",
+      "eval": { "field": "design.open_rfis", "operator": ">", "threshold": 20 }
+    }
+  ],
+  "outputs": [
+    "adr-design-review",
+    "adr-code-compliance",
+    "adr-ve-log"
+  ]
+}

@@ -83,9 +83,9 @@
     }
   ],
   "outputs": [
-    "fund_overview",
-    "fee_analysis",
-    "waterfall_structure",
-    "lp_terms_summary"
+    "ir-fund-overview",
+    "ir-fee-analysis",
+    "ir-waterfall",
+    "ir-lp-terms"
   ]
 }

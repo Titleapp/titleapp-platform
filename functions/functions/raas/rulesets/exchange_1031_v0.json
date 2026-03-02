@@ -1,0 +1,59 @@
+{
+  "id": "exchange_1031_v0",
+  "version": "v0",
+  "domain": "1031-exchange",
+  "required_inputs": [
+    "relinquished_property",
+    "exchange_info"
+  ],
+  "hard_stops": [
+    {
+      "id": "no_exchange",
+      "logic": "exchange information is required before 1031 exchange analysis can proceed",
+      "eval": { "type": "required_inputs_check" }
+    },
+    {
+      "id": "identification_deadline_passed",
+      "logic": "45-day identification deadline has passed — exchange fails unless already identified",
+      "eval": { "field": "exchange.identification_days_remaining", "operator": "<", "threshold": 0 }
+    },
+    {
+      "id": "closing_deadline_passed",
+      "logic": "180-day closing deadline has passed — exchange cannot be completed",
+      "eval": { "field": "exchange.closing_days_remaining", "operator": "<", "threshold": 0 }
+    },
+    {
+      "id": "proceeds_touched",
+      "logic": "exchanger has received or had access to exchange proceeds — constructive receipt disqualifies exchange",
+      "eval": { "field": "exchange.exchanger_received_proceeds", "operator": "==", "threshold": true }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "identification_deadline_approaching",
+      "logic": "fewer than 10 days remain to identify replacement properties — act immediately",
+      "eval": { "field": "exchange.identification_days_remaining", "operator": "<", "threshold": 10 }
+    },
+    {
+      "id": "closing_deadline_approaching",
+      "logic": "fewer than 30 days remain to close on replacement property",
+      "eval": { "field": "exchange.closing_days_remaining", "operator": "<", "threshold": 30 }
+    },
+    {
+      "id": "boot_exposure",
+      "logic": "estimated taxable boot exists — exchanger will owe taxes on the difference",
+      "eval": { "field": "exchange.estimated_boot", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "related_party",
+      "logic": "transaction involves a related party — two-year holding requirement and additional IRS scrutiny apply",
+      "eval": { "field": "exchange.related_party_transaction", "operator": "==", "threshold": true }
+    }
+  ],
+  "outputs": [
+    "ex-exchange-analysis",
+    "ex-timeline-tracker",
+    "ex-identification-notice",
+    "ex-basis-calculation"
+  ]
+}

@@ -37,9 +37,9 @@
     }
   ],
   "outputs": [
-    "ic_memo_lite",
-    "risk_summary",
-    "assumptions_register",
-    "evidence_table"
+    "da-ic-memo",
+    "da-risk-summary",
+    "da-assumptions",
+    "da-evidence-table"
   ]
 }

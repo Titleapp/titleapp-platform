@@ -1,0 +1,70 @@
+{
+  "id": "bid_procurement_v0",
+  "version": "v0",
+  "domain": "bid-procurement",
+  "required_inputs": [
+    "project_info",
+    "construction_budget",
+    "bid_packages"
+  ],
+  "hard_stops": [
+    {
+      "id": "anti_bid_shopping",
+      "logic": "NEVER share one subcontractor's pricing with another — anti-bid-shopping is an absolute prohibition",
+      "eval": { "type": "policy_check" }
+    },
+    {
+      "id": "expired_license",
+      "logic": "subcontractor has an expired or insufficient license for the scope of work",
+      "eval": { "field": "sub.license_status", "operator": "==", "threshold": "expired" }
+    },
+    {
+      "id": "missing_bid_bond",
+      "logic": "bid bond required (public works or >$100K) but not provided",
+      "eval": { "field": "bid.bond_required_missing", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "missing_insurance",
+      "logic": "bidder does not meet minimum insurance requirements",
+      "eval": { "field": "bid.insurance_compliant", "operator": "==", "threshold": false }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "bid_below_median",
+      "logic": "bid is >15% below median — potential scope gap or misunderstanding",
+      "eval": { "field": "bid.percent_below_median", "operator": ">", "threshold": 15 }
+    },
+    {
+      "id": "bid_above_median",
+      "logic": "bid is >15% above median — negotiate or investigate",
+      "eval": { "field": "bid.percent_above_median", "operator": ">", "threshold": 15 }
+    },
+    {
+      "id": "insufficient_responses",
+      "logic": "fewer than 3 bids received for a division — limited competition",
+      "eval": { "field": "division.bid_count", "operator": "<", "threshold": 3 }
+    },
+    {
+      "id": "mbe_wbe_shortfall",
+      "logic": "bid slate does not meet MBE/WBE/DBE participation goals",
+      "eval": { "field": "project.diversity_goal_met", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "high_emr",
+      "logic": "bidder EMR exceeds 1.25 — elevated safety risk",
+      "eval": { "field": "sub.emr", "operator": ">", "threshold": 1.25 }
+    },
+    {
+      "id": "prevailing_wage_flag",
+      "logic": "project subject to prevailing wage but bid does not include wage rates",
+      "eval": { "field": "bid.prevailing_wage_included", "operator": "==", "threshold": false }
+    }
+  ],
+  "outputs": [
+    "bp-bid-package",
+    "bp-bid-matrix",
+    "bp-award-memo",
+    "bp-sub-qual"
+  ]
+}

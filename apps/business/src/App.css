@@ -599,6 +599,11 @@ body{
   to{ transform:rotate(360deg); }
 }
 
+/* Mobile input helpers — "+" toggle hidden on desktop; extras row only used on mobile */
+.mobileInputToggle{ display:none; }
+.mobileExtrasRow{ display:none; }
+.mobileInputExtras{ display:flex; }
+
 /* Mobile chat toggle FAB */
 .chatToggleTab{
   display:none;
@@ -650,7 +655,37 @@ body{
   .chatSidebar{ display:none; }
   .resizeHandle{ display:none; }
   .chatToggleTab{ display:flex; }
-  .mobileChatPanel{ display:flex; }
+  .mobileChatPanel{ display:flex; flex-direction:column; }
+  .mobileChatPanel .chatPanelInput{
+    padding:8px 10px;
+    padding-bottom:calc(8px + env(safe-area-inset-bottom));
+  }
+  .mobileChatPanel .chatPanelInput textarea{
+    font-size:16px;
+    min-height:44px;
+    max-height:120px;
+    padding:10px 12px;
+    border-radius:10px;
+  }
+  .mobileChatPanel .chatPanelInput button{
+    width:36px;
+    height:36px;
+  }
+  .mobileInputExtras{
+    display:none;
+  }
+  .mobileInputToggle{
+    display:flex;
+  }
+  .mobileExtrasRow{
+    display:none;
+    width:100%;
+    gap:8px;
+    padding:0 0 4px;
+  }
+  .mobileExtrasRow.open{
+    display:flex;
+  }
 }
 
 .mobileBottomNav{ display:none; }

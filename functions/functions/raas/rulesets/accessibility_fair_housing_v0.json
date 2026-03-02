@@ -1,0 +1,53 @@
+{
+  "id": "accessibility_fair_housing_v0",
+  "version": "v0",
+  "domain": "accessibility-compliance",
+  "required_inputs": [
+    "project_info",
+    "building_type"
+  ],
+  "hard_stops": [
+    {
+      "id": "no_project_record",
+      "logic": "project must be initialized before any accessibility or fair housing review activities begin",
+      "eval": { "type": "required_inputs_check" }
+    },
+    {
+      "id": "fha_design_violation",
+      "logic": "design has unresolved Fair Housing Act design and construction requirement violations — federal liability exposure",
+      "eval": { "field": "accessibility.fha_violations", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "ada_violation_unresolved",
+      "logic": "ADA accessibility violations remain unresolved — DOJ enforcement risk and potential private right of action",
+      "eval": { "field": "accessibility.ada_violations", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "discriminatory_screening",
+      "logic": "tenant screening or marketing criteria reference protected class characteristics — Fair Housing Act violation",
+      "eval": { "field": "accessibility.discriminatory_criteria_applied", "operator": ">", "threshold": 0 }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "type_a_count_low",
+      "logic": "Type A accessible unit count is below code requirement — design revision needed before permit",
+      "eval": { "field": "accessibility.type_a_deficit", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "accommodation_pending",
+      "logic": "reasonable accommodation requests are pending review — timely response required under fair housing law",
+      "eval": { "field": "accessibility.pending_accommodations", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "training_overdue",
+      "logic": "staff fair housing and accessibility training is overdue — compliance risk and liability exposure",
+      "eval": { "field": "accessibility.training_overdue_staff", "operator": ">", "threshold": 0 }
+    }
+  ],
+  "outputs": [
+    "afh-compliance-review",
+    "afh-accommodation-tracker",
+    "afh-unit-classification"
+  ]
+}

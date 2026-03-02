@@ -1,0 +1,65 @@
+{
+  "id": "quality_control_v0",
+  "version": "v0",
+  "domain": "quality-control",
+  "required_inputs": [
+    "project_info",
+    "inspection_schedule",
+    "construction_schedule"
+  ],
+  "hard_stops": [
+    {
+      "id": "inspection_sequence_skip",
+      "logic": "attempting to schedule or approve an inspection before its prerequisite inspection has passed — IBC/IRC inspection sequence must be followed",
+      "eval": { "field": "inspection.prerequisite_passed", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "missing_special_inspection_report",
+      "logic": "special inspection report required by IBC Chapter 17 (structural steel, concrete, fireproofing) is missing — building official will not sign off",
+      "eval": { "field": "inspection.special_report_missing", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "failed_inspection_no_retest",
+      "logic": "inspection failed and deficiencies corrected but re-inspection has not been scheduled or passed",
+      "eval": { "field": "inspection.failed_no_reinspection", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "work_before_inspection",
+      "logic": "subsequent work phase has started or is scheduled to start before the required inspection for the prior phase has been completed",
+      "eval": { "field": "inspection.work_started_before_inspection", "operator": "==", "threshold": true }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "deficiency_past_deadline",
+      "logic": "deficiency correction deadline has passed without verified resolution",
+      "eval": { "field": "deficiency.days_past_deadline", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "inspection_approaching_no_schedule",
+      "logic": "construction schedule shows an activity completing within 5 days but the required inspection is not yet scheduled",
+      "eval": { "field": "inspection.days_until_needed_unscheduled", "operator": "<", "threshold": 5 }
+    },
+    {
+      "id": "accessibility_not_verified",
+      "logic": "accessible route or unit features have not been inspected and project is approaching finishes phase",
+      "eval": { "field": "inspection.accessibility_pending_at_finishes", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "energy_code_incomplete",
+      "logic": "energy code compliance documentation (envelope, HVAC, lighting) is incomplete and final inspection is approaching",
+      "eval": { "field": "inspection.energy_code_docs_complete", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "fire_marshal_pending",
+      "logic": "fire marshal approval not yet obtained and CO application is imminent",
+      "eval": { "field": "inspection.fire_marshal_approved", "operator": "==", "threshold": false }
+    }
+  ],
+  "outputs": [
+    "qc-inspection-report",
+    "qc-deficiency-log",
+    "qc-trade-checklist",
+    "qc-co-tracker"
+  ]
+}

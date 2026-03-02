@@ -1,0 +1,117 @@
+{
+  "id": "capital_stack_optimizer_v0",
+  "version": "0.1.0",
+  "domain": "finance_investment",
+  "description": "Capital Stack Optimizer — constructs, analyzes, and optimizes capital structures for real estate investment",
+
+  "required_inputs": [
+    "deal_name",
+    "total_project_cost",
+    "capital_layers"
+  ],
+
+  "hard_stops": [
+    {
+      "id": "no_deal_record",
+      "description": "Capital stack cannot be modeled without a deal record in the Vault",
+      "eval": { "type": "required_inputs_check" },
+      "action": "block",
+      "message": "A deal record with total project cost is required before modeling the capital stack."
+    },
+    {
+      "id": "sources_exceed_uses",
+      "description": "Total sources cannot exceed total uses by more than 5%",
+      "eval": { "field": "stack.sources_uses_ratio", "operator": ">", "threshold": 1.05 },
+      "action": "block",
+      "message": "Total sources exceed total uses by more than 5%. Reconcile the capital stack before proceeding."
+    },
+    {
+      "id": "leverage_exceeds_maximum",
+      "description": "Total debt cannot exceed maximum leverage ratio (Tier 2 configurable, default 75% LTC)",
+      "eval": { "field": "stack.leverage_ratio", "operator": ">", "threshold": "tenant.max_leverage_ratio", "conditional": true },
+      "action": "block",
+      "message": "Total leverage exceeds the maximum LTC ratio. Reduce debt or increase equity to proceed."
+    },
+    {
+      "id": "waterfall_split_exceeds_100",
+      "description": "LP + GP split at any waterfall tier cannot exceed 100%",
+      "eval": { "field": "stack.max_tier_split", "operator": ">", "threshold": 1.0 },
+      "action": "block",
+      "message": "Waterfall distribution splits must total 100% at every tier. Check promote structure."
+    },
+    {
+      "id": "negative_equity",
+      "description": "Equity contribution cannot be negative",
+      "eval": { "field": "stack.total_equity", "operator": "<", "threshold": 0 },
+      "action": "block",
+      "message": "The modeled capital stack results in negative equity. Adjust sources or uses."
+    }
+  ],
+
+  "soft_flags": [
+    {
+      "id": "sources_uses_gap",
+      "description": "Sources do not equal uses (gap exists but within 5%)",
+      "eval": { "field": "stack.sources_uses_gap_pct", "operator": ">", "threshold": 0.001 },
+      "severity": "warning",
+      "message": "Sources and uses do not balance. Identify the shortfall or excess before closing."
+    },
+    {
+      "id": "negative_leverage",
+      "description": "WACC exceeds unlevered yield — leverage destroys value",
+      "eval": { "field": "stack.wacc_vs_yield_spread", "operator": ">", "threshold": 0 },
+      "severity": "critical",
+      "message": "Blended cost of capital exceeds unlevered yield. Leverage is destroying value."
+    },
+    {
+      "id": "lp_irr_below_target",
+      "description": "LP IRR in base case falls below Tier 2 target",
+      "eval": { "field": "returns.lp_irr", "operator": "<", "threshold": "tenant.target_irr", "conditional": true },
+      "severity": "warning",
+      "message": "LP IRR is below target. Consider restructuring the capital stack."
+    },
+    {
+      "id": "downside_negative_irr",
+      "description": "Downside scenario shows negative levered IRR",
+      "eval": { "field": "scenarios.downside_levered_irr", "operator": "<", "threshold": 0 },
+      "severity": "critical",
+      "message": "Downside scenario projects negative levered IRR. This deal has significant loss risk."
+    },
+    {
+      "id": "dscr_below_minimum",
+      "description": "Debt service coverage ratio below minimum threshold",
+      "eval": { "field": "returns.min_dscr", "operator": "<", "threshold": "tenant.min_dscr", "conditional": true },
+      "severity": "warning",
+      "message": "DSCR is below the minimum. Debt service exceeds safe coverage."
+    },
+    {
+      "id": "equity_multiple_below_target",
+      "description": "Equity multiple below Tier 2 target",
+      "eval": { "field": "returns.equity_multiple", "operator": "<", "threshold": "tenant.target_equity_multiple", "conditional": true },
+      "severity": "info",
+      "message": "Equity multiple is below target."
+    },
+    {
+      "id": "sec_reg_d_threshold",
+      "description": "Aggregate capital raise may approach SEC registration thresholds",
+      "eval": { "field": "stack.investor_count", "operator": ">", "threshold": 35 },
+      "severity": "warning",
+      "message": "Capital raise may trigger SEC registration requirements. Consult securities counsel."
+    },
+    {
+      "id": "exit_cap_spread_narrow",
+      "description": "Exit cap rate spread over going-in is narrower than target",
+      "eval": { "field": "assumptions.exit_cap_spread_bps", "operator": "<", "threshold": "tenant.target_exit_spread_bps", "conditional": true },
+      "severity": "info",
+      "message": "Exit cap spread is below target. Exit assumptions may be aggressive."
+    }
+  ],
+
+  "outputs": [
+    "cs-stack-summary",
+    "cs-full-model",
+    "cs-waterfall",
+    "cs-investor-slides",
+    "cs-scenario-comparison"
+  ]
+}

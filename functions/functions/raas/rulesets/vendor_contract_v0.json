@@ -1,0 +1,53 @@
+{
+  "id": "vendor_contract_v0",
+  "version": "v0",
+  "domain": "vendor-management",
+  "required_inputs": [
+    "property_info"
+  ],
+  "hard_stops": [
+    {
+      "id": "no_property",
+      "logic": "property information is required before vendor management can proceed",
+      "eval": { "type": "required_inputs_check" }
+    },
+    {
+      "id": "vendor_insurance_expired",
+      "logic": "one or more active vendors have expired insurance — work must stop until coverage is reinstated",
+      "eval": { "field": "vendor.expired_insurance_count", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "vendor_license_expired",
+      "logic": "one or more active vendors have expired licenses — cannot perform work without valid licensure",
+      "eval": { "field": "vendor.expired_license_count", "operator": ">", "threshold": 0 }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "contract_renewal_approaching",
+      "logic": "vendor contracts are due for renewal within 60 days — begin renegotiation or rebid",
+      "eval": { "field": "vendor.renewals_within_60_days", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "performance_below_threshold",
+      "logic": "one or more vendors have performance ratings below acceptable threshold",
+      "eval": { "field": "vendor.low_rated_vendors", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "spend_over_budget",
+      "logic": "vendor spend in one or more categories exceeds budget — review for cost control",
+      "eval": { "field": "vendor.category_over_budget_count", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "competitive_bid_needed",
+      "logic": "unbid contracts exceed the competitive bidding threshold — procurement policy requires bids",
+      "eval": { "field": "vendor.unbid_contracts_above_threshold", "operator": ">", "threshold": 0 }
+    }
+  ],
+  "outputs": [
+    "vc-vendor-registry",
+    "vc-contract-tracker",
+    "vc-bid-comparison",
+    "vc-spend-report"
+  ]
+}

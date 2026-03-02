@@ -1,0 +1,125 @@
+import React from "react";
+import WorkerIcon, { SUITE_COLORS } from "../utils/workerIcons";
+
+const S = {
+  page: { minHeight: "100vh", background: "#f8fafc", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" },
+  nav: { padding: "16px 32px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid #e5e7eb" },
+  logo: { fontSize: 18, fontWeight: 700, color: "#7c3aed", textDecoration: "none", cursor: "pointer" },
+  back: { fontSize: 13, color: "#6b7280", textDecoration: "none", cursor: "pointer", background: "none", border: "none" },
+  hero: { background: "linear-gradient(135deg, #7c3aed 0%, #6366f1 50%, #0ea5e9 100%)", padding: "64px 32px", textAlign: "center", color: "white" },
+  heroTitle: { fontSize: 36, fontWeight: 700, marginBottom: 12, maxWidth: 700, margin: "0 auto 12px" },
+  heroSub: { fontSize: 18, opacity: 0.9, maxWidth: 560, margin: "0 auto" },
+  badge: { display: "inline-block", padding: "4px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600, background: "rgba(255,255,255,0.2)", marginBottom: 16 },
+  main: { maxWidth: 800, margin: "0 auto", padding: "48px 24px" },
+  sectionTitle: { fontSize: 22, fontWeight: 700, color: "#111827", marginBottom: 24 },
+  steps: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 20, marginBottom: 48 },
+  step: { padding: 20, background: "white", borderRadius: 12, border: "1px solid #e5e7eb" },
+  stepNum: { width: 28, height: 28, borderRadius: 14, background: "#7c3aed", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, marginBottom: 10 },
+  stepTitle: { fontSize: 15, fontWeight: 600, color: "#111827", marginBottom: 4 },
+  stepDesc: { fontSize: 13, color: "#6b7280", lineHeight: 1.5 },
+  bridge: { background: "linear-gradient(135deg, #1e1b4b 0%, #312e81 100%)", borderRadius: 16, padding: 32, marginBottom: 48, color: "white" },
+  bridgeTitle: { fontSize: 20, fontWeight: 700, marginBottom: 12 },
+  bridgeText: { fontSize: 14, lineHeight: 1.6, opacity: 0.9 },
+  props: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 16, marginBottom: 48 },
+  prop: { padding: 16, background: "white", borderRadius: 10, border: "1px solid #e5e7eb" },
+  propLabel: { fontSize: 14, fontWeight: 600, color: "#111827", marginBottom: 4 },
+  propValue: { fontSize: 13, color: "#6b7280" },
+  pricing: { textAlign: "center", padding: "32px 0", marginBottom: 48 },
+  priceTag: { fontSize: 36, fontWeight: 700, color: "#111827" },
+  priceNote: { fontSize: 14, color: "#6b7280", marginTop: 4 },
+  cta: { display: "inline-block", marginTop: 16, padding: "12px 32px", background: "#7c3aed", color: "white", borderRadius: 10, fontSize: 15, fontWeight: 600, border: "none", cursor: "pointer", textDecoration: "none" },
+  faq: { marginBottom: 48 },
+  faqItem: { padding: "16px 0", borderBottom: "1px solid #e5e7eb" },
+  faqQ: { fontSize: 15, fontWeight: 600, color: "#111827", marginBottom: 6 },
+  faqA: { fontSize: 14, color: "#6b7280", lineHeight: 1.5 },
+  footer: { textAlign: "center", padding: "24px 32px", borderTop: "1px solid #e5e7eb", color: "#9ca3af", fontSize: 13, marginTop: 40 },
+};
+
+export default function WorkerDetailPage({ worker, content, onBack, onSubscribe }) {
+  const color = SUITE_COLORS[worker.suite] || "#7c3aed";
+
+  return (
+    <div style={S.page}>
+      <nav style={S.nav}>
+        <a href="/" style={S.logo}>TitleApp</a>
+        <button onClick={onBack || (() => { window.location.href = "/workers"; })} style={S.back}>&larr; All Workers</button>
+      </nav>
+
+      <div style={S.hero}>
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
+          <div style={{ width: 56, height: 56, borderRadius: 16, background: "rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <WorkerIcon slug={worker.slug} size={32} color="#ffffff" />
+          </div>
+        </div>
+        <div style={S.badge}>{worker.suite}</div>
+        <h1 style={S.heroTitle}>{content.headline || worker.name}</h1>
+        <p style={S.heroSub}>{content.subheadline || worker.description}</p>
+      </div>
+
+      <div style={S.main}>
+        {content.steps && content.steps.length > 0 && (
+          <>
+            <h2 style={S.sectionTitle}>How It Works</h2>
+            <div style={S.steps}>
+              {content.steps.map((step, i) => (
+                <div key={i} style={S.step}>
+                  <div style={S.stepNum}>{i + 1}</div>
+                  <div style={S.stepTitle}>{step.title}</div>
+                  <div style={S.stepDesc}>{step.description}</div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {content.bridge && (
+          <div style={S.bridge}>
+            <div style={S.bridgeTitle}>{content.bridge.title || "The Bridge"}</div>
+            <div style={S.bridgeText}>{content.bridge.text}</div>
+          </div>
+        )}
+
+        {content.valueProps && content.valueProps.length > 0 && (
+          <>
+            <h2 style={S.sectionTitle}>Why This Worker</h2>
+            <div style={S.props}>
+              {content.valueProps.map((prop, i) => (
+                <div key={i} style={S.prop}>
+                  <div style={S.propLabel}>{prop.label}</div>
+                  <div style={S.propValue}>{prop.description}</div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        <div style={S.pricing}>
+          <div style={S.priceTag}>${worker.price / 100}<span style={{ fontSize: 16, fontWeight: 400, color: "#6b7280" }}>/mo</span></div>
+          <div style={S.priceNote}>14-day free trial. No credit card required.</div>
+          <button
+            style={S.cta}
+            onClick={() => onSubscribe ? onSubscribe(worker) : (window.location.href = "/workers")}
+            onMouseEnter={e => { e.currentTarget.style.background = "#6d28d9"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "#7c3aed"; }}
+          >
+            Start Free Trial
+          </button>
+        </div>
+
+        {content.faq && content.faq.length > 0 && (
+          <div style={S.faq}>
+            <h2 style={S.sectionTitle}>FAQ</h2>
+            {content.faq.map((item, i) => (
+              <div key={i} style={S.faqItem}>
+                <div style={S.faqQ}>{item.q}</div>
+                <div style={S.faqA}>{item.a}</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <footer style={S.footer}>TitleApp -- Digital Workers for every industry</footer>
+    </div>
+  );
+}

@@ -1,0 +1,48 @@
+{
+  "id": "government_relations_v0",
+  "version": "v0",
+  "domain": "government-relations",
+  "required_inputs": [
+    "project_info",
+    "jurisdiction"
+  ],
+  "hard_stops": [
+    {
+      "id": "no_project_record",
+      "logic": "project must be initialized before any government relations activities begin",
+      "eval": { "type": "required_inputs_check" }
+    },
+    {
+      "id": "lobbying_threshold_exceeded",
+      "logic": "lobbying activities exceed registration threshold without registration — federal or state lobbying disclosure violation",
+      "eval": { "field": "government.unregistered_lobbying", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "campaign_finance_violation",
+      "logic": "contribution or expenditure triggers pay-to-play restrictions — SEC Rule 206(4)-5 or state/local equivalent violation",
+      "eval": { "field": "government.pay_to_play_violation", "operator": "==", "threshold": true }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "hearing_unprepared",
+      "logic": "public hearing or planning commission meeting is less than 14 days away — preparation materials needed",
+      "eval": { "field": "government.hearing_days_away", "operator": "<", "threshold": 14 }
+    },
+    {
+      "id": "community_opposition_high",
+      "logic": "community opposition score exceeds 7 out of 10 — proactive outreach and engagement strategy recommended",
+      "eval": { "field": "government.opposition_score", "operator": ">", "threshold": 7 }
+    },
+    {
+      "id": "incentive_deadline_approaching",
+      "logic": "government incentive application deadline is within 30 days — action required to preserve financial benefit",
+      "eval": { "field": "government.incentive_deadline_days", "operator": "<", "threshold": 30 }
+    }
+  ],
+  "outputs": [
+    "gr-stakeholder-map",
+    "gr-community-outreach-plan",
+    "gr-meeting-preparation"
+  ]
+}

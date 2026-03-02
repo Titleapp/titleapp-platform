@@ -8,22 +8,45 @@ export const WORKER_ROUTES = [
   { slug: "title-escrow", name: "Title & Escrow Worker", description: "Pull, analyze, and verify title in minutes. Chain of title on blockchain. Escrow managed from open to close.", suite: "Real Estate", status: "planned", price: 2900 },
   { slug: "environmental-review", name: "Environmental Review Worker", description: "Phase I through remediation. Biological surveys. Archaeological review. Cultural impact assessment.", suite: "Real Estate", status: "planned", price: 2900 },
   { slug: "mortgage-broker", name: "Mortgage Broker Worker", description: "Source the best debt. Acquisition loans, construction financing, bridge, perm, refi.", suite: "Finance & Investment", status: "planned", price: 4900 },
+  { slug: "construction-lending", name: "Construction Lending Worker", description: "Compare loan terms, build draw schedules, model interest reserves, track utilization through perm conversion.", suite: "Finance & Investment", status: "live", price: 7900 },
+  { slug: "capital-stack-optimizer", name: "Capital Stack Optimizer", description: "Build optimal debt/equity mix, model LP/GP waterfalls, run sensitivity analysis, and generate investor-ready materials.", suite: "Finance & Investment", status: "live", price: 9900 },
 
   // Phase 2: Entitlement & Pre-Construction
-  { slug: "entitlement-analyst", name: "Land Use & Entitlement Worker", description: "Zoning analysis, entitlement strategy, and approval tracking. Know what you can build before you buy.", suite: "Real Estate", status: "planned", price: 2900 },
+  { slug: "entitlement-analyst", name: "Entitlement Analyst Worker", description: "Zoning analysis, entitlement strategy, and approval tracking. Know what you can build before you buy.", suite: "Real Estate", status: "planned", price: 2900 },
   { slug: "engineering-review", name: "Engineering Review Worker", description: "Civil, structural, traffic, utilities. Every engineering discipline reviewed, coordinated, and tracked.", suite: "Construction", status: "planned", price: 2900 },
   { slug: "architecture-review", name: "Architecture & Plan Review Worker", description: "Plan analysis, building code compliance, AHJ coordination. From schematic design through construction documents.", suite: "Construction", status: "planned", price: 2900 },
   { slug: "permit-tracker", name: "Permit Submission Worker", description: "File permits, track review cycles, respond to deficiency notices, and manage approvals across every jurisdiction.", suite: "Construction", status: "planned", price: 2900 },
 
   // Phase 3: Construction
-  { slug: "construction-manager", name: "Construction Manager Worker", description: "Your AI superintendent. Scheduling, RFIs, submittals, daily logs, punch lists, and close-out.", suite: "Construction", status: "planned", price: 4900 },
-  { slug: "bid-procurement", name: "Bid & Procurement Worker", description: "Solicit bids, level proposals, manage buyout. From scope to signed subcontract.", suite: "Construction", status: "planned", price: 2900 },
-  { slug: "construction-draws", name: "Construction Draw Worker", description: "Monthly draw requests, lien waivers, inspection coordination. Get your money on time, every time.", suite: "Construction", status: "planned", price: 2900 },
-  { slug: "labor-staffing", name: "Labor & Staffing Worker", description: "Crew scheduling, prevailing wage compliance, OSHA tracking, and workforce management.", suite: "Construction", status: "planned", price: 2900 },
+  { slug: "construction-manager", name: "Construction Manager Worker", description: "Your AI superintendent. Scheduling, RFIs, submittals, daily logs, punch lists, and close-out.", suite: "Construction", status: "live", price: 4900 },
+  { slug: "bid-procurement", name: "Bid & Procurement Worker", description: "The right sub at the right price — bid packages, comparison matrices, anomaly detection, and award recommendations", suite: "Construction", status: "live", price: 5900 },
+  { slug: "insurance-risk", name: "Insurance & Risk Worker", description: "Never miss an expired certificate — COI tracking, insurance matrices, risk exposure analysis, and lender compliance reports", suite: "Construction", status: "live", price: 5900 },
+  { slug: "quality-control", name: "Quality Control & Inspection Worker", description: "Pass inspections the first time — scheduling, deficiency tracking, trade checklists, and CO tracking", suite: "Construction", status: "live", price: 4900 },
+  { slug: "safety-osha", name: "Safety & OSHA Worker", description: "Keep your site safe and your OSHA logs clean — safety plans, training tracking, incident logging, and compliance metrics", suite: "Construction", status: "live", price: 4900 },
+  { slug: "mep-coordination", name: "MEP Coordination Worker", description: "No more surprises in the ceiling — clash tracking, coordination meetings, submittal management, and commissioning", suite: "Construction", status: "live", price: 5900 },
+  { slug: "construction-draws", name: "Construction Draw Worker", description: "Draw requests that get funded the first time. G702/G703 packages, lien waiver tracking, retainage management.", suite: "Construction", status: "live", price: 5900 },
+  { slug: "labor-staffing", name: "Labor & Staffing Worker", description: "Certified payroll, prevailing wage compliance, workforce tracking, diversity reporting, and crew scheduling.", suite: "Construction", status: "planned", price: 4900 },
+  { slug: "materials-supply-chain", name: "Materials & Supply Chain Worker", description: "No material delays. Procurement scheduling, long-lead tracking, price escalation, stored materials, and substitution management.", suite: "Construction", status: "planned", price: 4900 },
 
-  // Phase 4: Stabilization & Operations
-  { slug: "property-management", name: "Property Management Worker", description: "Leasing, tenant management, maintenance requests, rent collection, and owner reporting.", suite: "Real Estate", status: "planned", price: 2900 },
-  { slug: "construction-accounting", name: "Accounting Worker", description: "Construction job costing, AIA billing, change order tracking, and owner reporting.", suite: "Finance & Investment", status: "planned", price: 4900 },
+  // Phase 3: Financing (additional)
+  { slug: "mezzanine-preferred-equity", name: "Mezzanine & Preferred Equity Worker", description: "Fill the gap. Structure comparison, waterfall modeling, intercreditor tracking, and investor reporting for subordinate capital.", suite: "Finance & Investment", status: "planned", price: 7900 },
+  { slug: "crowdfunding-regd", name: "Crowdfunding & Reg D Worker", description: "Raise capital legally. Exemption analysis, investor qualification, subscription management, compliance calendar, and cap table.", suite: "Finance & Investment", status: "planned", price: 7900 },
+
+  // Phase 0: Site Selection
+  { slug: "site-due-diligence", name: "Site Due Diligence Worker", description: "Know what you're buying. Environmental, survey, zoning, utility assessment — complete DD management with go/no-go summary.", suite: "Real Estate", status: "planned", price: 5900 },
+
+  // Phase 1: Design & Entitlement (additional)
+  { slug: "land-use-entitlement", name: "Land Use & Entitlement Worker", description: "Get your approvals. Zoning analysis, application prep, hearing preparation, timeline tracking, and condition management.", suite: "Real Estate", status: "planned", price: 9900 },
+
+  // Phase 2: Permitting (additional)
+  { slug: "permit-submission", name: "Permit Submission & Tracking Worker", description: "Every permit tracked. Requirements analysis, plan check management, fee tracking, and timeline modeling.", suite: "Construction", status: "planned", price: 5900 },
+
+  // Phase 5: Stabilization
+  { slug: "lease-up-marketing", name: "Lease-Up & Marketing Worker", description: "Fill your building faster. Marketing strategy, lead management, absorption forecasting, concession analysis, and lender reporting.", suite: "Real Estate", status: "planned", price: 5900 },
+  { slug: "property-management", name: "Property Management Worker", description: "Run your property like a business. Tenant comms, work orders, lease renewals, vendor management, and operational reporting.", suite: "Real Estate", status: "planned", price: 5900 },
+
+  // Phase 6: Operations
+  { slug: "accounting", name: "Accounting Worker", description: "Books that are always audit-ready. GAAP financials, job cost reporting, AP/AR, bank reconciliation, and investor packages.", suite: "Finance & Investment", status: "planned", price: 5900 },
   { slug: "insurance-coi", name: "Insurance & COI Worker", description: "Policy management, COI tracking, claims handling, and renewal coordination. Never miss a coverage gap.", suite: "General Business", status: "planned", price: 2900 },
   { slug: "tax-assessment", name: "Tax & Assessment Worker", description: "Property tax monitoring, assessment appeals, and tax planning. Save 10-30% on your tax bill.", suite: "Finance & Investment", status: "planned", price: 2900 },
 

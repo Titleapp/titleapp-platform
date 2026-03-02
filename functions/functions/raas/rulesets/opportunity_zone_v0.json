@@ -1,0 +1,59 @@
+{
+  "id": "opportunity_zone_v0",
+  "version": "v0",
+  "domain": "opportunity-zone",
+  "required_inputs": [
+    "project_info",
+    "qof_info"
+  ],
+  "hard_stops": [
+    {
+      "id": "no_project_record",
+      "logic": "project and QOF must be initialized before any opportunity zone compliance activities begin",
+      "eval": { "type": "required_inputs_check" }
+    },
+    {
+      "id": "ninety_percent_test_failure",
+      "logic": "QOF fails the 90% asset test — fund does not meet qualified opportunity fund requirements under IRC 1400Z-2",
+      "eval": { "field": "oz.asset_test_percent", "operator": "<", "threshold": 90 }
+    },
+    {
+      "id": "investor_180_day_expired",
+      "logic": "one or more investors have exceeded the 180-day investment window — capital gains deferral election is no longer available",
+      "eval": { "field": "oz.expired_180_day_investors", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "sin_business",
+      "logic": "project involves a sin business activity (golf course, country club, massage parlor, hot tub, suntan, racetrack, liquor store, gambling) — disqualified from OZ benefits",
+      "eval": { "field": "oz.sin_business_activity", "operator": "==", "threshold": true }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "substantial_improvement_behind",
+      "logic": "substantial improvement pace is below 80% of required timeline — 30-month deadline at risk",
+      "eval": { "field": "oz.improvement_pace_percent", "operator": "<", "threshold": 80 }
+    },
+    {
+      "id": "working_capital_off_schedule",
+      "logic": "working capital safe harbor schedule deviates more than 10% from plan — documentation required",
+      "eval": { "field": "oz.working_capital_deviation_percent", "operator": ">", "threshold": 10 }
+    },
+    {
+      "id": "asset_test_approaching_failure",
+      "logic": "QOF asset test is below 92% — approaching the 90% failure threshold, corrective action recommended",
+      "eval": { "field": "oz.asset_test_percent", "operator": "<", "threshold": 92 }
+    },
+    {
+      "id": "form_8996_due",
+      "logic": "Form 8996 filing deadline is within 30 days — annual certification of QOF status required",
+      "eval": { "field": "oz.form_8996_due_days", "operator": "<", "threshold": 30 }
+    }
+  ],
+  "outputs": [
+    "oz-compliance-dashboard",
+    "oz-asset-test",
+    "oz-substantial-improvement",
+    "oz-investor-180-day"
+  ]
+}

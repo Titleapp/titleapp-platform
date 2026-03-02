@@ -1,0 +1,54 @@
+{
+  "id": "rent_roll_revenue_v0",
+  "version": "v0",
+  "domain": "rent-roll",
+  "required_inputs": [
+    "property_info",
+    "unit_data"
+  ],
+  "hard_stops": [
+    {
+      "id": "no_property",
+      "logic": "property must be initialized before any rent roll or revenue analysis activities begin",
+      "eval": { "type": "required_inputs_check" }
+    },
+    {
+      "id": "rent_exceeds_controlled_limit",
+      "logic": "one or more units have rent set above rent-controlled or rent-stabilized limits — regulatory violation",
+      "eval": { "field": "rent.controlled_violations", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "lihtc_rent_over_limit",
+      "logic": "LIHTC unit rent exceeds maximum allowable rent for the applicable AMI tier — tax credit compliance violation",
+      "eval": { "field": "rent.lihtc_violations", "operator": ">", "threshold": 0 }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "loss_to_lease_high",
+      "logic": "loss to lease exceeds tenant's target threshold — revenue optimization opportunity exists",
+      "eval": { "field": "rent.loss_to_lease_percent", "operator": ">", "threshold": "tenant.loss_to_lease_target", "conditional": true }
+    },
+    {
+      "id": "concession_over_budget",
+      "logic": "concession spending exceeds tenant's concession budget — review pricing strategy and market conditions",
+      "eval": { "field": "rent.concession_percent", "operator": ">", "threshold": "tenant.concession_budget", "conditional": true }
+    },
+    {
+      "id": "expiration_concentration",
+      "logic": "more than 15% of leases expire in a single month — rollover risk and potential vacancy spike",
+      "eval": { "field": "rent.max_month_expirations_percent", "operator": ">", "threshold": 15 }
+    },
+    {
+      "id": "vacancy_above_market",
+      "logic": "property vacancy rate exceeds market vacancy rate — pricing or condition issues may exist",
+      "eval": { "field": "rent.vacancy_rate", "operator": ">", "threshold": "rent.market_vacancy_rate" }
+    }
+  ],
+  "outputs": [
+    "rr-rent-roll",
+    "rr-revenue-forecast",
+    "rr-loss-to-lease",
+    "rr-lease-expiration-matrix"
+  ]
+}

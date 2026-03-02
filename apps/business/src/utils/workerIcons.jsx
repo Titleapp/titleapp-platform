@@ -106,6 +106,30 @@ const ICONS = {
     </>
   ),
 
+  // Stacked layers with dollar — capital stack
+  "capital-stack-optimizer": (g) => (
+    <>
+      <rect x="3" y="16" width="18" height="4" rx="1" fill={`url(#${g})`} />
+      <rect x="5" y="11" width="14" height="4" rx="1" fill={`url(#${g})`} opacity="0.8" />
+      <rect x="7" y="6" width="10" height="4" rx="1" fill={`url(#${g})`} opacity="0.6" />
+      <circle cx="12" cy="3" r="2" fill={`url(#${g})`} opacity="0.4" />
+      <path d="M12 2v1.5" stroke="white" strokeWidth="0.8" strokeLinecap="round" fill="none" />
+      <path d="M11.5 2.5h1" stroke="white" strokeWidth="0.6" strokeLinecap="round" fill="none" />
+    </>
+  ),
+
+  // Bank / lending
+  "construction-lending": (g) => (
+    <>
+      <path d="M2 20h20v2H2v-2z" fill={`url(#${g})`} />
+      <path d="M12 2L2 8v2h20V8L12 2z" fill={`url(#${g})`} />
+      <rect x="4" y="11" width="3" height="8" rx="0.5" fill={`url(#${g})`} opacity="0.7" />
+      <rect x="10.5" y="11" width="3" height="8" rx="0.5" fill={`url(#${g})`} opacity="0.7" />
+      <rect x="17" y="11" width="3" height="8" rx="0.5" fill={`url(#${g})`} opacity="0.7" />
+      <circle cx="12" cy="6" r="1.5" fill="white" fillOpacity="0.7" />
+    </>
+  ),
+
   // ── Phase 3: Construction ──
 
   // Briefcase
@@ -143,6 +167,101 @@ const ICONS = {
       <path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2H3z" fill={`url(#${g})`} />
       <circle cx="19" cy="8" r="3" fill={`url(#${g})`} opacity="0.5" />
       <path d="M15 21v-1a4 4 0 0 1 2-3.46A3 3 0 0 1 22 19.5V21h-7z" fill={`url(#${g})`} opacity="0.5" />
+    </>
+  ),
+
+  // Truck / supply chain
+  "materials-supply-chain": (g) => (
+    <>
+      <rect x="1" y="8" width="14" height="10" rx="2" fill={`url(#${g})`} />
+      <path d="M15 11h4l3 3v4h-7V11z" fill={`url(#${g})`} opacity="0.7" />
+      <circle cx="6" cy="20" r="2" fill={`url(#${g})`} />
+      <circle cx="6" cy="20" r="0.8" fill="white" />
+      <circle cx="18" cy="20" r="2" fill={`url(#${g})`} />
+      <circle cx="18" cy="20" r="0.8" fill="white" />
+      <rect x="3" y="4" width="6" height="3" rx="1" fill={`url(#${g})`} opacity="0.4" />
+      <rect x="5" y="2" width="6" height="3" rx="1" fill={`url(#${g})`} opacity="0.3" />
+    </>
+  ),
+
+  // Building with dollar — mezz/pref equity
+  "mezzanine-preferred-equity": (g) => (
+    <>
+      <rect x="3" y="18" width="18" height="3" rx="1" fill={`url(#${g})`} />
+      <rect x="5" y="13" width="14" height="5" rx="1" fill={`url(#${g})`} opacity="0.75" />
+      <rect x="7" y="8" width="10" height="5" rx="1" fill={`url(#${g})`} opacity="0.55" />
+      <rect x="9" y="3" width="6" height="5" rx="1" fill={`url(#${g})`} opacity="0.35" />
+      <path d="M12 15v-1m0 4v-1" stroke="white" strokeWidth="0.8" strokeLinecap="round" fill="none" />
+      <path d="M13.5 14c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5.67 1.5 1.5 1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5-1.5-.67-1.5-1.5" stroke="white" strokeWidth="0.8" strokeLinecap="round" fill="none" />
+    </>
+  ),
+
+  // Crowd / raised hands — crowdfunding
+  "crowdfunding-regd": (g) => (
+    <>
+      <circle cx="7" cy="6" r="3" fill={`url(#${g})`} />
+      <circle cx="17" cy="6" r="3" fill={`url(#${g})`} />
+      <circle cx="12" cy="4" r="3" fill={`url(#${g})`} opacity="0.7" />
+      <path d="M1 22v-2a4 4 0 0 1 4-4h3a4 4 0 0 1 4 4v2H1z" fill={`url(#${g})`} opacity="0.6" />
+      <path d="M12 22v-2a4 4 0 0 1 4-4h3a4 4 0 0 1 4 4v2h-11z" fill={`url(#${g})`} opacity="0.6" />
+      <path d="M6 22v-3a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v3H6z" fill={`url(#${g})`} />
+    </>
+  ),
+
+  // Magnifying glass on map — site due diligence
+  "site-due-diligence": (g) => (
+    <>
+      <rect x="3" y="3" width="18" height="14" rx="2" fill={`url(#${g})`} opacity="0.3" />
+      <line x1="3" y1="10" x2="21" y2="10" stroke={`url(#${g})`} strokeWidth="1" strokeOpacity="0.4" />
+      <line x1="12" y1="3" x2="12" y2="17" stroke={`url(#${g})`} strokeWidth="1" strokeOpacity="0.4" />
+      <circle cx="13" cy="11" r="5" fill={`url(#${g})`} opacity="0.6" />
+      <circle cx="13" cy="11" r="5" stroke={`url(#${g})`} strokeWidth="2" fill="none" />
+      <line x1="16.5" y1="14.5" x2="21" y2="19" stroke={`url(#${g})`} strokeWidth="2.5" strokeLinecap="round" />
+    </>
+  ),
+
+  // Gavel — land use & entitlement
+  "land-use-entitlement": (g) => (
+    <>
+      <rect x="2" y="20" width="20" height="2" rx="1" fill={`url(#${g})`} />
+      <rect x="9" y="16" width="6" height="4" rx="1" fill={`url(#${g})`} opacity="0.6" />
+      <rect x="4" y="4" width="7" height="4" rx="1.5" fill={`url(#${g})`} transform="rotate(-45 7.5 6)" />
+      <line x1="10" y1="10" x2="14" y2="14" stroke={`url(#${g})`} strokeWidth="2.5" strokeLinecap="round" />
+      <circle cx="8" cy="6" r="1" fill="white" fillOpacity="0.5" />
+    </>
+  ),
+
+  // Document stack with stamp — permit submission
+  "permit-submission": (g) => (
+    <>
+      <path d="M7 2a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-6H7z" fill={`url(#${g})`} />
+      <path d="M14 2v6h5" fill="white" fillOpacity="0.25" />
+      <rect x="9" y="12" width="6" height="1.5" rx=".75" fill="white" fillOpacity="0.6" />
+      <rect x="9" y="15" width="4" height="1.5" rx=".75" fill="white" fillOpacity="0.6" />
+      <circle cx="6" cy="18" r="3" fill={`url(#${g})`} stroke="white" strokeWidth="1" strokeOpacity="0.5" />
+      <path d="M5 18l0.8 0.8 1.5-1.5" stroke="white" strokeWidth="0.8" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+    </>
+  ),
+
+  // Megaphone — lease-up & marketing
+  "lease-up-marketing": (g) => (
+    <>
+      <path d="M21 5v14l-8-3V8l8-3z" fill={`url(#${g})`} />
+      <rect x="3" y="9" width="10" height="6" rx="2" fill={`url(#${g})`} opacity="0.7" />
+      <path d="M6 15v4a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-4" fill={`url(#${g})`} opacity="0.4" />
+    </>
+  ),
+
+  // Ledger / book — accounting
+  "accounting": (g) => (
+    <>
+      <rect x="4" y="2" width="16" height="20" rx="2" fill={`url(#${g})`} />
+      <rect x="4" y="2" width="4" height="20" fill={`url(#${g})`} opacity="0.3" />
+      <rect x="10" y="6" width="7" height="1.2" rx=".6" fill="white" fillOpacity="0.6" />
+      <rect x="10" y="9" width="5" height="1.2" rx=".6" fill="white" fillOpacity="0.6" />
+      <rect x="10" y="12" width="7" height="1.2" rx=".6" fill="white" fillOpacity="0.6" />
+      <rect x="10" y="15" width="4" height="1.2" rx=".6" fill="white" fillOpacity="0.6" />
+      <rect x="10" y="18" width="6" height="1.2" rx=".6" fill="white" fillOpacity="0.6" />
     </>
   ),
 

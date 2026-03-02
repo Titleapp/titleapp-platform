@@ -93,9 +93,9 @@
     }
   ],
   "outputs": [
-    "deal_summary",
-    "waterfall_projection",
-    "risk_assessment",
-    "investor_offering_memo"
+    "ir-deal-summary",
+    "ir-waterfall-projection",
+    "ir-risk-assessment",
+    "ir-offering-memo"
   ]
 }

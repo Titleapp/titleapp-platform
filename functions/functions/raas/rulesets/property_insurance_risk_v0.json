@@ -1,0 +1,59 @@
+{
+  "id": "property_insurance_risk_v0",
+  "version": "v0",
+  "domain": "property-insurance",
+  "required_inputs": [
+    "property_info",
+    "policy_data"
+  ],
+  "hard_stops": [
+    {
+      "id": "no_property",
+      "logic": "property information is required before insurance risk analysis can proceed",
+      "eval": { "type": "required_inputs_check" }
+    },
+    {
+      "id": "coverage_gap",
+      "logic": "one or more coverage gaps exist — property is exposed to uninsured loss",
+      "eval": { "field": "insurance.coverage_gaps", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "lender_requirement_unmet",
+      "logic": "insurance coverage does not meet lender requirements — loan covenant violation",
+      "eval": { "field": "insurance.lender_violations", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "flood_zone_uninsured",
+      "logic": "property is in a flood zone without flood insurance — federal and lender requirement",
+      "eval": { "field": "insurance.flood_zone_without_coverage", "operator": "==", "threshold": true }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "policy_expiring_soon",
+      "logic": "one or more policies expire within 90 days — begin renewal process",
+      "eval": { "field": "insurance.policies_expiring_90_days", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "underinsured",
+      "logic": "replacement cost gap exceeds 10% — property may be underinsured",
+      "eval": { "field": "insurance.replacement_cost_gap_percent", "operator": ">", "threshold": 10 }
+    },
+    {
+      "id": "claims_trending_up",
+      "logic": "claims in the last 12 months exceed 1.5x the prior period — loss trend may affect premiums",
+      "eval": { "field": "insurance.claims_12mo_vs_prior", "operator": ">", "threshold": 1.5 }
+    },
+    {
+      "id": "premium_over_budget",
+      "logic": "insurance premium exceeds 110% of budget — review coverage or seek competitive quotes",
+      "eval": { "field": "insurance.premium_vs_budget_percent", "operator": ">", "threshold": 110 }
+    }
+  ],
+  "outputs": [
+    "pir-policy-summary",
+    "pir-coverage-review",
+    "pir-claims-log",
+    "pir-renewal-comparison"
+  ]
+}

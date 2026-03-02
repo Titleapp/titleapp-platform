@@ -1,0 +1,54 @@
+{
+  "id": "disposition_marketing_v0",
+  "version": "v0",
+  "domain": "disposition-marketing",
+  "required_inputs": [
+    "property_info",
+    "marketing_strategy"
+  ],
+  "hard_stops": [
+    {
+      "id": "no_property",
+      "logic": "property information is required before disposition marketing can proceed",
+      "eval": { "type": "required_inputs_check" }
+    },
+    {
+      "id": "nda_not_executed",
+      "logic": "data room access has been granted without executed NDA — confidentiality breach risk",
+      "eval": { "field": "marketing.data_room_access_without_nda", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "material_non_disclosure",
+      "logic": "material items remain undisclosed in marketing materials — legal liability risk",
+      "eval": { "field": "marketing.undisclosed_material_items", "operator": ">", "threshold": 0 }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "data_room_low_activity",
+      "logic": "data room has fewer than 5 views in the last 7 days — buyer engagement is low",
+      "eval": { "field": "marketing.data_room_views_7_days", "operator": "<", "threshold": 5 }
+    },
+    {
+      "id": "om_approval_pending",
+      "logic": "offering memorandum has not been approved — cannot distribute to buyers",
+      "eval": { "field": "marketing.om_approved", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "tour_requests_pending",
+      "logic": "property tour requests are pending — schedule promptly to maintain buyer interest",
+      "eval": { "field": "marketing.pending_tours", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "best_final_approaching",
+      "logic": "best and final offer deadline is within 7 days — ensure all bidders are notified",
+      "eval": { "field": "marketing.best_final_days", "operator": "<", "threshold": 7 }
+    }
+  ],
+  "outputs": [
+    "dmdr-om-template",
+    "dmdr-data-room-index",
+    "dmdr-buyer-tracker",
+    "dmdr-dd-checklist"
+  ]
+}

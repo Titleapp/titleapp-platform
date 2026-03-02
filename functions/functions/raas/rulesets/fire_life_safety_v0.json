@@ -1,0 +1,53 @@
+{
+  "id": "fire_life_safety_v0",
+  "version": "v0",
+  "domain": "fire-life-safety",
+  "required_inputs": [
+    "project_info",
+    "occupancy_type"
+  ],
+  "hard_stops": [
+    {
+      "id": "no_project_record",
+      "logic": "project must be initialized before any fire and life safety review activities begin",
+      "eval": { "type": "required_inputs_check" }
+    },
+    {
+      "id": "egress_non_compliant",
+      "logic": "means of egress design has unresolved code violations — life safety risk and cannot obtain certificate of occupancy",
+      "eval": { "field": "fire.egress_violations", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "fire_rating_deficiency",
+      "logic": "fire-resistance-rated assemblies have deficiencies — structural and compartmentation integrity compromised",
+      "eval": { "field": "fire.rating_deficiencies", "operator": ">", "threshold": 0 }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "fire_marshal_comments_open",
+      "logic": "fire marshal plan review comments remain unresolved — must be addressed before permit issuance",
+      "eval": { "field": "fire.open_comments", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "sprinkler_design_pending",
+      "logic": "fire sprinkler system design is not yet complete — schedule impact if not finalized before rough-in",
+      "eval": { "field": "fire.sprinkler_design_complete", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "high_rise_requirements",
+      "logic": "building qualifies as high-rise — additional fire protection, structural, and egress requirements apply",
+      "eval": { "field": "fire.is_high_rise", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "fire_system_testing_due",
+      "logic": "fire protection system testing or inspection is overdue — NFPA compliance and occupancy at risk",
+      "eval": { "field": "fire.system_testing_overdue", "operator": ">", "threshold": 0 }
+    }
+  ],
+  "outputs": [
+    "fls-fire-code-review",
+    "fls-egress-analysis",
+    "fls-fire-system-tracker"
+  ]
+}

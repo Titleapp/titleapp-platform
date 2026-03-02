@@ -1,0 +1,81 @@
+{
+  "id": "safety_osha_v0",
+  "version": "v0",
+  "domain": "safety-osha",
+  "required_inputs": [
+    "project_info",
+    "safety_plan",
+    "labor_roster"
+  ],
+  "hard_stops": [
+    {
+      "id": "missing_osha_log",
+      "logic": "OSHA 300/300A/301 log not maintained — 29 CFR 1904 violation with potential penalties",
+      "eval": { "field": "project.osha_log_current", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "no_competent_person",
+      "logic": "high-risk activity (excavation, scaffolding, fall protection, confined space) is underway without a designated competent person on site",
+      "eval": { "field": "activity.competent_person_present", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "fatality_or_hospitalization",
+      "logic": "fatality or in-patient hospitalization has occurred — immediate critical escalation required, OSHA must be notified within 8 hours (fatality) or 24 hours (hospitalization, amputation, eye loss)",
+      "eval": { "type": "critical_incident_escalation" }
+    },
+    {
+      "id": "no_emergency_action_plan",
+      "logic": "project does not have a site-specific Emergency Action Plan posted and communicated to workers",
+      "eval": { "field": "project.eap_posted", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "missing_fall_protection",
+      "logic": "workers at 6 feet or above without fall protection (guardrail, PFAS, or safety net) — OSHA Subpart M violation, most-cited standard",
+      "eval": { "field": "activity.fall_protection_verified", "operator": "==", "threshold": false }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "trir_above_industry",
+      "logic": "project TRIR exceeds BLS construction industry average (~2.5) — elevated incident rate",
+      "eval": { "field": "project.trir", "operator": ">", "threshold": 2.5 }
+    },
+    {
+      "id": "toolbox_talk_overdue",
+      "logic": "toolbox talk has not been conducted within the configured frequency period",
+      "eval": { "field": "project.toolbox_talk_overdue", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "training_cert_expiring",
+      "logic": "worker safety certification (OSHA 10/30, competent person, operator cert, first aid) expiring within 30 days",
+      "eval": { "field": "worker.cert_days_to_expiration", "operator": "<", "threshold": 30 }
+    },
+    {
+      "id": "near_miss_ratio_low",
+      "logic": "near-miss to recordable incident ratio is below 5:1 — suggests under-reporting of near-misses, not safety excellence",
+      "eval": { "field": "project.near_miss_ratio", "operator": "<", "threshold": 5 }
+    },
+    {
+      "id": "sub_safety_violation",
+      "logic": "subcontractor safety violation documented — multi-employer doctrine means GC may be cited for sub's violations",
+      "eval": { "field": "sub.safety_violations_open", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "silica_lead_no_plan",
+      "logic": "activity involves silica, lead, or asbestos exposure potential but no written control plan is documented",
+      "eval": { "field": "activity.exposure_plan_required_missing", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "osha_300a_posting_overdue",
+      "logic": "OSHA 300A annual summary not posted during required Feb 1 - Apr 30 posting period",
+      "eval": { "field": "project.osha_300a_posting_current", "operator": "==", "threshold": false }
+    }
+  ],
+  "outputs": [
+    "safety-site-plan",
+    "safety-osha-300",
+    "safety-incident-report",
+    "safety-toolbox-talk",
+    "safety-jha"
+  ]
+}
