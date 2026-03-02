@@ -8,6 +8,17 @@ const VERTICAL_ABBREVS = {
   auto: 'AD',
   'real-estate': 'RE',
   aviation: 'AV',
+  investor: 'IR',
+};
+
+const VERTICAL_LABELS = {
+  consumer: 'Personal Vault',
+  analyst: 'Investment Analyst',
+  auto: 'Auto Dealer',
+  'real-estate': 'Real Estate',
+  aviation: 'Aviation',
+  investor: 'Investor Relations',
+  'property-mgmt': 'Property Management',
 };
 
 function daysLeft(trialEndsAt) {
@@ -61,6 +72,9 @@ function WorkspaceCard({ workspace, onLaunch }) {
         letterSpacing: 1,
       }}>{abbrev}</div>
       <div style={{ fontWeight: 600, fontSize: 16, color: '#1e293b' }}>{workspace.name}</div>
+      <div style={{ color: '#7c3aed', fontSize: 11, fontWeight: 600, marginBottom: 2 }}>
+        {VERTICAL_LABELS[workspace.vertical] || workspace.vertical || ''}
+      </div>
       <div style={{ color: '#64748b', fontSize: 13, marginBottom: 12, minHeight: 18 }}>
         {workspace.tagline || ''}
       </div>

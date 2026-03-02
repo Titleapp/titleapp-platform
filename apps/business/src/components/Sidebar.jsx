@@ -96,7 +96,6 @@ export default function Sidebar({
   chiefOfStaff,
 }) {
   const [showSwitcher, setShowSwitcher] = useState(false);
-  const [workerFilter, setWorkerFilter] = useState("work");
   const [selectedWorker, setSelectedWorker] = useState(null);
   const [workersExpanded, setWorkersExpanded] = useState(false);
   const vertical = localStorage.getItem("VERTICAL") || "auto";
@@ -168,15 +167,6 @@ export default function Sidebar({
     return workers;
   }, [activeWorkers, chiefOfStaff]);
 
-  // Filter workers by tab
-  const filteredWorkers = useMemo(() => {
-    switch (workerFilter) {
-      case "work": return workerList;
-      case "personal": return [];
-      case "shared": return [];
-      default: return workerList;
-    }
-  }, [workerFilter, workerList]);
 
   // Build "My Work" nav items — universal + vertical + worker-triggered
   const myWorkItems = useMemo(() => {
@@ -383,52 +373,16 @@ export default function Sidebar({
       <div className="sidebarSection">
         <div className="sidebarLabel">Digital Workers</div>
 
-        {/* Work / Personal / Shared tabs */}
-        <div style={{
-          display: "flex",
-          gap: "2px",
-          padding: "3px",
-          background: "rgba(255,255,255,0.05)",
-          borderRadius: "6px",
-          margin: "4px 12px 6px",
-        }}>
-          {["Work", "Personal", "Shared"].map(tab => (
-            <button
-              key={tab}
-              onClick={() => setWorkerFilter(tab.toLowerCase())}
-              style={{
-                flex: 1,
-                padding: "4px 6px",
-                fontSize: "10px",
-                fontWeight: 600,
-                letterSpacing: "0.3px",
-                border: "none",
-                borderRadius: "4px",
-                cursor: "pointer",
-                background: workerFilter === tab.toLowerCase()
-                  ? "rgba(124, 58, 237, 0.35)"
-                  : "transparent",
-                color: workerFilter === tab.toLowerCase()
-                  ? "#ffffff"
-                  : "rgba(255,255,255,0.4)",
-                transition: "all 0.15s ease",
-              }}
-            >
-              {tab}
-            </button>
-          ))}
-        </div>
-
         <nav className="nav">
           {/* Worker list — collapsible when >6 */}
           {(() => {
             const COLLAPSE_THRESHOLD = 6;
             const COLLAPSED_SHOW = 3;
-            const shouldCollapse = filteredWorkers.length > COLLAPSE_THRESHOLD;
+            const shouldCollapse = workerList.length > COLLAPSE_THRESHOLD;
             const visibleWorkers = shouldCollapse && !workersExpanded
-              ? filteredWorkers.slice(0, COLLAPSED_SHOW)
-              : filteredWorkers;
-            const hiddenCount = filteredWorkers.length - COLLAPSED_SHOW;
+              ? workerList.slice(0, COLLAPSED_SHOW)
+              : workerList;
+            const hiddenCount = workerList.length - COLLAPSED_SHOW;
 
             return (
               <div style={shouldCollapse && workersExpanded ? {
@@ -494,19 +448,15 @@ export default function Sidebar({
             );
           })()}
 
-          {/* Empty state for Personal and Shared */}
-          {filteredWorkers.length === 0 && (
+          {/* Empty state */}
+          {workerList.length === 0 && (
             <div style={{
               padding: "8px 16px",
               fontSize: "12px",
               color: "rgba(255,255,255,0.3)",
               fontStyle: "italic",
             }}>
-              {workerFilter === "personal"
-                ? "No personal workers yet"
-                : workerFilter === "shared"
-                  ? "No shared workers yet"
-                  : "No workers yet"}
+              No workers yet
             </div>
           )}
 

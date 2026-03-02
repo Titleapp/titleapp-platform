@@ -168,6 +168,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
   const [authReady, setAuthReady] = useState(false);
   const [lastContextStep, setLastContextStep] = useState(null);
   const conversationRef = useRef(null);
+  const [activeWorkerName, setActiveWorkerName] = useState(null);
 
   const [dealContext, setDealContext] = useState(null);
   const [attachedFiles, setAttachedFiles] = useState([]);
@@ -224,6 +225,24 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
     window.addEventListener('ta:chatPrompt', handleChatPrompt);
     return () => window.removeEventListener('ta:chatPrompt', handleChatPrompt);
   }, [dealContext]);
+
+  // Listen for worker selection from sidebar
+  useEffect(() => {
+    function handleWorkerSelect(e) {
+      const { slug, name } = e.detail || {};
+      if (!name) return;
+      setActiveWorkerName(name);
+      const greeting = slug === "chief-of-staff"
+        ? `Switched to ${name}. I'm your Chief of Staff — I coordinate all your workers and track progress across your workspace.`
+        : `Switched to ${name}. Ask me anything related to this worker's domain.`;
+      setMessages(prev => [...prev, { role: 'assistant', content: greeting }]);
+      setTimeout(() => {
+        if (conversationRef.current) conversationRef.current.scrollTop = conversationRef.current.scrollHeight;
+      }, 100);
+    }
+    window.addEventListener('ta:select-worker', handleWorkerSelect);
+    return () => window.removeEventListener('ta:select-worker', handleWorkerSelect);
+  }, []);
 
   // Listen for onboarding completion to fire celebration
   useEffect(() => {
@@ -1028,6 +1047,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
           <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
         </svg>
         <span>{(() => {
+          if (activeWorkerName) return `${activeWorkerName} -- AI Assistant`;
           try {
             const cfg = JSON.parse(localStorage.getItem('COS_CONFIG') || '{}');
             return cfg.name ? `${cfg.name} -- AI Assistant` : 'AI Assistant';
