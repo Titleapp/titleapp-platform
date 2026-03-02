@@ -1,56 +1,41 @@
 import React, { useState, useMemo } from "react";
 import { getAuth, signOut } from "firebase/auth";
 
-const NAV_BY_VERTICAL = {
-  consumer: [
-    { id: "dashboard", label: "Dashboard" },
-    { id: "vault-documents", label: "Documents" },
-    { id: "vault-assets", label: "Assets" },
-    { id: "vault-deadlines", label: "Deadlines" },
-    { id: "vault-tools", label: "AI Tools" },
-    { id: "reports", label: "Reports" },
-    { id: "raas-store", label: "Marketplace" },
-    { id: "settings", label: "Settings" },
+// Worker slug → additional "My Work" nav items
+const WORKER_NAV_MAP = {
+  "cre-analyst": [{ id: "portfolio", label: "Portfolio" }],
+  "investor-relations": [{ id: "investor-data-room", label: "Investor Relations" }],
+  "construction-manager": [
+    { id: "projects", label: "Projects" },
+    { id: "schedule", label: "Schedule" },
   ],
-  analyst: [
-    { id: "dashboard", label: "Dashboard" },
-    { id: "portfolio", label: "Portfolio" },
-    { id: "research", label: "Research" },
-    { id: "clients-lps", label: "Clients & LPs" },
-    { id: "deal-pipeline", label: "Deal Pipeline" },
-    { id: "reports", label: "Reports" },
-    { id: "ai-chats", label: "AI Activity" },
-    { id: "rules", label: "Rules" },
-    { id: "b2b-analytics", label: "B2B Distribution" },
-    { id: "raas-store", label: "Marketplace" },
-    { id: "settings", label: "Settings" },
-  ],
-  "property-mgmt": [
-    { id: "dashboard", label: "Dashboard" },
+  "construction-draws": [{ id: "draws", label: "Draw Requests" }],
+  "title-escrow": [{ id: "title-orders", label: "Title Orders" }],
+  "mortgage-broker": [{ id: "loan-pipeline", label: "Loan Pipeline" }],
+  "permit-tracker": [{ id: "permits", label: "Permits" }],
+  "insurance-coi": [{ id: "insurance", label: "Insurance & COIs" }],
+  "tax-assessment": [{ id: "tax-appeals", label: "Tax Appeals" }],
+  "compliance-tracker": [{ id: "compliance", label: "Compliance Calendar" }],
+  "property-management": [
     { id: "inventory", label: "Properties" },
     { id: "customers", label: "Tenants" },
     { id: "appointments", label: "Maintenance" },
-    { id: "rules-resources", label: "Rules & Resources" },
-    { id: "reports", label: "Reports" },
-    { id: "b2b-analytics", label: "B2B Distribution" },
-    { id: "settings", label: "Settings" },
   ],
-  auto: [
-    { id: "dashboard", label: "Dashboard" },
+  "bid-procurement": [{ id: "bids", label: "Bids & Procurement" }],
+  "labor-staffing": [{ id: "workforce", label: "Workforce" }],
+  // Legacy vertical mappings — map vertical names to nav items too
+  "analyst": [
+    { id: "portfolio", label: "Portfolio" },
+    { id: "deal-pipeline", label: "Deal Pipeline" },
+  ],
+  "auto": [
     { id: "inventory", label: "Inventory" },
     { id: "customers", label: "Customers" },
     { id: "sales-pipeline", label: "Sales Pipeline" },
     { id: "fi-products", label: "F&I Products" },
     { id: "auto-service", label: "Service" },
-    { id: "reports", label: "Reports" },
-    { id: "ai-chats", label: "AI Activity" },
-    { id: "rules", label: "Rules" },
-    { id: "b2b-analytics", label: "B2B Distribution" },
-    { id: "raas-store", label: "Marketplace" },
-    { id: "settings", label: "Settings" },
   ],
   "real-estate": [
-    { id: "dashboard", label: "Dashboard" },
     { id: "re-listings", label: "Listings" },
     { id: "re-buyers", label: "Buyers" },
     { id: "re-transactions", label: "Transactions" },
@@ -58,35 +43,34 @@ const NAV_BY_VERTICAL = {
     { id: "re-tenants", label: "Tenants" },
     { id: "re-maintenance", label: "Maintenance" },
     { id: "re-marketing", label: "Marketing" },
-    { id: "reports", label: "Reports" },
-    { id: "ai-chats", label: "AI Activity" },
-    { id: "rules", label: "Rules" },
-    { id: "b2b-analytics", label: "B2B Distribution" },
-    { id: "raas-store", label: "Marketplace" },
-    { id: "settings", label: "Settings" },
   ],
-  investor: [
-    { id: "dashboard", label: "Dashboard" },
+  "investor": [
     { id: "investor-data-room", label: "Data Room" },
     { id: "investor-cap-table", label: "Cap Table" },
     { id: "investor-pipeline", label: "Investor Pipeline" },
-    { id: "reports", label: "Reports" },
-    { id: "ai-chats", label: "AI Activity" },
-    { id: "rules", label: "Rules" },
-    { id: "b2b-analytics", label: "B2B Distribution" },
-    { id: "raas-store", label: "Marketplace" },
-    { id: "settings", label: "Settings" },
   ],
 };
 
-const DEFAULT_NAV = [
-  { id: "dashboard", label: "Dashboard" },
-  { id: "rules-resources", label: "Rules & Resources" },
-  { id: "ai-chats", label: "AI Activity" },
-  { id: "reports", label: "Reports" },
-  { id: "raas-store", label: "Marketplace" },
-  { id: "settings", label: "Settings" },
-];
+// Worker slug → display name
+const WORKER_DISPLAY_NAMES = {
+  "cre-analyst": "CRE Analyst",
+  "investor-relations": "IR Worker",
+  "construction-manager": "Construction Manager",
+  "construction-draws": "Draw Manager",
+  "title-escrow": "Title & Escrow",
+  "mortgage-broker": "Mortgage Broker",
+  "permit-tracker": "Permit Tracker",
+  "insurance-coi": "Insurance & COI",
+  "tax-assessment": "Tax Assessment",
+  "compliance-tracker": "Compliance Tracker",
+  "property-management": "Property Manager",
+  "bid-procurement": "Bid & Procurement",
+  "labor-staffing": "Labor & Staffing",
+  "auto-dealer": "Auto Dealer",
+  "aviation-ops": "Aviation Ops",
+  "pilot-logbook": "Pilot Logbook",
+  "part-135": "Part 135 Compliance",
+};
 
 const VERTICAL_LABELS = {
   auto: "Auto Dealer",
@@ -112,10 +96,8 @@ export default function Sidebar({
   chiefOfStaff,
 }) {
   const [showSwitcher, setShowSwitcher] = useState(false);
-  const [collapsedGroups, setCollapsedGroups] = useState(new Set());
   const [workerFilter, setWorkerFilter] = useState("work");
   const vertical = localStorage.getItem("VERTICAL") || "auto";
-  const sections = NAV_BY_VERTICAL[vertical] || DEFAULT_NAV;
   const isPersonal = vertical === "consumer";
 
   const rawWsName = localStorage.getItem("WORKSPACE_NAME") || "";
@@ -145,33 +127,83 @@ export default function Sidebar({
     });
   }
 
-  function toggleGroup(groupId) {
-    setCollapsedGroups(prev => {
-      const next = new Set(prev);
-      if (next.has(groupId)) next.delete(groupId);
-      else next.add(groupId);
-      return next;
-    });
-  }
+  // Build worker list for display
+  const workerList = useMemo(() => {
+    const workers = [];
+    // Chief of Staff first
+    if (chiefOfStaff?.enabled) {
+      workers.push({
+        slug: "chief-of-staff",
+        name: chiefOfStaff.name || "Alex",
+        isChiefOfStaff: true,
+        active: true,
+      });
+    }
+    // Active workers from workspace
+    for (const wId of activeWorkers) {
+      if (typeof wId === "string") {
+        workers.push({
+          slug: wId,
+          name: WORKER_DISPLAY_NAMES[wId] || wId.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase()),
+          isChiefOfStaff: false,
+          active: true,
+        });
+      } else if (wId && typeof wId === "object") {
+        workers.push({
+          slug: wId.slug || wId.id || "unknown",
+          name: wId.displayName || wId.name || WORKER_DISPLAY_NAMES[wId.slug] || "Worker",
+          isChiefOfStaff: wId.isChiefOfStaff || false,
+          active: true,
+        });
+      }
+    }
+    return workers;
+  }, [activeWorkers, chiefOfStaff]);
 
   // Filter workers by tab
   const filteredWorkers = useMemo(() => {
     switch (workerFilter) {
-      case "work": return activeWorkers;
+      case "work": return workerList;
       case "personal": return [];
       case "shared": return [];
-      default: return activeWorkers;
+      default: return workerList;
     }
-  }, [workerFilter, activeWorkers]);
+  }, [workerFilter, workerList]);
 
-  const filteredGroups = useMemo(() => {
-    switch (workerFilter) {
-      case "work": return workerGroups;
-      case "personal": return [];
-      case "shared": return [];
-      default: return workerGroups;
+  // Build "My Work" nav items — universal + vertical + worker-triggered
+  const myWorkItems = useMemo(() => {
+    const items = [
+      { id: "dashboard", label: "Dashboard" },
+      { id: "deal-pipeline", label: "Deal Pipeline" },
+      { id: "vault-documents", label: "Documents" },
+      { id: "reports", label: "Reports" },
+      { id: "clients-lps", label: "Clients & Contacts" },
+    ];
+
+    // Add vertical-specific items
+    const verticalItems = WORKER_NAV_MAP[vertical] || [];
+    const existingIds = new Set(items.map(i => i.id));
+    for (const vi of verticalItems) {
+      if (!existingIds.has(vi.id)) {
+        items.push(vi);
+        existingIds.add(vi.id);
+      }
     }
-  }, [workerFilter, workerGroups]);
+
+    // Add worker-triggered items
+    const workerSlugs = activeWorkers.map(w => typeof w === "string" ? w : w?.slug || "");
+    for (const slug of workerSlugs) {
+      const workerItems = WORKER_NAV_MAP[slug] || [];
+      for (const wi of workerItems) {
+        if (!existingIds.has(wi.id)) {
+          items.push(wi);
+          existingIds.add(wi.id);
+        }
+      }
+    }
+
+    return items;
+  }, [vertical, activeWorkers]);
 
   // Group workspaces for the switcher
   const ownWorkspaces = workspaces.filter(w => w.type !== "shared");
@@ -179,7 +211,7 @@ export default function Sidebar({
 
   return (
     <div className="sidebar">
-      {/* Workspace Switcher Header */}
+      {/* ═══ WORKSPACE IDENTITY ═══ */}
       <div className="sidebarHeader" style={{ position: "relative" }}>
         <div
           className="brand"
@@ -339,20 +371,7 @@ export default function Sidebar({
         )}
       </div>
 
-      {/* Dashboard — first nav item */}
-      <div className="sidebarSection" style={{ paddingBottom: 0 }}>
-        <nav className="nav">
-          <button
-            className={`navItem ${currentSection === "dashboard" ? "navItemActive" : ""}`}
-            onClick={() => handleNavClick("dashboard")}
-            style={{ width: "100%", textAlign: "left", cursor: "pointer" }}
-          >
-            Dashboard
-          </button>
-        </nav>
-      </div>
-
-      {/* Digital Workers — second position */}
+      {/* ═══ SECTION 1: DIGITAL WORKERS ═══ */}
       <div className="sidebarSection">
         <div className="sidebarLabel">Digital Workers</div>
 
@@ -360,10 +379,10 @@ export default function Sidebar({
         <div style={{
           display: "flex",
           gap: "2px",
-          padding: "4px",
+          padding: "3px",
           background: "rgba(255,255,255,0.05)",
           borderRadius: "6px",
-          margin: "4px 12px 8px",
+          margin: "4px 12px 6px",
         }}>
           {["Work", "Personal", "Shared"].map(tab => (
             <button
@@ -379,7 +398,7 @@ export default function Sidebar({
                 borderRadius: "4px",
                 cursor: "pointer",
                 background: workerFilter === tab.toLowerCase()
-                  ? "rgba(124, 58, 237, 0.3)"
+                  ? "rgba(124, 58, 237, 0.35)"
                   : "transparent",
                 color: workerFilter === tab.toLowerCase()
                   ? "#ffffff"
@@ -393,133 +412,120 @@ export default function Sidebar({
         </div>
 
         <nav className="nav">
-          {/* Chief of Staff — show on Work tab */}
-          {workerFilter === "work" && chiefOfStaff?.enabled && (
+          {/* Worker list */}
+          {filteredWorkers.map(worker => (
             <button
-              className={`navItem ${currentSection === "chief-of-staff" ? "navItemActive" : ""}`}
-              onClick={() => handleNavClick("chief-of-staff")}
+              key={worker.slug}
+              className={`navItem ${currentSection === worker.slug ? "navItemActive" : ""}`}
+              onClick={() => handleNavClick(worker.slug === "chief-of-staff" ? "chief-of-staff" : `worker-${worker.slug}`)}
               style={{
                 width: "100%", textAlign: "left", cursor: "pointer",
-                background: currentSection === "chief-of-staff"
-                  ? "rgba(124,58,237,0.16)"
-                  : "linear-gradient(135deg, rgba(124,58,237,0.08) 0%, rgba(99,102,241,0.08) 100%)",
-                borderRadius: 10, padding: "8px 10px", marginBottom: 4,
                 display: "flex", alignItems: "center", gap: 8,
+                padding: "7px 10px", fontSize: 13,
+                ...(worker.isChiefOfStaff ? {
+                  background: currentSection === "chief-of-staff"
+                    ? "rgba(124,58,237,0.16)"
+                    : "linear-gradient(135deg, rgba(124,58,237,0.08) 0%, rgba(99,102,241,0.08) 100%)",
+                  borderRadius: 10,
+                  marginBottom: 2,
+                } : {}),
               }}
             >
-              <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#22c55e", flexShrink: 0 }} />
-              <span style={{ fontWeight: 600, color: "#c4b5fd" }}>{chiefOfStaff.name || "Alex"}</span>
-              <span style={{ fontSize: 10, color: "#7c3aed", marginLeft: "auto" }}>CoS</span>
+              <span style={{
+                width: 8, height: 8, borderRadius: "50%",
+                background: worker.active ? "#22c55e" : "transparent",
+                border: worker.active ? "none" : "1.5px solid rgba(255,255,255,0.3)",
+                flexShrink: 0,
+              }} />
+              <span style={{
+                flex: 1,
+                color: worker.isChiefOfStaff ? "#c4b5fd" : "rgba(255,255,255,0.85)",
+                fontWeight: worker.isChiefOfStaff ? 600 : 400,
+              }}>
+                {worker.name}
+              </span>
+              {worker.isChiefOfStaff && (
+                <span style={{ fontSize: 10, color: "#7c3aed", fontWeight: 600 }}>CoS</span>
+              )}
             </button>
-          )}
-
-          {/* Worker Groups */}
-          {filteredGroups.map((group) => {
-            const isCollapsed = collapsedGroups.has(group.id);
-            return (
-              <div key={group.id}>
-                <div
-                  onClick={() => toggleGroup(group.id)}
-                  style={{
-                    display: "flex", alignItems: "center", gap: 8,
-                    padding: "8px 10px", cursor: "pointer", borderRadius: 10,
-                    fontSize: 13, fontWeight: 600,
-                    color: "rgba(226,232,240,0.8)",
-                  }}
-                  onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
-                >
-                  <svg
-                    width="12" height="12" viewBox="0 0 12 12" fill="none"
-                    style={{ transform: isCollapsed ? "rotate(-90deg)" : "none", transition: "transform 150ms ease", flexShrink: 0 }}
-                  >
-                    <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                  </svg>
-                  <span style={{ color: group.color || "#94a3b8", fontSize: 10 }}>{"\u25CF"}</span>
-                  <span>{group.name}</span>
-                  <span style={{ fontSize: 11, color: "#475569", marginLeft: "auto" }}>{group.workerIds?.length || 0}</span>
-                </div>
-                {!isCollapsed && group.workerIds?.map(wId => (
-                  <button
-                    key={wId}
-                    className={`navItem ${currentSection === `worker-${wId}` ? "navItemActive" : ""}`}
-                    onClick={() => handleNavClick(`worker-${wId}`)}
-                    style={{
-                      width: "100%", textAlign: "left", cursor: "pointer",
-                      paddingLeft: 28, fontSize: 13,
-                    }}
-                  >
-                    {wId}
-                  </button>
-                ))}
-              </div>
-            );
-          })}
-
-          {/* Ungrouped Workers */}
-          {filteredWorkers
-            .filter(wId => !filteredGroups.some(g => g.workerIds?.includes(wId)))
-            .map(wId => (
-              <button
-                key={wId}
-                className={`navItem ${currentSection === `worker-${wId}` ? "navItemActive" : ""}`}
-                onClick={() => handleNavClick(`worker-${wId}`)}
-                style={{ width: "100%", textAlign: "left", cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", gap: 8 }}
-              >
-                <span style={{ width: 6, height: 6, borderRadius: "50%", border: "1.5px solid #64748b", flexShrink: 0 }} />
-                {wId}
-              </button>
-            ))
-          }
+          ))}
 
           {/* Empty state for Personal and Shared */}
-          {workerFilter !== "work" && filteredWorkers.length === 0 && !filteredGroups.length && (
+          {filteredWorkers.length === 0 && (
             <div style={{
-              padding: "12px 16px",
+              padding: "8px 16px",
               fontSize: "12px",
-              color: "rgba(255,255,255,0.35)",
+              color: "rgba(255,255,255,0.3)",
               fontStyle: "italic",
             }}>
               {workerFilter === "personal"
                 ? "No personal workers yet"
-                : "No shared workers yet"}
+                : workerFilter === "shared"
+                  ? "No shared workers yet"
+                  : "No workers yet"}
             </div>
           )}
 
-          {/* Add Workers link */}
+          {/* Browse Marketplace */}
           <button
             className="navItem"
             onClick={() => handleNavClick("raas-store")}
-            style={{ width: "100%", textAlign: "left", cursor: "pointer", fontSize: 13, color: "#7c3aed", opacity: 0.8 }}
+            style={{
+              width: "100%", textAlign: "left", cursor: "pointer",
+              fontSize: 12, color: "#22c55e", fontWeight: 500,
+              padding: "7px 10px",
+            }}
           >
-            + Add Workers
+            + Browse Marketplace
           </button>
         </nav>
       </div>
 
       {/* Divider */}
-      <div style={{
-        height: "1px",
-        background: "rgba(255,255,255,0.08)",
-        margin: "0 16px",
-      }} />
+      <div style={{ height: "1px", background: "rgba(255,255,255,0.08)", margin: "4px 16px" }} />
 
-      {/* Remaining Navigation */}
-      <div className="sidebarSection">
+      {/* ═══ SECTION 2: MY WORK ═══ */}
+      <div className="sidebarSection" style={{ flex: 1 }}>
+        <div className="sidebarLabel">My Work</div>
         <nav className="nav">
-          {sections.filter(s => s.id !== "dashboard").map((section) => (
+          {myWorkItems.map(item => (
             <button
-              key={section.id}
-              className={`navItem ${currentSection === section.id ? "navItemActive" : ""}`}
-              onClick={() => handleNavClick(section.id)}
+              key={item.id}
+              className={`navItem ${currentSection === item.id ? "navItemActive" : ""}`}
+              onClick={() => handleNavClick(item.id)}
               style={{ width: "100%", textAlign: "left", cursor: "pointer" }}
             >
-              {section.label}
+              {item.label}
             </button>
           ))}
         </nav>
       </div>
 
+      {/* Divider */}
+      <div style={{ height: "1px", background: "rgba(255,255,255,0.08)", margin: "4px 16px" }} />
+
+      {/* ═══ SECTION 3: SETTINGS ═══ */}
+      <div className="sidebarSection">
+        <div className="sidebarLabel">Settings</div>
+        <nav className="nav">
+          <button
+            className={`navItem ${currentSection === "settings" ? "navItemActive" : ""}`}
+            onClick={() => handleNavClick("settings")}
+            style={{ width: "100%", textAlign: "left", cursor: "pointer" }}
+          >
+            Workspace Settings
+          </button>
+          <button
+            className={`navItem ${currentSection === "rules" ? "navItemActive" : ""}`}
+            onClick={() => handleNavClick("rules")}
+            style={{ width: "100%", textAlign: "left", cursor: "pointer" }}
+          >
+            Worker Rules
+          </button>
+        </nav>
+      </div>
+
+      {/* Sign Out */}
       <div className="sidebarFooter">
         <button
           onClick={handleSignOut}

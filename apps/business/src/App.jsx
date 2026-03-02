@@ -512,6 +512,24 @@ export default function App() {
             }
             viewResolvedRef.current = true;
             setCurrentView("app");
+          } else if (localStorage.getItem("TENANT_ID")) {
+            // Returning user with existing workspace — go straight to app
+            viewResolvedRef.current = true;
+            setCurrentView("app");
+          } else if (data.memberships && data.memberships.length === 1) {
+            // Single membership — auto-select and go to app
+            const mem = data.memberships[0];
+            const tenant = (data.tenants || {})[mem.tenantId] || {};
+            localStorage.setItem("TENANT_ID", mem.tenantId);
+            if (tenant.vertical && tenant.vertical !== "GLOBAL") {
+              localStorage.setItem("VERTICAL", tenant.vertical.toLowerCase());
+            }
+            if (tenant.companyName || tenant.name) {
+              localStorage.setItem("COMPANY_NAME", tenant.companyName || tenant.name);
+              localStorage.setItem("WORKSPACE_NAME", tenant.companyName || tenant.name);
+            }
+            viewResolvedRef.current = true;
+            setCurrentView("app");
           } else {
             setCurrentView("hub");
           }
