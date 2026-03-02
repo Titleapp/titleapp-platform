@@ -2,8 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { auth, db } from '../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
-import AddWorkspaceWizard from './AddWorkspaceWizard';
-
 const VERTICAL_ABBREVS = {
   consumer: 'PV',
   analyst: 'IA',
@@ -140,10 +138,9 @@ function BillingSummary({ workspaces }) {
   );
 }
 
-export default function WorkspaceHub({ userName, onLaunch, onBuilderStart, onAdminLaunch }) {
+export default function WorkspaceHub({ userName, onLaunch, onBuilderStart, onAdminLaunch, onAddWorker }) {
   const [workspaces, setWorkspaces] = useState(null);
   const [error, setError] = useState(null);
-  const [showWizard, setShowWizard] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
@@ -206,24 +203,6 @@ export default function WorkspaceHub({ userName, onLaunch, onBuilderStart, onAdm
     }
 
     onLaunch(workspace);
-  }
-
-  function handleWorkspaceCreated(workspace) {
-    setShowWizard(false);
-    loadWorkspaces().then(() => {
-      handleLaunch({ ...workspace, _needsOnboarding: true });
-    });
-  }
-
-  if (showWizard) {
-    return (
-      <AddWorkspaceWizard
-        existingWorkspaces={workspaces || []}
-        onCreated={handleWorkspaceCreated}
-        onCancel={() => setShowWizard(false)}
-        onBuilderStart={onBuilderStart}
-      />
-    );
   }
 
   return (
@@ -395,7 +374,7 @@ export default function WorkspaceHub({ userName, onLaunch, onBuilderStart, onAdm
         </div>
 
         <div
-          onClick={() => setShowWizard(true)}
+          onClick={() => onAddWorker ? onAddWorker() : (window.location.href = "/workers")}
           style={{
             border: '2px dashed #cbd5e1',
             borderRadius: 12,

@@ -79,41 +79,74 @@ function formatPrice(cents) {
   return `$${cents / 100}/mo`;
 }
 
-export default function WorkerMarketplace() {
+export default function WorkerMarketplace({ authenticated, userName, onSubscribe, onSkip }) {
   const [filter, setFilter] = useState("All");
+  const [subscribing, setSubscribing] = useState(null);
 
   const filtered = filter === "All" ? WORKER_ROUTES : WORKER_ROUTES.filter((w) => w.suite === filter);
   const liveCount = WORKER_ROUTES.filter((w) => w.status === "live").length;
   const plannedCount = WORKER_ROUTES.filter((w) => w.status === "planned").length;
 
+  function handleCardClick(w) {
+    if (authenticated && w.status === "live" && onSubscribe) {
+      setSubscribing(w.slug);
+      onSubscribe(w);
+    } else {
+      window.location.href = `/workers/${w.slug}`;
+    }
+  }
+
+  function handleActionClick(e, w) {
+    e.stopPropagation();
+    if (authenticated && w.status === "live" && onSubscribe) {
+      setSubscribing(w.slug);
+      onSubscribe(w);
+    } else {
+      window.location.href = `/workers/${w.slug}`;
+    }
+  }
+
   return (
     <div style={S.page}>
       <nav style={S.nav}>
         <a href="/" style={S.logo}>TitleApp</a>
-        <a href="/" style={S.navLink}>Back to home</a>
+        {authenticated ? (
+          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+            <span style={{ fontSize: 13, color: "#6b7280" }}>{userName || "Welcome"}</span>
+            {onSkip && <button onClick={onSkip} style={{ ...S.navLink, background: "none", border: "none", padding: 0 }}>Skip — set up manually</button>}
+          </div>
+        ) : (
+          <a href="/" style={S.navLink}>Back to home</a>
+        )}
       </nav>
 
       <div style={S.hero}>
-        <h1 style={S.heroTitle}>Digital Workers</h1>
-        <p style={S.heroDesc}>AI-powered professionals governed by human-defined rules. Subscribe to the workers you need.</p>
-        <div style={S.stats}>
-          <div style={S.stat}>
-            <div style={S.statValue}>{WORKER_ROUTES.length}</div>
-            <div style={S.statLabel}>Workers</div>
+        <h1 style={S.heroTitle}>{authenticated ? "Pick your first Digital Worker" : "Digital Workers"}</h1>
+        <p style={S.heroDesc}>
+          {authenticated
+            ? "Subscribe to a worker to get started. Your workspace is created automatically."
+            : "AI-powered professionals governed by human-defined rules. Subscribe to the workers you need."}
+        </p>
+        {!authenticated && (
+          <div style={S.stats}>
+            <div style={S.stat}>
+              <div style={S.statValue}>{WORKER_ROUTES.length}</div>
+              <div style={S.statLabel}>Workers</div>
+            </div>
+            <div style={S.stat}>
+              <div style={S.statValue}>{liveCount}</div>
+              <div style={S.statLabel}>Live</div>
+            </div>
+            <div style={S.stat}>
+              <div style={S.statValue}>{plannedCount}</div>
+              <div style={S.statLabel}>Coming soon</div>
+            </div>
+            <div style={S.stat}>
+              <div style={S.statValue}>{SUITES.length - 1}</div>
+              <div style={S.statLabel}>Suites</div>
+            </div>
           </div>
-          <div style={S.stat}>
-            <div style={S.statValue}>{liveCount}</div>
-            <div style={S.statLabel}>Live</div>
-          </div>
-          <div style={S.stat}>
-            <div style={S.statValue}>{plannedCount}</div>
-            <div style={S.statLabel}>Coming soon</div>
-          </div>
-          <div style={S.stat}>
-            <div style={S.statValue}>{SUITES.length - 1}</div>
-            <div style={S.statLabel}>Suites</div>
-          </div>
-        </div>
+        )}
       </div>
 
       <div style={S.main}>
@@ -134,7 +167,7 @@ export default function WorkerMarketplace() {
             <div
               key={w.slug}
               style={S.card}
-              onClick={() => { window.location.href = `/workers/${w.slug}`; }}
+              onClick={() => handleCardClick(w)}
               onMouseEnter={(e) => { e.currentTarget.style.boxShadow = "0 8px 24px rgba(124,58,237,0.12)"; }}
               onMouseLeave={(e) => { e.currentTarget.style.boxShadow = "none"; }}
             >
@@ -151,13 +184,13 @@ export default function WorkerMarketplace() {
               <div style={S.cardBottom}>
                 <span style={S.price}>{formatPrice(w.price)}</span>
                 {w.status === "live" ? (
-                  <a
-                    href={`/workers/${w.slug}`}
-                    style={S.openBtn}
-                    onClick={(e) => e.stopPropagation()}
+                  <button
+                    style={subscribing === w.slug ? { ...S.openBtn, opacity: 0.6, cursor: "wait" } : S.openBtn}
+                    onClick={(e) => handleActionClick(e, w)}
+                    disabled={subscribing === w.slug}
                   >
-                    Open
-                  </a>
+                    {authenticated ? (subscribing === w.slug ? "Setting up..." : "Subscribe") : "Open"}
+                  </button>
                 ) : (
                   <a
                     href={`/workers/${w.slug}`}

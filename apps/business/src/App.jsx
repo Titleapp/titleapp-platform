@@ -477,7 +477,7 @@ export default function App() {
               console.error("Auto-workspace from discovery failed:", e);
             }
           }
-          setCurrentView("onboarding");
+          setCurrentView("marketplace");
         } else {
           // Check if we were in the middle of onboarding a new workspace
           const pendingOnboarding = localStorage.getItem("PENDING_ONBOARDING");
@@ -565,6 +565,49 @@ export default function App() {
     setCurrentView("hub");
     if (window.location.pathname !== "/") {
       window.history.replaceState({}, "", "/");
+    }
+  }
+
+  async function handleFirstSubscribe(worker) {
+    const suiteToVertical = {
+      "Real Estate": "real-estate",
+      "Construction": "real-estate",
+      "Finance & Investment": "analyst",
+      "General Business": "auto",
+      "Legal": "auto",
+      "Automotive": "auto",
+      "Platform": "auto",
+    };
+    const vertical = suiteToVertical[worker.suite] || "auto";
+    const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+
+    try {
+      const res = await fetch(`${apiBase}/api?path=/v1/workspaces`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          vertical,
+          name: userName ? `${userName}'s Workspace` : "My Workspace",
+          jurisdiction: "GLOBAL",
+          onboardingComplete: true,
+          type: "org",
+          workerIds: [worker.slug],
+        }),
+      });
+      const data = await res.json();
+      if (data.ok && data.workspace) {
+        localStorage.setItem("TENANT_ID", data.workspace.id);
+        localStorage.setItem("VERTICAL", vertical);
+        localStorage.setItem("WORKSPACE_ID", data.workspace.id);
+        localStorage.setItem("WORKSPACE_NAME", data.workspace.name);
+        viewResolvedRef.current = true;
+        setCurrentView("app");
+      }
+    } catch (err) {
+      console.error("Failed to create workspace:", err);
     }
   }
 
@@ -689,6 +732,17 @@ export default function App() {
     );
   }
 
+  if (currentView === "marketplace") {
+    return (
+      <WorkerMarketplace
+        authenticated
+        userName={userName}
+        onSubscribe={handleFirstSubscribe}
+        onSkip={() => setCurrentView("hub")}
+      />
+    );
+  }
+
   if (currentView === "hub") {
     return (
       <WorkspaceHub
@@ -696,6 +750,7 @@ export default function App() {
         onLaunch={handleWorkspaceLaunch}
         onBuilderStart={() => setCurrentView("builder-interview")}
         onAdminLaunch={() => setCurrentView("admin")}
+        onAddWorker={() => setCurrentView("marketplace")}
       />
     );
   }
