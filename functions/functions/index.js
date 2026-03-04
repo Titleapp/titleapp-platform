@@ -39,6 +39,13 @@ const {
   listTemplates: docListTemplates,
 } = require("./services/documentEngine");
 
+// Signature Service (Tier 0 platform service)
+let _signatureService;
+function getSignatureService() {
+  if (!_signatureService) _signatureService = require("./services/signatureService");
+  return _signatureService;
+}
+
 // Chat Engine (conversational state machine)
 const { processMessage: chatEngineProcess, defaultState: chatEngineDefaultState } = require("./chatEngine");
 
@@ -2305,32 +2312,60 @@ ${nameGuidance}${authGuidance}`;
                 const workerCategory = workerSpec.category || 'custom';
 
                 if (targetTenantId) {
-                  // Create Worker now
+                  // Create Worker — validate through unified schema gate
                   const { computeHash: devHash } = require("./api/utils/titleMint");
-                  const workerId = "wkr_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
-                  const rulesHash = devHash(rules);
-                  const metadataHash = devHash({ name: workerName, description: workerDesc, rules_hash: rulesHash, created_at: new Date().toISOString() });
+                  const { validateWorkerRecord, TIER_0_DEFAULTS, slugify } = require("./helpers/workerSchema");
 
-                  await db.doc(`tenants/${targetTenantId}/workers/${workerId}`).set({
-                    name: workerName, description: workerDesc,
-                    source: { platform: 'dev-chat', createdVia: 'alex' },
-                    capabilities: Array.isArray(workerSpec.capabilities) ? workerSpec.capabilities.slice(0, 20) : [],
-                    rules, category: workerCategory,
-                    pricing: { model: 'subscription', amount: 0, currency: 'USD' },
-                    status: 'registered', imported: false,
-                    createdAt: admin.firestore.FieldValue.serverTimestamp(),
-                    createdBy: sessionState.userId,
-                    rulesHash, metadataHash,
-                  });
-
-                  buildAnimation = true;
-                  workerCard = {
-                    type: 'workerCard',
-                    data: { workerId, name: workerName, description: workerDesc, rules: rules.slice(0, 5), rulesCount: rules.length, status: 'registered', category: workerCategory, tenantId: targetTenantId },
+                  const workerSlug = workerSpec.worker_id || slugify(workerName);
+                  const workerRecord = {
+                    worker_id: workerSlug,
+                    display_name: workerName,
+                    headline: workerSpec.headline || workerDesc.substring(0, 120),
+                    suite: workerSpec.suite || workerCategory || "General Business",
+                    worker_type: workerSpec.worker_type || "standalone",
+                    pricing_tier: workerSpec.pricing_tier !== undefined ? Number(workerSpec.pricing_tier) : 0,
+                    raas_tier_0: TIER_0_DEFAULTS,
+                    raas_tier_1: (workerSpec.tier_1 || rules).slice(0, 50),
+                    raas_tier_2: (workerSpec.tier_2 || []).slice(0, 50),
+                    raas_tier_3: (workerSpec.tier_3 || []).slice(0, 50),
+                    vault_reads: workerSpec.vault_reads || [],
+                    vault_writes: workerSpec.vault_writes || [],
+                    referral_triggers: workerSpec.referral_triggers || [],
+                    document_templates: workerSpec.document_templates || [],
+                    landing_page_slug: `workers/${workerSlug}`,
+                    status: "draft",
                   };
-                  sessionState.lastWorkerId = workerId;
-                  sessionState.lastWorkerTenantId = targetTenantId;
-                  console.log(`[dev] Worker created: ${workerId} for tenant ${targetTenantId}`);
+
+                  try {
+                    const { record: validated, warnings } = validateWorkerRecord(workerRecord);
+                    if (warnings.length > 0) console.log(`[dev] Worker validation warnings: ${warnings.join("; ")}`);
+
+                    const rulesHash = devHash(validated.raas_tier_1);
+                    const metadataHash = devHash({ name: validated.display_name, description: workerDesc, rules_hash: rulesHash, created_at: new Date().toISOString() });
+
+                    await db.doc(`tenants/${targetTenantId}/workers/${validated.worker_id}`).set({
+                      ...validated,
+                      description: workerDesc,
+                      source: { platform: "dev-chat", createdVia: "alex" },
+                      capabilities: Array.isArray(workerSpec.capabilities) ? workerSpec.capabilities.slice(0, 20) : [],
+                      imported: false,
+                      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                      createdBy: sessionState.userId,
+                      rulesHash, metadataHash,
+                    });
+
+                    buildAnimation = true;
+                    workerCard = {
+                      type: "workerCard",
+                      data: { workerId: validated.worker_id, name: validated.display_name, description: workerDesc, rules: validated.raas_tier_1.slice(0, 5), rulesCount: validated.raas_tier_1.length, status: "draft", category: validated.suite, tenantId: targetTenantId },
+                    };
+                    sessionState.lastWorkerId = validated.worker_id;
+                    sessionState.lastWorkerTenantId = targetTenantId;
+                    console.log(`[dev] Worker created: ${validated.worker_id} for tenant ${targetTenantId}`);
+                  } catch (valErr) {
+                    console.warn(`[dev] Worker validation failed: ${valErr.message}`);
+                    aiText += `\n\nI tried to create that worker but it needs more detail before I can save it. Missing fields:\n${(valErr.validationErrors || [valErr.message]).map(e => "- " + e).join("\n")}\n\nCan you fill in what's missing?`;
+                  }
                 } else {
                   // No account yet — stash spec for creation after signup
                   sessionState.pendingWorkerSpec = workerSpec;
@@ -3360,6 +3395,23 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       }
     }
 
+    // ----------------------------
+    // SIGNATURE SERVICE WEBHOOK (unauthenticated — HelloSign callback)
+    // ----------------------------
+    if (route === "/signatures:webhook" && method === "POST") {
+      try {
+        const event = req.body?.event || req.body;
+        if (!event || !event.event_type) {
+          return res.status(200).send("Hello API Event Received");
+        }
+        await getSignatureService().handleWebhookEvent({ event });
+        return res.status(200).send("Hello API Event Received");
+      } catch (e) {
+        console.error("signatures:webhook error:", e);
+        return res.status(200).send("Hello API Event Received");
+      }
+    }
+
     // All other routes require Firebase auth
     const auth = await requireFirebaseUser(req, res);
     if (auth.handled) return;
@@ -3555,17 +3607,8 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
 
     // ── Worker #1 — Digital Worker Creator Pipeline ──────────────────────
 
-    // Platform-level rules (Tier 0) — locked, immutable, injected into every Digital Worker
-    const TIER0_RULES = [
-      "All AI outputs must pass through the rules engine before reaching the user.",
-      "Every action must produce an immutable audit trail entry.",
-      "PII must never appear in logs, error messages, or external API responses.",
-      "The Digital Worker must not impersonate a licensed professional (attorney, doctor, CPA) unless explicitly credentialed.",
-      "All financial calculations must include a disclaimer that they are estimates, not advice.",
-      "The Digital Worker must not store payment card data directly — delegate to Stripe or equivalent PCI-compliant processor.",
-      "Rate limiting must be enforced: no single user session may exceed 100 AI calls per hour.",
-      "The Digital Worker must fail closed on rule violations — block the action, do not proceed with a warning.",
-    ];
+    // Platform-level rules (Tier 0) — imported from shared schema (single source of truth)
+    const { TIER_0_DEFAULTS: TIER0_RULES } = require("./helpers/workerSchema");
 
     // POST /v1/worker1:intake — Save intake data for Worker #1 pipeline
     if (route === "/worker1:intake" && method === "POST") {
@@ -3994,6 +4037,19 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       }
     }
 
+    // POST /v1/admin:workers:sync — Sync catalog workers to Firestore digitalWorkers collection
+    if (route === "/admin:workers:sync" && method === "POST") {
+      try {
+        const { syncCatalogWorkers } = require("./helpers/workerSync");
+        const { dryRun = false, workerIds = null } = body;
+        const results = await syncCatalogWorkers(db, { dryRun, workerIds });
+        return res.json({ ok: true, ...results });
+      } catch (e) {
+        console.error("[admin:workers:sync] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
     // POST /v1/me:update
     if (route === "/me:update" && method === "POST") {
       const ALLOWED_FIELDS = ["idVerified", "idVerifiedAt", "displayName", "company", "title", "linkedIn", "twitter", "accreditedInvestor", "investmentRangeMin", "investmentRangeMax", "investmentInterests", "emailFrequency", "photoUrl"];
@@ -4391,6 +4447,232 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       }
     }
 
+    // ----------------------------
+    // ALEX ORCHESTRATION ROUTES (W-048)
+    // ----------------------------
+
+    // POST /v1/alex:recommend — Get worker recommendations
+    if (route === "/alex:recommend" && method === "POST") {
+      try {
+        const alexService = require("./services/alex");
+        const result = alexService.getRecommendations({
+          vertical: body.vertical || ctx.vertical || "real-estate-development",
+          role: body.role,
+          currentPhase: body.currentPhase || 0,
+          activeWorkerSlugs: body.activeWorkerSlugs || [],
+          complianceTriggers: body.complianceTriggers || [],
+          userNeeds: body.userNeeds || {},
+        });
+        return json(res, { ok: true, ...result });
+      } catch (e) {
+        console.error("alex:recommend failed:", e);
+        return jsonError(res, 500, "Failed to generate recommendations");
+      }
+    }
+
+    // GET /v1/alex:status — Get orchestration status (pipelines, tasks, alerts)
+    if (route === "/alex:status" && (method === "GET" || method === "POST")) {
+      try {
+        const alexService = require("./services/alex");
+        const result = await alexService.runOrchestrationChecks({
+          vertical: body.vertical || ctx.vertical || "real-estate-development",
+          activeWorkerSlugs: body.activeWorkerSlugs || [],
+          currentPhase: body.currentPhase || 0,
+          vaultData: body.vaultData || {},
+          pipelines: body.pipelines || [],
+          deadlines: body.deadlines || [],
+        });
+        return json(res, { ok: true, ...result });
+      } catch (e) {
+        console.error("alex:status failed:", e);
+        return jsonError(res, 500, "Failed to get orchestration status");
+      }
+    }
+
+    // POST /v1/alex:pipeline:create — Create a new pipeline
+    if (route === "/alex:pipeline:create" && method === "POST") {
+      try {
+        const pipelineData = {
+          workspaceId: body.workspaceId || ctx.tenantId,
+          name: body.name || "Untitled Pipeline",
+          steps: (body.steps || []).map((s, i) => ({
+            order: i,
+            name: s.name || `Step ${i + 1}`,
+            workerId: s.workerId || null,
+            status: "pending",
+            startedAt: null,
+            completedAt: null,
+            output: null,
+          })),
+          status: "active",
+          createdBy: auth.user.uid,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        };
+        const ref = await db.collection("pipelines").add(pipelineData);
+        return json(res, { ok: true, pipelineId: ref.id, ...pipelineData });
+      } catch (e) {
+        console.error("alex:pipeline:create failed:", e);
+        return jsonError(res, 500, "Failed to create pipeline");
+      }
+    }
+
+    // POST /v1/alex:pipeline:advance — Advance a pipeline step
+    if (route === "/alex:pipeline:advance" && method === "POST") {
+      try {
+        const { pipelineId, stepIndex, output } = body;
+        if (!pipelineId) return jsonError(res, 400, "Missing pipelineId");
+        const pipelineRef = db.collection("pipelines").doc(pipelineId);
+        const pipelineDoc = await pipelineRef.get();
+        if (!pipelineDoc.exists) return jsonError(res, 404, "Pipeline not found");
+        const pipeline = pipelineDoc.data();
+        const idx = stepIndex !== undefined ? stepIndex : pipeline.steps.findIndex(s => s.status === "in_progress" || s.status === "pending");
+        if (idx < 0 || idx >= pipeline.steps.length) return jsonError(res, 400, "No step to advance");
+        pipeline.steps[idx].status = "completed";
+        pipeline.steps[idx].completedAt = new Date().toISOString();
+        if (output) pipeline.steps[idx].output = output;
+        // Start next step if available
+        if (idx + 1 < pipeline.steps.length) {
+          pipeline.steps[idx + 1].status = "in_progress";
+          pipeline.steps[idx + 1].startedAt = new Date().toISOString();
+        } else {
+          pipeline.status = "completed";
+        }
+        await pipelineRef.update({ steps: pipeline.steps, status: pipeline.status, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+        return json(res, { ok: true, pipeline: { id: pipelineId, ...pipeline } });
+      } catch (e) {
+        console.error("alex:pipeline:advance failed:", e);
+        return jsonError(res, 500, "Failed to advance pipeline");
+      }
+    }
+
+    // GET /v1/alex:tasks — List cross-worker tasks
+    if (route === "/alex:tasks" && (method === "GET" || method === "POST")) {
+      try {
+        const workspaceId = body.workspaceId || ctx.tenantId;
+        const tasksSnap = await db.collection("alexTasks")
+          .where("workspaceId", "==", workspaceId)
+          .orderBy("createdAt", "desc")
+          .limit(50)
+          .get();
+        const tasks = tasksSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        return json(res, { ok: true, tasks });
+      } catch (e) {
+        console.error("alex:tasks failed:", e);
+        return jsonError(res, 500, "Failed to fetch tasks");
+      }
+    }
+
+    // POST /v1/alex:tasks:create — Create a cross-worker task
+    if (route === "/alex:tasks:create" && method === "POST") {
+      try {
+        const taskData = {
+          workspaceId: body.workspaceId || ctx.tenantId,
+          pipelineId: body.pipelineId || null,
+          assignedWorker: body.assignedWorker || null,
+          title: body.title || "Untitled Task",
+          description: body.description || "",
+          priority: body.priority || "normal",
+          status: "pending",
+          dueDate: body.dueDate || null,
+          dependencies: body.dependencies || [],
+          createdBy: auth.user.uid,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        };
+        const ref = await db.collection("alexTasks").add(taskData);
+        return json(res, { ok: true, taskId: ref.id, ...taskData });
+      } catch (e) {
+        console.error("alex:tasks:create failed:", e);
+        return jsonError(res, 500, "Failed to create task");
+      }
+    }
+
+    // POST /v1/alex:tasks:update — Update a task status
+    if (route === "/alex:tasks:update" && method === "POST") {
+      try {
+        const { taskId, status, output } = body;
+        if (!taskId) return jsonError(res, 400, "Missing taskId");
+        const updates = { updatedAt: admin.firestore.FieldValue.serverTimestamp() };
+        if (status) updates.status = status;
+        if (output) updates.output = output;
+        if (body.assignedWorker !== undefined) updates.assignedWorker = body.assignedWorker;
+        if (body.priority) updates.priority = body.priority;
+        await db.collection("alexTasks").doc(taskId).update(updates);
+        return json(res, { ok: true, taskId });
+      } catch (e) {
+        console.error("alex:tasks:update failed:", e);
+        return jsonError(res, 500, "Failed to update task");
+      }
+    }
+
+    // GET /v1/alex:briefing — Generate daily briefing
+    if (route === "/alex:briefing" && (method === "GET" || method === "POST")) {
+      try {
+        const alexService = require("./services/alex");
+        const vertical = body.vertical || ctx.vertical || "real-estate-development";
+        const temporal = alexService.getTemporalStatus({
+          vertical,
+          currentPhase: body.currentPhase || 0,
+          activeWorkerSlugs: body.activeWorkerSlugs || [],
+        });
+        const orchestration = await alexService.runOrchestrationChecks({
+          vertical,
+          activeWorkerSlugs: body.activeWorkerSlugs || [],
+          currentPhase: body.currentPhase || 0,
+          vaultData: body.vaultData || {},
+          pipelines: body.pipelines || [],
+          deadlines: body.deadlines || [],
+        });
+        return json(res, { ok: true, temporal, orchestration });
+      } catch (e) {
+        console.error("alex:briefing failed:", e);
+        return jsonError(res, 500, "Failed to generate briefing");
+      }
+    }
+
+    // POST /v1/alex:onboard — Start worker onboarding flow
+    if (route === "/alex:onboard" && method === "POST") {
+      try {
+        const alexService = require("./services/alex");
+        const worker = alexService.getWorker(body.vertical || "real-estate-development", body.workerSlug);
+        if (!worker) return jsonError(res, 404, "Worker not found in catalog");
+        return json(res, {
+          ok: true,
+          worker: { id: worker.id, name: worker.name, slug: worker.slug, price: worker.pricing.monthly, capabilitySummary: worker.capabilitySummary },
+          onboardingSteps: ["explain", "configure", "connect", "first_task", "teach"],
+        });
+      } catch (e) {
+        console.error("alex:onboard failed:", e);
+        return jsonError(res, 500, "Failed to start onboarding");
+      }
+    }
+
+    // GET /v1/alex:catalog — Get catalog data
+    if (route === "/alex:catalog" && (method === "GET" || method === "POST")) {
+      try {
+        const alexService = require("./services/alex");
+        const vertical = body.vertical || ctx.vertical || "real-estate-development";
+        const catalog = alexService.getCatalog(vertical);
+        if (!catalog) return jsonError(res, 404, "Catalog not found for vertical: " + vertical);
+        return json(res, { ok: true, vertical: catalog.vertical, name: catalog.name, workerCount: catalog.workers.length, lifecycle: catalog.lifecycle, suites: catalog.suites, bundles: catalog.bundles, workers: catalog.workers.map(w => ({ id: w.id, slug: w.slug, name: w.name, suite: w.suite, phase: w.phase, type: w.type, price: w.pricing.monthly, status: w.status, capabilitySummary: w.capabilitySummary })) });
+      } catch (e) {
+        console.error("alex:catalog failed:", e);
+        return jsonError(res, 500, "Failed to load catalog");
+      }
+    }
+
+    // GET /v1/alex:verticals — List available verticals
+    if (route === "/alex:verticals" && (method === "GET" || method === "POST")) {
+      try {
+        const alexService = require("./services/alex");
+        const verticals = alexService.getAvailableVerticals();
+        return json(res, { ok: true, verticals });
+      } catch (e) {
+        console.error("alex:verticals failed:", e);
+        return jsonError(res, 500, "Failed to list verticals");
+      }
+    }
+
     // For all other routes, enforce tenant membership
     const gate = await requireMembershipIfNeeded({ uid: auth.user.uid, tenantId: ctx.tenantId }, res);
     if (!gate.ok) return;
@@ -4579,6 +4861,180 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       } catch (e) {
         console.error("❌ docs:templates failed:", e);
         return jsonError(res, 500, "Failed to list templates");
+      }
+    }
+
+    // ----------------------------
+    // SIGNATURE SERVICE (Tier 0)
+    // ----------------------------
+
+    // POST /v1/signatures:create — Create a new signature request
+    if (route === "/signatures:create" && method === "POST") {
+      try {
+        const { title, subject, message, signers, documentType, vertical, metadata, documentRef, expiresInHours } = body || {};
+        if (!signers || !Array.isArray(signers) || signers.length === 0) {
+          return jsonError(res, 400, "Missing or empty signers array");
+        }
+        const result = await getSignatureService().createRequest({
+          tenantId: ctx.tenantId,
+          userId: ctx.userId,
+          title,
+          subject,
+          message,
+          signers,
+          documentType,
+          vertical,
+          metadata,
+          documentRef,
+          expiresInHours: expiresInHours ? Number(expiresInHours) : null,
+        });
+        if (!result.ok) return jsonError(res, 500, result.error);
+        return res.json(result);
+      } catch (e) {
+        console.error("signatures:create failed:", e);
+        return jsonError(res, 500, "Failed to create signature request");
+      }
+    }
+
+    // GET /v1/signatures:status?requestId=...
+    if (route === "/signatures:status" && method === "GET") {
+      try {
+        const requestId = (req.query || {}).requestId || (body || {}).requestId;
+        if (!requestId) return jsonError(res, 400, "Missing requestId");
+        const result = await getSignatureService().getStatus({
+          tenantId: ctx.tenantId,
+          requestId,
+        });
+        if (!result.ok) {
+          const status = result.error === "not_found" ? 404 : 500;
+          return jsonError(res, status, result.error);
+        }
+        return res.json(result);
+      } catch (e) {
+        console.error("signatures:status failed:", e);
+        return jsonError(res, 500, "Failed to get signature status");
+      }
+    }
+
+    // POST /v1/signatures:countersign — Get sign URL for next pending signer
+    if (route === "/signatures:countersign" && method === "POST") {
+      try {
+        const { requestId } = body || {};
+        if (!requestId) return jsonError(res, 400, "Missing requestId");
+        const result = await getSignatureService().addCountersign({
+          tenantId: ctx.tenantId,
+          userId: ctx.userId,
+          requestId,
+        });
+        if (!result.ok) {
+          const status = result.error === "not_found" ? 404
+            : result.error === "no_pending_signature_for_user" ? 403
+            : 500;
+          return jsonError(res, status, result.error);
+        }
+        return res.json(result);
+      } catch (e) {
+        console.error("signatures:countersign failed:", e);
+        return jsonError(res, 500, "Failed to process countersignature");
+      }
+    }
+
+    // POST /v1/signatures:verify — Verify blockchain hash chain
+    if (route === "/signatures:verify" && method === "POST") {
+      try {
+        const { requestId } = body || {};
+        if (!requestId) return jsonError(res, 400, "Missing requestId");
+        const result = await getSignatureService().verify({
+          tenantId: ctx.tenantId,
+          requestId,
+        });
+        if (!result.ok) {
+          const status = result.error === "not_found" ? 404 : 500;
+          return jsonError(res, status, result.error);
+        }
+        return res.json(result);
+      } catch (e) {
+        console.error("signatures:verify failed:", e);
+        return jsonError(res, 500, "Signature verification failed");
+      }
+    }
+
+    // GET /v1/signatures:pending — Get pending signatures for current user
+    if (route === "/signatures:pending" && method === "GET") {
+      try {
+        const result = await getSignatureService().getPending({
+          tenantId: ctx.tenantId,
+          userId: ctx.userId,
+        });
+        if (!result.ok) return jsonError(res, 500, result.error);
+        return res.json(result);
+      } catch (e) {
+        console.error("signatures:pending failed:", e);
+        return jsonError(res, 500, "Failed to get pending signatures");
+      }
+    }
+
+    // POST /v1/signatures:delegate — Create signing authority delegation
+    if (route === "/signatures:delegate" && method === "POST") {
+      try {
+        const { grantedTo, scope, scopeValue, expiresInDays } = body || {};
+        if (!grantedTo) return jsonError(res, 400, "Missing grantedTo");
+        const result = await getSignatureService().delegate({
+          tenantId: ctx.tenantId,
+          grantedBy: ctx.userId,
+          grantedTo,
+          scope,
+          scopeValue,
+          expiresInDays: expiresInDays ? Number(expiresInDays) : null,
+        });
+        if (!result.ok) return jsonError(res, 500, result.error);
+        return res.json(result);
+      } catch (e) {
+        console.error("signatures:delegate failed:", e);
+        return jsonError(res, 500, "Failed to create delegation");
+      }
+    }
+
+    // POST /v1/signatures:revoke — Revoke a signing authority delegation
+    if (route === "/signatures:revoke" && method === "POST") {
+      try {
+        const { delegationId } = body || {};
+        if (!delegationId) return jsonError(res, 400, "Missing delegationId");
+        const result = await getSignatureService().revoke({
+          tenantId: ctx.tenantId,
+          userId: ctx.userId,
+          delegationId,
+        });
+        if (!result.ok) {
+          const status = result.error === "not_found" ? 404
+            : result.error === "forbidden" ? 403
+            : 500;
+          return jsonError(res, status, result.error);
+        }
+        return res.json(result);
+      } catch (e) {
+        console.error("signatures:revoke failed:", e);
+        return jsonError(res, 500, "Failed to revoke delegation");
+      }
+    }
+
+    // GET /v1/signatures:audit?requestId=...
+    if (route === "/signatures:audit" && method === "GET") {
+      try {
+        const requestId = (req.query || {}).requestId || (body || {}).requestId;
+        if (!requestId) return jsonError(res, 400, "Missing requestId");
+        const result = await getSignatureService().getAudit({
+          tenantId: ctx.tenantId,
+          requestId,
+        });
+        if (!result.ok) {
+          const status = result.error === "not_found" ? 404 : 500;
+          return jsonError(res, status, result.error);
+        }
+        return res.json(result);
+      } catch (e) {
+        console.error("signatures:audit failed:", e);
+        return jsonError(res, 500, "Failed to get audit trail");
       }
     }
 
@@ -5031,6 +5487,34 @@ Active: ${rc.active ? "Yes" : "No"}`;
             // Call Claude API
             const anthropic = getAnthropic();
             const isPersonalVault = (ctx.vertical || "").toLowerCase() === "consumer" || (ctx.vertical || "").toUpperCase() === "GLOBAL";
+
+            // Check if Alex orchestration layer should be used
+            let alexSystemPrompt = null;
+            if (!isPersonalVault) {
+              try {
+                const workspaceId = (context || {}).workspaceId || ctx.tenantId;
+                if (workspaceId) {
+                  const { getWorkspace } = require("./helpers/workspaces");
+                  const workspace = await getWorkspace(auth.user.uid, workspaceId).catch(() => null);
+                  if (workspace && workspace.chiefOfStaff && workspace.chiefOfStaff.enabled) {
+                    const alexService = require("./services/alex");
+                    alexSystemPrompt = await alexService.buildAlexPrompt({
+                      userId: auth.user.uid,
+                      workspaceId,
+                      surface: "business",
+                      activeWorkers: workspace.activeWorkers || [],
+                      vertical: ctx.vertical || workspace.vertical || "real-estate-development",
+                      currentSection: (context || {}).currentSection,
+                      workspace,
+                    });
+                    console.log("Using Alex orchestration prompt for workspace:", workspaceId);
+                  }
+                }
+              } catch (alexErr) {
+                console.warn("Alex prompt build failed, falling back to legacy:", alexErr.message);
+              }
+            }
+
             const personalSystemPrompt = `You are the user's personal Chief of Staff in their TitleApp Vault. You do everything for them directly in this chat. You create records, store files, manage logbooks, handle attestations, and organize their entire digital life. The dashboard is a read-only view into what you have already done -- the user never needs to leave this chat to accomplish anything.
 
 Your role:
@@ -5233,14 +5717,38 @@ When the user asks for a formatted document such as a report, memo, financial mo
 After the markers, confirm to the user that their document is ready for download. Do NOT mention the markers to the user.
 ${(context || {}).dealContext ? `\nThe user wants to discuss this deal analysis:\n${JSON.stringify(context.dealContext)}` : ""}${analystDealContext}`;
 
+            // Select system prompt: Alex orchestration > personal vault > business legacy
+            const selectedSystemPrompt = alexSystemPrompt || (isPersonalVault ? personalSystemPrompt : businessSystemPrompt);
+
             const response = await anthropic.messages.create({
               model: "claude-sonnet-4-5-20250929",
               max_tokens: 4096,
-              system: isPersonalVault ? personalSystemPrompt : businessSystemPrompt,
+              system: selectedSystemPrompt,
               messages,
             });
 
             aiResponse = response.content[0]?.text || "I apologize, but I couldn't generate a response. Please try again.";
+
+            // Parse routing tags from Alex's response (if using Alex orchestration)
+            if (alexSystemPrompt && aiResponse) {
+              try {
+                const alexService = require("./services/alex");
+                const { cleanResponse, route } = alexService.parseRoutingTag(aiResponse);
+                if (route) {
+                  aiResponse = cleanResponse;
+                  if (route.type === "recommend_worker" && route.target) {
+                    const worker = alexService.getWorker(ctx.vertical || "real-estate-development", route.target);
+                    if (worker) {
+                      structuredData = { type: "worker_recommendation", worker: { id: worker.id, slug: worker.slug, name: worker.name, price: worker.pricing.monthly, capabilitySummary: worker.capabilitySummary } };
+                    }
+                  } else if (route.type === "route_to_worker" && route.target) {
+                    structuredData = { type: "worker_route", targetWorker: route.target };
+                  }
+                }
+              } catch (routeErr) {
+                console.warn("Alex routing tag parse failed:", routeErr.message);
+              }
+            }
           } catch (apiError) {
             console.error("❌ Claude API call failed:", apiError.message || apiError);
             aiResponse = "I'm having trouble connecting to the AI service right now. Please try again in a moment.";
@@ -7255,61 +7763,37 @@ Return as JSON: { summary, risks: [], recommendations: [], confidence }`
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         }, { merge: true });
 
-        // Try HelloSign / DropboxSign
-        const hellosignKey = process.env.HELLOSIGN_API_KEY;
-        const hellosignClientId = process.env.HELLOSIGN_CLIENT_ID;
+        // Use universal Signature Service for SAFE signing
+        const sigResult = await getSignatureService().createRequest({
+          tenantId: ctx.tenantId,
+          userId: investorId,
+          title: `SAFE Agreement — ${investorName}`,
+          subject: `TitleApp SAFE Agreement — $${Number(amount).toLocaleString()}`,
+          message: `Please review and sign the SAFE agreement for your $${Number(amount).toLocaleString()} investment in TitleApp.`,
+          signers: [{ email: investorEmail, name: investorName, order: 0, userId: investorId }],
+          documentType: "safe_agreement",
+          vertical: "investment",
+          metadata: { investorId, amount: String(amount) },
+        });
 
-        if (hellosignKey && hellosignClientId) {
-          try {
-            const hsResp = await fetch("https://api.hellosign.com/v3/signature_request/create_embedded", {
-              method: "POST",
-              headers: {
-                "Authorization": "Basic " + Buffer.from(`${hellosignKey}:`).toString("base64"),
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                client_id: hellosignClientId,
-                title: `SAFE Agreement — ${investorName}`,
-                subject: `TitleApp SAFE Agreement — $${Number(amount).toLocaleString()}`,
-                message: `Please review and sign the SAFE agreement for your $${Number(amount).toLocaleString()} investment in TitleApp.`,
-                signers: [{ email_address: investorEmail, name: investorName, order: 0 }],
-                metadata: { investorId, amount: String(amount) },
-                test_mode: 1,
-              }),
-            });
-            const hsResult = await hsResp.json();
-            if (hsResult.signature_request) {
-              const sigReq = hsResult.signature_request;
-              const sigId = sigReq.signatures?.[0]?.signature_id;
-              let signUrl = null;
-              if (sigId) {
-                const embedResp = await fetch(`https://api.hellosign.com/v3/embedded/sign_url/${sigId}`, {
-                  headers: { "Authorization": "Basic " + Buffer.from(`${hellosignKey}:`).toString("base64") },
-                });
-                const embedResult = await embedResp.json();
-                signUrl = embedResult.embedded?.sign_url;
-              }
-              await intentRef.update({
-                status: "safe_sent",
-                safeMethod: "hellosign",
-                safeSignatureRequestId: sigReq.signature_request_id,
-                safeSentAt: admin.firestore.FieldValue.serverTimestamp(),
-              });
-              return res.json({ ok: true, method: "hellosign", signUrl, signatureRequestId: sigReq.signature_request_id });
-            }
-          } catch (hsErr) {
-            console.error("HelloSign error:", hsErr.message);
-          }
+        if (sigResult.ok) {
+          const firstSignUrl = sigResult.signUrls ? Object.values(sigResult.signUrls)[0] || null : null;
+          await intentRef.update({
+            status: sigResult.method === "hellosign" ? "safe_sent" : "consent_pending",
+            safeMethod: sigResult.method,
+            safeSignatureRequestId: sigResult.requestId,
+            safeSentAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+          return res.json({
+            ok: true,
+            method: sigResult.method,
+            signUrl: firstSignUrl,
+            signatureRequestId: sigResult.requestId,
+          });
         }
 
-        // Fallback: typed consent
-        const consentId = `consent_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-        await intentRef.update({
-          status: "consent_pending",
-          safeMethod: "typed_consent",
-          safeConsentId: consentId,
-        });
-        return res.json({ ok: true, method: "typed_consent", consentId });
+        // Signature service failed — return error
+        return jsonError(res, 500, sigResult.error || "Failed to create signature request");
       } catch (e) {
         console.error("investor:submit-intent failed:", e);
         return jsonError(res, 500, "Failed to submit investment intent");

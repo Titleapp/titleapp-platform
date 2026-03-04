@@ -2323,6 +2323,220 @@ function runAlexTests() {
 }
 
 // ═══════════════════════════════════════════════════════════════
+//  6. SCHEMA VALIDATION (workerSchema.js smoke tests)
+// ═══════════════════════════════════════════════════════════════
+
+function runSchemaValidationTests() {
+  sectionPassed = 0;
+  sectionFailed = 0;
+  console.log("\n── 6. Schema Validation (workerSchema.js) ──────────────────");
+
+  const { validateWorkerRecord, TIER_0_DEFAULTS, VALID_SUITES, VALID_WORKER_TYPES, VALID_PRICING_TIERS, VALID_STATUSES, slugify } = require("../helpers/workerSchema");
+
+  // --- Module exports ---
+  test("TIER_0_DEFAULTS has 8 rules", () => {
+    assert.strictEqual(TIER_0_DEFAULTS.length, 8);
+  });
+
+  test("VALID_SUITES includes core suites", () => {
+    for (const s of ["Investment", "Construction", "Legal", "Platform"]) {
+      assert.ok(VALID_SUITES.includes(s), `Missing suite: ${s}`);
+    }
+  });
+
+  test("VALID_WORKER_TYPES has 5 types", () => {
+    assert.strictEqual(VALID_WORKER_TYPES.length, 5);
+    assert.ok(VALID_WORKER_TYPES.includes("orchestrator"));
+  });
+
+  test("VALID_PRICING_TIERS includes 0 and 99", () => {
+    assert.ok(VALID_PRICING_TIERS.includes(0));
+    assert.ok(VALID_PRICING_TIERS.includes(99));
+  });
+
+  test("VALID_STATUSES has 4 values", () => {
+    assert.strictEqual(VALID_STATUSES.length, 4);
+  });
+
+  // --- slugify ---
+  test("slugify converts display name to slug", () => {
+    assert.strictEqual(slugify("Market Research"), "market-research");
+    assert.strictEqual(slugify("HOA & Association"), "hoa-and-association");
+    assert.strictEqual(slugify("  Spaces  "), "spaces");
+  });
+
+  // --- Valid record passes ---
+  const validRecord = {
+    worker_id: "test-worker",
+    display_name: "Test Worker",
+    headline: "A test worker for validation",
+    suite: "Platform",
+    worker_type: "standalone",
+    pricing_tier: 49,
+    raas_tier_0: TIER_0_DEFAULTS,
+    raas_tier_1: ["Rule A", "Rule B", "Rule C"],
+    raas_tier_2: ["Policy X"],
+    raas_tier_3: [],
+    vault_reads: [],
+    vault_writes: [],
+    referral_triggers: [],
+    document_templates: [],
+    landing_page_slug: "workers/test-worker",
+    status: "draft",
+  };
+
+  test("Valid record passes validation", () => {
+    const { record, warnings } = validateWorkerRecord(validRecord);
+    assert.strictEqual(record.worker_id, "test-worker");
+    assert.strictEqual(record.pricing_tier, 49);
+    assert.ok(Array.isArray(warnings));
+  });
+
+  // --- Missing fields throw ---
+  test("Empty object throws with multiple errors", () => {
+    try {
+      validateWorkerRecord({});
+      assert.fail("Should have thrown");
+    } catch (e) {
+      assert.ok(e.validationErrors.length >= 10, `Expected 10+ errors, got ${e.validationErrors.length}`);
+    }
+  });
+
+  test("Missing worker_id throws", () => {
+    const bad = { ...validRecord, worker_id: "" };
+    try {
+      validateWorkerRecord(bad);
+      assert.fail("Should have thrown");
+    } catch (e) {
+      assert.ok(e.validationErrors.some(err => err.includes("worker_id")));
+    }
+  });
+
+  test("Missing display_name throws", () => {
+    const bad = { ...validRecord, display_name: "" };
+    try {
+      validateWorkerRecord(bad);
+      assert.fail("Should have thrown");
+    } catch (e) {
+      assert.ok(e.validationErrors.some(err => err.includes("display_name")));
+    }
+  });
+
+  test("Missing headline throws", () => {
+    const bad = { ...validRecord, headline: "" };
+    try {
+      validateWorkerRecord(bad);
+      assert.fail("Should have thrown");
+    } catch (e) {
+      assert.ok(e.validationErrors.some(err => err.includes("headline")));
+    }
+  });
+
+  test("Invalid suite throws", () => {
+    const bad = { ...validRecord, suite: "Nonsense" };
+    try {
+      validateWorkerRecord(bad);
+      assert.fail("Should have thrown");
+    } catch (e) {
+      assert.ok(e.validationErrors.some(err => err.includes("suite")));
+    }
+  });
+
+  test("Invalid worker_type throws", () => {
+    const bad = { ...validRecord, worker_type: "magic" };
+    try {
+      validateWorkerRecord(bad);
+      assert.fail("Should have thrown");
+    } catch (e) {
+      assert.ok(e.validationErrors.some(err => err.includes("worker_type")));
+    }
+  });
+
+  test("Invalid pricing_tier throws", () => {
+    const bad = { ...validRecord, pricing_tier: 55 };
+    try {
+      validateWorkerRecord(bad);
+      assert.fail("Should have thrown");
+    } catch (e) {
+      assert.ok(e.validationErrors.some(err => err.includes("pricing_tier")));
+    }
+  });
+
+  test("raas_tier_0 with < 8 rules throws", () => {
+    const bad = { ...validRecord, raas_tier_0: ["only one"] };
+    try {
+      validateWorkerRecord(bad);
+      assert.fail("Should have thrown");
+    } catch (e) {
+      assert.ok(e.validationErrors.some(err => err.includes("raas_tier_0")));
+    }
+  });
+
+  test("raas_tier_1 with < 3 rules throws", () => {
+    const bad = { ...validRecord, raas_tier_1: ["only one"] };
+    try {
+      validateWorkerRecord(bad);
+      assert.fail("Should have thrown");
+    } catch (e) {
+      assert.ok(e.validationErrors.some(err => err.includes("raas_tier_1")));
+    }
+  });
+
+  test("raas_tier_2 as non-array throws", () => {
+    const bad = { ...validRecord, raas_tier_2: "not an array" };
+    try {
+      validateWorkerRecord(bad);
+      assert.fail("Should have thrown");
+    } catch (e) {
+      assert.ok(e.validationErrors.some(err => err.includes("raas_tier_2")));
+    }
+  });
+
+  test("Invalid status throws", () => {
+    const bad = { ...validRecord, status: "published" };
+    try {
+      validateWorkerRecord(bad);
+      assert.fail("Should have thrown");
+    } catch (e) {
+      assert.ok(e.validationErrors.some(err => err.includes("status")));
+    }
+  });
+
+  test("landing_page_slug without workers/ prefix throws", () => {
+    const bad = { ...validRecord, landing_page_slug: "test-worker" };
+    try {
+      validateWorkerRecord(bad);
+      assert.fail("Should have thrown");
+    } catch (e) {
+      assert.ok(e.validationErrors.some(err => err.includes("landing_page_slug")));
+    }
+  });
+
+  // --- Warnings ---
+  test("Empty raas_tier_2 produces warning (not error)", () => {
+    const rec = { ...validRecord, raas_tier_2: [] };
+    const { warnings } = validateWorkerRecord(rec);
+    assert.ok(warnings.some(w => w.includes("raas_tier_2")));
+  });
+
+  // --- workerSync maps ---
+  test("MARKETPLACE_SLUG_MAP covers 52 workers", () => {
+    const { MARKETPLACE_SLUG_MAP } = require("../helpers/workerSync");
+    assert.strictEqual(Object.keys(MARKETPLACE_SLUG_MAP).length, 52);
+  });
+
+  test("RULESET_MAP keys are valid marketplace slugs", () => {
+    const { MARKETPLACE_SLUG_MAP, RULESET_MAP } = require("../helpers/workerSync");
+    const validSlugs = new Set(Object.values(MARKETPLACE_SLUG_MAP));
+    for (const slug of Object.keys(RULESET_MAP)) {
+      assert.ok(validSlugs.has(slug), `RULESET_MAP key "${slug}" not in MARKETPLACE_SLUG_MAP values`);
+    }
+  });
+
+  console.log(`   Section: ${sectionPassed} passed, ${sectionFailed} failed`);
+}
+
+// ═══════════════════════════════════════════════════════════════
 //  MAIN
 // ═══════════════════════════════════════════════════════════════
 
@@ -2336,6 +2550,7 @@ async function main() {
   runRegistryTests();
   runFrontendTests();
   runAlexTests();
+  runSchemaValidationTests();
 
   console.log("\n╔══════════════════════════════════════════════╗");
   console.log(`║  TOTAL: ${passed} passed, ${failed} failed${" ".repeat(Math.max(0, 24 - String(passed).length - String(failed).length))}║`);
