@@ -1,0 +1,82 @@
+{
+  "id": "ad_027_hr_payroll_v1",
+  "version": "v1",
+  "domain": "auto-dealership",
+  "description": "HR and Payroll compliance — enforces correct overtime classification for service advisors, minimum wage compliance, I-9 completion, harassment investigation requirements, and tracks licenses, chargebacks, and training",
+  "required_inputs": ["workspace_id"],
+  "hard_stops": [
+    {
+      "id": "no_workspace",
+      "logic": "workspace must be initialized before any HR and payroll operation",
+      "eval": { "type": "required_inputs_check" }
+    },
+    {
+      "id": "ai_disclosure_required",
+      "logic": "AI-generated payroll calculations and HR recommendations are decision-support only — payroll processing requires human verification and HR decisions require qualified personnel",
+      "eval": { "field": "workspace.aiDisclosureAcknowledged", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "data_integrity_check",
+      "logic": "employee records, time entries, and payroll data must be accurate and consistent — no missing time records or misclassified employees",
+      "eval": { "field": "hr.dataIntegrityErrors", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "service_advisor_overtime_exempt",
+      "logic": "service advisors are NOT exempt from overtime under FLSA — classifying them as exempt is the most common lawsuit in the auto industry; they MUST receive overtime pay",
+      "eval": { "field": "payroll.serviceAdvisorExemptCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "minimum_wage_shortfall",
+      "logic": "commissioned employees must earn at least minimum wage when commissions are calculated per pay period — shortfall must be made up by the employer",
+      "eval": { "field": "payroll.minimumWageShortfallCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "i9_not_completed",
+      "logic": "Form I-9 must be completed within 3 business days of hire — failure to complete is a federal violation with escalating fines",
+      "eval": { "field": "hr.i9IncompleteCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "harassment_complaint_not_investigated",
+      "logic": "every harassment complaint must be promptly and thoroughly investigated — failure to investigate creates employer liability",
+      "eval": { "field": "hr.uninvestigatedHarassmentComplaintCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "meal_break_violation",
+      "logic": "state-required meal and rest breaks must be provided and documented — violations result in premium pay penalties",
+      "eval": { "field": "payroll.mealBreakViolationCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "final_pay_not_timely",
+      "logic": "terminated employees must receive final pay within the state-mandated timeline — some states require same-day payment for involuntary termination",
+      "eval": { "field": "payroll.lateFinalPayCount", "operator": ">", "threshold": 0 }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "overtime_approaching_threshold",
+      "logic": "employee is approaching overtime threshold and has not been approved for additional hours",
+      "eval": { "field": "payroll.employeesApproachingOvertimeCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "license_expiring",
+      "logic": "employee professional license or certification is expiring within 30 days (sales license, ASE cert, etc.)",
+      "eval": { "field": "hr.licensesExpiringWithin30Days", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "chargeback_dispute_pending",
+      "logic": "salesperson chargeback dispute is unresolved — may affect payroll accuracy and morale",
+      "eval": { "field": "payroll.pendingChargebackDisputeCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "training_overdue",
+      "logic": "one or more employees have overdue mandatory training (sexual harassment, safety, compliance)",
+      "eval": { "field": "training.overdueCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "commission_agreement_missing",
+      "logic": "employee on a commission-based pay plan does not have a signed current pay plan agreement on file",
+      "eval": { "field": "hr.missingCommissionAgreementCount", "operator": ">", "threshold": 0 }
+    }
+  ],
+  "outputs": ["ad027-payroll-compliance", "ad027-license-tracker", "ad027-pay-plan-summary", "ad027-training-compliance"]
+}

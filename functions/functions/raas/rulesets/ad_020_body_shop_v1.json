@@ -1,0 +1,77 @@
+{
+  "id": "ad_020_body_shop_v1",
+  "version": "v1",
+  "domain": "auto-dealership",
+  "description": "Body Shop management — enforces aftermarket parts disclosure, OEM repair procedures, anti-steering laws, environmental compliance, OSHA PPE requirements, and monitors DRP performance",
+  "required_inputs": ["workspace_id", "claim_id", "vehicle_id"],
+  "hard_stops": [
+    {
+      "id": "no_workspace",
+      "logic": "workspace must be initialized before any body shop operation",
+      "eval": { "type": "required_inputs_check" }
+    },
+    {
+      "id": "ai_disclosure_required",
+      "logic": "AI-generated repair estimates and recommendations must be reviewed by a certified collision technician",
+      "eval": { "field": "workspace.aiDisclosureAcknowledged", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "data_integrity_check",
+      "logic": "repair estimate, supplement, and parts data must be consistent — no mismatched line items or duplicate charges",
+      "eval": { "field": "claim.dataIntegrityErrors", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "aftermarket_parts_not_disclosed",
+      "logic": "state law requires disclosure when aftermarket (non-OEM) parts are used in a collision repair — customer must be informed and consent",
+      "eval": { "field": "repair.undisclosedAftermarketPartCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "oem_procedure_not_followed",
+      "logic": "OEM repair procedures must be followed for structural and safety-related repairs — deviation creates liability for the shop and dealership",
+      "eval": { "field": "repair.oemProcedureDeviationCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "steering_violation",
+      "logic": "NEVER steer insurance customers to or from a specific shop — anti-steering laws prohibit this practice in most states",
+      "eval": { "field": "compliance.steeringViolationDetected", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "environmental_noncompliant",
+      "logic": "paint booth emissions, solvent disposal, and hazardous waste handling must meet EPA and state environmental regulations",
+      "eval": { "field": "compliance.environmentalViolationCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "osha_ppe_violation",
+      "logic": "OSHA PPE requirements must be met for all body shop operations — respiratory protection, eye protection, hearing protection as applicable",
+      "eval": { "field": "compliance.oshaViolationCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "structural_repair_not_documented",
+      "logic": "all structural repairs must be fully documented with pre- and post-repair measurements — required for safety certification",
+      "eval": { "field": "repair.undocumentedStructuralRepairCount", "operator": ">", "threshold": 0 }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "cycle_time_exceeding_drp",
+      "logic": "repair cycle time is exceeding the DRP (direct repair program) target set by the insurance partner",
+      "eval": { "field": "metrics.cycleTimeDaysOverDRP", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "supplement_denial_rate_high",
+      "logic": "supplement request denial rate from insurers exceeds the acceptable threshold",
+      "eval": { "field": "metrics.supplementDenialRatePct", "operator": ">", "threshold": 20 }
+    },
+    {
+      "id": "csi_below_drp_target",
+      "logic": "customer satisfaction index is below the DRP program's required threshold — risking program removal",
+      "eval": { "field": "metrics.csiScore", "operator": "<", "threshold": 90 }
+    },
+    {
+      "id": "sublet_turnaround_slow",
+      "logic": "sublet work turnaround time is exceeding the expected timeline — delaying overall repair completion",
+      "eval": { "field": "sublet.avgTurnaroundDays", "operator": ">", "threshold": 5 }
+    }
+  ],
+  "outputs": ["ad020-cycle-time-report", "ad020-supplement-tracker", "ad020-drp-scorecard"]
+}

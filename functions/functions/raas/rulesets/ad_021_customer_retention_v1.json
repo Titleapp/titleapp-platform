@@ -1,0 +1,92 @@
+{
+  "id": "ad_021_customer_retention_v1",
+  "version": "v1",
+  "domain": "auto-dealership",
+  "description": "Customer Retention and equity mining — enforces TCPA consent, Do Not Call compliance, CAN-SPAM requirements, unsubscribe honoring, CCPA opt-out, and manages equity mining, lease maturity, and retention campaigns",
+  "required_inputs": ["workspace_id"],
+  "hard_stops": [
+    {
+      "id": "no_workspace",
+      "logic": "workspace must be initialized before any customer retention operation",
+      "eval": { "type": "required_inputs_check" }
+    },
+    {
+      "id": "ai_disclosure_required",
+      "logic": "AI-generated marketing communications must be reviewed by a human before distribution — automated sends require prior approval of templates",
+      "eval": { "field": "workspace.aiDisclosureAcknowledged", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "data_integrity_check",
+      "logic": "customer contact data must be accurate and current — no stale records or duplicate contacts",
+      "eval": { "field": "contacts.dataIntegrityErrors", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "tcpa_consent_missing",
+      "logic": "NEVER send text messages or make autodialed calls without prior express written consent under TCPA — violations carry $500-$1500 per message/call",
+      "eval": { "field": "campaign.tcpaConsentMissingCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "dnc_violation",
+      "logic": "NEVER contact customers on the National or state Do Not Call registry without an existing business relationship exception — fines up to $43,792 per call",
+      "eval": { "field": "campaign.dncViolationCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "canspam_noncompliant",
+      "logic": "CAN-SPAM Act — all commercial emails must include sender identification, physical address, and a clear unsubscribe mechanism",
+      "eval": { "field": "campaign.canSpamViolationCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "unsubscribe_not_honored",
+      "logic": "unsubscribe requests must be honored within 10 business days — continued contact after opt-out is a federal violation",
+      "eval": { "field": "contacts.unsubscribeNotHonoredCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "ccpa_opt_out_ignored",
+      "logic": "CCPA — customer data sale/sharing opt-out requests must be honored; ignoring them triggers state AG enforcement action",
+      "eval": { "field": "contacts.ccpaOptOutIgnoredCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "minor_contacted",
+      "logic": "marketing communications must not be sent to individuals under 18 — additional COPPA and state restrictions apply",
+      "eval": { "field": "contacts.minorContactAttemptCount", "operator": ">", "threshold": 0 }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "contact_frequency_exceeded",
+      "logic": "customer has been contacted more times than the configured maximum per period — fatigue risk",
+      "eval": { "field": "contacts.overContactedCustomerCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "equity_mining_stale",
+      "logic": "equity mining data has not been refreshed in the configured number of days — stale valuations reduce effectiveness",
+      "eval": { "field": "equity.daysSinceLastRefresh", "operator": ">", "threshold": 30 }
+    },
+    {
+      "id": "lease_maturity_not_contacted",
+      "logic": "customers with lease maturity within 90 days have not been contacted for retention",
+      "eval": { "field": "lease.uncontactedMaturingCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "orphan_owners_unassigned",
+      "logic": "customers whose original salesperson has left have not been reassigned to an active team member",
+      "eval": { "field": "contacts.orphanOwnerCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "csi_negative_not_followed_up",
+      "logic": "customers who gave negative CSI scores have not received follow-up contact",
+      "eval": { "field": "csi.negativeUnfollowedCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "service_retention_declining",
+      "logic": "service retention rate is declining over trailing 90 days",
+      "eval": { "field": "metrics.serviceRetentionDeclinePct", "operator": ">", "threshold": 5 }
+    },
+    {
+      "id": "defection_predicted",
+      "logic": "predictive model flags customers with high probability of defecting to competitor",
+      "eval": { "field": "predictions.highDefectionRiskCount", "operator": ">", "threshold": 0 }
+    }
+  ],
+  "outputs": ["ad021-equity-mining-report", "ad021-lease-maturity-report", "ad021-retention-dashboard", "ad021-campaign-performance"]
+}

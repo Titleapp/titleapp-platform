@@ -57,7 +57,7 @@ const VALID_SUITES = [
 
 const VALID_WORKER_TYPES = ["standalone", "pipeline", "composite", "copilot", "orchestrator"];
 
-const VALID_PRICING_TIERS = [0, 29, 39, 49, 59, 69, 79, 99];
+const VALID_PRICING_TIERS = [0, 19, 29, 39, 49, 59, 69, 79, 99];
 
 const VALID_STATUSES = ["draft", "waitlist", "live", "development"];
 

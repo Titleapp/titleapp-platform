@@ -1,0 +1,76 @@
+{
+  "id": "av_009_flight_duty_enforcer_v0",
+  "version": "v0",
+  "domain": "aviation-duty-time",
+  "description": "Flight & Duty Time Enforcer — hard stops on illegal crew assignments",
+  "required_inputs": [
+    "pilot_id",
+    "proposed_assignment",
+    "duty_records",
+    "flight_time_records",
+    "rest_records"
+  ],
+  "hard_stops": [
+    {
+      "id": "daily_flight_limit_exceeded",
+      "label": "Daily Flight Limit Exceeded",
+      "logic": "Pilot exceeds daily flight time limit per 14 CFR 135.267",
+      "eval": { "field": "pilot.daily_flight_hours", "operator": ">", "threshold": "tenant.daily_flight_limit" }
+    },
+    {
+      "id": "weekly_flight_limit_exceeded",
+      "label": "7-Day Flight Limit Exceeded",
+      "logic": "Pilot exceeds 7-day flight time limit (34 hours)",
+      "eval": { "field": "pilot.seven_day_flight_hours", "operator": ">", "threshold": 34 }
+    },
+    {
+      "id": "thirty_day_flight_exceeded",
+      "label": "30-Day Flight Limit Exceeded",
+      "logic": "Pilot exceeds 30-day flight time limit (120 hours)",
+      "eval": { "field": "pilot.thirty_day_flight_hours", "operator": ">", "threshold": 120 }
+    },
+    {
+      "id": "annual_flight_exceeded",
+      "label": "Annual Flight Limit Exceeded",
+      "logic": "Pilot exceeds annual flight time limit (1400 hours)",
+      "eval": { "field": "pilot.annual_flight_hours", "operator": ">", "threshold": 1400 }
+    },
+    {
+      "id": "rest_period_insufficient",
+      "label": "Insufficient Rest Period",
+      "logic": "Pilot has not had required 10-hour rest period",
+      "eval": { "field": "pilot.rest_hours_since_last_duty", "operator": "<", "threshold": 10 }
+    },
+    {
+      "id": "heme_rest_violation",
+      "label": "HEME Rest Violation",
+      "logic": "HEME crew rest requirements not met per 14 CFR 135.271",
+      "eval": { "field": "pilot.heme_rest_hours", "operator": "<", "threshold": "tenant.heme_rest_minimum" }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "approaching_daily_limit",
+      "label": "Approaching Daily Limit",
+      "logic": "Pilot within 2 hours of daily flight time limit",
+      "eval": { "field": "pilot.daily_flight_hours_remaining", "operator": "<", "threshold": 2 }
+    },
+    {
+      "id": "approaching_weekly_limit",
+      "label": "Approaching Weekly Limit",
+      "logic": "Pilot within 4 hours of 7-day flight time limit",
+      "eval": { "field": "pilot.seven_day_flight_hours_remaining", "operator": "<", "threshold": 4 }
+    },
+    {
+      "id": "fatigue_risk_elevated",
+      "label": "Fatigue Risk Elevated",
+      "logic": "Multiple duty periods with minimal rest in past 72 hours",
+      "eval": { "field": "pilot.fatigue_risk_score", "operator": ">", "threshold": "tenant.fatigue_threshold" }
+    }
+  ],
+  "outputs": [
+    "av009-legality-determination",
+    "av009-duty-status-report",
+    "av009-override-log"
+  ]
+}

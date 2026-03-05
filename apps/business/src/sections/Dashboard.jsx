@@ -320,6 +320,7 @@ export default function Dashboard() {
   const isAuto = vertical === "auto";
   const isRealEstate = vertical === "real-estate";
   const isBuilder = vertical === "custom";
+  const isAviation = vertical === "aviation";
 
   // Check onboarding state for "Get Started" empty state
   const onboardingState = (() => {
@@ -345,6 +346,8 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(false);
   const [tenantName, setTenantName] = useState("");
   const [valueTracker, setValueTracker] = useState({ actions: 0, hoursSaved: 0, valueSaved: 0 });
+  const [pendingSigCount, setPendingSigCount] = useState(0);
+  const [urgentSigCount, setUrgentSigCount] = useState(0);
 
   const [cosActivity, setCosActivity] = useState([
     {
@@ -490,6 +493,15 @@ export default function Dashboard() {
       } catch (err) {
         console.warn("Could not load memberships:", err.message);
       }
+
+      // Load pending signatures (non-critical)
+      try {
+        const sigResult = await api.getPendingSignatures({ vertical, jurisdiction });
+        const pending = sigResult.pending || [];
+        setPendingSigCount(pending.length);
+        const now = Date.now();
+        setUrgentSigCount(pending.filter(s => s.expiresAt && (new Date(s.expiresAt).getTime() - now) < 4 * 60 * 60 * 1000).length);
+      } catch (e) { /* ignore — signatures widget is non-critical */ }
 
       // Load AI activity (non-critical)
       let aiActivity = [];
@@ -836,6 +848,63 @@ export default function Dashboard() {
               Your AI has delivered ${valueTracker.valueSaved.toLocaleString()} in value this month — a {Math.round(valueTracker.valueSaved / 9)}x return on your $9 investment
             </div>
           )}
+        </div>
+      )}
+
+      {/* Pending Signatures Banner */}
+      {pendingSigCount > 0 && (
+        <div className="card" style={{ padding: "16px 20px", marginBottom: "14px", borderLeft: "4px solid #7c3aed" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "8px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <div style={{ width: "36px", height: "36px", borderRadius: "10px", background: "linear-gradient(135deg, #f3e8ff, #e9d5ff)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
+                </svg>
+              </div>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: "15px", color: "#1e293b" }}>
+                  {pendingSigCount} Pending Signature{pendingSigCount !== 1 ? "s" : ""}
+                </div>
+                <div style={{ fontSize: "13px", color: "#64748b" }}>
+                  {urgentSigCount > 0 ? `${urgentSigCount} urgent — action required` : "Documents awaiting your signature"}
+                </div>
+              </div>
+            </div>
+            <button onClick={() => nav("pending-signatures")} style={{
+              padding: "8px 16px", fontSize: "13px", fontWeight: 600,
+              border: "none", borderRadius: "8px", cursor: "pointer",
+              color: "#fff", background: "linear-gradient(135deg, #7c3aed, #6d28d9)",
+              minHeight: "36px",
+            }}>
+              View All
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Aviation KPI Cards */}
+      {isAviation && (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16, marginBottom: 24 }}>
+          <div style={{ background: "#fff", borderRadius: 12, padding: 20, border: "1px solid #e5e7eb" }}>
+            <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 4 }}>Fleet Status</div>
+            <div style={{ fontSize: 28, fontWeight: 700, color: "#0284c7" }}>&mdash;</div>
+            <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 4 }}>Aircraft on certificate</div>
+          </div>
+          <div style={{ background: "#fff", borderRadius: 12, padding: 20, border: "1px solid #e5e7eb" }}>
+            <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 4 }}>Crew Legal</div>
+            <div style={{ fontSize: 28, fontWeight: 700, color: "#16a34a" }}>&mdash;</div>
+            <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 4 }}>Pilots current and available</div>
+          </div>
+          <div style={{ background: "#fff", borderRadius: 12, padding: 20, border: "1px solid #e5e7eb" }}>
+            <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 4 }}>Active Missions</div>
+            <div style={{ fontSize: 28, fontWeight: 700, color: "#7c3aed" }}>&mdash;</div>
+            <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 4 }}>In progress today</div>
+          </div>
+          <div style={{ background: "#fff", borderRadius: 12, padding: 20, border: "1px solid #e5e7eb" }}>
+            <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 4 }}>FRAT Scores</div>
+            <div style={{ fontSize: 28, fontWeight: 700, color: "#0284c7" }}>&mdash;</div>
+            <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 4 }}>Average today</div>
+          </div>
         </div>
       )}
 

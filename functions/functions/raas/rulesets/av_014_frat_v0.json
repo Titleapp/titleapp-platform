@@ -1,0 +1,56 @@
+{
+  "id": "av_014_frat_v0",
+  "version": "v0",
+  "domain": "aviation-risk-assessment",
+  "description": "Flight Risk Assessment (FRAT) — risk quantification that gates dispatch authorization",
+  "required_inputs": [
+    "pilot_responses",
+    "mission_details",
+    "weather_data"
+  ],
+  "hard_stops": [
+    {
+      "id": "frat_black",
+      "label": "FRAT Black — Mission Cancelled",
+      "logic": "FRAT score exceeds no-go threshold — mission cancelled",
+      "eval": { "field": "frat.total_score", "operator": ">", "threshold": "tenant.frat_black_threshold" }
+    },
+    {
+      "id": "frat_red_no_override",
+      "label": "FRAT Red — No CP Override",
+      "logic": "Red FRAT score without Chief Pilot override — mission held",
+      "eval": { "field": "frat.status", "operator": "==", "threshold": "red_no_override" }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "frat_yellow",
+      "label": "FRAT Yellow — Mitigations Recommended",
+      "logic": "Elevated risk — mitigations recommended before proceed",
+      "eval": { "field": "frat.total_score", "operator": ">", "threshold": "tenant.frat_yellow_threshold" }
+    },
+    {
+      "id": "single_pilot_night_imc",
+      "label": "High Workload Combination",
+      "logic": "High-workload combination — single pilot, night, IMC",
+      "eval": { "field": "frat.workload_factor_count", "operator": ">=", "threshold": 3 }
+    },
+    {
+      "id": "personal_minimums_exceeded",
+      "label": "Personal Minimums Exceeded",
+      "logic": "Conditions exceed pilot's stated personal minimums",
+      "eval": { "field": "frat.personal_minimums_exceeded", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "weather_deteriorating",
+      "label": "Weather Deteriorating Below Minimums",
+      "logic": "Weather trending below minimums at destination",
+      "eval": { "field": "weather.trend", "operator": "==", "threshold": "deteriorating_below_mins" }
+    }
+  ],
+  "outputs": [
+    "av014-frat-scorecard",
+    "av014-risk-breakdown",
+    "av014-mitigation-plan"
+  ]
+}

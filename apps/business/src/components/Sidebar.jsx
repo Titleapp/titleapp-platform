@@ -496,6 +496,14 @@ const WORKER_NAV_MAP = {
     { id: "investor-cap-table", label: "Cap Table" },
     { id: "investor-pipeline", label: "Investor Pipeline" },
   ],
+  "aviation": [
+    { id: "av-dispatch", label: "Dispatch" },
+    { id: "av-fleet", label: "Fleet Status" },
+    { id: "av-crew", label: "Crew" },
+    { id: "av-safety", label: "Safety" },
+    { id: "av-scheduling", label: "Scheduling" },
+    { id: "av-compliance", label: "Compliance" },
+  ],
 };
 
 // Worker slug → display name
@@ -674,6 +682,7 @@ export default function Sidebar({
       { id: "dashboard", label: "Dashboard" },
       { id: "deal-pipeline", label: "Deal Pipeline" },
       { id: "vault-documents", label: "Documents" },
+      { id: "pending-signatures", label: "Signatures" },
       { id: "reports", label: "Reports" },
       { id: "clients-lps", label: "Clients & Contacts" },
     ];

@@ -1,0 +1,77 @@
+{
+  "id": "ad_019_warranty_admin_v1",
+  "version": "v1",
+  "domain": "auto-dealership",
+  "description": "Warranty Administration — prevents Magnuson-Moss violations, enforces buyers guide accuracy, lemon law disclosure, parts return deadlines, and optimizes claim submission and audit readiness",
+  "required_inputs": ["workspace_id", "vehicle_id"],
+  "hard_stops": [
+    {
+      "id": "no_workspace",
+      "logic": "workspace must be initialized before any warranty administration operation",
+      "eval": { "type": "required_inputs_check" }
+    },
+    {
+      "id": "ai_disclosure_required",
+      "logic": "AI-generated warranty analysis is decision-support only — warranty determinations require manufacturer guideline review by qualified staff",
+      "eval": { "field": "workspace.aiDisclosureAcknowledged", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "data_integrity_check",
+      "logic": "warranty claim data must be accurate and consistent with repair orders, parts records, and manufacturer guidelines",
+      "eval": { "field": "warranty.dataIntegrityErrors", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "warranty_voided_for_aftermarket_parts",
+      "logic": "Magnuson-Moss Warranty Act violation — NEVER void or deny warranty coverage solely because the customer used aftermarket parts, unless the aftermarket part directly caused the failure",
+      "eval": { "field": "warranty.magnusonMossViolationCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "buyers_guide_mismatch",
+      "logic": "FTC Used Car Rule — Buyers Guide warranty terms must match the actual warranty coverage provided; mismatch is a federal violation",
+      "eval": { "field": "vehicle.buyersGuideMismatch", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "lemon_law_not_disclosed",
+      "logic": "vehicles meeting state lemon law criteria must have that status disclosed to the buyer — failure to disclose is fraud",
+      "eval": { "field": "vehicle.lemonLawStatusUndisclosed", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "parts_return_deadline_missed",
+      "logic": "manufacturer requires warranty parts to be retained and returned within a specified period for audit — missed deadline forfeits claim payment",
+      "eval": { "field": "warranty.missedPartsReturnCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "fraudulent_claim_detected",
+      "logic": "warranty claim contains indicators of fraud (inflated labor, phantom parts, repeat claim for same repair) — must be investigated before submission",
+      "eval": { "field": "warranty.fraudIndicatorCount", "operator": ">", "threshold": 0 }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "claim_rejection_rate_high",
+      "logic": "warranty claim rejection rate exceeds the acceptable threshold — indicates submission quality issues",
+      "eval": { "field": "metrics.claimRejectionRatePct", "operator": ">", "threshold": 10 }
+    },
+    {
+      "id": "op_code_suboptimal",
+      "logic": "operation codes used in warranty claims may not be yielding the maximum allowable reimbursement",
+      "eval": { "field": "claims.suboptimalOpCodeCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "labor_time_under_claimed",
+      "logic": "warranty labor times claimed are consistently below manufacturer-allowed times — leaving revenue on the table",
+      "eval": { "field": "claims.underClaimedLaborPct", "operator": ">", "threshold": 15 }
+    },
+    {
+      "id": "audit_documentation_incomplete",
+      "logic": "warranty claim documentation may not withstand a manufacturer audit — photos, measurements, or diagnostic data missing",
+      "eval": { "field": "claims.incompleteDocumentationCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "warranty_revenue_declining",
+      "logic": "warranty department revenue is declining over trailing 30 days relative to RO count",
+      "eval": { "field": "metrics.warrantyRevenueDeclinePct", "operator": ">", "threshold": 5 }
+    }
+  ],
+  "outputs": ["ad019-claim-review", "ad019-rejection-report", "ad019-audit-prep", "ad019-warranty-dashboard"]
+}

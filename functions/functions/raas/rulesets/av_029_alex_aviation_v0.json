@@ -1,0 +1,35 @@
+{
+  "id": "av_029_alex_aviation_v0",
+  "version": "v0",
+  "domain": "aviation-orchestration",
+  "description": "Alex — Chief of Staff — cross-worker orchestration and escalation routing",
+  "required_inputs": [
+    "vault_event_stream"
+  ],
+  "hard_stops": [],
+  "soft_flags": [
+    {
+      "id": "conflicting_vault_data",
+      "label": "Cross-Worker Data Inconsistency",
+      "logic": "Cross-worker data inconsistency detected",
+      "eval": { "field": "vault.conflict_count", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "escalation_unacknowledged",
+      "label": "Escalation Unacknowledged",
+      "logic": "Alert not acknowledged within SLA",
+      "eval": { "field": "alert.minutes_unacknowledged", "operator": ">", "threshold": "tenant.escalation_sla_minutes" }
+    },
+    {
+      "id": "multiple_simultaneous_alerts",
+      "label": "Multiple Safety Alerts Active",
+      "logic": "Multiple safety-level alerts active — prioritization needed",
+      "eval": { "field": "alerts.safety_level_count", "operator": ">", "threshold": 1 }
+    }
+  ],
+  "outputs": [
+    "av029-daily-ops-briefing",
+    "av029-alert-log",
+    "av029-escalation-record"
+  ]
+}

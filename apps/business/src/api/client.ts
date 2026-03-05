@@ -910,3 +910,99 @@ export async function adminReviewWorker(params: {
     body: params,
   });
 }
+
+// ----------------------------
+// Signatures
+// ----------------------------
+
+export async function createSignatureRequest(params: {
+  vertical: string; jurisdiction: string;
+  title: string; signers: Array<{ email: string; name: string; role: string; order: number }>;
+  documentType: string; metadata?: any; documentRef?: { docId: string }; expiresInHours?: number;
+}): Promise<Json> {
+  return httpJson("POST", "/v1/signatures:create", {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+    body: {
+      title: params.title,
+      signers: params.signers,
+      documentType: params.documentType,
+      metadata: params.metadata,
+      documentRef: params.documentRef,
+      expiresInHours: params.expiresInHours,
+    },
+  });
+}
+
+export async function getSignatureStatus(params: {
+  vertical: string; jurisdiction: string; requestId: string;
+}): Promise<Json> {
+  return httpJson("GET", `/v1/signatures:status?requestId=${encodeURIComponent(params.requestId)}`, {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+  });
+}
+
+export async function getPendingSignatures(params: {
+  vertical: string; jurisdiction: string;
+}): Promise<Json> {
+  return httpJson("GET", "/v1/signatures:pending", {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+  });
+}
+
+export async function countersignRequest(params: {
+  vertical: string; jurisdiction: string; requestId: string;
+}): Promise<Json> {
+  return httpJson("POST", "/v1/signatures:countersign", {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+    body: { requestId: params.requestId },
+  });
+}
+
+export async function verifySignature(params: {
+  vertical: string; jurisdiction: string; requestId: string;
+}): Promise<Json> {
+  return httpJson("POST", "/v1/signatures:verify", {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+    body: { requestId: params.requestId },
+  });
+}
+
+export async function delegateSigningAuthority(params: {
+  vertical: string; jurisdiction: string;
+  grantedTo: string; scope: string; scopeValue?: string; expiresInDays?: number;
+}): Promise<Json> {
+  return httpJson("POST", "/v1/signatures:delegate", {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+    body: {
+      grantedTo: params.grantedTo,
+      scope: params.scope,
+      scopeValue: params.scopeValue,
+      expiresInDays: params.expiresInDays,
+    },
+  });
+}
+
+export async function revokeSigningAuthority(params: {
+  vertical: string; jurisdiction: string; delegationId: string;
+}): Promise<Json> {
+  return httpJson("POST", "/v1/signatures:revoke", {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+    body: { delegationId: params.delegationId },
+  });
+}
+
+export async function getSignatureAudit(params: {
+  vertical: string; jurisdiction: string; requestId: string;
+}): Promise<Json> {
+  return httpJson("GET", `/v1/signatures:audit?requestId=${encodeURIComponent(params.requestId)}`, {
+    vertical: params.vertical,
+    jurisdiction: params.jurisdiction,
+  });
+}

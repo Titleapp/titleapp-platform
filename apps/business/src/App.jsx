@@ -50,6 +50,7 @@ import InvestorCapTable from "./sections/InvestorCapTable";
 import InvestorPipeline from "./sections/InvestorPipeline";
 import VaultTools from "./sections/VaultTools";
 import B2BAnalytics from "./sections/B2BAnalytics";
+import PendingSignatures from "./sections/PendingSignatures";
 import AlexPipelines from "./sections/AlexPipelines";
 import AlexTaskBoard from "./sections/AlexTaskBoard";
 import AlexWorkerStatus from "./sections/AlexWorkerStatus";
@@ -59,6 +60,11 @@ import CreatorApplication from "./pages/CreatorApplication";
 import WorkerWaitlistPage from "./pages/WorkerWaitlistPage";
 import WorkerMarketplace, { WORKER_ROUTES } from "./pages/WorkerMarketplace";
 import WorkerDetailPage from "./pages/WorkerDetailPage";
+import AutoLanding from "./pages/landing/AutoLanding";
+import TitleEscrowLanding from "./pages/landing/TitleEscrowLanding";
+import PropertyMgmtLanding from "./pages/landing/PropertyMgmtLanding";
+import DeveloperLanding from "./pages/landing/DeveloperLanding";
+import PilotLanding from "./pages/landing/PilotLanding";
 import { auth } from "./firebase";
 import { signInWithCustomToken } from "firebase/auth";
 
@@ -1363,6 +1369,1049 @@ const WORKER_DETAIL_CONTENT = {
       { q: "Can it project reassessment impact?", a: "Yes. Sale price disclosure requirements, assessment cap resets, and improvement triggers are modeled so you can quantify the tax impact of acquisitions, dispositions, and capital projects." },
     ],
   },
+  // ── Auto Dealer — Phases 0-3 ──
+  "ad-dealer-licensing": {
+    headline: "Stay licensed. Stay open. Stay compliant.",
+    subheadline: "License tracking, FTC Safeguards compliance, OFAC screening, CARS Rule readiness, and a regulatory calendar that never lets a deadline slip.",
+    steps: [
+      { title: "Inventory your licenses", description: "Dealer licenses, salesperson licenses, bonds, and permits across every state you operate in — tracked in one place with renewal dates and fees." },
+      { title: "Audit FTC Safeguards compliance", description: "The 2023 Safeguards Rule makes dealerships financial institutions. The worker runs a gap analysis against the nine required elements and identifies what needs fixing." },
+      { title: "Screen against OFAC", description: "Every customer-facing transaction requires OFAC SDN screening. The worker flags any match or partial match before the deal progresses." },
+      { title: "Track the regulatory calendar", description: "License renewals, bond expirations, CARS Rule deadlines, state filings — every date on one calendar with alerts at 90, 60, and 30 days." },
+    ],
+    bridge: {
+      title: "The Bridge",
+      text: "Licensing data feeds into every worker in the dealership. AD-010 Desking checks license status before structuring deals. AD-014 F&I Compliance verifies salesperson licensing before contract signing. AD-026 Regulatory Compliance aggregates all compliance status. If a license lapses, every downstream worker knows immediately.",
+    },
+    valueProps: [
+      { label: "FTC Safeguards gap analysis", description: "The nine required elements of the Safeguards Rule mapped against your current practices. Gaps identified with specific remediation steps." },
+      { label: "OFAC screening integration", description: "SDN list screening on every customer before deal commitment. Matches flagged with required escalation procedures." },
+      { label: "Multi-state license tracking", description: "Dealer and salesperson licenses across all operating states. Renewal dates, fees, bond requirements, and status in one view." },
+      { label: "CARS Rule readiness", description: "The January 2026 FTC CARS Rule changes pricing disclosure requirements. This worker tracks compliance with the new rules." },
+    ],
+    faq: [
+      { q: "Does this replace our compliance officer?", a: "No. This worker tracks deadlines, runs gap analyses, and flags issues. A qualified compliance officer or attorney makes the final decisions. The worker ensures nothing falls through the cracks." },
+      { q: "How does OFAC screening work?", a: "The worker checks customer names against the OFAC Specially Designated Nationals list. Matches and partial matches are flagged for review by the dealership's compliance officer before the transaction proceeds." },
+      { q: "What happens if a license expires?", a: "The worker alerts at 90, 60, and 30 days before expiration. If a license lapses, all downstream workers are notified and transactions requiring that license are flagged until it is renewed." },
+    ],
+  },
+  "ad-facility-operations": {
+    headline: "Your building, systems, and departments — ready to operate",
+    subheadline: "Franchise compliance, facility inspections, DMS configuration, departmental P&L structure, and ADA/OSHA/environmental readiness.",
+    steps: [
+      { title: "Track franchise obligations", description: "Franchise agreement terms, image program deadlines, manufacturer performance metrics, and termination notice periods — all documented and monitored." },
+      { title: "Prepare for inspections", description: "ADA, OSHA, environmental, and manufacturer facility checklists generated and tracked. Corrective actions assigned with follow-up dates." },
+      { title: "Configure DMS", description: "DMS-specific setup checklists for CDK, Reynolds, Dealertrack, DealerBuilt, or Tekion. Chart of accounts, integrations, and data feeds verified against NADA standards." },
+      { title: "Structure departmental P&L", description: "New, used, F&I, service, parts, and body shop — each department structured with standard P&L line items mapped to NADA 20-Group benchmarks." },
+    ],
+    bridge: {
+      title: "The Bridge",
+      text: "Facility and operational data feeds every department. AD-001 Licensing monitors franchise compliance alongside regulatory status. AD-026 Accounting receives departmental P&L structure. AD-027 HR tracks OSHA training requirements surfaced by facility inspections. When the manufacturer changes image program requirements, this worker recalculates the timeline and budget impact.",
+    },
+    valueProps: [
+      { label: "Franchise compliance monitoring", description: "Image program deadlines, performance metrics, and manufacturer demands tracked against state franchise protection statutes. Termination risks flagged early." },
+      { label: "OSHA and ADA readiness", description: "Lift inspections, chemical storage, SDS sheets, ADA self-assessments, and fire safety — all tracked with corrective action workflows." },
+      { label: "Environmental compliance", description: "Waste oil hauler contracts, EPA 608 certifications, stormwater permits, and tire disposal — regulatory requirements that carry six-figure penalties if missed." },
+      { label: "DMS configuration audit", description: "Your DMS setup verified against NADA standards. Chart of accounts, integration points, and data feeds validated before go-live." },
+    ],
+    faq: [
+      { q: "Which DMS systems are supported?", a: "CDK, Reynolds & Reynolds, Dealertrack, DealerBuilt, and Tekion. Each has a specific configuration checklist based on NADA 20-Group chart of accounts standards." },
+      { q: "How serious are OSHA violations?", a: "A willful OSHA violation can cost up to $156,259 per violation (2024 adjusted). Service department hazards — uninspected lifts, missing SDS sheets, improper chemical storage — are the most common findings." },
+      { q: "What about franchise termination?", a: "The worker tracks all franchise agreement obligations and alerts on any manufacturer demand that may conflict with state franchise protection statutes. If a termination notice arrives, it fires a critical alert with protest deadline information." },
+    ],
+  },
+  "ad-new-car-allocation": {
+    headline: "Win allocation. Maximize incentives. Move metal.",
+    subheadline: "Factory allocation tracking, turn-and-earn optimization, pipeline order management, and manufacturer incentive calendar.",
+    steps: [
+      { title: "Track allocations", description: "Monthly allocation numbers by model, trim, and color. Compare allocation to sales rate. Identify models where you are over or under-allocated." },
+      { title: "Optimize turn and earn", description: "Manufacturers reward dealers who turn inventory quickly. The worker tracks your turn rate by model and recommends order adjustments to maximize future allocation." },
+      { title: "Manage pipeline orders", description: "Customer orders, stock orders, and dealer trades tracked from order to delivery. ETA updates, constraint codes, and order status monitored." },
+      { title: "Track incentives", description: "Manufacturer incentive programs, stair-step bonuses, conquest cash, loyalty rebates, and dealer cash — all mapped to inventory with expiration dates." },
+    ],
+    bridge: {
+      title: "The Bridge",
+      text: "Allocation data feeds AD-010 Desking for deal structuring — the desk needs to know if a unit is allocated or must be ordered. Incentive data flows to AD-010 and AD-014 F&I for accurate deal worksheets. AD-011 Inventory Turn uses allocation projections for stocking guide recommendations. When a hot model is constrained, AD-009 Lead Management knows to prioritize leads for available units.",
+    },
+    valueProps: [
+      { label: "Turn-and-earn optimization", description: "Manufacturer allocation algorithms reward fast turn. The worker tracks your performance against turn targets and recommends order adjustments to maximize next month's allocation." },
+      { label: "Incentive stacking", description: "Manufacturer incentives, dealer cash, conquest bonuses, and loyalty rebates mapped to every unit. The worker identifies the maximum stackable incentive for each deal." },
+      { label: "Pipeline visibility", description: "Every ordered unit tracked from factory to lot. ETA changes, constraint codes, and delivery windows updated automatically." },
+      { label: "Allocation vs. demand analysis", description: "Sales rate compared to allocation by model. Over-allocated models flagged for aggressive pricing; under-allocated models flagged for customer order prioritization." },
+    ],
+    faq: [
+      { q: "How does turn-and-earn work?", a: "Most manufacturers allocate based on how quickly you sell what you receive. The faster you turn a model, the more units you earn next cycle. This worker tracks your turn rate by model and recommends which units to prioritize for quick sale." },
+      { q: "Can it track dealer trades?", a: "Yes. Dealer-to-dealer trades are tracked as a separate acquisition channel with associated costs (transport, reciprocity expectations). The worker evaluates whether a trade makes financial sense versus waiting for allocation." },
+      { q: "What about electric vehicle allocation?", a: "EV allocation programs often have separate requirements — facility upgrades, charger installation, technician training. This worker tracks those prerequisites alongside standard allocation metrics." },
+    ],
+  },
+  "ad-used-car-acquisition": {
+    headline: "Buy right. The deal is made at acquisition.",
+    subheadline: "Auction sourcing, trade-in appraisal support, VIN decode and history, street purchase evaluation, and acquisition cost tracking.",
+    steps: [
+      { title: "Source from auctions", description: "Identify target vehicles matching your stocking guide. Compare auction run lists to your inventory gaps. Set max bid based on market retail minus recon estimate minus target margin." },
+      { title: "Support trade appraisals", description: "When a trade walks in, the worker provides market data — book values, competitive listings, auction results — so the appraiser can make an informed offer." },
+      { title: "Decode and screen every VIN", description: "NHTSA decode for specifications, title brand check, accident history, recall status, and odometer verification. Every acquisition starts with a clean VIN." },
+      { title: "Track acquisition costs", description: "Purchase price, auction fees, transport, and any buy fees recorded per vehicle. Cost basis established at acquisition for accurate gross profit calculation downstream." },
+    ],
+    bridge: {
+      title: "The Bridge",
+      text: "Acquisition data is the starting point for the entire used car lifecycle. AD-008 Reconditioning receives the vehicle with its acquisition cost and condition assessment. AD-006 Pricing uses acquisition cost as the basis for margin calculations. AD-011 Inventory Turn compares acquisition mix to stocking guide targets. AD-005 Wholesale evaluates whether an aged unit should have been acquired at all — feeding back to improve future buying decisions.",
+    },
+    valueProps: [
+      { label: "Market-informed buying", description: "Every purchase decision backed by current retail market data, competitive supply, and projected margin. No more guessing what a car is worth at auction." },
+      { label: "VIN-first due diligence", description: "NHTSA decode, title brand screening, accident history, and recall check on every vehicle before money changes hands." },
+      { label: "Cost basis accuracy", description: "Purchase price, fees, transport, and conditioning costs captured at acquisition. Gross profit calculations downstream are only as good as the cost basis." },
+      { label: "Stocking guide alignment", description: "Every acquisition decision compared to your ideal inventory mix. The worker flags when you are buying outside your target segments." },
+    ],
+    faq: [
+      { q: "Does this replace my used car manager?", a: "No. Your used car manager makes the buying decision. This worker provides the market data, history screening, and cost analysis that supports better decisions — and tracks every acquisition for performance analysis." },
+      { q: "How does auction sourcing work?", a: "The worker matches vehicles on upcoming auction run lists to gaps in your inventory identified by AD-011 Stocking Guide. For each match, it shows projected retail, estimated recon, and target acquisition price." },
+      { q: "What about off-lease and rental returns?", a: "Off-lease and rental fleet vehicles are tracked as a separate acquisition channel with their own sourcing metrics, reconditioning expectations, and margin profiles." },
+    ],
+  },
+  "ad-wholesale-disposition": {
+    headline: "Cut losses early. Wholesale with discipline.",
+    subheadline: "Aging unit identification, wholesale vs. retail analysis, auction scheduling, loss forecasting, and floor plan exposure management.",
+    steps: [
+      { title: "Identify wholesale candidates", description: "Units past the configured age threshold, below margin floor after holding costs, or outside the stocking guide parameters — flagged daily for wholesale review." },
+      { title: "Analyze wholesale vs. retail", description: "For each candidate: projected retail gross (with time to sell), projected wholesale loss, and floor plan cost of holding. The math decides, not emotion." },
+      { title: "Schedule auction runs", description: "Wholesale candidates grouped by auction schedule. Transport arranged. Reserve prices set based on market data. Run results tracked." },
+      { title: "Manage floor plan exposure", description: "Every day a unit sits, it costs floor plan interest, insurance, and lot rent. The worker quantifies total holding cost exposure and identifies the day when wholesale becomes cheaper than holding." },
+    ],
+    bridge: {
+      title: "The Bridge",
+      text: "Wholesale disposition closes the loop on the used car lifecycle. AD-006 Pricing feeds aging and margin data. AD-008 Reconditioning flags units where recon cost exceeded value-add. AD-004 Acquisition receives wholesale performance feedback to improve future buying. AD-011 Inventory Turn adjusts stocking guide targets based on wholesale loss patterns by segment.",
+    },
+    valueProps: [
+      { label: "Data-driven wholesale timing", description: "The break-even day calculated for every unit — the exact date when holding costs make wholesale the better financial decision." },
+      { label: "Floor plan exposure tracking", description: "Daily and cumulative holding costs per unit and for the entire aged inventory. Total exposure quantified in dollars, not days." },
+      { label: "Loss forecasting", description: "Projected wholesale loss per unit and in aggregate. Monthly wholesale budget modeled against historical loss rates by segment and acquisition source." },
+      { label: "Feedback to acquisition", description: "Wholesale loss patterns analyzed by vehicle segment, acquisition source, and age at wholesale. Data flows back to AD-004 to improve future buying decisions." },
+    ],
+    faq: [
+      { q: "When should a unit go to wholesale?", a: "When the cost of holding (floor plan interest, insurance, lot rent, opportunity cost) exceeds the remaining retail margin. The worker calculates this break-even point for every unit and recommends wholesale when the math says hold no longer." },
+      { q: "How are reserves set?", a: "Reserve prices are based on current wholesale market data — Manheim Market Report, auction lane results for comparable units, and the dealer's cost basis. The goal is to minimize loss, not to recover cost." },
+      { q: "Can I track wholesale performance by buyer?", a: "Yes. Auction results tracked by lane, auction house, and if applicable, specific wholesale buyer. Patterns in sale prices help optimize future auction channel selection." },
+    ],
+  },
+  "ad-used-car-pricing": {
+    headline: "Price to the market. Not to your gut.",
+    subheadline: "Market-based pricing, price-to-market monitoring, aging adjustments, VDP correlation, and margin forecasting for every used unit.",
+    steps: [
+      { title: "Pull the competitive set", description: "Same year, make, model, trim within your market radius. Adjusted for mileage, condition, and equipment. The competitive set is the market — not book values." },
+      { title: "Set price-to-market", description: "Recommended retail price calculated at your target price-to-market percentage. See where you land on the CarGurus deal rating scale and what gross that produces." },
+      { title: "Monitor aging and adjust", description: "Units that are not converting get data-driven price reduction recommendations. But if a unit has strong VDP views and no leads, the issue is not price — it is the listing." },
+      { title: "Forecast margin", description: "Acquisition cost plus recon plus holding cost subtracted from recommended price. Projected gross shown at current price, recommended price, and break-even price." },
+    ],
+    bridge: {
+      title: "The Bridge",
+      text: "Pricing data flows everywhere. AD-010 Desking uses current retail price for deal worksheets. AD-007 Merchandising correlates listing quality to VDP performance to pricing effectiveness. AD-005 Wholesale receives margin data to identify when a unit crosses the wholesale threshold. AD-011 Inventory Turn uses pricing velocity to refine stocking guide targets.",
+    },
+    valueProps: [
+      { label: "Competitive set pricing", description: "Every price anchored to real market data — comparable listings within your radius. No guessing, no cost-plus. The market sets the price." },
+      { label: "Price-to-market monitoring", description: "Entire inventory categorized: under-priced, at-market, or over-priced. Price-to-market trend tracked over time. Market shifts detected automatically." },
+      { label: "VDP performance correlation", description: "VDP views, SRP impressions, and leads correlated to pricing position. High views with no leads means price is wrong. Low views with competitive price means listing is wrong." },
+      { label: "Holding cost awareness", description: "Every pricing recommendation factors in floor plan interest, insurance, and lot rent. The worker knows what the unit costs per day and when holding costs consume the margin." },
+    ],
+    faq: [
+      { q: "Does this replace vAuto or similar tools?", a: "It can work alongside them or replace them. The worker uses the same market data principles — competitive set analysis, price-to-market ratios, and aging management — and adds Vault connectivity to reconditioning costs, acquisition data, and listing performance that standalone tools do not have." },
+      { q: "How often is market data refreshed?", a: "Competitive set data is refreshed daily for active inventory and on-demand for specific units. Market shifts of more than 5% in any segment trigger alerts." },
+      { q: "What about FTC pricing compliance?", a: "The worker ensures every recommended price is the actual price a consumer can buy the vehicle for, per the FTC CARS Rule. Mandatory fees like doc fees are factored in. Comparative claims like 'below KBB' are substantiated with specific values." },
+    ],
+  },
+  "ad-vehicle-merchandising": {
+    headline: "If the listing is bad, the price does not matter.",
+    subheadline: "Photo standards enforcement, listing quality scoring, VDP performance tracking, and multi-platform syndication management.",
+    steps: [
+      { title: "Audit photos", description: "Photo count, quality, sequence, and completeness checked against your standards. Missing angles flagged. Blurry or poorly lit photos identified for reshoot." },
+      { title: "Score listing quality", description: "Title, description, features, disclosures, and photos scored against best practices. A listing quality score predicts VDP engagement before the unit goes live." },
+      { title: "Track VDP performance", description: "Views, SRP impressions, leads, and SRP-to-VDP click-through rate monitored per unit. Underperforming listings flagged for content improvement before price reduction." },
+      { title: "Manage syndication", description: "Listings syndicated to AutoTrader, Cars.com, CarGurus, Facebook Marketplace, and dealer website. Syndication status and platform-specific performance tracked." },
+    ],
+    bridge: {
+      title: "The Bridge",
+      text: "Merchandising quality directly impacts pricing effectiveness. AD-006 Pricing correlates VDP performance to price-to-market position — a competitive price with a bad listing produces zero leads. AD-009 Lead Management receives lead source data to track which listings generate the best leads. AD-008 Reconditioning feeds completed recon photos directly to listings.",
+    },
+    valueProps: [
+      { label: "Photo standards enforcement", description: "Minimum photo count, required angles, quality thresholds, and proper sequencing. Listings that do not meet standards are flagged before publication." },
+      { label: "Listing quality scoring", description: "Every listing scored on completeness, accuracy, and engagement potential. Low-scoring listings improved before they go live — preventing wasted advertising spend." },
+      { label: "VDP-to-lead conversion tracking", description: "Views alone do not sell cars. The worker tracks the full funnel: SRP impression to VDP view to lead submission. Conversion drop-offs identify listing problems." },
+      { label: "Multi-platform syndication", description: "Listing status across all syndication partners in one view. Platform-specific performance compared to identify where your advertising dollars work hardest." },
+    ],
+    faq: [
+      { q: "How many photos should each listing have?", a: "Industry best practice is 30-40 photos per unit in a standardized sequence. The worker enforces your configured minimum and flags missing standard angles (front 3/4, rear 3/4, interior, engine, tires, odometer)." },
+      { q: "Does it write listing descriptions?", a: "The worker generates listing descriptions based on vehicle features, condition, and market position. All descriptions include the AI disclosure per platform rules. Descriptions are presented for manager approval before publication." },
+      { q: "What about video walkarounds?", a: "Video content is tracked alongside photos. The worker flags units that have photos but no video, and prioritizes high-value or slow-moving units for video production." },
+    ],
+  },
+  "ad-reconditioning": {
+    headline: "Fast recon. Controlled cost. Front-line ready.",
+    subheadline: "Reconditioning pipeline management, vendor assignment and tracking, cost approval workflows, and cycle time optimization.",
+    steps: [
+      { title: "Intake and inspect", description: "Vehicle arrives from acquisition. Inspection checklist generated based on vehicle type and condition grade. Recon needs identified and estimated." },
+      { title: "Assign vendors and track", description: "Mechanical, body, detail, PDR, wheel repair, and interior work assigned to internal or external vendors. Each job tracked with start time, promised completion, and actual completion." },
+      { title: "Approve costs before work begins", description: "Recon cost estimate presented against projected retail margin. If recon exceeds the configured percentage of projected gross, the unit is flagged for manager review before work proceeds." },
+      { title: "Measure cycle time", description: "Days from acquisition to front-line ready tracked per unit, per vendor, and per work type. Bottlenecks identified. Target cycle time enforced." },
+    ],
+    bridge: {
+      title: "The Bridge",
+      text: "Reconditioning is the bridge between acquisition and sale. AD-004 Acquisition sends vehicles with condition assessments. AD-006 Pricing uses actual recon cost for accurate margin calculation. AD-007 Merchandising receives front-line ready notification and completed recon photos. AD-005 Wholesale flags units where recon cost would exceed value-add.",
+    },
+    valueProps: [
+      { label: "Pipeline visibility", description: "Every unit in recon visible with current stage, assigned vendors, estimated completion, and cost-to-date. No unit disappears into the shop." },
+      { label: "Cost control", description: "Recon cost approved before work begins. Over-reconditioning flagged when estimated cost exceeds the configured percentage of projected gross profit." },
+      { label: "Cycle time tracking", description: "Days in recon tracked per unit, per vendor, and per work type. Your target cycle time is the benchmark — every day in recon is a day not earning margin." },
+      { label: "Vendor accountability", description: "Vendor performance tracked by completion speed, quality (comeback rate), and cost accuracy. Underperforming vendors identified with data." },
+    ],
+    faq: [
+      { q: "What is a good recon cycle time?", a: "Industry benchmark is 3-5 days from acquisition to front-line. Many dealers take 10-14 days. This worker tracks your actual cycle time, identifies bottlenecks, and measures improvement over time." },
+      { q: "How is over-reconditioning prevented?", a: "The worker calculates projected retail gross for each unit and compares it to the recon estimate. If recon cost would consume more than the configured threshold of projected gross, the unit is flagged for manager review — consider reducing recon scope or wholesaling the unit." },
+      { q: "Can it manage both internal and external vendors?", a: "Yes. Internal shop work and external vendor jobs are tracked on the same timeline. The worker routes work to the fastest available resource — internal bay or external vendor — based on current capacity and turnaround time." },
+    ],
+  },
+  "ad-lead-management": {
+    headline: "Every lead answered. Every opportunity tracked.",
+    subheadline: "Lead pipeline management, response time enforcement, appointment setting, source ROI tracking, and BDC workflow automation.",
+    steps: [
+      { title: "Capture every lead", description: "Leads from all sources — website, third-party, phone, walk-in, chat, social — captured in one pipeline. No lead falls through the cracks." },
+      { title: "Enforce response time", description: "Internet leads require response within minutes, not hours. The worker tracks first response time for every lead and escalates when SLA is missed." },
+      { title: "Set and confirm appointments", description: "Lead-to-appointment conversion tracked. Confirmation calls and texts managed. Show rate monitored. No-shows rescheduled." },
+      { title: "Measure source ROI", description: "Cost per lead, cost per appointment, cost per sale by source. Identify which lead sources actually produce sold units — not just leads." },
+    ],
+    bridge: {
+      title: "The Bridge",
+      text: "Lead Management feeds the sales floor. AD-010 Desking receives qualified leads with vehicle interest and customer information. AD-006 Pricing uses lead volume by model to inform pricing decisions — high lead volume on a unit means the price is working. AD-003 Allocation uses lead demand data to inform factory orders. AD-020 Customer Retention identifies sold customers for service and repurchase follow-up.",
+    },
+    valueProps: [
+      { label: "Response time enforcement", description: "Every internet lead timestamped at receipt. First response time tracked to the minute. SLA breaches escalated in real time — because the dealer who responds first wins the appointment." },
+      { label: "Full-funnel tracking", description: "Lead to response to appointment to show to demo to write-up to sold. Conversion rates at every stage identify exactly where opportunities are lost." },
+      { label: "Source ROI analysis", description: "Every lead source measured on cost per lead, cost per appointment, and cost per sold unit. Advertising budget allocated to sources that produce sales, not just traffic." },
+      { label: "TCPA compliance", description: "Text and call consent tracked per customer. Opt-out requests honored immediately. The worker never recommends contact with a customer who has not provided consent." },
+    ],
+    faq: [
+      { q: "What is a good response time for internet leads?", a: "Industry data shows that responding within 5 minutes produces dramatically higher contact and appointment rates than responding within 30 minutes. This worker tracks response time to the minute and escalates when your configured SLA is breached." },
+      { q: "How does it handle TCPA compliance?", a: "Every text message requires documented consent. The worker tracks consent status per customer and blocks text communication to customers who have not opted in or who have opted out. Phone calls follow the same consent framework." },
+      { q: "Can it manage a BDC team?", a: "Yes. Lead assignment, response tracking, appointment setting, and performance metrics are tracked per BDC agent. Team performance compared against benchmarks for response time, contact rate, and appointment set rate." },
+    ],
+  },
+  "ad-desking": {
+    headline: "Structure the deal. Maximize gross. Close the customer.",
+    subheadline: "Deal structuring, payment calculation, lender program matching, trade evaluation, gross profit tracking, and compliance-first deal worksheets.",
+    steps: [
+      { title: "Build the deal", description: "Vehicle price, trade value, trade payoff, cash down, taxes, fees, and products assembled into a deal structure. Multiple scenarios compared side by side." },
+      { title: "Calculate payments", description: "Monthly payment calculated across multiple terms (36/48/60/72/84) and rates. Customer's target payment met by adjusting term, rate, down payment, or selling price." },
+      { title: "Match lender programs", description: "Customer credit profile matched to available lender programs. Rate markup, flat fee, and reserve income projected per lender. Best program for the customer and the dealer identified." },
+      { title: "Track gross profit", description: "Front-end gross (vehicle margin), back-end gross (F&I products), and total gross tracked per deal. Gross compared to department average and target." },
+    ],
+    bridge: {
+      title: "The Bridge",
+      text: "Desking is where everything converges. AD-006 Pricing provides the retail price. AD-004 Acquisition provides trade market data. AD-009 Lead Management provides the qualified customer. AD-014 F&I receives the structured deal for product presentation and contract execution. AD-015 Lender Relations manages the funding relationship. AD-001 Licensing verifies all participants are licensed.",
+    },
+    valueProps: [
+      { label: "Multi-scenario deal worksheets", description: "Cash, finance, and lease scenarios built side by side. Different terms, rates, and down payments compared instantly. The desk manager sees every option at once." },
+      { label: "Lender program matching", description: "Customer credit tier matched to active lender programs. Rate buy-down, flat fee, and reserve income projected for each option. The best deal for the customer and the store identified." },
+      { label: "Compliance-first worksheets", description: "TILA, ECOA, FCRA, and state-specific disclosure requirements built into every deal worksheet. Equal credit treatment verified. Adverse action requirements tracked." },
+      { label: "Gross profit visibility", description: "Front-end gross, back-end gross, and total deal profit visible before the customer signs. No surprises. No deals that look profitable but are not." },
+    ],
+    faq: [
+      { q: "Does it handle lease deals?", a: "Yes. Residual values, money factors, acquisition fees, and manufacturer subvention programs factored into lease calculations. Lease vs. finance comparison presented to help the customer choose." },
+      { q: "How does lender matching work?", a: "The worker maintains a matrix of active lender programs — credit tier ranges, advance limits, rate buy-down options, flat fees, and special programs. The customer's credit profile is matched to eligible programs and the best options presented." },
+      { q: "What about compliance?", a: "Every deal worksheet includes required disclosures. ECOA equal treatment is verified — rate, terms, and pricing decisions cannot vary by protected class. FCRA adverse action requirements are tracked if the customer is declined or given less favorable terms." },
+    ],
+  },
+  "ad-inventory-turn": {
+    headline: "Stock what sells. Turn it fast.",
+    subheadline: "Stocking guide optimization, days-supply analysis, segment mix management, turn velocity tracking, and inventory health scoring.",
+    steps: [
+      { title: "Build your stocking guide", description: "Ideal inventory mix defined by segment, price band, body style, and age. Based on your market demand, sales history, and competitive supply." },
+      { title: "Measure days supply", description: "Current inventory divided by sales rate equals days supply — by segment, by price band, and overall. Over-stocked and under-stocked segments identified." },
+      { title: "Optimize segment mix", description: "Sales velocity by segment compared to inventory composition. If you are selling trucks fast but stocking sedans, the mix is wrong." },
+      { title: "Track turn velocity", description: "Average days to sale by segment, acquisition source, and price band. Slow-turning segments investigated — pricing, merchandising, or acquisition issue." },
+    ],
+    bridge: {
+      title: "The Bridge",
+      text: "Inventory Turn is the strategic layer. AD-004 Acquisition receives stocking guide targets for buying decisions. AD-006 Pricing receives turn velocity data for pricing adjustments. AD-005 Wholesale receives aging alerts when units exceed turn targets. AD-003 Allocation uses demand data to inform factory orders. The stocking guide is the blueprint — every other used car worker executes against it.",
+    },
+    valueProps: [
+      { label: "Market-driven stocking guide", description: "Your ideal inventory mix based on what your market actually buys — not what you have always stocked. Updated monthly as market demand shifts." },
+      { label: "Days-supply management", description: "Days supply calculated by segment and price band. Over-stocked segments flagged for pricing action or wholesale. Under-stocked segments flagged for acquisition." },
+      { label: "Turn rate benchmarking", description: "Your turn rate compared to target and to market. Average days to sale tracked by segment — identifying which inventory turns and which sits." },
+      { label: "Inventory health score", description: "A single score combining age distribution, days-supply balance, segment mix alignment, and margin profile. The health score tells you if your inventory is positioned to produce results." },
+    ],
+    faq: [
+      { q: "What is a good turn rate?", a: "Industry benchmark is 8-12 turns per year for used inventory (30-45 day average days to sale). The right target depends on your market, lot size, and floor plan cost. The worker sets your target based on your specific economics." },
+      { q: "How does the stocking guide adapt?", a: "The stocking guide updates monthly based on your sales data, market demand signals, and competitive supply changes. Seasonal adjustments are built in — convertibles in spring, 4WD in fall." },
+      { q: "Can it manage new and used inventory together?", a: "The stocking guide focuses on used inventory where you control the acquisition mix. New car inventory is governed by factory allocation (AD-003). However, the worker considers new car availability when recommending used inventory targets — if the factory is sending plenty of mid-size sedans, you may not need to buy them used." },
+    ],
+  },
+  // ── Auto Dealer — Phases 4-7 (AD-012 through AD-029) ──
+  "ad-fi-menu": {
+    headline: "Higher PVR without the compliance risk.",
+    subheadline: "Digital menu building, PVR tracking, penetration analysis, and compliance documentation for every F&I transaction.",
+    commission: true,
+    price: "$0/mo",
+    steps: [
+      { title: "Upload product lineup", description: "Load your menu products — VSC, GAP, tire-and-wheel, paint, theft, PPM — with provider rates, dealer cost, and retail pricing by term and coverage level." },
+      { title: "Configure menu format", description: "Build digital menus with good/better/best packages or single-line presentations. Compliance disclosures auto-appended per state and FTC requirements." },
+      { title: "Present to customer", description: "Interactive menu presentation with payment impact per product. Every offer, acceptance, and declination documented in real time." },
+      { title: "Track PVR and penetration", description: "Per-vehicle retail (PVR) and product penetration rates tracked by F&I manager, product, and deal type. Performance benchmarked against store targets." },
+    ],
+    bridge: {
+      title: "The Bridge",
+      text: "F&I Menu connects to every deal flowing through the Vault. AD-010 Desking passes the structured deal with payment and term information. AD-013 F&I Compliance verifies that every product was offered and documented. AD-015 Lender Relations receives product contracts for funding packages. AD-025 Deal Accounting posts back-end gross from product sales. Menu performance data flows to AD-023 Digital Marketing to measure which lead sources produce the highest PVR.",
+    },
+    valueProps: [
+      { label: "Digital menu builder with compliance", description: "State-specific disclosures, cancellation terms, and product descriptions auto-included. Every presentation documented for audit readiness." },
+      { label: "Product recommendation engine", description: "Customer profile, vehicle type, and driving patterns matched to relevant products. Recommendations increase penetration without pressure tactics." },
+      { label: "PVR and penetration tracking", description: "Per-vehicle retail tracked by F&I manager, product type, and deal source. Penetration rates benchmarked against NADA and industry targets." },
+      { label: "Product profitability analysis", description: "Dealer cost, retail markup, cancellation reserve, and claims history analyzed per product and provider. Identify which products actually make money." },
+    ],
+    faq: [
+      { q: "Will this replace my DMS F&I menu?", a: "It works alongside your DMS. The worker handles menu configuration, compliance documentation, and performance analytics. Deal data syncs through the Vault so your DMS of record stays current." },
+      { q: "How does the commission model work?", a: "Free to use. TitleApp earns a commission on F&I product placements facilitated through the platform. Your product pricing and provider relationships remain yours." },
+      { q: "Is my customer data secure?", a: "All customer and deal data is encrypted at rest and in transit. Data stays in your Vault and is never shared with other dealers or third parties. You own your data." },
+    ],
+  },
+  "ad-fi-compliance": {
+    headline: "Present every product. Document everything. Sleep at night.",
+    subheadline: "Deal jacket verification, equal treatment monitoring, MLA screening, and CARS Rule compliance for every F&I transaction.",
+    commission: true,
+    price: "$0/mo",
+    steps: [
+      { title: "Verify deal jacket completeness", description: "Every document in the deal jacket checked against a state-specific checklist. Missing signatures, disclosures, and forms flagged before the deal leaves the box." },
+      { title: "Screen for MLA status", description: "Military Lending Act screening on every credit applicant. MLA-covered borrowers flagged with rate cap enforcement and prohibited product restrictions." },
+      { title: "Document equal treatment", description: "Every customer offered the same products at the same markup. ECOA equal treatment documented with timestamps. Deviation requires manager override with reason." },
+      { title: "Generate audit trail", description: "Complete audit trail for every deal: what was offered, what was accepted, what was declined, at what price, with what disclosures. Ready for FTC, state AG, or manufacturer audit." },
+    ],
+    bridge: {
+      title: "The Bridge",
+      text: "F&I Compliance reviews every deal flowing through the Vault. AD-012 F&I Menu feeds product presentations and customer responses. AD-010 Desking provides deal structure and rate markup. AD-001 Licensing verifies salesperson and F&I manager licensing status. AD-026 Regulatory Compliance aggregates compliance metrics across all deals. If a compliance exception occurs, every related worker in the Vault is notified.",
+    },
+    valueProps: [
+      { label: "Deal jacket compliance check", description: "State-specific document checklist verified before deal funding. Missing items flagged with specific remediation steps." },
+      { label: "Equal treatment monitoring", description: "Rate markup, product presentation, and pricing decisions tracked per customer. Statistical analysis identifies patterns that could indicate disparate treatment." },
+      { label: "MLA screening automation", description: "Every credit applicant screened against DoD MLA database. Covered borrowers identified before product presentation to prevent prohibited offers." },
+      { label: "Complete audit trail", description: "Every touchpoint documented with timestamp, user, and content. FTC CARS Rule, state AG, and manufacturer audit packages generated on demand." },
+    ],
+    faq: [
+      { q: "Will this replace my compliance officer?", a: "No. This worker automates documentation and monitoring. A qualified compliance officer or attorney reviews flagged exceptions and sets policy. The worker ensures nothing falls through the cracks." },
+      { q: "How does the commission model work?", a: "Free to use. TitleApp earns a commission on compliant F&I transactions facilitated through the platform. No subscription fee, no per-deal fee to the dealer." },
+      { q: "Is my deal data secure?", a: "All deal data is encrypted at rest and in transit. Compliance records are stored in your Vault with tamper-evident audit trails. Data is never shared with other dealers." },
+    ],
+  },
+  "ad-lender-relations": {
+    headline: "Get deals bought and funded faster.",
+    subheadline: "Lender matching, stipulation tracking, funding acceleration, and chargeback prevention for every financed deal.",
+    commission: true,
+    price: "$0/mo",
+    steps: [
+      { title: "Submit deal to matched lenders", description: "Customer credit profile matched to lender programs. Deals routed to the right lender the first time. Multiple submissions tracked with response times." },
+      { title: "Track stipulations", description: "Every lender stip tracked from request to fulfillment. Missing stips flagged daily. Stip packages assembled with documents from the Vault." },
+      { title: "Monitor funding", description: "Funding pipeline from contract-in-transit to funded. Days to fund tracked by lender. Funding delays escalated before they become chargebacks." },
+      { title: "Manage chargebacks", description: "First-payment default risk scored at origination. Chargeback notices tracked with response deadlines. Repurchase reserve monitored." },
+    ],
+    bridge: {
+      title: "The Bridge",
+      text: "Lender Relations connects the desk to the bank. AD-010 Desking passes the structured deal with lender selection. AD-013 F&I Compliance verifies deal documentation before submission. AD-025 Deal Accounting posts reserve income on funding. AD-024 Title & Registration tracks title perfection for lien holder requirements. Stip documents pull from the Vault automatically.",
+    },
+    valueProps: [
+      { label: "Deal-to-lender matching", description: "Customer credit tier, loan amount, vehicle type, and terms matched to active lender programs. Best options for the customer and the dealer identified." },
+      { label: "Automated stip tracking", description: "Lender stipulations captured, assigned, and tracked to completion. Documents pulled from the Vault. Missing stips escalated before funding deadline." },
+      { label: "Funding pipeline dashboard", description: "Every deal from contract-in-transit to funded in one view. Days to fund tracked. Bottlenecks identified. Funding targets monitored." },
+      { label: "Lender performance scorecard", description: "Approval rate, look-to-book ratio, average days to fund, stip rate, and chargeback rate tracked per lender. Underperforming lenders identified." },
+    ],
+    faq: [
+      { q: "Will this replace my DMS lender routing?", a: "It works alongside your DMS. The worker adds intelligent lender matching, stip tracking, and funding analytics that most DMS platforms do not provide natively." },
+      { q: "How does the commission model work?", a: "Free to use. TitleApp earns a commission on funded deals facilitated through the platform. Your lender relationships and reserve structures remain yours." },
+      { q: "Is my customer credit data secure?", a: "All credit and deal data is encrypted at rest and in transit. Data stays in your Vault. TitleApp does not access, sell, or share customer credit information." },
+    ],
+  },
+  "ad-aftermarket-admin": {
+    headline: "Track every contract. Process every claim. Cancel clean.",
+    subheadline: "Contract tracking, claims processing, cancellation handling, and remittance management for all aftermarket products.",
+    commission: true,
+    price: "$0/mo",
+    steps: [
+      { title: "Log product contracts", description: "Every F&I product contract recorded with provider, coverage terms, effective date, expiration, and customer information. Contract portfolio visible in one view." },
+      { title: "Process claims", description: "Customer claims matched to active contracts. Claim documentation assembled. Provider submission tracked. Claim status monitored through resolution." },
+      { title: "Handle cancellations", description: "Cancellation requests processed with pro-rata refund calculation. Lender payoff adjustments tracked. Reserve chargebacks accounted for." },
+      { title: "Track remittances", description: "Provider remittance reports reconciled against contract records. Outstanding remittances flagged. Revenue recognition aligned with remittance schedule." },
+    ],
+    bridge: {
+      title: "The Bridge",
+      text: "Aftermarket Administration manages the lifecycle after the deal. AD-012 F&I Menu feeds product contracts at point of sale. AD-013 F&I Compliance verifies contract documentation. AD-025 Deal Accounting posts reserve income and tracks cancellation chargebacks. AD-021 Customer Retention uses contract data for service retention campaigns. When a customer cancels, the financial impact flows through the Vault to accounting automatically.",
+    },
+    valueProps: [
+      { label: "Complete contract lifecycle", description: "From point-of-sale through claims, cancellations, and expiration. Every contract tracked with full documentation history." },
+      { label: "Claims processing and tracking", description: "Claims matched to coverage terms, documentation assembled, and provider submission tracked. Approval, denial, and payment status monitored." },
+      { label: "Cancellation with pro-rata calculation", description: "Flat and pro-rata cancellation methods supported. Refund calculated, lender payoff adjusted, and reserve chargeback posted automatically." },
+      { label: "Remittance reconciliation", description: "Provider remittance reports matched to contract records. Discrepancies flagged. Outstanding balances tracked with aging." },
+    ],
+    faq: [
+      { q: "Will this replace my provider portal?", a: "It consolidates information across all your providers into one view. You may still use individual provider portals for specific transactions, but the worker gives you portfolio-wide visibility and reconciliation." },
+      { q: "How does the commission model work?", a: "Free to use. TitleApp earns a commission on aftermarket products administered through the platform. Your provider relationships and pricing remain yours." },
+      { q: "Is my contract data secure?", a: "All contract and customer data is encrypted at rest and in transit. Data stays in your Vault and is never shared with providers beyond what is required for claims processing." },
+    ],
+  },
+  "ad-service-scheduling": {
+    headline: "Full appointment board. Efficient throughput.",
+    subheadline: "Appointment scheduling, shop loading, technician dispatch, and repair order lifecycle tracking for the service department.",
+    commission: true,
+    price: "$0/mo",
+    steps: [
+      { title: "Schedule appointments by capacity", description: "Appointments booked against available shop capacity — technician hours, lift availability, and specialty equipment. Overbooking and underbooking prevented." },
+      { title: "Dispatch to technicians", description: "Repair orders assigned to technicians based on skill level, certification, current workload, and promise time. Flag rate and efficiency tracked." },
+      { title: "Track RO lifecycle", description: "Every repair order tracked from write-up through diagnosis, authorization, parts ordering, work in progress, quality check, and customer delivery." },
+      { title: "Monitor cycle time", description: "Promise time vs. actual completion tracked per RO, per technician, and per job type. Waiter vs. drop-off managed against capacity." },
+    ],
+    bridge: {
+      title: "The Bridge",
+      text: "Service Scheduling is the heartbeat of the service department. AD-017 Service Upsell receives MPI results and declined service data from completed ROs. AD-018 Parts Inventory receives parts demand signals for stock ordering. AD-019 Warranty Admin receives warranty ROs for claim submission. AD-021 Customer Retention tracks service visit frequency for retention campaigns. Throughput data flows to AD-025 Deal Accounting for departmental P&L.",
+    },
+    valueProps: [
+      { label: "Capacity-aware scheduling", description: "Appointments booked against real shop capacity. Tech hours, lift count, and specialty bays considered. No more promises the shop cannot keep." },
+      { label: "Shop loading dashboard", description: "Current shop utilization, scheduled vs. available hours, and capacity forecast visible in one view. Tomorrow's loading planned today." },
+      { label: "RO stage tracking", description: "Every repair order visible with current stage, assigned technician, parts status, and estimated completion. Customers updated proactively." },
+      { label: "Waiter vs. drop-off management", description: "Waiter ROs prioritized by promise time. Drop-off ROs scheduled for efficient throughput. Express service lane managed separately." },
+    ],
+    faq: [
+      { q: "Will this replace my DMS service scheduler?", a: "It works alongside your DMS. The worker adds capacity-aware scheduling, real-time shop loading, and throughput analytics that enhance your existing appointment process." },
+      { q: "How does the commission model work?", a: "Free to use. TitleApp earns a commission on service revenue facilitated through the platform. No subscription fee, no per-RO fee to the dealer." },
+      { q: "Is my customer and vehicle data secure?", a: "All customer and vehicle data is encrypted at rest and in transit. Data stays in your Vault and is never shared with other service providers or competitors." },
+    ],
+  },
+  "ad-service-upsell": {
+    headline: "Find the work. Sell the work. Convert the customer.",
+    subheadline: "Multi-point inspection, advisor coaching, declined service follow-up, and service-to-sales conversion for the service drive.",
+    commission: true,
+    price: "$0/mo",
+    steps: [
+      { title: "Complete digital MPI", description: "Technician completes a digital multi-point inspection with condition codes and photos. Results transmitted to advisor instantly — no paper forms lost between the shop and the drive." },
+      { title: "Present findings to customer", description: "Advisor presents MPI findings with photos on tablet or via text/email. Red/yellow/green condition codes explain urgency. Recommended services with pricing presented clearly." },
+      { title: "Track declined services", description: "Every service the customer declines is logged with reason and date. Declined services enter a follow-up pipeline with automated reminders based on mileage and time intervals." },
+      { title: "Flag service-to-sales opportunities", description: "When repair cost exceeds a configurable percentage of vehicle value, the service-to-sales trigger fires. Customer information and vehicle equity routed to the sales floor." },
+    ],
+    bridge: {
+      title: "The Bridge",
+      text: "Service Upsell connects the technician to the advisor to the sales floor. AD-016 Service Scheduling feeds completed ROs for MPI follow-up. AD-018 Parts Inventory receives parts demand from recommended services. AD-021 Customer Retention manages declined service follow-up campaigns. AD-009 Lead Management receives service-to-sales leads. AD-019 Warranty Admin identifies warranty-eligible repairs before customer-pay authorization.",
+    },
+    valueProps: [
+      { label: "Digital MPI with photo documentation", description: "Condition codes, photos, and technician notes captured on a tablet in the shop. Results transmitted to the advisor in real time — no lost forms, no illegible handwriting." },
+      { label: "Advisor recommendation engine", description: "Maintenance schedule, vehicle history, and MPI results combined to generate prioritized recommendations. Advisors present data, not opinions." },
+      { label: "Service-to-sales trigger logic", description: "When estimated repair cost exceeds a threshold of vehicle wholesale value, the worker flags the customer for a trade-in conversation. Vehicle equity pre-calculated." },
+      { label: "Declined service recovery pipeline", description: "Every declined service tracked with follow-up at configured intervals. Conversion from declined to completed tracked per advisor and per service type." },
+    ],
+    faq: [
+      { q: "Will this replace our current MPI process?", a: "It digitizes and enhances your MPI process. Technicians complete inspections on a tablet instead of paper. Photos and findings flow to advisors instantly. Nothing lost between the shop and the drive." },
+      { q: "How does the commission model work?", a: "Free to use. TitleApp earns a commission on service revenue facilitated through upsell recommendations and declined service recovery. No subscription fee." },
+      { q: "Is my service data secure?", a: "All vehicle and customer service data is encrypted at rest and in transit. Data stays in your Vault and is never shared with competitors or third-party service providers." },
+    ],
+  },
+  "ad-parts-inventory": {
+    headline: "Right parts. In stock. When needed.",
+    subheadline: "Inventory stocking, fill rate tracking, obsolescence management, and emergency sourcing for the parts department.",
+    commission: true,
+    price: "$0/mo",
+    steps: [
+      { title: "Monitor stock levels", description: "Current inventory compared to demand-driven stocking levels. Parts ordered based on historical demand, seasonal patterns, and pending RO requirements." },
+      { title: "Track fill rates", description: "First-time fill rate tracked per parts category. Target 85%+ fill rate — every time a tech waits for a part, you lose a bay-hour of productive time." },
+      { title: "Flag obsolete inventory", description: "Parts with no demand in 9+ months identified for return or write-off. Obsolescence percentage tracked against industry benchmarks." },
+      { title: "Source emergency parts", description: "When a stock-out occurs, the worker checks dealer network, aftermarket suppliers, and OEM emergency orders to find the fastest source." },
+    ],
+    bridge: {
+      title: "The Bridge",
+      text: "Parts Inventory connects the shop to the counter to the bottom line. AD-016 Service Scheduling feeds parts demand from scheduled ROs. AD-017 Service Upsell generates demand from recommended services. AD-019 Warranty Admin identifies warranty parts return requirements. AD-020 Body Shop sends collision parts requirements. AD-025 Deal Accounting receives parts gross profit data for departmental P&L.",
+    },
+    valueProps: [
+      { label: "Fill rate optimization (85%+ target)", description: "First-time fill rate monitored continuously. Stock-outs tracked by part, category, and vendor. Demand-driven reorder points keep the right parts on the shelf." },
+      { label: "Stock order recommendations", description: "Weekly stock orders generated based on demand trends, pending ROs, seasonal patterns, and reorder points. Over-ordering and under-ordering minimized." },
+      { label: "Obsolescence management", description: "No-demand parts identified by aging tier. Manufacturer return windows tracked. Obsolescence reserve calculated. Target: under 10% obsolescence." },
+      { label: "Parts gross profit tracking", description: "Customer-pay, warranty, and internal parts margins tracked by category. Pricing matrix effectiveness monitored against gross profit targets." },
+    ],
+    faq: [
+      { q: "Will this replace my DMS parts module?", a: "It works alongside your DMS. The worker adds demand-driven stocking, fill rate analytics, and obsolescence management that enhance your existing parts ordering process." },
+      { q: "How does the commission model work?", a: "Free to use. TitleApp earns a commission on parts revenue facilitated through the platform. Your parts pricing and vendor relationships remain yours." },
+      { q: "Is my parts and pricing data secure?", a: "All inventory and pricing data is encrypted at rest and in transit. Data stays in your Vault and is never shared with other dealers or parts vendors." },
+    ],
+  },
+  "ad-warranty-admin": {
+    headline: "Submit clean claims. Get paid faster. Survive the audit.",
+    subheadline: "Claim optimization, rejection tracking, parts return compliance, and factory audit preparation for the warranty department.",
+    commission: true,
+    price: "$0/mo",
+    steps: [
+      { title: "Review claim before submission", description: "Every warranty claim reviewed for completeness, correct op codes, proper labor times, and required documentation before submission to the manufacturer." },
+      { title: "Optimize op codes", description: "Op code selection validated against manufacturer warranty policies. Multi-line claims structured for maximum reimbursement within warranty guidelines." },
+      { title: "Track rejections", description: "Rejected claims categorized by reason code. Resubmission packages assembled with additional documentation. Rejection rate tracked by technician and claim type." },
+      { title: "Prepare for factory audit", description: "Factory audit preparation checklist maintained. Parts retention compliance verified. Hard copy documentation organized. Typical audit exposure: $50K-$200K at risk." },
+    ],
+    bridge: {
+      title: "The Bridge",
+      text: "Warranty Admin is the link between the shop and the factory. AD-016 Service Scheduling feeds warranty ROs for claim processing. AD-018 Parts Inventory tracks warranty parts return requirements and core charges. AD-025 Deal Accounting posts warranty revenue and tracks receivables. AD-026 Regulatory Compliance monitors warranty practices for manufacturer compliance. Clean claims mean faster payment and lower audit risk.",
+    },
+    valueProps: [
+      { label: "Op code optimization", description: "Manufacturer op code tables maintained with current labor times and rates. Claims structured for complete and accurate reimbursement within warranty policy." },
+      { label: "Rejection management and resubmission", description: "Rejected claims tracked by reason code. Resubmission documentation assembled automatically. Rejection rate monitored per technician and per claim type." },
+      { label: "Parts return compliance", description: "Warranty parts retention periods tracked. Return shipments scheduled. Core charge credits monitored. Non-compliance penalties prevented." },
+      { label: "Factory audit preparation (saves $50-200K)", description: "Audit readiness checklist maintained. Documentation organized by claim. Parts retention verified. A clean audit can save $50K-$200K in chargebacks." },
+    ],
+    faq: [
+      { q: "Will this replace my warranty clerk?", a: "It augments them. The worker handles claim review, op code validation, and documentation organization. Your warranty clerk handles manufacturer relationships, audit responses, and exception processing." },
+      { q: "How does the commission model work?", a: "Free to use. TitleApp earns a commission on warranty reimbursements facilitated through the platform. Cleaner claims and fewer rejections benefit both of us." },
+      { q: "Is my warranty data secure?", a: "All warranty claim data is encrypted at rest and in transit. Data stays in your Vault and is never shared with other dealers or third parties." },
+    ],
+  },
+  "ad-body-shop": {
+    headline: "Manage estimates, supplements, and cycle time.",
+    subheadline: "Estimate review, supplement tracking, DRP compliance monitoring, and cycle time management for the collision center.",
+    commission: true,
+    price: "$0/mo",
+    steps: [
+      { title: "Review estimate completeness", description: "Every collision estimate reviewed for missed operations, included vs. excluded procedures, and proper labor categorization (body, frame, paint, mechanical)." },
+      { title: "Track supplements", description: "Supplemental damage documented with photos. Supplement requests tracked from submission through insurance approval. Cycle time impact of supplement delays quantified." },
+      { title: "Monitor DRP metrics", description: "Direct Repair Program KPIs tracked: cycle time, CSI scores, supplement frequency, severity accuracy, and touch time. DRP scorecard maintained per insurer." },
+      { title: "Manage sublet work", description: "Sublet operations (glass, ADAS calibration, mechanical, upholstery) tracked from dispatch through completion. Sublet turnaround time monitored against body shop cycle time." },
+    ],
+    bridge: {
+      title: "The Bridge",
+      text: "Body Shop connects the collision center to the business office. AD-018 Parts Inventory receives collision parts requirements. AD-025 Deal Accounting posts body shop revenue and manages insurance receivables. AD-016 Service Scheduling coordinates mechanical work tied to collision repairs. AD-021 Customer Retention manages post-repair follow-up for CSI. DRP performance data flows through the Vault to inform insurer negotiations.",
+    },
+    valueProps: [
+      { label: "Estimate completeness review", description: "Missed operations, labor overlap, included procedures, and betterment issues identified before the vehicle enters the shop." },
+      { label: "Supplement approval tracking", description: "Every supplement documented with photos and submitted to the insurer. Approval status, response time, and cycle time impact tracked." },
+      { label: "DRP compliance monitoring", description: "Insurer DRP requirements tracked per program. KPI performance benchmarked. DRP scorecard generated for quarterly insurer reviews." },
+      { label: "Cycle time management", description: "Keys-to-keys cycle time tracked per job category. Bottlenecks identified: teardown, parts, sublet, paint, reassembly. Target cycle time enforced." },
+    ],
+    faq: [
+      { q: "Will this replace our estimating system?", a: "No. This worker adds supplement tracking, DRP compliance monitoring, and cycle time analytics on top of your existing estimating platform (CCC, Mitchell, Audatex)." },
+      { q: "How does the commission model work?", a: "Free to use. TitleApp earns a commission on body shop revenue facilitated through the platform. Your insurer relationships and DRP agreements remain yours." },
+      { q: "Is my insurance and customer data secure?", a: "All collision repair data is encrypted at rest and in transit. Data stays in your Vault and is never shared with other body shops or third parties." },
+    ],
+  },
+  "ad-customer-retention": {
+    headline: "Bring them back for service. Bring them back for their next car.",
+    subheadline: "Equity mining, lease maturity management, service retention campaigns, and service-to-sales pipeline for the entire customer lifecycle.",
+    commission: true,
+    price: "$0/mo",
+    steps: [
+      { title: "Set up retention campaigns", description: "Automated campaigns for service reminders, declined service follow-up, lease maturity, equity alerts, and birthday/anniversary touchpoints." },
+      { title: "Mine customer equity", description: "Current vehicle values compared to payoff balances across your sold customer database. Positive equity customers identified with estimated payment comparison on a new vehicle." },
+      { title: "Manage lease maturity", description: "Lease maturity dates tracked at 12, 6, and 3 months. Customer contacted with options: new lease, purchase, or return. Loyalty vs. conquest scenarios modeled." },
+      { title: "Nurture service-to-sales leads", description: "Service customers with high repair estimates, aging vehicles, or positive equity routed to sales through a structured handoff. Not a cold call — a warm introduction." },
+    ],
+    bridge: {
+      title: "The Bridge",
+      text: "Customer Retention closes the loop on the customer lifecycle. AD-009 Lead Management receives warm leads from equity mining and service-to-sales. AD-017 Service Upsell feeds declined service data for follow-up campaigns. AD-016 Service Scheduling tracks service visit frequency for retention scoring. AD-023 Digital Marketing measures campaign ROI. The Vault holds the complete customer history — every deal, every service visit, every interaction.",
+    },
+    valueProps: [
+      { label: "Equity mining with payment comparison", description: "Vehicle values refreshed regularly against customer payoff balances. Positive equity flagged with estimated payment on replacement vehicle. No cold calls — data-driven outreach." },
+      { label: "Lease maturity management", description: "Lease end dates tracked across the customer base. Campaigns triggered at 12, 6, and 3 months. Turn-in inspection scheduling coordinated with service." },
+      { label: "Service-to-sales nurture sequence", description: "Customers flagged by AD-017 for high repair cost or vehicle age receive a structured communication sequence. Warm handoff to sales with full vehicle and service history." },
+      { label: "Customer lifecycle analytics", description: "Retention rate, service absorption, defection to independent shops, and repurchase rate tracked. Lifetime customer value calculated per customer and per segment." },
+    ],
+    faq: [
+      { q: "Will this replace our CRM?", a: "It works alongside your CRM. The worker adds equity mining, lifecycle analytics, and cross-department retention intelligence that connect the sales floor, service drive, and marketing — which standalone CRMs typically do not." },
+      { q: "How does the commission model work?", a: "Free to use. TitleApp earns a commission on vehicle sales and service revenue generated through retention campaigns. Your customer relationships remain yours." },
+      { q: "Is my customer data secure?", a: "All customer data is encrypted at rest and in transit. Data stays in your Vault and is never shared with competing dealers, third-party lead aggregators, or data brokers." },
+    ],
+  },
+  "ad-reputation": {
+    headline: "More reviews. Better ratings. More clicks.",
+    subheadline: "Review solicitation, response management, sentiment analysis, and competitive rating benchmarking for every department.",
+    commission: true,
+    price: "$0/mo",
+    steps: [
+      { title: "Solicit reviews from every customer", description: "Every sold customer and every service RO completion triggers a review request via text or email. FTC-compliant — no filtering, gating, or selective solicitation." },
+      { title: "Draft responses", description: "AI-drafted responses for every review — positive and negative. Tone matched to your dealership brand. Manager reviews and edits before publication." },
+      { title: "Track sentiment trends", description: "Review sentiment analyzed over time by department (sales, service, parts, body shop). Recurring themes identified. Operational issues surfaced before they become rating problems." },
+      { title: "Benchmark against competitors", description: "Your Google, Yelp, and DealerRater ratings compared to competitors in your market. Rating trends tracked. Market position quantified." },
+    ],
+    bridge: {
+      title: "The Bridge",
+      text: "Reputation Management connects customer experience to every department. AD-016 Service Scheduling and AD-010 Desking trigger review requests after completed transactions. AD-021 Customer Retention uses sentiment data to identify at-risk customers. AD-023 Digital Marketing correlates ratings to lead volume and ad performance. Negative review themes flow to department managers for operational improvement.",
+    },
+    valueProps: [
+      { label: "FTC-compliant review solicitation", description: "Every customer solicited without filtering or gating. No selective review practices. FTC and platform terms of service compliance built in." },
+      { label: "AI-drafted review responses", description: "Every review gets a response draft within minutes. Positive reviews acknowledged. Negative reviews addressed with empathy and resolution. Manager approval required before publishing." },
+      { label: "Sentiment trend analysis", description: "Natural language processing identifies recurring themes. Sales process friction, service wait times, and communication gaps surfaced before they damage ratings." },
+      { label: "Rating-to-revenue correlation", description: "Google rating, review volume, and review recency correlated to VDP views, lead volume, and appointment set rate. Quantify what a half-star improvement means in dollars." },
+    ],
+    faq: [
+      { q: "Will this replace our existing reputation tool?", a: "It can work alongside or replace your current tool. The worker adds cross-department sentiment analysis, competitive benchmarking, and revenue correlation that standalone tools typically do not provide." },
+      { q: "How does the commission model work?", a: "Free to use. TitleApp earns a commission on revenue attributed to reputation-driven customer acquisition. No subscription fee." },
+      { q: "Is my review data secure?", a: "Review data aggregated from public sources. Customer contact information used for solicitation is encrypted and stored in your Vault. Data is never shared with competitors." },
+    ],
+  },
+  "ad-digital-marketing": {
+    headline: "Know which ads sell cars.",
+    subheadline: "Spend tracking, lead attribution, channel performance analysis, and co-op management across every advertising source.",
+    commission: true,
+    price: "$0/mo",
+    steps: [
+      { title: "Track spend by channel", description: "Monthly advertising spend tracked across Google, Facebook, third-party (AutoTrader, Cars.com, CarGurus), direct mail, broadcast, and sponsorships." },
+      { title: "Attribute leads to source", description: "Every lead tagged with its originating source. Multi-touch attribution where applicable. Source tracked through the funnel to sold unit." },
+      { title: "Calculate cost-per-sale", description: "Total spend divided by sold units attributed to each source. Cost-per-lead, cost-per-appointment, and cost-per-sale calculated per channel." },
+      { title: "Claim co-op reimbursement", description: "Manufacturer co-op advertising programs tracked. Eligible spend identified. Reimbursement claims prepared with required documentation." },
+    ],
+    bridge: {
+      title: "The Bridge",
+      text: "Digital Marketing connects ad spend to results. AD-009 Lead Management feeds lead source and conversion data. AD-010 Desking provides sold deal attribution. AD-007 Merchandising supplies VDP performance correlated to ad spend. AD-022 Reputation Management tracks rating-to-lead correlation. AD-003 Allocation monitors manufacturer incentive advertising programs. Co-op data flows through the Vault to AD-025 Deal Accounting for reimbursement tracking.",
+    },
+    valueProps: [
+      { label: "Full-funnel lead attribution", description: "Every lead tracked from first touch through sold unit. Source, medium, and campaign attributed. Multi-touch credit assigned where applicable." },
+      { label: "Cost-per-sale by source", description: "Total advertising cost per sold unit calculated by channel. Identify which sources produce sales — not just traffic — and allocate budget accordingly." },
+      { label: "Third-party listing ROI analysis", description: "AutoTrader, Cars.com, CarGurus, and other listing platforms evaluated on VDP views, leads, and sold units per dollar spent. Underperforming subscriptions identified." },
+      { label: "Co-op management and claiming", description: "Manufacturer co-op programs tracked with eligible activities, spending caps, and claim deadlines. Reimbursement claims prepared and submitted on time." },
+    ],
+    faq: [
+      { q: "Will this replace our ad agency?", a: "No. This worker tracks performance and attribution across all channels including what your agency manages. It gives you the data to hold every vendor accountable for results." },
+      { q: "How does the commission model work?", a: "Free to use. TitleApp earns a commission on advertising-attributed vehicle sales facilitated through the platform. No subscription fee, no percentage of ad spend." },
+      { q: "Is my advertising data secure?", a: "All advertising spend and performance data is encrypted at rest and in transit. Data stays in your Vault and is never shared with advertising vendors or competitors." },
+    ],
+  },
+  "ad-title-registration": {
+    headline: "Every deal titled. Every tag delivered.",
+    subheadline: "Title applications, temp tag management, out-of-state processing, and lien perfection tracking for every sold unit.",
+    commission: true,
+    price: "$0/mo",
+    steps: [
+      { title: "Initiate title application", description: "Title paperwork assembled from deal documents in the Vault. State-specific forms identified. Application submitted with required fees and documentation." },
+      { title: "Track temp tag expiration", description: "Temporary tags tracked with expiration dates and state-specific extension rules. Expiring tags flagged at 14, 7, and 3 days. Extensions processed where permitted." },
+      { title: "Process out-of-state titles", description: "Out-of-state deals tracked with destination state requirements: forms, fees, emissions, inspections, and power of attorney. Processing timelines managed per state." },
+      { title: "Verify lien perfection", description: "Lender lien recorded on title. Lien perfection confirmed. ELT (electronic lien and title) status tracked. Imperfect liens flagged for immediate correction." },
+    ],
+    bridge: {
+      title: "The Bridge",
+      text: "Title & Registration connects the deal to the DMV to the lender. AD-010 Desking passes deal documents for title processing. AD-014 Lender Relations requires lien perfection for funding. AD-025 Deal Accounting tracks title fees as receivables. AD-001 Licensing monitors dealer licensing requirements for title processing authority. Title status updates flow through the Vault so every related worker knows if a title is pending, completed, or rejected.",
+    },
+    valueProps: [
+      { label: "Title application deadline tracking", description: "State-specific title application deadlines monitored. Late filing penalties calculated. Compliance tracked per title clerk and per deal." },
+      { label: "Temp tag expiration alerts", description: "Every temporary tag tracked with expiration date. Alerts at configurable intervals. Extensions processed automatically where state law permits." },
+      { label: "Out-of-state requirements by state", description: "Destination state requirements database maintained: forms, fees, emissions, inspections, notarization, and power of attorney. Processing timelines estimated per state." },
+      { label: "DMV reject resolution", description: "DMV rejections tracked by reason code. Corrective documentation assembled. Resubmission tracked. Reject rate monitored per title clerk." },
+    ],
+    faq: [
+      { q: "Will this replace our title clerk?", a: "No. This worker handles tracking, compliance, and documentation assembly. Your title clerk handles DMV relationships, exception processing, and state-specific nuances that require human judgment." },
+      { q: "How does the commission model work?", a: "Free to use. TitleApp earns a commission on deals where title processing is facilitated through the platform. No per-title fee to the dealer." },
+      { q: "Is my customer and title data secure?", a: "All title and customer data is encrypted at rest and in transit. Data stays in your Vault. Title documents are never shared with other dealers or third parties." },
+    ],
+  },
+  "ad-deal-accounting": {
+    headline: "Clean books. Every deal posted.",
+    subheadline: "Deal posting, commission calculation, floor plan payoff tracking, and receivables management for the business office.",
+    commission: true,
+    price: "$0/mo",
+    steps: [
+      { title: "Post deal to accounting", description: "Every funded deal posted with front-end gross, back-end gross, trade allowance, payoff, fees, taxes, and net check to customer. Same-day posting targeted." },
+      { title: "Calculate commissions", description: "Salesperson, F&I manager, and sales manager commissions calculated from posted deal data based on configured pay plans. Minimum guarantee verified." },
+      { title: "Track floor plan payoff", description: "Sold vehicles flagged for floor plan payoff. Curtailment dates tracked. Floor plan interest stop date verified on day of delivery. Late payoffs flagged for additional interest." },
+      { title: "Monitor receivables", description: "Contracts-in-transit, finance reserves, manufacturer rebates, warranty reimbursements, title fees, and other receivables tracked with aging." },
+    ],
+    bridge: {
+      title: "The Bridge",
+      text: "Deal Accounting is where the deal becomes money. AD-010 Desking passes the deal structure. AD-012 F&I Menu passes product income. AD-014 Lender Relations confirms funding. AD-024 Title & Registration passes title fees. AD-028 Floor Plan provides payoff data. AD-027 HR & Payroll receives commission calculations. Every financial line item flows through the Vault for a single source of truth.",
+    },
+    valueProps: [
+      { label: "Same-day deal posting", description: "Deal posted on the day it funds. No backlog. No end-of-month scramble. Clean books every day." },
+      { label: "Automated commission calculation", description: "Commission calculated per configured pay plan: flat, percentage, graduated, or blended. Minimum guarantee verified. Pay plan splits handled." },
+      { label: "Floor plan payoff tracking", description: "Every sold vehicle tracked from delivery through floor plan payoff. Curtailment tracked. Interest charges verified. Late payoffs flagged." },
+      { label: "Daily operating control report", description: "Daily snapshot of deals pending, deals posted, receivables, floor plan exposure, and cash position. The controller's view of the business — updated daily." },
+    ],
+    faq: [
+      { q: "Will this replace my DMS accounting module?", a: "It works alongside your DMS. The worker adds deal posting automation, commission calculation, and receivables analytics that enhance your existing accounting workflow." },
+      { q: "How does the commission model work?", a: "Free to use. TitleApp earns a commission on financial transactions facilitated through the platform. No subscription fee, no per-deal posting fee." },
+      { q: "Is my financial data secure?", a: "All financial and deal data is encrypted at rest and in transit. Data stays in your Vault. Financial records are never shared with other dealers or third parties." },
+    ],
+  },
+  "ad-regulatory-compliance": {
+    headline: "Ready for any audit. Any time.",
+    subheadline: "FTC compliance, state AG readiness, factory audit preparation, and self-assessment programs for the entire dealership.",
+    commission: true,
+    price: "$0/mo",
+    steps: [
+      { title: "Run quarterly self-assessment", description: "Comprehensive compliance self-assessment covering FTC (CARS Rule, Safeguards, Used Car Rule), state regulations, ECOA, FCRA, TILA, and manufacturer requirements." },
+      { title: "Prepare audit documentation", description: "Audit preparation packages assembled with organized documentation for FTC, state AG, manufacturer, and lender audits. Evidence indexed and cross-referenced." },
+      { title: "Track complaints", description: "Customer complaints, BBB filings, AG complaints, and online reviews tracked in one system. Patterns identified. Resolution documented. Complaint-to-resolution cycle time monitored." },
+      { title: "Monitor regulatory changes", description: "Federal and state regulatory changes tracked with implementation deadlines and operational impact assessment. New rules mapped to affected processes and workers." },
+    ],
+    bridge: {
+      title: "The Bridge",
+      text: "Regulatory Compliance is the umbrella over every department. AD-001 Licensing feeds license and bond status. AD-013 F&I Compliance feeds deal audit data. AD-019 Warranty Admin feeds warranty compliance status. AD-027 HR & Payroll feeds employment compliance. Every worker in the Vault contributes compliance data. This worker aggregates, monitors, and reports across the entire dealership.",
+    },
+    valueProps: [
+      { label: "Quarterly compliance self-assessment", description: "Structured assessment covering all regulatory areas. Findings categorized by risk level. Remediation actions assigned with due dates and responsible parties." },
+      { label: "Audit preparation checklists", description: "FTC, state AG, manufacturer, and lender audit checklists maintained. Documentation pre-organized by topic. Preparation time reduced from weeks to days." },
+      { label: "Complaint tracking with pattern analysis", description: "All complaints from all sources tracked in one system. Repeat patterns identified. Root causes surfaced. Systemic issues addressed before they become regulatory action." },
+      { label: "Regulatory change monitoring", description: "Federal Register, state regulatory databases, and manufacturer policy updates monitored. Changes mapped to affected dealership processes with implementation timelines." },
+    ],
+    faq: [
+      { q: "Will this replace our compliance consultant?", a: "It augments your consultant. The worker handles ongoing monitoring, documentation, and pattern analysis. Your compliance consultant provides strategic guidance, training, and audit response leadership." },
+      { q: "How does the commission model work?", a: "Free to use. TitleApp earns a commission on compliance-related services facilitated through the platform. Avoiding a single regulatory penalty pays for itself many times over." },
+      { q: "Is my compliance data secure?", a: "All compliance documentation is encrypted at rest and in transit. Data stays in your Vault. Compliance records are never shared with regulators or third parties without your explicit authorization." },
+    ],
+  },
+  "ad-hr-payroll": {
+    headline: "Pay plans that motivate. Compliance that protects.",
+    subheadline: "Commission pay plan administration, minimum wage compliance, overtime tracking, and licensing management for dealership employees.",
+    commission: true,
+    price: "$0/mo",
+    steps: [
+      { title: "Configure pay plans", description: "Salesperson, F&I manager, sales manager, service advisor, and technician pay plans configured with commission structures, guarantees, bonuses, and draws." },
+      { title: "Verify minimum wage compliance", description: "Commission earnings verified against applicable minimum wage (federal, state, local) per pay period. Shortfall flagged for make-up payment before payroll processes." },
+      { title: "Track overtime", description: "Hours tracked for non-exempt employees. FLSA overtime classification verified — service techs paid flat rate still require overtime calculation. State-specific rules applied." },
+      { title: "Monitor licenses", description: "Salesperson licenses, technician certifications (ASE), F&I certifications, and OSHA training tracked with expiration dates and renewal requirements." },
+    ],
+    bridge: {
+      title: "The Bridge",
+      text: "HR & Payroll connects employee performance to compensation. AD-025 Deal Accounting feeds deal data for commission calculation. AD-016 Service Scheduling feeds technician hours for overtime tracking. AD-001 Licensing feeds salesperson license status. AD-026 Regulatory Compliance aggregates employment compliance status. Pay plan data and compliance records flow through the Vault to ensure accurate, compliant payroll every period.",
+    },
+    valueProps: [
+      { label: "Commission pay plan administration", description: "Flat, percentage, graduated, minimum-plus-commission, and blended pay plans supported. Draw tracking. Guarantee verification. Bonus calculation." },
+      { label: "Minimum wage compliance verification", description: "Commission earnings tested against applicable minimum wage per pay period. Make-up payment calculated automatically when commissions fall short." },
+      { label: "FLSA overtime classification", description: "Exempt vs. non-exempt status verified per position. Flat-rate technician overtime calculated per FLSA requirements. State-specific overtime rules applied." },
+      { label: "License and certification tracking", description: "Salesperson licenses, ASE certifications, F&I certifications, and OSHA training tracked with expiration alerts and renewal workflows." },
+    ],
+    faq: [
+      { q: "Will this replace our payroll provider?", a: "No. This worker handles pay plan configuration, compliance verification, and commission calculation. Your payroll provider (ADP, Paylocity, etc.) processes the actual payroll. The worker feeds accurate data to your provider." },
+      { q: "How does the commission model work?", a: "Free to use. TitleApp earns a commission on payroll compliance services facilitated through the platform. No subscription fee." },
+      { q: "Is my employee data secure?", a: "All employee and compensation data is encrypted at rest and in transit. Data stays in your Vault. Employee records are never shared with other dealers or third parties." },
+    ],
+  },
+  "ad-floor-plan": {
+    headline: "Know your cash position every day.",
+    subheadline: "Floor plan interest tracking, cash flow forecasting, AP management, and dealership financial statement preparation.",
+    commission: true,
+    price: "$0/mo",
+    steps: [
+      { title: "Track daily floor plan interest", description: "Floor plan interest accrued daily on every unit in inventory. Curtailment schedules tracked. Interest cost per unit calculated for pricing and wholesale decisions." },
+      { title: "Forecast cash flow", description: "30/60/90-day cash flow forecast based on current deals in process, scheduled payables, receivables, floor plan payoffs, and expected funding." },
+      { title: "Manage payables", description: "Vendor invoices, floor plan payments, advertising bills, and operating expenses tracked with due dates. Payment scheduling optimized against cash position." },
+      { title: "Generate financial statement", description: "Dealership composite financial statement by department: new, used, F&I, service, parts, body shop. Format aligned with NADA 20-Group standards." },
+    ],
+    bridge: {
+      title: "The Bridge",
+      text: "Floor Plan & Cash Management connects every department to the bottom line. AD-025 Deal Accounting feeds deal postings and receivables. AD-018 Parts Inventory feeds parts payables and inventory valuation. AD-016 Service Scheduling feeds service revenue data. AD-011 Inventory Turn feeds floor plan exposure data. Financial data flows through the Vault for a single, daily view of the dealership's financial health.",
+    },
+    valueProps: [
+      { label: "Daily floor plan interest tracking", description: "Interest accrued on every unit daily. Curtailment deadlines tracked. Floor plan cost per unit visible for pricing and wholesale decisions. Total floor plan exposure quantified." },
+      { label: "30/60/90-day cash forecast", description: "Cash flow projected based on pipeline deals, scheduled payables, expected receivables, and floor plan activity. Cash shortfalls identified before they occur." },
+      { label: "Dealership composite by department", description: "Financial performance by department aligned with NADA 20-Group chart of accounts. Department-level P&L, gross profit, and absorption rate calculated." },
+      { label: "Covenant compliance monitoring", description: "Floor plan and other lender covenants tracked: working capital, net worth, current ratio, and inventory turn. Covenant breaches flagged before they trigger default." },
+    ],
+    faq: [
+      { q: "Will this replace our DMS accounting?", a: "It works alongside your DMS. The worker adds cash flow forecasting, floor plan analytics, and financial statement automation that enhance your existing accounting system." },
+      { q: "How does the commission model work?", a: "Free to use. TitleApp earns a commission on financial management services facilitated through the platform. No subscription fee." },
+      { q: "Is my financial data secure?", a: "All financial data is encrypted at rest and in transit. Data stays in your Vault. Financial statements and cash position data are never shared with lenders, manufacturers, or third parties without your authorization." },
+    ],
+  },
+  "ad-dms-technology": {
+    headline: "Get more from the systems you already own.",
+    subheadline: "DMS optimization, integration monitoring, data integrity auditing, and vendor contract management for dealership technology.",
+    commission: true,
+    price: "$0/mo",
+    steps: [
+      { title: "Audit current systems", description: "Complete inventory of dealership technology: DMS, CRM, desking, F&I menu, inventory management, marketing, and service scheduling. License costs and utilization documented." },
+      { title: "Monitor integrations", description: "Data flows between systems monitored. Failed integrations detected and flagged. Data sync latency tracked. Broken feeds identified before they cause operational issues." },
+      { title: "Review user access", description: "User accounts, permission levels, and access logs reviewed per system. Terminated employees removed. Excessive permissions flagged. FTC Safeguards alignment verified." },
+      { title: "Track vendor contracts", description: "Technology vendor contracts tracked with renewal dates, price escalation clauses, and termination requirements. Total technology spend quantified." },
+    ],
+    bridge: {
+      title: "The Bridge",
+      text: "DMS & Technology Management connects every system in the dealership. AD-002 Facility Operations feeds DMS configuration requirements. AD-001 Licensing feeds FTC Safeguards technology requirements. AD-026 Regulatory Compliance monitors data security compliance. Every worker in the Vault benefits from reliable integrations and clean data. When a data feed breaks, this worker detects it before it affects downstream operations.",
+    },
+    valueProps: [
+      { label: "DMS optimization recommendations", description: "Feature utilization audited per department. Unused modules identified. Configuration improvements recommended. DMS spend justified against actual usage." },
+      { label: "Integration health monitoring", description: "Data flows between DMS, CRM, inventory tools, marketing platforms, and accounting monitored. Sync failures, latency, and data mismatches detected in real time." },
+      { label: "Data integrity auditing", description: "Duplicate records, orphaned data, and inconsistencies identified across systems. Data quality scored per system. Cleanup recommendations prioritized by business impact." },
+      { label: "Vendor contract management", description: "Renewal dates, price escalation terms, auto-renewal windows, and termination notice periods tracked. Total technology spend per employee and per department calculated." },
+    ],
+    faq: [
+      { q: "Will this replace our IT department?", a: "It augments your IT support. The worker handles monitoring, auditing, and contract tracking. Your IT team or managed service provider handles implementation, troubleshooting, and vendor management." },
+      { q: "How does the commission model work?", a: "Free to use. TitleApp earns a commission on technology optimization savings facilitated through the platform. No subscription fee." },
+      { q: "Is my system data secure?", a: "All system configuration and vendor data is encrypted at rest and in transit. Data stays in your Vault. System inventories and access audits are never shared with technology vendors or competitors." },
+    ],
+  },
+  "entitlement-analyst": {
+    headline: "Know what you can build before you buy",
+    subheadline: "Zoning analysis, entitlement strategy, and approval tracking. Every setback, density limit, and overlay district mapped before you commit capital.",
+    steps: [
+      { title: "Analyze the zoning", description: "Permitted uses, density, height, setbacks, FAR, lot coverage, parking ratios, and overlay districts checked against your proposed project." },
+      { title: "Identify the entitlement path", description: "By-right, variance, conditional use, rezoning, or PUD — the worker maps the approvals required and models the timeline for each." },
+      { title: "Prepare for hearings", description: "Staff reports, compliance narratives, community benefit summaries, and responses to anticipated objections assembled for planning commission." },
+      { title: "Track conditions through completion", description: "Every condition of approval logged with responsible party, deadline, and compliance status. Pre-construction, during construction, and ongoing." },
+    ],
+    bridge: {
+      title: "The Bridge",
+      text: "The Entitlement Analyst sits between due diligence and construction. Site Due Diligence (W-003) feeds zoning and land use findings. Architecture Review (W-005) supplies design parameters that must fit within entitlement constraints. Entitlements approved unlock Permit Submission (W-012) to begin building permit applications. Timeline and cost impacts flow to the CRE Analyst (W-002) for feasibility updates and to the Capital Stack Optimizer (W-016) for budget adjustments.",
+    },
+    valueProps: [
+      { label: "Zoning gap analysis", description: "Current zoning versus proposed use compared across every dimensional standard. Gaps identified with the specific approval type required to close each one." },
+      { label: "Entitlement timeline modeling", description: "Review periods, hearing schedules, appeal windows, and condition compliance deadlines modeled by jurisdiction. Know your realistic start date before you close." },
+      { label: "Public notice and hearing tracking", description: "Statutory notice requirements for every hearing tracked with publication dates, mailing lists, and posting deadlines. Missed notice voids approvals." },
+      { label: "Vault-connected to design and permitting", description: "Design constraints from Architecture Review and permit readiness for the Permit Submission Worker flow through the Vault automatically." },
+    ],
+    faq: [
+      { q: "Does this replace my land use attorney?", a: "No. The worker manages the analytical and tracking aspects of entitlement. Legal strategy, representation at hearings, and appeals require your land use attorney." },
+      { q: "How does it handle different jurisdictions?", a: "Zoning codes, hearing procedures, and approval timelines vary by jurisdiction. The worker adapts its analysis and timeline modeling to the specific municipality, county, or regional agency with authority over your site." },
+      { q: "What if my project requires a rezoning?", a: "The worker identifies when a rezoning is necessary, models the additional timeline and risk, and tracks the legislative process from application through adoption. It also flags the vested rights implications of pursuing rezoning versus a variance or conditional use." },
+    ],
+  },
+  "insurance-coi": {
+    headline: "Every policy current. Every certificate on file.",
+    subheadline: "Policy management, COI tracking, claims handling, and renewal coordination across your entire operation. No coverage gaps. No expired certificates.",
+    steps: [
+      { title: "Inventory all policies", description: "GL, property, auto, umbrella, workers comp, professional liability, cyber, D&O — every policy documented with coverage limits, deductibles, endorsements, and renewal dates." },
+      { title: "Track certificates of insurance", description: "Inbound COIs from vendors and subs parsed and verified. Outbound COIs to clients and landlords generated. Compliance status maintained in real time." },
+      { title: "Manage claims", description: "Incident reported, claim filed, adjuster assigned, reserve set, resolution tracked. Every claim documented from first notice through final settlement." },
+      { title: "Coordinate renewals", description: "90-day advance alerts, marketing submissions, quote comparisons, binding instructions, and binder confirmations. No lapse in coverage." },
+    ],
+    bridge: {
+      title: "The Bridge",
+      text: "Insurance touches every part of the operation. Vendor contracts from the Vendor & Contract Worker (W-041) carry insurance requirements that flow here automatically. Construction projects feed sub insurance requirements from the Insurance & Risk Worker (W-025). Property acquisitions from the CRE Analyst (W-002) trigger property insurance procurement. Claims with legal exposure route to Legal (W-045). Renewal costs feed Accounting (W-039). The Compliance Tracker (W-047) monitors every expiration date.",
+    },
+    valueProps: [
+      { label: "Automated COI parsing and verification", description: "Certificates parsed for coverage types, limits, effective dates, and additional insured status. Deficiencies flagged immediately with specific remediation required." },
+      { label: "Policy renewal pipeline", description: "Every policy tracked with renewal date, marketing timeline, incumbent terms, and competitive quote status. No policy renews without review." },
+      { label: "Claims lifecycle management", description: "From first notice of loss through final settlement. Reserve tracking, adjuster correspondence, subrogation recovery, and impact on future premiums documented." },
+      { label: "Coverage gap detection", description: "Cross-policy analysis identifies gaps between GL, umbrella, property, and professional liability. Sublimit adequacy checked against actual exposure." },
+    ],
+    faq: [
+      { q: "Does this replace my insurance broker?", a: "No. The worker manages your insurance program — tracking policies, parsing COIs, and monitoring renewals. Your broker handles market relationships, placement, and negotiation. The worker makes your broker more effective by providing organized data and early renewal preparation." },
+      { q: "How does COI tracking work?", a: "Inbound certificates are parsed automatically for coverage types, limits, dates, and endorsements, then checked against your requirements. Deficient certificates are flagged with the specific issue. Expiring certificates trigger automatic renewal requests to the issuing party." },
+      { q: "Can it handle multiple entities?", a: "Yes. Many businesses operate through multiple entities with different insurance programs. The worker tracks each entity's policies separately and identifies where coverage should be coordinated or consolidated." },
+    ],
+  },
+  "mortgage-broker": {
+    headline: "Source the best debt for every deal",
+    subheadline: "Acquisition loans, construction financing, bridge, perm, and refi — lender matching, term sheet comparison, and pipeline tracking across every capital need.",
+    steps: [
+      { title: "Define the financing need", description: "Property type, deal stage, loan amount, timeline, and borrower profile captured. The worker identifies which lender programs fit your specific requirements." },
+      { title: "Match to lender programs", description: "Agency, CMBS, life company, bank, bridge, and private credit programs filtered by your deal parameters. Non-recourse, assumability, and prepayment preferences applied." },
+      { title: "Compare term sheets side by side", description: "Rate, spread, LTV, DSCR, IO period, prepayment, reserves, recourse, and fees normalized for apples-to-apples comparison. Total cost of capital calculated for each option." },
+      { title: "Track the pipeline to close", description: "Application, approval, commitment, rate lock, closing — every loan tracked through the full lifecycle with deadline alerts and document checklists." },
+    ],
+    bridge: {
+      title: "The Bridge",
+      text: "The Mortgage Broker Worker connects your financing needs to the rest of the Vault. Deal data from the CRE Analyst (W-002) provides underwriting for loan sizing. The Capital Stack Optimizer (W-016) consumes selected loan terms to build the complete capital structure. Construction Lending (W-015) picks up construction-specific financing once the deal transitions to development. Title & Escrow (W-044) receives lender closing requirements. Loan terms flow to Accounting (W-039) and the Debt Service Worker (W-052) for ongoing tracking.",
+    },
+    valueProps: [
+      { label: "Multi-product lender matching", description: "Acquisition, construction, bridge, permanent, and refinance — each with different lender pools. The worker knows which programs fit your deal and filters accordingly." },
+      { label: "Total cost of capital analysis", description: "Origination fees, rate, reserves, legal, prepayment at projected hold period, and exit costs normalized into a single effective rate for true comparison." },
+      { label: "Rate lock and deadline management", description: "Lock dates, expiration windows, extension fees, and float-down provisions tracked. Alerts fire when lock decisions are needed." },
+      { label: "Vault-connected to underwriting and closing", description: "Deal data flows in from the CRE Analyst. Selected terms flow out to the Capital Stack Optimizer, Title & Escrow, and Debt Service Worker automatically." },
+    ],
+    faq: [
+      { q: "Does this originate loans?", a: "No. This worker helps you source, compare, and track financing options. It does not originate, underwrite, or fund loans. Actual lending relationships are between you and your chosen lender or mortgage broker." },
+      { q: "What loan types does it cover?", a: "Conventional bank, Fannie Mae, Freddie Mac, CMBS, life company, bridge, private credit, SBA, and USDA. Each program type has different qualifying criteria, terms, and processes that the worker tracks." },
+      { q: "How does it handle multiple loans on one deal?", a: "Many deals involve layered debt — senior, mezz, and preferred equity. The worker tracks each financing piece separately and feeds the complete picture to the Capital Stack Optimizer for integrated analysis." },
+    ],
+  },
+  "permit-tracker": {
+    headline: "Every permit filed. Every correction resolved.",
+    subheadline: "Permit applications, review cycle tracking, deficiency notice management, and approval coordination across every jurisdiction your projects touch.",
+    steps: [
+      { title: "Identify required permits", description: "Building, grading, demolition, MEP, fire, encroachment, stormwater — every permit mapped from your project scope with fees, timelines, and submission requirements." },
+      { title: "File and track submissions", description: "Application dates, plan check assignments, reviewer contacts, and resubmission rounds tracked for every permit across every jurisdiction." },
+      { title: "Respond to deficiency notices", description: "Plan check comments parsed by discipline, assigned to responsible professionals, responses tracked, and resubmission packages assembled with point-by-point responses." },
+      { title: "Manage approvals and issuance", description: "Conditions of approval documented, fees paid and tracked, permit cards issued, and inspection requirements forwarded to the field team." },
+    ],
+    bridge: {
+      title: "The Bridge",
+      text: "Permit Submission sits between design and construction. Architecture Review (W-005) and Engineering Review (W-006) provide permit-ready documents. Entitlement conditions from the Entitlement Analyst (W-004) must be satisfied before filing. Permits issued unlock the Construction Manager (W-021) to mobilize. Inspection requirements flow to Quality Control (W-027). Permit fees impact the budget tracked by the Capital Stack Optimizer (W-016). Fire department comments route to Fire & Life Safety (W-011).",
+    },
+    valueProps: [
+      { label: "Multi-jurisdiction tracking", description: "City, county, state, and federal permits tracked in parallel. Each jurisdiction's review timelines, correction round patterns, and fee structures documented." },
+      { label: "Plan check comment management", description: "Comments parsed by discipline — architectural, structural, MEP, fire — and routed to the responsible design professional with response deadline tracking." },
+      { label: "Permit expiration monitoring", description: "Most jurisdictions expire permits after 180 days of inactivity. The worker tracks every active permit and alerts before expiration so extensions can be filed." },
+      { label: "Vault-connected to design and construction", description: "Design documents flow in from Architecture and Engineering Review. Permit issuance triggers construction mobilization through the Construction Manager." },
+    ],
+    faq: [
+      { q: "Does this file permits directly with jurisdictions?", a: "The worker prepares complete submission packages and tracks the entire review process. Actual filing is done through the jurisdiction's portal or in person. Direct integrations with major jurisdictions are in development." },
+      { q: "How does it handle multiple plan check rounds?", a: "Each round is tracked: comments received, responses drafted, resubmission date. The worker models how many rounds your jurisdiction typically requires and adjusts your construction start timeline accordingly." },
+      { q: "Can it track permits across multiple projects?", a: "Yes. Each project has its own permit matrix, but portfolio-level views show every active permit across all your projects with status, timeline, and upcoming deadlines in one place." },
+    ],
+  },
+  "real-estate-sales": {
+    headline: "From listing to close — nothing falls through",
+    subheadline: "Listings, buyer qualification, showing management, offer negotiation, and transaction coordination in one workspace.",
+    steps: [
+      { title: "Prepare the listing", description: "Property details, pricing analysis, marketing materials, and listing syndication managed. Comparable sales and market positioning documented to support your pricing strategy." },
+      { title: "Qualify buyers and manage showings", description: "Buyer interest tracked from inquiry through qualification. Showing schedules coordinated, feedback collected, and follow-up automated." },
+      { title: "Negotiate and compare offers", description: "Every offer logged with price, terms, contingencies, earnest money, and closing timeline. Side-by-side comparison with net proceeds calculated for each." },
+      { title: "Coordinate through closing", description: "Inspection, appraisal, financing contingency, title, and escrow milestones tracked. Every deadline monitored with responsible party assignments and escalation when items slip." },
+    ],
+    bridge: {
+      title: "The Bridge",
+      text: "Real Estate Sales connects to the broader deal lifecycle. Market Research (W-001) provides comp data and absorption trends for pricing strategy. The CRE Analyst (W-002) supplies property underwriting for investor-buyers. Title & Escrow (W-044) picks up the transaction once an offer is accepted and manages commitment review, exception resolution, and closing coordination. For disposition transactions, the Disposition Preparation Worker (W-036) feeds property packages and due diligence materials directly into the listing.",
+    },
+    valueProps: [
+      { label: "Offer comparison and net proceeds analysis", description: "Every offer normalized: price, earnest money, contingency periods, financing terms, and closing timeline. Net proceeds calculated after commissions, closing costs, and prorations." },
+      { label: "Transaction milestone tracking", description: "Inspection period, appraisal, loan approval, title clearance, and closing — every deadline tracked with status indicators and escalation when items are at risk." },
+      { label: "Showing management and feedback", description: "Showing requests coordinated, confirmed, and documented. Buyer feedback collected and categorized. Follow-up actions tracked for every prospect." },
+      { label: "Vault-connected to market data and closing", description: "Comparable sales from Market Research flow in for pricing. Accepted offers flow to Title & Escrow for closing coordination. Transaction data feeds Accounting automatically." },
+    ],
+    faq: [
+      { q: "Does this replace my real estate agent?", a: "No. The worker handles transaction management, document tracking, and deadline coordination. Your licensed agent handles client relationships, property access, negotiations, and fiduciary duties." },
+      { q: "Does it handle both buy-side and sell-side?", a: "Yes. Sell-side includes listing preparation, marketing, showing management, and offer review. Buy-side includes property search tracking, offer preparation, and contingency management. Both sides share the same closing coordination workflow." },
+      { q: "How does it handle dual agency or multiple offers?", a: "The worker tracks every offer independently with full terms comparison. Agency relationships are documented per your state's requirements. Multiple-offer situations are managed with a structured review process and response tracking." },
+    ],
+  },
+  // ── Aviation Workers ──
+  "av-mission-builder": {
+    headline: "Every mission authorized with full context",
+    subheadline: "Aircraft airworthiness, crew legality, weather, risk assessment, customer requirements, and ground logistics — assembled and validated before any flight is authorized. Covers medevac, passenger charter, cargo, on-demand, and positioning.",
+    steps: [
+      { title: "Mission Request", description: "Receive and classify mission — type, origin, destination, timing, special requirements" },
+      { title: "Automated Validation", description: "AV-004 aircraft status, AV-009 crew legality, AV-014 FRAT score, AV-016 weather — all checked automatically" },
+      { title: "Dispatch Release", description: "Complete mission brief generated — crew, fuel, FBO, LZ, NOTAMs, W&B, duty hours remaining" },
+      { title: "Audit Trail", description: "Every authorization decision recorded to Vault — fully defensible record" },
+    ],
+    bridge: { title: "From Phone Calls to Platform", text: "Dispatch coordination today means phone calls, text messages, and tribal knowledge. AV-013 replaces that with a single mission package where every element is validated before the crew brief is generated." },
+    valueProps: [
+      { label: "Crew Legality Gate", description: "No crew assigned without duty time validation from AV-009" },
+      { label: "FRAT Integration", description: "Risk score is structural — elevated scores hold the mission until CP override" },
+      { label: "Aircraft Status Live", description: "MEL restrictions, maintenance holds, and airworthiness fed in real-time from AV-004" },
+      { label: "Medevac Ready", description: "HIPAA-compliant patient handling, No Surprises Act compliance, ground transport coordination" },
+    ],
+    faq: [
+      { q: "Does this replace our dispatch software?", a: "AV-013 integrates with Ramco, FVO, and Aladtec — it validates and coordinates, not replaces. Your existing tools feed data in; AV-013 ensures every mission is authorized with full context." },
+      { q: "How does the FRAT gate work?", a: "AV-014 FRAT score is required before AV-013 will generate a dispatch release. If the score is yellow, CP review is recommended. Red or black scores hold the mission until CP override with documented justification." },
+      { q: "What about medevac missions?", a: "Full HIPAA compliance, No Surprises Act billing transparency, and patient notification workflows built in. Ground transport coordination included." },
+    ],
+  },
+  "av-flight-duty-enforcer": {
+    headline: "Hard stops on illegal crew assignments",
+    subheadline: "Not a tracker — a prevention system. Validates every proposed assignment against 14 CFR 135.267 before it reaches the scheduling board. Blocks illegal assignments. CP override requires documented justification.",
+    steps: [
+      { title: "Assignment Proposed", description: "Crew assignment enters the system — from AV-032 scheduling or AV-013 dispatch" },
+      { title: "Legality Check", description: "Daily, 7-day, 30-day, and annual flight time limits validated. Rest period verified. HEME rules applied when applicable" },
+      { title: "Legal or Block", description: "Green: assignment proceeds. Red: hard stop with specific reg citation, remaining legal time, earliest legal report time" },
+      { title: "Override Path", description: "CP override available with full justification — logged to Vault, visible to SMS" },
+    ],
+    bridge: { title: "Prevention, Not Tracking", text: "Most duty time tools tell you what happened. AV-009 prevents what shouldn't happen. The difference is an FAA enforcement action." },
+    valueProps: [
+      { label: "135.267 Enforcement", description: "Every limit — daily, weekly, monthly, annual — checked automatically" },
+      { label: "HEME Rules", description: "Helicopter EMS modified rest rules applied correctly based on operation type" },
+      { label: "Mixed Operations", description: "Part 91 positioning + Part 135 revenue — all time counted against 135 limits" },
+      { label: "Proactive Alerts", description: "AV-029 Alex notified 2 hours before any limit — not after the violation" },
+    ],
+    faq: [
+      { q: "Does this replace Aladtec for duty tracking?", a: "AV-009 reads duty data from Aladtec, FVO, and Ramco. It adds the enforcement layer — the hard stop that prevents illegal assignments from reaching the board." },
+      { q: "What about HEME operations?", a: "14 CFR 135.271 helicopter EMS rules are applied automatically when the operation type is HEME. Different rest requirements, correctly calculated." },
+      { q: "How does the CP override work?", a: "Chief Pilot receives the hard stop with full context — reg citation, time remaining, earliest legal time. Override requires written justification, logged immutably to Vault." },
+    ],
+  },
+  "av-aircraft-status-mel": {
+    headline: "Real-time airworthiness for every tail on the certificate",
+    subheadline: "MEL deferrals, NEF, CDL, and placarded items — all tracked and fed to dispatch. No phone call to DOM required. When AV-007 logs a deferral, AV-004 updates instantly and AV-013 sees the restriction.",
+    steps: [
+      { title: "Status Aggregation", description: "MEL deferrals, AD/SB compliance, component life, maintenance records — all sources unified per tail number" },
+      { title: "Airworthiness Determination", description: "Serviceable, restricted, or grounded — automatically computed with specific restriction details" },
+      { title: "Dispatch Feed", description: "Restriction flags written to Vault — AV-013 dispatch sees them before mission assignment" },
+      { title: "Alert Cascade", description: "AV-029 Alex notified on every MEL deferral, monitors expiry dates, alerts 48 hours before items expire" },
+    ],
+    bridge: { title: "Connected Intelligence", text: "One MEL deferral logged by maintenance updates aircraft status, restricts dispatch, and alerts the DOM — automatically. Zero phone calls." },
+    valueProps: [
+      { label: "Zero Latency", description: "Maintenance logs a deferral → AV-004 updates → dispatch sees restriction — instantly" },
+      { label: "MEL + CDL + NEF", description: "All inoperative equipment categories tracked separately and fed to dispatch" },
+      { label: "Expiry Monitoring", description: "48-hour alerts before MEL items expire — no surprises" },
+      { label: "Maintenance Integration", description: "Ramco Aviation Suite feed — MEL deferrals, work orders, return-to-service events" },
+    ],
+    faq: [
+      { q: "What data sources does this pull from?", a: "AV-007 maintenance work orders, AV-005 AD/SB status, AV-006 component life, plus Ramco Aviation Suite API for maintenance records." },
+      { q: "What if a MEL expires during a mission?", a: "AV-013 is flagged on return. Maintenance hold queued automatically before next dispatch." },
+      { q: "Does this handle CDL items?", a: "Yes — Configuration Deviation List items are tracked separately from MEL. Both are fed to dispatch with distinct restriction categories." },
+    ],
+  },
+  "av-frat": {
+    headline: "Risk quantified before every flight",
+    subheadline: "FRAT score is structural — it gates dispatch authorization in AV-013. Pilot completes assessment before every flight. Elevated scores require documented CP override. Counters launch pressure in EMS operations.",
+    steps: [
+      { title: "Pre-Flight Assessment", description: "Pilot answers FRAT questions — weather, crew factors, aircraft, environment, mission type, personal minimums" },
+      { title: "Auto-Population", description: "Weather data from AV-016, mission complexity from AV-013, duty status from AV-009 — pre-filled automatically" },
+      { title: "Score & Gate", description: "Green: proceed. Yellow: mitigations recommended. Red: CP override required. Black: mission cancelled" },
+      { title: "Pattern Analysis", description: "AV-029 Alex monitors scores across missions — persistent yellow on night ops flags training review" },
+    ],
+    bridge: { title: "Structural Risk Management", text: "A FRAT that nobody reads is theater. AV-014 makes the score a gate — dispatch cannot proceed without it, and elevated scores require documented action." },
+    valueProps: [
+      { label: "Dispatch Gate", description: "AV-013 requires FRAT completion before generating dispatch release — not optional" },
+      { label: "Auto-Population", description: "Weather, duty status, and mission data pre-filled from Vault — pilot adds subjective factors" },
+      { label: "Pattern Detection", description: "Alex monitors FRAT trends — persistent risk patterns flagged for training review" },
+      { label: "CAMTS Compliant", description: "Meets CAMTS EMS FRAT requirements for medevac operations" },
+    ],
+    faq: [
+      { q: "Is this just another form to fill out?", a: "Most FRAT data is auto-populated from other workers. The pilot adds subjective factors — personal minimums, comfort level, fatigue assessment. The score actually gates dispatch." },
+      { q: "What happens when weather changes after the FRAT is submitted?", a: "AV-016 weather updates trigger a re-evaluation flag. AV-013 dispatch is notified. Pilot may need to re-assess." },
+      { q: "Can the CP override a red score?", a: "Yes, with full written justification. The override is logged immutably and reported to SMS via AV-018." },
+    ],
+  },
+  "av-crew-scheduling": {
+    headline: "Every assignment pre-validated for legality",
+    subheadline: "Builds and publishes crew schedules with every assignment checked against AV-009 duty limits, AV-010 qualifications, AV-012 medicals, and AV-011 training currency before it appears as publishable.",
+    steps: [
+      { title: "Schedule Build", description: "Define scheduling horizon, import crew availability, pull projected missions from AV-013" },
+      { title: "Pre-Validation", description: "Every assignment checked: duty limits (AV-009), quals current (AV-010), medical valid (AV-012), training current (AV-011)" },
+      { title: "Conflict Resolution", description: "Conflicts flagged before publishing — duty limit breaches, qual gaps, medical expirations" },
+      { title: "Publish & Notify", description: "Schedule published to Vault. AV-029 Alex sends crew notifications. AV-038 coordinates housing." },
+    ],
+    bridge: { title: "Validated Before Published", text: "Every other scheduling tool lets you publish illegal assignments and hopes someone catches them. AV-032 validates first." },
+    valueProps: [
+      { label: "Legality Gate", description: "No assignment publishes without passing AV-009 duty time validation" },
+      { label: "Qual Verification", description: "Type ratings, instrument currency, and check ride status verified per assignment" },
+      { label: "Aladtec Integration", description: "Reads from or replaces Aladtec — integration mode configurable per operator" },
+      { label: "Housing Coordination", description: "Schedule changes automatically trigger AV-038 crew housing updates" },
+    ],
+    faq: [
+      { q: "Does this replace Aladtec?", a: "That's an open decision per operator. AV-032 can read from Aladtec (compliance layer on top) or replace it entirely (full 24-hour shift, multi-base, trade workflows)." },
+      { q: "What happens on a sick call?", a: "AV-033 Reserve & Crew Swap Manager is triggered automatically. Searches for qualified replacement that passes all legality checks." },
+      { q: "How does it handle crew trades?", a: "Both trading pilots must meet legality requirements for each other's shifts. AV-032 validates both directions before approving." },
+    ],
+  },
+  "av-alex": {
+    headline: "Your workers, orchestrated",
+    subheadline: "Cross-worker anomaly detection, escalation routing, and the 0500 ops briefing. Monitors all Vault events in real time. Routes alerts to CP, DOM, and dispatchers. Free with 3+ worker subscriptions.",
+    steps: [
+      { title: "Vault Monitoring", description: "All worker outputs stream through Alex — MEL changes, duty limits, FRAT scores, schedule changes, maintenance events" },
+      { title: "Anomaly Detection", description: "Cross-worker conflicts identified — MEL restricts aircraft already assigned to a mission, duty limit approaches during active mission" },
+      { title: "Escalation Routing", description: "Alerts routed by severity: safety > compliance > operational > administrative. Right person, right channel, right time" },
+      { title: "0500 Briefing", description: "Daily operations briefing to CP and DOM — fleet status, crew legality, active missions, weather, maintenance due" },
+    ],
+    bridge: { title: "Connected Intelligence", text: "Individual workers are powerful. Alex makes them a system. One MEL deferral can cascade to dispatch, scheduling, and housing — Alex ensures nothing falls through." },
+    valueProps: [
+      { label: "Real-Time Monitoring", description: "Every Vault event processed — no delay between worker output and Alex awareness" },
+      { label: "Smart Routing", description: "Alerts go to the right person via the right channel — SMS, email, in-app — based on severity and role" },
+      { label: "Cross-Worker Detection", description: "Conflicts between workers caught automatically — not by human cross-referencing" },
+      { label: "Customizable", description: "Name, voice, communication style, notification preferences — all operator-configurable" },
+    ],
+    faq: [
+      { q: "Does Alex make operational decisions?", a: "Never. Alex routes, presents, and monitors. Every actionable item requires human approval. Tier 0 — workers advise, humans approve." },
+      { q: "What if we have fewer than 3 workers?", a: "Alex activates at 3+ worker subscriptions. Below that threshold, individual worker notifications still function." },
+      { q: "Can we rename Alex?", a: "Yes. Operator admin can customize the name, and all platform references update accordingly." },
+    ],
+  },
+  "av-digital-logbook": {
+    headline: "Blockchain-verified logbook that replaces paper permanently",
+    subheadline: "Auto-imports from ForeFlight, Schedaero, FVO. CSV import from LogTen Pro, MyFlightBook, Garmin Pilot. Photo scan of paper pages with AI handwriting recognition. PRIA-ready export. SHA-256 hash chain — immutable after entry.",
+    steps: [
+      { title: "Import or Enter", description: "Sync from ForeFlight, import CSV from any source, scan paper pages, or enter manually" },
+      { title: "Verify & Stamp", description: "Review imported data, confirm accuracy, blockchain hash applied — immutable record" },
+      { title: "Track Everything", description: "All categories — PIC, SIC, night, instrument, cross-country, dual, solo — cumulative totals always current" },
+      { title: "Share When Ready", description: "PRIA-ready export for airline hiring, verification links for employers, PDF export anytime" },
+    ],
+    bridge: { title: "Your Career, Verified", text: "Paper logbooks get lost, damaged, and questioned. A blockchain-verified digital logbook is permanent, portable, and provable." },
+    valueProps: [
+      { label: "ForeFlight Sync", description: "OAuth API integration — flights auto-import after each session" },
+      { label: "Blockchain Proof", description: "SHA-256 hash chain — every entry immutable, every total verifiable" },
+      { label: "PRIA Ready", description: "Airline hiring package generated instantly — authorized release via Dropbox Sign" },
+      { label: "Paper Scanner", description: "AI handwriting recognition for legacy logbook pages — digitize your career history" },
+    ],
+    faq: [
+      { q: "Is the free tier really free?", a: "Yes. Manual entry and basic tracking are free forever. Pro ($19/mo) adds blockchain verification, ForeFlight auto-import, PRIA export, and photo scanning." },
+      { q: "What if I'm on a company subscription?", a: "Company flight records auto-import from AV-013 mission completion events. One logbook, dual context — personal and company flights unified." },
+      { q: "Can airlines verify my records?", a: "Yes. PRIA-ready export with blockchain proof-of-integrity certificate. Employers receive a verification link — no paper required." },
+    ],
+  },
 };
 
 // Admin Command Center
@@ -1492,6 +2541,8 @@ function AdminShell({ onBackToHub }) {
         return <AlexWorkerStatus />;
       case "chief-of-staff":
         return <AlexPipelines />;
+      case "pending-signatures":
+        return <PendingSignatures />;
       default:
         if (currentSection.startsWith("worker-")) return <Dashboard />;
         return <Dashboard />;
@@ -1541,6 +2592,13 @@ export default function App() {
   const workerRoute = workerSlug ? WORKER_ROUTES.find((w) => w.slug === workerSlug) : null;
   const isLiveWorker = workerRoute && workerRoute.status === "live";
   const isPlannedWorker = workerRoute && workerRoute.status === "planned";
+
+  // ── Vertical landing pages ──────────────────────────────────
+  const isAutoLanding = /^\/auto\/?$/.test(window.location.pathname);
+  const isTitleEscrowLanding = /^\/title-escrow\/?$/.test(window.location.pathname);
+  const isPropMgmtLanding = /^\/property-management\/?$/.test(window.location.pathname);
+  const isDevelopersLanding = /^\/developers\/?$/.test(window.location.pathname);
+  const isPilotLanding = /^\/pilot\/?$/.test(window.location.pathname);
 
   const [sandboxReady, setSandboxReady] = useState(isSandbox ? false : null);
 
@@ -1892,6 +2950,7 @@ export default function App() {
       "General Business": "auto",
       "Legal": "auto",
       "Automotive": "auto",
+      "Aviation": "aviation",
       "Platform": "auto",
     };
     const vertical = suiteToVertical[worker.suite] || "auto";
@@ -2017,6 +3076,13 @@ export default function App() {
       </div>
     );
   }
+
+  // ── Vertical landing pages: no auth required ────────────────
+  if (isAutoLanding) return <AutoLanding />;
+  if (isTitleEscrowLanding) return <TitleEscrowLanding />;
+  if (isPropMgmtLanding) return <PropertyMgmtLanding />;
+  if (isDevelopersLanding) return <DeveloperLanding />;
+  if (isPilotLanding) return <PilotLanding />;
 
   if (handoffInProgress || currentView === "loading") {
     return (

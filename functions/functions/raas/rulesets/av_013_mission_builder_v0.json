@@ -1,0 +1,77 @@
+{
+  "id": "av_013_mission_builder_v0",
+  "version": "v0",
+  "domain": "aviation-dispatch",
+  "description": "Mission Builder & Dispatch — assembles complete mission package before flight authorization",
+  "required_inputs": [
+    "mission_request",
+    "aircraft_selection",
+    "crew_roster",
+    "weather_briefing",
+    "frat_score"
+  ],
+  "hard_stops": [
+    {
+      "id": "no_frat_score",
+      "label": "FRAT Required",
+      "logic": "FRAT assessment must be completed before mission authorization",
+      "eval": { "type": "required_inputs_check" }
+    },
+    {
+      "id": "crew_duty_exceeded",
+      "label": "Crew Duty Time Exceeded",
+      "logic": "Assigned crew exceeds 14 CFR 135.267 duty time limits",
+      "eval": { "field": "crew.duty_hours_remaining", "operator": "<", "threshold": "mission.estimated_duty" }
+    },
+    {
+      "id": "aircraft_grounded",
+      "label": "Aircraft Grounded",
+      "logic": "Aircraft is grounded or on maintenance hold",
+      "eval": { "field": "aircraft.status", "operator": "==", "threshold": "grounded" }
+    },
+    {
+      "id": "mel_restricts_mission",
+      "label": "MEL Restriction Applies",
+      "logic": "MEL deferral restricts this mission type",
+      "eval": { "field": "aircraft.mel_restriction_applies", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "no_weather_briefing",
+      "label": "Weather Briefing Required",
+      "logic": "Weather briefing required before dispatch authorization",
+      "eval": { "type": "required_inputs_check" }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "frat_elevated",
+      "label": "FRAT Yellow Zone",
+      "logic": "FRAT score is yellow — CP review recommended",
+      "eval": { "field": "mission.frat_score", "operator": ">", "threshold": "tenant.frat_yellow_threshold" }
+    },
+    {
+      "id": "crew_approaching_limit",
+      "label": "Crew Near Duty Limit",
+      "logic": "Crew member within 2 hours of duty limit",
+      "eval": { "field": "crew.duty_hours_remaining", "operator": "<", "threshold": 2 }
+    },
+    {
+      "id": "alternate_lz_advisory",
+      "label": "Primary LZ Restricted",
+      "logic": "Primary LZ has reported restrictions — alternate recommended",
+      "eval": { "field": "mission.lz_status", "operator": "==", "threshold": "restricted" }
+    },
+    {
+      "id": "high_workload_combination",
+      "label": "Elevated Workload",
+      "logic": "Single pilot, night, IMC — elevated workload",
+      "eval": { "field": "mission.workload_factors", "operator": ">", "threshold": 2 }
+    }
+  ],
+  "outputs": [
+    "av013-mission-brief",
+    "av013-dispatch-release",
+    "av013-crew-notification",
+    "av013-audit-record"
+  ]
+}

@@ -1,0 +1,92 @@
+{
+  "id": "ad_013_fi_compliance_v1",
+  "version": "v1",
+  "domain": "auto-dealership",
+  "description": "F&I Compliance auditing — verifies APR accuracy, OFAC clearance, MLA screening, adverse action timelines, deal jacket completeness, ECOA equal treatment, FCRA permissible purpose, and CARS Rule compliance",
+  "required_inputs": ["workspace_id", "deal_id", "customer_id"],
+  "hard_stops": [
+    {
+      "id": "no_workspace",
+      "logic": "workspace must be initialized before any F&I compliance operation",
+      "eval": { "type": "required_inputs_check" }
+    },
+    {
+      "id": "ai_disclosure_required",
+      "logic": "customer must be informed that AI-assisted compliance checks do not constitute legal advice",
+      "eval": { "field": "deal.aiDisclosurePresented", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "data_integrity_check",
+      "logic": "all compliance data must be consistent — no contradictory records or missing audit trail entries",
+      "eval": { "field": "deal.dataIntegrityErrors", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "apr_not_verified",
+      "logic": "VERIFY the APR calculation on every finance deal — Truth in Lending Act requires accuracy within 1/8th of 1%",
+      "eval": { "field": "deal.aprVerified", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "ofac_not_cleared",
+      "logic": "NEVER fund a deal without OFAC clearance — federal sanctions violation carries severe penalties",
+      "eval": { "field": "customer.ofacCleared", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "mla_status_unknown",
+      "logic": "Military Lending Act status must be identified BEFORE entering the F&I office — cannot proceed with unknown status",
+      "eval": { "field": "customer.mlaStatusDetermined", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "adverse_action_overdue",
+      "logic": "adverse action notice must be sent within 30 days of credit denial — ECOA/Regulation B requirement",
+      "eval": { "field": "compliance.adverseActionOverdueDays", "operator": ">", "threshold": 30 }
+    },
+    {
+      "id": "deal_jacket_incomplete",
+      "logic": "deal jacket must contain all required documents before funding submission — missing docs delay funding and create audit risk",
+      "eval": { "field": "deal.jacketMissingDocCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "red_flags_not_addressed",
+      "logic": "Red Flags Rule (16 CFR 681) — identified identity theft red flags must be documented and resolved before proceeding",
+      "eval": { "field": "compliance.unresolvedRedFlagCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "ecoa_disparate_pricing",
+      "logic": "ECOA prohibits pricing discrimination — statistical analysis shows disparate impact on protected class",
+      "eval": { "field": "compliance.ecoaDisparatePricingDetected", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "fcra_permissible_purpose_missing",
+      "logic": "Fair Credit Reporting Act — must document permissible purpose before pulling credit report",
+      "eval": { "field": "deal.fcraPermissiblePurposeDocumented", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "cars_rule_noncompliant",
+      "logic": "FTC CARS Rule — all charges must be itemized, no junk fees, affirmative consent required for every add-on",
+      "eval": { "field": "compliance.carsRuleViolationCount", "operator": ">", "threshold": 0 }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "equal_treatment_statistical_disparity",
+      "logic": "statistical analysis of rate markups shows disparity approaching actionable thresholds across demographic groups",
+      "eval": { "field": "compliance.equalTreatmentDisparityScore", "operator": ">", "threshold": 0.8 }
+    },
+    {
+      "id": "adverse_action_approaching_deadline",
+      "logic": "adverse action notice is due within 7 days and has not been sent",
+      "eval": { "field": "compliance.adverseActionDaysRemaining", "operator": "<", "threshold": 7 }
+    },
+    {
+      "id": "deal_jacket_aging",
+      "logic": "deal jacket has been incomplete for more than 48 hours after delivery",
+      "eval": { "field": "deal.jacketAgingHours", "operator": ">", "threshold": 48 }
+    },
+    {
+      "id": "compliance_training_overdue",
+      "logic": "one or more F&I managers have overdue compliance training certifications",
+      "eval": { "field": "staff.overdueTrainingCount", "operator": ">", "threshold": 0 }
+    }
+  ],
+  "outputs": ["ad013-deal-jacket-checklist", "ad013-adverse-action-notice", "ad013-equal-treatment-report", "ad013-compliance-dashboard"]
+}

@@ -27,6 +27,20 @@ async function hellosignWebhook(req, res) {
   }
 
   const metadata = signatureRequest.metadata || {};
+
+  // Route to universal Signature Service if this is a service-managed request
+  const signatureServiceRequestId = metadata.signatureServiceRequestId;
+  if (signatureServiceRequestId) {
+    try {
+      const { handleWebhookEvent } = require("../services/signatureService");
+      await handleWebhookEvent({ event });
+    } catch (e) {
+      console.error("signatureService webhook routing error:", e);
+    }
+    return res.status(200).send("Hello API Event Received");
+  }
+
+  // Legacy: investor SAFE flow
   const investorId = metadata.investorId;
   const amount = metadata.amount;
 

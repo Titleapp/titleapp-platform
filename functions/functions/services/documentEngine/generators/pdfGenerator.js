@@ -322,6 +322,103 @@ async function generatePdf({ template, data, brand, logoBuffer }) {
         case "pir-coverage-review":
           renderCoverageReview(doc, data, brand, logoBuffer);
           break;
+        // ============================================
+        // AUTO DEALER — PHASE 4-7 (AD-012 through AD-029)
+        // ============================================
+        // AD-012 F&I Menu & Product Presentation
+        case "ad012-fi-menu":
+          renderFiMenu(doc, data, brand, logoBuffer);
+          break;
+        // AD-013 F&I Compliance
+        case "ad013-deal-jacket-checklist":
+          renderDealJacketChecklist(doc, data, brand, logoBuffer);
+          break;
+        case "ad013-adverse-action-notice":
+          renderAdverseActionNotice(doc, data, brand, logoBuffer);
+          break;
+        case "ad013-compliance-dashboard":
+          renderFiComplianceDashboard(doc, data, brand, logoBuffer);
+          break;
+        // AD-014 Lender Relations & Funding
+        case "ad014-lender-scorecard":
+          renderLenderScorecard(doc, data, brand, logoBuffer);
+          break;
+        // AD-016 Service Scheduling & Workflow
+        case "ad016-ro-cycle-time":
+          renderRoCycleTime(doc, data, brand, logoBuffer);
+          break;
+        // AD-017 Service Upsell & MPI
+        case "ad017-mpi-report":
+          renderMpiReport(doc, data, brand, logoBuffer);
+          break;
+        case "ad017-advisor-scorecard":
+          renderAdvisorScorecard(doc, data, brand, logoBuffer);
+          break;
+        case "ad017-service-to-sales-alert":
+          renderServiceToSalesAlert(doc, data, brand, logoBuffer);
+          break;
+        // AD-018 Parts Inventory & Ordering
+        case "ad018-fill-rate-report":
+          renderFillRateReport(doc, data, brand, logoBuffer);
+          break;
+        // AD-019 Warranty Administration
+        case "ad019-claim-review":
+          renderWarrantyClaimReview(doc, data, brand, logoBuffer);
+          break;
+        case "ad019-audit-prep":
+          renderWarrantyAuditPrep(doc, data, brand, logoBuffer);
+          break;
+        case "ad019-warranty-dashboard":
+          renderWarrantyDashboard(doc, data, brand, logoBuffer);
+          break;
+        // AD-020 Body Shop Management
+        case "ad020-cycle-time-report":
+          renderBodyShopCycleTime(doc, data, brand, logoBuffer);
+          break;
+        case "ad020-drp-scorecard":
+          renderDrpScorecard(doc, data, brand, logoBuffer);
+          break;
+        // AD-021 Customer Retention & Lifecycle
+        case "ad021-retention-dashboard":
+          renderRetentionDashboard(doc, data, brand, logoBuffer);
+          break;
+        case "ad021-campaign-performance":
+          renderCampaignPerformance(doc, data, brand, logoBuffer);
+          break;
+        // AD-022 Reputation Management
+        case "ad022-reputation-dashboard":
+          renderReputationDashboard(doc, data, brand, logoBuffer);
+          break;
+        case "ad022-sentiment-report":
+          renderSentimentReport(doc, data, brand, logoBuffer);
+          break;
+        // AD-023 Digital Marketing & Advertising
+        case "ad023-marketing-dashboard":
+          renderMarketingDashboard(doc, data, brand, logoBuffer);
+          break;
+        // AD-025 Deal Accounting & Posting
+        case "ad025-daily-doc":
+          renderDailyDoc(doc, data, brand, logoBuffer);
+          break;
+        case "ad025-commission-statement":
+          renderCommissionStatement(doc, data, brand, logoBuffer);
+          break;
+        // AD-026 Regulatory Compliance & Audit
+        case "ad026-compliance-assessment":
+          renderComplianceAssessment(doc, data, brand, logoBuffer);
+          break;
+        // AD-027 HR & Payroll Compliance
+        case "ad027-pay-plan-summary":
+          renderPayPlanSummary(doc, data, brand, logoBuffer);
+          break;
+        // AD-028 Floor Plan & Cash Management
+        case "ad028-financial-statement":
+          renderFinancialStatement(doc, data, brand, logoBuffer);
+          break;
+        // AD-029 DMS & Technology Management
+        case "ad029-integration-map":
+          renderIntegrationMap(doc, data, brand, logoBuffer);
+          break;
         case "report-standard":
         default:
           renderReport(doc, data, brand, logoBuffer);
@@ -5517,6 +5614,970 @@ function renderCoverageReview(doc, data, brand, logoBuffer) {
   doc.moveDown(2);
   doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
     .text("This coverage review is for risk management purposes. Consult your insurance broker for binding coverage decisions.", { align: "center" });
+}
+
+// ============================================
+// AUTO DEALER — PHASE 4-7 (AD-012 through AD-029)
+// ============================================
+
+// AD-012 F&I Menu & Product Presentation
+function renderFiMenu(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+
+  doc.fontSize(16)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text("F&I PRODUCT MENU", { align: "center" });
+  doc.moveDown(0.3);
+
+  doc.fontSize(10).font("Helvetica").fillColor(COLORS.textLight)
+    .text(`Deal: ${data.dealNumber || data.stockNumber || "\u2014"} | Customer: ${data.customerName || "\u2014"}`, { align: "center" });
+  doc.moveDown(1.5);
+
+  // Product lineup
+  const products = data.products || data.items || [];
+  if (products.length > 0) {
+    doc.fontSize(FONTS.subheading.size).font(FONTS.subheading.font).fillColor(primaryColor(brand)).text("Product Lineup");
+    doc.moveDown(0.3);
+    const prodRows = products.map(p => [
+      typeof p === "string" ? p : p.name || p.product || "",
+      typeof p === "string" ? "" : p.term || "\u2014",
+      typeof p === "string" ? "" : p.coverage || "\u2014",
+      typeof p === "string" ? "" : p.price ? fmtCurrency(p.price) : "\u2014",
+      typeof p === "string" ? "" : p.payment ? fmtCurrency(p.payment) : "\u2014",
+      typeof p === "string" ? "" : p.status || "Offered",
+    ]);
+    renderSimpleTable(doc, { headers: ["Product", "Term", "Coverage", "Price", "Mo. Payment Impact", "Status"], rows: prodRows }, brand);
+    doc.moveDown(0.5);
+  }
+
+  // Package options
+  const packages = data.packages || [];
+  if (packages.length > 0) {
+    doc.fontSize(FONTS.subheading.size).font(FONTS.subheading.font).fillColor(primaryColor(brand)).text("Package Options");
+    doc.moveDown(0.3);
+    const pkgRows = packages.map(p => [
+      p.name || "",
+      p.products ? String(p.products.length || 0) : "\u2014",
+      p.totalPrice ? fmtCurrency(p.totalPrice) : "\u2014",
+      p.monthlyImpact ? fmtCurrency(p.monthlyImpact) : "\u2014",
+    ]);
+    renderSimpleTable(doc, { headers: ["Package", "Products", "Total Price", "Monthly Impact"], rows: pkgRows }, brand);
+    doc.moveDown(0.5);
+  }
+
+  // Pricing disclosure
+  doc.moveDown(1);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text(data.disclosure || "All products are optional. Pricing shown is retail. Purchase of these products is not required to obtain financing. Declining products will not affect your credit terms.", { align: "center" });
+}
+
+// AD-013 F&I Compliance
+function renderDealJacketChecklist(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+
+  doc.fontSize(16)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text("DEAL JACKET COMPLIANCE CHECKLIST", { align: "center" });
+  doc.moveDown(0.3);
+
+  doc.fontSize(10).font("Helvetica").fillColor(COLORS.textLight)
+    .text(`Deal: ${data.dealNumber || "\u2014"} | Customer: ${data.customerName || "\u2014"} | Date: ${data.date || "\u2014"}`, { align: "center" });
+  doc.moveDown(1.5);
+
+  const items = data.items || data.checklist || [];
+  if (items.length > 0) {
+    const rows = items.map(item => [
+      typeof item === "string" ? item : item.document || item.name || "",
+      typeof item === "string" ? "" : item.required ? "Required" : "Optional",
+      typeof item === "string" ? "" : item.present ? "Present" : "MISSING",
+      typeof item === "string" ? "" : item.notes || "",
+    ]);
+    renderSimpleTable(doc, { headers: ["Document", "Requirement", "Status", "Notes"], rows }, brand);
+  }
+
+  const missing = (data.items || data.checklist || []).filter(i => i && !i.present);
+  if (missing.length > 0) {
+    doc.moveDown(1);
+    doc.fontSize(FONTS.body.size).font("Helvetica-Bold").fillColor("#dc2626")
+      .text(`${missing.length} document(s) missing — deal jacket is INCOMPLETE.`);
+  }
+
+  doc.moveDown(2);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("This checklist is for compliance tracking purposes. Consult your compliance officer for deal-specific requirements.", { align: "center" });
+}
+
+function renderAdverseActionNotice(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+
+  doc.fontSize(16)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text("ADVERSE ACTION NOTICE", { align: "center" });
+  doc.moveDown(0.3);
+
+  doc.fontSize(10).font("Helvetica").fillColor(COLORS.textLight)
+    .text(`Date: ${data.date || new Date().toLocaleDateString("en-US")}`, { align: "center" });
+  doc.moveDown(1.5);
+
+  const infoRows = [
+    data.customerName ? ["Applicant", data.customerName] : null,
+    data.applicationDate ? ["Application Date", data.applicationDate] : null,
+    data.creditor ? ["Creditor", data.creditor] : null,
+    data.actionTaken ? ["Action Taken", data.actionTaken] : null,
+  ].filter(Boolean);
+  if (infoRows.length > 0) renderSimpleTable(doc, { headers: ["Field", "Value"], rows: infoRows }, brand);
+  doc.moveDown(0.5);
+
+  // Reasons
+  const reasons = data.reasons || [];
+  if (reasons.length > 0) {
+    doc.fontSize(FONTS.subheading.size).font(FONTS.subheading.font).fillColor(primaryColor(brand)).text("Reason(s) for Adverse Action");
+    doc.moveDown(0.3);
+    reasons.forEach((r, i) => {
+      doc.fontSize(FONTS.body.size).font(FONTS.body.font).fillColor(COLORS.text)
+        .text(`${i + 1}. ${typeof r === "string" ? r : r.reason || r.description || ""}`);
+    });
+  }
+
+  doc.moveDown(2);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("This notice is provided in compliance with the Equal Credit Opportunity Act and Fair Credit Reporting Act. Consult legal counsel for compliance requirements.", { align: "center" });
+}
+
+function renderFiComplianceDashboard(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+
+  doc.fontSize(16)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text("F&I COMPLIANCE DASHBOARD", { align: "center" });
+  doc.moveDown(0.3);
+
+  doc.fontSize(10).font("Helvetica").fillColor(COLORS.textLight)
+    .text(`Period: ${data.period || "\u2014"} | Generated: ${data.date || new Date().toLocaleDateString("en-US")}`, { align: "center" });
+  doc.moveDown(1.5);
+
+  // KPIs
+  const metrics = [
+    data.totalDeals != null ? ["Total Deals Reviewed", String(data.totalDeals)] : null,
+    data.compliantRate != null ? ["Compliance Rate", data.compliantRate + "%"] : null,
+    data.mlaScreened != null ? ["MLA Screenings", String(data.mlaScreened)] : null,
+    data.equalTreatmentScore != null ? ["Equal Treatment Score", data.equalTreatmentScore + "%"] : null,
+    data.exceptions != null ? ["Exceptions Flagged", String(data.exceptions)] : null,
+  ].filter(Boolean);
+  if (metrics.length > 0) renderSimpleTable(doc, { headers: ["Metric", "Value"], rows: metrics }, brand);
+  doc.moveDown(0.5);
+
+  // Exceptions
+  const exceptions = data.exceptionList || [];
+  if (exceptions.length > 0) {
+    doc.fontSize(FONTS.subheading.size).font(FONTS.subheading.font).fillColor("#dc2626").text("Compliance Exceptions");
+    doc.moveDown(0.3);
+    const excRows = exceptions.map(e => [
+      e.dealNumber || e.deal || "",
+      e.type || e.category || "",
+      e.description || "",
+      e.status || "Open",
+    ]);
+    renderSimpleTable(doc, { headers: ["Deal", "Type", "Description", "Status"], rows: excRows }, brand);
+  }
+
+  doc.moveDown(2);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("This dashboard is for internal compliance monitoring. Consult your compliance officer for regulatory guidance.", { align: "center" });
+}
+
+// AD-014 Lender Relations & Funding
+function renderLenderScorecard(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+
+  doc.fontSize(16)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text("LENDER PERFORMANCE SCORECARD", { align: "center" });
+  doc.moveDown(0.3);
+
+  doc.fontSize(10).font("Helvetica").fillColor(COLORS.textLight)
+    .text(`Period: ${data.period || "\u2014"} | Generated: ${data.date || new Date().toLocaleDateString("en-US")}`, { align: "center" });
+  doc.moveDown(1.5);
+
+  const lenders = data.lenders || data.items || [];
+  if (lenders.length > 0) {
+    const rows = lenders.map(l => [
+      l.name || l.lender || "",
+      l.dealsSubmitted != null ? String(l.dealsSubmitted) : "\u2014",
+      l.approvalRate != null ? l.approvalRate + "%" : "\u2014",
+      l.avgDaysToFund != null ? String(l.avgDaysToFund) : "\u2014",
+      l.stipRate != null ? l.stipRate + "%" : "\u2014",
+      l.chargebackRate != null ? l.chargebackRate + "%" : "\u2014",
+    ]);
+    renderSimpleTable(doc, { headers: ["Lender", "Deals", "Approval %", "Avg Days to Fund", "Stip Rate", "Chargeback %"], rows }, brand);
+  }
+
+  doc.moveDown(2);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("This scorecard is for internal lender evaluation. Lender relationships should be reviewed with your F&I director.", { align: "center" });
+}
+
+// AD-016 Service Scheduling & Workflow
+function renderRoCycleTime(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+
+  doc.fontSize(16)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text("REPAIR ORDER CYCLE TIME REPORT", { align: "center" });
+  doc.moveDown(0.3);
+
+  doc.fontSize(10).font("Helvetica").fillColor(COLORS.textLight)
+    .text(`Period: ${data.period || "\u2014"} | Department: ${data.department || "Service"}`, { align: "center" });
+  doc.moveDown(1.5);
+
+  const metrics = [
+    data.totalROs != null ? ["Total ROs Closed", String(data.totalROs)] : null,
+    data.avgCycleTime != null ? ["Average Cycle Time", data.avgCycleTime + " hours"] : null,
+    data.waiterAvg != null ? ["Waiter Avg Cycle Time", data.waiterAvg + " hours"] : null,
+    data.dropOffAvg != null ? ["Drop-Off Avg Cycle Time", data.dropOffAvg + " hours"] : null,
+    data.promiseTimeHitRate != null ? ["Promise Time Hit Rate", data.promiseTimeHitRate + "%"] : null,
+  ].filter(Boolean);
+  if (metrics.length > 0) renderSimpleTable(doc, { headers: ["Metric", "Value"], rows: metrics }, brand);
+  doc.moveDown(0.5);
+
+  const techs = data.technicians || [];
+  if (techs.length > 0) {
+    doc.fontSize(FONTS.subheading.size).font(FONTS.subheading.font).fillColor(primaryColor(brand)).text("By Technician");
+    doc.moveDown(0.3);
+    const tRows = techs.map(t => [
+      t.name || "",
+      t.rosCompleted != null ? String(t.rosCompleted) : "\u2014",
+      t.avgCycleTime != null ? t.avgCycleTime + " hrs" : "\u2014",
+      t.efficiency != null ? t.efficiency + "%" : "\u2014",
+    ]);
+    renderSimpleTable(doc, { headers: ["Technician", "ROs", "Avg Cycle Time", "Efficiency"], rows: tRows }, brand);
+  }
+
+  doc.moveDown(2);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("Cycle time measured from RO open to customer delivery. Data for internal service department optimization.", { align: "center" });
+}
+
+// AD-017 Service Upsell & MPI
+function renderMpiReport(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+
+  doc.fontSize(16)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text("MULTI-POINT INSPECTION REPORT", { align: "center" });
+  doc.moveDown(0.3);
+
+  doc.fontSize(10).font("Helvetica").fillColor(COLORS.textLight)
+    .text(`Vehicle: ${data.year || ""} ${data.make || ""} ${data.model || ""} | VIN: ${data.vin || "\u2014"} | Mileage: ${data.mileage || "\u2014"}`, { align: "center" });
+  doc.moveDown(1.5);
+
+  const inspections = data.items || data.inspections || [];
+  if (inspections.length > 0) {
+    const rows = inspections.map(item => [
+      typeof item === "string" ? item : item.component || item.name || "",
+      typeof item === "string" ? "" : item.condition || "\u2014",
+      typeof item === "string" ? "" : item.action || item.recommendation || "",
+      typeof item === "string" ? "" : item.estimatedCost ? fmtCurrency(item.estimatedCost) : "\u2014",
+    ]);
+    renderSimpleTable(doc, { headers: ["Component", "Condition", "Recommendation", "Est. Cost"], rows }, brand);
+  }
+
+  doc.moveDown(2);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("This inspection is for informational purposes. All recommendations subject to customer authorization.", { align: "center" });
+}
+
+function renderAdvisorScorecard(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+
+  doc.fontSize(16)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text("SERVICE ADVISOR SCORECARD", { align: "center" });
+  doc.moveDown(0.3);
+
+  doc.fontSize(10).font("Helvetica").fillColor(COLORS.textLight)
+    .text(`Period: ${data.period || "\u2014"}`, { align: "center" });
+  doc.moveDown(1.5);
+
+  const advisors = data.advisors || data.items || [];
+  if (advisors.length > 0) {
+    const rows = advisors.map(a => [
+      a.name || "",
+      a.rosWritten != null ? String(a.rosWritten) : "\u2014",
+      a.hoursPerRo != null ? String(a.hoursPerRo) : "\u2014",
+      a.effectiveLaborRate != null ? fmtCurrency(a.effectiveLaborRate) : "\u2014",
+      a.csi != null ? String(a.csi) : "\u2014",
+      a.upsellRate != null ? a.upsellRate + "%" : "\u2014",
+    ]);
+    renderSimpleTable(doc, { headers: ["Advisor", "ROs Written", "Hrs/RO", "Eff. Labor Rate", "CSI", "Upsell %"], rows }, brand);
+  }
+
+  doc.moveDown(2);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("Advisor performance data for internal department management. Review with service director.", { align: "center" });
+}
+
+function renderServiceToSalesAlert(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+
+  doc.fontSize(16)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text("SERVICE-TO-SALES OPPORTUNITY ALERT", { align: "center" });
+  doc.moveDown(0.3);
+
+  doc.fontSize(10).font("Helvetica").fillColor(COLORS.textLight)
+    .text(`Generated: ${data.date || new Date().toLocaleDateString("en-US")}`, { align: "center" });
+  doc.moveDown(1.5);
+
+  const infoRows = [
+    data.customerName ? ["Customer", data.customerName] : null,
+    data.vehicle ? ["Current Vehicle", data.vehicle] : null,
+    data.mileage ? ["Mileage", String(data.mileage)] : null,
+    data.estimatedRepairCost ? ["Estimated Repair Cost", fmtCurrency(data.estimatedRepairCost)] : null,
+    data.estimatedWholesaleValue ? ["Est. Wholesale Value", fmtCurrency(data.estimatedWholesaleValue)] : null,
+    data.repairToValueRatio ? ["Repair-to-Value Ratio", data.repairToValueRatio + "%"] : null,
+    data.equityPosition ? ["Equity Position", fmtCurrency(data.equityPosition)] : null,
+  ].filter(Boolean);
+  if (infoRows.length > 0) renderSimpleTable(doc, { headers: ["Item", "Value"], rows: infoRows }, brand);
+
+  doc.moveDown(2);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("Service-to-sales alert for internal use. Customer contact should follow dealership sales process and TCPA requirements.", { align: "center" });
+}
+
+// AD-018 Parts Inventory & Ordering
+function renderFillRateReport(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+
+  doc.fontSize(16)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text("PARTS FILL RATE REPORT", { align: "center" });
+  doc.moveDown(0.3);
+
+  doc.fontSize(10).font("Helvetica").fillColor(COLORS.textLight)
+    .text(`Period: ${data.period || "\u2014"} | Target: ${data.target || "85"}%`, { align: "center" });
+  doc.moveDown(1.5);
+
+  const metrics = [
+    data.overallFillRate != null ? ["Overall Fill Rate", data.overallFillRate + "%"] : null,
+    data.totalRequests != null ? ["Total Parts Requests", String(data.totalRequests)] : null,
+    data.firstTimeFills != null ? ["First-Time Fills", String(data.firstTimeFills)] : null,
+    data.stockOuts != null ? ["Stock-Outs", String(data.stockOuts)] : null,
+    data.emergencyOrders != null ? ["Emergency Orders", String(data.emergencyOrders)] : null,
+  ].filter(Boolean);
+  if (metrics.length > 0) renderSimpleTable(doc, { headers: ["Metric", "Value"], rows: metrics }, brand);
+  doc.moveDown(0.5);
+
+  const categories = data.categories || [];
+  if (categories.length > 0) {
+    doc.fontSize(FONTS.subheading.size).font(FONTS.subheading.font).fillColor(primaryColor(brand)).text("Fill Rate by Category");
+    doc.moveDown(0.3);
+    const catRows = categories.map(c => [
+      c.category || c.name || "",
+      c.fillRate != null ? c.fillRate + "%" : "\u2014",
+      c.stockOuts != null ? String(c.stockOuts) : "\u2014",
+    ]);
+    renderSimpleTable(doc, { headers: ["Category", "Fill Rate", "Stock-Outs"], rows: catRows }, brand);
+  }
+
+  doc.moveDown(2);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("Parts fill rate data for inventory optimization. Review with parts manager.", { align: "center" });
+}
+
+// AD-019 Warranty Administration
+function renderWarrantyClaimReview(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+
+  doc.fontSize(16)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text("WARRANTY CLAIM REVIEW", { align: "center" });
+  doc.moveDown(0.3);
+
+  doc.fontSize(10).font("Helvetica").fillColor(COLORS.textLight)
+    .text(`Claim: ${data.claimNumber || "\u2014"} | RO: ${data.roNumber || "\u2014"} | VIN: ${data.vin || "\u2014"}`, { align: "center" });
+  doc.moveDown(1.5);
+
+  const details = [
+    data.vehicleDescription ? ["Vehicle", data.vehicleDescription] : null,
+    data.mileage ? ["Mileage", String(data.mileage)] : null,
+    data.complaint ? ["Customer Complaint", data.complaint] : null,
+    data.cause ? ["Cause", data.cause] : null,
+    data.correction ? ["Correction", data.correction] : null,
+    data.opCode ? ["Op Code", data.opCode] : null,
+    data.laborHours ? ["Labor Hours", String(data.laborHours)] : null,
+    data.laborAmount ? ["Labor Amount", fmtCurrency(data.laborAmount)] : null,
+    data.partsAmount ? ["Parts Amount", fmtCurrency(data.partsAmount)] : null,
+    data.totalClaim ? ["Total Claim", fmtCurrency(data.totalClaim)] : null,
+  ].filter(Boolean);
+  if (details.length > 0) renderSimpleTable(doc, { headers: ["Item", "Value"], rows: details }, brand);
+
+  // Review findings
+  const findings = data.findings || [];
+  if (findings.length > 0) {
+    doc.moveDown(0.5);
+    doc.fontSize(FONTS.subheading.size).font(FONTS.subheading.font).fillColor(primaryColor(brand)).text("Review Findings");
+    doc.moveDown(0.3);
+    findings.forEach(f => {
+      doc.fontSize(FONTS.body.size).font(FONTS.body.font).fillColor(COLORS.text)
+        .text(`  - ${typeof f === "string" ? f : f.finding || f.description || ""}`);
+    });
+  }
+
+  doc.moveDown(2);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("Pre-submission claim review. Verify op codes and documentation before submitting to manufacturer.", { align: "center" });
+}
+
+function renderWarrantyAuditPrep(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+
+  doc.fontSize(16)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text("WARRANTY AUDIT PREPARATION", { align: "center" });
+  doc.moveDown(0.3);
+
+  doc.fontSize(10).font("Helvetica").fillColor(COLORS.textLight)
+    .text(`Manufacturer: ${data.manufacturer || "\u2014"} | Audit Date: ${data.auditDate || "TBD"}`, { align: "center" });
+  doc.moveDown(1.5);
+
+  // Audit readiness metrics
+  const readiness = [
+    data.claimsInScope != null ? ["Claims in Audit Scope", String(data.claimsInScope)] : null,
+    data.partsRetained != null ? ["Parts Retained", String(data.partsRetained)] : null,
+    data.partsRetentionRate != null ? ["Parts Retention Rate", data.partsRetentionRate + "%"] : null,
+    data.documentationComplete != null ? ["Documentation Complete", data.documentationComplete + "%"] : null,
+    data.estimatedExposure ? ["Estimated Audit Exposure", fmtCurrency(data.estimatedExposure)] : null,
+  ].filter(Boolean);
+  if (readiness.length > 0) renderSimpleTable(doc, { headers: ["Item", "Value"], rows: readiness }, brand);
+  doc.moveDown(0.5);
+
+  // Checklist
+  const checklist = data.checklist || [];
+  if (checklist.length > 0) {
+    doc.fontSize(FONTS.subheading.size).font(FONTS.subheading.font).fillColor(primaryColor(brand)).text("Preparation Checklist");
+    doc.moveDown(0.3);
+    const chkRows = checklist.map(c => [
+      typeof c === "string" ? c : c.task || c.item || "",
+      typeof c === "string" ? "" : c.status || "Pending",
+      typeof c === "string" ? "" : c.assignee || "\u2014",
+    ]);
+    renderSimpleTable(doc, { headers: ["Task", "Status", "Assigned To"], rows: chkRows }, brand);
+  }
+
+  doc.moveDown(2);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("Audit preparation summary. Consult your warranty administrator and compliance officer for complete audit readiness.", { align: "center" });
+}
+
+function renderWarrantyDashboard(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+
+  doc.fontSize(16)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text("WARRANTY PERFORMANCE DASHBOARD", { align: "center" });
+  doc.moveDown(0.3);
+
+  doc.fontSize(10).font("Helvetica").fillColor(COLORS.textLight)
+    .text(`Period: ${data.period || "\u2014"}`, { align: "center" });
+  doc.moveDown(1.5);
+
+  const metrics = [
+    data.totalClaims != null ? ["Total Claims Submitted", String(data.totalClaims)] : null,
+    data.approvalRate != null ? ["Approval Rate", data.approvalRate + "%"] : null,
+    data.rejectionRate != null ? ["Rejection Rate", data.rejectionRate + "%"] : null,
+    data.totalReimbursement ? ["Total Reimbursement", fmtCurrency(data.totalReimbursement)] : null,
+    data.avgClaimAmount ? ["Avg Claim Amount", fmtCurrency(data.avgClaimAmount)] : null,
+    data.avgDaysToPayment != null ? ["Avg Days to Payment", String(data.avgDaysToPayment)] : null,
+  ].filter(Boolean);
+  if (metrics.length > 0) renderSimpleTable(doc, { headers: ["Metric", "Value"], rows: metrics }, brand);
+
+  doc.moveDown(2);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("Warranty performance data for internal department management. Review with service director.", { align: "center" });
+}
+
+// AD-020 Body Shop Management
+function renderBodyShopCycleTime(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+
+  doc.fontSize(16)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text("BODY SHOP CYCLE TIME REPORT", { align: "center" });
+  doc.moveDown(0.3);
+
+  doc.fontSize(10).font("Helvetica").fillColor(COLORS.textLight)
+    .text(`Period: ${data.period || "\u2014"} | Target: ${data.targetCycleTime || "\u2014"} days`, { align: "center" });
+  doc.moveDown(1.5);
+
+  const metrics = [
+    data.totalJobs != null ? ["Total Jobs Closed", String(data.totalJobs)] : null,
+    data.avgCycleTime != null ? ["Avg Cycle Time (keys-to-keys)", data.avgCycleTime + " days"] : null,
+    data.avgTouchTime != null ? ["Avg Touch Time", data.avgTouchTime + " days"] : null,
+    data.supplementRate != null ? ["Supplement Rate", data.supplementRate + "%"] : null,
+    data.csi != null ? ["CSI Score", String(data.csi)] : null,
+  ].filter(Boolean);
+  if (metrics.length > 0) renderSimpleTable(doc, { headers: ["Metric", "Value"], rows: metrics }, brand);
+
+  doc.moveDown(2);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("Cycle time measured keys-to-keys. Data for collision center optimization.", { align: "center" });
+}
+
+function renderDrpScorecard(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+
+  doc.fontSize(16)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text("DRP SCORECARD", { align: "center" });
+  doc.moveDown(0.3);
+
+  doc.fontSize(10).font("Helvetica").fillColor(COLORS.textLight)
+    .text(`Period: ${data.period || "\u2014"}`, { align: "center" });
+  doc.moveDown(1.5);
+
+  const programs = data.programs || data.items || [];
+  if (programs.length > 0) {
+    const rows = programs.map(p => [
+      p.insurer || p.name || "",
+      p.referrals != null ? String(p.referrals) : "\u2014",
+      p.cycleTime != null ? p.cycleTime + " days" : "\u2014",
+      p.csi != null ? String(p.csi) : "\u2014",
+      p.supplementRate != null ? p.supplementRate + "%" : "\u2014",
+      p.severity ? fmtCurrency(p.severity) : "\u2014",
+    ]);
+    renderSimpleTable(doc, { headers: ["Insurer", "Referrals", "Cycle Time", "CSI", "Supplement %", "Avg Severity"], rows }, brand);
+  }
+
+  doc.moveDown(2);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("DRP performance data for insurer relationship management. Review with body shop manager.", { align: "center" });
+}
+
+// AD-021 Customer Retention & Lifecycle
+function renderRetentionDashboard(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+
+  doc.fontSize(16)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text("CUSTOMER RETENTION DASHBOARD", { align: "center" });
+  doc.moveDown(0.3);
+
+  doc.fontSize(10).font("Helvetica").fillColor(COLORS.textLight)
+    .text(`Period: ${data.period || "\u2014"}`, { align: "center" });
+  doc.moveDown(1.5);
+
+  const metrics = [
+    data.serviceRetentionRate != null ? ["Service Retention Rate", data.serviceRetentionRate + "%"] : null,
+    data.repurchaseRate != null ? ["Repurchase Rate", data.repurchaseRate + "%"] : null,
+    data.equityOpportunities != null ? ["Equity Mining Opportunities", String(data.equityOpportunities)] : null,
+    data.leaseMaturities != null ? ["Upcoming Lease Maturities", String(data.leaseMaturities)] : null,
+    data.serviceToSalesLeads != null ? ["Service-to-Sales Leads", String(data.serviceToSalesLeads)] : null,
+    data.lifetimeValue ? ["Avg Customer Lifetime Value", fmtCurrency(data.lifetimeValue)] : null,
+  ].filter(Boolean);
+  if (metrics.length > 0) renderSimpleTable(doc, { headers: ["Metric", "Value"], rows: metrics }, brand);
+
+  doc.moveDown(2);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("Retention data for customer lifecycle management. Review with sales and service leadership.", { align: "center" });
+}
+
+function renderCampaignPerformance(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+
+  doc.fontSize(16)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text("RETENTION CAMPAIGN PERFORMANCE", { align: "center" });
+  doc.moveDown(0.3);
+
+  doc.fontSize(10).font("Helvetica").fillColor(COLORS.textLight)
+    .text(`Period: ${data.period || "\u2014"}`, { align: "center" });
+  doc.moveDown(1.5);
+
+  const campaigns = data.campaigns || data.items || [];
+  if (campaigns.length > 0) {
+    const rows = campaigns.map(c => [
+      c.name || c.campaign || "",
+      c.sent != null ? String(c.sent) : "\u2014",
+      c.opened != null ? String(c.opened) : "\u2014",
+      c.responded != null ? String(c.responded) : "\u2014",
+      c.converted != null ? String(c.converted) : "\u2014",
+      c.revenue ? fmtCurrency(c.revenue) : "\u2014",
+    ]);
+    renderSimpleTable(doc, { headers: ["Campaign", "Sent", "Opened", "Responded", "Converted", "Revenue"], rows }, brand);
+  }
+
+  doc.moveDown(2);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("Campaign performance data for retention optimization. TCPA consent verified before all customer communications.", { align: "center" });
+}
+
+// AD-022 Reputation Management
+function renderReputationDashboard(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+
+  doc.fontSize(16)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text("REPUTATION MANAGEMENT DASHBOARD", { align: "center" });
+  doc.moveDown(0.3);
+
+  doc.fontSize(10).font("Helvetica").fillColor(COLORS.textLight)
+    .text(`Period: ${data.period || "\u2014"} | Dealership: ${data.dealershipName || "\u2014"}`, { align: "center" });
+  doc.moveDown(1.5);
+
+  const metrics = [
+    data.googleRating != null ? ["Google Rating", String(data.googleRating)] : null,
+    data.googleReviewCount != null ? ["Google Review Count", String(data.googleReviewCount)] : null,
+    data.yelpRating != null ? ["Yelp Rating", String(data.yelpRating)] : null,
+    data.dealerRaterRating != null ? ["DealerRater Rating", String(data.dealerRaterRating)] : null,
+    data.newReviewsThisPeriod != null ? ["New Reviews This Period", String(data.newReviewsThisPeriod)] : null,
+    data.responseRate != null ? ["Response Rate", data.responseRate + "%"] : null,
+    data.avgResponseTime != null ? ["Avg Response Time", data.avgResponseTime + " hours"] : null,
+  ].filter(Boolean);
+  if (metrics.length > 0) renderSimpleTable(doc, { headers: ["Metric", "Value"], rows: metrics }, brand);
+
+  doc.moveDown(2);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("Reputation data aggregated from public review platforms. Review with general manager.", { align: "center" });
+}
+
+function renderSentimentReport(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+
+  doc.fontSize(16)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text("SENTIMENT ANALYSIS REPORT", { align: "center" });
+  doc.moveDown(0.3);
+
+  doc.fontSize(10).font("Helvetica").fillColor(COLORS.textLight)
+    .text(`Period: ${data.period || "\u2014"}`, { align: "center" });
+  doc.moveDown(1.5);
+
+  const themes = data.themes || data.items || [];
+  if (themes.length > 0) {
+    const rows = themes.map(t => [
+      t.theme || t.topic || "",
+      t.mentions != null ? String(t.mentions) : "\u2014",
+      t.sentiment || "\u2014",
+      t.department || "\u2014",
+      t.trend || "\u2014",
+    ]);
+    renderSimpleTable(doc, { headers: ["Theme", "Mentions", "Sentiment", "Department", "Trend"], rows }, brand);
+  }
+
+  doc.moveDown(2);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("Sentiment analysis from public reviews. Themes identified by AI — human review recommended for operational changes.", { align: "center" });
+}
+
+// AD-023 Digital Marketing & Advertising
+function renderMarketingDashboard(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+
+  doc.fontSize(16)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text("DIGITAL MARKETING DASHBOARD", { align: "center" });
+  doc.moveDown(0.3);
+
+  doc.fontSize(10).font("Helvetica").fillColor(COLORS.textLight)
+    .text(`Period: ${data.period || "\u2014"}`, { align: "center" });
+  doc.moveDown(1.5);
+
+  const channels = data.channels || data.items || [];
+  if (channels.length > 0) {
+    const rows = channels.map(c => [
+      c.channel || c.source || "",
+      c.spend ? fmtCurrency(c.spend) : "\u2014",
+      c.leads != null ? String(c.leads) : "\u2014",
+      c.appointments != null ? String(c.appointments) : "\u2014",
+      c.sales != null ? String(c.sales) : "\u2014",
+      c.costPerSale ? fmtCurrency(c.costPerSale) : "\u2014",
+    ]);
+    renderSimpleTable(doc, { headers: ["Channel", "Spend", "Leads", "Appts", "Sales", "Cost/Sale"], rows }, brand);
+  }
+
+  // Totals
+  if (data.totalSpend || data.totalSales) {
+    doc.moveDown(0.5);
+    const totRows = [
+      data.totalSpend ? ["Total Ad Spend", fmtCurrency(data.totalSpend)] : null,
+      data.totalLeads != null ? ["Total Leads", String(data.totalLeads)] : null,
+      data.totalSales != null ? ["Total Attributed Sales", String(data.totalSales)] : null,
+      data.overallCostPerSale ? ["Overall Cost/Sale", fmtCurrency(data.overallCostPerSale)] : null,
+    ].filter(Boolean);
+    renderSimpleTable(doc, { headers: ["Metric", "Value"], rows: totRows }, brand);
+  }
+
+  doc.moveDown(2);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("Attribution based on lead source tracking. Multi-touch attribution applied where applicable.", { align: "center" });
+}
+
+// AD-025 Deal Accounting & Posting
+function renderDailyDoc(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+
+  doc.fontSize(16)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text("DAILY OPERATING CONTROL", { align: "center" });
+  doc.moveDown(0.3);
+
+  doc.fontSize(10).font("Helvetica").fillColor(COLORS.textLight)
+    .text(`Date: ${data.date || new Date().toLocaleDateString("en-US")}`, { align: "center" });
+  doc.moveDown(1.5);
+
+  const metrics = [
+    data.dealsPending != null ? ["Deals Pending", String(data.dealsPending)] : null,
+    data.dealsPosted != null ? ["Deals Posted Today", String(data.dealsPosted)] : null,
+    data.citsBalance ? ["Contracts-in-Transit", fmtCurrency(data.citsBalance)] : null,
+    data.reserveReceivable ? ["Finance Reserve Receivable", fmtCurrency(data.reserveReceivable)] : null,
+    data.floorPlanExposure ? ["Floor Plan Exposure", fmtCurrency(data.floorPlanExposure)] : null,
+    data.cashPosition ? ["Cash Position", fmtCurrency(data.cashPosition)] : null,
+  ].filter(Boolean);
+  if (metrics.length > 0) renderSimpleTable(doc, { headers: ["Item", "Value"], rows: metrics }, brand);
+
+  // Department summary
+  const departments = data.departments || [];
+  if (departments.length > 0) {
+    doc.moveDown(0.5);
+    doc.fontSize(FONTS.subheading.size).font(FONTS.subheading.font).fillColor(primaryColor(brand)).text("Department Summary");
+    doc.moveDown(0.3);
+    const dRows = departments.map(d => [
+      d.name || "",
+      d.gross ? fmtCurrency(d.gross) : "\u2014",
+      d.units != null ? String(d.units) : "\u2014",
+    ]);
+    renderSimpleTable(doc, { headers: ["Department", "Gross Profit", "Units/ROs"], rows: dRows }, brand);
+  }
+
+  doc.moveDown(2);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("Daily operating control for internal management. Verify against DMS accounting records.", { align: "center" });
+}
+
+function renderCommissionStatement(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+
+  doc.fontSize(16)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text("COMMISSION STATEMENT", { align: "center" });
+  doc.moveDown(0.3);
+
+  doc.fontSize(10).font("Helvetica").fillColor(COLORS.textLight)
+    .text(`Employee: ${data.employeeName || "\u2014"} | Period: ${data.period || "\u2014"}`, { align: "center" });
+  doc.moveDown(1.5);
+
+  const deals = data.deals || data.items || [];
+  if (deals.length > 0) {
+    const rows = deals.map(d => [
+      d.dealNumber || d.stock || "",
+      d.customer || "",
+      d.vehicle || "",
+      d.frontGross ? fmtCurrency(d.frontGross) : "\u2014",
+      d.backGross ? fmtCurrency(d.backGross) : "\u2014",
+      d.commission ? fmtCurrency(d.commission) : "\u2014",
+    ]);
+    renderSimpleTable(doc, { headers: ["Deal #", "Customer", "Vehicle", "Front Gross", "Back Gross", "Commission"], rows }, brand);
+  }
+
+  // Totals
+  const totals = [
+    data.totalDeals != null ? ["Total Deals", String(data.totalDeals)] : null,
+    data.totalGross ? ["Total Gross", fmtCurrency(data.totalGross)] : null,
+    data.totalCommission ? ["Total Commission", fmtCurrency(data.totalCommission)] : null,
+    data.guarantee ? ["Minimum Guarantee", fmtCurrency(data.guarantee)] : null,
+    data.bonus ? ["Bonus", fmtCurrency(data.bonus)] : null,
+    data.totalPay ? ["Total Pay", fmtCurrency(data.totalPay)] : null,
+  ].filter(Boolean);
+  if (totals.length > 0) {
+    doc.moveDown(0.5);
+    renderSimpleTable(doc, { headers: ["Item", "Amount"], rows: totals }, brand);
+  }
+
+  doc.moveDown(2);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("Commission statement for payroll purposes. Verify with business office before processing.", { align: "center" });
+}
+
+// AD-026 Regulatory Compliance & Audit
+function renderComplianceAssessment(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+
+  doc.fontSize(16)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text("COMPLIANCE SELF-ASSESSMENT", { align: "center" });
+  doc.moveDown(0.3);
+
+  doc.fontSize(10).font("Helvetica").fillColor(COLORS.textLight)
+    .text(`Assessment Date: ${data.date || new Date().toLocaleDateString("en-US")} | Assessor: ${data.assessor || "\u2014"}`, { align: "center" });
+  doc.moveDown(1.5);
+
+  // Summary score
+  if (data.overallScore != null) {
+    const scoreColor = data.overallScore >= 80 ? "#16a34a" : data.overallScore >= 60 ? "#d97706" : "#dc2626";
+    doc.fontSize(14).font("Helvetica-Bold").fillColor(scoreColor)
+      .text(`Overall Score: ${data.overallScore}%`, { align: "center" });
+    doc.moveDown(0.5);
+  }
+
+  const areas = data.areas || data.items || [];
+  if (areas.length > 0) {
+    const rows = areas.map(a => [
+      a.area || a.category || "",
+      a.score != null ? a.score + "%" : "\u2014",
+      a.findings != null ? String(a.findings) : "\u2014",
+      a.critical != null ? String(a.critical) : "\u2014",
+      a.riskLevel || "\u2014",
+    ]);
+    renderSimpleTable(doc, { headers: ["Area", "Score", "Findings", "Critical", "Risk Level"], rows }, brand);
+  }
+
+  doc.moveDown(2);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("Self-assessment for internal compliance monitoring. Consult qualified legal counsel for regulatory compliance guidance.", { align: "center" });
+}
+
+// AD-027 HR & Payroll Compliance
+function renderPayPlanSummary(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+
+  doc.fontSize(16)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text("PAY PLAN SUMMARY", { align: "center" });
+  doc.moveDown(0.3);
+
+  doc.fontSize(10).font("Helvetica").fillColor(COLORS.textLight)
+    .text(`Position: ${data.position || "\u2014"} | Effective: ${data.effectiveDate || "\u2014"}`, { align: "center" });
+  doc.moveDown(1.5);
+
+  const components = [
+    data.basePay ? ["Base Pay", fmtCurrency(data.basePay)] : null,
+    data.commissionRate ? ["Commission Rate", data.commissionRate + "%"] : null,
+    data.commissionBasis ? ["Commission Basis", data.commissionBasis] : null,
+    data.guarantee ? ["Monthly Guarantee", fmtCurrency(data.guarantee)] : null,
+    data.draw ? ["Draw Against Commission", fmtCurrency(data.draw)] : null,
+    data.bonusThreshold ? ["Bonus Threshold", String(data.bonusThreshold) + " units"] : null,
+    data.bonusAmount ? ["Bonus Amount", fmtCurrency(data.bonusAmount)] : null,
+    data.overtimeEligible != null ? ["Overtime Eligible", data.overtimeEligible ? "Yes" : "No"] : null,
+  ].filter(Boolean);
+  if (components.length > 0) renderSimpleTable(doc, { headers: ["Component", "Value"], rows: components }, brand);
+
+  doc.moveDown(2);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("Pay plan summary for compensation planning. Verify with HR and legal counsel for FLSA compliance.", { align: "center" });
+}
+
+// AD-028 Floor Plan & Cash Management
+function renderFinancialStatement(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+
+  doc.fontSize(16)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text("DEALERSHIP FINANCIAL STATEMENT", { align: "center" });
+  doc.moveDown(0.3);
+
+  doc.fontSize(10).font("Helvetica").fillColor(COLORS.textLight)
+    .text(`Period: ${data.period || "\u2014"} | Dealership: ${data.dealershipName || "\u2014"}`, { align: "center" });
+  doc.moveDown(1.5);
+
+  // Department P&L
+  const departments = data.departments || data.items || [];
+  if (departments.length > 0) {
+    const rows = departments.map(d => [
+      d.department || d.name || "",
+      d.revenue ? fmtCurrency(d.revenue) : "\u2014",
+      d.grossProfit ? fmtCurrency(d.grossProfit) : "\u2014",
+      d.expenses ? fmtCurrency(d.expenses) : "\u2014",
+      d.netProfit ? fmtCurrency(d.netProfit) : "\u2014",
+    ]);
+    renderSimpleTable(doc, { headers: ["Department", "Revenue", "Gross Profit", "Expenses", "Net Profit"], rows }, brand);
+  }
+
+  // Summary
+  const summary = [
+    data.totalRevenue ? ["Total Revenue", fmtCurrency(data.totalRevenue)] : null,
+    data.totalGrossProfit ? ["Total Gross Profit", fmtCurrency(data.totalGrossProfit)] : null,
+    data.totalExpenses ? ["Total Expenses", fmtCurrency(data.totalExpenses)] : null,
+    data.netIncome ? ["Net Income", fmtCurrency(data.netIncome)] : null,
+    data.serviceAbsorption != null ? ["Service Absorption", data.serviceAbsorption + "%"] : null,
+  ].filter(Boolean);
+  if (summary.length > 0) {
+    doc.moveDown(0.5);
+    renderSimpleTable(doc, { headers: ["Metric", "Value"], rows: summary }, brand);
+  }
+
+  doc.moveDown(2);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("Financial statement for internal management. Verify against audited financial records. NADA 20-Group format.", { align: "center" });
+}
+
+// AD-029 DMS & Technology Management
+function renderIntegrationMap(doc, data, brand, logoBuffer) {
+  addHeader(doc, brand, logoBuffer);
+
+  doc.fontSize(16)
+    .font("Helvetica-Bold")
+    .fillColor(primaryColor(brand))
+    .text("TECHNOLOGY INTEGRATION MAP", { align: "center" });
+  doc.moveDown(0.3);
+
+  doc.fontSize(10).font("Helvetica").fillColor(COLORS.textLight)
+    .text(`Dealership: ${data.dealershipName || "\u2014"} | Audit Date: ${data.date || new Date().toLocaleDateString("en-US")}`, { align: "center" });
+  doc.moveDown(1.5);
+
+  const systems = data.systems || data.items || [];
+  if (systems.length > 0) {
+    const rows = systems.map(s => [
+      typeof s === "string" ? s : s.name || s.system || "",
+      typeof s === "string" ? "" : s.vendor || "\u2014",
+      typeof s === "string" ? "" : s.category || "\u2014",
+      typeof s === "string" ? "" : s.integrations != null ? String(s.integrations) : "\u2014",
+      typeof s === "string" ? "" : s.healthStatus || "\u2014",
+      typeof s === "string" ? "" : s.monthlyCost ? fmtCurrency(s.monthlyCost) : "\u2014",
+    ]);
+    renderSimpleTable(doc, { headers: ["System", "Vendor", "Category", "Integrations", "Health", "Monthly Cost"], rows }, brand);
+  }
+
+  // Integration health summary
+  if (data.totalSystems || data.healthySystems) {
+    doc.moveDown(0.5);
+    const healthRows = [
+      data.totalSystems != null ? ["Total Systems", String(data.totalSystems)] : null,
+      data.healthySystems != null ? ["Healthy Integrations", String(data.healthySystems)] : null,
+      data.failedIntegrations != null ? ["Failed Integrations", String(data.failedIntegrations)] : null,
+      data.totalMonthlyCost ? ["Total Monthly Technology Cost", fmtCurrency(data.totalMonthlyCost)] : null,
+    ].filter(Boolean);
+    renderSimpleTable(doc, { headers: ["Metric", "Value"], rows: healthRows }, brand);
+  }
+
+  doc.moveDown(2);
+  doc.fontSize(FONTS.caption.size).font(FONTS.caption.font).fillColor(COLORS.textLight)
+    .text("Technology audit for internal IT management. Verify vendor contracts and pricing before renewal decisions.", { align: "center" });
 }
 
 module.exports = { generatePdf };

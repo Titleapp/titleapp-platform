@@ -1,0 +1,63 @@
+{
+  "id": "av_032_crew_scheduling_v0",
+  "version": "v0",
+  "domain": "aviation-scheduling",
+  "description": "Crew Scheduling & Roster — every assignment pre-validated for legality",
+  "required_inputs": [
+    "scheduling_horizon",
+    "crew_availability",
+    "flight_schedule",
+    "qualification_data"
+  ],
+  "hard_stops": [
+    {
+      "id": "assignment_illegal",
+      "label": "Assignment Fails Legality Check",
+      "logic": "Proposed assignment fails AV-009 duty limit check",
+      "eval": { "field": "assignment.legality_status", "operator": "==", "threshold": "illegal" }
+    },
+    {
+      "id": "quals_expired",
+      "label": "Qualification Expired",
+      "logic": "Pilot currency or type rating has lapsed for this assignment",
+      "eval": { "field": "pilot.quals_current", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "medical_expired",
+      "label": "Medical Certificate Expired",
+      "logic": "Pilot medical certificate has expired",
+      "eval": { "field": "pilot.medical_current", "operator": "==", "threshold": false }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "qualification_expiring_soon",
+      "label": "Qualification Expiring Soon",
+      "logic": "Pilot qualification expires within 30 days",
+      "eval": { "field": "pilot.nearest_qual_expiry_days", "operator": "<", "threshold": 30 }
+    },
+    {
+      "id": "duty_approaching_limit",
+      "label": "Duty Approaching Limit",
+      "logic": "Pilot approaching duty limit for scheduling period",
+      "eval": { "field": "pilot.scheduled_duty_pct", "operator": ">", "threshold": 85 }
+    },
+    {
+      "id": "single_qualified_pilot",
+      "label": "Single Qualified Pilot",
+      "logic": "Only one pilot qualified for this aircraft/mission type",
+      "eval": { "field": "assignment.qualified_pilot_count", "operator": "==", "threshold": 1 }
+    },
+    {
+      "id": "housing_coordination_needed",
+      "label": "Housing Coordination Needed",
+      "logic": "Schedule change requires crew housing update",
+      "eval": { "field": "assignment.requires_housing", "operator": "==", "threshold": true }
+    }
+  ],
+  "outputs": [
+    "av032-published-roster",
+    "av032-conflict-report",
+    "av032-legality-summary"
+  ]
+}

@@ -1,0 +1,77 @@
+{
+  "id": "ad_014_lender_relations_v1",
+  "version": "v1",
+  "domain": "auto-dealership",
+  "description": "Lender Relations management — monitors rate markup consistency, conditional delivery timelines, stipulation collection, lender performance, and funding cycle optimization",
+  "required_inputs": ["workspace_id", "deal_id", "lender_id"],
+  "hard_stops": [
+    {
+      "id": "no_workspace",
+      "logic": "workspace must be initialized before any lender relations operation",
+      "eval": { "type": "required_inputs_check" }
+    },
+    {
+      "id": "ai_disclosure_required",
+      "logic": "AI-generated lender recommendations are decision-support only — not binding financing commitments",
+      "eval": { "field": "deal.aiDisclosurePresented", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "data_integrity_check",
+      "logic": "all deal and lender data must be consistent — no mismatched approval terms or stale rate sheets",
+      "eval": { "field": "deal.dataIntegrityErrors", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "rate_markup_inconsistent",
+      "logic": "dealer reserve markup must be consistent across similar credit profiles — inconsistency creates ECOA fair lending risk",
+      "eval": { "field": "compliance.rateMarkupInconsistencyCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "conditional_delivery_exceeded",
+      "logic": "conditional delivery (spot delivery) has exceeded the state-mandated timeline — vehicle must be returned or deal restructured",
+      "eval": { "field": "deal.conditionalDeliveryDaysOverLimit", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "stips_not_collected",
+      "logic": "lender-required stipulations not collected — deal funding is at risk and contract may be unwound",
+      "eval": { "field": "deal.outstandingStipCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "approval_terms_mismatch",
+      "logic": "contracted deal terms do not match the lender's approval terms — contract must be rewritten",
+      "eval": { "field": "deal.approvalTermsMismatch", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "lender_program_expired",
+      "logic": "deal was submitted under a lender program or rate sheet that has expired — must reverify current terms",
+      "eval": { "field": "lender.programExpired", "operator": "==", "threshold": true }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "stips_aging",
+      "logic": "outstanding stipulations have been pending collection for more than 72 hours",
+      "eval": { "field": "deal.oldestStipAgingHours", "operator": ">", "threshold": 72 }
+    },
+    {
+      "id": "flat_threshold_exceeded",
+      "logic": "number of flat-rate deals with this lender exceeds the typical threshold — may affect dealer tier status",
+      "eval": { "field": "lender.flatDealPercentage", "operator": ">", "threshold": 25 }
+    },
+    {
+      "id": "lender_performance_declining",
+      "logic": "lender approval-to-funding conversion rate is declining over trailing 30 days",
+      "eval": { "field": "lender.conversionRateDeclinePct", "operator": ">", "threshold": 10 }
+    },
+    {
+      "id": "conditional_delivery_approaching_limit",
+      "logic": "conditional delivery is within 48 hours of the state-mandated deadline",
+      "eval": { "field": "deal.conditionalDeliveryHoursRemaining", "operator": "<", "threshold": 48 }
+    },
+    {
+      "id": "funding_cycle_slow",
+      "logic": "average funding cycle time exceeds the configured benchmark for this lender",
+      "eval": { "field": "lender.avgFundingCycleDays", "operator": ">", "threshold": 10 }
+    }
+  ],
+  "outputs": ["ad014-lender-guide", "ad014-stip-tracker", "ad014-funding-report", "ad014-lender-scorecard"]
+}

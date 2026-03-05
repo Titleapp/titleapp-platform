@@ -1,0 +1,63 @@
+{
+  "id": "av_004_aircraft_status_mel_v0",
+  "version": "v0",
+  "domain": "aviation-airworthiness",
+  "description": "Aircraft Status & MEL Tracker — real-time airworthiness for every tail on the certificate",
+  "required_inputs": [
+    "aircraft_tail",
+    "mel_deferrals",
+    "maintenance_records",
+    "ad_status"
+  ],
+  "hard_stops": [
+    {
+      "id": "aircraft_grounded",
+      "label": "Aircraft on Maintenance Hold",
+      "logic": "Aircraft on maintenance hold — no dispatch permitted",
+      "eval": { "field": "aircraft.maintenance_hold", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "mel_expired",
+      "label": "MEL Deferral Expired",
+      "logic": "MEL deferral past rectification interval — aircraft unairworthy",
+      "eval": { "field": "aircraft.mel_days_remaining", "operator": "<", "threshold": 0 }
+    },
+    {
+      "id": "ad_not_complied",
+      "label": "AD Overdue",
+      "logic": "Airworthiness directive overdue — aircraft unairworthy",
+      "eval": { "field": "aircraft.ad_overdue_count", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "inspection_overdue",
+      "label": "Inspection Overdue",
+      "logic": "Required inspection overdue — aircraft unairworthy",
+      "eval": { "field": "aircraft.inspection_overdue", "operator": "==", "threshold": true }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "mel_expiring_soon",
+      "label": "MEL Expiring Soon",
+      "logic": "MEL deferral expires within 48 hours",
+      "eval": { "field": "aircraft.mel_hours_remaining", "operator": "<", "threshold": 48 }
+    },
+    {
+      "id": "inspection_approaching",
+      "label": "Inspection Approaching",
+      "logic": "Required inspection due within 50 flight hours",
+      "eval": { "field": "aircraft.inspection_hours_remaining", "operator": "<", "threshold": 50 }
+    },
+    {
+      "id": "component_life_low",
+      "label": "Component Life Low",
+      "logic": "Life-limited component below 10% remaining life",
+      "eval": { "field": "aircraft.min_component_life_pct", "operator": "<", "threshold": 10 }
+    }
+  ],
+  "outputs": [
+    "av004-airworthiness-brief",
+    "av004-mel-status",
+    "av004-maintenance-due"
+  ]
+}

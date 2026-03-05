@@ -1,0 +1,77 @@
+{
+  "id": "ad_016_service_scheduling_v1",
+  "version": "v1",
+  "domain": "auto-dealership",
+  "description": "Service Scheduling and shop management — enforces estimate disclosure requirements, repair authorization limits, parts return obligations, and optimizes shop capacity and technician productivity",
+  "required_inputs": ["workspace_id", "ro_id"],
+  "hard_stops": [
+    {
+      "id": "no_workspace",
+      "logic": "workspace must be initialized before any service scheduling operation",
+      "eval": { "type": "required_inputs_check" }
+    },
+    {
+      "id": "ai_disclosure_required",
+      "logic": "AI-generated scheduling recommendations are decision-support tools — not a substitute for service manager judgment",
+      "eval": { "field": "workspace.aiDisclosureAcknowledged", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "data_integrity_check",
+      "logic": "repair order data must be consistent — no mismatched labor times, parts, or pricing",
+      "eval": { "field": "ro.dataIntegrityErrors", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "estimate_not_provided",
+      "logic": "state law requires a written estimate before beginning repairs — customer must receive and acknowledge the estimate",
+      "eval": { "field": "ro.estimateProvided", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "authorization_exceeded",
+      "logic": "repair costs must not exceed the authorized amount by more than 10% without additional customer authorization — state automotive repair acts",
+      "eval": { "field": "ro.authorizationOveragePct", "operator": ">", "threshold": 10 }
+    },
+    {
+      "id": "parts_not_offered_back",
+      "logic": "replaced parts must be offered back to the customer upon request — state automotive repair act requirement",
+      "eval": { "field": "ro.partsReturnOffered", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "customer_authorization_missing",
+      "logic": "no work may begin without documented customer authorization for the specific repairs",
+      "eval": { "field": "ro.customerAuthorizationObtained", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "recall_not_disclosed",
+      "logic": "open safety recalls must be disclosed to the customer when the vehicle is in for service",
+      "eval": { "field": "vehicle.undisclosedRecallCount", "operator": ">", "threshold": 0 }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "shop_overloaded",
+      "logic": "scheduled appointments exceed available technician capacity for the time slot",
+      "eval": { "field": "shop.capacityUtilizationPct", "operator": ">", "threshold": 95 }
+    },
+    {
+      "id": "waiter_past_promise_time",
+      "logic": "a customer waiting on-site has exceeded their promised completion time",
+      "eval": { "field": "ro.waiterOverPromiseMinutes", "operator": ">", "threshold": 15 }
+    },
+    {
+      "id": "ro_cycle_time_exceeded",
+      "logic": "repair order has been open longer than the benchmark cycle time for its repair type",
+      "eval": { "field": "ro.cycleTimeOverBenchmarkHours", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "tech_productivity_below_target",
+      "logic": "technician productivity (hours flagged / hours available) is below the configured target",
+      "eval": { "field": "tech.productivityPct", "operator": "<", "threshold": 80 }
+    },
+    {
+      "id": "shop_underloaded",
+      "logic": "shop utilization is significantly below capacity — opportunity to schedule additional work",
+      "eval": { "field": "shop.capacityUtilizationPct", "operator": "<", "threshold": 50 }
+    }
+  ],
+  "outputs": ["ad016-shop-schedule", "ad016-ro-cycle-time", "ad016-tech-productivity"]
+}

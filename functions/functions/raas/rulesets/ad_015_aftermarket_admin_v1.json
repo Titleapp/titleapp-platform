@@ -1,0 +1,67 @@
+{
+  "id": "ad_015_aftermarket_admin_v1",
+  "version": "v1",
+  "domain": "auto-dealership",
+  "description": "Aftermarket Administration — tracks cancellation refund timelines, GAP refund processing, lienholder refund routing, claims management, and remittance reconciliation",
+  "required_inputs": ["workspace_id", "contract_id"],
+  "hard_stops": [
+    {
+      "id": "no_workspace",
+      "logic": "workspace must be initialized before any aftermarket administration operation",
+      "eval": { "type": "required_inputs_check" }
+    },
+    {
+      "id": "ai_disclosure_required",
+      "logic": "AI-generated refund calculations must be verified by a human before processing — not a substitute for accounting review",
+      "eval": { "field": "workspace.aiDisclosureAcknowledged", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "data_integrity_check",
+      "logic": "all contract and refund data must reconcile — no mismatched amounts or orphaned transactions",
+      "eval": { "field": "contract.dataIntegrityErrors", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "cancellation_refund_overdue",
+      "logic": "state law requires cancellation refunds to be processed within the statutory period (typically 30-60 days) — overdue refunds trigger regulatory action",
+      "eval": { "field": "refund.overdueCancellationCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "gap_refund_not_processed",
+      "logic": "GAP waiver refund must be processed upon early payoff or total loss — unprocessed GAP refunds violate state insurance regulations",
+      "eval": { "field": "refund.unprocessedGapRefundCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "refund_not_to_lienholder",
+      "logic": "when a lien exists, cancellation refunds MUST be sent to the lienholder, not the customer — sending to customer creates legal liability",
+      "eval": { "field": "refund.refundMisroutedToCustomerCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "unremitted_premium",
+      "logic": "product premiums collected but not remitted to the provider within the contractual remittance period",
+      "eval": { "field": "remittance.unremittedPremiumCount", "operator": ">", "threshold": 0 }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "cancellation_processing_slow",
+      "logic": "cancellation refund is approaching but has not yet exceeded the statutory deadline",
+      "eval": { "field": "refund.oldestPendingCancellationDays", "operator": ">", "threshold": 20 }
+    },
+    {
+      "id": "claims_denial_rate_high",
+      "logic": "claims denial rate for a product provider exceeds the acceptable threshold — may indicate coverage issues or administration errors",
+      "eval": { "field": "claims.denialRatePct", "operator": ">", "threshold": 15 }
+    },
+    {
+      "id": "remittance_discrepancy",
+      "logic": "remittance statement from provider does not match dealership records — reconciliation required",
+      "eval": { "field": "remittance.discrepancyCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "high_loss_ratio_product",
+      "logic": "a product's loss ratio exceeds the threshold where the provider may cancel the dealer agreement",
+      "eval": { "field": "products.highLossRatioCount", "operator": ">", "threshold": 0 }
+    }
+  ],
+  "outputs": ["ad015-contract-tracker", "ad015-claims-report", "ad015-cancellation-log"]
+}

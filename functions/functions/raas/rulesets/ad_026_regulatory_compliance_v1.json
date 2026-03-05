@@ -1,0 +1,87 @@
+{
+  "id": "ad_026_regulatory_compliance_v1",
+  "version": "v1",
+  "domain": "auto-dealership",
+  "description": "Regulatory Compliance oversight — enforces FTC Safeguards Rule, Used Car Rule, state AG inquiry escalation, and critical compliance gap closure; monitors self-assessments, audits, complaints, and training",
+  "required_inputs": ["workspace_id"],
+  "hard_stops": [
+    {
+      "id": "no_workspace",
+      "logic": "workspace must be initialized before any regulatory compliance operation",
+      "eval": { "type": "required_inputs_check" }
+    },
+    {
+      "id": "ai_disclosure_required",
+      "logic": "AI-generated compliance assessments are decision-support only — legal compliance determinations require qualified compliance officer or legal counsel review",
+      "eval": { "field": "workspace.aiDisclosureAcknowledged", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "data_integrity_check",
+      "logic": "compliance data must be accurate and auditable — no incomplete records, missing timestamps, or unverified status updates",
+      "eval": { "field": "compliance.dataIntegrityErrors", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "safeguards_rule_noncompliant",
+      "logic": "FTC Safeguards Rule (16 CFR 314) — dealership must maintain a comprehensive information security program; noncompliance risks ENFORCEMENT ACTION and substantial fines",
+      "eval": { "field": "compliance.safeguardsRuleGapCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "used_car_rule_violation",
+      "logic": "FTC Used Car Rule — Buyers Guide must be displayed on every used vehicle; violations carry penalties of $50,000+ per occurrence",
+      "eval": { "field": "compliance.usedCarRuleViolationCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "state_ag_inquiry_not_escalated",
+      "logic": "any inquiry from the state Attorney General's office must be escalated to legal counsel immediately — delayed response increases enforcement risk",
+      "eval": { "field": "compliance.unescalatedAGInquiryCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "compliance_gap_critical",
+      "logic": "a critical compliance gap has been identified that creates immediate regulatory exposure — must be remediated before operations continue in the affected area",
+      "eval": { "field": "compliance.criticalGapCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "consumer_complaint_unresolved_regulatory",
+      "logic": "consumer complaint filed with a regulatory agency (CFPB, FTC, state AG, BBB) remains unresolved past the required response deadline",
+      "eval": { "field": "complaints.overdueRegulatoryComplaintCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "license_expired_or_suspended",
+      "logic": "dealership or individual license/permit is expired or suspended — cannot conduct business in affected area",
+      "eval": { "field": "licenses.expiredOrSuspendedCount", "operator": ">", "threshold": 0 }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "self_assessment_overdue",
+      "logic": "periodic compliance self-assessment has not been completed within the scheduled interval",
+      "eval": { "field": "compliance.daysSinceLastSelfAssessment", "operator": ">", "threshold": 90 }
+    },
+    {
+      "id": "audit_approaching_unprepared",
+      "logic": "a scheduled manufacturer, lender, or regulatory audit is approaching and preparation checklist is incomplete",
+      "eval": { "field": "audit.daysUntilNextAudit", "operator": "<", "threshold": 30 }
+    },
+    {
+      "id": "complaint_pattern_detected",
+      "logic": "multiple customer complaints share a common theme — may indicate a systemic compliance issue",
+      "eval": { "field": "complaints.patternDetectedCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "training_overdue",
+      "logic": "one or more employees have overdue compliance training requirements",
+      "eval": { "field": "training.overdueEmployeeCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "regulatory_change_unaddressed",
+      "logic": "a new regulation or regulatory change has been published that affects dealership operations but has not been addressed",
+      "eval": { "field": "compliance.unaddressedRegulatoryChangeCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "document_retention_expiring",
+      "logic": "documents approaching the end of their mandatory retention period should be reviewed before destruction",
+      "eval": { "field": "documents.expiringRetentionCount", "operator": ">", "threshold": 0 }
+    }
+  ],
+  "outputs": ["ad026-compliance-assessment", "ad026-audit-prep-checklist", "ad026-complaint-log", "ad026-training-tracker"]
+}

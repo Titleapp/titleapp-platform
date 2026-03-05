@@ -18,7 +18,7 @@ async function createSubscription(req, res) {
   const db = getDb();
   const stripe = getStripe();
 
-  const { userId, paymentMethodId, priceId, tier } = req.body || {};
+  const { userId, paymentMethodId, priceId, tier, promoCode } = req.body || {};
   if (!userId || !paymentMethodId || !priceId) {
     return res.status(400).json({ ok: false, error: "userId, paymentMethodId, and priceId required" });
   }
@@ -60,13 +60,31 @@ async function createSubscription(req, res) {
     items.push({ price: meteredPriceId });
   }
 
+  // Apply promo code if provided
+  let couponId = null;
+  if (promoCode) {
+    try {
+      const promoDoc = await getDb().doc(`promoCodes/${promoCode.toUpperCase().trim()}`).get();
+      if (promoDoc.exists && promoDoc.data().active) {
+        couponId = promoDoc.data().stripeId;
+        // Increment redemption count
+        await promoDoc.ref.update({
+          redemptionCount: admin.firestore.FieldValue.increment(1),
+        });
+      }
+    } catch (e) {
+      console.error("Promo code lookup failed:", e);
+    }
+  }
+
   // Create subscription
   const subscription = await stripe.subscriptions.create({
     customer: customerId,
     items,
     payment_behavior: "default_incomplete",
     expand: ["latest_invoice.payment_intent"],
-    metadata: { userId, tier: tier || "pro" },
+    metadata: { userId, tier: tier || "pro", ...(promoCode ? { promoCode } : {}) },
+    ...(couponId ? { discounts: [{ coupon: couponId }] } : {}),
   });
 
   // Get the metered subscription item ID for usage reporting

@@ -1,0 +1,77 @@
+{
+  "id": "ad_012_fi_menu_v1",
+  "version": "v1",
+  "domain": "auto-dealership",
+  "description": "F&I Menu presentation and product disclosure — ensures every finance product is disclosed, never presented as mandatory, with equal pricing and regulatory caps enforced",
+  "required_inputs": ["workspace_id", "deal_id", "customer_id", "fi_products"],
+  "hard_stops": [
+    {
+      "id": "no_workspace",
+      "logic": "workspace must be initialized before any F&I menu operation",
+      "eval": { "type": "required_inputs_check" }
+    },
+    {
+      "id": "ai_disclosure_required",
+      "logic": "customer must be informed that AI-generated recommendations are not financial advice",
+      "eval": { "field": "deal.aiDisclosurePresented", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "data_integrity_check",
+      "logic": "all deal figures must reconcile — no orphaned calculations or mismatched totals",
+      "eval": { "field": "deal.dataIntegrityErrors", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "fi_product_not_disclosed",
+      "logic": "EVERY F&I product offered must be fully disclosed with terms, cost, and coverage — no silent bundling",
+      "eval": { "field": "menu.undisclosedProductCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "product_presented_as_mandatory",
+      "logic": "NEVER present any F&I product as mandatory or required for financing approval — all products are optional",
+      "eval": { "field": "menu.mandatoryPresentationCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "cars_rule_consent_missing",
+      "logic": "FTC CARS Rule requires affirmative express informed consent before adding any charge — verbal yes or signature required",
+      "eval": { "field": "deal.carsRuleConsentObtained", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "equal_presentation_violation",
+      "logic": "every customer must be offered the same products at the same prices regardless of protected characteristics — no price steering",
+      "eval": { "field": "menu.equalPresentationViolations", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "gap_exceeds_state_cap",
+      "logic": "GAP waiver price must not exceed state-mandated maximum (varies by state, typically $700-$1000)",
+      "eval": { "field": "products.gapOverStateCap", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "rate_markup_exceeds_cap",
+      "logic": "dealer reserve / rate markup must not exceed lender-permitted or state-capped maximum basis points",
+      "eval": { "field": "deal.rateMarkupOverCap", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "mla_customer_not_screened",
+      "logic": "Military Lending Act — must screen for active-duty military status BEFORE presenting F&I products; MLA caps apply to covered borrowers",
+      "eval": { "field": "customer.mlaScreeningComplete", "operator": "==", "threshold": false }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "pvr_below_target",
+      "logic": "per-vehicle retail (PVR) for F&I is below the dealership's configured target",
+      "eval": { "field": "metrics.pvr", "operator": "<", "threshold": 0 }
+    },
+    {
+      "id": "penetration_rate_low",
+      "logic": "product penetration rate is below the configured benchmark for the product category",
+      "eval": { "field": "metrics.penetrationRateBelowBenchmark", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "product_profitability_declining",
+      "logic": "trailing 30-day profitability trend for one or more F&I products is negative",
+      "eval": { "field": "metrics.decliningProfitProductCount", "operator": ">", "threshold": 0 }
+    }
+  ],
+  "outputs": ["ad012-fi-menu", "ad012-pvr-report", "ad012-product-profitability"]
+}

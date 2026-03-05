@@ -74,6 +74,52 @@ const MARKETPLACE_SLUG_MAP = {
   "W-050": "disposition-marketing",
   "W-051": "investor-reporting",
   "W-052": "debt-service",
+  // Aviation — Part 135/91 Operator Suite
+  "AV-001": "av-cert-assistant",
+  "AV-002": "av-gom-authoring",
+  "AV-003": "av-regulatory-monitor",
+  "AV-004": "av-aircraft-status-mel",
+  "AV-005": "av-ad-sb-tracker",
+  "AV-006": "av-component-tracker",
+  "AV-007": "av-maintenance-logbook",
+  "AV-008": "av-parts-inventory",
+  "AV-009": "av-flight-duty-enforcer",
+  "AV-010": "av-qualification-tracker",
+  "AV-011": "av-training-records",
+  "AV-012": "av-medical-tracker",
+  "AV-013": "av-mission-builder",
+  "AV-014": "av-frat",
+  "AV-015": "av-weight-balance",
+  "AV-016": "av-weather-intel",
+  "AV-017": "av-flight-following",
+  "AV-018": "av-safety-reporting",
+  "AV-019": "av-foqa",
+  "AV-020": "av-emergency-response",
+  "AV-021": "av-post-flight-debrief",
+  "AV-022": "av-hazard-register",
+  "AV-023": "av-sms-monitor",
+  "AV-024": "av-safety-officer",
+  "AV-025": "av-charter-quoting",
+  "AV-026": "av-billing",
+  "AV-027": "av-medevac-billing",
+  "AV-028": "av-customer-portal",
+  "AV-029": "av-alex",
+  "AV-030": "av-far-compliance",
+  "AV-031": "av-drug-alcohol",
+  "AV-032": "av-crew-scheduling",
+  "AV-033": "av-reserve-swap",
+  "AV-034": "av-airport-intel",
+  "AV-035": "av-notam-intel",
+  "AV-036": "av-efb-companion",
+  "AV-037": "av-training-courseware",
+  "AV-038": "av-crew-housing",
+  // Aviation — Pilot Suite
+  "AV-P01": "av-digital-logbook",
+  "AV-P02": "av-currency-tracker",
+  "AV-P03": "av-my-aircraft",
+  "AV-P04": "av-training-proficiency",
+  "AV-P05": "av-flight-planning",
+  "AV-P06": "av-alex-personal",
 };
 
 // Ruleset ID mapping: marketplace slug → ruleset file name
@@ -114,6 +160,14 @@ const RULESET_MAP = {
   "safety-osha": "safety_osha_v0",
   "mep-coordination": "mep_coordination_v0",
   "construction-draws": "construction_draw_v0",
+  // Aviation — Wave 1
+  "av-mission-builder": "av_013_mission_builder_v0",
+  "av-flight-duty-enforcer": "av_009_flight_duty_enforcer_v0",
+  "av-aircraft-status-mel": "av_004_aircraft_status_mel_v0",
+  "av-frat": "av_014_frat_v0",
+  "av-crew-scheduling": "av_032_crew_scheduling_v0",
+  "av-alex": "av_029_alex_aviation_v0",
+  "av-digital-logbook": "av_p01_digital_logbook_v0",
 };
 
 // Display name overrides (marketplace uses shorter names)
@@ -130,6 +184,20 @@ const DISPLAY_NAME_MAP = {
   "W-048": "Alex — Chief of Staff",
   "W-050": "Disposition Marketing",
   "W-051": "Investor Reporting",
+  "AV-001": "Cert Assistant",
+  "AV-002": "GOM Authoring",
+  "AV-004": "Aircraft Status & MEL",
+  "AV-009": "Duty Enforcer",
+  "AV-013": "Mission Builder",
+  "AV-014": "FRAT",
+  "AV-021": "Post-Flight Debrief",
+  "AV-024": "Safety Officer",
+  "AV-027": "Medevac Billing",
+  "AV-029": "Alex — Aviation CoS",
+  "AV-032": "Crew Scheduling",
+  "AV-P01": "Digital Logbook",
+  "AV-P03": "My Aircraft",
+  "AV-P06": "Alex — Personal",
 };
 
 // Headline overrides from App.jsx WORKER_DETAIL_CONTENT (first 80 chars)
@@ -171,6 +239,14 @@ const HEADLINE_MAP = {
   "quality-control": "Inspections tracked, defects documented, standards enforced",
   "safety-osha": "OSHA compliance from site-specific plan to daily logs",
   "mep-coordination": "MEP systems coordinated before they clash in the field",
+  // Aviation — Wave 1
+  "av-mission-builder": "Every mission authorized with full context — crew, aircraft, weather, risk",
+  "av-flight-duty-enforcer": "Hard stops on illegal crew assignments before they reach the board",
+  "av-aircraft-status-mel": "Real-time airworthiness status for every tail on the certificate",
+  "av-frat": "Risk quantified before every flight — not after the incident",
+  "av-crew-scheduling": "Every assignment pre-validated for legality before it reaches the board",
+  "av-alex": "Your workers, orchestrated — 0500 briefing to anomaly detection",
+  "av-digital-logbook": "Blockchain-verified logbook that replaces paper permanently",
 };
 
 // ═══════════════════════════════════════════════════════════════

@@ -1,0 +1,82 @@
+{
+  "id": "ad_024_title_registration_v1",
+  "version": "v1",
+  "domain": "auto-dealership",
+  "description": "Title and Registration processing — enforces title application deadlines, temp tag expiration, lien perfection, odometer disclosure, and out-of-state requirements; tracks processing times and payoff status",
+  "required_inputs": ["workspace_id", "deal_id", "vehicle_id"],
+  "hard_stops": [
+    {
+      "id": "no_workspace",
+      "logic": "workspace must be initialized before any title and registration operation",
+      "eval": { "type": "required_inputs_check" }
+    },
+    {
+      "id": "ai_disclosure_required",
+      "logic": "AI-generated title tracking is decision-support only — title clerks must verify all submissions with state DMV requirements",
+      "eval": { "field": "workspace.aiDisclosureAcknowledged", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "data_integrity_check",
+      "logic": "title, registration, and lien data must be accurate — errors cause DMV rejections and fines",
+      "eval": { "field": "title.dataIntegrityErrors", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "title_application_overdue",
+      "logic": "title application must be submitted within the state-mandated deadline after sale — FINES ESCALATE daily and dealer license may be at risk",
+      "eval": { "field": "title.applicationOverdueCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "temp_tag_expired",
+      "logic": "temporary tag has expired — vehicle cannot legally be driven; dealer may face fines and customer complaints",
+      "eval": { "field": "title.expiredTempTagCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "lien_perfection_overdue",
+      "logic": "lienholder's security interest must be perfected (title filed with lien) within the required timeline — unperfected lien exposes lender and dealer",
+      "eval": { "field": "title.lienPerfectionOverdueCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "odometer_disclosure_missing",
+      "logic": "federal odometer disclosure statement required on all title transfers for vehicles under 20 model years — missing disclosure is a federal crime",
+      "eval": { "field": "title.odometerDisclosureMissing", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "out_of_state_requirements_not_met",
+      "logic": "out-of-state title and registration requirements differ from home state — all destination-state requirements must be met before submission",
+      "eval": { "field": "title.outOfStateRequirementsMissing", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "salvage_brand_not_disclosed",
+      "logic": "salvage, rebuilt, or branded title status must be disclosed to the buyer before sale — failure to disclose is fraud",
+      "eval": { "field": "vehicle.undisclosedTitleBrand", "operator": "==", "threshold": true }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "title_processing_slow",
+      "logic": "title application is approaching but has not yet exceeded the state-mandated deadline",
+      "eval": { "field": "title.oldestPendingDays", "operator": ">", "threshold": 15 }
+    },
+    {
+      "id": "temp_tag_expiring_soon",
+      "logic": "temporary tag will expire within 7 days and permanent registration has not been received",
+      "eval": { "field": "title.tempTagDaysRemaining", "operator": "<", "threshold": 7 }
+    },
+    {
+      "id": "payoff_not_received",
+      "logic": "trade-in payoff has been sent but lien release has not been received from the prior lienholder",
+      "eval": { "field": "title.payoffPendingLienReleaseCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "dmv_reject_pending",
+      "logic": "DMV has rejected a title application — correction and resubmission required",
+      "eval": { "field": "title.dmvRejectPendingCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "trade_payoff_overdue",
+      "logic": "trade-in payoff has not been sent within the contracted timeline",
+      "eval": { "field": "title.tradePayoffOverdueDays", "operator": ">", "threshold": 10 }
+    }
+  ],
+  "outputs": ["ad024-title-tracker", "ad024-temp-tag-report", "ad024-payoff-tracker"]
+}

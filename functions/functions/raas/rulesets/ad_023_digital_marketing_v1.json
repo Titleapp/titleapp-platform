@@ -1,0 +1,82 @@
+{
+  "id": "ad_023_digital_marketing_v1",
+  "version": "v1",
+  "domain": "auto-dealership",
+  "description": "Digital Marketing compliance and performance — prevents bait-and-switch advertising, enforces price fee disclosure, lease ad compliance, TCPA text consent, co-op guidelines, and optimizes marketing ROI",
+  "required_inputs": ["workspace_id"],
+  "hard_stops": [
+    {
+      "id": "no_workspace",
+      "logic": "workspace must be initialized before any digital marketing operation",
+      "eval": { "type": "required_inputs_check" }
+    },
+    {
+      "id": "ai_disclosure_required",
+      "logic": "AI-generated ad copy and marketing content must be reviewed by a human before publication — automated campaigns require prior creative approval",
+      "eval": { "field": "workspace.aiDisclosureAcknowledged", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "data_integrity_check",
+      "logic": "marketing spend and attribution data must be accurate — no misattributed leads or fabricated performance metrics",
+      "eval": { "field": "marketing.dataIntegrityErrors", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "bait_and_switch_ad",
+      "logic": "NEVER advertise a vehicle or price that is not available or intended to be sold at the advertised terms — FTC deceptive advertising violation",
+      "eval": { "field": "ads.baitAndSwitchDetectedCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "price_missing_mandatory_fees",
+      "logic": "state law requires advertised prices to include all mandatory dealer fees (doc fee, electronic filing fee) — excluding them is deceptive advertising",
+      "eval": { "field": "ads.missingMandatoryFeeCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "lease_ad_noncompliant",
+      "logic": "Regulation M / Truth in Leasing — lease advertisements must include all required disclosures (due at signing, term, mileage allowance, purchase option, total of payments) with equal prominence",
+      "eval": { "field": "ads.leaseAdViolationCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "tcpa_consent_missing_for_text",
+      "logic": "TCPA — text message marketing requires prior express written consent; sending without consent carries $500-$1500 per message penalty",
+      "eval": { "field": "marketing.tcpaTextConsentMissingCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "co_op_guidelines_violated",
+      "logic": "manufacturer co-op advertising guidelines must be followed precisely — non-compliant ads forfeit co-op reimbursement",
+      "eval": { "field": "ads.coOpGuidelineViolationCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "credit_ad_missing_disclosures",
+      "logic": "Regulation Z / Truth in Lending — credit advertisements with trigger terms must include all required disclosures (APR, term, down payment)",
+      "eval": { "field": "ads.creditAdMissingDisclosureCount", "operator": ">", "threshold": 0 }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "cost_per_sale_above_target",
+      "logic": "marketing cost per vehicle sold exceeds the configured target threshold",
+      "eval": { "field": "metrics.costPerSale", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "budget_pacing_off",
+      "logic": "monthly marketing budget spend rate is significantly ahead of or behind the expected pace",
+      "eval": { "field": "metrics.budgetPacingDeviationPct", "operator": ">", "threshold": 15 }
+    },
+    {
+      "id": "source_underperforming",
+      "logic": "a lead source is underperforming relative to its cost — ROI below configured threshold",
+      "eval": { "field": "sources.underperformingSourceCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "co_op_deadline_approaching",
+      "logic": "co-op reimbursement claim submission deadline is approaching — risk of forfeiting earned co-op funds",
+      "eval": { "field": "coOp.daysUntilDeadline", "operator": "<", "threshold": 14 }
+    },
+    {
+      "id": "third_party_roi_negative",
+      "logic": "third-party lead provider ROI is negative over trailing 30 days — cost exceeds attributed revenue",
+      "eval": { "field": "sources.negativeROIProviderCount", "operator": ">", "threshold": 0 }
+    }
+  ],
+  "outputs": ["ad023-marketing-dashboard", "ad023-source-roi", "ad023-budget-tracker"]
+}

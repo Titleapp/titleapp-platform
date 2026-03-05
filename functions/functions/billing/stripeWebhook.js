@@ -274,6 +274,25 @@ async function handleStripeWebhook(req, res) {
           );
           await logActivity("revenue", `Credit pack purchased: ${credits} credits for user ${userId}`, "success");
         }
+
+        // Track lead conversion if promo code was used
+        if (data.metadata && data.metadata.promoCode) {
+          try {
+            const leadsSnap = await db.collection("leads")
+              .where("email", "==", data.customer_email || "")
+              .limit(1)
+              .get();
+            if (!leadsSnap.empty) {
+              await leadsSnap.docs[0].ref.update({
+                status: "converted",
+                convertedAt: admin.firestore.FieldValue.serverTimestamp(),
+                userId: data.metadata.userId || null,
+              });
+            }
+          } catch (e) {
+            console.error("Lead conversion tracking failed:", e);
+          }
+        }
         break;
       }
 

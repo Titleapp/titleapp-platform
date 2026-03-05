@@ -1,0 +1,49 @@
+{
+  "id": "av_p01_digital_logbook_v0",
+  "version": "v0",
+  "domain": "aviation-logbook",
+  "description": "Digital Logbook — blockchain-verified personal flight record",
+  "required_inputs": [
+    "flight_entry"
+  ],
+  "hard_stops": [
+    {
+      "id": "duplicate_entry_detected",
+      "label": "Duplicate Flight Entry",
+      "logic": "Duplicate flight entry detected — same date, route, and aircraft",
+      "eval": { "field": "entry.duplicate_match", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "invalid_time_categories",
+      "label": "Time Categories Invalid",
+      "logic": "Flight time categories do not sum correctly",
+      "eval": { "field": "entry.time_sum_valid", "operator": "==", "threshold": false }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "unverified_import",
+      "label": "Unverified Import",
+      "logic": "Imported flight data pending pilot review and verification",
+      "eval": { "field": "entry.import_verified", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "manual_entry_discrepancy",
+      "label": "Dispatch Record Discrepancy",
+      "logic": "Manual entry differs from dispatch record by >15 minutes",
+      "eval": { "field": "entry.dispatch_discrepancy_minutes", "operator": ">", "threshold": 15 }
+    },
+    {
+      "id": "currency_milestone_approaching",
+      "label": "Flight Hour Milestone Approaching",
+      "logic": "Approaching flight hour milestone (e.g., 1000h, ATP minimums)",
+      "eval": { "field": "pilot.next_milestone_hours_remaining", "operator": "<", "threshold": 50 }
+    }
+  ],
+  "outputs": [
+    "avp01-flight-record",
+    "avp01-cumulative-totals",
+    "avp01-pria-export",
+    "avp01-blockchain-certificate"
+  ]
+}

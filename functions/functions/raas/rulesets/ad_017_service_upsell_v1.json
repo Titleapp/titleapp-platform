@@ -1,0 +1,82 @@
+{
+  "id": "ad_017_service_upsell_v1",
+  "version": "v1",
+  "domain": "auto-dealership",
+  "description": "Service Upsell and Multi-Point Inspection — ensures repair recommendations are substantiated, estimates are accurate, unnecessary repairs are never recommended, and lemon law thresholds are flagged",
+  "required_inputs": ["workspace_id", "ro_id", "vehicle_id"],
+  "hard_stops": [
+    {
+      "id": "no_workspace",
+      "logic": "workspace must be initialized before any service upsell operation",
+      "eval": { "type": "required_inputs_check" }
+    },
+    {
+      "id": "ai_disclosure_required",
+      "logic": "AI-generated service recommendations must be validated by a certified technician — not a substitute for professional diagnosis",
+      "eval": { "field": "workspace.aiDisclosureAcknowledged", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "data_integrity_check",
+      "logic": "MPI and recommendation data must be consistent with vehicle history and manufacturer specifications",
+      "eval": { "field": "ro.dataIntegrityErrors", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "repair_recommendation_not_substantiated",
+      "logic": "FTC Repair Rule — every repair recommendation must be substantiated with documented evidence (measurement, visual inspection, diagnostic code)",
+      "eval": { "field": "recommendations.unsubstantiatedCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "estimate_inflated_for_sales",
+      "logic": "NEVER inflate a repair estimate to push a customer toward a vehicle purchase — this is deceptive practice under state consumer protection laws",
+      "eval": { "field": "recommendations.inflatedEstimateDetected", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "unnecessary_repair_recommended",
+      "logic": "NEVER recommend repairs that are not needed — recommending unnecessary work is fraud under state automotive repair acts",
+      "eval": { "field": "recommendations.unnecessaryRepairCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "lemon_law_threshold_not_flagged",
+      "logic": "vehicle approaching or exceeding state lemon law thresholds (repeat repairs for same issue, cumulative days out of service) must be flagged to management and customer",
+      "eval": { "field": "vehicle.lemonLawThresholdReached", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "safety_defect_not_escalated",
+      "logic": "safety-related defects discovered during MPI must be immediately escalated — cannot be deferred or ignored",
+      "eval": { "field": "mpi.unescalatedSafetyDefectCount", "operator": ">", "threshold": 0 }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "mpi_completion_below_target",
+      "logic": "multi-point inspection completion rate is below the 95% target",
+      "eval": { "field": "metrics.mpiCompletionPct", "operator": "<", "threshold": 95 }
+    },
+    {
+      "id": "recommendation_rate_low",
+      "logic": "service recommendation rate per RO is below the configured benchmark",
+      "eval": { "field": "metrics.recommendationRate", "operator": "<", "threshold": 1.5 }
+    },
+    {
+      "id": "hours_per_ro_below_benchmark",
+      "logic": "average hours billed per repair order is below the configured benchmark",
+      "eval": { "field": "metrics.hoursPerRO", "operator": "<", "threshold": 1.5 }
+    },
+    {
+      "id": "declined_service_not_followed_up",
+      "logic": "customer-declined services have not been followed up within the configured timeframe",
+      "eval": { "field": "followup.declinedServiceUncontactedCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "service_to_sales_not_flagged",
+      "logic": "vehicle with repair estimate exceeding configured threshold relative to value has not been flagged as a service-to-sales opportunity",
+      "eval": { "field": "serviceToSales.unflaggedOpportunityCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "advisor_close_rate_low",
+      "logic": "service advisor recommendation close rate is below the configured target",
+      "eval": { "field": "metrics.advisorCloseRatePct", "operator": "<", "threshold": 50 }
+    }
+  ],
+  "outputs": ["ad017-mpi-report", "ad017-advisor-scorecard", "ad017-service-to-sales-alert", "ad017-declined-service-report"]
+}

@@ -1,0 +1,77 @@
+{
+  "id": "ad_025_deal_accounting_v1",
+  "version": "v1",
+  "domain": "auto-dealership",
+  "description": "Deal Accounting — enforces IRS cash reporting (Form 8300), floor plan payoff deadlines, BSA/AML suspicious activity reporting, sales tax remittance, and monitors deal posting, commissions, and receivables",
+  "required_inputs": ["workspace_id", "deal_id"],
+  "hard_stops": [
+    {
+      "id": "no_workspace",
+      "logic": "workspace must be initialized before any deal accounting operation",
+      "eval": { "type": "required_inputs_check" }
+    },
+    {
+      "id": "ai_disclosure_required",
+      "logic": "AI-generated accounting calculations are decision-support only — all financial transactions require CPA or controller review",
+      "eval": { "field": "workspace.aiDisclosureAcknowledged", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "data_integrity_check",
+      "logic": "all deal accounting figures must reconcile — no unbalanced entries, mismatched totals, or orphaned transactions",
+      "eval": { "field": "accounting.dataIntegrityErrors", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "cash_over_10k_not_reported",
+      "logic": "IRS Form 8300 MUST be filed within 15 days for any cash transaction (or series of related transactions) exceeding $10,000 — failure to file is a federal crime",
+      "eval": { "field": "compliance.unreportedCashOver10kCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "floor_plan_payoff_overdue",
+      "logic": "floor plan payoff must be made within the contractual period after vehicle sale — overdue payoffs accrue penalty interest and risk floor plan curtailment",
+      "eval": { "field": "floorPlan.overduePayoffCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "suspicious_activity_not_flagged",
+      "logic": "BSA/AML — structuring patterns, unusual payment methods, or other suspicious activity indicators must be flagged for SAR review",
+      "eval": { "field": "compliance.unflaggedSuspiciousActivityCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "sales_tax_not_remitted",
+      "logic": "collected sales tax must be remitted to the state within the statutory period — failure to remit is trust fund fraud in most states",
+      "eval": { "field": "tax.unremittedSalesTaxCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "revenue_recognition_premature",
+      "logic": "revenue must not be recognized until all deal conditions are met (funding confirmed, title transferred) — premature recognition violates GAAP",
+      "eval": { "field": "accounting.prematureRevenueRecognitionCount", "operator": ">", "threshold": 0 }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "deal_unposted_aging",
+      "logic": "completed deals have not been posted to accounting within the configured timeframe",
+      "eval": { "field": "accounting.unpostedDealAgingDays", "operator": ">", "threshold": 3 }
+    },
+    {
+      "id": "commission_dispute_pending",
+      "logic": "one or more commission disputes are unresolved — salesperson pay may be affected",
+      "eval": { "field": "commissions.pendingDisputeCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "receivables_aging_over_30",
+      "logic": "accounts receivable items have aged beyond 30 days — collection risk increasing",
+      "eval": { "field": "receivables.over30DayCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "floor_plan_interest_high",
+      "logic": "average floor plan interest per unit is exceeding the configured threshold — indicates aging inventory or slow payoff",
+      "eval": { "field": "floorPlan.avgInterestPerUnit", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "daily_doc_not_reviewed",
+      "logic": "daily DOC (daily operating control) report has not been reviewed by management",
+      "eval": { "field": "accounting.daysSinceLastDocReview", "operator": ">", "threshold": 1 }
+    }
+  ],
+  "outputs": ["ad025-daily-doc", "ad025-commission-statement", "ad025-receivables-aging", "ad025-floor-plan-payoff"]
+}

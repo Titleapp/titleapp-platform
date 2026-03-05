@@ -933,6 +933,65 @@ const ICONS = {
       <rect x="3" y="8" width="10" height="3" rx="1" fill="white" fillOpacity="0.25" />
     </>
   ),
+
+  // ── Aviation ──
+
+  // Mission Builder — layered dispatch stack
+  "av-mission-builder": (g) => (
+    <>
+      <path d="M12 2L2 7l10 5 10-5-10-5z" fill={`url(#${g})`} />
+      <path d="M2 12l10 5 10-5" stroke={`url(#${g})`} strokeWidth="2" fill="none" opacity="0.6" />
+      <path d="M2 17l10 5 10-5" stroke={`url(#${g})`} strokeWidth="2" fill="none" opacity="0.4" />
+    </>
+  ),
+
+  // Flight Duty Enforcer — clock
+  "av-flight-duty-enforcer": (g) => (
+    <>
+      <circle cx="12" cy="12" r="10" fill={`url(#${g})`} />
+      <polyline points="12,6 12,12 16,14" stroke="white" strokeWidth="2" strokeLinecap="round" fill="none" />
+    </>
+  ),
+
+  // Aircraft Status MEL — wrench
+  "av-aircraft-status-mel": (g) => (
+    <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" fill={`url(#${g})`} />
+  ),
+
+  // FRAT — shield
+  "av-frat": (g) => (
+    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill={`url(#${g})`} />
+  ),
+
+  // Crew Scheduling — calendar
+  "av-crew-scheduling": (g) => (
+    <>
+      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" fill={`url(#${g})`} />
+      <line x1="16" y1="2" x2="16" y2="6" stroke="white" strokeWidth="2" strokeLinecap="round" />
+      <line x1="8" y1="2" x2="8" y2="6" stroke="white" strokeWidth="2" strokeLinecap="round" />
+      <line x1="3" y1="10" x2="21" y2="10" stroke="white" strokeWidth="1.5" />
+    </>
+  ),
+
+  // Alex Aviation — hexagon orchestrator
+  "av-alex": (g) => (
+    <>
+      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" fill={`url(#${g})`} />
+      <polyline points="7.5,4.21 12,6.81 16.5,4.21" stroke="white" strokeWidth="1" fill="none" opacity="0.5" />
+      <polyline points="3.27,6.96 12,12.01 20.73,6.96" stroke="white" strokeWidth="1" fill="none" opacity="0.5" />
+      <line x1="12" y1="22.08" x2="12" y2="12" stroke="white" strokeWidth="1" opacity="0.5" />
+    </>
+  ),
+
+  // Digital Logbook — book
+  "av-digital-logbook": (g) => (
+    <>
+      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" fill="none" stroke={`url(#${g})`} strokeWidth="2" />
+      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" fill={`url(#${g})`} />
+      <line x1="8" y1="7" x2="16" y2="7" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
+      <line x1="8" y1="11" x2="14" y2="11" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
+    </>
+  ),
 };
 
 // Suite → color for marketplace card icon backgrounds
@@ -943,6 +1002,7 @@ export const SUITE_COLORS = {
   "General Business": "#4f46e5",
   "Legal": "#be185d",
   "Automotive": "#15803d",
+  "Aviation": "#0284c7",
   "Platform": "#7c3aed",
 };
 

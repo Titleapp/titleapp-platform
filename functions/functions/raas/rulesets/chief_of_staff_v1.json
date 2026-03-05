@@ -1,0 +1,90 @@
+{
+  "id": "chief_of_staff_v1",
+  "version": "v1",
+  "domain": "platform-operations",
+  "description": "Chief of Staff universal orchestration rules — intake, recommendations, routing, pipeline management, temporal awareness, cross-worker orchestration",
+  "required_inputs": [
+    "workspace_id"
+  ],
+  "hard_stops": [
+    {
+      "id": "no_workspace",
+      "logic": "workspace must be initialized before orchestration can begin",
+      "eval": { "type": "required_inputs_check" }
+    },
+    {
+      "id": "worker_not_subscribed",
+      "logic": "cannot route to a worker the user does not have an active subscription for",
+      "eval": { "field": "pipeline.unsubscribedWorkerCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "specialist_hard_stop_override",
+      "logic": "Alex cannot override a specialist worker hard stop — if a specialist blocks, Alex must respect it",
+      "eval": { "field": "pipeline.overriddenHardStops", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "intake_required",
+      "logic": "cannot route to specialist workers without a basic user profile (industry, role, at minimum)",
+      "eval": { "field": "user.profileComplete", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "pipeline_approval_gate",
+      "logic": "cannot auto-advance pipeline steps that require user approval — must wait for explicit consent",
+      "eval": { "field": "pipeline.unapprovedAutoAdvances", "operator": ">", "threshold": 0 }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "pipeline_stalled",
+      "logic": "pipeline has a step with no progress for more than 48 hours",
+      "eval": { "field": "pipeline.maxStallHours", "operator": ">", "threshold": 48 }
+    },
+    {
+      "id": "handoff_pending_approval",
+      "logic": "handoff waiting for user approval for more than 24 hours",
+      "eval": { "field": "pipeline.maxPendingApprovalHours", "operator": ">", "threshold": 24 }
+    },
+    {
+      "id": "task_overdue",
+      "logic": "one or more tasks are past their due date",
+      "eval": { "field": "tasks.overdueCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "conflicting_outputs",
+      "logic": "two or more workers produced conflicting results on the same deal",
+      "eval": { "field": "pipeline.conflictCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "coverage_gap",
+      "logic": "active project has a lifecycle phase with no worker coverage for critical functions",
+      "eval": { "field": "orchestration.coverageGapCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "temporal_mismatch",
+      "logic": "phase-bound worker is activated outside its relevant lifecycle phase",
+      "eval": { "field": "orchestration.temporalMismatchCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "recommendation_stale",
+      "logic": "Alex's worker recommendations were shown but not acted on for more than 7 days",
+      "eval": { "field": "recommendations.daysSinceShown", "operator": ">", "threshold": 7 }
+    },
+    {
+      "id": "value_report_due",
+      "logic": "monthly value report has not been generated for the current period",
+      "eval": { "field": "reporting.daysSinceLastValueReport", "operator": ">", "threshold": 30 }
+    }
+  ],
+  "outputs": [
+    "cos-pipeline-status",
+    "cos-weekly-digest",
+    "cos-task-tracker",
+    "cos-handoff-memo",
+    "alex-user-profile",
+    "alex-project-profile",
+    "alex-worker-plan",
+    "alex-daily-briefing",
+    "alex-executive-summary",
+    "alex-monthly-value-report"
+  ]
+}

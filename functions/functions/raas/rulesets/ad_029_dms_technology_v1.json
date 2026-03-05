@@ -1,0 +1,77 @@
+{
+  "id": "ad_029_dms_technology_v1",
+  "version": "v1",
+  "domain": "auto-dealership",
+  "description": "DMS and Technology management — enforces Safeguards Rule access control for former employees, PCI DSS compliance, data breach notification requirements, and monitors integrations, data quality, and vendor renewals",
+  "required_inputs": ["workspace_id"],
+  "hard_stops": [
+    {
+      "id": "no_workspace",
+      "logic": "workspace must be initialized before any DMS and technology operation",
+      "eval": { "type": "required_inputs_check" }
+    },
+    {
+      "id": "ai_disclosure_required",
+      "logic": "AI-generated technology recommendations are decision-support only — system changes require IT manager or vendor authorization",
+      "eval": { "field": "workspace.aiDisclosureAcknowledged", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "data_integrity_check",
+      "logic": "system inventory and access records must be current and accurate — stale records create security blind spots",
+      "eval": { "field": "systems.dataIntegrityErrors", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "former_employee_has_access",
+      "logic": "FTC Safeguards Rule violation — former employees must have all system access revoked within 24 hours of termination; active credentials for former employees are a critical security breach",
+      "eval": { "field": "access.formerEmployeeActiveCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "pci_noncompliant",
+      "logic": "PCI DSS — any system processing credit card data must maintain PCI compliance; noncompliance exposes the dealership to fines and liability for breaches",
+      "eval": { "field": "compliance.pciViolationCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "customer_data_breach_not_reported",
+      "logic": "data breach involving customer PII must be reported per state breach notification laws (typically 30-60 days) — failure to report carries state AG penalties",
+      "eval": { "field": "security.unreportedBreachCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "encryption_at_rest_missing",
+      "logic": "FTC Safeguards Rule requires encryption of customer financial information at rest — unencrypted data stores are a critical violation",
+      "eval": { "field": "security.unencryptedDataStoreCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "mfa_not_enforced",
+      "logic": "FTC Safeguards Rule requires multi-factor authentication for accessing customer information systems — MFA must be enforced for all users",
+      "eval": { "field": "access.mfaNotEnforcedSystemCount", "operator": ">", "threshold": 0 }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "integration_broken",
+      "logic": "a configured system integration (DMS, CRM, accounting, etc.) is failing or returning errors",
+      "eval": { "field": "integrations.brokenCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "data_quality_declining",
+      "logic": "data quality metrics (duplicate records, missing fields, stale records) are trending downward",
+      "eval": { "field": "dataQuality.issueCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "vendor_renewal_approaching",
+      "logic": "a vendor contract auto-renewal date is within 60 days — review terms and negotiate before renewal locks in",
+      "eval": { "field": "vendors.renewalWithin60DaysCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "access_review_overdue",
+      "logic": "periodic user access review has not been completed within the scheduled interval (quarterly recommended per Safeguards Rule)",
+      "eval": { "field": "access.daysSinceLastReview", "operator": ">", "threshold": 90 }
+    },
+    {
+      "id": "redundant_systems_identified",
+      "logic": "multiple systems appear to serve the same function — potential cost savings and reduced complexity",
+      "eval": { "field": "systems.redundantSystemPairCount", "operator": ">", "threshold": 0 }
+    }
+  ],
+  "outputs": ["ad029-system-inventory", "ad029-integration-map", "ad029-access-review"]
+}

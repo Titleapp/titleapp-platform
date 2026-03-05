@@ -240,6 +240,138 @@ async function generateXlsx({ template, data, brand }) {
     case "pir-renewal-comparison":
       buildRenewalComparison(workbook, data, brand);
       break;
+    // ============================================
+    // AUTO DEALER — PHASE 4-7 (AD-012 through AD-029)
+    // ============================================
+    // AD-012 F&I Menu & Product Presentation
+    case "ad012-pvr-report":
+      buildPvrReport(workbook, data, brand);
+      break;
+    case "ad012-product-profitability":
+      buildProductProfitability(workbook, data, brand);
+      break;
+    // AD-013 F&I Compliance
+    case "ad013-equal-treatment-report":
+      buildEqualTreatmentReport(workbook, data, brand);
+      break;
+    // AD-014 Lender Relations & Funding
+    case "ad014-lender-guide":
+      buildLenderGuide(workbook, data, brand);
+      break;
+    case "ad014-stip-tracker":
+      buildStipTracker(workbook, data, brand);
+      break;
+    case "ad014-funding-report":
+      buildFundingReport(workbook, data, brand);
+      break;
+    // AD-015 Aftermarket Product Administration
+    case "ad015-contract-tracker":
+      buildContractTracker_AD(workbook, data, brand);
+      break;
+    case "ad015-claims-report":
+      buildClaimsReport(workbook, data, brand);
+      break;
+    case "ad015-cancellation-log":
+      buildCancellationLog(workbook, data, brand);
+      break;
+    // AD-016 Service Scheduling & Workflow
+    case "ad016-shop-schedule":
+      buildShopSchedule(workbook, data, brand);
+      break;
+    case "ad016-tech-productivity":
+      buildTechProductivity(workbook, data, brand);
+      break;
+    // AD-017 Service Upsell & MPI
+    case "ad017-declined-service-report":
+      buildDeclinedServiceReport(workbook, data, brand);
+      break;
+    // AD-018 Parts Inventory & Ordering
+    case "ad018-inventory-report":
+      buildPartsInventoryReport(workbook, data, brand);
+      break;
+    case "ad018-obsolescence-report":
+      buildObsolescenceReport(workbook, data, brand);
+      break;
+    // AD-019 Warranty Administration
+    case "ad019-rejection-report":
+      buildWarrantyRejectionReport(workbook, data, brand);
+      break;
+    // AD-020 Body Shop Management
+    case "ad020-supplement-tracker":
+      buildSupplementTracker(workbook, data, brand);
+      break;
+    // AD-021 Customer Retention & Lifecycle
+    case "ad021-equity-mining-report":
+      buildEquityMiningReport(workbook, data, brand);
+      break;
+    case "ad021-lease-maturity-report":
+      buildLeaseMaturityReport(workbook, data, brand);
+      break;
+    // AD-022 Reputation Management
+    case "ad022-review-response-log":
+      buildReviewResponseLog(workbook, data, brand);
+      break;
+    // AD-023 Digital Marketing & Advertising
+    case "ad023-source-roi":
+      buildSourceRoi(workbook, data, brand);
+      break;
+    case "ad023-budget-tracker":
+      buildMarketingBudgetTracker(workbook, data, brand);
+      break;
+    // AD-024 Title & Registration
+    case "ad024-title-tracker":
+      buildTitleTracker(workbook, data, brand);
+      break;
+    case "ad024-temp-tag-report":
+      buildTempTagReport(workbook, data, brand);
+      break;
+    case "ad024-payoff-tracker":
+      buildPayoffTracker(workbook, data, brand);
+      break;
+    // AD-025 Deal Accounting & Posting
+    case "ad025-receivables-aging":
+      buildReceivablesAging(workbook, data, brand);
+      break;
+    case "ad025-floor-plan-payoff":
+      buildFloorPlanPayoff(workbook, data, brand);
+      break;
+    // AD-026 Regulatory Compliance & Audit
+    case "ad026-audit-prep-checklist":
+      buildAuditPrepChecklist(workbook, data, brand);
+      break;
+    case "ad026-complaint-log":
+      buildComplaintLog(workbook, data, brand);
+      break;
+    case "ad026-training-tracker":
+      buildTrainingTracker(workbook, data, brand);
+      break;
+    // AD-027 HR & Payroll Compliance
+    case "ad027-payroll-compliance":
+      buildPayrollCompliance(workbook, data, brand);
+      break;
+    case "ad027-license-tracker":
+      buildLicenseTracker(workbook, data, brand);
+      break;
+    case "ad027-training-compliance":
+      buildTrainingCompliance(workbook, data, brand);
+      break;
+    // AD-028 Floor Plan & Cash Management
+    case "ad028-cash-flow-forecast":
+      buildCashFlowForecast(workbook, data, brand);
+      break;
+    case "ad028-floor-plan-report":
+      buildFloorPlanReport(workbook, data, brand);
+      break;
+    case "ad028-ap-aging":
+      buildApAging(workbook, data, brand);
+      break;
+    // AD-029 DMS & Technology Management
+    case "ad029-system-inventory":
+      buildSystemInventory(workbook, data, brand);
+      break;
+    case "ad029-access-review":
+      buildAccessReview(workbook, data, brand);
+      break;
     case "model-cashflow":
     default:
       buildCashflow(workbook, data, brand);
@@ -4494,6 +4626,1222 @@ function buildRenewalComparison(workbook, data, brand) {
   const totChange = totalRenewal - totalCurrent;
   const totRow = sheet.addRow(["TOTALS", "", totalCurrent, totalRenewal, totChange, totalCurrent > 0 ? ((totChange / totalCurrent) * 100).toFixed(1) + "%" : "", "", ""]);
   totRow.font = { bold: true, name: "Arial" };
+  addDisclosureRow(sheet, brand, 8);
+}
+
+// ============================================
+// AUTO DEALER — PHASE 4-7 (AD-012 through AD-029)
+// ============================================
+
+// AD-012 F&I Menu & Product Presentation
+function buildPvrReport(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("PVR Report");
+  sheet.columns = [
+    { width: 14 }, { width: 22 }, { width: 16 }, { width: 16 },
+    { width: 16 }, { width: 16 }, { width: 14 },
+  ];
+  const headerRow = sheet.addRow(["Deal #", "F&I Manager", "Front Gross", "Back Gross", "Total PVR", "Product Count", "Deal Type"]);
+  styleHeaderRow(headerRow, brand);
+  sheet.getColumn(3).numFmt = currencyFormat();
+  sheet.getColumn(4).numFmt = currencyFormat();
+  sheet.getColumn(5).numFmt = currencyFormat();
+
+  const deals = data.deals || data.items || [];
+  let totalFront = 0, totalBack = 0;
+  for (const d of deals) {
+    const front = d.frontGross || 0;
+    const back = d.backGross || 0;
+    totalFront += front;
+    totalBack += back;
+    sheet.addRow([
+      d.dealNumber || d.deal || "",
+      d.fiManager || d.manager || "",
+      front,
+      back,
+      front + back,
+      d.productCount || 0,
+      d.dealType || "Retail",
+    ]);
+  }
+  sheet.addRow([]);
+  const avgPvr = deals.length > 0 ? (totalFront + totalBack) / deals.length : 0;
+  const totRow = sheet.addRow(["TOTALS", "", totalFront, totalBack, totalFront + totalBack, "", ""]);
+  totRow.font = { bold: true, name: "Arial" };
+  const avgRow = sheet.addRow(["AVG PVR", "", totalFront / (deals.length || 1), totalBack / (deals.length || 1), avgPvr, "", ""]);
+  avgRow.font = { bold: true, name: "Arial" };
+  addDisclosureRow(sheet, brand, 7);
+}
+
+function buildProductProfitability(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("Product Profitability");
+  sheet.columns = [
+    { width: 28 }, { width: 18 }, { width: 16 }, { width: 16 },
+    { width: 16 }, { width: 14 }, { width: 14 },
+  ];
+  const headerRow = sheet.addRow(["Product", "Provider", "Dealer Cost", "Retail Price", "Margin", "Penetration %", "Claims Rate %"]);
+  styleHeaderRow(headerRow, brand);
+  sheet.getColumn(3).numFmt = currencyFormat();
+  sheet.getColumn(4).numFmt = currencyFormat();
+  sheet.getColumn(5).numFmt = currencyFormat();
+
+  const products = data.products || data.items || [];
+  for (const p of products) {
+    const cost = p.dealerCost || p.cost || 0;
+    const retail = p.retailPrice || p.price || 0;
+    sheet.addRow([
+      p.name || p.product || "",
+      p.provider || "",
+      cost,
+      retail,
+      retail - cost,
+      p.penetration || 0,
+      p.claimsRate || 0,
+    ]);
+  }
+  addDisclosureRow(sheet, brand, 7);
+}
+
+// AD-013 F&I Compliance
+function buildEqualTreatmentReport(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("Equal Treatment");
+  sheet.columns = [
+    { width: 14 }, { width: 20 }, { width: 16 }, { width: 16 },
+    { width: 14 }, { width: 14 }, { width: 14 }, { width: 22 },
+  ];
+  const headerRow = sheet.addRow(["Deal #", "Customer", "Rate Markup", "Products Offered", "Products Accepted", "Deviation", "Override", "Notes"]);
+  styleHeaderRow(headerRow, brand);
+
+  const deals = data.deals || data.items || [];
+  for (const d of deals) {
+    const row = sheet.addRow([
+      d.dealNumber || d.deal || "",
+      d.customer || "",
+      d.rateMarkup != null ? d.rateMarkup + "%" : "",
+      d.productsOffered || 0,
+      d.productsAccepted || 0,
+      d.deviation ? "YES" : "No",
+      d.override || "",
+      d.notes || "",
+    ]);
+    if (d.deviation) {
+      row.getCell(6).font = { bold: true, color: { argb: "FFDC2626" }, name: "Arial" };
+    }
+  }
+  addDisclosureRow(sheet, brand, 8);
+}
+
+// AD-014 Lender Relations & Funding
+function buildLenderGuide(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("Lender Guide");
+  sheet.columns = [
+    { width: 22 }, { width: 14 }, { width: 14 }, { width: 14 },
+    { width: 16 }, { width: 16 }, { width: 14 }, { width: 25 },
+  ];
+  const headerRow = sheet.addRow(["Lender", "Min Score", "Max Score", "Max Advance", "Max Term", "Flat/Reserve", "LTV Limit", "Notes"]);
+  styleHeaderRow(headerRow, brand);
+  sheet.getColumn(4).numFmt = currencyFormat();
+
+  const lenders = data.lenders || data.items || [];
+  for (const l of lenders) {
+    sheet.addRow([
+      l.name || l.lender || "",
+      l.minScore || "",
+      l.maxScore || "",
+      l.maxAdvance || "",
+      l.maxTerm || "",
+      l.flatReserve || "",
+      l.ltvLimit || "",
+      l.notes || "",
+    ]);
+  }
+  addDisclosureRow(sheet, brand, 8);
+}
+
+function buildStipTracker(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("Stip Tracker");
+  sheet.columns = [
+    { width: 14 }, { width: 20 }, { width: 20 }, { width: 24 },
+    { width: 14 }, { width: 14 }, { width: 22 },
+  ];
+  const headerRow = sheet.addRow(["Deal #", "Lender", "Customer", "Stipulation", "Due Date", "Status", "Notes"]);
+  styleHeaderRow(headerRow, brand);
+
+  const stips = data.stips || data.items || [];
+  for (const s of stips) {
+    const row = sheet.addRow([
+      s.dealNumber || s.deal || "",
+      s.lender || "",
+      s.customer || "",
+      s.stipulation || s.stip || "",
+      s.dueDate || "",
+      s.status || "Pending",
+      s.notes || "",
+    ]);
+    if (s.status === "Overdue" || s.status === "OVERDUE") {
+      row.getCell(6).font = { bold: true, color: { argb: "FFDC2626" }, name: "Arial" };
+    }
+  }
+  addDisclosureRow(sheet, brand, 7);
+}
+
+function buildFundingReport(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("Funding Report");
+  sheet.columns = [
+    { width: 14 }, { width: 20 }, { width: 20 }, { width: 16 },
+    { width: 14 }, { width: 14 }, { width: 14 }, { width: 14 },
+  ];
+  const headerRow = sheet.addRow(["Deal #", "Lender", "Customer", "Amount Financed", "Delivery Date", "Funded Date", "Days to Fund", "Status"]);
+  styleHeaderRow(headerRow, brand);
+  sheet.getColumn(4).numFmt = currencyFormat();
+
+  const deals = data.deals || data.items || [];
+  let totalFinanced = 0, totalDays = 0, fundedCount = 0;
+  for (const d of deals) {
+    const amount = d.amountFinanced || d.amount || 0;
+    totalFinanced += amount;
+    const days = d.daysToFund || 0;
+    if (days > 0) { totalDays += days; fundedCount++; }
+    sheet.addRow([
+      d.dealNumber || d.deal || "",
+      d.lender || "",
+      d.customer || "",
+      amount,
+      d.deliveryDate || "",
+      d.fundedDate || "",
+      days || "",
+      d.status || "Pending",
+    ]);
+  }
+  sheet.addRow([]);
+  const totRow = sheet.addRow(["TOTALS", "", "", totalFinanced, "", "", fundedCount > 0 ? (totalDays / fundedCount).toFixed(1) : "", ""]);
+  totRow.font = { bold: true, name: "Arial" };
+  addDisclosureRow(sheet, brand, 8);
+}
+
+// AD-015 Aftermarket Product Administration
+function buildContractTracker_AD(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("Contract Tracker");
+  sheet.columns = [
+    { width: 16 }, { width: 22 }, { width: 20 }, { width: 18 },
+    { width: 14 }, { width: 14 }, { width: 16 }, { width: 14 },
+  ];
+  const headerRow = sheet.addRow(["Contract #", "Product", "Customer", "Provider", "Effective", "Expiration", "Premium", "Status"]);
+  styleHeaderRow(headerRow, brand);
+  sheet.getColumn(7).numFmt = currencyFormat();
+
+  const contracts = data.contracts || data.items || [];
+  let totalPremium = 0;
+  for (const c of contracts) {
+    const premium = c.premium || c.price || 0;
+    totalPremium += premium;
+    sheet.addRow([
+      c.contractNumber || c.id || "",
+      c.product || c.name || "",
+      c.customer || "",
+      c.provider || "",
+      c.effectiveDate || c.effective || "",
+      c.expirationDate || c.expiration || "",
+      premium,
+      c.status || "Active",
+    ]);
+  }
+  sheet.addRow([]);
+  const totRow = sheet.addRow(["TOTALS", "", "", "", "", "", totalPremium, ""]);
+  totRow.font = { bold: true, name: "Arial" };
+  addDisclosureRow(sheet, brand, 8);
+}
+
+function buildClaimsReport(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("Claims Report");
+  sheet.columns = [
+    { width: 16 }, { width: 22 }, { width: 20 }, { width: 18 },
+    { width: 16 }, { width: 16 }, { width: 14 }, { width: 22 },
+  ];
+  const headerRow = sheet.addRow(["Claim #", "Product", "Customer", "Provider", "Amount Claimed", "Amount Paid", "Status", "Notes"]);
+  styleHeaderRow(headerRow, brand);
+  sheet.getColumn(5).numFmt = currencyFormat();
+  sheet.getColumn(6).numFmt = currencyFormat();
+
+  const claims = data.claims || data.items || [];
+  let totalClaimed = 0, totalPaid = 0;
+  for (const c of claims) {
+    const claimed = c.amountClaimed || c.amount || 0;
+    const paid = c.amountPaid || 0;
+    totalClaimed += claimed;
+    totalPaid += paid;
+    sheet.addRow([
+      c.claimNumber || c.id || "",
+      c.product || "",
+      c.customer || "",
+      c.provider || "",
+      claimed,
+      paid,
+      c.status || "Open",
+      c.notes || "",
+    ]);
+  }
+  sheet.addRow([]);
+  const totRow = sheet.addRow(["TOTALS", "", "", "", totalClaimed, totalPaid, "", ""]);
+  totRow.font = { bold: true, name: "Arial" };
+  addDisclosureRow(sheet, brand, 8);
+}
+
+function buildCancellationLog(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("Cancellation Log");
+  sheet.columns = [
+    { width: 16 }, { width: 22 }, { width: 20 }, { width: 16 },
+    { width: 16 }, { width: 14 }, { width: 14 }, { width: 22 },
+  ];
+  const headerRow = sheet.addRow(["Contract #", "Product", "Customer", "Original Premium", "Refund Amount", "Method", "Processed", "Notes"]);
+  styleHeaderRow(headerRow, brand);
+  sheet.getColumn(4).numFmt = currencyFormat();
+  sheet.getColumn(5).numFmt = currencyFormat();
+
+  const cancellations = data.cancellations || data.items || [];
+  let totalRefund = 0;
+  for (const c of cancellations) {
+    const refund = c.refundAmount || c.refund || 0;
+    totalRefund += refund;
+    sheet.addRow([
+      c.contractNumber || c.id || "",
+      c.product || "",
+      c.customer || "",
+      c.originalPremium || c.premium || 0,
+      refund,
+      c.method || "Pro-Rata",
+      c.processedDate || c.date || "",
+      c.notes || "",
+    ]);
+  }
+  sheet.addRow([]);
+  const totRow = sheet.addRow(["TOTALS", "", "", "", totalRefund, "", "", ""]);
+  totRow.font = { bold: true, name: "Arial" };
+  addDisclosureRow(sheet, brand, 8);
+}
+
+// AD-016 Service Scheduling & Workflow
+function buildShopSchedule(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("Shop Schedule");
+  sheet.columns = [
+    { width: 14 }, { width: 12 }, { width: 20 }, { width: 22 },
+    { width: 18 }, { width: 14 }, { width: 14 }, { width: 14 },
+  ];
+  const headerRow = sheet.addRow(["RO #", "Time", "Customer", "Vehicle", "Service Type", "Technician", "Est. Hours", "Status"]);
+  styleHeaderRow(headerRow, brand);
+
+  const appointments = data.appointments || data.items || [];
+  for (const a of appointments) {
+    sheet.addRow([
+      a.roNumber || a.ro || "",
+      a.time || a.appointmentTime || "",
+      a.customer || "",
+      a.vehicle || "",
+      a.serviceType || a.type || "",
+      a.technician || "",
+      a.estimatedHours || a.hours || "",
+      a.status || "Scheduled",
+    ]);
+  }
+  addDisclosureRow(sheet, brand, 8);
+}
+
+function buildTechProductivity(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("Tech Productivity");
+  sheet.columns = [
+    { width: 22 }, { width: 14 }, { width: 14 }, { width: 14 },
+    { width: 14 }, { width: 16 }, { width: 14 },
+  ];
+  const headerRow = sheet.addRow(["Technician", "Hours Available", "Hours Flagged", "Hours Worked", "Efficiency %", "Effective Rate", "ROs Completed"]);
+  styleHeaderRow(headerRow, brand);
+  sheet.getColumn(6).numFmt = currencyFormat();
+
+  const techs = data.technicians || data.items || [];
+  for (const t of techs) {
+    const avail = t.hoursAvailable || t.available || 0;
+    const flagged = t.hoursFlagged || t.flagged || 0;
+    const worked = t.hoursWorked || t.worked || 0;
+    const efficiency = avail > 0 ? ((flagged / avail) * 100).toFixed(1) : "0.0";
+    sheet.addRow([
+      t.name || "",
+      avail,
+      flagged,
+      worked,
+      efficiency + "%",
+      t.effectiveRate || 0,
+      t.rosCompleted || 0,
+    ]);
+  }
+  addDisclosureRow(sheet, brand, 7);
+}
+
+// AD-017 Service Upsell & MPI
+function buildDeclinedServiceReport(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("Declined Services");
+  sheet.columns = [
+    { width: 14 }, { width: 20 }, { width: 22 }, { width: 24 },
+    { width: 16 }, { width: 14 }, { width: 14 }, { width: 14 },
+  ];
+  const headerRow = sheet.addRow(["RO #", "Customer", "Vehicle", "Service Declined", "Est. Revenue", "Decline Date", "Follow-Up", "Recovered"]);
+  styleHeaderRow(headerRow, brand);
+  sheet.getColumn(5).numFmt = currencyFormat();
+
+  const items = data.declinedServices || data.items || [];
+  let totalRevenue = 0;
+  for (const d of items) {
+    const revenue = d.estimatedRevenue || d.revenue || 0;
+    totalRevenue += revenue;
+    sheet.addRow([
+      d.roNumber || d.ro || "",
+      d.customer || "",
+      d.vehicle || "",
+      d.service || d.description || "",
+      revenue,
+      d.declineDate || d.date || "",
+      d.followUpDate || "",
+      d.recovered ? "Yes" : "No",
+    ]);
+  }
+  sheet.addRow([]);
+  const totRow = sheet.addRow(["TOTAL DECLINED REVENUE", "", "", "", totalRevenue, "", "", ""]);
+  totRow.font = { bold: true, name: "Arial" };
+  addDisclosureRow(sheet, brand, 8);
+}
+
+// AD-018 Parts Inventory & Ordering
+function buildPartsInventoryReport(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("Parts Inventory");
+  sheet.columns = [
+    { width: 16 }, { width: 28 }, { width: 14 }, { width: 14 },
+    { width: 14 }, { width: 16 }, { width: 14 }, { width: 14 },
+  ];
+  const headerRow = sheet.addRow(["Part #", "Description", "On Hand", "Reorder Point", "On Order", "Unit Cost", "Total Value", "Last Sale"]);
+  styleHeaderRow(headerRow, brand);
+  sheet.getColumn(6).numFmt = currencyFormat();
+  sheet.getColumn(7).numFmt = currencyFormat();
+
+  const parts = data.parts || data.items || [];
+  let totalValue = 0;
+  for (const p of parts) {
+    const onHand = p.onHand || p.quantity || 0;
+    const cost = p.unitCost || p.cost || 0;
+    const value = onHand * cost;
+    totalValue += value;
+    sheet.addRow([
+      p.partNumber || p.id || "",
+      p.description || p.name || "",
+      onHand,
+      p.reorderPoint || p.rop || "",
+      p.onOrder || 0,
+      cost,
+      value,
+      p.lastSaleDate || p.lastSale || "",
+    ]);
+  }
+  sheet.addRow([]);
+  const totRow = sheet.addRow(["TOTAL INVENTORY VALUE", "", "", "", "", "", totalValue, ""]);
+  totRow.font = { bold: true, name: "Arial" };
+  addDisclosureRow(sheet, brand, 8);
+}
+
+function buildObsolescenceReport(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("Obsolescence");
+  sheet.columns = [
+    { width: 16 }, { width: 28 }, { width: 14 }, { width: 16 },
+    { width: 14 }, { width: 16 }, { width: 14 },
+  ];
+  const headerRow = sheet.addRow(["Part #", "Description", "On Hand", "Unit Cost", "Total Value", "Last Sale Date", "Days Since Sale"]);
+  styleHeaderRow(headerRow, brand);
+  sheet.getColumn(4).numFmt = currencyFormat();
+  sheet.getColumn(5).numFmt = currencyFormat();
+
+  const parts = data.parts || data.items || [];
+  let totalObsolete = 0;
+  for (const p of parts) {
+    const onHand = p.onHand || p.quantity || 0;
+    const cost = p.unitCost || p.cost || 0;
+    const value = onHand * cost;
+    totalObsolete += value;
+    sheet.addRow([
+      p.partNumber || p.id || "",
+      p.description || p.name || "",
+      onHand,
+      cost,
+      value,
+      p.lastSaleDate || p.lastSale || "",
+      p.daysSinceSale || "",
+    ]);
+  }
+  sheet.addRow([]);
+  const totRow = sheet.addRow(["TOTAL OBSOLETE VALUE", "", "", "", totalObsolete, "", ""]);
+  totRow.font = { bold: true, name: "Arial" };
+  addDisclosureRow(sheet, brand, 7);
+}
+
+// AD-019 Warranty Administration
+function buildWarrantyRejectionReport(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("Warranty Rejections");
+  sheet.columns = [
+    { width: 16 }, { width: 14 }, { width: 24 }, { width: 16 },
+    { width: 16 }, { width: 14 }, { width: 22 },
+  ];
+  const headerRow = sheet.addRow(["Claim #", "RO #", "Rejection Reason", "Amount", "Technician", "Resubmitted", "Notes"]);
+  styleHeaderRow(headerRow, brand);
+  sheet.getColumn(4).numFmt = currencyFormat();
+
+  const rejections = data.rejections || data.items || [];
+  let totalAmount = 0;
+  for (const r of rejections) {
+    const amount = r.amount || r.claimAmount || 0;
+    totalAmount += amount;
+    sheet.addRow([
+      r.claimNumber || r.claim || "",
+      r.roNumber || r.ro || "",
+      r.reason || r.rejectionReason || "",
+      amount,
+      r.technician || "",
+      r.resubmitted ? "Yes" : "No",
+      r.notes || "",
+    ]);
+  }
+  sheet.addRow([]);
+  const totRow = sheet.addRow(["TOTAL REJECTED", "", "", totalAmount, "", "", ""]);
+  totRow.font = { bold: true, name: "Arial" };
+  addDisclosureRow(sheet, brand, 7);
+}
+
+// AD-020 Body Shop Management
+function buildSupplementTracker(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("Supplement Tracker");
+  sheet.columns = [
+    { width: 14 }, { width: 20 }, { width: 20 }, { width: 16 },
+    { width: 16 }, { width: 14 }, { width: 14 }, { width: 22 },
+  ];
+  const headerRow = sheet.addRow(["RO #", "Insurer", "Customer", "Original Est.", "Supplement Amt", "Days to Approve", "Status", "Notes"]);
+  styleHeaderRow(headerRow, brand);
+  sheet.getColumn(4).numFmt = currencyFormat();
+  sheet.getColumn(5).numFmt = currencyFormat();
+
+  const supplements = data.supplements || data.items || [];
+  let totalOriginal = 0, totalSupplement = 0;
+  for (const s of supplements) {
+    const original = s.originalEstimate || s.original || 0;
+    const supp = s.supplementAmount || s.supplement || 0;
+    totalOriginal += original;
+    totalSupplement += supp;
+    sheet.addRow([
+      s.roNumber || s.ro || "",
+      s.insurer || "",
+      s.customer || "",
+      original,
+      supp,
+      s.daysToApprove || "",
+      s.status || "Pending",
+      s.notes || "",
+    ]);
+  }
+  sheet.addRow([]);
+  const totRow = sheet.addRow(["TOTALS", "", "", totalOriginal, totalSupplement, "", "", ""]);
+  totRow.font = { bold: true, name: "Arial" };
+  addDisclosureRow(sheet, brand, 8);
+}
+
+// AD-021 Customer Retention & Lifecycle
+function buildEquityMiningReport(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("Equity Mining");
+  sheet.columns = [
+    { width: 22 }, { width: 22 }, { width: 14 }, { width: 16 },
+    { width: 16 }, { width: 16 }, { width: 14 }, { width: 14 },
+  ];
+  const headerRow = sheet.addRow(["Customer", "Vehicle", "Mileage", "Market Value", "Payoff Balance", "Equity", "Last Service", "Status"]);
+  styleHeaderRow(headerRow, brand);
+  sheet.getColumn(4).numFmt = currencyFormat();
+  sheet.getColumn(5).numFmt = currencyFormat();
+  sheet.getColumn(6).numFmt = currencyFormat();
+
+  const customers = data.customers || data.items || [];
+  for (const c of customers) {
+    const market = c.marketValue || c.value || 0;
+    const payoff = c.payoffBalance || c.payoff || 0;
+    const equity = market - payoff;
+    const row = sheet.addRow([
+      c.customer || c.name || "",
+      c.vehicle || "",
+      c.mileage || "",
+      market,
+      payoff,
+      equity,
+      c.lastService || "",
+      c.status || "New",
+    ]);
+    if (equity > 0) {
+      row.getCell(6).font = { bold: true, color: { argb: "FF16A34A" }, name: "Arial" };
+    } else {
+      row.getCell(6).font = { bold: true, color: { argb: "FFDC2626" }, name: "Arial" };
+    }
+  }
+  addDisclosureRow(sheet, brand, 8);
+}
+
+function buildLeaseMaturityReport(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("Lease Maturity");
+  sheet.columns = [
+    { width: 22 }, { width: 22 }, { width: 14 }, { width: 16 },
+    { width: 16 }, { width: 14 }, { width: 14 }, { width: 14 },
+  ];
+  const headerRow = sheet.addRow(["Customer", "Vehicle", "Lease End", "Residual", "Market Value", "Equity", "Contacted", "Disposition"]);
+  styleHeaderRow(headerRow, brand);
+  sheet.getColumn(4).numFmt = currencyFormat();
+  sheet.getColumn(5).numFmt = currencyFormat();
+  sheet.getColumn(6).numFmt = currencyFormat();
+
+  const leases = data.leases || data.items || [];
+  for (const l of leases) {
+    const residual = l.residual || 0;
+    const market = l.marketValue || l.value || 0;
+    sheet.addRow([
+      l.customer || l.name || "",
+      l.vehicle || "",
+      l.leaseEnd || l.maturityDate || "",
+      residual,
+      market,
+      market - residual,
+      l.contacted ? "Yes" : "No",
+      l.disposition || "",
+    ]);
+  }
+  addDisclosureRow(sheet, brand, 8);
+}
+
+// AD-022 Reputation Management
+function buildReviewResponseLog(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("Review Response Log");
+  sheet.columns = [
+    { width: 14 }, { width: 16 }, { width: 12 }, { width: 22 },
+    { width: 14 }, { width: 14 }, { width: 14 }, { width: 28 },
+  ];
+  const headerRow = sheet.addRow(["Date", "Platform", "Rating", "Customer", "Department", "Responded", "Response Time", "Summary"]);
+  styleHeaderRow(headerRow, brand);
+
+  const reviews = data.reviews || data.items || [];
+  for (const r of reviews) {
+    sheet.addRow([
+      r.date || "",
+      r.platform || "",
+      r.rating != null ? String(r.rating) : "",
+      r.customer || r.reviewer || "",
+      r.department || "",
+      r.responded ? "Yes" : "No",
+      r.responseTime || "",
+      r.summary || r.excerpt || "",
+    ]);
+  }
+  addDisclosureRow(sheet, brand, 8);
+}
+
+// AD-023 Digital Marketing & Advertising
+function buildSourceRoi(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("Source ROI");
+  sheet.columns = [
+    { width: 24 }, { width: 16 }, { width: 14 }, { width: 14 },
+    { width: 14 }, { width: 16 }, { width: 16 }, { width: 16 },
+  ];
+  const headerRow = sheet.addRow(["Source", "Monthly Spend", "Leads", "Appointments", "Sales", "Cost/Lead", "Cost/Appt", "Cost/Sale"]);
+  styleHeaderRow(headerRow, brand);
+  sheet.getColumn(2).numFmt = currencyFormat();
+  sheet.getColumn(6).numFmt = currencyFormat();
+  sheet.getColumn(7).numFmt = currencyFormat();
+  sheet.getColumn(8).numFmt = currencyFormat();
+
+  const sources = data.sources || data.items || [];
+  let totalSpend = 0, totalLeads = 0, totalAppts = 0, totalSales = 0;
+  for (const s of sources) {
+    const spend = s.spend || s.monthlySpend || 0;
+    const leads = s.leads || 0;
+    const appts = s.appointments || 0;
+    const sales = s.sales || 0;
+    totalSpend += spend;
+    totalLeads += leads;
+    totalAppts += appts;
+    totalSales += sales;
+    sheet.addRow([
+      s.source || s.name || "",
+      spend,
+      leads,
+      appts,
+      sales,
+      leads > 0 ? spend / leads : 0,
+      appts > 0 ? spend / appts : 0,
+      sales > 0 ? spend / sales : 0,
+    ]);
+  }
+  sheet.addRow([]);
+  const totRow = sheet.addRow([
+    "TOTALS", totalSpend, totalLeads, totalAppts, totalSales,
+    totalLeads > 0 ? totalSpend / totalLeads : 0,
+    totalAppts > 0 ? totalSpend / totalAppts : 0,
+    totalSales > 0 ? totalSpend / totalSales : 0,
+  ]);
+  totRow.font = { bold: true, name: "Arial" };
+  addDisclosureRow(sheet, brand, 8);
+}
+
+function buildMarketingBudgetTracker(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("Marketing Budget");
+  sheet.columns = [
+    { width: 24 }, { width: 16 }, { width: 16 }, { width: 16 },
+    { width: 14 }, { width: 22 },
+  ];
+  const headerRow = sheet.addRow(["Channel", "Budgeted", "Actual Spend", "Variance", "% of Budget", "Notes"]);
+  styleHeaderRow(headerRow, brand);
+  sheet.getColumn(2).numFmt = currencyFormat();
+  sheet.getColumn(3).numFmt = currencyFormat();
+  sheet.getColumn(4).numFmt = currencyFormat();
+
+  const channels = data.channels || data.items || [];
+  let totalBudget = 0, totalActual = 0;
+  for (const c of channels) {
+    const budget = c.budgeted || c.budget || 0;
+    const actual = c.actualSpend || c.actual || 0;
+    totalBudget += budget;
+    totalActual += actual;
+    const variance = actual - budget;
+    const row = sheet.addRow([
+      c.channel || c.name || "",
+      budget,
+      actual,
+      variance,
+      budget > 0 ? ((actual / budget) * 100).toFixed(1) + "%" : "N/A",
+      c.notes || "",
+    ]);
+    if (variance > 0) {
+      row.getCell(4).font = { bold: true, color: { argb: "FFDC2626" }, name: "Arial" };
+    }
+  }
+  sheet.addRow([]);
+  const totRow = sheet.addRow(["TOTALS", totalBudget, totalActual, totalActual - totalBudget, totalBudget > 0 ? ((totalActual / totalBudget) * 100).toFixed(1) + "%" : "", ""]);
+  totRow.font = { bold: true, name: "Arial" };
+  addDisclosureRow(sheet, brand, 6);
+}
+
+// AD-024 Title & Registration
+function buildTitleTracker(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("Title Tracker");
+  sheet.columns = [
+    { width: 14 }, { width: 20 }, { width: 22 }, { width: 14 },
+    { width: 14 }, { width: 14 }, { width: 14 }, { width: 22 },
+  ];
+  const headerRow = sheet.addRow(["Deal #", "Customer", "Vehicle / VIN", "State", "Filed Date", "Due Date", "Status", "Notes"]);
+  styleHeaderRow(headerRow, brand);
+
+  const titles = data.titles || data.items || [];
+  for (const t of titles) {
+    const row = sheet.addRow([
+      t.dealNumber || t.deal || "",
+      t.customer || "",
+      t.vehicle || t.vin || "",
+      t.state || "",
+      t.filedDate || t.filed || "",
+      t.dueDate || "",
+      t.status || "Pending",
+      t.notes || "",
+    ]);
+    if (t.status === "Overdue" || t.status === "OVERDUE" || t.status === "Rejected") {
+      row.getCell(7).font = { bold: true, color: { argb: "FFDC2626" }, name: "Arial" };
+    }
+  }
+  addDisclosureRow(sheet, brand, 8);
+}
+
+function buildTempTagReport(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("Temp Tag Report");
+  sheet.columns = [
+    { width: 14 }, { width: 20 }, { width: 22 }, { width: 16 },
+    { width: 14 }, { width: 14 }, { width: 14 }, { width: 22 },
+  ];
+  const headerRow = sheet.addRow(["Deal #", "Customer", "Vehicle", "Tag Number", "Issue Date", "Expiration", "Days Left", "Status"]);
+  styleHeaderRow(headerRow, brand);
+
+  const tags = data.tags || data.items || [];
+  for (const t of tags) {
+    const row = sheet.addRow([
+      t.dealNumber || t.deal || "",
+      t.customer || "",
+      t.vehicle || "",
+      t.tagNumber || t.tag || "",
+      t.issueDate || "",
+      t.expirationDate || t.expiration || "",
+      t.daysLeft != null ? String(t.daysLeft) : "",
+      t.status || "Active",
+    ]);
+    if ((t.daysLeft || 0) <= 7 && (t.daysLeft || 0) > 0) {
+      row.getCell(7).font = { bold: true, color: { argb: "FFD97706" }, name: "Arial" };
+    } else if ((t.daysLeft || 0) <= 0) {
+      row.getCell(7).font = { bold: true, color: { argb: "FFDC2626" }, name: "Arial" };
+    }
+  }
+  addDisclosureRow(sheet, brand, 8);
+}
+
+function buildPayoffTracker(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("Payoff Tracker");
+  sheet.columns = [
+    { width: 14 }, { width: 22 }, { width: 20 }, { width: 16 },
+    { width: 14 }, { width: 14 }, { width: 14 }, { width: 14 },
+  ];
+  const headerRow = sheet.addRow(["Deal #", "Vehicle / VIN", "Lienholder", "Payoff Amount", "Good Thru", "Paid Date", "Days Open", "Status"]);
+  styleHeaderRow(headerRow, brand);
+  sheet.getColumn(4).numFmt = currencyFormat();
+
+  const payoffs = data.payoffs || data.items || [];
+  let totalPayoff = 0;
+  for (const p of payoffs) {
+    const amount = p.payoffAmount || p.amount || 0;
+    totalPayoff += amount;
+    sheet.addRow([
+      p.dealNumber || p.deal || "",
+      p.vehicle || p.vin || "",
+      p.lienholder || p.lender || "",
+      amount,
+      p.goodThruDate || p.goodThru || "",
+      p.paidDate || "",
+      p.daysOpen || "",
+      p.status || "Pending",
+    ]);
+  }
+  sheet.addRow([]);
+  const totRow = sheet.addRow(["TOTAL PAYOFFS", "", "", totalPayoff, "", "", "", ""]);
+  totRow.font = { bold: true, name: "Arial" };
+  addDisclosureRow(sheet, brand, 8);
+}
+
+// AD-025 Deal Accounting & Posting
+function buildReceivablesAging(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("Receivables Aging");
+  sheet.columns = [
+    { width: 24 }, { width: 16 }, { width: 16 }, { width: 16 },
+    { width: 16 }, { width: 16 }, { width: 16 },
+  ];
+  const headerRow = sheet.addRow(["Category", "Current", "1-30 Days", "31-60 Days", "61-90 Days", "90+ Days", "Total"]);
+  styleHeaderRow(headerRow, brand);
+  for (let i = 2; i <= 7; i++) sheet.getColumn(i).numFmt = currencyFormat();
+
+  const categories = data.categories || data.items || [];
+  let grandTotal = 0;
+  for (const c of categories) {
+    const current = c.current || 0;
+    const d30 = c.days30 || c["1_30"] || 0;
+    const d60 = c.days60 || c["31_60"] || 0;
+    const d90 = c.days90 || c["61_90"] || 0;
+    const d90plus = c.days90plus || c["90_plus"] || 0;
+    const total = current + d30 + d60 + d90 + d90plus;
+    grandTotal += total;
+    sheet.addRow([
+      c.category || c.name || "",
+      current, d30, d60, d90, d90plus, total,
+    ]);
+  }
+  sheet.addRow([]);
+  const totRow = sheet.addRow(["GRAND TOTAL", "", "", "", "", "", grandTotal]);
+  totRow.font = { bold: true, name: "Arial" };
+  addDisclosureRow(sheet, brand, 7);
+}
+
+function buildFloorPlanPayoff(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("Floor Plan Payoff");
+  sheet.columns = [
+    { width: 14 }, { width: 22 }, { width: 16 }, { width: 14 },
+    { width: 14 }, { width: 16 }, { width: 14 }, { width: 14 },
+  ];
+  const headerRow = sheet.addRow(["Stock #", "Vehicle", "Floor Amount", "Floor Date", "Days on Floor", "Interest Accrued", "Sold Date", "Payoff Status"]);
+  styleHeaderRow(headerRow, brand);
+  sheet.getColumn(3).numFmt = currencyFormat();
+  sheet.getColumn(6).numFmt = currencyFormat();
+
+  const vehicles = data.vehicles || data.items || [];
+  let totalFloor = 0, totalInterest = 0;
+  for (const v of vehicles) {
+    const floor = v.floorAmount || v.amount || 0;
+    const interest = v.interestAccrued || v.interest || 0;
+    totalFloor += floor;
+    totalInterest += interest;
+    sheet.addRow([
+      v.stockNumber || v.stock || "",
+      v.vehicle || "",
+      floor,
+      v.floorDate || "",
+      v.daysOnFloor || "",
+      interest,
+      v.soldDate || "",
+      v.status || "Active",
+    ]);
+  }
+  sheet.addRow([]);
+  const totRow = sheet.addRow(["TOTALS", "", totalFloor, "", "", totalInterest, "", ""]);
+  totRow.font = { bold: true, name: "Arial" };
+  addDisclosureRow(sheet, brand, 8);
+}
+
+// AD-026 Regulatory Compliance & Audit
+function buildAuditPrepChecklist(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("Audit Prep Checklist");
+  sheet.columns = [
+    { width: 8 }, { width: 18 }, { width: 32 }, { width: 14 },
+    { width: 20 }, { width: 14 }, { width: 22 },
+  ];
+  const headerRow = sheet.addRow(["#", "Category", "Item", "Priority", "Responsible Party", "Status", "Notes"]);
+  styleHeaderRow(headerRow, brand);
+
+  const items = data.checklist || data.items || [];
+  items.forEach((item, i) => {
+    const row = sheet.addRow([
+      i + 1,
+      typeof item === "string" ? "" : item.category || "",
+      typeof item === "string" ? item : item.item || item.task || "",
+      typeof item === "string" ? "" : item.priority || "Medium",
+      typeof item === "string" ? "" : item.responsible || item.assignee || "",
+      typeof item === "string" ? "" : item.status || "Pending",
+      typeof item === "string" ? "" : item.notes || "",
+    ]);
+    if (item.priority === "Critical" || item.priority === "High") {
+      row.getCell(4).font = { bold: true, color: { argb: "FFDC2626" }, name: "Arial" };
+    }
+  });
+  addDisclosureRow(sheet, brand, 7);
+}
+
+function buildComplaintLog(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("Complaint Log");
+  sheet.columns = [
+    { width: 8 }, { width: 14 }, { width: 18 }, { width: 22 },
+    { width: 28 }, { width: 14 }, { width: 14 }, { width: 22 },
+  ];
+  const headerRow = sheet.addRow(["#", "Date", "Source", "Customer", "Description", "Department", "Status", "Resolution"]);
+  styleHeaderRow(headerRow, brand);
+
+  const complaints = data.complaints || data.items || [];
+  complaints.forEach((c, i) => {
+    sheet.addRow([
+      i + 1,
+      c.date || "",
+      c.source || "",
+      c.customer || "",
+      c.description || c.complaint || "",
+      c.department || "",
+      c.status || "Open",
+      c.resolution || "",
+    ]);
+  });
+  addDisclosureRow(sheet, brand, 8);
+}
+
+function buildTrainingTracker(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("Training Tracker");
+  sheet.columns = [
+    { width: 22 }, { width: 18 }, { width: 24 }, { width: 14 },
+    { width: 14 }, { width: 14 }, { width: 22 },
+  ];
+  const headerRow = sheet.addRow(["Employee", "Department", "Training", "Required", "Completed", "Expiration", "Status"]);
+  styleHeaderRow(headerRow, brand);
+
+  const records = data.training || data.items || [];
+  for (const t of records) {
+    const row = sheet.addRow([
+      t.employee || t.name || "",
+      t.department || "",
+      t.training || t.course || "",
+      t.required ? "Yes" : "Optional",
+      t.completedDate || t.completed || "",
+      t.expirationDate || t.expiration || "",
+      t.status || "Pending",
+    ]);
+    if (t.status === "Overdue" || t.status === "Expired") {
+      row.getCell(7).font = { bold: true, color: { argb: "FFDC2626" }, name: "Arial" };
+    }
+  }
+  addDisclosureRow(sheet, brand, 7);
+}
+
+// AD-027 HR & Payroll Compliance
+function buildPayrollCompliance(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("Payroll Compliance");
+  sheet.columns = [
+    { width: 22 }, { width: 18 }, { width: 16 }, { width: 16 },
+    { width: 16 }, { width: 14 }, { width: 14 }, { width: 22 },
+  ];
+  const headerRow = sheet.addRow(["Employee", "Position", "Commission Earned", "Min Wage Equiv", "Shortfall", "OT Hours", "OT Eligible", "Notes"]);
+  styleHeaderRow(headerRow, brand);
+  sheet.getColumn(3).numFmt = currencyFormat();
+  sheet.getColumn(4).numFmt = currencyFormat();
+  sheet.getColumn(5).numFmt = currencyFormat();
+
+  const employees = data.employees || data.items || [];
+  for (const e of employees) {
+    const commission = e.commissionEarned || e.commission || 0;
+    const minWage = e.minWageEquiv || e.minWage || 0;
+    const shortfall = Math.max(0, minWage - commission);
+    const row = sheet.addRow([
+      e.name || e.employee || "",
+      e.position || "",
+      commission,
+      minWage,
+      shortfall,
+      e.overtimeHours || e.otHours || 0,
+      e.overtimeEligible ? "Yes" : "Exempt",
+      e.notes || "",
+    ]);
+    if (shortfall > 0) {
+      row.getCell(5).font = { bold: true, color: { argb: "FFDC2626" }, name: "Arial" };
+    }
+  }
+  addDisclosureRow(sheet, brand, 8);
+}
+
+function buildLicenseTracker(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("License Tracker");
+  sheet.columns = [
+    { width: 22 }, { width: 18 }, { width: 20 }, { width: 16 },
+    { width: 14 }, { width: 14 }, { width: 14 }, { width: 22 },
+  ];
+  const headerRow = sheet.addRow(["Employee", "Position", "License/Cert", "Issuer", "Issue Date", "Expiration", "Status", "Notes"]);
+  styleHeaderRow(headerRow, brand);
+
+  const licenses = data.licenses || data.items || [];
+  for (const l of licenses) {
+    const row = sheet.addRow([
+      l.employee || l.name || "",
+      l.position || "",
+      l.license || l.certification || "",
+      l.issuer || l.authority || "",
+      l.issueDate || "",
+      l.expirationDate || l.expiration || "",
+      l.status || "Active",
+      l.notes || "",
+    ]);
+    if (l.status === "Expired" || l.status === "EXPIRED") {
+      row.getCell(7).font = { bold: true, color: { argb: "FFDC2626" }, name: "Arial" };
+    }
+  }
+  addDisclosureRow(sheet, brand, 8);
+}
+
+function buildTrainingCompliance(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("Training Compliance");
+  sheet.columns = [
+    { width: 22 }, { width: 18 }, { width: 24 }, { width: 14 },
+    { width: 14 }, { width: 14 }, { width: 14 }, { width: 22 },
+  ];
+  const headerRow = sheet.addRow(["Employee", "Department", "Training Required", "Frequency", "Last Completed", "Next Due", "Status", "Notes"]);
+  styleHeaderRow(headerRow, brand);
+
+  const records = data.training || data.items || [];
+  for (const t of records) {
+    const row = sheet.addRow([
+      t.employee || t.name || "",
+      t.department || "",
+      t.training || t.course || "",
+      t.frequency || "Annual",
+      t.lastCompleted || "",
+      t.nextDue || "",
+      t.status || "Current",
+      t.notes || "",
+    ]);
+    if (t.status === "Overdue" || t.status === "Past Due") {
+      row.getCell(7).font = { bold: true, color: { argb: "FFDC2626" }, name: "Arial" };
+    }
+  }
+  addDisclosureRow(sheet, brand, 8);
+}
+
+// AD-028 Floor Plan & Cash Management
+function buildCashFlowForecast(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("Cash Flow Forecast");
+  const periods = data.periods || ["Week 1", "Week 2", "Week 3", "Week 4"];
+  const headers = ["Category", ...periods.map(p => typeof p === "string" ? p : p.label || p)];
+  const headerRow = sheet.addRow(headers);
+  styleHeaderRow(headerRow, brand);
+
+  sheet.getColumn(1).width = 28;
+  for (let i = 2; i <= headers.length; i++) {
+    sheet.getColumn(i).width = 16;
+    sheet.getColumn(i).numFmt = currencyFormat();
+  }
+
+  // Inflows
+  sheet.addRow(["INFLOWS"]).font = { bold: true, name: "Arial" };
+  const inflows = data.inflows || [];
+  const inflowTotals = new Array(periods.length).fill(0);
+  for (const item of inflows) {
+    const vals = item.values || item.amounts || [];
+    const row = [item.name || item.category || ""];
+    for (let i = 0; i < periods.length; i++) {
+      const v = vals[i] || 0;
+      inflowTotals[i] += v;
+      row.push(v);
+    }
+    sheet.addRow(row);
+  }
+  const inflowTotRow = sheet.addRow(["Total Inflows", ...inflowTotals]);
+  inflowTotRow.font = { bold: true, name: "Arial" };
+
+  sheet.addRow([]);
+
+  // Outflows
+  sheet.addRow(["OUTFLOWS"]).font = { bold: true, name: "Arial" };
+  const outflows = data.outflows || [];
+  const outflowTotals = new Array(periods.length).fill(0);
+  for (const item of outflows) {
+    const vals = item.values || item.amounts || [];
+    const row = [item.name || item.category || ""];
+    for (let i = 0; i < periods.length; i++) {
+      const v = vals[i] || 0;
+      outflowTotals[i] += v;
+      row.push(v);
+    }
+    sheet.addRow(row);
+  }
+  const outflowTotRow = sheet.addRow(["Total Outflows", ...outflowTotals]);
+  outflowTotRow.font = { bold: true, name: "Arial" };
+
+  sheet.addRow([]);
+  const netRow = sheet.addRow(["NET CASH FLOW", ...inflowTotals.map((inf, i) => inf - outflowTotals[i])]);
+  netRow.font = { bold: true, name: "Arial" };
+  netRow.eachCell((cell, colNum) => {
+    if (colNum > 1) {
+      const val = typeof cell.value === "number" ? cell.value : 0;
+      cell.font = { bold: true, color: { argb: val >= 0 ? "FF16A34A" : "FFDC2626" }, name: "Arial" };
+    }
+  });
+
+  addDisclosureRow(sheet, brand, headers.length);
+}
+
+function buildFloorPlanReport(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("Floor Plan Report");
+  sheet.columns = [
+    { width: 14 }, { width: 22 }, { width: 16 }, { width: 14 },
+    { width: 14 }, { width: 16 }, { width: 14 }, { width: 14 },
+  ];
+  const headerRow = sheet.addRow(["Stock #", "Vehicle", "Floor Amount", "Floor Date", "Days", "Interest Accrued", "Curtailment", "Status"]);
+  styleHeaderRow(headerRow, brand);
+  sheet.getColumn(3).numFmt = currencyFormat();
+  sheet.getColumn(6).numFmt = currencyFormat();
+
+  const vehicles = data.vehicles || data.items || [];
+  let totalFloor = 0, totalInterest = 0;
+  for (const v of vehicles) {
+    const floor = v.floorAmount || v.amount || 0;
+    const interest = v.interestAccrued || v.interest || 0;
+    totalFloor += floor;
+    totalInterest += interest;
+    sheet.addRow([
+      v.stockNumber || v.stock || "",
+      v.vehicle || "",
+      floor,
+      v.floorDate || "",
+      v.daysOnFloor || v.days || "",
+      interest,
+      v.curtailmentDate || v.curtailment || "",
+      v.status || "Active",
+    ]);
+  }
+  sheet.addRow([]);
+  const totRow = sheet.addRow(["TOTALS", "", totalFloor, "", "", totalInterest, "", ""]);
+  totRow.font = { bold: true, name: "Arial" };
+  addDisclosureRow(sheet, brand, 8);
+}
+
+function buildApAging(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("AP Aging");
+  sheet.columns = [
+    { width: 24 }, { width: 16 }, { width: 16 }, { width: 16 },
+    { width: 16 }, { width: 16 }, { width: 16 },
+  ];
+  const headerRow = sheet.addRow(["Vendor", "Current", "1-30 Days", "31-60 Days", "61-90 Days", "90+ Days", "Total"]);
+  styleHeaderRow(headerRow, brand);
+  for (let i = 2; i <= 7; i++) sheet.getColumn(i).numFmt = currencyFormat();
+
+  const vendors = data.vendors || data.items || [];
+  let grandTotal = 0;
+  for (const v of vendors) {
+    const current = v.current || 0;
+    const d30 = v.days30 || v["1_30"] || 0;
+    const d60 = v.days60 || v["31_60"] || 0;
+    const d90 = v.days90 || v["61_90"] || 0;
+    const d90plus = v.days90plus || v["90_plus"] || 0;
+    const total = current + d30 + d60 + d90 + d90plus;
+    grandTotal += total;
+    sheet.addRow([
+      v.vendor || v.name || "",
+      current, d30, d60, d90, d90plus, total,
+    ]);
+  }
+  sheet.addRow([]);
+  const totRow = sheet.addRow(["GRAND TOTAL", "", "", "", "", "", grandTotal]);
+  totRow.font = { bold: true, name: "Arial" };
+  addDisclosureRow(sheet, brand, 7);
+}
+
+// AD-029 DMS & Technology Management
+function buildSystemInventory(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("System Inventory");
+  sheet.columns = [
+    { width: 24 }, { width: 20 }, { width: 16 }, { width: 16 },
+    { width: 14 }, { width: 14 }, { width: 16 }, { width: 22 },
+  ];
+  const headerRow = sheet.addRow(["System", "Vendor", "Category", "Monthly Cost", "Users", "Utilization", "Contract Renewal", "Notes"]);
+  styleHeaderRow(headerRow, brand);
+  sheet.getColumn(4).numFmt = currencyFormat();
+
+  const systems = data.systems || data.items || [];
+  let totalCost = 0;
+  for (const s of systems) {
+    const cost = s.monthlyCost || s.cost || 0;
+    totalCost += cost;
+    sheet.addRow([
+      s.name || s.system || "",
+      s.vendor || "",
+      s.category || "",
+      cost,
+      s.users || "",
+      s.utilization || "",
+      s.renewalDate || s.renewal || "",
+      s.notes || "",
+    ]);
+  }
+  sheet.addRow([]);
+  const totRow = sheet.addRow(["TOTAL MONTHLY COST", "", "", totalCost, "", "", "", ""]);
+  totRow.font = { bold: true, name: "Arial" };
+  addDisclosureRow(sheet, brand, 8);
+}
+
+function buildAccessReview(workbook, data, brand) {
+  const sheet = workbook.addWorksheet("Access Review");
+  sheet.columns = [
+    { width: 22 }, { width: 24 }, { width: 18 }, { width: 16 },
+    { width: 14 }, { width: 14 }, { width: 14 }, { width: 22 },
+  ];
+  const headerRow = sheet.addRow(["User", "System", "Role / Permission", "Last Login", "Active", "Appropriate", "Risk Level", "Notes"]);
+  styleHeaderRow(headerRow, brand);
+
+  const users = data.users || data.items || [];
+  for (const u of users) {
+    const row = sheet.addRow([
+      u.user || u.name || "",
+      u.system || "",
+      u.role || u.permission || "",
+      u.lastLogin || "",
+      u.active ? "Yes" : "No",
+      u.appropriate ? "Yes" : "REVIEW",
+      u.riskLevel || "Low",
+      u.notes || "",
+    ]);
+    if (!u.appropriate) {
+      row.getCell(6).font = { bold: true, color: { argb: "FFDC2626" }, name: "Arial" };
+    }
+    if (u.riskLevel === "High" || u.riskLevel === "Critical") {
+      row.getCell(7).font = { bold: true, color: { argb: "FFDC2626" }, name: "Arial" };
+    }
+  }
   addDisclosureRow(sheet, brand, 8);
 }
 

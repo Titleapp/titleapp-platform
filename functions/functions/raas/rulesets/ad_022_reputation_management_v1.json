@@ -1,0 +1,72 @@
+{
+  "id": "ad_022_reputation_management_v1",
+  "version": "v1",
+  "domain": "auto-dealership",
+  "description": "Reputation Management — prohibits review gating, paid undisclosed reviews, non-disparagement clauses, and fake reviews; monitors sentiment trends and review response timeliness",
+  "required_inputs": ["workspace_id"],
+  "hard_stops": [
+    {
+      "id": "no_workspace",
+      "logic": "workspace must be initialized before any reputation management operation",
+      "eval": { "type": "required_inputs_check" }
+    },
+    {
+      "id": "ai_disclosure_required",
+      "logic": "AI-generated review responses must be reviewed by a human before posting — automated responses require prior template approval",
+      "eval": { "field": "workspace.aiDisclosureAcknowledged", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "data_integrity_check",
+      "logic": "review and sentiment data must be sourced from verified platforms — no fabricated or manipulated data feeds",
+      "eval": { "field": "reviews.dataIntegrityErrors", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "review_gating_attempted",
+      "logic": "NEVER gate reviews — asking only satisfied customers to post reviews while suppressing dissatisfied ones is prohibited by the FTC and violates Google, Yelp, and Facebook policies",
+      "eval": { "field": "compliance.reviewGatingAttemptCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "paid_reviews_undisclosed",
+      "logic": "FTC Endorsement Guides — any incentivized or paid review must include clear and conspicuous disclosure of the material connection",
+      "eval": { "field": "compliance.undisclosedPaidReviewCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "non_disparagement_clause",
+      "logic": "Consumer Review Fairness Act — NEVER include non-disparagement clauses in contracts that restrict customers from posting honest reviews",
+      "eval": { "field": "compliance.nonDisparageClauseDetected", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "fake_review_created",
+      "logic": "NEVER create, solicit, or post fake reviews from employees, associates, or bots — FTC considers this deceptive practice",
+      "eval": { "field": "compliance.fakeReviewDetectedCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "customer_pii_in_response",
+      "logic": "public review responses must never include customer PII (full name, deal details, credit information) — privacy violation",
+      "eval": { "field": "responses.piiExposureCount", "operator": ">", "threshold": 0 }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "negative_review_response_overdue",
+      "logic": "negative reviews (1-2 stars) have not received a response within 24 hours",
+      "eval": { "field": "responses.overdueNegativeReviewCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "rating_declining",
+      "logic": "average rating across monitored platforms is declining over trailing 30 days",
+      "eval": { "field": "metrics.ratingDeclineTrend", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "sentiment_negative_trending",
+      "logic": "negative sentiment percentage in reviews is increasing over trailing 30 days",
+      "eval": { "field": "metrics.negativeSentimentTrendPct", "operator": ">", "threshold": 5 }
+    },
+    {
+      "id": "review_mentions_compliance_issue",
+      "logic": "customer review mentions a potential compliance or regulatory issue (deceptive pricing, discrimination, etc.) that should be investigated",
+      "eval": { "field": "reviews.complianceMentionCount", "operator": ">", "threshold": 0 }
+    }
+  ],
+  "outputs": ["ad022-reputation-dashboard", "ad022-sentiment-report", "ad022-review-response-log"]
+}

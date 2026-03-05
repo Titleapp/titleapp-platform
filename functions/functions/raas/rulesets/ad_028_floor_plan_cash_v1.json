@@ -1,0 +1,77 @@
+{
+  "id": "ad_028_floor_plan_cash_v1",
+  "version": "v1",
+  "domain": "auto-dealership",
+  "description": "Floor Plan and Cash Management — enforces floor plan covenant compliance, cash reserve minimums, trust account segregation, financial reporting deadlines, and monitors curtailments, contracts in transit, and cash flow",
+  "required_inputs": ["workspace_id"],
+  "hard_stops": [
+    {
+      "id": "no_workspace",
+      "logic": "workspace must be initialized before any floor plan and cash management operation",
+      "eval": { "type": "required_inputs_check" }
+    },
+    {
+      "id": "ai_disclosure_required",
+      "logic": "AI-generated financial projections are decision-support tools — all financial decisions require CFO or controller authorization",
+      "eval": { "field": "workspace.aiDisclosureAcknowledged", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "data_integrity_check",
+      "logic": "all financial data must reconcile with bank statements and floor plan statements — no unexplained variances",
+      "eval": { "field": "finance.dataIntegrityErrors", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "floor_plan_covenant_violated",
+      "logic": "floor plan lending covenant has been breached (net worth, current ratio, or other financial covenant) — triggers acceleration clause and potential line termination",
+      "eval": { "field": "floorPlan.covenantViolationCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "cash_below_reserve",
+      "logic": "operating cash balance has fallen below the minimum reserve requirement — immediate action needed to prevent operational disruption",
+      "eval": { "field": "cash.belowReserve", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "trust_account_commingled",
+      "logic": "trust account funds (customer deposits, tax withholdings) must NEVER be commingled with operating funds — state law violation with criminal penalties in some jurisdictions",
+      "eval": { "field": "accounts.trustAccountCommingled", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "financial_reporting_overdue",
+      "logic": "required financial reporting to lenders, manufacturers, or regulators is overdue — may trigger covenant violations or regulatory action",
+      "eval": { "field": "reporting.overdueReportCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "sold_unit_not_paid_off",
+      "logic": "floor plan line for a sold unit has not been paid off — sold-not-paid is a critical audit finding and potential fraud indicator",
+      "eval": { "field": "floorPlan.soldNotPaidCount", "operator": ">", "threshold": 0 }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "curtailment_approaching",
+      "logic": "vehicles approaching floor plan curtailment date (age-based principal reduction) — will reduce available credit",
+      "eval": { "field": "floorPlan.approachingCurtailmentCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "contracts_in_transit_aging",
+      "logic": "contracts in transit (funded but not yet received) are aging beyond the normal cycle — cash flow impact",
+      "eval": { "field": "cit.avgAgingDays", "operator": ">", "threshold": 10 }
+    },
+    {
+      "id": "cash_flow_negative_forecast",
+      "logic": "projected cash flow for the next 30 days is negative based on known obligations and expected receipts",
+      "eval": { "field": "cash.forecastNegative", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "floor_plan_interest_per_unit_high",
+      "logic": "average floor plan interest cost per unit exceeds the configured threshold — indicates slow-turning inventory",
+      "eval": { "field": "floorPlan.avgInterestPerUnit", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "ap_aging_critical",
+      "logic": "accounts payable items have aged beyond normal payment terms — vendor relationships and credit at risk",
+      "eval": { "field": "ap.criticalAgingCount", "operator": ">", "threshold": 0 }
+    }
+  ],
+  "outputs": ["ad028-cash-flow-forecast", "ad028-floor-plan-report", "ad028-financial-statement", "ad028-ap-aging"]
+}

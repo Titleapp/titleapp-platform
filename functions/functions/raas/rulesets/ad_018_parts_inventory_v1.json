@@ -1,0 +1,77 @@
+{
+  "id": "ad_018_parts_inventory_v1",
+  "version": "v1",
+  "domain": "auto-dealership",
+  "description": "Parts Inventory management — prevents counterfeit parts sourcing, enforces hazmat shipping compliance, ensures warranty parts are OEM, and monitors fill rates, obsolescence, and core returns",
+  "required_inputs": ["workspace_id"],
+  "hard_stops": [
+    {
+      "id": "no_workspace",
+      "logic": "workspace must be initialized before any parts inventory operation",
+      "eval": { "type": "required_inputs_check" }
+    },
+    {
+      "id": "ai_disclosure_required",
+      "logic": "AI-generated inventory recommendations are decision-support tools — procurement decisions require human authorization",
+      "eval": { "field": "workspace.aiDisclosureAcknowledged", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "data_integrity_check",
+      "logic": "inventory counts and pricing data must reconcile — no phantom stock or mismatched cost records",
+      "eval": { "field": "inventory.dataIntegrityErrors", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "counterfeit_parts_sourced",
+      "logic": "NEVER source parts from unapproved or suspected counterfeit suppliers — liability and safety risk",
+      "eval": { "field": "sourcing.counterfeitRiskCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "hazmat_shipping_noncompliant",
+      "logic": "hazardous materials (batteries, refrigerants, airbags) must be shipped per DOT/EPA regulations — noncompliance carries federal penalties",
+      "eval": { "field": "shipping.hazmatViolationCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "warranty_part_not_oem",
+      "logic": "warranty repairs must use OEM parts unless the manufacturer explicitly allows alternatives — non-OEM parts void warranty coverage",
+      "eval": { "field": "warranty.nonOemPartUsedCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "recalled_part_in_stock",
+      "logic": "recalled parts must be quarantined and returned per manufacturer instructions — cannot be installed or sold",
+      "eval": { "field": "inventory.recalledPartInStockCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "core_charge_unreturned_past_deadline",
+      "logic": "unreturned cores past the manufacturer deadline result in forfeited core charges — significant financial loss",
+      "eval": { "field": "cores.overdueReturnCount", "operator": ">", "threshold": 0 }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "fill_rate_below_target",
+      "logic": "parts fill rate (first-time availability) is below the 85% target — causing technician downtime",
+      "eval": { "field": "metrics.fillRatePct", "operator": "<", "threshold": 85 }
+    },
+    {
+      "id": "obsolescence_above_threshold",
+      "logic": "obsolete parts inventory exceeds 10% of total parts value — write-down exposure",
+      "eval": { "field": "metrics.obsolescencePct", "operator": ">", "threshold": 10 }
+    },
+    {
+      "id": "parts_gross_declining",
+      "logic": "parts department gross profit margin is declining over trailing 30 days",
+      "eval": { "field": "metrics.grossMarginDeclinePct", "operator": ">", "threshold": 2 }
+    },
+    {
+      "id": "core_return_overdue",
+      "logic": "core returns are approaching the manufacturer deadline — risk of forfeiting core credits",
+      "eval": { "field": "cores.approachingDeadlineCount", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "emergency_sourcing_frequent",
+      "logic": "emergency or expedited parts orders exceed the configured threshold — indicates stocking level or forecasting issues",
+      "eval": { "field": "sourcing.emergencyOrderPct", "operator": ">", "threshold": 5 }
+    }
+  ],
+  "outputs": ["ad018-inventory-report", "ad018-fill-rate-report", "ad018-obsolescence-report"]
+}
