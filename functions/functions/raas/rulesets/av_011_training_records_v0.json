@@ -1,0 +1,57 @@
+{
+  "id": "av_011_training_records_v0",
+  "version": "v0",
+  "domain": "aviation-training",
+  "description": "Training Records Manager — manages recurrent training schedules, completion records, initial training programs, and regulatory training requirements",
+  "required_inputs": [
+    "training_program",
+    "crew_roster",
+    "training_completion_records",
+    "upcoming_schedule"
+  ],
+  "hard_stops": [
+    {
+      "id": "recurrent_training_overdue",
+      "label": "Recurrent Training Overdue",
+      "logic": "A crew member's recurrent training is past due — cannot serve in their crew position per 14 CFR 135.351",
+      "eval": { "field": "crew_member.recurrent_training_overdue", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "initial_training_incomplete",
+      "label": "Initial Training Incomplete",
+      "logic": "A crew member is operating without completing required initial or transition training per 14 CFR 135.339",
+      "eval": { "field": "crew_member.initial_training_complete", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "training_record_not_found",
+      "label": "Training Record Not Found",
+      "logic": "No training record exists for a crew member who is assigned to operational duties — cannot verify compliance",
+      "eval": { "field": "crew_member.training_record_exists", "operator": "==", "threshold": false }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "recurrent_due_within_60_days",
+      "label": "Recurrent Due Within 60 Days",
+      "logic": "A crew member's recurrent training is due within 60 days — schedule training event",
+      "eval": { "field": "crew_member.days_to_recurrent", "operator": "<", "threshold": 60 }
+    },
+    {
+      "id": "training_instructor_not_qualified",
+      "label": "Training Instructor Not Qualified",
+      "logic": "An instructor assigned to a training event does not hold the required qualifications for that training module",
+      "eval": { "field": "training_event.instructor_qualified", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "training_record_incomplete_fields",
+      "label": "Training Record Incomplete Fields",
+      "logic": "A training completion record is missing required fields (scores, instructor signature, completion date)",
+      "eval": { "field": "training_record.fields_complete", "operator": "==", "threshold": false }
+    }
+  ],
+  "outputs": [
+    "av011-training-status-matrix",
+    "av011-recurrent-schedule",
+    "av011-completion-certificates"
+  ]
+}

@@ -1,0 +1,57 @@
+{
+  "id": "av_001_cert_assistant_v0",
+  "version": "v0",
+  "domain": "aviation-certification",
+  "description": "Part 135 Certificate Assistant — guides operators through certification, amendments, and POI correspondence",
+  "required_inputs": [
+    "operator_info",
+    "certificate_application",
+    "pois_correspondence",
+    "existing_opspecs"
+  ],
+  "hard_stops": [
+    {
+      "id": "incomplete_application",
+      "label": "Incomplete Application",
+      "logic": "Certificate application missing required fields per FAA Order 8900.1 — cannot submit to FSDO",
+      "eval": { "field": "application.required_fields_complete", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "no_designated_persons",
+      "label": "Designated Persons Not Filed",
+      "logic": "Chief Pilot, Director of Operations, and/or Director of Maintenance not designated — application incomplete per 14 CFR 119.69/71",
+      "eval": { "field": "application.designated_persons_count", "operator": "<", "threshold": 3 }
+    },
+    {
+      "id": "insurance_not_filed",
+      "label": "Insurance Not Filed",
+      "logic": "Required insurance documentation not on file — certificate cannot be issued",
+      "eval": { "field": "application.insurance_filed", "operator": "==", "threshold": false }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "amendment_pending_review",
+      "label": "Amendment Pending Review",
+      "logic": "OpSpec amendment submitted but not yet approved by FSDO",
+      "eval": { "field": "certificate.pending_amendments_count", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "opspec_expiring_soon",
+      "label": "OpSpec Expiring Soon",
+      "logic": "An OpSpec paragraph has a time-limited authorization expiring within 60 days",
+      "eval": { "field": "certificate.opspec_days_to_expiry", "operator": "<", "threshold": 60 }
+    },
+    {
+      "id": "poi_response_overdue",
+      "label": "POI Response Overdue",
+      "logic": "POI correspondence unanswered for more than 14 days",
+      "eval": { "field": "certificate.poi_response_days_waiting", "operator": ">", "threshold": 14 }
+    }
+  ],
+  "outputs": [
+    "av001-application-checklist",
+    "av001-amendment-tracker",
+    "av001-poi-correspondence-log"
+  ]
+}

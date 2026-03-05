@@ -1,0 +1,58 @@
+{
+  "id": "av_005_ad_sb_tracker_v0",
+  "version": "v0",
+  "domain": "aviation-airworthiness",
+  "description": "AD/SB Compliance Tracker — tracks airworthiness directives and service bulletins against fleet with deadline monitoring and serial-number-level applicability",
+  "required_inputs": [
+    "fleet_registry",
+    "ad_feed",
+    "sb_feed",
+    "maintenance_records",
+    "component_serials"
+  ],
+  "hard_stops": [
+    {
+      "id": "ad_compliance_overdue",
+      "label": "AD Compliance Overdue",
+      "logic": "An applicable Airworthiness Directive has passed its compliance deadline — aircraft is unairworthy",
+      "eval": { "field": "aircraft.ad_overdue_count", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "ad_not_assessed",
+      "label": "AD Not Assessed for Applicability",
+      "logic": "A new AD has been issued and has not been reviewed for applicability to the operator's fleet",
+      "eval": { "field": "fleet.unassessed_ad_count", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "recurring_ad_missed",
+      "label": "Recurring AD Missed",
+      "logic": "A recurring AD inspection interval has been exceeded — aircraft is unairworthy until compliance is re-established",
+      "eval": { "field": "aircraft.recurring_ad_overdue", "operator": "==", "threshold": true }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "ad_approaching_deadline",
+      "label": "AD Approaching Deadline",
+      "logic": "An applicable AD compliance deadline is within 30 days or 50 flight hours",
+      "eval": { "field": "aircraft.ad_days_to_deadline", "operator": "<", "threshold": 30 }
+    },
+    {
+      "id": "sb_applicability_review_pending",
+      "label": "SB Applicability Review Pending",
+      "logic": "A new service bulletin has been issued and has not been reviewed for applicability",
+      "eval": { "field": "fleet.pending_sb_reviews", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "recurring_ad_due_soon",
+      "label": "Recurring AD Due Soon",
+      "logic": "A recurring AD inspection is due within 100 flight hours or 60 calendar days",
+      "eval": { "field": "aircraft.recurring_ad_hours_remaining", "operator": "<", "threshold": 100 }
+    }
+  ],
+  "outputs": [
+    "av005-ad-status-matrix",
+    "av005-sb-applicability-report",
+    "av005-compliance-calendar"
+  ]
+}

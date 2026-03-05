@@ -1,0 +1,59 @@
+{
+  "id": "av_020_emergency_response_v0",
+  "version": "v0",
+  "domain": "aviation-emergency",
+  "description": "Emergency Response (ERP) — emergency response plan management with automated notification cascades, checklists, resource mobilization, and post-incident documentation",
+  "required_inputs": [
+    "emergency_type",
+    "aircraft_involved",
+    "location",
+    "crew_involved",
+    "passenger_count"
+  ],
+  "hard_stops": [
+    {
+      "id": "ntsb_notification_required_not_sent",
+      "label": "NTSB Notification Required",
+      "logic": "Event meets 49 CFR 830.5 criteria for immediate NTSB notification (accident or serious incident) but notification has not been documented as sent",
+      "eval": { "field": "erp.ntsb_notification_status", "operator": "==", "threshold": "required_not_sent" }
+    },
+    {
+      "id": "wreckage_preservation_not_documented",
+      "label": "Wreckage Preservation Not Documented",
+      "logic": "NTSB-reportable event but wreckage preservation instructions have not been documented per 49 CFR 830.10",
+      "eval": { "field": "erp.wreckage_preservation_status", "operator": "==", "threshold": "not_documented" }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "erp_not_tested_in_12_months",
+      "label": "ERP Drill Overdue",
+      "logic": "Emergency response plan has not been tested via drill or tabletop exercise in the past 12 months",
+      "eval": { "field": "erp.last_drill_days_ago", "operator": ">", "threshold": 365 }
+    },
+    {
+      "id": "contact_tree_outdated",
+      "label": "Contact Tree Outdated",
+      "logic": "Emergency contact tree contains entries that have not been verified in the past 6 months",
+      "eval": { "field": "erp.contact_tree_last_verified_days", "operator": ">", "threshold": 180 }
+    },
+    {
+      "id": "family_notification_pending",
+      "label": "Family Notification Pending",
+      "logic": "Emergency event involves crew or passengers but family/NOK notification has not been documented",
+      "eval": { "field": "erp.family_notification_status", "operator": "==", "threshold": "pending" }
+    },
+    {
+      "id": "media_inquiry_received",
+      "label": "Media Inquiry Received",
+      "logic": "Media inquiry received regarding the event — route to designated media contact per ERP",
+      "eval": { "field": "erp.media_inquiry_received", "operator": "==", "threshold": true }
+    }
+  ],
+  "outputs": [
+    "av020-erp-activation-checklist",
+    "av020-notification-cascade-log",
+    "av020-ntsb-notification-record",
+    "av020-post-incident-report"
+  ]
+}

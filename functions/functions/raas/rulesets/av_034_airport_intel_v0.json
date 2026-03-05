@@ -1,0 +1,58 @@
+{
+  "id": "av_034_airport_intel_v0",
+  "version": "v0",
+  "domain": "aviation-airport-intel",
+  "description": "Airport & Helipad Intelligence — airport and helipad database with approach notes, hazards, FBO reviews, and LZ status",
+  "required_inputs": [
+    "airport_identifier",
+    "helipad_id",
+    "gps_coordinates",
+    "pilot_reports"
+  ],
+  "hard_stops": [
+    {
+      "id": "lz_closed_or_oos",
+      "label": "Landing Zone Closed or Out of Service",
+      "logic": "Landing zone is marked out of service or closed — no dispatch to this location",
+      "eval": { "field": "lz.operational_status", "operator": "==", "threshold": "out_of_service" }
+    },
+    {
+      "id": "airport_notam_closure_active",
+      "label": "Airport NOTAM Closure Active",
+      "logic": "Active NOTAM indicates airport is closed during planned operation time",
+      "eval": { "field": "airport.notam_closure_active", "operator": "==", "threshold": true }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "lz_hazard_reported",
+      "label": "LZ Hazard Reported",
+      "logic": "Pilot report indicates obstruction or hazard at landing zone",
+      "eval": { "field": "lz.active_hazard_reports", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "fbo_review_negative",
+      "label": "FBO Review Negative",
+      "logic": "Recent FBO reviews indicate service quality concerns at this location",
+      "eval": { "field": "fbo.avg_rating", "operator": "<", "threshold": 2.5 }
+    },
+    {
+      "id": "approach_notes_outdated",
+      "label": "Approach Notes Outdated",
+      "logic": "Last pilot report for this location is older than 6 months",
+      "eval": { "field": "lz.last_pilot_report_days", "operator": ">", "threshold": 180 }
+    },
+    {
+      "id": "night_operations_restricted",
+      "label": "Night Operations Restricted",
+      "logic": "Landing zone has restrictions on night operations (lighting, obstacles, noise abatement)",
+      "eval": { "field": "lz.night_ops_restricted", "operator": "==", "threshold": true }
+    }
+  ],
+  "outputs": [
+    "av034-airport-brief",
+    "av034-lz-assessment",
+    "av034-hazard-overlay",
+    "av034-pilot-report-feed"
+  ]
+}

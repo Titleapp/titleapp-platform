@@ -1,0 +1,64 @@
+{
+  "id": "av_010_qualification_tracker_v0",
+  "version": "v0",
+  "domain": "aviation-qualifications",
+  "description": "Qualification & Currency Tracker — tracks pilot qualifications, type ratings, check ride currency, instrument proficiency, and line checks",
+  "required_inputs": [
+    "pilot_certificates",
+    "type_ratings",
+    "check_ride_dates",
+    "instrument_approaches",
+    "line_check_dates"
+  ],
+  "hard_stops": [
+    {
+      "id": "pic_proficiency_expired",
+      "label": "PIC Proficiency Check Expired",
+      "logic": "Pilot's 135.293 competency/proficiency check is overdue — cannot serve as PIC under Part 135",
+      "eval": { "field": "pilot.proficiency_check_overdue", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "instrument_currency_lapsed",
+      "label": "Instrument Currency Lapsed",
+      "logic": "Pilot's instrument currency has lapsed per 14 CFR 61.57(c) — cannot file or fly IFR",
+      "eval": { "field": "pilot.instrument_current", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "line_check_overdue",
+      "label": "Line Check Overdue",
+      "logic": "Pilot's line check is overdue per 14 CFR 135.299 — cannot serve as PIC under Part 135",
+      "eval": { "field": "pilot.line_check_overdue", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "type_rating_not_held",
+      "label": "Type Rating Not Held",
+      "logic": "Pilot is assigned to an aircraft type for which they do not hold a type rating",
+      "eval": { "field": "pilot.holds_required_type_rating", "operator": "==", "threshold": false }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "proficiency_check_due_within_30_days",
+      "label": "Proficiency Check Due Within 30 Days",
+      "logic": "Pilot's proficiency check expires within 30 days — schedule check ride",
+      "eval": { "field": "pilot.days_to_proficiency_check", "operator": "<", "threshold": 30 }
+    },
+    {
+      "id": "instrument_currency_expiring_soon",
+      "label": "Instrument Currency Expiring Soon",
+      "logic": "Pilot's instrument currency expires within 30 days — needs approaches or IPC",
+      "eval": { "field": "pilot.days_to_instrument_expiry", "operator": "<", "threshold": 30 }
+    },
+    {
+      "id": "line_check_approaching",
+      "label": "Line Check Approaching",
+      "logic": "Pilot's line check due within 60 days per 135.299",
+      "eval": { "field": "pilot.days_to_line_check", "operator": "<", "threshold": 60 }
+    }
+  ],
+  "outputs": [
+    "av010-qualification-matrix",
+    "av010-currency-dashboard",
+    "av010-expiration-forecast"
+  ]
+}

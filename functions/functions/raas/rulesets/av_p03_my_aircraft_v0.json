@@ -1,0 +1,65 @@
+{
+  "id": "av_p03_my_aircraft_v0",
+  "version": "v0",
+  "domain": "aviation-pilot-aircraft",
+  "description": "My Aircraft / CoPilot — type-specific V-speeds, W&B calculator, checklists, performance data, and systems descriptions",
+  "required_inputs": [
+    "aircraft_type",
+    "tail_number",
+    "afm_poh_upload",
+    "bew_data",
+    "configuration"
+  ],
+  "hard_stops": [
+    {
+      "id": "weight_exceeds_limits",
+      "label": "Weight Exceeds Limits",
+      "logic": "Weight and balance calculation shows aircraft gross weight exceeds maximum allowable",
+      "eval": { "field": "wb.weight_within_limits", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "cg_out_of_envelope",
+      "label": "CG Out of Envelope",
+      "logic": "Calculated center of gravity falls outside the approved CG envelope for the aircraft",
+      "eval": { "field": "wb.cg_within_envelope", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "performance_insufficient",
+      "label": "Performance Insufficient",
+      "logic": "Density altitude calculation shows inadequate takeoff or landing performance for available runway",
+      "eval": { "field": "performance.adequate", "operator": "==", "threshold": false }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "afm_version_outdated",
+      "label": "AFM Version Outdated",
+      "logic": "Uploaded AFM/POH version does not match the latest revision from the manufacturer",
+      "eval": { "field": "aircraft.afm_current", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "wb_profile_not_synced",
+      "label": "W&B Profile Not Synced to ForeFlight",
+      "logic": "Weight and balance profile has not been synced to ForeFlight",
+      "eval": { "field": "aircraft.foreflight_synced", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "checklist_custom_modification",
+      "label": "Checklist Custom Modification",
+      "logic": "Pilot has customized the standard checklist — review for completeness against manufacturer original",
+      "eval": { "field": "checklist.custom_modified", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "performance_marginal",
+      "label": "Performance Marginal",
+      "logic": "Takeoff or landing performance calculations show marginal compliance with runway available",
+      "eval": { "field": "performance.margin_pct", "operator": "<", "threshold": 15 }
+    }
+  ],
+  "outputs": [
+    "avp03-aircraft-profile",
+    "avp03-wb-calculation",
+    "avp03-performance-chart",
+    "avp03-checklist"
+  ]
+}

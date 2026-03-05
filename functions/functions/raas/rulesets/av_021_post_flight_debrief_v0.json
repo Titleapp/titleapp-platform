@@ -1,0 +1,52 @@
+{
+  "id": "av_021_post_flight_debrief_v0",
+  "version": "v0",
+  "domain": "aviation-debrief",
+  "description": "Post-Flight Debrief — auto-populated debriefs from flight data, captures crew observations, maintenance squawks, and customer feedback with automated supervisor follow-up",
+  "required_inputs": [
+    "completed_mission",
+    "flight_data",
+    "crew_observations",
+    "maintenance_squawks",
+    "customer_feedback"
+  ],
+  "hard_stops": [
+    {
+      "id": "safety_event_not_reported",
+      "label": "Safety Event Not Reported",
+      "logic": "Crew observation indicates a safety event occurred during the mission but no AV-018 safety report has been filed — safety report is mandatory",
+      "eval": { "field": "debrief.safety_event_detected", "operator": "==", "threshold": true }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "debrief_not_completed_within_2_hours",
+      "label": "Debrief Overdue",
+      "logic": "Post-flight debrief has not been completed within 2 hours of mission completion",
+      "eval": { "field": "debrief.hours_since_mission_complete", "operator": ">", "threshold": 2 }
+    },
+    {
+      "id": "squawk_requires_maintenance_action",
+      "label": "Squawk Requires Maintenance",
+      "logic": "Crew reported a maintenance squawk that requires action before next flight — route to AV-004 for aircraft status update",
+      "eval": { "field": "debrief.squawk_maintenance_required", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "customer_complaint_logged",
+      "label": "Customer Complaint Logged",
+      "logic": "Customer feedback includes a complaint — escalate to operations manager for follow-up",
+      "eval": { "field": "debrief.customer_complaint", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "supervisor_review_needed",
+      "label": "Supervisor Review Needed",
+      "logic": "Debrief content flags items requiring supervisor review — schedule follow-up via AV-029 Alex",
+      "eval": { "field": "debrief.supervisor_review_flag", "operator": "==", "threshold": true }
+    }
+  ],
+  "outputs": [
+    "av021-debrief-report",
+    "av021-squawk-list",
+    "av021-customer-feedback-summary"
+  ]
+}

@@ -1,0 +1,65 @@
+{
+  "id": "av_031_drug_alcohol_v0",
+  "version": "v0",
+  "domain": "aviation-drug-alcohol",
+  "description": "Drug & Alcohol Program Manager — DOT/FAA testing program management, random selection pools, MRO coordination, and annual reporting",
+  "required_inputs": [
+    "employee_roster",
+    "testing_pool",
+    "test_results",
+    "mro_reports",
+    "annual_report_data"
+  ],
+  "hard_stops": [
+    {
+      "id": "positive_test_not_actioned",
+      "label": "Positive Test Not Actioned",
+      "logic": "Positive drug or alcohol test result without removal from safety-sensitive duties",
+      "eval": { "field": "test_result.positive_actioned", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "random_rate_below_minimum",
+      "label": "Random Testing Rate Below FAA Minimum",
+      "logic": "Random selection pool rate below FAA minimum — 25% for drugs, 10% for alcohol",
+      "eval": { "field": "pool.annual_rate_compliant", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "test_not_conducted_within_window",
+      "label": "Test Not Conducted Within Required Window",
+      "logic": "Selected employee not tested within the required timeframe after random selection or reasonable cause determination",
+      "eval": { "field": "test.conducted_within_window", "operator": "==", "threshold": false }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "random_selection_due",
+      "label": "Random Selection Due",
+      "logic": "Next random selection draw is due based on testing schedule",
+      "eval": { "field": "pool.next_selection_overdue", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "annual_report_filing_deadline",
+      "label": "Annual Report Filing Deadline Approaching",
+      "logic": "FAA annual MIS report filing deadline is within 30 days",
+      "eval": { "field": "report.filing_deadline_days", "operator": "<", "threshold": 30 }
+    },
+    {
+      "id": "mro_response_pending",
+      "label": "MRO Response Pending",
+      "logic": "Medical Review Officer has not provided final determination on a pending test result",
+      "eval": { "field": "mro.response_pending", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "employee_return_to_duty_pending",
+      "label": "Employee Return-to-Duty Pending",
+      "logic": "Employee in return-to-duty process has pending SAP evaluation or follow-up testing",
+      "eval": { "field": "employee.rtd_pending", "operator": "==", "threshold": true }
+    }
+  ],
+  "outputs": [
+    "av031-random-selection-list",
+    "av031-testing-schedule",
+    "av031-annual-report",
+    "av031-compliance-status"
+  ]
+}

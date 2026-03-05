@@ -1,0 +1,71 @@
+{
+  "id": "av_027_medevac_billing_v0",
+  "version": "v0",
+  "domain": "aviation-medevac-billing",
+  "description": "Medevac Billing & Collections — specialized medical transport billing for Medicare, Medicaid, private insurance with No Surprises Act compliance, CMS claim submission, prior authorization tracking, and denial management. HIPAA strictly enforced.",
+  "required_inputs": [
+    "transport_record",
+    "patient_insurance",
+    "cms_fee_schedule",
+    "prior_authorization",
+    "medical_necessity_documentation"
+  ],
+  "hard_stops": [
+    {
+      "id": "hipaa_violation_risk",
+      "label": "HIPAA Violation Risk",
+      "logic": "Protected Health Information (PHI) detected in billing communication channel that is not HIPAA-compliant — block output until secure channel confirmed",
+      "eval": { "field": "billing.phi_in_unsecure_channel", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "balance_billing_prohibited",
+      "label": "Balance Billing Prohibited",
+      "logic": "No Surprises Act prohibits balance billing for this transport — patient cannot be billed beyond in-network cost-sharing amount",
+      "eval": { "field": "billing.balance_billing_prohibited", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "medicare_claim_without_medical_necessity",
+      "label": "Medicare Claim Missing Medical Necessity",
+      "logic": "Medicare claim submitted without required medical necessity documentation — claim will be denied and may trigger audit",
+      "eval": { "field": "billing.medical_necessity_documented", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "coding_upcoding_detected",
+      "label": "Upcoding Detected",
+      "logic": "Billing code does not match the documented level of service — potential False Claims Act violation",
+      "eval": { "field": "billing.coding_mismatch_detected", "operator": "==", "threshold": true }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "prior_auth_expiring",
+      "label": "Prior Authorization Expiring",
+      "logic": "Prior authorization for transport is approaching expiration — renewal or new authorization needed",
+      "eval": { "field": "billing.prior_auth_days_remaining", "operator": "<", "threshold": 7 }
+    },
+    {
+      "id": "claim_denied_appeal_window_open",
+      "label": "Claim Denied — Appeal Window Open",
+      "logic": "Insurance claim denied but appeal window is still open — initiate denial management workflow",
+      "eval": { "field": "billing.claim_status", "operator": "==", "threshold": "denied_appealable" }
+    },
+    {
+      "id": "patient_responsibility_estimate_high",
+      "label": "High Patient Responsibility Estimate",
+      "logic": "Estimated patient out-of-pocket responsibility is significant — No Surprises Act good-faith estimate required",
+      "eval": { "field": "billing.patient_responsibility_estimate", "operator": ">", "threshold": "tenant.patient_cost_notification_threshold" }
+    },
+    {
+      "id": "state_balance_billing_law_check_needed",
+      "label": "State Balance Billing Law Check Needed",
+      "logic": "Transport crosses state lines or destination state has specific balance billing protections beyond federal law — verify state-specific compliance",
+      "eval": { "field": "billing.state_law_check_needed", "operator": "==", "threshold": true }
+    }
+  ],
+  "outputs": [
+    "av027-claim-submission",
+    "av027-denial-management-log",
+    "av027-patient-notification",
+    "av027-revenue-cycle-dashboard"
+  ]
+}

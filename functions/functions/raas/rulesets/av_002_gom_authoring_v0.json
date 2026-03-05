@@ -1,0 +1,57 @@
+{
+  "id": "av_002_gom_authoring_v0",
+  "version": "v0",
+  "domain": "aviation-documentation",
+  "description": "GOM / POI Authoring — authors and maintains the General Operations Manual with revision tracking and POI submission management",
+  "required_inputs": [
+    "current_gom",
+    "opspecs",
+    "regulatory_changes",
+    "operator_procedures"
+  ],
+  "hard_stops": [
+    {
+      "id": "gom_missing_required_section",
+      "label": "GOM Missing Required Section",
+      "logic": "GOM is missing one or more sections required by 14 CFR 135.23 — cannot submit to FSDO",
+      "eval": { "field": "gom.required_sections_complete", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "revision_not_distributed",
+      "label": "Revision Not Distributed",
+      "logic": "Approved GOM revision has not been distributed to all required manual holders per 14 CFR 135.21(b)",
+      "eval": { "field": "gom.undistributed_revisions_count", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "poi_rejection_unresolved",
+      "label": "POI Rejection Unresolved",
+      "logic": "POI rejected a GOM revision and the discrepancies have not been resolved",
+      "eval": { "field": "gom.unresolved_rejections_count", "operator": ">", "threshold": 0 }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "gom_review_overdue",
+      "label": "GOM Review Overdue",
+      "logic": "GOM has not been reviewed in over 12 months",
+      "eval": { "field": "gom.months_since_last_review", "operator": ">", "threshold": 12 }
+    },
+    {
+      "id": "opspec_change_not_reflected",
+      "label": "OpSpec Change Not Reflected",
+      "logic": "An OpSpec amendment was approved but the corresponding GOM section has not been updated",
+      "eval": { "field": "gom.opspec_changes_pending_update", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "procedure_inconsistency_detected",
+      "label": "Procedure Inconsistency Detected",
+      "logic": "A GOM procedure conflicts with or contradicts another section of the manual",
+      "eval": { "field": "gom.inconsistency_flags_count", "operator": ">", "threshold": 0 }
+    }
+  ],
+  "outputs": [
+    "av002-gom-draft",
+    "av002-revision-tracker",
+    "av002-poi-submission-package"
+  ]
+}

@@ -1,0 +1,58 @@
+{
+  "id": "av_p06_alex_personal_v0",
+  "version": "v0",
+  "domain": "aviation-pilot-assistant",
+  "description": "Alex — Chief of Staff Personal — personal aviation assistant with daily briefings, currency nudges, and proactive reminders",
+  "required_inputs": [
+    "pilot_logbook_data",
+    "currency_status",
+    "training_status",
+    "medical_status",
+    "upcoming_flights"
+  ],
+  "hard_stops": [],
+  "soft_flags": [
+    {
+      "id": "currency_expiring_soon",
+      "label": "Currency Expiring Soon",
+      "logic": "One or more flight currency requirements will lapse within 30 days",
+      "eval": { "field": "pilot.nearest_currency_expiry_days", "operator": "<", "threshold": 30 }
+    },
+    {
+      "id": "medical_expiring_soon",
+      "label": "Medical Expiring Soon",
+      "logic": "Medical certificate will expire within 60 days",
+      "eval": { "field": "pilot.medical_expiry_days", "operator": "<", "threshold": 60 }
+    },
+    {
+      "id": "training_due",
+      "label": "Training Due",
+      "logic": "Required training module or recurrent event is coming due",
+      "eval": { "field": "pilot.training_due_days", "operator": "<", "threshold": 30 }
+    },
+    {
+      "id": "flight_review_due",
+      "label": "Flight Review Due",
+      "logic": "Biennial flight review per 14 CFR 61.56 is approaching",
+      "eval": { "field": "pilot.flight_review_due_days", "operator": "<", "threshold": 60 }
+    },
+    {
+      "id": "milestone_approaching",
+      "label": "Milestone Approaching",
+      "logic": "Pilot is approaching a significant flight hour or certification milestone",
+      "eval": { "field": "pilot.next_milestone_hours_remaining", "operator": "<", "threshold": 25 }
+    },
+    {
+      "id": "weather_advisory_for_planned_flight",
+      "label": "Weather Advisory for Planned Flight",
+      "logic": "Adverse weather conditions forecast for a planned upcoming flight",
+      "eval": { "field": "flight.weather_advisory_active", "operator": "==", "threshold": true }
+    }
+  ],
+  "outputs": [
+    "avp06-daily-briefing",
+    "avp06-currency-nudge",
+    "avp06-training-reminder",
+    "avp06-milestone-notification"
+  ]
+}

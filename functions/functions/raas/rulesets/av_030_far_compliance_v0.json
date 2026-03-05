@@ -1,0 +1,65 @@
+{
+  "id": "av_030_far_compliance_v0",
+  "version": "v0",
+  "domain": "aviation-far-compliance",
+  "description": "FAR Compliance Monitor — continuous monitoring of Federal Aviation Regulation compliance across all operational areas",
+  "required_inputs": [
+    "operational_records",
+    "maintenance_records",
+    "training_records",
+    "flight_records",
+    "certificate_data"
+  ],
+  "hard_stops": [
+    {
+      "id": "compliance_violation_detected",
+      "label": "Compliance Violation Detected",
+      "logic": "Specific Federal Aviation Regulation not being met by current operations",
+      "eval": { "field": "operation.compliance_status", "operator": "==", "threshold": "violation" }
+    },
+    {
+      "id": "opspec_limitation_exceeded",
+      "label": "OpSpec Limitation Exceeded",
+      "logic": "Operating outside certificate authority or Operations Specifications limitations",
+      "eval": { "field": "operation.opspec_compliant", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "mandatory_report_not_filed",
+      "label": "Mandatory Report Not Filed",
+      "logic": "Required regulatory report or filing has not been submitted within the mandated timeframe",
+      "eval": { "field": "report.filing_overdue", "operator": "==", "threshold": true }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "compliance_audit_overdue",
+      "label": "Compliance Audit Overdue",
+      "logic": "Internal compliance audit has not been completed within the scheduled cycle",
+      "eval": { "field": "audit.days_overdue", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "documentation_gap_detected",
+      "label": "Documentation Gap Detected",
+      "logic": "Required documentation is missing or incomplete for a regulatory area",
+      "eval": { "field": "documentation.gap_count", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "inspector_inquiry_pending",
+      "label": "Inspector Inquiry Pending",
+      "logic": "FAA inspector inquiry or request has been received and awaits response",
+      "eval": { "field": "inquiry.response_pending", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "self_disclosure_recommended",
+      "label": "Self-Disclosure Recommended",
+      "logic": "Potential non-compliance identified that may qualify for voluntary self-disclosure under FAA VDRP",
+      "eval": { "field": "violation.self_disclosure_eligible", "operator": "==", "threshold": true }
+    }
+  ],
+  "outputs": [
+    "av030-compliance-dashboard",
+    "av030-gap-analysis",
+    "av030-audit-preparation-checklist",
+    "av030-self-disclosure-draft"
+  ]
+}

@@ -1,0 +1,65 @@
+{
+  "id": "av_p05_flight_planning_v0",
+  "version": "v0",
+  "domain": "aviation-pilot-planning",
+  "description": "Flight Planning & Weather — personal FRAT, weather briefing, NOTAM filtering, personal minimums enforcement, and go/no-go assessment",
+  "required_inputs": [
+    "route_of_flight",
+    "departure_time",
+    "aircraft_performance",
+    "personal_minimums",
+    "weather_sources"
+  ],
+  "hard_stops": [
+    {
+      "id": "below_personal_minimums",
+      "label": "Below Personal Minimums",
+      "logic": "Conditions do not meet the pilot's own stated personal minimums — advisory hard stop with pilot override available",
+      "eval": { "field": "conditions.meets_personal_minimums", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "tfr_on_route",
+      "label": "TFR on Route",
+      "logic": "Temporary Flight Restriction active along the planned route — reroute required",
+      "eval": { "field": "route.tfr_conflict", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "fuel_insufficient",
+      "label": "Fuel Insufficient",
+      "logic": "Calculated fuel at destination falls below required reserves per 14 CFR 91.167 (IFR) or prudent VFR reserves",
+      "eval": { "field": "fuel.reserves_adequate", "operator": "==", "threshold": false }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "weather_marginal_for_experience",
+      "label": "Weather Marginal for Experience Level",
+      "logic": "Weather conditions are marginal relative to the pilot's experience level and ratings",
+      "eval": { "field": "weather.experience_appropriate", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "notam_advisories_on_route",
+      "label": "NOTAM Advisories on Route",
+      "logic": "Active NOTAMs affect airports or airspace along the planned route",
+      "eval": { "field": "route.notam_advisory_count", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "density_altitude_high",
+      "label": "Density Altitude High",
+      "logic": "Density altitude at departure or destination exceeds 5000 feet above field elevation",
+      "eval": { "field": "airport.density_altitude_delta", "operator": ">", "threshold": 5000 }
+    },
+    {
+      "id": "no_alternate_planned_for_ifr",
+      "label": "No Alternate Planned for IFR",
+      "logic": "IFR flight plan filed without an alternate airport when weather at destination does not meet 1-2-3 rule",
+      "eval": { "field": "plan.ifr_alternate_required_and_missing", "operator": "==", "threshold": true }
+    }
+  ],
+  "outputs": [
+    "avp05-flight-plan",
+    "avp05-weather-brief",
+    "avp05-personal-frat",
+    "avp05-go-nogo-assessment"
+  ]
+}

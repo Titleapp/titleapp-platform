@@ -1,0 +1,59 @@
+{
+  "id": "av_037_training_courseware_v0",
+  "version": "v0",
+  "domain": "aviation-training-ai",
+  "description": "AI Training & Courseware — adaptive training modules, recurrent training management, and FAA knowledge test preparation",
+  "required_inputs": [
+    "pilot_profile",
+    "training_history",
+    "knowledge_test_results",
+    "weak_areas",
+    "wings_credits"
+  ],
+  "hard_stops": [
+    {
+      "id": "training_content_outdated",
+      "label": "Training Content Outdated",
+      "logic": "Regulatory change has occurred that is not yet reflected in courseware content",
+      "eval": { "field": "courseware.regulatory_current", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "knowledge_test_bank_compromised",
+      "label": "Knowledge Test Bank Integrity Violation",
+      "logic": "Test question bank integrity compromised — suspected leak or unauthorized distribution",
+      "eval": { "field": "test_bank.integrity_valid", "operator": "==", "threshold": false }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "pilot_weak_area_persistent",
+      "label": "Persistent Weak Area",
+      "logic": "Pilot has failed the same knowledge topic area 3 or more times",
+      "eval": { "field": "pilot.topic_fail_count", "operator": ">=", "threshold": 3 }
+    },
+    {
+      "id": "recurrent_module_due",
+      "label": "Recurrent Training Module Due",
+      "logic": "A required recurrent training module is due within the current training cycle",
+      "eval": { "field": "pilot.recurrent_module_overdue", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "wings_credit_expiring",
+      "label": "WINGS Credit Expiring",
+      "logic": "Earned WINGS credits are approaching expiration",
+      "eval": { "field": "pilot.wings_expiry_days", "operator": "<", "threshold": 60 }
+    },
+    {
+      "id": "new_regulation_training_needed",
+      "label": "New Regulation Training Needed",
+      "logic": "New or amended regulation requires updated training content",
+      "eval": { "field": "regulation.training_update_needed", "operator": "==", "threshold": true }
+    }
+  ],
+  "outputs": [
+    "av037-adaptive-lesson-plan",
+    "av037-knowledge-test-practice",
+    "av037-wings-tracking",
+    "av037-proficiency-report"
+  ]
+}

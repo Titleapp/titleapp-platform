@@ -1,0 +1,58 @@
+{
+  "id": "av_025_charter_quoting_v0",
+  "version": "v0",
+  "domain": "aviation-revenue",
+  "description": "Charter Quoting Engine — generates charter quotes based on aircraft operating costs, fuel estimates, crew costs, landing fees, FBO handling, and operator margin for one-way, round-trip, and multi-leg itineraries",
+  "required_inputs": [
+    "route",
+    "aircraft_type",
+    "passenger_count",
+    "service_level",
+    "date_range"
+  ],
+  "hard_stops": [
+    {
+      "id": "quote_below_cost",
+      "label": "Quote Below Operating Cost",
+      "logic": "Quoted price results in a negative margin — operator would be operating at a loss. Quote must cover direct operating costs at minimum.",
+      "eval": { "field": "quote.margin", "operator": "<", "threshold": 0 }
+    },
+    {
+      "id": "no_economic_authority",
+      "label": "No Economic Authority",
+      "logic": "Operator does not hold the required economic authority (DOT certificate) for this route, aircraft type, or service type",
+      "eval": { "field": "quote.economic_authority_valid", "operator": "==", "threshold": false }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "fuel_price_estimate_stale",
+      "label": "Fuel Price Estimate Stale",
+      "logic": "Fuel price used in the quote is more than 24 hours old — actual cost may differ",
+      "eval": { "field": "quote.fuel_price_age_hours", "operator": ">", "threshold": 24 }
+    },
+    {
+      "id": "landing_fee_estimated",
+      "label": "Landing Fee Estimated",
+      "logic": "Landing fee is estimated, not confirmed with the destination FBO — actual fee may vary",
+      "eval": { "field": "quote.landing_fee_confirmed", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "peak_demand_pricing_advisory",
+      "label": "Peak Demand Pricing Advisory",
+      "logic": "Requested dates fall within a peak demand period — pricing may be above standard rates",
+      "eval": { "field": "quote.peak_demand_period", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "competitor_rate_significantly_different",
+      "label": "Competitor Rate Deviation",
+      "logic": "Generated quote differs significantly from market rate benchmarks — review pricing strategy",
+      "eval": { "field": "quote.market_rate_deviation_pct", "operator": ">", "threshold": 20 }
+    }
+  ],
+  "outputs": [
+    "av025-quote-package",
+    "av025-cost-breakdown",
+    "av025-multi-leg-itinerary"
+  ]
+}

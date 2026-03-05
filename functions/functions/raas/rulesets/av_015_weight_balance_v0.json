@@ -1,0 +1,58 @@
+{
+  "id": "av_015_weight_balance_v0",
+  "version": "v0",
+  "domain": "aviation-performance",
+  "description": "Weight & Balance Calculator — calculates weight and balance for each mission against aircraft-specific envelopes with support for passenger, cargo, and medevac configurations",
+  "required_inputs": [
+    "aircraft_bew_data",
+    "passenger_manifest",
+    "cargo_manifest",
+    "fuel_load",
+    "mission_config"
+  ],
+  "hard_stops": [
+    {
+      "id": "weight_exceeds_mtow",
+      "label": "Weight Exceeds MTOW",
+      "logic": "Computed takeoff weight exceeds the aircraft's maximum takeoff weight — cannot dispatch",
+      "eval": { "field": "calculation.weight_delta_lbs", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "cg_out_of_envelope",
+      "label": "CG Out of Envelope",
+      "logic": "Computed center of gravity is outside the aircraft's forward or aft CG limits — cannot dispatch",
+      "eval": { "field": "calculation.cg_in_envelope", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "zero_fuel_weight_exceeded",
+      "label": "Zero Fuel Weight Exceeded",
+      "logic": "Computed zero fuel weight exceeds the aircraft's maximum zero fuel weight limit",
+      "eval": { "field": "calculation.zfw_exceeded", "operator": "==", "threshold": true }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "weight_within_5pct_of_mtow",
+      "label": "Weight Within 5% of MTOW",
+      "logic": "Computed takeoff weight is within 5% of MTOW — performance may be limited, verify runway and climb performance",
+      "eval": { "field": "calculation.weight_pct_of_mtow", "operator": ">", "threshold": 95 }
+    },
+    {
+      "id": "cg_approaching_limit",
+      "label": "CG Approaching Limit",
+      "logic": "Computed CG is within 5% of the forward or aft limit — small loading changes could push CG out of envelope",
+      "eval": { "field": "calculation.cg_margin_pct", "operator": "<", "threshold": 5 }
+    },
+    {
+      "id": "high_density_altitude_performance_advisory",
+      "label": "High Density Altitude Performance Advisory",
+      "logic": "Density altitude at departure or destination exceeds 5,000 feet — performance adjustments required",
+      "eval": { "field": "calculation.density_altitude_ft", "operator": ">", "threshold": 5000 }
+    }
+  ],
+  "outputs": [
+    "av015-wb-calculation",
+    "av015-loading-manifest",
+    "av015-performance-summary"
+  ]
+}

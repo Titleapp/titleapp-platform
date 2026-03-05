@@ -1,0 +1,53 @@
+{
+  "id": "av_038_crew_housing_v0",
+  "version": "v0",
+  "domain": "aviation-crew-housing",
+  "description": "Crew Housing Coordinator — manages crew housing reservations coordinated with crew schedule changes",
+  "required_inputs": [
+    "crew_schedule",
+    "housing_inventory",
+    "hotel_contracts",
+    "per_diem_rates",
+    "schedule_changes"
+  ],
+  "hard_stops": [
+    {
+      "id": "no_housing_available",
+      "label": "No Housing Available",
+      "logic": "Crew assigned to a base with no available housing option — cannot dispatch without rest accommodations",
+      "eval": { "field": "base.housing_available", "operator": "==", "threshold": false }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "housing_reservation_conflict",
+      "label": "Housing Reservation Conflict",
+      "logic": "Schedule change has invalidated an existing housing reservation",
+      "eval": { "field": "reservation.schedule_conflict", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "per_diem_rate_exceeded",
+      "label": "Per Diem Rate Exceeded",
+      "logic": "Housing cost exceeds the configured per diem rate for the location",
+      "eval": { "field": "reservation.exceeds_per_diem", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "preferred_hotel_unavailable",
+      "label": "Preferred Hotel Unavailable",
+      "logic": "Contract hotel or preferred lodging is unavailable for the required dates",
+      "eval": { "field": "reservation.preferred_available", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "housing_complaint_logged",
+      "label": "Housing Complaint Logged",
+      "logic": "A crew member has logged a complaint about the assigned housing",
+      "eval": { "field": "housing.complaint_active", "operator": "==", "threshold": true }
+    }
+  ],
+  "outputs": [
+    "av038-housing-assignment",
+    "av038-reservation-confirmation",
+    "av038-per-diem-report",
+    "av038-housing-inventory"
+  ]
+}

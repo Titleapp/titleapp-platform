@@ -1,0 +1,59 @@
+{
+  "id": "av_028_customer_portal_v0",
+  "version": "v0",
+  "domain": "aviation-customer",
+  "description": "Customer Portal Manager — customer-facing portal for trip requests, itineraries, document sharing, flight status, self-service booking for approved customers, and feedback collection",
+  "required_inputs": [
+    "customer_profile",
+    "trip_requests",
+    "itineraries",
+    "flight_status",
+    "documents"
+  ],
+  "hard_stops": [
+    {
+      "id": "customer_pii_exposed",
+      "label": "Customer PII Exposed",
+      "logic": "Customer personally identifiable information detected in a channel or output that is not properly secured — data breach risk",
+      "eval": { "field": "portal.pii_exposure_detected", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "booking_without_verification",
+      "label": "Booking Without Customer Verification",
+      "logic": "Charter booking request from an unverified customer — identity verification required before accepting charter commitment",
+      "eval": { "field": "portal.customer_verified", "operator": "==", "threshold": false }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "trip_request_incomplete",
+      "label": "Trip Request Incomplete",
+      "logic": "Customer trip request is missing required information — follow up for completion before quoting",
+      "eval": { "field": "portal.trip_request_complete", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "customer_feedback_negative",
+      "label": "Negative Customer Feedback",
+      "logic": "Customer submitted negative feedback — escalate to operations manager for service recovery",
+      "eval": { "field": "portal.feedback_sentiment", "operator": "==", "threshold": "negative" }
+    },
+    {
+      "id": "document_expiring",
+      "label": "Customer Document Expiring",
+      "logic": "Customer passport, visa, or other travel document is approaching expiration — notify customer",
+      "eval": { "field": "portal.document_expiry_days", "operator": "<", "threshold": 30 }
+    },
+    {
+      "id": "booking_conflict_detected",
+      "label": "Booking Conflict Detected",
+      "logic": "Customer booking request conflicts with an existing reservation or aircraft availability",
+      "eval": { "field": "portal.booking_conflict", "operator": "==", "threshold": true }
+    }
+  ],
+  "outputs": [
+    "av028-trip-confirmation",
+    "av028-itinerary",
+    "av028-customer-feedback-summary",
+    "av028-portal-analytics"
+  ]
+}

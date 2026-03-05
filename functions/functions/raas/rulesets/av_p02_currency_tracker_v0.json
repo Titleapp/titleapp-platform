@@ -1,0 +1,56 @@
+{
+  "id": "av_p02_currency_tracker_v0",
+  "version": "v0",
+  "domain": "aviation-pilot-currency",
+  "description": "Currency & Medical Tracker — real-time green/yellow/red currency dashboard with legality determination",
+  "required_inputs": [
+    "logbook_data",
+    "medical_records",
+    "certificate_data"
+  ],
+  "hard_stops": [
+    {
+      "id": "operating_not_current",
+      "label": "Pilot Not Current for Flight",
+      "logic": "Pilot attempting flight without required currency — hard stop with specific 14 CFR citation",
+      "eval": { "field": "pilot.currency_status", "operator": "==", "threshold": "not_current" }
+    },
+    {
+      "id": "medical_expired",
+      "label": "Medical Certificate Expired",
+      "logic": "Pilot's medical certificate has expired per 14 CFR 61.23 duration rules",
+      "eval": { "field": "pilot.medical_current", "operator": "==", "threshold": false }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "currency_expiring_within_30_days",
+      "label": "Currency Expiring Within 30 Days",
+      "logic": "One or more currency requirements will lapse within 30 days",
+      "eval": { "field": "pilot.nearest_currency_expiry_days", "operator": "<", "threshold": 30 }
+    },
+    {
+      "id": "night_currency_low",
+      "label": "Night Currency Low",
+      "logic": "Pilot has only 2 of the required 3 night takeoffs and landings in the preceding 90 days",
+      "eval": { "field": "pilot.night_landings_90day", "operator": "<", "threshold": 3 }
+    },
+    {
+      "id": "instrument_currency_expiring",
+      "label": "Instrument Currency Expiring",
+      "logic": "6-month instrument currency window is closing — approaches, holding, intercepting, and tracking requirements at risk",
+      "eval": { "field": "pilot.instrument_currency_days_remaining", "operator": "<", "threshold": 30 }
+    },
+    {
+      "id": "flight_review_due_within_60_days",
+      "label": "Flight Review Due Within 60 Days",
+      "logic": "Biennial flight review per 14 CFR 61.56 is due within 60 days",
+      "eval": { "field": "pilot.flight_review_due_days", "operator": "<", "threshold": 60 }
+    }
+  ],
+  "outputs": [
+    "avp02-currency-dashboard",
+    "avp02-legality-check",
+    "avp02-expiration-forecast"
+  ]
+}

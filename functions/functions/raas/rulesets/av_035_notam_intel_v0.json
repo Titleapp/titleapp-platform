@@ -1,0 +1,63 @@
+{
+  "id": "av_035_notam_intel_v0",
+  "version": "v0",
+  "domain": "aviation-notam",
+  "description": "NOTAM Intelligence — NOTAM filtering, plain English translation, and impact assessment for planned routes",
+  "required_inputs": [
+    "route_of_flight",
+    "departure_time",
+    "arrival_time",
+    "aircraft_type"
+  ],
+  "hard_stops": [
+    {
+      "id": "tfr_on_route",
+      "label": "TFR on Route",
+      "logic": "Temporary Flight Restriction active along the planned route — reroute required",
+      "eval": { "field": "route.tfr_conflict", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "airport_closed_notam",
+      "label": "Airport Closed via NOTAM",
+      "logic": "Destination airport closed during planned arrival window per active NOTAM",
+      "eval": { "field": "destination.notam_closed", "operator": "==", "threshold": true }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "runway_closure_at_destination",
+      "label": "Runway Closure at Destination",
+      "logic": "One or more runways at the destination are closed, potentially affecting operations",
+      "eval": { "field": "destination.runway_closure_active", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "nav_aid_oos_on_route",
+      "label": "Navigation Aid OOS on Route",
+      "logic": "A navigation aid along the route of flight is out of service",
+      "eval": { "field": "route.navaid_oos_count", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "obstacle_new_or_changed",
+      "label": "Obstacle New or Changed",
+      "logic": "New or changed obstruction reported near the route or at departure/destination",
+      "eval": { "field": "route.obstacle_notam_count", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "military_activity_near_route",
+      "label": "Military Activity Near Route",
+      "logic": "Active or scheduled military activity in airspace near the planned route",
+      "eval": { "field": "route.military_activity_nearby", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "special_activity_airspace_active",
+      "label": "Special Activity Airspace Active",
+      "logic": "Special use airspace (MOA, restricted area, alert area) is active along the route",
+      "eval": { "field": "route.sua_active", "operator": "==", "threshold": true }
+    }
+  ],
+  "outputs": [
+    "av035-notam-briefing",
+    "av035-route-impact-assessment",
+    "av035-plain-english-summary"
+  ]
+}

@@ -1,0 +1,60 @@
+{
+  "id": "av_p04_training_proficiency_v0",
+  "version": "v0",
+  "domain": "aviation-pilot-training",
+  "description": "Training & Proficiency — full FAA library access, certificate progression tracking, AI oral exam prep, written test prep, and WINGS integration",
+  "required_inputs": [
+    "pilot_certificate_level",
+    "training_goals",
+    "knowledge_test_history",
+    "weak_areas",
+    "uploaded_poh"
+  ],
+  "hard_stops": [
+    {
+      "id": "test_content_integrity_violation",
+      "label": "Test Content Integrity Violation",
+      "logic": "Sharing actual FAA knowledge test questions is prohibited per FAA policy — content integrity violated",
+      "eval": { "field": "content.integrity_violation", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "training_beyond_certificate_privilege",
+      "label": "Training Recommendation Beyond Certificate Privilege",
+      "logic": "Training recommendation references operations or privileges beyond the pilot's current or target certificate level",
+      "eval": { "field": "training.exceeds_certificate_privilege", "operator": "==", "threshold": true }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "knowledge_area_persistently_weak",
+      "label": "Knowledge Area Persistently Weak",
+      "logic": "Pilot has failed the same knowledge area on 3 or more practice attempts",
+      "eval": { "field": "pilot.topic_fail_count", "operator": ">=", "threshold": 3 }
+    },
+    {
+      "id": "practice_test_score_below_passing",
+      "label": "Practice Test Score Below Passing",
+      "logic": "Most recent practice test score is below the FAA passing threshold of 70%",
+      "eval": { "field": "pilot.last_practice_score", "operator": "<", "threshold": 70 }
+    },
+    {
+      "id": "certification_milestone_approaching",
+      "label": "Certification Milestone Approaching",
+      "logic": "Pilot is approaching aeronautical experience requirements for the next certificate or rating",
+      "eval": { "field": "pilot.next_cert_hours_remaining", "operator": "<", "threshold": 50 }
+    },
+    {
+      "id": "wings_credit_opportunity",
+      "label": "WINGS Credit Opportunity",
+      "logic": "Available WINGS program activity matches the pilot's current training focus area",
+      "eval": { "field": "wings.opportunity_available", "operator": "==", "threshold": true }
+    }
+  ],
+  "outputs": [
+    "avp04-study-plan",
+    "avp04-practice-test",
+    "avp04-oral-prep-session",
+    "avp04-proficiency-report",
+    "avp04-wings-tracker"
+  ]
+}

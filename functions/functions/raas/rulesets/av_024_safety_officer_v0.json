@@ -1,0 +1,47 @@
+{
+  "id": "av_024_safety_officer_v0",
+  "version": "v0",
+  "domain": "aviation-safety-analysis",
+  "description": "AI Safety Officer — cross-references FOQA, safety reports, maintenance data, and training records to identify systemic risks. Purely advisory — all safety decisions require human approval.",
+  "required_inputs": [
+    "safety_reports",
+    "foqa_data",
+    "hazard_register",
+    "audit_findings",
+    "training_records",
+    "maintenance_data"
+  ],
+  "hard_stops": [],
+  "soft_flags": [
+    {
+      "id": "pattern_detected",
+      "label": "Cross-Source Pattern Detected",
+      "logic": "Correlated events detected across multiple safety data sources — may indicate systemic risk not visible in any single data stream",
+      "eval": { "field": "analysis.pattern_confidence", "operator": ">", "threshold": "tenant.pattern_confidence_threshold" }
+    },
+    {
+      "id": "systemic_risk_identified",
+      "label": "Systemic Risk Identified",
+      "logic": "Analysis identifies a systemic risk factor spanning multiple operational areas",
+      "eval": { "field": "analysis.systemic_risk_score", "operator": ">", "threshold": "tenant.systemic_risk_threshold" }
+    },
+    {
+      "id": "training_gap_correlated_with_events",
+      "label": "Training Gap Correlated with Events",
+      "logic": "Safety events or FOQA exceedances correlate with training currency gaps for specific crew members or fleet-wide",
+      "eval": { "field": "analysis.training_correlation_score", "operator": ">", "threshold": "tenant.training_correlation_threshold" }
+    },
+    {
+      "id": "fleet_wide_trend_emerging",
+      "label": "Fleet-Wide Trend Emerging",
+      "logic": "Analysis detects an emerging trend affecting the fleet broadly rather than isolated to specific aircraft, routes, or crew",
+      "eval": { "field": "analysis.fleet_trend_scope", "operator": "==", "threshold": "fleet_wide" }
+    }
+  ],
+  "outputs": [
+    "av024-safety-analysis-report",
+    "av024-pattern-detection-alert",
+    "av024-systemic-risk-assessment",
+    "av024-recommendation-brief"
+  ]
+}

@@ -1,0 +1,58 @@
+{
+  "id": "av_006_component_tracker_v0",
+  "version": "v0",
+  "domain": "aviation-components",
+  "description": "Component & Life Tracker — tracks component time remaining, overhaul intervals, life-limited parts, and on-condition monitoring with alerts before limits are reached",
+  "required_inputs": [
+    "component_registry",
+    "flight_hours",
+    "cycles",
+    "calendar_time",
+    "oem_limits"
+  ],
+  "hard_stops": [
+    {
+      "id": "component_life_exceeded",
+      "label": "Component Life Exceeded",
+      "logic": "A component has exceeded its TBO or hard life limit — must be removed from service",
+      "eval": { "field": "component.life_remaining_hours", "operator": "<", "threshold": 0 }
+    },
+    {
+      "id": "llp_cycle_limit_reached",
+      "label": "LLP Cycle Limit Reached",
+      "logic": "A life-limited part has reached or exceeded its cycle limit — must be removed from service",
+      "eval": { "field": "component.llp_cycles_remaining", "operator": "<=", "threshold": 0 }
+    },
+    {
+      "id": "component_no_traceability",
+      "label": "Component No Traceability",
+      "logic": "A component lacks traceability documentation (missing FAA 8130-3 or equivalent) — cannot be installed or remain in service",
+      "eval": { "field": "component.has_traceability_docs", "operator": "==", "threshold": false }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "component_approaching_tbo",
+      "label": "Component Approaching TBO",
+      "logic": "A component is within 100 flight hours of its time-between-overhaul limit",
+      "eval": { "field": "component.hours_to_tbo", "operator": "<", "threshold": 100 }
+    },
+    {
+      "id": "llp_approaching_limit",
+      "label": "LLP Approaching Limit",
+      "logic": "A life-limited part is within 10% of its cycle limit",
+      "eval": { "field": "component.llp_life_remaining_pct", "operator": "<", "threshold": 10 }
+    },
+    {
+      "id": "on_condition_trend_adverse",
+      "label": "On-Condition Trend Adverse",
+      "logic": "An on-condition component is showing an adverse trend in monitoring data (oil consumption, vibration, etc.)",
+      "eval": { "field": "component.on_condition_trend", "operator": "==", "threshold": "adverse" }
+    }
+  ],
+  "outputs": [
+    "av006-component-status-matrix",
+    "av006-overhaul-forecast",
+    "av006-llp-tracking-report"
+  ]
+}

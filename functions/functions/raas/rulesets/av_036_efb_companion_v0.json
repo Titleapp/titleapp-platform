@@ -1,0 +1,52 @@
+{
+  "id": "av_036_efb_companion_v0",
+  "version": "v0",
+  "domain": "aviation-efb",
+  "description": "EFB & Flight Planning Companion — governance layer for Electronic Flight Bag data with ForeFlight integration",
+  "required_inputs": [
+    "flight_plan",
+    "wb_profiles",
+    "checklists",
+    "approach_plates",
+    "foreflight_sync"
+  ],
+  "hard_stops": [
+    {
+      "id": "efb_authorization_expired",
+      "label": "EFB Authorization Expired",
+      "logic": "Operator's EFB Operations Specification has lapsed — EFB use not authorized",
+      "eval": { "field": "operator.efb_opspec_current", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "chart_database_expired",
+      "label": "Chart Database Expired",
+      "logic": "Navigation data is out of the current AIRAC cycle — charts are not current",
+      "eval": { "field": "efb.chart_cycle_current", "operator": "==", "threshold": false }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "wb_profile_mismatch",
+      "label": "W&B Profile Mismatch",
+      "logic": "EFB weight and balance profile does not match AV-015 calculated values",
+      "eval": { "field": "efb.wb_matches_av015", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "checklist_version_outdated",
+      "label": "Checklist Version Outdated",
+      "logic": "Checklist version in EFB does not match current approved revision",
+      "eval": { "field": "efb.checklist_current", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "new_approach_procedure_available",
+      "label": "New Approach Procedure Available",
+      "logic": "A new or amended instrument approach procedure is available for a frequently used airport",
+      "eval": { "field": "efb.new_procedure_available", "operator": "==", "threshold": true }
+    }
+  ],
+  "outputs": [
+    "av036-flight-plan-package",
+    "av036-efb-sync-status",
+    "av036-chart-currency-report"
+  ]
+}

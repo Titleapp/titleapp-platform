@@ -1,0 +1,58 @@
+{
+  "id": "av_018_safety_reporting_v0",
+  "version": "v0",
+  "domain": "aviation-safety",
+  "description": "Safety Reporting (SMS) — voluntary safety reporting system with anonymous submission, trend analysis, ASAP and NASA ASRS integration",
+  "required_inputs": [
+    "safety_report_submission",
+    "incident_details",
+    "reporter_identity_optional",
+    "hazard_classification"
+  ],
+  "hard_stops": [
+    {
+      "id": "report_involves_accident",
+      "label": "Accident Reported — NTSB Notification Required",
+      "logic": "Report describes an accident as defined by 49 CFR 830 — must be routed to NTSB, cannot be handled as internal safety report only",
+      "eval": { "field": "report.classification", "operator": "==", "threshold": "accident" }
+    },
+    {
+      "id": "report_indicates_criminal_activity",
+      "label": "Criminal Activity Indicated",
+      "logic": "Report content indicates potential criminal activity — must be escalated outside voluntary safety reporting program",
+      "eval": { "field": "report.criminal_activity_flag", "operator": "==", "threshold": true }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "trend_detected",
+      "label": "Safety Trend Detected",
+      "logic": "Three or more similar reports within 90 days — pattern may indicate systemic hazard requiring SMS review",
+      "eval": { "field": "report.similar_count_90_days", "operator": ">=", "threshold": 3 }
+    },
+    {
+      "id": "reporter_requests_followup",
+      "label": "Reporter Requests Follow-Up",
+      "logic": "Reporter has opted to receive follow-up on their submission — assign to Safety Manager queue",
+      "eval": { "field": "report.followup_requested", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "hazard_classification_severe",
+      "label": "Severe Hazard Classification",
+      "logic": "Report hazard classified as severe — elevated priority for Safety Manager review",
+      "eval": { "field": "report.hazard_severity", "operator": ">=", "threshold": "severe" }
+    },
+    {
+      "id": "near_miss_pattern_emerging",
+      "label": "Near-Miss Pattern Emerging",
+      "logic": "Multiple near-miss reports with common factors suggest an emerging safety pattern",
+      "eval": { "field": "report.near_miss_pattern_score", "operator": ">", "threshold": "tenant.near_miss_pattern_threshold" }
+    }
+  ],
+  "outputs": [
+    "av018-safety-report",
+    "av018-trend-analysis",
+    "av018-asap-submission",
+    "av018-asrs-submission"
+  ]
+}

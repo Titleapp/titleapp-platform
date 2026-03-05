@@ -1,0 +1,57 @@
+{
+  "id": "av_022_hazard_register_v0",
+  "version": "v0",
+  "domain": "aviation-hazard",
+  "description": "Hazard & Risk Register — maintains SMS hazard identification and risk assessment register with risk matrix, mitigation tracking, and effectiveness review",
+  "required_inputs": [
+    "identified_hazards",
+    "risk_assessments",
+    "mitigation_actions",
+    "review_schedule"
+  ],
+  "hard_stops": [
+    {
+      "id": "unmitigated_high_risk_hazard",
+      "label": "Unmitigated High/Extreme Risk Hazard",
+      "logic": "Hazard assessed at high or extreme risk level with no active mitigation in place — operations may not continue with uncontrolled high/extreme risk per 14 CFR 5.55",
+      "eval": { "field": "hazard.risk_level", "operator": "in", "threshold": ["high", "extreme"] }
+    },
+    {
+      "id": "mitigation_overdue",
+      "label": "Mitigation Action Overdue",
+      "logic": "Required mitigation action has passed its deadline without completion — risk is uncontrolled",
+      "eval": { "field": "hazard.mitigation_days_past_deadline", "operator": ">", "threshold": 0 }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "risk_reassessment_overdue",
+      "label": "Risk Reassessment Overdue",
+      "logic": "Hazard has not been reassessed in more than 12 months — periodic review required per SMS",
+      "eval": { "field": "hazard.days_since_last_assessment", "operator": ">", "threshold": 365 }
+    },
+    {
+      "id": "mitigation_effectiveness_not_reviewed",
+      "label": "Mitigation Effectiveness Not Reviewed",
+      "logic": "Mitigation was implemented but effectiveness review has not been conducted",
+      "eval": { "field": "hazard.mitigation_effectiveness_reviewed", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "new_hazard_source_identified",
+      "label": "New Hazard Source Identified",
+      "logic": "A new hazard source has been identified from safety reports, FOQA data, or audit findings — requires initial risk assessment",
+      "eval": { "field": "hazard.status", "operator": "==", "threshold": "new_unassessed" }
+    },
+    {
+      "id": "hazard_register_audit_due",
+      "label": "Hazard Register Audit Due",
+      "logic": "Full hazard register review is due per the operator's SMS audit schedule",
+      "eval": { "field": "hazard.register_audit_due", "operator": "==", "threshold": true }
+    }
+  ],
+  "outputs": [
+    "av022-risk-register",
+    "av022-risk-matrix-dashboard",
+    "av022-mitigation-tracker"
+  ]
+}

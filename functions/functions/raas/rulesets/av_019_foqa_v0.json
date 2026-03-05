@@ -1,0 +1,57 @@
+{
+  "id": "av_019_foqa_v0",
+  "version": "v0",
+  "domain": "aviation-flight-data",
+  "description": "FOQA / Flight Data Analysis — flight operational quality assurance with exceedance detection, stabilized approach analysis, and fleet trend monitoring. FOQA data is PROTECTED and must be de-identified.",
+  "required_inputs": [
+    "flight_data_records",
+    "exceedance_parameters",
+    "fleet_baseline_data"
+  ],
+  "hard_stops": [
+    {
+      "id": "exceedance_safety_critical",
+      "label": "Safety-Critical Exceedance Detected",
+      "logic": "Flight data indicates a safety-critical exceedance — unstabilized approach below 500ft AGL, CFIT proximity alert, or TCAS RA event. Requires immediate safety review.",
+      "eval": { "field": "foqa.exceedance_severity", "operator": "==", "threshold": "safety_critical" }
+    },
+    {
+      "id": "data_identified_without_protection",
+      "label": "FOQA Data Not De-Identified",
+      "logic": "FOQA data output contains crew identification without de-identification protection per 14 CFR 13.401 and 14 CFR 193. Data must be de-identified before any output.",
+      "eval": { "field": "foqa.crew_identity_exposed", "operator": "==", "threshold": true }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "exceedance_trending_upward",
+      "label": "Exceedance Rate Trending Upward",
+      "logic": "Exceedance rate for a specific parameter is trending upward over the trailing 90-day window",
+      "eval": { "field": "foqa.exceedance_trend", "operator": "==", "threshold": "increasing" }
+    },
+    {
+      "id": "fleet_average_deviation",
+      "label": "Fleet Average Deviation",
+      "logic": "Individual aircraft or route exceedance rate deviates significantly from fleet average — may indicate aircraft-specific or route-specific issue",
+      "eval": { "field": "foqa.fleet_deviation_sigma", "operator": ">", "threshold": 2 }
+    },
+    {
+      "id": "pilot_request_for_data_review",
+      "label": "Pilot Voluntary Data Review",
+      "logic": "Pilot has voluntarily requested review of their de-identified flight data for personal improvement",
+      "eval": { "field": "foqa.voluntary_review_requested", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "hard_landing_detected",
+      "label": "Hard Landing Detected",
+      "logic": "Flight data indicates landing G-force exceeds operator-configured hard landing threshold — maintenance inspection may be required",
+      "eval": { "field": "foqa.landing_g_force", "operator": ">", "threshold": "tenant.hard_landing_g_threshold" }
+    }
+  ],
+  "outputs": [
+    "av019-exceedance-report",
+    "av019-fleet-analysis",
+    "av019-trend-dashboard",
+    "av019-safety-recommendation"
+  ]
+}

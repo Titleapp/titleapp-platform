@@ -1,0 +1,57 @@
+{
+  "id": "av_017_flight_following_v0",
+  "version": "v0",
+  "domain": "aviation-tracking",
+  "description": "Flight Following & Tracking — real-time flight tracking with position reporting, ETA management, and overdue aircraft detection",
+  "required_inputs": [
+    "active_missions",
+    "aircraft_positions",
+    "flight_plans",
+    "eta_calculations"
+  ],
+  "hard_stops": [
+    {
+      "id": "aircraft_overdue",
+      "label": "Aircraft Overdue — Search & Rescue",
+      "logic": "No position update beyond operator-configured threshold and communication lost — triggers overdue aircraft procedures per 14 CFR 135.79",
+      "eval": { "field": "tracking.position_update_gap_minutes", "operator": ">", "threshold": "tenant.overdue_threshold_minutes" }
+    },
+    {
+      "id": "elt_activation_detected",
+      "label": "ELT Activation Detected",
+      "logic": "Emergency Locator Transmitter signal detected for tracked aircraft — immediate response required",
+      "eval": { "field": "tracking.elt_activation", "operator": "==", "threshold": true }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "eta_deviation_significant",
+      "label": "Significant ETA Deviation",
+      "logic": "Aircraft ETA deviates more than 15 minutes from planned arrival — may indicate diversion, weather delay, or routing change",
+      "eval": { "field": "tracking.eta_deviation_minutes", "operator": ">", "threshold": 15 }
+    },
+    {
+      "id": "position_report_delayed",
+      "label": "Position Report Delayed",
+      "logic": "Position report is overdue but within the pre-overdue warning window",
+      "eval": { "field": "tracking.position_report_delayed", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "communication_gap_detected",
+      "label": "Communication Gap Detected",
+      "logic": "No communication from aircraft beyond expected check-in interval but within overdue threshold",
+      "eval": { "field": "tracking.comm_gap_detected", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "fuel_state_advisory",
+      "label": "Fuel State Advisory",
+      "logic": "Calculated fuel remaining at destination is below operator-configured minimum reserve based on current groundspeed and routing",
+      "eval": { "field": "tracking.fuel_remaining_at_dest_minutes", "operator": "<", "threshold": "tenant.fuel_reserve_minimum_minutes" }
+    }
+  ],
+  "outputs": [
+    "av017-tracking-dashboard",
+    "av017-overdue-alert",
+    "av017-position-report-log"
+  ]
+}

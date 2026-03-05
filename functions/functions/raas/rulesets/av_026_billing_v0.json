@@ -1,0 +1,58 @@
+{
+  "id": "av_026_billing_v0",
+  "version": "v0",
+  "domain": "aviation-billing",
+  "description": "Accounts Receivable & Billing — customer invoicing, payment tracking, aging reports, and collection workflows for charter operations with Stripe integration",
+  "required_inputs": [
+    "completed_missions",
+    "billing_rates",
+    "customer_accounts",
+    "payment_records"
+  ],
+  "hard_stops": [
+    {
+      "id": "invoice_exceeds_quoted_amount",
+      "label": "Invoice Exceeds Quoted Amount",
+      "logic": "Invoice amount exceeds the original quoted amount without a documented change order — potential DOT unfair/deceptive practice per 14 CFR 399",
+      "eval": { "field": "billing.invoice_vs_quote_delta", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "customer_account_suspended_billing_attempted",
+      "label": "Billing to Suspended Account",
+      "logic": "Attempting to generate an invoice or accept a booking for a customer account that is suspended",
+      "eval": { "field": "billing.customer_account_status", "operator": "==", "threshold": "suspended" }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "payment_overdue_30_days",
+      "label": "Payment Overdue 30+ Days",
+      "logic": "Customer payment is more than 30 days past due — initiate collection workflow",
+      "eval": { "field": "billing.days_past_due", "operator": ">", "threshold": 30 }
+    },
+    {
+      "id": "account_approaching_credit_limit",
+      "label": "Account Approaching Credit Limit",
+      "logic": "Customer account outstanding balance is approaching the operator-configured credit limit",
+      "eval": { "field": "billing.credit_utilization_pct", "operator": ">", "threshold": 80 }
+    },
+    {
+      "id": "billing_discrepancy_detected",
+      "label": "Billing Discrepancy Detected",
+      "logic": "Difference detected between mission costs and billing records — requires reconciliation",
+      "eval": { "field": "billing.discrepancy_detected", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "refund_request_pending",
+      "label": "Refund Request Pending",
+      "logic": "Customer has submitted a refund request that has not been processed",
+      "eval": { "field": "billing.refund_request_pending", "operator": "==", "threshold": true }
+    }
+  ],
+  "outputs": [
+    "av026-invoice",
+    "av026-aging-report",
+    "av026-collection-workflow",
+    "av026-revenue-summary"
+  ]
+}

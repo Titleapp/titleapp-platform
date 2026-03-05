@@ -1,0 +1,57 @@
+{
+  "id": "av_008_parts_inventory_v0",
+  "version": "v0",
+  "domain": "aviation-parts",
+  "description": "Parts & Inventory Manager — manages parts inventory, reorder points, vendor relationships, and serviceable tag tracking with full traceability",
+  "required_inputs": [
+    "parts_inventory",
+    "vendor_catalog",
+    "reorder_thresholds",
+    "usage_history"
+  ],
+  "hard_stops": [
+    {
+      "id": "part_no_serviceable_tag",
+      "label": "Part Missing Serviceable Tag",
+      "logic": "A part in inventory lacks an FAA 8130-3 or equivalent serviceable tag — cannot be installed on any aircraft",
+      "eval": { "field": "part.has_serviceable_tag", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "suspected_unapproved_part",
+      "label": "Suspected Unapproved Part",
+      "logic": "A part has been flagged as a suspected unapproved part (SUP) — must be quarantined and reported per AC 21-29",
+      "eval": { "field": "part.sup_flagged", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "part_beyond_shelf_life",
+      "label": "Part Beyond Shelf Life",
+      "logic": "A shelf-life-limited part (sealants, O-rings, pyrotechnics, etc.) has exceeded its shelf life expiration date",
+      "eval": { "field": "part.shelf_life_expired", "operator": "==", "threshold": true }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "inventory_below_reorder_point",
+      "label": "Inventory Below Reorder Point",
+      "logic": "A part's on-hand quantity has dropped below the configured reorder threshold",
+      "eval": { "field": "part.quantity_on_hand", "operator": "<", "threshold": "reorder_point" }
+    },
+    {
+      "id": "vendor_lead_time_exceeds_need",
+      "label": "Vendor Lead Time Exceeds Need",
+      "logic": "A required part's vendor lead time exceeds the projected need date for a scheduled maintenance event",
+      "eval": { "field": "part.vendor_lead_days", "operator": ">", "threshold": "days_until_needed" }
+    },
+    {
+      "id": "high_cost_part_approval_needed",
+      "label": "High Cost Part Approval Needed",
+      "logic": "A part order exceeds the operator's configured dollar threshold for management approval",
+      "eval": { "field": "part.unit_cost", "operator": ">", "threshold": "approval_threshold" }
+    }
+  ],
+  "outputs": [
+    "av008-inventory-status",
+    "av008-reorder-report",
+    "av008-parts-traceability-log"
+  ]
+}

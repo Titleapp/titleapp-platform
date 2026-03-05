@@ -1,0 +1,51 @@
+{
+  "id": "av_003_regulatory_monitor_v0",
+  "version": "v0",
+  "domain": "aviation-regulatory",
+  "description": "Regulatory Compliance Monitor — monitors FAR changes, NOPRMs, final rules, and ADs, flags impact on operator certificate and operations",
+  "required_inputs": [
+    "current_certificate",
+    "opspecs",
+    "gom_version",
+    "fleet_info"
+  ],
+  "hard_stops": [
+    {
+      "id": "mandatory_compliance_date_passed",
+      "label": "Mandatory Compliance Date Passed",
+      "logic": "A new rule or amendment is effective and the operator has not demonstrated compliance",
+      "eval": { "field": "regulation.overdue_compliance_count", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "ad_applicability_not_assessed",
+      "label": "AD Applicability Not Assessed",
+      "logic": "A new Airworthiness Directive has been issued and applicability to the operator's fleet has not been assessed",
+      "eval": { "field": "regulation.unassessed_ad_count", "operator": ">", "threshold": 0 }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "noprm_comment_period_closing",
+      "label": "NOPRM Comment Period Closing",
+      "logic": "A Notice of Proposed Rulemaking comment period closes within 30 days",
+      "eval": { "field": "regulation.noprm_days_to_close", "operator": "<", "threshold": 30 }
+    },
+    {
+      "id": "new_rule_impact_assessment_pending",
+      "label": "New Rule Impact Assessment Pending",
+      "logic": "A final rule has been published but the operator has not completed an impact assessment",
+      "eval": { "field": "regulation.pending_impact_assessments", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "ad_review_pending",
+      "label": "AD Review Pending",
+      "logic": "New ADs published but not yet reviewed for fleet applicability",
+      "eval": { "field": "regulation.pending_ad_reviews", "operator": ">", "threshold": 0 }
+    }
+  ],
+  "outputs": [
+    "av003-regulatory-alert",
+    "av003-gap-analysis",
+    "av003-compliance-timeline"
+  ]
+}

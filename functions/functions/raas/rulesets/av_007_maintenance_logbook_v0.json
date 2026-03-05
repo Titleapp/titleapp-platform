@@ -1,0 +1,59 @@
+{
+  "id": "av_007_maintenance_logbook_v0",
+  "version": "v0",
+  "domain": "aviation-maintenance",
+  "description": "Maintenance Work Order & Logbook — creates and tracks work orders, journey log entries, and return-to-service sign-offs, solving the RAMCO triple-entry problem",
+  "required_inputs": [
+    "work_order_request",
+    "aircraft_logbook",
+    "parts_used",
+    "labor_hours",
+    "inspector_signoff"
+  ],
+  "hard_stops": [
+    {
+      "id": "no_return_to_service_signoff",
+      "label": "No Return-to-Service Sign-off",
+      "logic": "Maintenance work is complete but has not been signed off by an authorized person (A&P, IA, or repair station) — aircraft is not airworthy",
+      "eval": { "field": "work_order.return_to_service_signed", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "parts_without_documentation",
+      "label": "Parts Without Documentation",
+      "logic": "Parts were installed without serviceable tags (FAA 8130-3 or equivalent) — aircraft airworthiness is in question",
+      "eval": { "field": "work_order.undocumented_parts_count", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "logbook_entry_incomplete",
+      "label": "Logbook Entry Incomplete",
+      "logic": "Logbook entry is missing required fields per 14 CFR 43.9 (description of work, date, signature, certificate number)",
+      "eval": { "field": "logbook.required_fields_complete", "operator": "==", "threshold": false }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "work_order_open_beyond_sla",
+      "label": "Work Order Open Beyond SLA",
+      "logic": "A work order has been open longer than the operator's configured SLA threshold",
+      "eval": { "field": "work_order.days_open", "operator": ">", "threshold": "sla_threshold" }
+    },
+    {
+      "id": "parts_on_backorder_affecting_dispatch",
+      "label": "Parts on Backorder Affecting Dispatch",
+      "logic": "Parts required for an open work order are on backorder and may delay aircraft return to service",
+      "eval": { "field": "work_order.parts_on_backorder", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "journey_log_not_completed_post_flight",
+      "label": "Journey Log Not Completed Post-Flight",
+      "logic": "A flight has ended but the journey log entry has not been completed by the flight crew",
+      "eval": { "field": "journey_log.pending_entries_count", "operator": ">", "threshold": 0 }
+    }
+  ],
+  "outputs": [
+    "av007-work-order",
+    "av007-logbook-entry",
+    "av007-return-to-service-record",
+    "av007-parts-usage-report"
+  ]
+}

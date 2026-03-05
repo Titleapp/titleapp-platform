@@ -1,0 +1,63 @@
+{
+  "id": "av_033_reserve_swap_v0",
+  "version": "v0",
+  "domain": "aviation-crew-management",
+  "description": "Reserve & Crew Swap Manager — validates crew swaps and reserve activations against duty limits, qualifications, and medical status",
+  "required_inputs": [
+    "swap_request",
+    "reserve_roster",
+    "qualification_data",
+    "duty_records"
+  ],
+  "hard_stops": [
+    {
+      "id": "swap_creates_illegal_assignment",
+      "label": "Swap Creates Illegal Assignment",
+      "logic": "Proposed swap would cause either party to violate flight duty time limits per AV-009 determination",
+      "eval": { "field": "swap.legality_status", "operator": "==", "threshold": "illegal" }
+    },
+    {
+      "id": "reserve_not_qualified",
+      "label": "Reserve Not Qualified",
+      "logic": "Reserve pilot does not hold required type rating or currency for the proposed assignment",
+      "eval": { "field": "reserve.qualified_for_assignment", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "reserve_medical_expired",
+      "label": "Reserve Medical Expired",
+      "logic": "Reserve pilot's medical certificate has expired and cannot be activated for duty",
+      "eval": { "field": "reserve.medical_current", "operator": "==", "threshold": false }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "reserve_approaching_duty_limit",
+      "label": "Reserve Approaching Duty Limit",
+      "logic": "Activated reserve pilot will approach duty time limits during the assignment period",
+      "eval": { "field": "reserve.duty_remaining_pct", "operator": "<", "threshold": 15 }
+    },
+    {
+      "id": "swap_affects_housing",
+      "label": "Swap Affects Housing Coordination",
+      "logic": "Crew swap requires housing reservation changes at one or more bases",
+      "eval": { "field": "swap.housing_impact", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "multiple_swaps_same_period",
+      "label": "Multiple Swaps Same Period",
+      "logic": "Multiple crew swaps occurring in the same scheduling period — elevated fatigue and coordination risk",
+      "eval": { "field": "period.swap_count", "operator": ">", "threshold": 2 }
+    },
+    {
+      "id": "reserve_pool_depleted",
+      "label": "Reserve Pool Depleted",
+      "logic": "No additional reserve pilots available at the affected base after this activation",
+      "eval": { "field": "base.reserve_remaining", "operator": "==", "threshold": 0 }
+    }
+  ],
+  "outputs": [
+    "av033-swap-approval",
+    "av033-reserve-activation-record",
+    "av033-legality-verification"
+  ]
+}

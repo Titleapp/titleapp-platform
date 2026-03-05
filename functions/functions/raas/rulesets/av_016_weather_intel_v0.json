@@ -1,0 +1,63 @@
+{
+  "id": "av_016_weather_intel_v0",
+  "version": "v0",
+  "domain": "aviation-weather",
+  "description": "Weather Intelligence — aggregates METARs, TAFs, SIGMETs, AIRMETs, PIREPs, and TFRs with plain-language translation and route-specific risk assessment",
+  "required_inputs": [
+    "route_of_flight",
+    "departure_time",
+    "destination",
+    "alternate_airports"
+  ],
+  "hard_stops": [
+    {
+      "id": "below_company_minimums",
+      "label": "Weather Below Company Minimums",
+      "logic": "Current or forecast weather at departure, destination, or alternate is below operator-configured minimums per 14 CFR 135.219/225",
+      "eval": { "field": "weather.conditions", "operator": "below", "threshold": "tenant.company_weather_minimums" }
+    },
+    {
+      "id": "sigmet_active_on_route",
+      "label": "SIGMET Active on Route",
+      "logic": "Convective or volcanic SIGMET is active along the planned route of flight",
+      "eval": { "field": "weather.sigmet_on_route", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "tfr_active_on_route",
+      "label": "TFR Active on Route",
+      "logic": "Temporary Flight Restriction is active along the planned route — restricted airspace penetration prohibited without authorization",
+      "eval": { "field": "weather.tfr_on_route", "operator": "==", "threshold": true }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "marginal_vfr_conditions",
+      "label": "Marginal VFR Conditions",
+      "logic": "Conditions are MVFR at departure, destination, or alternate — ceiling 1000-3000 AGL or visibility 3-5 SM",
+      "eval": { "field": "weather.flight_category", "operator": "==", "threshold": "MVFR" }
+    },
+    {
+      "id": "weather_deteriorating_trend",
+      "label": "Weather Deteriorating",
+      "logic": "TAF or trend analysis indicates conditions deteriorating toward minimums within the mission window",
+      "eval": { "field": "weather.trend", "operator": "==", "threshold": "deteriorating" }
+    },
+    {
+      "id": "pirep_severe_turbulence_nearby",
+      "label": "Severe Turbulence PIREP Nearby",
+      "logic": "Pilot report of severe turbulence within 100nm of planned route and within 2 hours",
+      "eval": { "field": "weather.pirep_severity_nearby", "operator": ">=", "threshold": "severe" }
+    },
+    {
+      "id": "icing_advisory_in_route",
+      "label": "Icing Advisory in Route",
+      "logic": "AIRMET Zulu or CIP/FIP indicates icing conditions along the planned route at planned altitude",
+      "eval": { "field": "weather.icing_advisory_on_route", "operator": "==", "threshold": true }
+    }
+  ],
+  "outputs": [
+    "av016-weather-briefing",
+    "av016-route-weather-overlay",
+    "av016-frat-weather-factors"
+  ]
+}

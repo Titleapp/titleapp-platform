@@ -1,0 +1,58 @@
+{
+  "id": "av_012_medical_tracker_v0",
+  "version": "v0",
+  "domain": "aviation-medical",
+  "description": "Medical & Certificate Tracker — tracks medical certificate dates, classes, BasicMed eligibility, limitations, and special issuances with expiration alerts",
+  "required_inputs": [
+    "pilot_medical_records",
+    "certificate_class",
+    "issue_date",
+    "dob",
+    "special_issuances"
+  ],
+  "hard_stops": [
+    {
+      "id": "medical_expired",
+      "label": "Medical Certificate Expired",
+      "logic": "Pilot's medical certificate has expired per 14 CFR 61.23 duration rules — cannot exercise pilot privileges",
+      "eval": { "field": "pilot.medical_expired", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "operating_beyond_class_privilege",
+      "label": "Operating Beyond Class Privilege",
+      "logic": "Pilot is exercising privileges that require a higher class medical than currently held (e.g., first class privileges on a second class medical)",
+      "eval": { "field": "pilot.medical_class_sufficient", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "basicmed_not_eligible_for_135",
+      "label": "BasicMed Not Eligible for Part 135",
+      "logic": "Pilot holds BasicMed but is assigned to Part 135 operations — BasicMed is not valid for Part 135",
+      "eval": { "field": "pilot.basicmed_on_135_ops", "operator": "==", "threshold": true }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "medical_expiring_within_60_days",
+      "label": "Medical Expiring Within 60 Days",
+      "logic": "Pilot's medical certificate expires within 60 days — schedule AME appointment",
+      "eval": { "field": "pilot.days_to_medical_expiry", "operator": "<", "threshold": 60 }
+    },
+    {
+      "id": "special_issuance_renewal_needed",
+      "label": "Special Issuance Renewal Needed",
+      "logic": "Pilot has a special issuance medical that requires periodic renewal documentation to the FAA",
+      "eval": { "field": "pilot.special_issuance_renewal_due", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "basicmed_course_expiring",
+      "label": "BasicMed Course Expiring",
+      "logic": "Pilot's BasicMed online medical education course expires within 60 days — must complete renewal course",
+      "eval": { "field": "pilot.days_to_basicmed_course_expiry", "operator": "<", "threshold": 60 }
+    }
+  ],
+  "outputs": [
+    "av012-medical-status-dashboard",
+    "av012-expiration-calendar",
+    "av012-renewal-checklist"
+  ]
+}

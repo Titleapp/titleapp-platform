@@ -1,0 +1,58 @@
+{
+  "id": "av_023_sms_monitor_v0",
+  "version": "v0",
+  "domain": "aviation-sms",
+  "description": "SMS Performance Monitor — tracks safety performance indicators (SPIs) and safety objectives against targets, monitors SMS health and management review compliance",
+  "required_inputs": [
+    "safety_reports",
+    "spi_data",
+    "safety_objectives",
+    "audit_findings",
+    "management_review_schedule"
+  ],
+  "hard_stops": [
+    {
+      "id": "spi_critical_threshold_breached",
+      "label": "SPI Critical Threshold Breached",
+      "logic": "Safety performance indicator exceeds critical limit — immediate management attention required per 14 CFR 5.71",
+      "eval": { "field": "sms.spi_value", "operator": ">", "threshold": "tenant.spi_critical_threshold" }
+    },
+    {
+      "id": "management_review_overdue",
+      "label": "Management Review Overdue",
+      "logic": "SMS management review is overdue per the operator's SMS manual schedule — regulatory compliance risk",
+      "eval": { "field": "sms.management_review_overdue", "operator": "==", "threshold": true }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "spi_trending_toward_threshold",
+      "label": "SPI Trending Toward Threshold",
+      "logic": "Safety performance indicator is trending toward its critical threshold — proactive intervention recommended",
+      "eval": { "field": "sms.spi_trend", "operator": "==", "threshold": "approaching_critical" }
+    },
+    {
+      "id": "audit_finding_unresolved",
+      "label": "Audit Finding Unresolved >90 Days",
+      "logic": "Internal or external audit finding has been open for more than 90 days without resolution",
+      "eval": { "field": "sms.audit_finding_age_days", "operator": ">", "threshold": 90 }
+    },
+    {
+      "id": "safety_objective_not_met",
+      "label": "Safety Objective Not Met",
+      "logic": "A defined safety objective was not met within its target period",
+      "eval": { "field": "sms.objective_met", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "improvement_action_overdue",
+      "label": "Improvement Action Overdue",
+      "logic": "A continuous improvement action from the management review is past its due date",
+      "eval": { "field": "sms.improvement_action_overdue", "operator": "==", "threshold": true }
+    }
+  ],
+  "outputs": [
+    "av023-spi-dashboard",
+    "av023-management-review-report",
+    "av023-audit-finding-tracker"
+  ]
+}
