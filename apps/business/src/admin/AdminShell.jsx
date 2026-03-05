@@ -15,6 +15,10 @@ import Accounting from "./pages/Accounting";
 import Settings from "./pages/Settings";
 import Inventory from "./pages/Inventory";
 import ReviewQueue from "./pages/ReviewQueue";
+import VerificationQueue from "./pages/VerificationQueue";
+import MarketingTab from "./pages/MarketingTab";
+import LifecycleTab from "./pages/LifecycleTab";
+import GrowthTab from "./pages/GrowthTab";
 import AdminChatPanel from "./components/AdminChatPanel";
 
 const NAV_SECTIONS = [
@@ -44,6 +48,11 @@ const NAV_SECTIONS = [
       {
         id: "review-queue",
         label: "Review Queue",
+        permission: "pipeline",
+      },
+      {
+        id: "verification-queue",
+        label: "Verification Queue",
         permission: "pipeline",
       },
       {
@@ -80,6 +89,14 @@ const NAV_SECTIONS = [
     ],
   },
   {
+    label: "Growth",
+    items: [
+      { id: "marketing", label: "Marketing", permission: "campaigns" },
+      { id: "lifecycle", label: "Lifecycle", permission: "campaigns" },
+      { id: "growth-programs", label: "Growth", permission: "campaigns" },
+    ],
+  },
+  {
     label: null,
     items: [
       {
@@ -107,6 +124,8 @@ function renderPage(page) {
       return <PipelineCreators />;
     case "review-queue":
       return <ReviewQueue />;
+    case "verification-queue":
+      return <VerificationQueue />;
     case "pipeline-investors":
       return <PipelineInvestors />;
     case "communications":
@@ -119,6 +138,12 @@ function renderPage(page) {
       return <Accounting />;
     case "settings":
       return <Settings />;
+    case "marketing":
+      return <MarketingTab />;
+    case "lifecycle":
+      return <LifecycleTab />;
+    case "growth-programs":
+      return <GrowthTab />;
     default:
       return <Dashboard />;
   }

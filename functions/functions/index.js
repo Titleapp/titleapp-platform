@@ -46,6 +46,13 @@ function getSignatureService() {
   return _signatureService;
 }
 
+// Marketing Service (lead capture, promo codes, lead stats)
+let _marketingService;
+function getMarketingService() {
+  if (!_marketingService) _marketingService = require("./services/marketingService");
+  return _marketingService;
+}
+
 // Chat Engine (conversational state machine)
 const { processMessage: chatEngineProcess, defaultState: chatEngineDefaultState } = require("./chatEngine");
 
@@ -3412,6 +3419,45 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       }
     }
 
+    // MARKETING: Lead capture (unauthenticated)
+    if (route === "/leads:capture" && method === "POST") {
+      try {
+        const mkt = getMarketingService();
+        const result = await mkt.captureLead({
+          name: body.name,
+          email: body.email,
+          company: body.company,
+          role: body.role,
+          vertical: body.vertical,
+          utm_source: body.utm_source,
+          utm_medium: body.utm_medium,
+          utm_campaign: body.utm_campaign,
+          utm_content: body.utm_content,
+          ref: body.ref,
+          promo_code: body.promo_code,
+          headline_index: body.headline_index,
+          source: body.source,
+        });
+        return res.json(result);
+      } catch (e) {
+        console.error("leads:capture failed:", e);
+        return res.status(500).json({ ok: false, error: "Lead capture failed" });
+      }
+    }
+
+    // MARKETING: Promo code validation (unauthenticated)
+    if (route === "/promo:validate" && method === "GET") {
+      try {
+        const mkt = getMarketingService();
+        const code = req.query.code || (body && body.code);
+        const result = await mkt.validatePromo({ code });
+        return res.json(result);
+      } catch (e) {
+        console.error("promo:validate failed:", e);
+        return res.status(500).json({ ok: false, error: "Promo validation failed" });
+      }
+    }
+
     // All other routes require Firebase auth
     const auth = await requireFirebaseUser(req, res);
     if (auth.handled) return;
@@ -4047,6 +4093,53 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       } catch (e) {
         console.error("[admin:workers:sync] error:", e.message);
         return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // MARKETING: Admin — list leads
+    if (route === "/admin:leads:list" && method === "POST") {
+      try {
+        const mkt = getMarketingService();
+        const result = await mkt.listLeads({
+          vertical: body.vertical,
+          status: body.status,
+          limit: body.limit,
+          offset: body.offset,
+        });
+        return res.json(result);
+      } catch (e) {
+        console.error("admin:leads:list failed:", e);
+        return res.status(500).json({ ok: false, error: "Failed to list leads" });
+      }
+    }
+
+    // MARKETING: Admin — lead stats
+    if (route === "/admin:lead-stats" && method === "GET") {
+      try {
+        const mkt = getMarketingService();
+        const vertical = req.query.vertical || (body && body.vertical);
+        const result = await mkt.getLeadStats({ vertical });
+        return res.json(result);
+      } catch (e) {
+        console.error("admin:lead-stats failed:", e);
+        return res.status(500).json({ ok: false, error: "Failed to get lead stats" });
+      }
+    }
+
+    // MARKETING: Admin — toggle promo code
+    if (route === "/admin:promo:toggle" && method === "POST") {
+      try {
+        const db = getDb();
+        const { code } = body;
+        if (!code) return res.status(400).json({ ok: false, error: "code required" });
+        const docRef = db.doc(`promoCodes/${code}`);
+        const doc = await docRef.get();
+        if (!doc.exists) return res.status(404).json({ ok: false, error: "Promo code not found" });
+        await docRef.update({ active: !doc.data().active });
+        return res.json({ ok: true, active: !doc.data().active });
+      } catch (e) {
+        console.error("admin:promo:toggle failed:", e);
+        return res.status(500).json({ ok: false, error: "Failed to toggle promo" });
       }
     }
 
@@ -4750,6 +4843,152 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
         stripeStatus,
         updatedAt: data.updatedAt || null,
       });
+    }
+
+    // ----------------------------
+    // STUDENT & CFI VERIFICATION
+    // ----------------------------
+
+    // POST /v1/verify:student — Submit student pilot verification
+    if (route === "/verify:student" && method === "POST") {
+      try {
+        const { submitStudentVerification } = require("./services/studentVerification");
+        req._user = auth.user;
+        return await submitStudentVerification(req, res);
+      } catch (e) {
+        console.error("verify:student failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // POST /v1/verify:student:renew — Annual re-verification
+    if (route === "/verify:student:renew" && method === "POST") {
+      try {
+        const { renewStudentVerification } = require("./services/studentVerification");
+        req._user = auth.user;
+        return await renewStudentVerification(req, res);
+      } catch (e) {
+        console.error("verify:student:renew failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // POST /v1/verify:student:graduated — Self-reported graduation
+    if (route === "/verify:student:graduated" && method === "POST") {
+      try {
+        const { reportGraduation } = require("./services/studentVerification");
+        req._user = auth.user;
+        return await reportGraduation(req, res);
+      } catch (e) {
+        console.error("verify:student:graduated failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // POST /v1/verify:cfi — Submit CFI/CFII verification
+    if (route === "/verify:cfi" && method === "POST") {
+      try {
+        const { submitCfiVerification } = require("./services/cfiVerification");
+        req._user = auth.user;
+        return await submitCfiVerification(req, res);
+      } catch (e) {
+        console.error("verify:cfi failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // POST /v1/verify:cfi:renew — Annual re-verification
+    if (route === "/verify:cfi:renew" && method === "POST") {
+      try {
+        const { renewCfiVerification } = require("./services/cfiVerification");
+        req._user = auth.user;
+        return await renewCfiVerification(req, res);
+      } catch (e) {
+        console.error("verify:cfi:renew failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // POST /v1/verify:cfi:departed — Self-reported academy departure
+    if (route === "/verify:cfi:departed" && method === "POST") {
+      try {
+        const { reportDeparture } = require("./services/cfiVerification");
+        req._user = auth.user;
+        return await reportDeparture(req, res);
+      } catch (e) {
+        console.error("verify:cfi:departed failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ----------------------------
+    // ADMIN: VERIFICATION QUEUES
+    // ----------------------------
+
+    // GET /v1/admin:verify:student:queue
+    if (route === "/admin:verify:student:queue" && method === "GET") {
+      try {
+        const { getStudentQueue } = require("./services/studentVerification");
+        return await getStudentQueue(req, res);
+      } catch (e) {
+        console.error("admin:verify:student:queue failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // PUT /v1/admin:verify:student:approve
+    if (route === "/admin:verify:student:approve" && method === "PUT") {
+      try {
+        const { approveStudent } = require("./services/studentVerification");
+        return await approveStudent(req, res);
+      } catch (e) {
+        console.error("admin:verify:student:approve failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // PUT /v1/admin:verify:student:reject
+    if (route === "/admin:verify:student:reject" && method === "PUT") {
+      try {
+        const { rejectStudent } = require("./services/studentVerification");
+        return await rejectStudent(req, res);
+      } catch (e) {
+        console.error("admin:verify:student:reject failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // GET /v1/admin:verify:cfi:queue
+    if (route === "/admin:verify:cfi:queue" && method === "GET") {
+      try {
+        const { getCfiQueue } = require("./services/cfiVerification");
+        return await getCfiQueue(req, res);
+      } catch (e) {
+        console.error("admin:verify:cfi:queue failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // PUT /v1/admin:verify:cfi:approve
+    if (route === "/admin:verify:cfi:approve" && method === "PUT") {
+      try {
+        const { approveCfi } = require("./services/cfiVerification");
+        return await approveCfi(req, res);
+      } catch (e) {
+        console.error("admin:verify:cfi:approve failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // PUT /v1/admin:verify:cfi:reject
+    if (route === "/admin:verify:cfi:reject" && method === "PUT") {
+      try {
+        const { rejectCfi } = require("./services/cfiVerification");
+        return await rejectCfi(req, res);
+      } catch (e) {
+        console.error("admin:verify:cfi:reject failed:", e);
+        return jsonError(res, 500, e.message);
+      }
     }
 
     // ----------------------------
@@ -9917,6 +10156,7 @@ exports.createApiKey = onRequest({ region: "us-central1" }, async (req, res) => 
 // BILLING: STRIPE SETUP + WEBHOOKS
 // ----------------------------
 const { setupStripeProducts } = require("./billing/setupStripeProducts");
+const { setupPromoCodes } = require("./billing/setupPromoCodes");
 const { handleStripeWebhook } = require("./billing/stripeWebhook");
 
 exports.setupStripeProducts = onRequest({ region: "us-central1" }, async (req, res) => {
@@ -9930,6 +10170,8 @@ exports.setupStripeProducts = onRequest({ region: "us-central1" }, async (req, r
   if (req.method !== "POST") return res.status(405).json({ ok: false, error: "Method not allowed" });
   return setupStripeProducts(req, res);
 });
+
+exports.setupPromoCodes = setupPromoCodes;
 
 exports.stripeWebhook = onRequest({ region: "us-central1" }, async (req, res) => {
   // No CORS — Stripe calls this directly. No method check — Stripe sends POST.
@@ -10088,6 +10330,22 @@ const { generateDailyDigest: handleDailyDigest } = require("./admin/generateDail
 exports.generateDailyDigest = onSchedule(
   { schedule: "0 7 * * *", timeZone: "America/Los_Angeles", region: "us-central1" },
   async () => { await handleDailyDigest(); }
+);
+
+// ----------------------------
+// VERIFICATION: Daily student & CFI checks (6 AM ET / 3 AM PT)
+// ----------------------------
+const { checkStudentVerifications: handleCheckStudents } = require("./services/studentVerification");
+const { checkCfiVerifications: handleCheckCfis } = require("./services/cfiVerification");
+
+exports.checkStudentVerifications = onSchedule(
+  { schedule: "0 3 * * *", timeZone: "America/Los_Angeles", region: "us-central1" },
+  async () => { await handleCheckStudents(); }
+);
+
+exports.checkCfiVerifications = onSchedule(
+  { schedule: "0 3 * * *", timeZone: "America/Los_Angeles", region: "us-central1" },
+  async () => { await handleCheckCfis(); }
 );
 
 // ----------------------------
