@@ -1,0 +1,762 @@
+{
+  "vertical": "auto_dealer",
+  "name": "Auto Dealer Operations",
+  "version": "1.0.0",
+  "lifecycle": [
+    {
+      "phase": 0,
+      "name": "Setup & Licensing",
+      "description": "Dealer license, bond compliance, FTC Safeguards"
+    },
+    {
+      "phase": 1,
+      "name": "Inventory Acquisition",
+      "description": "Auction sourcing, trade-in valuation, vehicle history and recon"
+    },
+    {
+      "phase": 2,
+      "name": "Merchandising & Pricing",
+      "description": "Market pricing, VDP compliance, incentive tracking"
+    },
+    {
+      "phase": 3,
+      "name": "Sales & Desking",
+      "description": "Lead management, deal structuring, OFAC screening"
+    },
+    {
+      "phase": 4,
+      "name": "F&I",
+      "description": "Menu building, compliance monitoring, lender matching, reserve tracking"
+    },
+    {
+      "phase": 5,
+      "name": "Service & Parts",
+      "description": "RO writing, MPI trade flags, parts inventory, warranty claims, declined service follow-up"
+    },
+    {
+      "phase": 6,
+      "name": "Retention & Marketing",
+      "description": "Equity mining, CSI management, conquest and loyalty campaigns"
+    },
+    {
+      "phase": 7,
+      "name": "Compliance & HR",
+      "description": "CARS Rule, TCPA, HR and payroll compliance"
+    },
+    {
+      "phase": 8,
+      "name": "Intelligence & Reporting",
+      "description": "DMS integration monitoring, daily gross and velocity reporting"
+    }
+  ],
+  "suites": [
+    {
+      "id": "licensing",
+      "name": "Licensing & Compliance"
+    },
+    {
+      "id": "inventory",
+      "name": "Inventory"
+    },
+    {
+      "id": "merchandising",
+      "name": "Merchandising"
+    },
+    {
+      "id": "sales",
+      "name": "Sales"
+    },
+    {
+      "id": "fi",
+      "name": "F&I"
+    },
+    {
+      "id": "service",
+      "name": "Service & Parts"
+    },
+    {
+      "id": "retention",
+      "name": "Retention"
+    },
+    {
+      "id": "hr-compliance",
+      "name": "HR & Compliance"
+    },
+    {
+      "id": "intelligence",
+      "name": "Intelligence"
+    }
+  ],
+  "workers": [
+    {
+      "id": "AD-001",
+      "name": "Dealer License Monitor",
+      "slug": "dealer-license-monitor",
+      "suite": "Licensing & Compliance",
+      "phase": 0,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 29
+      },
+      "status": "live",
+      "capabilitySummary": "Tracks dealer license expiry, DMV renewals, bond compliance across all states",
+      "tags": [
+        "compliance",
+        "licensing"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "license_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "AD-002",
+      "name": "FTC Safeguards Compliance",
+      "slug": "ftc-safeguards-compliance",
+      "suite": "Licensing & Compliance",
+      "phase": 0,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "Monitors FTC Safeguards Rule gaps, generates remediation plan, audit trail",
+      "tags": [
+        "compliance",
+        "FTC"
+      ],
+      "alexRegistration": {
+        "priority": "high",
+        "acceptsTasks": true,
+        "briefingContribution": "compliance_alerts"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "AD-003",
+      "name": "Auction Intelligence",
+      "slug": "auction-intelligence",
+      "suite": "Inventory",
+      "phase": 1,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "Sources auction inventory, compares market values, recommends acquisition targets",
+      "tags": [
+        "inventory",
+        "acquisition"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "inventory_opportunities"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "AD-004",
+      "name": "Trade-In Valuation",
+      "slug": "trade-in-valuation",
+      "suite": "Inventory",
+      "phase": 1,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 29
+      },
+      "status": "live",
+      "capabilitySummary": "Real-time trade appraisal against KBB/Manheim, generates counter-offer",
+      "tags": [
+        "inventory",
+        "valuation"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "trade_valuations"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "AD-005",
+      "name": "Vehicle History & Recon",
+      "slug": "vehicle-history-recon",
+      "suite": "Inventory",
+      "phase": 1,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 29
+      },
+      "status": "live",
+      "capabilitySummary": "Pulls Carfax/AutoCheck, estimates recon cost, sets retail-ready timeline",
+      "tags": [
+        "inventory",
+        "compliance"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "recon_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "AD-006",
+      "name": "Market Pricing Intelligence",
+      "slug": "market-pricing-intelligence",
+      "suite": "Merchandising",
+      "phase": 2,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "Competitive pricing analysis, days-on-lot alerts, markdown recommendations",
+      "tags": [
+        "pricing",
+        "intelligence"
+      ],
+      "alexRegistration": {
+        "priority": "high",
+        "acceptsTasks": true,
+        "briefingContribution": "pricing_alerts"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "AD-007",
+      "name": "VDP & Photo Compliance",
+      "slug": "vdp-photo-compliance",
+      "suite": "Merchandising",
+      "phase": 2,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 29
+      },
+      "status": "live",
+      "capabilitySummary": "Monitors vehicle detail pages for photo count, price accuracy, description quality",
+      "tags": [
+        "compliance",
+        "marketing"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "vdp_compliance"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "AD-008",
+      "name": "Incentive & Rebate Tracker",
+      "slug": "incentive-rebate-tracker",
+      "suite": "Merchandising",
+      "phase": 2,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 29
+      },
+      "status": "live",
+      "capabilitySummary": "Tracks OEM incentives, regional rebates, stacking rules by vehicle and buyer",
+      "tags": [
+        "pricing",
+        "revenue"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "incentive_updates"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "AD-009",
+      "name": "Lead Management & Speed-to-Lead",
+      "slug": "lead-management",
+      "suite": "Sales",
+      "phase": 3,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "Routes internet leads, triggers 90-second response, tracks follow-up cadence",
+      "tags": [
+        "sales",
+        "leads"
+      ],
+      "alexRegistration": {
+        "priority": "high",
+        "acceptsTasks": true,
+        "briefingContribution": "lead_activity"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "AD-010",
+      "name": "Desking & Deal Structure",
+      "slug": "desking-deal-structure",
+      "suite": "Sales",
+      "phase": 3,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "Structures deal, calculates payment options, flags profit below threshold",
+      "tags": [
+        "sales",
+        "compliance"
+      ],
+      "alexRegistration": {
+        "priority": "high",
+        "acceptsTasks": true,
+        "briefingContribution": "deal_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "AD-011",
+      "name": "OFAC & Red Flags Screening",
+      "slug": "ofac-red-flags-screening",
+      "suite": "Sales",
+      "phase": 3,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 29
+      },
+      "status": "live",
+      "capabilitySummary": "Screens every customer against OFAC, Red Flags Rule, military lending",
+      "tags": [
+        "compliance",
+        "security"
+      ],
+      "alexRegistration": {
+        "priority": "critical",
+        "acceptsTasks": false,
+        "briefingContribution": "screening_alerts"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "AD-012",
+      "name": "F&I Menu Builder",
+      "slug": "fi-menu-builder",
+      "suite": "F&I",
+      "phase": 4,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "Builds compliant F&I menu from deal data, tracks product penetration",
+      "tags": [
+        "finance",
+        "compliance"
+      ],
+      "alexRegistration": {
+        "priority": "high",
+        "acceptsTasks": true,
+        "briefingContribution": "fi_penetration"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "AD-013",
+      "name": "F&I Compliance Monitor",
+      "slug": "fi-compliance-monitor",
+      "suite": "F&I",
+      "phase": 4,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "Verifies every product at published price, ECOA monitoring, audit trail",
+      "tags": [
+        "compliance",
+        "finance"
+      ],
+      "alexRegistration": {
+        "priority": "critical",
+        "acceptsTasks": false,
+        "briefingContribution": "fi_compliance_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "AD-014",
+      "name": "Lender Matching & RouteOne",
+      "slug": "lender-matching",
+      "suite": "F&I",
+      "phase": 4,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "Matches deal to best lender, monitors approval and stipulation status",
+      "tags": [
+        "finance",
+        "lending"
+      ],
+      "alexRegistration": {
+        "priority": "high",
+        "acceptsTasks": true,
+        "briefingContribution": "lender_approvals"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "AD-015",
+      "name": "Reserve & Chargeback Tracker",
+      "slug": "reserve-chargeback-tracker",
+      "suite": "F&I",
+      "phase": 4,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 29
+      },
+      "status": "live",
+      "capabilitySummary": "Tracks F&I reserve, monitors chargeback risk, alerts on early payoffs",
+      "tags": [
+        "finance",
+        "compliance"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "reserve_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "AD-016",
+      "name": "RO Writer Assist",
+      "slug": "ro-writer-assist",
+      "suite": "Service & Parts",
+      "phase": 5,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 29
+      },
+      "status": "live",
+      "capabilitySummary": "Suggests op codes, flags declined services, monitors labor time accuracy",
+      "tags": [
+        "service",
+        "revenue"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "service_ops"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "AD-017",
+      "name": "Service MPI & Trade Flag",
+      "slug": "service-mpi-trade-flag",
+      "suite": "Service & Parts",
+      "phase": 5,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 79
+      },
+      "status": "live",
+      "capabilitySummary": "Flags when repair cost exceeds 60% of vehicle value — service-to-sales trigger",
+      "tags": [
+        "service",
+        "revenue",
+        "sales"
+      ],
+      "alexRegistration": {
+        "priority": "high",
+        "acceptsTasks": true,
+        "briefingContribution": "trade_flags"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "AD-018",
+      "name": "Parts Inventory & Returns",
+      "slug": "parts-inventory-returns",
+      "suite": "Service & Parts",
+      "phase": 5,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 29
+      },
+      "status": "live",
+      "capabilitySummary": "Tracks parts on-hand, monitors warranty return deadlines, flags aging inventory",
+      "tags": [
+        "service",
+        "inventory"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "parts_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "AD-019",
+      "name": "Warranty Claims Optimizer",
+      "slug": "warranty-claims-optimizer",
+      "suite": "Service & Parts",
+      "phase": 5,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "Optimizes op code selection, monitors claim status, flags rejection patterns",
+      "tags": [
+        "service",
+        "revenue"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "warranty_claims"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "AD-020",
+      "name": "Declined Service Follow-Up",
+      "slug": "declined-service-followup",
+      "suite": "Service & Parts",
+      "phase": 5,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "Tracks declined services, triggers re-engagement at 3/14/30/60 days",
+      "tags": [
+        "service",
+        "retention",
+        "revenue"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "declined_service_recovery"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "AD-021",
+      "name": "Equity Mining & Retention",
+      "slug": "equity-mining-retention",
+      "suite": "Retention",
+      "phase": 6,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 79
+      },
+      "status": "live",
+      "capabilitySummary": "Monitors customer equity positions, generates advisor talk tracks, flags pull-ahead",
+      "tags": [
+        "retention",
+        "revenue",
+        "sales"
+      ],
+      "alexRegistration": {
+        "priority": "high",
+        "acceptsTasks": true,
+        "briefingContribution": "equity_opportunities"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "AD-022",
+      "name": "CSI & Review Management",
+      "slug": "csi-review-management",
+      "suite": "Retention",
+      "phase": 6,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 29
+      },
+      "status": "live",
+      "capabilitySummary": "Monitors CSI scores, triggers review requests, routes complaints before they post",
+      "tags": [
+        "retention",
+        "compliance"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "csi_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "AD-023",
+      "name": "Conquest & Loyalty Campaigns",
+      "slug": "conquest-loyalty-campaigns",
+      "suite": "Retention",
+      "phase": 6,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "Identifies conquest targets, manages loyalty outreach, tracks campaign ROI",
+      "tags": [
+        "marketing",
+        "retention"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "campaign_performance"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "AD-024",
+      "name": "FTC CARS Rule Monitor",
+      "slug": "ftc-cars-rule-monitor",
+      "suite": "HR & Compliance",
+      "phase": 7,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "Tracks CARS Rule compliance (eff. Jan 2026), flags prohibited dealer practices",
+      "tags": [
+        "compliance",
+        "FTC"
+      ],
+      "alexRegistration": {
+        "priority": "critical",
+        "acceptsTasks": false,
+        "briefingContribution": "cars_rule_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "AD-025",
+      "name": "TCPA Compliance",
+      "slug": "tcpa-compliance",
+      "suite": "HR & Compliance",
+      "phase": 7,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 29
+      },
+      "status": "live",
+      "capabilitySummary": "Manages text/call consent records, suppression lists, opt-out compliance",
+      "tags": [
+        "compliance",
+        "TCPA"
+      ],
+      "alexRegistration": {
+        "priority": "high",
+        "acceptsTasks": false,
+        "briefingContribution": "tcpa_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "AD-026",
+      "name": "HR & Payroll Compliance",
+      "slug": "hr-payroll-compliance",
+      "suite": "HR & Compliance",
+      "phase": 7,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 29
+      },
+      "status": "live",
+      "capabilitySummary": "Monitors dealer HR compliance, wage/hour, commissioned sales comp rules",
+      "tags": [
+        "compliance",
+        "HR"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "hr_compliance"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "AD-027",
+      "name": "DMS Integration Monitor",
+      "slug": "dms-integration-monitor",
+      "suite": "Intelligence",
+      "phase": 8,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "Monitors Reynolds/CDK/Dealertrack data quality, flags integration errors",
+      "tags": [
+        "integration",
+        "intelligence"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "integration_health"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "AD-028",
+      "name": "Daily Gross & Velocity Report",
+      "slug": "daily-gross-velocity-report",
+      "suite": "Intelligence",
+      "phase": 8,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 29
+      },
+      "status": "live",
+      "capabilitySummary": "Automated daily/weekly gross reporting by department, trend alerts",
+      "tags": [
+        "reporting",
+        "intelligence"
+      ],
+      "alexRegistration": {
+        "priority": "high",
+        "acceptsTasks": true,
+        "briefingContribution": "daily_gross"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "AD-029",
+      "name": "Alex — Chief of Staff",
+      "slug": "alex-chief-of-staff",
+      "suite": "Intelligence",
+      "phase": 99,
+      "type": "composite",
+      "pricing": {
+        "monthly": 0
+      },
+      "status": "live",
+      "capabilitySummary": "Cross-worker orchestration, daily ops briefing, pricing model recommendation",
+      "tags": [
+        "alex",
+        "orchestration"
+      ],
+      "alexRegistration": {
+        "priority": "critical",
+        "acceptsTasks": true,
+        "briefingContribution": "orchestration"
+      },
+      "temporalType": "always_on"
+    }
+  ]
+}

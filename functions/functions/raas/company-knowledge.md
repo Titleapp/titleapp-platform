@@ -56,21 +56,23 @@ Creators set their price. TitleApp takes a 25% platform fee (75/25 split to crea
 
 ## Current Verticals
 
-TitleApp serves multiple verticals, each with vertical-specific rules, workflows, and AI behavior:
+TitleApp serves multiple verticals, each with vertical-specific Digital Workers, rules, workflows, and AI behavior:
 
-1. Auto Dealerships: Inventory management, pricing intelligence, customer outreach, F&I product matching, service scheduling. Alex acts as the dealership's Chief of Staff -- managing vehicles, customers, and a full sales pipeline.
+1. Auto Dealerships (29 Digital Workers live): Full dealership operations from licensing and compliance through inventory acquisition, merchandising, sales and desking, F&I, service and parts, retention and marketing, HR and compliance, to intelligence and reporting. Workers include Dealer License Monitor, FTC Safeguards Compliance, Auction Intelligence, Trade-In Valuation, Market Pricing Intelligence, Lead Management, Desking and Deal Structure, F&I Menu Builder, Lender Matching, Equity Mining, and Alex Chief of Staff. Pricing: $29-$79/mo per worker.
 
-2. Real Estate & Mortgage: Listings, buyer matching, transaction management, property management with tenant tracking, maintenance requests, and compliance monitoring.
+2. Real Estate Development (52 Digital Workers): Full CRE lifecycle from site selection and due diligence through entitlement, design, financing, construction, lease-up, stabilization, and disposition. Workers include CRE Deal Analyst, Site Selector, Zoning Analyst, Capital Stack Optimizer, Construction Lending, Construction Manager, Environmental Compliance, and Alex Chief of Staff.
 
-3. Investment Analysis: Deal screening, risk assessment, portfolio monitoring, LP communications, and compliance-first analysis with evidence requirements.
+3. Aviation Part 135/91 and Pilot Suite (38 Digital Workers built, 12 planned): Full flight operations from certificate management and GOM authoring through fleet airworthiness, crew management, flight ops, safety and SMS, revenue and billing, compliance, and intelligence. Plus a 6-worker Pilot Suite for personal pilots. Workers include Part 135 Certificate Assistant, GOM Authoring, AD/SB Tracker, Safety Reporting, FOQA, Charter Quoting, and Alex Aviation Chief of Staff.
 
-4. Investor Relations: Fundraise management, cap table, data room, investor pipeline, compliance tracking. This is the vertical powering TitleApp's own raise -- dogfooding the product.
+4. Investment Analysis: Deal screening, risk assessment, portfolio monitoring, LP communications, and compliance-first analysis with evidence requirements.
 
-5. Aviation: Aircraft records, pilot certifications, maintenance schedules, flight hour tracking, charter operations.
+5. Investor Relations: Fundraise management, cap table, data room, investor pipeline, compliance tracking. This is the vertical powering TitleApp's own raise -- dogfooding the product.
 
-6. Healthcare (planned): Patient record governance, HIPAA compliance enforcement, clinical workflow automation.
+6. Property Management (18 workers planned): Tenant management, lease administration, maintenance, rent collection, compliance, and financial reporting.
 
-Each vertical has its own Digital Worker ruleset, system prompts, and domain-specific workflows. New verticals can be built by defining rules and workflows -- the AI execution layer is shared.
+7. Healthcare (planned): Patient record governance, HIPAA compliance enforcement, clinical workflow automation.
+
+Each vertical has its own Digital Worker catalog, ruleset, system prompts, and domain-specific workflows. New verticals can be built by defining rules and workflows -- the AI execution layer is shared. Every new worker must pass through the Worker #1 governance pipeline before going live.
 
 ---
 
@@ -128,13 +130,15 @@ Bottom-up math across 8 segments:
 
 ## Revenue Model
 
-TitleApp generates revenue through three streams:
+TitleApp generates revenue through four streams:
 
-1. Subscription: Accessible per-seat pricing for access to the platform and Alex. This is the base layer -- every user gets an AI Chief of Staff. Pricing scales with value delivered.
+1. Worker Subscriptions: Individual Digital Workers priced at Free, $29/mo, $49/mo, or $79/mo. Volume discounts at 3+ workers (10% off), 5-10 workers (20% off), 10+ workers (30% off). Annual pricing includes 2 months free. Alex Chief of Staff is free with 3 or more active subscriptions.
 
-2. Digital Worker Marketplace: Creators build and sell Digital Workers (rule packages + workflows) on the TitleApp marketplace. TitleApp takes a 25% platform fee (75/25 split to creators). This is the network effect -- more creators mean more verticals mean more subscribers.
+2. Tech Fees (vertical-specific): Auto dealers pay $250/transaction or 2% of deal value. Real estate sales pay $500/transaction or 1%. Property management pays $250/transaction or 1%. Mortgage and lending verticals are subscription-only with no tech fee.
 
-3. AI Usage Fees: Heavy AI usage (large document analysis, complex multi-step workflows, high-volume automation) incurs usage-based fees on top of the base subscription.
+3. Digital Worker Marketplace: Creators build and sell Digital Workers (rule packages + workflows) on the TitleApp marketplace. TitleApp takes a 25% platform fee (75/25 split to creators). Creator License is $49/year (free until July 1, 2026 with code DEV100). $2 Identity Check always required. This is the network effect -- more creators mean more verticals mean more subscribers.
+
+4. AI Usage Fees: Heavy AI usage (large document analysis, complex multi-step workflows, high-volume automation) incurs usage-based fees on top of the base subscription.
 
 ---
 
@@ -160,22 +164,54 @@ Alex can reference these documents and offer to share them when relevant. The ex
 
 ---
 
+## Platform Capabilities (Live)
+
+Document Engine: Any Digital Worker can generate PDF, DOCX, XLSX, and PPTX documents using 8 base templates (report, memo, agreement, deck, cashflow model, proforma, one-pager, letter). All generated documents carry an AI disclosure footer. Branding is tenant-configurable.
+
+Public API v1: 44 endpoints covering all verticals, webhooks, and universal inbound. Authentication via API key (X-API-Key header). Rate limiting at 100 requests/hour on free tier. Health check and documentation endpoints available without auth.
+
+Worker #1 Governance Pipeline: Every new Digital Worker passes through a 7-stage pipeline (intake interview, regulatory research, compliance brief, rules library editor, pre-publish check, publish flow, admin review) before going live. No exceptions. This is the trust infrastructure that differentiates TitleApp from other AI agent platforms.
+
+Student Pilot Program: Free Pilot Pro ($29/mo value) for enrolled student pilots. Annual re-verification with student ID upload. Graduates transition to paid plans with a 3-month courtesy period.
+
+CFI/CFII Program: Free Pilot Pro+ ($49/mo value) for flight instructors on academy staff. FAA Airmen Inquiry spot-check for certificate validation. Annual re-verification tied to employment.
+
+Dynamic Worker Registry: A live Firestore-backed catalog (raasCatalog) serves as the single source of truth for all worker records. Content sync events automatically update homepage counts, vertical caches, Alex knowledge base, and chat context when workers are approved or deprecated.
+
+Guarantees: 14-day free trial (no credit card), 60-day money-back guarantee, cancel anytime with one click, pause option (stop billing, keep data), data always belongs to the user (Vault preserved forever).
+
+Current Promotions: AUTOLAUNCH (2 months free, auto dealer), TITLELAUNCH (2 months free, title/escrow), PMLAUNCH (2 months free, property management), PILOT3FREE (3 months free, Pilot Pro), DEV100 (Creator License free until July 1, 2026), EARLYBIRD50 (50% off for 6 months), DEMO30 (1 month free post-demo).
+
+Referral Program: Every paid customer gets a referral code. 30% recurring commission on referral subscriptions. Monthly payout via Stripe Connect for earnings over $100.
+
 ## Roadmap
 
-Near-term (Q1-Q2 2026):
-- Complete investor relations vertical (in progress -- dogfooding the raise)
-- Launch Digital Worker marketplace with creator tools
-- Auto dealership pilot program (first paying customers)
-- Public API v1 with developer documentation
+Completed (Q1 2026):
+- Auto dealer vertical live with 29 Digital Workers
+- Aviation vertical live with 38 Digital Workers + 6 Pilot Suite workers
+- Real estate development vertical with 52 Digital Workers
+- Public API v1 with 44 endpoints and developer documentation
+- Document Engine with PDF, DOCX, XLSX, PPTX generation
+- Worker #1 governance pipeline with gate verification
+- Student pilot and CFI verification programs
+- Dynamic worker registry with live content sync
+- Investor data room with tiered access
+- Developer Sandbox for building custom workers
 
-Mid-term (Q3-Q4 2026):
-- Real estate vertical launch
-- Aviation vertical launch
-- Stripe Identity integration for verified credentials
+Near-term (Q2 2026):
+- Stripe billing integration (infrastructure built, keys pending)
+- Property management vertical launch
+- Custom template upload for Document Engine
+- E-signature integration
 - Mobile app (React Native)
 
-Long-term (2027+):
+Mid-term (Q3-Q4 2026):
 - Government/GovTech partnerships (DMV integrations, municipal records)
+- Healthcare vertical
+- OAuth 2.0 for Public API
+- GPT Store action schema and Claude MCP server config
+
+Long-term (2027+):
 - International expansion (UK, EU regulatory frameworks)
 - Enterprise tier with custom Digital Worker rulesets and dedicated support
 - Cash flow positive target: mid-2027

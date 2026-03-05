@@ -26,7 +26,7 @@ const LIFECYCLE_TEMPLATE = [
 
 function validateWorkerEntry(entry) {
   const errors = [];
-  if (!entry.id || !/^W-\d{3}$/.test(entry.id)) errors.push(`Invalid id: ${entry.id}`);
+  if (!entry.id || !/^[A-Z]{1,3}-[A-Z0-9]{1,4}$/.test(entry.id)) errors.push(`Invalid id: ${entry.id}`);
   if (!entry.slug) errors.push("Missing slug");
   if (!entry.name) errors.push("Missing name");
   if (!VALID_TYPES.includes(entry.type)) errors.push(`Invalid type: ${entry.type}`);

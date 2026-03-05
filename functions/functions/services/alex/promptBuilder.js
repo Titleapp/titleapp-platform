@@ -13,7 +13,7 @@
 const { getRoutingIndex, getActiveWorkerDetails, listVerticals, loadCatalog, getLifecycle } = require("./catalogs/loader");
 
 // Lazy-load prompt components to minimize cold-start
-let _identity, _rules, _routing, _communication, _intake, _onboarding, _surfaces;
+let _identity, _rules, _routing, _communication, _intake, _onboarding, _surfaces, _registryContext;
 function getIdentityModule() { if (!_identity) _identity = require("./prompts/identity"); return _identity; }
 function getRulesModule() { if (!_rules) _rules = require("./prompts/rules"); return _rules; }
 function getRoutingModule() { if (!_routing) _routing = require("./prompts/routing"); return _routing; }
@@ -21,6 +21,7 @@ function getCommunicationModule() { if (!_communication) _communication = requir
 function getIntakeModule() { if (!_intake) _intake = require("./prompts/intake"); return _intake; }
 function getOnboardingModule() { if (!_onboarding) _onboarding = require("./prompts/onboarding"); return _onboarding; }
 function getSurfacesModule() { if (!_surfaces) _surfaces = require("./prompts/surfaces"); return _surfaces; }
+function getRegistryContextModule() { if (!_registryContext) _registryContext = require("./buildRegistryContext"); return _registryContext; }
 
 // Rough token estimate: ~4 chars per token
 function estimateTokens(text) {
@@ -46,7 +47,7 @@ const MAX_TOKEN_BUDGET = 8000;
  * @param {Object} options.surfaceContext - Additional context for surface overlays (companyKnowledge, raiseTerms, etc.)
  * @returns {string} The assembled system prompt
  */
-function assemblePrompt(options = {}) {
+async function assemblePrompt(options = {}) {
   const {
     surface = "business",
     activeWorkerSlugs = [],
@@ -107,6 +108,14 @@ function assemblePrompt(options = {}) {
         sections.push(buildCatalogSection(v, routingIndex));
       }
     }
+  }
+
+  // 7b. Dynamic: Live registry context (pricing, promos, guarantees, programs)
+  try {
+    const registryContext = await getRegistryContextModule().buildRegistryContext({ vertical });
+    if (registryContext) sections.push(registryContext);
+  } catch (e) {
+    // Non-fatal — catalog routing index still provides worker knowledge
   }
 
   // 8. Dynamic: Active worker details

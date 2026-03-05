@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import ChatPanel from "../components/ChatPanel";
 import { auth } from "../firebase";
 
@@ -73,6 +73,45 @@ export default function InvestorDataRoom() {
   const [userName, setUserName] = useState("");
   const [userEmail, setUserEmail] = useState("");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  // Resizable chat panel
+  const savedWidth = parseFloat(localStorage.getItem("PANEL_WIDTH")) || 40;
+  const [chatWidth, setChatWidth] = useState(Math.min(65, Math.max(25, savedWidth)));
+  const [isResizing, setIsResizing] = useState(false);
+  const dualPanelRef = useRef(null);
+
+  const handleResizeStart = useCallback((e) => {
+    e.preventDefault();
+    setIsResizing(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isResizing) return;
+    function handleResizeMove(e) {
+      if (!dualPanelRef.current) return;
+      const rect = dualPanelRef.current.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const pct = (x / rect.width) * 100;
+      setChatWidth(Math.min(65, Math.max(25, pct)));
+    }
+    function handleResizeEnd() {
+      setIsResizing(false);
+      setChatWidth(prev => {
+        localStorage.setItem("PANEL_WIDTH", String(prev));
+        return prev;
+      });
+    }
+    document.addEventListener("mousemove", handleResizeMove);
+    document.addEventListener("mouseup", handleResizeEnd);
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+    return () => {
+      document.removeEventListener("mousemove", handleResizeMove);
+      document.removeEventListener("mouseup", handleResizeEnd);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+  }, [isResizing]);
 
   // Data state
   const [docs, setDocs] = useState([]);
@@ -324,7 +363,7 @@ export default function InvestorDataRoom() {
         </button>
       </aside>
 
-      {/* CENTER — Header + Content */}
+      {/* CENTER — Header spanning full width above dual panel */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
         {/* Top header bar */}
         <header style={{
@@ -375,89 +414,101 @@ export default function InvestorDataRoom() {
           </div>
         </header>
 
-        {/* Content area */}
-        <main style={{ flex: 1, overflowY: "auto", padding: 24 }}>
-          {loading ? (
-            <div style={{ textAlign: "center", color: "#94a3b8", padding: 60 }}>Loading data room...</div>
-          ) : (
-            <>
-              {section === "overview" && (
-                <OverviewSection
-                  raiseConfig={raiseConfig}
-                  capTable={capTable}
-                  updates={updates}
-                  gates={gates}
-                  isVerified={isVerified}
-                  tier2Unlocked={tier2Unlocked}
-                  onUnlock={() => setGateModal(isVerified ? "disclaimer" : "verify")}
-                  onNavigate={setSection}
-                />
-              )}
-              {section === "investor-docs" && (
-                <InvestorDocsSection
-                  docs={docs.filter(d => d.tier === 1 || d.type !== "safe")}
-                  tier2Unlocked={tier2Unlocked}
-                  onDocClick={handleDocClick}
-                  onUnlock={() => setGateModal(isVerified ? "disclaimer" : "verify")}
-                />
-              )}
-              {section === "subscription" && (
-                <SubscriptionDocsSection
-                  docs={docs.filter(d => d.type === "safe" || d.category === "Subscription")}
-                  raiseConfig={raiseConfig}
-                  tier2Unlocked={tier2Unlocked}
-                  onDocClick={handleDocClick}
-                  onUnlock={() => setGateModal(isVerified ? "disclaimer" : "verify")}
-                />
-              )}
-              {section === "governance" && (
-                <GovernanceSection
-                  capTable={capTable}
-                  proposals={proposals}
-                  raiseConfig={raiseConfig}
-                />
-              )}
-              {section === "id-check" && (
-                <IDCheckSection
-                  gates={gates}
-                  isVerified={isVerified}
-                  hasDisclaimer={hasDisclaimer}
-                  disclaimers={disclaimers}
-                  disclaimerChecks={disclaimerChecks}
-                  setDisclaimerChecks={setDisclaimerChecks}
-                  onStartVerify={startVerification}
-                  onAcceptDisclaimer={acceptDisclaimer}
-                  acceptingDisclaimer={acceptingDisclaimer}
-                />
-              )}
-              {section === "wallet" && <WalletSection gates={gates} />}
-              {section === "profile" && (
-                <ProfileSection
-                  userName={userName}
-                  userEmail={userEmail}
-                  gates={gates}
-                  onSave={loadAll}
-                />
-              )}
-            </>
-          )}
-        </main>
-      </div>
+        {/* Dual panel: Chat | Resize Handle | Content */}
+        <div ref={dualPanelRef} style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+          {/* Chat panel — resizable */}
+          <aside style={{
+            width: chatWidth + "%",
+            minWidth: 280,
+            display: "flex",
+            flexDirection: "column",
+            background: "white",
+            borderRight: "1px solid #e8ebf3",
+          }}>
+            <ChatPanel currentSection={`investor-${section}`} />
+          </aside>
 
-      {/* RIGHT — Persistent Chat Panel */}
-      <aside style={{
-        width: "38%",
-        maxWidth: 520,
-        minWidth: 340,
-        borderLeft: "2px solid #e8ebf3",
-        boxShadow: "-4px 0 16px rgba(15,23,42,0.04)",
-        display: "flex",
-        flexDirection: "column",
-        height: "100vh",
-        background: "white",
-      }}>
-        <ChatPanel currentSection={`investor-${section}`} />
-      </aside>
+          {/* Resize handle */}
+          <div
+            onMouseDown={handleResizeStart}
+            onDoubleClick={() => { setChatWidth(40); localStorage.setItem("PANEL_WIDTH", "40"); }}
+            style={{
+              width: 6, cursor: "col-resize", background: isResizing ? "#7c3aed" : "transparent",
+              transition: "background 0.15s", flexShrink: 0, position: "relative", zIndex: 10,
+            }}
+            onMouseEnter={e => { if (!isResizing) e.currentTarget.style.background = "rgba(124,58,237,0.2)"; }}
+            onMouseLeave={e => { if (!isResizing) e.currentTarget.style.background = "transparent"; }}
+          />
+
+          {/* Content area */}
+          <main style={{ flex: 1, overflowY: "auto", padding: 24, minWidth: 0 }}>
+            {loading ? (
+              <div style={{ textAlign: "center", color: "#94a3b8", padding: 60 }}>Loading data room...</div>
+            ) : (
+              <>
+                {section === "overview" && (
+                  <OverviewSection
+                    raiseConfig={raiseConfig}
+                    capTable={capTable}
+                    updates={updates}
+                    gates={gates}
+                    isVerified={isVerified}
+                    tier2Unlocked={tier2Unlocked}
+                    onUnlock={() => setGateModal(isVerified ? "disclaimer" : "verify")}
+                    onNavigate={setSection}
+                  />
+                )}
+                {section === "investor-docs" && (
+                  <InvestorDocsSection
+                    docs={docs.filter(d => d.tier === 1 || d.type !== "safe")}
+                    tier2Unlocked={tier2Unlocked}
+                    onDocClick={handleDocClick}
+                    onUnlock={() => setGateModal(isVerified ? "disclaimer" : "verify")}
+                  />
+                )}
+                {section === "subscription" && (
+                  <SubscriptionDocsSection
+                    docs={docs.filter(d => d.type === "safe" || d.category === "Subscription")}
+                    raiseConfig={raiseConfig}
+                    tier2Unlocked={tier2Unlocked}
+                    onDocClick={handleDocClick}
+                    onUnlock={() => setGateModal(isVerified ? "disclaimer" : "verify")}
+                  />
+                )}
+                {section === "governance" && (
+                  <GovernanceSection
+                    capTable={capTable}
+                    proposals={proposals}
+                    raiseConfig={raiseConfig}
+                  />
+                )}
+                {section === "id-check" && (
+                  <IDCheckSection
+                    gates={gates}
+                    isVerified={isVerified}
+                    hasDisclaimer={hasDisclaimer}
+                    disclaimers={disclaimers}
+                    disclaimerChecks={disclaimerChecks}
+                    setDisclaimerChecks={setDisclaimerChecks}
+                    onStartVerify={startVerification}
+                    onAcceptDisclaimer={acceptDisclaimer}
+                    acceptingDisclaimer={acceptingDisclaimer}
+                  />
+                )}
+                {section === "wallet" && <WalletSection gates={gates} />}
+                {section === "profile" && (
+                  <ProfileSection
+                    userName={userName}
+                    userEmail={userEmail}
+                    gates={gates}
+                    onSave={loadAll}
+                  />
+                )}
+              </>
+            )}
+          </main>
+        </div>
+      </div>
 
       {/* Gate modal overlay */}
       {gateModal && (
