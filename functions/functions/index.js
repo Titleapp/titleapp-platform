@@ -4992,6 +4992,20 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
     }
 
     // ----------------------------
+    // ADMIN: REGISTRY SEED
+    // ----------------------------
+    if (route === "/admin:registry:seed" && method === "POST") {
+      try {
+        const { seedWorkerRegistry } = require("./scripts/seedWorkerRegistry");
+        const result = await seedWorkerRegistry(db);
+        return res.status(200).json({ ok: true, ...result });
+      } catch (e) {
+        console.error("admin:registry:seed failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ----------------------------
     // ADMIN IMPORT (kept)
     // ----------------------------
     if (route === "/admin/import" && method === "POST") {
@@ -10346,6 +10360,17 @@ exports.checkStudentVerifications = onSchedule(
 exports.checkCfiVerifications = onSchedule(
   { schedule: "0 3 * * *", timeZone: "America/Los_Angeles", region: "us-central1" },
   async () => { await handleCheckCfis(); }
+);
+
+// ----------------------------
+// CONTENT SYNC: Firestore trigger on platform/contentSync/events/{eventId}
+// ----------------------------
+const { onDocumentCreated } = require("firebase-functions/v2/firestore");
+const { handleContentSync } = require("./onContentSync");
+
+exports.onContentSync = onDocumentCreated(
+  { document: "platform/contentSync/events/{eventId}", region: "us-central1" },
+  async (event) => { await handleContentSync(event.data); }
 );
 
 // ----------------------------

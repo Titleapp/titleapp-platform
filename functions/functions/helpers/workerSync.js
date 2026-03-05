@@ -396,4 +396,195 @@ async function syncCatalogWorkers(db, opts = {}) {
   return results;
 }
 
-module.exports = { syncCatalogWorkers, MARKETPLACE_SLUG_MAP, RULESET_MAP };
+// ═══════════════════════════════════════════════════════════════
+//  REGISTRY SYNC — Fires on admin approval in ReviewQueue.jsx
+// ═══════════════════════════════════════════════════════════════
+
+const { validateRegistryRecord, parsePriceTier } = require("./workerSchema");
+
+/**
+ * Sync an approved worker to the live raasCatalog registry.
+ * This is the ONLY path to status='live'. (P0.18)
+ *
+ * Called from: ReviewQueue approval → index.js admin:worker:review → here
+ *
+ * @param {FirebaseFirestore.Firestore} db — Firestore instance
+ * @param {object} workerData — full worker data from pipeline
+ * @param {string} adminUid — uid of the admin who approved
+ * @returns {object} — { worker_id, status }
+ */
+async function syncApprovedWorker(db, workerData, adminUid) {
+  const admin = require("firebase-admin");
+
+  // Validate against registry schema
+  const { record: validated } = validateRegistryRecord({
+    ...workerData,
+    status: "live",
+    approved_by: adminUid,
+    pipeline_version: workerData.pipeline_version || "v1.0",
+  }, { isAdminApproval: true });
+
+  // 1. WRITE FULL RECORD TO raasCatalog
+  const workerRecord = {
+    ...validated,
+    status: "live",
+    approved_by: adminUid,
+    approved_at: admin.firestore.FieldValue.serverTimestamp(),
+    pipeline_completed_at: admin.firestore.FieldValue.serverTimestamp(),
+    pipeline_version: workerData.pipeline_version || "v1.0",
+    updated_at: admin.firestore.FieldValue.serverTimestamp(),
+    created_at: admin.firestore.FieldValue.serverTimestamp(),
+  };
+
+  await db.collection("raasCatalog").doc(workerData.worker_id).set(workerRecord, { merge: true });
+
+  // 2. UPDATE AGGREGATE COUNTERS
+  const countersRef = db.doc("platform/workerCounts");
+  await db.runTransaction(async (tx) => {
+    const doc = await tx.get(countersRef);
+    const counts = doc.exists ? doc.data() : {};
+
+    counts.total_live = (counts.total_live || 0) + 1;
+    const vertKey = `vertical_${workerData.vertical}`;
+    counts[vertKey] = (counts[vertKey] || 0) + 1;
+    counts.total_all_statuses = (counts.total_all_statuses || 0) + 1;
+    counts.last_updated = admin.firestore.FieldValue.serverTimestamp();
+
+    tx.set(countersRef, counts);
+  });
+
+  // 3. TRIGGER CONTENT SYNC
+  await triggerContentSync(db, workerRecord);
+
+  // 4. NOTIFY ALEX
+  await notifyAlex(db, workerRecord);
+
+  console.log(`[workerSync] Worker ${workerData.worker_id} synced to registry. Status: live.`);
+  return { worker_id: workerData.worker_id, status: "live" };
+}
+
+/**
+ * Write a content sync event — triggers onContentSync Cloud Function.
+ */
+async function triggerContentSync(db, worker) {
+  const admin = require("firebase-admin");
+  await db.collection("platform").doc("contentSync").collection("events").add({
+    event_type: "worker_approved",
+    worker_id: worker.worker_id,
+    vertical: worker.vertical,
+    name: worker.name,
+    price_tier: worker.price_tier,
+    short_description: worker.short_description,
+    status: worker.status,
+    timestamp: admin.firestore.FieldValue.serverTimestamp(),
+  });
+}
+
+/**
+ * Write to Alex knowledge base so she knows about the new worker.
+ */
+async function notifyAlex(db, worker) {
+  const admin = require("firebase-admin");
+  await db.collection("alex").doc("knowledge").collection("workers").doc(worker.worker_id).set({
+    worker_id: worker.worker_id,
+    name: worker.name,
+    vertical: worker.vertical,
+    price_tier: worker.price_tier,
+    revenue_model: worker.revenue_model,
+    short_description: worker.short_description,
+    tags: worker.tags || [],
+    status: worker.status,
+    worker_url: worker.worker_url || null,
+    monthly_price_usd: parsePriceTier(worker.price_tier),
+    is_tech_fee_vertical: ["auto_dealer", "re_sales", "property_management"].includes(worker.vertical),
+    added_at: admin.firestore.FieldValue.serverTimestamp(),
+  });
+}
+
+/**
+ * Deprecate a worker — removes from live, updates counters, triggers sync.
+ */
+async function deprecateWorker(db, workerId, adminUid) {
+  const admin = require("firebase-admin");
+
+  const workerRef = db.collection("raasCatalog").doc(workerId);
+  const workerSnap = await workerRef.get();
+  if (!workerSnap.exists) throw new Error(`Worker ${workerId} not found in raasCatalog`);
+  const workerData = workerSnap.data();
+
+  if (workerData.status !== "live") {
+    throw new Error(`Worker ${workerId} is not live (status: ${workerData.status})`);
+  }
+
+  // Update status
+  await workerRef.update({
+    status: "deprecated",
+    deprecated_by: adminUid,
+    deprecated_at: admin.firestore.FieldValue.serverTimestamp(),
+    updated_at: admin.firestore.FieldValue.serverTimestamp(),
+  });
+
+  // Decrement counters
+  const countersRef = db.doc("platform/workerCounts");
+  await db.runTransaction(async (tx) => {
+    const doc = await tx.get(countersRef);
+    const counts = doc.exists ? doc.data() : {};
+    counts.total_live = Math.max(0, (counts.total_live || 0) - 1);
+    const vertKey = `vertical_${workerData.vertical}`;
+    counts[vertKey] = Math.max(0, (counts[vertKey] || 0) - 1);
+    counts.last_updated = admin.firestore.FieldValue.serverTimestamp();
+    tx.set(countersRef, counts);
+  });
+
+  // Content sync event
+  await db.collection("platform").doc("contentSync").collection("events").add({
+    event_type: "worker_deprecated",
+    worker_id: workerId,
+    vertical: workerData.vertical,
+    name: workerData.name,
+    timestamp: admin.firestore.FieldValue.serverTimestamp(),
+  });
+
+  // Remove from Alex knowledge
+  await db.collection("alex").doc("knowledge").collection("workers").doc(workerId).delete().catch(() => {});
+
+  console.log(`[workerSync] Worker ${workerId} deprecated by ${adminUid}.`);
+  return { worker_id: workerId, status: "deprecated" };
+}
+
+/**
+ * Rebuild all counters from scratch (used after bulk seed).
+ */
+async function rebuildAllCounters(db) {
+  const admin = require("firebase-admin");
+  const snapshot = await db.collection("raasCatalog").get();
+  const counts = { total_live: 0, total_all_statuses: 0 };
+
+  for (const doc of snapshot.docs) {
+    const data = doc.data();
+    counts.total_all_statuses++;
+    if (data.status === "live") {
+      counts.total_live++;
+      const vertKey = `vertical_${data.vertical}`;
+      counts[vertKey] = (counts[vertKey] || 0) + 1;
+    }
+    const statusKey = `status_${data.status}`;
+    counts[statusKey] = (counts[statusKey] || 0) + 1;
+  }
+
+  counts.last_updated = admin.firestore.FieldValue.serverTimestamp();
+  await db.doc("platform/workerCounts").set(counts);
+  console.log(`[workerSync] Counters rebuilt: ${counts.total_live} live, ${counts.total_all_statuses} total`);
+  return counts;
+}
+
+module.exports = {
+  syncCatalogWorkers,
+  syncApprovedWorker,
+  deprecateWorker,
+  rebuildAllCounters,
+  triggerContentSync,
+  notifyAlex,
+  MARKETPLACE_SLUG_MAP,
+  RULESET_MAP,
+};
