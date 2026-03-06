@@ -14,10 +14,13 @@ These templates cover:
 - General Operations Manual (GOM)
 - Standard Operating Procedures (SOP) — general and aircraft-specific
 - Minimum Equipment List (MEL) — based on manufacturer MMEL
+- Non-Essential Equipment Furnishings List (NEF) — based on manufacturer CDL
 - General Maintenance Manual (GMM)
 - Company Policies
 - Base Operations Playbook
 - Procedure-specific documents (fuel, oxygen, de-ice, instrument departures, etc.)
+
+**Every template in this library is a white-label example document.** No template has been submitted to or approved by the FAA. Templates exist solely for training, familiarization, structural reference, and as starting points for operators drafting their own documents through AV-002.
 
 Templates include three mission type sections:
 - **Air Medical** — patient transport, medical equipment, HIPAA compliance
@@ -34,9 +37,12 @@ When an operator onboards, they MUST upload their own FAA-approved operational d
 | Part 135 Certificate | All operations | 14 CFR 119 |
 | Operations Specifications (OpSpecs) | All operations | 14 CFR 119.49 |
 | General Operations Manual (GOM) | All operations | 14 CFR 135.21 |
+| Standard Operating Procedures (SOP) | All operations | 14 CFR 135.21 (part of GOM or standalone) |
 | Training Program | All operations | 14 CFR 135.341 |
 | Minimum Equipment List (MEL) | Dispatch with inop items | 14 CFR 135.179 |
+| Non-Essential Equipment Furnishings (NEF/CDL) | Dispatch with missing non-essential items | Per manufacturer CDL / OpSpecs |
 | Maintenance Program | All operations | 14 CFR 135.411 |
+| Aircraft-Specific POH/AFM | All flight operations | 14 CFR 91.9 |
 | Drug & Alcohol Testing Program | All operations | 14 CFR Part 120 |
 | Security Program | All operations | 49 CFR 1544 |
 | Hazmat Training Program | Cargo operations | 49 CFR 175 |
@@ -44,7 +50,7 @@ When an operator onboards, they MUST upload their own FAA-approved operational d
 **Workers are fully functional with platform reference templates**, but every worker output includes a persistent reminder when the operator has not uploaded their own approved documents. This is NOT a hard stop — operators can use the platform immediately — but the reminder is prominent and cannot be dismissed or silenced until documents are uploaded.
 
 **Persistent Reminder (displayed on every worker output until docs uploaded):**
-> IMPORTANT: You are currently operating with platform reference templates, not your own FAA-approved documents. These templates are for general guidance only and may not reflect your specific operational approvals, limitations, or procedures. Upload your own GOM, MEL, OpSpecs, and AFM/POH to ensure accuracy. Contact AV-001 (Certificate Assistant) or AV-002 (GOM Authoring) if you need help generating or submitting documents.
+> CAUTION — REFERENCE MATERIAL ONLY. You are currently operating with platform reference templates (white-label GOM, SOP, MEL, NEF, POH/AFM, and flight operations documents), NOT your own FAA-approved documents. These templates are generic examples for training, familiarization, and document drafting purposes only. They have NOT been reviewed or approved by the FAA for your specific operation, aircraft, or equipment. They may contain procedures, limitations, or values that differ from your approved documents. Do not use these templates as the basis for operational decisions, dispatch, maintenance actions, or flight operations without first verifying against your own FAA-approved documents. Upload your own GOM, SOP, MEL, NEF, OpSpecs, and AFM/POH to ensure accuracy. Contact AV-001 (Certificate Assistant) or AV-002 (GOM Authoring) if you need help generating or submitting documents.
 
 **Soft flag:** If an operator uploads documents but they appear outdated (revision date >12 months old), workers flag for review.
 
@@ -104,14 +110,31 @@ When an aviation operator first activates workers, the onboarding flow presents 
 - Part 91 operations do not require a GOM, MEL, or OpSpecs
 - Workers operate in Part 91 mode with manufacturer documents (POH/AFM) as reference
 - AV-P01 through AV-P06 (Pilot Suite) work regardless of certification status
-- Persistent reminder still encourages uploading aircraft-specific POH/AFM for accuracy
+- Persistent reminder still appears until the pilot uploads their aircraft-specific POH/AFM:
+  > CAUTION — REFERENCE MATERIAL ONLY. You are using platform reference POH/AFM data, not your own aircraft-specific documents. Reference data is based on manufacturer type data and may not reflect your aircraft's actual equipment, weight and balance, limitations, or supplements. Verify all speeds, weights, and procedures against the POH/AFM in your aircraft before flight. Upload your aircraft-specific POH/AFM for accurate data.
 
-### Onboarding Acknowledgment
-During onboarding, the operator MUST acknowledge (cannot skip):
+### Onboarding Acknowledgment — Assumption of Risk
+During onboarding, the operator MUST acknowledge (cannot skip, cannot proceed without acceptance):
 
-> "I understand that platform reference documents are for general guidance only. They are not FAA-approved documents specific to my operation. I am responsible for uploading my own approved AFM/POH, GOM, MEL, OpSpecs, and other operational documents. Until I do, all worker outputs will include a reminder that I am operating with reference templates."
+> **ASSUMPTION OF RISK AND DOCUMENT RESPONSIBILITY ACKNOWLEDGMENT**
+>
+> By proceeding, I acknowledge and accept the following:
+>
+> 1. All platform-provided documents — including white-label GOM, SOP, MEL, NEF, AFM/POH extracts, flight operations procedures, checklists, and any other reference materials — are GENERIC EXAMPLES provided for training, familiarization, and document drafting purposes ONLY.
+>
+> 2. These documents have NOT been reviewed, approved, or accepted by the FAA, any foreign civil aviation authority, or any other regulatory body for my specific operation, aircraft fleet, personnel, or equipment.
+>
+> 3. These documents may contain procedures, limitations, weight and balance values, performance data, MEL items, or operational guidance that DIFFER from what is approved for my specific aircraft and operation. Using unapproved procedures or data in flight operations can result in regulatory violations, unsafe conditions, injury, or death.
+>
+> 4. I am solely responsible for ensuring that all documents used in my operation are my own FAA-approved, current, and aircraft-specific versions. This includes but is not limited to: General Operations Manual (GOM), Standard Operating Procedures (SOP), Minimum Equipment List (MEL), Non-Essential Equipment Furnishings list (NEF), Pilot Operating Handbook / Airplane Flight Manual (POH/AFM), Operations Specifications (OpSpecs), Training Program, and Maintenance Program.
+>
+> 5. Until I upload my own FAA-approved documents, every worker output will include a persistent disclaimer that I am operating with reference templates. I understand this disclaimer cannot be dismissed, hidden, or muted.
+>
+> 6. TitleApp provides document templates and AI-assisted tools as aids. TitleApp does not certify, warrant, or guarantee the accuracy, completeness, or regulatory compliance of any platform-provided reference material for any specific operation.
+>
+> 7. I accept full responsibility for verifying all data, procedures, and limitations against my own approved documents before using any platform output for operational decisions, dispatch, training, maintenance, or flight operations.
 
-This acknowledgment is logged as an immutable Vault event with timestamp and user identity.
+This acknowledgment is logged as an immutable Vault event with timestamp, user identity, IP address, and the version of the acknowledgment text accepted. The acknowledgment version is tracked — if the text is updated, operators are re-prompted on next login.
 
 ## Document Validation Rules
 
