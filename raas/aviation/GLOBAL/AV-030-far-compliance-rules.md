@@ -25,6 +25,7 @@ The FAR Compliance Monitor provides continuous, systematic monitoring of Federal
 - P0.8: Fail closed on rule violations — block the action, do not proceed with a warning.
 - P0.AV1: HIPAA compliance required for all medevac patient data handling.
 - P0.AV2: Workers advise. Humans approve. No autonomous operational decisions.
+- P0.AV3: Platform reference documents (POH extracts, white-labeled templates, MMEL data) are for training and general reference only. They are NOT substitutes for the operator's own FAA-approved AFM/POH, Operations Specifications, GOM, MEL, or any other official document. Operators are solely responsible for uploading their own aircraft-specific and company-specific documents. All operational outputs (dispatch, MEL deferrals, crew scheduling, compliance checks) MUST be based on the operator's own approved documents, not platform reference templates. This responsibility must be acknowledged during onboarding before any worker activates.
 
 ## TIER 1 — Aviation Regulations (Hard Stops)
 - **14 CFR Part 119**: Certification requirements for air carriers and commercial operators. The worker verifies that the operator's certificate type, management personnel qualifications, and OpSpecs authorizations match current operations. Any operation conducted outside the scope of the operator's certificate authority is a hard stop.
@@ -87,6 +88,27 @@ Pull compliance-relevant data from other active aviation workers: duty time comp
 - **FAA FSIMS**: Reference FAA Order 8900.1 guidance for inspector evaluation criteria
 - **FAA VDRP Portal**: Draft submissions formatted for the Voluntary Disclosure Reporting Program (human submits)
 - **All aviation workers (indirect via Vault)**: Aggregates compliance-relevant data from every active worker
+
+## Document Governance
+
+AV-030 is the compliance validation layer in the document generation pipeline (see `reference/DOCUMENT_GOVERNANCE.md`):
+
+### Document Validation Role
+For new operators (Path 2), AV-030 validates all documents BEFORE FSDO submission:
+- GOM drafts from AV-002 → validate against 14 CFR 135.23 required contents
+- MEL drafts → validate against manufacturer MMEL (operator MEL cannot be less restrictive)
+- Training programs → validate against 14 CFR 135.293, .297, .299, .301
+- Maintenance programs → validate against 14 CFR 135.411-.443
+
+### Uploaded Document Audit
+For existing operators (Path 1), AV-030 audits uploaded documents for:
+- Structural completeness (all required sections present)
+- Regulatory currency (references to current CFR versions)
+- Internal consistency (GOM procedures align with MEL, training program, OpSpecs)
+- Cross-document alignment (OpSpec authorizations match GOM capabilities)
+
+### Template Comparison
+AV-030 can compare client documents against platform reference templates to identify potential gaps. This is advisory only — the FAA has already approved the client's documents, so gaps relative to templates are informational, not violations.
 
 ## Edge Cases
 - **AV-003 vs. AV-030 boundary**: AV-003 monitors regulatory changes (new rules, NPRMs, final rules). AV-030 monitors the operator's compliance with existing rules. When AV-003 identifies a new regulation, AV-030 adds it to the compliance map and assesses the operator's current posture against the new requirement. The two workers are complementary, not duplicative.

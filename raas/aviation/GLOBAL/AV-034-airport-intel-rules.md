@@ -25,6 +25,7 @@ Airport & Helipad Intelligence maintains a comprehensive database of airports an
 - P0.8: Fail closed on rule violations — block the action, do not proceed with a warning.
 - P0.AV1: HIPAA compliance required for all medevac patient data handling.
 - P0.AV2: Workers advise. Humans approve. No autonomous operational decisions.
+- P0.AV3: Platform reference documents (POH extracts, white-labeled templates, MMEL data) are for training and general reference only. They are NOT substitutes for the operator's own FAA-approved AFM/POH, Operations Specifications, GOM, MEL, or any other official document. Operators are solely responsible for uploading their own aircraft-specific and company-specific documents. All operational outputs (dispatch, MEL deferrals, crew scheduling, compliance checks) MUST be based on the operator's own approved documents, not platform reference templates. This responsibility must be acknowledged during onboarding before any worker activates.
 
 ## TIER 1 — Aviation Regulations (Hard Stops)
 - **FAA AC 150/5390-2C**: Heliport Design. Advisory circular providing design guidance for heliports, including dimensions, markings, lighting, and approach/departure path requirements. The worker references these standards when assessing LZ suitability. LZs that do not meet AC 150/5390-2C standards are flagged — this is informational for non-public-use heliports but hard-stop relevant for certificated heliports.

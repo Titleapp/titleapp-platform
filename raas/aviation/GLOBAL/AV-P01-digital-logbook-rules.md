@@ -25,6 +25,7 @@ The Digital Logbook is a blockchain-verified personal flight record that replace
 - P0.8: Fail closed on rule violations — block the action, do not proceed with a warning.
 - P0.AV1: HIPAA compliance required for all medevac patient data handling.
 - P0.AV2: Workers advise. Humans approve. No autonomous operational decisions.
+- P0.AV3: Platform reference documents (POH extracts, white-labeled templates, MMEL data) are for training and general reference only. They are NOT substitutes for the operator's own FAA-approved AFM/POH, Operations Specifications, GOM, MEL, or any other official document. Operators are solely responsible for uploading their own aircraft-specific and company-specific documents. All operational outputs (dispatch, MEL deferrals, crew scheduling, compliance checks) MUST be based on the operator's own approved documents, not platform reference templates. This responsibility must be acknowledged during onboarding before any worker activates.
 
 ## TIER 1 — Aviation Regulations (Hard Stops)
 - **14 CFR 61.51**: Pilot logbook requirements. Specifies what information must be recorded for each flight: date, total flight or lesson time, location/route of flight, type and identification of aircraft, name of safety pilot (if required), and the type of pilot experience or training (e.g., solo, PIC, SIC, instrument, night, cross-country, dual received). The worker ensures every entry captures all required fields per 61.51. Hard stop: an entry missing required fields cannot be saved.

@@ -26,6 +26,7 @@ Mission Builder is the central dispatch authority for every flight operation. It
 - P0.8: Fail closed on rule violations — block the action, do not proceed with a warning.
 - P0.AV1: HIPAA compliance required for all medevac patient data handling.
 - P0.AV2: Workers advise. Humans approve. No autonomous operational decisions.
+- P0.AV3: Platform reference documents (POH extracts, white-labeled templates, MMEL data) are for training and general reference only. They are NOT substitutes for the operator's own FAA-approved AFM/POH, Operations Specifications, GOM, MEL, or any other official document. Operators are solely responsible for uploading their own aircraft-specific and company-specific documents. All operational outputs (dispatch, MEL deferrals, crew scheduling, compliance checks) MUST be based on the operator's own approved documents, not platform reference templates. This responsibility must be acknowledged during onboarding before any worker activates.
 
 ## TIER 1 — Aviation Regulations (Hard Stops)
 - **14 CFR 135.63**: Recordkeeping requirements — every flight must have complete operational records including crew, aircraft, route, times, and passengers/cargo.
@@ -97,6 +98,26 @@ After mission completion, update the Vault with: actual flight times (feeding AV
 - **Twilio**: SMS/voice notifications to crew and customers
 - **Firebase Auth**: User authentication for dispatch authorization
 - **Ramco/FVO**: Aircraft status and maintenance data (if integrated)
+
+## Document Governance
+
+Mission Builder requires the operator's approved operational documents before dispatch is possible (see `reference/DOCUMENT_GOVERNANCE.md`):
+
+### Persistent Reminder: Approved Documents Not Yet Uploaded
+This worker is fully functional with platform reference templates, but when the operator has NOT uploaded their own approved documents, EVERY output includes the following prominent reminder:
+
+> IMPORTANT: You are operating with platform reference templates. These are general guidance only and do not reflect your specific FAA-approved procedures, limitations, or authorizations. Upload your own GOM, OpSpecs, MEL, and AFM/POH for accurate operational outputs. Use AV-001 (Certificate Assistant) to begin document upload or AV-002 (GOM Authoring) to generate documents for FAA submission.
+
+This reminder cannot be dismissed, hidden, or muted until the operator uploads their approved documents.
+
+### GOM as Operational Authority
+Once the operator's GOM is uploaded, Mission Builder uses the CLIENT'S GOM as the authoritative source for:
+- Company dispatch minimums (weather, fuel, crew)
+- Mission type definitions and required checklists
+- Notification chains and authority levels
+- Any restrictions or limitations more conservative than FARs
+
+Platform reference templates are NOT used for dispatch decisions — only the operator's approved GOM governs operations.
 
 ## Edge Cases
 - **FRAT threshold exceeded**: Yellow zone triggers CP review notification before dispatch. Red zone requires CP override with documented justification in the audit trail. Black zone is automatic no-go with no override possible. CP override is logged as an immutable Vault event.

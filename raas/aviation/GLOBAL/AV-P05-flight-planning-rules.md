@@ -26,6 +26,7 @@ Flight Planning & Weather is the individual pilot's personal flight risk assessm
 - P0.8: Fail closed on rule violations — block the action, do not proceed with a warning.
 - P0.AV1: HIPAA compliance required for all medevac patient data handling.
 - P0.AV2: Workers advise. Humans approve. No autonomous operational decisions.
+- P0.AV3: Platform reference documents (POH extracts, white-labeled templates, MMEL data) are for training and general reference only. They are NOT substitutes for the operator's own FAA-approved AFM/POH, Operations Specifications, GOM, MEL, or any other official document. Operators are solely responsible for uploading their own aircraft-specific and company-specific documents. All operational outputs (dispatch, MEL deferrals, crew scheduling, compliance checks) MUST be based on the operator's own approved documents, not platform reference templates. This responsibility must be acknowledged during onboarding before any worker activates.
 
 ## TIER 1 — Aviation Regulations (Hard Stops)
 - **14 CFR 91.103**: Preflight action. Each PIC shall, before beginning a flight, become familiar with all available information concerning that flight. For IFR flights or flights not in the vicinity of an airport, this includes weather reports and forecasts, fuel requirements, alternatives available if the planned flight cannot be completed, and any known traffic delays. AV-P05 supports this obligation with a structured preflight assessment.

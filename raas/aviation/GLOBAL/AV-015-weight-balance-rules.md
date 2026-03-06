@@ -25,6 +25,7 @@ The Weight & Balance Calculator computes accurate weight and balance for every m
 - P0.8: Fail closed on rule violations — block the action, do not proceed with a warning.
 - P0.AV1: HIPAA compliance required for all medevac patient data handling.
 - P0.AV2: Workers advise. Humans approve. No autonomous operational decisions.
+- P0.AV3: Platform reference documents (POH extracts, white-labeled templates, MMEL data) are for training and general reference only. They are NOT substitutes for the operator's own FAA-approved AFM/POH, Operations Specifications, GOM, MEL, or any other official document. Operators are solely responsible for uploading their own aircraft-specific and company-specific documents. All operational outputs (dispatch, MEL deferrals, crew scheduling, compliance checks) MUST be based on the operator's own approved documents, not platform reference templates. This responsibility must be acknowledged during onboarding before any worker activates.
 
 ## TIER 1 — Aviation Regulations (Hard Stops)
 - **14 CFR 135.185**: Empty weight and center of gravity: currency requirement. Each certificate holder must ensure that the current empty weight and CG data for each aircraft is established by actual weighing within the preceding 36 calendar months (or since the last equipment change that affects empty weight or CG). Hard stop: if the aircraft's last weigh is outside the 36-month window or does not reflect current equipment, the W&B calculation is based on unreliable data and the worker flags the discrepancy.

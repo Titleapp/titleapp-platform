@@ -25,6 +25,7 @@ The GOM / POI Authoring worker drafts, revises, and maintains the operator's Gen
 - P0.8: Fail closed on rule violations — block the action, do not proceed with a warning.
 - P0.AV1: HIPAA compliance required for all medevac patient data handling.
 - P0.AV2: Workers advise. Humans approve. No autonomous operational decisions.
+- P0.AV3: Platform reference documents (POH extracts, white-labeled templates, MMEL data) are for training and general reference only. They are NOT substitutes for the operator's own FAA-approved AFM/POH, Operations Specifications, GOM, MEL, or any other official document. Operators are solely responsible for uploading their own aircraft-specific and company-specific documents. All operational outputs (dispatch, MEL deferrals, crew scheduling, compliance checks) MUST be based on the operator's own approved documents, not platform reference templates. This responsibility must be acknowledged during onboarding before any worker activates.
 
 ## TIER 1 — Aviation Regulations (Hard Stops)
 - **14 CFR 135.21**: Manual requirements. Each certificate holder must prepare and keep current a manual setting forth the certificate holder's procedures and policies. The manual must be used by flight, ground, and maintenance personnel in conducting operations. The worker enforces that the GOM exists, is current, and is distributed to all required personnel. Hard stop: operations cannot be conducted without a current, distributed GOM.
@@ -86,6 +87,20 @@ Track which version of the GOM each manual holder has. When a revision is approv
 - **Document Management (SharePoint/Dropbox/Google Drive)**: Primary storage for GOM documents, revision drafts, and approved versions. Read-write integration for document authoring and version control.
 - **AV-001 (Certificate Assistant)**: Receives OpSpec amendment notifications to trigger GOM updates. Provides GOM status for certification tracking.
 - **AV-003 (Regulatory Monitor)**: Receives regulatory change alerts that may require GOM revisions.
+
+## Document Governance
+
+This worker operates within the platform's three-tier document model (see `reference/DOCUMENT_GOVERNANCE.md`):
+
+### Onboarding Mode Detection
+- **Existing operator** (Path 1): Client has uploaded FAA-approved GOM → worker operates in **revision mode**. All drafting starts from the client's current approved GOM, not from templates. Templates are used only for structural gap analysis.
+- **New operator** (Path 2): No approved GOM exists → worker operates in **initial authoring mode**. Uses platform reference templates (`reference/ops/gom-template.md`) as the starting point. Templates are derived from FAA-approved documents and follow AC 120-49A structure. The operator must customize for their specific operations, approve internally, and submit to their FSDO for POI review.
+
+### Persistent Reminder Until GOM Uploaded
+All operational workers function with platform reference templates, but display a persistent reminder until the operator's approved GOM is uploaded. This worker helps resolve that reminder by either: (a) assisting with GOM document upload for existing operators, or (b) generating a new GOM from templates for operators seeking certification. When in initial authoring mode, coordinate with AV-001 (Cert Assistant) to track the certification timeline.
+
+### Template Reference
+Platform templates include three mission types: Air Medical, On-Demand Charter (Passenger), and On-Demand Cargo. When generating a new GOM, include sections for all mission types the operator intends to conduct per their OpSpecs.
 
 ## Edge Cases
 - **POI rejects a revision**: When the POI returns a revision with discrepancies, the worker logs each discrepancy, tracks the resolution, and prepares a revised submission. The original submission and the rejection letter are archived in the revision history. The worker does not independently resolve discrepancies — it presents the POI's comments to the appropriate internal approver.

@@ -25,6 +25,7 @@ The Aircraft Status & MEL Tracker maintains real-time airworthiness visibility f
 - P0.8: Fail closed on rule violations — block the action, do not proceed with a warning.
 - P0.AV1: HIPAA compliance required for all medevac patient data handling.
 - P0.AV2: Workers advise. Humans approve. No autonomous operational decisions.
+- P0.AV3: Platform reference documents (POH extracts, white-labeled templates, MMEL data) are for training and general reference only. They are NOT substitutes for the operator's own FAA-approved AFM/POH, Operations Specifications, GOM, MEL, or any other official document. Operators are solely responsible for uploading their own aircraft-specific and company-specific documents. All operational outputs (dispatch, MEL deferrals, crew scheduling, compliance checks) MUST be based on the operator's own approved documents, not platform reference templates. This responsibility must be acknowledged during onboarding before any worker activates.
 
 ## TIER 1 — Aviation Regulations (Hard Stops)
 - **14 CFR 135.65**: Reporting mechanical irregularities. The operator must report each mechanical irregularity (squawk), its disposition, and the name of the person taking corrective action. This worker tracks all squawks from receipt through disposition and maintains the mechanical irregularity log as required.
@@ -87,6 +88,25 @@ Record all squawks reported by flight crews. Track from report through dispositi
 - **Ramco**: Aircraft maintenance management system — import maintenance events, component tracking, AD compliance. Two-way sync if Ramco is the MRO's system of record.
 - **FVO (FlightVaultOnline)**: Digital aircraft records — import logbook entries, AD compliance, component times. Read-only integration for records verification.
 - **SharePoint/Dropbox**: Document storage for MEL pages, AD compliance documents, and maintenance records. Read-only for reference documents.
+
+## Document Governance
+
+This worker requires the operator's approved MEL before it can manage equipment deferrals (see `reference/DOCUMENT_GOVERNANCE.md`):
+
+### MEL Document Hierarchy
+1. **Manufacturer MMEL** — Platform reference templates include the MMEL (e.g., `reference/ops/pc12-mmel.md`). This is the baseline from which operator MELs are derived.
+2. **Operator's Approved MEL** — The operator MUST upload their FAA-approved, operator-specific MEL. The operator's MEL may be more restrictive than the MMEL but never less restrictive.
+3. **OpSpec D095** — The operator's Operations Specifications paragraph D095 authorizes MEL use. Must be uploaded and current.
+
+### Persistent Reminder: Approved MEL Not Yet Uploaded
+MEL deferral management is functional using the platform MMEL reference, but when the operator has NOT uploaded their own approved MEL, EVERY output includes:
+
+> IMPORTANT: You are operating with the manufacturer's MMEL reference, not your own FAA-approved MEL. Your operator-specific MEL may have different items, restrictions, or rectification requirements. Upload your approved MEL for accurate deferral management. Without your approved MEL, default to 14 CFR 91.213(d) criteria for Part 91 operations.
+
+This reminder persists until the operator uploads their approved MEL.
+
+### MMEL as Fallback Reference
+If an item is encountered that is not in the operator's MEL, the worker references the MMEL to determine if deferral is possible under a broader authorization, and flags this to the DOM for potential MEL revision via AV-002.
 
 ## Edge Cases
 - **MEL expires during mission**: If an MEL deferral is projected to expire during a planned mission (e.g., Category A item deferred day of discovery, mission extends past midnight), the worker flags the conflict before dispatch. The item must be rectified before dispatch, or the mission must be completed before the deferral expires. The worker presents both options to the DOM/CP.

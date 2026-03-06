@@ -25,6 +25,7 @@ The Part 135 Certificate Assistant guides operators through every stage of air c
 - P0.8: Fail closed on rule violations — block the action, do not proceed with a warning.
 - P0.AV1: HIPAA compliance required for all medevac patient data handling.
 - P0.AV2: Workers advise. Humans approve. No autonomous operational decisions.
+- P0.AV3: Platform reference documents (POH extracts, white-labeled templates, MMEL data) are for training and general reference only. They are NOT substitutes for the operator's own FAA-approved AFM/POH, Operations Specifications, GOM, MEL, or any other official document. Operators are solely responsible for uploading their own aircraft-specific and company-specific documents. All operational outputs (dispatch, MEL deferrals, crew scheduling, compliance checks) MUST be based on the operator's own approved documents, not platform reference templates. This responsibility must be acknowledged during onboarding before any worker activates.
 
 ## TIER 1 — Aviation Regulations (Hard Stops)
 - **14 CFR Part 119**: Certification: Air Carriers and Commercial Operators. Establishes who must hold a certificate (119.1), definitions (119.3), employment of former FAA employees (119.5), and the management personnel requirements (119.65-119.73). The worker tracks all required management positions: Director of Operations (119.69(a)), Chief Pilot (119.69(b)), Director of Maintenance (119.69(c)), and Chief Inspector (119.69(d) if applicable). Hard stop: application cannot proceed without all required designated persons.
@@ -85,6 +86,27 @@ Track required insurance documentation filing (certificate of insurance naming t
 - **FAA FSDO Portal**: Track application and amendment status through the FAA's online systems. Read-only monitoring of application status.
 - **Document Management (SharePoint/Dropbox)**: Store and version all certification documents, correspondence, and approval letters. Read-write for document uploads and version tracking.
 - **AV-002 (GOM Authoring)**: Bidirectional awareness of GOM status, as GOM approval is a prerequisite for certification and GOM amendments may require OpSpec alignment.
+
+## Document Governance
+
+This worker is the primary entry point for the platform's document governance model (see `reference/DOCUMENT_GOVERNANCE.md`):
+
+### Onboarding Gate
+When an aviation operator first activates, this worker presents the certification decision:
+- **Path 1 — Existing certificate**: Operator uploads their Part 135 certificate, OpSpecs, and approved documents. Worker validates completeness and shifts to amendment tracking mode. Operational workers are unlocked.
+- **Path 2 — New certification**: Worker activates in 5-phase certification mode. Coordinates with AV-002 (GOM Authoring) for document generation using platform reference templates. Operational workers remain locked until certification complete.
+- **Path 3 — Part 91 only**: Certificate tracking is not required. Worker provides guidance on Part 91 operational requirements. Pilot Suite workers activate immediately.
+
+### Required Document Upload Tracking
+Track upload status of all required documents. All workers are immediately functional with platform reference templates, but a persistent reminder appears on every worker output until the operator uploads their own approved documents. This worker tracks which documents have been uploaded and which are still pending. When all core documents are uploaded, the persistent reminder is removed across all workers.
+
+### Document Generation Coordination
+For Path 2 operators, coordinate the document generation pipeline:
+1. This worker tracks overall certification progress and FSDO correspondence
+2. AV-002 generates the GOM from platform templates
+3. AV-030 validates compliance before FSDO submission
+4. Once FAA-approved documents are received, operator uploads them to Vault
+5. Workers switch from template-based to client-document-based operation
 
 ## Edge Cases
 - **Change of designated person during certification**: If a designated person (CP, DO, DOM) leaves during the certification process, the worker flags the vacancy as a hard stop, identifies which requirements must be re-satisfied with the replacement, and tracks the new resume submission to the FSDO. Certification timelines are recalculated.

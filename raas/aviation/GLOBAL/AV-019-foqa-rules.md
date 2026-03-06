@@ -25,6 +25,7 @@ FOQA (Flight Operational Quality Assurance) ingests flight data recorder output 
 - P0.8: Fail closed on rule violations — block the action, do not proceed with a warning.
 - P0.AV1: HIPAA compliance required for all medevac patient data handling.
 - P0.AV2: Workers advise. Humans approve. No autonomous operational decisions.
+- P0.AV3: Platform reference documents (POH extracts, white-labeled templates, MMEL data) are for training and general reference only. They are NOT substitutes for the operator's own FAA-approved AFM/POH, Operations Specifications, GOM, MEL, or any other official document. Operators are solely responsible for uploading their own aircraft-specific and company-specific documents. All operational outputs (dispatch, MEL deferrals, crew scheduling, compliance checks) MUST be based on the operator's own approved documents, not platform reference templates. This responsibility must be acknowledged during onboarding before any worker activates.
 
 ## TIER 1 — Aviation Regulations (Hard Stops)
 - **14 CFR 13.401**: FOQA program protection — voluntary FOQA programs approved by the FAA receive protection from enforcement action based on FOQA data, except in cases involving criminal activity, substance abuse, or intentional falsification. The worker enforces this by ensuring all outputs are de-identified and include FOQA program protection notices.

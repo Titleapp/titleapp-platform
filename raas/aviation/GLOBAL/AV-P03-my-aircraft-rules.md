@@ -25,6 +25,7 @@ My Aircraft / CoPilot gives every pilot a personal aircraft knowledge base with 
 - P0.8: Fail closed on rule violations — block the action, do not proceed with a warning.
 - P0.AV1: HIPAA compliance required for all medevac patient data handling.
 - P0.AV2: Workers advise. Humans approve. No autonomous operational decisions.
+- P0.AV3: Platform reference documents (POH extracts, white-labeled templates, MMEL data) are for training and general reference only. They are NOT substitutes for the operator's own FAA-approved AFM/POH, Operations Specifications, GOM, MEL, or any other official document. Operators are solely responsible for uploading their own aircraft-specific and company-specific documents. All operational outputs (dispatch, MEL deferrals, crew scheduling, compliance checks) MUST be based on the operator's own approved documents, not platform reference templates. This responsibility must be acknowledged during onboarding before any worker activates.
 
 ## TIER 1 — Aviation Regulations (Hard Stops)
 - **14 CFR 91.9**: Flight manual required. No person may operate a civil aircraft without complying with the operating limitations in the approved flight manual or equivalent. AV-P03 provides digital access to AFM/POH data but does not replace the requirement to have the flight manual or equivalent aboard the aircraft. The worker includes a disclaimer: "This is a digital reference. Verify against the official AFM/POH in the aircraft."
