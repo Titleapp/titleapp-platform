@@ -172,9 +172,77 @@ export const WORKER_ROUTES = [
   { slug: "av-training-proficiency", name: "Training & Proficiency", description: "Full FAA library, cert progression, AI oral exam prep, written test prep", suite: "Aviation", status: "planned", price: 1900, vertical: "aviation" },
   { slug: "av-flight-planning", name: "Flight Planning & Weather", description: "Personal FRAT, plain-language weather, NOTAM filtering, personal minimums", suite: "Aviation", status: "planned", price: 1900, vertical: "aviation" },
   { slug: "av-alex-personal", name: "Alex — Personal Aviation Assistant", description: "Daily briefing, currency nudges, training reminders for individual pilots", suite: "Aviation", status: "planned", price: 0, vertical: "aviation" },
+
+  // Government — Jurisdiction Onboarding
+  { slug: "gov-jurisdiction-onboarding", name: "Jurisdiction Onboarding Gateway", description: "Configure jurisdiction, connect systems, and deploy government workers.", suite: "Government — DMV", status: "planned", price: 0, vertical: "government" },
+
+  // Government — DMV Suite (GOV-001 to GOV-015)
+  { slug: "gov-title-registration-intake", name: "Title & Registration Intake", description: "Process title applications, registration renewals, and transfers.", suite: "Government — DMV", status: "planned", price: 4900, vertical: "government" },
+  { slug: "gov-lien-management", name: "Lien Management & Release", description: "Track liens, process releases, and manage lien holder records.", suite: "Government — DMV", status: "planned", price: 4900, vertical: "government" },
+  { slug: "gov-title-fraud-detection", name: "Title Fraud Detection", description: "Flag suspicious title applications and VIN irregularities.", suite: "Government — DMV", status: "planned", price: 7900, vertical: "government" },
+  { slug: "gov-driver-license-intake", name: "Driver License Intake & Renewal", description: "Process license applications, renewals, and address changes.", suite: "Government — DMV", status: "planned", price: 2900, vertical: "government" },
+  { slug: "gov-cdl-endorsement-tracker", name: "CDL & Endorsement Tracker", description: "Track CDL applications, endorsements, and medical certifications.", suite: "Government — DMV", status: "planned", price: 4900, vertical: "government" },
+  { slug: "gov-vehicle-inspection-compliance", name: "Vehicle Inspection Compliance", description: "Monitor inspection schedules, results, and compliance deadlines.", suite: "Government — DMV", status: "planned", price: 4900, vertical: "government" },
+  { slug: "gov-registration-renewal-engine", name: "Registration Renewal Engine", description: "Automate renewal notices, fee calculation, and processing.", suite: "Government — DMV", status: "planned", price: 2900, vertical: "government" },
+  { slug: "gov-fleet-dealer-title", name: "Fleet & Dealer Title Processing", description: "Bulk title processing for fleets, dealers, and auctions.", suite: "Government — DMV", status: "planned", price: 4900, vertical: "government" },
+  { slug: "gov-dmv-queue-appointment", name: "DMV Queue & Appointment Manager", description: "Manage customer queues, appointments, and wait times.", suite: "Government — DMV", status: "planned", price: 2900, vertical: "government" },
+  { slug: "gov-out-of-state-title", name: "Out-of-State Title Conversion", description: "Process out-of-state title transfers and VIN verifications.", suite: "Government — DMV", status: "planned", price: 4900, vertical: "government" },
+  { slug: "gov-salvage-rebuilt-title", name: "Salvage & Rebuilt Title Tracker", description: "Track salvage inspections, rebuilt certifications, and brands.", suite: "Government — DMV", status: "planned", price: 4900, vertical: "government" },
+  { slug: "gov-dppa-compliance", name: "DPPA Compliance Monitor", description: "Enforce DPPA access controls and audit personal data requests.", suite: "Government — DMV", status: "planned", price: 7900, vertical: "government" },
+  { slug: "gov-revenue-fee-reconciliation", name: "Revenue & Fee Reconciliation", description: "Reconcile daily fee collections against deposits and ledgers.", suite: "Government — DMV", status: "planned", price: 4900, vertical: "government" },
+  { slug: "gov-dmv-audit-readiness", name: "DMV Audit Readiness", description: "Self-assessment checklists, finding tracking, and audit prep.", suite: "Government — DMV", status: "planned", price: 4900, vertical: "government" },
+  { slug: "gov-alex-dmv", name: "Alex — DMV Chief of Staff", description: "Orchestrates all DMV workers, daily briefing, escalation routing.", suite: "Government — DMV", status: "planned", price: 0, vertical: "government" },
+
+  // Government — Permitting Suite (GOV-016 to GOV-030)
+  { slug: "gov-permit-application-intake", name: "Permit Application Intake", description: "Accept and route permit applications across all permit types.", suite: "Government — Permitting", status: "planned", price: 4900, vertical: "government" },
+  { slug: "gov-building-permit-tracker", name: "Building Permit Tracker", description: "Track building permit lifecycle from application to issuance.", suite: "Government — Permitting", status: "planned", price: 4900, vertical: "government" },
+  { slug: "gov-plan-review-coordinator", name: "Plan Review Coordinator", description: "Route plans to reviewers, track comments, and manage cycles.", suite: "Government — Permitting", status: "planned", price: 4900, vertical: "government" },
+  { slug: "gov-contractor-credential", name: "Contractor Credential Manager", description: "Verify contractor licenses, bonds, and insurance on file.", suite: "Government — Permitting", status: "planned", price: 2900, vertical: "government" },
+  { slug: "gov-zoning-land-use", name: "Zoning & Land Use Compliance", description: "Check zoning conformance, setbacks, FAR, and use restrictions.", suite: "Government — Permitting", status: "planned", price: 7900, vertical: "government" },
+  { slug: "gov-variance-appeal-tracker", name: "Variance & Appeal Tracker", description: "Track variance applications, hearings, and appeal outcomes.", suite: "Government — Permitting", status: "planned", price: 4900, vertical: "government" },
+  { slug: "gov-event-permit-manager", name: "Event Permit Manager", description: "Process special event permits, conditions, and compliance.", suite: "Government — Permitting", status: "planned", price: 2900, vertical: "government" },
+  { slug: "gov-environmental-review", name: "Environmental Review Monitor", description: "Track CEQA/NEPA reviews, mitigations, and agency responses.", suite: "Government — Permitting", status: "planned", price: 7900, vertical: "government" },
+  { slug: "gov-fee-calculation-collection", name: "Fee Calculation & Collection", description: "Calculate permit fees, impact fees, and track payments.", suite: "Government — Permitting", status: "planned", price: 2900, vertical: "government" },
+  { slug: "gov-public-notice-generator", name: "Public Notice Generator", description: "Generate and distribute required public hearing notices.", suite: "Government — Permitting", status: "planned", price: 2900, vertical: "government" },
+  { slug: "gov-contractor-verification", name: "Contractor Credential Verification", description: "Verify state license, bond, and workers comp in real time.", suite: "Government — Permitting", status: "planned", price: 2900, vertical: "government" },
+  { slug: "gov-certificate-of-occupancy", name: "Certificate of Occupancy Tracker", description: "Track CO prerequisites, final inspections, and issuance.", suite: "Government — Permitting", status: "planned", price: 4900, vertical: "government" },
+  { slug: "gov-permit-compliance-monitor", name: "Permit Compliance Monitor", description: "Monitor permit conditions, expiration, and renewal deadlines.", suite: "Government — Permitting", status: "planned", price: 4900, vertical: "government" },
+  { slug: "gov-public-portal-status", name: "Public Portal & Status Manager", description: "Manage public-facing permit status portal and notifications.", suite: "Government — Permitting", status: "planned", price: 2900, vertical: "government" },
+  { slug: "gov-alex-permitting", name: "Alex — Permitting Chief of Staff", description: "Orchestrates all permitting workers, daily briefing, escalations.", suite: "Government — Permitting", status: "planned", price: 0, vertical: "government" },
+
+  // Government — Inspector Suite (GOV-031 to GOV-040)
+  { slug: "gov-building-inspector", name: "Building Inspector AI", description: "Field inspection support with code lookup and photo capture.", suite: "Government — Inspector", status: "planned", price: 7900, vertical: "government" },
+  { slug: "gov-code-enforcement", name: "Code Enforcement Officer", description: "Track code violations, notices, hearings, and abatement.", suite: "Government — Inspector", status: "planned", price: 7900, vertical: "government" },
+  { slug: "gov-fire-inspection", name: "Fire Inspection Manager", description: "Schedule and track fire inspections, violations, and re-checks.", suite: "Government — Inspector", status: "planned", price: 7900, vertical: "government" },
+  { slug: "gov-health-food-inspector", name: "Health & Food Service Inspector", description: "Health inspection scheduling, scoring, and violation tracking.", suite: "Government — Inspector", status: "planned", price: 7900, vertical: "government" },
+  { slug: "gov-electrical-inspector", name: "Electrical Inspector Assistant", description: "Electrical code lookup, inspection checklists, and reporting.", suite: "Government — Inspector", status: "planned", price: 4900, vertical: "government" },
+  { slug: "gov-plumbing-inspector", name: "Plumbing Inspector Assistant", description: "Plumbing code lookup, inspection checklists, and reporting.", suite: "Government — Inspector", status: "planned", price: 4900, vertical: "government" },
+  { slug: "gov-reinspection-scheduler", name: "Re-Inspection Scheduler", description: "Schedule re-inspections, track corrections, and close out.", suite: "Government — Inspector", status: "planned", price: 2900, vertical: "government" },
+  { slug: "gov-inspection-report-generator", name: "Inspection Report Generator", description: "Generate inspection reports with photos, findings, and codes.", suite: "Government — Inspector", status: "planned", price: 4900, vertical: "government" },
+  { slug: "gov-inspection-backlog", name: "Inspection Backlog Manager", description: "Prioritize inspection queue, balance workloads, track SLAs.", suite: "Government — Inspector", status: "planned", price: 2900, vertical: "government" },
+  { slug: "gov-alex-inspector", name: "Alex — Inspector Chief of Staff", description: "Orchestrates all inspector workers, daily briefing, escalations.", suite: "Government — Inspector", status: "planned", price: 0, vertical: "government" },
+
+  // Government — Recorder Suite (GOV-041 to GOV-057)
+  { slug: "gov-document-recording-intake", name: "Document Recording Intake", description: "Accept, validate, and index documents for recording.", suite: "Government — Recorder", status: "planned", price: 4900, vertical: "government" },
+  { slug: "gov-chain-of-title", name: "Chain of Title Manager", description: "Build and maintain chain of title from grantor/grantee index.", suite: "Government — Recorder", status: "planned", price: 4900, vertical: "government" },
+  { slug: "gov-deed-transfer", name: "Deed Transfer Processor", description: "Process deed transfers, verify legal descriptions, and index.", suite: "Government — Recorder", status: "planned", price: 4900, vertical: "government" },
+  { slug: "gov-lien-recording-release", name: "Lien Recording & Release", description: "Record liens, track releases, and manage lien priority.", suite: "Government — Recorder", status: "planned", price: 4900, vertical: "government" },
+  { slug: "gov-ron-notarization", name: "RON & Notarization Manager", description: "Manage remote online notarization sessions and audit logs.", suite: "Government — Recorder", status: "planned", price: 7900, vertical: "government" },
+  { slug: "gov-ecords-compliance", name: "eCORDS Compliance Monitor", description: "Monitor electronic recording standards and submission formats.", suite: "Government — Recorder", status: "planned", price: 4900, vertical: "government" },
+  { slug: "gov-recording-fraud-detection", name: "Recording Fraud Detection", description: "Flag suspicious recordings, forgery patterns, and deed theft.", suite: "Government — Recorder", status: "planned", price: 7900, vertical: "government" },
+  { slug: "gov-public-records-request", name: "Public Records Request Manager", description: "Track FOIA/public records requests, deadlines, and responses.", suite: "Government — Recorder", status: "planned", price: 2900, vertical: "government" },
+  { slug: "gov-index-search-engine", name: "Index & Search Engine", description: "Full-text search across recorded documents and indexes.", suite: "Government — Recorder", status: "planned", price: 2900, vertical: "government" },
+  { slug: "gov-historical-digitization", name: "Historical Record Digitization", description: "Digitize, OCR, and index legacy paper records.", suite: "Government — Recorder", status: "planned", price: 4900, vertical: "government" },
+  { slug: "gov-fee-collection-reconciliation", name: "Fee Collection & Reconciliation", description: "Calculate recording fees, collect payments, reconcile daily.", suite: "Government — Recorder", status: "planned", price: 2900, vertical: "government" },
+  { slug: "gov-assessor-valuation-sync", name: "Assessor Valuation Sync", description: "Sync recorded transfers with assessor valuation updates.", suite: "Government — Recorder", status: "planned", price: 7900, vertical: "government" },
+  { slug: "gov-lien-priority-subordination", name: "Lien Priority & Subordination", description: "Determine lien priority and process subordination requests.", suite: "Government — Recorder", status: "planned", price: 4900, vertical: "government" },
+  { slug: "gov-public-chain-query", name: "Public Chain Query Portal", description: "Public-facing property chain lookup and document retrieval.", suite: "Government — Recorder", status: "planned", price: 2900, vertical: "government" },
+  { slug: "gov-recorder-audit-readiness", name: "Recorder Audit Readiness", description: "Self-assessment checklists, finding tracking, and audit prep.", suite: "Government — Recorder", status: "planned", price: 4900, vertical: "government" },
+  { slug: "gov-historical-records-worker", name: "Historical Records Digitization Worker", description: "Bulk scanning workflow, OCR quality checks, and indexing.", suite: "Government — Recorder", status: "planned", price: 4900, vertical: "government" },
+  { slug: "gov-alex-recorder", name: "Alex — Recorder Chief of Staff", description: "Orchestrates all recorder workers, daily briefing, escalations.", suite: "Government — Recorder", status: "planned", price: 0, vertical: "government" },
 ];
 
-const SUITES = ["All", "Real Estate", "Construction", "Finance & Investment", "General Business", "Legal", "Automotive", "Aviation", "Platform"];
+const SUITES = ["All", "Real Estate", "Construction", "Finance & Investment", "General Business", "Legal", "Automotive", "Aviation", "Government — DMV", "Government — Permitting", "Government — Inspector", "Government — Recorder", "Platform"];
 
 const S = {
   page: { minHeight: "100vh", background: "#f8fafc", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" },

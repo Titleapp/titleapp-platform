@@ -1,0 +1,78 @@
+{
+  "id": "gov_016_permit_intake_v0",
+  "version": "v0",
+  "domain": "government-permitting",
+  "description": "Permit Intake — validates building/trade permit applications, checks contractor licensing and insurance, enforces zoning and environmental prerequisites",
+  "required_inputs": [
+    "application_type",
+    "parcel_number",
+    "applicant_name",
+    "valuation",
+    "description",
+    "payment_intent_id"
+  ],
+  "hard_stops": [
+    {
+      "id": "PERM-R-001",
+      "label": "Missing Required Fields",
+      "logic": "Application is missing one or more required fields as defined by the application_type schema — cannot process incomplete submission",
+      "eval": { "field": "permit.required_fields_complete", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "PERM-R-002",
+      "label": "Contractor License Expired",
+      "logic": "Contractor's state license has expired — unlicensed work is prohibited per state contractor licensing statute",
+      "eval": { "field": "permit.contractor_license_valid", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "PERM-R-003",
+      "label": "Contractor Insurance Expired",
+      "logic": "Contractor's general liability or workers' compensation insurance has lapsed — cannot issue permit without active coverage",
+      "eval": { "field": "permit.contractor_insurance_valid", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "PERM-R-004",
+      "label": "CO Requested Without Final Inspection",
+      "logic": "Certificate of Occupancy requested but no final inspection on record — CO cannot be issued per IBC 111.1",
+      "eval": { "field": "permit.final_inspection_passed", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "PERM-R-005",
+      "label": "Zoning Conflict",
+      "logic": "Proposed use or structure conflicts with current zoning designation — requires variance, conditional use permit, or rezoning before permit issuance",
+      "eval": { "field": "permit.zoning_compliant", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "PERM-R-006",
+      "label": "Environmental Review Required But Not Filed",
+      "logic": "Project triggers NEPA/CEQA environmental review threshold but no review has been filed — cannot proceed without clearance",
+      "eval": { "field": "permit.environmental_review_filed", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "PERM-R-007",
+      "label": "Fee Not Paid",
+      "logic": "Permit application fee payment not confirmed — application cannot be accepted without payment",
+      "eval": { "field": "permit.fee_payment_confirmed", "operator": "==", "threshold": false }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "PERM-R-FLG-001",
+      "label": "High Valuation Project",
+      "logic": "Project valuation exceeds $500,000 — may trigger additional plan review requirements or impact fees",
+      "eval": { "field": "permit.valuation", "operator": ">", "threshold": 500000 }
+    },
+    {
+      "id": "PERM-R-FLG-002",
+      "label": "Historic District Parcel",
+      "logic": "Parcel is located within a designated historic district — additional design review may be required",
+      "eval": { "field": "permit.in_historic_district", "operator": "==", "threshold": true }
+    }
+  ],
+  "outputs": [
+    "gov016-permit-application-receipt",
+    "gov016-fee-calculation",
+    "gov016-plan-review-checklist",
+    "gov016-zoning-verification"
+  ]
+}

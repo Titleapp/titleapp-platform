@@ -33,6 +33,22 @@ const TIER_0_DEFAULTS = [
 ];
 
 // ═══════════════════════════════════════════════════════════════
+//  GOVERNMENT TIER 0 EXTENSION — Applied to all GOV workers
+// ═══════════════════════════════════════════════════════════════
+
+const GOV_TIER_0_EXTENSION = {
+  audit_trail:        "append_only",
+  human_in_the_loop:  true,
+  data_retention:     "7_years",
+  pii_handling:       "masked_in_logs",
+  rate_limit_per_min: 60,
+  error_behavior:     "hold_and_alert",
+  jurisdiction_lock:  true,
+  stripe_required:    true,
+  worker_1_required:  true,
+};
+
+// ═══════════════════════════════════════════════════════════════
 //  VALID ENUM VALUES — Base Schema
 // ═══════════════════════════════════════════════════════════════
 
@@ -56,6 +72,12 @@ const VALID_SUITES = [
   "Automotive",
   "Aviation",
   "Education",
+  // Government In A Box sub-suites
+  "Government",
+  "DMV",
+  "Permitting",
+  "Inspector",
+  "Recorder",
 ];
 
 const VALID_WORKER_TYPES = ["standalone", "pipeline", "composite", "copilot", "orchestrator"];
@@ -470,6 +492,7 @@ function parsePriceTier(tier) {
 
 module.exports = {
   TIER_0_DEFAULTS,
+  GOV_TIER_0_EXTENSION,
   VALID_SUITES,
   VALID_WORKER_TYPES,
   VALID_PRICING_TIERS,

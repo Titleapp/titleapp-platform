@@ -2414,6 +2414,1282 @@ const WORKER_DETAIL_CONTENT = {
   },
 };
 
+// GOV-000: Jurisdiction Onboarding Gateway
+WORKER_DETAIL_CONTENT["gov-jurisdiction-onboarding"] = {
+  headline: "Go live in a new jurisdiction in hours, not months",
+  subheadline: "FIPS-validated jurisdiction setup, compliance mode selection, and role-based access control — your gateway to every government vertical on the platform.",
+  steps: [
+    { title: "Select your jurisdiction", description: "Enter your state, county, or municipality. FIPS codes validated automatically against the Census Bureau master file." },
+    { title: "Choose your compliance mode", description: "Select the regulatory framework that governs your office — state statute references, retention schedules, and fee structures load automatically." },
+    { title: "Configure RBAC", description: "Define roles for clerks, supervisors, examiners, and administrators. Each role gets scoped permissions aligned to your office hierarchy." },
+    { title: "Activate your workers", description: "Your jurisdiction profile propagates to every government worker you deploy. Compliance rules, fee schedules, and form templates are pre-loaded." },
+  ],
+  bridge: { title: "How it works", text: "Every government office operates under a specific statutory framework. The Jurisdiction Onboarding Gateway validates your FIPS code, loads the correct compliance rules, and configures role-based access so every worker you activate inherits the right rules from day one. No manual configuration. No compliance gaps." },
+  valueProps: [
+    { label: "FIPS validation", description: "Every jurisdiction validated against the Census Bureau FIPS master file — no typos, no mismatches, no invalid codes." },
+    { label: "Compliance mode auto-load", description: "State statutes, retention schedules, fee structures, and form requirements load based on your jurisdiction selection." },
+    { label: "Role-based access control", description: "Granular permissions for clerks, supervisors, examiners, and administrators — aligned to your office org chart." },
+  ],
+  faq: [
+    { q: "What if my jurisdiction has unique rules?", a: "Every jurisdiction does. The compliance mode system supports state-level defaults with county and municipal overrides. Your specific fee schedules, form requirements, and retention rules are configured during onboarding." },
+    { q: "Can I onboard multiple jurisdictions?", a: "Yes. Multi-jurisdiction deployments share a single admin console with jurisdiction-scoped data isolation. Each jurisdiction maintains its own compliance mode, fee schedule, and RBAC configuration." },
+  ],
+};
+
+// GOV-001: Title & Registration Intake
+WORKER_DETAIL_CONTENT["gov-title-registration-intake"] = {
+  headline: "Process title transfers in minutes, not days",
+  subheadline: "VIN decode, ownership validation, fee calculation, and document generation — the entire title transfer workflow from counter to certificate.",
+  steps: [
+    { title: "Scan or enter the VIN", description: "NHTSA decode pulls year, make, model, and body type. NMVTIS check flags brands, theft, and total-loss history instantly." },
+    { title: "Validate ownership chain", description: "Seller signature, odometer disclosure, lien release verification — every required document checked against your state's title statute." },
+    { title: "Calculate fees and taxes", description: "Title fee, registration fee, sales tax, and any county-specific surcharges calculated automatically based on your jurisdiction's fee schedule." },
+    { title: "Generate the new title", description: "State-compliant title certificate generated with all ownership, lien, and vehicle data populated. Ready for print or electronic issuance." },
+  ],
+  bridge: { title: "How it works", text: "Title transfers involve dozens of statutory requirements that vary by state. This worker validates every document, checks NMVTIS for brands and theft flags, calculates jurisdiction-specific fees, and generates compliant title certificates. Your clerks focus on customer service instead of manual data entry and statute lookups." },
+  valueProps: [
+    { label: "NHTSA + NMVTIS integration", description: "VIN decode and history check in one step — brands, theft, total-loss, and odometer flags surfaced instantly." },
+    { label: "Jurisdiction-specific fee calculation", description: "Title fees, registration fees, sales tax, and surcharges calculated per your county and state fee schedule." },
+    { label: "Statutory compliance checks", description: "Every required document validated against your state's title statute — missing items flagged before the transaction completes." },
+  ],
+  faq: [
+    { q: "Does this connect to our state titling system?", a: "The worker generates title data in your state's required format. Direct ELT integration is on the roadmap. Currently, the worker produces the validated data package your clerks submit to the state system." },
+    { q: "How does it handle out-of-state titles?", a: "Out-of-state titles are routed to the Out-of-State Title Worker (GOV-010) for cross-jurisdiction validation. The intake worker flags the out-of-state origin and hands off automatically." },
+  ],
+};
+
+// GOV-002: Lien Management
+WORKER_DETAIL_CONTENT["gov-lien-management"] = {
+  headline: "Every lien recorded, released, and tracked — automatically",
+  subheadline: "Lien filing, release processing, priority tracking, and lender notification — your lien desk without the backlog.",
+  steps: [
+    { title: "Record the lien", description: "Lien data validated against the title record. Lienholder ELT codes verified. Filing date, amount, and priority position recorded." },
+    { title: "Track lien status", description: "Active liens monitored with expiration alerts. Lender correspondence logged. Subordination requests tracked through approval." },
+    { title: "Process releases", description: "Lien release documents validated against the original filing. Title record updated automatically when release is confirmed." },
+    { title: "Notify all parties", description: "Automated notifications to lienholders, owners, and other interested parties when status changes occur." },
+  ],
+  bridge: { title: "How it works", text: "Liens are the most error-prone part of title administration. This worker validates every filing against the existing title record, tracks priority positions, processes releases with document verification, and maintains a complete audit trail. No more manual lien ledgers or missed releases." },
+  valueProps: [
+    { label: "ELT integration", description: "Electronic lien and title processing with automated lienholder code verification and notification." },
+    { label: "Priority position tracking", description: "First, second, and subordinate lien positions tracked automatically — conflicts flagged before recording." },
+    { label: "Release verification", description: "Every release validated against the original filing — amount, lienholder, and VIN must match before the title is cleared." },
+  ],
+  faq: [
+    { q: "Does this handle electronic liens?", a: "Yes. ELT lienholder codes are verified against the state's approved list. Electronic lien notifications are generated in the format your state system requires." },
+    { q: "What about paper lien releases?", a: "Paper releases are scanned and validated against the original electronic filing. The worker flags discrepancies in amount, lienholder name, or VIN before the release is processed." },
+  ],
+};
+
+// GOV-003: Title Fraud Detection
+WORKER_DETAIL_CONTENT["gov-title-fraud-detection"] = {
+  headline: "Catch title fraud before the certificate prints",
+  subheadline: "VIN cloning detection, odometer rollback analysis, brand washing alerts, and suspicious pattern identification — your fraud investigation unit in a worker.",
+  steps: [
+    { title: "Screen every transaction", description: "Every title application screened against NMVTIS, NICB, and internal pattern databases. Risk score assigned in real time." },
+    { title: "Flag anomalies", description: "VIN cloning, odometer discrepancies, brand washing attempts, and suspicious ownership chains flagged with evidence packages." },
+    { title: "Investigate flagged transactions", description: "Examiner workqueue with full evidence — NMVTIS history, prior title images, odometer readings timeline, and ownership chain analysis." },
+    { title: "Resolve or refer", description: "Clear transactions with documented rationale or escalate to law enforcement with a court-ready evidence package." },
+  ],
+  bridge: { title: "How it works", text: "Title fraud costs states millions annually. This worker screens every transaction against federal databases, internal pattern analysis, and cross-jurisdiction records. Suspicious transactions are flagged with full evidence packages so examiners investigate real threats instead of processing paperwork." },
+  valueProps: [
+    { label: "Real-time risk scoring", description: "Every title application scored for fraud risk — VIN cloning, odometer rollback, brand washing, and identity anomalies." },
+    { label: "NMVTIS + NICB integration", description: "Federal database checks on every transaction — stolen vehicles, salvage brands, and total-loss history surfaced instantly." },
+    { label: "Court-ready evidence packages", description: "When fraud is confirmed, the worker generates an evidence package with chain of custody documentation suitable for prosecution." },
+  ],
+  faq: [
+    { q: "What types of fraud does this detect?", a: "Five primary categories: VIN cloning (duplicate VINs across states), odometer rollback (mileage decreases in history), brand washing (salvage titles laundered through lenient states), identity fraud (stolen identity used for title transfer), and lien stripping (liens removed without proper release)." },
+    { q: "How does the risk scoring work?", a: "Each transaction is scored across multiple factors: NMVTIS history consistency, odometer reading trajectory, ownership chain plausibility, lienholder verification, and cross-state pattern matching. High-risk transactions go to the examiner queue with full evidence." },
+  ],
+};
+
+// GOV-004: Driver License Intake
+WORKER_DETAIL_CONTENT["gov-driver-license-intake"] = {
+  headline: "License applications processed right the first time",
+  subheadline: "Identity verification, vision screening, knowledge test scheduling, and REAL ID compliance — your front counter without the wait.",
+  steps: [
+    { title: "Verify identity documents", description: "Document checklist validated against REAL ID requirements. Source document verification flags expired, revoked, or fraudulent credentials." },
+    { title: "Process the application", description: "Applicant data captured, photo taken, vision screening recorded. Knowledge and road test scheduling integrated." },
+    { title: "Check driving record", description: "NDR and state driving record pulled automatically. Suspensions, revocations, and restrictions flagged before issuance." },
+    { title: "Issue the credential", description: "License class, endorsements, and restrictions applied per your state's requirements. Card production queue updated automatically." },
+  ],
+  bridge: { title: "How it works", text: "Driver license issuance requires identity verification, record checks, and compliance with REAL ID Act requirements. This worker validates every document, checks driving records across jurisdictions, and ensures every credential issued meets federal and state standards. Your clerks process applications faster with fewer errors." },
+  valueProps: [
+    { label: "REAL ID compliance", description: "Document checklist enforced automatically — every applicant meets federal REAL ID requirements before issuance." },
+    { label: "NDR integration", description: "National Driver Register checked on every application — out-of-state suspensions and revocations caught before issuance." },
+    { label: "Scheduling integration", description: "Knowledge tests, road tests, and vision screenings scheduled from the same workflow — no separate booking systems." },
+  ],
+  faq: [
+    { q: "Does this handle REAL ID compliance?", a: "Yes. The worker enforces the REAL ID Act document requirements — proof of identity, SSN, and two proofs of residency. Each document category has an approved source list that matches your state's implementation." },
+    { q: "What about CDL applications?", a: "CDL applications are routed to the CDL Endorsement Tracker (GOV-005) for specialized handling including medical certificate verification, ELDT training records, and hazmat background checks." },
+  ],
+};
+
+// GOV-005: CDL Endorsement Tracker
+WORKER_DETAIL_CONTENT["gov-cdl-endorsement-tracker"] = {
+  headline: "CDL endorsements tracked from application to renewal",
+  subheadline: "Medical certificates, ELDT training records, hazmat background checks, and endorsement renewals — commercial driver compliance without the filing cabinets.",
+  steps: [
+    { title: "Verify ELDT training", description: "Training Provider Registry checked automatically. Required training hours and curriculum completion verified for the requested CDL class." },
+    { title: "Process medical certification", description: "DOT medical examiner certificate validated. Medical review status tracked. Self-certification category recorded per FMCSA requirements." },
+    { title: "Manage endorsements", description: "H, N, P, S, T, X endorsements tracked with knowledge test results, background checks, and skills test completions." },
+    { title: "Monitor renewals and expirations", description: "Medical certificate expiration, endorsement renewals, and downgrade deadlines tracked with automated alerts to drivers and your office." },
+  ],
+  bridge: { title: "How it works", text: "CDL compliance involves FMCSA regulations, ELDT requirements, medical certifications, and TSA background checks for hazmat. This worker tracks every requirement for every commercial driver — so your office catches expired medical certificates and missing training records before federal audit, not during." },
+  valueProps: [
+    { label: "ELDT verification", description: "Training Provider Registry integration confirms training completion — no manual verification of training certificates." },
+    { label: "Medical certificate tracking", description: "DOT medical certificates tracked with expiration alerts. CLP holders and self-certification categories monitored per FMCSA rules." },
+    { label: "Hazmat background check integration", description: "TSA threat assessment status tracked for H and X endorsements. Expiration and renewal timelines monitored automatically." },
+  ],
+  faq: [
+    { q: "Does this integrate with FMCSA systems?", a: "The worker validates ELDT training records against the Training Provider Registry and tracks medical certifications per FMCSA self-certification requirements. Direct CDLIS integration is on the roadmap." },
+    { q: "How does hazmat endorsement tracking work?", a: "TSA threat assessment status is tracked from application through approval. The worker monitors the two-year renewal cycle and alerts your office 90 days before expiration so drivers can renew without a gap in endorsement." },
+  ],
+};
+
+// GOV-006: Vehicle Inspection Compliance
+WORKER_DETAIL_CONTENT["gov-vehicle-inspection-compliance"] = {
+  headline: "Inspection stations audited, vehicles compliant",
+  subheadline: "Station licensing, inspector certification, emissions compliance, and rejection rate analysis — your inspection program managed from one dashboard.",
+  steps: [
+    { title: "License inspection stations", description: "Station applications reviewed against equipment requirements, insurance minimums, and facility standards for your state program." },
+    { title: "Certify inspectors", description: "Inspector training records, certification exams, and renewal timelines tracked. Suspended or revoked certifications flagged across all stations." },
+    { title: "Monitor inspection results", description: "Pass/fail rates, rejection reasons, and emissions readings aggregated by station. Anomalous patterns flagged for audit." },
+    { title: "Enforce compliance", description: "Stations with irregular patterns investigated. Suspension, probation, and revocation actions tracked with hearing schedules and appeal status." },
+  ],
+  bridge: { title: "How it works", text: "Vehicle inspection programs depend on honest, competent stations. This worker monitors inspection results across every station in your jurisdiction, flags statistical anomalies that suggest fraud or incompetence, and tracks enforcement actions. Your program maintains integrity without manual file reviews." },
+  valueProps: [
+    { label: "Station performance analytics", description: "Pass/fail rates, rejection categories, and emissions readings analyzed by station — outliers flagged automatically." },
+    { label: "Inspector certification tracking", description: "Training, testing, and renewal timelines managed for every certified inspector in your jurisdiction." },
+    { label: "Enforcement case management", description: "Investigations, hearings, suspensions, and appeals tracked in a single workflow with full documentation." },
+  ],
+  faq: [
+    { q: "Does this work with emissions testing programs?", a: "Yes. The worker supports both safety-only and combined safety/emissions programs. OBD-II readiness monitors, emissions readings, and waiver criteria are tracked per your state's clean air program requirements." },
+    { q: "How does it detect inspection fraud?", a: "Statistical analysis of pass/fail rates, rejection categories, and inspection volumes by station and inspector. Stations with abnormally high pass rates, low rejection rates, or unusual volume patterns are flagged for investigation." },
+  ],
+};
+
+// GOV-007: Registration Renewal
+WORKER_DETAIL_CONTENT["gov-registration-renewal"] = {
+  headline: "Registration renewals that process themselves",
+  subheadline: "Eligibility verification, fee calculation, insurance validation, and multi-channel renewal — your renewal desk running around the clock.",
+  steps: [
+    { title: "Verify renewal eligibility", description: "Outstanding violations, emissions compliance, insurance status, and property tax requirements checked automatically before renewal is allowed." },
+    { title: "Calculate fees", description: "Registration fees, county taxes, specialty plate fees, and any late penalties calculated based on your jurisdiction's fee schedule and the vehicle's attributes." },
+    { title: "Process payment", description: "Online, kiosk, mail-in, or counter payment accepted. Revenue reconciled daily against your financial system." },
+    { title: "Issue renewal credentials", description: "New registration card and decal generated. Mailing queue managed for mail-in renewals. Digital credentials available where authorized." },
+  ],
+  bridge: { title: "How it works", text: "Registration renewals are the highest-volume transaction in most DMV offices. This worker automates eligibility checks, fee calculations, and credential issuance across all channels — online, kiosk, mail, and counter. Your staff handles exceptions while routine renewals process automatically." },
+  valueProps: [
+    { label: "Multi-channel processing", description: "Online self-service, lobby kiosks, mail-in, and counter — all channels use the same eligibility and fee logic." },
+    { label: "Insurance verification", description: "Real-time insurance status checked against your state's verification database before renewal is processed." },
+    { label: "Revenue reconciliation", description: "Every payment matched to a renewal transaction. Daily reconciliation reports generated for your finance office." },
+  ],
+  faq: [
+    { q: "Can citizens renew online?", a: "Yes. The worker powers a self-service renewal portal that checks eligibility, calculates fees, accepts payment, and issues digital confirmation. Physical credentials are mailed or available for pickup." },
+    { q: "What about vehicles that fail emissions?", a: "Vehicles with outstanding emissions failures are blocked from renewal until compliance is verified. The worker checks your state's emissions database in real time and displays the specific requirement to the citizen." },
+  ],
+};
+
+// GOV-008: Fleet & Dealer Title
+WORKER_DETAIL_CONTENT["gov-fleet-dealer-title"] = {
+  headline: "Dealer and fleet title work — batched, validated, done",
+  subheadline: "Bulk title processing, dealer bond verification, auction manifests, and fleet account management — high-volume title operations at scale.",
+  steps: [
+    { title: "Onboard dealers and fleets", description: "Dealer license verification, bond status confirmation, and account setup. Fleet accounts configured with authorized signers and billing." },
+    { title: "Process bulk submissions", description: "Batch title applications validated against your state's requirements. Errors flagged per-record so clean transactions process without delay." },
+    { title: "Manage dealer inventory", description: "Dealer plates, temporary tags, and inventory tracked. Tag issuance limits enforced per dealer license type." },
+    { title: "Generate batch reports", description: "Processing summaries, rejection reports, and revenue reports generated per dealer or fleet account for reconciliation." },
+  ],
+  bridge: { title: "How it works", text: "Dealers and fleets represent a small number of accounts but a large share of title volume. This worker handles bulk submissions with per-record validation, tracks dealer licensing and bonds, and manages temporary tag issuance. Your dealer desk processes hundreds of titles per day without manual per-record review." },
+  valueProps: [
+    { label: "Bulk validation", description: "Batch submissions validated per-record — clean transactions process immediately while errors are returned with specific corrections needed." },
+    { label: "Dealer compliance monitoring", description: "License status, bond expiration, and temporary tag usage tracked automatically. Non-compliant dealers flagged before transactions process." },
+    { label: "Temporary tag controls", description: "Tag issuance tracked per dealer with configurable limits. Expired temporary tags flagged for follow-up." },
+  ],
+  faq: [
+    { q: "How does bulk processing work?", a: "Dealers submit batch files with multiple title applications. Each record is validated independently against your state's requirements. Clean records process immediately. Records with errors are returned with specific field-level corrections needed — the dealer fixes and resubmits only the rejected records." },
+    { q: "Does this track temporary tag abuse?", a: "Yes. Temporary tag issuance is tracked per dealer with configurable daily and monthly limits. Dealers approaching or exceeding limits are flagged. Expired temporary tags generate follow-up alerts for both the dealer and your enforcement unit." },
+  ],
+};
+
+// GOV-009: DMV Queue Manager
+WORKER_DETAIL_CONTENT["gov-dmv-queue-manager"] = {
+  headline: "Cut wait times without cutting corners",
+  subheadline: "Appointment scheduling, lobby queue management, service time analytics, and staffing optimization — your lobby running at peak efficiency.",
+  steps: [
+    { title: "Schedule appointments", description: "Online appointment booking with service-type routing. Walk-in queue managed alongside appointments with configurable priority rules." },
+    { title: "Manage the lobby", description: "Real-time queue display with estimated wait times. Citizens checked in by service type and routed to the right counter." },
+    { title: "Track service times", description: "Transaction times measured by service type, clerk, and time of day. Bottlenecks identified with root cause analysis." },
+    { title: "Optimize staffing", description: "Historical volume patterns analyzed to generate staffing recommendations by day of week and time of day. Peak periods anticipated." },
+  ],
+  bridge: { title: "How it works", text: "Long wait times are the number one citizen complaint about DMV offices. This worker manages appointments, walk-ins, and counter routing to minimize wait times. Service time analytics identify bottlenecks so you can adjust staffing and training where they have the most impact." },
+  valueProps: [
+    { label: "Real-time wait estimates", description: "Citizens see accurate wait times based on current queue depth and average service times by transaction type." },
+    { label: "Service routing", description: "Citizens routed to the right counter for their service type — no wasted time at the wrong window." },
+    { label: "Staffing analytics", description: "Volume patterns by day, time, and service type analyzed to optimize counter assignments and shift scheduling." },
+  ],
+  faq: [
+    { q: "Does this work with walk-ins and appointments?", a: "Yes. Appointments get priority windows, but walk-ins are managed in the same queue with real-time wait estimates. The system balances both to maximize throughput without leaving appointment slots idle." },
+    { q: "Can citizens check their place in line remotely?", a: "Yes. After check-in, citizens receive a text notification link showing their position and estimated wait time. They can wait in their car or nearby and return when their turn approaches." },
+  ],
+};
+
+// GOV-010: Out-of-State Title
+WORKER_DETAIL_CONTENT["gov-out-of-state-title"] = {
+  headline: "Out-of-state titles converted without the guesswork",
+  subheadline: "Cross-jurisdiction title validation, brand translation, fee differential calculation, and document requirements mapped state by state.",
+  steps: [
+    { title: "Identify the originating state", description: "Title document analyzed to identify the issuing jurisdiction, title format, and any state-specific fields or brands." },
+    { title: "Translate brands and statuses", description: "Out-of-state brands mapped to your state's brand codes. Salvage, rebuilt, flood, and other designations translated per your statute." },
+    { title: "Validate required documents", description: "Each originating state has different documents on the title. Missing signatures, odometer discrepancies, and lien release requirements identified." },
+    { title: "Process the conversion", description: "New in-state title generated with correctly translated brands, validated ownership chain, and jurisdiction-specific fees calculated." },
+  ],
+  bridge: { title: "How it works", text: "Every state has different title formats, brand codes, and document requirements. This worker maps 50-state title variations to your jurisdiction's requirements. Brand translations, document checklists, and fee calculations are handled automatically so your clerks process out-of-state conversions with the same confidence as in-state transfers." },
+  valueProps: [
+    { label: "50-state brand translation", description: "Salvage, rebuilt, flood, lemon, and other brands mapped from every state's codes to your jurisdiction's equivalent designations." },
+    { label: "Document requirement mapping", description: "Required documents vary by originating state — the worker knows what each state puts on the title and what your state needs to convert it." },
+    { label: "NMVTIS cross-check", description: "Every out-of-state title checked against NMVTIS to catch brands that may not appear on the paper title from the originating state." },
+  ],
+  faq: [
+    { q: "How does brand translation work?", a: "Each state uses different terminology and codes for vehicle brands. A 'rebuilt salvage' in one state might be 'prior salvage' in yours. The worker maintains a 50-state brand translation matrix that maps every known brand code to your jurisdiction's equivalent." },
+    { q: "What about titles from non-title states?", a: "Some states do not issue titles for older vehicles. The worker identifies these situations and applies your state's alternative documentation requirements — typically a bill of sale, registration history, and VIN inspection." },
+  ],
+};
+
+// GOV-011: Salvage & Rebuilt Title
+WORKER_DETAIL_CONTENT["gov-salvage-rebuilt-title"] = {
+  headline: "Salvage and rebuilt titles processed with full compliance",
+  subheadline: "Insurance total-loss reporting, salvage branding, rebuilt inspection requirements, and brand disclosure — the complete salvage lifecycle managed in one place.",
+  steps: [
+    { title: "Receive total-loss report", description: "Insurance company total-loss notification validated. Vehicle branded as salvage on the title record per your state's threshold rules." },
+    { title: "Track the salvage vehicle", description: "Salvage certificate issued. Vehicle tracked through dismantling, rebuilding, or export with required reporting at each stage." },
+    { title: "Process rebuilt application", description: "Rebuilt inspection requirements enforced — receipts for major components, VIN verification, and safety inspection results validated." },
+    { title: "Issue rebuilt title", description: "Rebuilt brand applied permanently to the title. Brand disclosure requirements documented. New title issued with full history preserved." },
+  ],
+  bridge: { title: "How it works", text: "Salvage and rebuilt titles involve insurance companies, repair shops, and multiple inspection requirements. This worker tracks vehicles from total-loss declaration through salvage branding, rebuilt inspection, and re-titling. Every step is documented with the evidence trail your auditors and law enforcement partners need." },
+  valueProps: [
+    { label: "Total-loss threshold enforcement", description: "Your state's damage threshold rules applied automatically — vehicles branded correctly based on repair cost vs. value ratios." },
+    { label: "Rebuilt inspection compliance", description: "Component receipts, VIN verification, and safety inspection requirements enforced before rebuilt title issuance." },
+    { label: "Brand washing prevention", description: "Cross-state brand history checked via NMVTIS — vehicles with salvage history in other states cannot obtain clean titles in yours." },
+  ],
+  faq: [
+    { q: "How does this prevent brand washing?", a: "NMVTIS checks on every title application surface salvage and total-loss brands from any state. The worker flags vehicles with out-of-state salvage history and requires your state's rebuilt inspection process before issuing a title — regardless of what the surrendered title shows." },
+    { q: "What rebuilt inspection documentation is required?", a: "Requirements vary by state, but typically include receipts for all major components (engine, transmission, frame), a VIN verification by law enforcement, and a safety inspection by a licensed station. The worker enforces your state's specific checklist." },
+  ],
+};
+
+// GOV-012: DPPA Compliance
+WORKER_DETAIL_CONTENT["gov-dppa-compliance"] = {
+  headline: "DPPA compliance enforced on every record access",
+  subheadline: "Permissible use validation, requester credentialing, access logging, and audit reporting — federal privacy law compliance built into every query.",
+  steps: [
+    { title: "Credential the requester", description: "Every entity requesting motor vehicle records must demonstrate a permissible use under 18 U.S.C. 2721. Credentials verified and stored." },
+    { title: "Validate the permissible use", description: "Each request matched to one of the 14 DPPA permissible uses. Requests without valid justification rejected automatically." },
+    { title: "Log every access", description: "Every record access logged with requester identity, permissible use cited, records accessed, and timestamp. Immutable audit trail maintained." },
+    { title: "Generate compliance reports", description: "Audit reports showing all record access by requester, time period, and permissible use category. Ready for federal or state audit." },
+  ],
+  bridge: { title: "How it works", text: "The Driver's Privacy Protection Act restricts who can access motor vehicle records and for what purpose. This worker enforces those restrictions on every single query — no manual review needed. Every access is logged, every requester is credentialed, and audit reports are generated on demand." },
+  valueProps: [
+    { label: "14 permissible use categories", description: "Every request validated against the specific DPPA permissible use cited — from law enforcement to insurance to court orders." },
+    { label: "Immutable access logs", description: "Every record access logged with full context — who, what, when, why. Append-only logs cannot be altered after the fact." },
+    { label: "Requester credentialing", description: "Bulk requesters credentialed once with permissible use documentation. Individual requests validated against the credentialed use category." },
+  ],
+  faq: [
+    { q: "What are the DPPA permissible uses?", a: "The DPPA defines 14 permissible uses including law enforcement, court proceedings, insurance underwriting, vehicle recalls, and legitimate business verification. Each requester must document which use applies to their access. The worker enforces this on every query." },
+    { q: "What happens if someone requests records without a valid use?", a: "The request is denied and logged. The requester receives a notification citing the specific DPPA provision that applies. Repeated invalid requests trigger an alert to your compliance officer for potential enforcement action." },
+  ],
+};
+
+// GOV-013: DMV Revenue Reconciliation
+WORKER_DETAIL_CONTENT["gov-dmv-revenue-reconciliation"] = {
+  headline: "Every dollar collected matched to every transaction processed",
+  subheadline: "Daily cash reconciliation, fee audit trails, refund tracking, and treasury reporting — your revenue office balanced and audit-ready.",
+  steps: [
+    { title: "Collect and categorize revenue", description: "Every fee, tax, and penalty collected is categorized by type, fund, and statutory authority. Cash, check, card, and electronic payments tracked separately." },
+    { title: "Reconcile daily", description: "Transactions matched to payments. Discrepancies flagged by clerk, counter, and payment method. Over/short reports generated automatically." },
+    { title: "Track refunds and adjustments", description: "Refund requests validated against the original transaction. Approval workflows enforce segregation of duties. Refund checks tracked through issuance." },
+    { title: "Report to treasury", description: "Revenue reports generated by fund, fee type, and period. State remittance calculations automated per your distribution formula." },
+  ],
+  bridge: { title: "How it works", text: "DMV offices collect millions in fees and taxes that must be reconciled daily, distributed to the correct funds, and reported to state treasury. This worker matches every payment to its transaction, flags discrepancies in real time, and generates the reports your finance office and auditors need." },
+  valueProps: [
+    { label: "Real-time reconciliation", description: "Payments matched to transactions as they occur — discrepancies flagged immediately instead of discovered at end of day." },
+    { label: "Fund distribution automation", description: "Fees distributed to the correct state and local funds per your statutory formula — no manual allocation spreadsheets." },
+    { label: "Audit-ready reporting", description: "Revenue reports by fund, fee type, clerk, and period generated on demand — every dollar traced to its source transaction." },
+  ],
+  faq: [
+    { q: "How does this handle multiple payment methods?", a: "Cash, check, credit card, debit card, and electronic payments are each tracked separately with their own reconciliation rules. Card payments are matched to processor settlement reports. Cash drawers are balanced per clerk per shift." },
+    { q: "Does this integrate with our financial system?", a: "The worker generates revenue reports in standard formats compatible with major government financial systems. Direct integration with your specific ERP or financial system is configured during onboarding." },
+  ],
+};
+
+// GOV-014: DMV Audit Readiness
+WORKER_DETAIL_CONTENT["gov-dmv-audit-readiness"] = {
+  headline: "Pass your next audit before the auditors arrive",
+  subheadline: "Continuous compliance monitoring, finding tracking, corrective action management, and pre-audit self-assessment — your audit program running year-round.",
+  steps: [
+    { title: "Run continuous compliance checks", description: "Automated checks against your state's DMV audit criteria run daily. Exceptions flagged with specific transactions and corrective guidance." },
+    { title: "Track findings and corrective actions", description: "Every finding — internal or external — logged with severity, responsible party, corrective action plan, and target date." },
+    { title: "Conduct self-assessments", description: "Pre-audit checklists modeled on your state auditor's criteria. Self-assessment results tracked with evidence documentation." },
+    { title: "Prepare audit packages", description: "When auditors arrive, documentation packages generated instantly — sample transactions, reconciliation reports, and policy compliance evidence." },
+  ],
+  bridge: { title: "How it works", text: "Government audits should not be surprises. This worker runs the same checks your auditors will — every day. Exceptions are caught and corrected before they become findings. When the audit happens, your documentation is organized, your corrective actions are tracked, and your compliance is demonstrated, not asserted." },
+  valueProps: [
+    { label: "Continuous monitoring", description: "Daily automated checks against audit criteria — catch exceptions when they happen, not when the auditor finds them." },
+    { label: "Corrective action tracking", description: "Every finding tracked from identification through resolution with responsible parties, action plans, and evidence of completion." },
+    { label: "Pre-audit self-assessment", description: "Run the same checks your auditors will before they arrive. Self-assessment results document your proactive compliance posture." },
+  ],
+  faq: [
+    { q: "What audit criteria does this check?", a: "The worker is configured with your state's specific DMV audit criteria during onboarding. Common checks include fee calculation accuracy, document retention compliance, DPPA access controls, refund authorization segregation, and inventory reconciliation." },
+    { q: "Can this prevent audit findings?", a: "It significantly reduces them. By running audit checks daily and flagging exceptions immediately, most issues are corrected before they become formal findings. The worker also documents your corrective actions, which auditors view favorably." },
+  ],
+};
+
+// GOV-015: Alex DMV
+WORKER_DETAIL_CONTENT["gov-alex-dmv"] = {
+  headline: "One AI coordinating your entire DMV operation",
+  subheadline: "Alex orchestrates all DMV workers — titles, liens, licensing, fraud, renewals, revenue — so nothing falls through the cracks and every workflow connects.",
+  steps: [
+    { title: "Connect your DMV workers", description: "Alex sees every active worker in your DMV deployment — intake, liens, fraud, licensing, renewals, fleet, queue, revenue, and audit." },
+    { title: "Route work automatically", description: "Out-of-state titles go to the right worker. Fraud flags pause the title workflow. Lien releases update the title record. Alex handles the routing." },
+    { title: "Surface exceptions", description: "Stalled transactions, missed deadlines, workqueue backlogs, and compliance exceptions surfaced in a single dashboard with priority ranking." },
+    { title: "Report across the operation", description: "Transaction volumes, processing times, revenue, error rates, and compliance status — all DMV metrics in one view." },
+  ],
+  bridge: { title: "How it works", text: "A DMV office runs dozens of interconnected workflows. Alex is the Chief of Staff that connects them. When a fraud flag stops a title, Alex notifies the examiner. When a lien release is processed, Alex updates the title record. When renewals spike, Alex surfaces the staffing impact. One orchestrator for your entire operation." },
+  valueProps: [
+    { label: "Cross-worker orchestration", description: "Every DMV worker connected through Alex — data flows automatically between titles, liens, fraud, licensing, and revenue." },
+    { label: "Exception management", description: "Stalled transactions, compliance exceptions, and deadline risks surfaced in priority order across all DMV workflows." },
+    { label: "Operational dashboard", description: "Transaction volumes, processing times, backlogs, and revenue across every DMV function — one view for your director." },
+  ],
+  faq: [
+    { q: "Is Alex required?", a: "No. Each DMV worker operates independently. Alex adds orchestration — automatic routing, exception management, and cross-worker reporting. Alex is free when you have three or more DMV workers active." },
+    { q: "Does Alex replace my supervisors?", a: "No. Alex surfaces the information your supervisors need to make decisions — exceptions, backlogs, compliance issues. Your supervisors focus on judgment and staff management instead of monitoring queues and chasing status updates." },
+  ],
+};
+
+// GOV-016: Permit Application Intake
+WORKER_DETAIL_CONTENT["gov-permit-application-intake"] = {
+  headline: "Permit applications complete and correct on first submission",
+  subheadline: "Dynamic checklists, fee calculation, document validation, and applicant status tracking — your permit counter processing applications without the back-and-forth.",
+  steps: [
+    { title: "Select permit type", description: "Applicant selects from your jurisdiction's permit catalog. Required documents, fees, and review requirements load automatically for that permit type." },
+    { title: "Validate the submission", description: "Every required field, document, and signature checked before the application is accepted. Incomplete submissions flagged with specific items needed." },
+    { title: "Calculate and collect fees", description: "Permit fees, plan review fees, and technology surcharges calculated per your fee schedule. Payment processed and receipted." },
+    { title: "Route to review", description: "Complete applications routed to the correct review queue — building, fire, planning, engineering, health — based on permit type and project scope." },
+  ],
+  bridge: { title: "How it works", text: "Incomplete permit applications are the top cause of processing delays. This worker ensures every application is complete and correct before it enters the review queue. Dynamic checklists adapt to the permit type, project scope, and your jurisdiction's specific requirements. Reviewers receive complete packages, not incomplete submissions that require follow-up." },
+  valueProps: [
+    { label: "Dynamic checklists", description: "Required documents and information adapt to the permit type, project scope, and jurisdiction requirements — applicants know exactly what is needed." },
+    { label: "First-submission acceptance rate", description: "Applications validated before acceptance — incomplete submissions returned immediately with specific items needed, not weeks later." },
+    { label: "Multi-department routing", description: "Applications automatically routed to every department that must review — building, fire, planning, engineering, health — based on project scope." },
+  ],
+  faq: [
+    { q: "Can applicants submit online?", a: "Yes. The worker powers an online portal where applicants select their permit type, upload documents, and pay fees. The same validation rules apply online as at the counter — no incomplete submissions accepted." },
+    { q: "How does fee calculation work?", a: "Fees are calculated from your jurisdiction's fee schedule based on permit type, project valuation, square footage, and other parameters. The fee schedule is configured during onboarding and can be updated when your governing body adopts changes." },
+  ],
+};
+
+// GOV-017: Building Permit Tracker
+WORKER_DETAIL_CONTENT["gov-building-permit-tracker"] = {
+  headline: "Every building permit tracked from application to final inspection",
+  subheadline: "Review status, revision tracking, inspection scheduling, and permit lifecycle management — your building department's full workflow in one system.",
+  steps: [
+    { title: "Track plan review progress", description: "Every reviewer's status visible in real time — pending, in review, corrections required, approved. Bottlenecks identified automatically." },
+    { title: "Manage corrections and resubmittals", description: "Review comments compiled across all departments. Applicant notified with consolidated correction list. Resubmittals tracked against original comments." },
+    { title: "Issue the permit", description: "All department approvals confirmed before permit issuance. Conditions of approval documented. Permit card generated with inspection requirements." },
+    { title: "Track through final", description: "Required inspections scheduled and tracked. Certificate of Occupancy eligibility checked against all conditions and inspection results." },
+  ],
+  bridge: { title: "How it works", text: "Building permits touch every department in your jurisdiction. This worker tracks the entire lifecycle — from application through plan review, corrections, issuance, inspections, and final CO. Every department's status is visible in one place so applicants get accurate timelines and your staff identifies bottlenecks before they become complaints." },
+  valueProps: [
+    { label: "Multi-department visibility", description: "Plan review status across building, fire, planning, engineering, and health departments visible in one view — no more calling around." },
+    { label: "Consolidated corrections", description: "Review comments from all departments compiled into one correction list — applicants fix everything in one resubmittal, not serial corrections." },
+    { label: "Permit lifecycle tracking", description: "Application to CO — every milestone, inspection, and condition tracked with automated status updates to applicants." },
+  ],
+  faq: [
+    { q: "How does multi-department review work?", a: "When a permit application is accepted, it is routed simultaneously to every department that must review based on the project scope. Each department reviews independently and posts their status. The worker compiles all comments when corrections are needed and tracks all approvals before permit issuance." },
+    { q: "Can applicants check their permit status online?", a: "Yes. The Public Portal Status Worker (GOV-029) provides real-time status to applicants — current review stage, estimated completion, and any action items needed from the applicant." },
+  ],
+};
+
+// GOV-018: Plan Review Coordinator
+WORKER_DETAIL_CONTENT["gov-plan-review-coordinator"] = {
+  headline: "Plan reviews completed on time, every time",
+  subheadline: "Reviewer assignment, workload balancing, code compliance tracking, and review cycle management — your plan review process running on schedule.",
+  steps: [
+    { title: "Assign reviewers", description: "Plans assigned based on reviewer expertise, current workload, and project complexity. Specialty reviews (structural, MEP, fire) routed to qualified staff." },
+    { title: "Track review progress", description: "Each reviewer's progress tracked against your jurisdiction's turnaround targets. Reviews approaching deadline flagged for supervisor attention." },
+    { title: "Compile review comments", description: "Code citations, correction requirements, and conditions compiled across all reviewers. Comments linked to specific plan sheets and code sections." },
+    { title: "Manage resubmittal cycles", description: "Resubmittals checked against original comments. New issues identified separately from corrections. Review cycle count tracked for performance reporting." },
+  ],
+  bridge: { title: "How it works", text: "Plan review is where permits stall. This worker manages reviewer assignments, tracks progress against deadlines, and compiles comments from multiple disciplines. Your review team stays on schedule, applicants get consolidated feedback, and your jurisdiction meets its turnaround commitments." },
+  valueProps: [
+    { label: "Workload balancing", description: "Reviews assigned based on expertise, complexity, and current caseload — no reviewer overwhelmed while others wait for work." },
+    { label: "Deadline tracking", description: "Every review tracked against your jurisdiction's turnaround targets. Approaching deadlines escalated automatically to supervisors." },
+    { label: "Code citation linking", description: "Every review comment linked to the specific code section and plan sheet — applicants know exactly what to fix and why." },
+  ],
+  faq: [
+    { q: "Does this support third-party plan review?", a: "Yes. Third-party reviewers can be assigned plans through the same workflow. Their comments are compiled with in-house reviews. Turnaround tracking applies to all reviewers regardless of employment status." },
+    { q: "How are review turnaround times calculated?", a: "Clock time is tracked from assignment to completion, with configurable pauses for applicant correction periods. Your jurisdiction's target turnaround is set per permit type and complexity level. Performance is reported by reviewer, permit type, and department." },
+  ],
+};
+
+// GOV-019: Contractor Credential Manager
+WORKER_DETAIL_CONTENT["gov-contractor-credential-manager"] = {
+  headline: "Every contractor licensed, insured, and verified",
+  subheadline: "License verification, insurance tracking, bond status monitoring, and disciplinary history — contractor compliance managed from application to renewal.",
+  steps: [
+    { title: "Process license applications", description: "Exam results, experience documentation, insurance certificates, and bond status verified. License issued with correct classifications and limitations." },
+    { title: "Monitor active licenses", description: "Insurance expiration, bond status, and continuing education requirements tracked. Non-compliant contractors flagged before permits are issued." },
+    { title: "Track disciplinary actions", description: "Complaints, investigations, hearings, and sanctions tracked through resolution. License suspensions and revocations enforced across all permit applications." },
+    { title: "Manage renewals", description: "Renewal eligibility verified — CE hours, insurance, bond, and outstanding violations checked. Expired licenses blocked from permit applications automatically." },
+  ],
+  bridge: { title: "How it works", text: "Unlicensed or uninsured contractors put your jurisdiction and citizens at risk. This worker verifies every contractor's credentials before permits are issued and monitors compliance continuously. When insurance lapses or a license is suspended, the contractor's active permits are flagged immediately." },
+  valueProps: [
+    { label: "Real-time permit blocking", description: "Contractors with expired licenses, lapsed insurance, or active suspensions cannot pull permits — enforcement is automatic, not manual." },
+    { label: "Insurance certificate tracking", description: "COI expiration dates monitored continuously. Lapses trigger permit holds and contractor notification within 24 hours." },
+    { label: "Cross-jurisdiction verification", description: "Contractor licenses and disciplinary history checked across jurisdictions where reciprocity agreements exist." },
+  ],
+  faq: [
+    { q: "Does this verify insurance in real time?", a: "Insurance certificates are tracked with expiration dates. When a certificate expires without renewal, the contractor's permits are flagged and new permit applications are blocked until current insurance is provided. Real-time carrier verification integration is on the roadmap." },
+    { q: "How does this work with state licensing boards?", a: "The worker tracks your jurisdiction's local licensing requirements. For states where contractor licensing is at the state level, the worker verifies state license status and adds your local requirements (insurance minimums, bond amounts, local registration) on top." },
+  ],
+};
+
+// GOV-020: Zoning & Land Use
+WORKER_DETAIL_CONTENT["gov-zoning-land-use"] = {
+  headline: "Zoning compliance verified before the first plan is drawn",
+  subheadline: "Use determination, setback verification, density calculation, parking requirements, and conditional use tracking — your zoning desk with instant answers.",
+  steps: [
+    { title: "Determine zoning and permitted uses", description: "Parcel zoning district identified. Permitted, conditional, and prohibited uses displayed. Overlay districts and special area plans applied." },
+    { title: "Check dimensional standards", description: "Setbacks, height limits, lot coverage, floor area ratio, and density calculations verified against your zoning code for the specific district." },
+    { title: "Calculate parking requirements", description: "Required parking spaces calculated by use type and square footage per your parking ordinance. Shared parking and reduction provisions applied." },
+    { title: "Identify required approvals", description: "Conditional use permits, site plan reviews, design review, and other discretionary approvals identified based on the proposed project." },
+  ],
+  bridge: { title: "How it works", text: "Zoning compliance is the first question in any development project. This worker reads your zoning code and applies it to specific parcels — use determinations, dimensional standards, parking, and required approvals answered instantly. Applicants know what they can build before they invest in plans. Your staff handles complex interpretations instead of routine lookups." },
+  valueProps: [
+    { label: "Instant use determination", description: "Permitted, conditional, and prohibited uses for any parcel — with overlay districts and special area plans applied automatically." },
+    { label: "Dimensional standard verification", description: "Setbacks, height, coverage, FAR, and density checked against the specific zoning district code — compliance confirmed or violations identified." },
+    { label: "Required approval identification", description: "Every discretionary approval needed for a proposed project identified upfront — no surprises mid-review." },
+  ],
+  faq: [
+    { q: "Does this replace zoning interpretations?", a: "No. The worker handles routine zoning lookups and standard calculations. Complex interpretations, non-conforming use determinations, and novel questions are flagged for your zoning administrator. The worker handles the 80% that is straightforward so your staff focuses on the 20% that requires judgment." },
+    { q: "How is the zoning code kept current?", a: "Your zoning code is loaded during onboarding and updated when your governing body adopts amendments. The worker tracks code amendment effective dates so the correct version is applied based on application date." },
+  ],
+};
+
+// GOV-021: Variance & Appeal Tracker
+WORKER_DETAIL_CONTENT["gov-variance-appeal-tracker"] = {
+  headline: "Variances and appeals tracked from petition to decision",
+  subheadline: "Application processing, hearing scheduling, public notice management, and decision documentation — your boards and commissions supported end to end.",
+  steps: [
+    { title: "Process the petition", description: "Variance or appeal application validated with required findings, site plans, and neighbor notification lists. Fees calculated and collected." },
+    { title: "Manage public notice", description: "Notice requirements determined by petition type. Mailing labels generated for adjacent property owners. Published notice deadlines tracked." },
+    { title: "Schedule and prepare for hearing", description: "Hearing date assigned per your board's calendar. Staff report generated with findings analysis, site context, and recommendation." },
+    { title: "Document the decision", description: "Board decision recorded with findings of fact, conditions of approval, and vote tally. Decision letter generated and distributed." },
+  ],
+  bridge: { title: "How it works", text: "Variances and appeals involve statutory notice requirements, public hearings, and detailed findings of fact. This worker tracks every petition through the process — public notice compliance, hearing preparation, and decision documentation. Your boards make better decisions with complete information, and your staff meets every procedural requirement." },
+  valueProps: [
+    { label: "Public notice compliance", description: "Mailing lists, publication deadlines, and posted notice requirements tracked per petition type — no procedural challenges due to notice failures." },
+    { label: "Staff report generation", description: "Findings analysis, site context, relevant code sections, and staff recommendation compiled into a structured report for board review." },
+    { label: "Decision documentation", description: "Findings of fact, conditions, and vote recorded in a legally defensible format — ready for court if the decision is challenged." },
+  ],
+  faq: [
+    { q: "Does this prepare the legal findings?", a: "The worker compiles the factual basis — site conditions, code requirements, precedent decisions, and applicant submissions — into a structured findings template. Your staff and attorney review and finalize the legal language. The worker ensures nothing is missing, not that the legal analysis is correct." },
+    { q: "How are public notice requirements determined?", a: "Notice requirements are configured per your jurisdiction's code — typically a combination of mailed notice to adjacent owners within a specified radius, published notice in a newspaper of record, and posted notice on the property. The worker tracks all three with deadline compliance." },
+  ],
+};
+
+// GOV-022: Event Permit Manager
+WORKER_DETAIL_CONTENT["gov-event-permit-manager"] = {
+  headline: "Event permits issued with every department aligned",
+  subheadline: "Multi-department coordination, road closure requests, safety plans, insurance requirements, and post-event reporting — special events that do not surprise your city.",
+  steps: [
+    { title: "Receive the event application", description: "Event type, size, location, and date captured. Required department reviews identified based on event characteristics — police, fire, parks, public works, health." },
+    { title: "Coordinate department reviews", description: "Each affected department reviews the event plan and submits conditions. Police staffing, fire access, road closures, sanitation, and noise requirements compiled." },
+    { title: "Issue the event permit", description: "All department conditions compiled into one permit document. Insurance certificate verified. Fees collected. Event applicant acknowledges all conditions." },
+    { title: "Post-event reporting", description: "Incident reports, damage assessments, and cost recovery documented. Event history maintained for future applications from the same organizer." },
+  ],
+  bridge: { title: "How it works", text: "Special events require coordination across police, fire, public works, parks, and health departments. This worker routes each event application to every affected department, compiles their conditions into one permit, and tracks compliance. Your city approves events confidently because every department has reviewed the plan." },
+  valueProps: [
+    { label: "Multi-department coordination", description: "Every affected department reviews and sets conditions in one workflow — no separate applications to police, fire, and public works." },
+    { label: "Condition compilation", description: "All department conditions compiled into one event permit document — the organizer gets one comprehensive set of requirements." },
+    { label: "Event history tracking", description: "Past events tracked with incidents, complaints, and costs — your staff has context when the same organizer applies next year." },
+  ],
+  faq: [
+    { q: "How does road closure coordination work?", a: "Road closure requests are routed to public works and police. Traffic management plans are required for events affecting arterial roads. Detour routes, signage requirements, and staffing needs are documented in the permit conditions." },
+    { q: "What about recurring events?", a: "Annual events can reference prior-year permits as a baseline. Changes from the prior year are highlighted for review. Department conditions from the prior year carry forward as starting points that each department can modify." },
+  ],
+};
+
+// GOV-023: Environmental Review
+WORKER_DETAIL_CONTENT["gov-environmental-review"] = {
+  headline: "Environmental reviews complete and defensible",
+  subheadline: "NEPA/SEPA compliance, categorical exclusion screening, environmental checklist management, and mitigation tracking — your environmental review process documented at every step.",
+  steps: [
+    { title: "Screen for review level", description: "Project scope analyzed against categorical exclusion criteria. Projects that qualify for exemption documented. Others routed to the appropriate review level." },
+    { title: "Complete the environmental checklist", description: "Environmental elements assessed — earth, air, water, plants, animals, noise, land use, transportation, utilities, and public services." },
+    { title: "Identify and track mitigation", description: "Required mitigation measures identified per element. Conditions attached to the project approval. Compliance monitoring scheduled." },
+    { title: "Issue the determination", description: "Determination of Non-Significance, Mitigated DNS, or Environmental Impact Statement requirement documented with full findings." },
+  ],
+  bridge: { title: "How it works", text: "Environmental review is legally required for most development projects and is frequently challenged. This worker guides your staff through the checklist, documents every finding, tracks mitigation conditions, and produces determinations that withstand legal scrutiny. Your environmental review is thorough and defensible." },
+  valueProps: [
+    { label: "Categorical exclusion screening", description: "Projects that qualify for exemption are identified and documented automatically — no unnecessary review for qualifying projects." },
+    { label: "Element-by-element documentation", description: "Every environmental element assessed with findings, evidence, and mitigation documented in a legally defensible format." },
+    { label: "Mitigation tracking", description: "Required mitigation measures tracked from condition through implementation with compliance monitoring schedules." },
+  ],
+  faq: [
+    { q: "Does this handle NEPA and SEPA?", a: "The worker supports both federal NEPA and state environmental policy act (SEPA) review processes. Your jurisdiction's specific checklist, threshold levels, and categorical exclusion criteria are configured during onboarding." },
+    { q: "How does this help with legal challenges?", a: "The worker documents every finding with specific evidence, code citations, and analysis. Mitigation measures are linked to specific impacts. This level of documentation is what courts look for when reviewing environmental determinations." },
+  ],
+};
+
+// GOV-024: Fee Calculation
+WORKER_DETAIL_CONTENT["gov-fee-calculation"] = {
+  headline: "Permit fees calculated accurately, every time",
+  subheadline: "Valuation-based fees, plan review surcharges, technology fees, and impact fees — your entire fee schedule applied automatically with full audit trail.",
+  steps: [
+    { title: "Determine project valuation", description: "Construction valuation calculated from your adopted valuation table or applicant-provided cost data. Valuation basis documented." },
+    { title: "Apply the fee schedule", description: "Building permit fees, plan review percentages, technology surcharges, and any special district fees calculated per your adopted fee schedule." },
+    { title: "Calculate impact fees", description: "Transportation, park, school, fire, and other impact fees calculated based on project type, size, and your jurisdiction's impact fee schedule." },
+    { title: "Generate the fee summary", description: "Complete fee breakdown with statutory authority for each fee, calculation methodology, and total due. Ready for applicant and your finance office." },
+  ],
+  bridge: { title: "How it works", text: "Permit fees involve multiple schedules, valuation methods, and statutory authorities. This worker applies your entire fee structure automatically — building fees, plan review surcharges, impact fees, and technology fees. Every calculation cites its authority and methodology. Your counter staff gives accurate fee quotes, and your finance office collects the correct amount." },
+  valueProps: [
+    { label: "Multi-schedule calculation", description: "Building, plan review, impact, technology, and special district fees all calculated from one project description — no manual lookups." },
+    { label: "Valuation consistency", description: "Construction valuation calculated from your adopted table — consistent methodology for every project, defensible if challenged." },
+    { label: "Fee authority documentation", description: "Every fee cites its statutory or resolution authority — applicants see exactly why each fee applies and how it was calculated." },
+  ],
+  faq: [
+    { q: "How often can the fee schedule be updated?", a: "Your fee schedule can be updated whenever your governing body adopts changes. The worker tracks effective dates so applications submitted before a fee increase are charged at the prior rate. Multiple fee schedule versions are maintained for audit purposes." },
+    { q: "Does this handle fee waivers and exemptions?", a: "Yes. Fee waivers for government projects, affordable housing, or other exempt categories are configured per your jurisdiction's waiver policy. Every waiver is documented with the authority and rationale for audit purposes." },
+  ],
+};
+
+// GOV-025: Public Notice Generator
+WORKER_DETAIL_CONTENT["gov-public-notice-generator"] = {
+  headline: "Public notices compliant, on time, every time",
+  subheadline: "Legal notice drafting, mailing list generation, publication scheduling, and proof of notice documentation — your public notice requirements met without manual effort.",
+  steps: [
+    { title: "Determine notice requirements", description: "Notice type identified based on the action — hearing, decision, environmental determination. Required notice methods and timelines loaded from your code." },
+    { title: "Generate notice content", description: "Legal notice drafted with required elements — project description, location, action proposed, hearing date/time/place, and comment deadline." },
+    { title: "Produce mailing lists and labels", description: "Property owners within the required notification radius identified from assessor records. Mailing labels generated. Certified mail tracking where required." },
+    { title: "Document proof of notice", description: "Affidavit of mailing, publication confirmation, and posted notice photo documentation compiled into a proof of notice package for the record." },
+  ],
+  bridge: { title: "How it works", text: "Public notice failures can invalidate government decisions. This worker generates compliant notices, produces mailing lists from assessor records, schedules publications, and compiles proof of notice documentation. Every notice meets your code requirements, and the proof is documented before the hearing, not reconstructed after a challenge." },
+  valueProps: [
+    { label: "Code-compliant notice content", description: "Required notice elements pulled from your jurisdiction's code — project description, hearing details, and comment deadlines formatted correctly." },
+    { label: "Automated mailing lists", description: "Property owners within notification radius identified from assessor records — no manual parcel lookups or address compilation." },
+    { label: "Proof of notice packages", description: "Mailing affidavit, publication confirmation, and posting documentation compiled into a defensible proof of notice record." },
+  ],
+  faq: [
+    { q: "How are mailing lists generated?", a: "Property owner records from your assessor's database are queried by radius from the project site. The notification radius is configured per action type from your municipal code. Mailing labels are generated in standard formats for your mail room or print vendor." },
+    { q: "Does this handle published notice in newspapers?", a: "The worker generates the legal notice text in the format required by your newspaper of record. Publication dates are scheduled to meet your code's advance notice requirements. Publication confirmation is tracked as part of the proof of notice package." },
+  ],
+};
+
+// GOV-026: Contractor Verification
+WORKER_DETAIL_CONTENT["gov-contractor-verification"] = {
+  headline: "No permit issued to an unqualified contractor",
+  subheadline: "License status, insurance validation, bond verification, and workers compensation confirmation — contractor eligibility verified at the point of permit application.",
+  steps: [
+    { title: "Check license status", description: "Contractor's license verified as active, in good standing, and classified for the proposed work. Expired or suspended licenses blocked." },
+    { title: "Verify insurance", description: "General liability and workers compensation certificates checked for current coverage and minimum limits per your jurisdiction's requirements." },
+    { title: "Confirm bond status", description: "Contractor bond verified as active with sufficient coverage. Bond claims history checked where available." },
+    { title: "Approve or block", description: "Contractors meeting all requirements approved for permit issuance. Non-compliant contractors blocked with specific deficiencies identified." },
+  ],
+  bridge: { title: "How it works", text: "Every permit application involves a contractor. This worker verifies the contractor's license, insurance, bond, and workers compensation status at the point of application — not after the work begins. Non-compliant contractors are blocked before the permit is issued, protecting your jurisdiction and the property owner." },
+  valueProps: [
+    { label: "Point-of-application verification", description: "Contractor credentials verified when the permit is applied for — not discovered to be deficient during inspection." },
+    { label: "Minimum coverage enforcement", description: "Insurance and bond minimums enforced per your jurisdiction's requirements — no permits issued to underinsured contractors." },
+    { label: "Automatic blocking", description: "Suspended, expired, or uninsured contractors cannot pull permits — enforcement is systemic, not dependent on clerk knowledge." },
+  ],
+  faq: [
+    { q: "How is this different from the Contractor Credential Manager?", a: "The Credential Manager (GOV-019) manages the full contractor lifecycle — applications, renewals, CE tracking, and disciplinary actions. This Verification Worker is the point-of-permit check that runs against the credential database when a permit application is submitted." },
+    { q: "What if a contractor's insurance lapses after the permit is issued?", a: "The Contractor Credential Manager monitors insurance expirations continuously. If insurance lapses on a contractor with active permits, those permits are flagged and the contractor is notified. The Verification Worker prevents new permits; the Credential Manager monitors existing ones." },
+  ],
+};
+
+// GOV-027: Certificate of Occupancy
+WORKER_DETAIL_CONTENT["gov-certificate-of-occupancy"] = {
+  headline: "Certificates of occupancy issued when every condition is met",
+  subheadline: "Final inspection coordination, condition of approval tracking, utility clearance, and CO issuance — the last mile of the permit process handled right.",
+  steps: [
+    { title: "Check permit conditions", description: "Every condition of approval from the original permit reviewed — landscaping, parking, fire access, utility connections, and any special conditions." },
+    { title: "Coordinate final inspections", description: "Building, fire, electrical, plumbing, and mechanical final inspections scheduled and tracked. All trades must pass before CO eligibility." },
+    { title: "Verify utility clearances", description: "Water, sewer, electric, and gas service confirmations obtained. Fire flow test results documented. Address assignment confirmed." },
+    { title: "Issue the CO", description: "All conditions met, all finals passed, all clearances obtained — Certificate of Occupancy issued with the approved use, occupancy load, and any ongoing conditions." },
+  ],
+  bridge: { title: "How it works", text: "A Certificate of Occupancy is the final confirmation that a building is safe to occupy. This worker tracks every condition, inspection, and clearance required before issuance. Nothing is missed because the CO checklist is generated from the actual permit conditions, not a generic template. Every CO you issue is fully documented." },
+  valueProps: [
+    { label: "Condition tracking", description: "Every condition from the original permit approval tracked through completion — landscaping, parking, accessibility, fire, and special conditions." },
+    { label: "Multi-trade coordination", description: "Final inspections across all trades scheduled and tracked in one view — building, fire, electrical, plumbing, mechanical." },
+    { label: "Utility clearance tracking", description: "Water, sewer, electric, gas, and fire flow clearances obtained and documented before CO issuance." },
+  ],
+  faq: [
+    { q: "What if some conditions cannot be met before occupancy?", a: "Temporary Certificates of Occupancy can be issued with specific outstanding conditions, a completion deadline, and a bond or financial assurance. The worker tracks TCO conditions and deadlines, alerting your office when the completion date approaches." },
+    { q: "Does this handle change of use?", a: "Yes. Change of use CO applications trigger a review of the new use against the current zoning, building code occupancy classification, fire code requirements, and any conditions from the original CO. Additional inspections are scheduled as needed." },
+  ],
+};
+
+// GOV-028: Permit Compliance Monitor
+WORKER_DETAIL_CONTENT["gov-permit-compliance-monitor"] = {
+  headline: "Active permits monitored from issuance to closeout",
+  subheadline: "Expiration tracking, inspection scheduling, condition compliance, and permit closeout — no permit left open, no condition left unchecked.",
+  steps: [
+    { title: "Track permit expiration", description: "Every active permit monitored against your jurisdiction's expiration rules. Permits approaching expiration trigger renewal notices to the applicant." },
+    { title: "Monitor required inspections", description: "Inspection milestones tracked against construction progress. Overdue inspections flagged with escalation to the contractor and property owner." },
+    { title: "Verify condition compliance", description: "Conditions of approval monitored through the construction period. Non-compliance documented with notices to the responsible party." },
+    { title: "Close out completed permits", description: "Permits with all inspections passed and conditions met closed out automatically. Permits without final inspection after completion flagged for enforcement." },
+  ],
+  bridge: { title: "How it works", text: "Open permits are a liability for your jurisdiction and the property owner. This worker monitors every active permit — expiration dates, required inspections, and conditions of approval. Permits that stall are escalated. Permits that complete are closed. Your permit system stays current instead of accumulating an ever-growing backlog of open permits." },
+  valueProps: [
+    { label: "Expiration management", description: "Permits approaching expiration trigger automatic notices — renewal or extension processed before the permit lapses." },
+    { label: "Inspection milestone tracking", description: "Required inspections tracked against expected construction timelines — overdue inspections escalated to contractor and owner." },
+    { label: "Backlog reduction", description: "Open permits without activity for configurable periods flagged for closeout review — your active permit count reflects actual activity." },
+  ],
+  faq: [
+    { q: "How does permit expiration work?", a: "Your jurisdiction sets the expiration period — typically 180 days to one year from issuance with extensions available. The worker sends notices at 90, 60, and 30 days before expiration. Extension requests are processed through the same workflow." },
+    { q: "What about permits that never get finaled?", a: "Permits without inspection activity for a configurable period are flagged for closeout review. Your staff can conduct a site visit to determine if work was completed without final inspection, never started, or is in progress. The appropriate action — enforcement, closure, or continued monitoring — is documented." },
+  ],
+};
+
+// GOV-029: Public Portal Status
+WORKER_DETAIL_CONTENT["gov-public-portal-status"] = {
+  headline: "Applicants see their permit status without calling your office",
+  subheadline: "Real-time application status, review progress, inspection results, and fee balances — a citizen-facing portal that reduces counter visits and phone calls.",
+  steps: [
+    { title: "Look up by permit number or address", description: "Applicants, contractors, and property owners search by permit number, project address, or contractor name. Results show all associated permits." },
+    { title: "View current status", description: "Application stage, review department status, inspection results, and outstanding items displayed in plain language — not internal codes." },
+    { title: "See what action is needed", description: "If the applicant needs to provide corrections, schedule an inspection, or make a payment, the specific action is displayed with instructions." },
+    { title: "Download documents", description: "Approved plans, issued permits, inspection reports, and fee receipts available for download — no office visit needed for copies." },
+  ],
+  bridge: { title: "How it works", text: "The number one call to most permitting offices is a status check. This worker provides a public-facing portal where applicants see their permit status in real time — which departments have reviewed, what corrections are needed, and when the next step will happen. Your staff handles complex questions instead of repeating status updates." },
+  valueProps: [
+    { label: "Real-time status", description: "Permit status updated in real time as reviews complete, inspections occur, and fees are paid — no overnight batch updates." },
+    { label: "Plain language", description: "Status displayed in terms applicants understand — not internal department codes or workflow stage names." },
+    { label: "Self-service documents", description: "Approved plans, permits, inspection reports, and receipts available for download — fewer counter visits for document copies." },
+  ],
+  faq: [
+    { q: "What information is public?", a: "Permit applications, review status, inspection results, and issued permits are public record in most jurisdictions. Applicant contact information and proprietary plan details are not displayed on the public portal. Your jurisdiction's public records policy is configured during onboarding." },
+    { q: "Can contractors see all their permits?", a: "Yes. Contractors can log in to see all permits associated with their license number — across all projects and all stages. This gives contractors a single view of their active work in your jurisdiction." },
+  ],
+};
+
+// GOV-030: Alex Permitting
+WORKER_DETAIL_CONTENT["gov-alex-permitting"] = {
+  headline: "One AI coordinating your entire permitting operation",
+  subheadline: "Alex orchestrates all permitting workers — intake, review, zoning, fees, inspections, and CO — so every application moves through the process without stalling.",
+  steps: [
+    { title: "Connect your permitting workers", description: "Alex sees every active worker in your permitting deployment — intake, plan review, zoning, fees, inspections, contractors, environmental, and CO." },
+    { title: "Route work automatically", description: "Applications routed to the correct review queue. Completed reviews trigger the next step. Fee calculations run when review is complete." },
+    { title: "Surface bottlenecks", description: "Reviews past deadline, inspections overdue, applications stalled in corrections — Alex identifies bottlenecks and escalates to supervisors." },
+    { title: "Report across the department", description: "Application volumes, review turnaround, inspection pass rates, revenue collected, and backlog metrics — all permitting KPIs in one view." },
+  ],
+  bridge: { title: "How it works", text: "A permitting department has dozens of moving parts — intake, multiple review disciplines, fees, inspections, and CO. Alex connects every worker so applications flow through the process automatically. When a review stalls, Alex escalates. When all reviews are complete, Alex triggers fee calculation and permit issuance. One orchestrator for the entire permit lifecycle." },
+  valueProps: [
+    { label: "Lifecycle orchestration", description: "Application to CO — every step triggered automatically when prerequisites are met. No manual handoffs between departments." },
+    { label: "Bottleneck detection", description: "Reviews past deadline, inspections overdue, and applications stalled in corrections identified and escalated automatically." },
+    { label: "Department-wide metrics", description: "Application volumes, turnaround times, pass rates, and revenue across all permit types and departments in one dashboard." },
+  ],
+  faq: [
+    { q: "Is Alex required for permitting?", a: "No. Each permitting worker operates independently. Alex adds orchestration — automatic routing between steps, bottleneck detection, and cross-department reporting. Alex is free when you have three or more permitting workers active." },
+    { q: "Does Alex make permitting decisions?", a: "No. Alex routes, monitors, and reports. Plan review decisions are made by your licensed reviewers. Inspection results are entered by your inspectors. Zoning determinations are made by your planning staff. Alex ensures the process moves forward and nothing falls through the cracks." },
+  ],
+};
+
+// GOV-031: Building Inspector
+WORKER_DETAIL_CONTENT["gov-building-inspector"] = {
+  headline: "Building inspections scheduled, conducted, and documented — faster",
+  subheadline: "Field inspection management, code violation documentation, correction notices, and re-inspection tracking — your inspection team working at full capacity.",
+  steps: [
+    { title: "Schedule inspections", description: "Inspection requests assigned to inspectors based on geographic zone, specialty, and workload. Routes optimized for maximum inspections per day." },
+    { title: "Conduct the inspection", description: "Mobile-ready checklists organized by trade and code section. Photos, notes, and code citations captured on-site with GPS location tagging." },
+    { title: "Document results", description: "Pass, fail, or partial results recorded with specific code violations cited. Correction notices generated automatically with code references and required actions." },
+    { title: "Track corrections", description: "Failed items tracked through re-inspection. Compliance deadlines monitored. Repeated failures escalated to enforcement." },
+  ],
+  bridge: { title: "How it works", text: "Building inspections are where code compliance meets reality. This worker manages the entire field inspection workflow — scheduling, checklists, documentation, and follow-up. Inspectors spend more time in the field and less time on paperwork. Correction notices cite specific code sections and required actions. Re-inspections track whether corrections were made." },
+  valueProps: [
+    { label: "Route optimization", description: "Inspections assigned by zone and sequenced for efficient routing — more inspections per inspector per day." },
+    { label: "Mobile field documentation", description: "Checklists, photos, code citations, and notes captured on a tablet or phone — reports generated from field data, not written up later." },
+    { label: "Code-cited correction notices", description: "Every violation references the specific code section, describes the required correction, and sets a compliance deadline." },
+  ],
+  faq: [
+    { q: "Does this work offline?", a: "Yes. Inspection checklists and permit data are cached for offline use. Field data syncs when connectivity is restored. Inspectors in basements, rural areas, and other low-connectivity locations can complete their work without interruption." },
+    { q: "Can inspectors use their existing mobile devices?", a: "The worker runs in a mobile browser — no app installation required. It works on tablets and phones running iOS or Android. Camera access is needed for photo documentation." },
+  ],
+};
+
+// GOV-032: Code Enforcement
+WORKER_DETAIL_CONTENT["gov-code-enforcement"] = {
+  headline: "Code violations tracked from complaint to compliance",
+  subheadline: "Complaint intake, violation documentation, notice generation, hearing scheduling, and compliance tracking — your code enforcement operation running on evidence, not memory.",
+  steps: [
+    { title: "Receive and triage complaints", description: "Complaints received online, by phone, or in person. Duplicate complaints on the same property identified. Priority assigned by violation severity." },
+    { title: "Investigate and document", description: "Field investigation conducted with photo documentation, GPS location, and violation identification. Evidence package assembled with code citations." },
+    { title: "Issue notices", description: "Notice of violation generated with specific code sections, required corrections, and compliance deadline. Escalation to citation or hearing if not corrected." },
+    { title: "Track through resolution", description: "Compliance verified by re-inspection. Unresolved cases escalated through your enforcement ladder — notice, citation, hearing, abatement, lien." },
+  ],
+  bridge: { title: "How it works", text: "Code enforcement requires evidence that holds up in court. This worker documents every step — complaint, investigation, notice, response, and resolution — with photos, dates, code citations, and service records. If a case goes to hearing, the evidence package is complete. If it resolves through compliance, the resolution is documented for the record." },
+  valueProps: [
+    { label: "Court-ready evidence packages", description: "Every violation documented with photos, code citations, notice history, and service records — ready for hearing if the case escalates." },
+    { label: "Enforcement ladder tracking", description: "Cases progress through your jurisdiction's enforcement process — notice, re-notice, citation, hearing, abatement — with timelines at each step." },
+    { label: "Complaint deduplication", description: "Multiple complaints about the same property consolidated into one case — no duplicate investigations or conflicting case numbers." },
+  ],
+  faq: [
+    { q: "Can citizens file complaints online?", a: "Yes. An online complaint form captures the property address, violation type, description, and optional photos. Anonymous complaints are accepted per your jurisdiction's policy. Every complaint creates a case in the system." },
+    { q: "How does the enforcement ladder work?", a: "Your jurisdiction defines the escalation steps — typically voluntary compliance notice, formal notice of violation, administrative citation with fine, hearing, and abatement. The worker tracks the timeline at each step and escalates when compliance deadlines pass without resolution." },
+  ],
+};
+
+// GOV-033: Fire Inspection
+WORKER_DETAIL_CONTENT["gov-fire-inspection"] = {
+  headline: "Fire inspections that protect lives and withstand legal scrutiny",
+  subheadline: "Annual fire inspections, fire code compliance, sprinkler and alarm verification, occupancy load checks, and violation tracking — your fire prevention bureau operating at full efficiency.",
+  steps: [
+    { title: "Schedule annual inspections", description: "Commercial occupancies scheduled for annual fire inspection based on occupancy type, hazard classification, and prior violation history." },
+    { title: "Conduct the fire inspection", description: "Fire code checklist covers egress, fire suppression systems, alarm systems, extinguishers, occupancy loads, cooking hoods, and hazmat storage." },
+    { title: "Document violations", description: "Fire code violations documented with specific IFC/NFPA citations, photos, and required corrections. Imminent hazards flagged for immediate action." },
+    { title: "Track compliance and re-inspect", description: "Violation corrections tracked with deadlines. Re-inspections scheduled. Chronic violators flagged for enforcement escalation." },
+  ],
+  bridge: { title: "How it works", text: "Fire inspections save lives, but only when they are thorough, documented, and followed up. This worker manages the full cycle — scheduling, field checklists, violation documentation with IFC/NFPA citations, and compliance tracking. Your fire prevention bureau covers every occupancy on schedule with documentation that holds up if a fire occurs." },
+  valueProps: [
+    { label: "Risk-based scheduling", description: "High-hazard occupancies and properties with prior violations inspected more frequently — resources allocated where risk is greatest." },
+    { label: "IFC/NFPA code citations", description: "Every violation references the specific fire code section — International Fire Code, NFPA standards, or your jurisdiction's amendments." },
+    { label: "System verification tracking", description: "Fire sprinkler, alarm, and suppression system inspection and testing records tracked — third-party inspection reports linked to the property record." },
+  ],
+  faq: [
+    { q: "Does this track third-party fire system inspections?", a: "Yes. Fire sprinkler, alarm, and suppression system inspection reports from licensed contractors are tracked in the property record. The worker monitors annual inspection due dates and flags properties with overdue system inspections." },
+    { q: "How are imminent hazards handled?", a: "Violations classified as imminent hazards — blocked egress, inoperable fire suppression, exceeded occupancy loads — trigger immediate notification to the fire marshal. The worker generates an emergency order template and tracks the immediate correction timeline." },
+  ],
+};
+
+// GOV-034: Health & Food Inspector
+WORKER_DETAIL_CONTENT["gov-health-food-inspector"] = {
+  headline: "Food safety inspections that protect public health",
+  subheadline: "Routine and complaint inspections, FDA Food Code compliance, critical violation tracking, and establishment scoring — your health department protecting every restaurant and food facility.",
+  steps: [
+    { title: "Schedule routine inspections", description: "Food establishments scheduled based on risk category, prior inspection history, and your jurisdiction's inspection frequency requirements." },
+    { title: "Conduct the inspection", description: "FDA Food Code checklist covers temperature control, cross-contamination, personal hygiene, facility maintenance, and pest control. Critical and non-critical violations distinguished." },
+    { title: "Score and report", description: "Establishment scored per your jurisdiction's methodology. Inspection report generated with violations, corrections required, and compliance deadlines." },
+    { title: "Track violations and follow up", description: "Critical violations require immediate correction or closure. Non-critical violations tracked through re-inspection. Chronic violators escalated to permit action." },
+  ],
+  bridge: { title: "How it works", text: "Food safety inspections protect public health and must be consistent, documented, and followed up. This worker manages scheduling, field checklists based on the FDA Food Code, scoring, and violation tracking. Your inspectors conduct thorough, consistent inspections, and your health department demonstrates that every establishment is monitored." },
+  valueProps: [
+    { label: "Risk-based scheduling", description: "High-risk establishments (hospitals, schools, high-volume restaurants) inspected more frequently. Resources allocated by actual risk." },
+    { label: "FDA Food Code checklists", description: "Inspection items aligned to the FDA Model Food Code with your jurisdiction's specific amendments and requirements." },
+    { label: "Critical violation escalation", description: "Critical violations — temperature abuse, contamination, no hot water — require immediate correction or trigger closure procedures automatically." },
+  ],
+  faq: [
+    { q: "How does scoring work?", a: "Your jurisdiction's scoring methodology is configured during onboarding. Common systems include numeric scores (e.g., 0-100), letter grades, and pass/fail with critical and non-critical violation counts. Scores are calculated consistently from inspection results." },
+    { q: "Can inspection results be published?", a: "Yes. Inspection results can be published to your public portal. Many jurisdictions publish scores, letter grades, or pass/fail results. The public display format is configured per your jurisdiction's transparency policy." },
+  ],
+};
+
+// GOV-035: Electrical Inspector
+WORKER_DETAIL_CONTENT["gov-electrical-inspector"] = {
+  headline: "Electrical inspections that keep buildings safe and code-compliant",
+  subheadline: "NEC compliance verification, panel and circuit inspections, grounding checks, and GFCI/AFCI requirements — your electrical inspection program running on current code.",
+  steps: [
+    { title: "Review the electrical permit", description: "Scope of work, panel size, circuit count, and special equipment reviewed against the NEC and your jurisdiction's amendments." },
+    { title: "Conduct rough-in inspection", description: "Wire routing, box fill calculations, circuit protection, grounding, and bonding verified before walls are closed. Violations documented with NEC article citations." },
+    { title: "Conduct final inspection", description: "Panel labeling, GFCI/AFCI protection, device installation, equipment connections, and load calculations verified at final." },
+    { title: "Document and close", description: "Inspection results recorded with specific NEC citations for any violations. Passed inspections noted on the permit record for CO eligibility." },
+  ],
+  bridge: { title: "How it works", text: "Electrical deficiencies are a leading cause of building fires. This worker provides NEC-aligned checklists for rough-in and final inspections, documents violations with specific article citations, and tracks corrections. Your electrical inspectors conduct thorough inspections with consistent documentation across your entire team." },
+  valueProps: [
+    { label: "NEC-aligned checklists", description: "Inspection items organized by NEC article — panel, circuits, grounding, bonding, GFCI, AFCI, and special equipment." },
+    { label: "Article-specific citations", description: "Every violation references the NEC article and section — contractors know exactly what code provision applies." },
+    { label: "Amendment tracking", description: "Your jurisdiction's NEC amendments applied on top of the base code — local requirements enforced consistently." },
+  ],
+  faq: [
+    { q: "Which NEC edition does this use?", a: "Your jurisdiction's adopted NEC edition is configured during onboarding. The worker supports the current and prior two editions. When your jurisdiction adopts a new edition, the transition is managed with effective dates so permits issued under the prior code are inspected to that standard." },
+    { q: "Does this cover low-voltage and communications?", a: "Yes. Low-voltage, fire alarm, communications, and data cabling inspections are supported with checklists aligned to the relevant NEC articles and NFPA standards." },
+  ],
+};
+
+// GOV-036: Plumbing Inspector
+WORKER_DETAIL_CONTENT["gov-plumbing-inspector"] = {
+  headline: "Plumbing inspections documented, consistent, and code-compliant",
+  subheadline: "IPC/UPC compliance, DWV system verification, water supply testing, backflow prevention, and fixture count validation — your plumbing inspection program protecting water quality.",
+  steps: [
+    { title: "Review the plumbing permit", description: "Fixture count, pipe sizing, water heater specifications, and backflow prevention requirements reviewed against your adopted plumbing code." },
+    { title: "Conduct underground and rough-in inspections", description: "Sewer and water lines inspected before cover. DWV system tested. Pipe material, slope, hangers, and connections verified." },
+    { title: "Conduct final inspection", description: "Fixtures installed correctly, water heater safety devices present, backflow preventers installed where required, and hot water temperature verified." },
+    { title: "Document and close", description: "Inspection results recorded with specific code citations for any violations. Passed inspections cleared for CO processing." },
+  ],
+  bridge: { title: "How it works", text: "Plumbing systems protect water quality and public health. This worker provides code-aligned checklists for underground, rough-in, and final plumbing inspections. Every violation is documented with the specific code section. Your plumbing inspectors conduct consistent inspections with documentation that meets legal and audit requirements." },
+  valueProps: [
+    { label: "Code-aligned checklists", description: "Inspection items organized by your adopted plumbing code — IPC, UPC, or state-specific code with local amendments." },
+    { label: "Backflow prevention tracking", description: "Backflow prevention device installation and annual testing requirements tracked per your water utility's cross-connection control program." },
+    { label: "Test documentation", description: "Pressure tests, DWV air tests, and water quality results documented with specific test parameters and pass/fail criteria." },
+  ],
+  faq: [
+    { q: "Does this support both IPC and UPC?", a: "Yes. Your jurisdiction's adopted plumbing code — International Plumbing Code, Uniform Plumbing Code, or state-specific code — is configured during onboarding. Local amendments are applied on top of the base code." },
+    { q: "How does backflow prevention tracking work?", a: "The worker tracks backflow prevention device installation requirements by hazard level and annual testing due dates. Properties with overdue testing are flagged. Test results from certified testers are recorded in the property record." },
+  ],
+};
+
+// GOV-037: Reinspection Scheduler
+WORKER_DETAIL_CONTENT["gov-reinspection-scheduler"] = {
+  headline: "Re-inspections scheduled and completed without falling through the cracks",
+  subheadline: "Failed inspection follow-up, correction deadline tracking, re-inspection scheduling, and escalation management — every failed item resolved.",
+  steps: [
+    { title: "Capture failed items", description: "Every failed inspection item logged with the specific violation, required correction, and compliance deadline from the original inspection." },
+    { title: "Notify responsible parties", description: "Contractors and property owners notified of failed items with correction requirements and deadline. Re-inspection request process explained." },
+    { title: "Schedule re-inspections", description: "Re-inspection requests processed and assigned to inspectors. Failed items from the original inspection pre-loaded on the re-inspection checklist." },
+    { title: "Escalate unresolved items", description: "Failed items past their correction deadline without re-inspection request escalated to enforcement. Fee penalties applied per your jurisdiction's policy." },
+  ],
+  bridge: { title: "How it works", text: "Failed inspections only matter if corrections are verified. This worker tracks every failed item from initial failure through correction and re-inspection. Deadlines are monitored, reminders are sent, and unresolved items are escalated. No failed inspection item disappears into a filing cabinet." },
+  valueProps: [
+    { label: "Correction deadline tracking", description: "Every failed item has a correction deadline. The worker monitors compliance and sends reminders before the deadline passes." },
+    { label: "Pre-loaded re-inspection checklists", description: "Re-inspections focus on the specific failed items — inspectors verify corrections without re-inspecting the entire scope." },
+    { label: "Escalation automation", description: "Items past deadline without correction escalated through your enforcement process — no manual follow-up needed to keep cases moving." },
+  ],
+  faq: [
+    { q: "Are re-inspection fees charged?", a: "If your jurisdiction charges re-inspection fees, the worker calculates and collects the fee before the re-inspection is scheduled. Fee policies — first re-inspection free, fees for subsequent, or fees from the first re-inspection — are configured per your jurisdiction's fee schedule." },
+    { q: "How are chronic failures handled?", a: "Properties or contractors with repeated failed inspections on the same items are flagged for supervisor review. Patterns may indicate contractor competency issues or willful non-compliance, which your supervisor can address through contractor credential actions or enhanced enforcement." },
+  ],
+};
+
+// GOV-038: Inspection Report Generator
+WORKER_DETAIL_CONTENT["gov-inspection-report-generator"] = {
+  headline: "Inspection reports generated in the field, not back at the office",
+  subheadline: "Standardized report formatting, photo embedding, code citation linking, and digital delivery — professional inspection reports produced on-site.",
+  steps: [
+    { title: "Capture field data", description: "Inspection results, photos, notes, and code citations captured during the inspection on a mobile device." },
+    { title: "Generate the report", description: "Standardized inspection report generated automatically from field data — property information, inspection scope, findings, photos, and code citations formatted consistently." },
+    { title: "Review and sign", description: "Inspector reviews the generated report on-device, makes any final edits, and applies their digital signature." },
+    { title: "Deliver to stakeholders", description: "Report delivered electronically to the property owner, contractor, and permit file. PDF version available for download from the public portal." },
+  ],
+  bridge: { title: "How it works", text: "Inspectors should not spend their evenings writing reports. This worker generates professional, standardized inspection reports from the data captured during field inspections. Photos are embedded, code sections are cited, and the report is delivered the same day. Your inspection team produces more reports with less effort and more consistency." },
+  valueProps: [
+    { label: "Same-day delivery", description: "Reports generated from field data and delivered electronically the same day — no backlog of reports waiting to be written." },
+    { label: "Consistent formatting", description: "Every report follows the same structure regardless of which inspector conducted the inspection — professional and defensible." },
+    { label: "Photo documentation", description: "Field photos embedded in the report with captions and GPS coordinates — visual evidence linked to specific findings." },
+  ],
+  faq: [
+    { q: "Can report templates be customized?", a: "Yes. Report templates are configured for your jurisdiction's branding, required sections, and formatting preferences. Different templates can be created for different inspection types — building, fire, health, code enforcement." },
+    { q: "Are reports legally admissible?", a: "Reports are digitally signed by the inspector with timestamp and GPS location. Photos include metadata. Code citations reference specific sections. The documentation standard meets the evidentiary requirements for administrative hearings and court proceedings." },
+  ],
+};
+
+// GOV-039: Inspection Backlog Manager
+WORKER_DETAIL_CONTENT["gov-inspection-backlog-manager"] = {
+  headline: "Clear your inspection backlog without hiring more inspectors",
+  subheadline: "Workload analysis, priority scheduling, route optimization, and capacity planning — your inspection program operating at maximum efficiency.",
+  steps: [
+    { title: "Analyze the backlog", description: "Current inspection requests quantified by type, age, priority, and geographic zone. Overdue inspections identified and prioritized." },
+    { title: "Optimize daily routes", description: "Inspector routes planned to minimize travel time and maximize inspections per day. Geographic clustering reduces windshield time." },
+    { title: "Balance workloads", description: "Inspection assignments balanced across your team based on specialty, certification, and current caseload. Overloaded inspectors identified." },
+    { title: "Plan capacity", description: "Volume trends analyzed by permit type and season. Staffing recommendations generated for peak periods. Third-party inspector needs forecasted." },
+  ],
+  bridge: { title: "How it works", text: "Inspection backlogs delay construction, frustrate applicants, and create liability for your jurisdiction. This worker analyzes your backlog, optimizes inspector routes, balances workloads, and forecasts capacity needs. Your existing team completes more inspections per day while your management team plans for peak demand." },
+  valueProps: [
+    { label: "Route optimization", description: "Daily routes planned by geographic zone to minimize travel time — inspectors spend more time inspecting and less time driving." },
+    { label: "Workload balancing", description: "Assignments distributed based on specialty, certification, and current load — no inspector overwhelmed while others have light days." },
+    { label: "Capacity forecasting", description: "Volume trends by permit type and season analyzed to anticipate staffing needs — plan for peak demand before the backlog builds." },
+  ],
+  faq: [
+    { q: "How does route optimization work?", a: "Inspection requests are clustered by geographic zone and sequenced to minimize driving distance. Inspectors receive their daily route with addresses, permit details, and navigation. The optimization considers inspection duration estimates by type so the daily schedule is realistic." },
+    { q: "Can this help justify additional inspector positions?", a: "Yes. The worker provides data-driven capacity analysis — inspection volume, current throughput, backlog trends, and projected demand. This data supports budget requests for additional positions with evidence of need rather than estimates." },
+  ],
+};
+
+// GOV-040: Alex Inspector
+WORKER_DETAIL_CONTENT["gov-alex-inspector"] = {
+  headline: "One AI coordinating your entire inspection operation",
+  subheadline: "Alex orchestrates all inspection workers — building, fire, health, electrical, plumbing, code enforcement — so every inspection is scheduled, conducted, and followed up.",
+  steps: [
+    { title: "Connect your inspection workers", description: "Alex sees every active inspection worker — building, fire, health, electrical, plumbing, code enforcement, re-inspection, and backlog management." },
+    { title: "Coordinate across disciplines", description: "Multi-trade inspections on the same property grouped for efficiency. Building and fire finals coordinated for CO eligibility." },
+    { title: "Surface exceptions", description: "Overdue inspections, unresolved violations, approaching deadlines, and capacity constraints surfaced in priority order." },
+    { title: "Report across the program", description: "Inspection volumes, pass rates, re-inspection rates, average resolution times, and backlog metrics across all inspection types in one view." },
+  ],
+  bridge: { title: "How it works", text: "An inspection department spans multiple disciplines — building, fire, health, electrical, plumbing, and code enforcement. Alex connects them all. When a building final passes but fire has not inspected, Alex flags it. When re-inspections are overdue, Alex escalates. When the backlog grows in one discipline, Alex surfaces it before it becomes a crisis. One orchestrator for all your field operations." },
+  valueProps: [
+    { label: "Cross-discipline coordination", description: "Multi-trade inspections grouped, CO prerequisites tracked across disciplines, and conflicting findings identified." },
+    { label: "Exception management", description: "Overdue inspections, unresolved violations, and capacity constraints surfaced in priority order across all inspection types." },
+    { label: "Program-wide metrics", description: "Pass rates, re-inspection rates, resolution times, and backlogs across building, fire, health, electrical, plumbing, and code enforcement." },
+  ],
+  faq: [
+    { q: "Is Alex required for inspection operations?", a: "No. Each inspection worker operates independently. Alex adds orchestration — cross-discipline coordination, exception management, and program-wide reporting. Alex is free when you have three or more inspection workers active." },
+    { q: "Does Alex assign inspections?", a: "Alex coordinates across disciplines but does not override inspector assignments within a discipline. Each inspection worker manages its own scheduling and assignment. Alex identifies coordination opportunities — like grouping multi-trade inspections on the same property — and flags exceptions across the program." },
+  ],
+};
+
+// GOV-041: Document Recording Intake
+WORKER_DETAIL_CONTENT["gov-document-recording-intake"] = {
+  headline: "Documents recorded accurately on the first submission",
+  subheadline: "Recording requirements validation, indexing, fee calculation, and return — the complete recording workflow from submission to recorded copy.",
+  steps: [
+    { title: "Validate the document", description: "Formatting requirements checked — margins, font size, first-page requirements, notarization, and statutory language verified against your state's recording statute." },
+    { title: "Index the document", description: "Grantor, grantee, legal description, document type, and consideration extracted and indexed. Cross-references to prior documents identified." },
+    { title: "Calculate and collect fees", description: "Recording fees, page fees, transfer tax, and any additional surcharges calculated per your jurisdiction's fee schedule." },
+    { title: "Record and return", description: "Document stamped with recording information — book, page or document number, date, and time. Recorded copy returned to submitter." },
+  ],
+  bridge: { title: "How it works", text: "Document recording is the foundation of property rights. This worker validates every submission against your state's recording requirements, indexes accurately, calculates fees, and records the document. Rejected submissions get specific correction guidance. Accepted submissions are recorded and returned quickly. Your recording desk processes more documents with fewer errors." },
+  valueProps: [
+    { label: "Pre-recording validation", description: "Formatting, notarization, and statutory requirements checked before recording — rejections come with specific corrections needed, not vague deficiency notices." },
+    { label: "Automated indexing", description: "Grantor, grantee, legal description, and document type extracted automatically — index accuracy improves while clerk workload decreases." },
+    { label: "Transfer tax calculation", description: "Documentary transfer tax calculated from consideration amount per your state and local tax rates — correct on every transaction." },
+  ],
+  faq: [
+    { q: "Does this handle electronic recording?", a: "Yes. The worker supports both paper and electronic submissions. Electronic recording (eRecording) submissions are validated against the same requirements as paper — PRIA standards compliance, XML formatting, and document image quality." },
+    { q: "How is the legal description validated?", a: "Legal descriptions are parsed for completeness — metes and bounds, lot and block, or section/township/range. The worker flags incomplete legal descriptions but does not validate boundary accuracy, which requires a surveyor." },
+  ],
+};
+
+// GOV-042: Chain of Title
+WORKER_DETAIL_CONTENT["gov-chain-of-title"] = {
+  headline: "Chain of title traced from patent to present",
+  subheadline: "Ownership history compilation, gap identification, break analysis, and title chain certification — your title research starting from a complete and verified chain.",
+  steps: [
+    { title: "Search the grantor/grantee index", description: "All recorded documents affecting the parcel identified through grantor/grantee index searches — deeds, mortgages, liens, easements, and judgments." },
+    { title: "Build the ownership chain", description: "Conveyances sequenced chronologically to trace ownership from the earliest recorded instrument to the current owner." },
+    { title: "Identify gaps and breaks", description: "Missing links in the ownership chain identified — unrecorded conveyances, probate transfers, tax sales, and foreclosures that may create breaks." },
+    { title: "Generate the chain report", description: "Complete chain of title report with every instrument, recording reference, grantor, grantee, and consideration — ready for title examination." },
+  ],
+  bridge: { title: "How it works", text: "A clean chain of title is the foundation of property ownership. This worker searches your recorded document index, builds the chronological ownership chain, and identifies gaps or breaks that need resolution. Title examiners start with a complete chain instead of spending hours compiling documents manually." },
+  valueProps: [
+    { label: "Automated chain compilation", description: "Grantor/grantee index searched systematically — every recorded instrument affecting the parcel identified and sequenced chronologically." },
+    { label: "Gap identification", description: "Missing conveyances, probate transfers, and other breaks in the chain flagged with explanations of what may need to be resolved." },
+    { label: "Cross-reference linking", description: "Related documents linked — deeds to mortgages, releases to original liens, assignments to original instruments — the complete picture." },
+  ],
+  faq: [
+    { q: "How far back does the chain go?", a: "The chain is compiled from your earliest indexed records — often back to the original government patent. The practical search depth depends on your jurisdiction's indexing history and your state's marketable title act, if applicable." },
+    { q: "Does this replace a title examiner?", a: "No. The worker compiles the chain from your recorded documents. A licensed title examiner reviews the chain, identifies legal issues (adverse possession, boundary disputes, capacity questions), and renders the title opinion. The worker provides the complete data set; the examiner provides the legal analysis." },
+  ],
+};
+
+// GOV-043: Deed Transfer Processor
+WORKER_DETAIL_CONTENT["gov-deed-transfer-processor"] = {
+  headline: "Deed transfers validated and recorded without delay",
+  subheadline: "Deed type verification, grantor capacity confirmation, legal description validation, and transfer tax compliance — every deed transfer processed correctly.",
+  steps: [
+    { title: "Identify the deed type", description: "Warranty, quitclaim, special warranty, trustee's, executor's, or other deed type identified. Requirements specific to the deed type applied." },
+    { title: "Validate execution", description: "Grantor signatures, notarization, witness requirements, and capacity indicators verified against your state's conveyancing statute." },
+    { title: "Check transfer tax compliance", description: "Transfer tax exemption claims validated against statutory exemptions. Taxable consideration calculated. Tax amount verified." },
+    { title: "Record and index", description: "Deed recorded with grantor, grantee, legal description, and consideration indexed. Prior deed cross-referenced. Chain of title updated." },
+  ],
+  bridge: { title: "How it works", text: "Deed transfers are the most important documents your office records. This worker validates every element — deed type, execution, legal description, and transfer tax — before recording. Deficient deeds are returned with specific corrections. Valid deeds are recorded and indexed accurately. Your chain of title stays clean." },
+  valueProps: [
+    { label: "Deed type validation", description: "Requirements specific to each deed type enforced — warranty covenants, quitclaim limitations, trustee authority, and executor capacity." },
+    { label: "Transfer tax compliance", description: "Exemption claims validated against statutory categories. Taxable consideration calculated correctly. Under-declarations flagged." },
+    { label: "Chain of title maintenance", description: "Every recorded deed cross-referenced to the prior instrument — the ownership chain updated automatically." },
+  ],
+  faq: [
+    { q: "How are transfer tax exemptions handled?", a: "Your state's transfer tax exemptions are configured in the system — interfamily transfers, government conveyances, corporate reorganizations, and other exempt categories. Each exemption claim is validated against the statutory requirements, and the exemption code is recorded with the document." },
+    { q: "What about deeds with defects?", a: "Deeds with defects are returned with specific deficiency notices — missing notarization, incomplete legal description, incorrect transfer tax, or other issues. The submitter knows exactly what to correct. Your office avoids recording defective instruments." },
+  ],
+};
+
+// GOV-044: Lien Recording & Release
+WORKER_DETAIL_CONTENT["gov-lien-recording-release"] = {
+  headline: "Every lien recorded and released with full compliance",
+  subheadline: "Mechanics liens, tax liens, judgment liens, and UCC filings — recording, priority tracking, and release processing for every lien type your office handles.",
+  steps: [
+    { title: "Validate the lien filing", description: "Lien type identified. Statutory requirements verified — notice periods, amounts, legal descriptions, and claimant qualifications checked." },
+    { title: "Record and index", description: "Lien recorded against the property or person with type, amount, claimant, and recording reference indexed. Priority position noted." },
+    { title: "Process releases and satisfactions", description: "Lien release or satisfaction validated against the original filing. Partial releases handled with remaining balance tracked." },
+    { title: "Monitor statutory deadlines", description: "Lien expiration dates and statutory renewal deadlines tracked. Expired liens flagged for removal from the active index." },
+  ],
+  bridge: { title: "How it works", text: "Liens affect property rights and must be recorded, tracked, and released with precision. This worker handles every lien type — mechanics, tax, judgment, and UCC — with the specific statutory requirements for each. Releases are validated against original filings. Priority positions are tracked. Expired liens are flagged. Your lien records are current and accurate." },
+  valueProps: [
+    { label: "Multi-type lien support", description: "Mechanics liens, tax liens, judgment liens, and UCC filings — each with type-specific statutory requirements enforced." },
+    { label: "Release validation", description: "Every release matched to its original filing — claimant, amount, and property verified before the lien is cleared." },
+    { label: "Expiration monitoring", description: "Statutory lien duration and renewal deadlines tracked — expired liens flagged for removal from the active index." },
+  ],
+  faq: [
+    { q: "How does lien priority work?", a: "Lien priority is generally determined by recording date and time. The worker tracks the recording order and notes priority position. Special priority rules — such as property tax lien superiority or mechanics lien relation-back dates — are configured per your state's statute." },
+    { q: "What about partial lien releases?", a: "Partial releases are recorded with the portion being released identified — specific lots in a subdivision, for example. The remaining balance and affected property are tracked. The original lien stays active for the unreleased portion." },
+  ],
+};
+
+// GOV-045: RON Notarization
+WORKER_DETAIL_CONTENT["gov-ron-notarization"] = {
+  headline: "Remote online notarization tracked and compliant",
+  subheadline: "RON session verification, notary credential validation, recording journal management, and state compliance monitoring — your office accepting RON documents with confidence.",
+  steps: [
+    { title: "Verify RON authorization", description: "Notary's RON commission verified against your state's notary database. Technology provider certification confirmed." },
+    { title: "Validate the RON session", description: "Audio-video recording reference, identity verification method, and session details validated per your state's RON statute." },
+    { title: "Accept for recording", description: "RON-notarized documents accepted for recording with RON session metadata — notary ID, session ID, and technology provider — indexed." },
+    { title: "Maintain the RON journal", description: "RON sessions logged with recording references, notary identification, and identity verification methods for audit and inquiry response." },
+  ],
+  bridge: { title: "How it works", text: "Remote online notarization is now authorized in most states but requires specific validation by recording offices. This worker verifies notary RON commissions, validates session requirements, and tracks RON metadata for every recorded document. Your office accepts RON documents confidently because every statutory requirement is verified." },
+  valueProps: [
+    { label: "Commission verification", description: "RON notary commissions verified against your state's database — only authorized notaries using approved technology providers accepted." },
+    { label: "Session compliance", description: "Audio-video recording, identity proofing, and credential analysis requirements verified per your state's RON statute." },
+    { label: "Audit trail", description: "Every RON session documented with notary ID, session ID, technology provider, and identity verification method — complete audit trail for inquiries." },
+  ],
+  faq: [
+    { q: "Does our state allow RON?", a: "RON is authorized in most states with varying requirements. The worker is configured with your state's specific RON statute — commission requirements, technology provider standards, identity verification methods, and recording acceptance criteria." },
+    { q: "How do we verify the notary's RON commission?", a: "The worker checks the notary's commission and RON endorsement against your state's notary database. Notaries without active RON authorization are flagged, and documents notarized by unauthorized notaries are rejected with the specific deficiency identified." },
+  ],
+};
+
+// GOV-046: eCORDS Compliance
+WORKER_DETAIL_CONTENT["gov-ecords-compliance"] = {
+  headline: "Electronic recording standards met on every transaction",
+  subheadline: "PRIA compliance, eRecording vendor management, XML validation, and document image standards — your office accepting electronic submissions with confidence.",
+  steps: [
+    { title: "Validate PRIA compliance", description: "Electronic submissions validated against Property Records Industry Association standards — XML schema, document image requirements, and data field formats." },
+    { title: "Manage eRecording vendors", description: "Authorized submitter credentials managed. Vendor performance tracked — submission volumes, rejection rates, and turnaround times." },
+    { title: "Process electronic submissions", description: "PRIA-compliant submissions validated, indexed, and recorded. Recording confirmations returned electronically to the submitter." },
+    { title: "Monitor standards compliance", description: "PRIA version updates tracked. Vendor submissions monitored for compliance. Non-compliant submissions rejected with specific error codes." },
+  ],
+  bridge: { title: "How it works", text: "Electronic recording reduces paper, speeds transactions, and improves accuracy — but requires strict standards compliance. This worker enforces PRIA standards on every electronic submission, manages vendor credentials, and monitors compliance. Your office processes electronic submissions alongside paper with consistent validation." },
+  valueProps: [
+    { label: "PRIA standard enforcement", description: "XML schema, document image quality, data field formatting, and metadata requirements validated on every electronic submission." },
+    { label: "Vendor performance tracking", description: "Submission volumes, rejection rates, and response times tracked per eRecording vendor — problem vendors identified quickly." },
+    { label: "Standards version management", description: "PRIA version transitions managed with backward compatibility — older submissions accepted during transition periods." },
+  ],
+  faq: [
+    { q: "Which eRecording vendors are supported?", a: "The worker supports submissions from any PRIA-compliant eRecording vendor. Vendor credentials are managed individually, and submission performance is tracked per vendor. Your office can authorize and de-authorize vendors as needed." },
+    { q: "Does this replace our current eRecording system?", a: "The worker can complement your existing eRecording system by adding validation, vendor management, and compliance monitoring. Alternatively, it can serve as your primary electronic submission processor. The integration approach depends on your current systems and preferences." },
+  ],
+};
+
+// GOV-047: Recording Fraud Detection
+WORKER_DETAIL_CONTENT["gov-recording-fraud-detection"] = {
+  headline: "Stop fraudulent recordings before they cloud title",
+  subheadline: "Deed fraud detection, notary verification, suspicious pattern identification, and owner notification — protecting property owners from recording fraud.",
+  steps: [
+    { title: "Screen every recording", description: "Every document screened for fraud indicators — forged signatures, impersonated notaries, unauthorized transfers, and suspicious patterns." },
+    { title: "Verify notary credentials", description: "Notary commission, signature, and seal verified against your state's notary database. Expired, revoked, or non-existent commissions flagged." },
+    { title: "Detect suspicious patterns", description: "Same-day transfers, vacant property targeting, elderly owner targeting, and other fraud patterns identified across your recording history." },
+    { title: "Notify property owners", description: "Property owners notified when documents are recorded against their property. Fraudulent recordings flagged for examiner review before indexing." },
+  ],
+  bridge: { title: "How it works", text: "Deed fraud is growing — forged documents recorded to steal property, fraudulent liens filed to extort owners. This worker screens every recording for fraud indicators, verifies notary credentials, and can notify property owners when documents are recorded against their property. Fraudulent recordings are caught before they cloud title." },
+  valueProps: [
+    { label: "Proactive screening", description: "Every document screened for fraud indicators at recording — not discovered months later during a title search." },
+    { label: "Notary verification", description: "Notary credentials verified on every notarized document — forged notarizations caught at the recording desk." },
+    { label: "Owner notification program", description: "Property owners can enroll for notifications when any document is recorded against their property — early detection of unauthorized recordings." },
+  ],
+  faq: [
+    { q: "What types of recording fraud does this detect?", a: "Primary categories include deed fraud (forged deeds transferring ownership), lien fraud (fraudulent liens filed for extortion), identity theft (recordings using stolen identities), and notary fraud (forged or unauthorized notarizations). Each category has specific detection patterns." },
+    { q: "How does the owner notification program work?", a: "Property owners register their parcels. When any document is recorded against a registered parcel, the owner receives an email or text notification. If the owner does not recognize the recording, they contact your office for investigation. Early detection is the best defense against recording fraud." },
+  ],
+};
+
+// GOV-048: Public Records Request
+WORKER_DETAIL_CONTENT["gov-public-records-request"] = {
+  headline: "Public records requests fulfilled accurately and on time",
+  subheadline: "Request intake, document retrieval, fee calculation, redaction management, and statutory deadline tracking — your public records obligations met without dedicated staff.",
+  steps: [
+    { title: "Receive the request", description: "Public records request logged with specific documents or search criteria identified. Statutory response deadline calculated and tracked." },
+    { title: "Search and retrieve", description: "Requested documents located in the recording index. Search results compiled with document images, recording references, and index data." },
+    { title: "Apply redactions", description: "Social security numbers, financial account numbers, and other exempt information identified and redacted per your state's public records exemptions." },
+    { title: "Fulfill and document", description: "Responsive documents delivered with fee invoice. Response documented with records provided, exemptions cited, and fulfillment date recorded." },
+  ],
+  bridge: { title: "How it works", text: "Public records requests have statutory deadlines and exemption requirements. This worker logs every request, tracks the response deadline, locates documents, applies required redactions, and documents the fulfillment. Your office meets its statutory obligations consistently without dedicated public records staff." },
+  valueProps: [
+    { label: "Statutory deadline tracking", description: "Every request tracked against your state's public records response deadline — approaching deadlines escalated automatically." },
+    { label: "Automated redaction", description: "SSNs, financial account numbers, and other exempt information identified and redacted per your state's exemption statutes." },
+    { label: "Fulfillment documentation", description: "Every response documented — records provided, exemptions cited, fees charged, and delivery method recorded for your audit trail." },
+  ],
+  faq: [
+    { q: "What is the response deadline?", a: "Response deadlines vary by state — typically 3 to 10 business days from receipt. Your state's specific deadline is configured during onboarding. The worker tracks calendar days and business days per your statute." },
+    { q: "How are exemptions handled?", a: "Your state's public records exemptions are configured in the system. When exempt information is found in responsive documents — SSNs, financial accounts, certain personal information — it is redacted with the specific exemption statute cited in the response." },
+  ],
+};
+
+// GOV-049: Index Search Engine
+WORKER_DETAIL_CONTENT["gov-index-search-engine"] = {
+  headline: "Find any recorded document in seconds",
+  subheadline: "Grantor/grantee search, document type filtering, date range queries, and legal description lookup — your recording index searchable by any combination of criteria.",
+  steps: [
+    { title: "Search by name", description: "Grantor and grantee name searches with fuzzy matching for spelling variations, maiden names, and corporate name changes." },
+    { title: "Search by property", description: "Legal description, assessor parcel number, or property address searches to find all documents recorded against a specific property." },
+    { title: "Filter and refine", description: "Results filtered by document type, date range, recording number, and other criteria. Complex searches combine multiple parameters." },
+    { title: "View and retrieve", description: "Search results display index data with links to document images. Documents available for viewing, download, and certified copy ordering." },
+  ],
+  bridge: { title: "How it works", text: "Your recording index is the gateway to the public record. This worker makes it searchable by name, property, document type, date, and any combination of criteria. Fuzzy matching handles spelling variations. Cross-references link related documents. Title searchers, attorneys, and the public find what they need without counter assistance." },
+  valueProps: [
+    { label: "Fuzzy name matching", description: "Spelling variations, maiden names, and corporate name changes handled — searches find records even when names do not match exactly." },
+    { label: "Multi-criteria search", description: "Name, property, document type, date range, and recording number combined in a single search — precise results without manual filtering." },
+    { label: "Document image access", description: "Search results link directly to document images — view, download, or order certified copies from the search results." },
+  ],
+  faq: [
+    { q: "Is this available to the public?", a: "Yes. The search engine can be deployed as a public-facing tool for title searchers, attorneys, and citizens. Access controls can restrict document image viewing to registered users or in-office terminals per your jurisdiction's policy." },
+    { q: "How far back do the records go?", a: "The search engine covers all indexed records in your system — from the earliest indexed documents to the most recent recordings. If your jurisdiction has digitized historical records, those are searchable as well." },
+  ],
+};
+
+// GOV-050: Historical Digitization (first instance)
+WORKER_DETAIL_CONTENT["gov-historical-digitization"] = {
+  headline: "Historical records digitized, indexed, and searchable",
+  subheadline: "Book and page scanning, handwritten index recognition, OCR processing, and digital archive management — your historical records preserved and accessible.",
+  steps: [
+    { title: "Scan historical books", description: "Recorded document books scanned at archival quality. Page sequences verified against book and page indexes. Image quality validated." },
+    { title: "Process with OCR", description: "Optical character recognition applied to typed and handwritten documents. AI-assisted handwriting recognition for historical scripts." },
+    { title: "Index the records", description: "Grantor, grantee, legal description, document type, and date extracted from OCR output. Ambiguous entries flagged for human review." },
+    { title: "Integrate with active index", description: "Digitized historical records merged with your active recording index — one search covers the entire recording history." },
+  ],
+  bridge: { title: "How it works", text: "Historical records in book vaults are inaccessible, fragile, and unsearchable. This worker manages the digitization process — scanning, OCR, AI-assisted handwriting recognition, indexing, and integration with your active recording system. Your historical records become searchable, preservable, and accessible without handling the originals." },
+  valueProps: [
+    { label: "AI handwriting recognition", description: "Historical handwritten entries recognized using AI-trained models — not just OCR on typed text, but actual handwriting from historical recorders." },
+    { label: "Archival quality scanning", description: "Document images captured at archival resolution with quality validation — your digital copies are preservation-grade." },
+    { label: "Unified search", description: "Historical and modern records searchable in one index — title searchers do not need separate systems for older records." },
+  ],
+  faq: [
+    { q: "How accurate is the handwriting recognition?", a: "AI-assisted handwriting recognition achieves high accuracy on common historical scripts but flags low-confidence entries for human review. Names, dates, and legal descriptions are verified against existing index entries where available. The goal is searchability, not perfection — flagged entries are accessible even if the OCR is uncertain." },
+    { q: "What about damaged or deteriorated records?", a: "Image enhancement is applied to faded, stained, or damaged pages before OCR processing. Severely damaged sections are flagged for manual review. The digital image preserves the current state of the document regardless of physical condition." },
+  ],
+};
+
+// GOV-051: Fee Collection & Reconciliation
+WORKER_DETAIL_CONTENT["gov-fee-collection-reconciliation"] = {
+  headline: "Every recording fee collected, reconciled, and reported",
+  subheadline: "Fee calculation, payment processing, daily reconciliation, and statutory fund distribution — your recorder's financial operations balanced and audit-ready.",
+  steps: [
+    { title: "Calculate recording fees", description: "Base recording fee, page fees, transfer tax, technology surcharge, and any special fees calculated per your jurisdiction's fee schedule." },
+    { title: "Process payments", description: "Cash, check, credit card, and electronic payments accepted. Escrow and title company accounts managed with deposit and drawdown tracking." },
+    { title: "Reconcile daily", description: "Payments matched to recording transactions. Over/short discrepancies identified by clerk and payment method. Bank deposit prepared." },
+    { title: "Distribute to statutory funds", description: "Recording fees, transfer taxes, and surcharges distributed to the correct funds per your statutory distribution formula. Treasury reports generated." },
+  ],
+  bridge: { title: "How it works", text: "Recorder offices collect significant revenue that must be reconciled daily and distributed to multiple funds. This worker calculates fees, processes payments, reconciles transactions, and distributes revenue per your statutory formula. Your daily close is accurate, your fund distributions are correct, and your audit trail is complete." },
+  valueProps: [
+    { label: "Statutory fund distribution", description: "Revenue distributed to general fund, document storage fund, technology fund, and other statutory recipients per your distribution formula." },
+    { label: "Escrow account management", description: "Title company and escrow trust accounts managed with deposit, drawdown, and balance tracking — no more manual ledger cards." },
+    { label: "Audit-ready reconciliation", description: "Every fee matched to its recording transaction, every payment matched to its deposit — auditors trace any dollar to its source." },
+  ],
+  faq: [
+    { q: "How are title company accounts handled?", a: "Title companies and frequent filers can maintain deposit accounts. Fees are deducted per recording transaction. Account balances are tracked in real time. Low balance alerts are sent before the account reaches zero. Monthly statements are generated automatically." },
+    { q: "How does the statutory distribution work?", a: "Your state statute defines how recording fees are distributed — typically a base fee to the general fund, a per-page fee to the document storage fund, a technology surcharge to the technology fund, and transfer tax to state and local recipients. The worker applies your specific formula and generates the distribution report." },
+  ],
+};
+
+// GOV-052: Assessor Valuation Sync
+WORKER_DETAIL_CONTENT["gov-assessor-valuation-sync"] = {
+  headline: "Recording data flowing to your assessor in real time",
+  subheadline: "Deed transfer notifications, sale price reporting, ownership changes, and legal description updates — your assessor's rolls updated from recorded documents automatically.",
+  steps: [
+    { title: "Identify assessor-relevant recordings", description: "Deeds, contracts, court orders, and other documents that affect ownership or valuation identified automatically at recording." },
+    { title: "Extract transfer data", description: "Sale price, parties, legal description, and transfer conditions extracted from the recorded document for assessor notification." },
+    { title: "Send to assessor", description: "Transfer data transmitted to the assessor's system in their required format. Confirmation of receipt tracked." },
+    { title: "Track discrepancies", description: "Assessor feedback on ownership mismatches, parcel splits/merges, and valuation questions tracked through resolution." },
+  ],
+  bridge: { title: "How it works", text: "Assessors depend on recording data to maintain accurate ownership rolls and market-based valuations. This worker identifies every recording that affects the assessor's records, extracts the relevant data, and transmits it automatically. Your assessor gets real-time transfer data instead of waiting for quarterly reconciliation." },
+  valueProps: [
+    { label: "Real-time transfer notification", description: "Deeds recorded today are transmitted to the assessor today — no quarterly batch reconciliation or manual transfer logs." },
+    { label: "Sale price extraction", description: "Consideration amounts extracted from deeds and transfer tax affidavits — the assessor gets market data as transactions record." },
+    { label: "Ownership synchronization", description: "Grantor/grantee data mapped to the assessor's ownership records — changes flagged when recorder and assessor data diverge." },
+  ],
+  faq: [
+    { q: "Does this work with our assessor's system?", a: "The worker generates transfer data in configurable formats. Common integrations include direct database updates, file exports (CSV, XML), and API connections. The specific integration is configured based on your assessor's system during onboarding." },
+    { q: "How are non-arm's-length transfers identified?", a: "Transfers between related parties, interfamily conveyances, and other non-arm's-length transactions are flagged based on transfer tax exemption codes, deed type, and consideration amount. The assessor is notified that the sale price may not reflect market value." },
+  ],
+};
+
+// GOV-053: Lien Priority & Subordination
+WORKER_DETAIL_CONTENT["gov-lien-priority-subordination"] = {
+  headline: "Lien priority tracked and subordination agreements processed correctly",
+  subheadline: "Priority position calculation, subordination agreement validation, priority disputes flagged, and lien stack visualization — clear answers to who gets paid first.",
+  steps: [
+    { title: "Calculate lien priority", description: "Recording date and time establish priority position per your state's recording statute. Special priority rules (tax liens, mechanics liens) applied." },
+    { title: "Process subordination agreements", description: "Subordination agreements validated — original lien identified, new priority order confirmed, all parties' consent verified." },
+    { title: "Visualize the lien stack", description: "All liens on a property displayed in priority order with amounts, holders, and recording references — the complete lien picture." },
+    { title: "Flag priority disputes", description: "Conflicting priority claims, recording sequence questions, and mechanics lien relation-back disputes identified for examiner review." },
+  ],
+  bridge: { title: "How it works", text: "Lien priority determines who gets paid first in a foreclosure — and getting it wrong has serious consequences. This worker calculates priority positions from recording data, processes subordination agreements, and flags disputes. Title examiners and lenders get clear, documented priority analysis instead of manual recording sequence research." },
+  valueProps: [
+    { label: "Automatic priority calculation", description: "Priority positions calculated from recording dates and times with special rules for tax liens, mechanics liens, and other statutory priorities." },
+    { label: "Subordination processing", description: "Subordination agreements validated against original lien data — new priority order confirmed with all parties' consent documented." },
+    { label: "Lien stack visualization", description: "All liens on a property displayed in priority order — amounts, holders, recording references, and subordination history in one view." },
+  ],
+  faq: [
+    { q: "How does mechanics lien priority work?", a: "Mechanics liens often have relation-back priority to the date of first work or first visible improvement — not the recording date. The worker tracks the claimed priority date, the recording date, and any competing liens in between. Priority disputes are flagged for examiner review with the relevant statutory provisions cited." },
+    { q: "What about property tax lien priority?", a: "Property tax liens have statutory superiority in most jurisdictions — they are senior to all other liens regardless of recording date. The worker recognizes tax lien priority and displays them at the top of the lien stack with the statutory authority cited." },
+  ],
+};
+
+// GOV-054: Public Chain Query
+WORKER_DETAIL_CONTENT["gov-public-chain-query"] = {
+  headline: "Property ownership history available to the public instantly",
+  subheadline: "Public-facing ownership search, document retrieval, certified copy ordering, and lien status inquiry — citizen access to the public record without counter visits.",
+  steps: [
+    { title: "Search by property or name", description: "Citizens search by property address, assessor parcel number, or owner name. Results display all recorded documents associated with the search criteria." },
+    { title: "View ownership history", description: "Chronological ownership chain displayed with deed references, dates, and consideration. Current owner and lien status shown." },
+    { title: "Retrieve documents", description: "Document images available for viewing and download. Index data displayed for each document — type, parties, recording reference." },
+    { title: "Order certified copies", description: "Certified copies ordered online with fee payment. Copies mailed or available for pickup. Digital certified copies where authorized." },
+  ],
+  bridge: { title: "How it works", text: "Citizens, title companies, and attorneys need access to recorded documents and ownership history. This worker provides a public-facing search portal with ownership chains, document images, and certified copy ordering. Your counter staff handles complex research while routine lookups and copy orders process online." },
+  valueProps: [
+    { label: "Self-service access", description: "Property ownership history, recorded documents, and lien status available online 24/7 — no office visit needed for routine lookups." },
+    { label: "Certified copy ordering", description: "Online ordering with payment processing — certified copies mailed or available for pickup without counter wait." },
+    { label: "Counter traffic reduction", description: "Routine document lookups and copy orders handled online — your counter staff focuses on complex research and recording services." },
+  ],
+  faq: [
+    { q: "Is there a fee for online searches?", a: "Your jurisdiction sets the fee policy. Common approaches include free basic searching with fees for document image viewing, per-page fees for downloads, and subscription plans for title companies and frequent users." },
+    { q: "Are certified copies available electronically?", a: "Where your state authorizes electronic certified copies, the worker generates digitally signed certified copies for download. Otherwise, certified copies are produced physically and mailed or made available for pickup." },
+  ],
+};
+
+// GOV-055: Recorder Audit Readiness
+WORKER_DETAIL_CONTENT["gov-recorder-audit-readiness"] = {
+  headline: "Pass your recorder's audit before the auditors arrive",
+  subheadline: "Continuous compliance monitoring, recording accuracy verification, fee audit trails, and fund distribution validation — your recorder's office audit-ready every day.",
+  steps: [
+    { title: "Run continuous compliance checks", description: "Recording accuracy, fee calculations, fund distributions, and statutory requirements checked automatically against audit criteria." },
+    { title: "Verify recording integrity", description: "Index accuracy, document image quality, sequence gaps, and cross-reference consistency validated. Discrepancies flagged for correction." },
+    { title: "Audit fee collections", description: "Every fee traced from calculation through collection, reconciliation, and fund distribution. Missing fees, incorrect calculations, and distribution errors identified." },
+    { title: "Prepare audit documentation", description: "Sample transactions, reconciliation reports, fund distribution summaries, and policy compliance evidence assembled for auditor review." },
+  ],
+  bridge: { title: "How it works", text: "Recorder audits examine recording accuracy, fee compliance, and fund distribution. This worker runs the same checks continuously — not just before an audit. Recording errors are caught and corrected when they happen. Fee calculations are verified on every transaction. Fund distributions are validated daily. When the auditor arrives, your documentation is organized and your compliance is demonstrated." },
+  valueProps: [
+    { label: "Continuous recording verification", description: "Index accuracy, document image quality, and sequence integrity checked on every recording — errors corrected immediately, not found in audit." },
+    { label: "Fee compliance monitoring", description: "Every fee calculation verified against your fee schedule — incorrect fees flagged and corrected before they compound into audit findings." },
+    { label: "Fund distribution validation", description: "Statutory fund distributions verified daily — every dollar in the correct fund with documentation of the distribution formula applied." },
+  ],
+  faq: [
+    { q: "What does the audit check?", a: "Common recorder audit criteria include recording accuracy (correct indexing, complete images), fee compliance (correct calculation and collection), fund distribution (statutory formula followed), refund controls (proper authorization and documentation), and records retention (required preservation periods met). Your specific audit criteria are configured during onboarding." },
+    { q: "How does this integrate with my auditor's process?", a: "The worker generates documentation in the format your auditor expects — sample transaction reports, reconciliation summaries, and compliance checklists. When the auditor requests a sample, the documentation is generated instantly. Your staff spends the audit answering questions, not assembling files." },
+  ],
+};
+
+// GOV-056: Historical Records Digitization
+WORKER_DETAIL_CONTENT["gov-historical-records-digitization"] = {
+  headline: "Preserve your oldest records before they deteriorate further",
+  subheadline: "Prioritized digitization of fragile and at-risk historical records, conservation-grade scanning, and long-term digital preservation — protecting your jurisdiction's documentary heritage.",
+  steps: [
+    { title: "Assess and prioritize", description: "Historical record books assessed for physical condition, research demand, and preservation urgency. Digitization queue prioritized by risk and value." },
+    { title: "Scan at conservation grade", description: "Fragile documents handled per archival standards. Scanning at 400+ DPI with color calibration. Book cradles and non-contact scanners for bound volumes." },
+    { title: "Process and preserve", description: "Master archival images stored in TIFF format. Access copies generated in PDF/A. Checksums calculated for integrity verification." },
+    { title: "Make accessible", description: "Digitized records integrated into your search index. Original books retired from public handling. Digital access replaces physical access for routine research." },
+  ],
+  bridge: { title: "How it works", text: "Historical records deteriorate every time they are handled. This worker manages the prioritized digitization of your most fragile and valuable records — conservation-grade scanning, archival storage, and digital access. Your oldest records are preserved digitally and made accessible without further physical handling." },
+  valueProps: [
+    { label: "Conservation-priority scanning", description: "Most fragile and at-risk records digitized first — preservation decisions driven by physical condition, not convenience." },
+    { label: "Archival storage standards", description: "Master images in TIFF, access copies in PDF/A, checksums for integrity — your digital copies meet long-term preservation standards." },
+    { label: "Physical handling reduction", description: "Digitized records accessed digitally — original books retired from public handling, reducing further deterioration." },
+  ],
+  faq: [
+    { q: "How is this different from the Historical Digitization worker?", a: "The Historical Digitization worker (GOV-050) focuses on OCR, indexing, and searchability — making records findable. This worker focuses on preservation — conservation-grade scanning, archival storage, and protecting fragile originals from further handling. They work together: preservation-grade images feed into the indexing workflow." },
+    { q: "What about records that are too fragile to scan?", a: "Severely deteriorated records may require conservation treatment before scanning — flattening, deacidification, or encapsulation. The worker identifies records that need conservation treatment and tracks them separately from the scanning queue." },
+  ],
+};
+
+// GOV-057: Alex Recorder
+WORKER_DETAIL_CONTENT["gov-alex-recorder"] = {
+  headline: "One AI coordinating your entire recorder's office",
+  subheadline: "Alex orchestrates all recorder workers — intake, chain of title, deed processing, liens, fraud detection, and digitization — so every recording is accurate and every process connects.",
+  steps: [
+    { title: "Connect your recorder workers", description: "Alex sees every active worker in your recorder deployment — intake, chain of title, deeds, liens, RON, fraud, public records, fees, and digitization." },
+    { title: "Route work automatically", description: "Recorded documents update the chain of title. Deed transfers notify the assessor. Lien releases clear the title. Alex handles the routing between workers." },
+    { title: "Surface exceptions", description: "Fraud alerts, recording errors, fee discrepancies, overdue public records requests, and compliance exceptions surfaced in priority order." },
+    { title: "Report across the office", description: "Recording volumes, fee collections, fund distributions, search activity, and digitization progress — all recorder metrics in one dashboard." },
+  ],
+  bridge: { title: "How it works", text: "A recorder's office handles document recording, chain of title, liens, fraud prevention, public access, fee collection, and preservation. Alex connects every worker so each recording triggers the downstream updates — chain of title, assessor notification, fee distribution, and public index. One orchestrator for your entire recording operation." },
+  valueProps: [
+    { label: "Recording lifecycle orchestration", description: "Document recorded, indexed, chain updated, assessor notified, fees distributed, public index updated — every step triggered automatically." },
+    { label: "Cross-function exception management", description: "Fraud alerts, recording errors, fee discrepancies, and compliance issues surfaced across all recorder functions in priority order." },
+    { label: "Office-wide metrics", description: "Recording volumes, fee collections, turnaround times, search activity, and digitization progress in one dashboard for your recorder." },
+  ],
+  faq: [
+    { q: "Is Alex required for recorder operations?", a: "No. Each recorder worker operates independently. Alex adds orchestration — automatic routing between recording and downstream processes, exception management, and office-wide reporting. Alex is free when you have three or more recorder workers active." },
+    { q: "Does Alex make recording decisions?", a: "No. Alex routes, monitors, and reports. Recording acceptance decisions are made by your deputy recorders. Fraud determinations are made by your examiners. Fee calculations follow your fee schedule. Alex ensures every recording triggers the correct downstream processes and nothing falls through the cracks." },
+  ],
+};
+
 // Admin Command Center
 import AdminCommandCenter from "./admin/AdminShell";
 import "./admin/admin.css";

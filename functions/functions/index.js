@@ -9985,6 +9985,747 @@ Analyze now:`;
       }
     }
 
+    // ═══════════════════════════════════════════════════════════════
+    //  GOVERNMENT IN A BOX — Routes (GOV-000 through GOV-057)
+    // ═══════════════════════════════════════════════════════════════
+
+    const { emitEvent, queryEvents, markProcessed } = require("./services/workerEventBus");
+    const { requireJurisdictionRole, createJurisdictionUser, createJurisdiction, listJurisdictionUsers } = require("./helpers/jurisdictionRbac");
+    const { checkSubscriptionOrReject } = require("./middleware/subscriptionCheck");
+    const govSuiteDefaults = require("./raas/suiteDefaults/government");
+
+    // ── GOV-000: Jurisdiction Onboarding ──
+
+    if (route === "/gov/onboard/jurisdiction" && method === "POST") {
+      const { fips_code, jurisdiction_name, state, jurisdiction_type, primary_contact_name, primary_contact_email, primary_contact_phone, ein, suites_requested, compliance_config } = body;
+      if (!fips_code || !jurisdiction_name || !state || !ein) {
+        return jsonError(res, 400, "Missing required onboarding fields");
+      }
+      if (!suites_requested || !Array.isArray(suites_requested) || suites_requested.length === 0) {
+        return jsonError(res, 400, "Must request at least one suite");
+      }
+      try {
+        const result = await createJurisdiction({
+          fips_code, jurisdiction_name, state, jurisdiction_type,
+          primary_contact_name, primary_contact_email, primary_contact_phone,
+          ein, suites_requested,
+          compliance_config: compliance_config || {},
+        });
+        // Create admin role for the onboarding user
+        await createJurisdictionUser(fips_code, user.uid, {
+          role: "jurisdiction_admin",
+          suites: suites_requested,
+          department: "administration",
+        }, user.uid);
+        console.log(`[gov:onboard] Jurisdiction ${fips_code} created by ${user.uid}`);
+        return res.json({ ok: true, fips: fips_code, status: "onboarding" });
+      } catch (e) {
+        console.error("[gov:onboard] error:", e.message);
+        return jsonError(res, 400, e.message);
+      }
+    }
+
+    if (route === "/gov/onboard/status" && method === "GET") {
+      const fips = req.query.fips || body.fips;
+      if (!fips) return jsonError(res, 400, "Missing fips parameter");
+      try {
+        const doc = await db.doc(`jurisdictions/${fips}`).get();
+        if (!doc.exists) return jsonError(res, 404, "Jurisdiction not found");
+        return res.json({ ok: true, jurisdiction: { id: doc.id, ...doc.data() } });
+      } catch (e) {
+        console.error("[gov:onboard:status] error:", e.message);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    if (route === "/gov/onboard/sign-report" && method === "POST") {
+      const { fips_code, report_hash, signature_envelope_id } = body;
+      if (!fips_code || !report_hash) return jsonError(res, 400, "Missing fips_code or report_hash");
+      try {
+        await db.doc(`jurisdictions/${fips_code}`).update({
+          status: "active",
+          onboarding_report_hash: report_hash,
+          signature_envelope_id: signature_envelope_id || null,
+          onboarding_completed_at: nowServerTs(),
+        });
+        // Write audit entry #1
+        await db.collection(`jurisdictions/${fips_code}/auditTrail`).add({
+          type: "onboarding_completed",
+          report_hash,
+          userId: user.uid,
+          createdAt: nowServerTs(),
+        });
+        console.log(`[gov:onboard:sign] Jurisdiction ${fips_code} activated`);
+        return res.json({ ok: true, status: "active" });
+      } catch (e) {
+        console.error("[gov:onboard:sign] error:", e.message);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ── GOV: Jurisdiction User Management ──
+
+    if (route === "/gov/jurisdiction/users" && method === "GET") {
+      const fips = req.query.fips || body.fips;
+      if (!fips) return jsonError(res, 400, "Missing fips");
+      const auth = await requireJurisdictionRole(fips, user.uid, "jurisdiction_admin");
+      if (!auth.authorized) return jsonError(res, 403, auth.reason);
+      try {
+        const users = await listJurisdictionUsers(fips);
+        return res.json({ ok: true, users });
+      } catch (e) {
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    if (route === "/gov/jurisdiction/users/add" && method === "POST") {
+      const { fips_code, target_uid, role, suites, department } = body;
+      if (!fips_code || !target_uid || !role) return jsonError(res, 400, "Missing fields");
+      const auth = await requireJurisdictionRole(fips_code, user.uid, "jurisdiction_admin");
+      if (!auth.authorized) return jsonError(res, 403, auth.reason);
+      try {
+        await createJurisdictionUser(fips_code, target_uid, { role, suites: suites || [], department }, user.uid);
+        return res.json({ ok: true });
+      } catch (e) {
+        return jsonError(res, 400, e.message);
+      }
+    }
+
+    // ── DMV Suite Routes ──
+
+    if (route === "/gov/dmv/title-intake" && method === "POST") {
+      const { fips_code } = body;
+      if (!fips_code) return jsonError(res, 400, "Missing fips_code");
+      const auth = await requireJurisdictionRole(fips_code, user.uid, "field_operator", { requiredSuite: "dmv" });
+      if (!auth.authorized) return jsonError(res, 403, auth.reason);
+      const sub = await checkSubscriptionOrReject("GOV-001", ctx.tenantId || fips_code, res);
+      if (!sub.allowed) return;
+      try {
+        const { vin, year_make_model, odometer_reading, seller_name, buyer_name, purchase_price, payment_intent_id, supporting_docs } = body;
+        const recordId = db.collection("govTitleRecords").doc().id;
+        await db.doc(`govTitleRecords/${recordId}`).set({
+          recordId, fips_code, vin, year_make_model, odometer_reading,
+          seller_name, buyer_name, purchase_price, payment_intent_id,
+          supporting_docs: supporting_docs || [],
+          status: "submitted", submittedBy: user.uid,
+          createdAt: nowServerTs(),
+        });
+        await emitEvent("dmv.title.intake.submitted", { recordId, vin, fips_code }, { jurisdictionFips: fips_code, tenantId: ctx.tenantId, userId: user.uid });
+        await db.collection(`jurisdictions/${fips_code}/auditTrail`).add({
+          type: "dmv.title.intake", recordId, userId: user.uid, createdAt: nowServerTs(),
+        });
+        return res.json({ ok: true, recordId, status: "submitted" });
+      } catch (e) {
+        console.error("[gov:dmv:title-intake] error:", e.message);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    if (route === "/gov/dmv/lien" && method === "POST") {
+      const { fips_code } = body;
+      if (!fips_code) return jsonError(res, 400, "Missing fips_code");
+      const auth = await requireJurisdictionRole(fips_code, user.uid, "field_operator", { requiredSuite: "dmv" });
+      if (!auth.authorized) return jsonError(res, 403, auth.reason);
+      const sub = await checkSubscriptionOrReject("GOV-002", ctx.tenantId || fips_code, res);
+      if (!sub.allowed) return;
+      try {
+        const recordId = db.collection("govLienRecords").doc().id;
+        await db.doc(`govLienRecords/${recordId}`).set({
+          ...body, recordId, status: "submitted", submittedBy: user.uid, createdAt: nowServerTs(),
+        });
+        return res.json({ ok: true, recordId, status: "submitted" });
+      } catch (e) {
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    if (route === "/gov/dmv/fraud-check" && method === "POST") {
+      const { fips_code, title_record_id } = body;
+      if (!fips_code || !title_record_id) return jsonError(res, 400, "Missing fields");
+      const auth = await requireJurisdictionRole(fips_code, user.uid, "department_super", { requiredSuite: "dmv" });
+      if (!auth.authorized) return jsonError(res, 403, auth.reason);
+      try {
+        const record = await db.doc(`govTitleRecords/${title_record_id}`).get();
+        if (!record.exists) return jsonError(res, 404, "Title record not found");
+        // Fraud check writes to audit trail
+        const checkId = db.collection("govFraudChecks").doc().id;
+        await db.doc(`govFraudChecks/${checkId}`).set({
+          checkId, fips_code, title_record_id, status: "pending",
+          requestedBy: user.uid, createdAt: nowServerTs(),
+        });
+        await emitEvent("dmv.title.fraud_flag", { checkId, title_record_id, fips_code }, { jurisdictionFips: fips_code, tenantId: ctx.tenantId, userId: user.uid });
+        return res.json({ ok: true, checkId, status: "pending" });
+      } catch (e) {
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    if (route === "/gov/dmv/dl-intake" && method === "POST") {
+      const { fips_code } = body;
+      if (!fips_code) return jsonError(res, 400, "Missing fips_code");
+      const auth = await requireJurisdictionRole(fips_code, user.uid, "field_operator", { requiredSuite: "dmv" });
+      if (!auth.authorized) return jsonError(res, 403, auth.reason);
+      const sub = await checkSubscriptionOrReject("GOV-004", ctx.tenantId || fips_code, res);
+      if (!sub.allowed) return;
+      try {
+        const recordId = db.collection("govDlRecords").doc().id;
+        await db.doc(`govDlRecords/${recordId}`).set({
+          ...body, recordId, status: "submitted", submittedBy: user.uid, createdAt: nowServerTs(),
+        });
+        return res.json({ ok: true, recordId, status: "submitted" });
+      } catch (e) {
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    if (route === "/gov/dmv/registration-renewal" && method === "POST") {
+      const { fips_code } = body;
+      if (!fips_code) return jsonError(res, 400, "Missing fips_code");
+      const auth = await requireJurisdictionRole(fips_code, user.uid, "field_operator", { requiredSuite: "dmv" });
+      if (!auth.authorized) return jsonError(res, 403, auth.reason);
+      const sub = await checkSubscriptionOrReject("GOV-007", ctx.tenantId || fips_code, res);
+      if (!sub.allowed) return;
+      try {
+        const recordId = db.collection("govRegistrationRenewals").doc().id;
+        await db.doc(`govRegistrationRenewals/${recordId}`).set({
+          ...body, recordId, status: "submitted", submittedBy: user.uid, createdAt: nowServerTs(),
+        });
+        return res.json({ ok: true, recordId, status: "submitted" });
+      } catch (e) {
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    if (route === "/gov/dmv/dppa-log" && method === "POST") {
+      const { fips_code, access_reason, permissible_use_code, record_accessed } = body;
+      if (!fips_code || !permissible_use_code) return jsonError(res, 400, "Missing DPPA fields");
+      const auth = await requireJurisdictionRole(fips_code, user.uid, "field_operator", { requiredSuite: "dmv" });
+      if (!auth.authorized) return jsonError(res, 403, auth.reason);
+      try {
+        const logId = db.collection("govDppaLog").doc().id;
+        await db.doc(`govDppaLog/${logId}`).set({
+          logId, fips_code, access_reason, permissible_use_code,
+          record_accessed, accessedBy: user.uid, createdAt: nowServerTs(),
+        });
+        await db.collection(`jurisdictions/${fips_code}/auditTrail`).add({
+          type: "dppa.access", logId, permissible_use_code, userId: user.uid, createdAt: nowServerTs(),
+        });
+        return res.json({ ok: true, logId });
+      } catch (e) {
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ── Permitting Suite Routes ──
+
+    if (route === "/gov/permitting/intake" && method === "POST") {
+      const { fips_code } = body;
+      if (!fips_code) return jsonError(res, 400, "Missing fips_code");
+      const auth = await requireJurisdictionRole(fips_code, user.uid, "field_operator", { requiredSuite: "permitting" });
+      if (!auth.authorized) return jsonError(res, 403, auth.reason);
+      const sub = await checkSubscriptionOrReject("GOV-016", ctx.tenantId || fips_code, res);
+      if (!sub.allowed) return;
+      try {
+        const { application_type, parcel_number, applicant_name, applicant_email, contractor_license, valuation, description, documents, payment_intent_id } = body;
+        const permitId = db.collection("govPermitApplications").doc().id;
+        await db.doc(`govPermitApplications/${permitId}`).set({
+          permitId, fips_code, application_type, parcel_number,
+          applicant_name, applicant_email, contractor_license, valuation,
+          description, documents: documents || [], payment_intent_id,
+          status: "submitted", submittedBy: user.uid, createdAt: nowServerTs(),
+        });
+        await emitEvent("perm.intake.routed_for_review", { permitId, application_type, fips_code }, { jurisdictionFips: fips_code, tenantId: ctx.tenantId, userId: user.uid });
+        if (application_type === "event") {
+          await emitEvent("perm.intake.event_permit", { permitId, fips_code }, { jurisdictionFips: fips_code, tenantId: ctx.tenantId, userId: user.uid });
+        }
+        if (application_type === "environmental") {
+          await emitEvent("perm.intake.env_review_required", { permitId, fips_code }, { jurisdictionFips: fips_code, tenantId: ctx.tenantId, userId: user.uid });
+        }
+        await emitEvent("perm.intake.fee_required", { permitId, valuation, fips_code }, { jurisdictionFips: fips_code, tenantId: ctx.tenantId, userId: user.uid });
+        await db.collection(`jurisdictions/${fips_code}/auditTrail`).add({
+          type: "perm.intake", permitId, userId: user.uid, createdAt: nowServerTs(),
+        });
+        return res.json({ ok: true, permitId, status: "submitted" });
+      } catch (e) {
+        console.error("[gov:permitting:intake] error:", e.message);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    if (route === "/gov/permitting/status" && method === "GET") {
+      const { fips, permit_id } = req.query;
+      if (!fips || !permit_id) return jsonError(res, 400, "Missing fips or permit_id");
+      const auth = await requireJurisdictionRole(fips, user.uid, "public_viewer", { requiredSuite: "permitting" });
+      if (!auth.authorized) return jsonError(res, 403, auth.reason);
+      try {
+        const doc = await db.doc(`govPermitApplications/${permit_id}`).get();
+        if (!doc.exists) return jsonError(res, 404, "Permit not found");
+        return res.json({ ok: true, permit: { id: doc.id, ...doc.data() } });
+      } catch (e) {
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    if (route === "/gov/permitting/plan-review" && method === "POST") {
+      const { fips_code, permit_id, review_result, notes } = body;
+      if (!fips_code || !permit_id) return jsonError(res, 400, "Missing fields");
+      const auth = await requireJurisdictionRole(fips_code, user.uid, "department_super", { requiredSuite: "permitting" });
+      if (!auth.authorized) return jsonError(res, 403, auth.reason);
+      try {
+        await db.doc(`govPermitApplications/${permit_id}`).update({
+          review_result, review_notes: notes, reviewedBy: user.uid,
+          status: review_result === "approved" ? "approved" : "corrections_required",
+          reviewedAt: nowServerTs(),
+        });
+        if (review_result === "approved") {
+          await emitEvent("perm.review.notice_required", { permit_id, fips_code }, { jurisdictionFips: fips_code, tenantId: ctx.tenantId, userId: user.uid });
+        }
+        return res.json({ ok: true, permit_id, status: review_result });
+      } catch (e) {
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    if (route === "/gov/permitting/zoning-check" && method === "POST") {
+      const { fips_code, parcel_number, proposed_use } = body;
+      if (!fips_code || !parcel_number) return jsonError(res, 400, "Missing fields");
+      const auth = await requireJurisdictionRole(fips_code, user.uid, "field_operator", { requiredSuite: "permitting" });
+      if (!auth.authorized) return jsonError(res, 403, auth.reason);
+      const sub = await checkSubscriptionOrReject("GOV-020", ctx.tenantId || fips_code, res);
+      if (!sub.allowed) return;
+      try {
+        const checkId = db.collection("govZoningChecks").doc().id;
+        await db.doc(`govZoningChecks/${checkId}`).set({
+          checkId, fips_code, parcel_number, proposed_use,
+          status: "pending", requestedBy: user.uid, createdAt: nowServerTs(),
+        });
+        await db.collection(`jurisdictions/${fips_code}/auditTrail`).add({
+          type: "perm.zoning_check", checkId, parcel_number, userId: user.uid, createdAt: nowServerTs(),
+        });
+        return res.json({ ok: true, checkId, status: "pending" });
+      } catch (e) {
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    if (route === "/gov/permitting/fee-calc" && method === "POST") {
+      const { fips_code, permit_id, application_type, valuation } = body;
+      if (!fips_code || !permit_id) return jsonError(res, 400, "Missing fields");
+      const auth = await requireJurisdictionRole(fips_code, user.uid, "field_operator", { requiredSuite: "permitting" });
+      if (!auth.authorized) return jsonError(res, 403, auth.reason);
+      try {
+        // Load fee schedule from jurisdiction config
+        const jDoc = await db.doc(`jurisdictions/${fips_code}`).get();
+        const feeSchedule = jDoc.exists ? (jDoc.data().compliance_config?.fee_schedule || {}) : {};
+        const baseFee = feeSchedule.base_fee || 15000; // $150 default in cents
+        const planReviewFee = Math.round((valuation || 0) * 0.015); // 1.5% of valuation
+        const totalDue = baseFee + planReviewFee;
+        await db.doc(`govPermitApplications/${permit_id}`).update({
+          fee_breakdown: { base_fee: baseFee, plan_review_fee: planReviewFee, total_due: totalDue },
+          feeCalculatedAt: nowServerTs(),
+        });
+        return res.json({ ok: true, fee_breakdown: { base_fee: baseFee, plan_review_fee: planReviewFee, total_due: totalDue } });
+      } catch (e) {
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    if (route === "/gov/permitting/public-notice" && method === "POST") {
+      const { fips_code, permit_id, notice_type } = body;
+      if (!fips_code || !permit_id) return jsonError(res, 400, "Missing fields");
+      const auth = await requireJurisdictionRole(fips_code, user.uid, "department_super", { requiredSuite: "permitting" });
+      if (!auth.authorized) return jsonError(res, 403, auth.reason);
+      try {
+        const noticeId = db.collection("govPublicNotices").doc().id;
+        await db.doc(`govPublicNotices/${noticeId}`).set({
+          noticeId, fips_code, permit_id, notice_type,
+          status: "published", publishedBy: user.uid,
+          notice_window_days: 21, createdAt: nowServerTs(),
+        });
+        return res.json({ ok: true, noticeId, status: "published" });
+      } catch (e) {
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    if (route === "/gov/permitting/co-issue" && method === "POST") {
+      const { fips_code, permit_id } = body;
+      if (!fips_code || !permit_id) return jsonError(res, 400, "Missing fields");
+      const auth = await requireJurisdictionRole(fips_code, user.uid, "department_super", { requiredSuite: "permitting" });
+      if (!auth.authorized) return jsonError(res, 403, auth.reason);
+      try {
+        await db.doc(`govPermitApplications/${permit_id}`).update({
+          status: "co_issued", co_issued_by: user.uid, co_issued_at: nowServerTs(),
+        });
+        await emitEvent("perm.co.issued", { permit_id, fips_code }, { jurisdictionFips: fips_code, tenantId: ctx.tenantId, userId: user.uid });
+        await db.collection(`jurisdictions/${fips_code}/auditTrail`).add({
+          type: "perm.co_issued", permit_id, userId: user.uid, createdAt: nowServerTs(),
+        });
+        return res.json({ ok: true, permit_id, status: "co_issued" });
+      } catch (e) {
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ── Inspector Suite Routes ──
+
+    if (route === "/gov/inspector/observation" && method === "POST") {
+      const { fips_code, permit_number, inspection_type, gps_coordinates, observations, photos } = body;
+      if (!fips_code || !permit_number || !inspection_type) return jsonError(res, 400, "Missing fields");
+      const auth = await requireJurisdictionRole(fips_code, user.uid, "field_operator", { requiredSuite: "inspector" });
+      if (!auth.authorized) return jsonError(res, 403, auth.reason);
+      const sub = await checkSubscriptionOrReject("GOV-031", ctx.tenantId || fips_code, res);
+      if (!sub.allowed) return;
+      try {
+        const inspectionId = db.collection("govInspections").doc().id;
+        const hasViolations = Array.isArray(observations) && observations.some(o => o.status === "fail");
+        await db.doc(`govInspections/${inspectionId}`).set({
+          inspectionId, fips_code, permit_number, inspection_type,
+          inspector_id: user.uid, gps_coordinates, observations: observations || [],
+          photos: photos || [], input_source: body.input_source || "mobile",
+          result: hasViolations ? "failed" : "passed",
+          status: "pending_signature", createdAt: nowServerTs(),
+        });
+        if (hasViolations) {
+          await emitEvent("insp.violation.reinspection_required", { inspectionId, permit_number, fips_code }, { jurisdictionFips: fips_code, tenantId: ctx.tenantId, userId: user.uid });
+        }
+        await emitEvent("insp.completed", { inspectionId, permit_number, result: hasViolations ? "failed" : "passed", fips_code }, { jurisdictionFips: fips_code, tenantId: ctx.tenantId, userId: user.uid });
+        await db.collection(`jurisdictions/${fips_code}/auditTrail`).add({
+          type: "insp.observation", inspectionId, permit_number, userId: user.uid, createdAt: nowServerTs(),
+        });
+        return res.json({ ok: true, inspectionId, result: hasViolations ? "failed" : "passed" });
+      } catch (e) {
+        console.error("[gov:inspector:observation] error:", e.message);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    if (route === "/gov/inspector/fire" && method === "POST") {
+      const { fips_code } = body;
+      if (!fips_code) return jsonError(res, 400, "Missing fips_code");
+      const auth = await requireJurisdictionRole(fips_code, user.uid, "field_operator", { requiredSuite: "inspector" });
+      if (!auth.authorized) return jsonError(res, 403, auth.reason);
+      const sub = await checkSubscriptionOrReject("GOV-033", ctx.tenantId || fips_code, res);
+      if (!sub.allowed) return;
+      try {
+        const inspectionId = db.collection("govFireInspections").doc().id;
+        await db.doc(`govFireInspections/${inspectionId}`).set({
+          ...body, inspectionId, inspector_id: user.uid, status: "submitted", createdAt: nowServerTs(),
+        });
+        return res.json({ ok: true, inspectionId, status: "submitted" });
+      } catch (e) {
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    if (route === "/gov/inspector/health" && method === "POST") {
+      const { fips_code } = body;
+      if (!fips_code) return jsonError(res, 400, "Missing fips_code");
+      const auth = await requireJurisdictionRole(fips_code, user.uid, "field_operator", { requiredSuite: "inspector" });
+      if (!auth.authorized) return jsonError(res, 403, auth.reason);
+      const sub = await checkSubscriptionOrReject("GOV-034", ctx.tenantId || fips_code, res);
+      if (!sub.allowed) return;
+      try {
+        const inspectionId = db.collection("govHealthInspections").doc().id;
+        await db.doc(`govHealthInspections/${inspectionId}`).set({
+          ...body, inspectionId, inspector_id: user.uid, status: "submitted", createdAt: nowServerTs(),
+        });
+        return res.json({ ok: true, inspectionId, status: "submitted" });
+      } catch (e) {
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    if (route === "/gov/inspector/reinspect" && method === "POST") {
+      const { fips_code, original_inspection_id } = body;
+      if (!fips_code || !original_inspection_id) return jsonError(res, 400, "Missing fields");
+      const auth = await requireJurisdictionRole(fips_code, user.uid, "field_operator", { requiredSuite: "inspector" });
+      if (!auth.authorized) return jsonError(res, 403, auth.reason);
+      try {
+        const ticketId = db.collection("govReinspectionTickets").doc().id;
+        await db.doc(`govReinspectionTickets/${ticketId}`).set({
+          ticketId, fips_code, original_inspection_id,
+          status: "scheduled", assignedTo: null,
+          createdBy: user.uid, createdAt: nowServerTs(),
+        });
+        return res.json({ ok: true, ticketId, status: "scheduled" });
+      } catch (e) {
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    if (route === "/gov/inspector/report" && method === "POST") {
+      const { fips_code, inspection_id } = body;
+      if (!fips_code || !inspection_id) return jsonError(res, 400, "Missing fields");
+      const auth = await requireJurisdictionRole(fips_code, user.uid, "department_super", { requiredSuite: "inspector" });
+      if (!auth.authorized) return jsonError(res, 403, auth.reason);
+      try {
+        const reportId = db.collection("govInspectionReports").doc().id;
+        await db.doc(`govInspectionReports/${reportId}`).set({
+          reportId, fips_code, inspection_id,
+          status: "generated", generatedBy: user.uid, createdAt: nowServerTs(),
+        });
+        return res.json({ ok: true, reportId, status: "generated" });
+      } catch (e) {
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // Wearable API stub
+    if (route === "/wearable/v1/visual-query" && method === "POST") {
+      const { inspector_id, permit_number, gps_coordinates, inspection_type } = body;
+      // Stub response — partnership in progress
+      return res.json({
+        ok: true,
+        stub: true,
+        message: "Wearable API stub — partnership in progress",
+        input_source: "wearable",
+        inspector_id, permit_number, gps_coordinates, inspection_type,
+      });
+    }
+
+    // ── Recorder Suite Routes ──
+
+    if (route === "/gov/recorder/intake" && method === "POST") {
+      const { fips_code, document_type, document_file_id, document_hash, grantor, grantee, legal_description, parcel_number, instrument_date, payment_intent_id } = body;
+      if (!fips_code || !document_type || !document_hash) return jsonError(res, 400, "Missing fields");
+      const auth = await requireJurisdictionRole(fips_code, user.uid, "field_operator", { requiredSuite: "recorder" });
+      if (!auth.authorized) return jsonError(res, 403, auth.reason);
+      const sub = await checkSubscriptionOrReject("GOV-041", ctx.tenantId || fips_code, res);
+      if (!sub.allowed) return;
+      try {
+        const instrumentNumber = `${new Date().getFullYear()}-${String(Date.now()).slice(-8)}`;
+        const recordId = db.collection("govRecordingIntake").doc().id;
+        await db.doc(`govRecordingIntake/${recordId}`).set({
+          recordId, fips_code, document_type, document_file_id, document_hash,
+          grantor: grantor || [], grantee: grantee || [], legal_description,
+          parcel_number, instrument_date, payment_intent_id,
+          instrument_number: instrumentNumber,
+          recording_timestamp: new Date().toISOString(),
+          recording_status: "recorded", document_hash_confirmed: document_hash,
+          submittedBy: user.uid, createdAt: nowServerTs(),
+        });
+        await emitEvent("rec.intake.recorded", { recordId, instrument_number: instrumentNumber, document_type, fips_code }, { jurisdictionFips: fips_code, tenantId: ctx.tenantId, userId: user.uid });
+        if (document_type === "deed_grant" || document_type === "deed_trust" || document_type === "deed_quit_claim") {
+          await emitEvent("rec.deed.transfer_recorded", { recordId, parcel_number, grantor, grantee, fips_code }, { jurisdictionFips: fips_code, tenantId: ctx.tenantId, userId: user.uid });
+        }
+        await db.collection(`jurisdictions/${fips_code}/auditTrail`).add({
+          type: "rec.intake.recorded", recordId, instrument_number: instrumentNumber,
+          document_hash, userId: user.uid, createdAt: nowServerTs(),
+        });
+        return res.json({ ok: true, recordId, instrument_number: instrumentNumber, recording_status: "recorded" });
+      } catch (e) {
+        console.error("[gov:recorder:intake] error:", e.message);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    if (route === "/gov/recorder/chain" && method === "GET") {
+      const { fips, apn } = req.query;
+      if (!fips || !apn) return jsonError(res, 400, "Missing fips or apn");
+      const auth = await requireJurisdictionRole(fips, user.uid, "public_viewer", { requiredSuite: "recorder" });
+      if (!auth.authorized) return jsonError(res, 403, auth.reason);
+      try {
+        const snap = await db.collection("govRecordingIntake")
+          .where("fips_code", "==", fips)
+          .where("parcel_number", "==", apn)
+          .orderBy("createdAt", "desc")
+          .limit(100)
+          .get();
+        const chain = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        return res.json({ ok: true, parcel: apn, chain });
+      } catch (e) {
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    if (route === "/gov/recorder/deed" && method === "POST") {
+      const { fips_code } = body;
+      if (!fips_code) return jsonError(res, 400, "Missing fips_code");
+      const auth = await requireJurisdictionRole(fips_code, user.uid, "field_operator", { requiredSuite: "recorder" });
+      if (!auth.authorized) return jsonError(res, 403, auth.reason);
+      const sub = await checkSubscriptionOrReject("GOV-043", ctx.tenantId || fips_code, res);
+      if (!sub.allowed) return;
+      try {
+        const recordId = db.collection("govDeedTransfers").doc().id;
+        await db.doc(`govDeedTransfers/${recordId}`).set({
+          ...body, recordId, status: "submitted", submittedBy: user.uid, createdAt: nowServerTs(),
+        });
+        return res.json({ ok: true, recordId, status: "submitted" });
+      } catch (e) {
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    if (route === "/gov/recorder/lien" && method === "POST") {
+      const { fips_code } = body;
+      if (!fips_code) return jsonError(res, 400, "Missing fips_code");
+      const auth = await requireJurisdictionRole(fips_code, user.uid, "field_operator", { requiredSuite: "recorder" });
+      if (!auth.authorized) return jsonError(res, 403, auth.reason);
+      const sub = await checkSubscriptionOrReject("GOV-044", ctx.tenantId || fips_code, res);
+      if (!sub.allowed) return;
+      try {
+        const recordId = db.collection("govRecorderLiens").doc().id;
+        await db.doc(`govRecorderLiens/${recordId}`).set({
+          ...body, recordId, status: "submitted", submittedBy: user.uid, createdAt: nowServerTs(),
+        });
+        return res.json({ ok: true, recordId, status: "submitted" });
+      } catch (e) {
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    if (route === "/gov/recorder/ron-session" && method === "POST") {
+      const { fips_code } = body;
+      if (!fips_code) return jsonError(res, 400, "Missing fips_code");
+      const auth = await requireJurisdictionRole(fips_code, user.uid, "field_operator", { requiredSuite: "recorder" });
+      if (!auth.authorized) return jsonError(res, 403, auth.reason);
+      const sub = await checkSubscriptionOrReject("GOV-045", ctx.tenantId || fips_code, res);
+      if (!sub.allowed) return;
+      try {
+        const sessionId = db.collection("govRonSessions").doc().id;
+        // Route based on jurisdiction RON authorization
+        const jDoc = await db.doc(`jurisdictions/${fips_code}`).get();
+        const ronAuthorized = jDoc.exists ? (jDoc.data().compliance_config?.ron_authorized_state !== false) : true;
+        await db.doc(`govRonSessions/${sessionId}`).set({
+          ...body, sessionId, ron_provider: ronAuthorized ? "proof" : "snapdocs",
+          status: "initiated", initiatedBy: user.uid, createdAt: nowServerTs(),
+        });
+        return res.json({ ok: true, sessionId, ron_provider: ronAuthorized ? "proof" : "snapdocs", status: "initiated" });
+      } catch (e) {
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    if (route === "/gov/recorder/fraud-check" && method === "POST") {
+      const { fips_code, record_id } = body;
+      if (!fips_code || !record_id) return jsonError(res, 400, "Missing fields");
+      const auth = await requireJurisdictionRole(fips_code, user.uid, "department_super", { requiredSuite: "recorder" });
+      if (!auth.authorized) return jsonError(res, 403, auth.reason);
+      try {
+        const checkId = db.collection("govRecorderFraudChecks").doc().id;
+        await db.doc(`govRecorderFraudChecks/${checkId}`).set({
+          checkId, fips_code, record_id, status: "pending",
+          requestedBy: user.uid, createdAt: nowServerTs(),
+        });
+        await emitEvent("rec.fraud.hold_required", { checkId, record_id, fips_code }, { jurisdictionFips: fips_code, tenantId: ctx.tenantId, userId: user.uid });
+        return res.json({ ok: true, checkId, status: "pending" });
+      } catch (e) {
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    if (route === "/gov/recorder/search" && method === "GET") {
+      const { fips, q: searchQuery, type: docType } = req.query;
+      if (!fips) return jsonError(res, 400, "Missing fips");
+      const auth = await requireJurisdictionRole(fips, user.uid, "public_viewer", { requiredSuite: "recorder" });
+      if (!auth.authorized) return jsonError(res, 403, auth.reason);
+      try {
+        let query = db.collection("govRecordingIntake").where("fips_code", "==", fips);
+        if (docType) query = query.where("document_type", "==", docType);
+        query = query.orderBy("createdAt", "desc").limit(50);
+        const snap = await query.get();
+        const results = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        return res.json({ ok: true, results, count: results.length });
+      } catch (e) {
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    if (route === "/gov/recorder/digitize" && method === "POST") {
+      const { fips_code, file_id, source_type } = body;
+      if (!fips_code || !file_id) return jsonError(res, 400, "Missing fields");
+      const auth = await requireJurisdictionRole(fips_code, user.uid, "department_super", { requiredSuite: "recorder" });
+      if (!auth.authorized) return jsonError(res, 403, auth.reason);
+      const sub = await checkSubscriptionOrReject("GOV-056", ctx.tenantId || fips_code, res);
+      if (!sub.allowed) return;
+      try {
+        const jobId = db.collection("govDigitizationJobs").doc().id;
+        await db.doc(`govDigitizationJobs/${jobId}`).set({
+          jobId, fips_code, file_id, source_type: source_type || "pdf",
+          status: "queued", queuedBy: user.uid, createdAt: nowServerTs(),
+        });
+        return res.json({ ok: true, jobId, status: "queued" });
+      } catch (e) {
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ── Alex Routes ──
+
+    if (route === "/gov/alex/briefing" && method === "GET") {
+      const { fips, suite } = req.query;
+      if (!fips || !suite) return jsonError(res, 400, "Missing fips or suite");
+      const auth = await requireJurisdictionRole(fips, user.uid, "department_super", { requiredSuite: suite });
+      if (!auth.authorized) return jsonError(res, 403, auth.reason);
+      try {
+        // Gather briefing data from recent events
+        const events = await queryEvents({ jurisdictionFips: fips, limit: 100 });
+        const suiteEvents = events.filter(e => e.eventType.startsWith(suite === "dmv" ? "dmv." : suite === "permitting" ? "perm." : suite === "inspector" ? "insp." : "rec."));
+        return res.json({ ok: true, fips, suite, briefing: { event_count: suiteEvents.length, events: suiteEvents.slice(0, 20) } });
+      } catch (e) {
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    if (route === "/gov/alex/alert" && method === "POST") {
+      const { fips_code, alert_type, message, severity } = body;
+      if (!fips_code || !alert_type) return jsonError(res, 400, "Missing fields");
+      try {
+        const alertId = db.collection("govAlexAlerts").doc().id;
+        await db.doc(`govAlexAlerts/${alertId}`).set({
+          alertId, fips_code, alert_type, message, severity: severity || "medium",
+          status: "open", createdBy: user.uid, createdAt: nowServerTs(),
+        });
+        return res.json({ ok: true, alertId });
+      } catch (e) {
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    if (route === "/gov/alex/anomalies" && method === "GET") {
+      const { fips } = req.query;
+      if (!fips) return jsonError(res, 400, "Missing fips");
+      const auth = await requireJurisdictionRole(fips, user.uid, "department_super");
+      if (!auth.authorized) return jsonError(res, 403, auth.reason);
+      try {
+        const snap = await db.collection("govAlexAlerts")
+          .where("fips_code", "==", fips)
+          .where("status", "==", "open")
+          .orderBy("createdAt", "desc")
+          .limit(50)
+          .get();
+        const anomalies = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        return res.json({ ok: true, anomalies });
+      } catch (e) {
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ── Worker Events Query ──
+
+    if (route === "/gov/events" && method === "GET") {
+      const { fips, event_type, target_worker } = req.query;
+      if (!fips) return jsonError(res, 400, "Missing fips");
+      const auth = await requireJurisdictionRole(fips, user.uid, "department_super");
+      if (!auth.authorized) return jsonError(res, 403, auth.reason);
+      try {
+        const events = await queryEvents({
+          jurisdictionFips: fips,
+          eventType: event_type || undefined,
+          targetWorker: target_worker || undefined,
+          limit: 50,
+        });
+        return res.json({ ok: true, events });
+      } catch (e) {
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    //  END GOVERNMENT ROUTES
+    // ═══════════════════════════════════════════════════════════════
+
     return jsonError(res, 404, "Not Found", { route, method });
   }
 );

@@ -1,0 +1,72 @@
+{
+  "id": "gov_041_document_recording_v0",
+  "version": "v0",
+  "domain": "government-recorder",
+  "description": "Document Recording — validates and records deeds, mortgages, liens, and other instruments against the official land record with hash integrity and notarization verification",
+  "required_inputs": [
+    "document_type",
+    "document_file_id",
+    "document_hash",
+    "grantor",
+    "grantee",
+    "legal_description"
+  ],
+  "hard_stops": [
+    {
+      "id": "REC-R-001",
+      "label": "SHA-256 Hash Mismatch",
+      "logic": "Computed SHA-256 hash of the uploaded document does not match the declared document_hash — document may have been tampered with in transit",
+      "eval": { "field": "recording.hash_match", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "REC-R-002",
+      "label": "Grantor Not Current Vested Owner",
+      "logic": "Grantor name does not match the current vested owner in the chain of title — conveyance by non-owner is void",
+      "eval": { "field": "recording.grantor_is_vested_owner", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "REC-R-003",
+      "label": "Notarization Missing or Expired",
+      "logic": "Document requires notarization but no valid notary acknowledgment is present, or the notary commission has expired",
+      "eval": { "field": "recording.notarization_valid", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "REC-R-004",
+      "label": "Remote Online Notarization in Restricted State",
+      "logic": "Document was notarized via RON but the recording jurisdiction does not accept remote online notarization — must be re-notarized in person",
+      "eval": { "field": "recording.ron_accepted", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "REC-R-005",
+      "label": "Recording Fee Not Collected",
+      "logic": "Recording fee has not been collected or payment has not been confirmed — document cannot be accepted for recording without payment",
+      "eval": { "field": "recording.fee_collected", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "REC-R-006",
+      "label": "Lien Release by Non-Lienholder",
+      "logic": "Lien release or satisfaction document was executed by a party that is not the recorded lienholder — release is invalid",
+      "eval": { "field": "recording.lien_release_by_lienholder", "operator": "==", "threshold": false }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "REC-R-FLG-001",
+      "label": "Multiple Documents Same Parcel Same Day",
+      "logic": "More than one recording submitted for the same parcel within 24 hours — verify recording order priority",
+      "eval": { "field": "recording.same_parcel_same_day_count", "operator": ">", "threshold": 1 }
+    },
+    {
+      "id": "REC-R-FLG-002",
+      "label": "Transfer Tax May Apply",
+      "logic": "Document type is a deed and consideration exceeds the transfer tax exemption threshold — verify transfer tax payment",
+      "eval": { "field": "recording.transfer_tax_applicable", "operator": "==", "threshold": true }
+    }
+  ],
+  "outputs": [
+    "gov041-recording-receipt",
+    "gov041-instrument-number",
+    "gov041-chain-of-title-update",
+    "gov041-fee-receipt"
+  ]
+}

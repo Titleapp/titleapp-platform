@@ -470,6 +470,302 @@ const WORKER_NAV_MAP = {
     { id: "access-review", label: "Access Review" },
     { id: "vendor-contracts", label: "Vendor Contracts" },
   ],
+  // ── Government — Jurisdiction Onboarding ──
+  "gov-jurisdiction-onboarding": [
+    { id: "jurisdiction-setup", label: "Jurisdiction Setup" },
+    { id: "system-connections", label: "System Connections" },
+    { id: "worker-deploy", label: "Worker Deploy" },
+  ],
+  // ── Government — DMV Suite ──
+  "gov-title-registration-intake": [
+    { id: "title-applications", label: "Title Applications" },
+    { id: "registration-queue", label: "Registration Queue" },
+    { id: "transfer-log", label: "Transfer Log" },
+  ],
+  "gov-lien-management": [
+    { id: "active-liens", label: "Active Liens" },
+    { id: "release-queue", label: "Release Queue" },
+    { id: "lien-holders", label: "Lien Holders" },
+  ],
+  "gov-title-fraud-detection": [
+    { id: "fraud-alerts", label: "Fraud Alerts" },
+    { id: "vin-flags", label: "VIN Flags" },
+    { id: "investigations", label: "Investigations" },
+  ],
+  "gov-driver-license-intake": [
+    { id: "license-queue", label: "License Queue" },
+    { id: "renewals", label: "Renewals" },
+    { id: "address-changes", label: "Address Changes" },
+  ],
+  "gov-cdl-endorsement-tracker": [
+    { id: "cdl-applications", label: "CDL Applications" },
+    { id: "endorsements", label: "Endorsements" },
+    { id: "medical-certs", label: "Medical Certs" },
+  ],
+  "gov-vehicle-inspection-compliance": [
+    { id: "inspection-schedule", label: "Inspection Schedule" },
+    { id: "results", label: "Results" },
+    { id: "compliance-deadlines", label: "Compliance Deadlines" },
+  ],
+  "gov-registration-renewal-engine": [
+    { id: "renewal-notices", label: "Renewal Notices" },
+    { id: "fee-calc", label: "Fee Calculation" },
+    { id: "processing", label: "Processing" },
+  ],
+  "gov-fleet-dealer-title": [
+    { id: "bulk-queue", label: "Bulk Queue" },
+    { id: "dealer-accounts", label: "Dealer Accounts" },
+    { id: "fleet-processing", label: "Fleet Processing" },
+  ],
+  "gov-dmv-queue-appointment": [
+    { id: "queue-monitor", label: "Queue Monitor" },
+    { id: "appointments", label: "Appointments" },
+    { id: "wait-times", label: "Wait Times" },
+  ],
+  "gov-out-of-state-title": [
+    { id: "oos-applications", label: "OOS Applications" },
+    { id: "vin-verification", label: "VIN Verification" },
+    { id: "state-mapping", label: "State Mapping" },
+  ],
+  "gov-salvage-rebuilt-title": [
+    { id: "salvage-inspections", label: "Salvage Inspections" },
+    { id: "rebuilt-certs", label: "Rebuilt Certs" },
+    { id: "brand-history", label: "Brand History" },
+  ],
+  "gov-dppa-compliance": [
+    { id: "access-controls", label: "Access Controls" },
+    { id: "audit-log", label: "Audit Log" },
+    { id: "data-requests", label: "Data Requests" },
+  ],
+  "gov-revenue-fee-reconciliation": [
+    { id: "daily-reconciliation", label: "Daily Reconciliation" },
+    { id: "fee-ledger", label: "Fee Ledger" },
+    { id: "deposit-tracking", label: "Deposit Tracking" },
+  ],
+  "gov-dmv-audit-readiness": [
+    { id: "self-assessment", label: "Self-Assessment" },
+    { id: "finding-tracker", label: "Finding Tracker" },
+    { id: "audit-prep", label: "Audit Prep" },
+  ],
+  "gov-alex-dmv": [
+    { id: "dmv-briefing", label: "Daily Briefing" },
+    { id: "dmv-escalations", label: "Escalations" },
+    { id: "dmv-worker-status", label: "Worker Status" },
+  ],
+  // ── Government — Permitting Suite ──
+  "gov-permit-application-intake": [
+    { id: "permit-applications", label: "Applications" },
+    { id: "routing", label: "Routing" },
+    { id: "intake-reports", label: "Reports" },
+  ],
+  "gov-building-permit-tracker": [
+    { id: "active-permits", label: "Active Permits" },
+    { id: "permit-timeline", label: "Timeline" },
+    { id: "issuance-queue", label: "Issuance Queue" },
+  ],
+  "gov-plan-review-coordinator": [
+    { id: "review-assignments", label: "Review Assignments" },
+    { id: "comment-tracking", label: "Comment Tracking" },
+    { id: "review-cycles", label: "Review Cycles" },
+  ],
+  "gov-contractor-credential": [
+    { id: "credential-database", label: "Credential Database" },
+    { id: "license-verification", label: "License Verification" },
+    { id: "insurance-tracking", label: "Insurance Tracking" },
+  ],
+  "gov-zoning-land-use": [
+    { id: "zoning-check", label: "Zoning Check" },
+    { id: "setback-analysis", label: "Setback Analysis" },
+    { id: "use-restrictions", label: "Use Restrictions" },
+  ],
+  "gov-variance-appeal-tracker": [
+    { id: "variance-applications", label: "Variance Applications" },
+    { id: "hearing-schedule", label: "Hearing Schedule" },
+    { id: "appeal-outcomes", label: "Appeal Outcomes" },
+  ],
+  "gov-event-permit-manager": [
+    { id: "event-applications", label: "Event Applications" },
+    { id: "event-conditions", label: "Conditions" },
+    { id: "event-compliance", label: "Compliance" },
+  ],
+  "gov-environmental-review": [
+    { id: "ceqa-nepa-reviews", label: "CEQA/NEPA Reviews" },
+    { id: "mitigations", label: "Mitigations" },
+    { id: "agency-responses", label: "Agency Responses" },
+  ],
+  "gov-fee-calculation-collection": [
+    { id: "fee-schedule", label: "Fee Schedule" },
+    { id: "impact-fees", label: "Impact Fees" },
+    { id: "payment-tracking", label: "Payment Tracking" },
+  ],
+  "gov-public-notice-generator": [
+    { id: "notice-drafts", label: "Notice Drafts" },
+    { id: "distribution", label: "Distribution" },
+    { id: "notice-archive", label: "Archive" },
+  ],
+  "gov-contractor-verification": [
+    { id: "license-lookup", label: "License Lookup" },
+    { id: "bond-status", label: "Bond Status" },
+    { id: "workers-comp", label: "Workers Comp" },
+  ],
+  "gov-certificate-of-occupancy": [
+    { id: "co-prerequisites", label: "CO Prerequisites" },
+    { id: "final-inspections", label: "Final Inspections" },
+    { id: "co-issuance", label: "CO Issuance" },
+  ],
+  "gov-permit-compliance-monitor": [
+    { id: "permit-conditions", label: "Permit Conditions" },
+    { id: "expiration-alerts", label: "Expiration Alerts" },
+    { id: "renewal-tracking", label: "Renewal Tracking" },
+  ],
+  "gov-public-portal-status": [
+    { id: "portal-dashboard", label: "Portal Dashboard" },
+    { id: "status-updates", label: "Status Updates" },
+    { id: "notifications", label: "Notifications" },
+  ],
+  "gov-alex-permitting": [
+    { id: "permitting-briefing", label: "Daily Briefing" },
+    { id: "permitting-escalations", label: "Escalations" },
+    { id: "permitting-worker-status", label: "Worker Status" },
+  ],
+  // ── Government — Inspector Suite ──
+  "gov-building-inspector": [
+    { id: "field-inspections", label: "Field Inspections" },
+    { id: "code-lookup", label: "Code Lookup" },
+    { id: "photo-capture", label: "Photo Capture" },
+  ],
+  "gov-code-enforcement": [
+    { id: "violations", label: "Violations" },
+    { id: "notices", label: "Notices" },
+    { id: "abatement", label: "Abatement" },
+    { id: "hearings", label: "Hearings" },
+  ],
+  "gov-fire-inspection": [
+    { id: "fire-inspections", label: "Fire Inspections" },
+    { id: "fire-violations", label: "Violations" },
+    { id: "re-checks", label: "Re-Checks" },
+  ],
+  "gov-health-food-inspector": [
+    { id: "health-inspections", label: "Health Inspections" },
+    { id: "scoring", label: "Scoring" },
+    { id: "health-violations", label: "Violations" },
+  ],
+  "gov-electrical-inspector": [
+    { id: "electrical-inspections", label: "Inspections" },
+    { id: "electrical-code", label: "Code Lookup" },
+    { id: "electrical-reports", label: "Reports" },
+  ],
+  "gov-plumbing-inspector": [
+    { id: "plumbing-inspections", label: "Inspections" },
+    { id: "plumbing-code", label: "Code Lookup" },
+    { id: "plumbing-reports", label: "Reports" },
+  ],
+  "gov-reinspection-scheduler": [
+    { id: "reinspection-queue", label: "Re-Inspection Queue" },
+    { id: "corrections", label: "Corrections" },
+    { id: "closeout", label: "Close-Out" },
+  ],
+  "gov-inspection-report-generator": [
+    { id: "report-builder", label: "Report Builder" },
+    { id: "photo-attachments", label: "Photo Attachments" },
+    { id: "report-archive", label: "Archive" },
+  ],
+  "gov-inspection-backlog": [
+    { id: "backlog-queue", label: "Backlog Queue" },
+    { id: "workload-balance", label: "Workload Balance" },
+    { id: "sla-tracking", label: "SLA Tracking" },
+  ],
+  "gov-alex-inspector": [
+    { id: "inspector-briefing", label: "Daily Briefing" },
+    { id: "inspector-escalations", label: "Escalations" },
+    { id: "inspector-worker-status", label: "Worker Status" },
+  ],
+  // ── Government — Recorder Suite ──
+  "gov-document-recording-intake": [
+    { id: "recording-queue", label: "Recording Queue" },
+    { id: "document-validation", label: "Validation" },
+    { id: "indexing", label: "Indexing" },
+  ],
+  "gov-chain-of-title": [
+    { id: "chain-builder", label: "Chain Builder" },
+    { id: "grantor-grantee-index", label: "Grantor/Grantee Index" },
+    { id: "chain-reports", label: "Reports" },
+  ],
+  "gov-deed-transfer": [
+    { id: "deed-queue", label: "Deed Queue" },
+    { id: "legal-descriptions", label: "Legal Descriptions" },
+    { id: "deed-indexing", label: "Indexing" },
+  ],
+  "gov-lien-recording-release": [
+    { id: "lien-recordings", label: "Lien Recordings" },
+    { id: "lien-releases", label: "Releases" },
+    { id: "priority-tracking", label: "Priority Tracking" },
+  ],
+  "gov-ron-notarization": [
+    { id: "ron-sessions", label: "RON Sessions" },
+    { id: "notary-audit-log", label: "Audit Log" },
+    { id: "ron-compliance", label: "Compliance" },
+  ],
+  "gov-ecords-compliance": [
+    { id: "ecords-standards", label: "eCORDS Standards" },
+    { id: "submission-formats", label: "Submission Formats" },
+    { id: "ecords-reports", label: "Reports" },
+  ],
+  "gov-recording-fraud-detection": [
+    { id: "recording-fraud-alerts", label: "Fraud Alerts" },
+    { id: "forgery-patterns", label: "Forgery Patterns" },
+    { id: "deed-theft-monitor", label: "Deed Theft Monitor" },
+  ],
+  "gov-public-records-request": [
+    { id: "foia-requests", label: "FOIA Requests" },
+    { id: "request-deadlines", label: "Deadlines" },
+    { id: "response-tracking", label: "Response Tracking" },
+  ],
+  "gov-index-search-engine": [
+    { id: "full-text-search", label: "Full-Text Search" },
+    { id: "document-index", label: "Document Index" },
+    { id: "search-analytics", label: "Search Analytics" },
+  ],
+  "gov-historical-digitization": [
+    { id: "scanning-queue", label: "Scanning Queue" },
+    { id: "ocr-quality", label: "OCR Quality" },
+    { id: "digitization-index", label: "Index" },
+  ],
+  "gov-fee-collection-reconciliation": [
+    { id: "recording-fees", label: "Recording Fees" },
+    { id: "collections", label: "Collections" },
+    { id: "daily-reconciliation", label: "Reconciliation" },
+  ],
+  "gov-assessor-valuation-sync": [
+    { id: "transfer-sync", label: "Transfer Sync" },
+    { id: "valuation-updates", label: "Valuation Updates" },
+    { id: "assessor-reports", label: "Assessor Reports" },
+  ],
+  "gov-lien-priority-subordination": [
+    { id: "priority-determination", label: "Priority Determination" },
+    { id: "subordination-requests", label: "Subordination Requests" },
+    { id: "priority-reports", label: "Reports" },
+  ],
+  "gov-public-chain-query": [
+    { id: "property-lookup", label: "Property Lookup" },
+    { id: "document-retrieval", label: "Document Retrieval" },
+    { id: "public-portal", label: "Public Portal" },
+  ],
+  "gov-recorder-audit-readiness": [
+    { id: "recorder-self-assessment", label: "Self-Assessment" },
+    { id: "recorder-finding-tracker", label: "Finding Tracker" },
+    { id: "recorder-audit-prep", label: "Audit Prep" },
+  ],
+  "gov-historical-records-worker": [
+    { id: "bulk-scanning", label: "Bulk Scanning" },
+    { id: "ocr-checks", label: "OCR Checks" },
+    { id: "batch-indexing", label: "Batch Indexing" },
+  ],
+  "gov-alex-recorder": [
+    { id: "recorder-briefing", label: "Daily Briefing" },
+    { id: "recorder-escalations", label: "Escalations" },
+    { id: "recorder-worker-status", label: "Worker Status" },
+  ],
   // Legacy vertical mappings — map vertical names to nav items too
   "analyst": [
     { id: "portfolio", label: "Portfolio" },
@@ -578,6 +874,69 @@ const WORKER_DISPLAY_NAMES = {
   "aviation-ops": "Aviation Ops",
   "pilot-logbook": "Pilot Logbook",
   "part-135": "Part 135 Compliance",
+  // Government — Jurisdiction Onboarding
+  "gov-jurisdiction-onboarding": "Jurisdiction Onboarding Gateway",
+  // Government — DMV Suite
+  "gov-title-registration-intake": "Title & Registration Intake",
+  "gov-lien-management": "Lien Management & Release",
+  "gov-title-fraud-detection": "Title Fraud Detection",
+  "gov-driver-license-intake": "Driver License Intake & Renewal",
+  "gov-cdl-endorsement-tracker": "CDL & Endorsement Tracker",
+  "gov-vehicle-inspection-compliance": "Vehicle Inspection Compliance",
+  "gov-registration-renewal-engine": "Registration Renewal Engine",
+  "gov-fleet-dealer-title": "Fleet & Dealer Title Processing",
+  "gov-dmv-queue-appointment": "DMV Queue & Appointment Manager",
+  "gov-out-of-state-title": "Out-of-State Title Conversion",
+  "gov-salvage-rebuilt-title": "Salvage & Rebuilt Title Tracker",
+  "gov-dppa-compliance": "DPPA Compliance Monitor",
+  "gov-revenue-fee-reconciliation": "Revenue & Fee Reconciliation",
+  "gov-dmv-audit-readiness": "DMV Audit Readiness",
+  "gov-alex-dmv": "Alex — DMV Chief of Staff",
+  // Government — Permitting Suite
+  "gov-permit-application-intake": "Permit Application Intake",
+  "gov-building-permit-tracker": "Building Permit Tracker",
+  "gov-plan-review-coordinator": "Plan Review Coordinator",
+  "gov-contractor-credential": "Contractor Credential Manager",
+  "gov-zoning-land-use": "Zoning & Land Use Compliance",
+  "gov-variance-appeal-tracker": "Variance & Appeal Tracker",
+  "gov-event-permit-manager": "Event Permit Manager",
+  "gov-environmental-review": "Environmental Review Monitor",
+  "gov-fee-calculation-collection": "Fee Calculation & Collection",
+  "gov-public-notice-generator": "Public Notice Generator",
+  "gov-contractor-verification": "Contractor Credential Verification",
+  "gov-certificate-of-occupancy": "Certificate of Occupancy Tracker",
+  "gov-permit-compliance-monitor": "Permit Compliance Monitor",
+  "gov-public-portal-status": "Public Portal & Status Manager",
+  "gov-alex-permitting": "Alex — Permitting Chief of Staff",
+  // Government — Inspector Suite
+  "gov-building-inspector": "Building Inspector AI",
+  "gov-code-enforcement": "Code Enforcement Officer",
+  "gov-fire-inspection": "Fire Inspection Manager",
+  "gov-health-food-inspector": "Health & Food Service Inspector",
+  "gov-electrical-inspector": "Electrical Inspector Assistant",
+  "gov-plumbing-inspector": "Plumbing Inspector Assistant",
+  "gov-reinspection-scheduler": "Re-Inspection Scheduler",
+  "gov-inspection-report-generator": "Inspection Report Generator",
+  "gov-inspection-backlog": "Inspection Backlog Manager",
+  "gov-alex-inspector": "Alex — Inspector Chief of Staff",
+  // Government — Recorder Suite
+  "gov-document-recording-intake": "Document Recording Intake",
+  "gov-chain-of-title": "Chain of Title Manager",
+  "gov-deed-transfer": "Deed Transfer Processor",
+  "gov-lien-recording-release": "Lien Recording & Release",
+  "gov-ron-notarization": "RON & Notarization Manager",
+  "gov-ecords-compliance": "eCORDS Compliance Monitor",
+  "gov-recording-fraud-detection": "Recording Fraud Detection",
+  "gov-public-records-request": "Public Records Request Manager",
+  "gov-index-search-engine": "Index & Search Engine",
+  "gov-historical-digitization": "Historical Record Digitization",
+  "gov-fee-collection-reconciliation": "Fee Collection & Reconciliation",
+  "gov-assessor-valuation-sync": "Assessor Valuation Sync",
+  "gov-lien-priority-subordination": "Lien Priority & Subordination",
+  "gov-public-chain-query": "Public Chain Query Portal",
+  "gov-recorder-audit-readiness": "Recorder Audit Readiness",
+  "gov-historical-records-worker": "Historical Records Digitization Worker",
+  "gov-alex-recorder": "Alex — Recorder Chief of Staff",
 };
 
 const VERTICAL_LABELS = {

@@ -1,0 +1,65 @@
+{
+  "id": "gov_031_building_inspector_v0",
+  "version": "v0",
+  "domain": "government-inspector",
+  "description": "Building Inspector — manages field inspections, enforces code compliance, escalates life-safety violations, and validates GPS-verified site presence",
+  "required_inputs": [
+    "permit_number",
+    "inspection_type",
+    "inspector_id",
+    "gps_coordinates",
+    "observations"
+  ],
+  "hard_stops": [
+    {
+      "id": "INSP-R-001",
+      "label": "Violation Notice Without Inspector Signature",
+      "logic": "A violation notice was generated but inspector_id has not digitally signed the notice — unsigned violations are unenforceable",
+      "eval": { "field": "inspection.violation_signed", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "INSP-R-002",
+      "label": "Life-Safety Violation Immediate Escalation",
+      "logic": "A life-safety violation (structural, fire, egress, electrical hazard) was identified — requires immediate stop-work order and escalation to chief building official",
+      "eval": { "field": "inspection.life_safety_violation", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "INSP-R-003",
+      "label": "Photo Missing on Violation",
+      "logic": "Violation cited but no photographic evidence attached — all violations require at least one timestamped photo per documentation policy",
+      "eval": { "field": "inspection.violation_photo_attached", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "INSP-R-004",
+      "label": "GPS Outside Permit Address",
+      "logic": "Inspector GPS coordinates are more than 500 meters from the permitted address — inspection cannot be verified as on-site",
+      "eval": { "field": "inspection.gps_within_500m", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "INSP-R-005",
+      "label": "Permit Expired or Not Active",
+      "logic": "The referenced permit is expired, suspended, or has not been issued — cannot conduct inspection against an inactive permit",
+      "eval": { "field": "inspection.permit_active", "operator": "==", "threshold": false }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "INSP-R-FLG-001",
+      "label": "Re-Inspection Required",
+      "logic": "Previous inspection resulted in a correction notice — verify all cited items have been remediated before approving",
+      "eval": { "field": "inspection.prior_corrections_pending", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "INSP-R-FLG-002",
+      "label": "Inspector Workload High",
+      "logic": "Inspector has more than 12 inspections scheduled for the day — potential quality or thoroughness risk",
+      "eval": { "field": "inspection.inspector_daily_count", "operator": ">", "threshold": 12 }
+    }
+  ],
+  "outputs": [
+    "gov031-inspection-report",
+    "gov031-violation-notice",
+    "gov031-correction-notice",
+    "gov031-pass-certificate"
+  ]
+}

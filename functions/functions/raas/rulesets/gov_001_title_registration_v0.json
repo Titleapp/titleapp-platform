@@ -1,0 +1,79 @@
+{
+  "id": "gov_001_title_registration_v0",
+  "version": "v0",
+  "domain": "government-dmv",
+  "description": "Title Registration — processes vehicle title transfers, validates VIN integrity, NMVTIS checks, odometer fraud detection, and lienholder verification",
+  "required_inputs": [
+    "vin",
+    "year_make_model",
+    "odometer_reading",
+    "seller_name",
+    "buyer_name",
+    "purchase_price",
+    "payment_intent_id"
+  ],
+  "hard_stops": [
+    {
+      "id": "DMV-R-001",
+      "label": "VIN Checksum Failure",
+      "logic": "VIN fails ISO 3779 / 49 CFR 565 check-digit validation — cannot process title with invalid VIN",
+      "eval": { "field": "vehicle.vin_checksum_valid", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "DMV-R-002",
+      "label": "NMVTIS Title Problem Indicator",
+      "logic": "NMVTIS returns title_problem_indicator = true — title may be branded, salvage, or flood; requires manual review",
+      "eval": { "field": "vehicle.nmvtis_title_problem", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "DMV-R-003",
+      "label": "Odometer Rollback Detected",
+      "logic": "Reported odometer reading is less than the most recent prior recorded reading — potential odometer fraud per 49 USC 32703",
+      "eval": { "field": "vehicle.odometer_rollback", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "DMV-R-004",
+      "label": "Lienholder Not in ELT Provider List",
+      "logic": "Declared lienholder is not a recognized Electronic Lien and Title (ELT) provider — cannot electronically process lien notation",
+      "eval": { "field": "vehicle.lienholder_elt_valid", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "DMV-R-005",
+      "label": "Duplicate Title Request",
+      "logic": "A title transfer for this VIN was already submitted within the last 3 business days — possible duplicate or fraud",
+      "eval": { "field": "vehicle.duplicate_request_within_3bd", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "DMV-R-006",
+      "label": "DPPA Permissible Use Not Logged",
+      "logic": "Driver's Privacy Protection Act (18 USC 2721) permissible use purpose code not recorded before accessing personal data",
+      "eval": { "field": "vehicle.dppa_purpose_logged", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "DMV-R-007",
+      "label": "Fee Payment Not Confirmed",
+      "logic": "Title transfer fee payment_intent_id not confirmed as settled — cannot issue title without confirmed payment",
+      "eval": { "field": "vehicle.fee_payment_confirmed", "operator": "==", "threshold": false }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "DMV-R-FLG-001",
+      "label": "High-Value Transfer",
+      "logic": "Purchase price exceeds $75,000 — flag for enhanced review and possible luxury tax assessment",
+      "eval": { "field": "vehicle.purchase_price", "operator": ">", "threshold": 75000 }
+    },
+    {
+      "id": "DMV-R-FLG-002",
+      "label": "Out-of-State Title",
+      "logic": "Seller's current title was issued by a different state — verify reciprocity and title brand portability",
+      "eval": { "field": "vehicle.out_of_state_title", "operator": "==", "threshold": true }
+    }
+  ],
+  "outputs": [
+    "gov001-title-certificate",
+    "gov001-transfer-receipt",
+    "gov001-nmvtis-report",
+    "gov001-fee-schedule"
+  ]
+}

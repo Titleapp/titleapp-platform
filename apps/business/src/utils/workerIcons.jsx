@@ -992,6 +992,648 @@ const ICONS = {
       <line x1="8" y1="11" x2="14" y2="11" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
     </>
   ),
+
+  // ══════════════════════════════════════════════
+  // ── Government: DMV & Motor Vehicle ──
+  // ══════════════════════════════════════════════
+
+  // Gateway / door — jurisdiction onboarding
+  "gov-jurisdiction-onboarding": (g) => (
+    <>
+      <rect x="4" y="2" width="16" height="20" rx="2" fill={`url(#${g})`} />
+      <rect x="7" y="5" width="10" height="14" rx="1" fill="white" fillOpacity="0.2" />
+      <path d="M12 2v20" stroke="white" strokeWidth="1.5" strokeOpacity="0.4" />
+      <circle cx="14" cy="12" r="1.2" fill="white" fillOpacity="0.7" />
+      <path d="M9 19l3-3 3 3" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+    </>
+  ),
+
+  // Document with car — title registration intake
+  "gov-title-registration-intake": (g) => (
+    <>
+      <path d="M6 2a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6H6z" fill={`url(#${g})`} />
+      <path d="M14 2v6h6" fill="white" fillOpacity="0.25" />
+      <path d="M8 16l1.5-2h5l1.5 2H8z" fill="white" fillOpacity="0.7" />
+      <circle cx="9.5" cy="17" r="0.8" fill="white" />
+      <circle cx="14.5" cy="17" r="0.8" fill="white" />
+    </>
+  ),
+
+  // Chain link — lien management
+  "gov-lien-management": (g) => (
+    <>
+      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" stroke={`url(#${g})`} strokeWidth="2.5" strokeLinecap="round" fill="none" />
+      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" stroke={`url(#${g})`} strokeWidth="2.5" strokeLinecap="round" fill="none" />
+    </>
+  ),
+
+  // Shield with exclamation — title fraud detection
+  "gov-title-fraud-detection": (g) => (
+    <>
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill={`url(#${g})`} />
+      <line x1="12" y1="9" x2="12" y2="14" stroke="white" strokeWidth="2" strokeLinecap="round" />
+      <circle cx="12" cy="17" r="1" fill="white" />
+    </>
+  ),
+
+  // ID card — driver license intake
+  "gov-driver-license-intake": (g) => (
+    <>
+      <rect x="2" y="4" width="20" height="16" rx="3" fill={`url(#${g})`} />
+      <rect x="4" y="7" width="6" height="7" rx="1" fill="white" fillOpacity="0.3" />
+      <circle cx="7" cy="9.5" r="2" fill="white" fillOpacity="0.5" />
+      <rect x="12" y="8" width="7" height="1.5" rx=".75" fill="white" fillOpacity="0.6" />
+      <rect x="12" y="11" width="5" height="1.5" rx=".75" fill="white" fillOpacity="0.6" />
+      <rect x="12" y="14" width="6" height="1.5" rx=".75" fill="white" fillOpacity="0.6" />
+    </>
+  ),
+
+  // Badge with truck — CDL endorsement tracker
+  "gov-cdl-endorsement-tracker": (g) => (
+    <>
+      <rect x="3" y="2" width="18" height="20" rx="3" fill={`url(#${g})`} />
+      <rect x="6" y="4" width="12" height="4" rx="1" fill="white" fillOpacity="0.3" />
+      <path d="M8 14l2-2h4l2 2v3H8v-3z" fill="white" fillOpacity="0.6" />
+      <circle cx="9.5" cy="15.5" r="0.8" fill={`url(#${g})`} />
+      <circle cx="14.5" cy="15.5" r="0.8" fill={`url(#${g})`} />
+      <path d="M9 20l1.5-1h3l1.5 1" stroke="white" strokeWidth="1" strokeLinecap="round" fill="none" />
+    </>
+  ),
+
+  // Clipboard with checkmark — vehicle inspection compliance
+  "gov-vehicle-inspection-compliance": (g) => (
+    <>
+      <path d="M6 4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H6z" fill={`url(#${g})`} />
+      <rect x="8" y="2" width="8" height="4" rx="1.5" fill="white" fillOpacity="0.5" />
+      <path d="M9 12l2 2 4-4" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      <rect x="8" y="17" width="8" height="1.5" rx=".75" fill="white" fillOpacity="0.5" />
+    </>
+  ),
+
+  // Circular arrows — registration renewal
+  "gov-registration-renewal": (g) => (
+    <>
+      <circle cx="12" cy="12" r="9" stroke={`url(#${g})`} strokeWidth="3" fill="none" strokeDasharray="14 8" />
+      <path d="M17 7l2-2 2 2" stroke={`url(#${g})`} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      <path d="M5 17l-2 2-2-2" stroke={`url(#${g})`} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      <rect x="9" y="9" width="6" height="6" rx="1" fill={`url(#${g})`} opacity="0.5" />
+    </>
+  ),
+
+  // Multiple cars — fleet & dealer title
+  "gov-fleet-dealer-title": (g) => (
+    <>
+      <rect x="2" y="10" width="9" height="6" rx="1.5" fill={`url(#${g})`} opacity="0.6" />
+      <circle cx="4.5" cy="17" r="1.2" fill={`url(#${g})`} opacity="0.6" />
+      <circle cx="9" cy="17" r="1.2" fill={`url(#${g})`} opacity="0.6" />
+      <rect x="8" y="5" width="14" height="8" rx="2" fill={`url(#${g})`} />
+      <path d="M10 13l2-3h6l2 3" stroke="white" strokeWidth="1" fill="none" />
+      <circle cx="11.5" cy="14.5" r="1.2" fill="white" fillOpacity="0.5" />
+      <circle cx="18.5" cy="14.5" r="1.2" fill="white" fillOpacity="0.5" />
+    </>
+  ),
+
+  // Queue / people in line — DMV queue manager
+  "gov-dmv-queue-manager": (g) => (
+    <>
+      <circle cx="6" cy="6" r="2.5" fill={`url(#${g})`} />
+      <rect x="4" y="10" width="4" height="6" rx="1" fill={`url(#${g})`} />
+      <circle cx="12" cy="6" r="2.5" fill={`url(#${g})`} opacity="0.7" />
+      <rect x="10" y="10" width="4" height="6" rx="1" fill={`url(#${g})`} opacity="0.7" />
+      <circle cx="18" cy="6" r="2.5" fill={`url(#${g})`} opacity="0.4" />
+      <rect x="16" y="10" width="4" height="6" rx="1" fill={`url(#${g})`} opacity="0.4" />
+      <path d="M4 20h16" stroke={`url(#${g})`} strokeWidth="2" strokeLinecap="round" />
+    </>
+  ),
+
+  // Map pin with arrow — out-of-state title
+  "gov-out-of-state-title": (g) => (
+    <>
+      <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill={`url(#${g})`} />
+      <circle cx="12" cy="9" r="3" fill="white" fillOpacity="0.5" />
+      <path d="M17 4l3-1-1 3" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      <path d="M20 3l-3.5 3.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+    </>
+  ),
+
+  // Wrench with document — salvage / rebuilt title
+  "gov-salvage-rebuilt-title": (g) => (
+    <>
+      <path d="M6 2a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6H6z" fill={`url(#${g})`} opacity="0.5" />
+      <path d="M14 2v6h6" fill="white" fillOpacity="0.15" />
+      <path d="M14.7 11.3a3.5 3.5 0 0 0-5 0l-1.4 1.4a3.5 3.5 0 0 0 0 5l.7.7a3.5 3.5 0 0 0 5 0l1.4-1.4a3.5 3.5 0 0 0 0-5l-.7-.7z" fill={`url(#${g})`} />
+      <path d="M10 14l4 4" stroke="white" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+    </>
+  ),
+
+  // Lock / privacy shield — DPPA compliance
+  "gov-dppa-compliance": (g) => (
+    <>
+      <rect x="5" y="11" width="14" height="11" rx="2" fill={`url(#${g})`} />
+      <path d="M8 11V7a4 4 0 0 1 8 0v4" stroke={`url(#${g})`} strokeWidth="2.5" fill="none" />
+      <circle cx="12" cy="16" r="2" fill="white" fillOpacity="0.6" />
+      <line x1="12" y1="16" x2="12" y2="19" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
+    </>
+  ),
+
+  // Dollar in ledger — DMV revenue reconciliation
+  "gov-dmv-revenue-reconciliation": (g) => (
+    <>
+      <rect x="3" y="2" width="18" height="20" rx="2" fill={`url(#${g})`} />
+      <rect x="3" y="2" width="4" height="20" fill={`url(#${g})`} opacity="0.3" />
+      <rect x="9" y="6" width="9" height="1.2" rx=".6" fill="white" fillOpacity="0.5" />
+      <rect x="9" y="9" width="7" height="1.2" rx=".6" fill="white" fillOpacity="0.5" />
+      <rect x="9" y="12" width="8" height="1.2" rx=".6" fill="white" fillOpacity="0.5" />
+      <path d="M12 16v1m0 2v1" stroke="white" strokeWidth="1" strokeLinecap="round" fill="none" />
+      <path d="M13.5 17c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5.67 1.5 1.5 1.5 1.5.67 1.5 1.5" stroke="white" strokeWidth="1" strokeLinecap="round" fill="none" />
+    </>
+  ),
+
+  // Magnifying glass on document — DMV audit readiness
+  "gov-dmv-audit-readiness": (g) => (
+    <>
+      <path d="M6 2a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6H6z" fill={`url(#${g})`} opacity="0.5" />
+      <path d="M14 2v6h6" fill="white" fillOpacity="0.15" />
+      <circle cx="11" cy="14" r="4" stroke={`url(#${g})`} strokeWidth="2.5" fill="none" />
+      <line x1="14" y1="17" x2="18" y2="21" stroke={`url(#${g})`} strokeWidth="2.5" strokeLinecap="round" />
+    </>
+  ),
+
+  // Star hexagon — Alex DMV
+  "gov-alex-dmv": (g) => (
+    <>
+      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" fill={`url(#${g})`} />
+      <path d="M12 7l1.5 3 3.5.5-2.5 2.5.6 3.5L12 15l-3.1 1.5.6-3.5L7 10.5l3.5-.5L12 7z" fill="white" fillOpacity="0.85" />
+    </>
+  ),
+
+  // ══════════════════════════════════════════════
+  // ── Government: Permitting & Land Use ──
+  // ══════════════════════════════════════════════
+
+  // Document with plus — permit application intake
+  "gov-permit-application-intake": (g) => (
+    <>
+      <path d="M6 2a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6H6z" fill={`url(#${g})`} />
+      <path d="M14 2v6h6" fill="white" fillOpacity="0.25" />
+      <line x1="12" y1="12" x2="12" y2="18" stroke="white" strokeWidth="2" strokeLinecap="round" />
+      <line x1="9" y1="15" x2="15" y2="15" stroke="white" strokeWidth="2" strokeLinecap="round" />
+    </>
+  ),
+
+  // Building with progress bar — building permit tracker
+  "gov-building-permit-tracker": (g) => (
+    <>
+      <rect x="4" y="8" width="16" height="12" rx="1" fill={`url(#${g})`} />
+      <path d="M12 2L4 8h16L12 2z" fill={`url(#${g})`} opacity="0.7" />
+      <rect x="7" y="11" width="3" height="3" rx=".5" fill="white" fillOpacity="0.4" />
+      <rect x="14" y="11" width="3" height="3" rx=".5" fill="white" fillOpacity="0.4" />
+      <rect x="10" y="16" width="4" height="4" rx=".5" fill="white" fillOpacity="0.5" />
+      <rect x="6" y="21" width="12" height="1.5" rx=".5" fill={`url(#${g})`} opacity="0.5" />
+      <rect x="6" y="21" width="7" height="1.5" rx=".5" fill="white" fillOpacity="0.4" />
+    </>
+  ),
+
+  // Circular arrows with document — plan review coordinator
+  "gov-plan-review-coordinator": (g) => (
+    <>
+      <path d="M7 3a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9l-5-6H7z" fill={`url(#${g})`} opacity="0.5" />
+      <rect x="8" y="12" width="6" height="1.2" rx=".6" fill="white" fillOpacity="0.6" />
+      <rect x="8" y="15" width="4" height="1.2" rx=".6" fill="white" fillOpacity="0.6" />
+      <path d="M19 8a6 6 0 0 1-6 6" stroke={`url(#${g})`} strokeWidth="2" strokeLinecap="round" fill="none" />
+      <path d="M19 8l2-2m-2 2l-2-2" stroke={`url(#${g})`} strokeWidth="1.5" strokeLinecap="round" fill="none" />
+    </>
+  ),
+
+  // Badge with wrench — contractor credential manager
+  "gov-contractor-credential-manager": (g) => (
+    <>
+      <rect x="4" y="2" width="16" height="20" rx="3" fill={`url(#${g})`} />
+      <circle cx="12" cy="8" r="3" fill="white" fillOpacity="0.3" />
+      <rect x="7" y="13" width="10" height="1.5" rx=".75" fill="white" fillOpacity="0.6" />
+      <rect x="8" y="16" width="8" height="1.5" rx=".75" fill="white" fillOpacity="0.5" />
+      <path d="M15 5l1.5-1.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+      <circle cx="17" cy="3" r="1.5" fill="white" fillOpacity="0.5" />
+    </>
+  ),
+
+  // Grid / map — zoning & land use
+  "gov-zoning-land-use": (g) => (
+    <>
+      <rect x="2" y="2" width="20" height="20" rx="2" fill={`url(#${g})`} opacity="0.3" />
+      <rect x="3" y="3" width="8" height="8" fill={`url(#${g})`} opacity="0.7" />
+      <rect x="13" y="3" width="8" height="8" fill={`url(#${g})`} opacity="0.5" />
+      <rect x="3" y="13" width="8" height="8" fill={`url(#${g})`} opacity="0.5" />
+      <rect x="13" y="13" width="8" height="8" fill={`url(#${g})`} />
+      <line x1="12" y1="2" x2="12" y2="22" stroke="white" strokeWidth="1.5" strokeOpacity="0.4" />
+      <line x1="2" y1="12" x2="22" y2="12" stroke="white" strokeWidth="1.5" strokeOpacity="0.4" />
+    </>
+  ),
+
+  // Gavel with question mark — variance & appeal tracker
+  "gov-variance-appeal-tracker": (g) => (
+    <>
+      <rect x="2" y="20" width="20" height="2" rx="1" fill={`url(#${g})`} />
+      <rect x="9" y="16" width="6" height="4" rx="1" fill={`url(#${g})`} opacity="0.6" />
+      <rect x="5" y="4" width="6" height="3.5" rx="1.5" fill={`url(#${g})`} transform="rotate(-45 8 5.75)" />
+      <line x1="10" y1="10" x2="14" y2="14" stroke={`url(#${g})`} strokeWidth="2.5" strokeLinecap="round" />
+      <path d="M17 5a3 3 0 0 0-3 3" stroke="white" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+      <circle cx="17" cy="10" r="0.8" fill="white" />
+    </>
+  ),
+
+  // Calendar with flag — event permit manager
+  "gov-event-permit-manager": (g) => (
+    <>
+      <rect x="3" y="4" width="18" height="18" rx="2" fill={`url(#${g})`} />
+      <line x1="8" y1="2" x2="8" y2="6" stroke="white" strokeWidth="2" strokeLinecap="round" />
+      <line x1="16" y1="2" x2="16" y2="6" stroke="white" strokeWidth="2" strokeLinecap="round" />
+      <line x1="3" y1="10" x2="21" y2="10" stroke="white" strokeWidth="1.5" strokeOpacity="0.4" />
+      <path d="M12 13v5h4l-4-5z" fill="white" fillOpacity="0.7" />
+    </>
+  ),
+
+  // Leaf / globe — environmental review
+  "gov-environmental-review": (g) => (
+    <>
+      <circle cx="12" cy="12" r="10" fill={`url(#${g})`} />
+      <path d="M6 18c0-6 4-10 10-12" stroke="white" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+      <path d="M8 14c1-3 4-6 8-7" stroke="white" strokeWidth="1" strokeLinecap="round" fill="none" strokeOpacity="0.5" />
+      <path d="M12 22V12" stroke="white" strokeWidth="1.2" strokeLinecap="round" fill="none" strokeOpacity="0.4" />
+    </>
+  ),
+
+  // Calculator — fee calculation
+  "gov-fee-calculation": (g) => (
+    <>
+      <rect x="4" y="2" width="16" height="20" rx="3" fill={`url(#${g})`} />
+      <rect x="6" y="4" width="12" height="5" rx="1" fill="white" fillOpacity="0.3" />
+      <circle cx="8" cy="13" r="1.2" fill="white" fillOpacity="0.5" />
+      <circle cx="12" cy="13" r="1.2" fill="white" fillOpacity="0.5" />
+      <circle cx="16" cy="13" r="1.2" fill="white" fillOpacity="0.5" />
+      <circle cx="8" cy="17" r="1.2" fill="white" fillOpacity="0.5" />
+      <circle cx="12" cy="17" r="1.2" fill="white" fillOpacity="0.5" />
+      <rect x="14" y="16" width="4" height="2.5" rx=".75" fill="white" fillOpacity="0.5" />
+    </>
+  ),
+
+  // Megaphone / bell — public notice generator
+  "gov-public-notice-generator": (g) => (
+    <>
+      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9z" fill={`url(#${g})`} />
+      <path d="M13.73 21a2 2 0 0 1-3.46 0" stroke="white" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+      <line x1="12" y1="2" x2="12" y2="4" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
+    </>
+  ),
+
+  // Person with checkmark — contractor verification
+  "gov-contractor-verification": (g) => (
+    <>
+      <circle cx="10" cy="7" r="4" fill={`url(#${g})`} />
+      <path d="M2 21v-2a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v2" fill={`url(#${g})`} opacity="0.6" />
+      <circle cx="18" cy="14" r="4" fill={`url(#${g})`} />
+      <path d="M16.5 14l1 1 2.5-2.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+    </>
+  ),
+
+  // Building with ribbon — certificate of occupancy
+  "gov-certificate-of-occupancy": (g) => (
+    <>
+      <rect x="5" y="6" width="14" height="12" rx="1" fill={`url(#${g})`} />
+      <path d="M12 2L5 6h14L12 2z" fill={`url(#${g})`} opacity="0.7" />
+      <rect x="10" y="14" width="4" height="4" rx=".5" fill="white" fillOpacity="0.5" />
+      <rect x="7" y="9" width="3" height="3" rx=".5" fill="white" fillOpacity="0.3" />
+      <rect x="14" y="9" width="3" height="3" rx=".5" fill="white" fillOpacity="0.3" />
+      <circle cx="18" cy="19" r="3" fill={`url(#${g})`} />
+      <path d="M17 19l0.7 0.7 1.5-1.5" stroke="white" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+    </>
+  ),
+
+  // Shield with pulse line — permit compliance monitor
+  "gov-permit-compliance-monitor": (g) => (
+    <>
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill={`url(#${g})`} />
+      <polyline points="7,13 9.5,13 11,10 13,16 14.5,13 17,13" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+    </>
+  ),
+
+  // Monitor with status bar — public portal status
+  "gov-public-portal-status": (g) => (
+    <>
+      <rect x="2" y="3" width="20" height="14" rx="2" fill={`url(#${g})`} />
+      <line x1="9" y1="20" x2="15" y2="20" stroke={`url(#${g})`} strokeWidth="2" strokeLinecap="round" />
+      <line x1="12" y1="17" x2="12" y2="20" stroke={`url(#${g})`} strokeWidth="2" strokeLinecap="round" />
+      <rect x="5" y="7" width="4" height="1.5" rx=".5" fill="white" fillOpacity="0.6" />
+      <rect x="5" y="10" width="6" height="1.5" rx=".5" fill="white" fillOpacity="0.4" />
+      <circle cx="18" cy="8" r="2" fill="white" fillOpacity="0.5" />
+    </>
+  ),
+
+  // Star hexagon — Alex Permitting
+  "gov-alex-permitting": (g) => (
+    <>
+      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" fill={`url(#${g})`} />
+      <rect x="8" y="9" width="8" height="6" rx="1" fill="white" fillOpacity="0.25" />
+      <path d="M12 7l1.5 3 3.5.5-2.5 2.5.6 3.5L12 15l-3.1 1.5.6-3.5L7 10.5l3.5-.5L12 7z" fill="white" fillOpacity="0.85" />
+    </>
+  ),
+
+  // ══════════════════════════════════════════════
+  // ── Government: Inspections ──
+  // ══════════════════════════════════════════════
+
+  // Hardhat with magnifying glass — building inspector
+  "gov-building-inspector": (g) => (
+    <>
+      <path d="M4 14c0-4.42 3.58-8 8-8s8 3.58 8 8H4z" fill={`url(#${g})`} />
+      <rect x="3" y="14" width="18" height="3" rx="1" fill={`url(#${g})`} opacity="0.8" />
+      <line x1="12" y1="6" x2="12" y2="3" stroke={`url(#${g})`} strokeWidth="2" strokeLinecap="round" />
+      <circle cx="12" cy="2" r="1.2" fill={`url(#${g})`} />
+      <rect x="6" y="19" width="12" height="3" rx="1" fill={`url(#${g})`} opacity="0.4" />
+    </>
+  ),
+
+  // Clipboard with X — code enforcement
+  "gov-code-enforcement": (g) => (
+    <>
+      <path d="M6 4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H6z" fill={`url(#${g})`} />
+      <rect x="8" y="2" width="8" height="4" rx="1.5" fill="white" fillOpacity="0.5" />
+      <line x1="9" y1="11" x2="15" y2="17" stroke="white" strokeWidth="2" strokeLinecap="round" />
+      <line x1="15" y1="11" x2="9" y2="17" stroke="white" strokeWidth="2" strokeLinecap="round" />
+    </>
+  ),
+
+  // Flame with checkmark — fire inspection
+  "gov-fire-inspection": (g) => (
+    <>
+      <path d="M12 22c-4 0-7-3-7-7 0-3 2-5 4-7l1 3c1-2 3-5 3-8 3 3 6 6 6 12 0 4-3 7-7 7z" fill={`url(#${g})`} />
+      <path d="M9 16l2 2 4-4" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+    </>
+  ),
+
+  // Fork / plate — health & food inspector
+  "gov-health-food-inspector": (g) => (
+    <>
+      <circle cx="12" cy="12" r="10" fill={`url(#${g})`} />
+      <circle cx="12" cy="12" r="6" fill="white" fillOpacity="0.2" />
+      <line x1="8" y1="6" x2="8" y2="18" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M8 6c0 2 2 3 2 5" stroke="white" strokeWidth="1.2" strokeLinecap="round" fill="none" />
+      <path d="M8 6c0 2-2 3-2 5" stroke="white" strokeWidth="1.2" strokeLinecap="round" fill="none" />
+      <line x1="16" y1="6" x2="16" y2="18" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M14 6v5a2 2 0 0 0 4 0V6" stroke="white" strokeWidth="1.2" strokeLinecap="round" fill="none" />
+    </>
+  ),
+
+  // Lightning bolt in circle — electrical inspector
+  "gov-electrical-inspector": (g) => (
+    <>
+      <circle cx="12" cy="12" r="10" fill={`url(#${g})`} />
+      <path d="M13 6l-4 6h4l-2 6 6-8h-4l2-4z" fill="white" fillOpacity="0.85" />
+    </>
+  ),
+
+  // Pipe / wrench — plumbing inspector
+  "gov-plumbing-inspector": (g) => (
+    <>
+      <circle cx="12" cy="12" r="10" fill={`url(#${g})`} />
+      <path d="M8 7v3a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V7" stroke="white" strokeWidth="1.8" strokeLinecap="round" fill="none" />
+      <line x1="12" y1="12" x2="12" y2="19" stroke="white" strokeWidth="1.8" strokeLinecap="round" />
+      <line x1="9" y1="17" x2="15" y2="17" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
+      <line x1="7" y1="7" x2="17" y2="7" stroke="white" strokeWidth="2" strokeLinecap="round" />
+    </>
+  ),
+
+  // Calendar with clock — reinspection scheduler
+  "gov-reinspection-scheduler": (g) => (
+    <>
+      <rect x="3" y="4" width="18" height="18" rx="2" fill={`url(#${g})`} />
+      <line x1="8" y1="2" x2="8" y2="6" stroke="white" strokeWidth="2" strokeLinecap="round" />
+      <line x1="16" y1="2" x2="16" y2="6" stroke="white" strokeWidth="2" strokeLinecap="round" />
+      <line x1="3" y1="10" x2="21" y2="10" stroke="white" strokeWidth="1.5" strokeOpacity="0.4" />
+      <circle cx="12" cy="16" r="3.5" fill="white" fillOpacity="0.3" />
+      <line x1="12" y1="14" x2="12" y2="16" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
+      <line x1="12" y1="16" x2="14" y2="17" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
+    </>
+  ),
+
+  // Document with lines / report — inspection report generator
+  "gov-inspection-report-generator": (g) => (
+    <>
+      <path d="M6 2a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6H6z" fill={`url(#${g})`} />
+      <path d="M14 2v6h6" fill="white" fillOpacity="0.25" />
+      <rect x="7" y="12" width="10" height="1.5" rx=".75" fill="white" fillOpacity="0.6" />
+      <rect x="7" y="15" width="7" height="1.5" rx=".75" fill="white" fillOpacity="0.6" />
+      <rect x="7" y="18" width="9" height="1.5" rx=".75" fill="white" fillOpacity="0.6" />
+      <circle cx="8" cy="9" r="1.5" fill="white" fillOpacity="0.5" />
+    </>
+  ),
+
+  // Stacked list with clock — inspection backlog manager
+  "gov-inspection-backlog-manager": (g) => (
+    <>
+      <rect x="3" y="3" width="18" height="4" rx="1.5" fill={`url(#${g})`} />
+      <rect x="3" y="9" width="18" height="4" rx="1.5" fill={`url(#${g})`} opacity="0.7" />
+      <rect x="3" y="15" width="18" height="4" rx="1.5" fill={`url(#${g})`} opacity="0.4" />
+      <circle cx="19" cy="18" r="3.5" fill={`url(#${g})`} />
+      <line x1="19" y1="16.5" x2="19" y2="18" stroke="white" strokeWidth="1.2" strokeLinecap="round" />
+      <line x1="19" y1="18" x2="20.5" y2="19" stroke="white" strokeWidth="1.2" strokeLinecap="round" />
+    </>
+  ),
+
+  // Star hexagon — Alex Inspector
+  "gov-alex-inspector": (g) => (
+    <>
+      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" fill={`url(#${g})`} />
+      <circle cx="12" cy="10" r="3" fill="white" fillOpacity="0.3" />
+      <path d="M12 7l1.5 3 3.5.5-2.5 2.5.6 3.5L12 15l-3.1 1.5.6-3.5L7 10.5l3.5-.5L12 7z" fill="white" fillOpacity="0.85" />
+    </>
+  ),
+
+  // ══════════════════════════════════════════════
+  // ── Government: Recorder / County Clerk ──
+  // ══════════════════════════════════════════════
+
+  // Document with stamp — document recording intake
+  "gov-document-recording-intake": (g) => (
+    <>
+      <path d="M6 2a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6H6z" fill={`url(#${g})`} />
+      <path d="M14 2v6h6" fill="white" fillOpacity="0.25" />
+      <circle cx="9" cy="16" r="3" fill={`url(#${g})`} stroke="white" strokeWidth="1" />
+      <path d="M8 16l0.7 0.7 1.5-1.5" stroke="white" strokeWidth="0.8" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      <rect x="8" y="10" width="8" height="1.5" rx=".75" fill="white" fillOpacity="0.6" />
+    </>
+  ),
+
+  // Chain links — chain of title
+  "gov-chain-of-title": (g) => (
+    <>
+      <ellipse cx="8" cy="8" rx="4" ry="5" stroke={`url(#${g})`} strokeWidth="2.5" fill="none" />
+      <ellipse cx="16" cy="8" rx="4" ry="5" stroke={`url(#${g})`} strokeWidth="2.5" fill="none" />
+      <ellipse cx="12" cy="16" rx="4" ry="5" stroke={`url(#${g})`} strokeWidth="2.5" fill="none" />
+    </>
+  ),
+
+  // Arrow document — deed transfer processor
+  "gov-deed-transfer-processor": (g) => (
+    <>
+      <path d="M6 2a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6H6z" fill={`url(#${g})`} />
+      <path d="M14 2v6h6" fill="white" fillOpacity="0.25" />
+      <path d="M8 14h6m0 0l-2-2m2 2l-2 2" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      <rect x="8" y="17" width="8" height="1.5" rx=".75" fill="white" fillOpacity="0.5" />
+    </>
+  ),
+
+  // Chain with minus — lien recording & release
+  "gov-lien-recording-release": (g) => (
+    <>
+      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" stroke={`url(#${g})`} strokeWidth="2.5" strokeLinecap="round" fill="none" />
+      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" stroke={`url(#${g})`} strokeWidth="2.5" strokeLinecap="round" fill="none" />
+      <line x1="9" y1="12" x2="15" y2="12" stroke="white" strokeWidth="2" strokeLinecap="round" />
+    </>
+  ),
+
+  // Video camera with seal — RON notarization
+  "gov-ron-notarization": (g) => (
+    <>
+      <rect x="2" y="5" width="15" height="14" rx="2" fill={`url(#${g})`} />
+      <path d="M17 8l5-3v14l-5-3V8z" fill={`url(#${g})`} opacity="0.7" />
+      <circle cx="9" cy="12" r="3" fill="white" fillOpacity="0.3" />
+      <circle cx="9" cy="12" r="1.5" fill="white" fillOpacity="0.5" />
+    </>
+  ),
+
+  // Shield with checkmark — eCORDS compliance
+  "gov-ecords-compliance": (g) => (
+    <>
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill={`url(#${g})`} />
+      <path d="M9 12l2 2 4-4" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+    </>
+  ),
+
+  // Shield with lock — recording fraud detection
+  "gov-recording-fraud-detection": (g) => (
+    <>
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill={`url(#${g})`} />
+      <rect x="9" y="11" width="6" height="5" rx="1" fill="white" fillOpacity="0.5" />
+      <path d="M10 11V9a2 2 0 0 1 4 0v2" stroke="white" strokeWidth="1.5" fill="none" />
+      <circle cx="12" cy="14" r="0.8" fill={`url(#${g})`} />
+    </>
+  ),
+
+  // Filing cabinet — public records request
+  "gov-public-records-request": (g) => (
+    <>
+      <rect x="4" y="2" width="16" height="20" rx="2" fill={`url(#${g})`} />
+      <line x1="4" y1="8" x2="20" y2="8" stroke="white" strokeWidth="1" strokeOpacity="0.3" />
+      <line x1="4" y1="14" x2="20" y2="14" stroke="white" strokeWidth="1" strokeOpacity="0.3" />
+      <rect x="10" y="4" width="4" height="2" rx=".5" fill="white" fillOpacity="0.5" />
+      <rect x="10" y="10" width="4" height="2" rx=".5" fill="white" fillOpacity="0.5" />
+      <rect x="10" y="16" width="4" height="2" rx=".5" fill="white" fillOpacity="0.5" />
+    </>
+  ),
+
+  // Magnifying glass on list — index search engine
+  "gov-index-search-engine": (g) => (
+    <>
+      <rect x="3" y="3" width="14" height="18" rx="2" fill={`url(#${g})`} opacity="0.5" />
+      <rect x="6" y="6" width="8" height="1.5" rx=".75" fill="white" fillOpacity="0.5" />
+      <rect x="6" y="9" width="6" height="1.5" rx=".75" fill="white" fillOpacity="0.5" />
+      <rect x="6" y="12" width="7" height="1.5" rx=".75" fill="white" fillOpacity="0.5" />
+      <circle cx="17" cy="15" r="4" stroke={`url(#${g})`} strokeWidth="2.5" fill="none" />
+      <line x1="20" y1="18" x2="22" y2="20" stroke={`url(#${g})`} strokeWidth="2.5" strokeLinecap="round" />
+    </>
+  ),
+
+  // Camera on old document — historical digitization
+  "gov-historical-digitization": (g) => (
+    <>
+      <path d="M6 3a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2H6z" fill={`url(#${g})`} opacity="0.4" />
+      <rect x="7" y="7" width="10" height="1.5" rx=".75" fill="white" fillOpacity="0.4" />
+      <rect x="7" y="10" width="7" height="1.5" rx=".75" fill="white" fillOpacity="0.4" />
+      <path d="M9 16h6l1-1h2a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h2l1 1z" fill={`url(#${g})`} />
+      <circle cx="12" cy="19" r="2" fill="white" fillOpacity="0.5" />
+    </>
+  ),
+
+  // Dollar in ledger — fee collection reconciliation
+  "gov-fee-collection-reconciliation": (g) => (
+    <>
+      <rect x="3" y="2" width="18" height="20" rx="2" fill={`url(#${g})`} />
+      <line x1="3" y1="7" x2="21" y2="7" stroke="white" strokeWidth="1" strokeOpacity="0.3" />
+      <line x1="3" y1="12" x2="21" y2="12" stroke="white" strokeWidth="1" strokeOpacity="0.3" />
+      <line x1="3" y1="17" x2="21" y2="17" stroke="white" strokeWidth="1" strokeOpacity="0.3" />
+      <line x1="10" y1="2" x2="10" y2="22" stroke="white" strokeWidth="1" strokeOpacity="0.3" />
+      <circle cx="15" cy="15" r="2.5" fill="white" fillOpacity="0.4" />
+      <path d="M15 13.5v0.5m0 2v0.5" stroke={`url(#${g})`} strokeWidth="0.8" strokeLinecap="round" fill="none" />
+    </>
+  ),
+
+  // Building with equals — assessor valuation sync
+  "gov-assessor-valuation-sync": (g) => (
+    <>
+      <rect x="5" y="8" width="14" height="12" rx="1" fill={`url(#${g})`} />
+      <path d="M12 2L5 8h14L12 2z" fill={`url(#${g})`} opacity="0.7" />
+      <rect x="8" y="11" width="3" height="3" rx=".5" fill="white" fillOpacity="0.4" />
+      <rect x="13" y="11" width="3" height="3" rx=".5" fill="white" fillOpacity="0.4" />
+      <rect x="10" y="16" width="4" height="4" rx=".5" fill="white" fillOpacity="0.5" />
+      <line x1="17" y1="4" x2="21" y2="4" stroke={`url(#${g})`} strokeWidth="1.5" strokeLinecap="round" />
+      <line x1="17" y1="6.5" x2="21" y2="6.5" stroke={`url(#${g})`} strokeWidth="1.5" strokeLinecap="round" />
+    </>
+  ),
+
+  // Stacked layers with number — lien priority & subordination
+  "gov-lien-priority-subordination": (g) => (
+    <>
+      <rect x="3" y="16" width="18" height="4" rx="1" fill={`url(#${g})`} />
+      <rect x="5" y="11" width="14" height="4" rx="1" fill={`url(#${g})`} opacity="0.7" />
+      <rect x="7" y="6" width="10" height="4" rx="1" fill={`url(#${g})`} opacity="0.45" />
+      <text x="12" y="9" textAnchor="middle" fill="white" fontSize="4" fontWeight="bold">1</text>
+      <text x="12" y="14.5" textAnchor="middle" fill="white" fontSize="4" fontWeight="bold">2</text>
+      <text x="12" y="19.5" textAnchor="middle" fill="white" fontSize="4" fontWeight="bold">3</text>
+    </>
+  ),
+
+  // Globe with chain — public chain query
+  "gov-public-chain-query": (g) => (
+    <>
+      <circle cx="12" cy="12" r="10" fill={`url(#${g})`} />
+      <path d="M2 12h20" stroke="white" strokeWidth="1.3" strokeOpacity="0.4" fill="none" />
+      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10A15.3 15.3 0 0 1 12 2z" stroke="white" strokeWidth="1.3" strokeOpacity="0.4" fill="none" />
+      <path d="M8 15a2 2 0 0 0 2 2h4a2 2 0 0 0 0-4h-4a2 2 0 0 0 0 4" stroke="white" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+    </>
+  ),
+
+  // Magnifying glass on stack — recorder audit readiness
+  "gov-recorder-audit-readiness": (g) => (
+    <>
+      <rect x="3" y="4" width="14" height="4" rx="1" fill={`url(#${g})`} />
+      <rect x="3" y="10" width="14" height="4" rx="1" fill={`url(#${g})`} opacity="0.7" />
+      <rect x="3" y="16" width="14" height="4" rx="1" fill={`url(#${g})`} opacity="0.4" />
+      <circle cx="18" cy="14" r="4" stroke={`url(#${g})`} strokeWidth="2.5" fill="none" />
+      <line x1="21" y1="17" x2="23" y2="19" stroke={`url(#${g})`} strokeWidth="2.5" strokeLinecap="round" />
+    </>
+  ),
+
+  // Book with scanner — historical records digitization
+  "gov-historical-records-digitization": (g) => (
+    <>
+      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" fill="none" stroke={`url(#${g})`} strokeWidth="2" />
+      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" fill={`url(#${g})`} />
+      <line x1="8" y1="7" x2="16" y2="7" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
+      <line x1="8" y1="11" x2="14" y2="11" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
+      <rect x="7" y="14" width="10" height="2" rx=".5" fill="white" fillOpacity="0.3" />
+      <line x1="10" y1="14" x2="10" y2="16" stroke={`url(#${g})`} strokeWidth="2" strokeOpacity="0.6" />
+    </>
+  ),
+
+  // Star hexagon — Alex Recorder
+  "gov-alex-recorder": (g) => (
+    <>
+      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" fill={`url(#${g})`} />
+      <path d="M6.5 2H18v7H6.5z" fill="white" fillOpacity="0.15" />
+      <path d="M12 7l1.5 3 3.5.5-2.5 2.5.6 3.5L12 15l-3.1 1.5.6-3.5L7 10.5l3.5-.5L12 7z" fill="white" fillOpacity="0.85" />
+    </>
+  ),
 };
 
 // Suite → color for marketplace card icon backgrounds
@@ -1003,6 +1645,7 @@ export const SUITE_COLORS = {
   "Legal": "#be185d",
   "Automotive": "#15803d",
   "Aviation": "#0284c7",
+  "Government": "#1a237e",
   "Platform": "#7c3aed",
 };
 
@@ -1015,6 +1658,7 @@ export const VERTICAL_COLORS = {
   aviation: "#0284c7",
   investor: "#0891b2",
   "property-mgmt": "#7c3aed",
+  government: "#1a237e",
   custom: "#4f46e5",
 };
 
@@ -1027,6 +1671,7 @@ export const VERTICAL_ICON_SLUGS = {
   aviation: "permit-tracker",
   investor: "investor-relations",
   "property-mgmt": "property-management",
+  government: "gov-jurisdiction-onboarding",
   custom: "engineering-review",
 };
 
