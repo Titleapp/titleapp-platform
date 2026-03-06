@@ -6,12 +6,12 @@ The JSON file (`src/data/digitalWorkerCatalog.json`) is generated from this spre
 and serves the landing page.
 
 ## Current Stats
-- **354 Digital Workers** in the catalog
+- **Over 1,000 Digital Workers** in the catalog, more added daily
 - **12 Suites**: Title & Escrow, Real Estate, Aviation Ops, Aviation Training,
   Part 91, EMS/Healthcare, Investment, Auto Dealer, Relocation, Mortgage,
   Construction, Legal
 - **50 state coverage** for RE, Mortgage, and Construction
-- **Clone potential**: 500+ from existing templates
+- Jurisdiction-level replication (same worker across states/counties) drives rapid catalog growth
 
 ## How Workers Get Added
 1. **Manual (spreadsheet)**: Edit the xlsx, commit, regenerate JSON

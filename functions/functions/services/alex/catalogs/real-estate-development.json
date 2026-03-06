@@ -1362,7 +1362,7 @@
     {
       "id": "blackrock-institutional",
       "name": "BlackRock",
-      "description": "Institutional bundle with all 52 workers for full lifecycle management",
+      "description": "Institutional bundle with all real estate workers for full lifecycle management",
       "persona": "institutional",
       "workerIds": ["W-001", "W-002", "W-003", "W-004", "W-005", "W-006", "W-007", "W-008", "W-009", "W-010", "W-011", "W-012", "W-013", "W-014", "W-015", "W-016", "W-017", "W-018", "W-019", "W-020", "W-021", "W-022", "W-023", "W-024", "W-025", "W-026", "W-027", "W-028", "W-029", "W-030", "W-031", "W-032", "W-033", "W-034", "W-035", "W-036", "W-037", "W-038", "W-039", "W-040", "W-041", "W-042", "W-043", "W-044", "W-045", "W-046", "W-047", "W-048", "W-049", "W-050", "W-051", "W-052"],
       "monthlyPrice": 3216,

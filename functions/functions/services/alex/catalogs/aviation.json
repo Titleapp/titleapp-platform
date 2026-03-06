@@ -1211,7 +1211,7 @@
     {
       "id": "operator-complete",
       "name": "Operator Complete",
-      "description": "Full Part 135/91 operations suite -- all 38 workers covering cert through intelligence",
+      "description": "Full Part 135/91 operations suite -- all aviation workers covering cert through intelligence",
       "persona": "Enterprise Part 135 operator",
       "workerIds": ["AV-001", "AV-002", "AV-003", "AV-004", "AV-005", "AV-006", "AV-007", "AV-008", "AV-009", "AV-010", "AV-011", "AV-012", "AV-013", "AV-014", "AV-015", "AV-016", "AV-017", "AV-018", "AV-019", "AV-020", "AV-021", "AV-022", "AV-023", "AV-024", "AV-025", "AV-026", "AV-027", "AV-028", "AV-029", "AV-030", "AV-031", "AV-032", "AV-033", "AV-034", "AV-035", "AV-036", "AV-037", "AV-038"],
       "monthlyPrice": 2456,

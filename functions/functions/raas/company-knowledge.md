@@ -56,19 +56,25 @@ Creators set their price. TitleApp takes a 25% platform fee (75/25 split to crea
 
 ## Current Verticals
 
+## Current Scale
+
+TitleApp has over 1,000 Digital Workers across multiple verticals, with more added daily. Each worker covers a specific industry workflow at the jurisdiction level -- the same compliance worker replicated across 50 states, 3,000+ counties, or multiple regulatory frameworks multiplies the catalog rapidly.
+
+## Current Verticals
+
 TitleApp serves multiple verticals, each with vertical-specific Digital Workers, rules, workflows, and AI behavior:
 
-1. Auto Dealerships (29 Digital Workers live): Full dealership operations from licensing and compliance through inventory acquisition, merchandising, sales and desking, F&I, service and parts, retention and marketing, HR and compliance, to intelligence and reporting. Workers include Dealer License Monitor, FTC Safeguards Compliance, Auction Intelligence, Trade-In Valuation, Market Pricing Intelligence, Lead Management, Desking and Deal Structure, F&I Menu Builder, Lender Matching, Equity Mining, and Alex Chief of Staff. Pricing: $29-$79/mo per worker.
+1. Auto Dealerships: Full dealership operations from licensing and compliance through inventory acquisition, merchandising, sales and desking, F&I, service and parts, retention and marketing, HR and compliance, to intelligence and reporting. Workers include Dealer License Monitor, FTC Safeguards Compliance, Auction Intelligence, Trade-In Valuation, Market Pricing Intelligence, Lead Management, Desking and Deal Structure, F&I Menu Builder, Lender Matching, Equity Mining, and Alex Chief of Staff. Pricing: $29-$79/mo per worker.
 
-2. Real Estate Development (52 Digital Workers): Full CRE lifecycle from site selection and due diligence through entitlement, design, financing, construction, lease-up, stabilization, and disposition. Workers include CRE Deal Analyst, Site Selector, Zoning Analyst, Capital Stack Optimizer, Construction Lending, Construction Manager, Environmental Compliance, and Alex Chief of Staff.
+2. Real Estate Development: Full CRE lifecycle from site selection and due diligence through entitlement, design, financing, construction, lease-up, stabilization, and disposition. Workers include CRE Deal Analyst, Site Selector, Zoning Analyst, Capital Stack Optimizer, Construction Lending, Construction Manager, Environmental Compliance, and Alex Chief of Staff.
 
-3. Aviation Part 135/91 and Pilot Suite (38 Digital Workers built, 12 planned): Full flight operations from certificate management and GOM authoring through fleet airworthiness, crew management, flight ops, safety and SMS, revenue and billing, compliance, and intelligence. Plus a 6-worker Pilot Suite for personal pilots. Workers include Part 135 Certificate Assistant, GOM Authoring, AD/SB Tracker, Safety Reporting, FOQA, Charter Quoting, and Alex Aviation Chief of Staff.
+3. Aviation Part 135/91 and Pilot Suite: Full flight operations from certificate management and GOM authoring through fleet airworthiness, crew management, flight ops, safety and SMS, revenue and billing, compliance, and intelligence. Plus a Pilot Suite for personal pilots. Workers include Part 135 Certificate Assistant, GOM Authoring, AD/SB Tracker, Safety Reporting, FOQA, Charter Quoting, and Alex Aviation Chief of Staff.
 
 4. Investment Analysis: Deal screening, risk assessment, portfolio monitoring, LP communications, and compliance-first analysis with evidence requirements.
 
 5. Investor Relations: Fundraise management, cap table, data room, investor pipeline, compliance tracking. This is the vertical powering TitleApp's own raise -- dogfooding the product.
 
-6. Property Management (18 workers planned): Tenant management, lease administration, maintenance, rent collection, compliance, and financial reporting.
+6. Property Management: Tenant management, lease administration, maintenance, rent collection, compliance, and financial reporting.
 
 7. Healthcare (planned): Patient record governance, HIPAA compliance enforcement, clinical workflow automation.
 
@@ -168,7 +174,7 @@ Alex can reference these documents and offer to share them when relevant. The ex
 
 Document Engine: Any Digital Worker can generate PDF, DOCX, XLSX, and PPTX documents using 8 base templates (report, memo, agreement, deck, cashflow model, proforma, one-pager, letter). All generated documents carry an AI disclosure footer. Branding is tenant-configurable.
 
-Public API v1: 44 endpoints covering all verticals, webhooks, and universal inbound. Authentication via API key (X-API-Key header). Rate limiting at 100 requests/hour on free tier. Health check and documentation endpoints available without auth.
+Public API v1: Comprehensive REST API covering all verticals, webhooks, and universal inbound. Authentication via API key (X-API-Key header). Rate limiting at 100 requests/hour on free tier. Health check and documentation endpoints available without auth.
 
 Worker #1 Governance Pipeline: Every new Digital Worker passes through a 7-stage pipeline (intake interview, regulatory research, compliance brief, rules library editor, pre-publish check, publish flow, admin review) before going live. No exceptions. This is the trust infrastructure that differentiates TitleApp from other AI agent platforms.
 
@@ -187,10 +193,8 @@ Referral Program: Every paid customer gets a referral code. 30% recurring commis
 ## Roadmap
 
 Completed (Q1 2026):
-- Auto dealer vertical live with 29 Digital Workers
-- Aviation vertical live with 38 Digital Workers + 6 Pilot Suite workers
-- Real estate development vertical with 52 Digital Workers
-- Public API v1 with 44 endpoints and developer documentation
+- Over 1,000 Digital Workers live across auto dealer, real estate, aviation, and pilot suite verticals -- more added daily
+- Public API v1 with developer documentation
 - Document Engine with PDF, DOCX, XLSX, PPTX generation
 - Worker #1 governance pipeline with gate verification
 - Student pilot and CFI verification programs

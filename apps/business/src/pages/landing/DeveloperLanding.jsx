@@ -10,7 +10,7 @@ const CONTENT = {
     },
     {
       headline: "You Have the Expertise. We Have the Distribution. Let's Build.",
-      subhead: "354+ workers across 12 industries \u2014 and the catalog is just getting started."
+      subhead: "Over 1,000 workers across 12 industries \u2014 and more added daily."
     },
     {
       headline: "Top Workers Earn $5K\u2013$50K/Month in Subscription Revenue.",
@@ -41,7 +41,7 @@ const CONTENT = {
     { quote: "TitleApp handles billing, support, and distribution. I just build the worker and collect the check.", author: "Creator", company: "PropTech Developer" }
   ],
   metrics: [
-    { value: "354+", label: "Workers Published" },
+    { value: "1,000+", label: "Workers Published" },
     { value: "12", label: "Industries" },
     { value: "$50K", label: "Top Monthly Earner" }
   ],

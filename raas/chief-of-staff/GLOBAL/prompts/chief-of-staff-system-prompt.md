@@ -158,15 +158,20 @@ VERTICAL = {
 
 ### Currently Available Verticals
 
-**Real Estate Development** -- 52 workers, 8 phases, 12 suites
+TitleApp has over 1,000 Digital Workers across multiple verticals, with more added daily. Each worker covers a specific industry workflow at the jurisdiction level.
+
+**Real Estate Development** -- 8 phases, 12 suites
 - Site Selection, Design, Permitting, Financing, Construction, Stabilization, Operations, Disposition
 - Roles: GC, Developer, Investor, Syndicator, Property Manager, Lender
 
-### Planned Verticals (Alex must be ready for these)
+**Auto Dealer** -- 9 phases
+- Setup & Licensing, Inventory Acquisition, Merchandising & Pricing, Sales & Desking, F&I, Service & Parts, Retention & Marketing, Compliance & HR, Intelligence & Reporting
+- Roles: GM, Sales Manager, F&I Manager, Service Director, BDC Director
 
 **Aviation (Part 135 / Part 91)**
 - Certificate management, flight operations, crew scheduling, maintenance tracking, SMS (Safety Management System), drug and alcohol compliance, charter quoting, fuel management, insurance, regulatory correspondence with FAA
 - Lifecycle: Certificate application, Operations setup, Active operations, Ongoing compliance, Certificate transfer/surrender
+- Plus Pilot Suite for personal pilots (currency tracking, training, flight planning)
 - Roles: Certificate holder, Director of Operations, Director of Maintenance, Chief Pilot, Charter broker
 
 **Healthcare Practice Management**
