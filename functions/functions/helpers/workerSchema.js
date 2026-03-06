@@ -4,7 +4,7 @@
  * P0.18: No worker may be deployed without passing through Worker #1.
  *
  * Two validation layers:
- *   1. validateWorkerRecord(record) — 16-field base schema (pipeline stages)
+ *   1. validateWorkerRecord(record) — 18-field base schema (pipeline stages)
  *   2. validateRegistryRecord(record) — full registry fields (prePublish gate)
  *
  * Exports:
@@ -49,6 +49,28 @@ const GOV_TIER_0_EXTENSION = {
 };
 
 // ═══════════════════════════════════════════════════════════════
+//  ESCROW TIER 0 EXTENSION — Applied to all ESC workers
+// ═══════════════════════════════════════════════════════════════
+
+const ESC_TIER_0_EXTENSION = {
+  identity_verified_all_parties:              true,
+  offer_chain_required:                       true,
+  bank_account_verified_before_disbursement:  true,
+  wire_callback_required:                     true,
+  wire_change_hold:                           true,
+  no_disbursement_before_conditions:          true,
+  notarization_before_recording:              true,
+  no_dtc_transfer_before_recording:           true,
+  no_commingling:                             true,
+  human_in_loop_at_disbursement:              true,
+  seven_year_retention:                       true,
+  pii_masked_in_logs:                         true,
+  audit_trail:                                "append_only",
+  stripe_required:                            true,
+  worker_1_required:                          true,
+};
+
+// ═══════════════════════════════════════════════════════════════
 //  VALID ENUM VALUES — Base Schema
 // ═══════════════════════════════════════════════════════════════
 
@@ -78,6 +100,8 @@ const VALID_SUITES = [
   "Permitting",
   "Inspector",
   "Recorder",
+  // Title & Escrow suite
+  "Title & Escrow",
 ];
 
 const VALID_WORKER_TYPES = ["standalone", "pipeline", "composite", "copilot", "orchestrator"];
@@ -85,6 +109,21 @@ const VALID_WORKER_TYPES = ["standalone", "pipeline", "composite", "copilot", "o
 const VALID_PRICING_TIERS = [0, 19, 29, 39, 49, 59, 69, 79, 99];
 
 const VALID_STATUSES = ["draft", "waitlist", "live", "development"];
+
+// ═══════════════════════════════════════════════════════════════
+//  CREDIT COST MAP — Standard credit costs per operation type
+// ═══════════════════════════════════════════════════════════════
+
+const CREDIT_COST_MAP = {
+  simple: 1,
+  standard: 5,
+  complex: 15,
+  external_api: 25,
+  esign: 30,
+  ocr: 50,
+};
+
+const VALID_CREDIT_COST_TYPES = Object.keys(CREDIT_COST_MAP);
 
 // ═══════════════════════════════════════════════════════════════
 //  VALID ENUM VALUES — Registry Extension
@@ -98,6 +137,7 @@ const VALID_VERTICALS = [
   "aviation_135",
   "pilot_suite",
   "government",
+  "title_escrow",
   "financial",
   "nursing",
 ];
@@ -151,6 +191,12 @@ const REGISTRY_FIELDS = {
   parent_worker_id:        { type: "string",  required: false },
   territory_state:         { type: "string",  required: false },
   territory_country:       { type: "string",  required: false },
+
+  // Credit cost — operation tier for metering
+  credit_cost:             { type: "string",  required: true  },
+
+  // Visibility — internal-only workers hidden from public marketplace
+  internal_only:           { type: "boolean", required: false },
 
   // Pipeline audit — set automatically, never by builder
   pipeline_completed_at:   { type: "timestamp", required: true  },
@@ -294,6 +340,18 @@ function validateWorkerRecord(record, opts = {}) {
     errors.push(`status: "${record.status}" is not valid. Must be one of: ${VALID_STATUSES.join(", ")}`);
   }
 
+  // 17. internal_only — optional boolean
+  if (record.internal_only !== undefined && typeof record.internal_only !== "boolean") {
+    errors.push("internal_only: must be a boolean if provided");
+  }
+
+  // 18. credit_cost — must map to a valid cost type
+  if (!record.credit_cost || typeof record.credit_cost !== "string") {
+    errors.push("credit_cost: required (one of: " + VALID_CREDIT_COST_TYPES.join(", ") + ")");
+  } else if (!VALID_CREDIT_COST_TYPES.includes(record.credit_cost)) {
+    errors.push(`credit_cost: "${record.credit_cost}" is not valid. Must be one of: ${VALID_CREDIT_COST_TYPES.join(", ")}`);
+  }
+
   // ── Throw on errors ──
   if (errors.length > 0) {
     const err = new Error(`Worker validation failed (${errors.length} error${errors.length > 1 ? "s" : ""}):\n  - ${errors.join("\n  - ")}`);
@@ -321,6 +379,8 @@ function validateWorkerRecord(record, opts = {}) {
       document_templates: record.document_templates,
       landing_page_slug: record.landing_page_slug,
       status: record.status,
+      credit_cost: record.credit_cost,
+      internal_only: !!record.internal_only,
     },
     warnings,
   };
@@ -456,6 +516,12 @@ function validateRegistryRecord(record, opts = {}) {
     short_description: String(record.short_description).trim(),
   };
 
+  // Credit cost
+  if (record.credit_cost) sanitized.credit_cost = record.credit_cost;
+
+  // Internal-only flag
+  if (record.internal_only !== undefined) sanitized.internal_only = !!record.internal_only;
+
   // Optional fields — include if present
   if (record.long_description) sanitized.long_description = String(record.long_description).trim();
   if (record.phase) sanitized.phase = record.phase;
@@ -493,6 +559,8 @@ function parsePriceTier(tier) {
 module.exports = {
   TIER_0_DEFAULTS,
   GOV_TIER_0_EXTENSION,
+  ESC_TIER_0_EXTENSION,
+  CREDIT_COST_MAP,
   VALID_SUITES,
   VALID_WORKER_TYPES,
   VALID_PRICING_TIERS,

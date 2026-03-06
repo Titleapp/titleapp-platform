@@ -279,7 +279,7 @@ export default function DeveloperSandbox() {
         <div style={S.overlay}>
           <div style={S.overlayCard}>
             <div style={{ fontSize: 28, fontWeight: 700, color: "#7c3aed", marginBottom: 24 }}>TitleApp</div>
-            <div style={S.overlayTitle}>Welcome to Your Developer Sandbox</div>
+            <div style={S.overlayTitle}>Welcome to Your Vibe Coding Sandbox</div>
             <div style={S.overlaySub}>Talk on the left. Watch it build on the right.</div>
             <div style={S.overlaySub}>Describe what you want — Alex builds it live.</div>
             <button style={S.overlayBtn} onClick={handleOnboardingDismiss}>Let's Go</button>
@@ -291,7 +291,7 @@ export default function DeveloperSandbox() {
       <div style={S.chatPanel}>
         <div style={S.chatHeader}>
           <span style={S.chatLogo}>TitleApp</span>
-          <span style={S.chatName}>Alex — Developer AI</span>
+          <span style={S.chatName}>Alex — Vibe Coding AI</span>
         </div>
         <div style={S.chatMessages}>
           {messages.map((msg, i) => (
@@ -805,6 +805,7 @@ function IntakeInterview({ worker, onWorkerUpdate }) {
   const [jurisdiction, setJurisdiction] = useState(worker.intake?.jurisdiction || "");
   const [description, setDescription] = useState(worker.intake?.description || worker.description || "");
   const [sopsText, setSopsText] = useState((worker.intake?.sops || []).join("\n"));
+  const [internalOnly, setInternalOnly] = useState(worker.internal_only || false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -816,14 +817,14 @@ function IntakeInterview({ worker, onWorkerUpdate }) {
       const sops = sopsText.split("\n").map(s => s.trim()).filter(Boolean);
       // Step 1: Save intake
       const intakeRes = await w1Api("worker1:intake", {
-        workerId: worker.id, vertical, jurisdiction, description, sops,
+        workerId: worker.id, vertical, jurisdiction, description, sops, internal_only: internalOnly,
       });
       if (!intakeRes.ok) { setError(intakeRes.error || "Failed to save intake."); setLoading(false); return; }
       // Step 2: Start research
       const researchRes = await w1Api("worker1:research", { workerId: worker.id });
       if (!researchRes.ok) { setError(researchRes.error || "Research failed."); setLoading(false); return; }
       // Update parent with new worker state
-      onWorkerUpdate({ ...worker, buildPhase: "brief", intake: { vertical, jurisdiction, description, sops }, complianceBrief: researchRes.brief, raasLibrary: { tier0: [], tier1: [], tier2: [], tier3: sops } });
+      onWorkerUpdate({ ...worker, buildPhase: "brief", internal_only: internalOnly, intake: { vertical, jurisdiction, description, sops }, complianceBrief: researchRes.brief, raasLibrary: { tier0: [], tier1: [], tier2: [], tier3: sops } });
     } catch (e) {
       setError(e.message || "Something went wrong.");
     } finally {
@@ -879,6 +880,14 @@ function IntakeInterview({ worker, onWorkerUpdate }) {
           placeholder={"One rule per line. Example:\nNever quote a price below invoice cost\nAll trade-ins require manager approval over $10,000\nCustomer must sign disclosure before F&I products"}
         />
         <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>These become Tier 3 (your custom rules). One per line.</div>
+      </div>
+
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 24, padding: "12px 16px", background: "#0f0f14", border: "1px solid #2a2a3a", borderRadius: 8 }}>
+        <input type="checkbox" checked={internalOnly} onChange={(e) => setInternalOnly(e.target.checked)} style={{ accentColor: "#7c3aed" }} />
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: "#e2e8f0" }}>Internal only</div>
+          <div style={{ fontSize: 11, color: "#64748b" }}>Hidden from public marketplace. Only visible within your workspace.</div>
+        </div>
       </div>
 
       {error && <div style={{ color: "#f87171", fontSize: 13, marginBottom: 12 }}>{error}</div>}
@@ -1243,6 +1252,55 @@ function PublishFlow({ worker, onWorkerUpdate }) {
   const [step, setStep] = useState(flow.waiverSigned ? (flow.identityVerified ? 3 : 2) : 1);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  const [activatingLicense, setActivatingLicense] = useState(false);
+  const hasLicense = localStorage.getItem("CREATOR_LICENSE") === "true";
+
+  async function handleActivateLicense() {
+    setActivatingLicense(true);
+    try {
+      const token = localStorage.getItem("ID_TOKEN");
+      const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+      const resp = await fetch(`${apiBase}/api?path=/v1/creator:checkout`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ returnUrl: window.location.origin + "/sandbox" }),
+      });
+      const data = await resp.json();
+      if (data.ok && data.url) {
+        window.location.href = data.url;
+      } else {
+        setError(data.error || "Failed to start checkout.");
+        setActivatingLicense(false);
+      }
+    } catch (e) {
+      setError(e.message);
+      setActivatingLicense(false);
+    }
+  }
+
+  if (!hasLicense) {
+    return (
+      <div style={{ maxWidth: 560 }}>
+        <div style={{ fontSize: 18, fontWeight: 700, color: "#e2e8f0", marginBottom: 4 }}>Creator License Required</div>
+        <div style={{ fontSize: 14, color: "#94a3b8", marginBottom: 24, lineHeight: 1.6 }}>
+          Activate your Creator License ($49/yr) to publish Digital Workers to the marketplace. You keep 75% of every subscription.
+        </div>
+        <div style={{ background: "#16161e", borderRadius: 10, padding: 24, border: "1px solid #2a2a3a", textAlign: "center" }}>
+          {error && <div style={{ color: "#f87171", fontSize: 13, marginBottom: 12 }}>{error}</div>}
+          <button
+            style={{ ...S.btnPrimary, width: "100%", padding: "14px 20px", fontSize: 15 }}
+            onClick={handleActivateLicense}
+            disabled={activatingLicense}
+          >
+            {activatingLicense ? "Redirecting to Stripe..." : "Activate Creator License — $49/yr"}
+          </button>
+          <div style={{ fontSize: 12, color: "#64748b", marginTop: 12 }}>
+            Or <a href="/apply" style={{ color: "#7c3aed" }}>apply first</a> if you haven't yet.
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   async function handleSubmitForReview() {
     setSubmitting(true);

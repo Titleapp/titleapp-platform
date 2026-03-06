@@ -3479,6 +3479,37 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       }
     }
 
+    // POST /v1/creator:checkout — Create Stripe Checkout Session for Creator License ($49/yr)
+    if (route === "/creator:checkout" && method === "POST") {
+      try {
+        const Stripe = require("stripe");
+        const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2024-06-20" });
+        const returnUrl = body.returnUrl || "https://app.titleapp.ai/sandbox";
+        const session = await stripe.checkout.sessions.create({
+          mode: "subscription",
+          line_items: [{
+            price_data: {
+              currency: "usd",
+              product_data: { name: "Creator License — Vibe Coding Sandbox" },
+              unit_amount: 4900,
+              recurring: { interval: "year" },
+            },
+            quantity: 1,
+          }],
+          metadata: {
+            type: "creator_license",
+            userId: auth.user.uid,
+          },
+          success_url: `${returnUrl}?license=active`,
+          cancel_url: `${returnUrl}?license=canceled`,
+        });
+        return res.json({ ok: true, url: session.url });
+      } catch (e) {
+        console.error("[creator:checkout] error:", e.message);
+        return res.json({ ok: false, error: "Failed to create checkout session" });
+      }
+    }
+
     // POST /v1/creator:review — admin review of creator applications
     if (route === "/creator:review" && method === "POST") {
         const { applicationId, decision, reason } = body;
@@ -3510,6 +3541,24 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
     // ----------------------------
     // MEMBERSHIP / TENANTS
     // ----------------------------
+
+    // GET /v1/me:profile — return current user profile (creatorLicense, tier, etc.)
+    if (route === "/me:profile" && method === "GET") {
+      try {
+        const userDoc = await db.collection("users").doc(auth.user.uid).get();
+        const profile = userDoc.exists ? userDoc.data() : {};
+        return res.json({
+          ok: true,
+          profile: {
+            creatorLicense: !!profile.creatorLicense,
+            creatorApproved: !!profile.creatorApproved,
+            tier: profile.tier || "free",
+          },
+        });
+      } catch (e) {
+        return res.json({ ok: false, error: "Failed to load profile" });
+      }
+    }
 
     // GET /v1/me:memberships
     if (route === "/me:memberships" && method === "GET") {
@@ -3833,7 +3882,7 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       }
     }
 
-    // POST /v1/worker1:prePublish — Run 7-point acceptance check
+    // POST /v1/worker1:prePublish — Run 8-point acceptance check
     if (route === "/worker1:prePublish" && method === "POST") {
       const { tenantId, workerId } = body;
       if (!tenantId || !workerId) return res.json({ ok: false, error: "Missing tenantId or workerId" });
@@ -3902,6 +3951,14 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
             status: "pass", // Tier 0 guarantees audit trail
             details: "Audit trail enforced by platform (Tier 0)",
           },
+          {
+            id: "credit_cost",
+            name: "Credit Cost Assignment",
+            status: worker.credit_cost && ["simple","standard","complex","external_api","esign","ocr"].includes(worker.credit_cost) ? "pass" : "fail",
+            details: worker.credit_cost
+              ? `Credit cost tier set: ${worker.credit_cost}`
+              : "No credit cost assigned — every worker must declare a credit cost tier before publishing",
+          },
         ];
 
         const passCount = checks.filter(c => c.status === "pass").length;
@@ -3922,7 +3979,7 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
           updatedAt: nowServerTs(),
         });
 
-        console.log(`[worker1:prePublish] ${workerId}: ${score}/7, passed=${passed}`);
+        console.log(`[worker1:prePublish] ${workerId}: ${score}/8, passed=${passed}`);
         return res.json({ ok: true, score, passed, checks });
       } catch (e) {
         console.error("[worker1:prePublish] error:", e.message);
@@ -10724,6 +10781,616 @@ Analyze now:`;
 
     // ═══════════════════════════════════════════════════════════════
     //  END GOVERNMENT ROUTES
+    // ═══════════════════════════════════════════════════════════════
+
+    // ═══════════════════════════════════════════════════════════════
+    //  TITLE & ESCROW SUITE — Routes (ESC-001 through ESC-012)
+    // ═══════════════════════════════════════════════════════════════
+
+    // ── ESC-001: Offer Chain — Submit Offer ──
+
+    if (route === "/escrow/offer/submit" && method === "POST") {
+      const sub = await checkSubscriptionOrReject("ESC-001", ctx.tenantId, res);
+      if (!sub.allowed) return;
+      try {
+        const { asset_id, asset_type, buyer_id, seller_id, offer_amount, terms, documents, coe_date } = body;
+        if (!asset_id || !buyer_id || !seller_id || !offer_amount) return jsonError(res, 400, "Missing required offer fields");
+        const offerId = db.collection("escrowOfferChains").doc().id;
+        await db.doc(`escrowOfferChains/${offerId}`).set({
+          offerId, asset_id, asset_type: asset_type || "real_property",
+          buyer_id, seller_id, offer_amount, terms: terms || {},
+          coe_date: coe_date || null, documents: documents || [],
+          chain: [{
+            type: "offer", sequence: 1, amount: offer_amount, terms: terms || {},
+            coe_date: coe_date || null, submitted_by: user.uid,
+            status: "pending_signature", created_at: new Date().toISOString(),
+          }],
+          status: "offer_pending", submittedBy: user.uid,
+          tenantId: ctx.tenantId, createdAt: nowServerTs(),
+        });
+        await emitEvent("esc.offer.submitted", { offerId, asset_id, buyer_id, seller_id }, { tenantId: ctx.tenantId, userId: user.uid });
+        await db.collection("escrowAuditTrail").add({
+          type: "offer.submitted", offerId, userId: user.uid, tenantId: ctx.tenantId, createdAt: nowServerTs(),
+        });
+        return res.json({ ok: true, offerId, status: "offer_pending" });
+      } catch (e) {
+        console.error("[esc:offer:submit] error:", e.message);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ── ESC-001: Offer Chain — Counter-Offer ──
+
+    if (route === "/escrow/offer/counter" && method === "POST") {
+      const sub = await checkSubscriptionOrReject("ESC-001", ctx.tenantId, res);
+      if (!sub.allowed) return;
+      try {
+        const { offer_chain_id, counter_amount, terms, coe_date, contingencies } = body;
+        if (!offer_chain_id || !counter_amount) return jsonError(res, 400, "Missing required counter fields");
+        const chainDoc = await db.doc(`escrowOfferChains/${offer_chain_id}`).get();
+        if (!chainDoc.exists) return jsonError(res, 404, "Offer chain not found");
+        const chainData = chainDoc.data();
+        if (chainData.status === "accepted" || chainData.status === "locker_opened") {
+          return jsonError(res, 400, "Offer chain is already finalized");
+        }
+        const counterSeq = (chainData.chain || []).length + 1;
+        const counterNum = `CO-${String(counterSeq - 1).padStart(3, "0")}`;
+        await db.doc(`escrowOfferChains/${offer_chain_id}`).update({
+          chain: admin.firestore.FieldValue.arrayUnion({
+            type: "counter", sequence: counterSeq, counter_number: counterNum,
+            amount: counter_amount, terms: terms || {}, coe_date: coe_date || null,
+            contingencies: contingencies || [], submitted_by: user.uid,
+            status: "pending_signature", created_at: new Date().toISOString(),
+          }),
+          status: "counter_pending", lastCounterBy: user.uid, updatedAt: nowServerTs(),
+        });
+        await db.collection("escrowAuditTrail").add({
+          type: "offer.counter", offer_chain_id, counterNum, userId: user.uid, tenantId: ctx.tenantId, createdAt: nowServerTs(),
+        });
+        return res.json({ ok: true, offer_chain_id, counter_number: counterNum, status: "counter_pending" });
+      } catch (e) {
+        console.error("[esc:offer:counter] error:", e.message);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ── ESC-001: Open Locker (Stage 1) ──
+
+    if (route === "/escrow/locker/open" && method === "POST") {
+      const sub = await checkSubscriptionOrReject("ESC-001", ctx.tenantId, res);
+      if (!sub.allowed) return;
+      try {
+        const { offer_chain_id, parties, conditions, asset_details, exception_attestation } = body;
+        if (!offer_chain_id) return jsonError(res, 400, "Missing offer_chain_id");
+        const chainDoc = await db.doc(`escrowOfferChains/${offer_chain_id}`).get();
+        if (!chainDoc.exists && !exception_attestation) {
+          return jsonError(res, 400, "offer_chain_required: Locker cannot open without valid offer chain or exception attestation");
+        }
+        if (exception_attestation) {
+          await db.collection("escrowAuditTrail").add({
+            type: "offer_chain_exception", offer_chain_id: offer_chain_id || null,
+            attestation: exception_attestation, userId: user.uid, tenantId: ctx.tenantId,
+            flagged_for_review: true, createdAt: nowServerTs(),
+          });
+        }
+        if (chainDoc.exists) {
+          await db.doc(`escrowOfferChains/${offer_chain_id}`).update({ status: "locker_opened", lockerOpenedAt: nowServerTs() });
+        }
+        const lockerId = db.collection("escrowLockers").doc().id;
+        const escrowNumber = `ESC-${Date.now().toString(36).toUpperCase()}`;
+        await db.doc(`escrowLockers/${lockerId}`).set({
+          lockerId, escrowNumber, offer_chain_id: offer_chain_id || null,
+          parties: parties || [], conditions: conditions || [],
+          asset_details: asset_details || {}, stage: 1, stage_name: "locker_opened",
+          stages_completed: [{ stage: 0, name: "offer_chain_identity", completedAt: new Date().toISOString() }],
+          identity_verifications: [], bank_links: [], notarizations: [],
+          opening_hash: require("crypto").createHash("sha256").update(lockerId + Date.now()).digest("hex"),
+          tenantId: ctx.tenantId, createdBy: user.uid, createdAt: nowServerTs(),
+        });
+        await emitEvent("esc.locker.opened", { lockerId, escrowNumber, offer_chain_id }, { tenantId: ctx.tenantId, userId: user.uid });
+        await db.collection("escrowAuditTrail").add({
+          type: "locker.opened", lockerId, escrowNumber, userId: user.uid, tenantId: ctx.tenantId, createdAt: nowServerTs(),
+        });
+        return res.json({ ok: true, lockerId, escrowNumber, stage: 1, status: "locker_opened" });
+      } catch (e) {
+        console.error("[esc:locker:open] error:", e.message);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ── ESC-001: Record EMD (Stage 2) ──
+
+    if (route === "/escrow/locker/emd" && method === "POST") {
+      const sub = await checkSubscriptionOrReject("ESC-001", ctx.tenantId, res);
+      if (!sub.allowed) return;
+      try {
+        const { locker_id, amount, payment_method, buyer_bank_verified, payment_reference } = body;
+        if (!locker_id || !amount) return jsonError(res, 400, "Missing required EMD fields");
+        const lockerDoc = await db.doc(`escrowLockers/${locker_id}`).get();
+        if (!lockerDoc.exists) return jsonError(res, 404, "Locker not found");
+        if (!buyer_bank_verified) {
+          return jsonError(res, 400, "bank_account_verified_before_disbursement: Buyer bank account must be verified before EMD");
+        }
+        await db.doc(`escrowLockers/${locker_id}`).update({
+          stage: 2, stage_name: "earnest_money",
+          emd_amount: amount, emd_payment_method: payment_method || "ach",
+          emd_payment_reference: payment_reference || null, emd_buyer_bank_verified: true,
+          emd_received_at: nowServerTs(), updatedAt: nowServerTs(),
+          stages_completed: admin.firestore.FieldValue.arrayUnion({ stage: 1, name: "locker_opened", completedAt: new Date().toISOString() }),
+        });
+        await emitEvent("esc.emd.received", { locker_id, amount }, { tenantId: ctx.tenantId, userId: user.uid });
+        await db.collection("escrowAuditTrail").add({
+          type: "emd.received", locker_id, amount, userId: user.uid, tenantId: ctx.tenantId, createdAt: nowServerTs(),
+        });
+        return res.json({ ok: true, locker_id, stage: 2, status: "emd_received" });
+      } catch (e) {
+        console.error("[esc:locker:emd] error:", e.message);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ── ESC-001: Update Condition (Stage 3) ──
+
+    if (route === "/escrow/locker/condition" && method === "POST") {
+      const sub = await checkSubscriptionOrReject("ESC-001", ctx.tenantId, res);
+      if (!sub.allowed) return;
+      try {
+        const { locker_id, condition_id, condition_type, status: condStatus, verified_source, notes } = body;
+        if (!locker_id || !condition_type || !condStatus) return jsonError(res, 400, "Missing condition fields");
+        await db.doc(`escrowLockers/${locker_id}`).update({
+          [`conditions_status.${condition_id || condition_type}`]: {
+            type: condition_type, status: condStatus, verified_source: verified_source || null,
+            notes: notes || null, updatedBy: user.uid, updatedAt: new Date().toISOString(),
+          },
+          stage: 3, stage_name: "condition_monitoring", updatedAt: nowServerTs(),
+        });
+        if (condStatus === "satisfied") {
+          await emitEvent("esc.condition.satisfied", { locker_id, condition_type }, { tenantId: ctx.tenantId, userId: user.uid });
+        }
+        await db.collection("escrowAuditTrail").add({
+          type: "condition.updated", locker_id, condition_type, condStatus, userId: user.uid, tenantId: ctx.tenantId, createdAt: nowServerTs(),
+        });
+        return res.json({ ok: true, locker_id, condition_type, status: condStatus });
+      } catch (e) {
+        console.error("[esc:locker:condition] error:", e.message);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ── ESC-001: Closing Disclosure (Stage 4) ──
+
+    if (route === "/escrow/locker/closing-disclosure" && method === "POST") {
+      const sub = await checkSubscriptionOrReject("ESC-001", ctx.tenantId, res);
+      if (!sub.allowed) return;
+      try {
+        const { locker_id, cd_type, credits, debits, prorations, settlement_data } = body;
+        if (!locker_id) return jsonError(res, 400, "Missing locker_id");
+        await db.doc(`escrowLockers/${locker_id}`).update({
+          stage: 4, stage_name: "closing_disclosure",
+          closing_disclosure: {
+            cd_type: cd_type || "trid", credits: credits || [], debits: debits || [],
+            prorations: prorations || [], settlement_data: settlement_data || {},
+            generatedBy: user.uid, generatedAt: new Date().toISOString(),
+          },
+          updatedAt: nowServerTs(),
+        });
+        await db.collection("escrowAuditTrail").add({
+          type: "closing_disclosure.generated", locker_id, cd_type, userId: user.uid, tenantId: ctx.tenantId, createdAt: nowServerTs(),
+        });
+        return res.json({ ok: true, locker_id, stage: 4, status: "closing_disclosure_generated" });
+      } catch (e) {
+        console.error("[esc:locker:closing-disclosure] error:", e.message);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ── ESC-001: Notarization (Stage 5) ──
+
+    if (route === "/escrow/locker/notarize" && method === "POST") {
+      const sub = await checkSubscriptionOrReject("ESC-001", ctx.tenantId, res);
+      if (!sub.allowed) return;
+      try {
+        const { locker_id, documents, ron_permitted, notary_platform, session_id, in_person_fallback } = body;
+        if (!locker_id) return jsonError(res, 400, "Missing locker_id");
+        const notarizationId = db.collection("escrowNotarizations").doc().id;
+        await db.doc(`escrowNotarizations/${notarizationId}`).set({
+          notarizationId, locker_id, documents: documents || [],
+          ron_permitted: ron_permitted !== false, notary_platform: notary_platform || "proof",
+          session_id: session_id || null, in_person_fallback: !!in_person_fallback,
+          status: session_id ? "completed" : "scheduled",
+          tenantId: ctx.tenantId, createdBy: user.uid, createdAt: nowServerTs(),
+        });
+        await db.doc(`escrowLockers/${locker_id}`).update({
+          stage: 5, stage_name: "notarization",
+          notarizations: admin.firestore.FieldValue.arrayUnion(notarizationId),
+          updatedAt: nowServerTs(),
+        });
+        await db.collection("escrowAuditTrail").add({
+          type: "notarization.recorded", locker_id, notarizationId, ron: ron_permitted !== false, userId: user.uid, tenantId: ctx.tenantId, createdAt: nowServerTs(),
+        });
+        return res.json({ ok: true, locker_id, notarizationId, stage: 5 });
+      } catch (e) {
+        console.error("[esc:locker:notarize] error:", e.message);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ── ESC-001: Disbursement (Stage 6) — Human in the loop required ──
+
+    if (route === "/escrow/locker/disburse" && method === "POST") {
+      const sub = await checkSubscriptionOrReject("ESC-001", ctx.tenantId, res);
+      if (!sub.allowed) return;
+      try {
+        const { locker_id, human_authorization, disbursement_items, all_accounts_verified } = body;
+        if (!locker_id) return jsonError(res, 400, "Missing locker_id");
+        if (!human_authorization) {
+          return jsonError(res, 400, "human_in_loop_at_disbursement: Human authorization required for all disbursements");
+        }
+        if (!all_accounts_verified) {
+          return jsonError(res, 400, "bank_account_verified_before_disbursement: All recipient accounts must be verified");
+        }
+        const lockerDoc = await db.doc(`escrowLockers/${locker_id}`).get();
+        if (!lockerDoc.exists) return jsonError(res, 404, "Locker not found");
+        const locker = lockerDoc.data();
+        if (locker.stage < 5) {
+          return jsonError(res, 400, "no_disbursement_before_conditions: All conditions and notarization must be complete");
+        }
+        const disbursementId = db.collection("escrowDisbursements").doc().id;
+        await db.doc(`escrowDisbursements/${disbursementId}`).set({
+          disbursementId, locker_id, items: disbursement_items || [],
+          human_authorized_by: user.uid, human_authorized_at: new Date().toISOString(),
+          all_accounts_verified: true, status: "authorized",
+          tenantId: ctx.tenantId, createdAt: nowServerTs(),
+        });
+        await db.doc(`escrowLockers/${locker_id}`).update({
+          stage: 6, stage_name: "disbursement",
+          disbursement_id: disbursementId, disbursed_at: nowServerTs(), updatedAt: nowServerTs(),
+        });
+        await emitEvent("esc.disbursement.authorized", { locker_id, disbursementId }, { tenantId: ctx.tenantId, userId: user.uid });
+        await db.collection("escrowAuditTrail").add({
+          type: "disbursement.authorized", locker_id, disbursementId, authorized_by: user.uid, tenantId: ctx.tenantId, createdAt: nowServerTs(),
+        });
+        return res.json({ ok: true, locker_id, disbursementId, stage: 6, status: "disbursement_authorized" });
+      } catch (e) {
+        console.error("[esc:locker:disburse] error:", e.message);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ── ESC-001: Recording & DTC Transfer (Stage 7) ──
+
+    if (route === "/escrow/locker/record" && method === "POST") {
+      const sub = await checkSubscriptionOrReject("ESC-001", ctx.tenantId, res);
+      if (!sub.allowed) return;
+      try {
+        const { locker_id, recording_confirmation_number, recording_jurisdiction, deed_type, dtc_seller_vault, dtc_buyer_vault } = body;
+        if (!locker_id || !recording_confirmation_number) return jsonError(res, 400, "no_dtc_transfer_before_recording: Recording confirmation required");
+        const lockerDoc = await db.doc(`escrowLockers/${locker_id}`).get();
+        if (!lockerDoc.exists) return jsonError(res, 404, "Locker not found");
+        const sealingHash = require("crypto").createHash("sha256").update(locker_id + recording_confirmation_number + Date.now()).digest("hex");
+        await db.doc(`escrowLockers/${locker_id}`).update({
+          stage: 7, stage_name: "recording_dtc_transfer", status: "sealed",
+          recording_confirmation_number, recording_jurisdiction: recording_jurisdiction || null,
+          deed_type: deed_type || null,
+          dtc_transfer: {
+            seller_vault: dtc_seller_vault || null, buyer_vault: dtc_buyer_vault || null,
+            transferred_at: new Date().toISOString(),
+          },
+          sealing_hash: sealingHash, sealed_at: nowServerTs(), updatedAt: nowServerTs(),
+        });
+        await emitEvent("esc.recording.confirmed", { locker_id, recording_confirmation_number }, { tenantId: ctx.tenantId, userId: user.uid });
+        await db.collection("escrowAuditTrail").add({
+          type: "recording.confirmed_and_sealed", locker_id, recording_confirmation_number, sealing_hash: sealingHash,
+          userId: user.uid, tenantId: ctx.tenantId, createdAt: nowServerTs(),
+        });
+        return res.json({ ok: true, locker_id, stage: 7, status: "sealed", sealing_hash: sealingHash });
+      } catch (e) {
+        console.error("[esc:locker:record] error:", e.message);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ── ESC-001: Get Locker Status ──
+
+    if (route.startsWith("/escrow/locker/") && method === "GET" && !route.includes("/status/")) {
+      const lockerId = route.split("/escrow/locker/")[1];
+      if (!lockerId) return jsonError(res, 400, "Missing locker ID");
+      try {
+        const doc = await db.doc(`escrowLockers/${lockerId}`).get();
+        if (!doc.exists) return jsonError(res, 404, "Locker not found");
+        const data = doc.data();
+        if (data.tenantId !== ctx.tenantId) return jsonError(res, 403, "Access denied");
+        return res.json({ ok: true, locker: { id: doc.id, ...data } });
+      } catch (e) {
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ── ESC-002: Wire Fraud Check ──
+
+    if (route === "/escrow/wire-check" && method === "POST") {
+      const sub = await checkSubscriptionOrReject("ESC-002", ctx.tenantId, res);
+      if (!sub.allowed) return;
+      try {
+        const { locker_id, wire_instructions, callback_phone, original_instructions } = body;
+        if (!locker_id || !wire_instructions) return jsonError(res, 400, "Missing wire check fields");
+        const checkId = db.collection("escrowWireFraudChecks").doc().id;
+        const domainMatch = wire_instructions.bank_email ? wire_instructions.bank_email.split("@")[1] === (original_instructions || {}).bank_domain : null;
+        const instructionsChanged = original_instructions ? JSON.stringify(wire_instructions) !== JSON.stringify(original_instructions) : false;
+        const riskFlags = [];
+        if (instructionsChanged) riskFlags.push("wire_change_hold");
+        if (domainMatch === false) riskFlags.push("domain_mismatch");
+        if (!callback_phone) riskFlags.push("no_callback_phone");
+        const fraudStatus = riskFlags.length > 0 ? "hold" : "clear";
+        await db.doc(`escrowWireFraudChecks/${checkId}`).set({
+          checkId, locker_id, wire_instructions, callback_phone: callback_phone || null,
+          original_instructions: original_instructions || null,
+          domain_match: domainMatch, instructions_changed: instructionsChanged,
+          risk_flags: riskFlags, status: fraudStatus,
+          tenantId: ctx.tenantId, checkedBy: user.uid, createdAt: nowServerTs(),
+        });
+        if (fraudStatus === "hold") {
+          await emitEvent("esc.wire.fraud_alert", { locker_id, checkId, riskFlags }, { tenantId: ctx.tenantId, userId: user.uid });
+        }
+        await db.collection("escrowAuditTrail").add({
+          type: "wire.fraud_check", locker_id, checkId, fraudStatus, riskFlags, userId: user.uid, tenantId: ctx.tenantId, createdAt: nowServerTs(),
+        });
+        return res.json({ ok: true, checkId, status: fraudStatus, risk_flags: riskFlags });
+      } catch (e) {
+        console.error("[esc:wire-check] error:", e.message);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ── ESC-003: Title Search & Commitment ──
+
+    if (route === "/escrow/title-search" && method === "POST") {
+      const sub = await checkSubscriptionOrReject("ESC-003", ctx.tenantId, res);
+      if (!sub.allowed) return;
+      try {
+        const { locker_id, property_address, parcel_number, county, state, search_type } = body;
+        if (!locker_id || !property_address) return jsonError(res, 400, "Missing title search fields");
+        const searchId = db.collection("escrowTitleSearches").doc().id;
+        await db.doc(`escrowTitleSearches/${searchId}`).set({
+          searchId, locker_id, property_address, parcel_number: parcel_number || null,
+          county: county || null, state: state || null,
+          search_type: search_type || "full",
+          schedule_a: {}, schedule_b1_requirements: [], schedule_b2_exceptions: [],
+          exception_classifications: [], curative_actions: [],
+          status: "ordered", tenantId: ctx.tenantId, orderedBy: user.uid, createdAt: nowServerTs(),
+        });
+        await db.collection("escrowAuditTrail").add({
+          type: "title_search.ordered", locker_id, searchId, userId: user.uid, tenantId: ctx.tenantId, createdAt: nowServerTs(),
+        });
+        return res.json({ ok: true, searchId, locker_id, status: "ordered" });
+      } catch (e) {
+        console.error("[esc:title-search] error:", e.message);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ── ESC-004: Lien Clearance ──
+
+    if (route === "/escrow/lien-clearance" && method === "POST") {
+      const sub = await checkSubscriptionOrReject("ESC-004", ctx.tenantId, res);
+      if (!sub.allowed) return;
+      try {
+        const { locker_id, lien_type, lienholder, payoff_amount, release_status } = body;
+        if (!locker_id || !lien_type) return jsonError(res, 400, "Missing lien clearance fields");
+        const clearanceId = db.collection("escrowLienClearances").doc().id;
+        await db.doc(`escrowLienClearances/${clearanceId}`).set({
+          clearanceId, locker_id, lien_type, lienholder: lienholder || null,
+          payoff_amount: payoff_amount || null, release_status: release_status || "pending",
+          payoff_demand_sent: false, release_confirmed: false,
+          tenantId: ctx.tenantId, createdBy: user.uid, createdAt: nowServerTs(),
+        });
+        return res.json({ ok: true, clearanceId, locker_id, status: "pending" });
+      } catch (e) {
+        console.error("[esc:lien-clearance] error:", e.message);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ── ESC-005: Disclosure Package ──
+
+    if (route === "/escrow/disclosures" && method === "POST") {
+      const sub = await checkSubscriptionOrReject("ESC-005", ctx.tenantId, res);
+      if (!sub.allowed) return;
+      try {
+        const { locker_id, disclosure_type, state, documents, delivery_method } = body;
+        if (!locker_id || !disclosure_type) return jsonError(res, 400, "Missing disclosure fields");
+        const packageId = db.collection("escrowDisclosures").doc().id;
+        await db.doc(`escrowDisclosures/${packageId}`).set({
+          packageId, locker_id, disclosure_type, state: state || null,
+          documents: documents || [], delivery_method: delivery_method || "portal",
+          delivery_confirmed: false, status: "assembled",
+          tenantId: ctx.tenantId, createdBy: user.uid, createdAt: nowServerTs(),
+        });
+        return res.json({ ok: true, packageId, locker_id, status: "assembled" });
+      } catch (e) {
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ── ESC-006: Closing Disclosure Generator ──
+
+    if (route === "/escrow/closing-disclosure/generate" && method === "POST") {
+      const sub = await checkSubscriptionOrReject("ESC-006", ctx.tenantId, res);
+      if (!sub.allowed) return;
+      try {
+        const { locker_id, cd_type, buyer_credits, seller_credits, buyer_debits, seller_debits, prorations, loan_terms } = body;
+        if (!locker_id) return jsonError(res, 400, "Missing locker_id");
+        const cdId = db.collection("escrowClosingDisclosures").doc().id;
+        await db.doc(`escrowClosingDisclosures/${cdId}`).set({
+          cdId, locker_id, cd_type: cd_type || "trid",
+          buyer_credits: buyer_credits || [], seller_credits: seller_credits || [],
+          buyer_debits: buyer_debits || [], seller_debits: seller_debits || [],
+          prorations: prorations || [], loan_terms: loan_terms || {},
+          status: "draft", tenantId: ctx.tenantId, generatedBy: user.uid, createdAt: nowServerTs(),
+        });
+        await emitEvent("esc.closing.ready", { locker_id, cdId }, { tenantId: ctx.tenantId, userId: user.uid });
+        return res.json({ ok: true, cdId, locker_id, status: "draft" });
+      } catch (e) {
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ── ESC-007: FIRPTA / 1031 Exchange ──
+
+    if (route === "/escrow/firpta-check" && method === "POST") {
+      const sub = await checkSubscriptionOrReject("ESC-007", ctx.tenantId, res);
+      if (!sub.allowed) return;
+      try {
+        const { locker_id, seller_is_foreign, sale_price, withholding_rate, exchange_1031, qi_name, qi_ein, boot_amount } = body;
+        if (!locker_id) return jsonError(res, 400, "Missing locker_id");
+        const checkId = db.collection("escrowFirptaChecks").doc().id;
+        const withholding = seller_is_foreign ? (sale_price || 0) * ((withholding_rate || 0.15)) : 0;
+        await db.doc(`escrowFirptaChecks/${checkId}`).set({
+          checkId, locker_id, seller_is_foreign: !!seller_is_foreign,
+          sale_price: sale_price || 0, withholding_rate: withholding_rate || 0.15,
+          withholding_amount: withholding,
+          exchange_1031: !!exchange_1031, qi_name: qi_name || null, qi_ein: qi_ein || null,
+          boot_amount: boot_amount || 0,
+          status: seller_is_foreign ? "withholding_required" : (exchange_1031 ? "1031_active" : "not_applicable"),
+          tenantId: ctx.tenantId, createdBy: user.uid, createdAt: nowServerTs(),
+        });
+        return res.json({ ok: true, checkId, locker_id, withholding_amount: withholding, status: seller_is_foreign ? "withholding_required" : "clear" });
+      } catch (e) {
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ── ESC-008: Commission & Fee Reconciliation ──
+
+    if (route === "/escrow/commission-recon" && method === "POST") {
+      const sub = await checkSubscriptionOrReject("ESC-008", ctx.tenantId, res);
+      if (!sub.allowed) return;
+      try {
+        const { locker_id, commissions, fees, total_disbursement } = body;
+        if (!locker_id) return jsonError(res, 400, "Missing locker_id");
+        const reconId = db.collection("escrowCommissionRecons").doc().id;
+        const totalCommissions = (commissions || []).reduce((s, c) => s + (c.amount || 0), 0);
+        const totalFees = (fees || []).reduce((s, f) => s + (f.amount || 0), 0);
+        await db.doc(`escrowCommissionRecons/${reconId}`).set({
+          reconId, locker_id, commissions: commissions || [], fees: fees || [],
+          total_commissions: totalCommissions, total_fees: totalFees,
+          total_disbursement: total_disbursement || 0,
+          balanced: Math.abs((total_disbursement || 0) - totalCommissions - totalFees) < 0.01,
+          status: "reconciled", tenantId: ctx.tenantId, createdBy: user.uid, createdAt: nowServerTs(),
+        });
+        return res.json({ ok: true, reconId, locker_id, total_commissions: totalCommissions, total_fees: totalFees, balanced: true });
+      } catch (e) {
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ── ESC-009: HOA Estoppel ──
+
+    if (route === "/escrow/hoa-estoppel" && method === "POST") {
+      const sub = await checkSubscriptionOrReject("ESC-009", ctx.tenantId, res);
+      if (!sub.allowed) return;
+      try {
+        const { locker_id, hoa_name, hoa_contact, unpaid_dues, special_assessments, transfer_fee } = body;
+        if (!locker_id) return jsonError(res, 400, "Missing locker_id");
+        const estoppelId = db.collection("escrowHoaEstoppels").doc().id;
+        await db.doc(`escrowHoaEstoppels/${estoppelId}`).set({
+          estoppelId, locker_id, hoa_name: hoa_name || null, hoa_contact: hoa_contact || null,
+          unpaid_dues: unpaid_dues || 0, special_assessments: special_assessments || 0,
+          transfer_fee: transfer_fee || 0, certificate_received: false,
+          status: "requested", tenantId: ctx.tenantId, createdBy: user.uid, createdAt: nowServerTs(),
+        });
+        return res.json({ ok: true, estoppelId, locker_id, status: "requested" });
+      } catch (e) {
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ── ESC-010: Buyer/Seller Status Portal ──
+
+    if (route.startsWith("/escrow/status/") && method === "GET") {
+      const lockerId = route.split("/escrow/status/")[1];
+      if (!lockerId) return jsonError(res, 400, "Missing locker ID");
+      try {
+        const doc = await db.doc(`escrowLockers/${lockerId}`).get();
+        if (!doc.exists) return jsonError(res, 404, "Locker not found");
+        const data = doc.data();
+        return res.json({
+          ok: true,
+          locker_id: lockerId, escrow_number: data.escrowNumber,
+          stage: data.stage, stage_name: data.stage_name, status: data.status || "active",
+          stages_completed: data.stages_completed || [],
+          conditions_status: data.conditions_status || {},
+        });
+      } catch (e) {
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ── ESC-011: Post-Close Recording Monitor ──
+
+    if (route === "/escrow/recording-monitor" && method === "POST") {
+      const sub = await checkSubscriptionOrReject("ESC-011", ctx.tenantId, res);
+      if (!sub.allowed) return;
+      try {
+        const { locker_id, document_type, recording_jurisdiction, submitted_at, confirmation_number } = body;
+        if (!locker_id || !document_type) return jsonError(res, 400, "Missing recording monitor fields");
+        const trackerId = db.collection("escrowRecordingTrackers").doc().id;
+        await db.doc(`escrowRecordingTrackers/${trackerId}`).set({
+          trackerId, locker_id, document_type, recording_jurisdiction: recording_jurisdiction || null,
+          submitted_at: submitted_at || new Date().toISOString(),
+          confirmation_number: confirmation_number || null,
+          status: confirmation_number ? "confirmed" : "pending",
+          tenantId: ctx.tenantId, createdBy: user.uid, createdAt: nowServerTs(),
+        });
+        if (confirmation_number) {
+          await emitEvent("esc.recording.confirmed", { locker_id, trackerId, confirmation_number }, { tenantId: ctx.tenantId, userId: user.uid });
+        }
+        return res.json({ ok: true, trackerId, locker_id, status: confirmation_number ? "confirmed" : "pending" });
+      } catch (e) {
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ── ESC-012: Alex — Daily Briefing ──
+
+    if (route === "/escrow/alex/briefing" && method === "GET") {
+      try {
+        const lockers = await db.collection("escrowLockers")
+          .where("tenantId", "==", ctx.tenantId)
+          .orderBy("createdAt", "desc").limit(50).get();
+        const active = lockers.docs.filter(d => d.data().status !== "sealed").length;
+        const sealed = lockers.docs.filter(d => d.data().status === "sealed").length;
+        const stageBreakdown = {};
+        lockers.docs.forEach(d => {
+          const s = d.data().stage_name || "unknown";
+          stageBreakdown[s] = (stageBreakdown[s] || 0) + 1;
+        });
+        return res.json({ ok: true, briefing: { active_lockers: active, sealed_lockers: sealed, stage_breakdown: stageBreakdown, total: lockers.docs.length } });
+      } catch (e) {
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ── ESC-012: Alex — Anomaly Alert ──
+
+    if (route === "/escrow/alex/alert" && method === "POST") {
+      try {
+        const { alert_type, locker_id, description, severity } = body;
+        if (!alert_type) return jsonError(res, 400, "Missing alert_type");
+        const alertId = db.collection("escrowAlexAlerts").doc().id;
+        await db.doc(`escrowAlexAlerts/${alertId}`).set({
+          alertId, alert_type, locker_id: locker_id || null,
+          description: description || null, severity: severity || "medium",
+          tenantId: ctx.tenantId, createdBy: user.uid, createdAt: nowServerTs(),
+        });
+        return res.json({ ok: true, alertId });
+      } catch (e) {
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    //  END TITLE & ESCROW ROUTES
     // ═══════════════════════════════════════════════════════════════
 
     return jsonError(res, 404, "Not Found", { route, method });

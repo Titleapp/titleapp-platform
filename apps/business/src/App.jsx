@@ -669,29 +669,280 @@ const WORKER_DETAIL_CONTENT = {
       { q: "What about state-specific programs?", a: "We cover major state programs including state historic credits, brownfield credits, enterprise zone benefits, and property tax abatements. State coverage is expanding continuously." },
     ],
   },
-  "title-escrow": {
-    headline: "Clean title, clean closing",
-    subheadline: "Title commitment review, exception analysis, escrow coordination, and closing management — from commitment through recording.",
+  "esc-escrow-locker": {
+    headline: "One locker. Every stage. No gaps.",
+    subheadline: "From first offer through recorded deed — identity verified, bank accounts linked, documents notarized, and funds disbursed with human authorization at every gate.",
     steps: [
-      { title: "Review the commitment", description: "Parse Schedule A (insured, coverage, property description), Schedule B-I (requirements), and Schedule B-II (exceptions). Standard vs non-standard flagged automatically." },
-      { title: "Classify exceptions", description: "Each exception classified: standard, curative, acceptable, or deal-killer. Responsible party assigned, deadline set, resolution tracked." },
-      { title: "Coordinate closing", description: "All conditions tracked: title curative items, lender requirements, document execution, pro-rations, recording instructions." },
-      { title: "Post-closing tracked", description: "Recording confirmation, final policy issuance, escrow reconciliation, and document distribution — nothing falls through." },
+      { title: "Build the offer chain", description: "Offers, counters, addenda — all signed and tracked." },
+      { title: "Open the Locker", description: "PA accepted, conditions extracted, escrow number assigned, opening hash written." },
+      { title: "Monitor conditions", description: "Inspection, loan commitment, title, disclosures, appraisal — each a hard stop." },
+      { title: "Close and record", description: "Notarization, human-authorized disbursement, deed recorded, DTC transferred Vault to Vault." },
     ],
     bridge: {
-      title: "The Bridge",
-      text: "Title clears the path for everything else. When a lender requirement comes from the Mortgage Worker (W-013) or Construction Lending (W-015), it appears on your closing checklist automatically. When a contract provision from Legal (W-045) affects title, it's flagged. When closing completes, the disposition workers know the deal is done. One source of truth from commitment through recording.",
+      title: "The Escrow Locker is the foundation.",
+      text: "Wire Fraud Prevention (ESC-002) monitors every wire instruction. Title Search (ESC-003) feeds exceptions into your condition list. Closing Disclosure (ESC-006) generates TRID or ALTA settlement statements. Recording Monitor (ESC-011) triggers the DTC transfer when the deed records. Alex (ESC-012) watches all of it.",
     },
     valueProps: [
-      { label: "Automated commitment parsing", description: "Schedule A, B-I, and B-II parsed and classified automatically. Standard exceptions separated from items requiring attention." },
-      { label: "Exception resolution tracking", description: "Every exception has a responsible party, deadline, and resolution status. Curative items tracked from identification through clearance." },
-      { label: "ALTA endorsement management", description: "Required endorsements identified by transaction type: survey, zoning, access, contiguity, environmental protection lien — nothing missed." },
-      { label: "Vault-connected to lenders and legal", description: "Lender title requirements from W-013/W-015 flow in. Contract provisions from W-045 are flagged. Closing status flows to all stakeholders." },
+      { label: "8-stage lifecycle management", description: "From first offer through recorded deed — every stage tracked, every condition enforced." },
+      { label: "Immutable offer chain with term delta tracking", description: "Every offer, counter, and addendum signed, timestamped, and compared against prior terms." },
+      { label: "Human-in-the-loop disbursement with verified accounts", description: "No funds move without human authorization. Bank accounts verified before any disbursement." },
     ],
     faq: [
-      { q: "Does this replace my title company?", a: "No. This worker reviews commitments, tracks exceptions, and coordinates closing. Your title company issues the commitment and policy. Think of this as your title coordinator that makes sure nothing falls through the cracks." },
-      { q: "How does exception classification work?", a: "Each Schedule B-II exception is classified: standard (utility easements, building restrictions), curative (requiring action before closing), acceptable (non-standard but manageable), or deal-killer (fundamental ownership issues). Red flags are escalated immediately." },
-      { q: "What about multi-state transactions?", a: "Title requirements vary significantly by state — recording formats, transfer taxes, good funds laws. The worker applies state-specific rules and flags jurisdiction-specific requirements." },
+      { q: "Does this replace my escrow company?", a: "No — coordinates and enforces. Your escrow officer manages the account. The Locker enforces hard stops, tracks conditions, and prevents anything from falling through." },
+      { q: "What if the deal was negotiated outside the platform?", a: "Exception attestation creates an audit-flagged record. The agent acknowledges the chain starts at Stage 1." },
+    ],
+  },
+  "esc-wire-fraud-prevention": {
+    headline: "No wire leaves without verification.",
+    subheadline: "Callback protocol, domain authentication, and automatic hold on any wire instruction change — because wire fraud is the single largest loss vector in real estate.",
+    steps: [
+      { title: "Verify wire instructions", description: "Compare against original instructions on file." },
+      { title: "Domain check", description: "Bank email domain verified against known institution." },
+      { title: "Callback protocol", description: "Phone callback to number from original agreement — never from the wire request." },
+      { title: "Change hold", description: "Any modification to wire instructions triggers automatic hold and human review." },
+    ],
+    bridge: {
+      title: "Wire fraud protection embedded everywhere.",
+      text: "Every disbursement in ESC-001 passes through this worker. Any wire instruction change in the Locker triggers an automatic hold. The Escrow Locker cannot disburse without ESC-002 clearance.",
+    },
+    valueProps: [
+      { label: "Automatic hold on wire instruction changes", description: "Any modification to previously verified wire instructions triggers an immediate hold requiring human review." },
+      { label: "Domain verification against known bank domains", description: "Email domains checked against a registry of known financial institution domains to detect spoofing." },
+      { label: "Callback to original agreement phone — never wire email", description: "Phone verification uses the number from the original signed agreement, never contact information from the wire request itself." },
+    ],
+    faq: [
+      { q: "Is this only for outbound wires?", a: "Primarily — but inbound wire verification is also flagged if the source differs from expected." },
+      { q: "What happens when a hold triggers?", a: "Automatic freeze. Human authorization required to release. Full audit trail of the hold, review, and decision." },
+    ],
+  },
+  "esc-title-search-commitment": {
+    headline: "Clear title before you close.",
+    subheadline: "Schedule A parsed, Schedule B-I requirements classified, Schedule B-II exceptions analyzed — every curative action tracked with responsible party and deadline.",
+    steps: [
+      { title: "Order title search", description: "Full or limited, by property address or parcel number." },
+      { title: "Parse commitment", description: "Schedule A coverage, B-I requirements, B-II exceptions — automated classification." },
+      { title: "Classify exceptions", description: "Standard, curative, acceptable, or deal-killer — responsible party assigned." },
+      { title: "Track curative actions", description: "Each exception has a deadline, owner, and resolution status." },
+    ],
+    bridge: {
+      title: "Title feeds the Locker.",
+      text: "When title clears, ESC-001 advances the condition. When a lien surfaces, ESC-004 picks up the payoff demand. When exceptions require endorsements, they appear on the closing checklist.",
+    },
+    valueProps: [
+      { label: "Automated commitment parsing (Schedules A, B-I, B-II)", description: "Title commitments parsed automatically with requirements and exceptions classified by type and severity." },
+      { label: "Exception classification with curative tracking", description: "Every exception categorized and assigned a responsible party with deadline and resolution status." },
+      { label: "ALTA endorsement identification by transaction type", description: "Required endorsements identified automatically based on transaction characteristics — survey, zoning, access, contiguity, environmental protection lien." },
+    ],
+    faq: [
+      { q: "Does this replace my title company?", a: "No — reviews and tracks commitments they produce. Flags exceptions, assigns curative actions, tracks resolution." },
+      { q: "What about multi-state transactions?", a: "State-specific rules applied automatically — recording formats, transfer taxes, good funds laws vary and are handled per jurisdiction." },
+    ],
+  },
+  "esc-lien-clearance-manager": {
+    headline: "No lien left behind.",
+    subheadline: "Payoff demands sent, release confirmations tracked, and hard stop enforcement before any DTC transfer can execute.",
+    steps: [
+      { title: "Identify liens", description: "From title search — mortgages, tax liens, mechanic liens, HOA liens." },
+      { title: "Send payoff demands", description: "Amount, payoff date, per diem interest, wire instructions." },
+      { title: "Track releases", description: "Release document received, recorded, and confirmed." },
+      { title: "Enforce hard stop", description: "No DTC transfer until all liens show confirmed release." },
+    ],
+    bridge: {
+      title: "Lien clearance is non-negotiable.",
+      text: "Title Search (ESC-003) surfaces liens. This worker clears them. The Escrow Locker (ESC-001) cannot advance to recording until every lien shows a confirmed release.",
+    },
+    valueProps: [
+      { label: "Automated payoff demand generation", description: "Payoff demands generated with amount, payoff date, per diem interest, and wire instructions for each identified lien." },
+      { label: "Release confirmation tracking with recording verification", description: "Every release tracked from receipt through recording confirmation — nothing marked clear without proof." },
+      { label: "Hard stop enforcement — no transfer without clearance", description: "The Escrow Locker cannot advance to recording or DTC transfer until every lien shows a confirmed, recorded release." },
+    ],
+    faq: [
+      { q: "What types of liens are tracked?", a: "All — mortgages, deeds of trust, tax liens, mechanic liens, HOA liens, judgment liens, federal tax liens." },
+      { q: "What if a release is delayed?", a: "Condition stays open. Locker holds at the lien clearance gate. Responsible party receives escalation notices." },
+    ],
+  },
+  "esc-disclosure-package": {
+    headline: "Every disclosure delivered and confirmed.",
+    subheadline: "State-mandated seller disclosures, HOA documents, and natural hazard reports — assembled, delivered, and delivery-confirmed with timestamps.",
+    steps: [
+      { title: "Identify required disclosures", description: "State-specific mandatory forms, HOA docs, NHD reports." },
+      { title: "Assemble package", description: "All documents compiled with cover sheet and index." },
+      { title: "Deliver to parties", description: "Portal, email, or physical — method tracked." },
+      { title: "Confirm delivery", description: "Recipient acknowledgment with timestamp — deadline clock starts." },
+    ],
+    bridge: {
+      title: "Disclosures feed the condition list.",
+      text: "Each required disclosure becomes a condition in the Locker (ESC-001). HOA documents flow to ESC-009 for estoppel coordination. Undelivered disclosures block closing.",
+    },
+    valueProps: [
+      { label: "State-specific disclosure identification", description: "Mandatory disclosure forms identified automatically by jurisdiction — requirements vary significantly by state." },
+      { label: "Delivery confirmation with timestamp tracking", description: "Every delivery method tracked with recipient acknowledgment and timestamp — deadline clocks start on confirmation." },
+      { label: "Condition integration with the Escrow Locker", description: "Each disclosure becomes a tracked condition in ESC-001. Undelivered disclosures block closing advancement." },
+    ],
+    faq: [
+      { q: "Which states are supported?", a: "All 50 states — disclosure requirements vary significantly by jurisdiction and are applied automatically." },
+      { q: "What about HOA documents?", a: "HOA docs are part of the package. CC&Rs, financials, meeting minutes, and reserve studies — all tracked." },
+    ],
+  },
+  "esc-closing-disclosure": {
+    headline: "Every credit and debit verified.",
+    subheadline: "TRID for residential, ALTA for commercial. Settlement statement with all prorations calculated, credits and debits balanced, and every line item traceable.",
+    steps: [
+      { title: "Select CD type", description: "TRID residential or ALTA commercial — auto-detected by transaction type." },
+      { title: "Build line items", description: "All credits, debits, prorations — buyer side and seller side." },
+      { title: "Calculate prorations", description: "Taxes, HOA dues, rents, insurance — per diem to closing date." },
+      { title: "Generate settlement statement", description: "Balanced to the penny, signed by all parties via Dropbox Sign." },
+    ],
+    bridge: {
+      title: "The settlement statement closes the loop.",
+      text: "ESC-001 uses the CD to verify all disbursement amounts. ESC-008 reconciles commissions against the CD. ESC-005 delivery confirmation triggers CD generation eligibility.",
+    },
+    valueProps: [
+      { label: "TRID and ALTA format generation", description: "Residential transactions get TRID Closing Disclosures. Commercial transactions get ALTA settlement statements. Format auto-detected." },
+      { label: "Automated proration calculation (per diem)", description: "Property taxes, HOA dues, rents, insurance — all prorated per diem to closing date with seller credit/debit breakdowns." },
+      { label: "Settlement statement signing via Dropbox Sign", description: "Settlement statements routed for signature by all parties through Dropbox Sign with tracking and confirmation." },
+    ],
+    faq: [
+      { q: "Is this a HUD-1 replacement?", a: "TRID replaced HUD-1 for residential in 2015. This generates TRID Closing Disclosures. For commercial, ALTA settlement statements are generated." },
+      { q: "How are prorations calculated?", a: "Per diem calculation based on closing date. Property taxes, HOA dues, rents, insurance — all prorated with seller credit/debit breakdowns." },
+    ],
+  },
+  "esc-firpta-1031": {
+    headline: "Foreign seller compliance and exchange coordination.",
+    subheadline: "FIRPTA withholding calculated automatically when a seller is a non-US person. 1031 exchange coordination with qualified intermediary tracking and boot calculation.",
+    steps: [
+      { title: "Identify FIRPTA applicability", description: "Foreign seller flag triggers automatic withholding calculation." },
+      { title: "Calculate withholding", description: "15% default, reduced rate with IRS certificate, exemptions checked." },
+      { title: "Coordinate 1031 exchange", description: "QI identified, exchange timeline tracked, boot calculated." },
+      { title: "Generate compliance documents", description: "Withholding certificates, exchange agreements, reporting forms." },
+    ],
+    bridge: {
+      title: "Compliance that cannot be skipped.",
+      text: "Foreign seller detection at party onboarding in ESC-001 triggers this worker automatically. Withholding amounts flow to the settlement statement in ESC-006. QI coordination timelines become Locker conditions.",
+    },
+    valueProps: [
+      { label: "Automatic FIRPTA withholding calculation", description: "15% default withholding calculated automatically when a seller is identified as a non-US person or foreign entity." },
+      { label: "1031 exchange timeline and boot tracking", description: "45-day identification and 180-day completion periods tracked as Locker conditions with deadline alerts and boot calculations." },
+      { label: "Qualified intermediary coordination", description: "QI identification, exchange agreement tracking, and timeline management integrated with Locker conditions." },
+    ],
+    faq: [
+      { q: "What triggers FIRPTA?", a: "When any seller party is identified as a non-US person or foreign entity during identity verification." },
+      { q: "What about the 45-day identification period?", a: "1031 exchange timelines — 45-day identification and 180-day completion — tracked as Locker conditions with deadline alerts." },
+    ],
+  },
+  "esc-commission-reconciliation": {
+    headline: "Every commission verified before a dollar moves.",
+    subheadline: "Listing agent, buyer's agent, broker splits, referral fees, and transaction coordinator fees — all reconciled against the closing statement before disbursement.",
+    steps: [
+      { title: "Capture commission schedule", description: "From listing agreement and buyer representation." },
+      { title: "Apply splits", description: "Agent/broker splits, referral fees, TC fees." },
+      { title: "Verify against CD", description: "Every commission line matches the closing disclosure." },
+      { title: "Authorize disbursement", description: "Balanced and verified — cleared for ESC-001 disbursement." },
+    ],
+    bridge: {
+      title: "No disbursement without reconciliation.",
+      text: "Commission schedule from the listing agreement feeds in at Locker creation. The CD from ESC-006 must balance. ESC-001 will not authorize disbursement until ESC-008 confirms reconciled.",
+    },
+    valueProps: [
+      { label: "Automatic split calculation (agent/broker/referral)", description: "Commission splits calculated from listing agreement terms — agent, broker, referral, and transaction coordinator shares." },
+      { label: "Closing disclosure line-item verification", description: "Every commission line item verified against the settlement statement. Discrepancies flagged before disbursement." },
+      { label: "Pre-disbursement reconciliation enforcement", description: "The Escrow Locker will not authorize commission disbursement until this worker confirms all amounts reconciled." },
+    ],
+    faq: [
+      { q: "What about variable commission structures?", a: "Tiered commissions, flat fees, referral percentages, bonuses — all configurable per party." },
+      { q: "How are disputes handled?", a: "Discrepancies flagged. Locker holds disbursement until all parties agree on the commission breakdown." },
+    ],
+  },
+  "esc-hoa-estoppel": {
+    headline: "No surprise assessments at closing.",
+    subheadline: "Estoppel certificate requested from the HOA, unpaid dues identified, special assessments tracked, and transfer fees calculated — all as Locker conditions.",
+    steps: [
+      { title: "Request estoppel", description: "HOA contact information, request sent with deadline." },
+      { title: "Review certificate", description: "Unpaid dues, special assessments, pending litigation, violations." },
+      { title: "Track amounts", description: "Dues and assessments become closing statement line items." },
+      { title: "Condition update", description: "Estoppel completion updates the Locker condition list." },
+    ],
+    bridge: {
+      title: "HOA surprises killed.",
+      text: "Disclosure Package (ESC-005) identifies HOA communities. This worker coordinates the estoppel. Amounts feed to Closing Disclosure (ESC-006). The Locker (ESC-001) tracks certificate receipt as a condition.",
+    },
+    valueProps: [
+      { label: "Automated estoppel request generation", description: "Estoppel requests generated and sent to HOA management with deadline tracking and follow-up escalation." },
+      { label: "Unpaid dues and assessment tracking", description: "All outstanding amounts identified — unpaid dues, special assessments, pending litigation costs, violation fines." },
+      { label: "Closing statement integration", description: "HOA amounts flow directly to the settlement statement in ESC-006 as line items with proper buyer/seller allocation." },
+    ],
+    faq: [
+      { q: "What if the HOA doesn't respond?", a: "Escalation notices. If no response by deadline, flagged as outstanding condition — Locker holds." },
+      { q: "Are transfer fees handled?", a: "Yes — HOA transfer fees, capital contribution fees, and move-in/move-out fees all tracked and added to the settlement statement." },
+    ],
+  },
+  "esc-status-portal": {
+    headline: "Every party knows where things stand.",
+    subheadline: "Real-time Locker stage updates for buyers, sellers, agents, and lenders — no more status calls, no more email chains.",
+    steps: [
+      { title: "Locker created", description: "All parties receive access link and notification." },
+      { title: "Stage advances", description: "Every stage transition triggers party notifications." },
+      { title: "Condition updates", description: "Each condition change — satisfied, waived, outstanding — visible in real time." },
+      { title: "Closing countdown", description: "Timeline view with remaining conditions and projected closing date." },
+    ],
+    bridge: {
+      title: "Transparency that saves hours.",
+      text: "Every action in ESC-001 through ESC-011 generates a status update visible here. Buyers see conditions. Sellers see timeline. Agents see everything. Lenders see what they need.",
+    },
+    valueProps: [
+      { label: "Real-time stage visibility for all parties", description: "Every Locker stage transition visible to all parties with role-appropriate detail levels." },
+      { label: "Condition tracking with automated notifications", description: "Condition changes — satisfied, waived, outstanding — trigger notifications to relevant parties automatically." },
+      { label: "Closing timeline with projected dates", description: "Remaining conditions mapped against projected closing date with risk indicators for timeline slippage." },
+    ],
+    faq: [
+      { q: "Do all parties see the same information?", a: "No — role-based visibility. Buyers see their conditions and timeline. Agents see full detail. Public viewers see stage status only." },
+      { q: "Does this reduce status calls?", a: "That is its primary purpose. The single largest time sink in escrow is answering status questions." },
+    ],
+  },
+  "esc-recording-monitor": {
+    headline: "From recording to transfer — nothing left open.",
+    subheadline: "Deed recordation tracked from submission through confirmation. Recording confirmation number triggers the DTC transfer from seller Vault to buyer Vault.",
+    steps: [
+      { title: "Submit for recording", description: "Deed and supporting documents submitted to county recorder or via eRecording." },
+      { title: "Track recording status", description: "Pending, rejected, recorded — with reference numbers." },
+      { title: "Confirmation received", description: "Recording number and timestamp captured." },
+      { title: "Trigger DTC transfer", description: "Recording confirmation triggers Vault-to-Vault DTC transfer and Locker sealing." },
+    ],
+    bridge: {
+      title: "The final gate.",
+      text: "ESC-001 cannot seal without a recording confirmation from this worker. The DTC transfer — the actual title transfer — executes only after recording is confirmed. Logbook transfers with it. The Locker is then sealed and immutable.",
+    },
+    valueProps: [
+      { label: "eRecording submission where available", description: "Electronic recording submission to participating counties for faster confirmation and reduced rejection rates." },
+      { label: "Recording confirmation tracking with reference numbers", description: "Recording status tracked from submission through confirmation with reference numbers and timestamps captured." },
+      { label: "Automatic DTC transfer trigger on confirmation", description: "Recording confirmation triggers the Vault-to-Vault DTC transfer automatically — the actual ownership transfer executes on confirmed recording." },
+    ],
+    faq: [
+      { q: "What is a DTC transfer?", a: "Digital Title Certificate — the blockchain-anchored ownership record in TitleApp. Recording confirmation triggers the transfer from seller Vault to buyer Vault." },
+      { q: "What about counties without eRecording?", a: "Physical recording tracked manually. Confirmation number entered when received. Same hard stop applies." },
+    ],
+  },
+  "esc-alex-title-escrow": {
+    headline: "Your escrow operations at a glance.",
+    subheadline: "Daily briefing, anomaly detection, and pipeline management across all active Lockers — free with three or more ESC workers.",
+    steps: [
+      { title: "Daily briefing", description: "Active Lockers, stage breakdown, upcoming deadlines, stalled conditions." },
+      { title: "Anomaly alerts", description: "Wire instruction changes, identity verification failures, condition deadline breaches." },
+      { title: "Pipeline view", description: "All Lockers by stage, sorted by closing date, with risk indicators." },
+      { title: "Escalation routing", description: "Critical alerts routed to responsible parties with response tracking." },
+    ],
+    bridge: {
+      title: "Alex watches everything.",
+      text: "Every ESC worker feeds Alex. Wire fraud alerts from ESC-002, stalled conditions from ESC-001, overdue estoppels from ESC-009, recording delays from ESC-011 — all surfaced in one daily briefing.",
+    },
+    valueProps: [
+      { label: "Cross-worker anomaly detection", description: "Anomalies across all ESC workers surfaced in one view — wire changes, verification failures, deadline breaches, recording delays." },
+      { label: "Pipeline management across all active Lockers", description: "Every active Locker displayed by stage, sorted by closing date, with risk indicators and stalled condition flags." },
+      { label: "Free with three or more ESC subscriptions", description: "Alex Chief of Staff for Title & Escrow unlocks automatically with three or more paid ESC worker subscriptions." },
+    ],
+    faq: [
+      { q: "Is Alex always free?", a: "Free with 3+ paid ESC worker subscriptions — same model as every Alex Chief of Staff across TitleApp." },
+      { q: "Can Alex take action?", a: "Alex surfaces and routes. Humans decide. No autonomous actions on financial transactions — ever." },
     ],
   },
   "legal-contracts": {
@@ -3849,7 +4100,7 @@ export default function App() {
   const [investorReady, setInvestorReady] = useState(isInvestorRoom ? false : null);
 
   // ── /sandbox route intercept ──────────────────────────────
-  // Standalone developer sandbox — split-pane layout with Alex chat + workspace
+  // Standalone Vibe Coding Sandbox — split-pane layout with Alex chat + workspace
   const isSandbox = window.location.pathname === "/sandbox" || window.location.pathname === "/sandbox/";
 
   // ── /marketplace/:slug route intercept ─────────────────────
@@ -3986,6 +4237,23 @@ export default function App() {
       // Store display name for sandbox greeting
       if (auth.currentUser?.displayName) {
         localStorage.setItem("DISPLAY_NAME", auth.currentUser.displayName);
+      }
+      // Check for license activation return from Stripe
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("license") === "active") {
+        localStorage.setItem("CREATOR_LICENSE", "true");
+        window.history.replaceState({}, "", "/sandbox");
+      }
+      // Check user doc for creatorLicense flag
+      if (auth.currentUser?.uid) {
+        const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+        fetch(`${apiBase}/api?path=/v1/me:profile`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }).then(r => r.json()).then(data => {
+          if (data.ok && data.profile?.creatorLicense) {
+            localStorage.setItem("CREATOR_LICENSE", "true");
+          }
+        }).catch(() => {});
       }
       setSandboxReady(true);
     } else {
@@ -4282,7 +4550,7 @@ export default function App() {
     return <InvestorDataRoom />;
   }
 
-  // ── Developer Sandbox: standalone experience ────────────────
+  // ── Vibe Coding Sandbox: standalone experience ────────────────
   if (isSandbox) {
     if (!sandboxReady || handoffInProgress) {
       return (

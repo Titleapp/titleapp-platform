@@ -59,6 +59,30 @@ export default function CreatorApplication() {
     }
   }
 
+  const [activating, setActivating] = useState(false);
+
+  async function handleActivateLicense() {
+    setActivating(true);
+    try {
+      const token = localStorage.getItem("ID_TOKEN");
+      const resp = await fetch(`${API_BASE}/api?path=/v1/creator:checkout`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ returnUrl: window.location.origin + "/sandbox" }),
+      });
+      const data = await resp.json();
+      if (data.ok && data.url) {
+        window.location.href = data.url;
+      } else {
+        setError(data.error || "Failed to start checkout.");
+        setActivating(false);
+      }
+    } catch (err) {
+      setError("Connection error. Please try again.");
+      setActivating(false);
+    }
+  }
+
   if (submitted) {
     return (
       <div style={S.page}>
@@ -71,9 +95,17 @@ export default function CreatorApplication() {
               <br /><br />
               We'll email you at <strong>{form.email}</strong> with next steps.
               <br /><br />
-              In the meantime, keep building. Your Digital Worker will be ready to go live the moment you're approved.
+              In the meantime, activate your Creator License to unlock the full Vibe Coding Sandbox.
             </div>
-            <button style={{ ...S.btn, marginTop: 24, maxWidth: 240 }} onClick={() => window.location.href = "/sandbox"}>Back to Sandbox</button>
+            <button
+              style={{ ...S.btn, marginTop: 24, maxWidth: 340 }}
+              onClick={handleActivateLicense}
+              disabled={activating}
+            >
+              {activating ? "Redirecting to Stripe..." : "Activate Creator License — $49/yr"}
+            </button>
+            <button style={{ ...S.btn, marginTop: 12, maxWidth: 240, background: "transparent", color: "#7c3aed", border: "1px solid #7c3aed" }} onClick={() => window.location.href = "/sandbox"}>Back to Sandbox</button>
+            {error && <div style={{ color: "#ef4444", fontSize: 13, marginTop: 12 }}>{error}</div>}
           </div>
         </div>
       </div>

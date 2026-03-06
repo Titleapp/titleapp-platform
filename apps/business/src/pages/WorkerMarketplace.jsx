@@ -5,7 +5,18 @@ export const WORKER_ROUTES = [
   // Phase 1: Acquisition
   { slug: "cre-analyst", name: "CRE Deal Analyst", description: "Screen and model commercial real estate investment opportunities.", suite: "Real Estate", status: "live", price: 2900 },
   { slug: "investor-relations", name: "Investor Relations", description: "Investor communications, reporting, and capital raising.", suite: "Finance & Investment", status: "live", price: 4900 },
-  { slug: "title-escrow", name: "Title & Escrow Worker", description: "Clean title, clean closing. Title commitment review, exception analysis, escrow coordination, and closing management.", suite: "Real Estate", status: "planned", price: 5900 },
+  { slug: "esc-escrow-locker", name: "The Escrow Locker", description: "Offer chain through DTC transfer. Identity verification, bank account linking, RON notarization, and human-authorized disbursement.", suite: "Title & Escrow", status: "planned", price: 7900, vertical: "title_escrow" },
+  { slug: "esc-wire-fraud-prevention", name: "Wire Fraud Prevention", description: "Callback protocol, domain verification, and automatic hold on wire instruction changes.", suite: "Title & Escrow", status: "planned", price: 7900, vertical: "title_escrow" },
+  { slug: "esc-title-search-commitment", name: "Title Search & Commitment", description: "Preliminary title report, Schedule B exception tracking, and lien clearance conditions.", suite: "Title & Escrow", status: "planned", price: 4900, vertical: "title_escrow" },
+  { slug: "esc-lien-clearance-manager", name: "Lien Clearance Manager", description: "Payoff demands, release confirmation, and hard stop enforcement before DTC transfer.", suite: "Title & Escrow", status: "planned", price: 4900, vertical: "title_escrow" },
+  { slug: "esc-disclosure-package", name: "Disclosure Package Assembler", description: "State-mandated disclosures, HOA documents, and delivery confirmation tracking.", suite: "Title & Escrow", status: "planned", price: 4900, vertical: "title_escrow" },
+  { slug: "esc-closing-disclosure", name: "Closing Disclosure Generator", description: "TRID for residential, ALTA for commercial. Credit and debit verification with settlement statement.", suite: "Title & Escrow", status: "planned", price: 4900, vertical: "title_escrow" },
+  { slug: "esc-firpta-1031", name: "FIRPTA / 1031 Exchange Compliance", description: "Foreign seller withholding calculation, qualified intermediary coordination, and boot analysis.", suite: "Title & Escrow", status: "planned", price: 7900, vertical: "title_escrow" },
+  { slug: "esc-commission-reconciliation", name: "Commission & Fee Reconciliation", description: "All commissions and fees verified against closing statement before disbursement authorization.", suite: "Title & Escrow", status: "planned", price: 4900, vertical: "title_escrow" },
+  { slug: "esc-hoa-estoppel", name: "HOA Estoppel Coordinator", description: "Estoppel certificate requests, unpaid dues tracking, and transfer fee management.", suite: "Title & Escrow", status: "planned", price: 2900, vertical: "title_escrow" },
+  { slug: "esc-status-portal", name: "Buyer/Seller Status Portal", description: "Real-time Locker stage updates for all parties. Eliminates status call volume.", suite: "Title & Escrow", status: "planned", price: 2900, vertical: "title_escrow" },
+  { slug: "esc-recording-monitor", name: "Post-Close Recording Monitor", description: "Deed recordation tracking with DTC transfer triggered on recording confirmation.", suite: "Title & Escrow", status: "planned", price: 4900, vertical: "title_escrow" },
+  { slug: "esc-alex-title-escrow", name: "Alex — Title & Escrow Chief of Staff", description: "Daily briefing, anomaly alerts, and pipeline management. Free with three or more ESC workers.", suite: "Title & Escrow", status: "planned", price: 0, vertical: "title_escrow" },
   { slug: "environmental-cultural-review", name: "Environmental & Cultural Review Worker", description: "Phase I through remediation. Biological surveys. Archaeological review. Cultural impact. NEPA/CEQA compliance.", suite: "Real Estate", status: "live", price: 2900 },
   { slug: "mortgage-senior-debt", name: "Mortgage & Senior Debt Worker", description: "Know your best loan before the broker calls. Term sheet analysis, loan sizing from binding constraints, comparison across agency, CMBS, and life company.", suite: "Finance & Investment", status: "planned", price: 7900 },
   { slug: "mortgage-broker", name: "Mortgage Broker Worker", description: "Source the best debt. Acquisition loans, construction financing, bridge, perm, refi.", suite: "Finance & Investment", status: "planned", price: 4900 },
@@ -242,7 +253,7 @@ export const WORKER_ROUTES = [
   { slug: "gov-alex-recorder", name: "Alex — Recorder Chief of Staff", description: "Orchestrates all recorder workers, daily briefing, escalations.", suite: "Government — Recorder", status: "planned", price: 0, vertical: "government" },
 ];
 
-const SUITES = ["All", "Real Estate", "Construction", "Finance & Investment", "General Business", "Legal", "Automotive", "Aviation", "Government — DMV", "Government — Permitting", "Government — Inspector", "Government — Recorder", "Platform"];
+const SUITES = ["All", "Real Estate", "Title & Escrow", "Construction", "Finance & Investment", "General Business", "Legal", "Automotive", "Aviation", "Government — DMV", "Government — Permitting", "Government — Inspector", "Government — Recorder", "Platform"];
 
 const S = {
   page: { minHeight: "100vh", background: "#f8fafc", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" },
@@ -285,9 +296,10 @@ export default function WorkerMarketplace({ authenticated, userName, onSubscribe
   const [filter, setFilter] = useState("All");
   const [subscribing, setSubscribing] = useState(null);
 
-  const filtered = filter === "All" ? WORKER_ROUTES : WORKER_ROUTES.filter((w) => w.suite === filter);
-  const liveCount = WORKER_ROUTES.filter((w) => w.status === "live").length;
-  const plannedCount = WORKER_ROUTES.filter((w) => w.status === "planned").length;
+  const publicWorkers = WORKER_ROUTES.filter((w) => !w.internal_only);
+  const filtered = filter === "All" ? publicWorkers : publicWorkers.filter((w) => w.suite === filter);
+  const liveCount = publicWorkers.filter((w) => w.status === "live").length;
+  const plannedCount = publicWorkers.filter((w) => w.status === "planned").length;
 
   function handleCardClick(w) {
     if (authenticated && w.status === "live" && onSubscribe) {
@@ -332,7 +344,7 @@ export default function WorkerMarketplace({ authenticated, userName, onSubscribe
         {!authenticated && (
           <div style={S.stats}>
             <div style={S.stat}>
-              <div style={S.statValue}>{WORKER_ROUTES.length}</div>
+              <div style={S.statValue}>{publicWorkers.length}</div>
               <div style={S.statLabel}>Workers</div>
             </div>
             <div style={S.stat}>

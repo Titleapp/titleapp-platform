@@ -261,10 +261,26 @@ async function handleStripeWebhook(req, res) {
         break;
       }
 
-      // ---- CHECKOUT (Credit packs) ----
+      // ---- CHECKOUT (Credit packs + Creator License) ----
       case "checkout.session.completed": {
-        const credits = parseInt(data.metadata?.credits || "0", 10);
+        const checkoutType = data.metadata?.type;
         const userId = data.metadata?.userId;
+
+        // Creator License activation
+        if (checkoutType === "creator_license" && userId) {
+          await db.collection("users").doc(userId).set(
+            {
+              creatorLicense: true,
+              creatorLicenseActivatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            },
+            { merge: true }
+          );
+          await logActivity("revenue", `Creator License activated for user ${userId}`, "success");
+          break;
+        }
+
+        // Credit pack purchase
+        const credits = parseInt(data.metadata?.credits || "0", 10);
         if (credits > 0 && userId) {
           await db.collection("users").doc(userId).set(
             {
