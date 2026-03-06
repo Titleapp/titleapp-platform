@@ -76,7 +76,7 @@ const BUILT_IN_TOOLS = [
 
 const SAMPLE_SUBSCRIPTIONS = [
   { id: "s1", name: "Relocation Expert AI", price: "$15/mo", creator: "MoveSmart LLC", status: "Active" },
-  { id: "s2", name: "Tax Advisor", price: "$9/mo", creator: "TaxPro AI", status: "Active" },
+  { id: "s2", name: "Tax Advisor", price: "$29/mo", creator: "TaxPro AI", status: "Active" },
 ];
 
 export default function VaultTools() {

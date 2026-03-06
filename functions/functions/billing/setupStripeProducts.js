@@ -7,6 +7,7 @@
 
 const admin = require("firebase-admin");
 const Stripe = require("stripe");
+const pricing = require("../config/pricing");
 
 async function setupStripeProducts(req, res) {
   const body = req.body || {};
@@ -121,13 +122,13 @@ async function setupStripeProducts(req, res) {
     tiers: {
       free: {
         name: "Free",
-        monthlyCredits: 50,
+        monthlyCredits: pricing.subscriptionTiers.free.creditsIncluded,
         maxWorkers: 1,
         features: ["basic_workspace", "marketplace_browse"],
       },
       pro: {
         name: "Pro",
-        monthlyCredits: 500,
+        monthlyCredits: pricing.subscriptionTiers.tier1.creditsIncluded,
         maxWorkers: 10,
         features: [
           "full_workspace",
@@ -138,7 +139,7 @@ async function setupStripeProducts(req, res) {
       },
       enterprise: {
         name: "Enterprise",
-        monthlyCredits: 10000,
+        monthlyCredits: 10000, // Enterprise is custom — no canonical limit
         maxWorkers: -1,
         features: [
           "everything",

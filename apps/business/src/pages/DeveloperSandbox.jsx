@@ -62,11 +62,35 @@ const VERTICALS = [
   { value: "real-estate", label: "Real Estate & Mortgage" },
   { value: "investment", label: "Investment & Finance" },
   { value: "aviation", label: "Aviation" },
-  { value: "healthcare", label: "Healthcare" },
+  { value: "health-education", label: "Health & EMS Education" },
   { value: "construction", label: "Construction" },
   { value: "insurance", label: "Insurance" },
   { value: "custom", label: "Custom / Other" },
 ];
+
+const HE_SUBJECT_DOMAINS = [
+  { value: "critical_care_icu", label: "Critical Care / ICU" },
+  { value: "emergency_er", label: "Emergency / ER" },
+  { value: "flight_nursing", label: "Flight Nursing / Critical Care Transport" },
+  { value: "ems_paramedic", label: "EMS / Paramedic" },
+  { value: "perioperative_or", label: "Perioperative / OR" },
+  { value: "pediatrics_nicu", label: "Pediatrics / NICU" },
+  { value: "ob_labor_delivery", label: "OB / Labor & Delivery" },
+  { value: "home_health", label: "Home Health" },
+  { value: "nursing_education_faculty", label: "Nursing Education Faculty" },
+  { value: "ems_instructor_academy", label: "EMS Instructor / Academy" },
+];
+
+const HE_LANES = [
+  { value: "build_it", label: "Build It — Curriculum & Accreditation", range: "HE-001 to HE-010" },
+  { value: "learn_it", label: "Learn It — Scenarios & Exam Prep", range: "HE-011 to HE-018" },
+  { value: "chart_it", label: "Chart It — Documentation & Records", range: "HE-019 to HE-026" },
+  { value: "back_me_up", label: "Back Me Up — Protocol & Drug Reference", range: "HE-027 to HE-031" },
+  { value: "cert_it", label: "Cert It — CEU & License Tracking", range: "HE-032 to HE-036" },
+  { value: "grow_it", label: "Grow It — Creator Tools & Analytics", range: "HE-037 to HE-042" },
+];
+
+const HE_MD_GATE_WORKERS = ["HE-013", "HE-025", "HE-027", "HE-028", "HE-030"];
 
 // Helper for Worker #1 API calls
 async function w1Api(endpoint, payload) {
@@ -413,9 +437,13 @@ function MyWorkersTab({ workers, loading, selected, onSelect, onCreateNew }) {
           <div style={{ padding: 16 }}>
             <div style={{ fontSize: 13, color: "#94a3b8", marginBottom: 12, lineHeight: 1.5 }}>{w.description || "No description"}</div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={S.badge(w.status === "registered" ? "#065f46" : "#92400e", w.status === "registered" ? "#d1fae5" : "#fef3c7")}>
-                {w.status === "registered" ? "Live" : w.status || "Draft"}
-              </span>
+              <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                <span style={S.badge(w.status === "registered" ? "#065f46" : "#92400e", w.status === "registered" ? "#d1fae5" : "#fef3c7")}>
+                  {w.status === "registered" ? "Live" : w.status || "Draft"}
+                </span>
+                {w.disclaimer_active && <span style={S.badge("#dc2626", "rgba(220,38,38,0.1)")}>Disclaimer</span>}
+                {w.internal_only && <span style={S.badge("#6366f1", "rgba(99,102,241,0.1)")}>Internal</span>}
+              </div>
               <span style={{ fontSize: 12, color: "#64748b" }}>{w.rulesCount || 0} rules</span>
             </div>
           </div>
@@ -627,8 +655,8 @@ function MarketplaceTab({ worker, onWorkerUpdate }) {
               <div style={{ fontSize: 11, color: "#64748b" }}>Subscribers</div>
             </div>
             <div style={{ padding: 12, background: "#0f0f14", borderRadius: 8, textAlign: "center" }}>
-              <div style={{ fontSize: 18, fontWeight: 700, color: "#10b981" }}>$9/mo</div>
-              <div style={{ fontSize: 11, color: "#64748b" }}>Per Hire</div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: "#10b981" }}>${worker.pricingTier === 3 ? "79" : worker.pricingTier === 2 ? "49" : "29"}/mo</div>
+              <div style={{ fontSize: 11, color: "#64748b" }}>Per Subscriber</div>
             </div>
           </div>
         </div>
@@ -806,11 +834,18 @@ function IntakeInterview({ worker, onWorkerUpdate }) {
   const [description, setDescription] = useState(worker.intake?.description || worker.description || "");
   const [sopsText, setSopsText] = useState((worker.intake?.sops || []).join("\n"));
   const [internalOnly, setInternalOnly] = useState(worker.internal_only || false);
+  const [subjectDomain, setSubjectDomain] = useState(worker.intake?.subjectDomain || "");
+  const [heJurisdiction, setHeJurisdiction] = useState(worker.intake?.heJurisdiction || "");
+  const [deploymentTier, setDeploymentTier] = useState(worker.deployment_tier || 2);
+  const [heLane, setHeLane] = useState(worker.intake?.heLane || "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  const isHE = vertical === "health-education";
+
   async function handleStartResearch() {
     if (!vertical || !jurisdiction) { setError("Select a vertical and jurisdiction."); return; }
+    if (isHE && !subjectDomain) { setError("Select a subject domain for Health & EMS workers."); return; }
     setLoading(true);
     setError(null);
     try {
@@ -818,13 +853,17 @@ function IntakeInterview({ worker, onWorkerUpdate }) {
       // Step 1: Save intake
       const intakeRes = await w1Api("worker1:intake", {
         workerId: worker.id, vertical, jurisdiction, description, sops, internal_only: internalOnly,
+        ...(isHE && { subjectDomain, heJurisdiction, deploymentTier, heLane }),
       });
       if (!intakeRes.ok) { setError(intakeRes.error || "Failed to save intake."); setLoading(false); return; }
       // Step 2: Start research
       const researchRes = await w1Api("worker1:research", { workerId: worker.id });
       if (!researchRes.ok) { setError(researchRes.error || "Research failed."); setLoading(false); return; }
       // Update parent with new worker state
-      onWorkerUpdate({ ...worker, buildPhase: "brief", internal_only: internalOnly, intake: { vertical, jurisdiction, description, sops }, complianceBrief: researchRes.brief, raasLibrary: { tier0: [], tier1: [], tier2: [], tier3: sops } });
+      onWorkerUpdate({ ...worker, buildPhase: "brief", internal_only: internalOnly, deployment_tier: deploymentTier, disclaimer_active: true,
+        ...(isHE && { subject_domain: subjectDomain, he_lane: heLane }),
+        intake: { vertical, jurisdiction, description, sops, ...(isHE && { subjectDomain, heJurisdiction, heLane }) },
+        complianceBrief: researchRes.brief, raasLibrary: { tier0: [], tier1: [], tier2: [], tier3: sops } });
     } catch (e) {
       setError(e.message || "Something went wrong.");
     } finally {
@@ -860,6 +899,75 @@ function IntakeInterview({ worker, onWorkerUpdate }) {
           <option value="International">International</option>
         </select>
       </div>
+
+      {/* HE-specific fields */}
+      {isHE && (
+        <>
+          <div style={{ marginBottom: 20 }}>
+            <label style={labelStyle}>Subject Domain</label>
+            <select style={selectStyle} value={subjectDomain} onChange={(e) => setSubjectDomain(e.target.value)}>
+              <option value="">Select a clinical specialty...</option>
+              {HE_SUBJECT_DOMAINS.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
+            </select>
+            <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>Required. Determines compliance rules and credential requirements.</div>
+          </div>
+
+          <div style={{ marginBottom: 20 }}>
+            <label style={labelStyle}>Lane</label>
+            <select style={selectStyle} value={heLane} onChange={(e) => setHeLane(e.target.value)}>
+              <option value="">Select a lane...</option>
+              {HE_LANES.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
+            </select>
+            <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>
+              {heLane ? HE_LANES.find(l => l.value === heLane)?.range || "" : "Each lane covers a range of worker IDs."}
+            </div>
+          </div>
+
+          <div style={{ marginBottom: 20 }}>
+            <label style={labelStyle}>HE Jurisdiction</label>
+            <input
+              style={inputStyle}
+              value={heJurisdiction}
+              onChange={(e) => setHeJurisdiction(e.target.value)}
+              placeholder="STATE:EmployerSlug — e.g. HI:QueensMedical or TX:GENERAL"
+            />
+            <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>Format: STATE:EmployerSlug. Use GENERAL for non-institutional workers.</div>
+          </div>
+
+          <div style={{ marginBottom: 20 }}>
+            <label style={labelStyle}>Deployment Tier</label>
+            <div style={{ display: "flex", gap: 8 }}>
+              {[
+                { value: 1, label: "Platform Default", desc: "TitleApp baseline content" },
+                { value: 2, label: "Creator Public", desc: "Published to marketplace" },
+                { value: 3, label: "Institutional Private", desc: "Internal use only" },
+              ].map(t => (
+                <div
+                  key={t.value}
+                  onClick={() => setDeploymentTier(t.value)}
+                  style={{
+                    flex: 1, padding: "12px 10px", background: deploymentTier === t.value ? "rgba(124,58,237,0.15)" : "#0f0f14",
+                    border: `1px solid ${deploymentTier === t.value ? "#7c3aed" : "#2a2a3a"}`, borderRadius: 8, cursor: "pointer", textAlign: "center",
+                  }}
+                >
+                  <div style={{ fontSize: 13, fontWeight: 600, color: deploymentTier === t.value ? "#7c3aed" : "#e2e8f0" }}>{t.label}</div>
+                  <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>{t.desc}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* MD Gate warning for Back Me Up lane */}
+          {heLane === "back_me_up" && (
+            <div style={{ padding: "12px 16px", background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.3)", borderRadius: 8, marginBottom: 20 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: "#dc2626", marginBottom: 4 }}>Medical Director Co-Sign Gate</div>
+              <div style={{ fontSize: 12, color: "#94a3b8", lineHeight: 1.5 }}>
+                Back Me Up workers (protocol and drug reference) require Medical Director approval before going live. After publishing, an MD co-sign document must be uploaded and verified.
+              </div>
+            </div>
+          )}
+        </>
+      )}
 
       <div style={{ marginBottom: 20 }}>
         <label style={labelStyle}>What does this Digital Worker do?</label>
@@ -1197,11 +1305,11 @@ function PrePublishCheck({ worker, onWorkerUpdate }) {
   return (
     <div style={{ maxWidth: 600 }}>
       <div style={{ fontSize: 18, fontWeight: 700, color: "#e2e8f0", marginBottom: 4 }}>Pre-Publish Check</div>
-      <div style={{ fontSize: 14, color: "#94a3b8", marginBottom: 24 }}>7-point acceptance criteria. All checks must pass (warnings are acceptable) before publishing.</div>
+      <div style={{ fontSize: 14, color: "#94a3b8", marginBottom: 24 }}>8-point acceptance criteria. All checks must pass (warnings are acceptable) before publishing.</div>
 
       {checks.length === 0 && (
         <div style={{ textAlign: "center", padding: "40px 20px" }}>
-          <div style={{ fontSize: 14, color: "#94a3b8", marginBottom: 16 }}>Run the pre-publish check to validate your Digital Worker against the 7-point acceptance criteria.</div>
+          <div style={{ fontSize: 14, color: "#94a3b8", marginBottom: 16 }}>Run the pre-publish check to validate your Digital Worker against the 8-point acceptance criteria.</div>
           <button style={{ ...S.btnPrimary, padding: "14px 32px", fontSize: 15 }} onClick={runCheck} disabled={running}>
             {running ? "Running checks..." : "Run Pre-Publish Check"}
           </button>
@@ -1212,7 +1320,7 @@ function PrePublishCheck({ worker, onWorkerUpdate }) {
         <>
           {/* Score summary */}
           <div style={{ ...S.growCard, textAlign: "center", marginBottom: 20 }}>
-            <div style={{ fontSize: 36, fontWeight: 700, color: passed ? "#10b981" : "#f87171" }}>{score}/7</div>
+            <div style={{ fontSize: 36, fontWeight: 700, color: passed ? "#10b981" : "#f87171" }}>{score}/8</div>
             <div style={{ fontSize: 14, fontWeight: 600, color: passed ? "#10b981" : "#f87171" }}>{passed ? "Ready to publish" : "Needs attention"}</div>
           </div>
 
@@ -1389,7 +1497,7 @@ function PublishFlow({ worker, onWorkerUpdate }) {
       </div>
 
       <div style={{ fontSize: 12, color: "#64748b", textAlign: "center", marginTop: 8 }}>
-        Revenue split: You earn 75% of subscription revenue. $9/mo per hire = $6.75/mo to you.
+        Revenue split: You earn 75% of subscription revenue. At $49/mo per subscriber = $36.75/mo to you.
       </div>
     </div>
   );

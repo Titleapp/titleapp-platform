@@ -113,6 +113,13 @@ const MARKETPLACE_SLUG_MAP = {
   "AV-036": "av-efb-companion",
   "AV-037": "av-training-courseware",
   "AV-038": "av-crew-housing",
+  // Health & EMS Education — Anchor Workers
+  "HE-001": "he-curriculum-architect",
+  "HE-011": "he-scenario-simulator",
+  "HE-019": "he-epcr-builder",
+  "HE-029": "he-protocol-reference",
+  "HE-032": "he-ceu-tracker",
+  "HE-037": "he-creator-analytics",
   // Aviation — Pilot Suite
   "AV-P01": "av-digital-logbook",
   "AV-P02": "av-currency-tracker",
@@ -160,6 +167,13 @@ const RULESET_MAP = {
   "safety-osha": "safety_osha_v0",
   "mep-coordination": "mep_coordination_v0",
   "construction-draws": "construction_draw_v0",
+  // Health & EMS Education
+  "he-curriculum-architect": "he_001_curriculum_architect_v0",
+  "he-scenario-simulator": "he_011_scenario_simulator_v0",
+  "he-epcr-builder": "he_019_epcr_builder_v0",
+  "he-protocol-reference": "he_029_protocol_reference_v0",
+  "he-ceu-tracker": "he_032_ceu_tracker_v0",
+  "he-creator-analytics": "he_037_creator_analytics_v0",
   // Aviation — All Workers
   "av-cert-assistant": "av_001_cert_assistant_v0",
   "av-gom-authoring": "av_002_gom_authoring_v0",
@@ -236,6 +250,13 @@ const DISPLAY_NAME_MAP = {
   "AV-P01": "Digital Logbook",
   "AV-P03": "My Aircraft",
   "AV-P06": "Alex — Personal",
+  // Health & EMS Education
+  "HE-001": "Curriculum Architect",
+  "HE-011": "Scenario Simulator",
+  "HE-019": "ePCR Builder",
+  "HE-029": "Protocol Reference",
+  "HE-032": "CEU & License Tracker",
+  "HE-037": "Creator Analytics",
 };
 
 // Headline overrides from App.jsx WORKER_DETAIL_CONTENT (first 80 chars)
@@ -285,6 +306,13 @@ const HEADLINE_MAP = {
   "av-crew-scheduling": "Every assignment pre-validated for legality before it reaches the board",
   "av-alex": "Your workers, orchestrated — 0500 briefing to anomaly detection",
   "av-digital-logbook": "Blockchain-verified logbook that replaces paper permanently",
+  // Health & EMS Education
+  "he-curriculum-architect": "Accreditation-ready programs designed by domain experts, not committees",
+  "he-scenario-simulator": "Clinical scenarios that teach judgment, not just protocol recall",
+  "he-epcr-builder": "NEMSIS-compliant reports that survive QA review every time",
+  "he-protocol-reference": "The right protocol for your jurisdiction, your scope, your patient",
+  "he-ceu-tracker": "Every CE hour tracked, every license renewal flagged before it lapses",
+  "he-creator-analytics": "Know which content performs and where your subscribers come from",
 };
 
 // ═══════════════════════════════════════════════════════════════

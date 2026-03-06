@@ -96,8 +96,10 @@ async function createSubscription(req, res) {
     if (meteredItem) meteredItemId = meteredItem.id;
   }
 
-  // Determine monthly credits based on tier
-  const tierConfig = stripeConfig.tiers?.[tier || "pro"] || { monthlyCredits: 500 };
+  // Determine monthly credits based on tier (canonical rates from config/pricing.js)
+  const pricing = require("../config/pricing");
+  const canonicalTier = pricing.subscriptionTiers[tier || "tier1"] || pricing.subscriptionTiers.free;
+  const tierConfig = stripeConfig.tiers?.[tier || "pro"] || { monthlyCredits: canonicalTier.creditsIncluded };
 
   // Update user record
   await userRef.set(

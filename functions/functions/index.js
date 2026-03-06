@@ -2137,7 +2137,7 @@ When a Digital Worker is published and the user says "grow" or "launch" or "get 
 - Track their progress: "You have 0 subscribers. First goal: get to 5."
 - Be encouraging but factual -- no empty hype
 
-Revenue context: Creators earn 75% of subscription revenue. $9/seat/month means $6.75/seat to the creator. 10 subscribers = $67.50/month passive income.
+Revenue context: Creators earn 75% of subscription revenue plus 20% of TitleApp's margin on inference overage. Workers are priced at $29, $49, or $79 per month. At $49/mo that is $36.75/seat to the creator. Creators do NOT earn on data fees or audit trail fees.
 
 ADAPT TO THE USER'S LEVEL:
 - Novice: Do most of the work. "Describe what you want, I'll build it."
@@ -2215,7 +2215,7 @@ Within the first 3-4 messages, make sure they know:
 - Digital Workers are AI services with built-in rules enforcement. You define business rules, AI operates within them, every output is validated. Full audit trail.
 - We have an API (OpenAPI spec: https://us-central1-title-app-alpha.cloudfunctions.net/publicApi/v1/docs), a no-code Digital Worker builder, and a marketplace where devs earn 75% of revenue.
 - It's like Apple's App Developer Program for AI services -- build it, publish it, earn from it.
-- Pricing: sandbox is free. $9/seat/month for production workspaces.
+- Pricing: sandbox is free. Worker pricing tiers: Free, $29/mo, $49/mo, $79/mo. Volume discounts at 3+ workers. Creator License: $49/yr (free until July 1, 2026 with code DEV100).
 - Don't dump all this at once. But weave it into the first few exchanges naturally.
 - Always say "Digital Worker." Not "worker" or "service" -- "Digital Worker."
 
@@ -3508,6 +3508,39 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
         console.error("[creator:checkout] error:", e.message);
         return res.json({ ok: false, error: "Failed to create checkout session" });
       }
+    }
+
+    // POST /v1/he:ack — Record HE onboarding acknowledgment
+    if (route === "/he:ack" && method === "POST") {
+      const { workerId: ackWorkerId, lane, ackType, ackText } = body;
+      try {
+        await db.collection("he_onboarding_acks").add({
+          userId: auth.user.uid,
+          workerId: ackWorkerId || null,
+          lane: lane || null,
+          ackType: ackType || null,
+          ackText: ackText || null,
+          ackedAt: nowServerTs(),
+          ipAddress: req.headers["x-forwarded-for"] || req.ip || null,
+        });
+        // Set user-level flag
+        const ackFieldMap = { simulation: "simulationAck", jurisdiction: "chartItJurisdictionAck", clinical: "backMeUpDisclaimerAck" };
+        const field = ackFieldMap[ackType];
+        if (field) {
+          await db.collection("users").doc(auth.user.uid).set({ [field]: true }, { merge: true });
+        }
+        return res.json({ ok: true });
+      } catch (e) {
+        console.error("[he:ack] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // POST /v1/verify:he-creator — HE creator self-attestation
+    if (route === "/verify:he-creator" && method === "POST") {
+      const { submitHeCreatorVerification } = require("./services/heCreatorVerification");
+      req._user = auth.user;
+      return submitHeCreatorVerification(req, res);
     }
 
     // POST /v1/creator:review — admin review of creator applications
@@ -11768,6 +11801,16 @@ exports.checkStudentVerifications = onSchedule(
 exports.checkCfiVerifications = onSchedule(
   { schedule: "0 3 * * *", timeZone: "America/Los_Angeles", region: "us-central1" },
   async () => { await handleCheckCfis(); }
+);
+
+// ----------------------------
+// BILLING: Quarterly Pricing Review (Jan 1, Apr 1, Jul 1, Oct 1 at 9am PT)
+// ----------------------------
+const { runQuarterlyPricingReview } = require("./billing/quarterlyPricingReview");
+
+exports.quarterlyPricingReview = onSchedule(
+  { schedule: "0 9 1 1,4,7,10 *", timeZone: "America/Los_Angeles", region: "us-central1" },
+  async () => { await runQuarterlyPricingReview(); }
 );
 
 // ----------------------------

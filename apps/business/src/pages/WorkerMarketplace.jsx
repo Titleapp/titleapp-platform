@@ -133,6 +133,14 @@ export const WORKER_ROUTES = [
   { slug: "ad-floor-plan", name: "Floor Plan & Cash Management", description: "Floor plan interest tracking, cash flow forecasting, AP management, and dealership financial statements.", suite: "Automotive", status: "live", price: 0, vertical: "auto-dealer", commission: true },
   { slug: "ad-dms-technology", name: "DMS & Technology Management", description: "DMS optimization, integration monitoring, data integrity, user access management, and vendor contracts.", suite: "Automotive", status: "live", price: 0, vertical: "auto-dealer", commission: true },
 
+  // Health & EMS Education — Anchor Workers (one per lane)
+  { slug: "he-curriculum-architect", name: "Curriculum Architect", description: "Design accreditation-ready nursing and EMS programs. Course mapping, competency alignment, and program self-study.", suite: "Health & EMS Education", status: "waitlist", price: 2900, vertical: "health-education" },
+  { slug: "he-scenario-simulator", name: "Scenario Simulator", description: "Generate clinical scenarios for skills labs, sim center, and exam prep. Adjustable acuity and complexity.", suite: "Health & EMS Education", status: "waitlist", price: 2900, vertical: "health-education" },
+  { slug: "he-epcr-builder", name: "ePCR Builder", description: "Structured patient care report generation. NEMSIS-compliant fields, narrative builder, and QA scoring.", suite: "Health & EMS Education", status: "waitlist", price: 4900, vertical: "health-education" },
+  { slug: "he-protocol-reference", name: "Protocol Reference", description: "Instant protocol and drug reference lookup by jurisdiction. Scope of practice boundaries enforced.", suite: "Health & EMS Education", status: "waitlist", price: 4900, vertical: "health-education" },
+  { slug: "he-ceu-tracker", name: "CEU & License Tracker", description: "Track continuing education hours, license renewal deadlines, and certification status across all credentials.", suite: "Health & EMS Education", status: "waitlist", price: 2900, vertical: "health-education" },
+  { slug: "he-creator-analytics", name: "Creator Analytics", description: "Track subscriber growth, engagement metrics, and revenue for your published Health & EMS workers.", suite: "Health & EMS Education", status: "waitlist", price: 0, vertical: "health-education" },
+
   // Platform
   { slug: "chief-of-staff", name: "Alex — Chief of Staff", description: "Your AI coordinator. Manages all your workers, plans pipelines, tracks progress. Free with 3+ worker subscriptions.", suite: "Platform", status: "live", price: 0 },
 

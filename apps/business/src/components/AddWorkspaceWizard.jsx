@@ -391,7 +391,7 @@ export default function AddWorkspaceWizard({ existingWorkspaces, onCreated, onCa
               ))}
             </div>
             <div style={{ textAlign: 'center', marginTop: 20, color: '#94a3b8', fontSize: 13 }}>
-              $9/month per workspace &middot; 14-day free trial &middot; Cancel anytime
+              Starting at $29/month per worker &middot; 14-day free trial &middot; Cancel anytime
             </div>
           </div>
         )}

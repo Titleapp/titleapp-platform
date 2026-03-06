@@ -1,11 +1,18 @@
 /**
  * stripeWebhook.js — Master Stripe webhook handler.
  * Handles all Stripe events with signature verification.
+ *
+ * Cycle close logic bills all three revenue lines:
+ *   Line 1 — Inference credit overage (Stripe meter)
+ *   Line 2 — Data pass-through fees (Stripe invoice items)
+ *   Line 3 — Audit trail records (Stripe meter)
+ * Plus creator payout transfers via Stripe Connect.
  */
 
 const admin = require("firebase-admin");
 const Stripe = require("stripe");
 const { logActivity } = require("../admin/logActivity");
+const pricing = require("../config/pricing");
 
 function getDb() {
   return admin.firestore();
@@ -71,6 +78,191 @@ async function createLedgerEntry(db, data) {
     verifiedBy: null,
     verifiedAt: null,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+}
+
+/**
+ * Bill all three revenue lines at cycle close for a customer.
+ *
+ * Called from invoice.created webhook to attach usage charges
+ * before the invoice is finalized.
+ */
+async function handleCycleClose(db, stripe, invoiceData) {
+  const customerId = invoiceData.customer;
+  const invoiceId = invoiceData.id;
+
+  // Find the user by Stripe customer ID
+  const userSnap = await db.collection("users")
+    .where("stripeCustomerId", "==", customerId)
+    .limit(1)
+    .get();
+
+  if (userSnap.empty) {
+    console.log(`Cycle close: no user found for customer ${customerId}`);
+    return;
+  }
+
+  const userId = userSnap.docs[0].id;
+
+  // Determine billing period from invoice
+  const periodEnd = invoiceData.period_end
+    ? new Date(invoiceData.period_end * 1000)
+    : new Date();
+  const periodStart = invoiceData.period_start
+    ? new Date(invoiceData.period_start * 1000)
+    : new Date(periodEnd.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+  // Query all usage_events for this billing period
+  const eventsSnap = await db.collection("usage_events")
+    .where("user_id", "==", userId)
+    .where("_written_at", ">=", periodStart)
+    .where("_written_at", "<", periodEnd)
+    .get();
+
+  if (eventsSnap.empty) {
+    console.log(`Cycle close: no usage events for user ${userId}`);
+    return;
+  }
+
+  const events = eventsSnap.docs.map(d => d.data());
+
+  // ── Line 1: Report overage credits to Stripe meter ─────────
+  const totalOverageCredits = events.reduce((sum, e) => sum + (e.credits_overage || 0), 0);
+  if (totalOverageCredits > 0) {
+    try {
+      await stripe.billing.meterEvents.create({
+        event_name: pricing.stripeMeterEvents.inferenceOverage,
+        payload: {
+          stripe_customer_id: customerId,
+          value: String(totalOverageCredits),
+        },
+      });
+      await logActivity("revenue", `Cycle close: ${totalOverageCredits} overage credits billed for ${userId}`, "info");
+    } catch (err) {
+      console.error("Failed to report inference overage meter:", err.message);
+    }
+  }
+
+  // ── Line 2: Add data fees as invoice line items ────────────
+  const totalDataFees = events.reduce((sum, e) => sum + (e.data_fee_charged || 0), 0);
+  if (totalDataFees > 0) {
+    try {
+      await stripe.invoiceItems.create({
+        customer: customerId,
+        amount: Math.round(totalDataFees * 100),
+        currency: "usd",
+        description: `Data API fees — actual cost + ${Math.round((pricing.dataFeeMarkupMultiplier - 1) * 100)}% markup`,
+        invoice: invoiceId,
+      });
+      await logActivity("revenue", `Cycle close: $${totalDataFees.toFixed(2)} data fees for ${userId}`, "info");
+    } catch (err) {
+      console.error("Failed to add data fee invoice item:", err.message);
+    }
+  }
+
+  // ── Line 3: Report audit trail records to Stripe meter ─────
+  const totalAuditRecords = events.filter(e => e.audit_record_written).length;
+  if (totalAuditRecords > 0) {
+    try {
+      await stripe.billing.meterEvents.create({
+        event_name: pricing.stripeMeterEvents.auditTrailRecords,
+        payload: {
+          stripe_customer_id: customerId,
+          value: String(totalAuditRecords),
+        },
+      });
+      await logActivity("revenue", `Cycle close: ${totalAuditRecords} audit records billed for ${userId}`, "info");
+    } catch (err) {
+      console.error("Failed to report audit trail meter:", err.message);
+    }
+  }
+
+  // ── Creator payouts — sum creator_share_amount by creator ──
+  const creatorShares = {};
+  events.forEach(e => {
+    const { creator_id, creator_share_amount } = e;
+    if (creator_id && creator_share_amount > 0) {
+      creatorShares[creator_id] = (creatorShares[creator_id] || 0) + creator_share_amount;
+    }
+  });
+
+  for (const [creatorId, amount] of Object.entries(creatorShares)) {
+    if (amount < pricing.creatorMinPayoutThreshold) continue;
+
+    try {
+      const creatorSnap = await db.collection("users").doc(creatorId).get();
+      const creatorData = creatorSnap.exists ? creatorSnap.data() : {};
+      const connectAccountId = creatorData.stripeConnectAccountId;
+
+      if (!connectAccountId) {
+        console.warn(`Creator ${creatorId} has no Connect account — skipping $${amount.toFixed(2)} payout`);
+        await db.collection("creatorPayouts").add({
+          creatorId,
+          amount,
+          status: "deferred",
+          reason: "no_connect_account",
+          billingPeriodEnd: periodEnd.toISOString(),
+          timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        continue;
+      }
+
+      await stripe.transfers.create({
+        amount: Math.round(amount * 100),
+        currency: "usd",
+        destination: connectAccountId,
+        description: `TitleApp creator inference share — ${periodEnd.toISOString().slice(0, 10)}`,
+      });
+
+      await db.collection("creatorPayouts").add({
+        creatorId,
+        amount,
+        status: "transferred",
+        stripeConnectAccountId: connectAccountId,
+        billingPeriodEnd: periodEnd.toISOString(),
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      await logActivity("revenue", `Creator payout: $${amount.toFixed(2)} to ${creatorId}`, "success");
+    } catch (err) {
+      console.error(`Creator payout failed for ${creatorId}:`, err.message);
+      await db.collection("creatorPayouts").add({
+        creatorId,
+        amount,
+        status: "failed",
+        error: err.message,
+        billingPeriodEnd: periodEnd.toISOString(),
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    }
+  }
+
+  // ── Write cycle close summary to ledger ────────────────────
+  const totalRevLine1 = events.reduce((sum, e) => sum + (e.revenue_line_1 || 0), 0);
+  const totalRevLine2 = events.reduce((sum, e) => sum + (e.revenue_line_2 || 0), 0);
+  const totalRevLine3 = events.reduce((sum, e) => sum + (e.revenue_line_3 || 0), 0);
+  const totalCreatorPaid = Object.values(creatorShares).reduce((sum, a) => sum + a, 0);
+
+  await createLedgerEntry(db, {
+    date: periodEnd.toISOString().slice(0, 10),
+    type: "cycle_close",
+    category: "usage_billing",
+    subcategory: "three_line_summary",
+    amount: totalRevLine1 + totalRevLine2 + totalRevLine3,
+    description: `Cycle close for ${userId} — L1:$${totalRevLine1.toFixed(2)} L2:$${totalRevLine2.toFixed(2)} L3:$${totalRevLine3.toFixed(2)} Creator:$${totalCreatorPaid.toFixed(2)}`,
+    metadata: {
+      userId,
+      periodStart: periodStart.toISOString(),
+      periodEnd: periodEnd.toISOString(),
+      eventCount: events.length,
+      revenue_line_1: totalRevLine1,
+      revenue_line_2: totalRevLine2,
+      revenue_line_3: totalRevLine3,
+      creator_payouts: totalCreatorPaid,
+      overage_credits: totalOverageCredits,
+      data_fees_charged: totalDataFees,
+      audit_records: totalAuditRecords,
+    },
   });
 }
 
@@ -159,6 +351,20 @@ async function handleStripeWebhook(req, res) {
 
         await updateAccountingSummary(db, "subscription", amount);
         await logActivity("revenue", `Invoice paid: $${amount.toFixed(2)} from ${data.customer_email || "subscriber"}`, "success");
+        break;
+      }
+
+      // ---- CYCLE CLOSE (usage billing) ----
+      case "invoice.created": {
+        // Attach usage charges before the invoice is finalized
+        if (data.billing_reason === "subscription_cycle") {
+          try {
+            await handleCycleClose(db, stripe, data);
+          } catch (err) {
+            console.error("Cycle close error:", err);
+            await logActivity("error", `Cycle close failed for ${data.customer}: ${err.message}`, "error");
+          }
+        }
         break;
       }
 

@@ -62,6 +62,19 @@ const AUTO_DEALER_WORKERS = [
 ];
 
 // ═══════════════════════════════════════════════════════════════
+//  HEALTH & EMS EDUCATION — 6 anchor workers (one per lane)
+// ═══════════════════════════════════════════════════════════════
+
+const HE_WORKERS = [
+  { worker_id: "HE-001", name: "Curriculum Architect", vertical: "health_education", price_tier: "$29", revenue_model: "subscription", status: "waitlist", short_description: "Design accreditation-ready nursing and EMS programs with competency alignment", phase: "Build It — Curriculum & Accreditation", phase_number: 1, tags: ["curriculum", "accreditation", "education"], subject_domain: "nursing_education_faculty", deployment_tier: 2, disclaimer_active: false },
+  { worker_id: "HE-011", name: "Scenario Simulator", vertical: "health_education", price_tier: "$29", revenue_model: "subscription", status: "waitlist", short_description: "Generate clinical scenarios for skills labs, sim center, and exam prep", phase: "Learn It — Scenarios & Exam Prep", phase_number: 2, tags: ["simulation", "scenarios", "exam-prep"], subject_domain: "ems_paramedic", deployment_tier: 2, disclaimer_active: true },
+  { worker_id: "HE-019", name: "ePCR Builder", vertical: "health_education", price_tier: "$49", revenue_model: "subscription", status: "waitlist", short_description: "NEMSIS-compliant ePCR generation with narrative builder and QA scoring", phase: "Chart It — Documentation & Records", phase_number: 3, tags: ["epcr", "documentation", "nemsis"], subject_domain: "ems_paramedic", deployment_tier: 2, disclaimer_active: true },
+  { worker_id: "HE-029", name: "Protocol Reference", vertical: "health_education", price_tier: "$49", revenue_model: "subscription", status: "waitlist", short_description: "Jurisdiction-aware protocol and drug reference with scope of practice enforcement", phase: "Back Me Up — Protocol & Drug Reference", phase_number: 4, tags: ["protocol", "drug-reference", "scope-of-practice"], subject_domain: "emergency_er", deployment_tier: 2, disclaimer_active: true, medical_director_approval: true },
+  { worker_id: "HE-032", name: "CEU & License Tracker", vertical: "health_education", price_tier: "$29", revenue_model: "subscription", status: "waitlist", short_description: "Track CE hours, license renewal deadlines, and certification status", phase: "Cert It — CEU & License Tracking", phase_number: 5, tags: ["ceu", "license", "certification"], subject_domain: "nursing_education_faculty", deployment_tier: 2, disclaimer_active: false },
+  { worker_id: "HE-037", name: "Creator Analytics", vertical: "health_education", price_tier: "FREE", revenue_model: "free", status: "waitlist", short_description: "Subscriber growth, engagement metrics, and revenue tracking for HE creators", phase: "Grow It — Creator Tools & Analytics", phase_number: 6, tags: ["analytics", "creator", "revenue"], subject_domain: "nursing_education_faculty", deployment_tier: 2, disclaimer_active: false },
+];
+
+// ═══════════════════════════════════════════════════════════════
 //  ALL WORKERS — Combined array
 //  NOTE: RE, RS, PM, AV workers will be added from the master
 //  registry doc. The schema is identical to AUTO_DEALER_WORKERS.
@@ -69,6 +82,7 @@ const AUTO_DEALER_WORKERS = [
 
 const ALL_WORKERS = [
   ...AUTO_DEALER_WORKERS,
+  ...HE_WORKERS,
   // RE Development (52 workers) — add from TitleApp-Master-Worker-Registry.docx
   // RE Sales (20 workers) — add from registry doc
   // Property Management (18 workers) — add from registry doc

@@ -94,6 +94,8 @@ const VALID_SUITES = [
   "Automotive",
   "Aviation",
   "Education",
+  // Health & EMS Education
+  "Health & EMS Education",
   // Government In A Box sub-suites
   "Government",
   "DMV",
@@ -126,6 +128,25 @@ const CREDIT_COST_MAP = {
 const VALID_CREDIT_COST_TYPES = Object.keys(CREDIT_COST_MAP);
 
 // ═══════════════════════════════════════════════════════════════
+//  HE SUITE — Subject Domains + Deployment Tiers
+// ═══════════════════════════════════════════════════════════════
+
+const VALID_SUBJECT_DOMAINS = [
+  "critical_care_icu",
+  "emergency_er",
+  "flight_nursing",
+  "ems_paramedic",
+  "perioperative_or",
+  "pediatrics_nicu",
+  "ob_labor_delivery",
+  "home_health",
+  "nursing_education_faculty",
+  "ems_instructor_academy",
+];
+
+const VALID_DEPLOYMENT_TIERS = [1, 2, 3];
+
+// ═══════════════════════════════════════════════════════════════
 //  VALID ENUM VALUES — Registry Extension
 // ═══════════════════════════════════════════════════════════════
 
@@ -140,6 +161,7 @@ const VALID_VERTICALS = [
   "title_escrow",
   "financial",
   "nursing",
+  "health_education",
 ];
 
 const VALID_PRICE_TIERS_DISPLAY = ["FREE", "$29", "$49", "$79"];
@@ -197,6 +219,16 @@ const REGISTRY_FIELDS = {
 
   // Visibility — internal-only workers hidden from public marketplace
   internal_only:           { type: "boolean", required: false },
+
+  // HE Suite — subject domain, jurisdiction, deployment tier, disclaimers
+  subject_domain:          { type: "string",  required: false },
+  jurisdiction:            { type: "string",  required: false },
+  deployment_tier:         { type: "number",  required: false },
+  medical_director_approval: { type: "boolean", required: false },
+  md_approval_doc_url:     { type: "string",  required: false },
+  disclaimer_active:       { type: "boolean", required: false },
+  disclaimer_text:         { type: "string",  required: false },
+  institutional_sop_uploaded: { type: "boolean", required: false },
 
   // Pipeline audit — set automatically, never by builder
   pipeline_completed_at:   { type: "timestamp", required: true  },
@@ -345,6 +377,50 @@ function validateWorkerRecord(record, opts = {}) {
     errors.push("internal_only: must be a boolean if provided");
   }
 
+  // 19. subject_domain — required for HE workers, optional otherwise
+  if (record.subject_domain !== undefined) {
+    if (typeof record.subject_domain !== "string" || !VALID_SUBJECT_DOMAINS.includes(record.subject_domain)) {
+      errors.push(`subject_domain: "${record.subject_domain}" is not valid. Must be one of: ${VALID_SUBJECT_DOMAINS.join(", ")}`);
+    }
+  }
+
+  // 20. jurisdiction — string, format STATE:Slug
+  if (record.jurisdiction !== undefined && typeof record.jurisdiction !== "string") {
+    errors.push("jurisdiction: must be a string if provided (format: STATE:EmployerSlug)");
+  }
+
+  // 21. deployment_tier — enum 1/2/3
+  if (record.deployment_tier !== undefined) {
+    if (!VALID_DEPLOYMENT_TIERS.includes(Number(record.deployment_tier))) {
+      errors.push(`deployment_tier: must be 1, 2, or 3. Got: ${record.deployment_tier}`);
+    }
+  }
+
+  // 22. medical_director_approval — boolean
+  if (record.medical_director_approval !== undefined && typeof record.medical_director_approval !== "boolean") {
+    errors.push("medical_director_approval: must be a boolean if provided");
+  }
+
+  // 23. md_approval_doc_url — string
+  if (record.md_approval_doc_url !== undefined && typeof record.md_approval_doc_url !== "string") {
+    errors.push("md_approval_doc_url: must be a string if provided");
+  }
+
+  // 24. disclaimer_active — boolean
+  if (record.disclaimer_active !== undefined && typeof record.disclaimer_active !== "boolean") {
+    errors.push("disclaimer_active: must be a boolean if provided");
+  }
+
+  // 25. disclaimer_text — string
+  if (record.disclaimer_text !== undefined && typeof record.disclaimer_text !== "string") {
+    errors.push("disclaimer_text: must be a string if provided");
+  }
+
+  // 26. institutional_sop_uploaded — boolean
+  if (record.institutional_sop_uploaded !== undefined && typeof record.institutional_sop_uploaded !== "boolean") {
+    errors.push("institutional_sop_uploaded: must be a boolean if provided");
+  }
+
   // 18. credit_cost — must map to a valid cost type
   if (!record.credit_cost || typeof record.credit_cost !== "string") {
     errors.push("credit_cost: required (one of: " + VALID_CREDIT_COST_TYPES.join(", ") + ")");
@@ -381,6 +457,14 @@ function validateWorkerRecord(record, opts = {}) {
       status: record.status,
       credit_cost: record.credit_cost,
       internal_only: !!record.internal_only,
+      ...(record.subject_domain && { subject_domain: record.subject_domain }),
+      ...(record.jurisdiction && { jurisdiction: record.jurisdiction }),
+      ...(record.deployment_tier !== undefined && { deployment_tier: Number(record.deployment_tier) }),
+      ...(record.medical_director_approval !== undefined && { medical_director_approval: !!record.medical_director_approval }),
+      ...(record.md_approval_doc_url && { md_approval_doc_url: record.md_approval_doc_url }),
+      ...(record.disclaimer_active !== undefined && { disclaimer_active: !!record.disclaimer_active }),
+      ...(record.disclaimer_text && { disclaimer_text: record.disclaimer_text }),
+      ...(record.institutional_sop_uploaded !== undefined && { institutional_sop_uploaded: !!record.institutional_sop_uploaded }),
     },
     warnings,
   };
@@ -522,6 +606,16 @@ function validateRegistryRecord(record, opts = {}) {
   // Internal-only flag
   if (record.internal_only !== undefined) sanitized.internal_only = !!record.internal_only;
 
+  // HE Suite fields
+  if (record.subject_domain) sanitized.subject_domain = record.subject_domain;
+  if (record.jurisdiction) sanitized.jurisdiction = record.jurisdiction;
+  if (record.deployment_tier !== undefined) sanitized.deployment_tier = Number(record.deployment_tier);
+  if (record.medical_director_approval !== undefined) sanitized.medical_director_approval = !!record.medical_director_approval;
+  if (record.md_approval_doc_url) sanitized.md_approval_doc_url = record.md_approval_doc_url;
+  if (record.disclaimer_active !== undefined) sanitized.disclaimer_active = !!record.disclaimer_active;
+  if (record.disclaimer_text) sanitized.disclaimer_text = record.disclaimer_text;
+  if (record.institutional_sop_uploaded !== undefined) sanitized.institutional_sop_uploaded = !!record.institutional_sop_uploaded;
+
   // Optional fields — include if present
   if (record.long_description) sanitized.long_description = String(record.long_description).trim();
   if (record.phase) sanitized.phase = record.phase;
@@ -561,6 +655,8 @@ module.exports = {
   GOV_TIER_0_EXTENSION,
   ESC_TIER_0_EXTENSION,
   CREDIT_COST_MAP,
+  VALID_SUBJECT_DOMAINS,
+  VALID_DEPLOYMENT_TIERS,
   VALID_SUITES,
   VALID_WORKER_TYPES,
   VALID_PRICING_TIERS,

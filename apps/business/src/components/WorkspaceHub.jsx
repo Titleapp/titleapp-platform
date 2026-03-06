@@ -415,7 +415,7 @@ export default function WorkspaceHub({ userName, onLaunch, onBuilderStart, onAdm
             + Add a Business Workspace
           </div>
           <div style={{ color: '#64748b', fontSize: 13, marginTop: 4 }}>
-            $9/month per workspace &middot; 14-day trial
+            Starting at $29/month per worker &middot; 14-day trial
           </div>
         </div>
 

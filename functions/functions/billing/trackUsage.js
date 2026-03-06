@@ -2,11 +2,13 @@
  * trackUsage.js — Track AI usage per user.
  * Call from enforcement engine / AI call handler.
  *
- * Returns { allowed: true/false, remaining, message }
+ * Reads rates from config/pricing.js — no hardcoded pricing.
+ * Returns { allowed: true/false, remaining, message, tier, usageThisMonth }
  */
 
 const admin = require("firebase-admin");
 const Stripe = require("stripe");
+const pricing = require("../config/pricing");
 
 function getDb() { return admin.firestore(); }
 function getStripe() {
@@ -14,6 +16,9 @@ function getStripe() {
   if (!key) throw new Error("Missing STRIPE_SECRET_KEY");
   return new Stripe(key, { apiVersion: "2024-06-20" });
 }
+
+const HARD_CAP_MULTIPLIER = 5;
+const WARNING_THRESHOLD = 0.8;
 
 async function trackUsage(userId, callType = "ai_call") {
   const db = getDb();
@@ -29,24 +34,19 @@ async function trackUsage(userId, callType = "ai_call") {
   const usageThisMonth = userData.usageThisMonth || 0;
   const prepaidCredits = userData.prepaidCredits || 0;
 
-  // Get tier config
-  const configSnap = await db.collection("config").doc("stripe").get();
-  const config = configSnap.exists ? configSnap.data() : {};
-  const tierConfig = config.tiers?.[tier] || { monthlyCredits: 50 };
-  const usageConfig = config.usage || {
-    hardCapMultiplier: 5,
-    warningThreshold: 0.8,
-  };
-
-  const monthlyAllowance = tierConfig.monthlyCredits;
-  const hardCap = monthlyAllowance * usageConfig.hardCapMultiplier;
+  // Read tier config from canonical pricing source
+  const tierConfig = pricing.subscriptionTiers[tier] || pricing.subscriptionTiers.free;
+  const monthlyAllowance = tierConfig.creditsIncluded || 100;
+  const hardCap = monthlyAllowance * HARD_CAP_MULTIPLIER;
 
   // Check hard cap
   if (usageThisMonth >= hardCap && prepaidCredits <= 0) {
     return {
       allowed: false,
       remaining: 0,
-      message: `You've reached your usage limit (${hardCap} calls). Please upgrade your plan or purchase a credit pack.`,
+      tier,
+      usageThisMonth,
+      message: `You've reached your usage limit (${hardCap} credits). Please upgrade your plan or purchase a credit pack.`,
     };
   }
 
@@ -57,19 +57,17 @@ async function trackUsage(userId, callType = "ai_call") {
   );
 
   const newUsage = usageThisMonth + 1;
-  const result = { allowed: true, remaining: monthlyAllowance - newUsage };
+  const result = { allowed: true, remaining: monthlyAllowance - newUsage, tier, usageThisMonth: newUsage };
 
   // Over included allowance — bill overage or deduct credits
   if (newUsage > monthlyAllowance) {
     if (prepaidCredits > 0) {
-      // Deduct from prepaid credits
       await userRef.set(
         { prepaidCredits: admin.firestore.FieldValue.increment(-1) },
         { merge: true }
       );
       result.creditDeducted = true;
     } else if (userData.stripeMeteredItemId) {
-      // Report to Stripe metered billing
       try {
         const stripe = getStripe();
         await stripe.subscriptionItems.createUsageRecord(
@@ -84,14 +82,14 @@ async function trackUsage(userId, callType = "ai_call") {
   }
 
   // Warning at 80%
-  const threshold = Math.floor(monthlyAllowance * usageConfig.warningThreshold);
-  if (newUsage === threshold) {
-    result.warning = `You've used ${newUsage} of ${monthlyAllowance} included AI calls this month.`;
+  const warningAt = Math.floor(monthlyAllowance * WARNING_THRESHOLD);
+  if (newUsage === warningAt) {
+    result.warning = `You've used ${newUsage} of ${monthlyAllowance} included credits this month.`;
   }
 
   // At 100%
   if (newUsage === monthlyAllowance) {
-    result.warning = `You've exceeded your included allowance. Additional calls are $0.01 each, or buy a credit pack to save.`;
+    result.warning = `You've exceeded your included allowance. Additional credits are $${pricing.creditRate} each, or buy a credit pack to save.`;
   }
 
   return result;

@@ -23,7 +23,7 @@ const S = {
 };
 
 export default function CreatorApplication() {
-  const [form, setForm] = useState({ name: "", email: "", linkedin: "", expertise: "", description: "", audience: "" });
+  const [form, setForm] = useState({ name: "", email: "", linkedin: "", expertise: "", description: "", audience: "", credentialType: "", credentialNumber: "", subjectDomain: "", statePractice: "" });
   const [agreed, setAgreed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -139,12 +139,55 @@ export default function CreatorApplication() {
               <option value="aviation">Aviation</option>
               <option value="real-estate">Real Estate</option>
               <option value="mortgage">Mortgage</option>
-              <option value="healthcare">Healthcare</option>
+              <option value="healthcare">Healthcare / Nursing</option>
+              <option value="ems">EMS / Paramedic</option>
+              <option value="nursing-education">Nursing / EMS Education</option>
               <option value="tax">Tax</option>
               <option value="legal">Legal</option>
               <option value="other">Other</option>
             </select>
           </div>
+          {(form.expertise === "healthcare" || form.expertise === "ems" || form.expertise === "nursing-education") && (
+            <>
+              <div style={S.field}>
+                <label style={S.label}>Credential type</label>
+                <select style={S.select} value={form.credentialType} onChange={(e) => updateField("credentialType", e.target.value)}>
+                  <option value="">Select...</option>
+                  <option value="RN">RN — Registered Nurse</option>
+                  <option value="NREMT">NREMT — Nationally Registered EMT</option>
+                  <option value="NRP">NRP — Nationally Registered Paramedic</option>
+                  <option value="EMT">EMT — Emergency Medical Technician</option>
+                  <option value="Faculty">Faculty — Nursing/EMS Educator</option>
+                  <option value="EMS-I">EMS Instructor</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <div style={S.field}>
+                <label style={S.label}>Credential / license number (self-declared)</label>
+                <input style={S.input} value={form.credentialNumber} onChange={(e) => updateField("credentialNumber", e.target.value)} placeholder="e.g. RN12345678" />
+              </div>
+              <div style={S.field}>
+                <label style={S.label}>Subject domain</label>
+                <select style={S.select} value={form.subjectDomain} onChange={(e) => updateField("subjectDomain", e.target.value)}>
+                  <option value="">Select...</option>
+                  <option value="critical_care_icu">Critical Care / ICU</option>
+                  <option value="emergency_er">Emergency / ER</option>
+                  <option value="flight_nursing">Flight Nursing / Critical Care Transport</option>
+                  <option value="ems_paramedic">EMS / Paramedic</option>
+                  <option value="perioperative_or">Perioperative / OR</option>
+                  <option value="pediatrics_nicu">Pediatrics / NICU</option>
+                  <option value="ob_labor_delivery">OB / Labor & Delivery</option>
+                  <option value="home_health">Home Health</option>
+                  <option value="nursing_education_faculty">Nursing Education Faculty</option>
+                  <option value="ems_instructor_academy">EMS Instructor / Academy</option>
+                </select>
+              </div>
+              <div style={S.field}>
+                <label style={S.label}>State of practice</label>
+                <input style={S.input} value={form.statePractice} onChange={(e) => updateField("statePractice", e.target.value)} placeholder="e.g. California" />
+              </div>
+            </>
+          )}
           <div style={S.field}>
             <label style={S.label}>What Digital Worker are you publishing?</label>
             <textarea style={S.textarea} value={form.description} onChange={(e) => updateField("description", e.target.value)} placeholder="Describe the problem it solves in 2-3 sentences..." required />

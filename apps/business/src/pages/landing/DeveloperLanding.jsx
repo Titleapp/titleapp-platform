@@ -48,11 +48,11 @@ const CONTENT = {
   pricing: [
     { name: "Starter", price: "$0", period: "/mo", features: ["1 published worker", "Basic analytics", "Community support", "Standard marketplace listing"], cta: "Start Building", highlighted: false },
     { name: "Professional", price: "$29", period: "/mo", features: ["Unlimited workers", "Advanced analytics", "Priority review", "Featured listings", "Revenue tools"], cta: "Start Building", highlighted: true },
-    { name: "Enterprise", price: "$99", period: "/mo", features: ["Everything in Pro", "Dedicated partner manager", "Custom distribution", "API access", "White-label options"], cta: "Contact Us", highlighted: false }
+    { name: "Enterprise", price: "Custom", period: "", features: ["Everything in Pro", "Dedicated partner manager", "Custom distribution", "API access", "White-label options"], cta: "Contact Us", highlighted: false }
   ],
   faq: [
     { question: "What does it cost to start?", answer: "Building and publishing your first worker is free. We charge $2 for ID verification to maintain marketplace quality. The DEV100 promo code gives you 100 days of Professional features at no cost." },
-    { question: "How do I get paid?", answer: "You set your worker's subscription price. TitleApp takes a 20% platform fee and pays you the rest monthly via direct deposit. No minimums, no holdbacks." },
+    { question: "How do I get paid?", answer: "You set your worker's subscription price ($29, $49, or $79 per month). You earn 75% of subscription revenue plus 20% of inference overage margin. TitleApp pays monthly via direct deposit. No minimums, no holdbacks." },
     { question: "Do I need to handle customer support?", answer: "TitleApp handles Tier 1 support for all marketplace workers. You handle product-specific questions and feature requests. We provide the tools to manage both." },
     { question: "What kind of workers can I build?", answer: "Anything that solves a real business problem. Compliance automation, document processing, data analysis, workflow orchestration \u2014 if professionals need it and you can build it, there's a place for it in the marketplace." },
     { question: "How do users find my worker?", answer: "The marketplace has built-in discovery, search, and category browsing. High-rated workers get featured placement. You can also share direct links and embed widgets on your own site." }

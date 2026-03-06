@@ -137,6 +137,12 @@ const COUPONS = [
   // CFI/CFII Academy Instructor
   { id: 'CFIACADEMY',  name: 'CFI/CFII Academy Instructor — Free Pro+ while on staff', percent_off: 100, duration: 'repeating', duration_in_months: 12, metadata: { titleapp_promo: 'cfi_academy', note: 'Applied by cfiVerification.js. Requires cert number + academy employee ID. Annual re-verify. Applies to pilot_pro_plus only.' } },
   { id: 'CFIPRO',      name: 'CFI Transition — 3 months free on departure',    percent_off: 100, duration: 'repeating', duration_in_months: 3,  metadata: { titleapp_promo: 'cfi_transition', note: 'Applied when CFI does not re-verify academy employment. Alex email: congrats on next chapter.' } },
+  // Health & EMS Education — special programs
+  { id: 'MEDCREATOR',  name: 'HE Founding Creator — Free Creator License thru Dec 31 2026', percent_off: 100, duration: 'once', redeem_by: unixDate('2026-12-31'), metadata: { titleapp_promo: 'he_founding_creator', vertical: 'health_education', note: 'Applied by heCreatorVerification.js. Waives $49/yr Creator License for credentialed HE creators. Restrict to developer_platform price.' } },
+  { id: 'GRADNURSE',   name: 'New Grad Nurse — 3 months free',                 percent_off: 100, duration: 'repeating', duration_in_months: 3, metadata: { titleapp_promo: 'he_graduation', credential: 'RN', note: 'Applied by heGradVerification.js on RN license verification. Applies to worker_tier_1 and worker_tier_2.' } },
+  { id: 'GRADEMS',     name: 'New Grad EMT/Paramedic — 3 months free',          percent_off: 100, duration: 'repeating', duration_in_months: 3, metadata: { titleapp_promo: 'he_graduation', credential: 'NREMT', note: 'Applied by heGradVerification.js on NREMT certification verification. Applies to worker_tier_1 and worker_tier_2.' } },
+  { id: 'NURSEEDU',    name: 'Nursing Faculty — Free while employed',           percent_off: 100, duration: 'repeating', duration_in_months: 12, metadata: { titleapp_promo: 'he_educator', credential: 'Faculty', note: 'Applied by heEduVerification.js. Annual re-verify via employer attestation. Applies to Build It + Learn It workers.' } },
+  { id: 'EMSEDU',      name: 'EMS Instructor — Free while employed',            percent_off: 100, duration: 'repeating', duration_in_months: 12, metadata: { titleapp_promo: 'he_educator', credential: 'EMS-I', note: 'Applied by heEduVerification.js. Annual re-verify via employer attestation. Applies to Build It + Learn It workers.' } },
   // Volume — programmatic only, never published
   { id: 'VOLUME3',     name: 'Volume — 3+ workers (10% off)',                  percent_off: 10,  duration: 'forever', metadata: { titleapp_promo: 'volume', threshold: '3', note: 'Programmatic only. webhooks.js applies/removes.' } },
   { id: 'VOLUME5',     name: 'Volume — 5-10 workers (20% off)',                percent_off: 20,  duration: 'forever', metadata: { titleapp_promo: 'volume', threshold: '5', note: 'Programmatic only. Replaces VOLUME3.' } },
@@ -218,6 +224,49 @@ async function run() {
     }
   }
 
+  // ── Metered Products (Usage-Based Billing) ──────────────────
+  // Line 1: Inference credit overage — Stripe Billing Meter
+  // Line 2: Data fees — NOT a meter (variable per call, use Invoice Items at cycle close)
+  // Line 3: Audit trail records — Stripe Billing Meter
+  console.log('\nMetered billing...');
+  const METERS = [
+    {
+      tag: 'inference_overage',
+      display_name: 'Inference Credits Overage',
+      event_name: 'inference_credits_overage',
+    },
+    {
+      tag: 'audit_trail',
+      display_name: 'Audit Trail Records',
+      event_name: 'audit_trail_records',
+    },
+  ];
+
+  for (const m of METERS) {
+    try {
+      // Check if meter already exists by listing and filtering
+      const existingMeters = await stripe.billing.meters.list({ limit: 100 });
+      const already = existingMeters.data.find(em => em.event_name === m.event_name);
+      if (already) {
+        console.log(`  EXISTS ${m.display_name} (${already.id})`);
+        manifest.meters = manifest.meters || {};
+        manifest.meters[m.tag] = already.id;
+      } else {
+        const meter = await stripe.billing.meters.create({
+          display_name: m.display_name,
+          event_name: m.event_name,
+          default_aggregation: { formula: 'sum' },
+        });
+        console.log(`  NEW ${m.display_name} (${meter.id})`);
+        manifest.meters = manifest.meters || {};
+        manifest.meters[m.tag] = meter.id;
+      }
+    } catch (e) {
+      errors.push({ step: 'meter', tag: m.tag, error: e.message });
+      console.log(`  FAILED ${m.display_name}: ${e.message}`);
+    }
+  }
+
   // Output
   console.log('\n\n======================================================');
   console.log('MANIFEST — add to Firebase env / .env');
@@ -226,6 +275,11 @@ async function run() {
   console.log('');
   Object.entries(manifest.prices).forEach(([k,v]) => console.log(`STRIPE_PRICE_${k.toUpperCase()}=${v}`));
   console.log('\n// Coupons use their code IDs directly — no env vars needed');
+  if (manifest.meters) {
+    console.log('\n// Metered billing');
+    Object.entries(manifest.meters).forEach(([k,v]) => console.log(`STRIPE_METER_${k.toUpperCase()}=${v}`));
+    console.log('// Data fees (Line 2): billed via stripe.invoiceItems.create() at cycle close — no meter needed');
+  }
 
   if (errors.length) { console.log('\nERRORS:'); errors.forEach(e => console.log(`  ${JSON.stringify(e)}`)); }
   else console.log('\nClean run.');
@@ -248,6 +302,15 @@ T2 FOLLOW-UP (Claude Code)
 [ ] Student verification — services/studentVerification.js: DONE
 
 [ ] CFI/CFII verification — services/cfiVerification.js: DONE
+
+[ ] HE Creator verification — services/heCreatorVerification.js: DONE
+    Self-attestation model (Phase 1). MEDCREATOR coupon applied programmatically.
+
+[ ] HE Grad verification — services/heGradVerification.js: TODO
+    GRADNURSE / GRADEMS coupons applied on license/cert verification.
+
+[ ] HE Educator verification — services/heEduVerification.js: TODO
+    NURSEEDU / EMSEDU coupons applied on employer attestation. Annual re-verify.
 
 [ ] DEV100 coupon -> restrict to developer_platform price in Stripe dashboard
     (Coupons -> DEV100 -> edit -> Applies to -> select Creator License price)

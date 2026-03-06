@@ -5,6 +5,7 @@
 
 const admin = require("firebase-admin");
 const { logActivity } = require("../admin/logActivity");
+const pricing = require("../config/pricing");
 
 function getDb() { return admin.firestore(); }
 
@@ -35,7 +36,7 @@ async function resetMonthlyUsage() {
       month: monthId,
       totalCalls: data.usageThisMonth || 0,
       tier: data.tier || "free",
-      monthlyAllowance: data.monthlyCredits || 50,
+      monthlyAllowance: data.monthlyCredits || pricing.subscriptionTiers.free.creditsIncluded,
       archivedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
