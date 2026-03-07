@@ -20,16 +20,11 @@ const TIERS = [
   { id: 3, label: "Tier 3", price: 79, credits: 3000 },
 ];
 
-export default function BuildProgress({ worker, workerCardData, onWorkerUpdate, onPublish }) {
+export default function BuildProgress({ worker, workerCardData, onWorkerUpdate, onTestReady }) {
   const [currentStage, setCurrentStage] = useState(0);
   const [buildComplete, setBuildComplete] = useState(false);
-  const [publishing, setPublishing] = useState(false);
   const [selectedTier, setSelectedTier] = useState(workerCardData?.pricingTier || 2);
-  const [mdName, setMdName] = useState("");
-  const [mdNpi, setMdNpi] = useState("");
-  const [mdSigned, setMdSigned] = useState(false);
 
-  const needsMdGate = workerCardData?.mdGateRequired || false;
   const tier = TIERS.find(t => t.id === selectedTier) || TIERS[1];
 
   // Animate build progress
@@ -74,35 +69,6 @@ export default function BuildProgress({ worker, workerCardData, onWorkerUpdate, 
     return () => clearInterval(poll);
   }, [worker?.id]);
 
-  async function handlePublish() {
-    if (needsMdGate && !mdSigned) return;
-    setPublishing(true);
-    try {
-      const token = localStorage.getItem("ID_TOKEN");
-      const tenantId = localStorage.getItem("TENANT_ID");
-      const res = await fetch(`${API_BASE}/api?path=/v1/worker1:submit`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-          "X-Tenant-Id": tenantId,
-          "X-Vertical": "developer",
-          "X-Jurisdiction": "GLOBAL",
-        },
-        body: JSON.stringify({
-          tenantId, workerId: worker.id, pricingTier: selectedTier,
-          waiverSigned: true, identityVerified: true, paymentComplete: true,
-          ...(needsMdGate && { mdName, mdNpi }),
-        }),
-      });
-      const data = await res.json();
-      if (data.ok) {
-        onPublish({ ...worker, buildPhase: "live", pricingTier: selectedTier });
-      }
-    } catch {}
-    setPublishing(false);
-  }
-
   // Building state
   if (!buildComplete) {
     const progress = ((currentStage + 1) / STAGE_MESSAGES.length) * 100;
@@ -138,12 +104,12 @@ export default function BuildProgress({ worker, workerCardData, onWorkerUpdate, 
     );
   }
 
-  // Build complete — show preview + publish
+  // Build complete — show preview + continue to test
   return (
     <div style={{ maxWidth: 600 }}>
       <div style={{ fontSize: 18, fontWeight: 700, color: "#e2e8f0", marginBottom: 4 }}>Your worker is ready</div>
       <div style={{ fontSize: 14, color: "#94a3b8", marginBottom: 24 }}>
-        Review the preview below, set your price, and publish when you are ready.
+        Review the preview below, set your price, then test it before publishing.
       </div>
 
       {/* Live preview card */}
@@ -192,56 +158,19 @@ export default function BuildProgress({ worker, workerCardData, onWorkerUpdate, 
         </div>
       </div>
 
-      {/* MD Gate — inline, not modal */}
-      {needsMdGate && (
-        <div style={{ background: "#16161e", border: "1px solid rgba(220,38,38,0.3)", borderRadius: 12, padding: 20, marginBottom: 20 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-            <div style={{ width: 8, height: 8, borderRadius: 4, background: "#dc2626" }} />
-            <div style={{ fontSize: 14, fontWeight: 600, color: "#dc2626" }}>Medical Director Co-Sign Required</div>
-          </div>
-          <div style={{ fontSize: 13, color: "#94a3b8", lineHeight: 1.5, marginBottom: 16 }}>
-            This worker provides clinical protocol or drug reference content. A Medical Director must co-sign before it can go live.
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <div>
-              <label style={{ fontSize: 12, fontWeight: 600, color: "#94a3b8", display: "block", marginBottom: 4 }}>Medical Director Name</label>
-              <input
-                style={{ width: "100%", padding: "10px 12px", background: "#0f0f14", border: "1px solid #2a2a3a", borderRadius: 8, color: "#e2e8f0", fontSize: 14, outline: "none" }}
-                value={mdName} onChange={e => setMdName(e.target.value)}
-                placeholder="Dr. Jane Smith"
-              />
-            </div>
-            <div>
-              <label style={{ fontSize: 12, fontWeight: 600, color: "#94a3b8", display: "block", marginBottom: 4 }}>NPI Number</label>
-              <input
-                style={{ width: "100%", padding: "10px 12px", background: "#0f0f14", border: "1px solid #2a2a3a", borderRadius: 8, color: "#e2e8f0", fontSize: 14, outline: "none" }}
-                value={mdNpi} onChange={e => setMdNpi(e.target.value)}
-                placeholder="1234567890"
-              />
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", background: "#0f0f14", borderRadius: 8, cursor: "pointer" }} onClick={() => setMdSigned(!mdSigned)}>
-              <input type="checkbox" checked={mdSigned} readOnly style={{ accentColor: "#7c3aed" }} />
-              <span style={{ fontSize: 13, color: "#e2e8f0" }}>Medical Director has reviewed and agrees to co-sign this worker</span>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Publish */}
+      {/* Continue to Test */}
       <button
         style={{
           width: "100%", padding: "16px 24px", fontSize: 16, fontWeight: 700,
-          background: (needsMdGate && !mdSigned) ? "#2a2a3a" : "#7c3aed",
-          color: (needsMdGate && !mdSigned) ? "#64748b" : "white",
-          border: "none", borderRadius: 10, cursor: (needsMdGate && !mdSigned) ? "not-allowed" : "pointer",
+          background: "#7c3aed", color: "white",
+          border: "none", borderRadius: 10, cursor: "pointer",
         }}
-        onClick={handlePublish}
-        disabled={publishing || (needsMdGate && !mdSigned)}
+        onClick={() => onTestReady({ ...worker, name: workerCardData?.name || worker?.name, pricingTier: selectedTier })}
       >
-        {publishing ? "Publishing..." : "Publish to marketplace"}
+        Continue to Test
       </button>
       <div style={{ fontSize: 12, color: "#64748b", textAlign: "center", marginTop: 8 }}>
-        Revenue split: You earn 75% of subscription revenue + 20% of TitleApp inference margin on overage.
+        Test your worker as a subscriber would before publishing.
       </div>
     </div>
   );

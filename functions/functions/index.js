@@ -1792,7 +1792,19 @@ Message 8+: If they seem interested, gently offer to set it up. "I can have this
           for (const h of sessionState.devHistory) {
             messages.push({ role: h.role, content: h.content });
           }
-          messages.push({ role: 'user', content: userInput });
+          // Support image attachments (vision) in user message
+          if (body.imageData && Array.isArray(body.imageData) && body.imageData.length > 0) {
+            const contentBlocks = body.imageData.map(img => ({
+              type: "image",
+              source: { type: "base64", media_type: img.mediaType || "image/png", data: img.base64 }
+            }));
+            contentBlocks.push({ type: "text", text: userInput });
+            messages.push({ role: 'user', content: contentBlocks });
+          } else {
+            messages.push({ role: 'user', content: userInput });
+          }
+          // Store text-only in devHistory (Firestore 1MB doc limit — no base64)
+          const hasImage = !!(body.imageData && body.imageData.length > 0);
 
           const userMsgCount = sessionState.devHistory.filter(h => h.role === 'user').length + 1;
           let nameGuidance;
@@ -2095,14 +2107,15 @@ Message 8+: If they seem interested, gently offer to set it up. "I can have this
 
 TERMINOLOGY: Always say "Digital Worker." Frame it as hiring an AI team member, not using software.
 
-YOUR ROLE: Guide creators through a 5-step flow to build, publish, and grow a Digital Worker. The UI handles most of the visual flow -- your job is conversational guidance.
+YOUR ROLE: Guide creators through a 6-step flow to build, test, publish, and grow a Digital Worker. The UI handles most of the visual flow -- your job is conversational guidance.
 
-THE 5 STEPS (the UI shows these as a progress bar):
+THE 6 STEPS (the UI shows these as a progress bar):
 1. Discover -- They pick a vertical and specialty. The UI shows worker idea cards. You help them choose or refine an idea.
 2. Vibe -- You ask 6 quick questions to shape the worker: what it does, who it is for, what it should never get wrong, what data it works with, what the output looks like, and what makes it different. Keep it conversational.
 3. Build -- The UI shows a build progress animation. You are not needed here unless they ask questions.
-4. Distribute -- The UI shows a distribution kit (URL, embed, QR, social copy, outreach emails). Help them customize copy or strategy if asked.
-5. Grow -- You become their distribution coach. Help with social posts, email templates, subscriber growth tactics.
+4. Test -- The creator tests their worker as a subscriber would. The right panel shows a test chat. Suggest edge cases based on their rules. If they report a problem, fix it silently.
+5. Distribute -- The UI shows a distribution kit (URL, embed, QR, social copy, outreach emails). Help them customize copy or strategy if asked.
+6. Grow -- You become their distribution coach. Help with social posts, email templates, subscriber growth tactics.
 
 WHEN SOMEONE DESCRIBES AN IDEA:
 Acknowledge it briefly and ask the first Vibe question. Do not dump a roadmap. The UI shows the steps visually.
@@ -2119,7 +2132,7 @@ VIBE QUESTIONS (ask one at a time, naturally):
 
 After all 6 answers, generate the Worker Card summary and the [WORKER_SPEC] tag.
 
-GROW MODE (Step 5):
+GROW MODE (Step 6):
 When a Digital Worker is published: switch into distribution coach mode. Help with social media posts, email templates, marketplace optimization. Generate copy they can paste. Suggest concrete next actions. Be encouraging but factual.
 
 Revenue context: Creators earn 75% of subscription revenue plus 20% of TitleApp's margin on inference overage. Workers are priced at $29, $49, or $79 per month. At $49/mo that is $36.75/seat to the creator.
@@ -2141,6 +2154,8 @@ Include this AFTER your conversational text. The system strips it and triggers t
 
 BUILD PIPELINE (the UI handles this visually):
 After [WORKER_SPEC], the UI runs the build pipeline automatically: intake, regulatory research, rules library, quality checks, review. You do not need to run it. If someone asks, explain briefly.
+
+IMAGE HANDLING: When the creator sends a screenshot, describe what you see in 1-2 sentences before responding to their question.
 
 NEVER:
 - Say "go to titleapp.ai" or "sign in somewhere else"
@@ -2385,7 +2400,7 @@ ${nameGuidance}${authGuidance}`;
             // Check if AI is prompting for signup
             const showSignup = /\b(create.*account|set.*up|sign.*up|get.*access|api key)\b/i.test(aiText) && !sessionState.accountCreated;
 
-            sessionState.devHistory.push({ role: 'user', content: userInput });
+            sessionState.devHistory.push({ role: 'user', content: userInput, ...(hasImage && { hasImage: true }) });
             sessionState.devHistory.push({ role: 'assistant', content: aiText });
 
             // Cap history at 30 entries to prevent context overflow
@@ -3648,6 +3663,112 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       }
     }
 
+    // POST /v1/worker:test:chat — Live AI simulation of a worker for test mode
+    if (route === "/worker:test:chat" && method === "POST") {
+      const { tenantId, workerId, userMessage, testSessionId, imageData } = body;
+      if (!tenantId || !workerId || !userMessage) return res.json({ ok: false, error: "Missing tenantId, workerId, or userMessage" });
+      try {
+        const workerRef = db.doc(`tenants/${tenantId}/workers/${workerId}`);
+        const workerSnap = await workerRef.get();
+        if (!workerSnap.exists) return res.json({ ok: false, error: "Worker not found" });
+        const worker = workerSnap.data();
+
+        const rules = worker.raas_tier_1 || worker.rules || [];
+        const workerName = worker.display_name || worker.name || "Digital Worker";
+        const description = worker.description || "";
+
+        // Build test-mode system prompt
+        const testSystemPrompt = `You are ${workerName}. You are a Digital Worker on TitleApp.
+
+YOUR JOB: ${description}
+
+RULES YOU MUST FOLLOW (these are your compliance rules — never violate them):
+${rules.map((r, i) => `${i + 1}. ${r}`).join("\n")}
+
+BEHAVIOR:
+- You are being tested by the creator who built you. Respond as you would to a real subscriber.
+- If a request violates any of your rules, explain which rule it violates and why you cannot comply.
+- Be helpful, professional, concise. No emojis. No markdown formatting.
+- After your response, output a structured assessment tag on a new line:
+[TEST_ASSESSMENT]{"coreJobDone":true/false,"complianceFired":true/false,"badInputHandled":true/false,"rulesTriggered":[]}[/TEST_ASSESSMENT]
+- coreJobDone: true if you successfully performed the core task described above
+- complianceFired: true if any compliance rule was relevant to this exchange
+- badInputHandled: true if the user sent bad/invalid/adversarial input and you handled it correctly
+- rulesTriggered: array of rule numbers (1-indexed) that were relevant
+
+ON FIRST EXCHANGE ONLY: After your [TEST_ASSESSMENT] tag, also output:
+[EDGE_CASES]["scenario 1","scenario 2","scenario 3"][/EDGE_CASES]
+These should be 2-3 realistic test scenarios the creator should try, derived from the rules above.`;
+
+        // Load or create test session
+        const sessId = testSessionId || `test_${workerId}_${Date.now()}`;
+        const sessRef = db.doc(`testSessions/${sessId}`);
+        const sessSnap = await sessRef.get();
+        const sessionData = sessSnap.exists ? sessSnap.data() : { workerId, tenantId, messages: [], exchangeCount: 0, test: true, createdAt: nowServerTs() };
+
+        // Build messages array from session history
+        const messages = sessionData.messages.map(m => ({ role: m.role, content: m.content }));
+
+        // Add current user message (with optional image)
+        if (imageData && Array.isArray(imageData) && imageData.length > 0) {
+          const contentBlocks = imageData.map(img => ({
+            type: "image",
+            source: { type: "base64", media_type: img.mediaType || "image/png", data: img.base64 }
+          }));
+          contentBlocks.push({ type: "text", text: userMessage });
+          messages.push({ role: "user", content: contentBlocks });
+        } else {
+          messages.push({ role: "user", content: userMessage });
+        }
+
+        const anthropic = getAnthropic();
+        const aiResp = await anthropic.messages.create({
+          model: "claude-sonnet-4-5-20250929",
+          max_tokens: 1024,
+          system: testSystemPrompt,
+          messages,
+        });
+
+        let aiText = aiResp.content[0]?.text || "I'm ready to help. What would you like me to do?";
+
+        // Parse TEST_ASSESSMENT
+        let testAssessment = { coreJobDone: false, complianceFired: false, badInputHandled: false, rulesTriggered: [] };
+        const assessMatch = aiText.match(/\[TEST_ASSESSMENT\]([\s\S]*?)\[\/TEST_ASSESSMENT\]/);
+        if (assessMatch) {
+          try { testAssessment = JSON.parse(assessMatch[1].trim()); } catch {}
+          aiText = aiText.replace(/\[TEST_ASSESSMENT\][\s\S]*?\[\/TEST_ASSESSMENT\]/, "").trim();
+        }
+
+        // Parse EDGE_CASES (first exchange only)
+        let suggestedEdgeCases = [];
+        const edgeCaseMatch = aiText.match(/\[EDGE_CASES\]([\s\S]*?)\[\/EDGE_CASES\]/);
+        if (edgeCaseMatch) {
+          try { suggestedEdgeCases = JSON.parse(edgeCaseMatch[1].trim()); } catch {}
+          aiText = aiText.replace(/\[EDGE_CASES\][\s\S]*?\[\/EDGE_CASES\]/, "").trim();
+        }
+
+        // Update session (text-only, no base64)
+        sessionData.messages.push({ role: "user", content: userMessage, hasImage: !!(imageData && imageData.length > 0) });
+        sessionData.messages.push({ role: "assistant", content: aiText });
+        sessionData.exchangeCount = (sessionData.exchangeCount || 0) + 1;
+        sessionData.updatedAt = nowServerTs();
+        await sessRef.set(sessionData, { merge: true });
+
+        return res.json({
+          ok: true,
+          workerResponse: aiText,
+          testAssessment,
+          suggestedEdgeCases,
+          testSessionId: sessId,
+          exchangeCount: sessionData.exchangeCount,
+          rulesTriggered: testAssessment.rulesTriggered || [],
+        });
+      } catch (e) {
+        console.error("[worker:test:chat] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
     // POST /v1/marketplace:publish — publish a Worker to the marketplace
     if (route === "/marketplace:publish" && method === "POST") {
       const { tenantId, workerId, slug, pricePerSeat } = body;
@@ -3901,6 +4022,50 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       }
     }
 
+    // POST /v1/worker:update — Post-publish edit (partial updates)
+    if (route === "/worker:update" && method === "POST") {
+      const { tenantId, workerId, updates } = body;
+      if (!tenantId || !workerId || !updates) return res.json({ ok: false, error: "Missing tenantId, workerId, or updates" });
+      try {
+        const workerRef = db.doc(`tenants/${tenantId}/workers/${workerId}`);
+        const workerSnap = await workerRef.get();
+        if (!workerSnap.exists) return res.json({ ok: false, error: "Worker not found" });
+        const existing = workerSnap.data();
+
+        // Determine if changes require re-review
+        const sensitiveFields = ["jurisdiction", "suite", "mdGateRequired"];
+        const requiresReview = sensitiveFields.some(f => updates[f] !== undefined && updates[f] !== existing[f]);
+
+        const patch = { updatedAt: nowServerTs() };
+        if (updates.name) patch.display_name = updates.name;
+        if (updates.description) patch.description = updates.description;
+        if (updates.rules) patch.raas_tier_1 = updates.rules;
+        if (updates.pricingTier) patch.pricingTier = updates.pricingTier;
+        if (updates.jurisdiction) patch.jurisdiction = updates.jurisdiction;
+        if (updates.suite) patch.suite = updates.suite;
+
+        if (requiresReview) {
+          patch.buildPhase = "review";
+          await workerRef.update(patch);
+          await db.collection("reviewQueue").add({
+            workerId,
+            tenantId,
+            type: "worker_update",
+            changedFields: sensitiveFields.filter(f => updates[f] !== undefined && updates[f] !== existing[f]),
+            createdAt: nowServerTs(),
+          });
+        } else {
+          await workerRef.update(patch);
+        }
+
+        console.log(`[worker:update] Updated ${workerId}, requiresReview=${requiresReview}`);
+        return res.json({ ok: true, requiresReview, workerId });
+      } catch (e) {
+        console.error("[worker:update] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
     // POST /v1/worker1:prePublish — Run 8-point acceptance check
     if (route === "/worker1:prePublish" && method === "POST") {
       const { tenantId, workerId } = body;
@@ -4055,6 +4220,30 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
           status: "pending",
           submittedAt: nowServerTs(),
         });
+
+        // Clean up test sessions for this worker
+        try {
+          const testSessions = await db.collection("testSessions").where("workerId", "==", workerId).where("test", "==", true).get();
+          if (!testSessions.empty) {
+            const batches = [];
+            let batch = db.batch();
+            let opCount = 0;
+            for (const doc of testSessions.docs) {
+              batch.delete(doc.ref);
+              opCount++;
+              if (opCount >= 450) {
+                batches.push(batch);
+                batch = db.batch();
+                opCount = 0;
+              }
+            }
+            if (opCount > 0) batches.push(batch);
+            await Promise.all(batches.map(b => b.commit()));
+            console.log(`[worker1:submit] Cleaned up ${testSessions.size} test sessions for ${workerId}`);
+          }
+        } catch (cleanupErr) {
+          console.warn(`[worker1:submit] Test cleanup failed (non-blocking): ${cleanupErr.message}`);
+        }
 
         console.log(`[worker1:submit] ${workerId} submitted for review by ${user.uid}`);
         return res.json({ ok: true, buildPhase: "review" });

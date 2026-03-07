@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import WorkerGallery, { HE_SUBJECT_DOMAINS, getWorkerIdeas } from "../components/WorkerGallery";
 import WorkerCard from "../components/WorkerCard";
 import BuildProgress from "../components/BuildProgress";
+import TestWorkerPanel from "../components/TestWorkerPanel";
 import DistributionKit from "../components/DistributionKit";
 import CommsPreferences from "../components/CommsPreferences";
 
@@ -37,7 +38,7 @@ const S = {
   overlayBtn: { marginTop: 24, padding: "12px 32px", background: "#7c3aed", color: "white", border: "none", borderRadius: 10, fontSize: 15, fontWeight: 600, cursor: "pointer" },
 };
 
-const FLOW_STEPS = ["Discover", "Vibe", "Build", "Distribute", "Grow"];
+const FLOW_STEPS = ["Discover", "Vibe", "Build", "Test", "Distribute", "Grow"];
 
 const VERTICALS = [
   { value: "auto", label: "Auto Dealerships" },
@@ -86,7 +87,7 @@ export default function DeveloperSandbox() {
   const chatInputRef = useRef(null);
 
   // Flow state
-  const [flowStep, setFlowStep] = useState(1); // 1=Discover, 2=Vibe, 3=Build, 4=Distribute, 5=Grow
+  const [flowStep, setFlowStep] = useState(1); // 1=Discover, 2=Vibe, 3=Build, 4=Test, 5=Distribute, 6=Grow
   const [showOnboarding, setShowOnboarding] = useState(() => !localStorage.getItem("sandboxOnboardingComplete"));
 
   // Step 1 — Discover
@@ -104,6 +105,13 @@ export default function DeveloperSandbox() {
   // Step 3 — Build
   const [worker, setWorker] = useState(null);
   const [jurisdiction, setJurisdiction] = useState("");
+
+  // Image attachments
+  const [pendingImages, setPendingImages] = useState([]);
+  const fileInputRef = useRef(null);
+
+  // Edit mode (post-publish)
+  const [editMode, setEditMode] = useState(false);
 
   // Session ID
   const [sessionId] = useState(() => {
@@ -315,6 +323,16 @@ export default function DeveloperSandbox() {
 
     // Default chat flow
     setSending(true);
+    // Capture and clear pending images
+    const images = [...pendingImages];
+    setPendingImages([]);
+    if (images.length > 0) {
+      setMessages(prev => {
+        const last = prev[prev.length - 1];
+        if (last && last.role === "user") return [...prev.slice(0, -1), { ...last, images }];
+        return prev;
+      });
+    }
     try {
       const token = localStorage.getItem("ID_TOKEN");
       const headers = { "Content-Type": "application/json" };
@@ -322,7 +340,10 @@ export default function DeveloperSandbox() {
       const resp = await fetch(`${API_BASE}/api?path=/v1/chat:message`, {
         method: "POST",
         headers,
-        body: JSON.stringify({ sessionId, surface: "sandbox", userInput: text, flowStep, vertical, subjectDomain }),
+        body: JSON.stringify({
+          sessionId, surface: "sandbox", userInput: text, flowStep, vertical, subjectDomain,
+          ...(images.length > 0 ? { imageData: images.map(img => ({ base64: img.base64, mediaType: img.mediaType })) } : {}),
+        }),
       });
       const result = await resp.json();
       const reply = result.message || result.reply;
@@ -412,23 +433,71 @@ export default function DeveloperSandbox() {
     setWorkerCardData(editedData);
   }
 
-  // ── Step 3 → Step 4: Published ───────────────────────────────
+  // ── Step 3 → Step 4: Build complete → Test ──────────────────
 
-  function handlePublish(publishedWorker) {
-    setWorker(publishedWorker);
+  function handleBuildComplete(buildData) {
+    setWorker(prev => ({ ...prev, ...buildData }));
     setFlowStep(4);
+    addAssistantMessage(`Your ${buildData.name || workerCardData?.name} is built. Before we publish, let's make sure it works exactly the way you want. Use the test panel on the right like one of your subscribers would -- I'm watching.`);
+  }
+
+  // ── Step 4 → Step 5: Test complete → Distribute ───────────
+
+  function handleTestComplete(publishedWorker) {
+    setWorker(publishedWorker);
+    setFlowStep(5);
     addAssistantMessage(`"${publishedWorker.name || workerCardData?.name}" is live. Your distribution kit is ready on the right. Copy, paste, and share.`);
   }
 
-  // ── Step 4 → Step 5: Distribution done ───────────────────────
+  // ── Step 5 → Step 6: Distribution done → Grow ─────────────
 
   function handleMoveToGrow() {
-    setFlowStep(5);
+    setFlowStep(6);
     addAssistantMessage("One last thing. Set up how you want me to stay in touch with you. I will send you weekly earnings updates, usage insights, and growth tips. No dashboard to log into -- I come to you.");
   }
 
   function handleCommsComplete() {
     addAssistantMessage("You are all set. Your worker is live, your distribution kit is ready, and I will check in with you every week. Text me or email me anytime. Good luck out there.");
+  }
+
+  // ── Post-publish edit ──────────────────────────────────────
+
+  function handleEditWorker(existingWorker) {
+    setEditMode(true);
+    setWorker(existingWorker);
+    setWorkerCardData({
+      name: existingWorker.name || existingWorker.display_name || "Your Worker",
+      description: existingWorker.description || "",
+      targetUser: existingWorker.targetUser || "",
+      complianceRules: (existingWorker.raas_tier_1 || []).join(". ") || "Standard compliance",
+      vertical: existingWorker.suite || existingWorker.category || "",
+      jurisdiction: existingWorker.jurisdiction || "GLOBAL",
+      pricingTier: existingWorker.pricingTier || 2,
+      mdGateRequired: existingWorker.mdGateRequired || false,
+      internal_only: existingWorker.internal_only || false,
+    });
+    setFlowStep(4);
+    addAssistantMessage(`What would you like to change about ${existingWorker.name || "your worker"}? Describe the change in the chat, or test it on the right and tell me what needs fixing.`);
+  }
+
+  // ── Image attachment handler ───────────────────────────────
+
+  function handleFileSelect(e) {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    const maxFiles = 3 - pendingImages.length;
+    const toProcess = files.slice(0, maxFiles);
+    toProcess.forEach(file => {
+      if (file.size > 5 * 1024 * 1024) return; // 5MB max
+      if (!/^image\/(png|jpeg|webp)$/.test(file.type)) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const base64 = reader.result.split(",")[1];
+        setPendingImages(prev => [...prev, { base64, mediaType: file.type, name: file.name, preview: reader.result }]);
+      };
+      reader.readAsDataURL(file);
+    });
+    e.target.value = "";
   }
 
   // ── Render ──────────────────────────────────────────────────
@@ -456,6 +525,13 @@ export default function DeveloperSandbox() {
         <div style={S.chatMessages}>
           {messages.map((msg, i) => (
             <div key={i} style={msg.role === "user" ? S.msgUser : S.msgAssistant}>
+              {msg.images && msg.images.length > 0 && (
+                <div style={{ display: "flex", gap: 4, marginBottom: 6, flexWrap: "wrap" }}>
+                  {msg.images.map((img, j) => (
+                    <img key={j} src={img.preview} alt="" style={{ width: 48, height: 48, borderRadius: 6, objectFit: "cover", border: "1px solid rgba(255,255,255,0.1)" }} />
+                  ))}
+                </div>
+              )}
               {msg.text}
             </div>
           ))}
@@ -494,21 +570,43 @@ export default function DeveloperSandbox() {
           <div ref={messagesEndRef} />
         </div>
         <div style={S.chatInputWrap}>
-          <textarea
-            ref={chatInputRef}
-            style={S.chatInput}
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={handleChatKeyDown}
-            placeholder={
-              flowStep === 1 ? "Tell Alex your specialty..." :
-              flowStep === 2 ? "Answer Alex's questions..." :
-              flowStep === 3 ? "Ask Alex anything about the build..." :
-              flowStep === 4 ? "Ask Alex for marketing help..." :
-              "Talk to Alex..."
-            }
-            rows={1}
-          />
+          {pendingImages.length > 0 && (
+            <div style={{ display: "flex", gap: 6, marginBottom: 8, flexWrap: "wrap" }}>
+              {pendingImages.map((img, i) => (
+                <div key={i} style={{ position: "relative" }}>
+                  <img src={img.preview} alt="" style={{ width: 44, height: 44, borderRadius: 6, objectFit: "cover", border: "1px solid #2a2a3a" }} />
+                  <button
+                    onClick={() => setPendingImages(prev => prev.filter((_, j) => j !== i))}
+                    style={{ position: "absolute", top: -6, right: -6, width: 18, height: 18, borderRadius: 9, background: "#dc2626", color: "white", border: "none", fontSize: 11, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1 }}
+                  >&times;</button>
+                </div>
+              ))}
+            </div>
+          )}
+          <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              style={{ padding: "8px 10px", background: "#1e1e2e", border: "1px solid #2a2a3a", borderRadius: 8, color: "#94a3b8", cursor: "pointer", fontSize: 16, flexShrink: 0, lineHeight: 1 }}
+              title="Attach screenshot"
+            >&#128206;</button>
+            <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp" multiple style={{ display: "none" }} onChange={handleFileSelect} />
+            <textarea
+              ref={chatInputRef}
+              style={{ ...S.chatInput, flex: 1 }}
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={handleChatKeyDown}
+              placeholder={
+                flowStep === 1 ? "Tell Alex your specialty..." :
+                flowStep === 2 ? "Answer Alex's questions..." :
+                flowStep === 3 ? "Ask Alex anything about the build..." :
+                flowStep === 4 ? "Test your worker -- describe any problems..." :
+                flowStep === 5 ? "Ask Alex for marketing help..." :
+                "Talk to Alex..."
+              }
+              rows={1}
+            />
+          </div>
         </div>
       </div>
 
@@ -665,12 +763,22 @@ export default function DeveloperSandbox() {
               worker={worker}
               workerCardData={workerCardData}
               onWorkerUpdate={setWorker}
-              onPublish={handlePublish}
+              onTestReady={handleBuildComplete}
             />
           )}
 
-          {/* Step 4 — Distribute */}
+          {/* Step 4 — Test */}
           {flowStep === 4 && (
+            <TestWorkerPanel
+              worker={worker}
+              workerCardData={workerCardData}
+              sessionId={sessionId}
+              onTestComplete={handleTestComplete}
+            />
+          )}
+
+          {/* Step 5 — Distribute */}
+          {flowStep === 5 && (
             <>
               <DistributionKit worker={worker} workerCardData={workerCardData} />
               <div style={{ marginTop: 20, textAlign: "center" }}>
@@ -681,8 +789,8 @@ export default function DeveloperSandbox() {
             </>
           )}
 
-          {/* Step 5 — Grow */}
-          {flowStep === 5 && (
+          {/* Step 6 — Grow */}
+          {flowStep === 6 && (
             <CommsPreferences
               worker={worker}
               workerCardData={workerCardData}
