@@ -4562,10 +4562,6 @@ export default function App() {
         </div>
       );
     }
-    if (!token) {
-      window.location.href = "/developers";
-      return null;
-    }
     return <DeveloperSandbox />;
   }
 
