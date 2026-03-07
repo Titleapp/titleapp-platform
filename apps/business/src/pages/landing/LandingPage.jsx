@@ -57,7 +57,7 @@ export default function LandingPage({ vertical, headlines, problems, workers, te
       setTimeout(() => {
         setActiveIndex((prev) => (prev + 1) % headlines.length);
         setFade(true);
-      }, 100);
+      }, 500);
     }, 6000);
     return () => clearInterval(interval);
   }, [headlines]);
@@ -175,8 +175,8 @@ export default function LandingPage({ vertical, headlines, problems, workers, te
     mobileLink: { color: "#4b5563", textDecoration: "none", fontSize: 16, fontWeight: 500, padding: "8px 0" },
     // Hero
     hero: { paddingTop: 128, paddingBottom: 80, textAlign: "center", paddingLeft: 24, paddingRight: 24 },
-    heroHeadline: { fontSize: isMobile ? "1.8rem" : "2.8rem", fontWeight: 700, lineHeight: 1.2, maxWidth: 800, margin: "0 auto 16px", transition: "opacity 0.6s ease" },
-    heroSub: { fontSize: isMobile ? 16 : 20, color: "#64748b", maxWidth: 600, margin: "0 auto 40px", lineHeight: 1.5, transition: "opacity 0.6s ease" },
+    heroHeadline: { fontSize: isMobile ? "1.8rem" : "2.8rem", fontWeight: 700, lineHeight: 1.2, maxWidth: 800, margin: "0 auto 16px" },
+    heroSub: { fontSize: isMobile ? 16 : 20, color: "#64748b", maxWidth: 600, margin: "0 auto 40px", lineHeight: 1.5 },
     heroCta: { background: "linear-gradient(135deg, #7c3aed, #6d28d9)", color: "#fff", border: "none", borderRadius: 8, padding: "14px 40px", fontSize: 16, fontWeight: 600, cursor: "pointer", minHeight: 48, width: 200 },
     // Sections
     section: (bg) => ({ background: bg || "#fff", padding: isMobile ? "48px 24px" : "80px 24px" }),
@@ -309,8 +309,8 @@ export default function LandingPage({ vertical, headlines, problems, workers, te
 
       {/* ═══ RotatingHero ═══ */}
       <section style={S.hero}>
-        <h1 style={{ ...S.heroHeadline, opacity: fade ? 1 : 0 }}>{currentHeadline.headline}</h1>
-        <p style={{ ...S.heroSub, opacity: fade ? 1 : 0 }}>{currentHeadline.subhead}</p>
+        <h1 style={{ ...S.heroHeadline, opacity: fade ? 1 : 0, transition: `opacity 0.4s ${fade ? "ease-in" : "ease-out"}` }}>{currentHeadline.headline}</h1>
+        <p style={{ ...S.heroSub, opacity: fade ? 1 : 0, transition: `opacity 0.4s ${fade ? "ease-in" : "ease-out"}` }}>{currentHeadline.subhead}</p>
         <button style={S.heroCta} onClick={() => scrollTo(signupRef)}>Start Free</button>
       </section>
 
