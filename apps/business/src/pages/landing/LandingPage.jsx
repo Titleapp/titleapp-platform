@@ -18,6 +18,8 @@ export default function LandingPage({ vertical, headlines, problems, workers, te
   const [promoValid, setPromoValid] = useState(null);
   const [formSubmitted, setFormSubmitted] = useState(false);
   const [formSubmitting, setFormSubmitting] = useState(false);
+  const [transitionStep, setTransitionStep] = useState(0);
+  const [transitionActive, setTransitionActive] = useState(false);
   const [utmParams, setUtmParams] = useState({});
   const [windowWidth, setWindowWidth] = useState(typeof window !== "undefined" ? window.innerWidth : 1200);
 
@@ -73,14 +75,22 @@ export default function LandingPage({ vertical, headlines, problems, workers, te
     }
   };
 
-  // ── Form submit ───────────────────────────────────────────
+  // ── Form submit — animated transition to sandbox ──────────
+  const TRANSITION_MESSAGES = [
+    "Setting up your space...",
+    "Loading your industry tools...",
+    "Alex is ready.",
+  ];
+
   const handleFormSubmit = async (e) => {
     e.preventDefault();
     if (!formEmail) return;
     setFormSubmitting(true);
+
+    // Fire lead capture (non-blocking)
     try {
       const base = import.meta.env.VITE_API_BASE || "";
-      await fetch(`${base}/api?path=/v1/leads:capture`, {
+      fetch(`${base}/api?path=/v1/leads:capture`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -93,14 +103,23 @@ export default function LandingPage({ vertical, headlines, problems, workers, te
           source: "signup_form",
           ...utmParams,
         }),
-      });
-      setFormSubmitted(true);
-    } catch {
-      // silent — still show confirmation
-      setFormSubmitted(true);
-    } finally {
-      setFormSubmitting(false);
-    }
+      }).catch(() => {});
+    } catch {}
+
+    // Start transition animation
+    setFormSubmitted(true);
+    setTransitionActive(true);
+    setTransitionStep(0);
+
+    // Store name for sandbox greeting
+    if (formName) localStorage.setItem("DISPLAY_NAME", formName);
+
+    // Animate through status messages then navigate
+    setTimeout(() => setTransitionStep(1), 800);
+    setTimeout(() => setTransitionStep(2), 1600);
+    setTimeout(() => {
+      window.location.href = "/sandbox";
+    }, 2100);
   };
 
   // ── Chat widget send ──────────────────────────────────────
@@ -193,7 +212,7 @@ export default function LandingPage({ vertical, headlines, problems, workers, te
     referralText: { fontSize: isMobile ? 16 : 18, color: "#1a202c", marginBottom: 12 },
     referralLink: { color: "#7c3aed", fontWeight: 600, textDecoration: "none", fontSize: 14 },
     // Pricing
-    pricingGrid: { display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)", gap: 24, maxWidth: 960, margin: "0 auto" },
+    pricingGrid: { display: "grid", gridTemplateColumns: isMobile ? "1fr" : `repeat(${Math.min(pricing?.length || 2, 3)}, 1fr)`, gap: 24, maxWidth: pricing?.length === 2 ? 640 : 960, margin: "0 auto" },
     pricingCard: (highlighted) => ({
       background: "#fff",
       border: highlighted ? "2px solid #7c3aed" : "1px solid #e5e7eb",
@@ -407,6 +426,9 @@ export default function LandingPage({ vertical, headlines, problems, workers, te
                 </div>
               ))}
             </div>
+            <div style={{ textAlign: "center", marginTop: 20, fontSize: 13, color: "#64748b" }}>
+              Both plans include the full Vibe Coding Sandbox, Alex, and the TitleApp distribution network.
+            </div>
           </div>
         </section>
       )}
@@ -416,7 +438,20 @@ export default function LandingPage({ vertical, headlines, problems, workers, te
         <div style={S.sectionInner}>
           <h2 style={S.sectionTitle}>Get started in 60 seconds</h2>
           {formSubmitted ? (
-            <div style={S.successMsg}>Welcome! Alex will be in touch shortly.</div>
+            <div style={{ textAlign: "center", padding: "40px 0" }}>
+              <div style={{ fontSize: 18, fontWeight: 600, color: "#1a202c", marginBottom: 20 }}>
+                {TRANSITION_MESSAGES[transitionStep]}
+              </div>
+              <div style={{ width: "100%", maxWidth: 320, height: 6, background: "#e5e7eb", borderRadius: 3, margin: "0 auto", overflow: "hidden" }}>
+                <div style={{
+                  width: `${((transitionStep + 1) / TRANSITION_MESSAGES.length) * 100}%`,
+                  height: "100%",
+                  background: "linear-gradient(135deg, #7c3aed, #6d28d9)",
+                  borderRadius: 3,
+                  transition: "width 0.4s ease",
+                }} />
+              </div>
+            </div>
           ) : (
             <form onSubmit={handleFormSubmit} style={S.formWrap}>
               <div style={S.inputGroup}>
