@@ -1,4 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import WorkerGallery, { HE_SUBJECT_DOMAINS, getWorkerIdeas } from "../components/WorkerGallery";
+import WorkerCard from "../components/WorkerCard";
+import BuildProgress from "../components/BuildProgress";
+import DistributionKit from "../components/DistributionKit";
+import CommsPreferences from "../components/CommsPreferences";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
 
@@ -18,45 +23,22 @@ const S = {
   typing: { alignSelf: "flex-start", color: "#64748b", fontSize: 13, padding: "8px 0" },
   // Right panel — workspace
   workPanel: { flex: 1, display: "flex", flexDirection: "column", background: "#0f0f14" },
-  tabBar: { display: "flex", gap: 0, borderBottom: "1px solid #1e1e2e", padding: "0 16px", background: "#16161e", overflowX: "auto" },
-  tab: (active) => ({ padding: "12px 16px", fontSize: 13, fontWeight: 600, color: active ? "#7c3aed" : "#64748b", borderBottom: active ? "2px solid #7c3aed" : "2px solid transparent", cursor: "pointer", background: "none", border: "none", borderBottomWidth: 2, borderBottomStyle: "solid", borderBottomColor: active ? "#7c3aed" : "transparent", transition: "all 0.2s", whiteSpace: "nowrap" }),
   tabContent: { flex: 1, overflowY: "auto", padding: 24 },
+  // Status bar
   statusBar: { padding: "8px 20px", borderTop: "1px solid #1e1e2e", background: "#16161e", display: "flex", alignItems: "center", gap: 16, fontSize: 12, color: "#64748b" },
-  statusDot: (color) => ({ width: 6, height: 6, borderRadius: "50%", background: color, display: "inline-block" }),
-  // Cards
-  workerCard: { background: "#1e1e2e", borderRadius: 12, overflow: "hidden", cursor: "pointer", transition: "all 0.2s", border: "1px solid #2a2a3a" },
-  workerCardHeader: { background: "linear-gradient(135deg, #7c3aed 0%, #6366f1 50%, #0ea5e9 100%)", padding: "20px 16px", textAlign: "center" },
-  badge: (color, bg) => ({ display: "inline-block", padding: "2px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600, color, background: bg }),
+  // Buttons
+  btnPrimary: { padding: "10px 20px", background: "#7c3aed", color: "white", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" },
+  btnSecondary: { padding: "10px 20px", background: "#1e1e2e", color: "#94a3b8", border: "1px solid #2a2a3a", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" },
   // Onboarding overlay
   overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999 },
   overlayCard: { background: "#1e1e2e", borderRadius: 16, padding: "48px 40px", maxWidth: 480, textAlign: "center", border: "1px solid #2a2a3a" },
   overlayTitle: { fontSize: 22, fontWeight: 700, color: "#e2e8f0", marginBottom: 16 },
   overlaySub: { fontSize: 15, color: "#94a3b8", lineHeight: 1.6, marginBottom: 8 },
   overlayBtn: { marginTop: 24, padding: "12px 32px", background: "#7c3aed", color: "white", border: "none", borderRadius: 10, fontSize: 15, fontWeight: 600, cursor: "pointer" },
-  // Empty state
-  empty: { textAlign: "center", padding: "60px 20px", color: "#64748b" },
-  emptyTitle: { fontSize: 16, fontWeight: 600, color: "#94a3b8", marginBottom: 8 },
-  emptyDesc: { fontSize: 14, lineHeight: 1.6 },
-  // Buttons
-  btnPrimary: { padding: "10px 20px", background: "#7c3aed", color: "white", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" },
-  btnSecondary: { padding: "10px 20px", background: "#1e1e2e", color: "#94a3b8", border: "1px solid #2a2a3a", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" },
-  // Grow tab
-  growCard: { background: "#16161e", borderRadius: 10, padding: 20, border: "1px solid #2a2a3a", marginBottom: 16 },
-  growLabel: { display: "block", fontSize: 12, fontWeight: 600, color: "#94a3b8", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.5px" },
-  copyBtn: { padding: "6px 14px", background: "#2a2a3a", color: "#94a3b8", border: "1px solid #3a3a4a", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer" },
-  checklist: { display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", background: "#1e1e2e", borderRadius: 8, marginBottom: 6, border: "1px solid #2a2a3a" },
-  checkDone: { width: 18, height: 18, borderRadius: 4, background: "#10b981", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: 12, fontWeight: 700, flexShrink: 0 },
-  checkPending: { width: 18, height: 18, borderRadius: 4, border: "2px solid #3a3a4a", flexShrink: 0 },
 };
 
-const TABS = ["My Digital Workers", "Builder", "Rules", "Test Console", "Marketplace", "Grow"];
-const STEPS = ["Define", "Rules", "Build", "Test", "Publish", "Grow"];
+const FLOW_STEPS = ["Discover", "Vibe", "Build", "Distribute", "Grow"];
 
-const US_STATES = [
-  "AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD",
-  "MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC",
-  "SD","TN","TX","UT","VT","VA","WA","WV","WI","WY","DC"
-];
 const VERTICALS = [
   { value: "auto", label: "Auto Dealerships" },
   { value: "real-estate", label: "Real Estate & Mortgage" },
@@ -68,29 +50,13 @@ const VERTICALS = [
   { value: "custom", label: "Custom / Other" },
 ];
 
-const HE_SUBJECT_DOMAINS = [
-  { value: "critical_care_icu", label: "Critical Care / ICU" },
-  { value: "emergency_er", label: "Emergency / ER" },
-  { value: "flight_nursing", label: "Flight Nursing / Critical Care Transport" },
-  { value: "ems_paramedic", label: "EMS / Paramedic" },
-  { value: "perioperative_or", label: "Perioperative / OR" },
-  { value: "pediatrics_nicu", label: "Pediatrics / NICU" },
-  { value: "ob_labor_delivery", label: "OB / Labor & Delivery" },
-  { value: "home_health", label: "Home Health" },
-  { value: "nursing_education_faculty", label: "Nursing Education Faculty" },
-  { value: "ems_instructor_academy", label: "EMS Instructor / Academy" },
-];
-
-const HE_LANES = [
-  { value: "build_it", label: "Build It — Curriculum & Accreditation", range: "HE-001 to HE-010" },
-  { value: "learn_it", label: "Learn It — Scenarios & Exam Prep", range: "HE-011 to HE-018" },
-  { value: "chart_it", label: "Chart It — Documentation & Records", range: "HE-019 to HE-026" },
-  { value: "back_me_up", label: "Back Me Up — Protocol & Drug Reference", range: "HE-027 to HE-031" },
-  { value: "cert_it", label: "Cert It — CEU & License Tracking", range: "HE-032 to HE-036" },
-  { value: "grow_it", label: "Grow It — Creator Tools & Analytics", range: "HE-037 to HE-042" },
-];
-
 const HE_MD_GATE_WORKERS = ["HE-013", "HE-025", "HE-027", "HE-028", "HE-030"];
+
+const US_STATES = [
+  "AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD",
+  "MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC",
+  "SD","TN","TX","UT","VT","VA","WA","WV","WI","WY","DC"
+];
 
 // Helper for Worker #1 API calls
 async function w1Api(endpoint, payload) {
@@ -112,23 +78,36 @@ async function w1Api(endpoint, payload) {
 
 // ── Main Component ────────────────────────────────────────────
 export default function DeveloperSandbox() {
+  // Chat state
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
-  const [activeTab, setActiveTab] = useState(0);
-  const [workers, setWorkers] = useState([]);
-  const [selectedWorker, setSelectedWorker] = useState(null);
-  const [loadingWorkers, setLoadingWorkers] = useState(true);
-  const [showOnboarding, setShowOnboarding] = useState(() => !localStorage.getItem("sandboxOnboardingComplete"));
-  const [testInput, setTestInput] = useState("");
-  const [testResults, setTestResults] = useState(null);
-  const [testRunning, setTestRunning] = useState(false);
   const messagesEndRef = useRef(null);
   const chatInputRef = useRef(null);
 
-  // Initialize session ID
+  // Flow state
+  const [flowStep, setFlowStep] = useState(1); // 1=Discover, 2=Vibe, 3=Build, 4=Distribute, 5=Grow
+  const [showOnboarding, setShowOnboarding] = useState(() => !localStorage.getItem("sandboxOnboardingComplete"));
+
+  // Step 1 — Discover
+  const [vertical, setVertical] = useState("");
+  const [subjectDomain, setSubjectDomain] = useState("");
+  const [selectedIdea, setSelectedIdea] = useState(null);
+  const [waitlistEnabled, setWaitlistEnabled] = useState(false);
+
+  // Step 2 — Vibe
+  const [vibeStep, setVibeStep] = useState(0); // tracks which question we're on
+  const [vibeAnswers, setVibeAnswers] = useState({});
+  const [workerCardData, setWorkerCardData] = useState(null);
+  const [showWorkerCard, setShowWorkerCard] = useState(false);
+
+  // Step 3 — Build
+  const [worker, setWorker] = useState(null);
+  const [jurisdiction, setJurisdiction] = useState("");
+
+  // Session ID
   const [sessionId] = useState(() => {
-    const existing = sessionStorage.getItem("ta_platform_sid");
+    const existing = sessionStorage.getItem("ta_sandbox_sid");
     if (existing) return existing;
     const id = "sess_" + Date.now().toString(36) + "_" + Math.random().toString(36).substr(2, 8);
     sessionStorage.setItem("ta_sandbox_sid", id);
@@ -141,62 +120,35 @@ export default function DeveloperSandbox() {
 
   useEffect(() => { scrollToBottom(); }, [messages, scrollToBottom]);
 
-  // Load workers on mount
-  useEffect(() => {
-    loadWorkers();
-  }, []);
+  const userName = localStorage.getItem("DISPLAY_NAME") || "";
+  const firstName = userName ? userName.split(" ")[0] : "";
+  const isHE = vertical === "health-education";
 
   // Initial greeting
   useEffect(() => {
     if (!showOnboarding) {
-      const userName = localStorage.getItem("DISPLAY_NAME") || "";
-      const first = userName ? userName.split(" ")[0] : "";
-      if (first) {
-        addAssistantMessage("Welcome back, " + first + ". Your Digital Workers are on the right. What do you want to work on?");
-      } else {
-        addAssistantMessage("This is your sandbox. Describe what you want to build, and I'll help you create it. What kind of AI service are you thinking about?");
-      }
+      const greeting = firstName
+        ? `Welcome, ${firstName}. I'm Alex. Let's build your first Digital Worker. What is your specialty?`
+        : "I'm Alex. Let's build your first Digital Worker. What industry are you in?";
+      addAssistantMessage(greeting);
     }
   }, [showOnboarding]);
 
-  async function loadWorkers() {
-    setLoadingWorkers(true);
-    try {
-      const token = localStorage.getItem("ID_TOKEN");
-      const tenantId = localStorage.getItem("TENANT_ID");
-      if (!token || !tenantId) { setLoadingWorkers(false); return; }
-      const res = await fetch(`${API_BASE}/api?path=/v1/workers:list`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "X-Tenant-Id": tenantId,
-          "X-Vertical": "developer",
-          "X-Jurisdiction": "GLOBAL",
-        },
-      });
-      const data = await res.json();
-      if (data.ok && data.workers) {
-        setWorkers(data.workers);
-        if (data.workers.length > 0 && !selectedWorker) {
-          setSelectedWorker(data.workers[0]);
-        }
-      }
-    } catch (e) {
-      console.error("Failed to load workers:", e);
-    } finally {
-      setLoadingWorkers(false);
-    }
+  function addAssistantMessage(text) {
+    setMessages(prev => [...prev, { role: "assistant", text }]);
   }
 
-  function addAssistantMessage(text) {
-    setMessages((prev) => [...prev, { role: "assistant", text }]);
+  function addUserMessage(text) {
+    setMessages(prev => [...prev, { role: "user", text }]);
   }
 
   async function sendMessage() {
     const text = input.trim();
     if (!text || sending) return;
     setInput("");
-    setMessages((prev) => [...prev, { role: "user", text }]);
+    addUserMessage(text);
     setSending(true);
+
     try {
       const token = localStorage.getItem("ID_TOKEN");
       const headers = { "Content-Type": "application/json" };
@@ -204,15 +156,19 @@ export default function DeveloperSandbox() {
       const resp = await fetch(`${API_BASE}/api?path=/v1/chat:message`, {
         method: "POST",
         headers,
-        body: JSON.stringify({ sessionId, surface: "sandbox", userInput: text }),
+        body: JSON.stringify({ sessionId, surface: "sandbox", userInput: text, flowStep, vertical, subjectDomain }),
       });
       const result = await resp.json();
       const reply = result.message || result.reply;
       if (result.ok && reply) {
-        setMessages((prev) => [...prev, { role: "assistant", text: reply, cards: result.cards }]);
-        // If a Digital Worker was created, refresh the list
-        if (result.buildAnimation || result.cards?.some((c) => c.type === "workerCard")) {
-          setTimeout(() => loadWorkers(), 500);
+        addAssistantMessage(reply);
+        // Handle flow triggers from AI responses
+        if (result.workerCardData) {
+          setWorkerCardData(result.workerCardData);
+          setShowWorkerCard(true);
+        }
+        if (result.worker) {
+          setWorker(result.worker);
         }
       } else {
         addAssistantMessage(reply || "Something went wrong. Try again.");
@@ -233,66 +189,220 @@ export default function DeveloperSandbox() {
     }
   }
 
-  async function runTest() {
-    if (!selectedWorker || testRunning) return;
-    setTestRunning(true);
-    setTestResults(null);
-    try {
-      const token = localStorage.getItem("ID_TOKEN");
-      const tenantId = localStorage.getItem("TENANT_ID");
-      let parsedData = {};
-      try { parsedData = JSON.parse(testInput || "{}"); } catch { parsedData = { raw: testInput }; }
-      const resp = await fetch(`${API_BASE}/api?path=/v1/workers:test`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-          "X-Tenant-Id": tenantId,
-          "X-Vertical": "developer",
-          "X-Jurisdiction": "GLOBAL",
-        },
-        body: JSON.stringify({ tenantId, workerId: selectedWorker.id, testData: parsedData }),
-      });
-      const data = await resp.json();
-      setTestResults(data);
-    } catch (e) {
-      setTestResults({ ok: false, error: e.message });
-    } finally {
-      setTestRunning(false);
-    }
-  }
-
   function handleOnboardingDismiss() {
     localStorage.setItem("sandboxOnboardingComplete", "true");
     setShowOnboarding(false);
-    const userName = localStorage.getItem("DISPLAY_NAME") || "";
-    const first = userName ? userName.split(" ")[0] : "";
-    if (first) {
-      addAssistantMessage("Welcome back, " + first + ". What do you want to build?");
+    const greeting = firstName
+      ? `Welcome, ${firstName}. I'm Alex. Let's build your first Digital Worker. What is your specialty?`
+      : "I'm Alex. Let's build your first Digital Worker. What industry are you in?";
+    addAssistantMessage(greeting);
+  }
+
+  // ── Step 1 handlers ──────────────────────────────────────────
+
+  function handleVerticalSelect(v) {
+    setVertical(v);
+    const label = VERTICALS.find(x => x.value === v)?.label || v;
+    addUserMessage(label);
+    if (v === "health-education") {
+      addAssistantMessage("Great. Which clinical specialty are you in? This helps me show you the right worker ideas.");
     } else {
-      addAssistantMessage("This is your sandbox. Describe what you want to build, and I'll help you create it. What kind of AI service are you thinking about?");
+      addAssistantMessage(`Here are some worker ideas for ${label}. Pick one that is close to what you have in mind, and I'll customize it for you.`);
     }
   }
 
-  function selectWorkerAndTab(worker, tab) {
-    setSelectedWorker(worker);
-    if (typeof tab === "number") setActiveTab(tab);
+  function handleSubjectDomainSelect(sd) {
+    setSubjectDomain(sd);
+    const label = HE_SUBJECT_DOMAINS.find(x => x.value === sd)?.label || sd;
+    addUserMessage(label);
+    addAssistantMessage(`Perfect. Here are worker ideas for ${label}. Pick one that matches what you want to build.`);
   }
 
-  // Compute build step for status bar (phase-aware)
-  function getBuildStep(w) {
-    if (!w) return 0;
-    const phase = w.buildPhase;
-    if (phase === "live" || w.published) return 6;
-    if (phase === "review" || phase === "publishing") return 5;
-    if (phase === "prePublish") return 4;
-    if (phase === "library") return 3;
-    if (phase === "brief" || phase === "researching") return 2;
-    if (phase === "intake") return 1;
-    // Legacy workers without buildPhase
-    if (w.status === "registered" || w.status === "tested") return 5;
-    if (w.rulesCount > 0) return 3;
-    return 1;
+  function handleIdeaSelect(idea) {
+    setSelectedIdea(idea);
+    addUserMessage(`I want something like "${idea.name}"`);
+    // Move to Step 2 — Vibe
+    setFlowStep(2);
+    setVibeStep(0);
+    // Start the vibe conversation
+    addAssistantMessage(
+      `"${idea.name}" — good choice. Let me ask a few questions so I can build this exactly right for you.\n\nWho uses this worker? Nurses, medics, instructors, students — who is the primary user?`
+    );
+  }
+
+  // ── Step 2 handlers (Vibe conversation) ──────────────────────
+
+  const VIBE_QUESTIONS = [
+    { key: "targetUser", question: "Who uses this worker? Nurses, medics, instructors, students -- who is the primary user?" },
+    { key: "coreJob", question: "What does it help them do? Describe the main job in one or two sentences." },
+    { key: "complianceRules", question: "Are there any rules it has to follow? State board rules, scope of practice, your hospital's policies -- anything it must never violate?" },
+    { key: "externalData", question: "Does it need to pull in any outside data? Drug databases, protocol references, scheduling systems?" },
+    { key: "visibility", question: "Should it stay private to your organization, or can anyone on TitleApp subscribe to it?" },
+    { key: "jurisdiction", question: "What state are you in? And if it's tied to a specific employer, what is the organization name?" },
+  ];
+
+  function handleVibeAnswer(text) {
+    const currentQ = VIBE_QUESTIONS[vibeStep];
+    if (!currentQ) return;
+
+    const newAnswers = { ...vibeAnswers, [currentQ.key]: text };
+    setVibeAnswers(newAnswers);
+
+    if (currentQ.key === "jurisdiction") {
+      setJurisdiction(text);
+    }
+
+    if (vibeStep < VIBE_QUESTIONS.length - 1) {
+      // Next question
+      setVibeStep(vibeStep + 1);
+      setTimeout(() => {
+        addAssistantMessage(VIBE_QUESTIONS[vibeStep + 1].question);
+      }, 500);
+    } else {
+      // All questions answered — generate Worker Card
+      const isPublic = (newAnswers.visibility || "").toLowerCase().includes("anyone") ||
+                       (newAnswers.visibility || "").toLowerCase().includes("public") ||
+                       (newAnswers.visibility || "").toLowerCase().includes("marketplace");
+
+      const needsMdGate = isHE && selectedIdea?.lane === "back_me_up";
+      const cardData = {
+        name: selectedIdea?.name || "Custom Worker",
+        description: newAnswers.coreJob || selectedIdea?.desc || "",
+        targetUser: newAnswers.targetUser || "",
+        complianceRules: newAnswers.complianceRules || "Standard platform compliance (Tier 0 + Tier 1 auto-applied)",
+        externalData: newAnswers.externalData || "None specified",
+        visibility: isPublic ? "Public marketplace" : "Internal only",
+        vertical: VERTICALS.find(v => v.value === vertical)?.label || vertical,
+        jurisdiction: newAnswers.jurisdiction || "GLOBAL",
+        pricingTier: 2,
+        mdGateRequired: needsMdGate,
+        subjectDomain,
+        lane: selectedIdea?.lane,
+        internal_only: !isPublic,
+      };
+
+      setWorkerCardData(cardData);
+      setShowWorkerCard(true);
+
+      setTimeout(() => {
+        addAssistantMessage("Here is your Worker Card. Review it, adjust anything you want, and approve it when you are ready. I will start building immediately.");
+      }, 500);
+
+      // Find comparable workers
+      const ideas = getWorkerIdeas(vertical, subjectDomain);
+      const comparables = ideas
+        .filter(i => i.name !== selectedIdea?.name)
+        .slice(0, 3)
+        .map(i => ({
+          name: i.name,
+          price: i.price.includes("79") ? 79 : i.price.includes("49") ? 49 : 29,
+        }));
+      cardData._comparables = comparables;
+    }
+  }
+
+  // Override sendMessage for vibe step to route answers
+  async function handleSend() {
+    const text = input.trim();
+    if (!text || sending) return;
+    setInput("");
+    addUserMessage(text);
+
+    if (flowStep === 2 && vibeStep < VIBE_QUESTIONS.length) {
+      handleVibeAnswer(text);
+      return;
+    }
+
+    // Default chat flow
+    setSending(true);
+    try {
+      const token = localStorage.getItem("ID_TOKEN");
+      const headers = { "Content-Type": "application/json" };
+      if (token) headers.Authorization = `Bearer ${token}`;
+      const resp = await fetch(`${API_BASE}/api?path=/v1/chat:message`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ sessionId, surface: "sandbox", userInput: text, flowStep, vertical, subjectDomain }),
+      });
+      const result = await resp.json();
+      const reply = result.message || result.reply;
+      if (result.ok && reply) {
+        addAssistantMessage(reply);
+      } else {
+        addAssistantMessage(reply || "Something went wrong. Try again.");
+      }
+    } catch (e) {
+      addAssistantMessage("Connection error. Please try again.");
+    } finally {
+      setSending(false);
+      chatInputRef.current?.focus();
+    }
+  }
+
+  function handleChatKeyDown(e) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  }
+
+  // ── Step 2 → Step 3: Worker Card approved ────────────────────
+
+  async function handleWorkerCardApprove(cardData) {
+    setWorkerCardData(cardData);
+    setShowWorkerCard(false);
+    setFlowStep(3);
+    addAssistantMessage("Building your worker now. This takes about a minute. Watch the progress on the right.");
+
+    // Trigger the pipeline
+    try {
+      const sops = (vibeAnswers.complianceRules || "").split(/[.;]/).map(s => s.trim()).filter(Boolean);
+      const isPublic = !cardData.internal_only;
+      const intakeRes = await w1Api("worker1:intake", {
+        workerId: worker?.id || null,
+        vertical,
+        jurisdiction: cardData.jurisdiction || jurisdiction || "National",
+        description: cardData.description,
+        sops,
+        internal_only: cardData.internal_only,
+        ...(isHE && { subjectDomain, heJurisdiction: cardData.jurisdiction, deploymentTier: isPublic ? 2 : 3, heLane: cardData.lane }),
+      });
+      if (intakeRes.ok && intakeRes.workerId) {
+        setWorker(prev => ({ ...prev, id: intakeRes.workerId, name: cardData.name, buildPhase: "intake" }));
+        // Start research automatically
+        const researchRes = await w1Api("worker1:research", { workerId: intakeRes.workerId });
+        if (researchRes.ok) {
+          setWorker(prev => ({ ...prev, buildPhase: "brief", complianceBrief: researchRes.brief }));
+          // Auto-save rules
+          await w1Api("worker1:rules:save", { workerId: intakeRes.workerId, tier2: researchRes.brief?.tier2 || [], tier3: sops });
+        }
+      }
+    } catch (e) {
+      console.error("Pipeline error:", e);
+    }
+  }
+
+  function handleWorkerCardEdit(editedData) {
+    setWorkerCardData(editedData);
+  }
+
+  // ── Step 3 → Step 4: Published ───────────────────────────────
+
+  function handlePublish(publishedWorker) {
+    setWorker(publishedWorker);
+    setFlowStep(4);
+    addAssistantMessage(`"${publishedWorker.name || workerCardData?.name}" is live. Your distribution kit is ready on the right. Copy, paste, and share.`);
+  }
+
+  // ── Step 4 → Step 5: Distribution done ───────────────────────
+
+  function handleMoveToGrow() {
+    setFlowStep(5);
+    addAssistantMessage("One last thing. Set up how you want me to stay in touch with you. I will send you weekly earnings updates, usage insights, and growth tips. No dashboard to log into -- I come to you.");
+  }
+
+  function handleCommsComplete() {
+    addAssistantMessage("You are all set. Your worker is live, your distribution kit is ready, and I will check in with you every week. Text me or email me anytime. Good luck out there.");
   }
 
   // ── Render ──────────────────────────────────────────────────
@@ -303,10 +413,10 @@ export default function DeveloperSandbox() {
         <div style={S.overlay}>
           <div style={S.overlayCard}>
             <div style={{ fontSize: 28, fontWeight: 700, color: "#7c3aed", marginBottom: 24 }}>TitleApp</div>
-            <div style={S.overlayTitle}>Welcome to Your Vibe Coding Sandbox</div>
-            <div style={S.overlaySub}>Talk on the left. Watch it build on the right.</div>
-            <div style={S.overlaySub}>Describe what you want — Alex builds it live.</div>
-            <button style={S.overlayBtn} onClick={handleOnboardingDismiss}>Let's Go</button>
+            <div style={S.overlayTitle}>Build your first Digital Worker</div>
+            <div style={S.overlaySub}>Talk to Alex on the left. Watch it come to life on the right.</div>
+            <div style={S.overlaySub}>No code. No forms. Just describe what you need.</div>
+            <button style={S.overlayBtn} onClick={handleOnboardingDismiss}>Let's go</button>
           </div>
         </div>
       )}
@@ -315,28 +425,46 @@ export default function DeveloperSandbox() {
       <div style={S.chatPanel}>
         <div style={S.chatHeader}>
           <span style={S.chatLogo}>TitleApp</span>
-          <span style={S.chatName}>Alex — Vibe Coding AI</span>
+          <span style={S.chatName}>Alex — Your AI Builder</span>
         </div>
         <div style={S.chatMessages}>
           {messages.map((msg, i) => (
-            <div key={i}>
-              <div style={msg.role === "user" ? S.msgUser : S.msgAssistant}>
-                {msg.text}
-              </div>
-              {msg.cards && msg.cards.map((card, ci) => (
-                card.type === "workerCard" && (
-                  <div key={ci} style={{ margin: "8px 0" }}>
-                    <WorkerMiniCard data={card.data} onClick={() => {
-                      const found = workers.find((w) => w.id === card.data.workerId);
-                      if (found) selectWorkerAndTab(found, 0);
-                      else loadWorkers();
-                    }} />
-                  </div>
-                )
-              ))}
+            <div key={i} style={msg.role === "user" ? S.msgUser : S.msgAssistant}>
+              {msg.text}
             </div>
           ))}
           {sending && <div style={S.typing}>Alex is typing...</div>}
+
+          {/* Step 1: Vertical chips (inline in chat) */}
+          {flowStep === 1 && !vertical && messages.length > 0 && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
+              {VERTICALS.map(v => (
+                <button
+                  key={v.value}
+                  style={{ padding: "6px 14px", background: "#2a2a3a", color: "#e2e8f0", border: "1px solid #3a3a4a", borderRadius: 20, fontSize: 13, cursor: "pointer", fontWeight: 500 }}
+                  onClick={() => handleVerticalSelect(v.value)}
+                >
+                  {v.label}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Step 1: Subject domain chips for HE */}
+          {flowStep === 1 && isHE && !subjectDomain && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
+              {HE_SUBJECT_DOMAINS.map(sd => (
+                <button
+                  key={sd.value}
+                  style={{ padding: "6px 14px", background: "#2a2a3a", color: "#e2e8f0", border: "1px solid #3a3a4a", borderRadius: 20, fontSize: 13, cursor: "pointer", fontWeight: 500 }}
+                  onClick={() => handleSubjectDomainSelect(sd.value)}
+                >
+                  {sd.label}
+                </button>
+              ))}
+            </div>
+          )}
+
           <div ref={messagesEndRef} />
         </div>
         <div style={S.chatInputWrap}>
@@ -344,1160 +472,211 @@ export default function DeveloperSandbox() {
             ref={chatInputRef}
             style={S.chatInput}
             value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Describe what you want to build..."
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={handleChatKeyDown}
+            placeholder={
+              flowStep === 1 ? "Tell Alex your specialty..." :
+              flowStep === 2 ? "Answer Alex's questions..." :
+              flowStep === 3 ? "Ask Alex anything about the build..." :
+              flowStep === 4 ? "Ask Alex for marketing help..." :
+              "Talk to Alex..."
+            }
             rows={1}
           />
         </div>
       </div>
 
-      {/* Right: Workspace */}
+      {/* Right: Workspace — step-specific content */}
       <div style={S.workPanel}>
-        <div style={S.tabBar}>
-          {TABS.map((tab, i) => (
-            <button key={tab} style={S.tab(i === activeTab)} onClick={() => setActiveTab(i)}>
-              {tab}
-            </button>
-          ))}
-        </div>
-        <div style={S.tabContent}>
-          {activeTab === 0 && <MyWorkersTab workers={workers} loading={loadingWorkers} selected={selectedWorker} onSelect={(w) => setSelectedWorker(w)} onCreateNew={() => { chatInputRef.current?.focus(); }} />}
-          {activeTab === 1 && <BuilderTab worker={selectedWorker} onWorkerUpdate={(updated) => { setSelectedWorker(updated); loadWorkers(); }} onSwitchTab={setActiveTab} />}
-          {activeTab === 2 && <RulesTab worker={selectedWorker} onAddRule={() => { setInput("I want to add a rule: "); chatInputRef.current?.focus(); }} />}
-          {activeTab === 3 && <TestConsoleTab worker={selectedWorker} testInput={testInput} setTestInput={setTestInput} testResults={testResults} testRunning={testRunning} onRunTest={runTest} />}
-          {activeTab === 4 && <MarketplaceTab worker={selectedWorker} onWorkerUpdate={(updated) => { setSelectedWorker(updated); loadWorkers(); }} />}
-          {activeTab === 5 && <GrowTab worker={selectedWorker} onAskAlex={(msg) => { setInput(msg); chatInputRef.current?.focus(); }} />}
-        </div>
-        {/* Status Bar with 6-step progress */}
-        <div style={S.statusBar}>
-          {selectedWorker ? (
-            <>
-              <span style={S.statusDot(selectedWorker.status === "registered" ? "#10b981" : "#f59e0b")} />
-              <span style={{ fontWeight: 600, color: "#94a3b8" }}>{selectedWorker.name}</span>
-              <span>{selectedWorker.rulesCount || 0} rules</span>
-              <span>Step {getBuildStep(selectedWorker)} of 6: {STEPS[Math.max(0, getBuildStep(selectedWorker) - 1)] || "Define"}</span>
-              <span style={{ marginLeft: "auto", display: "flex", gap: 3 }}>
-                {STEPS.map((s, i) => (
-                  <span key={s} style={{ width: 24, height: 4, borderRadius: 2, background: i < getBuildStep(selectedWorker) ? "#7c3aed" : "#2a2a3a" }} />
-                ))}
-              </span>
-            </>
-          ) : (
-            <span>No Digital Worker selected</span>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── Sub-Components ────────────────────────────────────────────
-
-function WorkerMiniCard({ data, onClick }) {
-  return (
-    <div
-      onClick={onClick}
-      style={{ background: "#2a2a3a", borderRadius: 8, padding: "10px 12px", cursor: "pointer", transition: "all 0.2s" }}
-      onMouseEnter={(e) => { e.currentTarget.style.background = "#3a3a4a"; }}
-      onMouseLeave={(e) => { e.currentTarget.style.background = "#2a2a3a"; }}
-    >
-      <div style={{ fontSize: 13, fontWeight: 600, color: "#e2e8f0" }}>{data.name || "Digital Worker"}</div>
-      <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>{data.rulesCount || 0} rules — {data.status || "draft"}</div>
-    </div>
-  );
-}
-
-function MyWorkersTab({ workers, loading, selected, onSelect, onCreateNew }) {
-  if (loading) {
-    return <div style={S.empty}><div style={S.emptyTitle}>Loading Digital Workers...</div></div>;
-  }
-  if (workers.length === 0) {
-    return (
-      <div style={S.empty}>
-        <div style={{ fontSize: 48, marginBottom: 16, opacity: 0.3 }}>+</div>
-        <div style={S.emptyTitle}>No Digital Workers yet</div>
-        <div style={S.emptyDesc}>Describe what you want to build in the chat on the left.<br />Alex will help you create your first Digital Worker.</div>
-        <button style={{ ...S.btnPrimary, marginTop: 20 }} onClick={onCreateNew}>Start building</button>
-      </div>
-    );
-  }
-  return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
-      {workers.map((w) => (
-        <div
-          key={w.id}
-          style={{ ...S.workerCard, borderColor: selected?.id === w.id ? "#7c3aed" : "#2a2a3a" }}
-          onClick={() => onSelect(w)}
-        >
-          <div style={S.workerCardHeader}>
-            <div style={{ fontSize: 16, fontWeight: 700, color: "white" }}>{w.name}</div>
-            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.7)", marginTop: 4 }}>{w.category || "custom"}</div>
-          </div>
-          <div style={{ padding: 16 }}>
-            <div style={{ fontSize: 13, color: "#94a3b8", marginBottom: 12, lineHeight: 1.5 }}>{w.description || "No description"}</div>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-                <span style={S.badge(w.status === "registered" ? "#065f46" : "#92400e", w.status === "registered" ? "#d1fae5" : "#fef3c7")}>
-                  {w.status === "registered" ? "Live" : w.status || "Draft"}
+        {/* Step indicator */}
+        <div style={{ display: "flex", gap: 0, borderBottom: "1px solid #1e1e2e", padding: "0 16px", background: "#16161e" }}>
+          {FLOW_STEPS.map((step, i) => {
+            const stepNum = i + 1;
+            const isActive = flowStep === stepNum;
+            const isComplete = flowStep > stepNum;
+            return (
+              <div
+                key={step}
+                style={{
+                  padding: "12px 16px", fontSize: 13, fontWeight: 600,
+                  color: isActive ? "#7c3aed" : isComplete ? "#10b981" : "#64748b",
+                  borderBottom: `2px solid ${isActive ? "#7c3aed" : "transparent"}`,
+                  display: "flex", alignItems: "center", gap: 6,
+                  cursor: isComplete ? "pointer" : "default",
+                  opacity: stepNum > flowStep + 1 ? 0.4 : 1,
+                }}
+                onClick={() => { if (isComplete) setFlowStep(stepNum); }}
+              >
+                <span style={{
+                  width: 20, height: 20, borderRadius: 10, display: "inline-flex", alignItems: "center", justifyContent: "center",
+                  background: isActive ? "#7c3aed" : isComplete ? "#10b981" : "#2a2a3a",
+                  color: "white", fontSize: 11, fontWeight: 700,
+                }}>
+                  {isComplete ? "\u2713" : stepNum}
                 </span>
-                {w.disclaimer_active && <span style={S.badge("#dc2626", "rgba(220,38,38,0.1)")}>Disclaimer</span>}
-                {w.internal_only && <span style={S.badge("#6366f1", "rgba(99,102,241,0.1)")}>Internal</span>}
+                {step}
               </div>
-              <span style={{ fontSize: 12, color: "#64748b" }}>{w.rulesCount || 0} rules</span>
-            </div>
-          </div>
+            );
+          })}
         </div>
-      ))}
-      <div
-        style={{ ...S.workerCard, display: "flex", alignItems: "center", justifyContent: "center", minHeight: 180, cursor: "pointer", borderStyle: "dashed" }}
-        onClick={onCreateNew}
-      >
-        <div style={{ textAlign: "center", color: "#64748b" }}>
-          <div style={{ fontSize: 32, marginBottom: 8 }}>+</div>
-          <div style={{ fontSize: 13, fontWeight: 600 }}>New Digital Worker</div>
+
+        <div style={S.tabContent}>
+          {/* Step 1 — Discover */}
+          {flowStep === 1 && (
+            <>
+              {!vertical && (
+                <div style={{ textAlign: "center", padding: "60px 20px", color: "#94a3b8" }}>
+                  <div style={{ fontSize: 18, fontWeight: 600, color: "#e2e8f0", marginBottom: 8 }}>What is your specialty?</div>
+                  <div style={{ fontSize: 14, lineHeight: 1.6 }}>
+                    Tell Alex in the chat, or pick an industry below.
+                  </div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center", marginTop: 24 }}>
+                    {VERTICALS.map(v => (
+                      <button
+                        key={v.value}
+                        style={{ padding: "10px 20px", background: "#16161e", color: "#e2e8f0", border: "1px solid #2a2a3a", borderRadius: 8, fontSize: 14, fontWeight: 500, cursor: "pointer" }}
+                        onClick={() => handleVerticalSelect(v.value)}
+                      >
+                        {v.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {vertical && isHE && !subjectDomain && (
+                <div style={{ textAlign: "center", padding: "40px 20px", color: "#94a3b8" }}>
+                  <div style={{ fontSize: 18, fontWeight: 600, color: "#e2e8f0", marginBottom: 8 }}>Which clinical specialty?</div>
+                  <div style={{ fontSize: 14, lineHeight: 1.6, marginBottom: 24 }}>
+                    This determines which worker ideas Alex shows you.
+                  </div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center" }}>
+                    {HE_SUBJECT_DOMAINS.map(sd => (
+                      <button
+                        key={sd.value}
+                        style={{ padding: "10px 20px", background: "#16161e", color: "#e2e8f0", border: "1px solid #2a2a3a", borderRadius: 8, fontSize: 14, fontWeight: 500, cursor: "pointer" }}
+                        onClick={() => handleSubjectDomainSelect(sd.value)}
+                      >
+                        {sd.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {vertical && (!isHE || subjectDomain) && (
+                <WorkerGallery
+                  vertical={vertical}
+                  subjectDomain={subjectDomain}
+                  onSelectIdea={handleIdeaSelect}
+                  onWaitlistToggle={() => setWaitlistEnabled(!waitlistEnabled)}
+                  waitlistEnabled={waitlistEnabled}
+                />
+              )}
+            </>
+          )}
+
+          {/* Step 2 — Vibe */}
+          {flowStep === 2 && (
+            <>
+              {!showWorkerCard && (
+                <div style={{ maxWidth: 500 }}>
+                  <div style={{ fontSize: 18, fontWeight: 700, color: "#e2e8f0", marginBottom: 4 }}>Vibing with Alex</div>
+                  <div style={{ fontSize: 14, color: "#94a3b8", marginBottom: 24, lineHeight: 1.5 }}>
+                    Alex is asking you {VIBE_QUESTIONS.length} questions to understand exactly what to build. Answer in the chat.
+                  </div>
+                  {/* Progress dots */}
+                  <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
+                    {VIBE_QUESTIONS.map((q, i) => (
+                      <div key={i} style={{
+                        flex: 1, height: 4, borderRadius: 2,
+                        background: i < vibeStep ? "#7c3aed" : i === vibeStep ? "rgba(124,58,237,0.5)" : "#2a2a3a",
+                        transition: "background 0.3s",
+                      }} />
+                    ))}
+                  </div>
+                  {/* Current question display */}
+                  <div style={{ background: "#16161e", border: "1px solid #2a2a3a", borderRadius: 12, padding: 20 }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 8 }}>
+                      Question {vibeStep + 1} of {VIBE_QUESTIONS.length}
+                    </div>
+                    <div style={{ fontSize: 15, color: "#e2e8f0", lineHeight: 1.6 }}>
+                      {VIBE_QUESTIONS[vibeStep]?.question || "Generating your Worker Card..."}
+                    </div>
+                  </div>
+                  {/* Answers so far */}
+                  {Object.entries(vibeAnswers).length > 0 && (
+                    <div style={{ marginTop: 20 }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 8 }}>Your answers so far</div>
+                      {Object.entries(vibeAnswers).map(([key, val]) => {
+                        const q = VIBE_QUESTIONS.find(vq => vq.key === key);
+                        return (
+                          <div key={key} style={{ padding: "8px 12px", background: "#0f0f14", borderRadius: 8, marginBottom: 6, border: "1px solid #2a2a3a" }}>
+                            <div style={{ fontSize: 11, color: "#64748b", marginBottom: 2 }}>{q?.question.split("?")[0]}</div>
+                            <div style={{ fontSize: 13, color: "#e2e8f0" }}>{val}</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {showWorkerCard && workerCardData && (
+                <WorkerCard
+                  data={workerCardData}
+                  comparables={workerCardData._comparables || []}
+                  onApprove={handleWorkerCardApprove}
+                  onEdit={handleWorkerCardEdit}
+                />
+              )}
+            </>
+          )}
+
+          {/* Step 3 — Build */}
+          {flowStep === 3 && (
+            <BuildProgress
+              worker={worker}
+              workerCardData={workerCardData}
+              onWorkerUpdate={setWorker}
+              onPublish={handlePublish}
+            />
+          )}
+
+          {/* Step 4 — Distribute */}
+          {flowStep === 4 && (
+            <>
+              <DistributionKit worker={worker} workerCardData={workerCardData} />
+              <div style={{ marginTop: 20, textAlign: "center" }}>
+                <button style={S.btnPrimary} onClick={handleMoveToGrow}>
+                  Continue to Grow
+                </button>
+              </div>
+            </>
+          )}
+
+          {/* Step 5 — Grow */}
+          {flowStep === 5 && (
+            <CommsPreferences
+              worker={worker}
+              workerCardData={workerCardData}
+              onComplete={handleCommsComplete}
+            />
+          )}
         </div>
-      </div>
-    </div>
-  );
-}
 
-function BuilderTab({ worker, onWorkerUpdate, onSwitchTab }) {
-  if (!worker) {
-    return <div style={S.empty}><div style={S.emptyTitle}>Select a Digital Worker to see its structure</div></div>;
-  }
-  const phase = worker.buildPhase;
-
-  // Phase-aware rendering
-  if (!phase || phase === "registered") {
-    // No build phase yet — show intake form to start the Worker #1 pipeline
-    return <IntakeInterview worker={worker} onWorkerUpdate={onWorkerUpdate} />;
-  }
-  if (phase === "intake") {
-    return <IntakeInterview worker={worker} onWorkerUpdate={onWorkerUpdate} />;
-  }
-  if (phase === "researching") {
-    return <ResearchProgress worker={worker} onWorkerUpdate={onWorkerUpdate} />;
-  }
-  if (phase === "brief") {
-    return <ComplianceBrief worker={worker} onWorkerUpdate={onWorkerUpdate} />;
-  }
-  if (phase === "library" || phase === "prePublish" || phase === "publishing" || phase === "review" || phase === "live") {
-    return <RaasLibraryEditor worker={worker} onWorkerUpdate={onWorkerUpdate} onSwitchTab={onSwitchTab} />;
-  }
-
-  // Fallback — show structure tree for legacy workers
-  const rules = worker.rules || [];
-  const structure = [
-    { name: worker.name || "Digital Worker", type: "root", children: [
-      { name: "Inputs", type: "folder", children: [
-        { name: "User Request", type: "file" },
-        { name: "Context Data", type: "file" },
-      ]},
-      { name: "Rules", type: "folder", children: rules.map((r) => ({ name: r.substring(0, 50) + (r.length > 50 ? "..." : ""), type: "rule" })) },
-      { name: "Templates", type: "folder", children: [
-        { name: "Response Template", type: "file" },
-      ]},
-      { name: "Outputs", type: "folder", children: [
-        { name: "Validated Response", type: "file" },
-        { name: "Audit Trail", type: "file" },
-      ]},
-    ]},
-  ];
-
-  function renderTree(nodes, depth = 0) {
-    return nodes.map((node, i) => (
-      <div key={i} style={{ paddingLeft: depth * 20, marginBottom: 4 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", borderRadius: 6, background: depth === 0 ? "transparent" : "rgba(124,58,237,0.05)" }}>
-          <span style={{ fontSize: 14, opacity: 0.7 }}>
-            {node.type === "root" ? "\u{1F4E6}" : node.type === "folder" ? "\u{1F4C2}" : node.type === "rule" ? "\u{1F6D1}" : "\u{1F4C4}"}
+        {/* Status Bar */}
+        <div style={S.statusBar}>
+          <span style={{ fontWeight: 600, color: "#94a3b8" }}>
+            Step {flowStep}: {FLOW_STEPS[flowStep - 1]}
           </span>
-          <span style={{ fontSize: 13, color: node.type === "rule" ? "#f87171" : "#e2e8f0", fontWeight: depth === 0 ? 600 : 400 }}>{node.name}</span>
-        </div>
-        {node.children && renderTree(node.children, depth + 1)}
-      </div>
-    ));
-  }
-
-  return (
-    <div>
-      <div style={{ fontSize: 16, fontWeight: 600, color: "#e2e8f0", marginBottom: 16 }}>Digital Worker Structure</div>
-      <div style={{ background: "#16161e", borderRadius: 10, padding: 16, border: "1px solid #2a2a3a", fontFamily: "monospace" }}>
-        {renderTree(structure)}
-      </div>
-    </div>
-  );
-}
-
-function RulesTab({ worker, onAddRule }) {
-  if (!worker) {
-    return <div style={S.empty}><div style={S.emptyTitle}>Select a Digital Worker to see its rules</div></div>;
-  }
-  const rules = worker.rules || [];
-  if (rules.length === 0) {
-    return (
-      <div style={S.empty}>
-        <div style={S.emptyTitle}>No rules defined</div>
-        <div style={S.emptyDesc}>Rules are the enforcement logic for your Digital Worker. Tell Alex what should never be allowed.</div>
-        <button style={{ ...S.btnPrimary, marginTop: 16 }} onClick={onAddRule}>Add a rule</button>
-      </div>
-    );
-  }
-  return (
-    <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-        <div style={{ fontSize: 16, fontWeight: 600, color: "#e2e8f0" }}>Enforcement Rules ({rules.length})</div>
-        <button style={S.btnSecondary} onClick={onAddRule}>+ Add rule</button>
-      </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        {rules.map((rule, i) => (
-          <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "12px 16px", background: "#16161e", borderRadius: 8, border: "1px solid #2a2a3a" }}>
-            <span style={{ color: "#f87171", fontSize: 16, marginTop: 1 }}>{"\u{1F6D1}"}</span>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 13, color: "#e2e8f0", lineHeight: 1.5 }}>{rule}</div>
-            </div>
-            <span style={{ fontSize: 11, color: "#64748b", whiteSpace: "nowrap" }}>Rule {i + 1}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function TestConsoleTab({ worker, testInput, setTestInput, testResults, testRunning, onRunTest }) {
-  if (!worker) {
-    return <div style={S.empty}><div style={S.emptyTitle}>Select a Digital Worker to test</div></div>;
-  }
-  return (
-    <div>
-      <div style={{ fontSize: 16, fontWeight: 600, color: "#e2e8f0", marginBottom: 16 }}>Test Console — {worker.name}</div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-        {/* Input */}
-        <div>
-          <div style={{ fontSize: 12, fontWeight: 600, color: "#94a3b8", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.5px" }}>Test Data (JSON)</div>
-          <textarea
-            style={{ width: "100%", minHeight: 200, padding: 12, background: "#16161e", border: "1px solid #2a2a3a", borderRadius: 8, color: "#e2e8f0", fontSize: 13, fontFamily: "monospace", outline: "none", resize: "vertical" }}
-            value={testInput}
-            onChange={(e) => setTestInput(e.target.value)}
-            placeholder='{\n  "data": "your test input here"\n}'
-          />
-          <button style={{ ...S.btnPrimary, marginTop: 12, width: "100%" }} onClick={onRunTest} disabled={testRunning}>
-            {testRunning ? "Running..." : "Run Test"}
-          </button>
-        </div>
-        {/* Results */}
-        <div>
-          <div style={{ fontSize: 12, fontWeight: 600, color: "#94a3b8", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.5px" }}>Results</div>
-          <div style={{ minHeight: 200, padding: 12, background: "#16161e", border: "1px solid #2a2a3a", borderRadius: 8, fontFamily: "monospace", fontSize: 13 }}>
-            {!testResults && <div style={{ color: "#64748b" }}>Run a test to see results here.</div>}
-            {testResults && testResults.ok && (
-              <div>
-                <div style={{ color: testResults.passed ? "#10b981" : "#f87171", fontWeight: 600, marginBottom: 12 }}>
-                  {testResults.passed ? "PASS" : "FAIL"} — {testResults.rulesCount} rules evaluated
-                </div>
-                {(testResults.results || []).map((r, i) => (
-                  <div key={i} style={{ padding: "6px 0", borderBottom: "1px solid #2a2a3a", color: r.passed ? "#10b981" : "#f87171" }}>
-                    {r.passed ? "PASS" : "FAIL"}: {r.rule?.substring(0, 60)}
-                  </div>
-                ))}
-              </div>
-            )}
-            {testResults && !testResults.ok && (
-              <div style={{ color: "#f87171" }}>Error: {testResults.error}</div>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function MarketplaceTab({ worker, onWorkerUpdate }) {
-  if (!worker) {
-    return <div style={S.empty}><div style={S.emptyTitle}>Select a Digital Worker to publish</div></div>;
-  }
-  const phase = worker.buildPhase;
-
-  // Phase-aware rendering
-  if (phase === "review") {
-    return (
-      <div style={{ maxWidth: 560 }}>
-        <div style={{ fontSize: 16, fontWeight: 600, color: "#e2e8f0", marginBottom: 16 }}>Review Status</div>
-        <div style={{ background: "#16161e", borderRadius: 10, padding: 24, border: "1px solid #2a2a3a", textAlign: "center" }}>
-          <div style={{ fontSize: 48, marginBottom: 16, opacity: 0.5 }}>&#9203;</div>
-          <div style={{ fontSize: 18, fontWeight: 600, color: "#f59e0b", marginBottom: 8 }}>Under Review</div>
-          <div style={{ fontSize: 14, color: "#94a3b8", lineHeight: 1.6 }}>Your Digital Worker has been submitted for review. The TitleApp team will review your rules library, compliance brief, and pre-publish check results. You will be notified when a decision is made.</div>
-          {worker.review?.notes && (
-            <div style={{ marginTop: 16, padding: 12, background: "#0f0f14", borderRadius: 8, border: "1px solid #2a2a3a", textAlign: "left" }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: "#94a3b8", marginBottom: 4 }}>Reviewer Notes</div>
-              <div style={{ fontSize: 13, color: "#e2e8f0" }}>{worker.review.notes}</div>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  if (phase === "live") {
-    // Published — show listing view
-    return (
-      <div style={{ maxWidth: 560 }}>
-        <div style={{ fontSize: 16, fontWeight: 600, color: "#e2e8f0", marginBottom: 16 }}>Published on Marketplace</div>
-        <div style={{ background: "#16161e", borderRadius: 10, padding: 24, border: "1px solid #10b981" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-            <span style={S.badge("#065f46", "#d1fae5")}>Live</span>
-            <span style={{ fontSize: 14, fontWeight: 600, color: "#e2e8f0" }}>{worker.name}</span>
-          </div>
-          <div style={{ fontSize: 13, color: "#94a3b8", marginBottom: 16, lineHeight: 1.5 }}>{worker.description || "No description"}</div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-            <div style={{ padding: 12, background: "#0f0f14", borderRadius: 8, textAlign: "center" }}>
-              <div style={{ fontSize: 18, fontWeight: 700, color: "#e2e8f0" }}>{worker.subscribers || 0}</div>
-              <div style={{ fontSize: 11, color: "#64748b" }}>Subscribers</div>
-            </div>
-            <div style={{ padding: 12, background: "#0f0f14", borderRadius: 8, textAlign: "center" }}>
-              <div style={{ fontSize: 18, fontWeight: 700, color: "#10b981" }}>${worker.pricingTier === 3 ? "79" : worker.pricingTier === 2 ? "49" : "29"}/mo</div>
-              <div style={{ fontSize: 11, color: "#64748b" }}>Per Subscriber</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Pre-publish and publish flow
-  if (phase === "prePublish" || phase === "library") {
-    return <PrePublishCheck worker={worker} onWorkerUpdate={onWorkerUpdate} />;
-  }
-
-  if (phase === "publishing") {
-    return <PublishFlow worker={worker} onWorkerUpdate={onWorkerUpdate} />;
-  }
-
-  // Default — not ready yet
-  return (
-    <div style={{ maxWidth: 560 }}>
-      <div style={{ fontSize: 16, fontWeight: 600, color: "#e2e8f0", marginBottom: 16 }}>Marketplace Listing</div>
-      <div style={{ background: "#16161e", borderRadius: 10, padding: 24, border: "1px solid #2a2a3a" }}>
-        <div style={{ fontSize: 14, color: "#94a3b8", lineHeight: 1.6, marginBottom: 16 }}>
-          Before publishing to the marketplace, your Digital Worker must complete the Worker #1 pipeline:
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          {["Intake Interview", "Regulatory Research", "Compliance Brief", "Rules Library", "Pre-Publish Check", "Publish"].map((step, i) => (
-            <div key={i} style={S.checklist}>
-              <span style={S.checkPending} />
-              <span style={{ fontSize: 13, color: "#e2e8f0" }}>{step}</span>
-            </div>
-          ))}
-        </div>
-        <div style={{ fontSize: 12, color: "#64748b", marginTop: 16 }}>Start in the Builder tab to begin the process.</div>
-      </div>
-    </div>
-  );
-}
-
-// ── Grow Tab — Distribution Concierge ─────────────────────────
-
-function GrowTab({ worker, onAskAlex }) {
-  const [copied, setCopied] = useState(null);
-
-  if (!worker) {
-    return <div style={S.empty}><div style={S.emptyTitle}>Select a Digital Worker to grow</div><div style={S.emptyDesc}>Build and publish a Digital Worker first, then come here to launch it.</div></div>;
-  }
-
-  const slug = (worker.name || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-  const marketplaceUrl = `https://title-app-alpha.web.app/marketplace/${slug}`;
-  const embedCode = `<iframe src="${marketplaceUrl}?embed=1" width="100%" height="600" frameborder="0"></iframe>`;
-
-  const socialPosts = {
-    twitter: `Just launched "${worker.name}" on TitleApp Marketplace -- an AI service with built-in rules enforcement. Every output is validated before delivery. Try it: ${marketplaceUrl}`,
-    linkedin: `Excited to share my new Digital Worker on TitleApp: "${worker.name}"\n\n${worker.description || "An AI service with deterministic rules enforcement."}\n\nDigital Workers are AI services with built-in rules enforcement. You define the rules, AI operates within them, and every output is validated by an enforcement engine.\n\n${marketplaceUrl}`,
-    email: `Subject: Check out ${worker.name} on TitleApp\n\nHi,\n\nI built a Digital Worker called "${worker.name}" on TitleApp.\n\n${worker.description || "It uses rules enforcement to validate every AI output before delivery."}\n\nYou can try it here: ${marketplaceUrl}\n\nLet me know what you think.`,
-  };
-
-  const checklist = [
-    { id: "rules", label: "Define enforcement rules", done: (worker.rulesCount || 0) > 0 },
-    { id: "test", label: "Run test data through rules engine", done: worker.status === "tested" || worker.status === "registered" },
-    { id: "publish", label: "Publish to marketplace", done: !!worker.published },
-    { id: "share", label: "Share marketplace link", done: false },
-    { id: "first_sub", label: "Get first subscriber", done: (worker.subscribers || 0) > 0 },
-  ];
-
-  function copyText(key, text) {
-    navigator.clipboard.writeText(text).then(() => {
-      setCopied(key);
-      setTimeout(() => setCopied(null), 2000);
-    });
-  }
-
-  return (
-    <div style={{ maxWidth: 720 }}>
-      <div style={{ fontSize: 18, fontWeight: 700, color: "#e2e8f0", marginBottom: 4 }}>Grow: {worker.name}</div>
-      <div style={{ fontSize: 14, color: "#94a3b8", marginBottom: 24 }}>Get your first subscribers. Alex can help with any of these -- just ask in the chat.</div>
-
-      {/* Launch Checklist */}
-      <div style={S.growCard}>
-        <span style={S.growLabel}>Launch Checklist</span>
-        {checklist.map((item) => (
-          <div key={item.id} style={S.checklist}>
-            {item.done ? (
-              <span style={S.checkDone}>&#10003;</span>
-            ) : (
-              <span style={S.checkPending} />
-            )}
-            <span style={{ fontSize: 13, color: item.done ? "#94a3b8" : "#e2e8f0", textDecoration: item.done ? "line-through" : "none" }}>{item.label}</span>
-          </div>
-        ))}
-        <div style={{ marginTop: 12, fontSize: 12, color: "#64748b" }}>
-          {checklist.filter(c => c.done).length} of {checklist.length} complete
-        </div>
-      </div>
-
-      {/* Marketplace Link */}
-      <div style={S.growCard}>
-        <span style={S.growLabel}>Marketplace Link</span>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <div style={{ flex: 1, padding: "10px 12px", background: "#0f0f14", borderRadius: 6, border: "1px solid #2a2a3a", color: "#7c3aed", fontSize: 13, fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{marketplaceUrl}</div>
-          <button style={S.copyBtn} onClick={() => copyText("url", marketplaceUrl)}>{copied === "url" ? "Copied" : "Copy"}</button>
-        </div>
-      </div>
-
-      {/* Social Media Posts */}
-      <div style={S.growCard}>
-        <span style={S.growLabel}>Social Media Posts</span>
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {[
-            { key: "twitter", label: "X / Twitter", text: socialPosts.twitter },
-            { key: "linkedin", label: "LinkedIn", text: socialPosts.linkedin },
-          ].map(({ key, label, text }) => (
-            <div key={key}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: "#64748b", marginBottom: 6 }}>{label}</div>
-              <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
-                <div style={{ flex: 1, padding: "10px 12px", background: "#0f0f14", borderRadius: 6, border: "1px solid #2a2a3a", color: "#e2e8f0", fontSize: 13, lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{text}</div>
-                <button style={{ ...S.copyBtn, alignSelf: "flex-start" }} onClick={() => copyText(key, text)}>{copied === key ? "Copied" : "Copy"}</button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Email Template */}
-      <div style={S.growCard}>
-        <span style={S.growLabel}>Email Template</span>
-        <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
-          <div style={{ flex: 1, padding: "10px 12px", background: "#0f0f14", borderRadius: 6, border: "1px solid #2a2a3a", color: "#e2e8f0", fontSize: 13, lineHeight: 1.5, whiteSpace: "pre-wrap", fontFamily: "monospace" }}>{socialPosts.email}</div>
-          <button style={{ ...S.copyBtn, alignSelf: "flex-start" }} onClick={() => copyText("email", socialPosts.email)}>{copied === "email" ? "Copied" : "Copy"}</button>
-        </div>
-      </div>
-
-      {/* Embed Widget */}
-      <div style={S.growCard}>
-        <span style={S.growLabel}>Embed Widget</span>
-        <div style={{ fontSize: 13, color: "#94a3b8", marginBottom: 8 }}>Add this to your website to embed your Digital Worker directly.</div>
-        <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
-          <div style={{ flex: 1, padding: "10px 12px", background: "#0f0f14", borderRadius: 6, border: "1px solid #2a2a3a", color: "#7c3aed", fontSize: 12, fontFamily: "monospace", wordBreak: "break-all" }}>{embedCode}</div>
-          <button style={{ ...S.copyBtn, alignSelf: "flex-start" }} onClick={() => copyText("embed", embedCode)}>{copied === "embed" ? "Copied" : "Copy"}</button>
-        </div>
-      </div>
-
-      {/* Stats placeholder */}
-      <div style={S.growCard}>
-        <span style={S.growLabel}>Performance</span>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
-          {[
-            { label: "Subscribers", value: worker.subscribers || 0 },
-            { label: "API Calls (30d)", value: worker.apiCalls30d || 0 },
-            { label: "Revenue (30d)", value: "$" + ((worker.revenue30d || 0) / 100).toFixed(2) },
-          ].map(({ label, value }) => (
-            <div key={label} style={{ textAlign: "center", padding: "16px 8px", background: "#0f0f14", borderRadius: 8, border: "1px solid #2a2a3a" }}>
-              <div style={{ fontSize: 22, fontWeight: 700, color: "#e2e8f0" }}>{value}</div>
-              <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>{label}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Ask Alex CTA */}
-      <div style={{ textAlign: "center", marginTop: 8 }}>
-        <button style={S.btnSecondary} onClick={() => onAskAlex("Help me grow " + worker.name + " -- what should I do next?")}>
-          Ask Alex for growth advice
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// ── Worker #1 Pipeline Components ─────────────────────────────
-
-function IntakeInterview({ worker, onWorkerUpdate }) {
-  const [vertical, setVertical] = useState(worker.intake?.vertical || "");
-  const [jurisdiction, setJurisdiction] = useState(worker.intake?.jurisdiction || "");
-  const [description, setDescription] = useState(worker.intake?.description || worker.description || "");
-  const [sopsText, setSopsText] = useState((worker.intake?.sops || []).join("\n"));
-  const [internalOnly, setInternalOnly] = useState(worker.internal_only || false);
-  const [subjectDomain, setSubjectDomain] = useState(worker.intake?.subjectDomain || "");
-  const [heJurisdiction, setHeJurisdiction] = useState(worker.intake?.heJurisdiction || "");
-  const [deploymentTier, setDeploymentTier] = useState(worker.deployment_tier || 2);
-  const [heLane, setHeLane] = useState(worker.intake?.heLane || "");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-
-  const isHE = vertical === "health-education";
-
-  async function handleStartResearch() {
-    if (!vertical || !jurisdiction) { setError("Select a vertical and jurisdiction."); return; }
-    if (isHE && !subjectDomain) { setError("Select a subject domain for Health & EMS workers."); return; }
-    setLoading(true);
-    setError(null);
-    try {
-      const sops = sopsText.split("\n").map(s => s.trim()).filter(Boolean);
-      // Step 1: Save intake
-      const intakeRes = await w1Api("worker1:intake", {
-        workerId: worker.id, vertical, jurisdiction, description, sops, internal_only: internalOnly,
-        ...(isHE && { subjectDomain, heJurisdiction, deploymentTier, heLane }),
-      });
-      if (!intakeRes.ok) { setError(intakeRes.error || "Failed to save intake."); setLoading(false); return; }
-      // Step 2: Start research
-      const researchRes = await w1Api("worker1:research", { workerId: worker.id });
-      if (!researchRes.ok) { setError(researchRes.error || "Research failed."); setLoading(false); return; }
-      // Update parent with new worker state
-      onWorkerUpdate({ ...worker, buildPhase: "brief", internal_only: internalOnly, deployment_tier: deploymentTier, disclaimer_active: true,
-        ...(isHE && { subject_domain: subjectDomain, he_lane: heLane }),
-        intake: { vertical, jurisdiction, description, sops, ...(isHE && { subjectDomain, heJurisdiction, heLane }) },
-        complianceBrief: researchRes.brief, raasLibrary: { tier0: [], tier1: [], tier2: [], tier3: sops } });
-    } catch (e) {
-      setError(e.message || "Something went wrong.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  const labelStyle = { display: "block", fontSize: 12, fontWeight: 600, color: "#94a3b8", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.5px" };
-  const inputStyle = { width: "100%", padding: "10px 12px", background: "#0f0f14", border: "1px solid #2a2a3a", borderRadius: 8, color: "#e2e8f0", fontSize: 14, outline: "none" };
-  const selectStyle = { ...inputStyle, appearance: "none", cursor: "pointer" };
-
-  return (
-    <div style={{ maxWidth: 600 }}>
-      <div style={{ fontSize: 18, fontWeight: 700, color: "#e2e8f0", marginBottom: 4 }}>Worker #1 — Intake Interview</div>
-      <div style={{ fontSize: 14, color: "#94a3b8", marginBottom: 24, lineHeight: 1.5 }}>
-        Tell us about the Digital Worker you want to build. Worker #1 will research the regulatory landscape and generate a compliance scaffold.
-      </div>
-
-      <div style={{ marginBottom: 20 }}>
-        <label style={labelStyle}>Industry / Vertical</label>
-        <select style={selectStyle} value={vertical} onChange={(e) => setVertical(e.target.value)}>
-          <option value="">Select an industry...</option>
-          {VERTICALS.map(v => <option key={v.value} value={v.value}>{v.label}</option>)}
-        </select>
-      </div>
-
-      <div style={{ marginBottom: 20 }}>
-        <label style={labelStyle}>Jurisdiction</label>
-        <select style={selectStyle} value={jurisdiction} onChange={(e) => setJurisdiction(e.target.value)}>
-          <option value="">Select a jurisdiction...</option>
-          <option value="National">National (US)</option>
-          {US_STATES.map(s => <option key={s} value={s}>{s}</option>)}
-          <option value="International">International</option>
-        </select>
-      </div>
-
-      {/* HE-specific fields */}
-      {isHE && (
-        <>
-          <div style={{ marginBottom: 20 }}>
-            <label style={labelStyle}>Subject Domain</label>
-            <select style={selectStyle} value={subjectDomain} onChange={(e) => setSubjectDomain(e.target.value)}>
-              <option value="">Select a clinical specialty...</option>
-              {HE_SUBJECT_DOMAINS.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
-            </select>
-            <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>Required. Determines compliance rules and credential requirements.</div>
-          </div>
-
-          <div style={{ marginBottom: 20 }}>
-            <label style={labelStyle}>Lane</label>
-            <select style={selectStyle} value={heLane} onChange={(e) => setHeLane(e.target.value)}>
-              <option value="">Select a lane...</option>
-              {HE_LANES.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
-            </select>
-            <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>
-              {heLane ? HE_LANES.find(l => l.value === heLane)?.range || "" : "Each lane covers a range of worker IDs."}
-            </div>
-          </div>
-
-          <div style={{ marginBottom: 20 }}>
-            <label style={labelStyle}>HE Jurisdiction</label>
-            <input
-              style={inputStyle}
-              value={heJurisdiction}
-              onChange={(e) => setHeJurisdiction(e.target.value)}
-              placeholder="STATE:EmployerSlug — e.g. HI:QueensMedical or TX:GENERAL"
-            />
-            <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>Format: STATE:EmployerSlug. Use GENERAL for non-institutional workers.</div>
-          </div>
-
-          <div style={{ marginBottom: 20 }}>
-            <label style={labelStyle}>Deployment Tier</label>
-            <div style={{ display: "flex", gap: 8 }}>
-              {[
-                { value: 1, label: "Platform Default", desc: "TitleApp baseline content" },
-                { value: 2, label: "Creator Public", desc: "Published to marketplace" },
-                { value: 3, label: "Institutional Private", desc: "Internal use only" },
-              ].map(t => (
-                <div
-                  key={t.value}
-                  onClick={() => setDeploymentTier(t.value)}
-                  style={{
-                    flex: 1, padding: "12px 10px", background: deploymentTier === t.value ? "rgba(124,58,237,0.15)" : "#0f0f14",
-                    border: `1px solid ${deploymentTier === t.value ? "#7c3aed" : "#2a2a3a"}`, borderRadius: 8, cursor: "pointer", textAlign: "center",
-                  }}
-                >
-                  <div style={{ fontSize: 13, fontWeight: 600, color: deploymentTier === t.value ? "#7c3aed" : "#e2e8f0" }}>{t.label}</div>
-                  <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>{t.desc}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* MD Gate warning for Back Me Up lane */}
-          {heLane === "back_me_up" && (
-            <div style={{ padding: "12px 16px", background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.3)", borderRadius: 8, marginBottom: 20 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: "#dc2626", marginBottom: 4 }}>Medical Director Co-Sign Gate</div>
-              <div style={{ fontSize: 12, color: "#94a3b8", lineHeight: 1.5 }}>
-                Back Me Up workers (protocol and drug reference) require Medical Director approval before going live. After publishing, an MD co-sign document must be uploaded and verified.
-              </div>
-            </div>
-          )}
-        </>
-      )}
-
-      <div style={{ marginBottom: 20 }}>
-        <label style={labelStyle}>What does this Digital Worker do?</label>
-        <textarea
-          style={{ ...inputStyle, minHeight: 100, resize: "vertical" }}
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="Describe what your Digital Worker will handle. Example: Manages vehicle inventory, pricing, and customer outreach for auto dealerships."
-        />
-      </div>
-
-      <div style={{ marginBottom: 24 }}>
-        <label style={labelStyle}>Your existing SOPs / business rules (optional)</label>
-        <textarea
-          style={{ ...inputStyle, minHeight: 80, resize: "vertical", fontFamily: "monospace", fontSize: 13 }}
-          value={sopsText}
-          onChange={(e) => setSopsText(e.target.value)}
-          placeholder={"One rule per line. Example:\nNever quote a price below invoice cost\nAll trade-ins require manager approval over $10,000\nCustomer must sign disclosure before F&I products"}
-        />
-        <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>These become Tier 3 (your custom rules). One per line.</div>
-      </div>
-
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 24, padding: "12px 16px", background: "#0f0f14", border: "1px solid #2a2a3a", borderRadius: 8 }}>
-        <input type="checkbox" checked={internalOnly} onChange={(e) => setInternalOnly(e.target.checked)} style={{ accentColor: "#7c3aed" }} />
-        <div>
-          <div style={{ fontSize: 13, fontWeight: 600, color: "#e2e8f0" }}>Internal only</div>
-          <div style={{ fontSize: 11, color: "#64748b" }}>Hidden from public marketplace. Only visible within your workspace.</div>
-        </div>
-      </div>
-
-      {error && <div style={{ color: "#f87171", fontSize: 13, marginBottom: 12 }}>{error}</div>}
-
-      <button
-        style={{ ...S.btnPrimary, width: "100%", padding: "14px 20px", fontSize: 15 }}
-        onClick={handleStartResearch}
-        disabled={loading}
-      >
-        {loading ? "Researching regulations..." : "Start Regulatory Research"}
-      </button>
-      <div style={{ fontSize: 12, color: "#64748b", marginTop: 8, textAlign: "center" }}>
-        Worker #1 will research regulations for {vertical || "your industry"} in {jurisdiction || "your jurisdiction"} and generate a compliance scaffold.
-      </div>
-    </div>
-  );
-}
-
-function ResearchProgress({ worker, onWorkerUpdate }) {
-  const [steps, setSteps] = useState([
-    { label: "Analyzing industry requirements", done: true },
-    { label: `Researching ${worker.intake?.jurisdiction || "jurisdiction"} regulations`, done: true },
-    { label: "Identifying compliance requirements", done: false },
-    { label: "Generating enforcement rules", done: false },
-    { label: "Building best practices library", done: false },
-    { label: "Compiling compliance brief", done: false },
-  ]);
-
-  useEffect(() => {
-    // Animate steps completing
-    let i = 2;
-    const interval = setInterval(() => {
-      if (i >= 6) { clearInterval(interval); return; }
-      setSteps(prev => prev.map((s, idx) => idx <= i ? { ...s, done: true } : s));
-      i++;
-    }, 1200);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Poll for completion
-  useEffect(() => {
-    const poll = setInterval(async () => {
-      try {
-        const token = localStorage.getItem("ID_TOKEN");
-        const tenantId = localStorage.getItem("TENANT_ID");
-        const res = await fetch(`${API_BASE}/api?path=/v1/workers:list`, {
-          headers: { Authorization: `Bearer ${token}`, "X-Tenant-Id": tenantId, "X-Vertical": "developer", "X-Jurisdiction": "GLOBAL" },
-        });
-        const data = await res.json();
-        if (data.ok && data.workers) {
-          const updated = data.workers.find(w => w.id === worker.id);
-          if (updated && updated.buildPhase === "brief") {
-            onWorkerUpdate(updated);
-            clearInterval(poll);
-          }
-        }
-      } catch {}
-    }, 3000);
-    return () => clearInterval(poll);
-  }, [worker.id]);
-
-  return (
-    <div style={{ maxWidth: 500 }}>
-      <div style={{ fontSize: 18, fontWeight: 700, color: "#e2e8f0", marginBottom: 4 }}>Worker #1 — Researching</div>
-      <div style={{ fontSize: 14, color: "#94a3b8", marginBottom: 24 }}>Analyzing regulations for {worker.intake?.vertical || "your industry"} in {worker.intake?.jurisdiction || "your jurisdiction"}.</div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        {steps.map((step, i) => (
-          <div key={i} style={S.checklist}>
-            {step.done ? <span style={S.checkDone}>&#10003;</span> : <span style={{ ...S.checkPending, borderColor: "#7c3aed", animation: "pulse 1.5s ease-in-out infinite" }} />}
-            <span style={{ fontSize: 13, color: step.done ? "#94a3b8" : "#e2e8f0" }}>{step.label}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function ComplianceBrief({ worker, onWorkerUpdate }) {
-  const brief = worker.complianceBrief || {};
-  const lib = worker.raasLibrary || {};
-  const [acknowledging, setAcknowledging] = useState(false);
-
-  async function handleAcknowledge() {
-    setAcknowledging(true);
-    try {
-      // Save rules (which triggers buildPhase: "library")
-      await w1Api("worker1:rules:save", {
-        workerId: worker.id,
-        tier2: lib.tier2 || [],
-        tier3: lib.tier3 || [],
-      });
-      onWorkerUpdate({ ...worker, buildPhase: "library", complianceBrief: { ...brief, acknowledgedAt: new Date().toISOString() } });
-    } catch {
-      setAcknowledging(false);
-    }
-  }
-
-  return (
-    <div style={{ maxWidth: 700 }}>
-      <div style={{ fontSize: 18, fontWeight: 700, color: "#e2e8f0", marginBottom: 4 }}>Compliance Brief</div>
-      <div style={{ fontSize: 14, color: "#94a3b8", marginBottom: 24 }}>Worker #1 completed its regulatory research. Review the findings below.</div>
-
-      {/* Summary */}
-      <div style={S.growCard}>
-        <span style={S.growLabel}>Research Summary</span>
-        <div style={{ fontSize: 14, color: "#e2e8f0", lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{brief.summary || "No summary available."}</div>
-        {brief.jurisdictionNotes && (
-          <div style={{ marginTop: 12, padding: 12, background: "#0f0f14", borderRadius: 8, border: "1px solid #2a2a3a" }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: "#f59e0b", marginBottom: 4 }}>Jurisdiction Notes</div>
-            <div style={{ fontSize: 13, color: "#e2e8f0", lineHeight: 1.5 }}>{brief.jurisdictionNotes}</div>
-          </div>
-        )}
-      </div>
-
-      {/* Tier 1 — Regulatory (locked) */}
-      <div style={S.growCard}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-          <span style={S.growLabel}>Tier 1 — Regulatory Rules ({(lib.tier1 || []).length})</span>
-          <span style={S.badge("#f87171", "rgba(248,113,113,0.1)")}>Locked</span>
-        </div>
-        {(lib.tier1 || []).map((rule, i) => (
-          <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "8px 0", borderBottom: i < (lib.tier1 || []).length - 1 ? "1px solid #2a2a3a" : "none" }}>
-            <span style={{ color: "#f87171", fontSize: 12, marginTop: 2, flexShrink: 0 }}>&#128274;</span>
-            <span style={{ fontSize: 13, color: "#e2e8f0", lineHeight: 1.5 }}>{rule}</span>
-          </div>
-        ))}
-      </div>
-
-      {/* Tier 2 — Best Practices (editable) */}
-      <div style={S.growCard}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-          <span style={S.growLabel}>Tier 2 — Best Practices ({(lib.tier2 || []).length})</span>
-          <span style={S.badge("#f59e0b", "rgba(245,158,11,0.1)")}>Editable</span>
-        </div>
-        {(lib.tier2 || []).map((rule, i) => (
-          <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "8px 0", borderBottom: i < (lib.tier2 || []).length - 1 ? "1px solid #2a2a3a" : "none" }}>
-            <span style={{ color: "#f59e0b", fontSize: 12, marginTop: 2, flexShrink: 0 }}>&#9998;</span>
-            <span style={{ fontSize: 13, color: "#e2e8f0", lineHeight: 1.5 }}>{rule}</span>
-          </div>
-        ))}
-      </div>
-
-      <button
-        style={{ ...S.btnPrimary, width: "100%", padding: "14px 20px", fontSize: 15, marginTop: 8 }}
-        onClick={handleAcknowledge}
-        disabled={acknowledging}
-      >
-        {acknowledging ? "Saving..." : "I've reviewed this brief — proceed to rules editor"}
-      </button>
-    </div>
-  );
-}
-
-function RaasLibraryEditor({ worker, onWorkerUpdate, onSwitchTab }) {
-  const lib = worker.raasLibrary || {};
-  const [tier2, setTier2] = useState(lib.tier2 || []);
-  const [tier3, setTier3] = useState(lib.tier3 || []);
-  const [saving, setSaving] = useState(false);
-  const [newRule, setNewRule] = useState("");
-  const [editWarning, setEditWarning] = useState(null);
-
-  async function handleSave() {
-    setSaving(true);
-    try {
-      const res = await w1Api("worker1:rules:save", { workerId: worker.id, tier2, tier3 });
-      if (res.ok) {
-        onWorkerUpdate({ ...worker, buildPhase: "library", raasLibrary: { ...lib, tier2, tier3 } });
-      }
-    } catch {}
-    setSaving(false);
-  }
-
-  function addTier3Rule() {
-    if (!newRule.trim()) return;
-    setTier3([...tier3, newRule.trim()]);
-    setNewRule("");
-  }
-
-  function removeTier3Rule(idx) {
-    setTier3(tier3.filter((_, i) => i !== idx));
-  }
-
-  function editTier2Rule(idx, value) {
-    setEditWarning("Modifying best practices may reduce compliance coverage. Proceed with care.");
-    setTier2(tier2.map((r, i) => i === idx ? value : r));
-  }
-
-  const tierHeaderStyle = { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 };
-
-  return (
-    <div style={{ maxWidth: 700 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-        <div style={{ fontSize: 18, fontWeight: 700, color: "#e2e8f0" }}>Rules Library</div>
-        <button style={S.btnPrimary} onClick={handleSave} disabled={saving}>{saving ? "Saving..." : "Save Rules"}</button>
-      </div>
-      <div style={{ fontSize: 14, color: "#94a3b8", marginBottom: 24 }}>4-tier enforcement architecture. Edit Tier 2 and Tier 3 rules. Tier 0 and Tier 1 are locked.</div>
-
-      {editWarning && (
-        <div style={{ padding: "10px 14px", background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)", borderRadius: 8, marginBottom: 16, fontSize: 13, color: "#f59e0b" }}>
-          {editWarning}
-          <button style={{ marginLeft: 12, background: "none", border: "none", color: "#64748b", cursor: "pointer", fontSize: 12 }} onClick={() => setEditWarning(null)}>Dismiss</button>
-        </div>
-      )}
-
-      {/* Tier 0 — Platform */}
-      <div style={{ ...S.growCard, opacity: 0.7 }}>
-        <div style={tierHeaderStyle}>
-          <span style={S.growLabel}>Tier 0 — Platform ({(lib.tier0 || []).length} rules)</span>
-          <span style={S.badge("#64748b", "rgba(100,116,139,0.1)")}>Locked</span>
-        </div>
-        <div style={{ fontSize: 12, color: "#64748b" }}>Platform-level invariants. Applied to all Digital Workers automatically.</div>
-      </div>
-
-      {/* Tier 1 — Regulatory */}
-      <div style={S.growCard}>
-        <div style={tierHeaderStyle}>
-          <span style={S.growLabel}>Tier 1 — Regulatory ({(lib.tier1 || []).length} rules)</span>
-          <span style={S.badge("#f87171", "rgba(248,113,113,0.1)")}>Locked</span>
-        </div>
-        {(lib.tier1 || []).map((rule, i) => (
-          <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "8px 0", borderBottom: i < (lib.tier1 || []).length - 1 ? "1px solid #2a2a3a" : "none" }}>
-            <span style={{ color: "#f87171", fontSize: 12, marginTop: 2, flexShrink: 0 }}>&#128274;</span>
-            <span style={{ fontSize: 13, color: "#e2e8f0", lineHeight: 1.5 }}>{rule}</span>
-          </div>
-        ))}
-      </div>
-
-      {/* Tier 2 — Best Practices (editable) */}
-      <div style={S.growCard}>
-        <div style={tierHeaderStyle}>
-          <span style={S.growLabel}>Tier 2 — Best Practices ({tier2.length} rules)</span>
-          <span style={S.badge("#f59e0b", "rgba(245,158,11,0.1)")}>Editable</span>
-        </div>
-        {tier2.map((rule, i) => (
-          <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "6px 0", borderBottom: "1px solid #2a2a3a" }}>
-            <span style={{ color: "#f59e0b", fontSize: 12, marginTop: 6, flexShrink: 0 }}>&#9998;</span>
-            <input
-              style={{ flex: 1, background: "#0f0f14", border: "1px solid #2a2a3a", borderRadius: 6, padding: "6px 10px", color: "#e2e8f0", fontSize: 13, outline: "none" }}
-              value={rule}
-              onChange={(e) => editTier2Rule(i, e.target.value)}
-            />
-          </div>
-        ))}
-      </div>
-
-      {/* Tier 3 — SOPs (fully customizable) */}
-      <div style={S.growCard}>
-        <div style={tierHeaderStyle}>
-          <span style={S.growLabel}>Tier 3 — Your SOPs ({tier3.length} rules)</span>
-          <span style={S.badge("#10b981", "rgba(16,185,129,0.1)")}>Customizable</span>
-        </div>
-        {tier3.map((rule, i) => (
-          <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "6px 0", borderBottom: "1px solid #2a2a3a" }}>
-            <span style={{ color: "#10b981", fontSize: 13, marginTop: 6, flexShrink: 0 }}>&#9679;</span>
-            <input
-              style={{ flex: 1, background: "#0f0f14", border: "1px solid #2a2a3a", borderRadius: 6, padding: "6px 10px", color: "#e2e8f0", fontSize: 13, outline: "none" }}
-              value={rule}
-              onChange={(e) => setTier3(tier3.map((r, idx) => idx === i ? e.target.value : r))}
-            />
-            <button style={{ background: "none", border: "none", color: "#f87171", cursor: "pointer", fontSize: 16, padding: "4px 8px" }} onClick={() => removeTier3Rule(i)}>&#215;</button>
-          </div>
-        ))}
-        <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-          <input
-            style={{ flex: 1, background: "#0f0f14", border: "1px solid #2a2a3a", borderRadius: 6, padding: "8px 10px", color: "#e2e8f0", fontSize: 13, outline: "none" }}
-            value={newRule}
-            onChange={(e) => setNewRule(e.target.value)}
-            placeholder="Add a new rule..."
-            onKeyDown={(e) => { if (e.key === "Enter") addTier3Rule(); }}
-          />
-          <button style={S.btnSecondary} onClick={addTier3Rule}>Add</button>
-        </div>
-      </div>
-
-      {/* Action bar */}
-      <div style={{ display: "flex", gap: 12, marginTop: 8 }}>
-        <button style={{ ...S.btnPrimary, flex: 1 }} onClick={handleSave} disabled={saving}>{saving ? "Saving..." : "Save Rules"}</button>
-        <button style={{ ...S.btnSecondary, flex: 1 }} onClick={() => onSwitchTab(4)}>Run Pre-Publish Check</button>
-      </div>
-    </div>
-  );
-}
-
-function PrePublishCheck({ worker, onWorkerUpdate }) {
-  const [checks, setChecks] = useState(worker.prePublishCheck?.checks || []);
-  const [running, setRunning] = useState(false);
-  const [score, setScore] = useState(worker.prePublishCheck?.score || null);
-  const [passed, setPassed] = useState(worker.prePublishCheck?.passed || false);
-
-  async function runCheck() {
-    setRunning(true);
-    try {
-      const res = await w1Api("worker1:prePublish", { workerId: worker.id });
-      if (res.ok) {
-        setChecks(res.checks || []);
-        setScore(res.score);
-        setPassed(res.passed);
-        onWorkerUpdate({ ...worker, buildPhase: "prePublish", prePublishCheck: { score: res.score, passed: res.passed, checks: res.checks } });
-      }
-    } catch {}
-    setRunning(false);
-  }
-
-  const statusColors = { pass: "#10b981", warning: "#f59e0b", fail: "#f87171" };
-  const statusLabels = { pass: "Pass", warning: "Warning", fail: "Fail" };
-
-  return (
-    <div style={{ maxWidth: 600 }}>
-      <div style={{ fontSize: 18, fontWeight: 700, color: "#e2e8f0", marginBottom: 4 }}>Pre-Publish Check</div>
-      <div style={{ fontSize: 14, color: "#94a3b8", marginBottom: 24 }}>8-point acceptance criteria. All checks must pass (warnings are acceptable) before publishing.</div>
-
-      {checks.length === 0 && (
-        <div style={{ textAlign: "center", padding: "40px 20px" }}>
-          <div style={{ fontSize: 14, color: "#94a3b8", marginBottom: 16 }}>Run the pre-publish check to validate your Digital Worker against the 8-point acceptance criteria.</div>
-          <button style={{ ...S.btnPrimary, padding: "14px 32px", fontSize: 15 }} onClick={runCheck} disabled={running}>
-            {running ? "Running checks..." : "Run Pre-Publish Check"}
-          </button>
-        </div>
-      )}
-
-      {checks.length > 0 && (
-        <>
-          {/* Score summary */}
-          <div style={{ ...S.growCard, textAlign: "center", marginBottom: 20 }}>
-            <div style={{ fontSize: 36, fontWeight: 700, color: passed ? "#10b981" : "#f87171" }}>{score}/8</div>
-            <div style={{ fontSize: 14, fontWeight: 600, color: passed ? "#10b981" : "#f87171" }}>{passed ? "Ready to publish" : "Needs attention"}</div>
-          </div>
-
-          {/* Individual checks */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {checks.map((check, i) => (
-              <div key={i} style={{ ...S.growCard, marginBottom: 0, display: "flex", alignItems: "flex-start", gap: 12 }}>
-                <div style={{ width: 10, height: 10, borderRadius: "50%", background: statusColors[check.status] || "#64748b", marginTop: 4, flexShrink: 0 }} />
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontSize: 14, fontWeight: 600, color: "#e2e8f0" }}>{check.name}</span>
-                    <span style={S.badge(statusColors[check.status], `${statusColors[check.status]}20`)}>{statusLabels[check.status]}</span>
-                  </div>
-                  <div style={{ fontSize: 13, color: "#94a3b8", marginTop: 4 }}>{check.details}</div>
-                </div>
-              </div>
+          {workerCardData?.name && <span>{workerCardData.name}</span>}
+          <span style={{ marginLeft: "auto", display: "flex", gap: 3 }}>
+            {FLOW_STEPS.map((s, i) => (
+              <span key={s} style={{ width: 24, height: 4, borderRadius: 2, background: i < flowStep ? "#7c3aed" : "#2a2a3a" }} />
             ))}
-          </div>
-
-          {/* Actions */}
-          <div style={{ display: "flex", gap: 12, marginTop: 20 }}>
-            <button style={S.btnSecondary} onClick={runCheck} disabled={running}>{running ? "Re-running..." : "Re-run Check"}</button>
-            {passed && (
-              <button style={{ ...S.btnPrimary, flex: 1 }} onClick={() => onWorkerUpdate({ ...worker, buildPhase: "publishing" })}>
-                Proceed to Publish
-              </button>
-            )}
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
-function PublishFlow({ worker, onWorkerUpdate }) {
-  const flow = worker.publishFlow || {};
-  const [step, setStep] = useState(flow.waiverSigned ? (flow.identityVerified ? 3 : 2) : 1);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState(null);
-  const [activatingLicense, setActivatingLicense] = useState(false);
-  const hasLicense = localStorage.getItem("CREATOR_LICENSE") === "true";
-
-  async function handleActivateLicense() {
-    setActivatingLicense(true);
-    try {
-      const token = localStorage.getItem("ID_TOKEN");
-      const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
-      const resp = await fetch(`${apiBase}/api?path=/v1/creator:checkout`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ returnUrl: window.location.origin + "/sandbox" }),
-      });
-      const data = await resp.json();
-      if (data.ok && data.url) {
-        window.location.href = data.url;
-      } else {
-        setError(data.error || "Failed to start checkout.");
-        setActivatingLicense(false);
-      }
-    } catch (e) {
-      setError(e.message);
-      setActivatingLicense(false);
-    }
-  }
-
-  if (!hasLicense) {
-    return (
-      <div style={{ maxWidth: 560 }}>
-        <div style={{ fontSize: 18, fontWeight: 700, color: "#e2e8f0", marginBottom: 4 }}>Creator License Required</div>
-        <div style={{ fontSize: 14, color: "#94a3b8", marginBottom: 24, lineHeight: 1.6 }}>
-          Activate your Creator License ($49/yr) to publish Digital Workers to the marketplace. You keep 75% of every subscription.
+          </span>
         </div>
-        <div style={{ background: "#16161e", borderRadius: 10, padding: 24, border: "1px solid #2a2a3a", textAlign: "center" }}>
-          {error && <div style={{ color: "#f87171", fontSize: 13, marginBottom: 12 }}>{error}</div>}
-          <button
-            style={{ ...S.btnPrimary, width: "100%", padding: "14px 20px", fontSize: 15 }}
-            onClick={handleActivateLicense}
-            disabled={activatingLicense}
-          >
-            {activatingLicense ? "Redirecting to Stripe..." : "Activate Creator License — $49/yr"}
-          </button>
-          <div style={{ fontSize: 12, color: "#64748b", marginTop: 12 }}>
-            Or <a href="/apply" style={{ color: "#7c3aed" }}>apply first</a> if you haven't yet.
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  async function handleSubmitForReview() {
-    setSubmitting(true);
-    setError(null);
-    try {
-      const res = await w1Api("worker1:submit", {
-        workerId: worker.id,
-        waiverSigned: true,
-        identityVerified: true,
-        paymentComplete: true,
-      });
-      if (res.ok) {
-        onWorkerUpdate({ ...worker, buildPhase: "review" });
-      } else {
-        setError(res.error || "Submission failed.");
-      }
-    } catch (e) {
-      setError(e.message);
-    }
-    setSubmitting(false);
-  }
-
-  const stepStyle = (active, completed) => ({
-    padding: "20px 24px",
-    background: completed ? "rgba(16,185,129,0.05)" : active ? "#16161e" : "#0f0f14",
-    border: `1px solid ${completed ? "#10b981" : active ? "#7c3aed" : "#2a2a3a"}`,
-    borderRadius: 10,
-    marginBottom: 12,
-    opacity: active || completed ? 1 : 0.5,
-  });
-
-  return (
-    <div style={{ maxWidth: 560 }}>
-      <div style={{ fontSize: 18, fontWeight: 700, color: "#e2e8f0", marginBottom: 4 }}>Publish to Marketplace</div>
-      <div style={{ fontSize: 14, color: "#94a3b8", marginBottom: 24 }}>Complete these steps to submit your Digital Worker for review.</div>
-
-      {/* Step 1: Developer Waiver */}
-      <div style={stepStyle(step === 1, step > 1)}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-          <div style={{ fontSize: 14, fontWeight: 600, color: "#e2e8f0" }}>Step 1: Developer Waiver</div>
-          {step > 1 ? <span style={S.badge("#065f46", "#d1fae5")}>Signed</span> : <span style={S.badge("#64748b", "rgba(100,116,139,0.1)")}>Required</span>}
-        </div>
-        <div style={{ fontSize: 13, color: "#94a3b8", lineHeight: 1.6 }}>
-          Acknowledge the shared liability framework. TitleApp warrants reasonable regulatory research. You warrant review and domain expertise. End-users acknowledge AI tool limitations.
-        </div>
-        {step === 1 && (
-          <button style={{ ...S.btnPrimary, marginTop: 12 }} onClick={() => setStep(2)}>
-            Acknowledge &amp; Sign Waiver
-          </button>
-        )}
-      </div>
-
-      {/* Step 2: Identity Verification */}
-      <div style={stepStyle(step === 2, step > 2)}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-          <div style={{ fontSize: 14, fontWeight: 600, color: "#e2e8f0" }}>Step 2: Identity Verification</div>
-          {step > 2 ? <span style={S.badge("#065f46", "#d1fae5")}>Verified</span> : <span style={S.badge("#64748b", "rgba(100,116,139,0.1)")}>Required</span>}
-        </div>
-        <div style={{ fontSize: 13, color: "#94a3b8", lineHeight: 1.6 }}>
-          Verify your identity via Stripe Identity. This is required for marketplace trust and accountability.
-        </div>
-        {step === 2 && (
-          <button style={{ ...S.btnPrimary, marginTop: 12 }} onClick={() => setStep(3)}>
-            Verify Identity
-          </button>
-        )}
-      </div>
-
-      {/* Step 3: Submit for Review */}
-      <div style={stepStyle(step === 3, false)}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-          <div style={{ fontSize: 14, fontWeight: 600, color: "#e2e8f0" }}>Step 3: Submit for Review</div>
-          <span style={S.badge("#64748b", "rgba(100,116,139,0.1)")}>Final</span>
-        </div>
-        <div style={{ fontSize: 13, color: "#94a3b8", lineHeight: 1.6 }}>
-          Submit your Digital Worker for review by the TitleApp team. Once approved, it will be published to the marketplace.
-        </div>
-        {step === 3 && (
-          <>
-            {error && <div style={{ color: "#f87171", fontSize: 13, marginTop: 8 }}>{error}</div>}
-            <button style={{ ...S.btnPrimary, marginTop: 12, width: "100%", padding: "14px 20px", fontSize: 15 }} onClick={handleSubmitForReview} disabled={submitting}>
-              {submitting ? "Submitting..." : "Submit for Review"}
-            </button>
-          </>
-        )}
-      </div>
-
-      <div style={{ fontSize: 12, color: "#64748b", textAlign: "center", marginTop: 8 }}>
-        Revenue split: You earn 75% of subscription revenue. At $49/mo per subscriber = $36.75/mo to you.
       </div>
     </div>
   );

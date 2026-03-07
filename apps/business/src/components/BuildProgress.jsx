@@ -1,0 +1,248 @@
+import React, { useState, useEffect } from "react";
+
+const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+
+const HE_MD_GATE_WORKERS = ["HE-013", "HE-025", "HE-027", "HE-028", "HE-030"];
+
+// Friendly status messages mapped to pipeline stages
+const STAGE_MESSAGES = [
+  { stage: "intake", message: "Setting up your worker...", icon: "1" },
+  { stage: "research", message: "Checking compliance rules for your jurisdiction...", icon: "2" },
+  { stage: "rules", message: "Building your rules library...", icon: "3" },
+  { stage: "prePublish", message: "Running quality checks...", icon: "4" },
+  { stage: "submit", message: "Almost ready...", icon: "5" },
+  { stage: "review", message: "Final review in progress...", icon: "6" },
+];
+
+const TIERS = [
+  { id: 1, label: "Tier 1", price: 29, credits: 500 },
+  { id: 2, label: "Tier 2", price: 49, credits: 1500 },
+  { id: 3, label: "Tier 3", price: 79, credits: 3000 },
+];
+
+export default function BuildProgress({ worker, workerCardData, onWorkerUpdate, onPublish }) {
+  const [currentStage, setCurrentStage] = useState(0);
+  const [buildComplete, setBuildComplete] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [selectedTier, setSelectedTier] = useState(workerCardData?.pricingTier || 2);
+  const [mdName, setMdName] = useState("");
+  const [mdNpi, setMdNpi] = useState("");
+  const [mdSigned, setMdSigned] = useState(false);
+
+  const needsMdGate = workerCardData?.mdGateRequired || false;
+  const tier = TIERS.find(t => t.id === selectedTier) || TIERS[1];
+
+  // Animate build progress
+  useEffect(() => {
+    if (buildComplete) return;
+    const interval = setInterval(() => {
+      setCurrentStage(prev => {
+        if (prev >= STAGE_MESSAGES.length - 1) {
+          clearInterval(interval);
+          setBuildComplete(true);
+          return prev;
+        }
+        return prev + 1;
+      });
+    }, 2500);
+    return () => clearInterval(interval);
+  }, [buildComplete]);
+
+  // Poll for actual worker status
+  useEffect(() => {
+    if (!worker?.id) return;
+    const poll = setInterval(async () => {
+      try {
+        const token = localStorage.getItem("ID_TOKEN");
+        const tenantId = localStorage.getItem("TENANT_ID");
+        const res = await fetch(`${API_BASE}/api?path=/v1/workers:list`, {
+          headers: { Authorization: `Bearer ${token}`, "X-Tenant-Id": tenantId, "X-Vertical": "developer", "X-Jurisdiction": "GLOBAL" },
+        });
+        const data = await res.json();
+        if (data.ok && data.workers) {
+          const updated = data.workers.find(w => w.id === worker.id);
+          if (updated) {
+            onWorkerUpdate(updated);
+            if (updated.buildPhase === "library" || updated.buildPhase === "prePublish" || updated.buildPhase === "live") {
+              setBuildComplete(true);
+              clearInterval(poll);
+            }
+          }
+        }
+      } catch {}
+    }, 4000);
+    return () => clearInterval(poll);
+  }, [worker?.id]);
+
+  async function handlePublish() {
+    if (needsMdGate && !mdSigned) return;
+    setPublishing(true);
+    try {
+      const token = localStorage.getItem("ID_TOKEN");
+      const tenantId = localStorage.getItem("TENANT_ID");
+      const res = await fetch(`${API_BASE}/api?path=/v1/worker1:submit`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+          "X-Tenant-Id": tenantId,
+          "X-Vertical": "developer",
+          "X-Jurisdiction": "GLOBAL",
+        },
+        body: JSON.stringify({
+          tenantId, workerId: worker.id, pricingTier: selectedTier,
+          waiverSigned: true, identityVerified: true, paymentComplete: true,
+          ...(needsMdGate && { mdName, mdNpi }),
+        }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        onPublish({ ...worker, buildPhase: "live", pricingTier: selectedTier });
+      }
+    } catch {}
+    setPublishing(false);
+  }
+
+  // Building state
+  if (!buildComplete) {
+    const progress = ((currentStage + 1) / STAGE_MESSAGES.length) * 100;
+    return (
+      <div style={{ maxWidth: 500 }}>
+        <div style={{ fontSize: 18, fontWeight: 700, color: "#e2e8f0", marginBottom: 4 }}>Building your worker</div>
+        <div style={{ fontSize: 14, color: "#94a3b8", marginBottom: 32 }}>
+          Alex is setting everything up. This takes about a minute.
+        </div>
+
+        {/* Progress bar */}
+        <div style={{ height: 6, background: "#2a2a3a", borderRadius: 3, marginBottom: 24, overflow: "hidden" }}>
+          <div style={{ height: "100%", width: `${progress}%`, background: "linear-gradient(90deg, #7c3aed, #6366f1)", borderRadius: 3, transition: "width 0.8s ease" }} />
+        </div>
+
+        {/* Status messages */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {STAGE_MESSAGES.map((s, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, opacity: i <= currentStage ? 1 : 0.3, transition: "opacity 0.5s" }}>
+              <div style={{
+                width: 28, height: 28, borderRadius: 14, display: "flex", alignItems: "center", justifyContent: "center",
+                background: i < currentStage ? "#10b981" : i === currentStage ? "#7c3aed" : "#2a2a3a",
+                color: "white", fontSize: 12, fontWeight: 700, flexShrink: 0,
+              }}>
+                {i < currentStage ? "\u2713" : s.icon}
+              </div>
+              <span style={{ fontSize: 14, color: i <= currentStage ? "#e2e8f0" : "#64748b" }}>{s.message}</span>
+              {i === currentStage && <span style={{ fontSize: 12, color: "#7c3aed", marginLeft: "auto" }}>In progress</span>}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // Build complete — show preview + publish
+  return (
+    <div style={{ maxWidth: 600 }}>
+      <div style={{ fontSize: 18, fontWeight: 700, color: "#e2e8f0", marginBottom: 4 }}>Your worker is ready</div>
+      <div style={{ fontSize: 14, color: "#94a3b8", marginBottom: 24 }}>
+        Review the preview below, set your price, and publish when you are ready.
+      </div>
+
+      {/* Live preview card */}
+      <div style={{ background: "#16161e", border: "1px solid #2a2a3a", borderRadius: 12, overflow: "hidden", marginBottom: 20 }}>
+        <div style={{ padding: "20px 20px", background: "linear-gradient(135deg, #7c3aed 0%, #6366f1 100%)" }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.6)", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 4 }}>Live preview</div>
+          <div style={{ fontSize: 18, fontWeight: 700, color: "white" }}>{workerCardData?.name || worker?.name || "Your Worker"}</div>
+          <div style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", marginTop: 4 }}>{workerCardData?.vertical}</div>
+        </div>
+        <div style={{ padding: 20 }}>
+          <div style={{ fontSize: 14, color: "#e2e8f0", lineHeight: 1.6, marginBottom: 16 }}>
+            {workerCardData?.description || worker?.description || "No description"}
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <span style={{ padding: "4px 10px", background: "rgba(16,185,129,0.1)", color: "#10b981", borderRadius: 6, fontSize: 12, fontWeight: 600 }}>
+              {worker?.rulesCount || 0} compliance rules
+            </span>
+            <span style={{ padding: "4px 10px", background: "rgba(124,58,237,0.1)", color: "#7c3aed", borderRadius: 6, fontSize: 12, fontWeight: 600 }}>
+              {workerCardData?.jurisdiction || "GLOBAL"}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Price setting */}
+      <div style={{ background: "#16161e", border: "1px solid #2a2a3a", borderRadius: 12, padding: 20, marginBottom: 20 }}>
+        <div style={{ fontSize: 14, fontWeight: 600, color: "#e2e8f0", marginBottom: 12 }}>Set your price</div>
+        <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+          {TIERS.map(t => (
+            <div
+              key={t.id}
+              onClick={() => setSelectedTier(t.id)}
+              style={{
+                flex: 1, padding: "12px 8px", textAlign: "center", cursor: "pointer", borderRadius: 8,
+                background: selectedTier === t.id ? "rgba(124,58,237,0.15)" : "#0f0f14",
+                border: `1px solid ${selectedTier === t.id ? "#7c3aed" : "#2a2a3a"}`,
+              }}
+            >
+              <div style={{ fontSize: 18, fontWeight: 700, color: selectedTier === t.id ? "#7c3aed" : "#e2e8f0" }}>${t.price}/mo</div>
+              <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>{t.credits} credits</div>
+            </div>
+          ))}
+        </div>
+        <div style={{ fontSize: 12, color: "#94a3b8" }}>
+          You earn ${(tier.price * 0.75).toFixed(2)}/mo per subscriber (75% of subscription revenue)
+        </div>
+      </div>
+
+      {/* MD Gate — inline, not modal */}
+      {needsMdGate && (
+        <div style={{ background: "#16161e", border: "1px solid rgba(220,38,38,0.3)", borderRadius: 12, padding: 20, marginBottom: 20 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+            <div style={{ width: 8, height: 8, borderRadius: 4, background: "#dc2626" }} />
+            <div style={{ fontSize: 14, fontWeight: 600, color: "#dc2626" }}>Medical Director Co-Sign Required</div>
+          </div>
+          <div style={{ fontSize: 13, color: "#94a3b8", lineHeight: 1.5, marginBottom: 16 }}>
+            This worker provides clinical protocol or drug reference content. A Medical Director must co-sign before it can go live.
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 600, color: "#94a3b8", display: "block", marginBottom: 4 }}>Medical Director Name</label>
+              <input
+                style={{ width: "100%", padding: "10px 12px", background: "#0f0f14", border: "1px solid #2a2a3a", borderRadius: 8, color: "#e2e8f0", fontSize: 14, outline: "none" }}
+                value={mdName} onChange={e => setMdName(e.target.value)}
+                placeholder="Dr. Jane Smith"
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 600, color: "#94a3b8", display: "block", marginBottom: 4 }}>NPI Number</label>
+              <input
+                style={{ width: "100%", padding: "10px 12px", background: "#0f0f14", border: "1px solid #2a2a3a", borderRadius: 8, color: "#e2e8f0", fontSize: 14, outline: "none" }}
+                value={mdNpi} onChange={e => setMdNpi(e.target.value)}
+                placeholder="1234567890"
+              />
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", background: "#0f0f14", borderRadius: 8, cursor: "pointer" }} onClick={() => setMdSigned(!mdSigned)}>
+              <input type="checkbox" checked={mdSigned} readOnly style={{ accentColor: "#7c3aed" }} />
+              <span style={{ fontSize: 13, color: "#e2e8f0" }}>Medical Director has reviewed and agrees to co-sign this worker</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Publish */}
+      <button
+        style={{
+          width: "100%", padding: "16px 24px", fontSize: 16, fontWeight: 700,
+          background: (needsMdGate && !mdSigned) ? "#2a2a3a" : "#7c3aed",
+          color: (needsMdGate && !mdSigned) ? "#64748b" : "white",
+          border: "none", borderRadius: 10, cursor: (needsMdGate && !mdSigned) ? "not-allowed" : "pointer",
+        }}
+        onClick={handlePublish}
+        disabled={publishing || (needsMdGate && !mdSigned)}
+      >
+        {publishing ? "Publishing..." : "Publish to marketplace"}
+      </button>
+      <div style={{ fontSize: 12, color: "#64748b", textAlign: "center", marginTop: 8 }}>
+        Revenue split: You earn 75% of subscription revenue + 20% of TitleApp inference margin on overage.
+      </div>
+    </div>
+  );
+}
