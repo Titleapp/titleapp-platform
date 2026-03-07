@@ -31,23 +31,23 @@ export default function WorkerCard({ data, comparables, onApprove, onEdit }) {
   }
 
   const cardStyle = {
-    background: "#16161e", border: "1px solid #2a2a3a", borderRadius: 12,
+    background: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: 12,
     overflow: "hidden", maxWidth: 600,
   };
-  const sectionStyle = { padding: "16px 20px", borderBottom: "1px solid #2a2a3a" };
-  const labelStyle = { fontSize: 11, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 6 };
-  const valueStyle = { fontSize: 14, color: "#e2e8f0", lineHeight: 1.6 };
+  const sectionStyle = { padding: "16px 20px", borderBottom: "1px solid #E2E8F0" };
+  const labelStyle = { fontSize: 11, fontWeight: 600, color: "#94A3B8", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 6 };
+  const valueStyle = { fontSize: 14, color: "#1a1a2e", lineHeight: 1.6 };
 
   return (
     <div>
-      <div style={{ fontSize: 18, fontWeight: 700, color: "#e2e8f0", marginBottom: 4 }}>Worker Card</div>
-      <div style={{ fontSize: 14, color: "#94a3b8", marginBottom: 16 }}>
+      <div style={{ fontSize: 18, fontWeight: 700, color: "#1a1a2e", marginBottom: 4 }}>Worker Card</div>
+      <div style={{ fontSize: 14, color: "#64748B", marginBottom: 16 }}>
         Review what Alex built from your conversation. Edit anything, then approve to start building.
       </div>
 
       <div style={cardStyle}>
         {/* Header */}
-        <div style={{ padding: "24px 20px", background: "linear-gradient(135deg, #7c3aed 0%, #6366f1 100%)" }}>
+        <div style={{ padding: "24px 20px", background: "linear-gradient(135deg, #6B46C1 0%, #818cf8 100%)" }}>
           {editMode ? (
             <input
               style={{ background: "rgba(255,255,255,0.15)", border: "none", borderRadius: 8, padding: "8px 12px", color: "white", fontSize: 18, fontWeight: 700, width: "100%", outline: "none" }}
@@ -67,7 +67,7 @@ export default function WorkerCard({ data, comparables, onApprove, onEdit }) {
           <div style={labelStyle}>What it does</div>
           {editMode ? (
             <textarea
-              style={{ width: "100%", background: "#0f0f14", border: "1px solid #2a2a3a", borderRadius: 8, padding: "8px 12px", color: "#e2e8f0", fontSize: 14, outline: "none", resize: "vertical", minHeight: 60, lineHeight: 1.6 }}
+              style={{ width: "100%", background: "#F8F9FC", border: "1px solid #E2E8F0", borderRadius: 8, padding: "8px 12px", color: "#1a1a2e", fontSize: 14, outline: "none", resize: "vertical", minHeight: 60, lineHeight: 1.6 }}
               value={editData.description}
               onChange={e => handleEdit("description", e.target.value)}
             />
@@ -81,7 +81,7 @@ export default function WorkerCard({ data, comparables, onApprove, onEdit }) {
           <div style={labelStyle}>Who it's for</div>
           {editMode ? (
             <input
-              style={{ width: "100%", background: "#0f0f14", border: "1px solid #2a2a3a", borderRadius: 8, padding: "8px 12px", color: "#e2e8f0", fontSize: 14, outline: "none" }}
+              style={{ width: "100%", background: "#F8F9FC", border: "1px solid #E2E8F0", borderRadius: 8, padding: "8px 12px", color: "#1a1a2e", fontSize: 14, outline: "none" }}
               value={editData.targetUser}
               onChange={e => handleEdit("targetUser", e.target.value)}
             />
@@ -95,7 +95,7 @@ export default function WorkerCard({ data, comparables, onApprove, onEdit }) {
           <div style={labelStyle}>Compliance rules</div>
           <div style={valueStyle}>{data.complianceRules || "Standard platform compliance (Tier 0 + Tier 1 auto-applied)"}</div>
           {data.mdGateRequired && (
-            <div style={{ marginTop: 8, padding: "8px 12px", background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.2)", borderRadius: 6 }}>
+            <div style={{ marginTop: 8, padding: "8px 12px", background: "rgba(220,38,38,0.06)", border: "1px solid rgba(220,38,38,0.2)", borderRadius: 6 }}>
               <span style={{ fontSize: 12, fontWeight: 600, color: "#dc2626" }}>Medical Director co-sign required</span>
             </div>
           )}
@@ -111,24 +111,24 @@ export default function WorkerCard({ data, comparables, onApprove, onEdit }) {
                 onClick={() => setSelectedTier(t.id)}
                 style={{
                   flex: 1, padding: "10px 8px", textAlign: "center", cursor: "pointer", borderRadius: 8,
-                  background: selectedTier === t.id ? "rgba(124,58,237,0.15)" : "#0f0f14",
-                  border: `1px solid ${selectedTier === t.id ? "#7c3aed" : "#2a2a3a"}`,
+                  background: selectedTier === t.id ? "rgba(107,70,193,0.08)" : "#F8F9FC",
+                  border: `1px solid ${selectedTier === t.id ? "#6B46C1" : "#E2E8F0"}`,
                 }}
               >
-                <div style={{ fontSize: 16, fontWeight: 700, color: selectedTier === t.id ? "#7c3aed" : "#e2e8f0" }}>${t.price}/mo</div>
-                <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>{t.credits} credits</div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: selectedTier === t.id ? "#6B46C1" : "#1a1a2e" }}>${t.price}/mo</div>
+                <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 2 }}>{t.credits} credits</div>
               </div>
             ))}
           </div>
 
           {/* Market comparables */}
           {comparables && comparables.length > 0 && (
-            <div style={{ padding: "10px 12px", background: "#0f0f14", borderRadius: 8, border: "1px solid #2a2a3a", marginBottom: 12 }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 6 }}>Similar workers in marketplace</div>
+            <div style={{ padding: "10px 12px", background: "#F8F9FC", borderRadius: 8, border: "1px solid #E2E8F0", marginBottom: 12 }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: "#94A3B8", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 6 }}>Similar workers in marketplace</div>
               {comparables.map((c, i) => (
                 <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "4px 0" }}>
-                  <span style={{ fontSize: 13, color: "#94a3b8" }}>{c.name}</span>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: "#e2e8f0" }}>${c.price}/mo</span>
+                  <span style={{ fontSize: 13, color: "#64748B" }}>{c.name}</span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "#1a1a2e" }}>${c.price}/mo</span>
                 </div>
               ))}
             </div>
@@ -136,32 +136,32 @@ export default function WorkerCard({ data, comparables, onApprove, onEdit }) {
         </div>
 
         {/* Earnings projection */}
-        <div style={{ ...sectionStyle, background: "rgba(16,185,129,0.03)" }}>
+        <div style={{ ...sectionStyle, background: "rgba(16,185,129,0.02)" }}>
           <div style={labelStyle}>Your earnings projection</div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-            <span style={{ fontSize: 13, color: "#94a3b8" }}>At</span>
+            <span style={{ fontSize: 13, color: "#64748B" }}>At</span>
             <input
               type="number" min={1} max={1000} value={projectedSubs}
               onChange={e => setProjectedSubs(Math.max(1, parseInt(e.target.value) || 1))}
-              style={{ width: 60, padding: "4px 8px", background: "#0f0f14", border: "1px solid #2a2a3a", borderRadius: 6, color: "#e2e8f0", fontSize: 14, fontWeight: 600, textAlign: "center", outline: "none" }}
+              style={{ width: 60, padding: "4px 8px", background: "#F8F9FC", border: "1px solid #E2E8F0", borderRadius: 6, color: "#1a1a2e", fontSize: 14, fontWeight: 600, textAlign: "center", outline: "none" }}
             />
-            <span style={{ fontSize: 13, color: "#94a3b8" }}>subscribers on {tier.label} (${tier.price}/mo)</span>
+            <span style={{ fontSize: 13, color: "#64748B" }}>subscribers on {tier.label} (${tier.price}/mo)</span>
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <div style={{ padding: "12px 16px", background: "#0f0f14", borderRadius: 8, border: "1px solid #2a2a3a" }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: "#64748b", textTransform: "uppercase", marginBottom: 4 }}>75% of subscription revenue</div>
+            <div style={{ padding: "12px 16px", background: "#F8F9FC", borderRadius: 8, border: "1px solid #E2E8F0" }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: "#94A3B8", textTransform: "uppercase", marginBottom: 4 }}>75% of subscription revenue</div>
               <div style={{ fontSize: 22, fontWeight: 700, color: "#10b981" }}>${projection.monthly.toFixed(0)}/mo</div>
-              <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>${projection.perSubscriber.toFixed(2)} per subscriber</div>
+              <div style={{ fontSize: 12, color: "#64748B", marginTop: 2 }}>${projection.perSubscriber.toFixed(2)} per subscriber</div>
             </div>
-            <div style={{ padding: "12px 16px", background: "#0f0f14", borderRadius: 8, border: "1px solid #2a2a3a" }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: "#64748b", textTransform: "uppercase", marginBottom: 4 }}>20% of TitleApp inference margin on overage</div>
-              <div style={{ fontSize: 14, fontWeight: 600, color: "#94a3b8", marginTop: 8 }}>Varies by usage</div>
-              <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>Heavy users generate additional earnings</div>
+            <div style={{ padding: "12px 16px", background: "#F8F9FC", borderRadius: 8, border: "1px solid #E2E8F0" }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: "#94A3B8", textTransform: "uppercase", marginBottom: 4 }}>20% of TitleApp inference margin on overage</div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: "#64748B", marginTop: 8 }}>Varies by usage</div>
+              <div style={{ fontSize: 12, color: "#94A3B8", marginTop: 2 }}>Heavy users generate additional earnings</div>
             </div>
           </div>
 
-          <div style={{ fontSize: 12, color: "#64748b", marginTop: 10, lineHeight: 1.5 }}>
+          <div style={{ fontSize: 12, color: "#94A3B8", marginTop: 10, lineHeight: 1.5 }}>
             At {projectedSubs} subscribers on {tier.label} (${tier.price}/mo), you earn approximately ${projection.monthly.toFixed(0)}/mo from subscriptions. Heavy users generate additional overage earnings.
           </div>
         </div>
@@ -170,8 +170,8 @@ export default function WorkerCard({ data, comparables, onApprove, onEdit }) {
         <div style={{ padding: "16px 20px", display: "flex", gap: 12 }}>
           <button
             style={{
-              padding: "12px 24px", background: editMode ? "#2a2a3a" : "none", color: "#94a3b8",
-              border: "1px solid #2a2a3a", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer",
+              padding: "12px 24px", background: editMode ? "#F8F9FC" : "none", color: "#64748B",
+              border: "1px solid #E2E8F0", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer",
             }}
             onClick={() => {
               if (editMode) {
@@ -186,7 +186,7 @@ export default function WorkerCard({ data, comparables, onApprove, onEdit }) {
           </button>
           <button
             style={{
-              flex: 1, padding: "12px 24px", background: "#7c3aed", color: "white",
+              flex: 1, padding: "12px 24px", background: "#6B46C1", color: "white",
               border: "none", borderRadius: 8, fontSize: 15, fontWeight: 600, cursor: "pointer",
             }}
             onClick={handleApprove}

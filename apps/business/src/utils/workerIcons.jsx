@@ -40,13 +40,124 @@ const ICONS = {
     </>
   ),
 
-  // Document with text lines
-  "title-escrow": (g) => (
+  // ── Title & Escrow Suite (ESC-001 through ESC-012) ──
+
+  // Padlock with keyhole — Escrow Locker
+  "esc-escrow-locker": (g) => (
+    <>
+      <rect x="4" y="8" width="16" height="12" rx="2" fill={`url(#${g})`} />
+      <path d="M8 8V6a4 4 0 0 1 8 0v2" stroke="white" strokeWidth="1.5" fill="none" />
+      <circle cx="12" cy="14" r="2" fill="white" fillOpacity="0.8" />
+      <path d="M12 16v2" stroke="white" strokeWidth="1.5" />
+    </>
+  ),
+
+  // Shield with checkmark — Wire Fraud Prevention
+  "esc-wire-fraud-prevention": (g) => (
+    <>
+      <path d="M12 2L3 7v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z" fill={`url(#${g})`} />
+      <path d="M9 12l2 2 4-4" stroke="white" strokeWidth="2" fill="none" />
+    </>
+  ),
+
+  // Magnifying glass with lines — Title Search & Commitment
+  "esc-title-search-commitment": (g) => (
+    <>
+      <circle cx="10" cy="10" r="7" fill={`url(#${g})`} />
+      <path d="M15 15l5 5" stroke={`url(#${g})`} strokeWidth="2.5" strokeLinecap="round" />
+      <rect x="7" y="8" width="6" height="1.5" rx=".75" fill="white" fillOpacity="0.7" />
+      <rect x="7" y="11" width="4" height="1.5" rx=".75" fill="white" fillOpacity="0.7" />
+    </>
+  ),
+
+  // Document with checkmark — Lien Clearance Manager
+  "esc-lien-clearance-manager": (g) => (
     <>
       <path d="M6 2a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6H6z" fill={`url(#${g})`} />
       <path d="M14 2v6h6" fill="white" fillOpacity="0.25" />
-      <rect x="8" y="12" width="8" height="1.5" rx=".75" fill="white" fillOpacity="0.7" />
-      <rect x="8" y="16" width="5" height="1.5" rx=".75" fill="white" fillOpacity="0.7" />
+      <path d="M9 13l2 2 4-4" stroke="white" strokeWidth="1.5" fill="none" />
+    </>
+  ),
+
+  // Stacked documents — Disclosure Package
+  "esc-disclosure-package": (g) => (
+    <>
+      <rect x="3" y="3" width="14" height="18" rx="2" fill={`url(#${g})`} />
+      <rect x="7" y="3" width="14" height="18" rx="2" fill={`url(#${g})`} fillOpacity="0.7" />
+      <rect x="10" y="8" width="8" height="1.5" rx=".75" fill="white" fillOpacity="0.7" />
+      <rect x="10" y="11" width="6" height="1.5" rx=".75" fill="white" fillOpacity="0.7" />
+      <rect x="10" y="14" width="7" height="1.5" rx=".75" fill="white" fillOpacity="0.7" />
+    </>
+  ),
+
+  // Settlement document — Closing Disclosure
+  "esc-closing-disclosure": (g) => (
+    <>
+      <rect x="4" y="2" width="16" height="20" rx="2" fill={`url(#${g})`} />
+      <rect x="7" y="6" width="10" height="1.5" rx=".75" fill="white" fillOpacity="0.7" />
+      <rect x="7" y="9" width="4" height="1.5" rx=".75" fill="white" fillOpacity="0.5" />
+      <rect x="13" y="9" width="4" height="1.5" rx=".75" fill="white" fillOpacity="0.5" />
+      <path d="M7 13h10M7 16h10" stroke="white" strokeWidth="0.5" strokeOpacity="0.4" />
+      <rect x="7" y="18" width="6" height="1.5" rx=".75" fill="white" fillOpacity="0.7" />
+    </>
+  ),
+
+  // Circle with crosshair — FIRPTA & 1031
+  "esc-firpta-1031": (g) => (
+    <>
+      <circle cx="12" cy="12" r="10" fill={`url(#${g})`} />
+      <path d="M12 6v12M6 12h12" stroke="white" strokeWidth="1.5" />
+      <circle cx="12" cy="12" r="4" stroke="white" strokeWidth="1" fill="none" />
+    </>
+  ),
+
+  // Spreadsheet with dollar — Commission Reconciliation
+  "esc-commission-reconciliation": (g) => (
+    <>
+      <rect x="3" y="4" width="18" height="16" rx="2" fill={`url(#${g})`} />
+      <path d="M3 10h18" stroke="white" strokeWidth="0.5" strokeOpacity="0.4" />
+      <path d="M12 4v16" stroke="white" strokeWidth="0.5" strokeOpacity="0.4" />
+      <text x="7" y="8.5" fontSize="4" fill="white" fillOpacity="0.7" fontFamily="sans-serif">$</text>
+      <path d="M15 13l2 2 3-3" stroke="white" strokeWidth="1" fill="none" />
+    </>
+  ),
+
+  // House with document — HOA & Estoppel
+  "esc-hoa-estoppel": (g) => (
+    <>
+      <path d="M3 10l9-7 9 7v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V10z" fill={`url(#${g})`} />
+      <rect x="9" y="14" width="6" height="8" fill="white" fillOpacity="0.3" />
+      <rect x="8" y="11" width="8" height="1.5" rx=".75" fill="white" fillOpacity="0.7" />
+    </>
+  ),
+
+  // Status dashboard — Status Portal
+  "esc-status-portal": (g) => (
+    <>
+      <rect x="3" y="4" width="18" height="16" rx="2" fill={`url(#${g})`} />
+      <circle cx="8" cy="10" r="1.5" fill="white" fillOpacity="0.8" />
+      <rect x="11" y="9" width="7" height="1.5" rx=".75" fill="white" fillOpacity="0.5" />
+      <circle cx="8" cy="14" r="1.5" fill="white" fillOpacity="0.5" />
+      <rect x="11" y="13" width="5" height="1.5" rx=".75" fill="white" fillOpacity="0.3" />
+    </>
+  ),
+
+  // Document with clock — Recording Monitor
+  "esc-recording-monitor": (g) => (
+    <>
+      <rect x="4" y="2" width="16" height="20" rx="2" fill={`url(#${g})`} />
+      <path d="M8 7h8M8 10h6" stroke="white" strokeWidth="1" strokeOpacity="0.5" />
+      <circle cx="12" cy="16" r="3" stroke="white" strokeWidth="1.5" fill="none" />
+      <path d="M12 14v2h2" stroke="white" strokeWidth="1" />
+    </>
+  ),
+
+  // Lightbulb in circle — Alex Title & Escrow
+  "esc-alex-title-escrow": (g) => (
+    <>
+      <circle cx="12" cy="12" r="10" fill={`url(#${g})`} />
+      <path d="M12 6c-2.2 0-4 1.8-4 4 0 1.5.8 2.7 2 3.4V15h4v-1.6c1.2-.7 2-1.9 2-3.4 0-2.2-1.8-4-4-4z" fill="white" fillOpacity="0.8" />
+      <rect x="10" y="16" width="4" height="2" rx="1" fill="white" fillOpacity="0.6" />
     </>
   ),
 
@@ -1646,6 +1757,7 @@ export const SUITE_COLORS = {
   "Automotive": "#15803d",
   "Aviation": "#0284c7",
   "Government": "#1a237e",
+  "Title & Escrow": "#00695C",
   "Platform": "#7c3aed",
 };
 
@@ -1659,6 +1771,7 @@ export const VERTICAL_COLORS = {
   investor: "#0891b2",
   "property-mgmt": "#7c3aed",
   government: "#1a237e",
+  title_escrow: "#00695C",
   custom: "#4f46e5",
 };
 

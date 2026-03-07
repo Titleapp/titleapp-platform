@@ -119,6 +119,22 @@ const WORKER_IDEAS = {
       { name: "Compliance Monitor", desc: "State filing requirements, rate adequacy, and regulatory change tracking.", price: "$29-49/mo", lane: null },
     ],
   },
+  accounting: {
+    _default: [
+      { name: "Bookkeeping Assistant", desc: "Automated transaction categorization, reconciliation, and month-end close preparation.", price: "$29-49/mo", lane: null },
+      { name: "Tax Compliance Tracker", desc: "Filing deadline tracking, estimated payments, and multi-state nexus monitoring.", price: "$49-79/mo", lane: null },
+      { name: "Audit Prep Manager", desc: "Organize workpapers, track open items, and generate audit-ready reports.", price: "$49-79/mo", lane: null },
+      { name: "Payroll Compliance Monitor", desc: "Multi-state payroll tax compliance, wage law tracking, and reporting.", price: "$29-49/mo", lane: null },
+    ],
+  },
+  government: {
+    _default: [
+      { name: "FOIA Request Processor", desc: "Automate intake, redaction review, and response tracking for public records requests.", price: "$49-79/mo", lane: null },
+      { name: "Grant Compliance Tracker", desc: "Track federal and state grant requirements, reporting deadlines, and expenditure limits.", price: "$49-79/mo", lane: null },
+      { name: "Constituent Service Manager", desc: "Intake, route, and track constituent inquiries and service requests.", price: "$29-49/mo", lane: null },
+      { name: "Procurement Assistant", desc: "RFP analysis, vendor comparison, and compliance documentation for public procurement.", price: "$29-49/mo", lane: null },
+    ],
+  },
   custom: {
     _default: [
       { name: "Document Reviewer", desc: "Automated document analysis with extraction, validation, and summarization.", price: "$29-49/mo", lane: null },
@@ -153,7 +169,7 @@ export function getWorkerIdeas(vertical, subjectDomain) {
 
 export { HE_SUBJECT_DOMAINS };
 
-export default function WorkerGallery({ vertical, subjectDomain, onSelectIdea, onWaitlistToggle, waitlistEnabled }) {
+export default function WorkerGallery({ vertical, verticalLabel, subjectDomain, onSelectIdea, onWaitlistToggle, waitlistEnabled }) {
   const [hoveredIdx, setHoveredIdx] = useState(null);
   const ideas = getWorkerIdeas(vertical, subjectDomain);
 
@@ -161,57 +177,66 @@ export default function WorkerGallery({ vertical, subjectDomain, onSelectIdea, o
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
         <div>
-          <div style={{ fontSize: 18, fontWeight: 700, color: "#e2e8f0", marginBottom: 4 }}>Choose a starting point</div>
-          <div style={{ fontSize: 14, color: "#94a3b8" }}>Pick one that is close to what you have in mind. Alex will customize it from there.</div>
+          <div style={{ fontSize: 18, fontWeight: 700, color: "#1a1a2e", marginBottom: 4 }}>
+            {verticalLabel ? `Here are some ideas for ${verticalLabel}` : "Choose a starting point"}
+          </div>
+          <div style={{ fontSize: 14, color: "#64748B" }}>Pick one that is close to what you have in mind. Alex will customize it from there.</div>
         </div>
       </div>
 
       {/* Pre-launch waitlist toggle */}
       <div style={{
         display: "flex", alignItems: "center", gap: 12, padding: "12px 16px",
-        background: waitlistEnabled ? "rgba(124,58,237,0.08)" : "#16161e",
-        border: `1px solid ${waitlistEnabled ? "#7c3aed" : "#2a2a3a"}`,
+        background: waitlistEnabled ? "rgba(107,70,193,0.06)" : "#FFFFFF",
+        border: `1px solid ${waitlistEnabled ? "#6B46C1" : "#E2E8F0"}`,
         borderRadius: 10, marginBottom: 20, cursor: "pointer",
       }} onClick={onWaitlistToggle}>
         <div style={{
           width: 40, height: 22, borderRadius: 11, padding: 2,
-          background: waitlistEnabled ? "#7c3aed" : "#3a3a4a", transition: "all 0.2s",
+          background: waitlistEnabled ? "#6B46C1" : "#CBD5E1", transition: "all 0.2s",
           display: "flex", alignItems: waitlistEnabled ? "center" : "center",
           justifyContent: waitlistEnabled ? "flex-end" : "flex-start",
         }}>
           <div style={{ width: 18, height: 18, borderRadius: 9, background: "white", transition: "all 0.2s" }} />
         </div>
         <div>
-          <div style={{ fontSize: 13, fontWeight: 600, color: "#e2e8f0" }}>Pre-launch waitlist</div>
-          <div style={{ fontSize: 12, color: "#94a3b8" }}>Collect interest from your network before the worker is live. Subscribers will be waiting when you publish.</div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a2e" }}>Pre-launch waitlist</div>
+          <div style={{ fontSize: 12, color: "#64748B" }}>Collect interest from your network before the worker is live. Subscribers will be waiting when you publish.</div>
         </div>
       </div>
 
       {/* Idea cards grid */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 12 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
         {ideas.map((idea, i) => (
           <div
             key={i}
             style={{
-              background: hoveredIdx === i ? "#1e1e2e" : "#16161e",
-              border: `1px solid ${hoveredIdx === i ? "#7c3aed" : "#2a2a3a"}`,
+              background: hoveredIdx === i ? "#F4F4F8" : "#FFFFFF",
+              border: `1px solid ${hoveredIdx === i ? "#6B46C1" : "#E2E8F0"}`,
               borderRadius: 12, padding: 20, cursor: "pointer", transition: "all 0.2s",
             }}
             onMouseEnter={() => setHoveredIdx(i)}
             onMouseLeave={() => setHoveredIdx(null)}
             onClick={() => onSelectIdea(idea)}
           >
-            <div style={{ fontSize: 15, fontWeight: 600, color: "#e2e8f0", marginBottom: 8 }}>{idea.name}</div>
-            <div style={{ fontSize: 13, color: "#94a3b8", lineHeight: 1.5, marginBottom: 12 }}>{idea.desc}</div>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: 12, fontWeight: 600, color: "#7c3aed" }}>{idea.price}</span>
+            <div style={{ fontSize: 15, fontWeight: 600, color: "#1a1a2e", marginBottom: 8 }}>{idea.name}</div>
+            <div style={{ fontSize: 13, color: "#64748B", lineHeight: 1.5, marginBottom: 12 }}>{idea.desc}</div>
+            <div style={{ fontSize: 12, color: "#64748B", marginBottom: 8 }}>
+              Subscribers pay <span style={{ fontWeight: 600, color: "#1a1a2e" }}>{idea.price}</span>
+              <span style={{ display: "block", color: "#10b981", fontWeight: 500, marginTop: 2 }}>You earn 75%</span>
+            </div>
+            <div style={{ textAlign: "right" }}>
               <span style={{
-                padding: "4px 10px", background: "rgba(124,58,237,0.1)", color: "#7c3aed",
+                padding: "6px 14px", background: "rgba(107,70,193,0.08)", color: "#6B46C1",
                 borderRadius: 6, fontSize: 12, fontWeight: 600,
               }}>Start with this</span>
             </div>
           </div>
         ))}
+      </div>
+
+      <div style={{ textAlign: "center", marginTop: 20, fontSize: 13, color: "#64748B" }}>
+        Don't see what you had in mind? Just tell Alex in the chat.
       </div>
     </div>
   );

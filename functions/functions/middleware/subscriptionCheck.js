@@ -34,12 +34,18 @@ async function requireActiveSubscription(workerId, tenantId, opts = {}) {
   // FREE workers (Alex, GOV-000) skip subscription check
   const freeWorkers = [
     "GOV-000", "GOV-015", "GOV-030", "GOV-040", "GOV-057",
+    "ESC-012",
   ];
   if (freeWorkers.includes(workerId)) {
     return { allowed: true, readOnly: false, reason: null, subscription: null };
   }
 
-  // Look up subscription for this tenant + worker
+  // Look up subscription status. Stripe webhook writes to two places:
+  //   1. users/{uid} — stripeSubscriptionId, stripeSubscriptionStatus, tier
+  //   2. subscriptions/{id} — if worker-level subscriptions are created
+  // Check both: worker-level subscriptions collection first, then user-level fallback.
+
+  // Strategy 1: Worker-level subscriptions collection (GOV workers use this)
   const subSnap = await db.collection("subscriptions")
     .where("tenantId", "==", tenantId)
     .where("workerId", "==", workerId)
@@ -48,7 +54,32 @@ async function requireActiveSubscription(workerId, tenantId, opts = {}) {
     .limit(1)
     .get();
 
-  if (subSnap.empty) {
+  let sub = null;
+
+  if (!subSnap.empty) {
+    sub = { id: subSnap.docs[0].id, ...subSnap.docs[0].data() };
+  } else {
+    // Strategy 2: User-level subscription on the users collection
+    // (existing Stripe webhook writes stripeSubscriptionStatus to users/{uid})
+    const userSnap = await db.collection("users")
+      .where("tenantId", "==", tenantId)
+      .where("stripeSubscriptionStatus", "in", ["active", "past_due", "canceled"])
+      .limit(1)
+      .get();
+
+    if (!userSnap.empty) {
+      const userData = userSnap.docs[0].data();
+      sub = {
+        id: userSnap.docs[0].id,
+        status: userData.stripeSubscriptionStatus || "canceled",
+        stripeSubscriptionId: userData.stripeSubscriptionId || null,
+        tier: userData.tier || "free",
+        pastDueSince: userData.subscriptionPastDueSince || null,
+      };
+    }
+  }
+
+  if (!sub) {
     return {
       allowed: false,
       readOnly: false,
@@ -56,8 +87,6 @@ async function requireActiveSubscription(workerId, tenantId, opts = {}) {
       subscription: null,
     };
   }
-
-  const sub = { id: subSnap.docs[0].id, ...subSnap.docs[0].data() };
 
   // Active subscription — full access
   if (sub.status === "active") {

@@ -59,6 +59,25 @@ export function fireCelebration(level) {
   if (fn) fn();
 }
 
+const CONFETTI_COLORS = ['#6B46C1', '#FFFFFF', '#F6C90E', '#9F7AEA'];
+
+export function fireConfetti(intensity = 'medium') {
+  const prefersReduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  if (prefersReduced) return;
+
+  if (intensity === 'light') {
+    confetti({ particleCount: 40, spread: 55, origin: { x: 0.5, y: 0.4 }, colors: CONFETTI_COLORS, disableForReducedMotion: true });
+  } else if (intensity === 'full') {
+    confetti({ particleCount: 150, spread: 100, ticks: 300, gravity: 0.6, scalar: 1.2, origin: { x: 0.5, y: 0.4 }, colors: CONFETTI_COLORS, disableForReducedMotion: true });
+    setTimeout(() => confetti({ particleCount: 100, spread: 120, ticks: 250, gravity: 0.5, origin: { x: 0.3, y: 0.3 }, colors: CONFETTI_COLORS, disableForReducedMotion: true }), 400);
+    setTimeout(() => confetti({ particleCount: 80, spread: 80, ticks: 200, gravity: 0.7, origin: { x: 0.7, y: 0.35 }, colors: CONFETTI_COLORS, disableForReducedMotion: true }), 800);
+  } else {
+    // medium
+    confetti({ particleCount: 80, spread: 70, origin: { x: 0.5, y: 0.4 }, colors: CONFETTI_COLORS, disableForReducedMotion: true });
+    setTimeout(() => confetti({ particleCount: 40, spread: 90, origin: { x: 0.4, y: 0.35 }, colors: CONFETTI_COLORS, disableForReducedMotion: true }), 300);
+  }
+}
+
 export function fireMilestone(milestoneKey) {
   const milestone = MILESTONES[milestoneKey];
   if (!milestone) return null;

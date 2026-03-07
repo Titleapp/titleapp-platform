@@ -263,6 +263,7 @@ const ALLOWED_ORIGINS = [
   'https://title-app-alpha.web.app',
   'https://title-app-alpha.firebaseapp.com',
   'https://titleapp-frontdoor.titleapp-core.workers.dev',
+  'https://app.titleapp.ai',
 ];
 
 if (process.env.FUNCTIONS_EMULATOR === 'true') {

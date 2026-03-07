@@ -11,6 +11,14 @@
  *               perm.review.notice_required, perm.co.issued
  *   Inspector:  insp.violation.reinspection_required, insp.completed
  *   Recorder:   rec.intake.recorded, rec.deed.transfer_recorded, rec.fraud.hold_required
+ *
+ * 10 event types for Title & Escrow:
+ *   Escrow:     esc.offer.submitted, esc.offer.accepted, esc.locker.opened,
+ *               esc.emd.received, esc.condition.satisfied, esc.disbursement.authorized,
+ *               esc.recording.confirmed
+ *   Wire:       esc.wire.fraud_alert
+ *   Title:      esc.title.clear
+ *   Closing:    esc.closing.ready
  */
 
 const admin = require("firebase-admin");
@@ -47,6 +55,18 @@ const GOV_EVENT_TYPES = {
   "rec.intake.recorded":            { source: "GOV-041", targets: ["GOV-042", "GOV-049"] },
   "rec.deed.transfer_recorded":     { source: "GOV-043", targets: ["GOV-052"] },
   "rec.fraud.hold_required":        { source: "GOV-047", targets: ["GOV-041"] },
+
+  // ── Title & Escrow ──
+  "esc.offer.submitted":            { source: "ESC-001", targets: [] },
+  "esc.offer.accepted":             { source: "ESC-001", targets: [] },
+  "esc.locker.opened":              { source: "ESC-001", targets: ["ESC-003", "ESC-010"] },
+  "esc.emd.received":               { source: "ESC-001", targets: ["ESC-010"] },
+  "esc.condition.satisfied":        { source: "ESC-001", targets: ["ESC-010"] },
+  "esc.wire.fraud_alert":           { source: "ESC-002", targets: ["ESC-001"] },
+  "esc.title.clear":                { source: "ESC-003", targets: ["ESC-001", "ESC-004"] },
+  "esc.closing.ready":              { source: "ESC-006", targets: ["ESC-001", "ESC-005"] },
+  "esc.disbursement.authorized":    { source: "ESC-001", targets: ["ESC-008", "ESC-010"] },
+  "esc.recording.confirmed":        { source: "ESC-011", targets: ["ESC-001"] },
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -63,7 +83,7 @@ const GOV_EVENT_TYPES = {
  */
 async function emitEvent(eventType, payload, context = {}) {
   const db = getDb();
-  const eventDef = GOV_EVENT_TYPES[eventType];
+  const eventDef = GOV_EVENT_TYPES[eventType] || null;
 
   const doc = {
     eventType,

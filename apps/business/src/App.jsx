@@ -4554,10 +4554,10 @@ export default function App() {
   if (isSandbox) {
     if (!sandboxReady || handoffInProgress) {
       return (
-        <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#0f0f14" }}>
+        <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F8F9FC" }}>
           <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: 20, fontWeight: 600, color: "#7c3aed", marginBottom: 16 }}>TitleApp</div>
-            <div style={{ fontSize: 16, color: "#94a3b8" }}>Loading sandbox...</div>
+            <div style={{ fontSize: 20, fontWeight: 600, color: "#6B46C1", marginBottom: 16 }}>TitleApp</div>
+            <div style={{ fontSize: 16, color: "#64748B" }}>Loading sandbox...</div>
           </div>
         </div>
       );

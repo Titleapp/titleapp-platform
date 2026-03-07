@@ -154,21 +154,21 @@ export default function TestWorkerPanel({ worker, workerCardData, sessionId, onT
   const S = {
     panel: { display: "flex", flexDirection: "column", height: "100%" },
     header: { display: "flex", alignItems: "center", gap: 10, marginBottom: 16 },
-    badge: { padding: "4px 10px", background: "rgba(16,185,129,0.15)", color: "#10b981", borderRadius: 6, fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px" },
-    workerName: { fontSize: 16, fontWeight: 700, color: "#e2e8f0" },
-    chatArea: { flex: 1, minHeight: 200, maxHeight: 360, overflowY: "auto", background: "#16161e", border: "1px solid #2a2a3a", borderRadius: 12, padding: 16, display: "flex", flexDirection: "column", gap: 10, marginBottom: 12 },
-    msgUser: { alignSelf: "flex-end", background: "#7c3aed", color: "white", padding: "8px 12px", borderRadius: "12px 12px 4px 12px", maxWidth: "85%", fontSize: 13, lineHeight: 1.5 },
-    msgAssistant: { alignSelf: "flex-start", background: "#1e1e2e", color: "#e2e8f0", padding: "8px 12px", borderRadius: "12px 12px 12px 4px", maxWidth: "85%", fontSize: 13, lineHeight: 1.5 },
-    msgSystem: { alignSelf: "center", color: "#64748b", fontSize: 12, textAlign: "center", padding: "6px 12px", background: "rgba(100,116,139,0.08)", borderRadius: 8, maxWidth: "90%" },
+    badge: { padding: "4px 10px", background: "rgba(16,185,129,0.1)", color: "#10b981", borderRadius: 6, fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px" },
+    workerName: { fontSize: 16, fontWeight: 700, color: "#1a1a2e" },
+    chatArea: { flex: 1, minHeight: 200, maxHeight: 360, overflowY: "auto", background: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: 12, padding: 16, display: "flex", flexDirection: "column", gap: 10, marginBottom: 12 },
+    msgUser: { alignSelf: "flex-end", background: "#6B46C1", color: "white", padding: "8px 12px", borderRadius: "12px 12px 4px 12px", maxWidth: "85%", fontSize: 13, lineHeight: 1.5 },
+    msgAssistant: { alignSelf: "flex-start", background: "#F4F4F8", color: "#1a1a2e", padding: "8px 12px", borderRadius: "12px 12px 12px 4px", maxWidth: "85%", fontSize: 13, lineHeight: 1.5 },
+    msgSystem: { alignSelf: "center", color: "#64748B", fontSize: 12, textAlign: "center", padding: "6px 12px", background: "rgba(100,116,139,0.06)", borderRadius: 8, maxWidth: "90%" },
     inputWrap: { display: "flex", gap: 8, marginBottom: 16 },
-    input: { flex: 1, padding: "10px 14px", background: "#1e1e2e", border: "1px solid #2a2a3a", borderRadius: 8, color: "#e2e8f0", fontSize: 13, outline: "none", resize: "none" },
+    input: { flex: 1, padding: "10px 14px", background: "#F8F9FC", border: "1px solid #E2E8F0", borderRadius: 8, color: "#1a1a2e", fontSize: 13, outline: "none", resize: "none" },
     sendBtn: { padding: "10px 16px", background: "#10b981", color: "white", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", flexShrink: 0 },
     edgeCaseWrap: { display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16 },
-    edgeCaseChip: { padding: "6px 12px", background: "rgba(99,102,241,0.1)", color: "#818cf8", border: "1px solid rgba(99,102,241,0.2)", borderRadius: 20, fontSize: 12, cursor: "pointer", fontWeight: 500 },
-    checklist: { background: "#16161e", border: "1px solid #2a2a3a", borderRadius: 12, padding: 16, marginBottom: 16 },
+    edgeCaseChip: { padding: "6px 12px", background: "rgba(107,70,193,0.06)", color: "#6B46C1", border: "1px solid rgba(107,70,193,0.15)", borderRadius: 20, fontSize: 12, cursor: "pointer", fontWeight: 500 },
+    checklist: { background: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: 12, padding: 16, marginBottom: 16 },
     checkItem: { display: "flex", alignItems: "center", gap: 10, padding: "8px 0", cursor: "pointer" },
-    checkBox: (checked) => ({ width: 20, height: 20, borderRadius: 4, border: `2px solid ${checked ? "#10b981" : "#3a3a4a"}`, background: checked ? "#10b981" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, color: "white", fontSize: 12, fontWeight: 700, transition: "all 0.2s" }),
-    checkLabel: { fontSize: 13, color: "#e2e8f0" },
+    checkBox: (checked) => ({ width: 20, height: 20, borderRadius: 4, border: `2px solid ${checked ? "#10b981" : "#CBD5E1"}`, background: checked ? "#10b981" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, color: "white", fontSize: 12, fontWeight: 700, transition: "all 0.2s" }),
+    checkLabel: { fontSize: 13, color: "#1a1a2e" },
   };
 
   return (
@@ -179,7 +179,7 @@ export default function TestWorkerPanel({ worker, workerCardData, sessionId, onT
         <span style={S.workerName}>{workerCardData?.name || worker?.name || "Your Worker"}</span>
       </div>
       {workerCardData?.description && (
-        <div style={{ fontSize: 13, color: "#94a3b8", lineHeight: 1.5, marginBottom: 16 }}>{workerCardData.description}</div>
+        <div style={{ fontSize: 13, color: "#64748B", lineHeight: 1.5, marginBottom: 16 }}>{workerCardData.description}</div>
       )}
 
       {/* Test Chat */}
@@ -189,14 +189,14 @@ export default function TestWorkerPanel({ worker, workerCardData, sessionId, onT
             {msg.text}
           </div>
         ))}
-        {sending && <div style={{ color: "#64748b", fontSize: 12, padding: "4px 0" }}>Worker is responding...</div>}
+        {sending && <div style={{ color: "#94A3B8", fontSize: 12, padding: "4px 0" }}>Worker is responding...</div>}
         <div ref={messagesEndRef} />
       </div>
 
       {/* Edge case chips */}
       {edgeCases.length > 0 && (
         <div style={S.edgeCaseWrap}>
-          <span style={{ fontSize: 11, color: "#64748b", fontWeight: 600, alignSelf: "center" }}>Try:</span>
+          <span style={{ fontSize: 11, color: "#94A3B8", fontWeight: 600, alignSelf: "center" }}>Try:</span>
           {edgeCases.map((ec, i) => (
             <button key={i} style={S.edgeCaseChip} onClick={() => handleEdgeCaseClick(ec)}>{ec}</button>
           ))}
@@ -219,7 +219,7 @@ export default function TestWorkerPanel({ worker, workerCardData, sessionId, onT
 
       {/* Checklist */}
       <div style={S.checklist}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: "#e2e8f0", marginBottom: 10 }}>Test checklist</div>
+        <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a2e", marginBottom: 10 }}>Test checklist</div>
         <div style={S.checkItem} onClick={() => setCoreJobDone(!coreJobDone)}>
           <div style={S.checkBox(coreJobDone)}>{coreJobDone ? "\u2713" : ""}</div>
           <span style={S.checkLabel}>Core job done correctly</span>
@@ -233,7 +233,7 @@ export default function TestWorkerPanel({ worker, workerCardData, sessionId, onT
           <span style={S.checkLabel}>Bad input handled gracefully</span>
         </div>
         {!allChecked && exchangeCount >= 1 && (
-          <div style={{ fontSize: 11, color: "#64748b", marginTop: 6 }}>
+          <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 6 }}>
             You can publish without all checks, but we recommend testing each area.
           </div>
         )}
@@ -241,28 +241,28 @@ export default function TestWorkerPanel({ worker, workerCardData, sessionId, onT
 
       {/* MD Gate */}
       {needsMdGate && (
-        <div style={{ background: "#16161e", border: "1px solid rgba(220,38,38,0.3)", borderRadius: 12, padding: 16, marginBottom: 16 }}>
+        <div style={{ background: "#FFFFFF", border: "1px solid rgba(220,38,38,0.3)", borderRadius: 12, padding: 16, marginBottom: 16 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
             <div style={{ width: 8, height: 8, borderRadius: 4, background: "#dc2626" }} />
             <div style={{ fontSize: 13, fontWeight: 600, color: "#dc2626" }}>Medical Director Co-Sign Required</div>
           </div>
-          <div style={{ fontSize: 12, color: "#94a3b8", lineHeight: 1.5, marginBottom: 12 }}>
+          <div style={{ fontSize: 12, color: "#64748B", lineHeight: 1.5, marginBottom: 12 }}>
             This worker provides clinical protocol or drug reference content. A Medical Director must co-sign before it can go live.
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <input
-              style={{ width: "100%", padding: "8px 10px", background: "#0f0f14", border: "1px solid #2a2a3a", borderRadius: 6, color: "#e2e8f0", fontSize: 13, outline: "none" }}
+              style={{ width: "100%", padding: "8px 10px", background: "#F8F9FC", border: "1px solid #E2E8F0", borderRadius: 6, color: "#1a1a2e", fontSize: 13, outline: "none" }}
               value={mdName} onChange={e => setMdName(e.target.value)}
               placeholder="Medical Director name"
             />
             <input
-              style={{ width: "100%", padding: "8px 10px", background: "#0f0f14", border: "1px solid #2a2a3a", borderRadius: 6, color: "#e2e8f0", fontSize: 13, outline: "none" }}
+              style={{ width: "100%", padding: "8px 10px", background: "#F8F9FC", border: "1px solid #E2E8F0", borderRadius: 6, color: "#1a1a2e", fontSize: 13, outline: "none" }}
               value={mdNpi} onChange={e => setMdNpi(e.target.value)}
               placeholder="NPI number"
             />
-            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", background: "#0f0f14", borderRadius: 6, cursor: "pointer" }} onClick={() => setMdSigned(!mdSigned)}>
-              <input type="checkbox" checked={mdSigned} readOnly style={{ accentColor: "#7c3aed" }} />
-              <span style={{ fontSize: 12, color: "#e2e8f0" }}>Medical Director has reviewed and agrees to co-sign</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", background: "#F8F9FC", borderRadius: 6, cursor: "pointer" }} onClick={() => setMdSigned(!mdSigned)}>
+              <input type="checkbox" checked={mdSigned} readOnly style={{ accentColor: "#6B46C1" }} />
+              <span style={{ fontSize: 12, color: "#1a1a2e" }}>Medical Director has reviewed and agrees to co-sign</span>
             </div>
           </div>
         </div>
@@ -272,8 +272,8 @@ export default function TestWorkerPanel({ worker, workerCardData, sessionId, onT
       <button
         style={{
           width: "100%", padding: "14px 24px", fontSize: 15, fontWeight: 700,
-          background: (!canPublish || publishBlocked) ? "#2a2a3a" : "#7c3aed",
-          color: (!canPublish || publishBlocked) ? "#64748b" : "white",
+          background: (!canPublish || publishBlocked) ? "#E2E8F0" : "#6B46C1",
+          color: (!canPublish || publishBlocked) ? "#94A3B8" : "white",
           border: "none", borderRadius: 10,
           cursor: (!canPublish || publishBlocked) ? "not-allowed" : "pointer",
         }}
@@ -283,7 +283,7 @@ export default function TestWorkerPanel({ worker, workerCardData, sessionId, onT
         {publishing ? "Publishing..." : allChecked ? "Publish to marketplace" : "Looks good -- publish it"}
       </button>
       {exchangeCount === 0 && (
-        <div style={{ fontSize: 11, color: "#64748b", textAlign: "center", marginTop: 6 }}>
+        <div style={{ fontSize: 11, color: "#94A3B8", textAlign: "center", marginTop: 6 }}>
           Send at least one test message to enable publishing.
         </div>
       )}

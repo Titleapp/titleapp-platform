@@ -74,14 +74,14 @@ export default function BuildProgress({ worker, workerCardData, onWorkerUpdate, 
     const progress = ((currentStage + 1) / STAGE_MESSAGES.length) * 100;
     return (
       <div style={{ maxWidth: 500 }}>
-        <div style={{ fontSize: 18, fontWeight: 700, color: "#e2e8f0", marginBottom: 4 }}>Building your worker</div>
-        <div style={{ fontSize: 14, color: "#94a3b8", marginBottom: 32 }}>
+        <div style={{ fontSize: 18, fontWeight: 700, color: "#1a1a2e", marginBottom: 4 }}>Building your worker</div>
+        <div style={{ fontSize: 14, color: "#64748B", marginBottom: 32 }}>
           Alex is setting everything up. This takes about a minute.
         </div>
 
         {/* Progress bar */}
-        <div style={{ height: 6, background: "#2a2a3a", borderRadius: 3, marginBottom: 24, overflow: "hidden" }}>
-          <div style={{ height: "100%", width: `${progress}%`, background: "linear-gradient(90deg, #7c3aed, #6366f1)", borderRadius: 3, transition: "width 0.8s ease" }} />
+        <div style={{ height: 6, background: "#E2E8F0", borderRadius: 3, marginBottom: 24, overflow: "hidden" }}>
+          <div style={{ height: "100%", width: `${progress}%`, background: "linear-gradient(90deg, #6B46C1, #818cf8)", borderRadius: 3, transition: "width 0.8s ease" }} />
         </div>
 
         {/* Status messages */}
@@ -90,13 +90,13 @@ export default function BuildProgress({ worker, workerCardData, onWorkerUpdate, 
             <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, opacity: i <= currentStage ? 1 : 0.3, transition: "opacity 0.5s" }}>
               <div style={{
                 width: 28, height: 28, borderRadius: 14, display: "flex", alignItems: "center", justifyContent: "center",
-                background: i < currentStage ? "#10b981" : i === currentStage ? "#7c3aed" : "#2a2a3a",
-                color: "white", fontSize: 12, fontWeight: 700, flexShrink: 0,
+                background: i < currentStage ? "#10b981" : i === currentStage ? "#6B46C1" : "#E2E8F0",
+                color: i < currentStage || i === currentStage ? "white" : "#94A3B8", fontSize: 12, fontWeight: 700, flexShrink: 0,
               }}>
                 {i < currentStage ? "\u2713" : s.icon}
               </div>
-              <span style={{ fontSize: 14, color: i <= currentStage ? "#e2e8f0" : "#64748b" }}>{s.message}</span>
-              {i === currentStage && <span style={{ fontSize: 12, color: "#7c3aed", marginLeft: "auto" }}>In progress</span>}
+              <span style={{ fontSize: 14, color: i <= currentStage ? "#1a1a2e" : "#94A3B8" }}>{s.message}</span>
+              {i === currentStage && <span style={{ fontSize: 12, color: "#6B46C1", marginLeft: "auto" }}>In progress</span>}
             </div>
           ))}
         </div>
@@ -107,27 +107,27 @@ export default function BuildProgress({ worker, workerCardData, onWorkerUpdate, 
   // Build complete — show preview + continue to test
   return (
     <div style={{ maxWidth: 600 }}>
-      <div style={{ fontSize: 18, fontWeight: 700, color: "#e2e8f0", marginBottom: 4 }}>Your worker is ready</div>
-      <div style={{ fontSize: 14, color: "#94a3b8", marginBottom: 24 }}>
+      <div style={{ fontSize: 18, fontWeight: 700, color: "#1a1a2e", marginBottom: 4 }}>Your worker is ready</div>
+      <div style={{ fontSize: 14, color: "#64748B", marginBottom: 24 }}>
         Review the preview below, set your price, then test it before publishing.
       </div>
 
       {/* Live preview card */}
-      <div style={{ background: "#16161e", border: "1px solid #2a2a3a", borderRadius: 12, overflow: "hidden", marginBottom: 20 }}>
-        <div style={{ padding: "20px 20px", background: "linear-gradient(135deg, #7c3aed 0%, #6366f1 100%)" }}>
+      <div style={{ background: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: 12, overflow: "hidden", marginBottom: 20 }}>
+        <div style={{ padding: "20px 20px", background: "linear-gradient(135deg, #6B46C1 0%, #818cf8 100%)" }}>
           <div style={{ fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.6)", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 4 }}>Live preview</div>
           <div style={{ fontSize: 18, fontWeight: 700, color: "white" }}>{workerCardData?.name || worker?.name || "Your Worker"}</div>
           <div style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", marginTop: 4 }}>{workerCardData?.vertical}</div>
         </div>
         <div style={{ padding: 20 }}>
-          <div style={{ fontSize: 14, color: "#e2e8f0", lineHeight: 1.6, marginBottom: 16 }}>
+          <div style={{ fontSize: 14, color: "#1a1a2e", lineHeight: 1.6, marginBottom: 16 }}>
             {workerCardData?.description || worker?.description || "No description"}
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <span style={{ padding: "4px 10px", background: "rgba(16,185,129,0.1)", color: "#10b981", borderRadius: 6, fontSize: 12, fontWeight: 600 }}>
               {worker?.rulesCount || 0} compliance rules
             </span>
-            <span style={{ padding: "4px 10px", background: "rgba(124,58,237,0.1)", color: "#7c3aed", borderRadius: 6, fontSize: 12, fontWeight: 600 }}>
+            <span style={{ padding: "4px 10px", background: "rgba(107,70,193,0.08)", color: "#6B46C1", borderRadius: 6, fontSize: 12, fontWeight: 600 }}>
               {workerCardData?.jurisdiction || "GLOBAL"}
             </span>
           </div>
@@ -135,8 +135,8 @@ export default function BuildProgress({ worker, workerCardData, onWorkerUpdate, 
       </div>
 
       {/* Price setting */}
-      <div style={{ background: "#16161e", border: "1px solid #2a2a3a", borderRadius: 12, padding: 20, marginBottom: 20 }}>
-        <div style={{ fontSize: 14, fontWeight: 600, color: "#e2e8f0", marginBottom: 12 }}>Set your price</div>
+      <div style={{ background: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: 12, padding: 20, marginBottom: 20 }}>
+        <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a2e", marginBottom: 12 }}>Set your price</div>
         <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
           {TIERS.map(t => (
             <div
@@ -144,16 +144,16 @@ export default function BuildProgress({ worker, workerCardData, onWorkerUpdate, 
               onClick={() => setSelectedTier(t.id)}
               style={{
                 flex: 1, padding: "12px 8px", textAlign: "center", cursor: "pointer", borderRadius: 8,
-                background: selectedTier === t.id ? "rgba(124,58,237,0.15)" : "#0f0f14",
-                border: `1px solid ${selectedTier === t.id ? "#7c3aed" : "#2a2a3a"}`,
+                background: selectedTier === t.id ? "rgba(107,70,193,0.08)" : "#F8F9FC",
+                border: `1px solid ${selectedTier === t.id ? "#6B46C1" : "#E2E8F0"}`,
               }}
             >
-              <div style={{ fontSize: 18, fontWeight: 700, color: selectedTier === t.id ? "#7c3aed" : "#e2e8f0" }}>${t.price}/mo</div>
-              <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>{t.credits} credits</div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: selectedTier === t.id ? "#6B46C1" : "#1a1a2e" }}>${t.price}/mo</div>
+              <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 2 }}>{t.credits} credits</div>
             </div>
           ))}
         </div>
-        <div style={{ fontSize: 12, color: "#94a3b8" }}>
+        <div style={{ fontSize: 12, color: "#64748B" }}>
           You earn ${(tier.price * 0.75).toFixed(2)}/mo per subscriber (75% of subscription revenue)
         </div>
       </div>
@@ -162,14 +162,14 @@ export default function BuildProgress({ worker, workerCardData, onWorkerUpdate, 
       <button
         style={{
           width: "100%", padding: "16px 24px", fontSize: 16, fontWeight: 700,
-          background: "#7c3aed", color: "white",
+          background: "#6B46C1", color: "white",
           border: "none", borderRadius: 10, cursor: "pointer",
         }}
         onClick={() => onTestReady({ ...worker, name: workerCardData?.name || worker?.name, pricingTier: selectedTier })}
       >
         Continue to Test
       </button>
-      <div style={{ fontSize: 12, color: "#64748b", textAlign: "center", marginTop: 8 }}>
+      <div style={{ fontSize: 12, color: "#94A3B8", textAlign: "center", marginTop: 8 }}>
         Test your worker as a subscriber would before publishing.
       </div>
     </div>
