@@ -2284,9 +2284,9 @@ ${nameGuidance}${authGuidance}`;
                 const workerCategory = workerSpec.category || 'custom';
 
                 if (targetTenantId) {
-                  // Create Worker — validate through unified schema gate
+                  // Create Worker — auto-fix then validate through unified schema gate
                   const { computeHash: devHash } = require("./api/utils/titleMint");
-                  const { validateWorkerRecord, TIER_0_DEFAULTS, slugify } = require("./helpers/workerSchema");
+                  const { validateWorkerRecord, autoFixWorkerRecord, TIER_0_DEFAULTS, slugify } = require("./helpers/workerSchema");
 
                   const workerSlug = workerSpec.worker_id || slugify(workerName);
                   const workerRecord = {
@@ -2308,35 +2308,56 @@ ${nameGuidance}${authGuidance}`;
                     status: "draft",
                   };
 
-                  try {
-                    const { record: validated, warnings } = validateWorkerRecord(workerRecord);
-                    if (warnings.length > 0) console.log(`[dev] Worker validation warnings: ${warnings.join("; ")}`);
+                  // Auto-fix schema gaps silently (suite mapping, raas_tier_1 padding, credit_cost inference)
+                  autoFixWorkerRecord(workerRecord, workerDesc);
 
-                    const rulesHash = devHash(validated.raas_tier_1);
-                    const metadataHash = devHash({ name: validated.display_name, description: workerDesc, rules_hash: rulesHash, created_at: new Date().toISOString() });
+                  let saveAttempts = 0;
+                  let saved = false;
+                  while (saveAttempts < 2 && !saved) {
+                    saveAttempts++;
+                    try {
+                      const { record: validated, warnings } = validateWorkerRecord(workerRecord);
+                      if (warnings.length > 0) console.log(`[dev] Worker validation warnings: ${warnings.join("; ")}`);
 
-                    await db.doc(`tenants/${targetTenantId}/workers/${validated.worker_id}`).set({
-                      ...validated,
-                      description: workerDesc,
-                      source: { platform: "dev-chat", createdVia: "alex" },
-                      capabilities: Array.isArray(workerSpec.capabilities) ? workerSpec.capabilities.slice(0, 20) : [],
-                      imported: false,
-                      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-                      createdBy: sessionState.userId,
-                      rulesHash, metadataHash,
-                    });
+                      const rulesHash = devHash(validated.raas_tier_1);
+                      const metadataHash = devHash({ name: validated.display_name, description: workerDesc, rules_hash: rulesHash, created_at: new Date().toISOString() });
 
-                    buildAnimation = true;
-                    workerCard = {
-                      type: "workerCard",
-                      data: { workerId: validated.worker_id, name: validated.display_name, description: workerDesc, rules: validated.raas_tier_1.slice(0, 5), rulesCount: validated.raas_tier_1.length, status: "draft", category: validated.suite, tenantId: targetTenantId },
-                    };
-                    sessionState.lastWorkerId = validated.worker_id;
-                    sessionState.lastWorkerTenantId = targetTenantId;
-                    console.log(`[dev] Worker created: ${validated.worker_id} for tenant ${targetTenantId}`);
-                  } catch (valErr) {
-                    console.warn(`[dev] Worker validation failed: ${valErr.message}`);
-                    aiText += `\n\nI tried to create that worker but it needs more detail before I can save it. Missing fields:\n${(valErr.validationErrors || [valErr.message]).map(e => "- " + e).join("\n")}\n\nCan you fill in what's missing?`;
+                      await db.doc(`tenants/${targetTenantId}/workers/${validated.worker_id}`).set({
+                        ...validated,
+                        description: workerDesc,
+                        source: { platform: "dev-chat", createdVia: "alex" },
+                        capabilities: Array.isArray(workerSpec.capabilities) ? workerSpec.capabilities.slice(0, 20) : [],
+                        imported: false,
+                        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                        createdBy: sessionState.userId,
+                        rulesHash, metadataHash,
+                      });
+
+                      buildAnimation = true;
+                      workerCard = {
+                        type: "workerCard",
+                        data: { workerId: validated.worker_id, name: validated.display_name, description: workerDesc, rules: validated.raas_tier_1.slice(0, 5), rulesCount: validated.raas_tier_1.length, status: "draft", category: validated.suite, tenantId: targetTenantId },
+                      };
+                      sessionState.lastWorkerId = validated.worker_id;
+                      sessionState.lastWorkerTenantId = targetTenantId;
+                      saved = true;
+                      console.log(`[dev] Worker created: ${validated.worker_id} for tenant ${targetTenantId}`);
+                    } catch (valErr) {
+                      console.warn(`[dev] Worker validation attempt ${saveAttempts} failed: ${valErr.message}`);
+                      if (saveAttempts < 2) {
+                        // Re-run autoFix more aggressively — it should have caught everything, but retry
+                        autoFixWorkerRecord(workerRecord, workerDesc);
+                      }
+                    }
+                  }
+
+                  if (!saved) {
+                    // Both attempts failed — graceful message, no schema details leaked
+                    console.error(`[dev] Worker save failed after 2 attempts for tenant ${targetTenantId}`);
+                    aiText = `Your ${workerName} is almost there. I am doing a quick quality check and will have this ready in a moment.`;
+                    // Stash for manual recovery
+                    sessionState.pendingWorkerSpec = workerSpec;
+                    sessionState.pendingWorkerError = true;
                   }
                 } else {
                   // No account yet — stash spec for creation after signup

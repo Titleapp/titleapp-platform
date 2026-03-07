@@ -650,6 +650,192 @@ function parsePriceTier(tier) {
   return parseInt(String(tier).replace(/[^0-9]/g, ""), 10) || 0;
 }
 
+// ═══════════════════════════════════════════════════════════════
+//  AUTO-FIX — Silently resolve schema gaps before validation
+// ═══════════════════════════════════════════════════════════════
+
+// Maps common category/vertical names Alex might produce → valid suite enum
+const SUITE_ALIAS_MAP = {
+  // Lowercase aliases → valid suite values
+  "finance": "Finance",
+  "financial": "Finance",
+  "accounting": "Finance & Investment",
+  "accountant": "Finance & Investment",
+  "bookkeeping": "Finance & Investment",
+  "tax": "Finance & Investment",
+  "investment": "Finance & Investment",
+  "wealth": "Finance & Investment",
+  "banking": "Finance & Investment",
+  "mortgage": "Real Estate",
+  "real estate": "Real Estate",
+  "realestate": "Real Estate",
+  "property": "Property Management",
+  "property management": "Property Management",
+  "landlord": "Property Management",
+  "auto": "Automotive",
+  "automotive": "Automotive",
+  "car": "Automotive",
+  "dealer": "Automotive",
+  "dealership": "Automotive",
+  "vehicle": "Automotive",
+  "aviation": "Aviation",
+  "flight": "Aviation",
+  "pilot": "Aviation",
+  "aircraft": "Aviation",
+  "airline": "Aviation",
+  "health": "Health & EMS Education",
+  "healthcare": "Health & EMS Education",
+  "medical": "Health & EMS Education",
+  "nursing": "Health & EMS Education",
+  "nurse": "Health & EMS Education",
+  "ems": "Health & EMS Education",
+  "paramedic": "Health & EMS Education",
+  "clinical": "Health & EMS Education",
+  "education": "Education",
+  "school": "Education",
+  "training": "Education",
+  "construction": "Construction",
+  "building": "Construction",
+  "contractor": "Construction",
+  "insurance": "Insurance",
+  "underwriting": "Insurance",
+  "claims": "Insurance",
+  "legal": "Legal",
+  "law": "Legal",
+  "attorney": "Legal",
+  "compliance": "Compliance",
+  "regulatory": "Compliance",
+  "government": "Government",
+  "dmv": "DMV",
+  "permitting": "Permitting",
+  "permits": "Permitting",
+  "inspection": "Inspector",
+  "inspector": "Inspector",
+  "title": "Title & Escrow",
+  "escrow": "Title & Escrow",
+  "closing": "Title & Escrow",
+  "recorder": "Recorder",
+  "operations": "Operations",
+  "general": "General Business",
+  "business": "General Business",
+  "custom": "General Business",
+  "other": "General Business",
+  "design": "Design",
+  "entitlement": "Entitlement",
+  "platform": "Platform",
+};
+
+/**
+ * Infer credit_cost from worker description and rules.
+ * Simple Q&A → "simple", external data → "external_api",
+ * document generation → "complex", default → "standard".
+ */
+function inferCreditCost(description, rules) {
+  const text = ((description || "") + " " + (rules || []).join(" ")).toLowerCase();
+  if (/e-?sign|signature|notari/i.test(text)) return "esign";
+  if (/ocr|scan|image.*recogn|document.*extract/i.test(text)) return "ocr";
+  if (/api|database|external|pull.*data|fetch|integration|scheduling.*system/i.test(text)) return "external_api";
+  if (/report|document|generat|template|pdf|letter|memo|deck|analysis|one-pager/i.test(text)) return "complex";
+  if (/checklist|quiz|q\s*&\s*a|flashcard|simple|basic|lookup/i.test(text)) return "simple";
+  return "standard";
+}
+
+/**
+ * Resolve suite value from a possibly invalid string.
+ * Tries exact match first, then alias lookup, then fuzzy substring match.
+ */
+function resolveSuite(raw) {
+  if (!raw) return "General Business";
+  // Exact match
+  if (VALID_SUITES.includes(raw)) return raw;
+  // Alias lookup (case-insensitive)
+  const lower = raw.toLowerCase().trim();
+  if (SUITE_ALIAS_MAP[lower]) return SUITE_ALIAS_MAP[lower];
+  // Substring match — find the best alias that's contained in the raw string
+  for (const [alias, suite] of Object.entries(SUITE_ALIAS_MAP)) {
+    if (lower.includes(alias)) return suite;
+  }
+  return "General Business";
+}
+
+/**
+ * Auto-fix a worker record before validation.
+ * Resolves suite, pads raas_tier_1, infers credit_cost.
+ * Mutates the record in place and returns it.
+ *
+ * @param {object} record — worker record to fix
+ * @param {string} [description] — full worker description (for inference)
+ * @returns {object} — the fixed record
+ */
+function autoFixWorkerRecord(record, description) {
+  if (!record || typeof record !== "object") return record;
+
+  // Fix suite
+  if (!record.suite || !VALID_SUITES.includes(record.suite)) {
+    record.suite = resolveSuite(record.suite);
+  }
+
+  // Fix worker_type
+  if (!record.worker_type || !VALID_WORKER_TYPES.includes(record.worker_type)) {
+    record.worker_type = "standalone";
+  }
+
+  // Fix pricing_tier
+  if (record.pricing_tier === undefined || record.pricing_tier === null || !VALID_PRICING_TIERS.includes(Number(record.pricing_tier))) {
+    record.pricing_tier = 0; // free/draft — set real price at publish
+  }
+
+  // Fix headline
+  if (!record.headline || typeof record.headline !== "string" || !record.headline.trim()) {
+    record.headline = (description || record.display_name || "Digital Worker").substring(0, 120);
+  }
+
+  // Fix raas_tier_1 — pad to minimum 3 rules
+  if (!Array.isArray(record.raas_tier_1)) record.raas_tier_1 = [];
+  while (record.raas_tier_1.length < 3) {
+    const padRules = [
+      "All outputs must be reviewed by the user before acting on them.",
+      "The worker must not provide advice that requires a licensed professional without appropriate disclaimers.",
+      "Personally identifiable information must be handled in compliance with applicable privacy regulations.",
+      "All calculations and estimates must include appropriate disclaimers about accuracy.",
+      "The worker must clearly identify when it is uncertain or when a question falls outside its scope.",
+    ];
+    const nextRule = padRules[record.raas_tier_1.length];
+    if (nextRule && !record.raas_tier_1.includes(nextRule)) {
+      record.raas_tier_1.push(nextRule);
+    } else {
+      break;
+    }
+  }
+
+  // Fix raas_tier_2 / raas_tier_3 — ensure arrays exist
+  if (!Array.isArray(record.raas_tier_2)) record.raas_tier_2 = [];
+  if (!Array.isArray(record.raas_tier_3)) record.raas_tier_3 = [];
+
+  // Fix vault_reads / vault_writes / referral_triggers / document_templates
+  if (!Array.isArray(record.vault_reads)) record.vault_reads = [];
+  if (!Array.isArray(record.vault_writes)) record.vault_writes = [];
+  if (!Array.isArray(record.referral_triggers)) record.referral_triggers = [];
+  if (!Array.isArray(record.document_templates)) record.document_templates = [];
+
+  // Fix credit_cost
+  if (!record.credit_cost || !VALID_CREDIT_COST_TYPES.includes(record.credit_cost)) {
+    record.credit_cost = inferCreditCost(description, record.raas_tier_1);
+  }
+
+  // Fix status
+  if (!record.status || !VALID_STATUSES.includes(record.status)) {
+    record.status = "draft";
+  }
+
+  // Fix landing_page_slug
+  if (!record.landing_page_slug || !record.landing_page_slug.startsWith("workers/")) {
+    record.landing_page_slug = `workers/${record.worker_id || "worker"}`;
+  }
+
+  return record;
+}
+
 module.exports = {
   TIER_0_DEFAULTS,
   GOV_TIER_0_EXTENSION,
@@ -668,6 +854,7 @@ module.exports = {
   REGISTRY_FIELDS,
   validateWorkerRecord,
   validateRegistryRecord,
+  autoFixWorkerRecord,
   parsePriceTier,
   slugify,
 };

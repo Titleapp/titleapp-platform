@@ -328,6 +328,32 @@ export default function DeveloperSandbox() {
       const reply = result.message || result.reply;
       if (result.ok && reply) {
         addAssistantMessage(reply);
+
+        // Handle worker creation from backend (chat-driven build)
+        if (result.buildAnimation && result.cards && result.cards.length > 0) {
+          const card = result.cards[0]?.data;
+          if (card) {
+            const cardData = {
+              name: card.name || "Your Worker",
+              description: card.description || "",
+              targetUser: card.targetUser || "",
+              complianceRules: (card.rules || []).join(". ") || "Standard compliance",
+              vertical: card.category || vertical || "",
+              jurisdiction: "GLOBAL",
+              pricingTier: 2,
+              internal_only: false,
+            };
+            setWorkerCardData(cardData);
+            setWorker({ id: card.workerId, name: card.name, buildPhase: "draft" });
+
+            // Narrate the handoff
+            setTimeout(() => {
+              addAssistantMessage(`Your ${card.name} is ready. Let me show you around. You can test it, set your price, and publish when you are ready.`);
+              setShowWorkerCard(true);
+              if (flowStep < 2) setFlowStep(2);
+            }, 800);
+          }
+        }
       } else {
         addAssistantMessage(reply || "Something went wrong. Try again.");
       }
