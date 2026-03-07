@@ -12,11 +12,12 @@ function earningsProjection(tierPrice, subscriberCount) {
   return { monthly: subRevenue, perSubscriber: tierPrice * 0.75 };
 }
 
-export default function WorkerCard({ data, comparables, onApprove, onEdit }) {
+export default function WorkerCard({ data, comparables, onApprove, onEdit, isPublished }) {
   const [editMode, setEditMode] = useState(false);
   const [editData, setEditData] = useState({ ...data });
   const [selectedTier, setSelectedTier] = useState(data.pricingTier || 2);
   const [projectedSubs, setProjectedSubs] = useState(10);
+  const [showOverageTip, setShowOverageTip] = useState(false);
 
   const tier = TIERS.find(t => t.id === selectedTier) || TIERS[1];
   const projection = earningsProjection(tier.price, projectedSubs);
@@ -47,7 +48,18 @@ export default function WorkerCard({ data, comparables, onApprove, onEdit }) {
 
       <div style={cardStyle}>
         {/* Header */}
-        <div style={{ padding: "24px 20px", background: "linear-gradient(135deg, #6B46C1 0%, #818cf8 100%)" }}>
+        <div style={{ padding: "24px 20px", background: "linear-gradient(135deg, #6B46C1 0%, #818cf8 100%)", position: "relative" }}>
+          {/* DRAFT badge */}
+          {!isPublished && (
+            <div style={{
+              position: "absolute", top: 12, right: 12,
+              padding: "4px 10px", background: "#DC2626", color: "white",
+              fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px",
+              borderRadius: 4,
+            }}>
+              DRAFT
+            </div>
+          )}
           {editMode ? (
             <input
               style={{ background: "rgba(255,255,255,0.15)", border: "none", borderRadius: 8, padding: "8px 12px", color: "white", fontSize: 18, fontWeight: 700, width: "100%", outline: "none" }}
@@ -56,6 +68,11 @@ export default function WorkerCard({ data, comparables, onApprove, onEdit }) {
             />
           ) : (
             <div style={{ fontSize: 18, fontWeight: 700, color: "white" }}>{data.name}</div>
+          )}
+          {!isPublished && (
+            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.7)", marginTop: 4, fontStyle: "italic" }}>
+              Review and approve to start building
+            </div>
           )}
           <div style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", marginTop: 4 }}>
             {data.vertical} / {data.jurisdiction}
@@ -76,6 +93,20 @@ export default function WorkerCard({ data, comparables, onApprove, onEdit }) {
           )}
         </div>
 
+        {/* Problem it solves */}
+        <div style={sectionStyle}>
+          <div style={labelStyle}>Problem it solves</div>
+          {editMode ? (
+            <textarea
+              style={{ width: "100%", background: "#F8F9FC", border: "1px solid #E2E8F0", borderRadius: 8, padding: "8px 12px", color: "#1a1a2e", fontSize: 14, outline: "none", resize: "vertical", minHeight: 40, lineHeight: 1.6 }}
+              value={editData.problemSolves || ""}
+              onChange={e => handleEdit("problemSolves", e.target.value)}
+            />
+          ) : (
+            <div style={valueStyle}>{data.problemSolves || "Not specified — Alex will derive this during the build."}</div>
+          )}
+        </div>
+
         {/* Who it's for */}
         <div style={sectionStyle}>
           <div style={labelStyle}>Who it's for</div>
@@ -86,7 +117,7 @@ export default function WorkerCard({ data, comparables, onApprove, onEdit }) {
               onChange={e => handleEdit("targetUser", e.target.value)}
             />
           ) : (
-            <div style={valueStyle}>{data.targetUser}</div>
+            <div style={valueStyle}>{data.targetUser || "Not yet specified"}</div>
           )}
         </div>
 
@@ -94,6 +125,11 @@ export default function WorkerCard({ data, comparables, onApprove, onEdit }) {
         <div style={sectionStyle}>
           <div style={labelStyle}>Compliance rules</div>
           <div style={valueStyle}>{data.complianceRules || "Standard platform compliance (Tier 0 + Tier 1 auto-applied)"}</div>
+          {data.raasRules && (
+            <div style={{ marginTop: 6, fontSize: 12, color: "#64748B", lineHeight: 1.5 }}>
+              {data.raasRules}
+            </div>
+          )}
           {data.mdGateRequired && (
             <div style={{ marginTop: 8, padding: "8px 12px", background: "rgba(220,38,38,0.06)", border: "1px solid rgba(220,38,38,0.2)", borderRadius: 6 }}>
               <span style={{ fontSize: 12, fontWeight: 600, color: "#dc2626" }}>Medical Director co-sign required</span>
@@ -150,19 +186,37 @@ export default function WorkerCard({ data, comparables, onApprove, onEdit }) {
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <div style={{ padding: "12px 16px", background: "#F8F9FC", borderRadius: 8, border: "1px solid #E2E8F0" }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: "#94A3B8", textTransform: "uppercase", marginBottom: 4 }}>75% of subscription revenue</div>
+              <div style={{ fontSize: 11, fontWeight: 600, color: "#94A3B8", textTransform: "uppercase", marginBottom: 4 }}>75% of Subscription Revenue</div>
               <div style={{ fontSize: 22, fontWeight: 700, color: "#10b981" }}>${projection.monthly.toFixed(0)}/mo</div>
-              <div style={{ fontSize: 12, color: "#64748B", marginTop: 2 }}>${projection.perSubscriber.toFixed(2)} per subscriber</div>
+              <div style={{ fontSize: 12, color: "#64748B", marginTop: 2 }}>You earn ${projection.perSubscriber.toFixed(2)} per subscriber per month, paid monthly.</div>
             </div>
-            <div style={{ padding: "12px 16px", background: "#F8F9FC", borderRadius: 8, border: "1px solid #E2E8F0" }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: "#94A3B8", textTransform: "uppercase", marginBottom: 4 }}>20% of TitleApp inference margin on overage</div>
-              <div style={{ fontSize: 14, fontWeight: 600, color: "#64748B", marginTop: 8 }}>Varies by usage</div>
-              <div style={{ fontSize: 12, color: "#94A3B8", marginTop: 2 }}>Heavy users generate additional earnings</div>
+            <div style={{ padding: "12px 16px", background: "#F8F9FC", borderRadius: 8, border: "1px solid #E2E8F0", position: "relative" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: "#94A3B8", textTransform: "uppercase", marginBottom: 4 }}>Bonus: Usage Earnings</div>
+                <span
+                  onClick={() => setShowOverageTip(!showOverageTip)}
+                  style={{ cursor: "pointer", fontSize: 13, color: "#94A3B8", marginBottom: 4, userSelect: "none" }}
+                  title="Click for example"
+                >&#9432;</span>
+              </div>
+              <div style={{ fontSize: 12, color: "#64748B", lineHeight: 1.5, marginTop: 4 }}>
+                When subscribers use more than their plan includes, TitleApp charges overage fees. You earn 20% of TitleApp's margin on those fees — typically $2–$8 per heavy user per month.
+              </div>
+              {showOverageTip && (
+                <div style={{
+                  position: "absolute", top: "100%", left: 0, right: 0, zIndex: 10,
+                  marginTop: 4, padding: "12px 14px", background: "#1a1a2e", color: "#E2E8F0",
+                  borderRadius: 8, fontSize: 12, lineHeight: 1.6, boxShadow: "0 4px 16px rgba(0,0,0,0.2)",
+                }}>
+                  Example: A subscriber on the ${tier.price}/mo plan uses 2,000 credits (500 over their limit). TitleApp charges $10 in overage. TitleApp's margin is ~85%, so you earn 20% of $8.50 = $1.70 from that one subscriber that month.
+                  <div onClick={() => setShowOverageTip(false)} style={{ marginTop: 6, fontSize: 11, color: "#94A3B8", cursor: "pointer" }}>Dismiss</div>
+                </div>
+              )}
             </div>
           </div>
 
           <div style={{ fontSize: 12, color: "#94A3B8", marginTop: 10, lineHeight: 1.5 }}>
-            At {projectedSubs} subscribers on {tier.label} (${tier.price}/mo), you earn approximately ${projection.monthly.toFixed(0)}/mo from subscriptions. Heavy users generate additional overage earnings.
+            At {projectedSubs} subscribers on {tier.label} (${tier.price}/mo), you earn approximately ${projection.monthly.toFixed(0)}/mo from subscriptions plus bonus usage earnings from heavy users.
           </div>
         </div>
 

@@ -10,7 +10,7 @@ const TIERS = [
   { id: 3, label: "Tier 3", price: 79, credits: 3000 },
 ];
 
-export default function TestWorkerPanel({ worker, workerCardData, sessionId, onTestComplete }) {
+export default function TestWorkerPanel({ worker, workerCardData, sessionId, onTestComplete, onAuthRequired }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
@@ -39,14 +39,33 @@ export default function TestWorkerPanel({ worker, workerCardData, sessionId, onT
 
   useEffect(() => { scrollToBottom(); }, [messages, scrollToBottom]);
 
-  // Initial message
+  const workerName = workerCardData?.name || worker?.name || "Your Worker";
+
+  // Initial message — Vault-style
   useEffect(() => {
-    const name = workerCardData?.name || worker?.name || "your worker";
     setMessages([{
       role: "system",
-      text: `Test Mode -- You are now talking to "${name}" as a subscriber would. Try asking it to do its job. The checklist below tracks whether the core features work.`,
+      text: `You're testing as a subscriber. Ask it anything.`,
     }]);
   }, []);
+
+  // Get fresh Firebase auth token
+  async function getAuthToken() {
+    // Try Firebase auth first
+    if (window.__firebaseAuth) {
+      try {
+        const user = window.__firebaseAuth.currentUser;
+        if (user) {
+          const token = await user.getIdToken(true);
+          return token;
+        }
+      } catch (_) {}
+    }
+    // Fallback to stored token
+    const stored = localStorage.getItem("ID_TOKEN");
+    if (stored && stored !== "undefined" && stored !== "null") return stored;
+    return null;
+  }
 
   async function handleSend() {
     const text = input.trim();
@@ -56,7 +75,15 @@ export default function TestWorkerPanel({ worker, workerCardData, sessionId, onT
     setSending(true);
 
     try {
-      const token = localStorage.getItem("ID_TOKEN");
+      const token = await getAuthToken();
+      if (!token) {
+        // No auth — signal parent to show inline signup
+        setMessages(prev => [...prev, { role: "system", text: "Sign in required to test your worker." }]);
+        setSending(false);
+        if (onAuthRequired) onAuthRequired();
+        return;
+      }
+
       const tenantId = localStorage.getItem("TENANT_ID");
       const res = await fetch(`${API_BASE}/api?path=/v1/worker:test:chat`, {
         method: "POST",
@@ -91,6 +118,10 @@ export default function TestWorkerPanel({ worker, workerCardData, sessionId, onT
         if (data.suggestedEdgeCases && data.suggestedEdgeCases.length > 0) {
           setEdgeCases(data.suggestedEdgeCases);
         }
+      } else if (res.status === 401 || (data.error && /unauthorized|auth/i.test(data.error))) {
+        // Auth expired — signal parent
+        setMessages(prev => [...prev, { role: "system", text: "Session expired. Signing you back in..." }]);
+        if (onAuthRequired) onAuthRequired();
       } else {
         setMessages(prev => [...prev, { role: "assistant", text: data.error || "Something went wrong. Try again." }]);
       }
@@ -122,7 +153,7 @@ export default function TestWorkerPanel({ worker, workerCardData, sessionId, onT
     if (publishBlocked) return;
     setPublishing(true);
     try {
-      const token = localStorage.getItem("ID_TOKEN");
+      const token = await getAuthToken();
       const tenantId = localStorage.getItem("TENANT_ID");
       const res = await fetch(`${API_BASE}/api?path=/v1/worker1:submit`, {
         method: "POST",
@@ -153,13 +184,16 @@ export default function TestWorkerPanel({ worker, workerCardData, sessionId, onT
 
   const S = {
     panel: { display: "flex", flexDirection: "column", height: "100%" },
-    header: { display: "flex", alignItems: "center", gap: 10, marginBottom: 16 },
-    badge: { padding: "4px 10px", background: "rgba(16,185,129,0.1)", color: "#10b981", borderRadius: 6, fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px" },
-    workerName: { fontSize: 16, fontWeight: 700, color: "#1a1a2e" },
-    chatArea: { flex: 1, minHeight: 200, maxHeight: 360, overflowY: "auto", background: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: 12, padding: 16, display: "flex", flexDirection: "column", gap: 10, marginBottom: 12 },
+    // Vault-style top bar
+    vaultBar: { display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", background: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: "12px 12px 0 0", marginBottom: 0 },
+    vaultTitle: { fontSize: 14, fontWeight: 600, color: "#64748B" },
+    vaultTab: { padding: "6px 14px", background: "rgba(107,70,193,0.08)", color: "#6B46C1", borderRadius: 6, fontSize: 13, fontWeight: 600 },
+    testBadge: { padding: "3px 8px", background: "rgba(16,185,129,0.1)", color: "#10b981", borderRadius: 4, fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px" },
+    chatArea: { flex: 1, minHeight: 200, maxHeight: 360, overflowY: "auto", background: "#FFFFFF", border: "1px solid #E2E8F0", borderTop: "none", borderRadius: "0 0 12px 12px", padding: 16, display: "flex", flexDirection: "column", gap: 10, marginBottom: 12 },
     msgUser: { alignSelf: "flex-end", background: "#6B46C1", color: "white", padding: "8px 12px", borderRadius: "12px 12px 4px 12px", maxWidth: "85%", fontSize: 13, lineHeight: 1.5 },
     msgAssistant: { alignSelf: "flex-start", background: "#F4F4F8", color: "#1a1a2e", padding: "8px 12px", borderRadius: "12px 12px 12px 4px", maxWidth: "85%", fontSize: 13, lineHeight: 1.5 },
     msgSystem: { alignSelf: "center", color: "#64748B", fontSize: 12, textAlign: "center", padding: "6px 12px", background: "rgba(100,116,139,0.06)", borderRadius: 8, maxWidth: "90%" },
+    inputLabel: { fontSize: 11, color: "#94A3B8", marginBottom: 4 },
     inputWrap: { display: "flex", gap: 8, marginBottom: 16 },
     input: { flex: 1, padding: "10px 14px", background: "#F8F9FC", border: "1px solid #E2E8F0", borderRadius: 8, color: "#1a1a2e", fontSize: 13, outline: "none", resize: "none" },
     sendBtn: { padding: "10px 16px", background: "#10b981", color: "white", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", flexShrink: 0 },
@@ -173,14 +207,13 @@ export default function TestWorkerPanel({ worker, workerCardData, sessionId, onT
 
   return (
     <div style={S.panel}>
-      {/* Header */}
-      <div style={S.header}>
-        <span style={S.badge}>Test Mode</span>
-        <span style={S.workerName}>{workerCardData?.name || worker?.name || "Your Worker"}</span>
+      {/* Vault-style top bar */}
+      <div style={S.vaultBar}>
+        <span style={S.testBadge}>Test Mode</span>
+        <span style={S.vaultTitle}>My Vault</span>
+        <span style={{ fontSize: 13, color: "#94A3B8" }}>/</span>
+        <span style={S.vaultTab}>{workerName}</span>
       </div>
-      {workerCardData?.description && (
-        <div style={{ fontSize: 13, color: "#64748B", lineHeight: 1.5, marginBottom: 16 }}>{workerCardData.description}</div>
-      )}
 
       {/* Test Chat */}
       <div style={S.chatArea}>
@@ -204,6 +237,7 @@ export default function TestWorkerPanel({ worker, workerCardData, sessionId, onT
       )}
 
       {/* Chat input */}
+      <div style={S.inputLabel}>You're testing as a subscriber. Ask it anything.</div>
       <div style={S.inputWrap}>
         <textarea
           ref={inputRef}
@@ -211,7 +245,7 @@ export default function TestWorkerPanel({ worker, workerCardData, sessionId, onT
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Talk to your worker as a subscriber would..."
+          placeholder="Ask your worker something..."
           rows={1}
         />
         <button style={S.sendBtn} onClick={handleSend} disabled={sending}>Send</button>
@@ -280,7 +314,7 @@ export default function TestWorkerPanel({ worker, workerCardData, sessionId, onT
         onClick={handlePublish}
         disabled={publishing || !canPublish || publishBlocked}
       >
-        {publishing ? "Publishing..." : allChecked ? "Publish to marketplace" : "Looks good -- publish it"}
+        {publishing ? "Publishing..." : allChecked ? "Publish to marketplace" : "Looks good — publish it"}
       </button>
       {exchangeCount === 0 && (
         <div style={{ fontSize: 11, color: "#94A3B8", textAlign: "center", marginTop: 6 }}>

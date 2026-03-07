@@ -13,7 +13,7 @@ const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.ti
 const S = {
   root: { display: "flex", height: "100vh", overflow: "hidden", background: "#F8F9FC", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", color: "#1a1a2e" },
   // Left panel — chat
-  chatPanel: { width: "35%", minWidth: 320, maxWidth: 520, display: "flex", flexDirection: "column", borderRight: "1px solid #E2E8F0", background: "#FFFFFF" },
+  chatPanel: { display: "flex", flexDirection: "column", borderRight: "1px solid #E2E8F0", background: "#FFFFFF" },
   chatHeader: { padding: "16px 20px", borderBottom: "1px solid #E2E8F0", display: "flex", alignItems: "center", gap: 10 },
   chatLogo: { fontSize: 14, fontWeight: 700, color: "#6B46C1" },
   chatName: { fontSize: 13, fontWeight: 600, color: "#64748B" },
@@ -37,6 +37,9 @@ const S = {
   overlayTitle: { fontSize: 22, fontWeight: 700, color: "#1a1a2e", marginBottom: 16 },
   overlaySub: { fontSize: 15, color: "#64748B", lineHeight: 1.6, marginBottom: 8 },
   overlayBtn: { marginTop: 24, padding: "12px 32px", background: "#6B46C1", color: "white", border: "none", borderRadius: 10, fontSize: 15, fontWeight: 600, cursor: "pointer" },
+  // Divider
+  divider: { width: 4, cursor: "col-resize", background: "#E2E8F0", flexShrink: 0, transition: "background 0.15s" },
+  dividerHover: { background: "#6B46C1" },
 };
 
 const FLOW_STEPS = ["Discover", "Vibe", "Build", "Test", "Distribute", "Grow"];
@@ -89,9 +92,23 @@ export default function DeveloperSandbox() {
   const messagesEndRef = useRef(null);
   const chatInputRef = useRef(null);
 
-  // Flow state
+  // Flow state — flowStep only moves forward, never backward
   const [flowStep, setFlowStep] = useState(1); // 1=Discover, 2=Vibe, 3=Build, 4=Test, 5=Distribute, 6=Grow
+  const [maxFlowStep, setMaxFlowStep] = useState(1); // highest step reached
   const [showOnboarding, setShowOnboarding] = useState(() => !localStorage.getItem("sandboxOnboardingComplete"));
+
+  // Step advancement — only forward
+  function advanceToStep(step) {
+    if (step > flowStep) {
+      setFlowStep(step);
+      setMaxFlowStep(prev => Math.max(prev, step));
+    }
+  }
+
+  // View a completed step (for step indicator clicks) — does NOT change maxFlowStep
+  function viewStep(step) {
+    setFlowStep(step);
+  }
 
   // Step 1 — Discover
   const [vertical, setVertical] = useState("");
@@ -100,7 +117,7 @@ export default function DeveloperSandbox() {
   const [waitlistEnabled, setWaitlistEnabled] = useState(false);
 
   // Step 2 — Vibe
-  const [vibeStep, setVibeStep] = useState(0); // tracks which question we're on
+  const [vibeStep, setVibeStep] = useState(0);
   const [vibeAnswers, setVibeAnswers] = useState({});
   const [workerCardData, setWorkerCardData] = useState(null);
   const [showWorkerCard, setShowWorkerCard] = useState(false);
@@ -116,12 +133,21 @@ export default function DeveloperSandbox() {
   // Edit mode (post-publish)
   const [editMode, setEditMode] = useState(false);
 
-  // Inline auth (for unauthenticated users at Step 3)
+  // Inline auth (for unauthenticated users)
   const [showAuthPrompt, setShowAuthPrompt] = useState(false);
   const [authEmail, setAuthEmail] = useState(() => new URLSearchParams(window.location.search).get("email") || "");
   const [authName, setAuthName] = useState(() => new URLSearchParams(window.location.search).get("name") || "");
   const [authLoading, setAuthLoading] = useState(false);
   const [pendingCardData, setPendingCardData] = useState(null);
+
+  // Session error (silent inline UI, not Alex conversation)
+  const [showSessionError, setShowSessionError] = useState(false);
+
+  // Name — captured once, never asked again
+  const [creatorName, setCreatorName] = useState(() => {
+    // Try Firebase Auth first, then localStorage, then session
+    return localStorage.getItem("DISPLAY_NAME") || sessionStorage.getItem("ta_sandbox_name") || "";
+  });
 
   // Session ID
   const [sessionId] = useState(() => {
@@ -136,6 +162,12 @@ export default function DeveloperSandbox() {
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
   const [showMobilePanel, setShowMobilePanel] = useState(false);
 
+  // Resizable panels
+  const [chatWidthPercent, setChatWidthPercent] = useState(40);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dividerHover, setDividerHover] = useState(false);
+  const rootRef = useRef(null);
+
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 767px)");
     const handler = (e) => setIsMobile(e.matches);
@@ -143,14 +175,39 @@ export default function DeveloperSandbox() {
     return () => mq.removeEventListener("change", handler);
   }, []);
 
+  // Divider drag handlers
+  useEffect(() => {
+    if (!isDragging) return;
+    function onMouseMove(e) {
+      if (!rootRef.current) return;
+      const rect = rootRef.current.getBoundingClientRect();
+      const totalWidth = rect.width;
+      const x = e.clientX - rect.left;
+      const minChat = 300;
+      const minWork = 400;
+      const pct = (x / totalWidth) * 100;
+      if (x >= minChat && (totalWidth - x) >= minWork) {
+        setChatWidthPercent(pct);
+      }
+    }
+    function onMouseUp() {
+      setIsDragging(false);
+    }
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup", onMouseUp);
+    return () => {
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mouseup", onMouseUp);
+    };
+  }, [isDragging]);
+
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
 
   useEffect(() => { scrollToBottom(); }, [messages, scrollToBottom]);
 
-  const userName = localStorage.getItem("DISPLAY_NAME") || "";
-  const firstName = userName ? userName.split(" ")[0] : "";
+  const firstName = creatorName ? creatorName.split(" ")[0] : "";
   const isHE = vertical === "health-education";
 
   // Initial greeting — mount only, for returning users who already dismissed onboarding
@@ -178,12 +235,25 @@ export default function DeveloperSandbox() {
     setMessages(prev => [...prev, { role: "user", text }]);
   }
 
+  // Capture name once — store everywhere
+  function captureName(name) {
+    if (!name) return;
+    setCreatorName(name);
+    sessionStorage.setItem("ta_sandbox_name", name);
+    localStorage.setItem("DISPLAY_NAME", name);
+  }
+
   async function sendMessage() {
     const text = input.trim();
     if (!text || sending) return;
     setInput("");
     addUserMessage(text);
     setSending(true);
+
+    // If we don't have a name yet and this looks like a name response, capture it
+    if (!creatorName && messages.length <= 2 && text.length < 40 && !text.includes("?")) {
+      captureName(text);
+    }
 
     try {
       const token = localStorage.getItem("ID_TOKEN");
@@ -192,13 +262,15 @@ export default function DeveloperSandbox() {
       const resp = await fetch(`${API_BASE}/api?path=/v1/chat:message`, {
         method: "POST",
         headers,
-        body: JSON.stringify({ sessionId, surface: "sandbox", userInput: text, flowStep, vertical, subjectDomain }),
+        body: JSON.stringify({
+          sessionId, surface: "sandbox", userInput: text, flowStep, vertical, subjectDomain,
+          ...(creatorName ? { creatorName } : {}),
+        }),
       });
       const result = await resp.json();
       const reply = result.message || result.reply;
       if (result.ok && reply) {
         addAssistantMessage(reply);
-        // Handle flow triggers from AI responses
         if (result.workerCardData) {
           setWorkerCardData(result.workerCardData);
           setShowWorkerCard(true);
@@ -264,23 +336,25 @@ export default function DeveloperSandbox() {
     sessionStorage.setItem("ta_sandbox_worker_name", idea.name);
     addUserMessage(`I want something like "${idea.name}"`);
     // Move to Step 2 — Vibe
-    setFlowStep(2);
+    advanceToStep(2);
     setVibeStep(0);
-    // Start the vibe conversation
+    // Start the vibe conversation with question 1
     addAssistantMessage(
-      `"${idea.name}" — good choice. Let me ask a few questions so I can build this exactly right for you.\n\nWho uses this worker? Nurses, medics, instructors, students — who is the primary user?`
+      `"${idea.name}" — good choice. Let me ask a few questions so I can build this exactly right for you.\n\nTell me more — what problem keeps coming up that you want a Digital Worker to handle?`
     );
   }
 
-  // ── Step 2 handlers (Vibe conversation) ──────────────────────
+  // ── Step 2 handlers (Vibe conversation — 8 required questions) ──
 
   const VIBE_QUESTIONS = [
-    { key: "targetUser", question: "Who uses this worker? Nurses, medics, instructors, students -- who is the primary user?" },
-    { key: "coreJob", question: "What does it help them do? Describe the main job in one or two sentences." },
-    { key: "complianceRules", question: "Are there any rules it has to follow? State board rules, scope of practice, your hospital's policies -- anything it must never violate?" },
-    { key: "externalData", question: "Does it need to pull in any outside data? Drug databases, protocol references, scheduling systems?" },
-    { key: "visibility", question: "Should it stay private to your organization, or can anyone on TitleApp subscribe to it?" },
-    { key: "jurisdiction", question: "What state are you in? And if it's tied to a specific employer, what is the organization name?" },
+    { key: "problemDescription", question: "Tell me more — what problem keeps coming up that you want a Digital Worker to handle?" },
+    { key: "targetUser", question: "Who is the main person using this day to day — you, your team, your customers, or all three?" },
+    { key: "neverGetWrong", question: "What should this worker never get wrong? Think compliance, accuracy, anything that would cause real problems." },
+    { key: "raasRules", question: "Are there any regulations, compliance rules, or SOPs this worker needs to follow? For example — IRS guidelines, state laws, your company's internal policies, or industry standards. I'll bake these directly into the worker's rules." },
+    { key: "externalData", question: "What data or systems does this worker need to access?" },
+    { key: "outputFormat", question: "What should the output look like — dashboard, report, email, chat, something else?" },
+    { key: "currentProcess", question: "What's broken or missing in your current process?" },
+    { key: "jurisdiction", question: "What state or region does this apply to? And if it's tied to a specific organization, what's the name?" },
   ];
 
   function handleVibeAnswer(text) {
@@ -294,53 +368,72 @@ export default function DeveloperSandbox() {
       setJurisdiction(text);
     }
 
+    // If user says no RAAS rules, acknowledge
+    if (currentQ.key === "raasRules" && /none|no|not really|nothing|n\/a/i.test(text)) {
+      const vertLabel = VERTICALS.find(v => v.value === vertical)?.label || vertical;
+      addAssistantMessage(`Got it — I'll apply standard compliance defaults for ${vertLabel}.`);
+    }
+
     if (vibeStep < VIBE_QUESTIONS.length - 1) {
       // Next question
-      setVibeStep(vibeStep + 1);
+      const nextStep = vibeStep + 1;
+      setVibeStep(nextStep);
+      // Don't send the RAAS acknowledgment AND the next question in same tick
+      const delay = currentQ.key === "raasRules" && /none|no|not really|nothing|n\/a/i.test(text) ? 1000 : 500;
       setTimeout(() => {
-        addAssistantMessage(VIBE_QUESTIONS[vibeStep + 1].question);
-      }, 500);
+        addAssistantMessage(VIBE_QUESTIONS[nextStep].question);
+      }, delay);
     } else {
-      // All questions answered — generate Worker Card
-      const isPublic = (newAnswers.visibility || "").toLowerCase().includes("anyone") ||
-                       (newAnswers.visibility || "").toLowerCase().includes("public") ||
-                       (newAnswers.visibility || "").toLowerCase().includes("marketplace");
-
-      const needsMdGate = isHE && selectedIdea?.lane === "back_me_up";
-      const cardData = {
-        name: selectedIdea?.name || "Custom Worker",
-        description: newAnswers.coreJob || selectedIdea?.desc || "",
-        targetUser: newAnswers.targetUser || "",
-        complianceRules: newAnswers.complianceRules || "Standard platform compliance (Tier 0 + Tier 1 auto-applied)",
-        externalData: newAnswers.externalData || "None specified",
-        visibility: isPublic ? "Public marketplace" : "Internal only",
-        vertical: VERTICALS.find(v => v.value === vertical)?.label || vertical,
-        jurisdiction: newAnswers.jurisdiction || "GLOBAL",
-        pricingTier: 2,
-        mdGateRequired: needsMdGate,
-        subjectDomain,
-        lane: selectedIdea?.lane,
-        internal_only: !isPublic,
-      };
-
-      setWorkerCardData(cardData);
-      setShowWorkerCard(true);
-
-      setTimeout(() => {
-        addAssistantMessage("Here is your Worker Card. Review it, adjust anything you want, and approve it when you are ready. I will start building immediately.");
-      }, 500);
-
-      // Find comparable workers
-      const ideas = getWorkerIdeas(vertical, subjectDomain);
-      const comparables = ideas
-        .filter(i => i.name !== selectedIdea?.name)
-        .slice(0, 3)
-        .map(i => ({
-          name: i.name,
-          price: i.price.includes("79") ? 79 : i.price.includes("49") ? 49 : 29,
-        }));
-      cardData._comparables = comparables;
+      // All 8 questions answered — generate Worker Card
+      generateWorkerCard(newAnswers);
     }
+  }
+
+  function generateWorkerCard(answers) {
+    const isPublic = (answers.visibility || answers.currentProcess || "").toLowerCase().includes("anyone") ||
+                     (answers.visibility || "").toLowerCase().includes("public") ||
+                     (answers.visibility || "").toLowerCase().includes("marketplace");
+
+    const needsMdGate = isHE && selectedIdea?.lane === "back_me_up";
+    const cardData = {
+      name: selectedIdea?.name || "Custom Worker",
+      description: answers.problemDescription || selectedIdea?.desc || "",
+      problemSolves: answers.currentProcess || "",
+      targetUser: answers.targetUser || "",
+      complianceRules: answers.neverGetWrong || "Standard platform compliance (Tier 0 + Tier 1 auto-applied)",
+      raasRules: answers.raasRules && !/none|no|not really|nothing|n\/a/i.test(answers.raasRules) ? answers.raasRules : "",
+      externalData: answers.externalData || "None specified",
+      outputFormat: answers.outputFormat || "",
+      visibility: isPublic ? "Public marketplace" : "Internal only",
+      vertical: VERTICALS.find(v => v.value === vertical)?.label || vertical,
+      jurisdiction: answers.jurisdiction || "GLOBAL",
+      pricingTier: 2,
+      mdGateRequired: needsMdGate,
+      subjectDomain,
+      lane: selectedIdea?.lane,
+      internal_only: !isPublic,
+    };
+
+    setWorkerCardData(cardData);
+    setShowWorkerCard(true);
+
+    // Clear chat and send fresh transition message (Fix 3)
+    setTimeout(() => {
+      setMessages([
+        { role: "assistant", text: `Here's your ${cardData.name}. Review it on the right — edit anything, then hit Approve and I'll start building.` }
+      ]);
+    }, 300);
+
+    // Find comparable workers
+    const ideas = getWorkerIdeas(vertical, subjectDomain);
+    const comparables = ideas
+      .filter(i => i.name !== selectedIdea?.name)
+      .slice(0, 3)
+      .map(i => ({
+        name: i.name,
+        price: i.price.includes("79") ? 79 : i.price.includes("49") ? 49 : 29,
+      }));
+    cardData._comparables = comparables;
   }
 
   // Override sendMessage for vibe step to route answers
@@ -350,6 +443,11 @@ export default function DeveloperSandbox() {
     setInput("");
     addUserMessage(text);
 
+    // Capture name from first response if we don't have it
+    if (!creatorName && messages.length <= 2 && text.length < 40 && !text.includes("?")) {
+      captureName(text);
+    }
+
     if (flowStep === 2 && vibeStep < VIBE_QUESTIONS.length) {
       handleVibeAnswer(text);
       return;
@@ -357,7 +455,6 @@ export default function DeveloperSandbox() {
 
     // Default chat flow
     setSending(true);
-    // Capture and clear pending images
     const images = [...pendingImages];
     setPendingImages([]);
     if (images.length > 0) {
@@ -376,6 +473,7 @@ export default function DeveloperSandbox() {
         headers,
         body: JSON.stringify({
           sessionId, surface: "sandbox", userInput: text, flowStep, vertical, subjectDomain,
+          ...(creatorName ? { creatorName } : {}),
           ...(images.length > 0 ? { imageData: images.map(img => ({ base64: img.base64, mediaType: img.mediaType })) } : {}),
         }),
       });
@@ -392,6 +490,7 @@ export default function DeveloperSandbox() {
               name: card.name || "Your Worker",
               description: card.description || "",
               targetUser: card.targetUser || "",
+              problemSolves: card.problemSolves || "",
               complianceRules: (card.rules || []).join(". ") || "Standard compliance",
               vertical: card.category || vertical || "",
               jurisdiction: "GLOBAL",
@@ -401,11 +500,10 @@ export default function DeveloperSandbox() {
             setWorkerCardData(cardData);
             setWorker({ id: card.workerId, name: card.name, buildPhase: "draft" });
 
-            // Narrate the handoff
             setTimeout(() => {
               addAssistantMessage(`Your ${card.name} is ready. Let me show you around. You can test it, set your price, and publish when you are ready.`);
               setShowWorkerCard(true);
-              if (flowStep < 2) setFlowStep(2);
+              if (flowStep < 2) advanceToStep(2);
             }, 800);
           }
         }
@@ -436,8 +534,7 @@ export default function DeveloperSandbox() {
 
   async function handleWorkerCardApprove(cardData) {
     const token = localStorage.getItem("ID_TOKEN");
-    if (!token) {
-      // Save card data and show inline signup instead of calling pipeline
+    if (!token || token === "undefined" || token === "null") {
       setPendingCardData(cardData);
       setShowAuthPrompt(true);
       addAssistantMessage("Before I can build this, I need a quick signup — just your name and email. This creates your workspace so your worker has a home.");
@@ -449,12 +546,12 @@ export default function DeveloperSandbox() {
   async function runBuildPipeline(cardData) {
     setWorkerCardData(cardData);
     setShowWorkerCard(false);
-    setFlowStep(3);
+    advanceToStep(3); // Only forward — never regresses
     addAssistantMessage("Building your worker now. This takes about a minute. Watch the progress on the right.");
 
-    // Trigger the pipeline
     try {
-      const sops = (vibeAnswers.complianceRules || "").split(/[.;]/).map(s => s.trim()).filter(Boolean);
+      const sops = (vibeAnswers.neverGetWrong || vibeAnswers.complianceRules || "").split(/[.;]/).map(s => s.trim()).filter(Boolean);
+      const raasTier1 = (vibeAnswers.raasRules || "").split(/[.;]/).map(s => s.trim()).filter(Boolean);
       const isPublic = !cardData.internal_only;
       const intakeRes = await w1Api("worker1:intake", {
         workerId: worker?.id || null,
@@ -462,16 +559,16 @@ export default function DeveloperSandbox() {
         jurisdiction: cardData.jurisdiction || jurisdiction || "National",
         description: cardData.description,
         sops,
+        raas_tier_1_rules: raasTier1,
+        raas_tier_2_policies: sops,
         internal_only: cardData.internal_only,
         ...(isHE && { subjectDomain, heJurisdiction: cardData.jurisdiction, deploymentTier: isPublic ? 2 : 3, heLane: cardData.lane }),
       });
       if (intakeRes.ok && intakeRes.workerId) {
         setWorker(prev => ({ ...prev, id: intakeRes.workerId, name: cardData.name, buildPhase: "intake" }));
-        // Start research automatically
         const researchRes = await w1Api("worker1:research", { workerId: intakeRes.workerId });
         if (researchRes.ok) {
           setWorker(prev => ({ ...prev, buildPhase: "brief", complianceBrief: researchRes.brief }));
-          // Auto-save rules
           await w1Api("worker1:rules:save", { workerId: intakeRes.workerId, tier2: researchRes.brief?.tier2 || [], tier3: sops });
         }
       }
@@ -493,24 +590,22 @@ export default function DeveloperSandbox() {
       });
       const result = await resp.json();
       if (result.ok && result.token) {
-        // Store credentials
         localStorage.setItem("ID_TOKEN", result.token);
         if (result.tenantId) localStorage.setItem("TENANT_ID", result.tenantId);
         if (result.userId) localStorage.setItem("USER_ID", result.userId);
-        localStorage.setItem("DISPLAY_NAME", authName.trim());
+        captureName(authName.trim());
 
-        // Sign in with Firebase if custom token provided
         if (result.customToken && window.__firebaseAuth) {
           try {
             const { signInWithCustomToken } = await import("firebase/auth");
             await signInWithCustomToken(window.__firebaseAuth, result.customToken);
-          } catch (_) { /* proceed without Firebase sign-in */ }
+          } catch (_) {}
         }
 
         setShowAuthPrompt(false);
+        setShowSessionError(false);
         addAssistantMessage(`Welcome, ${authName.split(" ")[0]}. Now let me build that worker.`);
 
-        // Resume the build pipeline with saved card data
         if (pendingCardData) {
           await runBuildPipeline(pendingCardData);
           setPendingCardData(null);
@@ -525,6 +620,23 @@ export default function DeveloperSandbox() {
     }
   }
 
+  // Handle auth required from TestWorkerPanel (Fix 1 + Fix 12)
+  function handleTestAuthRequired() {
+    setShowAuthPrompt(true);
+    // Show inline signup — NOT an Alex message about auth
+    addAssistantMessage("Let's get you signed in so you can test this. Quick — name and email.");
+  }
+
+  // Handle session error — silent inline UI, not Alex conversation (Fix 12)
+  function handleSessionError() {
+    setShowSessionError(true);
+  }
+
+  function handleSessionReauth() {
+    setShowSessionError(false);
+    setShowAuthPrompt(true);
+  }
+
   function handleWorkerCardEdit(editedData) {
     setWorkerCardData(editedData);
   }
@@ -533,17 +645,17 @@ export default function DeveloperSandbox() {
 
   function handleBuildComplete(buildData) {
     setWorker(prev => ({ ...prev, ...buildData }));
-    setFlowStep(4);
+    advanceToStep(4); // Only forward
     fireConfetti("full");
     setTimeout(() => fireConfetti("medium"), 600);
-    addAssistantMessage(`Your ${buildData.name || workerCardData?.name} is built. Before we publish, let's make sure it works exactly the way you want. Use the test panel on the right like one of your subscribers would -- I'm watching.`);
+    addAssistantMessage(`Your ${buildData.name || workerCardData?.name} is built. Before we publish, let's make sure it works exactly the way you want. Use the test panel on the right like one of your subscribers would — I'm watching.`);
   }
 
   // ── Step 4 → Step 5: Test complete → Distribute ───────────
 
   function handleTestComplete(publishedWorker) {
     setWorker(publishedWorker);
-    setFlowStep(5);
+    advanceToStep(5); // Only forward
     fireConfetti("full");
     setTimeout(() => fireConfetti("medium"), 500);
     addAssistantMessage(`"${publishedWorker.name || workerCardData?.name}" is live. Your distribution kit is ready on the right. Copy, paste, and share.`);
@@ -552,8 +664,8 @@ export default function DeveloperSandbox() {
   // ── Step 5 → Step 6: Distribution done → Grow ─────────────
 
   function handleMoveToGrow() {
-    setFlowStep(6);
-    addAssistantMessage("One last thing. Set up how you want me to stay in touch with you. I will send you weekly earnings updates, usage insights, and growth tips. No dashboard to log into -- I come to you.");
+    advanceToStep(6);
+    addAssistantMessage("One last thing. Set up how you want me to stay in touch with you. I will send you weekly earnings updates, usage insights, and growth tips. No dashboard to log into — I come to you.");
   }
 
   function handleCommsComplete() {
@@ -569,6 +681,7 @@ export default function DeveloperSandbox() {
       name: existingWorker.name || existingWorker.display_name || "Your Worker",
       description: existingWorker.description || "",
       targetUser: existingWorker.targetUser || "",
+      problemSolves: existingWorker.problemSolves || "",
       complianceRules: (existingWorker.raas_tier_1 || []).join(". ") || "Standard compliance",
       vertical: existingWorker.suite || existingWorker.category || "",
       jurisdiction: existingWorker.jurisdiction || "GLOBAL",
@@ -576,7 +689,7 @@ export default function DeveloperSandbox() {
       mdGateRequired: existingWorker.mdGateRequired || false,
       internal_only: existingWorker.internal_only || false,
     });
-    setFlowStep(4);
+    viewStep(4);
     addAssistantMessage(`What would you like to change about ${existingWorker.name || "your worker"}? Describe the change in the chat, or test it on the right and tell me what needs fixing.`);
   }
 
@@ -588,7 +701,7 @@ export default function DeveloperSandbox() {
     const maxFiles = 3 - pendingImages.length;
     const toProcess = files.slice(0, maxFiles);
     toProcess.forEach(file => {
-      if (file.size > 5 * 1024 * 1024) return; // 5MB max
+      if (file.size > 5 * 1024 * 1024) return;
       if (!/^image\/(png|jpeg|webp)$/.test(file.type)) return;
       const reader = new FileReader();
       reader.onload = () => {
@@ -600,9 +713,22 @@ export default function DeveloperSandbox() {
     e.target.value = "";
   }
 
+  // Should we show vertical chips in chat? Only in Step 1, before vertical is selected, no Worker Card
+  const showVerticalChips = flowStep === 1 && !vertical && messages.length > 0 && !showWorkerCard;
+
+  // Chat input placeholder based on step
+  const chatPlaceholder = showWorkerCard
+    ? "Ask Alex to change anything..."
+    : flowStep === 1 ? "Tell Alex your specialty..."
+    : flowStep === 2 ? "Answer Alex's questions..."
+    : flowStep === 3 ? "Ask Alex anything about the build..."
+    : flowStep === 4 ? "Test your worker — describe any problems..."
+    : flowStep === 5 ? "Ask Alex for marketing help..."
+    : "Talk to Alex...";
+
   // ── Render ──────────────────────────────────────────────────
   return (
-    <div style={{ ...S.root, ...(isMobile ? { flexDirection: "column" } : {}) }}>
+    <div ref={rootRef} style={{ ...S.root, ...(isMobile ? { flexDirection: "column" } : {}) }}>
       {/* Onboarding overlay */}
       {showOnboarding && (
         <div style={S.overlay}>
@@ -617,7 +743,13 @@ export default function DeveloperSandbox() {
       )}
 
       {/* Left: Chat Panel */}
-      <div style={{ ...S.chatPanel, ...(isMobile ? { width: "100%", minWidth: 0, maxWidth: "none", borderRight: "none", flex: 1 } : {}) }}>
+      <div style={{
+        ...S.chatPanel,
+        ...(isMobile
+          ? { width: "100%", minWidth: 0, maxWidth: "none", borderRight: "none", flex: 1 }
+          : { width: `${chatWidthPercent}%`, minWidth: 300 }
+        ),
+      }}>
         <div style={S.chatHeader}>
           <span style={S.chatLogo}>TitleApp</span>
           <span style={S.chatName}>Alex — Your AI Builder</span>
@@ -638,8 +770,8 @@ export default function DeveloperSandbox() {
           ))}
           {sending && <div style={S.typing}>Alex is typing...</div>}
 
-          {/* Step 1: Vertical chips (inline in chat) */}
-          {flowStep === 1 && !vertical && messages.length > 0 && (
+          {/* Step 1: Vertical chips (inline in chat) — hide once Worker Card shows */}
+          {showVerticalChips && (
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
               {VERTICALS.map(v => (
                 <button
@@ -700,6 +832,24 @@ export default function DeveloperSandbox() {
             </form>
           )}
 
+          {/* Session error — silent inline UI, not Alex (Fix 12) */}
+          {showSessionError && (
+            <div style={{
+              alignSelf: "flex-start", background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 12,
+              padding: 16, maxWidth: "85%", display: "flex", flexDirection: "column", gap: 10,
+            }}>
+              <div style={{ fontSize: 13, color: "#1a1a2e", lineHeight: 1.5 }}>
+                Something went wrong with your session. Click below to sign in and pick up where you left off.
+              </div>
+              <button
+                onClick={handleSessionReauth}
+                style={{ padding: "10px 20px", background: "#6B46C1", color: "white", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer" }}
+              >
+                Sign in
+              </button>
+            </div>
+          )}
+
           <div ref={messagesEndRef} />
         </div>
         <div style={S.chatInputWrap}>
@@ -731,14 +881,7 @@ export default function DeveloperSandbox() {
               onKeyDown={handleChatKeyDown}
               onFocus={e => { e.target.style.borderColor = "#6B46C1"; e.target.style.boxShadow = "0 0 0 3px rgba(107,70,193,0.12)"; }}
               onBlur={e => { e.target.style.borderColor = "#E2E8F0"; e.target.style.boxShadow = "none"; }}
-              placeholder={
-                flowStep === 1 ? "Tell Alex your specialty..." :
-                flowStep === 2 ? "Answer Alex's questions..." :
-                flowStep === 3 ? "Ask Alex anything about the build..." :
-                flowStep === 4 ? "Test your worker -- describe any problems..." :
-                flowStep === 5 ? "Ask Alex for marketing help..." :
-                "Talk to Alex..."
-              }
+              placeholder={chatPlaceholder}
               rows={1}
             />
             <button
@@ -756,6 +899,19 @@ export default function DeveloperSandbox() {
           </div>
         </div>
       </div>
+
+      {/* Draggable divider (desktop only) — Fix 9 */}
+      {!isMobile && (
+        <div
+          style={{
+            ...S.divider,
+            ...(isDragging || dividerHover ? S.dividerHover : {}),
+          }}
+          onMouseDown={() => setIsDragging(true)}
+          onMouseEnter={() => setDividerHover(true)}
+          onMouseLeave={() => setDividerHover(false)}
+        />
+      )}
 
       {/* Mobile: backdrop when sheet is open */}
       {isMobile && showMobilePanel && (
@@ -802,19 +958,19 @@ export default function DeveloperSandbox() {
             <div style={{ width: 40, height: 4, borderRadius: 2, background: "#E2E8F0" }} />
           </div>
         )}
-        {/* Step indicator */}
+        {/* Step indicator — never allows backward navigation past maxFlowStep */}
         {isMobile ? (
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 16, padding: "10px 16px", borderBottom: "1px solid #E2E8F0", background: "#FFFFFF" }}>
             <button
-              onClick={() => { if (flowStep > 1) setFlowStep(flowStep - 1); }}
+              onClick={() => { if (flowStep > 1 && flowStep - 1 <= maxFlowStep) viewStep(flowStep - 1); }}
               disabled={flowStep <= 1}
               style={{ background: "none", border: "none", fontSize: 18, color: flowStep > 1 ? "#6B46C1" : "#E2E8F0", cursor: flowStep > 1 ? "pointer" : "default", minWidth: 44, minHeight: 44, display: "flex", alignItems: "center", justifyContent: "center" }}
             >&larr;</button>
             <span style={{ fontSize: 14, fontWeight: 600, color: "#6B46C1" }}>{flowStep} {FLOW_STEPS[flowStep - 1]}</span>
             <button
-              onClick={() => { if (flowStep < 6) setFlowStep(flowStep + 1); }}
-              disabled={flowStep >= 6}
-              style={{ background: "none", border: "none", fontSize: 18, color: flowStep < 6 ? "#6B46C1" : "#E2E8F0", cursor: flowStep < 6 ? "pointer" : "default", minWidth: 44, minHeight: 44, display: "flex", alignItems: "center", justifyContent: "center" }}
+              onClick={() => { if (flowStep < maxFlowStep) viewStep(flowStep + 1); }}
+              disabled={flowStep >= maxFlowStep}
+              style={{ background: "none", border: "none", fontSize: 18, color: flowStep < maxFlowStep ? "#6B46C1" : "#E2E8F0", cursor: flowStep < maxFlowStep ? "pointer" : "default", minWidth: 44, minHeight: 44, display: "flex", alignItems: "center", justifyContent: "center" }}
             >&rarr;</button>
           </div>
         ) : (
@@ -822,7 +978,8 @@ export default function DeveloperSandbox() {
             {FLOW_STEPS.map((step, i) => {
               const stepNum = i + 1;
               const isActive = flowStep === stepNum;
-              const isComplete = flowStep > stepNum;
+              const isComplete = maxFlowStep > stepNum;
+              const isReachable = stepNum <= maxFlowStep;
               return (
                 <div
                   key={step}
@@ -831,10 +988,10 @@ export default function DeveloperSandbox() {
                     color: isActive ? "#6B46C1" : isComplete ? "#10b981" : "#94A3B8",
                     borderBottom: `2px solid ${isActive ? "#6B46C1" : "transparent"}`,
                     display: "flex", alignItems: "center", gap: 6,
-                    cursor: isComplete ? "pointer" : "default",
-                    opacity: stepNum > flowStep + 1 ? 0.4 : 1,
+                    cursor: isReachable && !isActive ? "pointer" : "default",
+                    opacity: stepNum > maxFlowStep + 1 ? 0.4 : 1,
                   }}
-                  onClick={() => { if (isComplete) setFlowStep(stepNum); }}
+                  onClick={() => { if (isReachable && !isActive) viewStep(stepNum); }}
                 >
                   <span style={{
                     width: 20, height: 20, borderRadius: 10, display: "inline-flex", alignItems: "center", justifyContent: "center",
@@ -880,7 +1037,7 @@ export default function DeveloperSandbox() {
                     {FLOW_STEPS.map((step, i) => {
                       const descriptions = [
                         "Pick your industry and find a starting point",
-                        "Answer 6 questions so Alex knows what to build",
+                        "Answer 8 questions so Alex knows what to build",
                         "Alex assembles compliance rules and logic",
                         "Talk to your worker as a subscriber would",
                         "Get your marketing kit — links, copy, QR code",
@@ -1001,6 +1158,7 @@ export default function DeveloperSandbox() {
                   comparables={workerCardData._comparables || []}
                   onApprove={handleWorkerCardApprove}
                   onEdit={handleWorkerCardEdit}
+                  isPublished={false}
                 />
               )}
             </>
@@ -1023,6 +1181,7 @@ export default function DeveloperSandbox() {
               workerCardData={workerCardData}
               sessionId={sessionId}
               onTestComplete={handleTestComplete}
+              onAuthRequired={handleTestAuthRequired}
             />
           )}
 
@@ -1056,7 +1215,7 @@ export default function DeveloperSandbox() {
           {workerCardData?.name && <span>{workerCardData.name}</span>}
           <span style={{ marginLeft: "auto", display: "flex", gap: 3 }}>
             {FLOW_STEPS.map((s, i) => (
-              <span key={s} style={{ width: 24, height: 4, borderRadius: 2, background: i < flowStep ? "#6B46C1" : "#E2E8F0" }} />
+              <span key={s} style={{ width: 24, height: 4, borderRadius: 2, background: i < maxFlowStep ? "#6B46C1" : "#E2E8F0" }} />
             ))}
           </span>
         </div>
