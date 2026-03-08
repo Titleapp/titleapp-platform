@@ -119,8 +119,8 @@ export default function DeveloperSandbox() {
   const chatInputRef = useRef(null);
 
   // Flow state — flowStep only moves forward, never backward
-  const [flowStep, setFlowStep] = useState(1); // 1=Discover, 2=Vibe, 3=Build, 4=Test, 5=Distribute, 6=Grow
-  const [maxFlowStep, setMaxFlowStep] = useState(1); // highest step reached
+  const [flowStep, setFlowStep] = useState(() => savedSession.current?.flowStep || 1);
+  const [maxFlowStep, setMaxFlowStep] = useState(() => savedSession.current?.maxFlowStep || savedSession.current?.flowStep || 1);
   const [showOnboarding, setShowOnboarding] = useState(() => !localStorage.getItem("sandboxOnboardingComplete"));
 
   // Step advancement — only forward
@@ -136,14 +136,14 @@ export default function DeveloperSandbox() {
     setFlowStep(step);
   }
 
-  // ── Session persistence — load saved state on mount ──
+  // ── Session persistence — SYNCHRONOUS load before useState initializers ──
   const savedSession = useRef(null);
-  useEffect(() => {
+  if (savedSession.current === null) {
     try {
       const raw = localStorage.getItem("ta_sandbox_session");
       if (raw) savedSession.current = JSON.parse(raw);
     } catch {}
-  }, []);
+  }
 
   // Step 1 — Discover
   const [vertical, setVertical] = useState(() => savedSession.current?.vertical || "");
@@ -155,7 +155,7 @@ export default function DeveloperSandbox() {
   const [vibeStep, setVibeStep] = useState(() => savedSession.current?.vibeStep || 0);
   const [vibeAnswers, setVibeAnswers] = useState(() => savedSession.current?.vibeAnswers || {});
   const [workerCardData, setWorkerCardData] = useState(() => savedSession.current?.workerCardData || null);
-  const [showWorkerCard, setShowWorkerCard] = useState(() => !!savedSession.current?.workerCardData);
+  const [showWorkerCard, setShowWorkerCard] = useState(() => savedSession.current?.showWorkerCard ?? !!savedSession.current?.workerCardData);
   const [lastUpdatedField, setLastUpdatedField] = useState(null);
 
   // Step 2b — Sharpening Session (3 challenge questions after Vibe, before Worker Card)
@@ -173,13 +173,13 @@ export default function DeveloperSandbox() {
     try {
       localStorage.setItem("ta_sandbox_session", JSON.stringify({
         vertical, subjectDomain, selectedIdea, vibeStep, vibeAnswers,
-        workerCardData, worker, jurisdiction,
+        workerCardData, worker, jurisdiction, flowStep, maxFlowStep, showWorkerCard,
       }));
       if (workerCardData?.name) {
         sessionStorage.setItem("ta_sandbox_worker_name", workerCardData.name);
       }
     } catch {}
-  }, [vertical, subjectDomain, selectedIdea, vibeStep, vibeAnswers, workerCardData, worker, jurisdiction]);
+  }, [vertical, subjectDomain, selectedIdea, vibeStep, vibeAnswers, workerCardData, worker, jurisdiction, flowStep, maxFlowStep, showWorkerCard]);
 
   // Image attachments
   const [pendingImages, setPendingImages] = useState([]);
@@ -291,15 +291,8 @@ export default function DeveloperSandbox() {
       }
       addAssistantMessage(greeting);
 
-      // If we have a saved worker card, restore the flow step
-      if (savedSession.current?.workerCardData) {
-        const restoredStep = savedSession.current.worker?.buildPhase === "library" || savedSession.current.worker?.buildPhase === "prePublish"
-          ? 3 : savedSession.current.worker?.id ? 2 : 1;
-        if (restoredStep > 1) {
-          setFlowStep(restoredStep);
-          setMaxFlowStep(restoredStep);
-        }
-      }
+      // Flow step is now restored from persisted session via useState initializers
+      // No need to re-set here — flowStep and maxFlowStep are already correct
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

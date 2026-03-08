@@ -2348,6 +2348,9 @@ ${nameGuidance}${authGuidance}`;
                       await db.doc(`tenants/${targetTenantId}/workers/${validated.worker_id}`).set({
                         ...validated,
                         description: workerDesc,
+                        targetUser: String(workerSpec.targetUser || "").substring(0, 500),
+                        problemSolves: String(workerSpec.problemSolves || "").substring(0, 2000),
+                        raasRules: String(workerSpec.raasRules || "").substring(0, 2000),
                         source: { platform: "dev-chat", createdVia: "alex" },
                         capabilities: Array.isArray(workerSpec.capabilities) ? workerSpec.capabilities.slice(0, 20) : [],
                         imported: false,
@@ -2359,7 +2362,7 @@ ${nameGuidance}${authGuidance}`;
                       buildAnimation = true;
                       workerCard = {
                         type: "workerCard",
-                        data: { workerId: validated.worker_id, name: validated.display_name, description: workerDesc, rules: validated.raas_tier_1.slice(0, 5), rulesCount: validated.raas_tier_1.length, status: "draft", category: validated.suite, tenantId: targetTenantId },
+                        data: { workerId: validated.worker_id, name: validated.display_name, description: workerDesc, rules: validated.raas_tier_1.slice(0, 5), rulesCount: validated.raas_tier_1.length, status: "draft", category: validated.suite, tenantId: targetTenantId, targetUser: workerSpec.targetUser || "", problemSolves: workerSpec.problemSolves || "", raasRules: workerSpec.raasRules || "" },
                       };
                       sessionState.lastWorkerId = validated.worker_id;
                       sessionState.lastWorkerTenantId = targetTenantId;
@@ -2388,7 +2391,7 @@ ${nameGuidance}${authGuidance}`;
                   buildAnimation = true;
                   workerCard = {
                     type: 'workerCard',
-                    data: { workerId: 'pending', name: workerName, description: workerDesc, rules: rules.slice(0, 5), rulesCount: rules.length, status: 'pending-signup', category: workerCategory, tenantId: null },
+                    data: { workerId: 'pending', name: workerName, description: workerDesc, rules: rules.slice(0, 5), rulesCount: rules.length, status: 'pending-signup', category: workerCategory, tenantId: null, targetUser: workerSpec.targetUser || "", problemSolves: workerSpec.problemSolves || "", raasRules: workerSpec.raasRules || "" },
                   };
                   console.log(`[dev] Worker spec stashed for deferred creation`);
                 }
