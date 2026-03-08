@@ -9,25 +9,41 @@ import { fireConfetti } from "../utils/celebrations";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
 
-// Error boundary — catches render crashes, falls back to recovery UI
+// Error boundary — catches render crashes, falls back to recovery UI with error details
 class PanelErrorBoundary extends React.Component {
-  constructor(props) { super(props); this.state = { hasError: false, error: null }; }
+  constructor(props) { super(props); this.state = { hasError: false, error: null, errorInfo: null }; }
   static getDerivedStateFromError(error) { return { hasError: true, error }; }
-  componentDidCatch(error, info) { console.error("[PanelErrorBoundary] Render crash:", error, info.componentStack); }
+  componentDidCatch(error, info) {
+    console.error("[PanelErrorBoundary] Render crash:", error, info.componentStack);
+    this.setState({ errorInfo: info });
+  }
   render() {
     if (this.state.hasError) {
+      const errMsg = this.state.error?.message || "Unknown error";
+      const errStack = this.state.error?.stack || "";
       return (
         <div style={{ padding: 40, textAlign: "center" }}>
           <div style={{ fontSize: 16, fontWeight: 600, color: "#1a1a2e", marginBottom: 8 }}>Something went wrong</div>
-          <div style={{ fontSize: 14, color: "#64748B", marginBottom: 20, lineHeight: 1.5 }}>
+          <div style={{ fontSize: 14, color: "#64748B", marginBottom: 12, lineHeight: 1.5 }}>
             The panel encountered an error. Click below to recover.
           </div>
-          <button
-            onClick={() => { this.setState({ hasError: false, error: null }); if (this.props.onRecover) this.props.onRecover(); }}
-            style={{ padding: "10px 24px", background: "#6B46C1", color: "white", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer" }}
-          >
-            Go back to Worker Card
-          </button>
+          <div style={{ fontSize: 12, color: "#dc2626", background: "#fef2f2", padding: "10px 14px", borderRadius: 8, marginBottom: 16, textAlign: "left", maxHeight: 120, overflow: "auto", fontFamily: "monospace", lineHeight: 1.4, wordBreak: "break-word" }}>
+            {errMsg}
+          </div>
+          <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
+            <button
+              onClick={() => { this.setState({ hasError: false, error: null, errorInfo: null }); if (this.props.onRecover) this.props.onRecover(); }}
+              style={{ padding: "10px 24px", background: "#6B46C1", color: "white", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer" }}
+            >
+              {this.props.recoverLabel || "Go back to Worker Card"}
+            </button>
+            <button
+              onClick={() => { try { navigator.clipboard.writeText(errMsg + "\n" + errStack); } catch {} }}
+              style={{ padding: "10px 24px", background: "#F8F9FC", color: "#64748B", border: "1px solid #E2E8F0", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer" }}
+            >
+              Copy error
+            </button>
+          </div>
         </div>
       );
     }
@@ -91,22 +107,32 @@ const US_STATES = [
   "SD","TN","TX","UT","VT","VA","WA","WV","WI","WY","DC"
 ];
 
-// Helper for Worker #1 API calls
+// Helper for Worker #1 API calls — always returns { ok, ... }, never throws
 async function w1Api(endpoint, payload) {
-  const token = localStorage.getItem("ID_TOKEN");
-  const tenantId = localStorage.getItem("TENANT_ID");
-  const res = await fetch(`${API_BASE}/api?path=/v1/${endpoint}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-      "X-Tenant-Id": tenantId,
-      "X-Vertical": "developer",
-      "X-Jurisdiction": "GLOBAL",
-    },
-    body: JSON.stringify({ tenantId, ...payload }),
-  });
-  return res.json();
+  try {
+    const token = localStorage.getItem("ID_TOKEN");
+    const tenantId = localStorage.getItem("TENANT_ID");
+    const res = await fetch(`${API_BASE}/api?path=/v1/${endpoint}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+        "X-Tenant-Id": tenantId,
+        "X-Vertical": "developer",
+        "X-Jurisdiction": "GLOBAL",
+      },
+      body: JSON.stringify({ tenantId, ...payload }),
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      console.error(`[w1Api] ${endpoint} returned ${res.status}:`, text);
+      return { ok: false, error: `Server error ${res.status}` };
+    }
+    return await res.json();
+  } catch (err) {
+    console.error(`[w1Api] ${endpoint} failed:`, err);
+    return { ok: false, error: err.message || "Network error" };
+  }
 }
 
 // ── Main Component ────────────────────────────────────────────
@@ -830,9 +856,11 @@ export default function DeveloperSandbox() {
     addAssistantMessage("Building your worker now. This takes about a minute. Watch the progress on the right.");
 
     try {
-      const sops = (vibeAnswers.neverGetWrong || vibeAnswers.complianceRules || "").split(/[.;]/).map(s => s.trim()).filter(Boolean);
-      const raasTier1 = (vibeAnswers.raasRules || "").split(/[.;]/).map(s => s.trim()).filter(Boolean);
+      const sops = String(vibeAnswers.neverGetWrong || vibeAnswers.complianceRules || "").split(/[.;]/).map(s => s.trim()).filter(Boolean);
+      const raasTier1 = String(vibeAnswers.raasRules || "").split(/[.;]/).map(s => s.trim()).filter(Boolean);
       const isPublic = !cardData.internal_only;
+
+      // Step 1: Intake
       const intakeRes = await w1Api("worker1:intake", {
         workerId: worker?.id || null,
         vertical,
@@ -844,17 +872,30 @@ export default function DeveloperSandbox() {
         internal_only: cardData.internal_only,
         ...(isHE && { subjectDomain, heJurisdiction: cardData.jurisdiction, deploymentTier: isPublic ? 2 : 3, heLane: cardData.lane }),
       });
-      if (intakeRes.ok && intakeRes.workerId) {
-        setWorker(prev => ({ ...prev, id: intakeRes.workerId, name: cardData.name, buildPhase: "intake" }));
-        const researchRes = await w1Api("worker1:research", { workerId: intakeRes.workerId });
-        if (researchRes.ok) {
-          setWorker(prev => ({ ...prev, buildPhase: "brief", complianceBrief: researchRes.brief }));
-          await w1Api("worker1:rules:save", { workerId: intakeRes.workerId, tier2: researchRes.brief?.tier2 || [], tier3: sops });
-        }
+      if (!intakeRes.ok) {
+        console.error("[Build] intake failed:", intakeRes);
+        addAssistantMessage(`Build intake failed: ${intakeRes.error || "unknown error"}. Try approving the card again.`);
+        return;
+      }
+      setWorker(prev => ({ ...(prev || {}), id: intakeRes.workerId, name: cardData.name, buildPhase: "intake" }));
+
+      // Step 2: Research (calls Claude — may take 30-60s)
+      const researchRes = await w1Api("worker1:research", { workerId: intakeRes.workerId });
+      if (!researchRes.ok) {
+        console.error("[Build] research failed:", researchRes);
+        addAssistantMessage(`Research step failed: ${researchRes.error || "unknown error"}. The worker was created but rules couldn't be compiled. Try again from the Worker Card.`);
+        return;
+      }
+      setWorker(prev => ({ ...(prev || {}), buildPhase: "brief", complianceBrief: researchRes.brief }));
+
+      // Step 3: Save rules
+      const saveRes = await w1Api("worker1:rules:save", { workerId: intakeRes.workerId, tier2: researchRes.brief?.tier2 || [], tier3: sops });
+      if (!saveRes.ok) {
+        console.error("[Build] rules:save failed:", saveRes);
       }
     } catch (err) {
-      console.error("Pipeline error:", err);
-      addAssistantMessage("The build pipeline hit an error. Try approving the card again, or tell me what happened.");
+      console.error("[Build] Pipeline error:", err);
+      addAssistantMessage(`The build pipeline hit an error: ${err.message || "unknown"}. Try approving the card again.`);
     }
   }
 
@@ -976,8 +1017,7 @@ export default function DeveloperSandbox() {
 
   // ── Image attachment handler ───────────────────────────────
 
-  function handleFileSelect(e) {
-    const files = Array.from(e.target.files || []);
+  function processFiles(files) {
     if (files.length === 0) return;
     const maxFiles = 3 - pendingImages.length;
     const toProcess = files.slice(0, maxFiles);
@@ -1006,7 +1046,22 @@ export default function DeveloperSandbox() {
       };
       reader.readAsDataURL(file);
     });
+  }
+
+  function handleFileSelect(e) {
+    processFiles(Array.from(e.target.files || []));
     e.target.value = "";
+  }
+
+  function handleDrop(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    processFiles(Array.from(e.dataTransfer.files || []));
+  }
+
+  function handleDragOver(e) {
+    e.preventDefault();
+    e.stopPropagation();
   }
 
   // Should we show vertical chips in chat? Only in Step 1, before vertical is selected, no Worker Card
@@ -1039,13 +1094,17 @@ export default function DeveloperSandbox() {
       )}
 
       {/* Left: Chat Panel */}
-      <div style={{
-        ...S.chatPanel,
-        ...(isMobile
-          ? { width: "100%", minWidth: 0, maxWidth: "none", borderRight: "none", flex: 1 }
-          : { width: `${chatWidthPercent}%`, minWidth: 300 }
-        ),
-      }}>
+      <div
+        onDrop={handleDrop}
+        onDragOver={handleDragOver}
+        style={{
+          ...S.chatPanel,
+          ...(isMobile
+            ? { width: "100%", minWidth: 0, maxWidth: "none", borderRight: "none", flex: 1 }
+            : { width: `${chatWidthPercent}%`, minWidth: 300 }
+          ),
+        }}
+      >
         <div style={S.chatHeader}>
           <span style={S.chatLogo}>TitleApp</span>
           <span style={S.chatName}>Alex — Your AI Builder</span>
@@ -1544,7 +1603,10 @@ export default function DeveloperSandbox() {
 
           {/* Step 3 — Build */}
           {flowStep === 3 && (
-            <PanelErrorBoundary onRecover={() => viewStep(2)}>
+            <PanelErrorBoundary
+              recoverLabel="Back to Worker Card — Retry Build"
+              onRecover={() => { setShowWorkerCard(true); viewStep(2); }}
+            >
               <BuildProgress
                 worker={worker}
                 workerCardData={workerCardData}
@@ -1556,7 +1618,10 @@ export default function DeveloperSandbox() {
 
           {/* Step 4 — Test */}
           {flowStep === 4 && (
-            <PanelErrorBoundary onRecover={() => viewStep(2)}>
+            <PanelErrorBoundary
+              recoverLabel="Back to Worker Card"
+              onRecover={() => { setShowWorkerCard(true); viewStep(2); }}
+            >
               {worker?.id ? (
                 <TestWorkerPanel
                   worker={worker}

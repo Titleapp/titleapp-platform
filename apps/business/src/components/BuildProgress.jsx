@@ -68,13 +68,14 @@ export default function BuildProgress({ worker, workerCardData, onWorkerUpdate, 
   const [matrixLines, setMatrixLines] = useState([]);
   const [matrixDone, setMatrixDone] = useState(false);
 
-  // Detect second build — store in localStorage
+  // Detect second build — store in localStorage (guarded for private browsing)
   const buildKey = `build_count_${worker?.id || "unknown"}`;
-  const buildCount = parseInt(localStorage.getItem(buildKey) || "0", 10);
+  let buildCount = 0;
+  try { buildCount = parseInt(localStorage.getItem(buildKey) || "0", 10); } catch {}
   const showMatrix = buildCount >= 1;
 
   useEffect(() => {
-    localStorage.setItem(buildKey, String(buildCount + 1));
+    try { localStorage.setItem(buildKey, String(buildCount + 1)); } catch {}
   }, []);
 
   const tier = TIERS.find(t => t.id === selectedTier) || TIERS[1];
@@ -120,14 +121,16 @@ export default function BuildProgress({ worker, workerCardData, onWorkerUpdate, 
       try {
         const token = localStorage.getItem("ID_TOKEN");
         const tenantId = localStorage.getItem("TENANT_ID");
+        if (!token) return;
         const res = await fetch(`${API_BASE}/api?path=/v1/workers:list`, {
           headers: { Authorization: `Bearer ${token}`, "X-Tenant-Id": tenantId, "X-Vertical": "developer", "X-Jurisdiction": "GLOBAL" },
         });
+        if (!res.ok) return;
         const data = await res.json();
-        if (data.ok && data.workers) {
+        if (data.ok && Array.isArray(data.workers)) {
           const updated = data.workers.find(w => w.id === worker.id);
-          if (updated) {
-            onWorkerUpdate(updated);
+          if (updated && typeof updated === "object") {
+            onWorkerUpdate(prev => ({ ...prev, ...updated }));
             if (updated.buildPhase === "library" || updated.buildPhase === "prePublish" || updated.buildPhase === "live") {
               setBuildComplete(true);
               clearInterval(poll);
@@ -224,14 +227,14 @@ export default function BuildProgress({ worker, workerCardData, onWorkerUpdate, 
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             {(() => {
-              // Count compliance rules from all sources
+              // Count compliance rules from all sources — guard against non-string values
               const rulesSources = [
                 workerCardData?.complianceRules,
                 workerCardData?.raasRules,
                 workerCardData?.neverGetWrong,
-              ].filter(Boolean);
+              ].filter(v => typeof v === "string" && v.length > 0);
               const rulesCount = worker?.rulesCount || rulesSources.reduce((count, src) => {
-                const parts = src.split(/[.;,]/).map(s => s.trim()).filter(s => s.length > 3);
+                const parts = String(src).split(/[.;,]/).map(s => s.trim()).filter(s => s.length > 3);
                 return count + Math.max(parts.length, 1);
               }, 0) || 0;
               const hasRules = rulesCount > 0;
@@ -292,7 +295,7 @@ export default function BuildProgress({ worker, workerCardData, onWorkerUpdate, 
           background: "#6B46C1", color: "white",
           border: "none", borderRadius: 10, cursor: "pointer",
         }}
-        onClick={() => onTestReady({ ...worker, name: workerCardData?.name || worker?.name, pricingTier: selectedTier })}
+        onClick={() => onTestReady({ ...(worker || {}), name: workerCardData?.name || worker?.name, pricingTier: selectedTier })}
       >
         Continue to Test
       </button>
