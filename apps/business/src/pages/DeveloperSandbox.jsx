@@ -107,10 +107,20 @@ const US_STATES = [
   "SD","TN","TX","UT","VT","VA","WA","WV","WI","WY","DC"
 ];
 
+// Get fresh Firebase ID token (or fall back to localStorage)
+async function getFreshToken() {
+  if (window.__firebaseAuth?.currentUser) {
+    try { return await window.__firebaseAuth.currentUser.getIdToken(true); } catch (_) {}
+  }
+  const stored = localStorage.getItem("ID_TOKEN");
+  if (stored && stored !== "undefined" && stored !== "null") return stored;
+  return null;
+}
+
 // Helper for Worker #1 API calls — always returns { ok, ... }, never throws
 async function w1Api(endpoint, payload) {
   try {
-    const token = localStorage.getItem("ID_TOKEN");
+    const token = await getFreshToken();
     const tenantId = localStorage.getItem("TENANT_ID");
     const res = await fetch(`${API_BASE}/api?path=/v1/${endpoint}`, {
       method: "POST",
@@ -911,16 +921,37 @@ export default function DeveloperSandbox() {
       });
       const result = await resp.json();
       if (result.ok && result.token) {
-        localStorage.setItem("ID_TOKEN", result.token);
-        if (result.tenantId) localStorage.setItem("TENANT_ID", result.tenantId);
-        if (result.userId) localStorage.setItem("USER_ID", result.userId);
-        captureName(authName.trim());
-
-        if (result.customToken && window.__firebaseAuth) {
+        // result.token is a Firebase custom token — sign in to get a real ID token
+        let idToken = result.token; // fallback
+        if (window.__firebaseAuth) {
           try {
             const { signInWithCustomToken } = await import("firebase/auth");
-            await signInWithCustomToken(window.__firebaseAuth, result.customToken);
-          } catch (_) {}
+            const userCred = await signInWithCustomToken(window.__firebaseAuth, result.token);
+            idToken = await userCred.user.getIdToken();
+          } catch (authErr) {
+            console.error("[Signup] Firebase sign-in failed:", authErr);
+          }
+        }
+        localStorage.setItem("ID_TOKEN", idToken);
+        if (result.uid) localStorage.setItem("USER_ID", result.uid);
+        captureName(authName.trim());
+
+        // Ensure tenant exists — claim one if not already set
+        const existingTenant = localStorage.getItem("TENANT_ID");
+        if (!existingTenant) {
+          try {
+            const claimRes = await fetch(`${API_BASE}/api?path=/v1/onboarding:claimTenant`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+              body: JSON.stringify({ name: authName.trim(), surface: "sandbox" }),
+            });
+            const claimData = await claimRes.json();
+            if (claimData.ok && claimData.tenantId) {
+              localStorage.setItem("TENANT_ID", claimData.tenantId);
+            }
+          } catch (claimErr) {
+            console.error("[Signup] Tenant claim failed:", claimErr);
+          }
         }
 
         setShowAuthPrompt(false);

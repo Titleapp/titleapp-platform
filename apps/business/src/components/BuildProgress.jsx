@@ -154,16 +154,19 @@ export default function BuildProgress({ worker, workerCardData, onWorkerUpdate, 
           COMPILING RULES ENGINE...
         </div>
         <div style={{ maxHeight: 400, overflowY: "auto" }}>
-          {matrixLines.map((line, i) => (
-            <div key={i} style={{
-              fontSize: 12, color: line.startsWith("//") ? "#8b949e" : line.startsWith("rule.") || line.startsWith("schema.") || line.startsWith("compliance.") || line.startsWith("audit.") ? "#7ee787" : line.includes("require") || line.includes("import") ? "#79c0ff" : line === "" ? "transparent" : "#c9d1d9",
-              lineHeight: 1.7,
-              opacity: i === matrixLines.length - 1 ? 0.8 : 1,
-              whiteSpace: "pre",
-            }}>
-              {line || "\u00A0"}
-            </div>
-          ))}
+          {matrixLines.map((line, i) => {
+            const l = typeof line === "string" ? line : "";
+            return (
+              <div key={i} style={{
+                fontSize: 12, color: l.startsWith("//") ? "#8b949e" : l.startsWith("rule.") || l.startsWith("schema.") || l.startsWith("compliance.") || l.startsWith("audit.") ? "#7ee787" : l.includes("require") || l.includes("import") ? "#79c0ff" : l === "" ? "transparent" : "#c9d1d9",
+                lineHeight: 1.7,
+                opacity: i === matrixLines.length - 1 ? 0.8 : 1,
+                whiteSpace: "pre",
+              }}>
+                {l || "\u00A0"}
+              </div>
+            );
+          })}
           <div style={{ color: "#7ee787", animation: "blink 1s step-end infinite" }}>_</div>
         </div>
         <style>{`@keyframes blink { 50% { opacity: 0; } }`}</style>
