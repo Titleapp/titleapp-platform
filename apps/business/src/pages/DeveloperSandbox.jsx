@@ -118,6 +118,15 @@ export default function DeveloperSandbox() {
   const messagesEndRef = useRef(null);
   const chatInputRef = useRef(null);
 
+  // ── Session persistence — SYNCHRONOUS load before useState initializers ──
+  const savedSession = useRef(null);
+  if (savedSession.current === null) {
+    try {
+      const raw = localStorage.getItem("ta_sandbox_session");
+      if (raw) savedSession.current = JSON.parse(raw);
+    } catch {}
+  }
+
   // Flow state — flowStep only moves forward, never backward
   const [flowStep, setFlowStep] = useState(() => savedSession.current?.flowStep || 1);
   const [maxFlowStep, setMaxFlowStep] = useState(() => savedSession.current?.maxFlowStep || savedSession.current?.flowStep || 1);
@@ -134,15 +143,6 @@ export default function DeveloperSandbox() {
   // View a completed step (for step indicator clicks) — does NOT change maxFlowStep
   function viewStep(step) {
     setFlowStep(step);
-  }
-
-  // ── Session persistence — SYNCHRONOUS load before useState initializers ──
-  const savedSession = useRef(null);
-  if (savedSession.current === null) {
-    try {
-      const raw = localStorage.getItem("ta_sandbox_session");
-      if (raw) savedSession.current = JSON.parse(raw);
-    } catch {}
   }
 
   // Step 1 — Discover
@@ -1175,7 +1175,7 @@ export default function DeveloperSandbox() {
                 </button>
               </form>
               <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 10, lineHeight: 1.5, textAlign: "center" }}>
-                By signing up you agree to TitleApp's Terms of Service.
+                By signing up you agree to TitleApp's <a href="/legal/terms-of-service" target="_blank" style={{ color: "#7c3aed" }}>Terms of Service</a>.
               </div>
             </div>
           )}
