@@ -16,6 +16,7 @@ import Settings from "./pages/Settings";
 import Inventory from "./pages/Inventory";
 import ReviewQueue from "./pages/ReviewQueue";
 import VerificationQueue from "./pages/VerificationQueue";
+import IdVerificationQueue from "./pages/IdVerificationQueue";
 import MarketingTab from "./pages/MarketingTab";
 import LifecycleTab from "./pages/LifecycleTab";
 import GrowthTab from "./pages/GrowthTab";
@@ -53,6 +54,11 @@ const NAV_SECTIONS = [
       {
         id: "verification-queue",
         label: "Verification Queue",
+        permission: "pipeline",
+      },
+      {
+        id: "id-verification",
+        label: "ID Verification",
         permission: "pipeline",
       },
       {
@@ -126,6 +132,8 @@ function renderPage(page) {
       return <ReviewQueue />;
     case "verification-queue":
       return <VerificationQueue />;
+    case "id-verification":
+      return <IdVerificationQueue />;
     case "pipeline-investors":
       return <PipelineInvestors />;
     case "communications":

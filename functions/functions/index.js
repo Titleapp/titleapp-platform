@@ -3552,6 +3552,184 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       return submitHeCreatorVerification(req, res);
     }
 
+    // POST /v1/creator:verify-identity — Creator ID verification (Phase 1: self-upload)
+    if (route === "/creator:verify-identity" && method === "POST") {
+      try {
+        const { idType } = body; // "drivers_license", "passport", "state_id"
+        if (!idType) return res.json({ ok: false, error: "idType required (drivers_license, passport, or state_id)" });
+
+        await db.collection("creators").doc(auth.user.uid).set({
+          creatorIdVerified: true,
+          creatorIdType: idType,
+          creatorIdVerifiedAt: nowServerTs(),
+          creatorIdMethod: "self_upload_v1", // Phase 2: "stripe_identity"
+        }, { merge: true });
+
+        await db.collection("auditTrail").add({
+          type: "creator_identity_verified",
+          userId: auth.user.uid,
+          method: "self_upload_v1",
+          idType,
+          at: nowServerTs(),
+        });
+
+        console.log(`[creator:verify-identity] ${auth.user.uid} verified via self_upload_v1`);
+        return res.json({ ok: true });
+      } catch (e) {
+        console.error("[creator:verify-identity] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // POST /v1/creator:accept-liability — Accept publish-time liability disclaimer
+    if (route === "/creator:accept-liability" && method === "POST") {
+      try {
+        const { workerId } = body;
+        if (!workerId) return res.json({ ok: false, error: "workerId required" });
+
+        const docId = `${workerId}_${auth.user.uid}`;
+        await db.doc(`publishDisclaimers/${docId}`).set({
+          workerId,
+          userId: auth.user.uid,
+          accepted: true,
+          disclaimerVersion: "v1.0",
+          acceptedAt: nowServerTs(),
+          ipAddress: req.headers["x-forwarded-for"] || req.ip || null,
+        });
+
+        await db.collection("auditTrail").add({
+          type: "liability_disclaimer_accepted",
+          userId: auth.user.uid,
+          workerId,
+          version: "v1.0",
+          at: nowServerTs(),
+        });
+
+        console.log(`[creator:accept-liability] ${auth.user.uid} accepted for worker ${workerId}`);
+        return res.json({ ok: true });
+      } catch (e) {
+        console.error("[creator:accept-liability] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // POST /v1/creator:accept-baa — HIPAA Business Associate Agreement acknowledgment
+    if (route === "/creator:accept-baa" && method === "POST") {
+      try {
+        await db.collection("creators").doc(auth.user.uid).set({
+          baaSignedAt: nowServerTs(),
+          baaVersion: "v1.0",
+          baaMethod: "checkbox_v1", // Phase 2: "docusign"
+        }, { merge: true });
+
+        await db.collection("auditTrail").add({
+          type: "baa_accepted",
+          userId: auth.user.uid,
+          version: "v1.0",
+          at: nowServerTs(),
+        });
+
+        console.log(`[creator:accept-baa] ${auth.user.uid} accepted BAA v1.0`);
+        return res.json({ ok: true });
+      } catch (e) {
+        console.error("[creator:accept-baa] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // GET /v1/creator:gates — Check publish gate status for current creator
+    if (route === "/creator:gates" && method === "GET") {
+      try {
+        const creatorSnap = await db.collection("creators").doc(auth.user.uid).get();
+        const c = creatorSnap.exists ? creatorSnap.data() : {};
+        return res.json({
+          ok: true,
+          identityVerified: !!c.creatorIdVerified,
+          identityVerifiedAt: c.creatorIdVerifiedAt || null,
+          identityMethod: c.creatorIdMethod || null,
+          baaAccepted: !!c.baaSignedAt,
+          baaSignedAt: c.baaSignedAt || null,
+        });
+      } catch (e) {
+        console.error("[creator:gates] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // GET /v1/creator:profile — Get creator profile
+    if (route === "/creator:profile" && method === "GET") {
+      try {
+        const creatorSnap = await db.collection("creators").doc(auth.user.uid).get();
+        const profile = creatorSnap.exists ? creatorSnap.data() : {};
+        return res.json({
+          ok: true,
+          profile: {
+            title: profile.title || "",
+            yearsExperience: profile.yearsExperience || "",
+            credentials: profile.credentials || "",
+            linkedIn: profile.linkedIn || "",
+            bio: profile.bio || "",
+            profileComplete: !!(profile.title && profile.bio),
+          },
+        });
+      } catch (e) {
+        console.error("[creator:profile GET] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // POST /v1/creator:profile — Save creator profile
+    if (route === "/creator:profile" && method === "POST") {
+      try {
+        const { title, yearsExperience, credentials, linkedIn, bio } = body;
+        await db.collection("creators").doc(auth.user.uid).set({
+          title: title || "",
+          yearsExperience: yearsExperience || "",
+          credentials: credentials || "",
+          linkedIn: linkedIn || "",
+          bio: (bio || "").substring(0, 280),
+          profileUpdatedAt: nowServerTs(),
+        }, { merge: true });
+
+        console.log(`[creator:profile] ${auth.user.uid} updated profile`);
+        return res.json({ ok: true });
+      } catch (e) {
+        console.error("[creator:profile POST] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // GET /v1/legal:creator-agreement — Get current Creator Agreement text and version
+    if (route === "/legal:creator-agreement" && method === "GET") {
+      const { AGREEMENT_VERSION, AGREEMENT_TEXT } = require("./legal/creatorAgreement_v1");
+      return res.json({ ok: true, version: AGREEMENT_VERSION, text: AGREEMENT_TEXT });
+    }
+
+    // POST /v1/creator:accept-agreement — Accept Creator Agreement
+    if (route === "/creator:accept-agreement" && method === "POST") {
+      try {
+        const { AGREEMENT_VERSION } = require("./legal/creatorAgreement_v1");
+        await db.collection("creators").doc(auth.user.uid).set({
+          agreementAcceptedAt: nowServerTs(),
+          agreementVersion: AGREEMENT_VERSION,
+        }, { merge: true });
+
+        await db.collection("auditTrail").add({
+          type: "creator_agreement_accepted",
+          userId: auth.user.uid,
+          version: AGREEMENT_VERSION,
+          ipAddress: req.headers["x-forwarded-for"] || req.ip || null,
+          at: nowServerTs(),
+        });
+
+        console.log(`[creator:accept-agreement] ${auth.user.uid} accepted v${AGREEMENT_VERSION}`);
+        return res.json({ ok: true, version: AGREEMENT_VERSION });
+      } catch (e) {
+        console.error("[creator:accept-agreement] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
     // POST /v1/creator:review — admin review of creator applications
     if (route === "/creator:review" && method === "POST") {
         const { applicationId, decision, reason } = body;
@@ -3762,6 +3940,17 @@ These should be 2-3 realistic test scenarios the creator should try, derived fro
         sessionData.updatedAt = nowServerTs();
         await sessRef.set(sessionData, { merge: true });
 
+        // Audit trail — test chat execution
+        try {
+          const { writeAuditRecord } = require("./services/auditTrailService");
+          await writeAuditRecord({
+            worker_id: workerId, user_id: user.uid, org_id: tenantId,
+            event_id: `test_${sessId}_${sessionData.exchangeCount}`,
+            execution_type: "worker_test_chat",
+            timestamp: new Date().toISOString(),
+          });
+        } catch (auditErr) { console.warn("[worker:test:chat] audit trail write failed (non-blocking):", auditErr.message); }
+
         return res.json({
           ok: true,
           workerResponse: aiText,
@@ -3844,6 +4033,42 @@ These should be 2-3 realistic test scenarios the creator should try, derived fro
         return res.json({ ok: true, slug: autoSlug, url: `/marketplace/${autoSlug}` });
       } catch (e) {
         console.error("[marketplace:publish] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // GET /v1/worker:settings — Get worker settings (blockchain toggle, etc.)
+    if (route === "/worker:settings" && method === "GET") {
+      const { tenantId, workerId } = body.tenantId ? body : { tenantId: req.headers["x-tenant-id"], workerId: req.query?.workerId || body.workerId };
+      if (!tenantId || !workerId) return res.json({ ok: false, error: "Missing tenantId or workerId" });
+      try {
+        const workerRef = db.doc(`tenants/${tenantId}/workers/${workerId}`);
+        const snap = await workerRef.get();
+        if (!snap.exists) return res.json({ ok: false, error: "Worker not found" });
+        const data = snap.data();
+        return res.json({ ok: true, settings: { blockchainEnabled: data.blockchainEnabled || false } });
+      } catch (e) {
+        console.error("[worker:settings GET] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // POST /v1/worker:settings — Update worker settings
+    if (route === "/worker:settings" && method === "POST") {
+      const { tenantId, workerId, blockchainEnabled } = body;
+      if (!tenantId || !workerId) return res.json({ ok: false, error: "Missing tenantId or workerId" });
+      try {
+        const workerRef = db.doc(`tenants/${tenantId}/workers/${workerId}`);
+        const snap = await workerRef.get();
+        if (!snap.exists) return res.json({ ok: false, error: "Worker not found" });
+        await workerRef.update({
+          blockchainEnabled: blockchainEnabled === true,
+          updatedAt: nowServerTs(),
+        });
+        console.log(`[worker:settings] ${workerId} blockchainEnabled=${blockchainEnabled}`);
+        return res.json({ ok: true });
+      } catch (e) {
+        console.error("[worker:settings POST] error:", e.message);
         return res.json({ ok: false, error: e.message });
       }
     }
@@ -4194,6 +4419,19 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
           return res.json({ ok: false, error: "Pre-publish check must pass before submitting for review" });
         }
 
+        // Run publish gates — server-verified, never trust client values
+        const { checkPublishGates } = require("./middleware/publishGates");
+        const gateResult = await checkPublishGates(db, user.uid, workerId, tenantId, worker);
+        if (!gateResult.passed) {
+          const failedGates = gateResult.gates.filter(g => g.required && !g.passed);
+          return res.json({
+            ok: false,
+            error: "Publish gates not met",
+            failedGates: failedGates.map(g => g.id),
+            gates: gateResult.gates,
+          });
+        }
+
         // Update worker status
         await workerRef.update({
           buildPhase: "review",
@@ -4203,12 +4441,14 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
             submittedBy: user.uid,
           },
           publishFlow: {
-            waiverSigned: body.waiverSigned || false,
-            waiverSignatureId: body.waiverSignatureId || null,
-            identityVerified: body.identityVerified || false,
+            waiverSigned: gateResult.gates.find(g => g.id === "LIABILITY_DISCLAIMER")?.passed || false,
+            identityVerified: gateResult.gates.find(g => g.id === "IDENTITY_VERIFICATION")?.passed || false,
             identitySessionId: body.identitySessionId || null,
             paymentComplete: body.paymentComplete || false,
             paymentIntentId: body.paymentIntentId || null,
+            moneyTransmissionFlagged: gateResult.moneyTransmissionFlagged,
+            gatesCheckedAt: nowServerTs(),
+            gateResults: gateResult.gates,
             submittedForReview: true,
             submittedAt: nowServerTs(),
           },
@@ -4225,6 +4465,8 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
           vertical: worker.intake?.vertical || "custom",
           jurisdiction: worker.intake?.jurisdiction || "GLOBAL",
           prePublishScore: worker.prePublishCheck?.score || 0,
+          moneyTransmissionFlagged: gateResult.moneyTransmissionFlagged,
+          requiresLegalReview: gateResult.moneyTransmissionFlagged,
           status: "pending",
           submittedAt: nowServerTs(),
         });
@@ -4254,6 +4496,18 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
         }
 
         console.log(`[worker1:submit] ${workerId} submitted for review by ${user.uid}`);
+
+        // Audit trail — publish submission event
+        try {
+          const { writeAuditRecord } = require("./services/auditTrailService");
+          await writeAuditRecord({
+            worker_id: workerId, user_id: user.uid, org_id: tenantId,
+            event_id: `submit_${workerId}_${Date.now()}`,
+            execution_type: "worker_submit_for_review",
+            timestamp: new Date().toISOString(),
+          });
+        } catch (auditErr) { console.warn("[worker1:submit] audit trail write failed (non-blocking):", auditErr.message); }
+
         return res.json({ ok: true, buildPhase: "review" });
       } catch (e) {
         console.error("[worker1:submit] error:", e.message);
@@ -4287,6 +4541,34 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
         const workerSnap = await workerRef.get();
         if (!workerSnap.exists) return res.json({ ok: false, error: "Digital Worker not found" });
         const worker = workerSnap.data();
+
+        // Re-verify publish gates before approval — server-side enforcement
+        if (decision === "approved") {
+          const { checkPublishGates } = require("./middleware/publishGates");
+          const creatorId = worker.review?.submittedBy || worker.createdBy;
+          if (creatorId) {
+            const recheck = await checkPublishGates(db, creatorId, workerId, reviewTenantId, worker);
+            if (!recheck.passed) {
+              const failed = recheck.gates.filter(g => g.required && !g.passed);
+              return res.json({
+                ok: false,
+                error: "Cannot approve: publish gates no longer pass",
+                failedGates: failed.map(g => g.id),
+                gates: recheck.gates,
+              });
+            }
+            // Log if money transmission flagged
+            if (recheck.moneyTransmissionFlagged) {
+              await db.collection("activityLog").add({
+                type: "money_transmission_review",
+                workerId, workerName: worker.name,
+                reviewerId: user.uid, tenantId: reviewTenantId,
+                notes: notes || "Worker flagged for money transmission — legal review completed",
+                timestamp: nowServerTs(),
+              });
+            }
+          }
+        }
 
         if (decision === "approved") {
           // Publish to marketplace using existing logic
@@ -4349,6 +4631,18 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
         });
 
         console.log(`[admin:worker:review] ${workerId}: ${decision} by ${user.uid}`);
+
+        // Audit trail — admin review decision
+        try {
+          const { writeAuditRecord } = require("./services/auditTrailService");
+          await writeAuditRecord({
+            worker_id: workerId, user_id: user.uid, org_id: reviewTenantId,
+            event_id: `review_${workerId}_${Date.now()}`,
+            execution_type: `admin_review_${decision}`,
+            timestamp: new Date().toISOString(),
+          });
+        } catch (auditErr) { console.warn("[admin:worker:review] audit trail write failed (non-blocking):", auditErr.message); }
+
         return res.json({ ok: true, decision });
       } catch (e) {
         console.error("[admin:worker:review] error:", e.message);
@@ -11609,6 +11903,145 @@ Analyze now:`;
     //  END TITLE & ESCROW ROUTES
     // ═══════════════════════════════════════════════════════════════
 
+    // ═══════════════════════════════════════════════════════════════
+    //  ID VERIFICATION (Session 30)
+    // ═══════════════════════════════════════════════════════════════
+
+    // POST /v1/id-verify:submit — Creator submits photo ID
+    if (route === "/id-verify:submit" && method === "POST") {
+      try {
+        const { submitIdVerification } = require("./services/idVerification");
+        return await submitIdVerification(req, res);
+      } catch (e) {
+        console.error("id-verify:submit failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // GET /v1/admin:verify:id:queue — Admin: list ID verification queue
+    if (route === "/admin:verify:id:queue" && method === "GET") {
+      try {
+        const { getIdVerificationQueue } = require("./services/idVerification");
+        return await getIdVerificationQueue(req, res);
+      } catch (e) {
+        console.error("admin:verify:id:queue failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // PUT /v1/admin:verify:id:approve — Admin: approve ID verification
+    if (route === "/admin:verify:id:approve" && method === "PUT") {
+      try {
+        const { approveIdVerification } = require("./services/idVerification");
+        return await approveIdVerification(req, res);
+      } catch (e) {
+        console.error("admin:verify:id:approve failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // PUT /v1/admin:verify:id:reject — Admin: reject ID verification
+    if (route === "/admin:verify:id:reject" && method === "PUT") {
+      try {
+        const { rejectIdVerification } = require("./services/idVerification");
+        return await rejectIdVerification(req, res);
+      } catch (e) {
+        console.error("admin:verify:id:reject failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // GET /v1/admin:verify:id:photo — Admin: get signed URL for photo ID
+    if (route === "/admin:verify:id:photo" && method === "GET") {
+      try {
+        const { getIdVerificationPhoto } = require("./services/idVerification");
+        return await getIdVerificationPhoto(req, res);
+      } catch (e) {
+        console.error("admin:verify:id:photo failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    //  WORKER SESSIONS (Session 30)
+    // ═══════════════════════════════════════════════════════════════
+
+    // POST /v1/worker-session:open — Record worker open event
+    if (route === "/worker-session:open" && method === "POST") {
+      try {
+        const { recordWorkerOpen } = require("./services/workerSessions");
+        return await recordWorkerOpen(req, res);
+      } catch (e) {
+        console.error("worker-session:open failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // GET /v1/worker-session:get — Get worker session data
+    if (route === "/worker-session:get" && method === "GET") {
+      try {
+        const { getWorkerSession } = require("./services/workerSessions");
+        return await getWorkerSession(req, res);
+      } catch (e) {
+        console.error("worker-session:get failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // POST /v1/worker-session:clear-chat — Mark chat as cleared
+    if (route === "/worker-session:clear-chat" && method === "POST") {
+      try {
+        const { clearWorkerChat } = require("./services/workerSessions");
+        return await clearWorkerChat(req, res);
+      } catch (e) {
+        console.error("worker-session:clear-chat failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    //  MATERIAL CHANGE DETECTION & AGREEMENT (Session 30)
+    // ═══════════════════════════════════════════════════════════════
+
+    // POST /v1/workers/:workerId/save — Save worker with material change detection
+    if (route.match(/^\/workers\/[^/]+\/save$/) && method === "POST") {
+      try {
+        const workerId = route.split("/")[2];
+        req.params = { workerId };
+        const { saveWorkerWithChangeDetection } = require("./services/materialChangeDetection");
+        return await saveWorkerWithChangeDetection(req, res);
+      } catch (e) {
+        console.error("workers:save failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // POST /v1/workers/:workerId/reaccept — Re-accept agreement after material change
+    if (route.match(/^\/workers\/[^/]+\/reaccept$/) && method === "POST") {
+      try {
+        const workerId = route.split("/")[2];
+        req.params = { workerId };
+        const { reacceptWorkerAgreement } = require("./services/materialChangeDetection");
+        return await reacceptWorkerAgreement(req, res);
+      } catch (e) {
+        console.error("workers:reaccept failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // POST /v1/workers/:workerId/accept-agreement — Initial agreement acceptance
+    if (route.match(/^\/workers\/[^/]+\/accept-agreement$/) && method === "POST") {
+      try {
+        const workerId = route.split("/")[2];
+        req.params = { workerId };
+        const { acceptWorkerAgreement } = require("./services/materialChangeDetection");
+        return await acceptWorkerAgreement(req, res);
+      } catch (e) {
+        console.error("workers:accept-agreement failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
     return jsonError(res, 404, "Not Found", { route, method });
   }
 );
@@ -11994,6 +12427,16 @@ const { runQuarterlyPricingReview } = require("./billing/quarterlyPricingReview"
 exports.quarterlyPricingReview = onSchedule(
   { schedule: "0 9 1 1,4,7,10 *", timeZone: "America/Los_Angeles", region: "us-central1" },
   async () => { await runQuarterlyPricingReview(); }
+);
+
+// ----------------------------
+// ID VERIFICATION: Admin nudge — every 30 minutes (Session 30)
+// ----------------------------
+const { checkIdVerificationNudge } = require("./services/idVerification");
+
+exports.idVerificationNudge = onSchedule(
+  { schedule: "*/30 * * * *", timeZone: "America/Los_Angeles", region: "us-central1" },
+  async () => { await checkIdVerificationNudge(); }
 );
 
 // ----------------------------

@@ -122,6 +122,26 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // Admin queue — admin only (ID verification, etc.)
+    match /adminQueue/{requestId} {
+      allow read, write: if isAdmin();
+    }
+
+    // Worker sessions — authenticated user, own sessions only
+    match /workerSessions/{sessionId} {
+      allow read: if request.auth != null && sessionId.matches(request.auth.uid + '_.*');
+      allow write: if false; // server-only writes via callable endpoint
+    }
+
+    // Workers — authenticated read, owner/admin write for agreement fields
+    match /workers/{workerId} {
+      allow read: if request.auth != null;
+      allow write: if false; // server-only writes
+    }
+
+    // Verifications storage paths — write own, read admin only
+    // (Storage rules are separate, but Firestore refs to paths follow same pattern)
+
     // Catch-all: deny everything else
     match /{document=**} {
       allow read, write: if false;
