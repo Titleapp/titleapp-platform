@@ -135,6 +135,7 @@ export default function DeveloperSandbox() {
 
   // Inline auth (for unauthenticated users)
   const [showAuthPrompt, setShowAuthPrompt] = useState(false);
+  const [signupPromptShown, setSignupPromptShown] = useState(false); // guard: fire once only
   const [authEmail, setAuthEmail] = useState(() => new URLSearchParams(window.location.search).get("email") || "");
   const [authName, setAuthName] = useState(() => new URLSearchParams(window.location.search).get("name") || "");
   const [authLoading, setAuthLoading] = useState(false);
@@ -142,6 +143,17 @@ export default function DeveloperSandbox() {
 
   // Session error (silent inline UI, not Alex conversation)
   const [showSessionError, setShowSessionError] = useState(false);
+
+  // Clean PII from URL params on mount
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.has("email") || params.has("name")) {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("email");
+      url.searchParams.delete("name");
+      window.history.replaceState({}, "", url.pathname + url.search);
+    }
+  }, []);
 
   // Name — captured once, never asked again
   const [creatorName, setCreatorName] = useState(() => {
@@ -384,7 +396,8 @@ export default function DeveloperSandbox() {
         addAssistantMessage(VIBE_QUESTIONS[nextStep].question);
       }, delay);
     } else {
-      // All 8 questions answered — generate Worker Card
+      // All 8 questions answered — lock vibeStep to prevent re-entry, generate Worker Card
+      setVibeStep(VIBE_QUESTIONS.length);
       generateWorkerCard(newAnswers);
     }
   }
@@ -398,7 +411,7 @@ export default function DeveloperSandbox() {
     const cardData = {
       name: selectedIdea?.name || "Custom Worker",
       description: answers.problemDescription || selectedIdea?.desc || "",
-      problemSolves: answers.currentProcess || "",
+      problemSolves: answers.currentProcess || answers.problemDescription || selectedIdea?.desc || "",
       targetUser: answers.targetUser || "",
       complianceRules: answers.neverGetWrong || "Standard platform compliance (Tier 0 + Tier 1 auto-applied)",
       raasRules: answers.raasRules && !/none|no|not really|nothing|n\/a/i.test(answers.raasRules) ? answers.raasRules : "",
@@ -489,8 +502,8 @@ export default function DeveloperSandbox() {
             const cardData = {
               name: card.name || "Your Worker",
               description: card.description || "",
-              targetUser: card.targetUser || "",
-              problemSolves: card.problemSolves || "",
+              targetUser: card.targetUser || card.audience || "",
+              problemSolves: card.problemSolves || card.problem || card.description || "",
               complianceRules: (card.rules || []).join(". ") || "Standard compliance",
               vertical: card.category || vertical || "",
               jurisdiction: "GLOBAL",
@@ -535,6 +548,8 @@ export default function DeveloperSandbox() {
   async function handleWorkerCardApprove(cardData) {
     const token = localStorage.getItem("ID_TOKEN");
     if (!token || token === "undefined" || token === "null") {
+      if (signupPromptShown) return; // guard: never fire twice
+      setSignupPromptShown(true);
       setPendingCardData(cardData);
       setShowAuthPrompt(true);
       addAssistantMessage("Before I can build this, I need a quick signup — just your name and email. This creates your workspace so your worker has a home.");
@@ -618,13 +633,6 @@ export default function DeveloperSandbox() {
     } finally {
       setAuthLoading(false);
     }
-  }
-
-  // Handle auth required from TestWorkerPanel (Fix 1 + Fix 12)
-  function handleTestAuthRequired() {
-    setShowAuthPrompt(true);
-    // Show inline signup — NOT an Alex message about auth
-    addAssistantMessage("Let's get you signed in so you can test this. Quick — name and email.");
   }
 
   // Handle session error — silent inline UI, not Alex conversation (Fix 12)
@@ -1181,7 +1189,6 @@ export default function DeveloperSandbox() {
               workerCardData={workerCardData}
               sessionId={sessionId}
               onTestComplete={handleTestComplete}
-              onAuthRequired={handleTestAuthRequired}
             />
           )}
 

@@ -124,12 +124,40 @@ export default function BuildProgress({ worker, workerCardData, onWorkerUpdate, 
             {workerCardData?.description || worker?.description || "No description"}
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <span style={{ padding: "4px 10px", background: "rgba(16,185,129,0.1)", color: "#10b981", borderRadius: 6, fontSize: 12, fontWeight: 600 }}>
-              {worker?.rulesCount || 0} compliance rules
-            </span>
-            <span style={{ padding: "4px 10px", background: "rgba(107,70,193,0.08)", color: "#6B46C1", borderRadius: 6, fontSize: 12, fontWeight: 600 }}>
-              {workerCardData?.jurisdiction || "GLOBAL"}
-            </span>
+            {(() => {
+              // Count compliance rules from all sources
+              const rulesSources = [
+                workerCardData?.complianceRules,
+                workerCardData?.raasRules,
+                workerCardData?.neverGetWrong,
+              ].filter(Boolean);
+              const rulesCount = worker?.rulesCount || rulesSources.reduce((count, src) => {
+                const parts = src.split(/[.;,]/).map(s => s.trim()).filter(s => s.length > 3);
+                return count + Math.max(parts.length, 1);
+              }, 0) || 0;
+              const hasRules = rulesCount > 0;
+              return (
+                <span style={{ padding: "4px 10px", background: hasRules ? "rgba(16,185,129,0.1)" : "rgba(148,163,184,0.1)", color: hasRules ? "#10b981" : "#94A3B8", borderRadius: 6, fontSize: 12, fontWeight: 600 }}>
+                  {rulesCount} compliance rule{rulesCount !== 1 ? "s" : ""}
+                </span>
+              );
+            })()}
+            {(() => {
+              // Smart jurisdiction display
+              const jur = workerCardData?.jurisdiction || "GLOBAL";
+              const statePattern = /\b(AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY|DC)\b/g;
+              const states = jur.match(statePattern);
+              const display = states && states.length > 1
+                ? `Multi-state (${states.length})`
+                : states && states.length === 1
+                ? states[0]
+                : jur === "GLOBAL" ? "National" : jur;
+              return (
+                <span style={{ padding: "4px 10px", background: "rgba(107,70,193,0.08)", color: "#6B46C1", borderRadius: 6, fontSize: 12, fontWeight: 600 }}>
+                  {display}
+                </span>
+              );
+            })()}
           </div>
         </div>
       </div>
