@@ -9,6 +9,32 @@ import { fireConfetti } from "../utils/celebrations";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
 
+// Error boundary — catches render crashes, falls back to recovery UI
+class PanelErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { hasError: false, error: null }; }
+  static getDerivedStateFromError(error) { return { hasError: true, error }; }
+  componentDidCatch(error, info) { console.error("[PanelErrorBoundary] Render crash:", error, info.componentStack); }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: 40, textAlign: "center" }}>
+          <div style={{ fontSize: 16, fontWeight: 600, color: "#1a1a2e", marginBottom: 8 }}>Something went wrong</div>
+          <div style={{ fontSize: 14, color: "#64748B", marginBottom: 20, lineHeight: 1.5 }}>
+            The panel encountered an error. Click below to recover.
+          </div>
+          <button
+            onClick={() => { this.setState({ hasError: false, error: null }); if (this.props.onRecover) this.props.onRecover(); }}
+            style={{ padding: "10px 24px", background: "#6B46C1", color: "white", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer" }}
+          >
+            Go back to Worker Card
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 // ── Styles ────────────────────────────────────────────────────
 const S = {
   root: { display: "flex", height: "100vh", overflow: "hidden", background: "#F8F9FC", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", color: "#1a1a2e" },
@@ -110,17 +136,26 @@ export default function DeveloperSandbox() {
     setFlowStep(step);
   }
 
+  // ── Session persistence — load saved state on mount ──
+  const savedSession = useRef(null);
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("ta_sandbox_session");
+      if (raw) savedSession.current = JSON.parse(raw);
+    } catch {}
+  }, []);
+
   // Step 1 — Discover
-  const [vertical, setVertical] = useState("");
-  const [subjectDomain, setSubjectDomain] = useState("");
-  const [selectedIdea, setSelectedIdea] = useState(null);
+  const [vertical, setVertical] = useState(() => savedSession.current?.vertical || "");
+  const [subjectDomain, setSubjectDomain] = useState(() => savedSession.current?.subjectDomain || "");
+  const [selectedIdea, setSelectedIdea] = useState(() => savedSession.current?.selectedIdea || null);
   const [waitlistEnabled, setWaitlistEnabled] = useState(false);
 
   // Step 2 — Vibe
-  const [vibeStep, setVibeStep] = useState(0);
-  const [vibeAnswers, setVibeAnswers] = useState({});
-  const [workerCardData, setWorkerCardData] = useState(null);
-  const [showWorkerCard, setShowWorkerCard] = useState(false);
+  const [vibeStep, setVibeStep] = useState(() => savedSession.current?.vibeStep || 0);
+  const [vibeAnswers, setVibeAnswers] = useState(() => savedSession.current?.vibeAnswers || {});
+  const [workerCardData, setWorkerCardData] = useState(() => savedSession.current?.workerCardData || null);
+  const [showWorkerCard, setShowWorkerCard] = useState(() => !!savedSession.current?.workerCardData);
 
   // Step 2b — Sharpening Session (3 challenge questions after Vibe, before Worker Card)
   const [sharpeningActive, setSharpeningActive] = useState(false);
@@ -128,8 +163,22 @@ export default function DeveloperSandbox() {
   const [sharpeningAnswers, setSharpeningAnswers] = useState([]);
 
   // Step 3 — Build
-  const [worker, setWorker] = useState(null);
-  const [jurisdiction, setJurisdiction] = useState("");
+  const [worker, setWorker] = useState(() => savedSession.current?.worker || null);
+  const [jurisdiction, setJurisdiction] = useState(() => savedSession.current?.jurisdiction || "");
+
+  // Persist session state on key changes
+  useEffect(() => {
+    if (!workerCardData && !worker && !vertical) return;
+    try {
+      localStorage.setItem("ta_sandbox_session", JSON.stringify({
+        vertical, subjectDomain, selectedIdea, vibeStep, vibeAnswers,
+        workerCardData, worker, jurisdiction,
+      }));
+      if (workerCardData?.name) {
+        sessionStorage.setItem("ta_sandbox_worker_name", workerCardData.name);
+      }
+    } catch {}
+  }, [vertical, subjectDomain, selectedIdea, vibeStep, vibeAnswers, workerCardData, worker, jurisdiction]);
 
   // Image attachments
   const [pendingImages, setPendingImages] = useState([]);
@@ -230,16 +279,26 @@ export default function DeveloperSandbox() {
   // Initial greeting — mount only, for returning users who already dismissed onboarding
   useEffect(() => {
     if (!showOnboarding) {
-      const savedWorkerName = sessionStorage.getItem("ta_sandbox_worker_name");
+      const savedWorkerName = workerCardData?.name || sessionStorage.getItem("ta_sandbox_worker_name");
       let greeting;
       if (firstName && savedWorkerName) {
-        greeting = `Welcome back, ${firstName}. Ready to keep building your ${savedWorkerName}?`;
+        greeting = `Welcome back, ${firstName}. Picked up where you left off: ${savedWorkerName}.`;
       } else if (firstName) {
         greeting = `Welcome back, ${firstName}. Ready to pick up where we left off?`;
       } else {
         greeting = "I'm Alex. Let's build your first Digital Worker. What industry are you in?";
       }
       addAssistantMessage(greeting);
+
+      // If we have a saved worker card, restore the flow step
+      if (savedSession.current?.workerCardData) {
+        const restoredStep = savedSession.current.worker?.buildPhase === "library" || savedSession.current.worker?.buildPhase === "prePublish"
+          ? 3 : savedSession.current.worker?.id ? 2 : 1;
+        if (restoredStep > 1) {
+          setFlowStep(restoredStep);
+          setMaxFlowStep(restoredStep);
+        }
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -485,11 +544,15 @@ export default function DeveloperSandbox() {
                      (answers.visibility || "").toLowerCase().includes("marketplace");
 
     const needsMdGate = isHE && selectedIdea?.lane === "back_me_up";
+    // Robust audience extraction — any non-blank answer counts
+    const rawTarget = answers.targetUser || "";
+    const targetUser = rawTarget.trim() || answers.currentProcess?.match(/(?:for|by)\s+(.+?)(?:\.|,|$)/i)?.[1]?.trim() || "General audience";
+
     const cardData = {
       name: selectedIdea?.name || "Custom Worker",
       description: answers.problemDescription || selectedIdea?.desc || "",
-      problemSolves: answers.currentProcess || answers.problemDescription || selectedIdea?.desc || "",
-      targetUser: answers.targetUser || "",
+      problemSolves: answers.currentProcess || answers.problemDescription || selectedIdea?.desc || "General productivity improvement",
+      targetUser,
       complianceRules: answers.neverGetWrong || "Standard platform compliance (Tier 0 + Tier 1 auto-applied)",
       raasRules: answers.raasRules && !/none|no|not really|nothing|n\/a/i.test(answers.raasRules) ? answers.raasRules : "",
       externalData: answers.externalData || "None specified",
@@ -530,7 +593,7 @@ export default function DeveloperSandbox() {
   // Override sendMessage for vibe step to route answers
   async function handleSend() {
     const text = input.trim();
-    if (!text || sending) return;
+    if ((!text && pendingImages.length === 0) || sending) return;
     setInput("");
     addUserMessage(text);
 
@@ -586,8 +649,8 @@ export default function DeveloperSandbox() {
             const cardData = {
               name: card.name || "Your Worker",
               description: card.description || "",
-              targetUser: card.targetUser || card.audience || "",
-              problemSolves: card.problemSolves || card.problem || card.description || "",
+              targetUser: card.targetUser || card.audience || "General audience",
+              problemSolves: card.problemSolves || card.problem || card.description || "General productivity improvement",
               complianceRules: (card.rules || []).join(". ") || "Standard compliance",
               vertical: card.category || vertical || "",
               jurisdiction: "GLOBAL",
@@ -703,7 +766,7 @@ export default function DeveloperSandbox() {
 
         setShowAuthPrompt(false);
         setShowSessionError(false);
-        addAssistantMessage(`Welcome, ${authName.split(" ")[0]}. Now let me build that worker.`);
+        addAssistantMessage(`Welcome, ${authName.split(" ")[0]}. Your workspace is ready. Before publishing, you will review and sign the Creator Agreement — no surprises. Now let me build that worker.`);
 
         if (pendingCardData) {
           await runBuildPipeline(pendingCardData);
@@ -736,11 +799,19 @@ export default function DeveloperSandbox() {
   // ── Step 3 → Step 4: Build complete → Test ──────────────────
 
   function handleBuildComplete(buildData) {
-    setWorker(prev => ({ ...prev, ...buildData }));
-    advanceToStep(4); // Only forward
-    fireConfetti("full");
-    setTimeout(() => fireConfetti("medium"), 600);
-    addAssistantMessage(`Your ${buildData.name || workerCardData?.name} is built. Before we publish, let's make sure it works exactly the way you want. Use the test panel on the right like one of your subscribers would — I'm watching.`);
+    try {
+      const safeData = buildData || worker || {};
+      setWorker(prev => ({ ...prev, ...safeData }));
+      advanceToStep(4); // Only forward
+      fireConfetti("full");
+      setTimeout(() => fireConfetti("medium"), 600);
+      const name = safeData.name || workerCardData?.name || "your worker";
+      addAssistantMessage(`Your ${name} is built. Before we publish, let's make sure it works exactly the way you want. Use the test panel on the right like one of your subscribers would — I'm watching.`);
+    } catch (e) {
+      console.error("[handleBuildComplete] Error during transition:", e);
+      addAssistantMessage("Build is complete, but there was a hiccup loading the test panel. Let me try again.");
+      setTimeout(() => { setFlowStep(4); }, 500);
+    }
   }
 
   // ── Step 4 → Step 5: Test complete → Distribute ───────────
@@ -772,8 +843,8 @@ export default function DeveloperSandbox() {
     setWorkerCardData({
       name: existingWorker.name || existingWorker.display_name || "Your Worker",
       description: existingWorker.description || "",
-      targetUser: existingWorker.targetUser || "",
-      problemSolves: existingWorker.problemSolves || "",
+      targetUser: existingWorker.targetUser || "General audience",
+      problemSolves: existingWorker.problemSolves || "General productivity improvement",
       complianceRules: (existingWorker.raas_tier_1 || []).join(". ") || "Standard compliance",
       vertical: existingWorker.suite || existingWorker.category || "",
       jurisdiction: existingWorker.jurisdiction || "GLOBAL",
@@ -792,13 +863,28 @@ export default function DeveloperSandbox() {
     if (files.length === 0) return;
     const maxFiles = 3 - pendingImages.length;
     const toProcess = files.slice(0, maxFiles);
+    const allowedTypes = /^(image\/(png|jpeg|webp|heic|heif)|application\/pdf)$/;
     toProcess.forEach(file => {
-      if (file.size > 5 * 1024 * 1024) return;
-      if (!/^image\/(png|jpeg|webp)$/.test(file.type)) return;
+      if (file.size > 10 * 1024 * 1024) {
+        addAssistantMessage("File too large. Max 10MB.");
+        return;
+      }
+      if (!allowedTypes.test(file.type)) {
+        addAssistantMessage("Unsupported file type. Use PNG, JPG, HEIC, or PDF.");
+        return;
+      }
       const reader = new FileReader();
       reader.onload = () => {
         const base64 = reader.result.split(",")[1];
-        setPendingImages(prev => [...prev, { base64, mediaType: file.type, name: file.name, preview: reader.result }]);
+        setPendingImages(prev => [...prev, {
+          base64,
+          mediaType: file.type === "application/pdf" ? "application/pdf" : file.type.replace("heic", "jpeg").replace("heif", "jpeg"),
+          name: file.name,
+          preview: file.type.startsWith("image/") ? reader.result : null,
+        }]);
+      };
+      reader.onerror = () => {
+        addAssistantMessage("Image upload failed. Try again.");
       };
       reader.readAsDataURL(file);
     });
@@ -845,6 +931,12 @@ export default function DeveloperSandbox() {
         <div style={S.chatHeader}>
           <span style={S.chatLogo}>TitleApp</span>
           <span style={S.chatName}>Alex — Your AI Builder</span>
+          {localStorage.getItem("ID_TOKEN") && creatorName && (
+            <span style={{ marginLeft: "auto", fontSize: 12, color: "#10b981", fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}>
+              <span style={{ width: 6, height: 6, borderRadius: 3, background: "#10b981" }} />
+              {creatorName.split(" ")[0]}
+            </span>
+          )}
         </div>
         <div style={S.chatMessages}>
           <div style={{ flex: 1 }} />
@@ -853,7 +945,11 @@ export default function DeveloperSandbox() {
               {msg.images && msg.images.length > 0 && (
                 <div style={{ display: "flex", gap: 4, marginBottom: 6, flexWrap: "wrap" }}>
                   {msg.images.map((img, j) => (
-                    <img key={j} src={img.preview} alt="" style={{ width: 48, height: 48, borderRadius: 6, objectFit: "cover", border: "1px solid #E2E8F0" }} />
+                    img.preview ? (
+                      <img key={j} src={img.preview} alt="" style={{ width: 48, height: 48, borderRadius: 6, objectFit: "cover", border: "1px solid rgba(255,255,255,0.2)" }} />
+                    ) : (
+                      <div key={j} style={{ width: 48, height: 48, borderRadius: 6, background: "rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: "rgba(255,255,255,0.8)", fontWeight: 600 }}>{img.name?.split(".").pop()?.toUpperCase() || "FILE"}</div>
+                    )
                   ))}
                 </div>
               )}
@@ -892,36 +988,46 @@ export default function DeveloperSandbox() {
             </div>
           )}
 
-          {/* Inline signup form */}
+          {/* Inline signup — rendered as a distinct card, not a chat bubble */}
           {showAuthPrompt && (
-            <form
-              onSubmit={handleInlineSignup}
-              style={{ alignSelf: "flex-start", background: "#F4F4F8", border: "1px solid #E2E8F0", borderRadius: 12, padding: 16, maxWidth: "85%", display: "flex", flexDirection: "column", gap: 10 }}
-            >
-              <input
-                type="text"
-                placeholder="Your name"
-                value={authName}
-                onChange={e => setAuthName(e.target.value)}
-                required
-                style={{ padding: "10px 12px", background: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: 8, color: "#1a1a2e", fontSize: 14, outline: "none" }}
-              />
-              <input
-                type="email"
-                placeholder="Email address"
-                value={authEmail}
-                onChange={e => setAuthEmail(e.target.value)}
-                required
-                style={{ padding: "10px 12px", background: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: 8, color: "#1a1a2e", fontSize: 14, outline: "none" }}
-              />
-              <button
-                type="submit"
-                disabled={authLoading}
-                style={{ padding: "10px 20px", background: "#6B46C1", color: "white", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: authLoading ? "wait" : "pointer", opacity: authLoading ? 0.7 : 1 }}
-              >
-                {authLoading ? "Creating your workspace..." : "Sign up and build"}
-              </button>
-            </form>
+            <div style={{
+              alignSelf: "center", background: "#FFFFFF", border: "2px solid #6B46C1", borderRadius: 16,
+              padding: "24px 20px", maxWidth: 360, width: "100%", boxShadow: "0 4px 24px rgba(107,70,193,0.12)",
+            }}>
+              <div style={{ fontSize: 16, fontWeight: 700, color: "#1a1a2e", marginBottom: 4 }}>Create your workspace</div>
+              <div style={{ fontSize: 13, color: "#64748B", lineHeight: 1.5, marginBottom: 16 }}>
+                Your worker needs a home. This creates your free creator account.
+              </div>
+              <form onSubmit={handleInlineSignup} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <input
+                  type="text"
+                  placeholder="Your name"
+                  value={authName}
+                  onChange={e => setAuthName(e.target.value)}
+                  required
+                  autoFocus
+                  style={{ padding: "10px 12px", background: "#F8F9FC", border: "1px solid #E2E8F0", borderRadius: 8, color: "#1a1a2e", fontSize: 14, outline: "none" }}
+                />
+                <input
+                  type="email"
+                  placeholder="Email address"
+                  value={authEmail}
+                  onChange={e => setAuthEmail(e.target.value)}
+                  required
+                  style={{ padding: "10px 12px", background: "#F8F9FC", border: "1px solid #E2E8F0", borderRadius: 8, color: "#1a1a2e", fontSize: 14, outline: "none" }}
+                />
+                <button
+                  type="submit"
+                  disabled={authLoading}
+                  style={{ padding: "12px 20px", background: "#6B46C1", color: "white", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: authLoading ? "wait" : "pointer", opacity: authLoading ? 0.7 : 1 }}
+                >
+                  {authLoading ? "Creating your workspace..." : "Sign up and build"}
+                </button>
+              </form>
+              <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 10, lineHeight: 1.5, textAlign: "center" }}>
+                By signing up you agree to TitleApp's Terms of Service.
+              </div>
+            </div>
           )}
 
           {/* Session error — silent inline UI, not Alex (Fix 12) */}
@@ -949,7 +1055,11 @@ export default function DeveloperSandbox() {
             <div style={{ display: "flex", gap: 6, marginBottom: 8, flexWrap: "wrap" }}>
               {pendingImages.map((img, i) => (
                 <div key={i} style={{ position: "relative" }}>
-                  <img src={img.preview} alt="" style={{ width: 44, height: 44, borderRadius: 6, objectFit: "cover", border: "1px solid #E2E8F0" }} />
+                  {img.preview ? (
+                    <img src={img.preview} alt="" style={{ width: 44, height: 44, borderRadius: 6, objectFit: "cover", border: "1px solid #E2E8F0" }} />
+                  ) : (
+                    <div style={{ width: 44, height: 44, borderRadius: 6, background: "#F8F9FC", border: "1px solid #E2E8F0", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: "#64748B", fontWeight: 600 }}>PDF</div>
+                  )}
                   <button
                     onClick={() => setPendingImages(prev => prev.filter((_, j) => j !== i))}
                     style={{ position: "absolute", top: -6, right: -6, width: 18, height: 18, borderRadius: 9, background: "#dc2626", color: "white", border: "none", fontSize: 11, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1 }}
@@ -964,7 +1074,7 @@ export default function DeveloperSandbox() {
               style={{ padding: "8px 10px", background: "#F8F9FC", border: "1px solid #E2E8F0", borderRadius: 8, color: "#64748B", cursor: "pointer", fontSize: 16, flexShrink: 0, lineHeight: 1 }}
               title="Attach screenshot"
             >&#128206;</button>
-            <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp" multiple style={{ display: "none" }} onChange={handleFileSelect} />
+            <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp,image/heic,image/heif,application/pdf" multiple style={{ display: "none" }} onChange={handleFileSelect} />
             <textarea
               ref={chatInputRef}
               style={{ ...S.chatInput, flex: 1 }}
@@ -978,7 +1088,7 @@ export default function DeveloperSandbox() {
             />
             <button
               onClick={handleSend}
-              disabled={sending || !input.trim()}
+              disabled={sending || (!input.trim() && pendingImages.length === 0)}
               style={{
                 padding: "10px 16px", background: input.trim() ? "#6B46C1" : "#E2E8F0",
                 color: input.trim() ? "white" : "#94A3B8", border: "none", borderRadius: 8,
@@ -1279,22 +1389,33 @@ export default function DeveloperSandbox() {
 
           {/* Step 3 — Build */}
           {flowStep === 3 && (
-            <BuildProgress
-              worker={worker}
-              workerCardData={workerCardData}
-              onWorkerUpdate={setWorker}
-              onTestReady={handleBuildComplete}
-            />
+            <PanelErrorBoundary onRecover={() => viewStep(2)}>
+              <BuildProgress
+                worker={worker}
+                workerCardData={workerCardData}
+                onWorkerUpdate={setWorker}
+                onTestReady={handleBuildComplete}
+              />
+            </PanelErrorBoundary>
           )}
 
           {/* Step 4 — Test */}
           {flowStep === 4 && (
-            <TestWorkerPanel
-              worker={worker}
-              workerCardData={workerCardData}
-              sessionId={sessionId}
-              onTestComplete={handleTestComplete}
-            />
+            <PanelErrorBoundary onRecover={() => viewStep(2)}>
+              {worker?.id ? (
+                <TestWorkerPanel
+                  worker={worker}
+                  workerCardData={workerCardData}
+                  sessionId={sessionId}
+                  onTestComplete={handleTestComplete}
+                />
+              ) : (
+                <div style={{ padding: 40, textAlign: "center" }}>
+                  <div style={{ fontSize: 16, fontWeight: 600, color: "#1a1a2e", marginBottom: 8 }}>Loading test panel...</div>
+                  <div style={{ fontSize: 14, color: "#64748B" }}>Setting up your worker for testing.</div>
+                </div>
+              )}
+            </PanelErrorBoundary>
           )}
 
           {/* Step 5 — Distribute */}

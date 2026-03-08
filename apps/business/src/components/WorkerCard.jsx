@@ -103,7 +103,7 @@ export default function WorkerCard({ data, comparables, onApprove, onEdit, isPub
               onChange={e => handleEdit("problemSolves", e.target.value)}
             />
           ) : (
-            <div style={valueStyle}>{data.problemSolves || "Not specified — Alex will derive this during the build."}</div>
+            <div style={valueStyle}>{data.problemSolves || "General productivity improvement"}</div>
           )}
         </div>
 
@@ -117,7 +117,7 @@ export default function WorkerCard({ data, comparables, onApprove, onEdit, isPub
               onChange={e => handleEdit("targetUser", e.target.value)}
             />
           ) : (
-            <div style={valueStyle}>{data.targetUser || "Not yet specified"}</div>
+            <div style={valueStyle}>{data.targetUser || "General audience"}</div>
           )}
         </div>
 
@@ -247,6 +247,9 @@ export default function WorkerCard({ data, comparables, onApprove, onEdit, isPub
           >
             Approve — start building
           </button>
+        </div>
+        <div style={{ fontSize: 11, color: "#94A3B8", textAlign: "center", marginTop: 8, lineHeight: 1.5 }}>
+          Before publishing, you'll review and sign the Creator Agreement. No surprises.
         </div>
       </div>
     </div>
