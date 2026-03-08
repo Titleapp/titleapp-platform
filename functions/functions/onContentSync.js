@@ -8,6 +8,7 @@
  *   2. Vertical worker list cache (platform/verticalCache/{vertical})
  *   3. Alex knowledge base (alex/knowledge/workers/{worker_id})
  *   4. Chat context (platform/chatContext/{vertical})
+ *   5. Marketplace stats cache (platform/marketplaceStats)
  */
 
 "use strict";
@@ -35,6 +36,7 @@ async function handleContentSync(snap) {
       await rebuildVerticalCache(db, event.vertical);
       await updateAlexKnowledge(db, event.worker_id);
       await updateChatContext(db, event.vertical);
+      await updateMarketplaceStats(db);
       console.log(`[onContentSync] worker_approved: ${event.worker_id} — all surfaces updated`);
       break;
 
@@ -43,12 +45,14 @@ async function handleContentSync(snap) {
       await rebuildVerticalCache(db, event.vertical);
       await removeFromAlexKnowledge(db, event.worker_id);
       await updateChatContext(db, event.vertical);
+      await updateMarketplaceStats(db);
       console.log(`[onContentSync] worker_deprecated: ${event.worker_id} — all surfaces updated`);
       break;
 
     case "counters_rebuild":
       await updateHomepageCounter(db);
-      console.log("[onContentSync] counters_rebuild — homepage cache updated");
+      await updateMarketplaceStats(db);
+      console.log("[onContentSync] counters_rebuild — homepage + marketplace cache updated");
       break;
 
     default:
@@ -177,6 +181,75 @@ async function updateChatContext(db, vertical) {
   });
 }
 
+// ═══════════════════════════════════════════════════════════════
+//  MARKETPLACE STATS
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * Rebuild marketplace stats cache for fast facet counts.
+ * Used by GET /v1/marketplace:categories.
+ */
+async function updateMarketplaceStats(db) {
+  const { parsePriceTier } = require("./helpers/workerSchema");
+
+  const verticalCounts = {};
+  const suiteCounts = {};
+  const typeCounts = {};
+  const priceBuckets = { free: 0, under_30: 0, "30_to_59": 0, "60_to_99": 0, "100_plus": 0 };
+  const statusCounts = {};
+  let totalLive = 0;
+  let totalAll = 0;
+
+  // Count from raasCatalog
+  const catalogSnap = await db.collection("raasCatalog").get();
+  for (const doc of catalogSnap.docs) {
+    const d = doc.data();
+    totalAll++;
+
+    const st = d.status || "unknown";
+    statusCounts[st] = (statusCounts[st] || 0) + 1;
+    if (st === "live") totalLive++;
+
+    if (d.vertical) verticalCounts[d.vertical] = (verticalCounts[d.vertical] || 0) + 1;
+    if (d.suite) suiteCounts[d.suite] = (suiteCounts[d.suite] || 0) + 1;
+    if (d.worker_type) typeCounts[d.worker_type] = (typeCounts[d.worker_type] || 0) + 1;
+
+    const p = parsePriceTier(d.price_tier);
+    if (p === 0) priceBuckets.free++;
+    else if (p < 30) priceBuckets.under_30++;
+    else if (p < 60) priceBuckets["30_to_59"]++;
+    else if (p < 100) priceBuckets["60_to_99"]++;
+    else priceBuckets["100_plus"]++;
+  }
+
+  // Count creator-published workers
+  let creatorLive = 0;
+  try {
+    const creatorSnap = await db.collection("workers")
+      .where("published", "==", true)
+      .get();
+    creatorLive = creatorSnap.size;
+    totalAll += creatorLive;
+    totalLive += creatorLive;
+  } catch (e) {
+    console.warn("[onContentSync] Failed to count creator workers:", e.message);
+  }
+
+  await db.doc("platform/marketplaceStats").set({
+    verticals: verticalCounts,
+    suites: suiteCounts,
+    types: typeCounts,
+    priceRanges: priceBuckets,
+    statuses: statusCounts,
+    totalLive,
+    totalAll,
+    creatorLive,
+    last_updated: admin.firestore.FieldValue.serverTimestamp(),
+  });
+
+  console.log(`[onContentSync] marketplaceStats rebuilt: ${totalLive} live, ${totalAll} total`);
+}
+
 module.exports = {
   handleContentSync,
   updateHomepageCounter,
@@ -184,5 +257,6 @@ module.exports = {
   updateAlexKnowledge,
   removeFromAlexKnowledge,
   updateChatContext,
+  updateMarketplaceStats,
   formatWorkerCount,
 };

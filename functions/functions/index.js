@@ -3518,6 +3518,65 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       }
     }
 
+    // ═══════════════════════════════════════════════════════════════
+    //  MARKETPLACE DISCOVERY — UNAUTHENTICATED (Worker Discovery API)
+    // ═══════════════════════════════════════════════════════════════
+
+    // GET /v1/marketplace:search — Search/filter workers (no auth)
+    if (route === "/marketplace:search" && method === "GET") {
+      try {
+        const { searchWorkers } = require("./services/workerDiscovery");
+        return await searchWorkers(req, res);
+      } catch (e) {
+        console.error("marketplace:search failed:", e);
+        return jsonError(res, 500, "Search failed");
+      }
+    }
+
+    // GET /v1/marketplace:featured — Trending/popular/new workers (no auth)
+    if (route === "/marketplace:featured" && method === "GET") {
+      try {
+        const { getFeaturedWorkers } = require("./services/workerDiscovery");
+        return await getFeaturedWorkers(req, res);
+      } catch (e) {
+        console.error("marketplace:featured failed:", e);
+        return jsonError(res, 500, "Failed to load featured workers");
+      }
+    }
+
+    // GET /v1/marketplace:categories — Browse categories with counts (no auth)
+    if (route === "/marketplace:categories" && method === "GET") {
+      try {
+        const { getCategories } = require("./services/workerDiscovery");
+        return await getCategories(req, res);
+      } catch (e) {
+        console.error("marketplace:categories failed:", e);
+        return jsonError(res, 500, "Failed to load categories");
+      }
+    }
+
+    // GET /v1/marketplace:worker — Full public worker profile (no auth)
+    if (route === "/marketplace:worker" && method === "GET") {
+      try {
+        const { getWorkerProfile } = require("./services/workerDiscovery");
+        return await getWorkerProfile(req, res);
+      } catch (e) {
+        console.error("marketplace:worker failed:", e);
+        return jsonError(res, 500, "Failed to load worker profile");
+      }
+    }
+
+    // GET /v1/marketplace:compare — Compare up to 4 workers side-by-side (no auth)
+    if (route === "/marketplace:compare" && method === "GET") {
+      try {
+        const { compareWorkers } = require("./services/workerDiscovery");
+        return await compareWorkers(req, res);
+      } catch (e) {
+        console.error("marketplace:compare failed:", e);
+        return jsonError(res, 500, "Failed to compare workers");
+      }
+    }
+
     // POST /v1/magic-link:send — Send magic link (no auth — sign-up entry point)
     if (route === "/magic-link:send" && method === "POST") {
       try {

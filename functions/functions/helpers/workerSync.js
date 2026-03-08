@@ -653,4 +653,6 @@ module.exports = {
   notifyAlex,
   MARKETPLACE_SLUG_MAP,
   RULESET_MAP,
+  DISPLAY_NAME_MAP,
+  HEADLINE_MAP,
 };
