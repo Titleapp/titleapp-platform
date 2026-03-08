@@ -3467,6 +3467,76 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       }
     }
 
+    // ═══════════════════════════════════════════════════════════════
+    //  WORKER SHARE LANDING — UNAUTHENTICATED (Session 30)
+    // ═══════════════════════════════════════════════════════════════
+
+    // GET /v1/worker-landing:data — Worker landing page data (no auth)
+    if (route === "/worker-landing:data" && method === "GET") {
+      try {
+        const { getWorkerLandingData } = require("./services/workerShare");
+        return await getWorkerLandingData(req, res);
+      } catch (e) {
+        console.error("worker-landing:data failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // GET /v1/suite-landing:data — Suite landing page data (no auth)
+    if (route === "/suite-landing:data" && method === "GET") {
+      try {
+        const { getSuiteLandingData } = require("./services/workerShare");
+        return await getSuiteLandingData(req, res);
+      } catch (e) {
+        console.error("suite-landing:data failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // POST /v1/worker-landing:verify-pin — Verify PIN (no auth)
+    if (route === "/worker-landing:verify-pin" && method === "POST") {
+      try {
+        const { verifyWorkerPin } = require("./services/workerShare");
+        return await verifyWorkerPin(req, res);
+      } catch (e) {
+        console.error("worker-landing:verify-pin failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // GET /v1/worker-landing:og-image — OG image for link previews (no auth)
+    if (route === "/worker-landing:og-image" && method === "GET") {
+      try {
+        const { getWorkerOgImage } = require("./services/workerShare");
+        return await getWorkerOgImage(req, res);
+      } catch (e) {
+        console.error("worker-landing:og-image failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // POST /v1/magic-link:send — Send magic link (no auth — sign-up entry point)
+    if (route === "/magic-link:send" && method === "POST") {
+      try {
+        const { sendMagicLink } = require("./services/magicLink");
+        return await sendMagicLink(req, res);
+      } catch (e) {
+        console.error("magic-link:send failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // POST /v1/magic-link:verify — Verify magic link token (no auth)
+    if (route === "/magic-link:verify" && method === "POST") {
+      try {
+        const { verifyMagicLink } = require("./services/magicLink");
+        return await verifyMagicLink(req, res);
+      } catch (e) {
+        console.error("magic-link:verify failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
     // All other routes require Firebase auth
     const auth = await requireFirebaseUser(req, res);
     if (auth.handled) return;
@@ -12246,6 +12316,109 @@ Analyze now:`;
       }
     }
 
+    // ═══════════════════════════════════════════════════════════════
+    //  WORKER SHARE — AUTHENTICATED ROUTES (Session 30)
+    // ═══════════════════════════════════════════════════════════════
+
+    // POST /v1/worker-slug:generate — Auto-generate worker slug
+    if (route === "/worker-slug:generate" && method === "POST") {
+      try {
+        const { generateWorkerSlug } = require("./services/workerSlug");
+        return await generateWorkerSlug(req, res);
+      } catch (e) {
+        console.error("worker-slug:generate failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // PUT /v1/worker-slug:edit — Edit worker slug (one-time)
+    if (route === "/worker-slug:edit" && method === "PUT") {
+      try {
+        const { editWorkerSlug } = require("./services/workerSlug");
+        return await editWorkerSlug(req, res);
+      } catch (e) {
+        console.error("worker-slug:edit failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // POST /v1/suite-slug:generate — Auto-generate suite slug
+    if (route === "/suite-slug:generate" && method === "POST") {
+      try {
+        const { generateSuiteSlug } = require("./services/workerSlug");
+        return await generateSuiteSlug(req, res);
+      } catch (e) {
+        console.error("suite-slug:generate failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // POST /v1/worker-share:configure — Set link options (expiry, PIN, trial days)
+    if (route === "/worker-share:configure" && method === "POST") {
+      try {
+        const { configureShareLink } = require("./services/workerShare");
+        return await configureShareLink(req, res);
+      } catch (e) {
+        console.error("worker-share:configure failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // GET /v1/worker-landing:check-access — Check if user is subscribed
+    if (route === "/worker-landing:check-access" && method === "GET") {
+      try {
+        const { checkWorkerAccess } = require("./services/workerShare");
+        return await checkWorkerAccess(req, res);
+      } catch (e) {
+        console.error("worker-landing:check-access failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // GET /v1/subscription:status — Get subscription/trial status
+    if (route === "/subscription:status" && method === "GET") {
+      try {
+        const { getSubscriptionStatus } = require("./services/workerTrial");
+        return await getSubscriptionStatus(req, res);
+      } catch (e) {
+        console.error("subscription:status failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // POST /v1/subscription:activate — Activate subscription after Stripe checkout
+    if (route === "/subscription:activate" && method === "POST") {
+      try {
+        const { activateSubscription } = require("./services/workerTrial");
+        return await activateSubscription(req, res);
+      } catch (e) {
+        console.error("subscription:activate failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // POST /v1/subscription:cancel — Cancel subscription
+    if (route === "/subscription:cancel" && method === "POST") {
+      try {
+        const { cancelSubscription } = require("./services/workerTrial");
+        return await cancelSubscription(req, res);
+      } catch (e) {
+        console.error("subscription:cancel failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // POST /v1/subscription:suite — Subscribe to all workers in a suite
+    if (route === "/subscription:suite" && method === "POST") {
+      try {
+        const { subscribeSuite } = require("./services/workerTrial");
+        return await subscribeSuite(req, res);
+      } catch (e) {
+        console.error("subscription:suite failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
     return jsonError(res, 404, "Not Found", { route, method });
   }
 );
@@ -12753,6 +12926,16 @@ const { checkIdVerificationNudge } = require("./services/idVerification");
 exports.idVerificationNudge = onSchedule(
   { schedule: "*/30 * * * *", timeZone: "America/Los_Angeles", region: "us-central1" },
   async () => { await checkIdVerificationNudge(); }
+);
+
+// ----------------------------
+// TRIAL EXPIRY: Daily check — day 12/14 notifications + day 15 suspension (Session 30)
+// ----------------------------
+const { checkTrialExpiry } = require("./services/workerTrial");
+
+exports.checkTrialExpiry = onSchedule(
+  { schedule: "0 6 * * *", timeZone: "America/Los_Angeles", region: "us-central1" },
+  async () => { await checkTrialExpiry(); }
 );
 
 // ----------------------------

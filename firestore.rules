@@ -142,6 +142,23 @@ service cloud.firestore {
     // Verifications storage paths — write own, read admin only
     // (Storage rules are separate, but Firestore refs to paths follow same pattern)
 
+    // Magic links — server-only writes, no client reads (tokens are sensitive)
+    match /magicLinks/{tokenId} {
+      allow read, write: if false;
+    }
+
+    // Subscriptions — authenticated user can read own subscriptions
+    match /subscriptions/{subId} {
+      allow read: if request.auth != null && subId.matches(request.auth.uid + '_.*');
+      allow write: if false; // server-only writes
+    }
+
+    // Suites — authenticated read, server-only write
+    match /suites/{suiteId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+
     // Catch-all: deny everything else
     match /{document=**} {
       allow read, write: if false;
