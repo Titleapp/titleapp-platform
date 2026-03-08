@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
+import PublishPreflight from "./PublishPreflight";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
 
@@ -261,8 +262,8 @@ export default function TestWorkerPanel({ worker, workerCardData, sessionId, onT
     inputRef.current?.focus();
   }
 
-  // Publish requires core job checked + all required gates passed
-  const gatesPassed = idVerified && liabilityAccepted && (!isHealthVertical || baaAccepted);
+  // Publish requires core job checked + all preflight gates passed
+  const gatesPassed = idVerified && liabilityAccepted;
   const canPublish = coreJobDone && gatesPassed;
   const publishBlocked = (needsMdGate && !mdSigned) || !gatesPassed;
 
@@ -468,149 +469,17 @@ export default function TestWorkerPanel({ worker, workerCardData, sessionId, onT
         </div>
       )}
 
-      {/* ── Publish Gates ── */}
-      <div style={{ marginBottom: 16 }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a2e", marginBottom: 10 }}>Before you publish</div>
-
-        {/* Gate 1: Identity Verification */}
-        <div style={{ background: "#FFFFFF", border: `1px solid ${idVerified ? "rgba(16,185,129,0.3)" : "#E2E8F0"}`, borderRadius: 10, padding: 14, marginBottom: 8 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: idVerified ? 0 : 8 }}>
-            <div style={{ width: 8, height: 8, borderRadius: 4, background: idVerified ? "#10b981" : "#F59E0B" }} />
-            <div style={{ fontSize: 13, fontWeight: 600, color: idVerified ? "#10b981" : "#1a1a2e", flex: 1 }}>
-              Identity Verification {idVerified && "— Verified"}
-            </div>
-          </div>
-          {!idVerified && (
-            <>
-              <div style={{ fontSize: 12, color: "#64748B", lineHeight: 1.5, marginBottom: 10 }}>
-                Upload a photo ID — verification takes less than 60 seconds. Required before any worker can be published.
-              </div>
-              {!showIdUpload ? (
-                <button
-                  onClick={() => setShowIdUpload(true)}
-                  style={{ padding: "8px 16px", background: "#6B46C1", color: "white", border: "none", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer" }}
-                >
-                  Verify Identity
-                </button>
-              ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  <select
-                    value={idType}
-                    onChange={e => setIdType(e.target.value)}
-                    style={{ padding: "8px 10px", background: "#F8F9FC", border: "1px solid #E2E8F0", borderRadius: 6, color: "#1a1a2e", fontSize: 13, outline: "none" }}
-                  >
-                    <option value="drivers_license">Driver's License</option>
-                    <option value="passport">Passport</option>
-                    <option value="state_id">State ID</option>
-                  </select>
-                  <button
-                    onClick={async () => {
-                      setGateError(null);
-                      try {
-                        const token = await getToken();
-                        const r = await fetch(`${API_BASE}/api?path=/v1/creator:verify-identity`, {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-                          body: JSON.stringify({ idType }),
-                        });
-                        const d = await r.json();
-                        if (d.ok) { setIdVerified(true); setShowIdUpload(false); }
-                        else setGateError(d.error);
-                      } catch { setGateError("Connection error. Try again."); }
-                    }}
-                    style={{ padding: "8px 16px", background: "#6B46C1", color: "white", border: "none", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer" }}
-                  >
-                    Submit Verification
-                  </button>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-
-        {/* Gate 2: Liability Disclaimer */}
-        <div style={{ background: "#FFFFFF", border: `1px solid ${liabilityAccepted ? "rgba(16,185,129,0.3)" : "#E2E8F0"}`, borderRadius: 10, padding: 14, marginBottom: 8 }}>
-          <div
-            style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer" }}
-            onClick={async () => {
-              if (liabilityAccepted) return;
-              setGateError(null);
-              try {
-                const token = await getToken();
-                const r = await fetch(`${API_BASE}/api?path=/v1/creator:accept-liability`, {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-                  body: JSON.stringify({ workerId: worker?.id }),
-                });
-                const d = await r.json();
-                if (d.ok) setLiabilityAccepted(true);
-                else setGateError(d.error);
-              } catch { setGateError("Connection error. Try again."); }
-            }}
-          >
-            <div style={{
-              width: 20, height: 20, borderRadius: 4, flexShrink: 0, marginTop: 1,
-              border: `2px solid ${liabilityAccepted ? "#10b981" : "#CBD5E1"}`,
-              background: liabilityAccepted ? "#10b981" : "transparent",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              color: "white", fontSize: 12, fontWeight: 700,
-            }}>
-              {liabilityAccepted ? "\u2713" : ""}
-            </div>
-            <div style={{ fontSize: 12, color: "#1a1a2e", lineHeight: 1.6 }}>
-              I am responsible for the accuracy and compliance of this Digital Worker's outputs. TitleApp provides the platform and compliance engine but does not guarantee the correctness of creator-configured rules or worker behavior. This worker is subject to the TitleApp Creator Agreement.
-            </div>
-          </div>
-        </div>
-
-        {/* Gate 3: HIPAA/BAA (conditional) */}
-        {isHealthVertical && (
-          <div style={{ background: "#FFFFFF", border: `1px solid ${baaAccepted ? "rgba(16,185,129,0.3)" : "rgba(220,38,38,0.3)"}`, borderRadius: 10, padding: 14, marginBottom: 8 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-              <div style={{ width: 8, height: 8, borderRadius: 4, background: baaAccepted ? "#10b981" : "#dc2626" }} />
-              <div style={{ fontSize: 13, fontWeight: 600, color: baaAccepted ? "#10b981" : "#dc2626" }}>
-                HIPAA Business Associate Agreement {baaAccepted && "— Accepted"}
-              </div>
-            </div>
-            {!baaAccepted && (
-              <div
-                style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer" }}
-                onClick={async () => {
-                  setGateError(null);
-                  try {
-                    const token = await getToken();
-                    const r = await fetch(`${API_BASE}/api?path=/v1/creator:accept-baa`, {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-                      body: JSON.stringify({}),
-                    });
-                    const d = await r.json();
-                    if (d.ok) setBaaAccepted(true);
-                    else setGateError(d.error);
-                  } catch { setGateError("Connection error. Try again."); }
-                }}
-              >
-                <div style={{
-                  width: 20, height: 20, borderRadius: 4, flexShrink: 0, marginTop: 1,
-                  border: `2px solid ${baaAccepted ? "#10b981" : "#CBD5E1"}`,
-                  background: baaAccepted ? "#10b981" : "transparent",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  color: "white", fontSize: 12, fontWeight: 700,
-                }}>
-                  {baaAccepted ? "\u2713" : ""}
-                </div>
-                <div style={{ fontSize: 12, color: "#1a1a2e", lineHeight: 1.6 }}>
-                  I acknowledge that this worker may process information in healthcare contexts. I agree to the terms of the TitleApp Business Associate Agreement and will comply with all applicable HIPAA requirements.
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {gateError && (
-          <div style={{ fontSize: 11, color: "#dc2626", marginTop: 4, marginBottom: 4 }}>{gateError}</div>
-        )}
-      </div>
+      {/* ── Publish Preflight — 7-gate checklist ── */}
+      <PublishPreflight
+        worker={worker}
+        workerCardData={workerCardData}
+        onAllPassed={(passed) => {
+          if (passed) {
+            setIdVerified(true);
+            setLiabilityAccepted(true);
+          }
+        }}
+      />
 
       {/* Blockchain Record Keeping Toggle */}
       <div style={{

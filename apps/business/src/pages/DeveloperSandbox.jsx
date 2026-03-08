@@ -156,6 +156,7 @@ export default function DeveloperSandbox() {
   const [vibeAnswers, setVibeAnswers] = useState(() => savedSession.current?.vibeAnswers || {});
   const [workerCardData, setWorkerCardData] = useState(() => savedSession.current?.workerCardData || null);
   const [showWorkerCard, setShowWorkerCard] = useState(() => !!savedSession.current?.workerCardData);
+  const [lastUpdatedField, setLastUpdatedField] = useState(null);
 
   // Step 2b — Sharpening Session (3 challenge questions after Vibe, before Worker Card)
   const [sharpeningActive, setSharpeningActive] = useState(false);
@@ -433,12 +434,99 @@ export default function DeveloperSandbox() {
     { key: "jurisdiction", question: "What state or region does this apply to? And if it's tied to a specific organization, what's the name?" },
   ];
 
+  // Contextual quick-select chips per Vibe question, vertical-aware
+  function getVibeChips(vert, questionKey) {
+    const map = {
+      problemDescription: {
+        auto: ["Licensing paperwork takes forever", "Inventory tracking is manual", "Compliance deadlines slip through"],
+        "real-estate": ["Title search takes too long", "Closing coordination is chaotic", "Compliance tracking is manual"],
+        investment: ["Due diligence is too slow", "Portfolio reporting takes days", "Deal flow tracking is scattered"],
+        aviation: ["Flight scheduling is manual", "Maintenance tracking gaps", "Crew compliance paperwork"],
+        "health-education": ["Student tracking is fragmented", "Clinical compliance gaps", "Credentialing takes too long"],
+        construction: ["Project tracking across sites", "Permit and inspection delays", "Budget overruns go unnoticed"],
+        insurance: ["Claims processing is slow", "Policy management is manual", "Compliance audits take weeks"],
+        accounting: ["Reconciliation takes days", "Tax deadline tracking is manual", "Client reporting is tedious"],
+        government: ["Permit processing backlog", "Record keeping is fragmented", "Compliance reporting is manual"],
+        _default: ["Manual processes waste time", "Data entry errors cause problems", "Compliance tracking is unreliable"],
+      },
+      targetUser: {
+        _default: ["Just me", "My team", "My clients / customers", "All three"],
+      },
+      neverGetWrong: {
+        auto: ["Title status and lien checks", "DMV compliance deadlines", "Customer disclosure accuracy"],
+        "real-estate": ["Title chain accuracy", "Recording deadlines", "Disclosure requirements"],
+        investment: ["Financial calculations", "Regulatory filing deadlines", "Investor communications"],
+        aviation: ["Safety compliance records", "Certification expiry dates", "Flight hour tracking"],
+        "health-education": ["Clinical protocol accuracy", "HIPAA compliance", "Credential verification"],
+        construction: ["Safety inspection records", "Permit compliance", "Budget accuracy"],
+        _default: ["Compliance requirements", "Financial accuracy", "Data privacy rules"],
+      },
+      raasRules: {
+        auto: ["State DMV regulations", "FTC dealer rules", "No specific rules — use defaults"],
+        "real-estate": ["RESPA / TRID rules", "State recording requirements", "Fair housing regulations"],
+        investment: ["SEC regulations", "FINRA rules", "AML requirements"],
+        aviation: ["FAA Part 91/135", "TSA security directives", "No specific rules — use defaults"],
+        "health-education": ["HIPAA / FERPA rules", "State licensing board rules", "Accreditation standards"],
+        construction: ["OSHA safety standards", "Local building codes", "EPA environmental rules"],
+        _default: ["Industry-specific regulations", "Our internal SOPs", "No specific rules — use defaults"],
+      },
+      externalData: {
+        auto: ["VIN / NHTSA database", "State DMV records", "Our dealer management system"],
+        "real-estate": ["MLS listings", "County recorder database", "Title plant records"],
+        investment: ["Market data feeds", "SEC EDGAR filings", "Our CRM / deal pipeline"],
+        aviation: ["FAA aircraft registry", "Weather data feeds", "Maintenance tracking system"],
+        "health-education": ["Student information system", "Clinical records (EHR)", "Accreditation databases"],
+        construction: ["Project management tools", "Permit databases", "Material pricing feeds"],
+        _default: ["Our internal database", "Third-party APIs", "Spreadsheets and documents"],
+      },
+      outputFormat: {
+        _default: ["Dashboard with key metrics", "PDF reports I can send", "Email or chat notifications", "All of the above"],
+      },
+      currentProcess: {
+        _default: ["Spreadsheets and manual tracking", "Too many disconnected tools", "Mostly email-based workflow"],
+      },
+      jurisdiction: {
+        _default: ["California", "Texas", "New York", "National — all states"],
+      },
+    };
+    const q = map[questionKey];
+    if (!q) return [];
+    return q[vert] || q._default || [];
+  }
+
+  // Paste-from-AI detection — extract Vibe answers from long text
+  function extractVibeFromPaste(text) {
+    const keywordMap = {
+      problemDescription: /problem|issue|challenge|pain|struggle|bottleneck/i,
+      targetUser: /(?:for|by|used by|audience|target)\s/i,
+      neverGetWrong: /never|accuracy|critical|error|mistake|wrong|compliance/i,
+      raasRules: /regulat|law|rule|standard|sop|guideline|polic/i,
+      externalData: /data|system|integrat|api|database|software|tool|connect/i,
+      outputFormat: /output|report|dashboard|email|alert|notification|format/i,
+      currentProcess: /current|broken|missing|manual|spreadsheet|today|existing|status quo/i,
+      jurisdiction: /(?:state|region|national|country|california|texas|new york|florida|illinois)/i,
+    };
+    const sentences = text.split(/[.\n]+/).map(s => s.trim()).filter(s => s.length > 8);
+    const extracted = {};
+    for (const s of sentences) {
+      for (const [key, regex] of Object.entries(keywordMap)) {
+        if (!extracted[key] && regex.test(s)) {
+          extracted[key] = s;
+          break;
+        }
+      }
+    }
+    return extracted;
+  }
+
   function handleVibeAnswer(text) {
     const currentQ = VIBE_QUESTIONS[vibeStep];
     if (!currentQ) return;
 
     const newAnswers = { ...vibeAnswers, [currentQ.key]: text };
     setVibeAnswers(newAnswers);
+    setLastUpdatedField(currentQ.key);
+    setTimeout(() => setLastUpdatedField(null), 1200);
 
     if (currentQ.key === "jurisdiction") {
       setJurisdiction(text);
@@ -603,6 +691,43 @@ export default function DeveloperSandbox() {
     }
 
     if (flowStep === 2 && vibeStep < VIBE_QUESTIONS.length) {
+      // Paste-from-AI detection: long text (>200 chars) may contain multiple answers
+      if (text.length > 200) {
+        const extracted = extractVibeFromPaste(text);
+        const currentKey = VIBE_QUESTIONS[vibeStep].key;
+        // Always assign the full text to the current question
+        if (!extracted[currentKey]) extracted[currentKey] = text.substring(0, 500);
+        // Bulk-fill all extracted answers
+        const bulkAnswers = { ...vibeAnswers };
+        let lastFilledStep = vibeStep;
+        for (let i = vibeStep; i < VIBE_QUESTIONS.length; i++) {
+          const qKey = VIBE_QUESTIONS[i].key;
+          if (extracted[qKey] && !bulkAnswers[qKey]) {
+            bulkAnswers[qKey] = extracted[qKey];
+            lastFilledStep = i;
+            if (qKey === "jurisdiction") setJurisdiction(extracted[qKey]);
+          }
+        }
+        setVibeAnswers(bulkAnswers);
+        setLastUpdatedField("_bulk");
+        setTimeout(() => setLastUpdatedField(null), 2000);
+        // Advance to first unanswered question, or finish
+        const nextUnanswered = VIBE_QUESTIONS.findIndex((q, i) => i > vibeStep && !bulkAnswers[q.key]);
+        if (nextUnanswered === -1 || Object.keys(bulkAnswers).length >= VIBE_QUESTIONS.length) {
+          setVibeStep(VIBE_QUESTIONS.length);
+          const filledCount = Object.keys(bulkAnswers).length;
+          addAssistantMessage(`Got it — I pulled ${filledCount} answers from what you shared. Let me sharpen a few things.`);
+          setTimeout(() => startSharpeningSession(bulkAnswers), 800);
+        } else {
+          setVibeStep(nextUnanswered);
+          const skipped = nextUnanswered - vibeStep - 1;
+          if (skipped > 0) {
+            addAssistantMessage(`Great — I picked up ${skipped + 1} answers from that. Skipping ahead.`);
+          }
+          setTimeout(() => addAssistantMessage(VIBE_QUESTIONS[nextUnanswered].question), 600);
+        }
+        return;
+      }
       handleVibeAnswer(text);
       return;
     }
@@ -957,6 +1082,38 @@ export default function DeveloperSandbox() {
             </div>
           ))}
           {sending && <div style={S.typing}>Alex is typing...</div>}
+
+          {/* Step 2: Vibe answer chips — quick-select for each question */}
+          {flowStep === 2 && vibeStep < VIBE_QUESTIONS.length && !sharpeningActive && !sending && (
+            <div style={{ display: "flex", gap: 6, marginTop: 4, overflowX: "auto", paddingBottom: 4, flexWrap: "nowrap" }}>
+              {getVibeChips(vertical, VIBE_QUESTIONS[vibeStep].key).map(chip => (
+                <button
+                  key={chip}
+                  style={{
+                    padding: "7px 14px", background: "#FFFFFF", color: "#1a1a2e",
+                    border: "1px solid #E2E8F0", borderRadius: 20, fontSize: 13,
+                    cursor: "pointer", fontWeight: 500, whiteSpace: "nowrap", flexShrink: 0,
+                    transition: "border-color 0.2s, background 0.2s",
+                  }}
+                  onClick={() => { addUserMessage(chip); handleVibeAnswer(chip); }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = "#6B46C1"; e.currentTarget.style.background = "rgba(107,70,193,0.04)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = "#E2E8F0"; e.currentTarget.style.background = "#FFFFFF"; }}
+                >
+                  {chip}
+                </button>
+              ))}
+              <button
+                style={{
+                  padding: "7px 14px", background: "transparent", color: "#94A3B8",
+                  border: "1px dashed #E2E8F0", borderRadius: 20, fontSize: 13,
+                  cursor: "pointer", fontWeight: 500, whiteSpace: "nowrap", flexShrink: 0,
+                }}
+                onClick={() => chatInputRef.current?.focus()}
+              >
+                Something else
+              </button>
+            </div>
+          )}
 
           {/* Step 1: Vertical chips (inline in chat) — hide once Worker Card shows */}
           {showVerticalChips && (
@@ -1364,7 +1521,12 @@ export default function DeveloperSandbox() {
                       {Object.entries(vibeAnswers).map(([key, val]) => {
                         const q = VIBE_QUESTIONS.find(vq => vq.key === key);
                         return (
-                          <div key={key} style={{ padding: "8px 12px", background: "#F8F9FC", borderRadius: 8, marginBottom: 6, border: "1px solid #E2E8F0" }}>
+                          <div key={key} style={{
+                            padding: "8px 12px", borderRadius: 8, marginBottom: 6,
+                            background: (lastUpdatedField === key || lastUpdatedField === "_bulk") ? "rgba(107,70,193,0.06)" : "#F8F9FC",
+                            border: `1px solid ${(lastUpdatedField === key || lastUpdatedField === "_bulk") ? "#6B46C1" : "#E2E8F0"}`,
+                            transition: "border-color 0.4s, background 0.4s",
+                          }}>
                             <div style={{ fontSize: 11, color: "#64748B", marginBottom: 2 }}>{q?.question.split("?")[0]}</div>
                             <div style={{ fontSize: 13, color: "#1a1a2e" }}>{val}</div>
                           </div>

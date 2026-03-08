@@ -4303,6 +4303,66 @@ These should be 2-3 realistic test scenarios the creator should try, derived fro
       }
     }
 
+    // POST /v1/worker:subscription-status — Check subscription status for a worker (expired trial detection)
+    if (route === "/worker:subscription-status" && method === "POST") {
+      const { workerId, slug } = body;
+      if (!workerId && !slug) return res.json({ ok: false, error: "Missing workerId or slug" });
+      try {
+        // Find subscription
+        const subsQuery = db.collection(`subscriptions`)
+          .where("userId", "==", user.uid)
+          .where(workerId ? "workerId" : "slug", "==", workerId || slug)
+          .limit(1);
+        const subsSnap = await subsQuery.get();
+
+        if (subsSnap.empty) {
+          return res.json({ ok: true, status: "none" });
+        }
+
+        const sub = subsSnap.docs[0].data();
+        const now = Date.now();
+        const trialEnd = sub.trialEndAt?.toMillis?.() || sub.trialEndAt || 0;
+        const cancelledAt = sub.cancelledAt?.toMillis?.() || sub.cancelledAt || 0;
+
+        if (sub.status === "active" || (sub.status === "trialing" && trialEnd > now)) {
+          return res.json({ ok: true, status: "active" });
+        }
+
+        // Expired trial or cancelled
+        const expiredAt = cancelledAt || trialEnd || sub.updatedAt?.toMillis?.() || now;
+        const daysRetained = 90;
+        const retainedUntil = expiredAt + daysRetained * 24 * 60 * 60 * 1000;
+
+        // Fetch recent conversation history preview (greyed out)
+        let historyPreview = [];
+        try {
+          const chatQuery = db.collection(`chatMessages`)
+            .where("userId", "==", user.uid)
+            .where("workerId", "==", workerId || slug)
+            .orderBy("createdAt", "desc")
+            .limit(4);
+          const chatSnap = await chatQuery.get();
+          historyPreview = chatSnap.docs.map(d => ({
+            role: d.data().role || "user",
+            text: (d.data().text || d.data().message || "").substring(0, 100),
+          })).reverse();
+        } catch {}
+
+        return res.json({
+          ok: true,
+          status: "expired",
+          expiredAt: new Date(expiredAt).toISOString(),
+          daysRetained,
+          retainedUntil: new Date(retainedUntil).toISOString(),
+          historyPreview,
+          historyRetained: now < retainedUntil,
+        });
+      } catch (e) {
+        console.error("[worker:subscription-status] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
     // ── Worker #1 — Digital Worker Creator Pipeline ──────────────────────
 
     // Platform-level rules (Tier 0) — imported from shared schema (single source of truth)

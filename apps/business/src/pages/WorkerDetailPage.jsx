@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import WorkerIcon, { SUITE_COLORS } from "../utils/workerIcons";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
@@ -41,7 +41,42 @@ export default function WorkerDetailPage({ worker, content, onBack, onSubscribe 
   const [subscribing, setSubscribing] = useState(false);
   const [subscribed, setSubscribed] = useState(false);
   const [subError, setSubError] = useState(null);
+  const [expiredTrial, setExpiredTrial] = useState(null); // { expiredAt, historyPreview[] }
+  const [checkingTrial, setCheckingTrial] = useState(false);
   const color = SUITE_COLORS[worker.suite] || "#7c3aed";
+
+  // Check for expired trial on mount
+  useEffect(() => {
+    async function checkSubscription() {
+      const token = localStorage.getItem("ID_TOKEN");
+      if (!token || token === "undefined") return;
+      setCheckingTrial(true);
+      try {
+        const res = await fetch(`${API_BASE}/api?path=/v1/worker:subscription-status`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ workerId: worker.id, slug: worker.slug }),
+        });
+        const data = await res.json();
+        if (data.ok && data.status === "expired") {
+          setExpiredTrial({
+            expiredAt: data.expiredAt,
+            historyPreview: data.historyPreview || [
+              { role: "user", text: "Can you help me with..." },
+              { role: "assistant", text: `Of course. Let me pull up the relevant ${worker.suite || "industry"} data and check compliance...` },
+              { role: "user", text: "What about the deadline for..." },
+              { role: "assistant", text: "Based on current regulations, the deadline is..." },
+            ],
+            daysRetained: data.daysRetained || 90,
+          });
+        } else if (data.ok && data.status === "active") {
+          setSubscribed(true);
+        }
+      } catch {}
+      setCheckingTrial(false);
+    }
+    checkSubscription();
+  }, [worker.id]);
 
   async function handleSubscribe() {
     if (onSubscribe) { onSubscribe(worker); return; }
@@ -88,6 +123,78 @@ export default function WorkerDetailPage({ worker, content, onBack, onSubscribe 
         <h1 style={S.heroTitle}>{content.headline || worker.name}</h1>
         <p style={S.heroSub}>{content.subheadline || worker.description}</p>
       </div>
+
+      {/* Expired trial re-entry screen */}
+      {expiredTrial && !subscribed && (
+        <div style={{ maxWidth: 600, margin: "0 auto", padding: "48px 24px" }}>
+          <div style={{
+            background: "white", borderRadius: 16, border: "1px solid #e5e7eb",
+            overflow: "hidden", boxShadow: "0 4px 24px rgba(0,0,0,0.06)",
+          }}>
+            {/* Header */}
+            <div style={{ padding: "20px 24px", borderBottom: "1px solid #e5e7eb" }}>
+              <div style={{ fontSize: 16, fontWeight: 700, color: "#111827", marginBottom: 4 }}>
+                Your trial has expired
+              </div>
+              <div style={{ fontSize: 13, color: "#6b7280" }}>
+                Trial ended {expiredTrial.expiredAt ? new Date(expiredTrial.expiredAt).toLocaleDateString() : "recently"}.
+                Your conversation history is retained for {expiredTrial.daysRetained} days.
+              </div>
+            </div>
+
+            {/* Greyed-out conversation history preview */}
+            <div style={{ padding: "16px 24px", background: "#f9fafb", maxHeight: 240, overflow: "hidden", position: "relative" }}>
+              {expiredTrial.historyPreview.map((msg, i) => (
+                <div key={i} style={{
+                  display: "flex", justifyContent: msg.role === "user" ? "flex-end" : "flex-start",
+                  marginBottom: 8,
+                }}>
+                  <div style={{
+                    padding: "8px 12px", borderRadius: 12, maxWidth: "80%", fontSize: 13, lineHeight: 1.5,
+                    background: msg.role === "user" ? "#e5e7eb" : "#f3f4f6",
+                    color: "#9ca3af",
+                    filter: "blur(1px)",
+                    userSelect: "none",
+                  }}>
+                    {msg.text}
+                  </div>
+                </div>
+              ))}
+              {/* Fade overlay */}
+              <div style={{
+                position: "absolute", bottom: 0, left: 0, right: 0, height: 80,
+                background: "linear-gradient(transparent, #f9fafb)",
+              }} />
+            </div>
+
+            {/* Subscribe CTA */}
+            <div style={{ padding: "24px", textAlign: "center" }}>
+              <div style={{ fontSize: 24, fontWeight: 700, color: "#111827", marginBottom: 4 }}>
+                ${worker.price / 100}<span style={{ fontSize: 14, fontWeight: 400, color: "#6b7280" }}>/mo</span>
+              </div>
+              <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 16 }}>
+                Subscribe to pick up where you left off. Your full history will be restored.
+              </div>
+              <button
+                style={{
+                  width: "100%", padding: "14px 24px", background: "#7c3aed", color: "white",
+                  border: "none", borderRadius: 10, fontSize: 15, fontWeight: 600, cursor: "pointer",
+                  opacity: subscribing ? 0.7 : 1,
+                }}
+                onClick={handleSubscribe}
+                disabled={subscribing}
+              >
+                {subscribing ? "Processing..." : "Subscribe and Restore History"}
+              </button>
+              {subError && <div style={{ fontSize: 13, color: "#dc2626", marginTop: 8 }}>{subError}</div>}
+              <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 12, lineHeight: 1.5 }}>
+                History retained for {expiredTrial.daysRetained} days after trial expiry.
+                After that, conversations are permanently deleted.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div style={S.main}>
         {content.steps && content.steps.length > 0 && (

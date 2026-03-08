@@ -1,15 +1,22 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 
-const QR_API = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=";
+const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+const QR_API_PNG = "https://api.qrserver.com/v1/create-qr-code/?size=600x600&format=png&data=";
+const QR_API_SVG = "https://api.qrserver.com/v1/create-qr-code/?size=600x600&format=svg&data=";
 
 export default function DistributionKit({ worker, workerCardData }) {
   const [copied, setCopied] = useState(null);
   const [showPaidOptions, setShowPaidOptions] = useState(false);
+  const [deckGenerating, setDeckGenerating] = useState(false);
+  const [deckFormat, setDeckFormat] = useState("pptx");
+  const [embedWidth, setEmbedWidth] = useState("100%");
+  const [embedHeight, setEmbedHeight] = useState("600");
 
-  const slug = (worker?.name || workerCardData?.name || "worker").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-  const workerUrl = `https://titleapp.ai/workers/${slug}`;
-  const embedCode = `<iframe src="${workerUrl}?embed=1" width="100%" height="600" frameborder="0" style="border:none;border-radius:12px;"></iframe>`;
-  const qrUrl = `${QR_API}${encodeURIComponent(workerUrl)}`;
+  const slug = (worker?.slug || worker?.name || workerCardData?.name || "worker").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  const workerUrl = `https://titleapp.ai/w/${slug}`;
+  const embedCode = `<iframe src="${workerUrl}?embed=1" width="${embedWidth}" height="${embedHeight}" frameborder="0" style="border:none;border-radius:12px;"></iframe>`;
+  const qrPng = `${QR_API_PNG}${encodeURIComponent(workerUrl)}`;
+  const qrSvg = `${QR_API_SVG}${encodeURIComponent(workerUrl)}`;
 
   const workerName = workerCardData?.name || worker?.name || "Your Worker";
   const workerDesc = workerCardData?.description || worker?.description || "";
@@ -27,6 +34,8 @@ Try it: ${workerUrl}
 #DigitalWorkers #AI #TitleApp${vertical ? ` #${vertical.replace(/[^a-zA-Z]/g, "")}` : ""}`;
 
   const tweet = `Just launched "${workerName}" on @TitleApp -- an AI worker with built-in compliance rules. ${workerUrl}`;
+
+  const smsText = `Check out ${workerName} -- a Digital Worker I built on TitleApp. ${workerUrl}`;
 
   const emailBlast = `Subject: ${workerName} is live on TitleApp
 
@@ -70,6 +79,53 @@ Best regards`;
     });
   }
 
+  async function generateDeck(format) {
+    setDeckGenerating(true);
+    setDeckFormat(format);
+    try {
+      const token = localStorage.getItem("ID_TOKEN");
+      const tenantId = localStorage.getItem("TENANT_ID");
+      const res = await fetch(`${API_BASE}/api?path=/v1/docs:generate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, "X-Tenant-Id": tenantId },
+        body: JSON.stringify({
+          tenantId,
+          templateId: "deck-standard",
+          format,
+          data: {
+            title: workerName,
+            description: workerDesc,
+            targetUser,
+            vertical,
+            price: `$${tierPrice}/mo`,
+            slug,
+            workerUrl,
+            problemSolves: workerCardData?.problemSolves || "",
+            complianceRules: workerCardData?.complianceRules || "",
+            jurisdiction: workerCardData?.jurisdiction || "National",
+            slides: [
+              { title: workerName, subtitle: `A Digital Worker for ${vertical || "your industry"}`, type: "title" },
+              { title: "The Problem", body: workerCardData?.problemSolves || workerDesc, type: "content" },
+              { title: "The Solution", body: `${workerName} automates this workflow with built-in compliance and audit trails.`, type: "content" },
+              { title: "How It Works", body: "1. Subscribe and onboard in minutes\n2. Your worker follows industry-specific compliance rules\n3. Every output is validated before delivery\n4. Full audit trail on every interaction", type: "steps" },
+              { title: "Built For", body: targetUser || "Professionals who need reliable, governed AI", type: "content" },
+              { title: "Compliance Built In", body: workerCardData?.complianceRules || "Standard platform compliance (Tier 0 + Tier 1)", type: "content" },
+              { title: "Pricing", body: `Starting at $${tierPrice}/mo\n14-day free trial included\nNo credit card required to start`, type: "pricing" },
+              { title: "Market Context", body: `${vertical || "Industry"} professionals are spending hours on manual processes that ${workerName} handles in seconds.`, type: "content" },
+              { title: "About the Creator", body: `Built by a verified creator on the TitleApp platform.\nEvery worker is reviewed before going live.`, type: "content" },
+              { title: "Get Started", body: `Try ${workerName} today\n${workerUrl}\n\nQuestions? Contact the creator directly through TitleApp.`, type: "cta" },
+            ],
+          },
+        }),
+      });
+      const data = await res.json();
+      if (data.ok && data.downloadUrl) {
+        window.open(data.downloadUrl, "_blank");
+      }
+    } catch {}
+    setDeckGenerating(false);
+  }
+
   const sectionStyle = { background: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: 12, padding: 20, marginBottom: 16 };
   const labelStyle = { fontSize: 11, fontWeight: 600, color: "#94A3B8", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 8, display: "block" };
   const copyBtnStyle = (key) => ({
@@ -98,6 +154,22 @@ Best regards`;
       <div style={sectionStyle}>
         <span style={labelStyle}>Embed code</span>
         <div style={{ fontSize: 12, color: "#64748B", marginBottom: 8 }}>Add this to your website to embed your worker directly.</div>
+        <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+          <div>
+            <div style={{ fontSize: 11, color: "#94A3B8", marginBottom: 2 }}>Width</div>
+            <input
+              value={embedWidth} onChange={e => setEmbedWidth(e.target.value)}
+              style={{ width: 80, padding: "6px 8px", background: "#F8F9FC", border: "1px solid #E2E8F0", borderRadius: 4, fontSize: 12, color: "#1a1a2e" }}
+            />
+          </div>
+          <div>
+            <div style={{ fontSize: 11, color: "#94A3B8", marginBottom: 2 }}>Height</div>
+            <input
+              value={embedHeight} onChange={e => setEmbedHeight(e.target.value)}
+              style={{ width: 80, padding: "6px 8px", background: "#F8F9FC", border: "1px solid #E2E8F0", borderRadius: 4, fontSize: 12, color: "#1a1a2e" }}
+            />
+          </div>
+        </div>
         <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
           <div style={{ flex: 1, padding: "10px 12px", background: "#F8F9FC", borderRadius: 6, border: "1px solid #E2E8F0", color: "#6B46C1", fontSize: 12, fontFamily: "monospace", wordBreak: "break-all", lineHeight: 1.5 }}>{embedCode}</div>
           <button style={copyBtnStyle("embed")} onClick={() => copyText("embed", embedCode)}>{copied === "embed" ? "Copied" : "Copy"}</button>
@@ -107,20 +179,26 @@ Best regards`;
       {/* QR Code */}
       <div style={sectionStyle}>
         <span style={labelStyle}>QR code</span>
-        <div style={{ fontSize: 12, color: "#64748B", marginBottom: 12 }}>For conferences, classrooms, and lanyards.</div>
+        <div style={{ fontSize: 12, color: "#64748B", marginBottom: 12 }}>For conferences, classrooms, and lanyards. 300 DPI print-ready.</div>
         <div style={{ display: "flex", alignItems: "flex-start", gap: 16 }}>
           <div style={{ background: "white", padding: 8, borderRadius: 8, flexShrink: 0, border: "1px solid #E2E8F0" }}>
-            <img src={qrUrl} alt="QR Code" width={160} height={160} style={{ display: "block" }} />
+            <img src={qrPng} alt="QR Code" width={160} height={160} style={{ display: "block" }} />
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             <a
-              href={qrUrl} download={`${slug}-qr.png`} target="_blank" rel="noopener noreferrer"
+              href={qrPng} download={`${slug}-qr-300dpi.png`} target="_blank" rel="noopener noreferrer"
               style={{ padding: "8px 16px", background: "#F8F9FC", color: "#64748B", border: "1px solid #E2E8F0", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer", textDecoration: "none", textAlign: "center" }}
             >
-              Download PNG
+              Download PNG (300 DPI)
+            </a>
+            <a
+              href={qrSvg} download={`${slug}-qr.svg`} target="_blank" rel="noopener noreferrer"
+              style={{ padding: "8px 16px", background: "#F8F9FC", color: "#64748B", border: "1px solid #E2E8F0", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer", textDecoration: "none", textAlign: "center" }}
+            >
+              Download SVG
             </a>
             <div style={{ fontSize: 12, color: "#94A3B8", lineHeight: 1.5 }}>
-              Print this on your badge, business card, or poster. Anyone who scans it goes straight to your worker.
+              Print on badges, business cards, or posters. Anyone who scans it goes straight to your worker.
             </div>
           </div>
         </div>
@@ -144,6 +222,15 @@ Best regards`;
         </div>
       </div>
 
+      {/* SMS */}
+      <div style={sectionStyle}>
+        <span style={labelStyle}>SMS / Text message</span>
+        <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+          <div style={{ flex: 1, padding: "12px 14px", background: "#F8F9FC", borderRadius: 6, border: "1px solid #E2E8F0", color: "#1a1a2e", fontSize: 13, lineHeight: 1.6 }}>{smsText}</div>
+          <button style={copyBtnStyle("sms")} onClick={() => copyText("sms", smsText)}>{copied === "sms" ? "Copied" : "Copy"}</button>
+        </div>
+      </div>
+
       {/* Email blast */}
       <div style={sectionStyle}>
         <span style={labelStyle}>Email blast</span>
@@ -163,30 +250,31 @@ Best regards`;
         </div>
       </div>
 
-      {/* One-pager download */}
+      {/* 10-Slide Pitch Deck */}
       <div style={sectionStyle}>
-        <span style={labelStyle}>One-pager pitch deck</span>
-        <div style={{ fontSize: 12, color: "#64748B", marginBottom: 12 }}>Auto-generated from your Worker Card. Share with decision-makers.</div>
-        <button
-          style={{ padding: "10px 20px", background: "#6B46C1", color: "white", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}
-          onClick={() => {
-            // Generate one-pager via document engine
-            const token = localStorage.getItem("ID_TOKEN");
-            const tenantId = localStorage.getItem("TENANT_ID");
-            fetch(`${import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev"}/api?path=/v1/docs:generate`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, "X-Tenant-Id": tenantId },
-              body: JSON.stringify({
-                tenantId, templateId: "one-pager",
-                data: { title: workerName, description: workerDesc, targetUser, vertical, price: `$${tierPrice}/mo` },
-              }),
-            }).then(r => r.json()).then(d => {
-              if (d.ok && d.downloadUrl) window.open(d.downloadUrl, "_blank");
-            }).catch(() => {});
-          }}
-        >
-          Generate and download one-pager
-        </button>
+        <span style={labelStyle}>10-slide pitch deck</span>
+        <div style={{ fontSize: 12, color: "#64748B", marginBottom: 12 }}>
+          Auto-generated from your Worker Card. Problem, solution, compliance, pricing, CTA — all branded.
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button
+            style={{ padding: "10px 20px", background: "#6B46C1", color: "white", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", opacity: deckGenerating ? 0.7 : 1 }}
+            onClick={() => generateDeck("pptx")}
+            disabled={deckGenerating}
+          >
+            {deckGenerating && deckFormat === "pptx" ? "Generating..." : "Download PPTX"}
+          </button>
+          <button
+            style={{ padding: "10px 20px", background: "#FFFFFF", color: "#64748B", border: "1px solid #E2E8F0", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", opacity: deckGenerating ? 0.7 : 1 }}
+            onClick={() => generateDeck("pdf")}
+            disabled={deckGenerating}
+          >
+            {deckGenerating && deckFormat === "pdf" ? "Generating..." : "Download PDF"}
+          </button>
+        </div>
+        <div style={{ marginTop: 10, fontSize: 11, color: "#94A3B8", lineHeight: 1.5 }}>
+          10 slides: Title, Problem, Solution, How It Works, Audience, Compliance, Pricing, Market Context, Creator, CTA
+        </div>
       </div>
 
       {/* Paid distribution options */}
