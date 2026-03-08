@@ -1,0 +1,58 @@
+{
+  "id": "esc_008_commission_reconciliation_v0",
+  "version": "0.1.0",
+  "domain": "title_escrow",
+  "description": "Commission Reconciliation — reconciles agent commissions, broker splits, referral fees, and transaction coordinator fees against the settlement statement. Blocks disbursement when totals do not balance or trust accounts are unverified.",
+  "required_inputs": [
+    "locker_id",
+    "commissions",
+    "fees"
+  ],
+  "hard_stops": [
+    {
+      "id": "ESC-CR-001",
+      "label": "Commission Not Reconciled Block Disbursement",
+      "logic": "Commission amounts on the settlement statement do not reconcile with the listing agreement and buyer broker agreement — block disbursement.",
+      "eval": { "field": "commission.reconciled", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "ESC-CR-002",
+      "label": "Fee Discrepancy Hold",
+      "logic": "Fee discrepancy greater than $1 detected between agreed fees and settlement statement — hold for correction.",
+      "eval": { "field": "commission.fee_discrepancy_amount", "operator": ">", "threshold": 1 }
+    },
+    {
+      "id": "ESC-CR-003",
+      "label": "Trust Account Not Verified Block Commission Disbursement",
+      "logic": "Broker trust account has not been verified — block commission disbursement until account is confirmed.",
+      "eval": { "field": "commission.trust_account_verified", "operator": "==", "threshold": false }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "ESC-CR-FLG-001",
+      "label": "Unusual Commission Rate",
+      "logic": "Commission rate falls outside typical market range — flag for review.",
+      "eval": { "field": "commission.unusual_rate", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "ESC-CR-FLG-002",
+      "label": "Referral Fee Above Threshold",
+      "logic": "Referral fee exceeds 25% of the commission — flag for compliance review.",
+      "eval": { "field": "commission.referral_fee_above_threshold", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "ESC-CR-FLG-003",
+      "label": "TC Fee Above Market",
+      "logic": "Transaction coordinator fee exceeds typical market rate — flag for review.",
+      "eval": { "field": "commission.tc_fee_above_market", "operator": "==", "threshold": true }
+    }
+  ],
+  "outputs": [
+    "recon_id",
+    "total_commissions",
+    "total_fees",
+    "balanced",
+    "disbursement_ready"
+  ]
+}

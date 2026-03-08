@@ -1,0 +1,39 @@
+{
+  "id": "gov_015_customer_queue_v0",
+  "version": "v0",
+  "domain": "government-dmv",
+  "description": "DMV Customer Queue Management — manages appointment scheduling, walk-in queues, estimated wait times, and service window routing",
+  "required_inputs": [
+    "location_id",
+    "service_type",
+    "customer_id",
+    "appointment_or_walkin"
+  ],
+  "hard_stops": [
+    {
+      "id": "DMV-CQ-001",
+      "label": "Location Closed",
+      "logic": "Selected DMV location is closed (holiday, emergency, or outside business hours) — cannot queue customer",
+      "eval": { "field": "queue.location_open", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "DMV-CQ-002",
+      "label": "Service Type Not Available at Location",
+      "logic": "Requested service type is not offered at this location — redirect customer to appropriate office",
+      "eval": { "field": "queue.service_available_at_location", "operator": "==", "threshold": false }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "DMV-CQ-FLG-001",
+      "label": "Long Wait Time",
+      "logic": "Estimated wait time exceeds 60 minutes — offer online alternative if available for this service type",
+      "eval": { "field": "queue.estimated_wait_minutes", "operator": ">", "threshold": 60 }
+    }
+  ],
+  "outputs": [
+    "gov015-queue-ticket",
+    "gov015-wait-time-estimate",
+    "gov015-service-routing"
+  ]
+}

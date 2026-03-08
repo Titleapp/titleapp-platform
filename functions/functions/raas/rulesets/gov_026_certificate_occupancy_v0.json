@@ -1,0 +1,47 @@
+{
+  "id": "gov_026_certificate_occupancy_v0",
+  "version": "v0",
+  "domain": "government-permitting",
+  "description": "Certificate of Occupancy — validates all final inspections, fire sign-offs, utility connections, and as-built conditions before issuing occupancy authorization",
+  "required_inputs": [
+    "permit_number",
+    "occupancy_type",
+    "final_inspection_ids",
+    "fire_sign_off",
+    "utility_connections"
+  ],
+  "hard_stops": [
+    {
+      "id": "PERM-CO-001",
+      "label": "Final Inspection Not Passed",
+      "logic": "One or more required final inspections have not been passed — CO cannot be issued per IBC 111.1",
+      "eval": { "field": "co.all_finals_passed", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "PERM-CO-002",
+      "label": "Fire Department Sign-Off Missing",
+      "logic": "Fire department has not signed off on fire protection systems and means of egress — CO requires fire marshal approval",
+      "eval": { "field": "co.fire_sign_off_received", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "PERM-CO-003",
+      "label": "Health Department Clearance Missing",
+      "logic": "Building includes food service, pool, or other regulated use requiring health department clearance — not yet obtained",
+      "eval": { "field": "co.health_clearance_received", "operator": "==", "threshold": false }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "PERM-CO-FLG-001",
+      "label": "Temporary CO Requested",
+      "logic": "Applicant has requested a temporary certificate of occupancy — verify that outstanding items are non-life-safety and set expiration date",
+      "eval": { "field": "co.temporary_requested", "operator": "==", "threshold": true }
+    }
+  ],
+  "outputs": [
+    "gov026-certificate-of-occupancy",
+    "gov026-temporary-co",
+    "gov026-inspection-summary",
+    "gov026-outstanding-items"
+  ]
+}

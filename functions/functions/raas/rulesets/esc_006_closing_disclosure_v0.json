@@ -1,0 +1,61 @@
+{
+  "id": "esc_006_closing_disclosure_v0",
+  "version": "0.1.0",
+  "domain": "title_escrow",
+  "description": "Closing Disclosure — generates and validates Closing Disclosure (CD) and HUD-1 settlement statements, enforces TRID tolerance checks, verifies proration accuracy, and blocks signing and disbursement when discrepancies exist.",
+  "required_inputs": [
+    "locker_id",
+    "cd_type",
+    "credits",
+    "debits",
+    "prorations"
+  ],
+  "hard_stops": [
+    {
+      "id": "ESC-CD-001",
+      "label": "CD Not Balanced Block Signing",
+      "logic": "Closing Disclosure does not balance — total credits and debits do not reconcile. Block signing until corrected.",
+      "eval": { "field": "cd.balanced", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "ESC-CD-002",
+      "label": "TRID Tolerance Exceeded Regenerate Required",
+      "logic": "TILA-RESPA Integrated Disclosure tolerance limits exceeded — CD must be regenerated and a new 3-day waiting period may apply.",
+      "eval": { "field": "cd.trid_tolerance_exceeded", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "ESC-CD-003",
+      "label": "Settlement Not Signed By All Parties Block Disbursement",
+      "logic": "Settlement statement has not been signed by all required parties — block disbursement.",
+      "eval": { "field": "cd.all_parties_signed", "operator": "==", "threshold": false }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "ESC-CD-FLG-001",
+      "label": "Proration Adjustment Large",
+      "logic": "Proration adjustment exceeds expected range — flag for review.",
+      "eval": { "field": "cd.proration_adjustment_large", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "ESC-CD-FLG-002",
+      "label": "Closing Cost Above Estimate",
+      "logic": "One or more closing costs exceed the Loan Estimate by more than the allowed tolerance — flag for buyer notification.",
+      "eval": { "field": "cd.closing_cost_above_estimate", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "ESC-CD-FLG-003",
+      "label": "Cash To Close Change",
+      "logic": "Cash to close amount has changed from the Loan Estimate — flag for buyer awareness.",
+      "eval": { "field": "cd.cash_to_close_changed", "operator": "==", "threshold": true }
+    }
+  ],
+  "outputs": [
+    "cd_id",
+    "cd_type",
+    "total_credits",
+    "total_debits",
+    "prorations",
+    "balanced"
+  ]
+}

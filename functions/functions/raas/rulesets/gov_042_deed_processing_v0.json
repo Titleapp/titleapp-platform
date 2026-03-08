@@ -1,0 +1,54 @@
+{
+  "id": "gov_042_deed_processing_v0",
+  "version": "v0",
+  "domain": "government-recorder",
+  "description": "Deed Processing — validates and records warranty deeds, quitclaim deeds, and special purpose deeds with chain-of-title verification and transfer tax assessment",
+  "required_inputs": [
+    "deed_type",
+    "document_file_id",
+    "grantor",
+    "grantee",
+    "legal_description",
+    "consideration_amount"
+  ],
+  "hard_stops": [
+    {
+      "id": "REC-DP-001",
+      "label": "Legal Description Does Not Match Parcel",
+      "logic": "Legal description on the deed does not match the legal description in the assessor's parcel database — recording rejected to prevent cloud on title",
+      "eval": { "field": "deed.legal_description_match", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "REC-DP-002",
+      "label": "Transfer Tax Not Paid",
+      "logic": "Documentary transfer tax has not been paid and no exemption has been claimed — recording requires tax payment per state revenue code",
+      "eval": { "field": "deed.transfer_tax_paid_or_exempt", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "REC-DP-003",
+      "label": "Grantor Signature Missing",
+      "logic": "Deed does not bear the signature of all grantors — deed is not executable and cannot be recorded",
+      "eval": { "field": "deed.all_grantors_signed", "operator": "==", "threshold": false }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "REC-DP-FLG-001",
+      "label": "Quitclaim Deed Advisory",
+      "logic": "Document is a quitclaim deed which provides no warranty of title — flag for title company notification if applicable",
+      "eval": { "field": "deed.is_quitclaim", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "REC-DP-FLG-002",
+      "label": "Exempt Transfer Claimed",
+      "logic": "Transfer tax exemption claimed — verify exemption code is valid and documentation supports the claimed exemption",
+      "eval": { "field": "deed.exemption_claimed", "operator": "==", "threshold": true }
+    }
+  ],
+  "outputs": [
+    "gov042-recorded-deed",
+    "gov042-instrument-number",
+    "gov042-transfer-tax-receipt",
+    "gov042-chain-of-title-update"
+  ]
+}

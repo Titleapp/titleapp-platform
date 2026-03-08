@@ -122,6 +122,11 @@ export default function DeveloperSandbox() {
   const [workerCardData, setWorkerCardData] = useState(null);
   const [showWorkerCard, setShowWorkerCard] = useState(false);
 
+  // Step 2b — Sharpening Session (3 challenge questions after Vibe, before Worker Card)
+  const [sharpeningActive, setSharpeningActive] = useState(false);
+  const [sharpeningStep, setSharpeningStep] = useState(0);
+  const [sharpeningAnswers, setSharpeningAnswers] = useState([]);
+
   // Step 3 — Build
   const [worker, setWorker] = useState(null);
   const [jurisdiction, setJurisdiction] = useState("");
@@ -396,13 +401,85 @@ export default function DeveloperSandbox() {
         addAssistantMessage(VIBE_QUESTIONS[nextStep].question);
       }, delay);
     } else {
-      // All 8 questions answered — lock vibeStep to prevent re-entry, generate Worker Card
+      // All 8 questions answered — lock vibeStep, start sharpening session
       setVibeStep(VIBE_QUESTIONS.length);
-      generateWorkerCard(newAnswers);
+      startSharpeningSession(newAnswers);
     }
   }
 
-  function generateWorkerCard(answers) {
+  // ── Step 2b: Sharpening Session (3 challenge questions) ──
+
+  function getSharpeningQuestions(answers) {
+    const name = selectedIdea?.name || "your worker";
+    const problem = answers.problemDescription || "";
+    const target = answers.targetUser || "";
+    const neverWrong = answers.neverGetWrong || "";
+    const process = answers.currentProcess || "";
+
+    // Q1: Scope check — look for multiple jobs/capabilities in the problem description
+    const scopeQ = problem.length > 60 || (problem.match(/and|,|also|plus|as well/gi) || []).length >= 2
+      ? `You mentioned several things: "${problem.substring(0, 80)}..." — that could be two or three different jobs. Do you want ${name} to handle all of that as one worker, or should I split it into a team of specialized workers?`
+      : `Looking at what ${name} needs to do — is this one focused job, or would it work better as two or three specialized workers that work together?`;
+
+    // Q2: Edge case — derive from neverGetWrong or process description
+    const edgeScenario = neverWrong
+      ? `You said this worker should never get wrong: "${neverWrong.substring(0, 80)}." What should it do when it encounters a case it's not sure about — flag it, block it, or escalate to a human?`
+      : process
+        ? `What happens when something goes wrong in the current process? How should ${name} handle edge cases or unexpected inputs?`
+        : `What's the worst thing that could happen if ${name} makes a mistake? How should it handle that scenario?`;
+
+    // Q3: Audience — narrow from targetUser
+    const audienceQ = target.toLowerCase().includes("all") || target.toLowerCase().includes("three") || target.toLowerCase().includes("everyone")
+      ? `You said everyone uses this. But if you could only make one person happy on day one — you, your team, or your customers — who is it?`
+      : `Who is the one person ${name} absolutely has to work for on day one? Paint me a picture — what's their typical day like?`;
+
+    return [scopeQ, edgeScenario, audienceQ];
+  }
+
+  function startSharpeningSession(answers) {
+    setVibeAnswers(answers);
+    setSharpeningActive(true);
+    setSharpeningStep(0);
+    const questions = getSharpeningQuestions(answers);
+    addAssistantMessage(`Good — I have what I need. Three quick challenge questions to make sure this is exactly right.\n\n${questions[0]}`);
+  }
+
+  function handleSharpeningAnswer(text) {
+    const questions = getSharpeningQuestions(vibeAnswers);
+    const newAnswers = [...sharpeningAnswers, { question: questions[sharpeningStep], answer: text }];
+    setSharpeningAnswers(newAnswers);
+
+    // Check if creator wants to expand to multiple workers (Q1 scope check)
+    if (sharpeningStep === 0) {
+      const wantsTeam = /team|split|separate|multiple|speciali/i.test(text);
+      if (wantsTeam) {
+        addAssistantMessage("Smart move. You'd need the Creator License to publish all of them — it's $49/year and you earn on every one. Want me to set that up after we finish this first worker?");
+        // Continue to Q2 after a delay
+        setTimeout(() => {
+          setSharpeningStep(1);
+          addAssistantMessage(questions[1]);
+        }, 1500);
+        return;
+      }
+    }
+
+    if (sharpeningStep < 2) {
+      const nextStep = sharpeningStep + 1;
+      setSharpeningStep(nextStep);
+      setTimeout(() => {
+        addAssistantMessage(questions[nextStep]);
+      }, 500);
+    } else {
+      // Sharpening complete — generate Worker Card with enriched data
+      setSharpeningActive(false);
+      addAssistantMessage("Got it. Building your Worker Card now...");
+      setTimeout(() => {
+        generateWorkerCard(vibeAnswers, newAnswers);
+      }, 800);
+    }
+  }
+
+  function generateWorkerCard(answers, sharpening) {
     const isPublic = (answers.visibility || answers.currentProcess || "").toLowerCase().includes("anyone") ||
                      (answers.visibility || "").toLowerCase().includes("public") ||
                      (answers.visibility || "").toLowerCase().includes("marketplace");
@@ -425,6 +502,7 @@ export default function DeveloperSandbox() {
       subjectDomain,
       lane: selectedIdea?.lane,
       internal_only: !isPublic,
+      sharpeningAnswers: sharpening || [],
     };
 
     setWorkerCardData(cardData);
@@ -463,6 +541,12 @@ export default function DeveloperSandbox() {
 
     if (flowStep === 2 && vibeStep < VIBE_QUESTIONS.length) {
       handleVibeAnswer(text);
+      return;
+    }
+
+    // Sharpening session routing
+    if (flowStep === 2 && sharpeningActive) {
+      handleSharpeningAnswer(text);
       return;
     }
 
@@ -1119,9 +1203,13 @@ export default function DeveloperSandbox() {
             <>
               {!showWorkerCard && (
                 <div style={{ maxWidth: 500 }}>
-                  <div style={{ fontSize: 18, fontWeight: 700, color: "#1a1a2e", marginBottom: 4 }}>Vibing with Alex</div>
+                  <div style={{ fontSize: 18, fontWeight: 700, color: "#1a1a2e", marginBottom: 4 }}>
+                    {sharpeningActive ? "Sharpening your concept" : "Vibing with Alex"}
+                  </div>
                   <div style={{ fontSize: 14, color: "#64748B", marginBottom: 24, lineHeight: 1.5 }}>
-                    Alex is asking you {VIBE_QUESTIONS.length} questions to understand exactly what to build. Answer in the chat.
+                    {sharpeningActive
+                      ? "Three quick challenge questions to make sure this is exactly right."
+                      : `Alex is asking you ${VIBE_QUESTIONS.length} questions to understand exactly what to build. Answer in the chat.`}
                   </div>
                   {/* Progress dots */}
                   <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
@@ -1132,18 +1220,35 @@ export default function DeveloperSandbox() {
                         transition: "background 0.3s",
                       }} />
                     ))}
+                    {/* Sharpening dots (3 extra) */}
+                    {[0, 1, 2].map(i => (
+                      <div key={`s${i}`} style={{
+                        flex: 1, height: 4, borderRadius: 2,
+                        background: !sharpeningActive ? "#E2E8F0"
+                          : i < sharpeningStep ? "#10b981"
+                          : i === sharpeningStep ? "rgba(16,185,129,0.4)"
+                          : "#E2E8F0",
+                        transition: "background 0.3s",
+                      }} />
+                    ))}
                   </div>
                   {/* Current question display */}
-                  <div style={{ background: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: 12, padding: 20 }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: "#64748B", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 8 }}>
-                      Question {vibeStep + 1} of {VIBE_QUESTIONS.length}
+                  <div style={{ background: "#FFFFFF", border: `1px solid ${sharpeningActive ? "rgba(16,185,129,0.3)" : "#E2E8F0"}`, borderRadius: 12, padding: 20 }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: sharpeningActive ? "#10b981" : "#64748B", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 8 }}>
+                      {sharpeningActive
+                        ? `Challenge ${sharpeningStep + 1} of 3`
+                        : vibeStep < VIBE_QUESTIONS.length
+                          ? `Question ${vibeStep + 1} of ${VIBE_QUESTIONS.length}`
+                          : "Generating your Worker Card..."}
                     </div>
                     <div style={{ fontSize: 15, color: "#1a1a2e", lineHeight: 1.6 }}>
-                      {VIBE_QUESTIONS[vibeStep]?.question || "Generating your Worker Card..."}
+                      {sharpeningActive
+                        ? getSharpeningQuestions(vibeAnswers)[sharpeningStep]
+                        : VIBE_QUESTIONS[vibeStep]?.question || "Almost there..."}
                     </div>
                   </div>
                   {/* Answers so far */}
-                  {Object.entries(vibeAnswers).length > 0 && (
+                  {Object.entries(vibeAnswers).length > 0 && !sharpeningActive && (
                     <div style={{ marginTop: 20 }}>
                       <div style={{ fontSize: 12, fontWeight: 600, color: "#64748B", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 8 }}>Your answers so far</div>
                       {Object.entries(vibeAnswers).map(([key, val]) => {

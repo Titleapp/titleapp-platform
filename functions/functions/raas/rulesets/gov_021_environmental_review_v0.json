@@ -1,0 +1,53 @@
+{
+  "id": "gov_021_environmental_review_v0",
+  "version": "v0",
+  "domain": "government-permitting",
+  "description": "Environmental Review — manages NEPA/CEQA/SEPA compliance, wetland delineation, stormwater management, and endangered species consultation for development permits",
+  "required_inputs": [
+    "parcel_number",
+    "project_description",
+    "project_acreage",
+    "environmental_checklist",
+    "stormwater_plan"
+  ],
+  "hard_stops": [
+    {
+      "id": "PERM-ER-001",
+      "label": "Environmental Impact Statement Required",
+      "logic": "Project triggers mandatory EIS/EIR threshold and no environmental impact statement has been filed — cannot proceed without environmental clearance",
+      "eval": { "field": "env_review.eis_required_and_filed", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "PERM-ER-002",
+      "label": "Wetlands Permit Not Obtained",
+      "logic": "Project impacts jurisdictional wetlands and no Section 404 permit has been obtained from Army Corps of Engineers",
+      "eval": { "field": "env_review.wetlands_permit_obtained", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "PERM-ER-003",
+      "label": "Endangered Species Consultation Required",
+      "logic": "Project area contains critical habitat for listed endangered/threatened species — Section 7 consultation with USFWS required before proceeding",
+      "eval": { "field": "env_review.esa_consultation_complete", "operator": "==", "threshold": false }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "PERM-ER-FLG-001",
+      "label": "Phase I ESA Recommended",
+      "logic": "Site history indicates potential environmental contamination — Phase I Environmental Site Assessment recommended before grading",
+      "eval": { "field": "env_review.phase1_recommended", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "PERM-ER-FLG-002",
+      "label": "Stormwater Permit Threshold",
+      "logic": "Disturbed area exceeds 1 acre — NPDES Construction General Permit (CGP) likely required",
+      "eval": { "field": "env_review.acreage_disturbed", "operator": ">", "threshold": 1 }
+    }
+  ],
+  "outputs": [
+    "gov021-environmental-determination",
+    "gov021-mitigation-measures",
+    "gov021-stormwater-review",
+    "gov021-permit-conditions"
+  ]
+}

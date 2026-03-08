@@ -1,0 +1,41 @@
+{
+  "id": "gov_027_sign_permit_v0",
+  "version": "v0",
+  "domain": "government-permitting",
+  "description": "Sign Permit — processes sign permit applications, validates sign code compliance including size, height, illumination, and location restrictions",
+  "required_inputs": [
+    "parcel_number",
+    "sign_type",
+    "sign_area_sqft",
+    "sign_height",
+    "illumination_type",
+    "location_description"
+  ],
+  "hard_stops": [
+    {
+      "id": "PERM-SP-001",
+      "label": "Sign Exceeds Maximum Area",
+      "logic": "Proposed sign area exceeds the maximum permitted for this zoning district and frontage — must reduce or obtain variance",
+      "eval": { "field": "sign.area_compliant", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "PERM-SP-002",
+      "label": "Sign in Public Right-of-Way",
+      "logic": "Proposed sign location encroaches into the public right-of-way without an encroachment permit",
+      "eval": { "field": "sign.in_right_of_way", "operator": "==", "threshold": true }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "PERM-SP-FLG-001",
+      "label": "Digital/Electronic Sign",
+      "logic": "Proposed sign is digital or electronic — verify compliance with brightness, animation, and message duration restrictions",
+      "eval": { "field": "sign.is_digital", "operator": "==", "threshold": true }
+    }
+  ],
+  "outputs": [
+    "gov027-sign-permit",
+    "gov027-sign-code-analysis",
+    "gov027-site-plan-markup"
+  ]
+}

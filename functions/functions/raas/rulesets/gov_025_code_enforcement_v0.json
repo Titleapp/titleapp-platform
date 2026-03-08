@@ -1,0 +1,53 @@
+{
+  "id": "gov_025_code_enforcement_v0",
+  "version": "v0",
+  "domain": "government-permitting",
+  "description": "Code Enforcement — manages property maintenance complaints, violation investigations, notice and order issuance, abatement tracking, and compliance monitoring",
+  "required_inputs": [
+    "complaint_number",
+    "parcel_number",
+    "violation_type",
+    "investigation_date",
+    "officer_id"
+  ],
+  "hard_stops": [
+    {
+      "id": "PERM-CE-001",
+      "label": "Imminent Danger — Emergency Abatement Required",
+      "logic": "Condition constitutes imminent danger to life or safety — emergency abatement authority must be invoked immediately per municipal code",
+      "eval": { "field": "enforcement.imminent_danger", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "PERM-CE-002",
+      "label": "Notice Not Served Within Statutory Period",
+      "logic": "Violation notice was not served on the property owner within the required statutory timeframe — notice is void",
+      "eval": { "field": "enforcement.notice_served_timely", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "PERM-CE-003",
+      "label": "Due Process Violation",
+      "logic": "Property owner was not provided an opportunity to correct or appeal before penalty assessment — due process not satisfied",
+      "eval": { "field": "enforcement.due_process_satisfied", "operator": "==", "threshold": false }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "PERM-CE-FLG-001",
+      "label": "Repeat Offender",
+      "logic": "Property has had 3 or more code enforcement cases in the past 24 months — consider escalated enforcement action",
+      "eval": { "field": "enforcement.cases_past_24m", "operator": ">=", "threshold": 3 }
+    },
+    {
+      "id": "PERM-CE-FLG-002",
+      "label": "Compliance Deadline Approaching",
+      "logic": "Compliance deadline is within 7 days and violation has not been corrected — prepare follow-up inspection",
+      "eval": { "field": "enforcement.days_to_deadline", "operator": "<", "threshold": 7 }
+    }
+  ],
+  "outputs": [
+    "gov025-violation-notice",
+    "gov025-compliance-timeline",
+    "gov025-abatement-order",
+    "gov025-case-closure-report"
+  ]
+}

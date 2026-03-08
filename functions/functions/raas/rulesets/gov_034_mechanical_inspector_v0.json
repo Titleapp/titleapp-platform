@@ -1,0 +1,47 @@
+{
+  "id": "gov_034_mechanical_inspector_v0",
+  "version": "v0",
+  "domain": "government-inspector",
+  "description": "Mechanical/HVAC Inspector — inspects heating, ventilation, and air conditioning installations for IMC compliance, refrigerant handling, ductwork, and combustion air",
+  "required_inputs": [
+    "permit_number",
+    "inspection_type",
+    "inspector_id",
+    "gps_coordinates",
+    "mechanical_observations"
+  ],
+  "hard_stops": [
+    {
+      "id": "INSP-ME-001",
+      "label": "Combustion Air Insufficient",
+      "logic": "Combustion air supply for fuel-burning appliances does not meet code minimum — carbon monoxide hazard per IMC Chapter 7",
+      "eval": { "field": "inspection.combustion_air_sufficient", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "INSP-ME-002",
+      "label": "Flue/Vent Connector Improperly Installed",
+      "logic": "Flue pipe or vent connector is improperly sized, sloped, or connected — combustion gas leakage hazard",
+      "eval": { "field": "inspection.flue_compliant", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "INSP-ME-003",
+      "label": "Refrigerant Leak Detected",
+      "logic": "Refrigerant leak detected in HVAC system — environmental and health hazard per EPA Section 608 regulations",
+      "eval": { "field": "inspection.refrigerant_leak_detected", "operator": "==", "threshold": true }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "INSP-ME-FLG-001",
+      "label": "Energy Code Compliance Check",
+      "logic": "HVAC system efficiency rating should be verified against current energy code requirements (IECC/ASHRAE 90.1)",
+      "eval": { "field": "inspection.energy_code_check_needed", "operator": "==", "threshold": true }
+    }
+  ],
+  "outputs": [
+    "gov034-mechanical-inspection-report",
+    "gov034-violation-notice",
+    "gov034-combustion-test-results",
+    "gov034-pass-certificate"
+  ]
+}

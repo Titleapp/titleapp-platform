@@ -1,0 +1,46 @@
+{
+  "id": "gov_009_fleet_registration_v0",
+  "version": "v0",
+  "domain": "government-dmv",
+  "description": "Fleet Registration — processes bulk vehicle registration for government and commercial fleets, IRP/IFTA compliance, and apportioned plates",
+  "required_inputs": [
+    "fleet_id",
+    "organization_name",
+    "vehicle_list",
+    "irp_account_number",
+    "base_jurisdiction"
+  ],
+  "hard_stops": [
+    {
+      "id": "DMV-FR-001",
+      "label": "IRP Account Not in Good Standing",
+      "logic": "International Registration Plan account has outstanding balances or suspended status — fleet registration blocked",
+      "eval": { "field": "fleet.irp_account_good_standing", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "DMV-FR-002",
+      "label": "USDOT Number Invalid",
+      "logic": "Fleet USDOT number is inactive, revoked, or not found in FMCSA SAFER database — commercial fleet registration requires active authority",
+      "eval": { "field": "fleet.usdot_valid", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "DMV-FR-003",
+      "label": "Insurance Below Federal Minimum",
+      "logic": "Fleet liability insurance is below FMCSA minimum financial responsibility requirements (49 CFR 387)",
+      "eval": { "field": "fleet.insurance_meets_minimum", "operator": "==", "threshold": false }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "DMV-FR-FLG-001",
+      "label": "Large Fleet Discount Eligible",
+      "logic": "Fleet has more than 50 vehicles — may qualify for bulk registration discount program",
+      "eval": { "field": "fleet.vehicle_count", "operator": ">", "threshold": 50 }
+    }
+  ],
+  "outputs": [
+    "gov009-fleet-registration-manifest",
+    "gov009-irp-cab-cards",
+    "gov009-apportioned-plate-schedule"
+  ]
+}

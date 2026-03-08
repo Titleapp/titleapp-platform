@@ -1,0 +1,47 @@
+{
+  "id": "gov_047_vital_records_v0",
+  "version": "v0",
+  "domain": "government-recorder",
+  "description": "Vital Records — manages birth certificates, death certificates, marriage licenses, and domestic partnership registrations with identity verification and fraud prevention",
+  "required_inputs": [
+    "record_type",
+    "requestor_name",
+    "requestor_relationship",
+    "identity_verification",
+    "subject_details"
+  ],
+  "hard_stops": [
+    {
+      "id": "REC-VR-001",
+      "label": "Requestor Not Authorized",
+      "logic": "Requestor does not have a qualifying relationship or legal authority to obtain a certified copy of this vital record per state vital statistics law",
+      "eval": { "field": "vital.requestor_authorized", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "REC-VR-002",
+      "label": "Identity Verification Failed",
+      "logic": "Requestor's identity could not be verified through the required identification process — vital record cannot be released",
+      "eval": { "field": "vital.identity_verified", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "REC-VR-003",
+      "label": "Record Sealed by Court Order",
+      "logic": "Requested vital record is sealed by court order — cannot be released without court authorization to unseal",
+      "eval": { "field": "vital.record_sealed", "operator": "==", "threshold": true }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "REC-VR-FLG-001",
+      "label": "High-Volume Requestor",
+      "logic": "Requestor has made more than 5 vital record requests in 30 days — flag for potential misuse review",
+      "eval": { "field": "vital.requests_past_30d", "operator": ">", "threshold": 5 }
+    }
+  ],
+  "outputs": [
+    "gov047-certified-copy",
+    "gov047-request-receipt",
+    "gov047-identity-verification-log",
+    "gov047-denial-notice"
+  ]
+}

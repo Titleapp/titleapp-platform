@@ -1,0 +1,52 @@
+{
+  "id": "gov_057_alex_government_cos_v0",
+  "version": "v0",
+  "domain": "government",
+  "description": "Alex Government Chief of Staff — orchestrates cross-suite workflows, manages inter-department handoffs, tracks SLA compliance, and provides jurisdiction-wide analytics",
+  "required_inputs": [
+    "workspace_id",
+    "active_suites",
+    "pending_tasks",
+    "sla_targets"
+  ],
+  "hard_stops": [
+    {
+      "id": "GOV-COS-001",
+      "label": "Cross-Suite Data Sharing Without Authorization",
+      "logic": "A worker in one suite is attempting to access data from another suite without the required inter-departmental data sharing agreement on file",
+      "eval": { "field": "cos.data_sharing_authorized", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "GOV-COS-002",
+      "label": "SLA Breach — Critical Process",
+      "logic": "A critical government process (title issuance, permit decision, recording) has exceeded its statutory or SLA deadline — immediate escalation required",
+      "eval": { "field": "cos.critical_sla_breach", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "GOV-COS-003",
+      "label": "Audit Trail Gap",
+      "logic": "A gap has been detected in the audit trail for a government transaction — all government actions must have complete, immutable audit records",
+      "eval": { "field": "cos.audit_trail_complete", "operator": "==", "threshold": false }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "GOV-COS-FLG-001",
+      "label": "Approaching SLA Warning Threshold",
+      "logic": "One or more processes are within 20% of their SLA deadline — proactive attention needed to avoid breach",
+      "eval": { "field": "cos.sla_warning_count", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "GOV-COS-FLG-002",
+      "label": "Worker Utilization Imbalance",
+      "logic": "One suite has more than 3x the pending task volume of another suite — consider rebalancing workload or adding capacity",
+      "eval": { "field": "cos.utilization_imbalance_ratio", "operator": ">", "threshold": 3 }
+    }
+  ],
+  "outputs": [
+    "gov057-jurisdiction-dashboard",
+    "gov057-sla-compliance-report",
+    "gov057-cross-suite-workflow-log",
+    "gov057-analytics-summary"
+  ]
+}

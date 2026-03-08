@@ -1,0 +1,53 @@
+{
+  "id": "gov_018_zoning_verification_v0",
+  "version": "v0",
+  "domain": "government-permitting",
+  "description": "Zoning Verification — validates proposed use against zoning ordinance, checks setbacks, lot coverage, FAR, height limits, and parking requirements",
+  "required_inputs": [
+    "parcel_number",
+    "proposed_use",
+    "building_footprint",
+    "building_height",
+    "parking_spaces_proposed"
+  ],
+  "hard_stops": [
+    {
+      "id": "PERM-ZV-001",
+      "label": "Use Not Permitted in Zone",
+      "logic": "Proposed use is not a permitted or conditional use in the current zoning district — requires rezoning or use variance",
+      "eval": { "field": "zoning.use_permitted", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "PERM-ZV-002",
+      "label": "Setback Violation",
+      "logic": "Proposed structure encroaches into required setback area — must obtain variance or redesign",
+      "eval": { "field": "zoning.setbacks_compliant", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "PERM-ZV-003",
+      "label": "Height Limit Exceeded",
+      "logic": "Proposed building height exceeds the maximum allowed in this zoning district — requires height variance or redesign",
+      "eval": { "field": "zoning.height_compliant", "operator": "==", "threshold": false }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "PERM-ZV-FLG-001",
+      "label": "Parking Below Minimum",
+      "logic": "Proposed parking count is below the minimum required — may need shared parking agreement or reduction request",
+      "eval": { "field": "zoning.parking_deficit", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "PERM-ZV-FLG-002",
+      "label": "Overlay District Applies",
+      "logic": "Parcel is within a zoning overlay district (historic, floodplain, airport) — additional design standards may apply",
+      "eval": { "field": "zoning.overlay_district_applies", "operator": "==", "threshold": true }
+    }
+  ],
+  "outputs": [
+    "gov018-zoning-verification-letter",
+    "gov018-use-determination",
+    "gov018-setback-analysis",
+    "gov018-parking-calculation"
+  ]
+}

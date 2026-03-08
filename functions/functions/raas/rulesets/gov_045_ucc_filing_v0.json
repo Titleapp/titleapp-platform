@@ -1,0 +1,47 @@
+{
+  "id": "gov_045_ucc_filing_v0",
+  "version": "v0",
+  "domain": "government-recorder",
+  "description": "UCC Filing — processes Uniform Commercial Code financing statements, amendments, continuations, and terminations for secured transactions",
+  "required_inputs": [
+    "filing_type",
+    "debtor_name",
+    "secured_party",
+    "collateral_description",
+    "document_file_id"
+  ],
+  "hard_stops": [
+    {
+      "id": "REC-UCC-001",
+      "label": "Debtor Name Does Not Meet Exact Match Standard",
+      "logic": "Debtor name on UCC filing does not conform to the state's exact match search logic standard — filing may be ineffective to perfect the security interest",
+      "eval": { "field": "ucc.debtor_name_valid", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "REC-UCC-002",
+      "label": "Continuation Filed After Lapse",
+      "logic": "UCC continuation statement filed after the original filing has lapsed (past the 5-year term) — continuation is ineffective, must file new financing statement",
+      "eval": { "field": "ucc.original_filing_active", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "REC-UCC-003",
+      "label": "Filing Fee Not Collected",
+      "logic": "UCC filing fee has not been collected — Secretary of State / Recorder cannot accept filing without payment",
+      "eval": { "field": "ucc.fee_collected", "operator": "==", "threshold": false }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "REC-UCC-FLG-001",
+      "label": "Approaching Lapse Date",
+      "logic": "UCC filing is within 6 months of the 5-year lapse date — secured party should consider filing a continuation statement",
+      "eval": { "field": "ucc.months_to_lapse", "operator": "<", "threshold": 6 }
+    }
+  ],
+  "outputs": [
+    "gov045-ucc-filing-receipt",
+    "gov045-filing-number",
+    "gov045-search-report",
+    "gov045-lapse-reminder"
+  ]
+}

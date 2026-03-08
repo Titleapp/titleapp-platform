@@ -1,0 +1,46 @@
+{
+  "id": "gov_004_vin_verification_v0",
+  "version": "v0",
+  "domain": "government-dmv",
+  "description": "VIN Verification — validates vehicle identification numbers against NHTSA decode, checks for theft records, and verifies physical VIN plate integrity",
+  "required_inputs": [
+    "vin",
+    "inspector_id",
+    "vin_photo",
+    "vehicle_location",
+    "inspection_date"
+  ],
+  "hard_stops": [
+    {
+      "id": "DMV-VV-001",
+      "label": "VIN Decode Failure",
+      "logic": "VIN does not decode against NHTSA vPIC database — may be a non-standard or counterfeit VIN",
+      "eval": { "field": "vin_verify.nhtsa_decode_valid", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "DMV-VV-002",
+      "label": "NCIC Theft Record Found",
+      "logic": "VIN matches an active NCIC stolen vehicle record — law enforcement must be notified immediately",
+      "eval": { "field": "vin_verify.ncic_theft_hit", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "DMV-VV-003",
+      "label": "VIN Plate Tampering Detected",
+      "logic": "VIN plate photo analysis indicates signs of tampering, replacement, or alteration — requires law enforcement inspection",
+      "eval": { "field": "vin_verify.plate_tamper_detected", "operator": "==", "threshold": true }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "DMV-VV-FLG-001",
+      "label": "Confidential VIN Location Mismatch",
+      "logic": "Federal confidential VIN (hidden VIN) location does not match expected position for this make/model — further inspection recommended",
+      "eval": { "field": "vin_verify.confidential_vin_mismatch", "operator": "==", "threshold": true }
+    }
+  ],
+  "outputs": [
+    "gov004-vin-verification-report",
+    "gov004-nhtsa-decode-result",
+    "gov004-inspector-certification"
+  ]
+}

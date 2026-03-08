@@ -1,0 +1,59 @@
+{
+  "id": "gov_032_electrical_inspector_v0",
+  "version": "v0",
+  "domain": "government-inspector",
+  "description": "Electrical Inspector — conducts electrical system inspections for NEC compliance, verifies panel sizing, grounding, GFCI/AFCI protection, and load calculations",
+  "required_inputs": [
+    "permit_number",
+    "inspection_type",
+    "inspector_id",
+    "gps_coordinates",
+    "electrical_observations"
+  ],
+  "hard_stops": [
+    {
+      "id": "INSP-EL-001",
+      "label": "Missing Grounding or Bonding",
+      "logic": "Electrical system grounding or bonding electrode conductor is missing or improperly installed per NEC Article 250 — life safety hazard",
+      "eval": { "field": "inspection.grounding_compliant", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "INSP-EL-002",
+      "label": "Panel Overloaded",
+      "logic": "Electrical panel load exceeds rated capacity — fire hazard per NEC Article 408",
+      "eval": { "field": "inspection.panel_overloaded", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "INSP-EL-003",
+      "label": "GFCI Protection Missing in Required Location",
+      "logic": "Ground fault circuit interrupter protection not provided in kitchen, bathroom, garage, exterior, or other required locations per NEC 210.8",
+      "eval": { "field": "inspection.gfci_compliant", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "INSP-EL-004",
+      "label": "Permit Expired or Not Active",
+      "logic": "The referenced electrical permit is expired, suspended, or has not been issued — cannot conduct inspection",
+      "eval": { "field": "inspection.permit_active", "operator": "==", "threshold": false }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "INSP-EL-FLG-001",
+      "label": "AFCI Protection Advisory",
+      "logic": "Arc fault circuit interrupter protection is required in bedrooms and living areas per NEC 210.12 — verify coverage",
+      "eval": { "field": "inspection.afci_check_needed", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "INSP-EL-FLG-002",
+      "label": "Solar/Battery System Present",
+      "logic": "Solar PV or battery storage system installed — verify rapid shutdown compliance per NEC 690.12 and interconnection approval",
+      "eval": { "field": "inspection.solar_battery_present", "operator": "==", "threshold": true }
+    }
+  ],
+  "outputs": [
+    "gov032-electrical-inspection-report",
+    "gov032-violation-notice",
+    "gov032-correction-list",
+    "gov032-pass-certificate"
+  ]
+}

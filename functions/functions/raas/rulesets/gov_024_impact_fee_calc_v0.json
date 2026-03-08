@@ -1,0 +1,47 @@
+{
+  "id": "gov_024_impact_fee_calc_v0",
+  "version": "v0",
+  "domain": "government-permitting",
+  "description": "Impact Fee Calculation — calculates development impact fees for transportation, parks, schools, fire, and utility infrastructure based on project scope and land use",
+  "required_inputs": [
+    "permit_number",
+    "land_use_category",
+    "unit_count",
+    "square_footage",
+    "fee_schedule_version"
+  ],
+  "hard_stops": [
+    {
+      "id": "PERM-IF-001",
+      "label": "Fee Schedule Not Current",
+      "logic": "Impact fee calculation is based on an outdated fee schedule — must recalculate using the current adopted fee schedule",
+      "eval": { "field": "impact_fee.schedule_current", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "PERM-IF-002",
+      "label": "Land Use Category Not in Fee Schedule",
+      "logic": "Proposed land use category is not defined in the impact fee schedule — requires staff determination before calculating fees",
+      "eval": { "field": "impact_fee.category_defined", "operator": "==", "threshold": false }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "PERM-IF-FLG-001",
+      "label": "Fee Credit May Apply",
+      "logic": "Property has prior development that was demolished — applicant may be eligible for impact fee credit for the prior use",
+      "eval": { "field": "impact_fee.credit_eligible", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "PERM-IF-FLG-002",
+      "label": "Affordable Housing Exemption",
+      "logic": "Project includes affordable housing units that may qualify for impact fee reduction or exemption per local ordinance",
+      "eval": { "field": "impact_fee.affordable_units_present", "operator": "==", "threshold": true }
+    }
+  ],
+  "outputs": [
+    "gov024-impact-fee-calculation",
+    "gov024-fee-breakdown-by-category",
+    "gov024-credit-determination",
+    "gov024-payment-schedule"
+  ]
+}

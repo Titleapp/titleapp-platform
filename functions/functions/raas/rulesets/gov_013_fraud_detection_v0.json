@@ -1,0 +1,52 @@
+{
+  "id": "gov_013_fraud_detection_v0",
+  "version": "v0",
+  "domain": "government-dmv",
+  "description": "DMV Fraud Detection — identifies suspicious patterns in title applications, registration renewals, and identity documents to flag potential fraud for investigation",
+  "required_inputs": [
+    "transaction_id",
+    "transaction_type",
+    "applicant_data",
+    "document_scans",
+    "risk_signals"
+  ],
+  "hard_stops": [
+    {
+      "id": "DMV-FD-001",
+      "label": "Identity Document Forgery Detected",
+      "logic": "Document authentication analysis indicates forgery or alteration of identity documents — transaction blocked and referred to investigations unit",
+      "eval": { "field": "fraud.forgery_detected", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "DMV-FD-002",
+      "label": "SSN Already Associated with Different Identity",
+      "logic": "Social Security number provided is already associated with a different verified identity in the system — potential identity theft",
+      "eval": { "field": "fraud.ssn_identity_conflict", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "DMV-FD-003",
+      "label": "Known Fraud Ring Pattern",
+      "logic": "Transaction matches a known fraud ring pattern (shared address, sequential applications, linked applicants) — immediate hold for review",
+      "eval": { "field": "fraud.ring_pattern_match", "operator": "==", "threshold": true }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "DMV-FD-FLG-001",
+      "label": "Elevated Risk Score",
+      "logic": "Transaction risk score exceeds normal threshold — flag for manual review before processing",
+      "eval": { "field": "fraud.risk_score", "operator": ">", "threshold": 75 }
+    },
+    {
+      "id": "DMV-FD-FLG-002",
+      "label": "Rapid Title Transfers",
+      "logic": "Vehicle has changed hands 3 or more times in the past 12 months — possible title washing or curbstoning",
+      "eval": { "field": "fraud.transfers_past_12m", "operator": ">=", "threshold": 3 }
+    }
+  ],
+  "outputs": [
+    "gov013-fraud-alert",
+    "gov013-risk-assessment-report",
+    "gov013-investigation-referral"
+  ]
+}

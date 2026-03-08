@@ -1,0 +1,58 @@
+{
+  "id": "esc_004_lien_clearance_v0",
+  "version": "0.1.0",
+  "domain": "title_escrow",
+  "description": "Lien Clearance — tracks existing liens on the property, coordinates payoff demands, monitors release recordings, and blocks DTC transfer and closing until all liens are satisfied and released.",
+  "required_inputs": [
+    "locker_id",
+    "lien_type",
+    "lienholder"
+  ],
+  "hard_stops": [
+    {
+      "id": "ESC-LC-001",
+      "label": "Unreleased Lien Block DTC Transfer",
+      "logic": "An existing lien has not been released — block DTC transfer until lien release is recorded.",
+      "eval": { "field": "lien.release_recorded", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "ESC-LC-002",
+      "label": "Payoff Amount Unconfirmed Block Disbursement",
+      "logic": "Payoff amount from lienholder has not been confirmed — block disbursement until confirmed payoff demand is received.",
+      "eval": { "field": "lien.payoff_amount_confirmed", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "ESC-LC-003",
+      "label": "Release Not Recorded Block Closing",
+      "logic": "Lien release has not been recorded with the county — block closing until recording is confirmed.",
+      "eval": { "field": "lien.release_recorded_with_county", "operator": "==", "threshold": false }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "ESC-LC-FLG-001",
+      "label": "Payoff Amount Increase",
+      "logic": "Payoff amount has increased since the original demand — flag for review and updated HUD/CD.",
+      "eval": { "field": "lien.payoff_increased", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "ESC-LC-FLG-002",
+      "label": "Per Diem High",
+      "logic": "Per diem interest on the existing lien is unusually high — flag for timing optimization.",
+      "eval": { "field": "lien.per_diem_high", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "ESC-LC-FLG-003",
+      "label": "Multiple Liens",
+      "logic": "Property has multiple liens requiring coordination — flag for sequencing and priority review.",
+      "eval": { "field": "lien.multiple_liens", "operator": "==", "threshold": true }
+    }
+  ],
+  "outputs": [
+    "clearance_id",
+    "lien_type",
+    "payoff_amount",
+    "release_status",
+    "release_confirmed"
+  ]
+}

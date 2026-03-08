@@ -1,0 +1,47 @@
+{
+  "id": "gov_036_structural_inspector_v0",
+  "version": "v0",
+  "domain": "government-inspector",
+  "description": "Structural Inspector — inspects foundation, framing, and structural systems for compliance with IBC structural provisions, engineered plans, and special inspection requirements",
+  "required_inputs": [
+    "permit_number",
+    "inspection_type",
+    "inspector_id",
+    "gps_coordinates",
+    "structural_observations"
+  ],
+  "hard_stops": [
+    {
+      "id": "INSP-ST-001",
+      "label": "Foundation Does Not Match Approved Plans",
+      "logic": "As-built foundation dimensions, depth, or reinforcement do not match the approved structural plans — structural integrity at risk",
+      "eval": { "field": "inspection.foundation_matches_plans", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "INSP-ST-002",
+      "label": "Special Inspection Report Missing",
+      "logic": "Special inspection is required for this structural element (concrete, steel, masonry, soils) per IBC 1704 but no special inspection report has been filed",
+      "eval": { "field": "inspection.special_inspection_filed", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "INSP-ST-003",
+      "label": "Structural Deficiency Observed",
+      "logic": "Visible structural deficiency (cracking, deflection, connection failure) observed — stop work and require structural engineer evaluation",
+      "eval": { "field": "inspection.structural_deficiency", "operator": "==", "threshold": true }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "INSP-ST-FLG-001",
+      "label": "Seismic Design Category D or Higher",
+      "logic": "Building is in Seismic Design Category D, E, or F — additional seismic connection and hold-down inspections required",
+      "eval": { "field": "inspection.high_seismic_zone", "operator": "==", "threshold": true }
+    }
+  ],
+  "outputs": [
+    "gov036-structural-inspection-report",
+    "gov036-special-inspection-log",
+    "gov036-correction-notice",
+    "gov036-pass-certificate"
+  ]
+}

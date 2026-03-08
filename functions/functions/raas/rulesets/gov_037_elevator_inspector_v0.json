@@ -1,0 +1,47 @@
+{
+  "id": "gov_037_elevator_inspector_v0",
+  "version": "v0",
+  "domain": "government-inspector",
+  "description": "Elevator Inspector — inspects elevators, escalators, and conveyances for ASME A17.1 compliance, annual certifications, and safety device testing",
+  "required_inputs": [
+    "conveyance_id",
+    "inspection_type",
+    "inspector_id",
+    "gps_coordinates",
+    "test_results"
+  ],
+  "hard_stops": [
+    {
+      "id": "INSP-EV-001",
+      "label": "Safety Device Test Failed",
+      "logic": "Governor, safeties, or buffers failed the required Category 1 or Category 5 test — elevator must be taken out of service",
+      "eval": { "field": "inspection.safety_test_passed", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "INSP-EV-002",
+      "label": "Emergency Communication Inoperative",
+      "logic": "Elevator emergency phone or two-way communication device is not operational — ADA and ASME A17.1 2.27.1.1 violation",
+      "eval": { "field": "inspection.emergency_comm_operational", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "INSP-EV-003",
+      "label": "Annual Certification Expired",
+      "logic": "Elevator annual operating certificate has expired — conveyance cannot be operated until re-inspected and certified",
+      "eval": { "field": "inspection.annual_cert_current", "operator": "==", "threshold": false }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "INSP-EV-FLG-001",
+      "label": "Five-Year Full Load Test Due",
+      "logic": "Elevator is due for the 5-year full load safety test per ASME A17.1 — schedule with elevator contractor",
+      "eval": { "field": "inspection.five_year_test_due", "operator": "==", "threshold": true }
+    }
+  ],
+  "outputs": [
+    "gov037-elevator-inspection-report",
+    "gov037-operating-certificate",
+    "gov037-violation-notice",
+    "gov037-test-certification"
+  ]
+}

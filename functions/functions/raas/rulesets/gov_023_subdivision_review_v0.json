@@ -1,0 +1,47 @@
+{
+  "id": "gov_023_subdivision_review_v0",
+  "version": "v0",
+  "domain": "government-permitting",
+  "description": "Subdivision Review — reviews and processes preliminary and final plat applications, lot configurations, infrastructure dedications, and improvement agreements",
+  "required_inputs": [
+    "application_type",
+    "parcel_number",
+    "plat_document_id",
+    "lot_count",
+    "infrastructure_plan"
+  ],
+  "hard_stops": [
+    {
+      "id": "PERM-SUB-001",
+      "label": "Plat Not Sealed by Licensed Surveyor",
+      "logic": "Subdivision plat does not bear the seal and signature of a licensed land surveyor — plat cannot be accepted",
+      "eval": { "field": "subdivision.plat_sealed", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "PERM-SUB-002",
+      "label": "Infrastructure Improvement Agreement Not Executed",
+      "logic": "Final plat submitted but the required infrastructure improvement agreement and surety have not been executed",
+      "eval": { "field": "subdivision.improvement_agreement_executed", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "PERM-SUB-003",
+      "label": "Utility Capacity Insufficient",
+      "logic": "Water, sewer, or electrical utility capacity is insufficient to serve the proposed number of lots — utility will-serve letters not obtained",
+      "eval": { "field": "subdivision.utility_capacity_confirmed", "operator": "==", "threshold": false }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "PERM-SUB-FLG-001",
+      "label": "Large Subdivision Threshold",
+      "logic": "Subdivision exceeds 50 lots — may trigger traffic impact study and additional park land dedication requirements",
+      "eval": { "field": "subdivision.lot_count", "operator": ">", "threshold": 50 }
+    }
+  ],
+  "outputs": [
+    "gov023-preliminary-plat-review",
+    "gov023-final-plat-approval",
+    "gov023-improvement-agreement",
+    "gov023-infrastructure-checklist"
+  ]
+}

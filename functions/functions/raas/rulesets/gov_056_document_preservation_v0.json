@@ -1,0 +1,41 @@
+{
+  "id": "gov_056_document_preservation_v0",
+  "version": "v0",
+  "domain": "government-recorder",
+  "description": "Document Preservation and Digitization — manages document scanning, indexing, microfilm/digital conversion, and long-term archival of recorded instruments",
+  "required_inputs": [
+    "batch_id",
+    "source_format",
+    "date_range",
+    "book_page_range",
+    "quality_standard"
+  ],
+  "hard_stops": [
+    {
+      "id": "REC-DP-001",
+      "label": "Image Quality Below Standard",
+      "logic": "Scanned image resolution or legibility falls below the minimum archival standard (300 DPI, ISO 19005 PDF/A) — rescan required",
+      "eval": { "field": "preservation.image_quality_meets_standard", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "REC-DP-002",
+      "label": "Index Data Missing",
+      "logic": "Scanned document does not have complete index data (instrument number, recording date, document type, parties) — cannot be added to searchable archive",
+      "eval": { "field": "preservation.index_data_complete", "operator": "==", "threshold": false }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "REC-DP-FLG-001",
+      "label": "Deteriorating Source Document",
+      "logic": "Original document shows signs of deterioration (fading ink, brittleness, water damage) — prioritize preservation scanning",
+      "eval": { "field": "preservation.source_deteriorating", "operator": "==", "threshold": true }
+    }
+  ],
+  "outputs": [
+    "gov056-scan-batch-report",
+    "gov056-quality-audit",
+    "gov056-index-verification",
+    "gov056-preservation-certificate"
+  ]
+}

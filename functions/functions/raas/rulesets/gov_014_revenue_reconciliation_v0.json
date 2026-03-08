@@ -1,0 +1,39 @@
+{
+  "id": "gov_014_revenue_reconciliation_v0",
+  "version": "v0",
+  "domain": "government-dmv",
+  "description": "DMV Revenue Reconciliation — reconciles daily fee collections, tracks outstanding balances, and generates revenue reports for treasury",
+  "required_inputs": [
+    "reconciliation_date",
+    "transaction_batch",
+    "payment_processor_report",
+    "general_ledger_codes"
+  ],
+  "hard_stops": [
+    {
+      "id": "DMV-RR-001",
+      "label": "Batch Total Mismatch",
+      "logic": "Sum of individual transaction amounts does not match the payment processor batch total — discrepancy must be resolved before posting",
+      "eval": { "field": "reconciliation.batch_balanced", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "DMV-RR-002",
+      "label": "Unallocated Payments Exceed Threshold",
+      "logic": "Unallocated payments exceed $500 — all payments must be matched to transactions before closing the batch",
+      "eval": { "field": "reconciliation.unallocated_amount", "operator": ">", "threshold": 500 }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "DMV-RR-FLG-001",
+      "label": "Refunds Exceed Daily Average",
+      "logic": "Daily refund total is more than 2x the rolling 30-day average — may indicate processing errors or fraud",
+      "eval": { "field": "reconciliation.refunds_above_2x_avg", "operator": "==", "threshold": true }
+    }
+  ],
+  "outputs": [
+    "gov014-daily-reconciliation-report",
+    "gov014-treasury-remittance",
+    "gov014-exception-log"
+  ]
+}

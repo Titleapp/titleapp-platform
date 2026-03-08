@@ -1,0 +1,46 @@
+{
+  "id": "gov_048_notary_administration_v0",
+  "version": "v0",
+  "domain": "government-recorder",
+  "description": "Notary Administration — manages notary public commissions, notary journal audits, RON provider registrations, and notary complaint investigations",
+  "required_inputs": [
+    "notary_action_type",
+    "notary_name",
+    "commission_number",
+    "bond_surety_info"
+  ],
+  "hard_stops": [
+    {
+      "id": "REC-NA-001",
+      "label": "Notary Bond Not Filed",
+      "logic": "Notary public bond has not been filed with the county recorder — commission cannot be issued without bond",
+      "eval": { "field": "notary.bond_filed", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "REC-NA-002",
+      "label": "Background Check Disqualification",
+      "logic": "Notary applicant has a disqualifying conviction per state notary statutes — commission application denied",
+      "eval": { "field": "notary.background_check_clear", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "REC-NA-003",
+      "label": "RON Provider Not State-Approved",
+      "logic": "Remote online notarization platform is not on the state-approved provider list — RON sessions on this platform are not valid",
+      "eval": { "field": "notary.ron_provider_approved", "operator": "==", "threshold": false }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "REC-NA-FLG-001",
+      "label": "Commission Expiring Soon",
+      "logic": "Notary commission expires within 90 days — send renewal reminder",
+      "eval": { "field": "notary.days_to_commission_expiry", "operator": "<", "threshold": 90 }
+    }
+  ],
+  "outputs": [
+    "gov048-notary-commission",
+    "gov048-bond-filing-receipt",
+    "gov048-journal-audit-report",
+    "gov048-complaint-investigation"
+  ]
+}

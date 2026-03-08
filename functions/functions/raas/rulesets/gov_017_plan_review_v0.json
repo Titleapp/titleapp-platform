@@ -1,0 +1,53 @@
+{
+  "id": "gov_017_plan_review_v0",
+  "version": "v0",
+  "domain": "government-permitting",
+  "description": "Plan Review — routes building plans to appropriate review disciplines, tracks review cycles, manages applicant resubmittals, and enforces code compliance checklists",
+  "required_inputs": [
+    "permit_number",
+    "plan_set_version",
+    "review_disciplines",
+    "building_code_edition",
+    "occupancy_type"
+  ],
+  "hard_stops": [
+    {
+      "id": "PERM-PR-001",
+      "label": "Plans Not Sealed by Licensed Professional",
+      "logic": "Submitted plans do not bear the seal and signature of a licensed architect or engineer as required by state law for this project type",
+      "eval": { "field": "plan_review.plans_sealed", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "PERM-PR-002",
+      "label": "Fire Life Safety Deficiency",
+      "logic": "Plans have an unresolved fire/life safety deficiency (egress, fire separation, sprinkler coverage) — cannot approve until corrected",
+      "eval": { "field": "plan_review.fire_life_safety_clear", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "PERM-PR-003",
+      "label": "ADA/Accessibility Non-Compliant",
+      "logic": "Plans do not meet ADA/ABA accessibility requirements per ICC A117.1 — corrections required before approval",
+      "eval": { "field": "plan_review.ada_compliant", "operator": "==", "threshold": false }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "PERM-PR-FLG-001",
+      "label": "Third Review Cycle",
+      "logic": "Plans are on their third or later review cycle — escalate to supervising plan reviewer",
+      "eval": { "field": "plan_review.review_cycle_count", "operator": ">=", "threshold": 3 }
+    },
+    {
+      "id": "PERM-PR-FLG-002",
+      "label": "Deferred Submittal Pending",
+      "logic": "One or more deferred submittals (truss design, fire suppression, special inspections) are still outstanding",
+      "eval": { "field": "plan_review.deferred_submittals_pending", "operator": ">", "threshold": 0 }
+    }
+  ],
+  "outputs": [
+    "gov017-plan-review-comments",
+    "gov017-correction-notice",
+    "gov017-approval-stamp",
+    "gov017-discipline-routing-log"
+  ]
+}

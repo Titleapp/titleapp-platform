@@ -1,0 +1,63 @@
+{
+  "id": "esc_002_wire_fraud_prevention_v0",
+  "version": "0.1.0",
+  "domain": "title_escrow",
+  "description": "Wire Fraud Prevention — validates wire instructions, detects domain mismatches, enforces callback verification, and flags suspicious patterns before any funds are disbursed.",
+  "required_inputs": [
+    "locker_id",
+    "wire_instructions",
+    "callback_phone"
+  ],
+  "hard_stops": [
+    {
+      "id": "ESC-WF-001",
+      "label": "Wire Instruction Change Hold",
+      "logic": "Any change to wire instructions triggers automatic hold and requires human authorization before proceeding.",
+      "eval": { "field": "wire.instructions_changed", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "ESC-WF-002",
+      "label": "Domain Mismatch Hold",
+      "logic": "Email domain on wire instructions does not match known party domain — hold for manual verification.",
+      "eval": { "field": "wire.domain_mismatch", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "ESC-WF-003",
+      "label": "No Callback Phone Block",
+      "logic": "No callback phone number on file — block wire processing until callback number is provided.",
+      "eval": { "field": "wire.callback_phone_present", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "ESC-WF-004",
+      "label": "Callback Not Confirmed Block Disbursement",
+      "logic": "Callback to verified phone number has not been confirmed — block disbursement.",
+      "eval": { "field": "wire.callback_confirmed", "operator": "==", "threshold": false }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "ESC-WF-FLG-001",
+      "label": "New Bank Institution",
+      "logic": "Wire instructions reference a bank institution not previously seen for this party — flag for enhanced review.",
+      "eval": { "field": "wire.new_bank_institution", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "ESC-WF-FLG-002",
+      "label": "International Wire",
+      "logic": "Wire is routed internationally — flag for OFAC screening and additional compliance checks.",
+      "eval": { "field": "wire.international", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "ESC-WF-FLG-003",
+      "label": "Rush Request",
+      "logic": "Party has requested expedited wire processing — flag for heightened scrutiny.",
+      "eval": { "field": "wire.rush_requested", "operator": "==", "threshold": true }
+    }
+  ],
+  "outputs": [
+    "check_id",
+    "status",
+    "risk_flags",
+    "callback_confirmed"
+  ]
+}

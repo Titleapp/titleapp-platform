@@ -1,0 +1,48 @@
+{
+  "id": "gov_043_mortgage_recording_v0",
+  "version": "v0",
+  "domain": "government-recorder",
+  "description": "Mortgage and Deed of Trust Recording — records mortgage instruments, assignments, modifications, and subordination agreements with lien priority tracking",
+  "required_inputs": [
+    "document_type",
+    "document_file_id",
+    "borrower_name",
+    "lender_name",
+    "legal_description",
+    "loan_amount"
+  ],
+  "hard_stops": [
+    {
+      "id": "REC-MR-001",
+      "label": "MERS MIN Number Invalid",
+      "logic": "Mortgage references MERS (Mortgage Electronic Registration System) but the MIN number is not valid in MERS registry",
+      "eval": { "field": "mortgage.mers_min_valid", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "REC-MR-002",
+      "label": "Borrower Not Vested Owner",
+      "logic": "Borrower named on the mortgage/deed of trust is not the vested owner of the property — mortgage cannot encumber property not owned by borrower",
+      "eval": { "field": "mortgage.borrower_is_owner", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "REC-MR-003",
+      "label": "Recording Fee Not Collected",
+      "logic": "Mortgage recording fee and any applicable mortgage tax have not been collected — cannot record without payment",
+      "eval": { "field": "mortgage.fee_collected", "operator": "==", "threshold": false }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "REC-MR-FLG-001",
+      "label": "High Loan-to-Value Ratio",
+      "logic": "Loan amount exceeds 80% of the assessed property value — flag for mortgage insurance verification",
+      "eval": { "field": "mortgage.ltv_ratio", "operator": ">", "threshold": 0.8 }
+    }
+  ],
+  "outputs": [
+    "gov043-recorded-mortgage",
+    "gov043-instrument-number",
+    "gov043-lien-priority-report",
+    "gov043-fee-receipt"
+  ]
+}

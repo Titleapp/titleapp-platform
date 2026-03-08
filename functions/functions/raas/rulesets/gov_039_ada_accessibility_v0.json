@@ -1,0 +1,47 @@
+{
+  "id": "gov_039_ada_accessibility_v0",
+  "version": "v0",
+  "domain": "government-inspector",
+  "description": "ADA and Accessibility Inspector — verifies compliance with ADA, ABA, Fair Housing Act, and ICC A117.1 accessibility standards for new construction and alterations",
+  "required_inputs": [
+    "permit_number",
+    "inspection_type",
+    "inspector_id",
+    "gps_coordinates",
+    "accessibility_observations"
+  ],
+  "hard_stops": [
+    {
+      "id": "INSP-ADA-001",
+      "label": "Accessible Route Not Provided",
+      "logic": "No accessible route from public way to building entrance — ADA Title III violation and ICC A117.1 non-compliance",
+      "eval": { "field": "inspection.accessible_route_provided", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "INSP-ADA-002",
+      "label": "Accessible Restroom Non-Compliant",
+      "logic": "Required accessible restroom does not meet clearance, grab bar, or fixture height requirements per ADA Standards",
+      "eval": { "field": "inspection.restroom_accessible", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "INSP-ADA-003",
+      "label": "Accessible Parking Not Provided",
+      "logic": "Required number of accessible parking spaces with proper signage, slope, and access aisle not provided",
+      "eval": { "field": "inspection.parking_accessible", "operator": "==", "threshold": false }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "INSP-ADA-FLG-001",
+      "label": "Alteration Triggers Path of Travel Upgrade",
+      "logic": "Alteration cost exceeds 20% disproportionate cost threshold — path of travel accessibility upgrade may be required per 28 CFR 36.403",
+      "eval": { "field": "inspection.path_of_travel_trigger", "operator": "==", "threshold": true }
+    }
+  ],
+  "outputs": [
+    "gov039-accessibility-inspection-report",
+    "gov039-ada-compliance-checklist",
+    "gov039-correction-notice",
+    "gov039-pass-certificate"
+  ]
+}

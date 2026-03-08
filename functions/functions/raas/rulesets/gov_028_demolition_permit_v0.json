@@ -1,0 +1,47 @@
+{
+  "id": "gov_028_demolition_permit_v0",
+  "version": "v0",
+  "domain": "government-permitting",
+  "description": "Demolition Permit — processes demolition permit applications, verifies asbestos surveys, utility disconnections, historic review, and OSHA compliance",
+  "required_inputs": [
+    "parcel_number",
+    "structure_type",
+    "demolition_contractor",
+    "asbestos_survey_id",
+    "utility_disconnect_confirmations"
+  ],
+  "hard_stops": [
+    {
+      "id": "PERM-DM-001",
+      "label": "Asbestos Survey Not Completed",
+      "logic": "NESHAP-required asbestos survey has not been completed prior to demolition — violation of 40 CFR 61 Subpart M",
+      "eval": { "field": "demolition.asbestos_survey_complete", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "PERM-DM-002",
+      "label": "Utilities Not Disconnected",
+      "logic": "One or more utilities (gas, electric, water, sewer) have not been confirmed disconnected — safety hazard",
+      "eval": { "field": "demolition.all_utilities_disconnected", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "PERM-DM-003",
+      "label": "Historic Structure — Demolition Blocked",
+      "logic": "Structure is on the local, state, or national historic register — demolition requires historic preservation board review and approval",
+      "eval": { "field": "demolition.historic_review_approved", "operator": "==", "threshold": false }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "PERM-DM-FLG-001",
+      "label": "Demolition Debris Disposal Plan",
+      "logic": "Demolition will generate significant debris — verify disposal facility acceptance and recycling plan compliance",
+      "eval": { "field": "demolition.debris_plan_submitted", "operator": "==", "threshold": false }
+    }
+  ],
+  "outputs": [
+    "gov028-demolition-permit",
+    "gov028-asbestos-clearance",
+    "gov028-utility-disconnect-log",
+    "gov028-debris-disposal-plan"
+  ]
+}

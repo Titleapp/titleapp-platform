@@ -1,0 +1,57 @@
+{
+  "id": "esc_009_hoa_estoppel_v0",
+  "version": "0.1.0",
+  "domain": "title_escrow",
+  "description": "HOA Estoppel — requests and processes HOA estoppel certificates, tracks unpaid dues and special assessments, monitors transfer fees, and blocks closing when outstanding HOA obligations or pending litigation exist.",
+  "required_inputs": [
+    "locker_id",
+    "hoa_name"
+  ],
+  "hard_stops": [
+    {
+      "id": "ESC-HE-001",
+      "label": "Estoppel Not Received Condition Outstanding",
+      "logic": "HOA estoppel certificate has not been received — condition remains outstanding and cannot be cleared.",
+      "eval": { "field": "hoa.estoppel_received", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "ESC-HE-002",
+      "label": "Unpaid Special Assessment Block Closing",
+      "logic": "Unpaid special assessment identified on estoppel — block closing until resolved or credited on settlement statement.",
+      "eval": { "field": "hoa.unpaid_special_assessment", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "ESC-HE-003",
+      "label": "Pending HOA Litigation Flag For Review",
+      "logic": "HOA has pending litigation disclosed on estoppel — flag for title review and underwriter assessment.",
+      "eval": { "field": "hoa.pending_litigation", "operator": "==", "threshold": true }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "ESC-HE-FLG-001",
+      "label": "High Transfer Fee",
+      "logic": "HOA transfer fee exceeds typical range — flag for buyer awareness.",
+      "eval": { "field": "hoa.transfer_fee_high", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "ESC-HE-FLG-002",
+      "label": "Special Assessment Pending",
+      "logic": "HOA has a pending special assessment that may be levied post-closing — flag for buyer disclosure.",
+      "eval": { "field": "hoa.special_assessment_pending", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "ESC-HE-FLG-003",
+      "label": "HOA Financial Concern",
+      "logic": "HOA financials indicate low reserves or budget shortfall — flag for buyer awareness.",
+      "eval": { "field": "hoa.financial_concern", "operator": "==", "threshold": true }
+    }
+  ],
+  "outputs": [
+    "estoppel_id",
+    "certificate_status",
+    "unpaid_dues",
+    "special_assessments",
+    "transfer_fee"
+  ]
+}

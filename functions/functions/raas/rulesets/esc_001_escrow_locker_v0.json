@@ -1,0 +1,119 @@
+{
+  "id": "esc_001_escrow_locker_v0",
+  "version": "0.1.0",
+  "domain": "title_escrow",
+  "description": "The Escrow Locker — manages the full lifecycle of an escrow transaction from offer acceptance through disbursement and recording. Enforces identity verification, wire security, condition satisfaction, and audit retention across all parties and stages.",
+  "required_inputs": [
+    "asset_id",
+    "asset_type",
+    "buyer_id",
+    "seller_id",
+    "offer_amount",
+    "purchase_agreement",
+    "parties",
+    "conditions"
+  ],
+  "hard_stops": [
+    {
+      "id": "ESC-HS-001",
+      "label": "Identity Verified All Parties",
+      "logic": "No Locker stage advances without all parties identity-verified. OFAC hit = immediate freeze.",
+      "eval": { "field": "escrow.all_parties_identity_verified", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "ESC-HS-002",
+      "label": "Offer Chain Required",
+      "logic": "Locker cannot open on standalone PA. Offer chain required or exception attestation logged.",
+      "eval": { "field": "escrow.offer_chain_present", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "ESC-HS-003",
+      "label": "Bank Account Verified Before Disbursement",
+      "logic": "All disbursement accounts verified via Stripe Financial Connections.",
+      "eval": { "field": "escrow.bank_accounts_verified", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "ESC-HS-004",
+      "label": "Wire Callback Required",
+      "logic": "Outbound wire verified via callback to number on file from original agreement.",
+      "eval": { "field": "escrow.wire_callback_confirmed", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "ESC-HS-005",
+      "label": "Wire Change Hold",
+      "logic": "Any change to wire instructions triggers automatic hold and human auth.",
+      "eval": { "field": "escrow.wire_instructions_changed", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "ESC-HS-006",
+      "label": "No Disbursement Before Conditions",
+      "logic": "No disbursement until all conditions marked SATISFIED.",
+      "eval": { "field": "escrow.all_conditions_satisfied", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "ESC-HS-007",
+      "label": "Notarization Before Recording",
+      "logic": "No recording without all notarization confirmed.",
+      "eval": { "field": "escrow.notarization_confirmed", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "ESC-HS-008",
+      "label": "No DTC Transfer Before Recording",
+      "logic": "DTC transfer requires recording confirmation number.",
+      "eval": { "field": "escrow.recording_confirmed", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "ESC-HS-009",
+      "label": "No Commingling",
+      "logic": "EMD and closing funds in separate sub-accounts.",
+      "eval": { "field": "escrow.funds_commingled", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "ESC-HS-010",
+      "label": "Human In Loop At Disbursement",
+      "logic": "Human must confirm all disbursements.",
+      "eval": { "field": "escrow.human_disbursement_confirmed", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "ESC-HS-011",
+      "label": "Seven Year Retention",
+      "logic": "All Locker records retained 7 years.",
+      "eval": { "field": "escrow.retention_policy_set", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "ESC-HS-012",
+      "label": "PII Masked In Logs",
+      "logic": "SSN, EIN, account numbers masked in audit log.",
+      "eval": { "field": "escrow.pii_masked_in_logs", "operator": "==", "threshold": true }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "ESC-HS-FLG-001",
+      "label": "Stage Transition Delay",
+      "logic": "More than 5 days between stages — flag for review.",
+      "eval": { "field": "escrow.days_since_last_stage_change", "operator": ">", "threshold": 5 }
+    },
+    {
+      "id": "ESC-HS-FLG-002",
+      "label": "Condition Deadline Approaching",
+      "logic": "Less than 3 days until condition deadline — flag for urgency.",
+      "eval": { "field": "escrow.days_until_condition_deadline", "operator": "<", "threshold": 3 }
+    },
+    {
+      "id": "ESC-HS-FLG-003",
+      "label": "Multiple Counter Offers",
+      "logic": "More than 3 counter offers — flag for negotiation complexity.",
+      "eval": { "field": "escrow.counter_offer_count", "operator": ">", "threshold": 3 }
+    }
+  ],
+  "outputs": [
+    "locker_id",
+    "escrow_number",
+    "stage",
+    "stage_name",
+    "conditions_status",
+    "sealing_hash",
+    "audit_trail"
+  ]
+}

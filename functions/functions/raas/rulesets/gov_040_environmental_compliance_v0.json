@@ -1,0 +1,53 @@
+{
+  "id": "gov_040_environmental_compliance_v0",
+  "version": "v0",
+  "domain": "government-inspector",
+  "description": "Environmental Compliance Inspector — inspects construction sites for erosion control, stormwater BMP maintenance, dust control, and NPDES permit compliance",
+  "required_inputs": [
+    "permit_number",
+    "inspection_type",
+    "inspector_id",
+    "gps_coordinates",
+    "environmental_observations"
+  ],
+  "hard_stops": [
+    {
+      "id": "INSP-EN-001",
+      "label": "Sediment Discharge to Waterway",
+      "logic": "Active sediment discharge observed entering a water body or storm drain — Clean Water Act violation requiring immediate corrective action",
+      "eval": { "field": "inspection.sediment_discharge_detected", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "INSP-EN-002",
+      "label": "Erosion Control BMPs Not Installed",
+      "logic": "Required best management practices for erosion and sediment control are not installed per the approved SWPPP/erosion control plan",
+      "eval": { "field": "inspection.bmps_installed", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "INSP-EN-003",
+      "label": "Hazardous Material Spill",
+      "logic": "Hazardous material spill observed on construction site — requires immediate containment and agency notification per CERCLA/SARA",
+      "eval": { "field": "inspection.hazmat_spill_detected", "operator": "==", "threshold": true }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "INSP-EN-FLG-001",
+      "label": "BMP Maintenance Needed",
+      "logic": "Erosion control BMPs are installed but showing signs of degradation or capacity limits — maintenance needed before next rain event",
+      "eval": { "field": "inspection.bmp_maintenance_needed", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "INSP-EN-FLG-002",
+      "label": "Dust Control Inadequate",
+      "logic": "Visible dust emissions from site exceed local air quality management district standards — increase watering or apply stabilizer",
+      "eval": { "field": "inspection.dust_control_adequate", "operator": "==", "threshold": false }
+    }
+  ],
+  "outputs": [
+    "gov040-environmental-inspection-report",
+    "gov040-violation-notice",
+    "gov040-corrective-action-plan",
+    "gov040-bmp-status-log"
+  ]
+}

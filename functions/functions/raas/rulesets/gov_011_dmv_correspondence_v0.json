@@ -1,0 +1,39 @@
+{
+  "id": "gov_011_dmv_correspondence_v0",
+  "version": "v0",
+  "domain": "government-dmv",
+  "description": "DMV Correspondence — manages automated and manual communications including suspension notices, renewal reminders, and hearing notifications",
+  "required_inputs": [
+    "correspondence_type",
+    "recipient_id",
+    "subject_matter",
+    "delivery_method"
+  ],
+  "hard_stops": [
+    {
+      "id": "DMV-CO-001",
+      "label": "Legal Notice Missing Required Elements",
+      "logic": "Legal/suspension notice is missing required statutory elements (hearing rights, appeal deadline, statutory citation) — cannot send deficient notice",
+      "eval": { "field": "correspondence.legal_elements_complete", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "DMV-CO-002",
+      "label": "Address Not Verified",
+      "logic": "Recipient mailing address has not been verified through USPS CASS/NCOA — certified mail notices require valid address",
+      "eval": { "field": "correspondence.address_verified", "operator": "==", "threshold": false }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "DMV-CO-FLG-001",
+      "label": "Prior Mail Returned",
+      "logic": "Previous correspondence to this recipient was returned as undeliverable — consider alternate delivery method",
+      "eval": { "field": "correspondence.prior_mail_returned", "operator": "==", "threshold": true }
+    }
+  ],
+  "outputs": [
+    "gov011-correspondence-log",
+    "gov011-notice-pdf",
+    "gov011-delivery-confirmation"
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "id": "gov_055_gis_parcel_mapping_v0",
+  "version": "v0",
+  "domain": "government-recorder",
+  "description": "GIS and Parcel Mapping — maintains parcel boundary data, processes splits and merges, updates GIS layers from recorded plats, and manages spatial data integrity",
+  "required_inputs": [
+    "action_type",
+    "parcel_numbers",
+    "source_document_instrument",
+    "geometry_data",
+    "effective_date"
+  ],
+  "hard_stops": [
+    {
+      "id": "REC-GIS-001",
+      "label": "Geometry Topology Error",
+      "logic": "Proposed parcel boundary creates a topology error (overlap, gap, self-intersection) in the parcel fabric — cannot update GIS layer",
+      "eval": { "field": "gis.topology_valid", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "REC-GIS-002",
+      "label": "No Recorded Source Document",
+      "logic": "Parcel boundary change has no corresponding recorded instrument (plat, lot line adjustment, court order) — GIS cannot be updated without legal basis",
+      "eval": { "field": "gis.source_document_recorded", "operator": "==", "threshold": false }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "REC-GIS-FLG-001",
+      "label": "Area Discrepancy",
+      "logic": "Calculated parcel area differs by more than 5% from the legal description acreage — verify survey data",
+      "eval": { "field": "gis.area_discrepancy_percent", "operator": ">", "threshold": 5 }
+    },
+    {
+      "id": "REC-GIS-FLG-002",
+      "label": "Adjacent Parcel Notification",
+      "logic": "Boundary change affects shared boundary with adjacent parcels — notify adjacent parcel owners and assessor",
+      "eval": { "field": "gis.adjacent_parcels_affected", "operator": ">", "threshold": 0 }
+    }
+  ],
+  "outputs": [
+    "gov055-parcel-map-update",
+    "gov055-gis-layer-changelog",
+    "gov055-assessor-parcel-notification",
+    "gov055-topology-report"
+  ]
+}

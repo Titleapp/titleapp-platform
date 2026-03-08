@@ -1,0 +1,46 @@
+{
+  "id": "gov_006_emissions_compliance_v0",
+  "version": "v0",
+  "domain": "government-dmv",
+  "description": "Emissions Compliance — manages vehicle emissions testing records, exemptions, and compliance tracking per Clean Air Act and state programs",
+  "required_inputs": [
+    "vin",
+    "test_station_id",
+    "test_date",
+    "test_result",
+    "vehicle_model_year"
+  ],
+  "hard_stops": [
+    {
+      "id": "DMV-EM-001",
+      "label": "Test Station Not Licensed",
+      "logic": "Emissions test station is not currently licensed or has been suspended — test results are not accepted",
+      "eval": { "field": "emissions.station_licensed", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "DMV-EM-002",
+      "label": "OBD-II Readiness Monitors Incomplete",
+      "logic": "Vehicle OBD-II readiness monitors are not set — test is incomplete and results are invalid",
+      "eval": { "field": "emissions.obd_monitors_ready", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "DMV-EM-003",
+      "label": "Tampering Detected",
+      "logic": "Emissions control equipment has been tampered with or removed — violation of Clean Air Act Section 203(a)",
+      "eval": { "field": "emissions.tampering_detected", "operator": "==", "threshold": true }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "DMV-EM-FLG-001",
+      "label": "Exemption May Apply",
+      "logic": "Vehicle model year may qualify for age-based or mileage-based emissions test exemption per state rules",
+      "eval": { "field": "emissions.exemption_eligible", "operator": "==", "threshold": true }
+    }
+  ],
+  "outputs": [
+    "gov006-emissions-test-certificate",
+    "gov006-compliance-status",
+    "gov006-exemption-determination"
+  ]
+}

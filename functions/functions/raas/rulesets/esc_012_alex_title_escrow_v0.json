@@ -1,0 +1,49 @@
+{
+  "id": "esc_012_alex_title_escrow_v0",
+  "version": "0.1.0",
+  "domain": "title_escrow",
+  "description": "Alex Chief of Staff for Title and Escrow — monitors all active Escrow Lockers, surfaces anomalies and stalled transactions, escalates unresolved wire fraud alerts, provides daily briefings, and tracks stage breakdowns across the portfolio.",
+  "required_inputs": [
+    "tenant_id"
+  ],
+  "hard_stops": [
+    {
+      "id": "ESC-AX-001",
+      "label": "Anomaly Unacknowledged Escalate",
+      "logic": "An anomaly has gone unacknowledged for more than 24 hours — escalate to operations manager.",
+      "eval": { "field": "alex.anomaly_unacknowledged_hours", "operator": ">", "threshold": 24 }
+    },
+    {
+      "id": "ESC-AX-002",
+      "label": "Wire Fraud Alert Unresolved Escalate To Admin",
+      "logic": "A wire fraud alert remains unresolved — escalate to admin immediately.",
+      "eval": { "field": "alex.wire_fraud_alert_unresolved", "operator": "==", "threshold": true }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "ESC-AX-FLG-001",
+      "label": "Locker Stalled",
+      "logic": "An Escrow Locker has not advanced stages in an unusually long period — flag for review.",
+      "eval": { "field": "alex.locker_stalled", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "ESC-AX-FLG-002",
+      "label": "Deadline Breach",
+      "logic": "A transaction has breached a contractual or regulatory deadline — flag for immediate attention.",
+      "eval": { "field": "alex.deadline_breached", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "ESC-AX-FLG-003",
+      "label": "High Volume Day",
+      "logic": "Unusually high number of active Lockers or disbursements scheduled — flag for capacity planning.",
+      "eval": { "field": "alex.high_volume_day", "operator": "==", "threshold": true }
+    }
+  ],
+  "outputs": [
+    "briefing",
+    "anomaly_count",
+    "active_lockers",
+    "stage_breakdown"
+  ]
+}

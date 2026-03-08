@@ -1,0 +1,53 @@
+{
+  "id": "gov_010_cdl_processing_v0",
+  "version": "v0",
+  "domain": "government-dmv",
+  "description": "Commercial Driver License Processing — manages CDL applications, endorsements, medical certifications, and FMCSA Drug & Alcohol Clearinghouse checks",
+  "required_inputs": [
+    "applicant_name",
+    "cdl_class",
+    "endorsements_requested",
+    "medical_certificate",
+    "clearinghouse_query_consent"
+  ],
+  "hard_stops": [
+    {
+      "id": "DMV-CDL-001",
+      "label": "FMCSA Clearinghouse Violation Found",
+      "logic": "Drug & Alcohol Clearinghouse query returned an unresolved violation — CDL issuance prohibited per 49 CFR 382.701",
+      "eval": { "field": "cdl.clearinghouse_clear", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "DMV-CDL-002",
+      "label": "Medical Certificate Expired or Missing",
+      "logic": "DOT medical certificate (Form MCSA-5876) is expired or not on file — CDL cannot be renewed or issued",
+      "eval": { "field": "cdl.medical_cert_valid", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "DMV-CDL-003",
+      "label": "Skills Test Not Passed",
+      "logic": "Applicant has not passed the required CDL skills test for the requested class and endorsements",
+      "eval": { "field": "cdl.skills_test_passed", "operator": "==", "threshold": false }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "DMV-CDL-FLG-001",
+      "label": "Hazmat Endorsement TSA Check Pending",
+      "logic": "Hazmat endorsement requested — TSA security threat assessment must be completed before endorsement can be added",
+      "eval": { "field": "cdl.hazmat_tsa_pending", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "DMV-CDL-FLG-002",
+      "label": "Medical Variance Required",
+      "logic": "Applicant disclosed a condition requiring FMCSA medical exemption or skill performance evaluation",
+      "eval": { "field": "cdl.medical_variance_needed", "operator": "==", "threshold": true }
+    }
+  ],
+  "outputs": [
+    "gov010-cdl-application-receipt",
+    "gov010-endorsement-checklist",
+    "gov010-clearinghouse-query-result",
+    "gov010-medical-cert-status"
+  ]
+}

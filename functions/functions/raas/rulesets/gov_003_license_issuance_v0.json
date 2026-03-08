@@ -1,0 +1,54 @@
+{
+  "id": "gov_003_license_issuance_v0",
+  "version": "v0",
+  "domain": "government-dmv",
+  "description": "Driver License Issuance — processes new and renewal driver license applications, validates identity documents, vision screening, and REAL ID compliance",
+  "required_inputs": [
+    "applicant_name",
+    "date_of_birth",
+    "ssn_last_four",
+    "identity_documents",
+    "residency_documents",
+    "vision_test_result",
+    "license_class"
+  ],
+  "hard_stops": [
+    {
+      "id": "DMV-LI-001",
+      "label": "Identity Documents Insufficient",
+      "logic": "Applicant has not provided the minimum required identity documents per REAL ID Act (6 CFR 37) — cannot issue compliant credential",
+      "eval": { "field": "license.identity_docs_sufficient", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "DMV-LI-002",
+      "label": "Vision Test Failed",
+      "logic": "Applicant failed the vision screening test and no corrective lens restriction is acceptable — must obtain eye care professional clearance",
+      "eval": { "field": "license.vision_test_passed", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "DMV-LI-003",
+      "label": "Suspended or Revoked Status",
+      "logic": "Applicant has a current suspension or revocation on their driving record — cannot issue until reinstatement is complete",
+      "eval": { "field": "license.suspension_active", "operator": "==", "threshold": true }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "DMV-LI-FLG-001",
+      "label": "REAL ID Upgrade Available",
+      "logic": "Applicant is renewing a standard license and has documents sufficient for REAL ID — offer upgrade",
+      "eval": { "field": "license.real_id_eligible", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "DMV-LI-FLG-002",
+      "label": "Medical Review Needed",
+      "logic": "Applicant is over 70 or has disclosed a medical condition — schedule medical review per state policy",
+      "eval": { "field": "license.medical_review_needed", "operator": "==", "threshold": true }
+    }
+  ],
+  "outputs": [
+    "gov003-license-application-receipt",
+    "gov003-real-id-checklist",
+    "gov003-temporary-license"
+  ]
+}

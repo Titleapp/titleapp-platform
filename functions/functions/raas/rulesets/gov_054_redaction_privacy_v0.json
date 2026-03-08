@@ -1,0 +1,41 @@
+{
+  "id": "gov_054_redaction_privacy_v0",
+  "version": "v0",
+  "domain": "government-recorder",
+  "description": "Redaction and Privacy — manages PII redaction requests, SSN/DOB removal from recorded documents, and address confidentiality program compliance",
+  "required_inputs": [
+    "request_type",
+    "document_instrument_number",
+    "pii_to_redact",
+    "requestor_name",
+    "legal_authority"
+  ],
+  "hard_stops": [
+    {
+      "id": "REC-RP-001",
+      "label": "No Legal Authority for Redaction",
+      "logic": "Requestor has not cited a valid statutory or court-ordered authority for redacting information from the public record",
+      "eval": { "field": "redaction.legal_authority_valid", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "REC-RP-002",
+      "label": "Redaction Would Remove Material Terms",
+      "logic": "Proposed redaction would remove material terms of the recorded document (legal description, parties, consideration) — exceeds permissible scope",
+      "eval": { "field": "redaction.material_terms_affected", "operator": "==", "threshold": true }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "REC-RP-FLG-001",
+      "label": "Bulk Redaction Request",
+      "logic": "Request covers more than 10 documents — may require supervisory approval and extended processing time",
+      "eval": { "field": "redaction.document_count", "operator": ">", "threshold": 10 }
+    }
+  ],
+  "outputs": [
+    "gov054-redaction-confirmation",
+    "gov054-redacted-document",
+    "gov054-audit-log",
+    "gov054-denial-notice"
+  ]
+}

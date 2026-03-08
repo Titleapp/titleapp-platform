@@ -1,5 +1,7 @@
-import React from "react";
+import React, { useState } from "react";
 import WorkerIcon, { SUITE_COLORS } from "../utils/workerIcons";
+
+const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
 
 const S = {
   page: { minHeight: "100vh", background: "#f8fafc", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" },
@@ -36,7 +38,38 @@ const S = {
 };
 
 export default function WorkerDetailPage({ worker, content, onBack, onSubscribe }) {
+  const [subscribing, setSubscribing] = useState(false);
+  const [subscribed, setSubscribed] = useState(false);
+  const [subError, setSubError] = useState(null);
   const color = SUITE_COLORS[worker.suite] || "#7c3aed";
+
+  async function handleSubscribe() {
+    if (onSubscribe) { onSubscribe(worker); return; }
+    setSubscribing(true);
+    setSubError(null);
+    try {
+      const token = localStorage.getItem("ID_TOKEN");
+      if (!token) { window.location.href = "/login?redirect=" + encodeURIComponent(window.location.pathname); return; }
+
+      // Call purchaseWorker which creates Stripe checkout session
+      const res = await fetch(`${API_BASE}/api?path=/v1/worker:subscribe`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ workerId: worker.id, slug: worker.slug }),
+      });
+      const data = await res.json();
+      if (data.ok && data.checkoutUrl) {
+        window.location.href = data.checkoutUrl;
+      } else if (data.ok && data.subscribed) {
+        setSubscribed(true);
+      } else {
+        setSubError(data.error || "Something went wrong");
+      }
+    } catch {
+      setSubError("Connection error. Try again.");
+    }
+    setSubscribing(false);
+  }
 
   return (
     <div style={S.page}>
@@ -96,14 +129,33 @@ export default function WorkerDetailPage({ worker, content, onBack, onSubscribe 
         <div style={S.pricing}>
           <div style={S.priceTag}>${worker.price / 100}<span style={{ fontSize: 16, fontWeight: 400, color: "#6b7280" }}>/mo</span></div>
           <div style={S.priceNote}>14-day free trial. No credit card required.</div>
-          <button
-            style={S.cta}
-            onClick={() => onSubscribe ? onSubscribe(worker) : (window.location.href = "/workers")}
-            onMouseEnter={e => { e.currentTarget.style.background = "#6d28d9"; }}
-            onMouseLeave={e => { e.currentTarget.style.background = "#7c3aed"; }}
-          >
-            Start Free Trial
-          </button>
+          {subscribed ? (
+            <div style={{ marginTop: 16 }}>
+              <div style={{ fontSize: 16, fontWeight: 600, color: "#10b981", marginBottom: 8 }}>Subscribed</div>
+              <button
+                style={S.cta}
+                onClick={() => { window.location.href = "/vault"; }}
+              >
+                Open in Vault
+              </button>
+            </div>
+          ) : (
+            <>
+              <button
+                style={{ ...S.cta, opacity: subscribing ? 0.7 : 1 }}
+                onClick={handleSubscribe}
+                disabled={subscribing}
+                onMouseEnter={e => { if (!subscribing) e.currentTarget.style.background = "#6d28d9"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "#7c3aed"; }}
+              >
+                {subscribing ? "Processing..." : "Start Free Trial"}
+              </button>
+              {subError && <div style={{ fontSize: 13, color: "#dc2626", marginTop: 8 }}>{subError}</div>}
+            </>
+          )}
+          {worker.blockchainEnabled && (
+            <div style={{ fontSize: 12, color: "#6b7280", marginTop: 12 }}>Blockchain-verified audit trail</div>
+          )}
         </div>
 
         {content.faq && content.faq.length > 0 && (

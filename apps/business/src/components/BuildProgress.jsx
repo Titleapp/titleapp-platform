@@ -20,16 +20,86 @@ const TIERS = [
   { id: 3, label: "Tier 3", price: 79, credits: 3000 },
 ];
 
+// Matrix-style code lines — realistic rule/schema/compliance content
+const MATRIX_LINES = [
+  'const TIER_0 = require("@titleapp/rules/platform");',
+  'import { ComplianceEngine } from "./engine";',
+  '',
+  '// Tier 1 — Regulatory rules',
+  'rule.register("jurisdiction_check", {',
+  '  trigger: "on_execution",',
+  '  validate: (ctx) => ctx.jurisdiction !== null,',
+  '  severity: "block",',
+  '});',
+  '',
+  'rule.register("disclosure_required", {',
+  '  trigger: "before_output",',
+  '  inject: DISCLAIMERS[ctx.vertical],',
+  '});',
+  '',
+  '// Tier 2 — Best practices',
+  'schema.define("worker_output", {',
+  '  confidence: { type: "number", min: 0, max: 1 },',
+  '  sources: { type: "array", required: true },',
+  '  disclaimer: { type: "string", auto: true },',
+  '});',
+  '',
+  'compliance.gate("pre_publish", [',
+  '  "identity_verified",',
+  '  "liability_accepted",',
+  '  "rules_hash_valid",',
+  '  "test_coverage >= 3",',
+  ']);',
+  '',
+  '// Audit trail integration',
+  'audit.on("execution", async (event) => {',
+  '  const hash = sha256(event.payload);',
+  '  await chain.append({ hash, prev: lastHash });',
+  '  lastHash = hash;',
+  '});',
+  '',
+  'export default { rules, schema, compliance, audit };',
+];
+
 export default function BuildProgress({ worker, workerCardData, onWorkerUpdate, onTestReady }) {
   const [currentStage, setCurrentStage] = useState(0);
   const [buildComplete, setBuildComplete] = useState(false);
   const [selectedTier, setSelectedTier] = useState(workerCardData?.pricingTier || 2);
+  const [matrixLines, setMatrixLines] = useState([]);
+  const [matrixDone, setMatrixDone] = useState(false);
+
+  // Detect second build — store in localStorage
+  const buildKey = `build_count_${worker?.id || "unknown"}`;
+  const buildCount = parseInt(localStorage.getItem(buildKey) || "0", 10);
+  const showMatrix = buildCount >= 1;
+
+  useEffect(() => {
+    localStorage.setItem(buildKey, String(buildCount + 1));
+  }, []);
 
   const tier = TIERS.find(t => t.id === selectedTier) || TIERS[1];
+
+  // Matrix code streaming animation (second build only)
+  useEffect(() => {
+    if (!showMatrix || matrixDone) return;
+    let lineIndex = 0;
+    const interval = setInterval(() => {
+      if (lineIndex >= MATRIX_LINES.length) {
+        clearInterval(interval);
+        setMatrixDone(true);
+        return;
+      }
+      setMatrixLines(prev => [...prev, MATRIX_LINES[lineIndex]]);
+      lineIndex++;
+    }, 350);
+    return () => clearInterval(interval);
+  }, [showMatrix, matrixDone]);
 
   // Animate build progress
   useEffect(() => {
     if (buildComplete) return;
+    // If matrix is showing, wait for it to finish before starting normal progress
+    if (showMatrix && !matrixDone) return;
     const interval = setInterval(() => {
       setCurrentStage(prev => {
         if (prev >= STAGE_MESSAGES.length - 1) {
@@ -41,7 +111,7 @@ export default function BuildProgress({ worker, workerCardData, onWorkerUpdate, 
       });
     }, 2500);
     return () => clearInterval(interval);
-  }, [buildComplete]);
+  }, [buildComplete, matrixDone, showMatrix]);
 
   // Poll for actual worker status
   useEffect(() => {
@@ -68,6 +138,35 @@ export default function BuildProgress({ worker, workerCardData, onWorkerUpdate, 
     }, 4000);
     return () => clearInterval(poll);
   }, [worker?.id]);
+
+  // Matrix code streaming (second build)
+  if (showMatrix && !matrixDone) {
+    return (
+      <div style={{
+        maxWidth: 600, background: "#0D1117", borderRadius: 12, padding: "20px 24px",
+        fontFamily: "'JetBrains Mono', 'Fira Code', 'Courier New', monospace",
+        overflow: "hidden",
+      }}>
+        <div style={{ fontSize: 11, color: "#8b949e", marginBottom: 12, letterSpacing: "0.5px" }}>
+          COMPILING RULES ENGINE...
+        </div>
+        <div style={{ maxHeight: 400, overflowY: "auto" }}>
+          {matrixLines.map((line, i) => (
+            <div key={i} style={{
+              fontSize: 12, color: line.startsWith("//") ? "#8b949e" : line.startsWith("rule.") || line.startsWith("schema.") || line.startsWith("compliance.") || line.startsWith("audit.") ? "#7ee787" : line.includes("require") || line.includes("import") ? "#79c0ff" : line === "" ? "transparent" : "#c9d1d9",
+              lineHeight: 1.7,
+              opacity: i === matrixLines.length - 1 ? 0.8 : 1,
+              whiteSpace: "pre",
+            }}>
+              {line || "\u00A0"}
+            </div>
+          ))}
+          <div style={{ color: "#7ee787", animation: "blink 1s step-end infinite" }}>_</div>
+        </div>
+        <style>{`@keyframes blink { 50% { opacity: 0; } }`}</style>
+      </div>
+    );
+  }
 
   // Building state
   if (!buildComplete) {

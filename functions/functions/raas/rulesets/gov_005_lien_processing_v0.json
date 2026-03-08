@@ -1,0 +1,46 @@
+{
+  "id": "gov_005_lien_processing_v0",
+  "version": "v0",
+  "domain": "government-dmv",
+  "description": "Lien Processing — manages lien filings, releases, and ELT (Electronic Lien and Title) transactions for vehicle titles",
+  "required_inputs": [
+    "vin",
+    "lienholder_name",
+    "lienholder_elt_id",
+    "lien_amount",
+    "action_type"
+  ],
+  "hard_stops": [
+    {
+      "id": "DMV-LP-001",
+      "label": "Lienholder Not ELT Registered",
+      "logic": "Lienholder is not registered with the state Electronic Lien and Title system — cannot process electronic lien filing",
+      "eval": { "field": "lien.lienholder_elt_registered", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "DMV-LP-002",
+      "label": "Release by Non-Lienholder",
+      "logic": "Lien release request submitted by a party that is not the recorded lienholder — release is invalid",
+      "eval": { "field": "lien.release_by_recorded_lienholder", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "DMV-LP-003",
+      "label": "Duplicate Lien Filing",
+      "logic": "An active lien by the same lienholder already exists on this title — cannot file duplicate lien",
+      "eval": { "field": "lien.duplicate_lien_exists", "operator": "==", "threshold": true }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "DMV-LP-FLG-001",
+      "label": "Multiple Liens on Title",
+      "logic": "Vehicle title already has two or more active liens — verify lien priority order",
+      "eval": { "field": "lien.active_lien_count", "operator": ">", "threshold": 2 }
+    }
+  ],
+  "outputs": [
+    "gov005-lien-filing-confirmation",
+    "gov005-lien-release-certificate",
+    "gov005-elt-transaction-log"
+  ]
+}

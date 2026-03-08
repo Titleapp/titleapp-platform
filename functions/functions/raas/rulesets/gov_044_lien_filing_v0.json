@@ -1,0 +1,48 @@
+{
+  "id": "gov_044_lien_filing_v0",
+  "version": "v0",
+  "domain": "government-recorder",
+  "description": "Lien Filing — records mechanic's liens, tax liens, judgment liens, and HOA liens with statutory deadline tracking and proper notice verification",
+  "required_inputs": [
+    "lien_type",
+    "document_file_id",
+    "claimant_name",
+    "property_owner",
+    "legal_description",
+    "lien_amount"
+  ],
+  "hard_stops": [
+    {
+      "id": "REC-LF-001",
+      "label": "Mechanic's Lien Filing Deadline Expired",
+      "logic": "Mechanic's lien is being filed after the statutory deadline from completion of work — lien is time-barred and cannot be recorded",
+      "eval": { "field": "lien.filing_deadline_met", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "REC-LF-002",
+      "label": "Preliminary Notice Not Served",
+      "logic": "Mechanic's lien claimant did not serve the required preliminary notice — lien is invalid without proper notice",
+      "eval": { "field": "lien.preliminary_notice_served", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "REC-LF-003",
+      "label": "Lien Amount Exceeds Statutory Limit",
+      "logic": "Claimed lien amount exceeds the statutory limit for this lien type or exceeds the contract amount — lien may be subject to penalties",
+      "eval": { "field": "lien.amount_within_limit", "operator": "==", "threshold": false }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "REC-LF-FLG-001",
+      "label": "Multiple Liens on Same Parcel",
+      "logic": "Parcel already has 3 or more active liens recorded — verify lien priority and notify title companies of complex lien stack",
+      "eval": { "field": "lien.active_liens_on_parcel", "operator": ">=", "threshold": 3 }
+    }
+  ],
+  "outputs": [
+    "gov044-recorded-lien",
+    "gov044-instrument-number",
+    "gov044-lien-notice",
+    "gov044-deadline-tracker"
+  ]
+}

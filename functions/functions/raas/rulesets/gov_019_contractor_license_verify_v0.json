@@ -1,0 +1,45 @@
+{
+  "id": "gov_019_contractor_license_verify_v0",
+  "version": "v0",
+  "domain": "government-permitting",
+  "description": "Contractor License Verification — validates contractor licensing status, classification, bond, workers compensation, and insurance before permit issuance",
+  "required_inputs": [
+    "contractor_license_number",
+    "contractor_name",
+    "work_classification",
+    "insurance_certificate_id"
+  ],
+  "hard_stops": [
+    {
+      "id": "PERM-CLV-001",
+      "label": "License Not Found or Inactive",
+      "logic": "Contractor license number not found in state licensing board database or status is inactive/suspended/revoked",
+      "eval": { "field": "contractor.license_active", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "PERM-CLV-002",
+      "label": "Work Classification Mismatch",
+      "logic": "Contractor's license classification does not cover the type of work described on the permit application",
+      "eval": { "field": "contractor.classification_covers_work", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "PERM-CLV-003",
+      "label": "Workers Compensation Lapsed",
+      "logic": "Contractor does not have active workers' compensation coverage and is not a qualifying sole proprietor exempt — work cannot proceed",
+      "eval": { "field": "contractor.workers_comp_valid", "operator": "==", "threshold": false }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "PERM-CLV-FLG-001",
+      "label": "Disciplinary Actions on Record",
+      "logic": "Contractor has one or more disciplinary actions on record with the licensing board — inform permit applicant",
+      "eval": { "field": "contractor.disciplinary_actions", "operator": ">", "threshold": 0 }
+    }
+  ],
+  "outputs": [
+    "gov019-license-verification-report",
+    "gov019-insurance-confirmation",
+    "gov019-classification-check"
+  ]
+}

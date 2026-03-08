@@ -1,0 +1,51 @@
+{
+  "id": "esc_005_disclosure_package_v0",
+  "version": "0.1.0",
+  "domain": "title_escrow",
+  "description": "Disclosure Package — manages state-specific disclosure requirements, tracks delivery confirmation, handles HOA document collection, and blocks closing when mandatory disclosures are missing.",
+  "required_inputs": [
+    "locker_id",
+    "state",
+    "disclosure_type"
+  ],
+  "hard_stops": [
+    {
+      "id": "ESC-DP-001",
+      "label": "Mandatory Disclosure Missing Block Closing",
+      "logic": "A state-mandated disclosure document is missing — block closing until all required disclosures are received and acknowledged.",
+      "eval": { "field": "disclosure.mandatory_disclosures_complete", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "ESC-DP-002",
+      "label": "Delivery Not Confirmed Block Condition",
+      "logic": "Disclosure delivery to buyer has not been confirmed — condition remains outstanding.",
+      "eval": { "field": "disclosure.delivery_confirmed", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "ESC-DP-003",
+      "label": "HOA Docs Not Received Block Closing If HOA",
+      "logic": "Property is in an HOA community and required HOA documents have not been received — block closing.",
+      "eval": { "field": "disclosure.hoa_docs_received", "operator": "==", "threshold": false }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "ESC-DP-FLG-001",
+      "label": "Disclosure Deadline Approaching",
+      "logic": "Disclosure delivery deadline is approaching — flag for urgency.",
+      "eval": { "field": "disclosure.days_until_deadline", "operator": "<", "threshold": 3 }
+    },
+    {
+      "id": "ESC-DP-FLG-002",
+      "label": "Additional Disclosure Recommended",
+      "logic": "Based on property characteristics or jurisdiction, an additional voluntary disclosure is recommended.",
+      "eval": { "field": "disclosure.additional_recommended", "operator": "==", "threshold": true }
+    }
+  ],
+  "outputs": [
+    "package_id",
+    "disclosure_type",
+    "delivery_confirmed",
+    "compliance_status"
+  ]
+}

@@ -1,0 +1,59 @@
+{
+  "id": "gov_002_registration_renewal_v0",
+  "version": "v0",
+  "domain": "government-dmv",
+  "description": "Vehicle Registration Renewal — processes annual registration renewals, validates emissions compliance, insurance verification, and outstanding violation checks",
+  "required_inputs": [
+    "vin",
+    "plate_number",
+    "owner_name",
+    "insurance_policy_id",
+    "emissions_test_date",
+    "payment_intent_id"
+  ],
+  "hard_stops": [
+    {
+      "id": "DMV-RN-001",
+      "label": "Insurance Not Verified",
+      "logic": "Vehicle insurance policy could not be verified through the state insurance verification system — registration cannot be renewed without active coverage",
+      "eval": { "field": "renewal.insurance_verified", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "DMV-RN-002",
+      "label": "Emissions Test Expired or Failed",
+      "logic": "Emissions/smog test is expired or vehicle failed the most recent test — renewal blocked per Clean Air Act compliance",
+      "eval": { "field": "renewal.emissions_compliant", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "DMV-RN-003",
+      "label": "Outstanding Parking or Traffic Violations",
+      "logic": "Vehicle has unresolved parking or traffic violations with court holds — registration renewal blocked until violations cleared",
+      "eval": { "field": "renewal.violations_clear", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "DMV-RN-004",
+      "label": "Registration Fee Not Paid",
+      "logic": "Annual registration fee payment not confirmed — cannot issue renewal sticker without payment",
+      "eval": { "field": "renewal.fee_payment_confirmed", "operator": "==", "threshold": false }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "DMV-RN-FLG-001",
+      "label": "Late Renewal",
+      "logic": "Registration is being renewed more than 30 days after expiration — late fees may apply",
+      "eval": { "field": "renewal.days_past_expiration", "operator": ">", "threshold": 30 }
+    },
+    {
+      "id": "DMV-RN-FLG-002",
+      "label": "Address Change Detected",
+      "logic": "Owner's address on file differs from the address provided — may need to update records and reassess county fees",
+      "eval": { "field": "renewal.address_changed", "operator": "==", "threshold": true }
+    }
+  ],
+  "outputs": [
+    "gov002-renewal-receipt",
+    "gov002-registration-card",
+    "gov002-fee-schedule"
+  ]
+}

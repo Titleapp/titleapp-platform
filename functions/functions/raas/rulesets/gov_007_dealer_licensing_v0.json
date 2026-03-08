@@ -1,0 +1,53 @@
+{
+  "id": "gov_007_dealer_licensing_v0",
+  "version": "v0",
+  "domain": "government-dmv",
+  "description": "Dealer Licensing — processes new and renewal dealer license applications, validates bond, lot, and insurance requirements",
+  "required_inputs": [
+    "dealer_name",
+    "dealer_type",
+    "business_address",
+    "surety_bond_number",
+    "lot_inspection_date",
+    "insurance_certificate"
+  ],
+  "hard_stops": [
+    {
+      "id": "DMV-DL-001",
+      "label": "Surety Bond Insufficient",
+      "logic": "Dealer surety bond amount is below the state-mandated minimum — cannot issue dealer license without adequate bond",
+      "eval": { "field": "dealer.bond_sufficient", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "DMV-DL-002",
+      "label": "Lot Inspection Failed",
+      "logic": "Dealer lot failed physical inspection — must meet zoning, signage, office, and display area requirements",
+      "eval": { "field": "dealer.lot_inspection_passed", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "DMV-DL-003",
+      "label": "Principal Has Felony Conviction",
+      "logic": "A principal or officer of the dealership has a disqualifying felony conviction per state dealer licensing statute",
+      "eval": { "field": "dealer.principal_felony_check_clear", "operator": "==", "threshold": false }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "DMV-DL-FLG-001",
+      "label": "Consumer Complaints on File",
+      "logic": "Dealer has 3 or more unresolved consumer complaints — may require additional oversight or conditions on license",
+      "eval": { "field": "dealer.unresolved_complaints", "operator": ">=", "threshold": 3 }
+    },
+    {
+      "id": "DMV-DL-FLG-002",
+      "label": "License Renewal Overdue",
+      "logic": "Dealer license has been expired for more than 60 days — reinstatement fees and re-inspection may apply",
+      "eval": { "field": "dealer.days_past_expiration", "operator": ">", "threshold": 60 }
+    }
+  ],
+  "outputs": [
+    "gov007-dealer-license-certificate",
+    "gov007-lot-inspection-report",
+    "gov007-bond-verification"
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "id": "gov_052_lis_pendens_court_orders_v0",
+  "version": "v0",
+  "domain": "government-recorder",
+  "description": "Lis Pendens and Court Orders — records notices of pending litigation, court-ordered transfers, foreclosure notices, and abstracts of judgment against real property",
+  "required_inputs": [
+    "document_type",
+    "case_number",
+    "court_name",
+    "document_file_id",
+    "property_affected",
+    "parties"
+  ],
+  "hard_stops": [
+    {
+      "id": "REC-LP-001",
+      "label": "Court Case Number Not Verified",
+      "logic": "Court case number cannot be verified against the issuing court's records — document may be fraudulent",
+      "eval": { "field": "court_order.case_verified", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "REC-LP-002",
+      "label": "Court Order Missing Judge Signature",
+      "logic": "Court order does not bear the signature of the issuing judge or judicial officer — order is not executable",
+      "eval": { "field": "court_order.judge_signed", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "REC-LP-003",
+      "label": "Expungement Order — Do Not Record",
+      "logic": "An expungement or withdrawal order has been issued for this lis pendens — original notice must be removed, not re-recorded",
+      "eval": { "field": "court_order.expungement_conflict", "operator": "==", "threshold": true }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "REC-LP-FLG-001",
+      "label": "Foreclosure Notice — Homeowner Notification Required",
+      "logic": "Foreclosure-related document being recorded — jurisdiction may require additional homeowner counseling notifications",
+      "eval": { "field": "court_order.is_foreclosure_related", "operator": "==", "threshold": true }
+    }
+  ],
+  "outputs": [
+    "gov052-recorded-document",
+    "gov052-instrument-number",
+    "gov052-parcel-cloud-notification",
+    "gov052-party-notification"
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "id": "gov_046_plat_map_recording_v0",
+  "version": "v0",
+  "domain": "government-recorder",
+  "description": "Plat and Map Recording — records subdivision plats, lot line adjustments, parcel maps, and condominium plans with surveyor certification and planning approval verification",
+  "required_inputs": [
+    "map_type",
+    "document_file_id",
+    "surveyor_license_number",
+    "planning_approval_id",
+    "parcel_numbers_affected"
+  ],
+  "hard_stops": [
+    {
+      "id": "REC-PM-001",
+      "label": "Surveyor Certification Missing",
+      "logic": "Plat or map does not bear the certification of a licensed land surveyor — cannot be recorded per state survey statutes",
+      "eval": { "field": "plat.surveyor_certified", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "REC-PM-002",
+      "label": "Planning Commission Approval Not Obtained",
+      "logic": "Subdivision plat or parcel map has not received required planning commission or governing body approval",
+      "eval": { "field": "plat.planning_approved", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "REC-PM-003",
+      "label": "Map Does Not Meet Recording Standards",
+      "logic": "Map sheet size, scale, margins, or labeling does not meet the recorder's minimum standards for recording",
+      "eval": { "field": "plat.meets_recording_standards", "operator": "==", "threshold": false }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "REC-PM-FLG-001",
+      "label": "Easement Dedication on Map",
+      "logic": "Map includes dedication of new easements — verify that all affected property owners have signed the dedication certificates",
+      "eval": { "field": "plat.easement_dedications_present", "operator": "==", "threshold": true }
+    }
+  ],
+  "outputs": [
+    "gov046-recorded-plat",
+    "gov046-book-page-reference",
+    "gov046-parcel-number-assignments",
+    "gov046-assessor-notification"
+  ]
+}

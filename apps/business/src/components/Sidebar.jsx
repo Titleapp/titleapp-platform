@@ -1362,6 +1362,11 @@ export default function Sidebar({
                         fontWeight: worker.isChiefOfStaff ? 600 : 400,
                       }}>
                         {worker.name}
+                        {worker.fromCompany && (
+                          <span style={{ fontSize: 10, color: "#94A3B8", fontWeight: 400, display: "block", marginTop: 1 }}>
+                            From {worker.fromCompany}
+                          </span>
+                        )}
                       </span>
                       {worker.isChiefOfStaff && (
                         <span style={{ fontSize: 10, color: "#7c3aed", fontWeight: 600 }}>CoS</span>

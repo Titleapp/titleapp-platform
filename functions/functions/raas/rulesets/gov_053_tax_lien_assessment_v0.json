@@ -1,0 +1,47 @@
+{
+  "id": "gov_053_tax_lien_assessment_v0",
+  "version": "v0",
+  "domain": "government-recorder",
+  "description": "Tax Lien and Assessment Recording — records property tax liens, special assessment liens, and tax sale certificates with statutory notice compliance",
+  "required_inputs": [
+    "lien_type",
+    "parcel_number",
+    "tax_year",
+    "lien_amount",
+    "taxing_authority"
+  ],
+  "hard_stops": [
+    {
+      "id": "REC-TL-001",
+      "label": "Statutory Notice Period Not Met",
+      "logic": "Required notice to the property owner of delinquent taxes was not sent within the statutory timeframe — lien is unenforceable",
+      "eval": { "field": "tax_lien.notice_period_met", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "REC-TL-002",
+      "label": "Duplicate Tax Lien for Same Year",
+      "logic": "A tax lien for the same parcel and tax year already exists in the records — duplicate filing rejected",
+      "eval": { "field": "tax_lien.duplicate_exists", "operator": "==", "threshold": true }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "REC-TL-FLG-001",
+      "label": "Tax Sale Redemption Period Active",
+      "logic": "Property is within the statutory redemption period following tax sale — owner may still redeem",
+      "eval": { "field": "tax_lien.redemption_period_active", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "REC-TL-FLG-002",
+      "label": "Homestead Exemption on File",
+      "logic": "Property has a homestead exemption on file — verify that additional consumer protection notice requirements are met",
+      "eval": { "field": "tax_lien.homestead_exemption", "operator": "==", "threshold": true }
+    }
+  ],
+  "outputs": [
+    "gov053-tax-lien-certificate",
+    "gov053-notice-of-delinquency",
+    "gov053-redemption-calculation",
+    "gov053-assessor-notification"
+  ]
+}

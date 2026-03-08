@@ -1,0 +1,48 @@
+{
+  "id": "gov_029_grading_excavation_v0",
+  "version": "v0",
+  "domain": "government-permitting",
+  "description": "Grading and Excavation Permit — processes earthwork permits, validates erosion control plans, geotechnical reports, and stormwater management requirements",
+  "required_inputs": [
+    "parcel_number",
+    "cut_volume_cy",
+    "fill_volume_cy",
+    "disturbed_area_acres",
+    "erosion_control_plan_id",
+    "geotech_report_id"
+  ],
+  "hard_stops": [
+    {
+      "id": "PERM-GR-001",
+      "label": "Geotechnical Report Not Provided",
+      "logic": "Grading exceeds threshold requiring a geotechnical investigation report — cannot approve without soil stability analysis",
+      "eval": { "field": "grading.geotech_provided", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "PERM-GR-002",
+      "label": "Erosion Control Plan Missing",
+      "logic": "Project disturbs more than the threshold area and no erosion and sediment control plan has been submitted",
+      "eval": { "field": "grading.erosion_plan_submitted", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "PERM-GR-003",
+      "label": "NPDES Permit Not Obtained",
+      "logic": "Disturbed area exceeds 1 acre and NPDES Construction General Permit has not been filed with EPA/state agency",
+      "eval": { "field": "grading.npdes_obtained", "operator": "==", "threshold": false }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "PERM-GR-FLG-001",
+      "label": "Hillside Grading",
+      "logic": "Site has slopes exceeding 15% grade — additional engineering review and slope stability analysis recommended",
+      "eval": { "field": "grading.max_slope_percent", "operator": ">", "threshold": 15 }
+    }
+  ],
+  "outputs": [
+    "gov029-grading-permit",
+    "gov029-erosion-control-approval",
+    "gov029-earthwork-calculation",
+    "gov029-inspection-schedule"
+  ]
+}

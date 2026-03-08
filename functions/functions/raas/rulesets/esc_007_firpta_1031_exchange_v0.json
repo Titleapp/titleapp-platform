@@ -1,0 +1,57 @@
+{
+  "id": "esc_007_firpta_1031_exchange_v0",
+  "version": "0.1.0",
+  "domain": "title_escrow",
+  "description": "FIRPTA and 1031 Exchange — enforces FIRPTA withholding requirements for foreign sellers, manages IRC Section 1031 exchange timelines and identification rules, tracks qualified intermediary coordination, and blocks closing or exchange completion when compliance gaps exist.",
+  "required_inputs": [
+    "locker_id",
+    "seller_is_foreign",
+    "sale_price"
+  ],
+  "hard_stops": [
+    {
+      "id": "ESC-FE-001",
+      "label": "Foreign Seller Without Withholding Block Closing",
+      "logic": "Seller identified as foreign person under FIRPTA and required withholding has not been calculated or escrowed — block closing.",
+      "eval": { "field": "firpta.withholding_escrowed", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "ESC-FE-002",
+      "label": "1031 Timeline Expired Exchange Failed",
+      "logic": "The 45-day identification period or 180-day exchange period has expired — exchange has failed and must be treated as taxable sale.",
+      "eval": { "field": "exchange.timeline_expired", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "ESC-FE-003",
+      "label": "Boot Not Calculated Block Exchange Completion",
+      "logic": "Taxable boot (cash or non-like-kind property received) has not been calculated — block exchange completion until boot amount is determined.",
+      "eval": { "field": "exchange.boot_calculated", "operator": "==", "threshold": false }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "ESC-FE-FLG-001",
+      "label": "Reduced Withholding Certificate",
+      "logic": "Seller has applied for or received an IRS withholding certificate for reduced FIRPTA withholding — flag for tracking.",
+      "eval": { "field": "firpta.reduced_withholding_certificate", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "ESC-FE-FLG-002",
+      "label": "Multiple Replacement Properties",
+      "logic": "Exchanger has identified multiple replacement properties — flag for tracking compliance with the 3-property or 200% rule.",
+      "eval": { "field": "exchange.multiple_replacement_properties", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "ESC-FE-FLG-003",
+      "label": "Reverse Exchange",
+      "logic": "Transaction structured as a reverse 1031 exchange (replacement acquired before relinquished sold) — flag for enhanced QI coordination.",
+      "eval": { "field": "exchange.reverse_exchange", "operator": "==", "threshold": true }
+    }
+  ],
+  "outputs": [
+    "check_id",
+    "withholding_amount",
+    "exchange_status",
+    "qi_coordination"
+  ]
+}

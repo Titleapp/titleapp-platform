@@ -4073,6 +4073,166 @@ These should be 2-3 realistic test scenarios the creator should try, derived fro
       }
     }
 
+    // GET /v1/worker:export — Export worker as JSON bundle (rules + schema + README)
+    if (route === "/worker:export" && method === "GET") {
+      const tenantId = req.headers["x-tenant-id"] || body.tenantId;
+      const workerId = req.query?.workerId || body.workerId;
+      if (!tenantId || !workerId) return res.json({ ok: false, error: "Missing tenantId or workerId" });
+      try {
+        const workerRef = db.doc(`tenants/${tenantId}/workers/${workerId}`);
+        const snap = await workerRef.get();
+        if (!snap.exists) return res.json({ ok: false, error: "Worker not found" });
+        const w = snap.data();
+
+        const bundle = {
+          meta: {
+            name: w.display_name || w.name || workerId,
+            description: w.description || "",
+            vertical: w.vertical || "",
+            jurisdiction: w.jurisdiction || "",
+            version: w.version || 1,
+            exportedAt: new Date().toISOString(),
+            platform: "TitleApp AI",
+          },
+          rules: {
+            tier0: w.raasLibrary?.tier0 || [],
+            tier1: w.raasLibrary?.tier1 || [],
+            tier2: w.raasLibrary?.tier2 || [],
+            tier3: w.raasLibrary?.tier3 || [],
+          },
+          schema: {
+            intake: w.intake || {},
+            workerCard: w.workerCard || {},
+            pricingTier: w.pricingTier || null,
+          },
+          readme: [
+            `# ${w.display_name || w.name || workerId}`,
+            "",
+            w.description || "",
+            "",
+            `## Rules Library`,
+            `- Tier 0 (Platform): ${(w.raasLibrary?.tier0 || []).length} rules`,
+            `- Tier 1 (Regulatory): ${(w.raasLibrary?.tier1 || []).length} rules`,
+            `- Tier 2 (Best Practices): ${(w.raasLibrary?.tier2 || []).length} rules`,
+            `- Tier 3 (Creator SOPs): ${(w.raasLibrary?.tier3 || []).length} rules`,
+            "",
+            `## Jurisdiction`,
+            w.jurisdiction || "GLOBAL",
+            "",
+            `---`,
+            `Exported from TitleApp AI on ${new Date().toISOString().split("T")[0]}`,
+          ].join("\n"),
+        };
+
+        return res.json({ ok: true, bundle });
+      } catch (e) {
+        console.error("[worker:export] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // POST /v1/worker:rate — Submit a rating for a worker
+    if (route === "/worker:rate" && method === "POST") {
+      const { workerId, stars, review } = body;
+      if (!workerId || !stars || stars < 1 || stars > 5) return res.json({ ok: false, error: "Invalid rating (1-5 stars required)" });
+      try {
+        const ratingId = `${workerId}_${user.uid}`;
+        await db.doc(`ratings/${ratingId}`).set({
+          workerId, userId: user.uid, stars: Math.round(stars),
+          review: (review || "").substring(0, 500),
+          createdAt: nowServerTs(), updatedAt: nowServerTs(),
+        }, { merge: true });
+        console.log(`[worker:rate] ${user.uid} rated ${workerId}: ${stars} stars`);
+        return res.json({ ok: true });
+      } catch (e) {
+        console.error("[worker:rate] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // GET /v1/worker:ratings — Get ratings for a worker
+    if (route === "/worker:ratings" && method === "GET") {
+      const workerId = req.query?.workerId || body.workerId;
+      if (!workerId) return res.json({ ok: false, error: "Missing workerId" });
+      try {
+        const snap = await db.collection("ratings").where("workerId", "==", workerId).orderBy("createdAt", "desc").limit(50).get();
+        const ratings = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const avg = ratings.length > 0 ? ratings.reduce((sum, r) => sum + r.stars, 0) / ratings.length : 0;
+        return res.json({ ok: true, ratings, average: Math.round(avg * 10) / 10, count: ratings.length });
+      } catch (e) {
+        console.error("[worker:ratings] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // POST /v1/worker:subscribe — Subscribe to a worker (creates Stripe checkout or adds to vault)
+    if (route === "/worker:subscribe" && method === "POST") {
+      const { workerId, slug } = body;
+      if (!workerId && !slug) return res.json({ ok: false, error: "Missing workerId or slug" });
+      try {
+        // Look up worker from marketplace or workers collection
+        let workerDoc = null;
+        if (slug) {
+          const mSnap = await db.doc(`marketplace/${slug}`).get();
+          if (mSnap.exists) workerDoc = mSnap.data();
+        }
+        if (!workerDoc && workerId) {
+          // Try to find by querying published workers
+          const snap = await db.collectionGroup("workers").where("buildPhase", "==", "published").limit(200).get();
+          const found = snap.docs.find(d => d.id === workerId);
+          if (found) workerDoc = found.data();
+        }
+        if (!workerDoc) return res.json({ ok: false, error: "Worker not found in marketplace" });
+
+        // Check if already subscribed
+        const existingSub = await db.collection("subscriptions")
+          .where("userId", "==", user.uid)
+          .where("workerId", "==", workerId || workerDoc.workerId)
+          .where("status", "==", "active")
+          .limit(1).get();
+        if (!existingSub.empty) {
+          return res.json({ ok: true, subscribed: true, message: "Already subscribed" });
+        }
+
+        // Create subscription record (free trial — no Stripe checkout needed for trial)
+        const subRef = await db.collection("subscriptions").add({
+          userId: user.uid,
+          workerId: workerId || workerDoc.workerId,
+          slug: slug || workerDoc.slug,
+          workerName: workerDoc.name || workerDoc.display_name || "Digital Worker",
+          status: "active",
+          trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+          createdAt: nowServerTs(),
+        });
+
+        // Add worker to user's vault
+        await db.doc(`vaults/${user.uid}/workers/${workerId || workerDoc.workerId}`).set({
+          workerId: workerId || workerDoc.workerId,
+          workerName: workerDoc.name || workerDoc.display_name || "Digital Worker",
+          slug: slug || workerDoc.slug,
+          subscriptionId: subRef.id,
+          addedAt: nowServerTs(),
+          source: "marketplace",
+        });
+
+        // Queue opening message from worker
+        await db.collection("workerMessages").add({
+          userId: user.uid,
+          workerId: workerId || workerDoc.workerId,
+          direction: "worker_to_user",
+          message: `Hi, I'm ${workerDoc.name || workerDoc.display_name || "your new Digital Worker"}. I'm ready to help. What would you like to start with?`,
+          createdAt: nowServerTs(),
+          read: false,
+        });
+
+        console.log(`[worker:subscribe] ${user.uid} subscribed to ${workerId || workerDoc.workerId}`);
+        return res.json({ ok: true, subscribed: true, subscriptionId: subRef.id });
+      } catch (e) {
+        console.error("[worker:subscribe] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
     // ── Worker #1 — Digital Worker Creator Pipeline ──────────────────────
 
     // Platform-level rules (Tier 0) — imported from shared schema (single source of truth)
@@ -4230,7 +4390,19 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
         const workerSnap = await workerRef.get();
         if (!workerSnap.exists) return res.json({ ok: false, error: "Digital Worker not found" });
 
-        const updates = { buildPhase: "library", updatedAt: nowServerTs() };
+        const existing = workerSnap.data();
+        const currentVersion = existing.version || 1;
+
+        // Snapshot current version before applying changes
+        if (existing.raasLibrary) {
+          await db.doc(`tenants/${tenantId}/workers/${workerId}/versions/${currentVersion}`).set({
+            ...existing,
+            snapshotAt: nowServerTs(),
+            snapshotVersion: currentVersion,
+          });
+        }
+
+        const updates = { buildPhase: "library", updatedAt: nowServerTs(), version: currentVersion + 1 };
         if (Array.isArray(tier2)) {
           updates["raasLibrary.tier2"] = tier2.slice(0, 15).map(r => String(r).substring(0, 1000));
         }
@@ -4240,8 +4412,8 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
 
         // Compute rules hash for integrity
         const allRules = [
-          ...(updates["raasLibrary.tier2"] || workerSnap.data().raasLibrary?.tier2 || []),
-          ...(updates["raasLibrary.tier3"] || workerSnap.data().raasLibrary?.tier3 || []),
+          ...(updates["raasLibrary.tier2"] || existing.raasLibrary?.tier2 || []),
+          ...(updates["raasLibrary.tier3"] || existing.raasLibrary?.tier3 || []),
         ];
         const { computeHash } = require("./api/utils/titleMint");
         updates.rulesHash = computeHash(allRules);
@@ -4269,7 +4441,15 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
         const sensitiveFields = ["jurisdiction", "suite", "mdGateRequired"];
         const requiresReview = sensitiveFields.some(f => updates[f] !== undefined && updates[f] !== existing[f]);
 
-        const patch = { updatedAt: nowServerTs() };
+        // Version snapshot before applying changes
+        const currentVersion = existing.version || 1;
+        await db.doc(`tenants/${tenantId}/workers/${workerId}/versions/${currentVersion}`).set({
+          ...existing,
+          snapshotAt: nowServerTs(),
+          snapshotVersion: currentVersion,
+        });
+
+        const patch = { updatedAt: nowServerTs(), version: currentVersion + 1 };
         if (updates.name) patch.display_name = updates.name;
         if (updates.description) patch.description = updates.description;
         if (updates.rules) patch.raas_tier_1 = updates.rules;
@@ -4980,6 +5160,30 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
         const batch = db.batch();
         batch.set(db.collection("b2bDeployments").doc(deploymentId), deployment);
         batch.set(db.collection("b2bRecipients").doc(), recipientDoc);
+
+        // If recipient exists, add workers to their vault with "From [Company]" label
+        if (recipientUserId) {
+          for (const wId of workerIds) {
+            batch.set(db.doc(`vaults/${recipientUserId}/workers/${wId}`), {
+              workerId: wId,
+              workerName: workerName || "Shared Worker",
+              deploymentId,
+              source: "b2b",
+              fromCompany: senderOrgName,
+              addedAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+          }
+          // Queue opening message
+          batch.set(db.collection("workerMessages").doc(), {
+            userId: recipientUserId,
+            workerId: workerIds[0],
+            direction: "worker_to_user",
+            message: `Hi, I'm ${workerName || "your new Digital Worker"} from ${senderOrgName}. I've been set up for you. How can I help?`,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            read: false,
+          });
+        }
+
         await batch.commit();
 
         return res.json({ ok: true, deployment });
@@ -12427,6 +12631,118 @@ const { runQuarterlyPricingReview } = require("./billing/quarterlyPricingReview"
 exports.quarterlyPricingReview = onSchedule(
   { schedule: "0 9 1 1,4,7,10 *", timeZone: "America/Los_Angeles", region: "us-central1" },
   async () => { await runQuarterlyPricingReview(); }
+);
+
+// ----------------------------
+// WORKER DEPRECATION: Check for 90-day inactive workers — weekly on Mondays
+// ----------------------------
+exports.checkWorkerDeprecation = onSchedule(
+  { schedule: "0 10 * * 1", timeZone: "America/Los_Angeles", region: "us-central1" },
+  async () => {
+    const admin = require("firebase-admin");
+    const ddb = admin.firestore();
+    const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+    const thirtyDaysWarning = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000);
+
+    try {
+      // Find all published workers
+      const tenantsSnap = await ddb.collectionGroup("workers")
+        .where("buildPhase", "==", "published")
+        .limit(500)
+        .get();
+
+      for (const doc of tenantsSnap.docs) {
+        const worker = doc.data();
+        const lastActivity = worker.lastExecutedAt?.toDate?.() || worker.updatedAt?.toDate?.() || null;
+        if (!lastActivity) continue;
+
+        const workerRef = doc.ref;
+        const tenantId = doc.ref.parent.parent.id;
+        const workerId = doc.id;
+
+        // 90-day threshold — transfer ownership
+        if (lastActivity < ninetyDaysAgo && worker.deprecationWarned && !worker.deprecationTransferred) {
+          await workerRef.update({
+            deprecationTransferred: true,
+            deprecationTransferredAt: admin.firestore.FieldValue.serverTimestamp(),
+            originalCreatorId: worker.createdBy,
+            transferredTo: "titleapp_platform",
+          });
+          console.log(`[deprecation] Transferred ownership of ${workerId} from tenant ${tenantId}`);
+          continue;
+        }
+
+        // 60-day threshold — send warning (30 days before transfer)
+        if (lastActivity < thirtyDaysWarning && !worker.deprecationWarned) {
+          await workerRef.update({
+            deprecationWarned: true,
+            deprecationWarnedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+          // Log for notification service to pick up (email + SMS)
+          await ddb.collection("notifications").add({
+            type: "deprecation_warning",
+            tenantId,
+            workerId,
+            workerName: worker.display_name || worker.name || workerId,
+            creatorId: worker.createdBy,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            daysUntilTransfer: 30,
+          });
+          console.log(`[deprecation] Warning sent for ${workerId} — 30 days until transfer`);
+        }
+      }
+    } catch (e) {
+      console.error("[checkWorkerDeprecation] error:", e.message);
+    }
+  }
+);
+
+// ----------------------------
+// LOW RATING CHECK: Flag workers below 3.0 for 60 days — weekly on Tuesdays
+// ----------------------------
+exports.checkLowRatings = onSchedule(
+  { schedule: "0 10 * * 2", timeZone: "America/Los_Angeles", region: "us-central1" },
+  async () => {
+    const admin = require("firebase-admin");
+    const ddb = admin.firestore();
+    const sixtyDaysAgo = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000);
+
+    try {
+      const ratingsSnap = await ddb.collection("ratings").get();
+      const workerRatings = {};
+      ratingsSnap.docs.forEach(doc => {
+        const r = doc.data();
+        if (!workerRatings[r.workerId]) workerRatings[r.workerId] = { total: 0, count: 0, oldest: null };
+        workerRatings[r.workerId].total += r.stars;
+        workerRatings[r.workerId].count += 1;
+        const createdAt = r.createdAt?.toDate?.();
+        if (createdAt && (!workerRatings[r.workerId].oldest || createdAt < workerRatings[r.workerId].oldest)) {
+          workerRatings[r.workerId].oldest = createdAt;
+        }
+      });
+
+      for (const [workerId, data] of Object.entries(workerRatings)) {
+        const avg = data.total / data.count;
+        if (avg < 3.0 && data.count >= 3 && data.oldest && data.oldest < sixtyDaysAgo) {
+          // Check if already flagged
+          const existing = await ddb.collection("reviewQueue").where("workerId", "==", workerId).where("type", "==", "low_rating_review").where("status", "==", "pending").limit(1).get();
+          if (existing.empty) {
+            await ddb.collection("reviewQueue").add({
+              workerId,
+              type: "low_rating_review",
+              averageRating: Math.round(avg * 10) / 10,
+              ratingCount: data.count,
+              status: "pending",
+              createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+            console.log(`[lowRatings] Flagged ${workerId} — avg ${avg.toFixed(1)} from ${data.count} ratings`);
+          }
+        }
+      }
+    } catch (e) {
+      console.error("[checkLowRatings] error:", e.message);
+    }
+  }
 );
 
 // ----------------------------

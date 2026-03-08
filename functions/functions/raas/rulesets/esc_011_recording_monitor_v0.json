@@ -1,0 +1,57 @@
+{
+  "id": "esc_011_recording_monitor_v0",
+  "version": "0.1.0",
+  "domain": "title_escrow",
+  "description": "Recording Monitor — tracks document recording with county recorder offices, monitors e-recording submissions, confirms recording numbers, and blocks DTC transfer until recording is confirmed. Handles recording rejections and document corrections.",
+  "required_inputs": [
+    "locker_id",
+    "document_type",
+    "recording_jurisdiction"
+  ],
+  "hard_stops": [
+    {
+      "id": "ESC-RM-001",
+      "label": "Recording Rejected Hold And Notify",
+      "logic": "Document was rejected by the county recorder — hold transaction and notify all parties for correction and resubmission.",
+      "eval": { "field": "recording.rejected", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "ESC-RM-002",
+      "label": "Recording Not Confirmed Block DTC Transfer",
+      "logic": "Recording has not been confirmed by the county — block DTC transfer until confirmation number is received.",
+      "eval": { "field": "recording.confirmed", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "ESC-RM-003",
+      "label": "DTC Transfer Without Recording Block",
+      "logic": "DTC transfer was initiated without a confirmed recording — block transfer immediately.",
+      "eval": { "field": "recording.dtc_transfer_without_recording", "operator": "==", "threshold": true }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "ESC-RM-FLG-001",
+      "label": "Recording Delayed",
+      "logic": "Recording has been pending longer than expected for the jurisdiction — flag for follow-up.",
+      "eval": { "field": "recording.delayed", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "ESC-RM-FLG-002",
+      "label": "E-Recording Unavailable",
+      "logic": "Jurisdiction does not support e-recording — flag for manual recording process.",
+      "eval": { "field": "recording.erecording_unavailable", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "ESC-RM-FLG-003",
+      "label": "Document Correction Needed",
+      "logic": "Document requires correction before recording can be accepted — flag for preparation of corrective instrument.",
+      "eval": { "field": "recording.correction_needed", "operator": "==", "threshold": true }
+    }
+  ],
+  "outputs": [
+    "tracker_id",
+    "recording_status",
+    "confirmation_number",
+    "dtc_transfer_status"
+  ]
+}

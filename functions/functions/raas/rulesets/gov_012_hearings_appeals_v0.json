@@ -1,0 +1,47 @@
+{
+  "id": "gov_012_hearings_appeals_v0",
+  "version": "v0",
+  "domain": "government-dmv",
+  "description": "DMV Hearings and Appeals — schedules administrative hearings, tracks evidence submissions, and generates hearing officer decision documents",
+  "required_inputs": [
+    "case_number",
+    "hearing_type",
+    "respondent_name",
+    "hearing_date",
+    "evidence_list"
+  ],
+  "hard_stops": [
+    {
+      "id": "DMV-HA-001",
+      "label": "Hearing Notice Not Served",
+      "logic": "Respondent was not served with hearing notice within the statutory minimum notice period — hearing must be rescheduled",
+      "eval": { "field": "hearing.notice_served_timely", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "DMV-HA-002",
+      "label": "Hearing Officer Conflict of Interest",
+      "logic": "Assigned hearing officer has a declared conflict of interest with the respondent or case — must recuse and reassign",
+      "eval": { "field": "hearing.officer_conflict_free", "operator": "==", "threshold": false }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "DMV-HA-FLG-001",
+      "label": "Continuance Requested",
+      "logic": "Respondent has requested a continuance — verify good cause and reschedule within statutory timeframe",
+      "eval": { "field": "hearing.continuance_requested", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "DMV-HA-FLG-002",
+      "label": "Attorney Representation",
+      "logic": "Respondent has retained legal counsel — ensure all communications include attorney of record",
+      "eval": { "field": "hearing.attorney_on_record", "operator": "==", "threshold": true }
+    }
+  ],
+  "outputs": [
+    "gov012-hearing-notice",
+    "gov012-hearing-decision",
+    "gov012-evidence-log",
+    "gov012-appeal-instructions"
+  ]
+}

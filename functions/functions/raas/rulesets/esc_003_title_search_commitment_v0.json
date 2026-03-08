@@ -1,0 +1,59 @@
+{
+  "id": "esc_003_title_search_commitment_v0",
+  "version": "0.1.0",
+  "domain": "title_escrow",
+  "description": "Title Search and Commitment — processes title searches, classifies exceptions in Schedule B, identifies deal-killer defects, tracks curative actions, and produces commitment documents for underwriting.",
+  "required_inputs": [
+    "locker_id",
+    "property_address",
+    "search_type"
+  ],
+  "hard_stops": [
+    {
+      "id": "ESC-TS-001",
+      "label": "Deal-Killer Exception Block Closing",
+      "logic": "Title search reveals a deal-killer exception (e.g., unresolvable cloud on title) — block closing until resolved or waived by underwriter.",
+      "eval": { "field": "title_search.deal_killer_exception", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "ESC-TS-002",
+      "label": "Curative Item Unresolved Block Recording",
+      "logic": "One or more curative items remain unresolved — block recording until all curative actions are completed.",
+      "eval": { "field": "title_search.curative_items_resolved", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "ESC-TS-003",
+      "label": "Title Not Clear Block Disbursement",
+      "logic": "Title has not been cleared by the title officer — block disbursement until clear title is confirmed.",
+      "eval": { "field": "title_search.title_clear", "operator": "==", "threshold": false }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "ESC-TS-FLG-001",
+      "label": "Non-Standard Exception",
+      "logic": "Title search contains a non-standard exception that may require additional endorsement or underwriter review.",
+      "eval": { "field": "title_search.non_standard_exception", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "ESC-TS-FLG-002",
+      "label": "Endorsement Recommended",
+      "logic": "Title officer recommends an additional endorsement to address a specific exception.",
+      "eval": { "field": "title_search.endorsement_recommended", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "ESC-TS-FLG-003",
+      "label": "Chain of Title Gap",
+      "logic": "A gap exists in the chain of title — may require affidavit or quiet title action.",
+      "eval": { "field": "title_search.chain_of_title_gap", "operator": "==", "threshold": true }
+    }
+  ],
+  "outputs": [
+    "search_id",
+    "schedule_a",
+    "schedule_b1",
+    "schedule_b2",
+    "exception_classifications",
+    "curative_actions"
+  ]
+}

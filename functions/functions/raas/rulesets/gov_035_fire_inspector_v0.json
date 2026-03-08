@@ -1,0 +1,59 @@
+{
+  "id": "gov_035_fire_inspector_v0",
+  "version": "v0",
+  "domain": "government-inspector",
+  "description": "Fire Inspector — conducts fire safety inspections, validates sprinkler and alarm systems, verifies egress compliance, and enforces IFC occupancy limits",
+  "required_inputs": [
+    "permit_number",
+    "inspection_type",
+    "inspector_id",
+    "gps_coordinates",
+    "fire_observations"
+  ],
+  "hard_stops": [
+    {
+      "id": "INSP-FI-001",
+      "label": "Blocked Means of Egress",
+      "logic": "Required means of egress is blocked, locked, or obstructed — immediate life safety violation per IFC 1031",
+      "eval": { "field": "inspection.egress_clear", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "INSP-FI-002",
+      "label": "Fire Sprinkler System Non-Functional",
+      "logic": "Automatic sprinkler system is impaired, shut off, or failed acceptance test — building cannot be occupied",
+      "eval": { "field": "inspection.sprinkler_functional", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "INSP-FI-003",
+      "label": "Fire Alarm Not Operational",
+      "logic": "Fire alarm and detection system is not operational or failed final acceptance test — occupancy not permitted",
+      "eval": { "field": "inspection.alarm_operational", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "INSP-FI-004",
+      "label": "Occupancy Load Exceeded",
+      "logic": "Observed occupancy exceeds the posted maximum occupant load — fire code violation requiring immediate reduction",
+      "eval": { "field": "inspection.occupancy_exceeded", "operator": "==", "threshold": true }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "INSP-FI-FLG-001",
+      "label": "Fire Extinguisher Service Overdue",
+      "logic": "One or more fire extinguishers have overdue annual service tags — schedule maintenance",
+      "eval": { "field": "inspection.extinguisher_service_overdue", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "INSP-FI-FLG-002",
+      "label": "Knox Box Access Issue",
+      "logic": "Knox Box or key vault is missing, damaged, or contents do not match current building keys — fire department access risk",
+      "eval": { "field": "inspection.knox_box_issue", "operator": "==", "threshold": true }
+    }
+  ],
+  "outputs": [
+    "gov035-fire-inspection-report",
+    "gov035-violation-notice",
+    "gov035-occupancy-certification",
+    "gov035-sprinkler-acceptance-report"
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "id": "gov_050_title_search_v0",
+  "version": "v0",
+  "domain": "government-recorder",
+  "description": "Title Search — conducts grantor/grantee index searches, builds chain of title, identifies encumbrances, and generates title abstracts from recorded documents",
+  "required_inputs": [
+    "search_type",
+    "parcel_number",
+    "search_period_years",
+    "requestor_id"
+  ],
+  "hard_stops": [
+    {
+      "id": "REC-TS-001",
+      "label": "Parcel Number Not Found",
+      "logic": "Parcel number does not exist in the assessor/recorder index — cannot perform search on non-existent parcel",
+      "eval": { "field": "search.parcel_found", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "REC-TS-002",
+      "label": "Index Gap Detected",
+      "logic": "Gap detected in the grantor/grantee index for the search period — title chain cannot be certified as complete",
+      "eval": { "field": "search.index_complete", "operator": "==", "threshold": false }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "REC-TS-FLG-001",
+      "label": "Unreleased Liens Found",
+      "logic": "One or more liens on the property appear to be satisfied but have no recorded release — may require curative action",
+      "eval": { "field": "search.unreleased_liens", "operator": ">", "threshold": 0 }
+    },
+    {
+      "id": "REC-TS-FLG-002",
+      "label": "Probate Conveyance in Chain",
+      "logic": "Chain of title includes a probate conveyance — verify court order and Letters Testamentary are on file",
+      "eval": { "field": "search.probate_conveyance_found", "operator": "==", "threshold": true }
+    }
+  ],
+  "outputs": [
+    "gov050-title-abstract",
+    "gov050-chain-of-title",
+    "gov050-encumbrance-list",
+    "gov050-search-certificate"
+  ]
+}

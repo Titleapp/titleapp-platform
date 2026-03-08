@@ -1,0 +1,53 @@
+{
+  "id": "gov_008_salvage_rebuilt_title_v0",
+  "version": "v0",
+  "domain": "government-dmv",
+  "description": "Salvage and Rebuilt Title — processes branded title applications for salvage, rebuilt, and flood-damaged vehicles with enhanced inspection requirements",
+  "required_inputs": [
+    "vin",
+    "brand_type",
+    "insurance_claim_id",
+    "rebuild_inspection_report",
+    "photos",
+    "parts_receipts"
+  ],
+  "hard_stops": [
+    {
+      "id": "DMV-SR-001",
+      "label": "Rebuild Inspection Not Completed",
+      "logic": "Vehicle has not passed a state-authorized rebuild inspection — rebuilt title cannot be issued without certified inspection",
+      "eval": { "field": "salvage.rebuild_inspection_passed", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "DMV-SR-002",
+      "label": "Stolen Parts Identified",
+      "logic": "One or more replacement parts VINs or serial numbers match NCIC stolen parts database — law enforcement referral required",
+      "eval": { "field": "salvage.stolen_parts_detected", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "DMV-SR-003",
+      "label": "Anti-Theft Inspection Failed",
+      "logic": "Vehicle failed the anti-theft component verification — VIN plates, major component labels, or federal safety certification label discrepancies found",
+      "eval": { "field": "salvage.anti_theft_inspection_passed", "operator": "==", "threshold": false }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "DMV-SR-FLG-001",
+      "label": "Flood Damage Brand from Another State",
+      "logic": "Vehicle has a flood damage brand from another jurisdiction — verify all electrical and safety systems were inspected during rebuild",
+      "eval": { "field": "salvage.out_of_state_flood_brand", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "DMV-SR-FLG-002",
+      "label": "High Repair Cost Ratio",
+      "logic": "Documented repair costs exceed 90% of pre-loss value — additional structural integrity inspection recommended",
+      "eval": { "field": "salvage.repair_cost_ratio", "operator": ">", "threshold": 0.9 }
+    }
+  ],
+  "outputs": [
+    "gov008-branded-title-certificate",
+    "gov008-rebuild-inspection-report",
+    "gov008-parts-audit-trail"
+  ]
+}

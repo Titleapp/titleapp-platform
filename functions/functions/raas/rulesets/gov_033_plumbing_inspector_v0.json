@@ -1,0 +1,47 @@
+{
+  "id": "gov_033_plumbing_inspector_v0",
+  "version": "v0",
+  "domain": "government-inspector",
+  "description": "Plumbing Inspector — inspects plumbing installations for UPC/IPC compliance including DWV systems, water supply, backflow prevention, and fixture counts",
+  "required_inputs": [
+    "permit_number",
+    "inspection_type",
+    "inspector_id",
+    "gps_coordinates",
+    "plumbing_observations"
+  ],
+  "hard_stops": [
+    {
+      "id": "INSP-PL-001",
+      "label": "Backflow Prevention Missing",
+      "logic": "Cross-connection control or backflow prevention device not installed where required — public water supply contamination risk",
+      "eval": { "field": "inspection.backflow_installed", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "INSP-PL-002",
+      "label": "DWV Pressure Test Failed",
+      "logic": "Drain-waste-vent system failed the required air or water pressure test — system has leaks and cannot be concealed",
+      "eval": { "field": "inspection.dwv_test_passed", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "INSP-PL-003",
+      "label": "Improper Venting",
+      "logic": "Plumbing vent system is improperly sized, trapped, or terminated — sewer gas intrusion hazard",
+      "eval": { "field": "inspection.venting_compliant", "operator": "==", "threshold": false }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "INSP-PL-FLG-001",
+      "label": "Water Heater Temperature Relief",
+      "logic": "Water heater temperature and pressure relief valve discharge pipe must terminate at an approved location — verify installation",
+      "eval": { "field": "inspection.tpr_discharge_check_needed", "operator": "==", "threshold": true }
+    }
+  ],
+  "outputs": [
+    "gov033-plumbing-inspection-report",
+    "gov033-violation-notice",
+    "gov033-test-results",
+    "gov033-pass-certificate"
+  ]
+}

@@ -1,0 +1,54 @@
+{
+  "id": "gov_020_fire_prevention_review_v0",
+  "version": "v0",
+  "domain": "government-permitting",
+  "description": "Fire Prevention Review — reviews building plans and permit applications for fire code compliance including sprinkler, alarm, egress, and fire separation requirements",
+  "required_inputs": [
+    "permit_number",
+    "occupancy_type",
+    "occupant_load",
+    "sprinkler_required",
+    "alarm_system_type",
+    "fire_department_access"
+  ],
+  "hard_stops": [
+    {
+      "id": "PERM-FP-001",
+      "label": "Sprinkler System Not Provided Where Required",
+      "logic": "Building exceeds threshold requiring automatic sprinkler system per NFPA 13/IFC but no sprinkler system is shown on plans",
+      "eval": { "field": "fire_review.sprinkler_provided_where_required", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "PERM-FP-002",
+      "label": "Insufficient Egress Capacity",
+      "logic": "Calculated egress capacity does not meet occupant load requirements per IBC Chapter 10 — life safety hazard",
+      "eval": { "field": "fire_review.egress_capacity_sufficient", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "PERM-FP-003",
+      "label": "Fire Department Access Blocked",
+      "logic": "Fire department access road does not meet minimum width, grade, or turnaround requirements per IFC Appendix D",
+      "eval": { "field": "fire_review.fd_access_compliant", "operator": "==", "threshold": false }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "PERM-FP-FLG-001",
+      "label": "High Hazard Occupancy",
+      "logic": "Building contains Group H (high-hazard) occupancy classification — additional fire prevention measures may be required",
+      "eval": { "field": "fire_review.high_hazard_occupancy", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "PERM-FP-FLG-002",
+      "label": "Fire Flow Calculation Needed",
+      "logic": "Building size exceeds threshold requiring fire flow calculation — verify water supply adequacy with fire department",
+      "eval": { "field": "fire_review.fire_flow_calc_needed", "operator": "==", "threshold": true }
+    }
+  ],
+  "outputs": [
+    "gov020-fire-review-comments",
+    "gov020-fire-code-checklist",
+    "gov020-sprinkler-requirement-determination",
+    "gov020-egress-plan-approval"
+  ]
+}

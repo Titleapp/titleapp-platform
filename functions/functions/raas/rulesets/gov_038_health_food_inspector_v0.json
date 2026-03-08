@@ -1,0 +1,54 @@
+{
+  "id": "gov_038_health_food_inspector_v0",
+  "version": "v0",
+  "domain": "government-inspector",
+  "description": "Health and Food Safety Inspector — conducts food establishment inspections, validates temperature controls, sanitation, and FDA Food Code compliance",
+  "required_inputs": [
+    "establishment_id",
+    "permit_number",
+    "inspection_type",
+    "inspector_id",
+    "gps_coordinates",
+    "observations"
+  ],
+  "hard_stops": [
+    {
+      "id": "INSP-HF-001",
+      "label": "Imminent Health Hazard",
+      "logic": "Imminent health hazard observed (sewage backup, no hot water, rodent infestation, foodborne illness outbreak) — immediate closure per FDA Food Code 8-404.11",
+      "eval": { "field": "inspection.imminent_health_hazard", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "INSP-HF-002",
+      "label": "Critical Temperature Violation",
+      "logic": "Food held in the temperature danger zone (41-135F) beyond safe time limits — critical food safety violation",
+      "eval": { "field": "inspection.critical_temp_violation", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "INSP-HF-003",
+      "label": "No Certified Food Manager on Staff",
+      "logic": "Establishment does not have a certified food protection manager as required by FDA Food Code 2-102.12",
+      "eval": { "field": "inspection.certified_manager_on_staff", "operator": "==", "threshold": false }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "INSP-HF-FLG-001",
+      "label": "Score Below Satisfactory Threshold",
+      "logic": "Inspection score is below the satisfactory threshold — establishment should receive follow-up inspection within 30 days",
+      "eval": { "field": "inspection.score_below_satisfactory", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "INSP-HF-FLG-002",
+      "label": "Repeat Violation",
+      "logic": "Same violation category was cited in the previous inspection — pattern of non-compliance",
+      "eval": { "field": "inspection.repeat_violation_count", "operator": ">", "threshold": 0 }
+    }
+  ],
+  "outputs": [
+    "gov038-health-inspection-report",
+    "gov038-violation-notice",
+    "gov038-closure-order",
+    "gov038-reinspection-schedule"
+  ]
+}

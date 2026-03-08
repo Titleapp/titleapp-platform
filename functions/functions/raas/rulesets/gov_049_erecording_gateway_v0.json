@@ -1,0 +1,47 @@
+{
+  "id": "gov_049_erecording_gateway_v0",
+  "version": "v0",
+  "domain": "government-recorder",
+  "description": "eRecording Gateway — manages electronic recording submissions from title companies and law firms via PRIA/URPERA standards, validates digital signatures and document formatting",
+  "required_inputs": [
+    "submitter_id",
+    "document_package",
+    "digital_signature",
+    "pria_version",
+    "payment_method"
+  ],
+  "hard_stops": [
+    {
+      "id": "REC-ER-001",
+      "label": "Submitter Not Authorized",
+      "logic": "eRecording submitter is not registered or has been suspended from the jurisdiction's eRecording portal — submission rejected",
+      "eval": { "field": "erecording.submitter_authorized", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "REC-ER-002",
+      "label": "Digital Signature Invalid",
+      "logic": "Digital signature on the document package does not validate or the signing certificate has been revoked — cannot accept submission",
+      "eval": { "field": "erecording.digital_signature_valid", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "REC-ER-003",
+      "label": "Document Format Non-Compliant",
+      "logic": "Submitted document does not meet PRIA formatting requirements (page size, margins, font legibility, image resolution)",
+      "eval": { "field": "erecording.format_compliant", "operator": "==", "threshold": false }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "REC-ER-FLG-001",
+      "label": "High Volume Submitter",
+      "logic": "Submitter has sent more than 50 documents today — verify system capacity and submitter account status",
+      "eval": { "field": "erecording.daily_submission_count", "operator": ">", "threshold": 50 }
+    }
+  ],
+  "outputs": [
+    "gov049-erecording-receipt",
+    "gov049-pria-acknowledgment",
+    "gov049-rejection-notice",
+    "gov049-instrument-numbers"
+  ]
+}

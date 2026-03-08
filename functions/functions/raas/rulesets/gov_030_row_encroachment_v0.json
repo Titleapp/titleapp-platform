@@ -1,0 +1,48 @@
+{
+  "id": "gov_030_row_encroachment_v0",
+  "version": "v0",
+  "domain": "government-permitting",
+  "description": "Right-of-Way Encroachment — processes encroachment permits for work within public rights-of-way including utility cuts, sidewalk repairs, and temporary street closures",
+  "required_inputs": [
+    "location_description",
+    "encroachment_type",
+    "traffic_control_plan_id",
+    "applicant_name",
+    "start_date",
+    "end_date"
+  ],
+  "hard_stops": [
+    {
+      "id": "PERM-ROW-001",
+      "label": "Traffic Control Plan Not Approved",
+      "logic": "Work within the right-of-way requires an approved traffic control plan per MUTCD — plan not submitted or not approved",
+      "eval": { "field": "row.tcp_approved", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "PERM-ROW-002",
+      "label": "Insurance Certificate Not on File",
+      "logic": "Applicant has not provided the required liability insurance certificate naming the jurisdiction as additional insured",
+      "eval": { "field": "row.insurance_on_file", "operator": "==", "threshold": false }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "PERM-ROW-FLG-001",
+      "label": "Major Arterial Impact",
+      "logic": "Encroachment is on a major arterial road — may require coordination with traffic engineering and off-peak work hours",
+      "eval": { "field": "row.major_arterial", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "PERM-ROW-FLG-002",
+      "label": "Extended Duration",
+      "logic": "Encroachment duration exceeds 14 days — may require additional public notification and detour signage",
+      "eval": { "field": "row.duration_days", "operator": ">", "threshold": 14 }
+    }
+  ],
+  "outputs": [
+    "gov030-encroachment-permit",
+    "gov030-traffic-control-approval",
+    "gov030-restoration-requirements",
+    "gov030-bond-calculation"
+  ]
+}

@@ -66,6 +66,21 @@ export default function TestWorkerPanel({ worker, workerCardData, sessionId, onT
   const [mdNpi, setMdNpi] = useState("");
   const [mdSigned, setMdSigned] = useState(false);
 
+  // Publish gates (P0 hard gates)
+  const [idVerified, setIdVerified] = useState(false);
+  const [liabilityAccepted, setLiabilityAccepted] = useState(false);
+  const [baaAccepted, setBaaAccepted] = useState(false);
+  const [gatesLoading, setGatesLoading] = useState(true);
+  const [showIdUpload, setShowIdUpload] = useState(false);
+  const [idType, setIdType] = useState("drivers_license");
+  const [gateError, setGateError] = useState(null);
+
+  // Blockchain toggle
+  const [blockchainEnabled, setBlockchainEnabled] = useState(false);
+
+  const isHealthVertical = (workerCardData?.vertical || "").includes("health") ||
+    (workerCardData?.suite || "") === "Health & EMS Education";
+
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -74,6 +89,36 @@ export default function TestWorkerPanel({ worker, workerCardData, sessionId, onT
   }, []);
 
   useEffect(() => { scrollToBottom(); }, [messages, scrollToBottom]);
+
+  // Fetch gate status on mount
+  useEffect(() => {
+    async function loadGates() {
+      try {
+        const token = await getToken();
+        if (!token) { setGatesLoading(false); return; }
+        const res = await fetch(`${API_BASE}/api?path=/v1/creator:gates`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        if (data.ok) {
+          setIdVerified(data.identityVerified);
+          setBaaAccepted(data.baaAccepted);
+        }
+        // Also load blockchain setting if we have a workerId
+        const wId = workerCardData?.id || worker?.id;
+        const tId = workerCardData?.tenantId || sessionId;
+        if (wId && tId) {
+          const sRes = await fetch(`${API_BASE}/api?path=/v1/worker:settings&workerId=${wId}`, {
+            headers: { Authorization: `Bearer ${token}`, "X-Tenant-Id": tId },
+          });
+          const sData = await sRes.json();
+          if (sData.ok) setBlockchainEnabled(sData.settings?.blockchainEnabled || false);
+        }
+      } catch {}
+      setGatesLoading(false);
+    }
+    loadGates();
+  }, []);
 
   const workerName = workerCardData?.name || worker?.name || "Your Worker";
   const workerDesc = workerCardData?.description || worker?.description || "";
@@ -216,9 +261,10 @@ export default function TestWorkerPanel({ worker, workerCardData, sessionId, onT
     inputRef.current?.focus();
   }
 
-  // Publish requires core job checked — not all three
-  const canPublish = coreJobDone;
-  const publishBlocked = needsMdGate && !mdSigned;
+  // Publish requires core job checked + all required gates passed
+  const gatesPassed = idVerified && liabilityAccepted && (!isHealthVertical || baaAccepted);
+  const canPublish = coreJobDone && gatesPassed;
+  const publishBlocked = (needsMdGate && !mdSigned) || !gatesPassed;
 
   async function handlePublish() {
     if (publishBlocked) return;
@@ -239,9 +285,7 @@ export default function TestWorkerPanel({ worker, workerCardData, sessionId, onT
           tenantId,
           workerId: worker?.id,
           pricingTier: worker?.pricingTier || workerCardData?.pricingTier || 2,
-          waiverSigned: true,
-          identityVerified: true,
-          paymentComplete: true,
+          // Gates are verified server-side by publishGates.js — no client-side trust
           ...(needsMdGate && { mdName, mdNpi }),
         }),
       });
@@ -424,6 +468,191 @@ export default function TestWorkerPanel({ worker, workerCardData, sessionId, onT
         </div>
       )}
 
+      {/* ── Publish Gates ── */}
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a2e", marginBottom: 10 }}>Before you publish</div>
+
+        {/* Gate 1: Identity Verification */}
+        <div style={{ background: "#FFFFFF", border: `1px solid ${idVerified ? "rgba(16,185,129,0.3)" : "#E2E8F0"}`, borderRadius: 10, padding: 14, marginBottom: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: idVerified ? 0 : 8 }}>
+            <div style={{ width: 8, height: 8, borderRadius: 4, background: idVerified ? "#10b981" : "#F59E0B" }} />
+            <div style={{ fontSize: 13, fontWeight: 600, color: idVerified ? "#10b981" : "#1a1a2e", flex: 1 }}>
+              Identity Verification {idVerified && "— Verified"}
+            </div>
+          </div>
+          {!idVerified && (
+            <>
+              <div style={{ fontSize: 12, color: "#64748B", lineHeight: 1.5, marginBottom: 10 }}>
+                Upload a photo ID — verification takes less than 60 seconds. Required before any worker can be published.
+              </div>
+              {!showIdUpload ? (
+                <button
+                  onClick={() => setShowIdUpload(true)}
+                  style={{ padding: "8px 16px", background: "#6B46C1", color: "white", border: "none", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                >
+                  Verify Identity
+                </button>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <select
+                    value={idType}
+                    onChange={e => setIdType(e.target.value)}
+                    style={{ padding: "8px 10px", background: "#F8F9FC", border: "1px solid #E2E8F0", borderRadius: 6, color: "#1a1a2e", fontSize: 13, outline: "none" }}
+                  >
+                    <option value="drivers_license">Driver's License</option>
+                    <option value="passport">Passport</option>
+                    <option value="state_id">State ID</option>
+                  </select>
+                  <button
+                    onClick={async () => {
+                      setGateError(null);
+                      try {
+                        const token = await getToken();
+                        const r = await fetch(`${API_BASE}/api?path=/v1/creator:verify-identity`, {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                          body: JSON.stringify({ idType }),
+                        });
+                        const d = await r.json();
+                        if (d.ok) { setIdVerified(true); setShowIdUpload(false); }
+                        else setGateError(d.error);
+                      } catch { setGateError("Connection error. Try again."); }
+                    }}
+                    style={{ padding: "8px 16px", background: "#6B46C1", color: "white", border: "none", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                  >
+                    Submit Verification
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* Gate 2: Liability Disclaimer */}
+        <div style={{ background: "#FFFFFF", border: `1px solid ${liabilityAccepted ? "rgba(16,185,129,0.3)" : "#E2E8F0"}`, borderRadius: 10, padding: 14, marginBottom: 8 }}>
+          <div
+            style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer" }}
+            onClick={async () => {
+              if (liabilityAccepted) return;
+              setGateError(null);
+              try {
+                const token = await getToken();
+                const r = await fetch(`${API_BASE}/api?path=/v1/creator:accept-liability`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                  body: JSON.stringify({ workerId: worker?.id }),
+                });
+                const d = await r.json();
+                if (d.ok) setLiabilityAccepted(true);
+                else setGateError(d.error);
+              } catch { setGateError("Connection error. Try again."); }
+            }}
+          >
+            <div style={{
+              width: 20, height: 20, borderRadius: 4, flexShrink: 0, marginTop: 1,
+              border: `2px solid ${liabilityAccepted ? "#10b981" : "#CBD5E1"}`,
+              background: liabilityAccepted ? "#10b981" : "transparent",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              color: "white", fontSize: 12, fontWeight: 700,
+            }}>
+              {liabilityAccepted ? "\u2713" : ""}
+            </div>
+            <div style={{ fontSize: 12, color: "#1a1a2e", lineHeight: 1.6 }}>
+              I am responsible for the accuracy and compliance of this Digital Worker's outputs. TitleApp provides the platform and compliance engine but does not guarantee the correctness of creator-configured rules or worker behavior. This worker is subject to the TitleApp Creator Agreement.
+            </div>
+          </div>
+        </div>
+
+        {/* Gate 3: HIPAA/BAA (conditional) */}
+        {isHealthVertical && (
+          <div style={{ background: "#FFFFFF", border: `1px solid ${baaAccepted ? "rgba(16,185,129,0.3)" : "rgba(220,38,38,0.3)"}`, borderRadius: 10, padding: 14, marginBottom: 8 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+              <div style={{ width: 8, height: 8, borderRadius: 4, background: baaAccepted ? "#10b981" : "#dc2626" }} />
+              <div style={{ fontSize: 13, fontWeight: 600, color: baaAccepted ? "#10b981" : "#dc2626" }}>
+                HIPAA Business Associate Agreement {baaAccepted && "— Accepted"}
+              </div>
+            </div>
+            {!baaAccepted && (
+              <div
+                style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer" }}
+                onClick={async () => {
+                  setGateError(null);
+                  try {
+                    const token = await getToken();
+                    const r = await fetch(`${API_BASE}/api?path=/v1/creator:accept-baa`, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                      body: JSON.stringify({}),
+                    });
+                    const d = await r.json();
+                    if (d.ok) setBaaAccepted(true);
+                    else setGateError(d.error);
+                  } catch { setGateError("Connection error. Try again."); }
+                }}
+              >
+                <div style={{
+                  width: 20, height: 20, borderRadius: 4, flexShrink: 0, marginTop: 1,
+                  border: `2px solid ${baaAccepted ? "#10b981" : "#CBD5E1"}`,
+                  background: baaAccepted ? "#10b981" : "transparent",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  color: "white", fontSize: 12, fontWeight: 700,
+                }}>
+                  {baaAccepted ? "\u2713" : ""}
+                </div>
+                <div style={{ fontSize: 12, color: "#1a1a2e", lineHeight: 1.6 }}>
+                  I acknowledge that this worker may process information in healthcare contexts. I agree to the terms of the TitleApp Business Associate Agreement and will comply with all applicable HIPAA requirements.
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {gateError && (
+          <div style={{ fontSize: 11, color: "#dc2626", marginTop: 4, marginBottom: 4 }}>{gateError}</div>
+        )}
+      </div>
+
+      {/* Blockchain Record Keeping Toggle */}
+      <div style={{
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        padding: "12px 14px", background: "#F8F9FC", borderRadius: 8, marginBottom: 12,
+        border: "1px solid #E2E8F0",
+      }}>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a2e" }}>Blockchain Record Keeping</div>
+          <div style={{ fontSize: 11, color: "#64748B", marginTop: 2 }}>
+            Each audit record is hashed on-chain. Subscribers see a "Blockchain-verified" badge.
+          </div>
+        </div>
+        <div
+          onClick={async () => {
+            const next = !blockchainEnabled;
+            setBlockchainEnabled(next);
+            try {
+              const token = await getToken();
+              const wId = workerCardData?.id || worker?.id;
+              const tId = workerCardData?.tenantId || sessionId;
+              await fetch(`${API_BASE}/api?path=/v1/worker:settings`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ tenantId: tId, workerId: wId, blockchainEnabled: next }),
+              });
+            } catch {}
+          }}
+          style={{
+            width: 40, height: 22, borderRadius: 11, cursor: "pointer",
+            background: blockchainEnabled ? "#6B46C1" : "#CBD5E1",
+            position: "relative", transition: "background 0.2s", flexShrink: 0,
+          }}
+        >
+          <div style={{
+            width: 18, height: 18, borderRadius: 9, background: "white",
+            position: "absolute", top: 2, left: blockchainEnabled ? 20 : 2,
+            transition: "left 0.2s", boxShadow: "0 1px 2px rgba(0,0,0,0.15)",
+          }} />
+        </div>
+      </div>
+
       {/* Publish */}
       <button
         style={{
@@ -436,7 +665,7 @@ export default function TestWorkerPanel({ worker, workerCardData, sessionId, onT
         onClick={handlePublish}
         disabled={publishing || !canPublish || publishBlocked}
       >
-        {publishing ? "Publishing..." : coreJobDone ? "Looks good — publish it" : "Test your worker to enable publishing"}
+        {publishing ? "Publishing..." : gatesPassed && coreJobDone ? "Looks good — publish it" : !gatesPassed ? "Complete all gates above to publish" : "Test your worker to enable publishing"}
       </button>
       {exchangeCount === 0 && (
         <div style={{ fontSize: 11, color: "#94A3B8", textAlign: "center", marginTop: 6 }}>

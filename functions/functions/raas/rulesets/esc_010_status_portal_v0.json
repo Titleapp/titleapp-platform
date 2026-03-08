@@ -1,0 +1,50 @@
+{
+  "id": "esc_010_status_portal_v0",
+  "version": "0.1.0",
+  "domain": "title_escrow",
+  "description": "Status Portal — provides real-time transaction status to authorized parties, enforces access control, masks PII in status views, and notifies parties of condition changes, stage advances, and approaching deadlines.",
+  "required_inputs": [
+    "locker_id"
+  ],
+  "hard_stops": [
+    {
+      "id": "ESC-SP-001",
+      "label": "Unauthorized Party Access Block",
+      "logic": "A party not authorized on the escrow is attempting to access transaction status — block access.",
+      "eval": { "field": "portal.party_authorized", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "ESC-SP-002",
+      "label": "PII Exposure In Status Mask",
+      "logic": "Status view contains unmasked PII (SSN, account numbers, etc.) — mask before rendering.",
+      "eval": { "field": "portal.pii_exposed", "operator": "==", "threshold": true }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "ESC-SP-FLG-001",
+      "label": "Condition Change",
+      "logic": "A condition status has changed — notify relevant parties.",
+      "eval": { "field": "portal.condition_changed", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "ESC-SP-FLG-002",
+      "label": "Stage Advance",
+      "logic": "Escrow has advanced to a new stage — notify all parties.",
+      "eval": { "field": "portal.stage_advanced", "operator": "==", "threshold": true }
+    },
+    {
+      "id": "ESC-SP-FLG-003",
+      "label": "Deadline Approaching",
+      "logic": "A transaction deadline is approaching — notify responsible parties.",
+      "eval": { "field": "portal.deadline_approaching", "operator": "==", "threshold": true }
+    }
+  ],
+  "outputs": [
+    "stage",
+    "stage_name",
+    "conditions_summary",
+    "timeline",
+    "party_access"
+  ]
+}

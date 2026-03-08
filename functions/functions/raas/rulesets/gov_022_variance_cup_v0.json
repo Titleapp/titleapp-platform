@@ -1,0 +1,47 @@
+{
+  "id": "gov_022_variance_cup_v0",
+  "version": "v0",
+  "domain": "government-permitting",
+  "description": "Variance and Conditional Use Permit Processing — manages applications for zoning variances, conditional/special use permits, and administrative adjustments",
+  "required_inputs": [
+    "application_type",
+    "parcel_number",
+    "applicant_name",
+    "hardship_justification",
+    "hearing_date"
+  ],
+  "hard_stops": [
+    {
+      "id": "PERM-VC-001",
+      "label": "Public Notice Not Published",
+      "logic": "Required public notice for hearing has not been published within the statutory notice period — hearing cannot proceed",
+      "eval": { "field": "variance.public_notice_published", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "PERM-VC-002",
+      "label": "Adjacent Property Owners Not Notified",
+      "logic": "Property owners within the required notification radius have not been sent notice — due process requirement not met",
+      "eval": { "field": "variance.adjacent_owners_notified", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "PERM-VC-003",
+      "label": "Hardship Not Self-Created",
+      "logic": "Variance findings require that the hardship was not self-created by the applicant — self-created hardship cannot be basis for variance",
+      "eval": { "field": "variance.hardship_self_created", "operator": "==", "threshold": true }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "PERM-VC-FLG-001",
+      "label": "Neighborhood Opposition",
+      "logic": "Three or more written objections received from adjacent property owners — board should consider community impact",
+      "eval": { "field": "variance.objection_count", "operator": ">=", "threshold": 3 }
+    }
+  ],
+  "outputs": [
+    "gov022-hearing-notice",
+    "gov022-staff-recommendation",
+    "gov022-board-decision",
+    "gov022-conditions-of-approval"
+  ]
+}

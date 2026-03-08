@@ -1,0 +1,42 @@
+{
+  "id": "gov_051_easement_row_recording_v0",
+  "version": "v0",
+  "domain": "government-recorder",
+  "description": "Easement and Right-of-Way Recording — records easement grants, dedications, vacations, and utility easements with beneficiary and burdened parcel tracking",
+  "required_inputs": [
+    "easement_type",
+    "document_file_id",
+    "grantor",
+    "grantee_beneficiary",
+    "burdened_parcel",
+    "legal_description_of_easement"
+  ],
+  "hard_stops": [
+    {
+      "id": "REC-EW-001",
+      "label": "Grantor Does Not Own Burdened Parcel",
+      "logic": "Grantor of the easement is not the owner of the burdened parcel — cannot grant an easement over property not owned",
+      "eval": { "field": "easement.grantor_owns_parcel", "operator": "==", "threshold": false }
+    },
+    {
+      "id": "REC-EW-002",
+      "label": "Easement Description Indeterminate",
+      "logic": "Legal description of the easement area is insufficient to locate the easement on the ground — recording would create title ambiguity",
+      "eval": { "field": "easement.description_sufficient", "operator": "==", "threshold": false }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "REC-EW-FLG-001",
+      "label": "Overlapping Easement Exists",
+      "logic": "A previously recorded easement overlaps with the proposed easement area — verify compatibility of uses",
+      "eval": { "field": "easement.overlap_detected", "operator": "==", "threshold": true }
+    }
+  ],
+  "outputs": [
+    "gov051-recorded-easement",
+    "gov051-instrument-number",
+    "gov051-parcel-encumbrance-update",
+    "gov051-gis-mapping-notification"
+  ]
+}
