@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import { signInWithCustomToken } from "firebase/auth";
+import { auth as firebaseAuth } from "../firebase";
 import WorkerGallery, { HE_SUBJECT_DOMAINS, getWorkerIdeas } from "../components/WorkerGallery";
 import WorkerCard from "../components/WorkerCard";
 import BuildProgress from "../components/BuildProgress";
@@ -109,8 +111,12 @@ const US_STATES = [
 
 // Get fresh Firebase ID token (or fall back to localStorage)
 async function getFreshToken() {
-  if (window.__firebaseAuth?.currentUser) {
-    try { return await window.__firebaseAuth.currentUser.getIdToken(true); } catch (_) {}
+  if (firebaseAuth?.currentUser) {
+    try {
+      const token = await firebaseAuth.currentUser.getIdToken(true);
+      localStorage.setItem("ID_TOKEN", token); // keep localStorage in sync
+      return token;
+    } catch (_) {}
   }
   const stored = localStorage.getItem("ID_TOKEN");
   if (stored && stored !== "undefined" && stored !== "null") return stored;
@@ -923,14 +929,11 @@ export default function DeveloperSandbox() {
       if (result.ok && result.token) {
         // result.token is a Firebase custom token — sign in to get a real ID token
         let idToken = result.token; // fallback
-        if (window.__firebaseAuth) {
-          try {
-            const { signInWithCustomToken } = await import("firebase/auth");
-            const userCred = await signInWithCustomToken(window.__firebaseAuth, result.token);
-            idToken = await userCred.user.getIdToken();
-          } catch (authErr) {
-            console.error("[Signup] Firebase sign-in failed:", authErr);
-          }
+        try {
+          const userCred = await signInWithCustomToken(firebaseAuth, result.token);
+          idToken = await userCred.user.getIdToken();
+        } catch (authErr) {
+          console.error("[Signup] Firebase sign-in failed:", authErr);
         }
         localStorage.setItem("ID_TOKEN", idToken);
         if (result.uid) localStorage.setItem("USER_ID", result.uid);

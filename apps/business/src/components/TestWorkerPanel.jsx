@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
+import { auth as firebaseAuth } from "../firebase";
 import PublishPreflight from "./PublishPreflight";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
@@ -11,27 +12,28 @@ const TIERS = [
   { id: 3, label: "Tier 3", price: 79, credits: 3000 },
 ];
 
-// Robust token getter — waits for Firebase auth state before giving up
+// Robust token getter — uses real Firebase auth instance
 async function getToken() {
   // 1. Try currentUser directly
-  if (window.__firebaseAuth?.currentUser) {
+  if (firebaseAuth?.currentUser) {
     try {
-      return await window.__firebaseAuth.currentUser.getIdToken(true);
+      const token = await firebaseAuth.currentUser.getIdToken(true);
+      localStorage.setItem("ID_TOKEN", token);
+      return token;
     } catch (_) {}
   }
   // 2. Wait for auth state to settle (Firebase may still be initializing)
-  if (window.__firebaseAuth) {
+  if (firebaseAuth) {
     try {
       return await new Promise((resolve, reject) => {
-        const unsub = window.__firebaseAuth.onAuthStateChanged(user => {
+        const unsub = firebaseAuth.onAuthStateChanged(user => {
           unsub();
           if (user) {
-            user.getIdToken(true).then(resolve).catch(reject);
+            user.getIdToken(true).then(t => { localStorage.setItem("ID_TOKEN", t); resolve(t); }).catch(reject);
           } else {
             reject(new Error("Not authenticated"));
           }
         });
-        // Timeout after 5s
         setTimeout(() => { unsub(); reject(new Error("Auth timeout")); }, 5000);
       });
     } catch (_) {}
