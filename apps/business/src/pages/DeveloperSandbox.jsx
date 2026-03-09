@@ -7,6 +7,7 @@ import BuildProgress from "../components/BuildProgress";
 import TestWorkerPanel from "../components/TestWorkerPanel";
 import DistributionKit from "../components/DistributionKit";
 import CommsPreferences from "../components/CommsPreferences";
+import PublishPreflight from "../components/PublishPreflight";
 import { fireConfetti } from "../utils/celebrations";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
@@ -86,7 +87,14 @@ const S = {
   dividerHover: { background: "#6B46C1" },
 };
 
-const FLOW_STEPS = ["Discover", "Vibe", "Build", "Test", "Distribute", "Grow"];
+const FLOW_STEPS = ["Discover", "Vibe", "Build", "Test", "Preflight", "Distribute", "Grow"];
+
+const SURVEY_QUESTIONS = [
+  { key: "accuracy", question: "How accurate were the responses?", chips: ["Spot on", "Mostly good", "Needs work", "Way off"] },
+  { key: "compliance", question: "Did compliance rules fire when they should?", chips: ["Yes, every time", "Missed some", "Didn't test this", "No rules fired"] },
+  { key: "tone", question: "How was the tone and style?", chips: ["Perfect", "Too formal", "Too casual", "Inconsistent"] },
+  { key: "readiness", question: "Is this worker ready for subscribers?", chips: ["Ship it", "Almost — minor tweaks", "Needs more work", "Start over"] },
+];
 
 const VERTICALS = [
   { value: "auto", label: "Auto Dealerships" },
@@ -165,7 +173,16 @@ export default function DeveloperSandbox() {
   if (savedSession.current === null) {
     try {
       const raw = localStorage.getItem("ta_sandbox_session");
-      if (raw) savedSession.current = JSON.parse(raw);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        // Migrate old 6-step sessions to 7-step (added Preflight at step 5)
+        if (!parsed._v || parsed._v < 2) {
+          if (parsed.flowStep >= 5) parsed.flowStep = parsed.flowStep + 1;
+          if (parsed.maxFlowStep >= 5) parsed.maxFlowStep = parsed.maxFlowStep + 1;
+          parsed._v = 2;
+        }
+        savedSession.current = parsed;
+      }
     } catch {}
   }
 
@@ -216,16 +233,23 @@ export default function DeveloperSandbox() {
       localStorage.setItem("ta_sandbox_session", JSON.stringify({
         vertical, subjectDomain, selectedIdea, vibeStep, vibeAnswers,
         workerCardData, worker, jurisdiction, flowStep, maxFlowStep, showWorkerCard,
+        surveyStep, surveyAnswers, surveyComplete, testExchangeCount, _v: 2,
       }));
       if (workerCardData?.name) {
         sessionStorage.setItem("ta_sandbox_worker_name", workerCardData.name);
       }
     } catch {}
-  }, [vertical, subjectDomain, selectedIdea, vibeStep, vibeAnswers, workerCardData, worker, jurisdiction, flowStep, maxFlowStep, showWorkerCard]);
+  }, [vertical, subjectDomain, selectedIdea, vibeStep, vibeAnswers, workerCardData, worker, jurisdiction, flowStep, maxFlowStep, showWorkerCard, surveyStep, surveyAnswers, surveyComplete, testExchangeCount]);
 
   // Image attachments
   const [pendingImages, setPendingImages] = useState([]);
   const fileInputRef = useRef(null);
+
+  // Step 4 — Test survey
+  const [surveyStep, setSurveyStep] = useState(() => savedSession.current?.surveyStep || 0);
+  const [surveyAnswers, setSurveyAnswers] = useState(() => savedSession.current?.surveyAnswers || {});
+  const [surveyComplete, setSurveyComplete] = useState(() => savedSession.current?.surveyComplete || false);
+  const [testExchangeCount, setTestExchangeCount] = useState(() => savedSession.current?.testExchangeCount || 0);
 
   // Edit mode (post-publish)
   const [editMode, setEditMode] = useState(false);
@@ -995,11 +1019,11 @@ export default function DeveloperSandbox() {
     try {
       const safeData = buildData || worker || {};
       setWorker(prev => ({ ...prev, ...safeData }));
-      advanceToStep(4); // Only forward
+      advanceToStep(4);
       fireConfetti("full");
       setTimeout(() => fireConfetti("medium"), 600);
       const name = safeData.name || workerCardData?.name || "your worker";
-      addAssistantMessage(`Your ${name} is built. Before we publish, let's make sure it works exactly the way you want. Use the test panel on the right like one of your subscribers would — I'm watching.`);
+      addAssistantMessage(`Your ${name} is built. Test it on the right — talk to it like a subscriber would. After a few exchanges I'll ask you a few quick questions about how it performed.`);
     } catch (e) {
       console.error("[handleBuildComplete] Error during transition:", e);
       addAssistantMessage("Build is complete, but there was a hiccup loading the test panel. Let me try again.");
@@ -1007,25 +1031,65 @@ export default function DeveloperSandbox() {
     }
   }
 
-  // ── Step 4 → Step 5: Test complete → Distribute ───────────
+  // ── Step 4 → Step 5: Test complete → Preflight ───────────
 
-  function handleTestComplete(publishedWorker) {
+  function handleTestComplete() {
+    advanceToStep(5);
+    addAssistantMessage("Testing complete. Now let's get the paperwork done — review each gate on the right and I'll submit for admin review when you're ready.");
+  }
+
+  // ── Step 5 → Step 6: Preflight complete → Distribute ───────────
+
+  function handlePreflightComplete(publishedWorker) {
     setWorker(publishedWorker);
-    advanceToStep(5); // Only forward
+    advanceToStep(6);
     fireConfetti("full");
     setTimeout(() => fireConfetti("medium"), 500);
     addAssistantMessage(`"${publishedWorker.name || workerCardData?.name}" is live. Your distribution kit is ready on the right. Copy, paste, and share.`);
   }
 
-  // ── Step 5 → Step 6: Distribution done → Grow ─────────────
+  // ── Step 6 → Step 7: Distribution done → Grow ─────────────
 
   function handleMoveToGrow() {
-    advanceToStep(6);
+    advanceToStep(7);
     addAssistantMessage("One last thing. Set up how you want me to stay in touch with you. I will send you weekly earnings updates, usage insights, and growth tips. No dashboard to log into — I come to you.");
   }
 
   function handleCommsComplete() {
     addAssistantMessage("You are all set. Your worker is live, your distribution kit is ready, and I will check in with you every week. Text me or email me anytime. Good luck out there.");
+  }
+
+  // ── Test survey (Alex guided) ──────────────────────────────
+
+  function handleTestExchange(count) {
+    setTestExchangeCount(count);
+    if (count === 3 && surveyStep === 0 && !surveyComplete) {
+      addAssistantMessage("You've tested a few exchanges. Quick survey — " + SURVEY_QUESTIONS[0].question);
+    }
+  }
+
+  function handleSurveyAnswer(answer) {
+    const q = SURVEY_QUESTIONS[surveyStep];
+    setSurveyAnswers(prev => ({ ...prev, [q.key]: answer }));
+    addUserMessage(answer);
+    if (surveyStep < SURVEY_QUESTIONS.length - 1) {
+      const nextStep = surveyStep + 1;
+      setSurveyStep(nextStep);
+      setTimeout(() => addAssistantMessage(SURVEY_QUESTIONS[nextStep].question), 500);
+    } else {
+      setSurveyComplete(true);
+      addAssistantMessage("Great — survey done. Click 'Continue to Preflight' below when you're ready.");
+      // Fire-and-forget audit trail
+      if (worker?.id) {
+        w1Api("worker:test:audit", {
+          workerId: worker.id,
+          testSessionId: sessionId,
+          exchanges: count || testExchangeCount,
+          surveyResponses: { ...surveyAnswers, [q.key]: answer },
+          testPassedAt: new Date().toISOString(),
+        });
+      }
+    }
   }
 
   // ── Post-publish edit ──────────────────────────────────────
@@ -1108,7 +1172,8 @@ export default function DeveloperSandbox() {
     : flowStep === 2 ? "Answer Alex's questions..."
     : flowStep === 3 ? "Ask Alex anything about the build..."
     : flowStep === 4 ? "Test your worker — describe any problems..."
-    : flowStep === 5 ? "Ask Alex for marketing help..."
+    : flowStep === 5 ? "Ask Alex about the preflight checklist..."
+    : flowStep === 6 ? "Ask Alex for marketing help..."
     : "Talk to Alex...";
 
   // ── Render ──────────────────────────────────────────────────
@@ -1228,6 +1293,43 @@ export default function DeveloperSandbox() {
                   {sd.label}
                 </button>
               ))}
+            </div>
+          )}
+
+          {/* Step 4: Survey chips — Alex guided test survey */}
+          {flowStep === 4 && !surveyComplete && testExchangeCount >= 3 && surveyStep < SURVEY_QUESTIONS.length && !sending && (
+            <div style={{ display: "flex", gap: 6, marginTop: 4, flexWrap: "wrap" }}>
+              {SURVEY_QUESTIONS[surveyStep].chips.map(chip => (
+                <button
+                  key={chip}
+                  style={{
+                    padding: "7px 14px", background: "rgba(107,70,193,0.08)", color: "#6B46C1",
+                    border: "1px solid rgba(107,70,193,0.15)", borderRadius: 20, fontSize: 13,
+                    cursor: "pointer", fontWeight: 500, whiteSpace: "nowrap",
+                    transition: "background 0.2s",
+                  }}
+                  onClick={() => handleSurveyAnswer(chip)}
+                  onMouseEnter={e => { e.currentTarget.style.background = "rgba(107,70,193,0.15)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = "rgba(107,70,193,0.08)"; }}
+                >
+                  {chip}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Step 4: Continue to Preflight — shown after survey completes */}
+          {flowStep === 4 && surveyComplete && (
+            <div style={{ marginTop: 8, display: "flex", justifyContent: "center" }}>
+              <button
+                onClick={handleTestComplete}
+                style={{
+                  padding: "10px 24px", background: "#6B46C1", color: "white",
+                  border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer",
+                }}
+              >
+                Continue to Preflight
+              </button>
             </div>
           )}
 
@@ -1459,6 +1561,7 @@ export default function DeveloperSandbox() {
             "Tell Alex what your worker should do",
             "Watch Alex build your worker live",
             "Test your worker before it goes live",
+            "Complete all gates before publishing",
             "Publish and share your worker",
             "Alex tracks your earnings and growth",
           ][flowStep - 1]}
@@ -1473,7 +1576,7 @@ export default function DeveloperSandbox() {
                   <div style={{ textAlign: "center", marginBottom: 32 }}>
                     <div style={{ fontSize: 22, fontWeight: 700, color: "#1a1a2e", marginBottom: 8 }}>Let's build your first Digital Worker together.</div>
                     <div style={{ fontSize: 14, color: "#64748B", lineHeight: 1.6 }}>
-                      Six steps. No code. Alex handles the hard parts.
+                      Seven steps. No code. Alex handles the hard parts.
                     </div>
                   </div>
 
@@ -1485,6 +1588,7 @@ export default function DeveloperSandbox() {
                         "Answer 8 questions so Alex knows what to build",
                         "Alex assembles compliance rules and logic",
                         "Talk to your worker as a subscriber would",
+                        "Complete all gates before going live",
                         "Get your marketing kit — links, copy, QR code",
                         "Set up weekly check-ins from Alex",
                       ];
@@ -1661,7 +1765,7 @@ export default function DeveloperSandbox() {
                   worker={worker}
                   workerCardData={workerCardData}
                   sessionId={sessionId}
-                  onTestComplete={handleTestComplete}
+                  onExchange={handleTestExchange}
                 />
               ) : (
                 <div style={{ padding: 40, textAlign: "center" }}>
@@ -1672,8 +1776,23 @@ export default function DeveloperSandbox() {
             </PanelErrorBoundary>
           )}
 
-          {/* Step 5 — Distribute */}
+          {/* Step 5 — Preflight */}
           {flowStep === 5 && (
+            <PanelErrorBoundary
+              recoverLabel="Back to Test"
+              onRecover={() => viewStep(4)}
+            >
+              <PublishPreflight
+                worker={worker}
+                workerCardData={workerCardData}
+                sessionId={sessionId}
+                onPublish={handlePreflightComplete}
+              />
+            </PanelErrorBoundary>
+          )}
+
+          {/* Step 6 — Distribute */}
+          {flowStep === 6 && (
             <>
               <DistributionKit worker={worker} workerCardData={workerCardData} />
               <div style={{ marginTop: 20, textAlign: "center" }}>
@@ -1684,8 +1803,8 @@ export default function DeveloperSandbox() {
             </>
           )}
 
-          {/* Step 6 — Grow */}
-          {flowStep === 6 && (
+          {/* Step 7 — Grow */}
+          {flowStep === 7 && (
             <CommsPreferences
               worker={worker}
               workerCardData={workerCardData}

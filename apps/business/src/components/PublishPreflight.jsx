@@ -44,7 +44,7 @@ const GATES = [
   { id: "adminReview", label: "Admin Review", desc: "TitleApp reviews every worker before it goes live. This is auto-submitted once all other gates pass." },
 ];
 
-export default function PublishPreflight({ worker, workerCardData, onAllPassed, onGateError }) {
+export default function PublishPreflight({ worker, workerCardData, sessionId, onPublish, onGateError }) {
   const testMode = isTestMode();
 
   const [gates, setGates] = useState({
@@ -69,7 +69,19 @@ export default function PublishPreflight({ worker, workerCardData, onAllPassed, 
   const [cvSummary, setCvSummary] = useState("");
   const [cvGenerating, setCvGenerating] = useState(false);
 
-  // Load existing gate status
+  // Blockchain toggle
+  const [blockchainEnabled, setBlockchainEnabled] = useState(false);
+
+  // Publish state
+  const [publishing, setPublishing] = useState(false);
+
+  // MD gate
+  const needsMdGate = workerCardData?.mdGateRequired || false;
+  const [mdName, setMdName] = useState("");
+  const [mdNpi, setMdNpi] = useState("");
+  const [mdSigned, setMdSigned] = useState(false);
+
+  // Load existing gate status + blockchain settings
   useEffect(() => {
     async function loadGates() {
       try {
@@ -89,6 +101,16 @@ export default function PublishPreflight({ worker, workerCardData, onAllPassed, 
             stripeConnect: !!data.stripeConnected,
           }));
         }
+        // Load blockchain setting
+        const wId = workerCardData?.id || worker?.id;
+        const tId = workerCardData?.tenantId || sessionId;
+        if (wId && tId) {
+          const sRes = await fetch(`${API_BASE}/api?path=/v1/worker:settings&workerId=${wId}`, {
+            headers: { Authorization: `Bearer ${token}`, "X-Tenant-Id": tId },
+          });
+          const sData = await sRes.json();
+          if (sData.ok) setBlockchainEnabled(sData.settings?.blockchainEnabled || false);
+        }
       } catch {}
       setLoading(false);
     }
@@ -106,9 +128,7 @@ export default function PublishPreflight({ worker, workerCardData, onAllPassed, 
     }
   }, [prereqsMet]);
 
-  useEffect(() => {
-    if (allPassed && onAllPassed) onAllPassed(true);
-  }, [allPassed]);
+  const canPublish = allPassed && (!needsMdGate || mdSigned);
 
   async function submitForAdminReview() {
     setAdminSubmitted(true);
@@ -287,6 +307,55 @@ export default function PublishPreflight({ worker, workerCardData, onAllPassed, 
   const gateValue = (id) => !!gates[id];
   const completedCount = Object.values(gates).filter(v => !!v).length;
   const totalGates = GATES.length;
+
+  async function handlePublish() {
+    if (!canPublish) return;
+    setPublishing(true);
+    try {
+      const token = await getToken();
+      const tenantId = localStorage.getItem("TENANT_ID");
+      const res = await fetch(`${API_BASE}/api?path=/v1/worker1:submit`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+          "X-Tenant-Id": tenantId,
+          "X-Vertical": "developer",
+          "X-Jurisdiction": "GLOBAL",
+        },
+        body: JSON.stringify({
+          tenantId,
+          workerId: worker?.id,
+          pricingTier: worker?.pricingTier || workerCardData?.pricingTier || 2,
+          ...(needsMdGate && { mdName, mdNpi }),
+        }),
+      });
+      const data = await res.json();
+      if (data.ok && onPublish) {
+        onPublish({ ...worker, buildPhase: "live", pricingTier: worker?.pricingTier || 2 });
+      } else if (!data.ok) {
+        setError(data.error || "Publish failed");
+      }
+    } catch {
+      setError("Connection error. Try again.");
+    }
+    setPublishing(false);
+  }
+
+  async function handleBlockchainToggle() {
+    const next = !blockchainEnabled;
+    setBlockchainEnabled(next);
+    try {
+      const token = await getToken();
+      const wId = workerCardData?.id || worker?.id;
+      const tId = workerCardData?.tenantId || sessionId;
+      await fetch(`${API_BASE}/api?path=/v1/worker:settings`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ tenantId: tId, workerId: wId, blockchainEnabled: next }),
+      });
+    } catch {}
+  }
 
   const S = {
     container: { maxWidth: 560 },
@@ -477,17 +546,72 @@ export default function PublishPreflight({ worker, workerCardData, onAllPassed, 
         <div style={{ fontSize: 12, color: "#dc2626", marginTop: 8 }}>{error}</div>
       )}
 
-      {allPassed && (
-        <div style={{
-          marginTop: 16, padding: "16px 20px", background: "rgba(16,185,129,0.06)",
-          border: "1px solid rgba(16,185,129,0.2)", borderRadius: 10, textAlign: "center",
-        }}>
-          <div style={{ fontSize: 15, fontWeight: 600, color: "#10b981", marginBottom: 4 }}>
-            All gates passed
+      {/* MD Gate — only for health vertical workers */}
+      {needsMdGate && (
+        <div style={{ background: "#FFFFFF", border: "1px solid rgba(220,38,38,0.3)", borderRadius: 12, padding: 16, marginTop: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+            <div style={{ width: 8, height: 8, borderRadius: 4, background: "#dc2626" }} />
+            <div style={{ fontSize: 13, fontWeight: 600, color: "#dc2626" }}>Medical Director Co-Sign Required</div>
           </div>
-          <div style={{ fontSize: 13, color: "#64748B" }}>
-            Your worker is ready to publish. Click "Publish" below.
+          <div style={{ fontSize: 12, color: "#64748B", lineHeight: 1.5, marginBottom: 12 }}>
+            This worker provides clinical protocol or drug reference content. A Medical Director must co-sign before it can go live.
           </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <input style={{ width: "100%", padding: "8px 10px", background: "#F8F9FC", border: "1px solid #E2E8F0", borderRadius: 6, color: "#1a1a2e", fontSize: 13, outline: "none" }} value={mdName} onChange={e => setMdName(e.target.value)} placeholder="Medical Director name" />
+            <input style={{ width: "100%", padding: "8px 10px", background: "#F8F9FC", border: "1px solid #E2E8F0", borderRadius: 6, color: "#1a1a2e", fontSize: 13, outline: "none" }} value={mdNpi} onChange={e => setMdNpi(e.target.value)} placeholder="NPI number" />
+            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", background: "#F8F9FC", borderRadius: 6, cursor: "pointer" }} onClick={() => setMdSigned(!mdSigned)}>
+              <input type="checkbox" checked={mdSigned} readOnly style={{ accentColor: "#6B46C1" }} />
+              <span style={{ fontSize: 12, color: "#1a1a2e" }}>Medical Director has reviewed and agrees to co-sign</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Blockchain Record Keeping Toggle */}
+      <div style={{
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        padding: "12px 14px", background: "#F8F9FC", borderRadius: 8, marginTop: 16,
+        border: "1px solid #E2E8F0",
+      }}>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a2e" }}>Blockchain Record Keeping</div>
+          <div style={{ fontSize: 11, color: "#64748B", marginTop: 2 }}>
+            Each audit record is hashed on-chain. Subscribers see a "Blockchain-verified" badge.
+          </div>
+        </div>
+        <div
+          onClick={handleBlockchainToggle}
+          style={{
+            width: 40, height: 22, borderRadius: 11, cursor: "pointer",
+            background: blockchainEnabled ? "#6B46C1" : "#CBD5E1",
+            position: "relative", transition: "background 0.2s", flexShrink: 0,
+          }}
+        >
+          <div style={{
+            width: 18, height: 18, borderRadius: 9, background: "white",
+            position: "absolute", top: 2, left: blockchainEnabled ? 20 : 2,
+            transition: "left 0.2s", boxShadow: "0 1px 2px rgba(0,0,0,0.15)",
+          }} />
+        </div>
+      </div>
+
+      {/* Publish button */}
+      <button
+        style={{
+          width: "100%", padding: "14px 24px", fontSize: 15, fontWeight: 700, marginTop: 16,
+          background: canPublish ? "#6B46C1" : "#E2E8F0",
+          color: canPublish ? "white" : "#94A3B8",
+          border: "none", borderRadius: 10,
+          cursor: canPublish ? "pointer" : "not-allowed",
+        }}
+        onClick={handlePublish}
+        disabled={publishing || !canPublish}
+      >
+        {publishing ? "Publishing..." : canPublish ? "Looks good — publish it" : "Complete all gates above to publish"}
+      </button>
+      {!allPassed && (
+        <div style={{ fontSize: 11, color: "#94A3B8", textAlign: "center", marginTop: 6 }}>
+          {completedCount} of {totalGates} gates complete.
         </div>
       )}
     </div>

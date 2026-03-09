@@ -1258,8 +1258,8 @@ exports.api = onRequest(
                   cards: [{
                     type: 'terms',
                     data: {
-                      termsUrl: 'https://title-app-alpha.web.app/terms',
-                      privacyUrl: 'https://title-app-alpha.web.app/privacy',
+                      termsUrl: 'https://app.titleapp.ai/legal/terms-of-service',
+                      privacyUrl: 'https://app.titleapp.ai/legal/privacy-policy',
                       summary: "Your records are yours. We verify and secure them. We don't sell your data. You can export or delete anytime.",
                     },
                   }],
@@ -1939,8 +1939,8 @@ Message 8+: If they seem interested, gently offer to set it up. "I can have this
                   cards: [{
                     type: 'terms',
                     data: {
-                      termsUrl: 'https://title-app-alpha.web.app/terms',
-                      privacyUrl: 'https://title-app-alpha.web.app/privacy',
+                      termsUrl: 'https://app.titleapp.ai/legal/terms-of-service',
+                      privacyUrl: 'https://app.titleapp.ai/legal/privacy-policy',
                       summary: "Your records are yours. We verify and secure them. We don't sell your data. You can export or delete anytime.",
                     },
                   }],
@@ -4094,6 +4094,35 @@ These should be 2-3 realistic test scenarios the creator should try, derived fro
         });
       } catch (e) {
         console.error("[worker:test:chat] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // POST /v1/worker:test:audit — Write test session audit trail
+    if (route === "/worker:test:audit" && method === "POST") {
+      const { workerId, testSessionId, exchanges, surveyResponses, testPassedAt } = body;
+      if (!workerId) return res.json({ ok: false, error: "Missing workerId" });
+      try {
+        const tenantId = req.headers["x-tenant-id"] || body.tenantId;
+        const sessionDocId = testSessionId || `ts_${Date.now()}`;
+        const auditData = {
+          workerId,
+          testSessionId: sessionDocId,
+          exchanges: exchanges || 0,
+          surveyResponses: surveyResponses || {},
+          testPassedAt: testPassedAt || new Date().toISOString(),
+          testedBy: user.uid,
+          tenantId: tenantId || null,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        };
+        if (tenantId) {
+          await db.collection(`tenants/${tenantId}/workers/${workerId}/testSessions`).doc(sessionDocId).set(auditData);
+        } else {
+          await db.collection(`testSessions`).doc(sessionDocId).set(auditData);
+        }
+        return res.json({ ok: true, testSessionId: sessionDocId });
+      } catch (e) {
+        console.error("[worker:test:audit] error:", e.message);
         return res.json({ ok: false, error: e.message });
       }
     }
