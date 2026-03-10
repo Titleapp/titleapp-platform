@@ -60,6 +60,7 @@ import CreatorApplication from "./pages/CreatorApplication";
 import WorkerWaitlistPage from "./pages/WorkerWaitlistPage";
 import WorkerMarketplace, { WORKER_ROUTES } from "./pages/WorkerMarketplace";
 import WorkerDetailPage from "./pages/WorkerDetailPage";
+import LegalPage from "./pages/LegalPage";
 import AutoLanding from "./pages/landing/AutoLanding";
 import TitleEscrowLanding from "./pages/landing/TitleEscrowLanding";
 import PropertyMgmtLanding from "./pages/landing/PropertyMgmtLanding";
@@ -4093,6 +4094,30 @@ function AdminShell({ onBackToHub }) {
   );
 }
 
+// Top-level error boundary for Sandbox — catches render crashes before blank screen
+class SandboxErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { hasError: false }; }
+  static getDerivedStateFromError() { return { hasError: true }; }
+  componentDidCatch(e, info) { console.error("[SandboxErrorBoundary]", e, info?.componentStack); }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F8F9FC" }}>
+          <div style={{ textAlign: "center", maxWidth: 400 }}>
+            <div style={{ fontSize: 20, fontWeight: 600, color: "#6B46C1", marginBottom: 12 }}>TitleApp</div>
+            <div style={{ fontSize: 15, color: "#1a1a2e", marginBottom: 16 }}>Something went wrong loading the sandbox.</div>
+            <button onClick={() => { this.setState({ hasError: false }); window.location.reload(); }}
+              style={{ padding: "10px 24px", background: "#6B46C1", color: "white", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+              Reload
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export default function App() {
   // ── /invest/room route intercept ──────────────────────────
   // Completely standalone investor experience — bypasses AdminShell, WorkspaceHub, etc.
@@ -4127,7 +4152,13 @@ export default function App() {
   const isDevelopersLanding = /^\/developers\/?$/.test(window.location.pathname);
   const isPilotLanding = /^\/pilot\/?$/.test(window.location.pathname);
 
+  // ── /legal/:slug route intercept ─────────────────────────
+  const legalSlugMatch = window.location.pathname.match(/^\/legal\/([a-z0-9-]+)\/?$/);
+  const legalSlug = legalSlugMatch ? legalSlugMatch[1] : null;
+  const isLegalPage = !!legalSlug;
+
   const [sandboxReady, setSandboxReady] = useState(isSandbox ? false : null);
+  const [authResolved, setAuthResolved] = useState(false); // true once onAuthStateChanged fires at least once
 
   const [token, setToken] = useState(() =>
     typeof window !== "undefined" ? localStorage.getItem("ID_TOKEN") : null
@@ -4209,6 +4240,7 @@ export default function App() {
         localStorage.removeItem("ID_TOKEN");
         setToken(null);
       }
+      setAuthResolved(true);
     });
 
     return () => {
@@ -4229,10 +4261,13 @@ export default function App() {
     }
   }, [isInvestorRoom, token, handoffInProgress]);
 
-  // ── Sandbox: mark ready once auth completes ──
+  // ── Sandbox: mark ready once auth fully resolves ──
+  // Wait for onAuthStateChanged to fire at least once (authResolved) so we have
+  // a real token (or confirmed null), not a stale localStorage value.
   useEffect(() => {
     if (!isSandbox) return;
     if (handoffInProgress) return;
+    if (!authResolved) return; // wait for Firebase Auth to settle
     if (token) {
       // Store display name for sandbox greeting
       if (auth.currentUser?.displayName) {
@@ -4257,9 +4292,9 @@ export default function App() {
       }
       setSandboxReady(true);
     } else {
-      setSandboxReady(true); // will render redirect below
+      setSandboxReady(true); // unauthenticated — sandbox still loads (inline signup flow)
     }
-  }, [isSandbox, token, handoffInProgress]);
+  }, [isSandbox, token, handoffInProgress, authResolved]);
 
   // After auth resolves, decide where to go
   useEffect(() => {
@@ -4562,7 +4597,11 @@ export default function App() {
         </div>
       );
     }
-    return <DeveloperSandbox />;
+    return (
+      <SandboxErrorBoundary>
+        <DeveloperSandbox />
+      </SandboxErrorBoundary>
+    );
   }
 
   // ── Marketplace Listing: public, no auth required ───────────
@@ -4616,6 +4655,9 @@ export default function App() {
       </div>
     );
   }
+
+  // ── Legal pages: no auth required ────────────────────────────
+  if (isLegalPage) return <LegalPage slug={legalSlug} />;
 
   // ── Vertical landing pages: no auth required ────────────────
   if (isAutoLanding) return <AutoLanding />;
