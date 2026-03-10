@@ -416,7 +416,16 @@ export default function TestWorkerPanel({ worker, workerCardData, sessionId, onE
             ))}
           </div>
         )}
-        {sending && <div style={{ color: "#94A3B8", fontSize: 12, padding: "4px 0" }}>{workerName} is thinking...</div>}
+        {sending && (
+          <>
+            <style>{`@keyframes thinkBounce { 0%, 60%, 100% { transform: translateY(0) } 30% { transform: translateY(-4px) } }`}</style>
+            <div style={{ alignSelf: "flex-start", background: "#F4F4F8", padding: "10px 14px", borderRadius: "12px 12px 12px 4px", display: "flex", alignItems: "center", gap: 3 }}>
+              {[0, 0.15, 0.3].map((d, i) => (
+                <span key={i} style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: "#94A3B8", animation: `thinkBounce 1.2s ease-in-out ${d}s infinite` }} />
+              ))}
+            </div>
+          </>
+        )}
         {authError && (
           <div style={{ alignSelf: "center", padding: "8px 16px", background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 8, fontSize: 12, color: "#1a1a2e", textAlign: "center" }}>
             Having trouble connecting —{" "}

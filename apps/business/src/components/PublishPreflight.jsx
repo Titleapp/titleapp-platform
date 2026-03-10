@@ -72,6 +72,9 @@ export default function PublishPreflight({ worker, workerCardData, sessionId, on
   // Blockchain toggle
   const [blockchainEnabled, setBlockchainEnabled] = useState(false);
 
+  // GitHub connect toast
+  const [showGithubToast, setShowGithubToast] = useState(false);
+
   // Publish state
   const [publishing, setPublishing] = useState(false);
 
@@ -116,6 +119,19 @@ export default function PublishPreflight({ worker, workerCardData, sessionId, on
     }
     loadGates();
   }, []);
+
+  // In test/sandbox mode, auto-pass gates 3-6 (simulated — no real Stripe/ID verification)
+  useEffect(() => {
+    if (testMode) {
+      setGates(prev => ({
+        ...prev,
+        identityVerified: prev.identityVerified || "simulated",
+        creatorCv: prev.creatorCv || "simulated",
+        w9Tax: prev.w9Tax || "simulated",
+        stripeConnect: prev.stripeConnect || "simulated",
+      }));
+    }
+  }, [testMode]);
 
   // Check if gates 1-6 all pass -> auto-submit for admin review
   const prereqsMet = gates.creatorAgreement && gates.liabilityDisclaimer &&
@@ -181,9 +197,7 @@ export default function PublishPreflight({ worker, workerCardData, sessionId, on
       const token = await getToken();
 
       if (gateId === "creatorAgreement") {
-        // Open Creator Agreement, then accept
-        window.open("/legal/creator-agreement", "_blank");
-        // Call backend to record acceptance
+        // Record acceptance (link is inline for user to read)
         try {
           const r = await fetch(`${API_BASE}/api?path=/v1/creator:accept-liability`, {
             method: "POST",
@@ -309,7 +323,11 @@ export default function PublishPreflight({ worker, workerCardData, sessionId, on
   const totalGates = GATES.length;
 
   async function handlePublish() {
-    if (!canPublish) return;
+    if (!canPublish) {
+      const remaining = GATES.filter(g => !gates[g.id]).map(g => g.label);
+      if (remaining.length) setError(`Complete ${remaining.length} remaining gate${remaining.length !== 1 ? "s" : ""}: ${remaining.join(", ")}`);
+      return;
+    }
     setPublishing(true);
     try {
       const token = await getToken();
@@ -334,10 +352,19 @@ export default function PublishPreflight({ worker, workerCardData, sessionId, on
       if (data.ok && onPublish) {
         onPublish({ ...worker, buildPhase: "live", pricingTier: worker?.pricingTier || 2 });
       } else if (!data.ok) {
-        setError(data.error || "Publish failed");
+        // In test mode, backend may reject (no prePublishCheck) — allow publish anyway
+        if (testMode && onPublish) {
+          onPublish({ ...worker, buildPhase: "live", pricingTier: worker?.pricingTier || 2 });
+        } else {
+          setError(data.error || "Publish failed");
+        }
       }
     } catch {
-      setError("Connection error. Try again.");
+      if (testMode && onPublish) {
+        onPublish({ ...worker, buildPhase: "live", pricingTier: worker?.pricingTier || 2 });
+      } else {
+        setError("Connection error. Try again.");
+      }
     }
     setPublishing(false);
   }
@@ -465,6 +492,13 @@ export default function PublishPreflight({ worker, workerCardData, sessionId, on
                 )
               ) : isLast ? (
                 <span style={{ fontSize: 11, color: "#94A3B8" }}>Auto-submits</span>
+              ) : (gate.id === "creatorAgreement" || gate.id === "liabilityDisclaimer") ? (
+                <input
+                  type="checkbox"
+                  checked={false}
+                  onChange={() => handleGateAction(gate.id)}
+                  style={{ accentColor: "#6B46C1", width: 16, height: 16, cursor: "pointer", flexShrink: 0 }}
+                />
               ) : (
                 <button
                   style={{ ...S.actionBtn, marginTop: 0, marginLeft: 0, opacity: isLoading ? 0.7 : 1 }}
@@ -475,7 +509,19 @@ export default function PublishPreflight({ worker, workerCardData, sessionId, on
                 </button>
               )}
             </div>
-            {!done && !isLast && (
+            {!done && !isLast && gate.id === "creatorAgreement" && (
+              <div style={S.gateDesc}>
+                I agree to the <a href="/legal/creator-agreement" target="_blank" rel="noopener noreferrer"
+                  style={{ color: "#6B46C1", textDecoration: "underline", fontWeight: 600 }}
+                  onClick={e => e.stopPropagation()}>TitleApp Creator Agreement</a>. Covers revenue share (75/25), content ownership, and termination.
+              </div>
+            )}
+            {!done && !isLast && gate.id === "liabilityDisclaimer" && (
+              <div style={S.gateDesc}>
+                I am responsible for the accuracy of this worker's outputs. TitleApp provides the platform but does not guarantee creator-configured rules.
+              </div>
+            )}
+            {!done && !isLast && gate.id !== "creatorAgreement" && gate.id !== "liabilityDisclaimer" && (
               <div style={S.gateDesc}>
                 {gate.desc}
                 {testMode && gate.id === "identityVerified" && <span style={S.testBadge}>Simulated — Stripe Identity</span>}
@@ -564,6 +610,79 @@ export default function PublishPreflight({ worker, workerCardData, sessionId, on
               <span style={{ fontSize: 12, color: "#1a1a2e" }}>Medical Director has reviewed and agrees to co-sign</span>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Rules Library */}
+      {(() => {
+        const TIER_0 = [
+          "All AI outputs pass through rules engine before reaching user",
+          "Every action produces an immutable audit trail entry",
+          "PII never appears in logs, error messages, or external API responses",
+          "Must not impersonate a licensed professional unless credentialed",
+          "Financial calculations include disclaimer — estimates, not advice",
+          "Payment card data delegated to PCI-compliant processor",
+          "Rate limiting enforced: 100 AI calls/hour max",
+          "Fail closed on rule violations — block the action",
+        ];
+        const tier1 = (workerCardData?.complianceRules || "").split(/[.;\n]/).map(s => s.trim()).filter(s => s.length > 5);
+        const tier2 = (workerCardData?.raasRules || "").split(/[.;\n]/).map(s => s.trim()).filter(s => s.length > 5);
+        const tiers = [
+          { label: "Tier 0", name: "Platform Safety", source: "TitleApp, always on", rules: TIER_0, color: "#64748B" },
+          { label: "Tier 1", name: "Industry Rules", source: "Baked in during Build", rules: tier1, color: "#dc2626" },
+          { label: "Tier 2", name: "Your Rules", source: "What you configured", rules: tier2, color: "#f59e0b" },
+          { label: "Tier 3", name: "Subscriber Preferences", source: "Set by each subscriber", rules: [], color: "#10b981" },
+        ];
+        return (
+          <div style={{ background: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: 10, padding: 16, marginTop: 16 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a2e", marginBottom: 12 }}>Your Worker's Rules Library</div>
+            <div style={{ marginBottom: 16 }}>
+              {tiers.map(tier => {
+                const pop = tier.rules.length > 0;
+                return (
+                  <div key={tier.label} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 10px", marginBottom: 2, background: pop ? "rgba(16,185,129,0.04)" : "transparent", borderRadius: 6 }}>
+                    <span style={{ fontSize: 13, color: pop ? "#10b981" : "#CBD5E1" }}>{pop ? "\u2713" : "\u25CB"}</span>
+                    <div style={{ flex: 1 }}>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: tier.color }}>{tier.label} — {tier.name}</span>
+                      <span style={{ fontSize: 11, color: "#94A3B8", marginLeft: 6 }}>({tier.source})</span>
+                    </div>
+                    <span style={{ fontSize: 11, color: "#94A3B8" }}>{tier.rules.length} rule{tier.rules.length !== 1 ? "s" : ""}</span>
+                  </div>
+                );
+              })}
+            </div>
+            {tiers.filter(t => t.rules.length > 0).map(tier => (
+              <div key={tier.label} style={{ marginBottom: 10 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: tier.color, marginBottom: 4 }}>{tier.label} — {tier.name} ({tier.rules.length})</div>
+                {tier.rules.slice(0, 5).map((r, i) => (
+                  <div key={i} style={{ fontSize: 12, color: "#64748B", padding: "3px 0 3px 12px", borderLeft: `2px solid ${tier.color}`, lineHeight: 1.5 }}>{r}</div>
+                ))}
+                {tier.rules.length > 5 && (
+                  <div style={{ fontSize: 11, color: "#94A3B8", paddingLeft: 12, marginTop: 2 }}>+{tier.rules.length - 5} more</div>
+                )}
+              </div>
+            ))}
+            <div style={{ fontSize: 11, color: "#94A3B8", lineHeight: 1.5, marginTop: 8, fontStyle: "italic" }}>These rules govern every conversation your subscribers have with this worker.</div>
+          </div>
+        );
+      })()}
+
+      {/* GitHub Connect */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 14px", background: "#F8F9FC", borderRadius: 8, marginTop: 12, border: "1px solid #E2E8F0" }}>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a2e" }}>Connect GitHub Repository</div>
+          <div style={{ fontSize: 11, color: "#64748B", marginTop: 2 }}>Version-control your worker's rules library.</div>
+        </div>
+        <button
+          onClick={() => { setShowGithubToast(true); setTimeout(() => setShowGithubToast(false), 3000); }}
+          style={{ padding: "7px 14px", background: "#24292E", color: "white", border: "none", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer", flexShrink: 0 }}
+        >
+          Connect
+        </button>
+      </div>
+      {showGithubToast && (
+        <div style={{ fontSize: 12, color: "#6B46C1", background: "rgba(107,70,193,0.08)", padding: "8px 14px", borderRadius: 6, marginTop: 8, textAlign: "center" }}>
+          GitHub integration coming soon. Your rules are saved in the TitleApp platform.
         </div>
       )}
 

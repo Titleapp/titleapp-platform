@@ -317,19 +317,21 @@ export default function DeveloperSandbox() {
   const [signupPromptShown, setSignupPromptShown] = useState(false); // guard: fire once only
   const [authEmail, setAuthEmail] = useState(() => new URLSearchParams(window.location.search).get("email") || "");
   const [authName, setAuthName] = useState(() => new URLSearchParams(window.location.search).get("name") || "");
+  const [pastedSpec] = useState(() => new URLSearchParams(window.location.search).get("spec") || "");
   const [authLoading, setAuthLoading] = useState(false);
   const [pendingCardData, setPendingCardData] = useState(null);
 
   // Session error (silent inline UI, not Alex conversation)
   const [showSessionError, setShowSessionError] = useState(false);
 
-  // Clean PII from URL params on mount
+  // Clean PII and spec from URL params on mount
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.has("email") || params.has("name")) {
+    if (params.has("email") || params.has("name") || params.has("spec")) {
       const url = new URL(window.location.href);
       url.searchParams.delete("email");
       url.searchParams.delete("name");
+      url.searchParams.delete("spec");
       window.history.replaceState({}, "", url.pathname + url.search);
     }
   }, []);
@@ -443,6 +445,24 @@ export default function DeveloperSandbox() {
       }
       addAssistantMessage(greeting);
 
+      // Auto-send pasted spec from landing page (via ?spec= URL param)
+      if (pastedSpec) {
+        setTimeout(() => {
+          addUserMessage(pastedSpec);
+          addAssistantMessage("Got it — reading through this now.\n\nThinking it through in another tool first is actually a great way to come in with a clear idea. That's exactly what this is for.");
+          setFlowStep(2);
+          setVibeFastTrack("paste");
+          const extracted = extractVibeFromPaste(pastedSpec);
+          if (!extracted.problemDescription) extracted.problemDescription = pastedSpec.substring(0, 500);
+          const bulkAnswers = {};
+          for (const [key, val] of Object.entries(extracted)) {
+            if (key === "jurisdiction") setJurisdiction(val);
+            bulkAnswers[key] = val;
+          }
+          setVibeAnswers(prev => ({ ...prev, ...bulkAnswers }));
+        }, 600);
+      }
+
       // Flow step is now restored from persisted session via useState initializers
       // No need to re-set here — flowStep and maxFlowStep are already correct
     }
@@ -530,6 +550,24 @@ export default function DeveloperSandbox() {
       ? `Welcome, ${firstName}. I'm Alex. Let's build your first Digital Worker. What is your specialty?`
       : "I'm Alex. Let's build your first Digital Worker. What industry are you in?";
     addAssistantMessage(greeting);
+
+    // Auto-send pasted spec from landing page (via ?spec= URL param)
+    if (pastedSpec) {
+      setTimeout(() => {
+        addUserMessage(pastedSpec);
+        addAssistantMessage("Got it — reading through this now.\n\nThinking it through in another tool first is actually a great way to come in with a clear idea. That's exactly what this is for.");
+        setFlowStep(2);
+        setVibeFastTrack("paste");
+        const extracted = extractVibeFromPaste(pastedSpec);
+        if (!extracted.problemDescription) extracted.problemDescription = pastedSpec.substring(0, 500);
+        const bulkAnswers = {};
+        for (const [key, val] of Object.entries(extracted)) {
+          if (key === "jurisdiction") setJurisdiction(val);
+          bulkAnswers[key] = val;
+        }
+        setVibeAnswers(prev => ({ ...prev, ...bulkAnswers }));
+      }, 600);
+    }
   }
 
   // ── Step 1 handlers ──────────────────────────────────────────
@@ -1485,7 +1523,16 @@ For starterPrompts: Write 3 short (under 10 words each) conversation starters a 
               {msg.text}
             </div>
           ))}
-          {sending && <div style={S.typing}>Alex is typing...</div>}
+          {sending && (
+            <>
+              <style>{`@keyframes thinkBounce { 0%, 60%, 100% { transform: translateY(0) } 30% { transform: translateY(-4px) } }`}</style>
+              <div style={{ alignSelf: "flex-start", background: "#F4F4F8", padding: "10px 14px", borderRadius: "14px 14px 14px 4px", display: "flex", alignItems: "center", gap: 3 }}>
+                {[0, 0.15, 0.3].map((d, i) => (
+                  <span key={i} style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: "#94A3B8", animation: `thinkBounce 1.2s ease-in-out ${d}s infinite` }} />
+                ))}
+              </div>
+            </>
+          )}
 
           {/* Step 2: Fast track chips — shown before Vibe questions start */}
           {flowStep === 2 && vibeFastTrack === "pending" && !sending && (
