@@ -159,6 +159,48 @@ async function w1Api(endpoint, payload) {
   }
 }
 
+// BUG-001: Fallback when test panel can't load because worker.id is missing
+function TestPanelFallback({ worker, workerCardData, onReady, onBack }) {
+  const [elapsed, setElapsed] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setElapsed(e => e + 1), 1000);
+    return () => clearInterval(t);
+  }, []);
+  // After 3 seconds, auto-recover by generating an id
+  useEffect(() => {
+    if (elapsed >= 3 && worker && !worker.id) {
+      const generated = { ...worker, id: "wkr_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8) };
+      onReady(generated);
+    }
+  }, [elapsed, worker, onReady]);
+
+  const name = workerCardData?.name || worker?.name || "your worker";
+  if (elapsed < 3) {
+    return (
+      <div style={{ padding: 40, textAlign: "center" }}>
+        <div style={{ fontSize: 16, fontWeight: 600, color: "#1a1a2e", marginBottom: 8 }}>Loading test panel...</div>
+        <div style={{ fontSize: 14, color: "#64748B" }}>Setting up {name} for testing.</div>
+      </div>
+    );
+  }
+  return (
+    <div style={{ padding: 40, textAlign: "center" }}>
+      <div style={{ fontSize: 16, fontWeight: 600, color: "#1a1a2e", marginBottom: 8 }}>Recovering test panel...</div>
+      <div style={{ fontSize: 14, color: "#64748B", marginBottom: 16 }}>Reconnecting to {name}.</div>
+      <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+        <button onClick={() => { const w = { ...(worker || {}), id: "wkr_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8), name: workerCardData?.name }; onReady(w); }}
+          style={{ padding: "10px 24px", background: "#6B46C1", color: "white", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+          Retry
+        </button>
+        <button onClick={onBack}
+          style={{ padding: "10px 24px", background: "#F1F5F9", color: "#64748B", border: "1px solid #E2E8F0", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+          Back to Worker Card
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── Main Component ────────────────────────────────────────────
 export default function DeveloperSandbox() {
   // Chat state
@@ -189,6 +231,10 @@ export default function DeveloperSandbox() {
         }
         if (typeof parsed.flowStep !== "number" || parsed.flowStep < 1) parsed.flowStep = 1;
         if (typeof parsed.maxFlowStep !== "number" || parsed.maxFlowStep < 1) parsed.maxFlowStep = parsed.flowStep;
+        // BUG-001: Ensure worker has an id if it exists (pre-31.6 sessions may lack it)
+        if (parsed.worker && !parsed.worker.id) {
+          parsed.worker.id = "wkr_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+        }
         savedSession.current = parsed;
       }
     } catch {
@@ -1914,10 +1960,7 @@ Return JSON: { "description": "...", "problemSolves": "...", "targetUser": "..."
                   onExchange={handleTestExchange}
                 />
               ) : (
-                <div style={{ padding: 40, textAlign: "center" }}>
-                  <div style={{ fontSize: 16, fontWeight: 600, color: "#1a1a2e", marginBottom: 8 }}>Loading test panel...</div>
-                  <div style={{ fontSize: 14, color: "#64748B" }}>Setting up your worker for testing.</div>
-                </div>
+                <TestPanelFallback worker={worker} workerCardData={workerCardData} onReady={(w) => setWorker(w)} onBack={() => { setShowWorkerCard(true); viewStep(2); }} />
               )}
             </PanelErrorBoundary>
           )}

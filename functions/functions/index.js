@@ -1757,8 +1757,9 @@ Message 8+: If they seem interested, gently offer to set it up. "I can have this
           sessionState.step = 'dev_discovery';
 
           // Seed devName from returning user's auth profile (sent by frontend)
-          if (!sessionState.devName && body.returnUserName) {
-            sessionState.devName = body.returnUserName;
+          // Frontend sends creatorName (sandbox) or returnUserName (developer landing)
+          if (!sessionState.devName && (body.returnUserName || body.creatorName)) {
+            sessionState.devName = body.returnUserName || body.creatorName;
           }
 
           // Extract name from short replies (with stop word filter — matches invest handler pattern)
