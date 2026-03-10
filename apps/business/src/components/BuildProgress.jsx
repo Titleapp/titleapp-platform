@@ -61,7 +61,50 @@ const MATRIX_LINES = [
   'export default { rules, schema, compliance, audit };',
 ];
 
-export default function BuildProgress({ worker, workerCardData, onWorkerUpdate, onTestReady }) {
+const ICON_COLORS = {
+  finance: "#2E5F8A", "real-estate": "#2E7D4F", aviation: "#1A3A5C",
+  government: "#4A2C6B", health: "#8A2E2E", education: "#2E5F8A",
+  auto: "#1A3A5C", default: "#6B46C1",
+};
+
+function generateWorkerIcon(name, verticalKey) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 512; canvas.height = 512;
+  const ctx = canvas.getContext("2d");
+  const color = ICON_COLORS[verticalKey] || ICON_COLORS.default;
+  // Rounded square background
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.roundRect(0, 0, 512, 512, 64);
+  ctx.fill();
+  // Initials
+  ctx.fillStyle = "white";
+  ctx.font = "bold 200px Calibri, -apple-system, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  const initials = (name || "DW").split(/\s+/).map(w => w[0]).join("").substring(0, 2).toUpperCase();
+  ctx.fillText(initials, 256, 270);
+  return canvas.toDataURL("image/png");
+}
+
+function cropToSquare(file, callback) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      const size = Math.min(img.width, img.height);
+      canvas.width = 512; canvas.height = 512;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, (img.width - size) / 2, (img.height - size) / 2, size, size, 0, 0, 512, 512);
+      callback(canvas.toDataURL("image/png"));
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+export default function BuildProgress({ worker, workerCardData, onWorkerUpdate, onTestReady, workerIconUrl, onIconChange }) {
   const [currentStage, setCurrentStage] = useState(0);
   const [buildComplete, setBuildComplete] = useState(false);
   const [selectedTier, setSelectedTier] = useState(workerCardData?.pricingTier || 2);
@@ -221,8 +264,15 @@ export default function BuildProgress({ worker, workerCardData, onWorkerUpdate, 
       <div style={{ background: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: 12, overflow: "hidden", marginBottom: 20 }}>
         <div style={{ padding: "20px 20px", background: "linear-gradient(135deg, #6B46C1 0%, #818cf8 100%)" }}>
           <div style={{ fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.6)", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 4 }}>Live preview</div>
-          <div style={{ fontSize: 18, fontWeight: 700, color: "white" }}>{workerCardData?.name || worker?.name || "Your Worker"}</div>
-          <div style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", marginTop: 4 }}>{workerCardData?.vertical}</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            {workerIconUrl && (
+              <img src={workerIconUrl} alt="" style={{ width: 40, height: 40, borderRadius: 10, objectFit: "cover", border: "2px solid rgba(255,255,255,0.3)" }} />
+            )}
+            <div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: "white" }}>{workerCardData?.name || worker?.name || "Your Worker"}</div>
+              <div style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", marginTop: 2 }}>{workerCardData?.vertical}</div>
+            </div>
+          </div>
         </div>
         <div style={{ padding: 20 }}>
           <div style={{ fontSize: 14, color: "#1a1a2e", lineHeight: 1.6, marginBottom: 16 }}>
@@ -265,6 +315,68 @@ export default function BuildProgress({ worker, workerCardData, onWorkerUpdate, 
             })()}
           </div>
         </div>
+      </div>
+
+      {/* Worker Icon */}
+      <div style={{ background: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: 12, padding: 20, marginBottom: 20 }}>
+        <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a2e", marginBottom: 12 }}>Worker Icon</div>
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 16 }}>
+          <div style={{
+            width: 120, height: 120, borderRadius: 16, overflow: "hidden", flexShrink: 0,
+            background: workerIconUrl ? "transparent" : (ICON_COLORS[(workerCardData?.vertical || "").toLowerCase().replace(/\s+/g, "-")] || ICON_COLORS.default),
+            display: "flex", alignItems: "center", justifyContent: "center",
+            border: "1px solid #E2E8F0",
+          }}>
+            {workerIconUrl ? (
+              <img src={workerIconUrl} alt="Worker icon" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            ) : (
+              <span style={{ fontSize: 40, fontWeight: 700, color: "white", letterSpacing: 2 }}>
+                {((workerCardData?.name || worker?.name || "DW").split(/\s+/).map(w => w[0]).join("").substring(0, 2).toUpperCase())}
+              </span>
+            )}
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, flex: 1 }}>
+            <input
+              type="file"
+              accept="image/png,image/jpeg"
+              id="icon-upload"
+              style={{ display: "none" }}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file && onIconChange) cropToSquare(file, onIconChange);
+                e.target.value = "";
+              }}
+            />
+            <button
+              onClick={() => document.getElementById("icon-upload").click()}
+              style={{ padding: "10px 16px", background: "#6B46C1", color: "white", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+            >
+              Upload your own
+            </button>
+            <button
+              onClick={() => {
+                if (onIconChange) {
+                  const verticalKey = (workerCardData?.vertical || "").toLowerCase().replace(/\s+/g, "-");
+                  onIconChange(generateWorkerIcon(workerCardData?.name || worker?.name || "Worker", verticalKey));
+                }
+              }}
+              style={{ padding: "10px 16px", background: "#F8F9FC", color: "#1a1a2e", border: "1px solid #E2E8F0", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+            >
+              Generate from name
+            </button>
+            <div
+              onClick={() => { if (onIconChange) onIconChange(null); }}
+              style={{ fontSize: 12, color: "#94A3B8", cursor: "pointer", textAlign: "center", marginTop: 2 }}
+            >
+              Skip for now
+            </div>
+          </div>
+        </div>
+        {workerIconUrl && (
+          <div style={{ fontSize: 12, color: "#10b981", marginTop: 10, display: "flex", alignItems: "center", gap: 4 }}>
+            <span>{"\u2713"}</span> Icon set — it will appear in your distribution kit and client deck.
+          </div>
+        )}
       </div>
 
       {/* Price setting */}

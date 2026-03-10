@@ -80,6 +80,23 @@ Best regards`;
     });
   }
 
+  async function downloadFile(url, filename) {
+    try {
+      const res = await fetch(url);
+      const blob = await res.blob();
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(a.href);
+    } catch {
+      // Fallback: open in new tab if fetch fails (CORS)
+      window.open(url, "_blank");
+    }
+  }
+
   const deckSlides = [
     { title: workerName, body: `A Digital Worker for ${vertical || "your industry"}` },
     { title: "The Problem", body: workerCardData?.problemSolves || workerDesc },
@@ -94,20 +111,73 @@ Best regards`;
   ];
 
   function generateClientDeck() {
+    const iconImg = workerCardData?.iconDataUrl ? `<img src="${workerCardData.iconDataUrl}" style="width:80px;height:80px;border-radius:16px;margin-bottom:24px" />` : "";
+    const footer = `<div style="position:absolute;bottom:24px;left:40px;right:40px;display:flex;justify-content:space-between;font-size:10px;color:#94A3B8;font-family:Calibri,sans-serif">
+      <span>titleapp.ai</span><span>${vertical || "Digital Workers"}</span><span>alex@titleapp.ai</span></div>`;
+    const darkSlide = (content) => `<div style="width:100vw;height:100vh;background:#1E1E2E;color:white;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:60px;box-sizing:border-box;page-break-after:always;position:relative;font-family:Calibri,sans-serif">${content}</div>`;
+    const lightSlide = (title, body) => `<div style="width:100vw;height:100vh;background:#F8F8F8;color:#1E1E2E;display:flex;flex-direction:column;justify-content:flex-start;padding:60px;box-sizing:border-box;page-break-after:always;position:relative;font-family:Calibri,sans-serif">
+      <div style="font-size:12px;font-weight:700;color:#6B46C1;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">TitleApp</div>
+      <h2 style="font-size:36px;font-weight:700;color:#1E1E2E;margin:0 0 24px 0;border-bottom:3px solid #6B46C1;padding-bottom:12px;display:inline-block">${title}</h2>
+      <div style="font-size:16px;line-height:1.8;color:#333;max-width:800px;white-space:pre-wrap">${body}</div>${footer}</div>`;
+    const complianceRules = (workerCardData?.complianceRules || "Standard platform compliance").split(/[.;]/).filter(s => s.trim().length > 5).slice(0, 4);
+
+    const slides = [
+      // Slide 1 — Title (dark)
+      darkSlide(`${iconImg}
+        <div style="font-size:12px;font-weight:600;color:#6B46C1;text-transform:uppercase;letter-spacing:2px;margin-bottom:12px">TitleApp Digital Worker</div>
+        <h1 style="font-size:48px;font-weight:700;margin:0 0 12px 0;text-align:center">${workerName}</h1>
+        <p style="font-size:20px;color:rgba(255,255,255,0.6);margin:0;text-align:center">A Digital Worker for ${vertical || "your industry"}</p>
+        <div style="position:absolute;bottom:24px;left:40px;font-size:10px;color:#94A3B8">${vertical || ""} ${workerCardData?.jurisdiction || ""}</div>
+        <div style="position:absolute;bottom:24px;right:40px;font-size:10px;color:#94A3B8">titleapp.ai</div>`),
+      // Slide 2 — Problem
+      lightSlide("The Problem", deckSlides[1].body),
+      // Slide 3 — Solution
+      lightSlide("The Solution", deckSlides[2].body),
+      // Slide 4 — How It Works
+      lightSlide("How It Works", deckSlides[3].body),
+      // Slide 5 — Built For
+      lightSlide("Built For", deckSlides[4].body),
+      // Slide 6 — Compliance
+      lightSlide("Compliance Built In", `<div style="display:flex;flex-direction:column;gap:12px;margin-bottom:24px">
+        ${[{t:"Tier 0 — Platform Safety",c:"#64748B",s:"Always on"},{t:"Tier 1 — Industry Rules",c:"#dc2626",s:"Baked in during Build"},{t:"Tier 2 — Creator Rules",c:"#f59e0b",s:"Configured by you"},{t:"Tier 3 — Subscriber Preferences",c:"#10b981",s:"Set per subscriber"}]
+        .map(r => `<div style="display:flex;align-items:center;gap:10px"><div style="width:8px;height:8px;border-radius:4px;background:${r.c}"></div><span style="font-weight:600;color:${r.c}">${r.t}</span><span style="color:#94A3B8;font-size:12px">(${r.s})</span></div>`).join("")}</div>
+        <div style="font-size:14px;font-weight:600;color:#1E1E2E;margin-bottom:8px">Key Tier 1 Regulations:</div>
+        ${complianceRules.map(r => `<div style="padding:4px 0 4px 12px;border-left:2px solid #dc2626;font-size:14px;color:#333">${r.trim()}</div>`).join("")}`),
+      // Slide 7 — Pricing
+      lightSlide("Pricing", `<div style="display:flex;gap:16px;margin-top:12px">
+        ${[{p:"$29/mo",n:"Starter",cr:"500 credits"},{p:"$49/mo",n:"Professional",cr:"1,500 credits"},{p:"$79/mo",n:"Enterprise",cr:"3,000 credits"}]
+        .map(t => `<div style="flex:1;background:white;border:1px solid #E2E8F0;border-radius:12px;padding:20px;text-align:center">
+          <div style="font-size:28px;font-weight:700;color:#6B46C1">${t.p}</div>
+          <div style="font-size:14px;font-weight:600;color:#1E1E2E;margin-top:4px">${t.n}</div>
+          <div style="font-size:12px;color:#94A3B8;margin-top:4px">${t.cr}</div></div>`).join("")}</div>
+        <div style="margin-top:16px;font-size:14px;color:#94A3B8">14-day free trial included. No credit card required to start.</div>`),
+      // Slide 8 — Market Context
+      lightSlide("Market Context", deckSlides[7].body),
+      // Slide 9 — Creator
+      lightSlide("About the Creator", deckSlides[8].body),
+      // Slide 10 — CTA (dark)
+      darkSlide(`${iconImg}
+        <h1 style="font-size:42px;font-weight:700;margin:0 0 16px 0;text-align:center">Get Started with ${workerName}</h1>
+        <div style="display:flex;gap:12px;margin-bottom:24px">
+          <div style="padding:8px 20px;background:#6B46C1;color:white;border-radius:8px;font-size:14px;font-weight:600">14-Day Free Trial</div>
+          <div style="padding:8px 20px;background:rgba(255,255,255,0.1);color:white;border-radius:8px;font-size:14px;font-weight:600;border:1px solid rgba(255,255,255,0.2)">Compliance Guaranteed</div>
+        </div>
+        <p style="font-size:18px;color:rgba(255,255,255,0.7);margin:0 0 8px 0">${workerUrl}</p>
+        <img src="${qrPng}" style="width:120px;height:120px;border-radius:8px;margin-top:12px" />
+        <div style="position:absolute;bottom:24px;left:40px;right:40px;display:flex;justify-content:space-between;font-size:10px;color:#94A3B8">
+          <span>alex@titleapp.ai</span><span>titleapp.ai</span></div>`),
+    ];
+
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${workerName} - Pitch Deck</title>
-<style>@page{size:landscape;margin:0}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
-.slide{width:100vw;height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:60px;box-sizing:border-box;page-break-after:always}
-.slide:nth-child(odd){background:#1a1a2e;color:white}.slide:nth-child(even){background:#f8f9fc;color:#1a1a2e}
-h1{font-size:42px;margin-bottom:16px;text-align:center}p{font-size:22px;line-height:1.6;max-width:800px;text-align:center;white-space:pre-wrap}
-.badge{display:inline-block;padding:6px 16px;background:#6B46C1;color:white;border-radius:20px;font-size:14px;margin-top:24px}</style></head><body>
-${deckSlides.map((s, i) => `<div class="slide"><h1>${s.title}</h1><p>${s.body.replace(/\n/g, "<br>")}</p>${i === 0 ? '<div class="badge">TitleApp Digital Worker</div>' : ""}</div>`).join("")}
-</body></html>`;
+<style>@page{size:landscape;margin:0}body{margin:0}*{box-sizing:border-box}</style></head><body>${slides.join("")}</body></html>`;
     const blob = new Blob([html], { type: "text/html" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
     a.download = `${slug}-pitch-deck.html`;
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
     URL.revokeObjectURL(url);
   }
 
@@ -201,6 +271,19 @@ ${deckSlides.map((s, i) => `<div class="slide"><h1>${s.title}</h1><p>${s.body.re
         </div>
       </div>
 
+      {/* Worker Icon */}
+      {workerCardData?.iconDataUrl && (
+        <div style={sectionStyle}>
+          <span style={labelStyle}>Worker icon</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+            <img src={workerCardData.iconDataUrl} alt="Worker icon" style={{ width: 80, height: 80, borderRadius: 16, objectFit: "cover", border: "1px solid #E2E8F0" }} />
+            <div style={{ fontSize: 13, color: "#64748B", lineHeight: 1.5 }}>
+              Your worker icon appears in the marketplace, client deck, and share pages. You can change it anytime in the Build step.
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* QR Code */}
       <div style={sectionStyle}>
         <span style={labelStyle}>QR code</span>
@@ -210,18 +293,18 @@ ${deckSlides.map((s, i) => `<div class="slide"><h1>${s.title}</h1><p>${s.body.re
             <img src={qrPng} alt="QR Code" width={160} height={160} style={{ display: "block" }} />
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <a
-              href={qrPng} download={`${slug}-qr-300dpi.png`} target="_blank" rel="noopener noreferrer"
-              style={{ padding: "8px 16px", background: "#F8F9FC", color: "#64748B", border: "1px solid #E2E8F0", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer", textDecoration: "none", textAlign: "center" }}
+            <button
+              onClick={() => downloadFile(qrPng, `${slug}-qr.png`)}
+              style={{ padding: "8px 16px", background: "#F8F9FC", color: "#64748B", border: "1px solid #E2E8F0", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer", textAlign: "center" }}
             >
               Download PNG (300 DPI)
-            </a>
-            <a
-              href={qrSvg} download={`${slug}-qr.svg`} target="_blank" rel="noopener noreferrer"
-              style={{ padding: "8px 16px", background: "#F8F9FC", color: "#64748B", border: "1px solid #E2E8F0", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer", textDecoration: "none", textAlign: "center" }}
+            </button>
+            <button
+              onClick={() => downloadFile(qrSvg, `${slug}-qr.svg`)}
+              style={{ padding: "8px 16px", background: "#F8F9FC", color: "#64748B", border: "1px solid #E2E8F0", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer", textAlign: "center" }}
             >
               Download SVG
-            </a>
+            </button>
             <div style={{ fontSize: 12, color: "#94A3B8", lineHeight: 1.5 }}>
               Print on badges, business cards, or posters. Anyone who scans it goes straight to your worker.
             </div>

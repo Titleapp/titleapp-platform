@@ -283,6 +283,7 @@ export default function DeveloperSandbox() {
   // Step 3 — Build
   const [worker, setWorker] = useState(() => savedSession.current?.worker || null);
   const [jurisdiction, setJurisdiction] = useState(() => savedSession.current?.jurisdiction || "");
+  const [workerIconUrl, setWorkerIconUrl] = useState(() => savedSession.current?.workerIconUrl || "");
 
   // Step 4 — Test survey (declared before persist useEffect that references them)
   const [surveyStep, setSurveyStep] = useState(() => savedSession.current?.surveyStep || 0);
@@ -300,14 +301,14 @@ export default function DeveloperSandbox() {
     try {
       localStorage.setItem("ta_sandbox_session", JSON.stringify({
         vertical, subjectDomain, selectedIdea, vibeStep, vibeFastTrack, vibeAnswers,
-        workerCardData, worker, jurisdiction, flowStep, maxFlowStep, showWorkerCard,
+        workerCardData, worker, jurisdiction, workerIconUrl, flowStep, maxFlowStep, showWorkerCard,
         surveyStep, surveyAnswers, surveyComplete, testExchangeCount, _v: 2,
       }));
       if (workerCardData?.name) {
         sessionStorage.setItem("ta_sandbox_worker_name", workerCardData.name);
       }
     } catch {}
-  }, [vertical, subjectDomain, selectedIdea, vibeStep, vibeFastTrack, vibeAnswers, workerCardData, worker, jurisdiction, flowStep, maxFlowStep, showWorkerCard, surveyStep, surveyAnswers, surveyComplete, testExchangeCount]);
+  }, [vertical, subjectDomain, selectedIdea, vibeStep, vibeFastTrack, vibeAnswers, workerCardData, worker, jurisdiction, workerIconUrl, flowStep, maxFlowStep, showWorkerCard, surveyStep, surveyAnswers, surveyComplete, testExchangeCount]);
 
   // Edit mode (post-publish)
   const [editMode, setEditMode] = useState(false);
@@ -377,6 +378,12 @@ export default function DeveloperSandbox() {
   const [isDragging, setIsDragging] = useState(false);
   const [dividerHover, setDividerHover] = useState(false);
   const rootRef = useRef(null);
+  const rightPanelRef = useRef(null);
+
+  // Scroll right panel to top on step change
+  useEffect(() => {
+    if (rightPanelRef.current) rightPanelRef.current.scrollTop = 0;
+  }, [flowStep]);
 
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 767px)");
@@ -1886,7 +1893,7 @@ For starterPrompts: Write 3 short (under 10 words each) conversation starters a 
           ][flowStep - 1]}
         </div>
 
-        <div style={S.tabContent}>
+        <div ref={rightPanelRef} style={S.tabContent}>
           {/* Step 1 — Discover */}
           {flowStep === 1 && (
             <>
@@ -2069,6 +2076,11 @@ For starterPrompts: Write 3 short (under 10 words each) conversation starters a 
                 workerCardData={workerCardData}
                 onWorkerUpdate={setWorker}
                 onTestReady={handleBuildComplete}
+                workerIconUrl={workerIconUrl}
+                onIconChange={(url) => {
+                  setWorkerIconUrl(url);
+                  setWorkerCardData(prev => prev ? { ...prev, iconDataUrl: url } : prev);
+                }}
               />
             </PanelErrorBoundary>
           )}
