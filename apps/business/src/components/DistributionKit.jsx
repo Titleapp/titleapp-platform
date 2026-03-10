@@ -9,6 +9,7 @@ export default function DistributionKit({ worker, workerCardData }) {
   const [showPaidOptions, setShowPaidOptions] = useState(false);
   const [deckGenerating, setDeckGenerating] = useState(false);
   const [deckFormat, setDeckFormat] = useState("pptx");
+  const [deckError, setDeckError] = useState(null);
   const [embedWidth, setEmbedWidth] = useState("100%");
   const [embedHeight, setEmbedHeight] = useState("600");
 
@@ -79,9 +80,41 @@ Best regards`;
     });
   }
 
+  const deckSlides = [
+    { title: workerName, body: `A Digital Worker for ${vertical || "your industry"}` },
+    { title: "The Problem", body: workerCardData?.problemSolves || workerDesc },
+    { title: "The Solution", body: `${workerName} automates this workflow with built-in compliance and audit trails.` },
+    { title: "How It Works", body: "1. Subscribe and onboard in minutes\n2. Your worker follows industry-specific compliance rules\n3. Every output is validated before delivery\n4. Full audit trail on every interaction" },
+    { title: "Built For", body: targetUser || "Professionals who need reliable, governed AI" },
+    { title: "Compliance Built In", body: workerCardData?.complianceRules || "Standard platform compliance (Tier 0 + Tier 1)" },
+    { title: "Pricing", body: `Starting at $${tierPrice}/mo\n14-day free trial included\nNo credit card required to start` },
+    { title: "Market Context", body: `${vertical || "Industry"} professionals are spending hours on manual processes that ${workerName} handles in seconds.` },
+    { title: "About the Creator", body: "Built by a verified creator on the TitleApp platform.\nEvery worker is reviewed before going live." },
+    { title: "Get Started", body: `Try ${workerName} today\n${workerUrl}\n\nQuestions? Contact the creator directly through TitleApp.` },
+  ];
+
+  function generateClientDeck() {
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${workerName} - Pitch Deck</title>
+<style>@page{size:landscape;margin:0}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
+.slide{width:100vw;height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:60px;box-sizing:border-box;page-break-after:always}
+.slide:nth-child(odd){background:#1a1a2e;color:white}.slide:nth-child(even){background:#f8f9fc;color:#1a1a2e}
+h1{font-size:42px;margin-bottom:16px;text-align:center}p{font-size:22px;line-height:1.6;max-width:800px;text-align:center;white-space:pre-wrap}
+.badge{display:inline-block;padding:6px 16px;background:#6B46C1;color:white;border-radius:20px;font-size:14px;margin-top:24px}</style></head><body>
+${deckSlides.map((s, i) => `<div class="slide"><h1>${s.title}</h1><p>${s.body.replace(/\n/g, "<br>")}</p>${i === 0 ? '<div class="badge">TitleApp Digital Worker</div>' : ""}</div>`).join("")}
+</body></html>`;
+    const blob = new Blob([html], { type: "text/html" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${slug}-pitch-deck.html`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   async function generateDeck(format) {
     setDeckGenerating(true);
     setDeckFormat(format);
+    setDeckError(null);
     try {
       const token = localStorage.getItem("ID_TOKEN");
       const tenantId = localStorage.getItem("TENANT_ID");
@@ -89,40 +122,32 @@ Best regards`;
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, "X-Tenant-Id": tenantId },
         body: JSON.stringify({
-          tenantId,
-          templateId: "deck-standard",
-          format,
+          tenantId, templateId: "deck-standard", format,
           data: {
-            title: workerName,
-            description: workerDesc,
-            targetUser,
-            vertical,
-            price: `$${tierPrice}/mo`,
-            slug,
-            workerUrl,
+            title: workerName, description: workerDesc, targetUser, vertical,
+            price: `$${tierPrice}/mo`, slug, workerUrl,
             problemSolves: workerCardData?.problemSolves || "",
             complianceRules: workerCardData?.complianceRules || "",
             jurisdiction: workerCardData?.jurisdiction || "National",
-            slides: [
-              { title: workerName, subtitle: `A Digital Worker for ${vertical || "your industry"}`, type: "title" },
-              { title: "The Problem", body: workerCardData?.problemSolves || workerDesc, type: "content" },
-              { title: "The Solution", body: `${workerName} automates this workflow with built-in compliance and audit trails.`, type: "content" },
-              { title: "How It Works", body: "1. Subscribe and onboard in minutes\n2. Your worker follows industry-specific compliance rules\n3. Every output is validated before delivery\n4. Full audit trail on every interaction", type: "steps" },
-              { title: "Built For", body: targetUser || "Professionals who need reliable, governed AI", type: "content" },
-              { title: "Compliance Built In", body: workerCardData?.complianceRules || "Standard platform compliance (Tier 0 + Tier 1)", type: "content" },
-              { title: "Pricing", body: `Starting at $${tierPrice}/mo\n14-day free trial included\nNo credit card required to start`, type: "pricing" },
-              { title: "Market Context", body: `${vertical || "Industry"} professionals are spending hours on manual processes that ${workerName} handles in seconds.`, type: "content" },
-              { title: "About the Creator", body: `Built by a verified creator on the TitleApp platform.\nEvery worker is reviewed before going live.`, type: "content" },
-              { title: "Get Started", body: `Try ${workerName} today\n${workerUrl}\n\nQuestions? Contact the creator directly through TitleApp.`, type: "cta" },
-            ],
+            slides: deckSlides.map((s, i) => ({
+              title: s.title, body: s.body,
+              type: i === 0 ? "title" : i === 6 ? "pricing" : i === 9 ? "cta" : "content",
+            })),
           },
         }),
       });
       const data = await res.json();
       if (data.ok && data.downloadUrl) {
         window.open(data.downloadUrl, "_blank");
+      } else {
+        // Backend unavailable — generate client-side HTML deck
+        generateClientDeck();
+        setDeckError("Generated an HTML deck (open in browser, then File > Print > Save as PDF). Full PPTX/PDF generation available after launch.");
       }
-    } catch {}
+    } catch {
+      generateClientDeck();
+      setDeckError("Generated an HTML deck (open in browser, then File > Print > Save as PDF). Full PPTX/PDF generation available after launch.");
+    }
     setDeckGenerating(false);
   }
 
@@ -272,6 +297,9 @@ Best regards`;
             {deckGenerating && deckFormat === "pdf" ? "Generating..." : "Download PDF"}
           </button>
         </div>
+        {deckError && (
+          <div style={{ marginTop: 10, fontSize: 12, color: "#92400E", background: "#FEF3C7", padding: "8px 12px", borderRadius: 6, lineHeight: 1.5 }}>{deckError}</div>
+        )}
         <div style={{ marginTop: 10, fontSize: 11, color: "#94A3B8", lineHeight: 1.5 }}>
           10 slides: Title, Problem, Solution, How It Works, Audience, Compliance, Pricing, Market Context, Creator, CTA
         </div>
@@ -300,8 +328,8 @@ Best regards`;
               <div style={{ fontSize: 13, color: "#64748B", lineHeight: 1.5 }}>
                 Your worker appears in the "Popular right now" section on titleapp.ai. Estimated reach: 5,000-15,000 monthly visitors.
               </div>
-              <button style={{ marginTop: 10, padding: "8px 16px", background: "#FFFFFF", color: "#64748B", border: "1px solid #E2E8F0", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-                Learn more
+              <button disabled title="Coming soon — available at launch" style={{ marginTop: 10, padding: "8px 16px", background: "#F8F9FC", color: "#CBD5E1", border: "1px solid #E2E8F0", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "not-allowed" }}>
+                Coming soon
               </button>
             </div>
 
@@ -313,8 +341,8 @@ Best regards`;
               <div style={{ fontSize: 13, color: "#64748B", lineHeight: 1.5 }}>
                 Featured in the next {vertical || "industry"} newsletter. Estimated reach: 2,000-8,000 subscribers in your vertical.
               </div>
-              <button style={{ marginTop: 10, padding: "8px 16px", background: "#FFFFFF", color: "#64748B", border: "1px solid #E2E8F0", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-                Learn more
+              <button disabled title="Coming soon — available at launch" style={{ marginTop: 10, padding: "8px 16px", background: "#F8F9FC", color: "#CBD5E1", border: "1px solid #E2E8F0", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "not-allowed" }}>
+                Coming soon
               </button>
             </div>
 
@@ -326,9 +354,9 @@ Best regards`;
               <div style={{ fontSize: 13, color: "#64748B", lineHeight: 1.5 }}>
                 Joint marketing campaigns with hospitals, EMS agencies, and education programs in your vertical.
               </div>
-              <button style={{ marginTop: 10, padding: "8px 16px", background: "#FFFFFF", color: "#64748B", border: "1px solid #E2E8F0", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+              <a href="mailto:sales@titleapp.ai?subject=Co-marketing%20inquiry%20—%20Digital%20Worker" style={{ display: "inline-block", marginTop: 10, padding: "8px 16px", background: "#FFFFFF", color: "#6B46C1", border: "1px solid #E2E8F0", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer", textDecoration: "none" }}>
                 Contact sales
-              </button>
+              </a>
             </div>
           </div>
         )}

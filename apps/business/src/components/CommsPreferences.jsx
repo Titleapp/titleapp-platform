@@ -5,6 +5,10 @@ const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.ti
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const TIMES = ["Morning (8-10am)", "Midday (11am-1pm)", "Afternoon (2-5pm)", "Evening (6-8pm)"];
 
+function isTestMode() {
+  return window.location.pathname.includes("/sandbox") || window.location.search.includes("testMode=true");
+}
+
 export default function CommsPreferences({ worker, workerCardData, onComplete }) {
   const [channel, setChannel] = useState("both"); // sms | email | both
   const [preferredDay, setPreferredDay] = useState("Monday");
@@ -22,6 +26,7 @@ export default function CommsPreferences({ worker, workerCardData, onComplete })
   async function handleSaveAndSendWelcome() {
     setSaving(true);
     setError(null);
+    const testMode = isTestMode();
     try {
       const token = localStorage.getItem("ID_TOKEN");
       const tenantId = localStorage.getItem("TENANT_ID");
@@ -33,17 +38,23 @@ export default function CommsPreferences({ worker, workerCardData, onComplete })
         "X-Jurisdiction": "GLOBAL",
       };
 
-      // Save comms preferences
-      await fetch(`${API_BASE}/api?path=/v1/creator:commsPreferences`, {
-        method: "POST", headers,
-        body: JSON.stringify({
-          tenantId, workerId: worker?.id,
-          channel, preferredDay, preferredTime, phone, email,
-        }),
-      });
+      const prefs = { channel, preferredDay, preferredTime, phone, email, workerId: worker?.id, savedAt: new Date().toISOString() };
 
-      // Trigger Twilio welcome SMS
-      if (channel === "sms" || channel === "both") {
+      // Save comms preferences — persist locally as fallback
+      localStorage.setItem("ta_comms_prefs", JSON.stringify(prefs));
+
+      // Try backend save (non-blocking in test mode)
+      try {
+        await fetch(`${API_BASE}/api?path=/v1/creator:commsPreferences`, {
+          method: "POST", headers,
+          body: JSON.stringify({ tenantId, ...prefs }),
+        });
+      } catch {
+        if (!testMode) throw new Error("Failed to save preferences");
+      }
+
+      // Trigger Twilio welcome SMS (skip in test mode)
+      if (!testMode && (channel === "sms" || channel === "both")) {
         await fetch(`${API_BASE}/api?path=/v1/twilio:sendSms`, {
           method: "POST", headers,
           body: JSON.stringify({
@@ -53,8 +64,8 @@ export default function CommsPreferences({ worker, workerCardData, onComplete })
         });
       }
 
-      // Trigger welcome email
-      if (channel === "email" || channel === "both") {
+      // Trigger welcome email (skip in test mode)
+      if (!testMode && (channel === "email" || channel === "both")) {
         await fetch(`${API_BASE}/api?path=/v1/email:send`, {
           method: "POST", headers,
           body: JSON.stringify({
@@ -69,7 +80,13 @@ export default function CommsPreferences({ worker, workerCardData, onComplete })
       setWelcomeSent(true);
       if (onComplete) onComplete();
     } catch (e) {
-      setError(e.message || "Something went wrong. Your preferences were saved.");
+      if (testMode) {
+        // In sandbox, accept the save and move on
+        setWelcomeSent(true);
+        if (onComplete) onComplete();
+      } else {
+        setError(e.message || "Something went wrong. Your preferences were saved.");
+      }
     }
     setSaving(false);
   }
@@ -80,7 +97,7 @@ export default function CommsPreferences({ worker, workerCardData, onComplete })
         <div style={{ fontSize: 48, marginBottom: 16, opacity: 0.8 }}>{"\u2713"}</div>
         <div style={{ fontSize: 22, fontWeight: 700, color: "#10b981", marginBottom: 8 }}>You are all set</div>
         <div style={{ fontSize: 15, color: "#64748B", lineHeight: 1.6, marginBottom: 24 }}>
-          Alex will check in with you every {preferredDay} with your earnings summary, usage insights, and growth tips.
+          Got it — Alex will check in with you on {preferredDay} ({preferredTime}). You can update this anytime in Settings.
           {channel === "both" ? " You will get both SMS and email." : channel === "sms" ? " Check your texts." : " Check your inbox."}
         </div>
         <div style={{ background: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: 12, padding: 20, textAlign: "left" }}>
