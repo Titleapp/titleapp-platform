@@ -135,9 +135,11 @@ function getRoute(req) {
   return p;
 }
 
+const _STATUS_CODES = { 400: "BAD_REQUEST", 401: "UNAUTHORIZED", 403: "FORBIDDEN", 404: "NOT_FOUND", 409: "CONFLICT", 410: "GONE", 429: "RATE_LIMITED", 500: "INTERNAL_ERROR" };
 function jsonError(res, status, error, extra = {}) {
   console.error("❌ API ERROR:", status, error, extra);
-  return res.status(status).json({ ok: false, error, ...extra });
+  const code = extra.code || _STATUS_CODES[status] || "ERROR";
+  return res.status(status).json({ ok: false, error, code, ...extra });
 }
 
 function getAuthBearerToken(req) {
@@ -985,7 +987,7 @@ exports.api = onRequest(
       // Rate limiting by IP
       const clientIp = (req.headers['x-forwarded-for'] || req.ip || 'unknown').toString().split(',')[0].trim();
       if (!checkSignupRateLimit(clientIp)) {
-        return res.status(429).json({ ok: false, error: 'Too many signup attempts. Try again later.' });
+        return res.status(429).json({ ok: false, error: 'Too many signup attempts. Try again later.', code: 'RATE_LIMITED' });
       }
 
       // TODO: Add Cloudflare Turnstile verification on the frontend signup flow
@@ -5143,10 +5145,10 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       try {
         const db = getDb();
         const { code } = body;
-        if (!code) return res.status(400).json({ ok: false, error: "code required" });
+        if (!code) return res.status(400).json({ ok: false, error: "code required", code: "MISSING_FIELDS" });
         const docRef = db.doc(`promoCodes/${code}`);
         const doc = await docRef.get();
-        if (!doc.exists) return res.status(404).json({ ok: false, error: "Promo code not found" });
+        if (!doc.exists) return res.status(404).json({ ok: false, error: "Promo code not found", code: "NOT_FOUND" });
         await docRef.update({ active: !doc.data().active });
         return res.json({ ok: true, active: !doc.data().active });
       } catch (e) {
@@ -12743,7 +12745,7 @@ exports.createApiKey = onRequest({ region: "us-central1" }, async (req, res) => 
     res.set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Tenant-Id");
   }
   if (req.method === "OPTIONS") return res.status(204).send("");
-  if (req.method !== "POST") return res.status(405).json({ ok: false, error: "Method not allowed" });
+  if (req.method !== "POST") return res.status(405).json({ ok: false, error: "Method not allowed", code: "METHOD_NOT_ALLOWED" });
 
   const auth = await requireFirebaseUser(req, res);
   if (auth.handled) return;
@@ -12752,7 +12754,7 @@ exports.createApiKey = onRequest({ region: "us-central1" }, async (req, res) => 
   const { name, workspace_ids, scopes } = body;
 
   if (!workspace_ids || !Array.isArray(workspace_ids) || workspace_ids.length === 0) {
-    return res.status(400).json({ ok: false, error: "workspace_ids array is required" });
+    return res.status(400).json({ ok: false, error: "workspace_ids array is required", code: "MISSING_FIELDS" });
   }
 
   // Verify user owns these workspaces
@@ -12761,7 +12763,7 @@ exports.createApiKey = onRequest({ region: "us-central1" }, async (req, res) => 
     if (wsId === "vault") continue; // personal vault is always accessible
     const wsDoc = await db.collection("users").doc(userId).collection("workspaces").doc(wsId).get();
     if (!wsDoc.exists) {
-      return res.status(403).json({ ok: false, error: `You do not own workspace: ${wsId}` });
+      return res.status(403).json({ ok: false, error: `You do not own workspace: ${wsId}`, code: "FORBIDDEN" });
     }
   }
 
@@ -12810,7 +12812,7 @@ exports.setupStripeProducts = onRequest({ region: "us-central1" }, async (req, r
     res.set("Access-Control-Allow-Headers", "Content-Type");
   }
   if (req.method === "OPTIONS") return res.status(204).send("");
-  if (req.method !== "POST") return res.status(405).json({ ok: false, error: "Method not allowed" });
+  if (req.method !== "POST") return res.status(405).json({ ok: false, error: "Method not allowed", code: "METHOD_NOT_ALLOWED" });
   return setupStripeProducts(req, res);
 });
 
@@ -12837,7 +12839,7 @@ function billingCors(req, res) {
     res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
   }
   if (req.method === "OPTIONS") { res.status(204).send(""); return true; }
-  if (req.method !== "POST") { res.status(405).json({ ok: false, error: "Method not allowed" }); return true; }
+  if (req.method !== "POST") { res.status(405).json({ ok: false, error: "Method not allowed", code: "METHOD_NOT_ALLOWED" }); return true; }
   return false;
 }
 
@@ -13154,7 +13156,7 @@ exports.seedAdminData = onRequest({ region: "us-central1" }, async (req, res) =>
     res.set("Access-Control-Allow-Headers", "Content-Type");
   }
   if (req.method === "OPTIONS") return res.status(204).send("");
-  if (req.method !== "POST") return res.status(405).json({ ok: false, error: "Method not allowed" });
+  if (req.method !== "POST") return res.status(405).json({ ok: false, error: "Method not allowed", code: "METHOD_NOT_ALLOWED" });
   return seedAdmins(req, res);
 });
 
@@ -13170,7 +13172,7 @@ exports.seedSampleData = onRequest({ region: "us-central1" }, async (req, res) =
     res.set("Access-Control-Allow-Headers", "Content-Type");
   }
   if (req.method === "OPTIONS") return res.status(204).send("");
-  if (req.method !== "POST") return res.status(405).json({ ok: false, error: "Method not allowed" });
+  if (req.method !== "POST") return res.status(405).json({ ok: false, error: "Method not allowed", code: "METHOD_NOT_ALLOWED" });
   return handleSeedSample(req, res);
 });
 
@@ -13186,7 +13188,7 @@ exports.seedActivityData = onRequest({ region: "us-central1" }, async (req, res)
     res.set("Access-Control-Allow-Headers", "Content-Type");
   }
   if (req.method === "OPTIONS") return res.status(204).send("");
-  if (req.method !== "POST") return res.status(405).json({ ok: false, error: "Method not allowed" });
+  if (req.method !== "POST") return res.status(405).json({ ok: false, error: "Method not allowed", code: "METHOD_NOT_ALLOWED" });
   return handleSeedActivity(req, res);
 });
 

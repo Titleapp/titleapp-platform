@@ -13,7 +13,8 @@
 const { getRoutingIndex, getActiveWorkerDetails, listVerticals, loadCatalog, getLifecycle } = require("./catalogs/loader");
 
 // Lazy-load prompt components to minimize cold-start
-let _identity, _rules, _routing, _communication, _intake, _onboarding, _surfaces, _registryContext;
+let _core, _identity, _rules, _routing, _communication, _intake, _onboarding, _surfaces, _registryContext;
+function getCoreModule() { if (!_core) _core = require("./prompts/core"); return _core; }
 function getIdentityModule() { if (!_identity) _identity = require("./prompts/identity"); return _identity; }
 function getRulesModule() { if (!_rules) _rules = require("./prompts/rules"); return _rules; }
 function getRoutingModule() { if (!_routing) _routing = require("./prompts/routing"); return _routing; }
@@ -28,7 +29,7 @@ function estimateTokens(text) {
   return Math.ceil((text || "").length / 4);
 }
 
-const MAX_TOKEN_BUDGET = 8000;
+const MAX_TOKEN_BUDGET = 10000;
 
 /**
  * Assemble Alex's full system prompt.
@@ -62,17 +63,19 @@ async function assemblePrompt(options = {}) {
     surfaceContext = {},
   } = options;
 
-  // For non-business surfaces, use the surface overlay directly
+  // Core prompt is prepended to ALL surfaces — single source of truth
+  const core = getCoreModule().getCore({ alexName, alexVoice });
+
+  // For non-business surfaces, core + surface overlay
   if (surface !== "business") {
-    return getSurfacesModule().getSurfaceOverlay(surface, surfaceContext);
+    const overlay = getSurfacesModule().getSurfaceOverlay(surface, surfaceContext);
+    return overlay ? `${core}\n\n---\n\n${overlay}` : core;
   }
 
-  const sections = [];
+  // Business surface: core + full modular assembly
+  const sections = [core];
 
-  // 1. Static: Identity
-  sections.push(getIdentityModule().getIdentity({ alexName, alexVoice }));
-
-  // 2. Static: Platform rules
+  // 1. Static: Platform rules (identity is in core)
   sections.push(getRulesModule().getRules());
 
   // 3. Static: Communication mode

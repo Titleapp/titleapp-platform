@@ -12,6 +12,7 @@
 "use strict";
 
 const admin = require("firebase-admin");
+const { sendError, CODES } = require("../helpers/apiResponse");
 
 function getDb() { return admin.firestore(); }
 
@@ -68,17 +69,17 @@ async function generateWorkerSlug(req, res) {
   const user = req._user;
   const { workerId } = req.body || {};
 
-  if (!workerId) return res.status(400).json({ ok: false, error: "workerId required" });
+  if (!workerId) return sendError(res, 400, CODES.MISSING_FIELDS, "workerId required");
 
   const workerRef = db.collection("workers").doc(workerId);
   const workerSnap = await workerRef.get();
 
-  if (!workerSnap.exists) return res.status(404).json({ ok: false, error: "Worker not found" });
+  if (!workerSnap.exists) return sendError(res, 404, CODES.NOT_FOUND, "Worker not found");
 
   const workerData = workerSnap.data();
 
   if (workerData.creatorId !== user.uid && workerData.ownerId !== user.uid) {
-    return res.status(403).json({ ok: false, error: "Not the owner of this worker" });
+    return sendError(res, 403, CODES.FORBIDDEN, "Not the owner of this worker");
   }
 
   // If slug already exists, return it
@@ -106,34 +107,34 @@ async function editWorkerSlug(req, res) {
   const { workerId, newSlug } = req.body || {};
 
   if (!workerId || !newSlug) {
-    return res.status(400).json({ ok: false, error: "workerId and newSlug required" });
+    return sendError(res, 400, CODES.MISSING_FIELDS, "workerId and newSlug required");
   }
 
   const workerRef = db.collection("workers").doc(workerId);
   const workerSnap = await workerRef.get();
 
-  if (!workerSnap.exists) return res.status(404).json({ ok: false, error: "Worker not found" });
+  if (!workerSnap.exists) return sendError(res, 404, CODES.NOT_FOUND, "Worker not found");
 
   const workerData = workerSnap.data();
 
   if (workerData.creatorId !== user.uid && workerData.ownerId !== user.uid) {
-    return res.status(403).json({ ok: false, error: "Not the owner of this worker" });
+    return sendError(res, 403, CODES.FORBIDDEN, "Not the owner of this worker");
   }
 
   if (workerData.slugEdited) {
-    return res.status(400).json({ ok: false, error: "Slug can only be edited once" });
+    return sendError(res, 400, CODES.BAD_REQUEST, "Slug can only be edited once");
   }
 
   // Validate slug format
   const sanitized = slugify(newSlug);
   if (!sanitized || sanitized.length < 3) {
-    return res.status(400).json({ ok: false, error: "Slug must be at least 3 characters" });
+    return sendError(res, 400, CODES.INVALID_INPUT, "Slug must be at least 3 characters");
   }
 
   // Check uniqueness
   const slug = await ensureUniqueSlug(db, sanitized, workerId);
   if (slug !== sanitized) {
-    return res.status(409).json({ ok: false, error: `Slug '${sanitized}' is taken. Try '${slug}'`, suggestion: slug });
+    return res.status(409).json({ ok: false, error: `Slug '${sanitized}' is taken. Try '${slug}'`, code: "SLUG_TAKEN", suggestion: slug });
   }
 
   await workerRef.update({ slug: sanitized, slugEdited: true });
@@ -152,17 +153,17 @@ async function generateSuiteSlug(req, res) {
   const user = req._user;
   const { suiteId } = req.body || {};
 
-  if (!suiteId) return res.status(400).json({ ok: false, error: "suiteId required" });
+  if (!suiteId) return sendError(res, 400, CODES.MISSING_FIELDS, "suiteId required");
 
   const suiteRef = db.collection("suites").doc(suiteId);
   const suiteSnap = await suiteRef.get();
 
-  if (!suiteSnap.exists) return res.status(404).json({ ok: false, error: "Suite not found" });
+  if (!suiteSnap.exists) return sendError(res, 404, CODES.NOT_FOUND, "Suite not found");
 
   const suiteData = suiteSnap.data();
 
   if (suiteData.creatorId !== user.uid && suiteData.ownerId !== user.uid) {
-    return res.status(403).json({ ok: false, error: "Not the owner of this suite" });
+    return sendError(res, 403, CODES.FORBIDDEN, "Not the owner of this suite");
   }
 
   if (suiteData.slug) {

@@ -17,6 +17,7 @@
 "use strict";
 
 const admin = require("firebase-admin");
+const { sendError, CODES } = require("../helpers/apiResponse");
 
 function getDb() { return admin.firestore(); }
 
@@ -421,10 +422,10 @@ async function getCategories(req, res) {
  */
 async function getWorkerProfile(req, res) {
   const slugOrId = req.query.slug || req.query.workerId;
-  if (!slugOrId) return res.status(400).json({ ok: false, error: "slug or workerId required" });
+  if (!slugOrId) return sendError(res, 400, CODES.MISSING_FIELDS, "slug or workerId required");
 
   const profile = await resolveWorkerProfile(slugOrId);
-  if (!profile) return res.status(404).json({ ok: false, error: "Worker not found" });
+  if (!profile) return sendError(res, 404, CODES.NOT_FOUND, "Worker not found");
 
   return res.json({ ok: true, worker: profile });
 }
@@ -538,7 +539,7 @@ async function compareWorkers(req, res) {
     workerIds = workerIds.split(",").map(s => s.trim()).filter(Boolean);
   }
   if (!Array.isArray(workerIds) || workerIds.length === 0) {
-    return res.status(400).json({ ok: false, error: "workerIds required (comma-separated, max 4)" });
+    return sendError(res, 400, CODES.MISSING_FIELDS, "workerIds required (comma-separated, max 4)");
   }
 
   const ids = workerIds.slice(0, 4);
@@ -550,7 +551,7 @@ async function compareWorkers(req, res) {
   }
 
   if (workers.length === 0) {
-    return res.status(404).json({ ok: false, error: "No matching workers found" });
+    return sendError(res, 404, CODES.NOT_FOUND, "No matching workers found");
   }
 
   return res.json({

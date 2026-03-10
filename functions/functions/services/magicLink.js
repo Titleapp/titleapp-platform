@@ -87,7 +87,7 @@ async function sendMagicLink(req, res) {
     .get();
 
   if (recentLinks.size >= 3) {
-    return res.status(429).json({ ok: false, error: "Too many magic links sent. Please wait and try again." });
+    return res.status(429).json({ ok: false, error: "Too many magic links sent. Please wait and try again.", code: "RATE_LIMITED" });
   }
 
   // Generate secure token

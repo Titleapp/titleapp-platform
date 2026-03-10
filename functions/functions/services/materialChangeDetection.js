@@ -17,6 +17,7 @@
 "use strict";
 
 const admin = require("firebase-admin");
+const { sendError, CODES } = require("../helpers/apiResponse");
 
 function getDb() { return admin.firestore(); }
 
@@ -100,21 +101,21 @@ async function saveWorkerWithChangeDetection(req, res) {
   const { workerId } = req.params || {};
   const updates = req.body || {};
 
-  if (!workerId) return res.status(400).json({ ok: false, error: "workerId required" });
+  if (!workerId) return sendError(res, 400, CODES.MISSING_FIELDS, "workerId required");
 
   // Get current worker doc
   const workerRef = db.collection("workers").doc(workerId);
   const workerSnap = await workerRef.get();
 
   if (!workerSnap.exists) {
-    return res.status(404).json({ ok: false, error: "Worker not found" });
+    return sendError(res, 404, CODES.NOT_FOUND, "Worker not found");
   }
 
   const currentData = workerSnap.data();
 
   // Verify ownership
   if (currentData.creatorId !== uid && currentData.ownerId !== uid) {
-    return res.status(403).json({ ok: false, error: "Not the owner of this worker" });
+    return sendError(res, 403, CODES.FORBIDDEN, "Not the owner of this worker");
   }
 
   // Check for material changes
@@ -169,24 +170,24 @@ async function reacceptWorkerAgreement(req, res) {
   const uid = user.uid;
   const { workerId } = req.params || {};
 
-  if (!workerId) return res.status(400).json({ ok: false, error: "workerId required" });
+  if (!workerId) return sendError(res, 400, CODES.MISSING_FIELDS, "workerId required");
 
   const workerRef = db.collection("workers").doc(workerId);
   const workerSnap = await workerRef.get();
 
   if (!workerSnap.exists) {
-    return res.status(404).json({ ok: false, error: "Worker not found" });
+    return sendError(res, 404, CODES.NOT_FOUND, "Worker not found");
   }
 
   const workerData = workerSnap.data();
 
   // Verify ownership
   if (workerData.creatorId !== uid && workerData.ownerId !== uid) {
-    return res.status(403).json({ ok: false, error: "Not the owner of this worker" });
+    return sendError(res, 403, CODES.FORBIDDEN, "Not the owner of this worker");
   }
 
   if (workerData.agreementStatus !== "pending_re_acceptance") {
-    return res.status(400).json({ ok: false, error: "No pending re-acceptance required" });
+    return sendError(res, 400, CODES.BAD_REQUEST, "No pending re-acceptance required");
   }
 
   const now = admin.firestore.FieldValue.serverTimestamp();
@@ -228,19 +229,19 @@ async function acceptWorkerAgreement(req, res) {
   const uid = user.uid;
   const { workerId } = req.params || {};
 
-  if (!workerId) return res.status(400).json({ ok: false, error: "workerId required" });
+  if (!workerId) return sendError(res, 400, CODES.MISSING_FIELDS, "workerId required");
 
   const workerRef = db.collection("workers").doc(workerId);
   const workerSnap = await workerRef.get();
 
   if (!workerSnap.exists) {
-    return res.status(404).json({ ok: false, error: "Worker not found" });
+    return sendError(res, 404, CODES.NOT_FOUND, "Worker not found");
   }
 
   const workerData = workerSnap.data();
 
   if (workerData.creatorId !== uid && workerData.ownerId !== uid) {
-    return res.status(403).json({ ok: false, error: "Not the owner of this worker" });
+    return sendError(res, 403, CODES.FORBIDDEN, "Not the owner of this worker");
   }
 
   const now = admin.firestore.FieldValue.serverTimestamp();

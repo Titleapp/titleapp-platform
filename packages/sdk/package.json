@@ -1,0 +1,42 @@
+{
+  "name": "@titleapp/sdk",
+  "version": "0.1.0",
+  "description": "JavaScript SDK for the TitleApp Digital Worker platform",
+  "main": "dist/index.cjs",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "node build.mjs",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "titleapp",
+    "digital-worker",
+    "ai",
+    "marketplace",
+    "sdk"
+  ],
+  "author": "TitleApp AI <hello@titleapp.ai>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Titleapp/titleapp-platform",
+    "directory": "packages/sdk"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "esbuild": "^0.20.0"
+  }
+}

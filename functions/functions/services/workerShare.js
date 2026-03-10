@@ -19,6 +19,7 @@
 
 const admin = require("firebase-admin");
 const crypto = require("crypto");
+const { sendError, CODES } = require("../helpers/apiResponse");
 
 function getDb() { return admin.firestore(); }
 
@@ -44,16 +45,16 @@ async function configureShareLink(req, res) {
   const user = req._user;
   const { workerId, expiryDate, pin, trialDays } = req.body || {};
 
-  if (!workerId) return res.status(400).json({ ok: false, error: "workerId required" });
+  if (!workerId) return sendError(res, 400, CODES.MISSING_FIELDS, "workerId required");
 
   const workerRef = db.collection("workers").doc(workerId);
   const workerSnap = await workerRef.get();
 
-  if (!workerSnap.exists) return res.status(404).json({ ok: false, error: "Worker not found" });
+  if (!workerSnap.exists) return sendError(res, 404, CODES.NOT_FOUND, "Worker not found");
 
   const workerData = workerSnap.data();
   if (workerData.creatorId !== user.uid && workerData.ownerId !== user.uid) {
-    return res.status(403).json({ ok: false, error: "Not the owner" });
+    return sendError(res, 403, CODES.FORBIDDEN, "Not the owner");
   }
 
   const updates = {};
@@ -90,7 +91,7 @@ async function getWorkerLandingData(req, res) {
   const db = getDb();
   const { slug } = req.query || {};
 
-  if (!slug) return res.status(400).json({ ok: false, error: "slug required" });
+  if (!slug) return sendError(res, 400, CODES.MISSING_FIELDS, "slug required");
 
   // Find worker by slug
   const snap = await db.collection("workers")
@@ -99,7 +100,7 @@ async function getWorkerLandingData(req, res) {
     .get();
 
   if (snap.empty) {
-    return res.status(404).json({ ok: false, error: "Worker not found" });
+    return sendError(res, 404, CODES.NOT_FOUND, "Worker not found");
   }
 
   const workerDoc = snap.docs[0];
@@ -115,6 +116,7 @@ async function getWorkerLandingData(req, res) {
       return res.status(410).json({
         ok: false,
         error: "This link has expired",
+        code: "LINK_EXPIRED",
         expired: true,
       });
     }
@@ -179,7 +181,7 @@ async function getSuiteLandingData(req, res) {
   const db = getDb();
   const { slug } = req.query || {};
 
-  if (!slug) return res.status(400).json({ ok: false, error: "slug required" });
+  if (!slug) return sendError(res, 400, CODES.MISSING_FIELDS, "slug required");
 
   const snap = await db.collection("suites")
     .where("slug", "==", slug)
@@ -187,7 +189,7 @@ async function getSuiteLandingData(req, res) {
     .get();
 
   if (snap.empty) {
-    return res.status(404).json({ ok: false, error: "Suite not found" });
+    return sendError(res, 404, CODES.NOT_FOUND, "Suite not found");
   }
 
   const suiteDoc = snap.docs[0];
@@ -241,11 +243,11 @@ async function verifyWorkerPin(req, res) {
   const { workerId, pin } = req.body || {};
 
   if (!workerId || !pin) {
-    return res.status(400).json({ ok: false, error: "workerId and pin required" });
+    return sendError(res, 400, CODES.MISSING_FIELDS, "workerId and pin required");
   }
 
   const workerSnap = await db.collection("workers").doc(workerId).get();
-  if (!workerSnap.exists) return res.status(404).json({ ok: false, error: "Worker not found" });
+  if (!workerSnap.exists) return sendError(res, 404, CODES.NOT_FOUND, "Worker not found");
 
   const w = workerSnap.data();
 
@@ -254,7 +256,7 @@ async function verifyWorkerPin(req, res) {
   }
 
   if (hashPin(pin) !== w.slugPin) {
-    return res.status(403).json({ ok: false, error: "Incorrect PIN" });
+    return sendError(res, 403, CODES.FORBIDDEN, "Incorrect PIN");
   }
 
   // Get creator info (same as getWorkerLandingData)
@@ -308,7 +310,7 @@ async function checkWorkerAccess(req, res) {
   const user = req._user;
   const { workerId } = req.query || {};
 
-  if (!workerId) return res.status(400).json({ ok: false, error: "workerId required" });
+  if (!workerId) return sendError(res, 400, CODES.MISSING_FIELDS, "workerId required");
 
   const subId = `${user.uid}_${workerId}`;
   const subSnap = await db.collection("subscriptions").doc(subId).get();
@@ -345,14 +347,14 @@ async function getWorkerOgImage(req, res) {
   const db = getDb();
   const { slug } = req.query || {};
 
-  if (!slug) return res.status(400).json({ ok: false, error: "slug required" });
+  if (!slug) return sendError(res, 400, CODES.MISSING_FIELDS, "slug required");
 
   const snap = await db.collection("workers")
     .where("slug", "==", slug)
     .limit(1)
     .get();
 
-  if (snap.empty) return res.status(404).json({ ok: false, error: "Worker not found" });
+  if (snap.empty) return sendError(res, 404, CODES.NOT_FOUND, "Worker not found");
 
   const w = snap.docs[0].data();
 
