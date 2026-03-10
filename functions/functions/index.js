@@ -4461,26 +4461,41 @@ These should be 2-3 realistic test scenarios the creator should try, derived fro
 
     // POST /v1/worker1:intake — Save intake data for Worker #1 pipeline
     if (route === "/worker1:intake" && method === "POST") {
-      const { tenantId, workerId, vertical, jurisdiction, description, sops, existingDocs } = body;
-      if (!tenantId || !workerId) return res.json({ ok: false, error: "Missing tenantId or workerId" });
+      const { tenantId, workerId: rawWorkerId, vertical, jurisdiction, description, name, sops, existingDocs } = body;
+      // Auto-generate workerId if not provided (Vibe path)
+      const workerId = rawWorkerId || ("wkr_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8));
+      if (!tenantId) return res.json({ ok: false, error: "Missing tenantId" });
       if (!vertical || !jurisdiction) return res.json({ ok: false, error: "Missing vertical or jurisdiction" });
       try {
         const workerRef = db.doc(`tenants/${tenantId}/workers/${workerId}`);
         const workerSnap = await workerRef.get();
-        if (!workerSnap.exists) return res.json({ ok: false, error: "Digital Worker not found" });
-        await workerRef.update({
-          buildPhase: "intake",
-          intake: {
-            vertical: String(vertical).substring(0, 100),
-            jurisdiction: String(jurisdiction).substring(0, 100),
-            description: String(description || "").substring(0, 5000),
-            sops: Array.isArray(sops) ? sops.slice(0, 50).map(s => String(s).substring(0, 1000)) : [],
-            existingDocs: Array.isArray(existingDocs) ? existingDocs.slice(0, 10) : [],
-            submittedAt: nowServerTs(),
-          },
-          raasLibrary: { tier0: TIER0_RULES, tier1: [], tier2: [], tier3: [] },
-          updatedAt: nowServerTs(),
-        });
+        const intakeData = {
+          vertical: String(vertical).substring(0, 100),
+          jurisdiction: String(jurisdiction).substring(0, 100),
+          description: String(description || "").substring(0, 5000),
+          sops: Array.isArray(sops) ? sops.slice(0, 50).map(s => String(s).substring(0, 1000)) : [],
+          existingDocs: Array.isArray(existingDocs) ? existingDocs.slice(0, 10) : [],
+          submittedAt: nowServerTs(),
+        };
+        if (!workerSnap.exists) {
+          // Create new document (Vibe path — no prior chat-driven creation)
+          await workerRef.set({
+            name: String(name || "My Worker").substring(0, 200),
+            description: String(description || "").substring(0, 2000),
+            source: { platform: "dev-sandbox", createdVia: "vibe" },
+            status: "building", buildPhase: "intake",
+            intake: intakeData,
+            raasLibrary: { tier0: TIER0_RULES, tier1: [], tier2: [], tier3: [] },
+            createdAt: nowServerTs(), updatedAt: nowServerTs(),
+          });
+        } else {
+          // Update existing document (chat-driven path)
+          await workerRef.update({
+            buildPhase: "intake", intake: intakeData,
+            raasLibrary: { tier0: TIER0_RULES, tier1: [], tier2: [], tier3: [] },
+            updatedAt: nowServerTs(),
+          });
+        }
         console.log(`[worker1:intake] Saved intake for ${workerId} in tenant ${tenantId}`);
         return res.json({ ok: true, workerId, buildPhase: "intake" });
       } catch (e) {

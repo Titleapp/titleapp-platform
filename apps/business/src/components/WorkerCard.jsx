@@ -75,7 +75,7 @@ export default function WorkerCard({ data, comparables, onApprove, onEdit, isPub
             </div>
           )}
           <div style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", marginTop: 4 }}>
-            {data.vertical} / {data.jurisdiction}
+            {data.vertical} / {(data.jurisdiction || "GLOBAL").substring(0, 40)}
           </div>
         </div>
 

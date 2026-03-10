@@ -181,9 +181,20 @@ export default function DeveloperSandbox() {
           if (parsed.maxFlowStep >= 5) parsed.maxFlowStep = parsed.maxFlowStep + 1;
           parsed._v = 2;
         }
+        // Bounds check — clamp to valid range, clear if corrupted
+        const maxStep = 7;
+        if (parsed.flowStep > maxStep || parsed.maxFlowStep > maxStep) {
+          parsed.flowStep = Math.min(parsed.flowStep || 1, maxStep);
+          parsed.maxFlowStep = Math.min(parsed.maxFlowStep || 1, maxStep);
+        }
+        if (typeof parsed.flowStep !== "number" || parsed.flowStep < 1) parsed.flowStep = 1;
+        if (typeof parsed.maxFlowStep !== "number" || parsed.maxFlowStep < 1) parsed.maxFlowStep = parsed.flowStep;
         savedSession.current = parsed;
       }
-    } catch {}
+    } catch {
+      // Corrupted session — clear it
+      try { localStorage.removeItem("ta_sandbox_session"); } catch {}
+    }
   }
 
   // Flow state — flowStep only moves forward, never backward
@@ -217,7 +228,7 @@ export default function DeveloperSandbox() {
   const [showWorkerCard, setShowWorkerCard] = useState(() => savedSession.current?.showWorkerCard ?? !!savedSession.current?.workerCardData);
   const [lastUpdatedField, setLastUpdatedField] = useState(null);
 
-  // Step 2b — Sharpening Session (3 challenge questions after Vibe, before Worker Card)
+  // Step 2b — Sharpening Session (3 sharpening questions after Vibe, before Worker Card)
   const [sharpeningActive, setSharpeningActive] = useState(false);
   const [sharpeningStep, setSharpeningStep] = useState(0);
   const [sharpeningAnswers, setSharpeningAnswers] = useState([]);
@@ -225,6 +236,16 @@ export default function DeveloperSandbox() {
   // Step 3 — Build
   const [worker, setWorker] = useState(() => savedSession.current?.worker || null);
   const [jurisdiction, setJurisdiction] = useState(() => savedSession.current?.jurisdiction || "");
+
+  // Step 4 — Test survey (declared before persist useEffect that references them)
+  const [surveyStep, setSurveyStep] = useState(() => savedSession.current?.surveyStep || 0);
+  const [surveyAnswers, setSurveyAnswers] = useState(() => savedSession.current?.surveyAnswers || {});
+  const [surveyComplete, setSurveyComplete] = useState(() => savedSession.current?.surveyComplete || false);
+  const [testExchangeCount, setTestExchangeCount] = useState(() => savedSession.current?.testExchangeCount || 0);
+
+  // Image attachments
+  const [pendingImages, setPendingImages] = useState([]);
+  const fileInputRef = useRef(null);
 
   // Persist session state on key changes
   useEffect(() => {
@@ -240,16 +261,6 @@ export default function DeveloperSandbox() {
       }
     } catch {}
   }, [vertical, subjectDomain, selectedIdea, vibeStep, vibeAnswers, workerCardData, worker, jurisdiction, flowStep, maxFlowStep, showWorkerCard, surveyStep, surveyAnswers, surveyComplete, testExchangeCount]);
-
-  // Image attachments
-  const [pendingImages, setPendingImages] = useState([]);
-  const fileInputRef = useRef(null);
-
-  // Step 4 — Test survey
-  const [surveyStep, setSurveyStep] = useState(() => savedSession.current?.surveyStep || 0);
-  const [surveyAnswers, setSurveyAnswers] = useState(() => savedSession.current?.surveyAnswers || {});
-  const [surveyComplete, setSurveyComplete] = useState(() => savedSession.current?.surveyComplete || false);
-  const [testExchangeCount, setTestExchangeCount] = useState(() => savedSession.current?.testExchangeCount || 0);
 
   // Edit mode (post-publish)
   const [editMode, setEditMode] = useState(false);
@@ -278,9 +289,26 @@ export default function DeveloperSandbox() {
 
   // Name — captured once, never asked again
   const [creatorName, setCreatorName] = useState(() => {
-    // Try Firebase Auth first, then localStorage, then session
-    return localStorage.getItem("DISPLAY_NAME") || sessionStorage.getItem("ta_sandbox_name") || "";
+    // BUG-006: Check Firebase Auth first, then localStorage, then session
+    return firebaseAuth?.currentUser?.displayName
+      || localStorage.getItem("DISPLAY_NAME")
+      || sessionStorage.getItem("ta_sandbox_name")
+      || "";
   });
+
+  // BUG-006: Handle late auth resolution — capture name when onAuthStateChanged fires
+  useEffect(() => {
+    if (creatorName) return;
+    const unsub = firebaseAuth?.onAuthStateChanged?.(user => {
+      if (user?.displayName) {
+        setCreatorName(user.displayName);
+        sessionStorage.setItem("ta_sandbox_name", user.displayName);
+        localStorage.setItem("DISPLAY_NAME", user.displayName);
+      }
+    });
+    return () => unsub?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Session ID
   const [sessionId] = useState(() => {
@@ -340,6 +368,14 @@ export default function DeveloperSandbox() {
 
   useEffect(() => { scrollToBottom(); }, [messages, scrollToBottom]);
 
+  // BUG-005: Auto-expand chat input as user types
+  useEffect(() => {
+    if (chatInputRef.current) {
+      chatInputRef.current.style.height = "auto";
+      chatInputRef.current.style.height = Math.min(chatInputRef.current.scrollHeight, isMobile ? 140 : 160) + "px";
+    }
+  }, [input, isMobile]);
+
   const firstName = creatorName ? creatorName.split(" ")[0] : "";
   const isHE = vertical === "health-education";
 
@@ -347,11 +383,14 @@ export default function DeveloperSandbox() {
   useEffect(() => {
     if (!showOnboarding) {
       const savedWorkerName = workerCardData?.name || sessionStorage.getItem("ta_sandbox_worker_name");
+      // BUG-006: Also check Firebase Auth for display name
+      const authName = firebaseAuth?.currentUser?.displayName?.split(" ")[0];
+      const displayFirstName = firstName || authName || "";
       let greeting;
-      if (firstName && savedWorkerName) {
-        greeting = `Welcome back, ${firstName}. Picked up where you left off: ${savedWorkerName}.`;
-      } else if (firstName) {
-        greeting = `Welcome back, ${firstName}. Ready to pick up where we left off?`;
+      if (displayFirstName && savedWorkerName) {
+        greeting = `Welcome back, ${displayFirstName}. Picked up where you left off: ${savedWorkerName}.`;
+      } else if (displayFirstName) {
+        greeting = `Welcome back, ${displayFirstName}. Ready to pick up where we left off?`;
       } else {
         greeting = "I'm Alex. Let's build your first Digital Worker. What industry are you in?";
       }
@@ -588,7 +627,7 @@ export default function DeveloperSandbox() {
     setTimeout(() => setLastUpdatedField(null), 1200);
 
     if (currentQ.key === "jurisdiction") {
-      setJurisdiction(text);
+      setJurisdiction(parseJurisdiction(text));
     }
 
     // If user says no RAAS rules, acknowledge
@@ -613,7 +652,7 @@ export default function DeveloperSandbox() {
     }
   }
 
-  // ── Step 2b: Sharpening Session (3 challenge questions) ──
+  // ── Step 2b: Sharpening Session (3 sharpening questions) ──
 
   function getSharpeningQuestions(answers) {
     const name = selectedIdea?.name || "your worker";
@@ -647,10 +686,12 @@ export default function DeveloperSandbox() {
     setSharpeningActive(true);
     setSharpeningStep(0);
     const questions = getSharpeningQuestions(answers);
-    addAssistantMessage(`Good — I have what I need. Three quick challenge questions to make sure this is exactly right.\n\n${questions[0]}`);
+    // BUG-007: Split bridge message from first question with a pause
+    addAssistantMessage("Great — I have everything I need to start building your card. Before I do, three quick sharpening questions to make sure I get this exactly right.");
+    setTimeout(() => addAssistantMessage(questions[0]), 1200);
   }
 
-  function handleSharpeningAnswer(text) {
+  async function handleSharpeningAnswer(text) {
     const questions = getSharpeningQuestions(vibeAnswers);
     const newAnswers = [...sharpeningAnswers, { question: questions[sharpeningStep], answer: text }];
     setSharpeningAnswers(newAnswers);
@@ -676,13 +717,99 @@ export default function DeveloperSandbox() {
         addAssistantMessage(questions[nextStep]);
       }, 500);
     } else {
-      // Sharpening complete — generate Worker Card with enriched data
+      // BUG-002: Sharpening complete — polish answers, then generate Worker Card
       setSharpeningActive(false);
-      addAssistantMessage("Got it. Building your Worker Card now...");
+      addAssistantMessage("Got it. Polishing your Worker Card copy...");
+      const polished = await polishCardFields(vibeAnswers, newAnswers);
+      const enrichedAnswers = polished
+        ? { ...vibeAnswers,
+            problemDescription: polished.description || vibeAnswers.problemDescription,
+            currentProcess: polished.problemSolves || vibeAnswers.currentProcess,
+            targetUser: polished.targetUser || vibeAnswers.targetUser,
+            neverGetWrong: polished.complianceRules || vibeAnswers.neverGetWrong }
+        : vibeAnswers;
       setTimeout(() => {
-        generateWorkerCard(vibeAnswers, newAnswers);
-      }, 800);
+        generateWorkerCard(enrichedAnswers, newAnswers);
+      }, 300);
     }
+  }
+
+  // BUG-002: Polish raw vibe answers into marketplace-quality copy via AI
+  async function polishCardFields(answers, sharpening) {
+    try {
+      const sharpeningContext = (sharpening || []).map(s => `Q: ${s.question}\nA: ${s.answer}`).join("\n");
+      const prompt = `You are a marketplace copywriter for TitleApp.ai. Rewrite these raw user inputs into polished, professional marketplace copy. Keep each field concise (1-2 sentences max). Do NOT invent features or claims the user didn't mention. Strip typos, filler phrases, and conversational fragments. No first person. Return valid JSON only, no markdown fences.
+
+Raw inputs:
+- description: ${JSON.stringify(answers.problemDescription || "")}
+- problemSolves: ${JSON.stringify(answers.currentProcess || answers.problemDescription || "")}
+- targetUser: ${JSON.stringify(answers.targetUser || "")}
+- complianceRules: ${JSON.stringify(answers.neverGetWrong || "")}
+
+Sharpening context:
+${sharpeningContext}
+
+Return JSON: { "description": "...", "problemSolves": "...", "targetUser": "...", "complianceRules": "..." }`;
+
+      const res = await w1Api("chat:message", {
+        sessionId: "polish_" + Date.now(),
+        surface: "sandbox",
+        userInput: prompt,
+        flowStep: "polish",
+        systemOverride: "You are a concise marketplace copywriter. Return only valid JSON, no explanation or markdown.",
+      });
+      if (res.ok && res.message) {
+        const jsonMatch = res.message.match(/\{[\s\S]*\}/);
+        if (jsonMatch) return JSON.parse(jsonMatch[0]);
+      }
+    } catch (e) {
+      console.warn("[polishCardFields] Failed, using raw answers:", e.message);
+    }
+    return null;
+  }
+
+  // BUG-003: Parse raw jurisdiction text into clean tags
+  function parseJurisdiction(raw) {
+    if (!raw || typeof raw !== "string") return "GLOBAL";
+    // Strip conversational noise after delimiters
+    let cleaned = raw.split(/[.>!]|(?:I don't|I'm |this is|it's |we're |my |I want)/i)[0].trim();
+    if (!cleaned) return "GLOBAL";
+
+    // Check broad coverage
+    if (/national|all\s*(?:50\s*)?states|country-?wide|nation-?wide|every state/i.test(cleaned)) return "National";
+    if (/global|international|worldwide/i.test(cleaned)) return "GLOBAL";
+    if (/\beu\b|european union/i.test(cleaned)) {
+      const hasUS = /\bus\b|united states|america/i.test(cleaned);
+      const hasCan = /\bcanada\b/i.test(cleaned);
+      const parts = ["EU"];
+      if (hasUS) parts.push("US");
+      if (hasCan) parts.push("Canada");
+      return parts.join(" · ");
+    }
+    if (/\bcanada\b/i.test(cleaned) && /\bus\b|united states|america/i.test(cleaned)) return "US · Canada";
+    if (/\bcanada\b/i.test(cleaned)) return "Canada";
+
+    const stateNames = { "alabama": "AL", "alaska": "AK", "arizona": "AZ", "arkansas": "AR", "california": "CA", "colorado": "CO", "connecticut": "CT", "delaware": "DE", "florida": "FL", "georgia": "GA", "hawaii": "HI", "idaho": "ID", "illinois": "IL", "indiana": "IN", "iowa": "IA", "kansas": "KS", "kentucky": "KY", "louisiana": "LA", "maine": "ME", "maryland": "MD", "massachusetts": "MA", "michigan": "MI", "minnesota": "MN", "mississippi": "MS", "missouri": "MO", "montana": "MT", "nebraska": "NE", "nevada": "NV", "new hampshire": "NH", "new jersey": "NJ", "new mexico": "NM", "new york": "NY", "north carolina": "NC", "north dakota": "ND", "ohio": "OH", "oklahoma": "OK", "oregon": "OR", "pennsylvania": "PA", "rhode island": "RI", "south carolina": "SC", "south dakota": "SD", "tennessee": "TN", "texas": "TX", "utah": "UT", "vermont": "VT", "virginia": "VA", "washington": "WA", "west virginia": "WV", "wisconsin": "WI", "wyoming": "WY" };
+    const stateAbbrevs = Object.values(stateNames);
+
+    // Extract state abbreviations
+    const foundAbbrevs = cleaned.match(new RegExp(`\\b(${stateAbbrevs.join("|")})\\b`, "g"));
+    if (foundAbbrevs?.length > 0) {
+      const unique = [...new Set(foundAbbrevs)];
+      return unique.length > 3 ? `Multi-state (${unique.length})` : unique.join(", ");
+    }
+    // Extract state names
+    const lower = cleaned.toLowerCase();
+    const foundNames = [];
+    for (const [name, abbrev] of Object.entries(stateNames)) {
+      if (lower.includes(name)) foundNames.push(abbrev);
+    }
+    if (foundNames.length > 0) {
+      const unique = [...new Set(foundNames)];
+      return unique.length > 3 ? `Multi-state (${unique.length})` : unique.join(", ");
+    }
+    // Fallback: cleaned text capped at 50 chars
+    return cleaned.length <= 50 ? cleaned : "GLOBAL";
   }
 
   function generateWorkerCard(answers, sharpening) {
@@ -706,7 +833,7 @@ export default function DeveloperSandbox() {
       outputFormat: answers.outputFormat || "",
       visibility: isPublic ? "Public marketplace" : "Internal only",
       vertical: VERTICALS.find(v => v.value === vertical)?.label || vertical,
-      jurisdiction: answers.jurisdiction || "GLOBAL",
+      jurisdiction: parseJurisdiction(answers.jurisdiction),
       pricingTier: 2,
       mdGateRequired: needsMdGate,
       subjectDomain,
@@ -893,6 +1020,12 @@ export default function DeveloperSandbox() {
     setWorkerCardData(cardData);
     setShowWorkerCard(false);
     advanceToStep(3); // Only forward — never regresses
+    // BUG-004: Clear stale build errors before starting fresh
+    setMessages(prev => prev.filter(m =>
+      !m.text?.startsWith("Build intake failed") &&
+      !m.text?.startsWith("Research step failed") &&
+      !m.text?.startsWith("The build pipeline hit")
+    ));
     addAssistantMessage("Building your worker now. This takes about a minute. Watch the progress on the right.");
 
     try {
@@ -900,9 +1033,16 @@ export default function DeveloperSandbox() {
       const raasTier1 = String(vibeAnswers.raasRules || "").split(/[.;]/).map(s => s.trim()).filter(Boolean);
       const isPublic = !cardData.internal_only;
 
+      // BUG-001: Generate workerId upfront if we don't have one (Vibe path)
+      const workerId = worker?.id || ("wkr_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8));
+      if (!worker?.id) {
+        setWorker(prev => ({ ...(prev || {}), id: workerId, name: cardData.name }));
+      }
+
       // Step 1: Intake
       const intakeRes = await w1Api("worker1:intake", {
-        workerId: worker?.id || null,
+        workerId,
+        name: cardData.name,
         vertical,
         jurisdiction: cardData.jurisdiction || jurisdiction || "National",
         description: cardData.description,
@@ -917,10 +1057,11 @@ export default function DeveloperSandbox() {
         addAssistantMessage(`Build intake failed: ${intakeRes.error || "unknown error"}. Try approving the card again.`);
         return;
       }
-      setWorker(prev => ({ ...(prev || {}), id: intakeRes.workerId, name: cardData.name, buildPhase: "intake" }));
+      const confirmedWorkerId = intakeRes.workerId || workerId;
+      setWorker(prev => ({ ...(prev || {}), id: confirmedWorkerId, name: cardData.name, buildPhase: "intake" }));
 
       // Step 2: Research (calls Claude — may take 30-60s)
-      const researchRes = await w1Api("worker1:research", { workerId: intakeRes.workerId });
+      const researchRes = await w1Api("worker1:research", { workerId: confirmedWorkerId });
       if (!researchRes.ok) {
         console.error("[Build] research failed:", researchRes);
         addAssistantMessage(`Research step failed: ${researchRes.error || "unknown error"}. The worker was created but rules couldn't be compiled. Try again from the Worker Card.`);
@@ -929,7 +1070,7 @@ export default function DeveloperSandbox() {
       setWorker(prev => ({ ...(prev || {}), buildPhase: "brief", complianceBrief: researchRes.brief }));
 
       // Step 3: Save rules
-      const saveRes = await w1Api("worker1:rules:save", { workerId: intakeRes.workerId, tier2: researchRes.brief?.tier2 || [], tier3: sops });
+      const saveRes = await w1Api("worker1:rules:save", { workerId: confirmedWorkerId, tier2: researchRes.brief?.tier2 || [], tier3: sops });
       if (!saveRes.ok) {
         console.error("[Build] rules:save failed:", saveRes);
       }
@@ -1017,8 +1158,13 @@ export default function DeveloperSandbox() {
 
   function handleBuildComplete(buildData) {
     try {
-      const safeData = buildData || worker || {};
-      setWorker(prev => ({ ...prev, ...safeData }));
+      const safeData = buildData || {};
+      setWorker(prev => {
+        const merged = { ...(prev || {}), ...safeData };
+        // BUG-001: Never lose the workerId during merge
+        if (!merged.id && prev?.id) merged.id = prev.id;
+        return merged;
+      });
       advanceToStep(4);
       fireConfetti("full");
       setTimeout(() => fireConfetti("medium"), 600);
@@ -1422,14 +1568,14 @@ export default function DeveloperSandbox() {
             <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp,image/heic,image/heif,application/pdf" multiple style={{ display: "none" }} onChange={handleFileSelect} />
             <textarea
               ref={chatInputRef}
-              style={{ ...S.chatInput, flex: 1 }}
+              style={{ ...S.chatInput, flex: 1, overflowY: "auto", minHeight: isMobile ? 52 : 44 }}
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={handleChatKeyDown}
               onFocus={e => { e.target.style.borderColor = "#6B46C1"; e.target.style.boxShadow = "0 0 0 3px rgba(107,70,193,0.12)"; }}
               onBlur={e => { e.target.style.borderColor = "#E2E8F0"; e.target.style.boxShadow = "none"; }}
               placeholder={chatPlaceholder}
-              rows={1}
+              rows={2}
             />
             <button
               onClick={handleSend}
@@ -1665,7 +1811,7 @@ export default function DeveloperSandbox() {
                   </div>
                   <div style={{ fontSize: 14, color: "#64748B", marginBottom: 24, lineHeight: 1.5 }}>
                     {sharpeningActive
-                      ? "Three quick challenge questions to make sure this is exactly right."
+                      ? "Three quick sharpening questions to make sure this is exactly right."
                       : `Alex is asking you ${VIBE_QUESTIONS.length} questions to understand exactly what to build. Answer in the chat.`}
                   </div>
                   {/* Progress dots */}
@@ -1693,7 +1839,7 @@ export default function DeveloperSandbox() {
                   <div style={{ background: "#FFFFFF", border: `1px solid ${sharpeningActive ? "rgba(16,185,129,0.3)" : "#E2E8F0"}`, borderRadius: 12, padding: 20 }}>
                     <div style={{ fontSize: 12, fontWeight: 600, color: sharpeningActive ? "#10b981" : "#64748B", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 8 }}>
                       {sharpeningActive
-                        ? `Challenge ${sharpeningStep + 1} of 3`
+                        ? `Sharpening ${sharpeningStep + 1} of 3`
                         : vibeStep < VIBE_QUESTIONS.length
                           ? `Question ${vibeStep + 1} of ${VIBE_QUESTIONS.length}`
                           : "Generating your Worker Card..."}

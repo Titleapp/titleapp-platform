@@ -54,6 +54,14 @@ export default function TestWorkerPanel({ worker, workerCardData, sessionId, onE
 
   useEffect(() => { scrollToBottom(); }, [messages, scrollToBottom]);
 
+  // BUG-005: Auto-expand test chat input
+  useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.style.height = "auto";
+      inputRef.current.style.height = Math.min(inputRef.current.scrollHeight, 140) + "px";
+    }
+  }, [input]);
+
   const workerName = workerCardData?.name || worker?.name || "Your Worker";
   const workerDesc = workerCardData?.description || worker?.description || "";
 
@@ -289,12 +297,12 @@ export default function TestWorkerPanel({ worker, workerCardData, sessionId, onE
       <div style={S.inputWrap}>
         <textarea
           ref={inputRef}
-          style={S.input}
+          style={{ ...S.input, overflowY: "auto", minHeight: 44 }}
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="Ask your worker something..."
-          rows={1}
+          rows={2}
         />
         <button style={S.sendBtn} onClick={handleSend} disabled={sending}>Send</button>
       </div>

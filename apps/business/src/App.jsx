@@ -4096,20 +4096,28 @@ function AdminShell({ onBackToHub }) {
 
 // Top-level error boundary for Sandbox — catches render crashes before blank screen
 class SandboxErrorBoundary extends React.Component {
-  constructor(props) { super(props); this.state = { hasError: false }; }
-  static getDerivedStateFromError() { return { hasError: true }; }
+  constructor(props) { super(props); this.state = { hasError: false, error: null }; }
+  static getDerivedStateFromError(error) { return { hasError: true, error }; }
   componentDidCatch(e, info) { console.error("[SandboxErrorBoundary]", e, info?.componentStack); }
   render() {
     if (this.state.hasError) {
+      const errMsg = this.state.error?.message || "Unknown error";
       return (
         <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F8F9FC" }}>
-          <div style={{ textAlign: "center", maxWidth: 400 }}>
+          <div style={{ textAlign: "center", maxWidth: 480 }}>
             <div style={{ fontSize: 20, fontWeight: 600, color: "#6B46C1", marginBottom: 12 }}>TitleApp</div>
-            <div style={{ fontSize: 15, color: "#1a1a2e", marginBottom: 16 }}>Something went wrong loading the sandbox.</div>
-            <button onClick={() => { this.setState({ hasError: false }); window.location.reload(); }}
-              style={{ padding: "10px 24px", background: "#6B46C1", color: "white", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
-              Reload
-            </button>
+            <div style={{ fontSize: 15, color: "#1a1a2e", marginBottom: 8 }}>Something went wrong loading the sandbox.</div>
+            <div style={{ fontSize: 12, color: "#94A3B8", marginBottom: 16, fontFamily: "monospace", wordBreak: "break-word" }}>{errMsg}</div>
+            <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+              <button onClick={() => { this.setState({ hasError: false, error: null }); window.location.reload(); }}
+                style={{ padding: "10px 24px", background: "#6B46C1", color: "white", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+                Reload
+              </button>
+              <button onClick={() => { localStorage.removeItem("ta_sandbox_session"); this.setState({ hasError: false, error: null }); window.location.reload(); }}
+                style={{ padding: "10px 24px", background: "#F1F5F9", color: "#64748B", border: "1px solid #E2E8F0", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+                Clear session &amp; retry
+              </button>
+            </div>
           </div>
         </div>
       );
