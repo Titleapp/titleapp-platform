@@ -3,6 +3,45 @@ import { auth as firebaseAuth } from "../firebase";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
 
+// Lightweight markdown renderer — handles **bold**, *italic*, `code`, - bullets, headers
+function renderMarkdown(text) {
+  if (!text) return null;
+  return text.split("\n").map((line, li) => {
+    const trimmed = line.trim();
+    // Headers
+    if (trimmed.startsWith("### ")) return <div key={li} style={{ fontWeight: 700, fontSize: 13, marginTop: 8, marginBottom: 2 }}>{inlineFormat(trimmed.slice(4))}</div>;
+    if (trimmed.startsWith("## ")) return <div key={li} style={{ fontWeight: 700, fontSize: 14, marginTop: 8, marginBottom: 2 }}>{inlineFormat(trimmed.slice(3))}</div>;
+    if (trimmed.startsWith("# ")) return <div key={li} style={{ fontWeight: 700, fontSize: 15, marginTop: 8, marginBottom: 2 }}>{inlineFormat(trimmed.slice(2))}</div>;
+    // Bullets
+    if (/^[-*]\s/.test(trimmed)) return <div key={li} style={{ paddingLeft: 12, position: "relative" }}><span style={{ position: "absolute", left: 0 }}>&bull;</span>{inlineFormat(trimmed.slice(2))}</div>;
+    // Numbered list
+    if (/^\d+\.\s/.test(trimmed)) return <div key={li} style={{ paddingLeft: 16 }}>{inlineFormat(trimmed)}</div>;
+    // Empty line
+    if (!trimmed) return <div key={li} style={{ height: 6 }} />;
+    // Normal text
+    return <div key={li}>{inlineFormat(line)}</div>;
+  });
+}
+
+function inlineFormat(text) {
+  // Split on **bold**, *italic*, `code` — simple regex approach
+  const parts = [];
+  let remaining = text;
+  let key = 0;
+  const rx = /(\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`)/g;
+  let lastIndex = 0;
+  let match;
+  while ((match = rx.exec(remaining)) !== null) {
+    if (match.index > lastIndex) parts.push(<span key={key++}>{remaining.slice(lastIndex, match.index)}</span>);
+    if (match[2]) parts.push(<strong key={key++}>{match[2]}</strong>);
+    else if (match[3]) parts.push(<em key={key++}>{match[3]}</em>);
+    else if (match[4]) parts.push(<code key={key++} style={{ background: "rgba(0,0,0,0.06)", padding: "1px 4px", borderRadius: 3, fontSize: "0.9em" }}>{match[4]}</code>);
+    lastIndex = match.index + match[0].length;
+  }
+  if (lastIndex < remaining.length) parts.push(<span key={key++}>{remaining.slice(lastIndex)}</span>);
+  return parts.length > 0 ? parts : text;
+}
+
 // Robust token getter — uses real Firebase auth instance
 async function getToken() {
   if (firebaseAuth?.currentUser) {
@@ -41,11 +80,16 @@ export default function TestWorkerPanel({ worker, workerCardData, sessionId, onE
   const [edgeCases, setEdgeCases] = useState([]);
   const [authError, setAuthError] = useState(false);
   const [starterPromptsVisible, setStarterPromptsVisible] = useState(true);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [mobileWorkspaceOpen, setMobileWorkspaceOpen] = useState(false);
 
   // Interface preference
   const [interfacePref, setInterfacePref] = useState(null);
   const [mobileView, setMobileView] = useState(false);
 
+  const [pendingFiles, setPendingFiles] = useState([]);
+  const [dragOver, setDragOver] = useState(false);
+  const fileInputRef = useRef(null);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -68,13 +112,18 @@ export default function TestWorkerPanel({ worker, workerCardData, sessionId, onE
 
   function getWorkerIntro() {
     if (workerCardData?.welcomeMessage) return workerCardData.welcomeMessage;
-    const target = workerCardData?.targetUser;
-    const desc = workerDesc ? workerDesc.charAt(0).toUpperCase() + workerDesc.slice(1).split(".")[0] : "";
+    // Use problemSolves (polished "what it does") over raw description
+    const problemSolves = workerCardData?.problemSolves || "";
+    const target = workerCardData?.targetUser || "";
+    // Clean: take first sentence, strip filler, cap at 80 chars
+    const rawDesc = problemSolves || workerDesc || "";
+    const cleanDesc = rawDesc.split(/[.!?]/)[0].trim().replace(/^(I |We |It |This |The worker )/i, "").substring(0, 80);
+
     let greeting = `Hi, I'm ${workerName}.`;
-    if (target && desc) {
-      greeting += ` I help ${target.toLowerCase()} with ${desc.toLowerCase()}.`;
-    } else if (desc) {
-      greeting += ` ${desc}.`;
+    if (target && cleanDesc && target !== "General audience") {
+      greeting += ` I help ${target.toLowerCase()} ${cleanDesc.toLowerCase().startsWith("with") ? "" : "with "}${cleanDesc.toLowerCase()}.`;
+    } else if (cleanDesc) {
+      greeting += ` I ${cleanDesc.toLowerCase()}.`;
     }
     greeting += "\n\nTo get started, describe what you're working on and I'll take it from there.";
     return greeting;
@@ -211,6 +260,29 @@ export default function TestWorkerPanel({ worker, workerCardData, sessionId, onE
     inputRef.current?.focus();
   }
 
+  function handleFileSelect(e) {
+    const files = Array.from(e.target.files || []);
+    processFiles(files);
+  }
+
+  function handleDrop(e) {
+    e.preventDefault();
+    setDragOver(false);
+    const files = Array.from(e.dataTransfer.files || []);
+    processFiles(files);
+  }
+
+  function processFiles(files) {
+    files.forEach(file => {
+      if (file.size > 10 * 1024 * 1024) return; // 10MB limit
+      const reader = new FileReader();
+      reader.onload = () => {
+        setPendingFiles(prev => [...prev, { name: file.name, type: file.type, base64: reader.result.split(",")[1], mediaType: file.type }]);
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
   const S = {
     panel: { display: "flex", flexDirection: "column", height: "100%" },
     vaultBar: { display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", background: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: "12px 12px 0 0", marginBottom: 0, flexShrink: 0 },
@@ -219,7 +291,7 @@ export default function TestWorkerPanel({ worker, workerCardData, sessionId, onE
     testBadge: { padding: "3px 8px", background: "rgba(16,185,129,0.1)", color: "#10b981", borderRadius: 4, fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px" },
     chatArea: { flex: 1, minHeight: 0, overflowY: "auto", background: "#FFFFFF", border: "1px solid #E2E8F0", borderTop: "none", borderRadius: "0 0 12px 12px", padding: 16, display: "flex", flexDirection: "column", gap: 10, marginBottom: 12 },
     msgUser: { alignSelf: "flex-end", background: "#6B46C1", color: "white", padding: "8px 12px", borderRadius: "12px 12px 4px 12px", maxWidth: "85%", fontSize: 13, lineHeight: 1.5 },
-    msgAssistant: { alignSelf: "flex-start", background: "#F4F4F8", color: "#1a1a2e", padding: "8px 12px", borderRadius: "12px 12px 12px 4px", maxWidth: "85%", fontSize: 13, lineHeight: 1.5, whiteSpace: "pre-wrap" },
+    msgAssistant: { alignSelf: "flex-start", background: "#F4F4F8", color: "#1a1a2e", padding: "8px 12px", borderRadius: "12px 12px 12px 4px", maxWidth: "85%", fontSize: 13, lineHeight: 1.5 },
     msgSystem: { alignSelf: "center", color: "#64748B", fontSize: 12, textAlign: "center", padding: "6px 12px", background: "rgba(100,116,139,0.06)", borderRadius: 8, maxWidth: "90%" },
     inputLabel: { fontSize: 11, color: "#94A3B8", marginBottom: 4, flexShrink: 0 },
     inputWrap: { display: "flex", gap: 8, marginBottom: 16, flexShrink: 0 },
@@ -274,28 +346,28 @@ export default function TestWorkerPanel({ worker, workerCardData, sessionId, onE
 
   // Simulated Vault nav (left column)
   const vaultNav = (
-    <div style={{ width: mobileView ? 0 : 200, flexShrink: 0, background: "#F8F9FC", borderRight: "1px solid #E2E8F0", display: mobileView ? "none" : "flex", flexDirection: "column", overflow: "hidden" }}>
-      <div style={{ padding: "16px 14px 12px", borderBottom: "1px solid #E2E8F0" }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a2e" }}>My Vault</div>
-        <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 2 }}>Test Workspace</div>
+    <div style={{ width: mobileView ? 0 : 200, flexShrink: 0, background: "#2D1B69", display: mobileView ? "none" : "flex", flexDirection: "column", overflow: "hidden" }}>
+      <div style={{ padding: "16px 14px 12px", borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: "#FFFFFF" }}>My Vault</div>
+        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", marginTop: 2 }}>Test Workspace</div>
       </div>
       <div style={{ padding: "10px 8px", flex: 1 }}>
-        <div style={{ fontSize: 10, fontWeight: 600, color: "#94A3B8", textTransform: "uppercase", letterSpacing: "0.5px", padding: "4px 8px", marginBottom: 4 }}>Workers</div>
-        <div style={{ padding: "8px 10px", background: "rgba(107,70,193,0.04)", borderRadius: 6, marginBottom: 2, display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 11, color: "#94A3B8" }}>&#9733;</span>
-          <span style={{ fontSize: 12, color: "#64748B" }}>Alex (Chief of Staff)</span>
+        <div style={{ fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: "0.5px", padding: "4px 8px", marginBottom: 4 }}>Workers</div>
+        <div style={{ padding: "8px 10px", background: "rgba(255,255,255,0.05)", borderRadius: 6, marginBottom: 2, display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 11, color: "rgba(255,255,255,0.4)" }}>&#9733;</span>
+          <span style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>Alex (Chief of Staff)</span>
         </div>
-        <div style={{ padding: "8px 10px", background: "rgba(107,70,193,0.1)", border: "1px solid rgba(107,70,193,0.2)", borderRadius: 6, marginBottom: 8, display: "flex", alignItems: "center", gap: 8 }}>
+        <div style={{ padding: "8px 10px", background: "rgba(255,255,255,0.12)", borderRadius: 6, marginBottom: 8, display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ width: 6, height: 6, borderRadius: 3, background: "#10b981", flexShrink: 0 }}></span>
-          <span style={{ fontSize: 12, fontWeight: 600, color: "#6B46C1" }}>{workerName}</span>
+          <span style={{ fontSize: 12, fontWeight: 600, color: "#FFFFFF" }}>{workerName}</span>
         </div>
-        <div style={{ fontSize: 10, fontWeight: 600, color: "#94A3B8", textTransform: "uppercase", letterSpacing: "0.5px", padding: "4px 8px", marginTop: 12, marginBottom: 4 }}>My Work</div>
+        <div style={{ fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: "0.5px", padding: "4px 8px", marginTop: 12, marginBottom: 4 }}>My Work</div>
         {["Dashboard", "Documents", "Signatures", "Reports", "Clients & Contacts"].map(item => (
-          <div key={item} style={{ padding: "6px 10px", fontSize: 12, color: "#CBD5E1", cursor: "default" }}>{item}</div>
+          <div key={item} style={{ padding: "6px 10px", fontSize: 12, color: "rgba(255,255,255,0.3)", cursor: "default" }}>{item}</div>
         ))}
       </div>
-      <div style={{ padding: "12px 14px", borderTop: "1px solid #E2E8F0" }}>
-        <div style={{ fontSize: 11, color: "#94A3B8" }}>Browse Marketplace</div>
+      <div style={{ padding: "12px 14px", borderTop: "1px solid rgba(255,255,255,0.1)" }}>
+        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)" }}>Browse Marketplace</div>
       </div>
     </div>
   );
@@ -305,19 +377,33 @@ export default function TestWorkerPanel({ worker, workerCardData, sessionId, onE
     <div style={S.panel}>
       {/* Test mode header */}
       <div style={S.vaultBar}>
-        <span style={S.testBadge}>Test Mode</span>
-        <span style={S.vaultTab}>{workerName}</span>
-        {interfacePref === "both" && (
-          <button onClick={() => setMobileView(!mobileView)}
-            style={{ marginLeft: "auto", padding: "4px 10px", background: "rgba(107,70,193,0.08)", color: "#6B46C1", border: "1px solid rgba(107,70,193,0.15)", borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
-            {mobileView ? "Desktop view" : "Mobile view"}
+        {mobileView && (
+          <button onClick={() => setMobileNavOpen(true)}
+            style={{ background: "none", border: "none", fontSize: 18, color: "#6B46C1", cursor: "pointer", padding: "2px 6px", lineHeight: 1 }}>
+            &#9776;
           </button>
         )}
+        <span style={S.testBadge}>Test Mode</span>
+        <span style={S.vaultTab}>{workerName}</span>
+        <div style={{ marginLeft: "auto", display: "flex", gap: 6 }}>
+          {mobileView && (
+            <button onClick={() => setMobileWorkspaceOpen(true)}
+              style={{ background: "none", border: "1px solid rgba(107,70,193,0.15)", borderRadius: 6, fontSize: 11, color: "#6B46C1", cursor: "pointer", padding: "4px 8px", fontWeight: 600 }}>
+              Workspace
+            </button>
+          )}
+          {interfacePref === "both" && (
+            <button onClick={() => setMobileView(!mobileView)}
+              style={{ padding: "4px 10px", background: "rgba(107,70,193,0.08)", color: "#6B46C1", border: "1px solid rgba(107,70,193,0.15)", borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
+              {mobileView ? "Desktop view" : "Mobile view"}
+            </button>
+          )}
+        </div>
       </div>
       <div style={S.chatArea}>
         {messages.map((msg, i) => (
           <div key={i} style={msg.role === "user" ? S.msgUser : msg.role === "system" ? S.msgSystem : S.msgAssistant}>
-            {msg.text}
+            {msg.role === "assistant" ? renderMarkdown(msg.text) : msg.text}
           </div>
         ))}
         {starterPromptsVisible && messages.length === 1 && !sending && (
@@ -348,7 +434,22 @@ export default function TestWorkerPanel({ worker, workerCardData, sessionId, onE
         </div>
       )}
       <div style={S.inputLabel}>You're testing as a subscriber. Ask it anything.</div>
-      <div style={S.inputWrap}>
+      {pendingFiles.length > 0 && (
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", padding: "4px 0", flexShrink: 0 }}>
+          {pendingFiles.map((f, i) => (
+            <span key={i} style={{ fontSize: 11, padding: "3px 8px", background: "rgba(107,70,193,0.08)", borderRadius: 12, color: "#6B46C1", display: "flex", alignItems: "center", gap: 4 }}>
+              {f.name.substring(0, 20)}{f.name.length > 20 ? "..." : ""}
+              <span onClick={() => setPendingFiles(prev => prev.filter((_, j) => j !== i))} style={{ cursor: "pointer", fontWeight: 700 }}>&times;</span>
+            </span>
+          ))}
+        </div>
+      )}
+      <div style={{ ...S.inputWrap, ...(dragOver ? { outline: "2px dashed #6B46C1", outlineOffset: -2, borderRadius: 8 } : {}) }}
+        onDragOver={e => { e.preventDefault(); setDragOver(true); }} onDragLeave={() => setDragOver(false)} onDrop={handleDrop}>
+        <input type="file" ref={fileInputRef} style={{ display: "none" }} multiple onChange={handleFileSelect} accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt" />
+        <button onClick={() => fileInputRef.current?.click()}
+          style={{ background: "none", border: "none", fontSize: 18, color: "#94A3B8", cursor: "pointer", padding: "4px 6px", flexShrink: 0 }}
+          title="Attach file">&#128206;</button>
         <textarea ref={inputRef} style={{ ...S.input, overflowY: "auto", minHeight: 44 }} value={input}
           onChange={e => setInput(e.target.value)} onKeyDown={handleKeyDown}
           placeholder="Ask your worker something..." rows={2} />
@@ -397,7 +498,58 @@ export default function TestWorkerPanel({ worker, workerCardData, sessionId, onE
   );
 
   if (mobileView) {
-    return <div style={phoneFrame}><div style={{ background: "#F8F9FC", borderRadius: 24, overflow: "hidden", height: "100%", display: "flex", flexDirection: "column" }}>{chatColumn}</div></div>;
+    return (
+      <div style={phoneFrame}>
+        <div style={{ background: "#F8F9FC", borderRadius: 24, overflow: "hidden", height: "100%", display: "flex", flexDirection: "column", position: "relative" }}>
+          {chatColumn}
+          {/* Mobile nav drawer */}
+          {mobileNavOpen && (
+            <div style={{ position: "absolute", inset: 0, zIndex: 20, display: "flex" }}>
+              <div style={{ width: 240, background: "#2D1B69", height: "100%", display: "flex", flexDirection: "column", borderRadius: "24px 0 0 24px" }}>
+                <div style={{ padding: "16px 14px 8px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: "#FFFFFF" }}>My Vault</span>
+                  <button onClick={() => setMobileNavOpen(false)} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.6)", fontSize: 18, cursor: "pointer" }}>&times;</button>
+                </div>
+                <div style={{ padding: "8px", flex: 1 }}>
+                  <div style={{ fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", padding: "4px 8px", marginBottom: 4 }}>Workers</div>
+                  <div style={{ padding: "8px 10px", background: "rgba(255,255,255,0.05)", borderRadius: 6, marginBottom: 2 }}>
+                    <span style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>Alex (Chief of Staff)</span>
+                  </div>
+                  <div style={{ padding: "8px 10px", background: "rgba(255,255,255,0.12)", borderRadius: 6, marginBottom: 8 }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: "#FFFFFF" }}>{workerName}</span>
+                  </div>
+                  <div style={{ fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", padding: "4px 8px", marginTop: 12, marginBottom: 4 }}>My Work</div>
+                  {["Dashboard", "Documents", "Signatures", "Reports"].map(item => (
+                    <div key={item} style={{ padding: "6px 10px", fontSize: 12, color: "rgba(255,255,255,0.3)" }}>{item}</div>
+                  ))}
+                </div>
+              </div>
+              <div onClick={() => setMobileNavOpen(false)} style={{ flex: 1, background: "rgba(0,0,0,0.3)" }} />
+            </div>
+          )}
+          {/* Mobile workspace drawer */}
+          {mobileWorkspaceOpen && (
+            <div style={{ position: "absolute", inset: 0, zIndex: 20, display: "flex", flexDirection: "row-reverse" }}>
+              <div style={{ width: 260, background: "#FAFBFC", height: "100%", display: "flex", flexDirection: "column", borderRadius: "0 24px 24px 0", borderLeft: "1px solid #E2E8F0" }}>
+                <div style={{ padding: "16px 14px 8px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: "#1a1a2e" }}>Workspace</span>
+                  <button onClick={() => setMobileWorkspaceOpen(false)} style={{ background: "none", border: "none", color: "#94A3B8", fontSize: 18, cursor: "pointer" }}>&times;</button>
+                </div>
+                <div style={{ padding: 14, flex: 1, overflowY: "auto" }}>
+                  {[{ title: "Recent Activity", items: ["Waiting for first interaction..."] }, { title: "Quick Stats", items: ["Conversations: 0", "Tasks completed: 0"] }, { title: "Documents", items: ["No documents yet"] }].map((card, ci) => (
+                    <div key={ci} style={{ background: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: 8, padding: "12px 14px", marginBottom: 10 }}>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: "#94A3B8", textTransform: "uppercase", marginBottom: 6 }}>{card.title}</div>
+                      {card.items.map((item, ii) => (<div key={ii} style={{ fontSize: 12, color: "#CBD5E1", fontStyle: "italic" }}>{item}</div>))}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div onClick={() => setMobileWorkspaceOpen(false)} style={{ flex: 1, background: "rgba(0,0,0,0.3)" }} />
+            </div>
+          )}
+        </div>
+      </div>
+    );
   }
 
   return vaultLayout;

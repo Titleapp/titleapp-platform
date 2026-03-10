@@ -1522,17 +1522,17 @@ For starterPrompts: Write 3 short (under 10 words each) conversation starters a 
             </div>
           )}
 
-          {/* Step 4: Continue to Preflight — shown after survey completes */}
-          {flowStep === 4 && surveyComplete && (
+          {/* Step 4: Continue to Preflight — shown once at least one test exchange happened */}
+          {flowStep === 4 && testExchangeCount > 0 && (
             <div style={{ marginTop: 8, display: "flex", justifyContent: "center" }}>
               <button
                 onClick={handleTestComplete}
                 style={{
-                  padding: "10px 24px", background: "#6B46C1", color: "white",
+                  padding: "10px 24px", background: surveyComplete ? "#6B46C1" : "#94A3B8", color: "white",
                   border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer",
                 }}
               >
-                Continue to Preflight
+                {surveyComplete ? "Continue to Preflight \u2192" : "I'm done testing \u2014 Continue to Preflight \u2192"}
               </button>
             </div>
           )}
@@ -1730,19 +1730,19 @@ For starterPrompts: Write 3 short (under 10 words each) conversation starters a 
               const stepNum = i + 1;
               const isActive = flowStep === stepNum;
               const isComplete = maxFlowStep > stepNum;
-              const isReachable = stepNum <= maxFlowStep;
+              const isReachable = stepNum <= maxFlowStep + 1;
               return (
                 <div
                   key={step}
                   style={{
                     padding: "12px 16px", fontSize: 13, fontWeight: 600,
-                    color: isActive ? "#6B46C1" : isComplete ? "#10b981" : "#94A3B8",
+                    color: isActive ? "#6B46C1" : isComplete ? "#10b981" : stepNum <= maxFlowStep ? "#1a1a2e" : "#94A3B8",
                     borderBottom: `2px solid ${isActive ? "#6B46C1" : "transparent"}`,
                     display: "flex", alignItems: "center", gap: 6,
                     cursor: isReachable && !isActive ? "pointer" : "default",
                     opacity: stepNum > maxFlowStep + 1 ? 0.4 : 1,
                   }}
-                  onClick={() => { if (isReachable && !isActive) viewStep(stepNum); }}
+                  onClick={() => { if (isReachable && !isActive) { if (stepNum > maxFlowStep) advanceToStep(stepNum); else viewStep(stepNum); } }}
                 >
                   <span style={{
                     width: 20, height: 20, borderRadius: 10, display: "inline-flex", alignItems: "center", justifyContent: "center",
@@ -1966,6 +1966,7 @@ For starterPrompts: Write 3 short (under 10 words each) conversation starters a 
             >
               {worker?.id ? (
                 <TestWorkerPanel
+                  key={`${worker?.id}_${workerCardData?.name || ""}`}
                   worker={worker}
                   workerCardData={workerCardData}
                   sessionId={sessionId}
