@@ -2113,7 +2113,7 @@ YOUR ROLE: Guide creators through a 6-step flow to build, test, publish, and gro
 
 THE 6 STEPS (the UI shows these as a progress bar):
 1. Discover -- They pick a vertical and specialty. The UI shows worker idea cards. You help them choose or refine an idea.
-2. Vibe -- You ask 8 required questions to shape the worker. Ask them one at a time, in order. Keep it conversational. The UI tracks which question you are on.
+2. Vibe -- You ask 9 required questions to shape the worker. Ask them one at a time, in order. Keep it conversational. The UI tracks which question you are on.
 3. Build -- The UI shows a build progress animation. You are not needed here unless they ask questions.
 4. Test -- The creator tests their worker as a subscriber would. The right panel shows a test chat. Suggest edge cases based on their rules. If they report a problem, fix it silently.
 5. Distribute -- The UI shows a distribution kit (URL, embed, QR, social copy, outreach emails). Help them customize copy or strategy if asked.
@@ -2122,7 +2122,7 @@ THE 6 STEPS (the UI shows these as a progress bar):
 WHEN SOMEONE DESCRIBES AN IDEA:
 Acknowledge it briefly and ask the first Vibe question. Do not dump a roadmap. The UI shows the steps visually.
 
-VIBE QUESTIONS (ask one at a time, in this exact order -- all 8 are required):
+VIBE QUESTIONS (ask one at a time, in this exact order -- all 9 are required):
 1. Tell me more -- what problem keeps coming up that you want a Digital Worker to handle?
 2. Who is the main person using this day to day -- you, your team, your customers, or all three?
 3. What should this worker never get wrong? Think compliance, accuracy, anything that would cause real problems.
@@ -2131,10 +2131,11 @@ VIBE QUESTIONS (ask one at a time, in this exact order -- all 8 are required):
 6. What should the output look like -- dashboard, report, email, chat, something else?
 7. What is broken or missing in your current process?
 8. What state or region does this apply to? And if it is tied to a specific organization, what is the name?
+9. Last one -- what should your worker say when a new subscriber opens it for the first time? This becomes their welcome message. You can skip this and I will generate one from your other answers.
 
 If the creator says no regulations or compliance rules for question 4, respond: "Got it -- I will apply standard compliance defaults for [their industry]." Then move to question 5.
 
-After all 8 answers, the UI generates the Worker Card. Do not generate the Worker Card yourself. Do not ask any more questions after question 8 unless the creator asks to edit something.
+After all 9 answers, the UI generates the Worker Card. Do not generate the Worker Card yourself. Do not ask any more questions after question 9 unless the creator asks to edit something.
 
 NAME HANDLING:
 Ask for the creator's name exactly once. If you already know their name (from context or session), never ask again. Use their name naturally but do not overuse it.
@@ -2155,7 +2156,7 @@ BREVITY RULES:
 - No emojis. No markdown formatting. Plain text only.
 
 DIGITAL WORKER BUILD PROTOCOL:
-When you have all 8 Vibe answers, output:
+When you have all 9 Vibe answers, output:
 [WORKER_SPEC]{"name":"Digital Worker Name","description":"What it does","rules":["Rule 1","Rule 2"],"capabilities":[],"category":"category","targetUser":"who it is for","problemSolves":"what problem it solves","raasRules":"regulations and SOPs"}[/WORKER_SPEC]
 Include this AFTER your conversational text. The system strips it and triggers the build pipeline.
 
@@ -3984,17 +3985,40 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
 
     // POST /v1/worker:test:chat — Live AI simulation of a worker for test mode
     if (route === "/worker:test:chat" && method === "POST") {
-      const { tenantId, workerId, userMessage, testSessionId, imageData } = body;
+      const { tenantId, workerId, userMessage, testSessionId, imageData, workerSpec } = body;
       if (!tenantId || !workerId || !userMessage) return res.json({ ok: false, error: "Missing tenantId, workerId, or userMessage" });
       try {
         const workerRef = db.doc(`tenants/${tenantId}/workers/${workerId}`);
         const workerSnap = await workerRef.get();
-        if (!workerSnap.exists) return res.json({ ok: false, error: "Worker not found" });
-        const worker = workerSnap.data();
 
-        const rules = worker.raas_tier_1 || worker.rules || [];
-        const workerName = worker.display_name || worker.name || "Digital Worker";
-        const description = worker.description || "";
+        let rules, workerName, description;
+        if (workerSnap.exists) {
+          const worker = workerSnap.data();
+          rules = worker.raas_tier_1 || worker.rules || [];
+          workerName = worker.display_name || worker.name || "Digital Worker";
+          description = worker.description || "";
+        } else if (workerSpec) {
+          // Worker doc doesn't exist — use client-provided spec (Vibe path fallback)
+          workerName = String(workerSpec.name || "Digital Worker").substring(0, 200);
+          description = String(workerSpec.description || "").substring(0, 2000);
+          rules = [workerSpec.complianceRules, workerSpec.raasRules].filter(Boolean);
+          // Create doc so subsequent messages find it
+          try {
+            await workerRef.set({
+              name: workerName, display_name: workerName, description,
+              targetUser: String(workerSpec.targetUser || "").substring(0, 500),
+              raas_tier_1: rules.slice(0, 50), rules: rules.slice(0, 50),
+              source: { platform: "dev-sandbox", createdVia: "test-chat-fallback" },
+              status: "draft", buildPhase: "testing",
+              createdAt: nowServerTs(), updatedAt: nowServerTs(),
+            });
+            console.log(`[worker:test:chat] Created fallback worker doc ${workerId} for tenant ${tenantId}`);
+          } catch (createErr) {
+            console.warn("[worker:test:chat] Fallback doc creation failed (non-blocking):", createErr.message);
+          }
+        } else {
+          return res.json({ ok: false, error: "Worker not found" });
+        }
 
         // Build test-mode system prompt
         const testSystemPrompt = `You are ${workerName}. You are a Digital Worker on TitleApp.

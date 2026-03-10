@@ -576,6 +576,7 @@ export default function DeveloperSandbox() {
     { key: "outputFormat", question: "What should the output look like — dashboard, report, email, chat, something else?" },
     { key: "currentProcess", question: "What's broken or missing in your current process?" },
     { key: "jurisdiction", question: "What state or region does this apply to? And if it's tied to a specific organization, what's the name?" },
+    { key: "welcomeMessage", question: "Last one — what should your worker say when a new subscriber opens it for the first time? This becomes their welcome message. You can skip this and I'll generate one from your other answers." },
   ];
 
   // Contextual quick-select chips per Vibe question, vertical-aware
@@ -631,6 +632,9 @@ export default function DeveloperSandbox() {
       },
       jurisdiction: {
         _default: ["California", "Texas", "New York", "National — all states"],
+      },
+      welcomeMessage: {
+        _default: ["Skip — generate one for me", "Let me write my own"],
       },
     };
     const q = map[questionKey];
@@ -772,7 +776,9 @@ export default function DeveloperSandbox() {
             problemDescription: polished.description || vibeAnswers.problemDescription,
             currentProcess: polished.problemSolves || vibeAnswers.currentProcess,
             targetUser: polished.targetUser || vibeAnswers.targetUser,
-            neverGetWrong: polished.complianceRules || vibeAnswers.neverGetWrong }
+            neverGetWrong: polished.complianceRules || vibeAnswers.neverGetWrong,
+            welcomeMessage: polished.welcomeMessage || vibeAnswers.welcomeMessage || "",
+            starterPrompts: polished.starterPrompts || [] }
         : vibeAnswers;
       setTimeout(() => {
         generateWorkerCard(enrichedAnswers, newAnswers);
@@ -795,7 +801,11 @@ Raw inputs:
 Sharpening context:
 ${sharpeningContext}
 
-Return JSON: { "description": "...", "problemSolves": "...", "targetUser": "...", "complianceRules": "..." }`;
+Return JSON: { "description": "...", "problemSolves": "...", "targetUser": "...", "complianceRules": "...", "welcomeMessage": "...", "starterPrompts": ["...", "...", "..."] }
+
+For welcomeMessage: Write a 2-sentence greeting. First sentence: "Hi, I'm [worker name]. I help [target user] with [core task]." Second sentence: a specific first action the subscriber should take. No emojis. Professional tone.
+
+For starterPrompts: Write 3 short (under 10 words each) conversation starters a subscriber would click to begin using this worker. Make them specific to the problem domain.`;
 
       const res = await w1Api("chat:message", {
         sessionId: "polish_" + Date.now(),
@@ -886,6 +896,8 @@ Return JSON: { "description": "...", "problemSolves": "...", "targetUser": "..."
       lane: selectedIdea?.lane,
       internal_only: !isPublic,
       sharpeningAnswers: sharpening || [],
+      welcomeMessage: answers.welcomeMessage && !/skip|no|pass|default|generate/i.test(answers.welcomeMessage) ? answers.welcomeMessage : "",
+      starterPrompts: answers.starterPrompts || [],
     };
 
     setWorkerCardData(cardData);
