@@ -269,6 +269,7 @@ export default function DeveloperSandbox() {
 
   // Step 2 — Vibe
   const [vibeStep, setVibeStep] = useState(() => savedSession.current?.vibeStep || 0);
+  const [vibeFastTrack, setVibeFastTrack] = useState(() => savedSession.current?.vibeFastTrack ?? "pending"); // pending | paste | guided | done
   const [vibeAnswers, setVibeAnswers] = useState(() => savedSession.current?.vibeAnswers || {});
   const [workerCardData, setWorkerCardData] = useState(() => savedSession.current?.workerCardData || null);
   const [showWorkerCard, setShowWorkerCard] = useState(() => savedSession.current?.showWorkerCard ?? !!savedSession.current?.workerCardData);
@@ -298,7 +299,7 @@ export default function DeveloperSandbox() {
     if (!workerCardData && !worker && !vertical) return;
     try {
       localStorage.setItem("ta_sandbox_session", JSON.stringify({
-        vertical, subjectDomain, selectedIdea, vibeStep, vibeAnswers,
+        vertical, subjectDomain, selectedIdea, vibeStep, vibeFastTrack, vibeAnswers,
         workerCardData, worker, jurisdiction, flowStep, maxFlowStep, showWorkerCard,
         surveyStep, surveyAnswers, surveyComplete, testExchangeCount, _v: 2,
       }));
@@ -306,7 +307,7 @@ export default function DeveloperSandbox() {
         sessionStorage.setItem("ta_sandbox_worker_name", workerCardData.name);
       }
     } catch {}
-  }, [vertical, subjectDomain, selectedIdea, vibeStep, vibeAnswers, workerCardData, worker, jurisdiction, flowStep, maxFlowStep, showWorkerCard, surveyStep, surveyAnswers, surveyComplete, testExchangeCount]);
+  }, [vertical, subjectDomain, selectedIdea, vibeStep, vibeFastTrack, vibeAnswers, workerCardData, worker, jurisdiction, flowStep, maxFlowStep, showWorkerCard, surveyStep, surveyAnswers, surveyComplete, testExchangeCount]);
 
   // Edit mode (post-publish)
   const [editMode, setEditMode] = useState(false);
@@ -559,9 +560,10 @@ export default function DeveloperSandbox() {
     // Move to Step 2 — Vibe
     advanceToStep(2);
     setVibeStep(0);
-    // Start the vibe conversation with question 1
+    setVibeFastTrack("pending");
+    // Fast track opener — let creator paste or walk through
     addAssistantMessage(
-      `"${idea.name}" — good choice. Let me ask a few questions so I can build this exactly right for you.\n\nTell me more — what problem keeps coming up that you want a Digital Worker to handle?`
+      `"${idea.name}" — good choice. Before we dive in — have you already been thinking this through?\n\nA lot of people sketch out their worker idea in ChatGPT, Claude, Gemini, or even just a notes doc before coming here. If you have a summary or brain dump, just paste it and I'll pull out everything I need.\n\nOr if you'd rather I walk you through it, just say "let's go" and we'll build it together step by step.`
     );
   }
 
@@ -668,6 +670,7 @@ export default function DeveloperSandbox() {
   }
 
   function handleVibeAnswer(text) {
+    if (vibeFastTrack !== "done") setVibeFastTrack("done");
     const currentQ = VIBE_QUESTIONS[vibeStep];
     if (!currentQ) return;
 
@@ -932,6 +935,52 @@ For starterPrompts: Write 3 short (under 10 words each) conversation starters a 
     // Capture name from first response if we don't have it
     if (!creatorName && messages.length <= 2 && text.length < 40 && !text.includes("?")) {
       captureName(text);
+    }
+
+    // Fast track detection — user responding to the two-path opener
+    if (flowStep === 2 && vibeFastTrack === "pending") {
+      const lower = text.toLowerCase();
+      if (/walk me|let'?s go|step by step|guide me|walk through/i.test(lower) || text.length < 30) {
+        // Path B — guided flow
+        setVibeFastTrack("guided");
+        addAssistantMessage(VIBE_QUESTIONS[0].question);
+        return;
+      }
+      // Path A / C — treat as a paste/summary
+      setVibeFastTrack("paste");
+      addAssistantMessage("Got it — reading through this now.\n\nThinking it through in another tool first is actually a great way to come in with a clear idea. That's exactly what this is for.");
+      const extracted = extractVibeFromPaste(text);
+      // Assign the full text to problemDescription if not already extracted
+      if (!extracted.problemDescription) extracted.problemDescription = text.substring(0, 500);
+      const bulkAnswers = { ...vibeAnswers };
+      for (const [key, val] of Object.entries(extracted)) {
+        if (!bulkAnswers[key]) bulkAnswers[key] = val;
+        if (key === "jurisdiction") setJurisdiction(val);
+      }
+      setVibeAnswers(bulkAnswers);
+      setLastUpdatedField("_bulk");
+      setTimeout(() => setLastUpdatedField(null), 2000);
+      // Find unanswered questions
+      const unanswered = VIBE_QUESTIONS.filter((q, i) => !bulkAnswers[q.key]);
+      if (unanswered.length === 0) {
+        setVibeStep(VIBE_QUESTIONS.length);
+        setVibeFastTrack("done");
+        const filledCount = Object.keys(bulkAnswers).length;
+        setTimeout(() => {
+          addAssistantMessage(`I pulled out all ${filledCount} answers. Let me sharpen a few things.`);
+          setTimeout(() => startSharpeningSession(bulkAnswers), 800);
+        }, 1200);
+      } else {
+        const firstUnanswered = VIBE_QUESTIONS.findIndex(q => !bulkAnswers[q.key]);
+        setVibeStep(firstUnanswered);
+        setVibeFastTrack("done");
+        const filledCount = Object.keys(bulkAnswers).length;
+        setTimeout(() => {
+          addAssistantMessage(`I pulled out ${filledCount} of ${VIBE_QUESTIONS.length} answers. Just a couple of quick gaps:`);
+          setTimeout(() => addAssistantMessage(VIBE_QUESTIONS[firstUnanswered].question), 800);
+        }, 1200);
+      }
+      return;
     }
 
     if (flowStep === 2 && vibeStep < VIBE_QUESTIONS.length) {
@@ -1438,8 +1487,27 @@ For starterPrompts: Write 3 short (under 10 words each) conversation starters a 
           ))}
           {sending && <div style={S.typing}>Alex is typing...</div>}
 
+          {/* Step 2: Fast track chips — shown before Vibe questions start */}
+          {flowStep === 2 && vibeFastTrack === "pending" && !sending && (
+            <div style={{ display: "flex", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
+              {[
+                { label: "Paste my summary", action: () => { inputRef.current?.focus(); } },
+                { label: "Walk me through it", action: () => { addUserMessage("Walk me through it"); setVibeFastTrack("guided"); addAssistantMessage(VIBE_QUESTIONS[0].question); } },
+              ].map(opt => (
+                <button key={opt.label}
+                  style={{ padding: "8px 16px", background: "#FFFFFF", color: "#6B46C1", border: "1px solid rgba(107,70,193,0.3)", borderRadius: 20, fontSize: 13, cursor: "pointer", fontWeight: 600, transition: "background 0.2s" }}
+                  onClick={opt.action}
+                  onMouseEnter={e => { e.currentTarget.style.background = "rgba(107,70,193,0.06)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = "#FFFFFF"; }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          )}
+
           {/* Step 2: Vibe answer chips — quick-select for each question */}
-          {flowStep === 2 && vibeStep < VIBE_QUESTIONS.length && !sharpeningActive && !sending && (
+          {flowStep === 2 && vibeFastTrack !== "pending" && vibeStep < VIBE_QUESTIONS.length && !sharpeningActive && !sending && (
             <div style={{ display: "flex", gap: 6, marginTop: 4, overflowX: "auto", paddingBottom: 4, flexWrap: "nowrap" }}>
               {getVibeChips(vertical, VIBE_QUESTIONS[vibeStep].key).map(chip => (
                 <button
