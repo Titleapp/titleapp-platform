@@ -497,6 +497,19 @@ async function handleStripeWebhook(req, res) {
           await logActivity("revenue", `Credit pack purchased: ${credits} credits for user ${userId}`, "success");
         }
 
+        // Creator Spotlight purchase
+        if (data.metadata?.spotlightId) {
+          try {
+            await db.collection("creatorSpotlights").doc(data.metadata.spotlightId).update({
+              stripePaymentIntentId: data.payment_intent || "",
+              status: "pending",
+            });
+            await logActivity("revenue", `Creator Spotlight purchased: ${data.metadata.spotlightId} by ${data.metadata.creatorId}`, "success");
+          } catch (e) {
+            console.error("[webhook] Spotlight update failed:", e.message);
+          }
+        }
+
         // Track lead conversion if promo code was used
         if (data.metadata && data.metadata.promoCode) {
           try {

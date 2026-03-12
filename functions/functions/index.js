@@ -3302,14 +3302,15 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
           // Auto-seed default raise config on first read
           const defaultConfig = {
             active: true,
+            raise_mode: "waitlist",
             instrument: "Post-Money SAFE",
-            raiseAmount: 1070000,
+            raiseAmount: 2500000,
             valuationCap: 15000000,
             discount: 0.20,
             minimumInvestment: 1000,
             proRata: true,
             proRataNote: "Yes — all investors",
-            fundingPortal: { name: "Wefunder", url: "https://wefunder.com/titleapp", regulation: "Reg CF" },
+            fundingPortal: { name: "Private placement", url: "", regulation: "Terms available to qualified investors" },
             conversionScenarios: [
               { exitValuation: 30000000, multiple: "2.0x" },
               { exitValuation: 50000000, multiple: "3.3x" },
@@ -3317,7 +3318,19 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
               { exitValuation: 100000000, multiple: "6.7x" },
               { exitValuation: 150000000, multiple: "10.0x" },
             ],
-            runway: { netProceeds: 803000, monthlyBurn: 27800, zeroRevenueMonths: 29, withRevenueMonths: "33+", displayText: "29 months (zero revenue) | 33+ with revenue", cashFlowPositiveTarget: "mid-2027" },
+            revenueScenarios: {
+              base:    { m12_arr: 165000, m24_arr: 330000, m36_arr: 594000, subscribers: { m12: 250, m24: 500, m36: 900 } },
+              best:    { m12_arr: 330000, m24_arr: 792000, m36_arr: 1650000, subscribers: { m12: 500, m24: 1200, m36: 2500 } },
+              stretch: { m12_arr: 540000, m24_arr: 2040000, m36_arr: 5400000, subscribers: { m12: 750, m24: 2500, m36: 6000 } },
+            },
+            useOfFunds: [
+              { category: "Product & Engineering", pct: 0.40, amount: 920000 },
+              { category: "GTM & Sales", pct: 0.25, amount: 575000 },
+              { category: "Operations", pct: 0.20, amount: 460000 },
+              { category: "Vertical Expansion", pct: 0.10, amount: 230000 },
+              { category: "Reserve", pct: 0.05, amount: 115000 },
+            ],
+            runway: { netProceeds: 2300000, monthlyBurn: 38000, zeroRevenueMonths: 60, withRevenueMonths: "60+", displayText: "60 months (zero revenue)", cashFlowPositiveTarget: "Q3 2027 (base) / Q1 2027 (best) / Q4 2026 (stretch)" },
             team: [
               { name: "Sean Lee Combs", role: "CEO", note: "Product + vision" },
               { name: "Kent Redwine", role: "CFO", note: "Finance + operations" },
@@ -3331,10 +3344,48 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
           await db.collection("config").doc("raise").set(defaultConfig);
           return res.json({ ok: true, config: defaultConfig, seeded: true });
         }
-        return res.json({ ok: true, config: configDoc.data() });
+        const data = configDoc.data();
+        // Migrate: ensure raise_mode exists (default to waitlist)
+        if (!data.raise_mode) {
+          await db.collection("config").doc("raise").update({ raise_mode: "waitlist" });
+          data.raise_mode = "waitlist";
+        }
+        return res.json({ ok: true, config: data });
       } catch (e) {
         console.error("raise:config GET failed:", e);
         return jsonError(res, 500, "Failed to load raise config");
+      }
+    }
+
+    // POST /v1/waitlist:investor (PUBLIC — no auth required)
+    if (route === "/waitlist:investor" && method === "POST") {
+      try {
+        const { firstName, lastName, email, note } = body || {};
+        if (!email) return jsonError(res, 400, "Email is required");
+        const entry = {
+          firstName: firstName || "",
+          lastName: lastName || "",
+          email: email.trim().toLowerCase(),
+          note: note || "",
+          source: "invest-page",
+          createdAt: nowServerTs(),
+        };
+        await db.collection("waitlists").doc("investors").collection("subscribers").add(entry);
+        // Notify sean@titleapp.ai (best-effort, don't block response)
+        try {
+          const { sendViaSendGrid } = require("./services/marketingService/emailNotify");
+          await sendViaSendGrid({
+            to: "sean@titleapp.ai",
+            subject: `Investor lead: ${firstName || ""} ${lastName || ""} (${email})`,
+            textBody: `New investor waitlist submission:\n\nName: ${firstName || ""} ${lastName || ""}\nEmail: ${email}\nNote: ${note || "(none)"}\nSource: invest-page\nTime: ${new Date().toISOString()}`,
+          });
+        } catch (notifyErr) {
+          console.warn("Investor notification failed (non-blocking):", notifyErr.message);
+        }
+        return res.json({ ok: true, message: "Got it — we'll be in touch shortly with our deck and summary." });
+      } catch (e) {
+        console.error("waitlist:investor POST failed:", e);
+        return jsonError(res, 500, "Failed to save submission");
       }
     }
 
@@ -3894,6 +3945,61 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
             return res.json({ ok: true, status: decision });
         } catch (e) {
             console.error("[creator:review] error:", e.message);
+            return res.json({ ok: false, error: e.message });
+        }
+    }
+
+    // POST /v1/creator:submitSpotlight — Creator Spotlight purchase ($29 one-time)
+    if (route === "/creator:submitSpotlight" && method === "POST") {
+        const { bio, workerDescription, workerId, workerName, workerUrl, photoDataUrl, releaseAgreed } = body;
+        if (!bio || !workerDescription || !releaseAgreed) {
+            return res.json({ ok: false, error: "Missing required fields" });
+        }
+        try {
+            const spotlightRef = db.collection("creatorSpotlights").doc();
+            await spotlightRef.set({
+                creatorId: auth.user.uid,
+                workerId: workerId || "",
+                workerName: workerName || "",
+                workerUrl: workerUrl || "",
+                photoDataUrl: photoDataUrl || "",
+                bio,
+                workerDescription,
+                releaseAgreed: true,
+                releaseAgreedAt: nowServerTs(),
+                stripePaymentIntentId: "",
+                amountPaid: 2900,
+                status: "pending",
+                submittedAt: nowServerTs(),
+                deliveredAt: null,
+                publishedAt: null,
+                spotlightVideoUrl: null,
+                notificationSent: false,
+            });
+            // Create Stripe Checkout Session for $29 one-time payment
+            try {
+                const Stripe = require("stripe");
+                const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2024-06-20" });
+                const origin = req.headers.origin || req.headers.referer || "https://app.titleapp.ai";
+                const session = await stripe.checkout.sessions.create({
+                    mode: "payment",
+                    line_items: [{
+                        price_data: { currency: "usd", unit_amount: 2900, product_data: { name: "Creator Spotlight — AI Avatar Interview" } },
+                        quantity: 1,
+                    }],
+                    success_url: `${origin}/sandbox?spotlight=success`,
+                    cancel_url: `${origin}/sandbox?spotlight=cancel`,
+                    metadata: { spotlightId: spotlightRef.id, creatorId: auth.user.uid, workerId: workerId || "" },
+                });
+                console.log(`[creator:submitSpotlight] ${auth.user.uid} submitted, checkout ${session.id}`);
+                return res.json({ ok: true, spotlightId: spotlightRef.id, checkoutUrl: session.url });
+            } catch (stripeErr) {
+                // Spotlight saved but Stripe failed — still return success so sandbox works
+                console.error("[creator:submitSpotlight] Stripe error:", stripeErr.message);
+                return res.json({ ok: true, spotlightId: spotlightRef.id, checkoutUrl: null });
+            }
+        } catch (e) {
+            console.error("[creator:submitSpotlight] error:", e.message);
             return res.json({ ok: false, error: e.message });
         }
     }
@@ -6726,8 +6832,12 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
                 const raiseDoc = await db.collection("config").doc("raise").get();
                 if (raiseDoc.exists) {
                   const rc = raiseDoc.data();
-                  const fp = rc.fundingPortal || {};
-                  investorRaiseContext = `\n\nCURRENT RAISE TERMS (from live config -- always use these, never make up numbers):
+                  const raiseMode = rc.raise_mode || "waitlist";
+
+                  if (raiseMode === "active") {
+                    // Active raise — inject full terms into prompt
+                    const fp = rc.fundingPortal || {};
+                    investorRaiseContext = `\n\nCURRENT RAISE TERMS (from live config -- always use these, never make up numbers):
 Instrument: ${rc.instrument || "SAFE"}
 Raise Amount: $${((rc.raiseAmount || 0) / 1000000).toFixed(2)}M
 Valuation Cap: $${((rc.valuationCap || 0) / 1000000).toFixed(0)}M
@@ -6737,20 +6847,24 @@ Pro Rata: ${rc.proRataNote || "N/A"}
 Funding Portal: ${fp.name || "N/A"} (${fp.regulation || "N/A"})
 Portal URL: ${fp.url || "N/A"}
 Active: ${rc.active ? "Yes" : "No"}`;
-                  if (rc.conversionScenarios && rc.conversionScenarios.length > 0) {
-                    investorRaiseContext += "\n\nConversion Scenarios (math only, not promises):";
-                    for (const s of rc.conversionScenarios) {
-                      investorRaiseContext += `\nAt $${(s.exitValuation / 1000000).toFixed(0)}M exit: ${s.multiple} return`;
+                    if (rc.conversionScenarios && rc.conversionScenarios.length > 0) {
+                      investorRaiseContext += "\n\nConversion Scenarios (math only, not promises):";
+                      for (const s of rc.conversionScenarios) {
+                        investorRaiseContext += `\nAt $${(s.exitValuation / 1000000).toFixed(0)}M exit: ${s.multiple} return`;
+                      }
                     }
-                  }
-                  if (rc.runway) {
-                    investorRaiseContext += `\n\nRunway: Net proceeds ~$${((rc.runway.netProceeds || 0) / 1000).toFixed(0)}K. Monthly burn ~$${((rc.runway.monthlyBurn || 0) / 1000).toFixed(1)}K. ${rc.runway.zeroRevenueMonths || "N/A"} months at zero revenue. Cash flow positive target: ${rc.runway.cashFlowPositiveTarget || "TBD"}.`;
-                  }
-                  if (rc.team && rc.team.length > 0) {
-                    investorRaiseContext += "\n\nTeam:";
-                    for (const t of rc.team) {
-                      investorRaiseContext += `\n${t.name} (${t.role}) -- ${t.note || ""}`;
+                    if (rc.runway) {
+                      investorRaiseContext += `\n\nRunway: Net proceeds ~$${((rc.runway.netProceeds || 0) / 1000).toFixed(0)}K. Monthly burn ~$${((rc.runway.monthlyBurn || 0) / 1000).toFixed(1)}K. ${rc.runway.zeroRevenueMonths || "N/A"} months at zero revenue. Cash flow positive target: ${rc.runway.cashFlowPositiveTarget || "TBD"}.`;
                     }
+                    if (rc.team && rc.team.length > 0) {
+                      investorRaiseContext += "\n\nTeam:";
+                      for (const t of rc.team) {
+                        investorRaiseContext += `\n${t.name} (${t.role}) -- ${t.note || ""}`;
+                      }
+                    }
+                  } else {
+                    // Waitlist mode — do NOT inject raise terms
+                    investorRaiseContext = "\n\nRAISE STATUS: The raise is not yet active. Do not discuss specific terms, amounts, valuation, discount, or funding platforms. If asked about investing, tell the visitor that TitleApp is building its investor list and will be sharing terms with qualified parties soon. Offer to collect their name and email so we can send them our deck and executive summary when ready.";
                   }
                 }
               } catch (raiseErr) {
@@ -9166,9 +9280,9 @@ Return as JSON: { summary, risks: [], recommendations: [], confidence }`
         batch.set(db.collection("config").doc("investorDocs"), {
           documents: [
             {
-              name: "Pitch Deck v6",
-              filename: "TitleApp_Pitch_Deck_v6.pptx",
-              storagePath: "investorDocs/TitleApp_Pitch_Deck_v6.pptx",
+              name: "Pitch Deck v7",
+              filename: "TitleApp_Pitch_Deck_v7.pptx",
+              storagePath: "investorDocs/TitleApp_Pitch_Deck_v7.pptx",
               type: "pitch_deck",
               description: "Full investor pitch deck -- March 2026",
               requiresVerification: false,
@@ -9176,9 +9290,9 @@ Return as JSON: { summary, risks: [], recommendations: [], confidence }`
               tier: 1,
             },
             {
-              name: "One-Pager v6",
-              filename: "TitleApp_One_Pager_v6.pdf",
-              storagePath: "investorDocs/TitleApp_One_Pager_v6.pdf",
+              name: "One-Pager v7",
+              filename: "TitleApp_One_Pager_v7.pdf",
+              storagePath: "investorDocs/TitleApp_One_Pager_v7.pdf",
               type: "one_pager",
               description: "One-page overview -- market, product, team, terms",
               requiresVerification: false,
@@ -9186,9 +9300,9 @@ Return as JSON: { summary, risks: [], recommendations: [], confidence }`
               tier: 1,
             },
             {
-              name: "Business Plan v4",
-              filename: "TitleApp_Business_Plan_March2026_v4.docx",
-              storagePath: "investorDocs/TitleApp_Business_Plan_March2026_v4.docx",
+              name: "Business Plan v5",
+              filename: "TitleApp_Business_Plan_March2026_v5.docx",
+              storagePath: "investorDocs/TitleApp_Business_Plan_March2026_v5.docx",
               type: "business_plan",
               description: "Business plan -- March 2026 update",
               requiresVerification: true,
@@ -9196,9 +9310,9 @@ Return as JSON: { summary, risks: [], recommendations: [], confidence }`
               tier: 2,
             },
             {
-              name: "Financial Model v1",
-              filename: "TitleApp_Financial_Model_v1.xlsx",
-              storagePath: "investorDocs/TitleApp_Financial_Model_v1.xlsx",
+              name: "Financial Model v2",
+              filename: "TitleApp_Financial_Model_v2.xlsx",
+              storagePath: "investorDocs/TitleApp_Financial_Model_v2.xlsx",
               type: "financial_model",
               description: "36-month, 3-scenario cash flow model",
               requiresVerification: true,

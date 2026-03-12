@@ -8,6 +8,7 @@ import TestWorkerPanel from "../components/TestWorkerPanel";
 import DistributionKit from "../components/DistributionKit";
 import CommsPreferences from "../components/CommsPreferences";
 import PublishPreflight from "../components/PublishPreflight";
+import CreatorSpotlight from "../components/CreatorSpotlight";
 import { fireConfetti } from "../utils/celebrations";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
@@ -2124,6 +2125,7 @@ For starterPrompts: Write 3 short (under 10 words each) conversation starters a 
           {flowStep === 6 && (
             <>
               <DistributionKit worker={worker} workerCardData={workerCardData} />
+              <CreatorSpotlight worker={worker} workerCardData={workerCardData} />
               <div style={{ marginTop: 20, textAlign: "center" }}>
                 <button style={S.btnPrimary} onClick={handleMoveToGrow}>
                   Continue to Grow
