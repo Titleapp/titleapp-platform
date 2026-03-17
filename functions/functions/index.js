@@ -1807,6 +1807,15 @@ Message 8+: If they seem interested, gently offer to set it up. "I can have this
           } else {
             messages.push({ role: 'user', content: userInput });
           }
+
+          // extractSpec fallback: frontend forces card generation after 5+ exchanges with no card
+          if (body.extractSpec && surface === 'sandbox') {
+            messages.push({
+              role: 'user',
+              content: 'Based on everything I have told you so far, please generate my Digital Worker now. Output the [WORKER_SPEC] block with your best interpretation of what I described.'
+            });
+          }
+
           // Store text-only in devHistory (Firestore 1MB doc limit — no base64)
           const hasImage = !!(body.imageData && body.imageData.length > 0);
 
@@ -2117,8 +2126,8 @@ OPENING QUESTION:
 The creator has already answered: "What do you do that other people always ask you for help with?" Their answer is the first message. Read it carefully.
 
 CONVERSATION FLOW:
-1. Acknowledge their expertise in one sentence. Then ask your first follow-up question.
-2. Ask 3-5 follow-up questions, ONE AT A TIME, based on what is missing from their answer. Common gaps to probe:
+1. Acknowledge their expertise in one sentence. Then ask: "That is really interesting. Before I ask more -- what is your name?"
+2. After they give their name, begin follow-up questions. Ask 3-5 follow-up questions, ONE AT A TIME, based on what is missing from their answer. Common gaps to probe:
    - Who specifically uses this day to day -- you, your team, your customers, or all three? (if audience is unclear)
    - What should this worker never get wrong? Think compliance, accuracy, anything that would cause real problems. (if stakes are unclear)
    - Are there regulations, compliance rules, or SOPs it needs to follow? (if not mentioned)
@@ -2131,6 +2140,9 @@ FAST TRACK:
 If the creator pastes a long description (over 200 words), an existing prompt, or a structured workflow from ChatGPT, Claude, or Gemini, you may have enough after just 1-2 follow-up questions. Validate this: "Thinking it through in another tool first is a great way to come in with a clear idea."
 
 If the creator says no regulations or compliance rules, respond: "Got it -- I will apply standard compliance defaults for your industry." Then move on.
+
+NAME TIMING:
+Your FIRST response must ask for the creator's name. Do not wait until later. Ask it naturally after your opening acknowledgment: "That is really interesting. Before I ask more -- what is your name?"
 
 NAME HANDLING:
 Ask for the creator's name exactly once. If you already know their name (from context or session), never ask again. Use their name naturally but do not overuse it.
@@ -2156,9 +2168,12 @@ BREVITY RULES:
 - No emojis. No markdown formatting. Plain text only.
 
 DIGITAL WORKER BUILD PROTOCOL:
-When you have enough information (name/purpose + audience + compliance rules or domain constraints), output:
+CRITICAL: When you have enough information (name/purpose + audience + compliance rules or domain constraints), your response MUST end with a [WORKER_SPEC] block. Keep your conversational text to 2 sentences max so the spec fits within the response. The [WORKER_SPEC] block is how the system creates the worker -- without it, nothing happens.
+
+Format:
 [WORKER_SPEC]{"name":"Digital Worker Name","description":"What it does","rules":["Rule 1","Rule 2"],"capabilities":[],"category":"category","targetUser":"who it is for","problemSolves":"what problem it solves","raasRules":"regulations and SOPs"}[/WORKER_SPEC]
-Include this AFTER your conversational text. The system strips it and triggers the build pipeline.
+
+You MUST include both the opening [WORKER_SPEC] and closing [/WORKER_SPEC] tags. The JSON must be valid. Include this AFTER your conversational text.
 
 BUILD PIPELINE (the UI handles this visually):
 After [WORKER_SPEC], the UI runs the build pipeline automatically. Every stage requires completion before the next opens. Admin review is the final gate. Do not try to run the pipeline yourself.
@@ -2275,17 +2290,54 @@ ${nameGuidance}${authGuidance}`;
             const anthropic = getAnthropic();
             const aiResp = await anthropic.messages.create({
               model: "claude-sonnet-4-5-20250929",
-              max_tokens: 1024,
+              max_tokens: 2048,
               system: surface === 'sandbox' ? sandboxSystemPrompt : devSystemPrompt,
               messages,
             });
+
+            // Warn if response was truncated — [WORKER_SPEC] may be cut off
+            if (aiResp.stop_reason === 'max_tokens' || aiResp.stop_reason === 'end_turn' && aiResp.content[0]?.text?.includes('[WORKER_SPEC]') && !aiResp.content[0]?.text?.includes('[/WORKER_SPEC]')) {
+              console.warn(`[dev] AI response may be truncated: stop_reason=${aiResp.stop_reason}, length=${(aiResp.content[0]?.text || '').length}`);
+            }
 
             let aiText = aiResp.content[0]?.text || "Hey there -- happy to help. What's your name?";
 
             // Detect and parse [WORKER_SPEC]...[/WORKER_SPEC] token from AI response
             let workerCard = null;
             let buildAnimation = false;
-            const workerSpecMatch = aiText.match(/\[WORKER_SPEC\]([\s\S]*?)\[\/WORKER_SPEC\]/);
+            let workerSpecMatch = aiText.match(/\[WORKER_SPEC\]([\s\S]*?)\[\/WORKER_SPEC\]/);
+
+            // Truncation recovery: opening tag found but no closing tag (response cut off)
+            if (!workerSpecMatch && aiText.includes('[WORKER_SPEC]')) {
+              console.warn('[dev] Truncated WORKER_SPEC detected — attempting partial JSON recovery');
+              const partialStart = aiText.indexOf('[WORKER_SPEC]') + '[WORKER_SPEC]'.length;
+              let partialJson = aiText.substring(partialStart).trim();
+              // Try to close truncated JSON by adding missing braces/brackets
+              try {
+                // Count open braces/brackets and close them
+                let openBraces = 0, openBrackets = 0;
+                for (const ch of partialJson) {
+                  if (ch === '{') openBraces++;
+                  else if (ch === '}') openBraces--;
+                  else if (ch === '[') openBrackets++;
+                  else if (ch === ']') openBrackets--;
+                }
+                // Strip trailing comma if present
+                partialJson = partialJson.replace(/,\s*$/, '');
+                // Close any open strings — find last unclosed quote
+                const quoteCount = (partialJson.match(/(?<!\\)"/g) || []).length;
+                if (quoteCount % 2 !== 0) partialJson += '"';
+                // Close brackets/braces
+                while (openBrackets > 0) { partialJson += ']'; openBrackets--; }
+                while (openBraces > 0) { partialJson += '}'; openBraces--; }
+                JSON.parse(partialJson); // validate
+                workerSpecMatch = [null, partialJson]; // synthetic match
+                console.log('[dev] Truncation recovery succeeded');
+              } catch (e) {
+                console.warn('[dev] Truncation recovery failed:', e.message);
+              }
+            }
+
             if (workerSpecMatch) {
               try {
                 const workerSpec = JSON.parse(workerSpecMatch[1].trim());

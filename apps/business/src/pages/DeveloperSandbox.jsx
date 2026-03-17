@@ -243,6 +243,84 @@ function InlineDraftCard({ cardData, onContinue, onDownload, onShare, onEdit }) 
   );
 }
 
+// ── Progressive Card (right panel — fills in as conversation progresses) ──
+function ProgressiveCard({ exchangeCount, progressiveFields, workerCardData }) {
+  // If real card data exists, show the full InlineDraftCard-style card
+  if (workerCardData) return null; // Parent will render InlineDraftCard instead
+
+  const shimmer = {
+    background: "linear-gradient(90deg, #F1F0F5 25%, #E8E6EF 50%, #F1F0F5 75%)",
+    backgroundSize: "200% 100%",
+    animation: "shimmer 1.5s ease-in-out infinite",
+    borderRadius: 6,
+    height: 14,
+  };
+
+  const name = progressiveFields.name || null;
+  const desc = progressiveFields.description || null;
+  const category = progressiveFields.category || null;
+
+  return (
+    <div style={{ maxWidth: 400, margin: "0 auto" }}>
+      <style>{`@keyframes shimmer { 0% { background-position: 200% 0 } 100% { background-position: -200% 0 } }`}</style>
+      <div style={{
+        borderRadius: 16, overflow: "hidden",
+        border: "1px solid rgba(107,70,193,0.2)", boxShadow: "0 2px 12px rgba(107,70,193,0.08)",
+      }}>
+        {/* Header */}
+        <div style={{
+          background: "linear-gradient(135deg, #6B46C1, #7c3aed)", padding: "16px 20px",
+          display: "flex", justifyContent: "space-between", alignItems: "center",
+        }}>
+          {name ? (
+            <span style={{ color: "white", fontWeight: 700, fontSize: 15 }}>{name}</span>
+          ) : (
+            <div style={{ ...shimmer, width: "60%", height: 18, background: "rgba(255,255,255,0.2)" }} />
+          )}
+          <span style={{
+            background: "rgba(255,255,255,0.2)", color: "white", fontSize: 11,
+            fontWeight: 700, padding: "3px 10px", borderRadius: 12, letterSpacing: "0.5px",
+          }}>DRAFT</span>
+        </div>
+
+        {/* Body */}
+        <div style={{ background: "#FFFFFF", padding: "16px 20px" }}>
+          {/* Description */}
+          {desc ? (
+            <div style={{ fontSize: 13, color: "#64748B", lineHeight: 1.6, marginBottom: 12 }}>{desc}</div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 12 }}>
+              <div style={{ ...shimmer, width: "100%" }} />
+              <div style={{ ...shimmer, width: "85%" }} />
+              <div style={{ ...shimmer, width: "60%" }} />
+            </div>
+          )}
+
+          {/* Category + Price */}
+          {exchangeCount >= 2 ? (
+            <div style={{ display: "flex", gap: 12, fontSize: 12, color: "#94A3B8", marginBottom: 12 }}>
+              <span>{category || "Custom"}</span>
+              <span>$49/mo</span>
+            </div>
+          ) : (
+            <div style={{ display: "flex", gap: 12, marginBottom: 12 }}>
+              <div style={{ ...shimmer, width: 60 }} />
+              <div style={{ ...shimmer, width: 40 }} />
+            </div>
+          )}
+
+          {/* Status */}
+          <div style={{ fontSize: 12, color: "#94A3B8", fontStyle: "italic" }}>
+            {exchangeCount === 0 ? "Your worker will take shape here." :
+             exchangeCount < 3 ? "Listening to your conversation..." :
+             "Almost there..."}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main Component ────────────────────────────────────────────
 export default function DeveloperSandbox() {
   // Chat state
@@ -337,24 +415,28 @@ export default function DeveloperSandbox() {
   const [surveyComplete, setSurveyComplete] = useState(() => savedSession.current?.surveyComplete || false);
   const [testExchangeCount, setTestExchangeCount] = useState(() => savedSession.current?.testExchangeCount || 0);
 
+  // Exchange counter (steps 1-2) — used for extractSpec fallback + progressive card
+  const [exchangeCount, setExchangeCount] = useState(0);
+  const [progressiveFields, setProgressiveFields] = useState({ name: null, description: null, category: null });
+
   // Image attachments
   const [pendingImages, setPendingImages] = useState([]);
   const fileInputRef = useRef(null);
 
   // Persist session state on key changes
   useEffect(() => {
-    if (!workerCardData && !worker && flowStep === 0) return;
+    if (!workerCardData && !worker && flowStep === 0 && exchangeCount === 0) return;
     try {
       localStorage.setItem("ta_sandbox_session", JSON.stringify({
         workerCardData, worker, vertical, jurisdiction, workerIconUrl,
-        flowStep, maxFlowStep,
+        flowStep, maxFlowStep, exchangeCount,
         surveyStep, surveyAnswers, surveyComplete, testExchangeCount, _v: 3,
       }));
       if (workerCardData?.name) {
         sessionStorage.setItem("ta_sandbox_worker_name", workerCardData.name);
       }
     } catch {}
-  }, [workerCardData, worker, vertical, jurisdiction, workerIconUrl, flowStep, maxFlowStep, surveyStep, surveyAnswers, surveyComplete, testExchangeCount]);
+  }, [workerCardData, worker, vertical, jurisdiction, workerIconUrl, flowStep, maxFlowStep, exchangeCount, surveyStep, surveyAnswers, surveyComplete, testExchangeCount]);
 
   // Edit mode (post-publish)
   const [editMode, setEditMode] = useState(false);
@@ -544,6 +626,10 @@ export default function DeveloperSandbox() {
     if (!text) return;
     advanceToStep(1);
     setResumeWorker(null);
+    setExchangeCount(1);
+    // Derive tentative worker name from opening answer (first ~5 words)
+    const tentativeName = text.split(/\s+/).slice(0, 5).join(" ");
+    setProgressiveFields(prev => ({ ...prev, description: text.length > 30 ? text.substring(0, 120) + "..." : text }));
     // Send opening answer as first chat message
     addUserMessage(text);
     setSending(true);
@@ -588,6 +674,26 @@ export default function DeveloperSandbox() {
       captureName(text);
     }
 
+    // Track exchange count for steps 1-2
+    const newExchangeCount = exchangeCount + 1;
+    if (flowStep <= 2) setExchangeCount(newExchangeCount);
+
+    // Progressive card field extraction
+    if (flowStep <= 2 && newExchangeCount === 2 && !progressiveFields.name) {
+      // After name exchange, try to derive a tentative worker name from first answer
+      const firstUserMsg = messages.find(m => m.role === "user");
+      if (firstUserMsg?.text) {
+        const words = firstUserMsg.text.split(/\s+/).slice(0, 5).join(" ");
+        setProgressiveFields(prev => ({ ...prev, name: words.length > 3 ? words : null }));
+      }
+    }
+    if (flowStep <= 2 && newExchangeCount >= 3) {
+      setProgressiveFields(prev => ({ ...prev, category: "Custom" }));
+    }
+
+    // extractSpec fallback — force card generation after 5+ exchanges with no card
+    const shouldExtractSpec = flowStep <= 2 && newExchangeCount >= 5 && !workerCardData;
+
     setSending(true);
     const images = [...pendingImages];
     setPendingImages([]);
@@ -608,6 +714,7 @@ export default function DeveloperSandbox() {
         body: JSON.stringify({
           sessionId, surface: "sandbox", userInput: text, flowStep, vertical,
           ...(creatorName ? { creatorName } : {}),
+          ...(shouldExtractSpec ? { extractSpec: true } : {}),
           ...(images.length > 0 ? { imageData: images.map(img => ({ base64: img.base64, mediaType: img.mediaType })) } : {}),
         }),
       });
@@ -637,10 +744,24 @@ export default function DeveloperSandbox() {
             setJurisdiction(card.jurisdiction || "GLOBAL");
             setWorker({ id: card.workerId, name: card.name, buildPhase: "draft" });
 
-            // Add inline draft card to chat
-            setMessages(prev => [...prev, { role: "card", cardData }]);
+            // Card renders in right panel — show a brief note in chat
+            const savedName = creatorName ? creatorName.split(" ")[0] : "";
+            addAssistantMessage(savedName ? `Saved to your Vault, ${savedName}. Your worker card is on the right.` : "Your worker card is ready — see it on the right.");
 
             if (flowStep < 2) advanceToStep(2);
+
+            // Roadmap message after 1.2s delay
+            setTimeout(() => {
+              const name = savedName || "Creator";
+              setMessages(prev => [...prev, {
+                role: "assistant",
+                text: `${name}, your worker is saved. Here is what building it looks like:\n\nSession 1 (done) -- The Spark. You described what you know. Your draft card is saved.\nSession 2 -- The Rules. We spend 15 minutes on what your worker should and should not do.\nSession 3 -- The Test. You talk to your own worker. See it work. Refine it.\nSession 4 -- Publish. Set your price. Go live. Start earning.\n\nYou can finish all four sessions in one afternoon -- or take a few months. Your worker lives in your Vault either way.`
+              }]);
+              // CTA button message
+              setTimeout(() => {
+                setMessages(prev => [...prev, { role: "cta", text: "Start Session 2", action: "startSession2" }]);
+              }, 600);
+            }, 1200);
           }
         }
       } else {
@@ -711,7 +832,8 @@ export default function DeveloperSandbox() {
               setVertical(card.category || "");
               setJurisdiction(card.jurisdiction || "GLOBAL");
               setWorker({ id: card.workerId, name: card.name, buildPhase: "draft" });
-              setMessages(prev => [...prev, { role: "card", cardData }]);
+              const savedName = creatorName ? creatorName.split(" ")[0] : "";
+              addAssistantMessage(savedName ? `Saved to your Vault, ${savedName}. Your worker card is on the right.` : "Your worker card is ready — see it on the right.");
               if (flowStep < 2) advanceToStep(2);
             }
           }
@@ -784,10 +906,6 @@ Keep it practical. I'm going to build a Digital Worker on TitleApp.ai`;
 
   function handleDraftEdit(editedData) {
     setWorkerCardData(editedData);
-    // Update the card message in chat
-    setMessages(prev => prev.map(m =>
-      m.role === "card" ? { ...m, cardData: editedData } : m
-    ));
   }
 
   // ── Step 2 → Step 3: Worker Card approved ────────────────────
@@ -1179,9 +1297,8 @@ Keep it practical. I'm going to build a Digital Worker on TitleApp.ai`;
     );
   }
 
-  // flowStep 1-2: Chat-only layout (no right panel)
-  // flowStep 3+: Two-panel layout with chat + workspace
-  const showRightPanel = flowStep >= 3;
+  // flowStep 1+: Two-panel layout with chat + workspace
+  const showRightPanel = flowStep >= 1;
 
   return (
     <div ref={rootRef} style={{ ...S.root, ...(isMobile ? { flexDirection: "column" } : {}) }}>
@@ -1212,19 +1329,28 @@ Keep it practical. I'm going to build a Digital Worker on TitleApp.ai`;
         <div style={S.chatMessages}>
           <div style={{ flex: 1 }} />
           {messages.map((msg, i) => {
-            // Inline draft card
-            if (msg.role === "card" && msg.cardData) {
+            // CTA button in chat
+            if (msg.role === "cta") {
               return (
-                <InlineDraftCard
-                  key={i}
-                  cardData={msg.cardData}
-                  onContinue={() => handleWorkerCardApprove(msg.cardData)}
-                  onDownload={handleDraftDownload}
-                  onShare={handleDraftShare}
-                  onEdit={handleDraftEdit}
-                />
+                <div key={i} style={{ display: "flex", justifyContent: "center", margin: "8px 0" }}>
+                  <button
+                    onClick={() => handleWorkerCardApprove(workerCardData)}
+                    style={{
+                      padding: "12px 28px", background: "#6B46C1", color: "white",
+                      border: "none", borderRadius: 10, fontSize: 15, fontWeight: 600,
+                      cursor: "pointer", boxShadow: "0 2px 12px rgba(107,70,193,0.2)",
+                      transition: "transform 0.15s, box-shadow 0.15s",
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 4px 16px rgba(107,70,193,0.3)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "0 2px 12px rgba(107,70,193,0.2)"; }}
+                  >
+                    {msg.text} &rarr;
+                  </button>
+                </div>
               );
             }
+            // Skip old "card" role messages (card now renders in right panel)
+            if (msg.role === "card") return null;
             return (
               <div key={i} style={msg.role === "user" ? S.msgUser : S.msgAssistant}>
                 {msg.images && msg.images.length > 0 && (
@@ -1519,7 +1645,7 @@ Keep it practical. I'm going to build a Digital Worker on TitleApp.ai`;
             minHeight: 44, minWidth: 44,
           }}
         >
-          Preview your worker
+          {flowStep <= 2 ? "View your worker card" : "Preview your worker"}
         </button>
       )}
 
@@ -1545,8 +1671,17 @@ Keep it practical. I'm going to build a Digital Worker on TitleApp.ai`;
               <div style={{ width: 40, height: 4, borderRadius: 2, background: "#E2E8F0" }} />
             </div>
           )}
-          {/* Step indicator — only shows steps 3-7 */}
-          {isMobile ? (
+          {/* Step indicator — simple header for steps 1-2, tabs for 3-7 */}
+          {flowStep <= 2 ? (
+            <div style={{ textAlign: "center", padding: "14px 16px", borderBottom: "1px solid #E2E8F0", background: "#FFFFFF" }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: "#6B46C1" }}>Defining Your Worker</div>
+              <div style={{ fontSize: 12, color: "#94A3B8", marginTop: 2 }}>
+                {exchangeCount === 0 ? "Answer Alex's questions to shape your Digital Worker" :
+                 workerCardData ? "Your worker card is ready" :
+                 `Exchange ${exchangeCount} of ~5`}
+              </div>
+            </div>
+          ) : isMobile ? (
             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 16, padding: "10px 16px", borderBottom: "1px solid #E2E8F0", background: "#FFFFFF" }}>
               <button
                 onClick={() => { if (flowStep > 3 && flowStep - 1 <= maxFlowStep) viewStep(flowStep - 1); }}
@@ -1594,18 +1729,47 @@ Keep it practical. I'm going to build a Digital Worker on TitleApp.ai`;
             </div>
           )}
 
-          {/* Step description */}
-          <div style={{ textAlign: "center", padding: "8px 16px", fontSize: 13, color: "#94A3B8", background: "#FFFFFF", borderBottom: "1px solid #E2E8F0" }}>
-            {[
-              "Watch Alex build your worker live",
-              "Test your worker before it goes live",
-              "Complete all gates before publishing",
-              "Publish and share your worker",
-              "Alex tracks your earnings and growth",
-            ][flowStep - 3] || ""}
-          </div>
+          {/* Step description — only for steps 3+ */}
+          {flowStep >= 3 && (
+            <div style={{ textAlign: "center", padding: "8px 16px", fontSize: 13, color: "#94A3B8", background: "#FFFFFF", borderBottom: "1px solid #E2E8F0" }}>
+              {[
+                "Watch Alex build your worker live",
+                "Test your worker before it goes live",
+                "Complete all gates before publishing",
+                "Publish and share your worker",
+                "Alex tracks your earnings and growth",
+              ][flowStep - 3] || ""}
+            </div>
+          )}
 
           <div ref={rightPanelRef} style={S.tabContent}>
+            {/* Steps 1-2 — Progressive card or placeholder */}
+            {flowStep <= 2 && (
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: 300 }}>
+                {workerCardData ? (
+                  <InlineDraftCard
+                    cardData={workerCardData}
+                    onContinue={() => handleWorkerCardApprove(workerCardData)}
+                    onDownload={handleDraftDownload}
+                    onShare={handleDraftShare}
+                    onEdit={handleDraftEdit}
+                  />
+                ) : exchangeCount > 0 ? (
+                  <ProgressiveCard
+                    exchangeCount={exchangeCount}
+                    progressiveFields={progressiveFields}
+                    workerCardData={workerCardData}
+                  />
+                ) : (
+                  <div style={{ textAlign: "center", padding: 40 }}>
+                    <div style={{ fontSize: 40, marginBottom: 16, opacity: 0.3 }}>&#9881;</div>
+                    <div style={{ fontSize: 15, fontWeight: 600, color: "#1a1a2e", marginBottom: 6 }}>Your worker will take shape here.</div>
+                    <div style={{ fontSize: 13, color: "#94A3B8" }}>As you talk to Alex, your Digital Worker card builds itself.</div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Step 3 — Build */}
             {flowStep === 3 && (
               <PanelErrorBoundary
@@ -1687,7 +1851,7 @@ Keep it practical. I'm going to build a Digital Worker on TitleApp.ai`;
           {/* Status Bar */}
           <div style={S.statusBar}>
             <span style={{ fontWeight: 600, color: "#1a1a2e" }}>
-              Step {flowStep - 2}: {FLOW_STEPS[flowStep - 1]}
+              {flowStep <= 2 ? "Defining" : `Step ${flowStep - 2}: ${FLOW_STEPS[flowStep - 1]}`}
             </span>
             {workerCardData?.name && <span>{workerCardData.name}</span>}
             <span style={{ marginLeft: "auto", display: "flex", gap: 3 }}>
