@@ -4538,6 +4538,13 @@ These should be 2-3 realistic test scenarios the creator should try, derived fro
         return res.json({ ok: false, error: "Cart is empty" });
       }
       try {
+        // Check platform-wide BOGO toggle
+        if (bogoDiscount) {
+          const settingsSnap = await db.doc("platform/settings").get();
+          if (settingsSnap.exists && settingsSnap.data().bogoEnabled === false) {
+            return res.json({ ok: false, error: "BOGO promotion is currently disabled" });
+          }
+        }
         // Check if user already used BOGO
         const userDoc = await db.collection("users").doc(user.uid).get();
         const userData = userDoc.exists ? userDoc.data() : {};
@@ -6283,6 +6290,405 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
         return await runAviationRecovery(req, res);
       } catch (e) {
         console.error("admin:aviationRecovery failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ----------------------------
+    // 34.4 — PRICING COMPLIANCE (GET)
+    // ----------------------------
+    if (route === "/admin:pricing:compliance" && method === "GET") {
+      try {
+        const APPROVED = [0, 29, 49, 79];
+        const results = [];
+
+        // Scan workers collection
+        const wSnap = await db.collection("workers").get();
+        for (const d of wSnap.docs) {
+          const data = d.data();
+          const price = Number(data.monthlyPrice || data.price || data.pricingTier || 0);
+          const compliant = APPROVED.includes(price);
+          const nearest = APPROVED.reduce((a, b) => Math.abs(b - price) < Math.abs(a - price) ? b : a);
+          results.push({
+            id: d.id, name: data.name || data.title || "unnamed",
+            vertical: data.vertical || "unknown", price, compliant,
+            nearestTier: nearest, collection: "workers",
+            creatorId: data.creatorId || null,
+          });
+        }
+
+        // Scan raasCatalog collection
+        const cSnap = await db.collection("raasCatalog").get();
+        for (const d of cSnap.docs) {
+          const data = d.data();
+          const price = parseInt(String(data.price_tier || "0").replace(/[^0-9]/g, ""), 10) || 0;
+          const compliant = APPROVED.includes(price);
+          const nearest = APPROVED.reduce((a, b) => Math.abs(b - price) < Math.abs(a - price) ? b : a);
+          // Skip if already covered by workers collection with same ID
+          if (!results.find(r => r.id === d.id)) {
+            results.push({
+              id: d.id, name: data.name || "unnamed",
+              vertical: data.vertical || "unknown", price, compliant,
+              nearestTier: nearest, collection: "raasCatalog",
+              creatorId: data.creatorId || "titleapp-platform",
+            });
+          }
+        }
+
+        // Scan digitalWorkers collection
+        const dwSnap = await db.collection("digitalWorkers").get();
+        for (const d of dwSnap.docs) {
+          const data = d.data();
+          const price = Number(data.monthlyPrice || data.price || 0);
+          const compliant = APPROVED.includes(price);
+          const nearest = APPROVED.reduce((a, b) => Math.abs(b - price) < Math.abs(a - price) ? b : a);
+          if (!results.find(r => r.id === d.id)) {
+            results.push({
+              id: d.id, name: data.name || data.title || "unnamed",
+              vertical: data.vertical || "unknown", price, compliant,
+              nearestTier: nearest, collection: "digitalWorkers",
+              creatorId: data.creatorId || null,
+            });
+          }
+        }
+
+        const compliantCount = results.filter(r => r.compliant).length;
+        const nonCompliant = results.filter(r => !r.compliant);
+        const revenueImpact = nonCompliant.reduce((sum, r) => sum + Math.abs(r.price - r.nearestTier), 0);
+
+        // Sort non-compliant first
+        results.sort((a, b) => a.compliant === b.compliant ? 0 : a.compliant ? 1 : -1);
+
+        return res.json({
+          ok: true,
+          workers: results,
+          summary: { total: results.length, compliant: compliantCount, nonCompliant: nonCompliant.length, revenueImpact },
+        });
+      } catch (e) {
+        console.error("admin:pricing:compliance failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ----------------------------
+    // 34.4 — PRICING FIX (POST)
+    // ----------------------------
+    if (route === "/admin:pricing:fix" && method === "POST") {
+      try {
+        const APPROVED = [0, 29, 49, 79];
+        const { workerId, collection, targetPrice } = body;
+        if (!workerId || !collection) return jsonError(res, 400, "workerId and collection required");
+        if (!APPROVED.includes(Number(targetPrice))) return jsonError(res, 400, "targetPrice must be one of: 0, 29, 49, 79");
+
+        const numPrice = Number(targetPrice);
+        const tierIndex = numPrice === 0 ? 0 : numPrice === 29 ? 1 : numPrice === 49 ? 2 : 3;
+
+        const docRef = db.collection(collection).doc(workerId);
+        const snap = await docRef.get();
+        if (!snap.exists) return jsonError(res, 404, "Worker not found");
+
+        const oldPrice = Number(snap.data().monthlyPrice || snap.data().price || snap.data().price_tier || 0);
+
+        if (collection === "raasCatalog") {
+          await docRef.update({ price_tier: numPrice === 0 ? "FREE" : `$${numPrice}`, _priceCorrectedAt: admin.firestore.FieldValue.serverTimestamp() });
+        } else {
+          await docRef.update({ monthlyPrice: numPrice, pricingTier: tierIndex, _priceCorrectedAt: admin.firestore.FieldValue.serverTimestamp() });
+        }
+
+        // Sync across collections
+        const syncCollections = ["workers", "raasCatalog", "digitalWorkers"].filter(c => c !== collection);
+        for (const col of syncCollections) {
+          const syncRef = db.collection(col).doc(workerId);
+          const syncSnap = await syncRef.get();
+          if (syncSnap.exists) {
+            if (col === "raasCatalog") {
+              await syncRef.update({ price_tier: numPrice === 0 ? "FREE" : `$${numPrice}`, _priceCorrectedAt: admin.firestore.FieldValue.serverTimestamp() });
+            } else {
+              await syncRef.update({ monthlyPrice: numPrice, pricingTier: tierIndex, _priceCorrectedAt: admin.firestore.FieldValue.serverTimestamp() });
+            }
+          }
+        }
+
+        await db.collection("activityLog").add({
+          action: "pricing_fix", workerId, collection,
+          oldPrice, newPrice: numPrice,
+          userId: user.uid, timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        return res.json({ ok: true, oldPrice, newPrice: numPrice });
+      } catch (e) {
+        console.error("admin:pricing:fix failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ----------------------------
+    // 34.4 — WORKER PIPELINE (GET)
+    // ----------------------------
+    if (route === "/admin:worker:pipeline" && method === "GET") {
+      try {
+        const results = [];
+        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+        // Unpublished creator workers
+        const wSnap = await db.collection("workers").where("published", "==", false).get();
+        for (const d of wSnap.docs) {
+          const data = d.data();
+          const updatedAt = data.updatedAt?.toDate?.() || data.createdAt?.toDate?.() || new Date(0);
+          results.push({
+            id: d.id, name: data.name || data.title || "unnamed",
+            vertical: data.vertical || "unknown", status: "draft",
+            createdAt: data.createdAt?.toDate?.()?.toISOString() || null,
+            updatedAt: updatedAt.toISOString(),
+            isStale: updatedAt < sevenDaysAgo,
+            collection: "workers",
+          });
+        }
+
+        // Non-live catalog workers
+        const cSnap = await db.collection("raasCatalog").where("status", "in", ["waitlist", "claimed", "planned"]).get();
+        for (const d of cSnap.docs) {
+          const data = d.data();
+          const updatedAt = data.updatedAt?.toDate?.() || data.createdAt?.toDate?.() || new Date(0);
+          if (!results.find(r => r.id === d.id)) {
+            results.push({
+              id: d.id, name: data.name || "unnamed",
+              vertical: data.vertical || "unknown", status: data.status,
+              createdAt: data.createdAt?.toDate?.()?.toISOString() || null,
+              updatedAt: updatedAt.toISOString(),
+              isStale: updatedAt < sevenDaysAgo,
+              collection: "raasCatalog",
+            });
+          }
+        }
+
+        const staleDraftCount = results.filter(r => r.isStale).length;
+        results.sort((a, b) => (a.isStale === b.isStale ? 0 : a.isStale ? -1 : 1));
+
+        return res.json({ ok: true, workers: results, staleDraftCount });
+      } catch (e) {
+        console.error("admin:worker:pipeline failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ----------------------------
+    // 34.4 — WORKER BULK PUBLISH (POST)
+    // ----------------------------
+    if (route === "/admin:worker:bulkPublish" && method === "POST") {
+      try {
+        const { workerIds } = body;
+        if (!workerIds || !Array.isArray(workerIds) || workerIds.length === 0) {
+          return jsonError(res, 400, "workerIds array required");
+        }
+
+        const published = [];
+        const failed = [];
+
+        for (const wid of workerIds) {
+          try {
+            // Update workers collection
+            const wRef = db.collection("workers").doc(wid);
+            const wSnap = await wRef.get();
+            if (wSnap.exists) {
+              await wRef.update({
+                published: true, status: "available",
+                publishedAt: admin.firestore.FieldValue.serverTimestamp(),
+              });
+            }
+
+            // Update raasCatalog if exists
+            const cRef = db.collection("raasCatalog").doc(wid);
+            const cSnap = await cRef.get();
+            if (cSnap.exists) {
+              await cRef.update({ status: "live" });
+            }
+
+            published.push(wid);
+          } catch (pubErr) {
+            failed.push({ id: wid, error: pubErr.message });
+          }
+        }
+
+        await db.collection("activityLog").add({
+          action: "bulk_publish", workerIds: published,
+          failedIds: failed.map(f => f.id),
+          userId: user.uid, timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        return res.json({ ok: true, published: published.length, failed });
+      } catch (e) {
+        console.error("admin:worker:bulkPublish failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ----------------------------
+    // 34.4 — BOGO STATUS (GET)
+    // ----------------------------
+    if (route === "/admin:bogo:status" && method === "GET") {
+      try {
+        // Read platform-wide BOGO setting
+        const settingsSnap = await db.doc("platform/settings").get();
+        const platformBogoEnabled = settingsSnap.exists ? settingsSnap.data().bogoEnabled !== false : true;
+
+        // Get platform workers (only these can be BOGO eligible)
+        const wSnap = await db.collection("workers").where("creatorId", "==", "titleapp-platform").get();
+        const workers = [];
+        let totalRedemptions = 0;
+        let totalDiscounted = 0;
+
+        for (const d of wSnap.docs) {
+          const data = d.data();
+          // Count BOGO redemptions for this worker
+          const subSnap = await db.collection("subscriptions")
+            .where("slug", "==", data.slug || d.id)
+            .where("isBogo", "==", true).get();
+
+          const redemptions = subSnap.size;
+          const discounted = redemptions * Number(data.monthlyPrice || data.price || 0);
+
+          totalRedemptions += redemptions;
+          totalDiscounted += discounted;
+
+          workers.push({
+            id: d.id, name: data.name || data.title || "unnamed",
+            slug: data.slug || d.id,
+            bogoEligible: data.bogoEligible === true,
+            redemptionCount: redemptions,
+            revenueDiscounted: discounted,
+          });
+        }
+
+        return res.json({
+          ok: true, platformBogoEnabled, workers,
+          totals: { totalRedemptions, totalDiscounted },
+        });
+      } catch (e) {
+        console.error("admin:bogo:status failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ----------------------------
+    // 34.4 — BOGO TOGGLE (POST)
+    // ----------------------------
+    if (route === "/admin:bogo:toggle" && method === "POST") {
+      try {
+        const { scope, workerId } = body;
+        if (!scope || !["platform", "worker"].includes(scope)) {
+          return jsonError(res, 400, "scope must be 'platform' or 'worker'");
+        }
+
+        if (scope === "platform") {
+          const settingsRef = db.doc("platform/settings");
+          const snap = await settingsRef.get();
+          const current = snap.exists ? snap.data().bogoEnabled !== false : true;
+          await settingsRef.set({ bogoEnabled: !current, bogoToggledAt: admin.firestore.FieldValue.serverTimestamp(), bogoToggledBy: user.uid }, { merge: true });
+          return res.json({ ok: true, newValue: !current });
+        }
+
+        if (scope === "worker") {
+          if (!workerId) return jsonError(res, 400, "workerId required for worker scope");
+          const wRef = db.collection("workers").doc(workerId);
+          const wSnap = await wRef.get();
+          if (!wSnap.exists) return jsonError(res, 404, "Worker not found");
+          const data = wSnap.data();
+          if (data.creatorId && data.creatorId !== "titleapp-platform") {
+            return jsonError(res, 403, "BOGO only available for platform workers");
+          }
+          const current = data.bogoEligible === true;
+          await wRef.update({ bogoEligible: !current });
+          return res.json({ ok: true, newValue: !current });
+        }
+      } catch (e) {
+        console.error("admin:bogo:toggle failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ----------------------------
+    // 34.4 — PIPELINE MONITOR (GET)
+    // ----------------------------
+    if (route === "/admin:pipeline:monitor" && method === "GET") {
+      try {
+        const now = Date.now();
+        const sevenDaysAgo = new Date(now - 7 * 24 * 60 * 60 * 1000);
+        const twentyFourHoursAgo = new Date(now - 24 * 60 * 60 * 1000);
+
+        // Query recent generated documents that aren't ready
+        const docsSnap = await db.collection("generatedDocuments")
+          .where("createdAt", ">=", admin.firestore.Timestamp.fromDate(sevenDaysAgo))
+          .orderBy("createdAt", "desc")
+          .limit(200).get();
+
+        const orphanDocs = [];
+        let totalDocs24h = 0;
+        let failedDocs24h = 0;
+
+        for (const d of docsSnap.docs) {
+          const data = d.data();
+          const createdAt = data.createdAt?.toDate?.() || new Date(0);
+          const ageMs = now - createdAt.getTime();
+          const ageHours = Math.round(ageMs / (1000 * 60 * 60) * 10) / 10;
+          const isWithin24h = createdAt >= twentyFourHoursAgo;
+
+          if (isWithin24h) totalDocs24h++;
+
+          if (data.status !== "ready") {
+            if (isWithin24h) failedDocs24h++;
+            orphanDocs.push({
+              id: d.id,
+              tenantId: data.tenantId || "unknown",
+              userId: data.userId || null,
+              createdAt: createdAt.toISOString(),
+              ageHours,
+              templateId: data.templateId || data.template || "unknown",
+              status: data.status || "unknown",
+              isOld: ageHours > 24,
+            });
+          }
+        }
+
+        const failureRate = totalDocs24h > 0 ? Math.round((failedDocs24h / totalDocs24h) * 100 * 10) / 10 : 0;
+
+        return res.json({
+          ok: true,
+          orphanDocs,
+          stats: { totalDocs24h, failedDocs24h, failureRate, alertActive: failureRate > 5 },
+        });
+      } catch (e) {
+        console.error("admin:pipeline:monitor failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ----------------------------
+    // 34.4 — PIPELINE RETRY (POST)
+    // ----------------------------
+    if (route === "/admin:pipeline:retry" && method === "POST") {
+      try {
+        const { docId } = body;
+        if (!docId) return jsonError(res, 400, "docId required");
+
+        const docRef = db.collection("generatedDocuments").doc(docId);
+        const snap = await docRef.get();
+        if (!snap.exists) return jsonError(res, 404, "Document not found");
+
+        await docRef.update({
+          status: "pending",
+          _retriedAt: admin.firestore.FieldValue.serverTimestamp(),
+          _retriedBy: user.uid,
+        });
+
+        await db.collection("activityLog").add({
+          action: "pipeline_retry", docId,
+          userId: user.uid, timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        return res.json({ ok: true });
+      } catch (e) {
+        console.error("admin:pipeline:retry failed:", e);
         return jsonError(res, 500, e.message);
       }
     }

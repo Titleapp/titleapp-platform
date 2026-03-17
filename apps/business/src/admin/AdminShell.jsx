@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import useAdminAuth from "./hooks/useAdminAuth";
 import { auth } from "../firebase";
 import { signOut } from "firebase/auth";
@@ -20,6 +20,10 @@ import IdVerificationQueue from "./pages/IdVerificationQueue";
 import MarketingTab from "./pages/MarketingTab";
 import LifecycleTab from "./pages/LifecycleTab";
 import GrowthTab from "./pages/GrowthTab";
+import PricingCompliance from "./pages/PricingCompliance";
+import WorkerPipeline from "./pages/WorkerPipeline";
+import BogoManager from "./pages/BogoManager";
+import PipelineMonitor from "./pages/PipelineMonitor";
 import AdminChatPanel from "./components/AdminChatPanel";
 
 const NAV_SECTIONS = [
@@ -103,6 +107,15 @@ const NAV_SECTIONS = [
     ],
   },
   {
+    label: "Operations",
+    items: [
+      { id: "pricing-compliance", label: "Pricing Compliance", permission: "all" },
+      { id: "worker-pipeline", label: "Worker Pipeline", permission: "pipeline" },
+      { id: "bogo-manager", label: "BOGO Manager", permission: "all" },
+      { id: "pipeline-monitor", label: "Pipeline Monitor", permission: "monitoring" },
+    ],
+  },
+  {
     label: null,
     items: [
       {
@@ -152,6 +165,14 @@ function renderPage(page) {
       return <LifecycleTab />;
     case "growth-programs":
       return <GrowthTab />;
+    case "pricing-compliance":
+      return <PricingCompliance />;
+    case "worker-pipeline":
+      return <WorkerPipeline />;
+    case "bogo-manager":
+      return <BogoManager />;
+    case "pipeline-monitor":
+      return <PipelineMonitor />;
     default:
       return <Dashboard />;
   }
@@ -161,6 +182,19 @@ export default function AdminCommandCenter({ onBackToHub }) {
   const { user, role, hasPermission } = useAdminAuth();
   const [currentPage, setCurrentPage] = useState("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [staleDraftCount, setStaleDraftCount] = useState(0);
+
+  useEffect(() => {
+    const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+    const token = localStorage.getItem("ID_TOKEN");
+    if (!token) return;
+    fetch(`${API_BASE}/api?path=/v1/admin:worker:pipeline`, {
+      headers: { Authorization: `Bearer ${token}`, "X-Tenant-Id": "admin", "X-Vertical": "developer", "X-Jurisdiction": "GLOBAL" },
+    })
+      .then(r => r.json())
+      .then(data => { if (data.ok) setStaleDraftCount(data.staleDraftCount || 0); })
+      .catch(() => {});
+  }, []);
 
   async function handleSignOut() {
     await signOut(auth);
@@ -246,6 +280,9 @@ export default function AdminCommandCenter({ onBackToHub }) {
                     }}
                   >
                     {item.label}
+                    {item.id === "worker-pipeline" && staleDraftCount > 0 && (
+                      <span className="ac-nav-badge">{staleDraftCount}</span>
+                    )}
                   </button>
                 ))}
               </div>

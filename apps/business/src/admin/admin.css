@@ -558,6 +558,30 @@
   font-size: 14px;
 }
 
+/* NAV BADGE (34.4) */
+.ac-nav-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  margin-left: 8px;
+}
+
+/* ERROR ROW (34.4) */
+.ac-table tbody tr.ac-row-error {
+  background: rgba(239, 68, 68, 0.04);
+}
+.ac-table tbody tr.ac-row-error td {
+  color: #ef4444;
+}
+
 /* RESPONSIVE */
 @media (max-width: 1200px) {
   .ac-metrics { grid-template-columns: repeat(3, 1fr); }
