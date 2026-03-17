@@ -56,7 +56,18 @@ class PanelErrorBoundary extends React.Component {
 // ── Styles ────────────────────────────────────────────────────
 const S = {
   root: { display: "flex", height: "100vh", overflow: "hidden", background: "#F8F9FC", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", color: "#1a1a2e" },
-  // Left panel — chat
+  // Left nav — creator studio
+  leftNav: { width: 240, flexShrink: 0, background: "#FFFFFF", borderRight: "1px solid #E2E8F0", overflowY: "auto", display: "flex", flexDirection: "column" },
+  leftNavMobile: { position: "fixed", top: 0, left: 0, bottom: 0, width: 280, zIndex: 300, background: "#FFFFFF", borderRight: "1px solid #E2E8F0", overflowY: "auto", boxShadow: "4px 0 24px rgba(0,0,0,0.12)" },
+  navSection: { padding: "16px 16px 8px", borderBottom: "1px solid #F1F5F9" },
+  navSectionTitle: { fontSize: 11, fontWeight: 700, color: "#94A3B8", letterSpacing: "0.5px", textTransform: "uppercase", marginBottom: 10 },
+  navStatGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 },
+  navStatTile: { background: "#F8F9FC", borderRadius: 8, padding: "10px 12px", textAlign: "center" },
+  navStatValue: { fontSize: 18, fontWeight: 700, color: "#1a1a2e" },
+  navStatLabel: { fontSize: 10, color: "#94A3B8", marginTop: 2 },
+  navItem: { padding: "10px 16px", fontSize: 13, color: "#64748B", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, borderRadius: 6, margin: "2px 8px" },
+  navItemActive: { background: "rgba(107,70,193,0.08)", color: "#6B46C1", fontWeight: 600 },
+  // Chat panel
   chatPanel: { display: "flex", flexDirection: "column", borderRight: "1px solid #E2E8F0", background: "#FFFFFF" },
   chatHeader: { padding: "16px 20px", borderBottom: "1px solid #E2E8F0", display: "flex", alignItems: "center", gap: 10 },
   chatLogo: { fontSize: 14, fontWeight: 700, color: "#6B46C1" },
@@ -321,6 +332,118 @@ function ProgressiveCard({ exchangeCount, progressiveFields, workerCardData }) {
   );
 }
 
+// ── Lifecycle Reference Card (right panel — "How This Works") ──
+function LifecycleCard({ flowStep }) {
+  const stages = [
+    { num: 1, title: "Build", desc: "Tell me what you know. I'll shape it into a worker. Use your existing ChatGPT or Claude work if you have it.", range: [0, 1, 2] },
+    { num: 2, title: "Test", desc: "Talk to your own worker. See it in action. Refine it until it's right.", range: [3, 4] },
+    { num: 3, title: "Publish", desc: "Set your price. We help you list it and get it in front of the right people.", range: [5] },
+    { num: 4, title: "Grow", desc: "Track usage, collect feedback, push updates, get paid.", range: [6, 7] },
+  ];
+
+  return (
+    <div style={{ background: "#FFFFFF", borderRadius: 12, border: "1px solid #E2E8F0", padding: "20px 16px", marginBottom: 16 }}>
+      <div style={{ fontSize: 14, fontWeight: 700, color: "#1a1a2e", marginBottom: 16 }}>How This Works</div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        {stages.map(stage => {
+          const isActive = stage.range.includes(flowStep);
+          const isComplete = flowStep > Math.max(...stage.range);
+          const circleColor = isComplete ? "#10b981" : isActive ? "#6B46C1" : "#E2E8F0";
+          const textColor = isComplete ? "#10b981" : isActive ? "#6B46C1" : "#94A3B8";
+          return (
+            <div key={stage.num} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+              <div style={{
+                width: 28, height: 28, borderRadius: 14, flexShrink: 0,
+                background: circleColor, color: isComplete || isActive ? "white" : "#94A3B8",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 13, fontWeight: 700,
+              }}>
+                {isComplete ? "\u2713" : stage.num}
+              </div>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: isActive ? "#1a1a2e" : textColor }}>{stage.title}</div>
+                <div style={{ fontSize: 12, color: "#94A3B8", lineHeight: 1.5, marginTop: 2 }}>{stage.desc}</div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div style={{ fontSize: 11, color: "#94A3B8", fontStyle: "italic", marginTop: 14, lineHeight: 1.5 }}>
+        One hour or a few months — your worker is always saved exactly where you left it.
+      </div>
+    </div>
+  );
+}
+
+// ── Creator Studio Nav (left nav — Column 1) ──
+function CreatorStudioNav({ flowStep, workerCardData, worker, isMobile, onClose }) {
+  const navStyle = isMobile ? S.leftNavMobile : S.leftNav;
+  return (
+    <div style={navStyle}>
+      {/* Header */}
+      <div style={{ padding: "16px 16px 12px", borderBottom: "1px solid #E2E8F0", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: "#6B46C1" }}>Creator Studio</div>
+          <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 2 }}>TitleApp</div>
+        </div>
+        {isMobile && (
+          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, color: "#94A3B8", cursor: "pointer", padding: 4 }}>&times;</button>
+        )}
+      </div>
+
+      {/* Dashboard */}
+      <div style={S.navSection}>
+        <div style={S.navSectionTitle}>Dashboard</div>
+        <div style={S.navStatGrid}>
+          <div style={S.navStatTile}><div style={S.navStatValue}>0</div><div style={S.navStatLabel}>Workers Live</div></div>
+          <div style={S.navStatTile}><div style={S.navStatValue}>0</div><div style={S.navStatLabel}>Subscribers</div></div>
+          <div style={S.navStatTile}><div style={S.navStatValue}>$0</div><div style={S.navStatLabel}>This Month</div></div>
+          <div style={S.navStatTile}><div style={S.navStatValue}>&mdash;</div><div style={S.navStatLabel}>Trend</div></div>
+        </div>
+        <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 8, lineHeight: 1.5 }}>Publish your first worker to start earning.</div>
+      </div>
+
+      {/* My Workers */}
+      <div style={S.navSection}>
+        <div style={S.navSectionTitle}>My Workers</div>
+        {workerCardData ? (
+          <div style={{ ...S.navItem, ...S.navItemActive, flexDirection: "column", alignItems: "flex-start", gap: 2 }}>
+            <div style={{ fontSize: 13, fontWeight: 600 }}>{workerCardData.name}</div>
+            <div style={{ fontSize: 11, color: "#94A3B8" }}>Draft — Continue Building &rarr;</div>
+          </div>
+        ) : (
+          <div style={{ fontSize: 12, color: "#94A3B8", padding: "6px 0" }}>No workers yet. Build your first one in the chat.</div>
+        )}
+      </div>
+
+      {/* My Audience */}
+      <div style={S.navSection}>
+        <div style={S.navSectionTitle}>My Audience</div>
+        <div style={{ fontSize: 12, color: "#94A3B8", padding: "6px 0" }}>Your subscribers will appear here once you publish.</div>
+      </div>
+
+      {/* Sessions */}
+      {workerCardData && (
+        <div style={S.navSection}>
+          <div style={S.navSectionTitle}>Sessions</div>
+          <div style={{ ...S.navItem, flexDirection: "column", alignItems: "flex-start", gap: 2 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: "#1a1a2e" }}>{workerCardData.name}</div>
+            <div style={{ fontSize: 11, color: "#94A3B8" }}>
+              Stage {flowStep <= 2 ? "1 — Build" : flowStep <= 4 ? "2 — Test" : flowStep <= 5 ? "3 — Publish" : "4 — Grow"}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Vault */}
+      <div style={S.navSection}>
+        <div style={S.navSectionTitle}>Vault</div>
+        <div style={{ fontSize: 12, color: "#94A3B8", padding: "6px 0" }}>Your files, conversations, and versions live here.</div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main Component ────────────────────────────────────────────
 export default function DeveloperSandbox() {
   // Chat state
@@ -345,13 +468,17 @@ export default function DeveloperSandbox() {
         }
         // Migrate _v:2 → _v:3: reset to opening screen (new conversation-first flow)
         if (parsed._v < 3) {
-          // Keep workerCardData and worker if they exist (for resume banner)
-          // Reset flow to opening screen unless already past Build
           if (parsed.flowStep < 3) {
             parsed.flowStep = 0;
             parsed.maxFlowStep = 0;
           }
           parsed._v = 3;
+        }
+        // Migrate _v:3 → _v:4: preamble flow replaces full-screen opening
+        if (parsed._v < 4) {
+          // flowStep 0 sessions get the new preamble flow (chat pre-seeds on mount)
+          // flowStep 1+ sessions keep their position
+          parsed._v = 4;
         }
         // Bounds check — clamp to valid range, clear if corrupted
         const maxStep = 7;
@@ -397,8 +524,8 @@ export default function DeveloperSandbox() {
     setFlowStep(step);
   }
 
-  // Opening answer (flowStep 0 → 1)
-  const [openingAnswer, setOpeningAnswer] = useState("");
+  // "Use your existing work" paste link
+  const [showPasteArea, setShowPasteArea] = useState(false);
 
   // Worker state (used in steps 2+)
   const [workerCardData, setWorkerCardData] = useState(() => savedSession.current?.workerCardData || null);
@@ -425,12 +552,12 @@ export default function DeveloperSandbox() {
 
   // Persist session state on key changes
   useEffect(() => {
-    if (!workerCardData && !worker && flowStep === 0 && exchangeCount === 0) return;
+    if (!workerCardData && !worker && flowStep <= 0 && exchangeCount === 0) return;
     try {
       localStorage.setItem("ta_sandbox_session", JSON.stringify({
         workerCardData, worker, vertical, jurisdiction, workerIconUrl,
         flowStep, maxFlowStep, exchangeCount,
-        surveyStep, surveyAnswers, surveyComplete, testExchangeCount, _v: 3,
+        surveyStep, surveyAnswers, surveyComplete, testExchangeCount, _v: 4,
       }));
       if (workerCardData?.name) {
         sessionStorage.setItem("ta_sandbox_worker_name", workerCardData.name);
@@ -453,8 +580,7 @@ export default function DeveloperSandbox() {
   // Session error (silent inline UI, not Alex conversation)
   const [showSessionError, setShowSessionError] = useState(false);
 
-  // Outside tool bridge
-  const [showBridge, setShowBridge] = useState(false);
+  // Paste bridge (existing work entry)
   const [bridgePasteBack, setBridgePasteBack] = useState("");
 
   // Clean PII and spec from URL params on mount
@@ -503,6 +629,7 @@ export default function DeveloperSandbox() {
   // Mobile state
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
   const [showMobilePanel, setShowMobilePanel] = useState(false);
+  const [showMobileNav, setShowMobileNav] = useState(false);
 
   // Resizable panels
   const [chatWidthPercent, setChatWidthPercent] = useState(40);
@@ -577,29 +704,47 @@ export default function DeveloperSandbox() {
   const firstName = creatorName ? creatorName.split(" ")[0] : "";
   const isHE = vertical === "health-education";
 
-  // Initial greeting — on mount for returning users at flowStep > 0
+  // Initial greeting — preamble for new users (flowStep 0), welcome back for returning
   useEffect(() => {
-    if (flowStep === 0) return; // Opening screen handles its own flow
-    const savedWorkerName = workerCardData?.name || sessionStorage.getItem("ta_sandbox_worker_name");
-    const authDisplayName = firebaseAuth?.currentUser?.displayName?.split(" ")[0];
-    const displayFirstName = firstName || authDisplayName || "";
-    let greeting;
-    if (displayFirstName && savedWorkerName) {
-      greeting = `Welcome back, ${displayFirstName}. Picked up where you left off: ${savedWorkerName}.`;
-    } else if (displayFirstName) {
-      greeting = `Welcome back, ${displayFirstName}. Ready to pick up where we left off?`;
-    } else {
-      greeting = "Welcome back. Ready to pick up where we left off?";
-    }
-    addAssistantMessage(greeting);
+    if (flowStep > 0) {
+      // Returning user
+      const savedWorkerName = workerCardData?.name || sessionStorage.getItem("ta_sandbox_worker_name");
+      const authDisplayName = firebaseAuth?.currentUser?.displayName?.split(" ")[0];
+      const displayFirstName = firstName || authDisplayName || "";
+      let greeting;
+      if (displayFirstName && savedWorkerName) {
+        greeting = `Welcome back, ${displayFirstName}. Picked up where you left off: ${savedWorkerName}.`;
+      } else if (displayFirstName) {
+        greeting = `Welcome back, ${displayFirstName}. Ready to pick up where we left off?`;
+      } else {
+        greeting = "Welcome back. Ready to pick up where we left off?";
+      }
+      addAssistantMessage(greeting);
 
-    // Auto-send pasted spec from landing page (via ?spec= URL param)
-    if (pastedSpec) {
+      // Auto-send pasted spec from landing page (via ?spec= URL param)
+      if (pastedSpec) {
+        setTimeout(() => {
+          addUserMessage(pastedSpec);
+          addAssistantMessage("Got it — reading through this now. Thinking it through in another tool first is a great way to come in with a clear idea.");
+          if (flowStep < 1) advanceToStep(1);
+        }, 600);
+      }
+    } else {
+      // New user — preamble flow
+      addAssistantMessage("You're about to build a Digital Worker — think of it like an AI app built on your expertise. Just like an app does one thing really well, your Digital Worker will know exactly what you know and be available to anyone, anytime, without you having to be in the room.\n\nHere's the process. First we'll build it together — you tell me what you know, I shape it into a worker. If you've already put something together in ChatGPT or another AI tool, you can use that as your starting point. Then we'll test it — you'll actually talk to your own worker and see it work. Once you're happy with it, we help you publish it and get it in front of the right people. After it's live you can keep adding to it, track who's using it, collect feedback, and get paid.\n\nYour pace, your timeline. Some people publish in an hour if they've been thinking about this for a while. Others build over a few months. Either way, we save everything — every conversation, every decision, every version of your worker. We never forget.\n\nMost people have had the experience of building something in another AI tool and coming back to find it has no idea what you're talking about. That's not how this works. Your worker lives in your Vault. It gets better over time, not worse.\n\nReady? Let's start.");
+      // Opening question after 1.5s delay
       setTimeout(() => {
-        addUserMessage(pastedSpec);
-        addAssistantMessage("Got it — reading through this now. Thinking it through in another tool first is a great way to come in with a clear idea.");
-        if (flowStep < 1) advanceToStep(1);
-      }, 600);
+        addAssistantMessage("What do you do that other people always ask you for help with?");
+      }, 1500);
+
+      // Auto-send pasted spec from landing page (via ?spec= URL param)
+      if (pastedSpec) {
+        setTimeout(() => {
+          addUserMessage(pastedSpec);
+          addAssistantMessage("Got it — reading through this now. Thinking it through in another tool first is a great way to come in with a clear idea.");
+          advanceToStep(1);
+        }, 2500);
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -620,61 +765,27 @@ export default function DeveloperSandbox() {
     localStorage.setItem("DISPLAY_NAME", name);
   }
 
-  // ── Opening screen submit (flowStep 0 → 1) ────────────────
-  function handleOpeningSubmit() {
-    const text = openingAnswer.trim();
-    if (!text) return;
-    advanceToStep(1);
-    setResumeWorker(null);
-    setExchangeCount(1);
-    // Derive tentative worker name from opening answer (first ~5 words)
-    const tentativeName = text.split(/\s+/).slice(0, 5).join(" ");
-    setProgressiveFields(prev => ({ ...prev, description: text.length > 30 ? text.substring(0, 120) + "..." : text }));
-    // Send opening answer as first chat message
-    addUserMessage(text);
-    setSending(true);
-    const token = localStorage.getItem("ID_TOKEN");
-    const headers = { "Content-Type": "application/json" };
-    if (token && token !== "undefined" && token !== "null") headers.Authorization = `Bearer ${token}`;
-    fetch(`${API_BASE}/api?path=/v1/chat:message`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({
-        sessionId, surface: "sandbox", userInput: text, flowStep: 1,
-        ...(creatorName ? { creatorName } : {}),
-      }),
-    })
-      .then(r => r.json())
-      .then(result => {
-        const reply = result.message || result.reply;
-        if (result.ok && reply) {
-          addAssistantMessage(reply);
-        } else {
-          addAssistantMessage(reply || "Tell me more about that.");
-        }
-      })
-      .catch(() => {
-        addAssistantMessage("Tell me more about your expertise.");
-      })
-      .finally(() => {
-        setSending(false);
-        chatInputRef.current?.focus();
-      });
-  }
-
-  // ── Chat send (flowStep 1+) ────────────────────────────────
+  // ── Chat send ────────────────────────────────────────────────
   async function handleSend() {
     const text = input.trim();
     if ((!text && pendingImages.length === 0) || sending) return;
     setInput("");
+    setShowPasteArea(false); // Hide paste link once user starts typing
     addUserMessage(text);
 
+    // First user message advances flowStep 0 → 1
+    if (flowStep === 0) {
+      advanceToStep(1);
+      setResumeWorker(null);
+      setProgressiveFields(prev => ({ ...prev, description: text.length > 30 ? text.substring(0, 120) + "..." : text }));
+    }
+
     // Capture name from first response if we don't have it
-    if (!creatorName && messages.length <= 2 && text.length < 40 && !text.includes("?")) {
+    if (!creatorName && messages.length <= 4 && text.length < 40 && !text.includes("?")) {
       captureName(text);
     }
 
-    // Track exchange count for steps 1-2
+    // Track exchange count for steps 0-2
     const newExchangeCount = exchangeCount + 1;
     if (flowStep <= 2) setExchangeCount(newExchangeCount);
 
@@ -712,7 +823,7 @@ export default function DeveloperSandbox() {
         method: "POST",
         headers,
         body: JSON.stringify({
-          sessionId, surface: "sandbox", userInput: text, flowStep, vertical,
+          sessionId, surface: "sandbox", userInput: text, flowStep: Math.max(flowStep, 1), vertical,
           ...(creatorName ? { creatorName } : {}),
           ...(shouldExtractSpec ? { extractSpec: true } : {}),
           ...(images.length > 0 ? { imageData: images.map(img => ({ base64: img.base64, mediaType: img.mediaType })) } : {}),
@@ -849,18 +960,6 @@ export default function DeveloperSandbox() {
         chatInputRef.current?.focus();
       });
   }
-
-  const bridgePrompt = `I want to build an AI tool based on my expertise.
-Here's the problem I solve: ${openingAnswer || "(describe your expertise)"}
-
-Help me define:
-1. Who exactly needs this (job title, situation)
-2. What they're trying to accomplish
-3. Rules or knowledge the AI needs
-4. What a great answer looks like
-5. What a bad answer looks like
-
-Keep it practical. I'm going to build a Digital Worker on TitleApp.ai`;
 
   // ── InlineDraftCard handlers ────────────────────────────────
 
@@ -1212,7 +1311,7 @@ Keep it practical. I'm going to build a Digital Worker on TitleApp.ai`;
 
   // Chat input placeholder based on step
   const chatPlaceholder = flowStep <= 2
-    ? "Tell Alex about your expertise..."
+    ? (exchangeCount === 0 ? "Describe your expertise..." : "Tell Alex about your expertise...")
     : flowStep === 3 ? "Ask Alex anything about the build..."
     : flowStep === 4 ? "Test your worker — describe any problems..."
     : flowStep === 5 ? "Ask Alex about the preflight checklist..."
@@ -1221,88 +1320,55 @@ Keep it practical. I'm going to build a Digital Worker on TitleApp.ai`;
 
   // ── Render ──────────────────────────────────────────────────
 
-  // flowStep 0: Full-screen opening question
-  if (flowStep === 0) {
-    return (
-      <div style={{
-        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-        minHeight: "100vh", background: "#FFFFFF", padding: 24,
-        fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-      }}>
-        {/* Resume banner */}
-        {resumeWorker && (
-          <div style={{
-            position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
-            background: "linear-gradient(135deg, #6B46C1, #7c3aed)", padding: "12px 24px",
-            display: "flex", alignItems: "center", justifyContent: "center", gap: 12,
-          }}>
-            <span style={{ color: "white", fontSize: 14 }}>
-              Your {resumeWorker.name} is waiting. Pick up where you left off.
-            </span>
-            <button
-              onClick={() => {
-                setResumeWorker(null);
-                const s = savedSession.current;
-                if (s?.flowStep) {
-                  setFlowStep(s.flowStep);
-                  setMaxFlowStep(s.maxFlowStep || s.flowStep);
-                }
-              }}
-              style={{
-                padding: "6px 18px", background: "rgba(255,255,255,0.2)", color: "white",
-                border: "1px solid rgba(255,255,255,0.3)", borderRadius: 8,
-                fontSize: 13, fontWeight: 600, cursor: "pointer",
-              }}
-            >
-              Resume
-            </button>
-          </div>
-        )}
-
-        <div style={{ maxWidth: isMobile ? "100%" : 640, width: "100%", textAlign: "center" }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: "#6B46C1", marginBottom: isMobile ? 24 : 40, letterSpacing: "0.5px" }}>TitleApp</div>
-          <h1 style={{
-            fontSize: isMobile ? 24 : 32, fontWeight: 700, color: "#1a1a2e", lineHeight: 1.3,
-            marginBottom: isMobile ? 24 : 32, margin: "0 auto",
-          }}>
-            What do you do that other people always ask you for help with?
-          </h1>
-          <textarea
-            autoFocus
-            value={openingAnswer}
-            onChange={e => setOpeningAnswer(e.target.value)}
-            onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey && openingAnswer.trim()) { e.preventDefault(); handleOpeningSubmit(); } }}
-            placeholder="Describe your expertise..."
-            style={{
-              width: "100%", minHeight: 120, maxHeight: 300, padding: "16px 20px",
-              background: "#F8F9FC", border: "1px solid #E2E8F0", borderRadius: 12,
-              color: "#1a1a2e", fontSize: 16, lineHeight: 1.6, outline: "none", resize: "vertical",
-              fontFamily: "inherit",
-            }}
-          />
-          <button
-            onClick={handleOpeningSubmit}
-            disabled={!openingAnswer.trim()}
-            style={{
-              marginTop: 16, padding: "14px 36px", background: openingAnswer.trim() ? "#6B46C1" : "#E2E8F0",
-              color: openingAnswer.trim() ? "white" : "#94A3B8", border: "none", borderRadius: 10,
-              fontSize: 16, fontWeight: 600, cursor: openingAnswer.trim() ? "pointer" : "default",
-              transition: "background 0.2s",
-            }}
-          >
-            Start Building
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // flowStep 1+: Two-panel layout with chat + workspace
-  const showRightPanel = flowStep >= 1;
+  // 3-column layout: nav + chat + right panel (always visible)
+  const showRightPanel = true;
 
   return (
     <div ref={rootRef} style={{ ...S.root, ...(isMobile ? { flexDirection: "column" } : {}) }}>
-      {/* Left: Chat Panel */}
+      {/* Resume banner */}
+      {resumeWorker && (
+        <div style={{
+          position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
+          background: "linear-gradient(135deg, #6B46C1, #7c3aed)", padding: "12px 24px",
+          display: "flex", alignItems: "center", justifyContent: "center", gap: 12,
+        }}>
+          <span style={{ color: "white", fontSize: 14 }}>
+            Your {resumeWorker.name} is waiting. Pick up where you left off.
+          </span>
+          <button
+            onClick={() => {
+              setResumeWorker(null);
+              const s = savedSession.current;
+              if (s?.flowStep) {
+                setFlowStep(s.flowStep);
+                setMaxFlowStep(s.maxFlowStep || s.flowStep);
+              }
+            }}
+            style={{
+              padding: "6px 18px", background: "rgba(255,255,255,0.2)", color: "white",
+              border: "1px solid rgba(255,255,255,0.3)", borderRadius: 8,
+              fontSize: 13, fontWeight: 600, cursor: "pointer",
+            }}
+          >
+            Resume
+          </button>
+        </div>
+      )}
+
+      {/* Column 1: Creator Studio Nav (desktop) */}
+      {!isMobile && (
+        <CreatorStudioNav flowStep={flowStep} workerCardData={workerCardData} worker={worker} isMobile={false} />
+      )}
+
+      {/* Mobile nav overlay */}
+      {isMobile && showMobileNav && (
+        <>
+          <div onClick={() => setShowMobileNav(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.3)", zIndex: 250 }} />
+          <CreatorStudioNav flowStep={flowStep} workerCardData={workerCardData} worker={worker} isMobile={true} onClose={() => setShowMobileNav(false)} />
+        </>
+      )}
+
+      {/* Column 2: Chat Panel */}
       <div
         onDrop={handleDrop}
         onDragOver={handleDragOver}
@@ -1317,6 +1383,9 @@ Keep it practical. I'm going to build a Digital Worker on TitleApp.ai`;
         }}
       >
         <div style={S.chatHeader}>
+          {isMobile && (
+            <button onClick={() => setShowMobileNav(true)} style={{ background: "none", border: "none", fontSize: 20, color: "#64748B", cursor: "pointer", padding: "4px 8px 4px 0", lineHeight: 1 }}>&#9776;</button>
+          )}
           <span style={S.chatLogo}>TitleApp</span>
           <span style={S.chatName}>Alex — Your AI Builder</span>
           {localStorage.getItem("ID_TOKEN") && creatorName && (
@@ -1368,6 +1437,21 @@ Keep it practical. I'm going to build a Digital Worker on TitleApp.ai`;
               </div>
             );
           })}
+          {/* "Use your existing work" inline link — shows before first user message */}
+          {flowStep <= 1 && exchangeCount === 0 && !showPasteArea && messages.length >= 2 && (
+            <div style={{ alignSelf: "flex-start", marginTop: -4, marginBottom: 4 }}>
+              <button
+                onClick={() => setShowPasteArea(true)}
+                style={{
+                  background: "none", border: "none", padding: 0, cursor: "pointer",
+                  fontSize: 12, color: "#7c3aed", fontWeight: 500,
+                }}
+              >
+                Already built something in ChatGPT or Claude? Paste it here instead &rarr;
+              </button>
+            </div>
+          )}
+
           {sending && (
             <>
               <style>{`@keyframes thinkBounce { 0%, 60%, 100% { transform: translateY(0) } 30% { transform: translateY(-4px) } }`}</style>
@@ -1479,75 +1563,42 @@ Keep it practical. I'm going to build a Digital Worker on TitleApp.ai`;
           <div ref={messagesEndRef} />
         </div>
         <div style={S.chatInputWrap}>
-          {/* Outside tool bridge */}
-          {flowStep <= 2 && showBridge && (
+          {/* "Use Your Existing Work" paste area */}
+          {flowStep <= 1 && exchangeCount === 0 && showPasteArea && (
             <div style={{
               background: "#F8F9FC", border: "1px solid #E2E8F0", borderRadius: 12,
               padding: 16, marginBottom: 12,
             }}>
-              {!bridgePasteBack ? (
-                <>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a2e", marginBottom: 8 }}>
-                    Draft in ChatGPT, Claude, or Gemini first
-                  </div>
-                  <div style={{ fontSize: 12, color: "#64748B", lineHeight: 1.5, marginBottom: 12 }}>
-                    Copy this prompt, paste it into your favorite AI tool, then bring the result back here.
-                  </div>
-                  <pre style={{
-                    background: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: 8,
-                    padding: 12, fontSize: 12, color: "#1a1a2e", lineHeight: 1.5,
-                    whiteSpace: "pre-wrap", wordWrap: "break-word", maxHeight: 200, overflowY: "auto",
-                    marginBottom: 12,
-                  }}>{bridgePrompt}</pre>
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <button
-                      onClick={() => { navigator.clipboard.writeText(bridgePrompt); }}
-                      style={{ padding: "8px 16px", background: "#6B46C1", color: "white", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}
-                    >Copy prompt</button>
-                    <button
-                      onClick={() => setBridgePasteBack(" ")}
-                      style={{ padding: "8px 16px", background: "#FFFFFF", color: "#6B46C1", border: "1px solid rgba(107,70,193,0.3)", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}
-                    >I have my result</button>
-                    <button
-                      onClick={() => setShowBridge(false)}
-                      style={{ padding: "8px 16px", background: "transparent", color: "#94A3B8", border: "none", borderRadius: 8, fontSize: 13, cursor: "pointer" }}
-                    >Cancel</button>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a2e", marginBottom: 8 }}>
-                    Paste your result
-                  </div>
-                  <textarea
-                    autoFocus
-                    value={bridgePasteBack === " " ? "" : bridgePasteBack}
-                    onChange={e => setBridgePasteBack(e.target.value)}
-                    placeholder="Paste the output from your AI tool here..."
-                    style={{
-                      width: "100%", minHeight: 100, padding: "10px 12px",
-                      background: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: 8,
-                      fontSize: 13, color: "#1a1a2e", outline: "none", resize: "vertical",
-                      marginBottom: 10, fontFamily: "inherit",
-                    }}
-                  />
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <button
-                      onClick={handleBridgeSend}
-                      disabled={!bridgePasteBack.trim()}
-                      style={{
-                        padding: "8px 16px", background: bridgePasteBack.trim() ? "#6B46C1" : "#E2E8F0",
-                        color: bridgePasteBack.trim() ? "white" : "#94A3B8", border: "none", borderRadius: 8,
-                        fontSize: 13, fontWeight: 600, cursor: bridgePasteBack.trim() ? "pointer" : "default",
-                      }}
-                    >Send to Alex</button>
-                    <button
-                      onClick={() => { setShowBridge(false); setBridgePasteBack(""); }}
-                      style={{ padding: "8px 16px", background: "transparent", color: "#94A3B8", border: "none", borderRadius: 8, fontSize: 13, cursor: "pointer" }}
-                    >Cancel</button>
-                  </div>
-                </>
-              )}
+              <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a2e", marginBottom: 8 }}>
+                Paste your existing work
+              </div>
+              <textarea
+                autoFocus
+                value={bridgePasteBack === " " ? "" : bridgePasteBack}
+                onChange={e => setBridgePasteBack(e.target.value)}
+                placeholder="Paste your prompt, workflow, or description from another AI tool..."
+                style={{
+                  width: "100%", minHeight: 100, padding: "10px 12px",
+                  background: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: 8,
+                  fontSize: 13, color: "#1a1a2e", outline: "none", resize: "vertical",
+                  marginBottom: 10, fontFamily: "inherit",
+                }}
+              />
+              <div style={{ display: "flex", gap: 8 }}>
+                <button
+                  onClick={handleBridgeSend}
+                  disabled={!bridgePasteBack.trim()}
+                  style={{
+                    padding: "8px 16px", background: bridgePasteBack.trim() ? "#6B46C1" : "#E2E8F0",
+                    color: bridgePasteBack.trim() ? "white" : "#94A3B8", border: "none", borderRadius: 8,
+                    fontSize: 13, fontWeight: 600, cursor: bridgePasteBack.trim() ? "pointer" : "default",
+                  }}
+                >Send to Alex</button>
+                <button
+                  onClick={() => { setShowPasteArea(false); setBridgePasteBack(""); }}
+                  style={{ padding: "8px 16px", background: "transparent", color: "#94A3B8", border: "none", borderRadius: 8, fontSize: 13, cursor: "pointer" }}
+                >Cancel</button>
+              </div>
             </div>
           )}
 
@@ -1575,16 +1626,6 @@ Keep it practical. I'm going to build a Digital Worker on TitleApp.ai`;
               title="Attach screenshot"
             >&#128206;</button>
             <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp,image/heic,image/heif,application/pdf" multiple style={{ display: "none" }} onChange={handleFileSelect} />
-            {flowStep <= 2 && !showBridge && (
-              <button
-                onClick={() => setShowBridge(true)}
-                style={{
-                  padding: "8px 10px", background: "#F8F9FC", border: "1px solid #E2E8F0", borderRadius: 8,
-                  color: "#64748B", cursor: "pointer", fontSize: 11, flexShrink: 0, lineHeight: 1, fontWeight: 600,
-                }}
-                title="Draft in another tool first"
-              >Draft elsewhere</button>
-            )}
             <textarea
               ref={chatInputRef}
               style={{ ...S.chatInput, flex: 1, overflowY: "auto", minHeight: isMobile ? 52 : 44 }}
@@ -1645,7 +1686,7 @@ Keep it practical. I'm going to build a Digital Worker on TitleApp.ai`;
             minHeight: 44, minWidth: 44,
           }}
         >
-          {flowStep <= 2 ? "View your worker card" : "Preview your worker"}
+          {flowStep <= 2 ? "How This Works" : "Preview your worker"}
         </button>
       )}
 
@@ -1671,13 +1712,13 @@ Keep it practical. I'm going to build a Digital Worker on TitleApp.ai`;
               <div style={{ width: 40, height: 4, borderRadius: 2, background: "#E2E8F0" }} />
             </div>
           )}
-          {/* Step indicator — simple header for steps 1-2, tabs for 3-7 */}
+          {/* Step indicator — simple header for steps 0-2, tabs for 3-7 */}
           {flowStep <= 2 ? (
             <div style={{ textAlign: "center", padding: "14px 16px", borderBottom: "1px solid #E2E8F0", background: "#FFFFFF" }}>
-              <div style={{ fontSize: 14, fontWeight: 600, color: "#6B46C1" }}>Defining Your Worker</div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: "#6B46C1" }}>Your Workspace</div>
               <div style={{ fontSize: 12, color: "#94A3B8", marginTop: 2 }}>
-                {exchangeCount === 0 ? "Answer Alex's questions to shape your Digital Worker" :
-                 workerCardData ? "Your worker card is ready" :
+                {workerCardData ? "Your worker card is ready" :
+                 exchangeCount === 0 ? "Follow the steps to build your Digital Worker" :
                  `Exchange ${exchangeCount} of ~5`}
               </div>
             </div>
@@ -1743,9 +1784,10 @@ Keep it practical. I'm going to build a Digital Worker on TitleApp.ai`;
           )}
 
           <div ref={rightPanelRef} style={S.tabContent}>
-            {/* Steps 1-2 — Progressive card or placeholder */}
+            {/* Steps 0-2 — Lifecycle card + Progressive card / Draft card */}
             {flowStep <= 2 && (
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: 300 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+                <LifecycleCard flowStep={flowStep} />
                 {workerCardData ? (
                   <InlineDraftCard
                     cardData={workerCardData}
@@ -1760,13 +1802,7 @@ Keep it practical. I'm going to build a Digital Worker on TitleApp.ai`;
                     progressiveFields={progressiveFields}
                     workerCardData={workerCardData}
                   />
-                ) : (
-                  <div style={{ textAlign: "center", padding: 40 }}>
-                    <div style={{ fontSize: 40, marginBottom: 16, opacity: 0.3 }}>&#9881;</div>
-                    <div style={{ fontSize: 15, fontWeight: 600, color: "#1a1a2e", marginBottom: 6 }}>Your worker will take shape here.</div>
-                    <div style={{ fontSize: 13, color: "#94A3B8" }}>As you talk to Alex, your Digital Worker card builds itself.</div>
-                  </div>
-                )}
+                ) : null}
               </div>
             )}
 
