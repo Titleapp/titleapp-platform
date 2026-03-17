@@ -4545,6 +4545,20 @@ These should be 2-3 realistic test scenarios the creator should try, derived fro
           return res.json({ ok: false, error: "BOGO promotion already used" });
         }
 
+        // Server-side: only platform workers can be BOGO eligible
+        // Verify against catalog — creator-built workers are never BOGO
+        for (const item of items) {
+          if (item.bogoEligible) {
+            const catSnap = await db.collection("workers").where("slug", "==", item.slug).limit(1).get();
+            if (!catSnap.empty) {
+              const catData = catSnap.docs[0].data();
+              if (catData.creatorId && catData.creatorId !== "titleapp-platform") {
+                item.bogoEligible = false; // Strip BOGO from non-platform workers
+              }
+            }
+          }
+        }
+
         // Calculate totals
         const bogoItems = items.filter(i => i.bogoEligible);
         let discountSlug = null;

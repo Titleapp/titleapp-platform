@@ -14,7 +14,7 @@
 
 const path = require("path");
 const fs = require("fs");
-const { validateWorkerRecord, TIER_0_DEFAULTS } = require("./workerSchema");
+const { validateWorkerRecord, autoFixWorkerRecord, TIER_0_DEFAULTS } = require("./workerSchema");
 
 // ═══════════════════════════════════════════════════════════════
 //  CATALOG-TO-MARKETPLACE SLUG MAPPING
@@ -332,9 +332,16 @@ async function syncCatalogWorkers(db, opts = {}) {
   const { dryRun = false, workerIds = null } = opts;
   const results = { synced: 0, skipped: 0, failed: 0, warnings: [], details: [] };
 
-  // Load catalog
-  const catalogPath = path.join(__dirname, "../services/alex/catalogs/real-estate-development.json");
-  const catalog = JSON.parse(fs.readFileSync(catalogPath, "utf8"));
+  // Load all catalogs
+  const catalogsDir = path.join(__dirname, "../services/alex/catalogs");
+  const catalogFiles = fs.readdirSync(catalogsDir).filter(f => f.endsWith(".json"));
+  const allWorkers = [];
+  for (const file of catalogFiles) {
+    const catalog = JSON.parse(fs.readFileSync(path.join(catalogsDir, file), "utf8"));
+    if (Array.isArray(catalog.workers)) {
+      allWorkers.push(...catalog.workers);
+    }
+  }
 
   // Load template registry
   const { SYSTEM_TEMPLATES } = require("../services/documentEngine/templates/registry");
@@ -342,7 +349,7 @@ async function syncCatalogWorkers(db, opts = {}) {
   // Load rulesets directory
   const rulesetsDir = path.join(__dirname, "../raas/rulesets");
 
-  for (const worker of catalog.workers) {
+  for (const worker of allWorkers) {
     // Filter to specific workers if requested
     if (workerIds && !workerIds.includes(worker.id)) continue;
 
@@ -414,9 +421,12 @@ async function syncCatalogWorkers(db, opts = {}) {
       status,
     };
 
+    // Auto-fix (normalizes non-approved pricing_tier to 0 for draft/waitlist)
+    const fixed = autoFixWorkerRecord(record);
+
     // Validate
     try {
-      const { record: validated, warnings } = validateWorkerRecord(record);
+      const { record: validated, warnings } = validateWorkerRecord(fixed);
       if (warnings.length > 0) {
         results.warnings.push(`${worker.id} (${marketplaceSlug}): ${warnings.join("; ")}`);
       }
