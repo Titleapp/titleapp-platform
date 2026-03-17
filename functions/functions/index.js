@@ -13274,6 +13274,57 @@ Analyze now:`;
       }
     }
 
+    // ----------------------------
+    // PC12 COPILOT (34.5)
+    // ----------------------------
+    if (route && route.startsWith("/copilot:pc12:")) {
+      const copilotAction = route.replace("/copilot:pc12:", "");
+      const handlers = require("./services/copilot").getHandlers();
+      const ctx = { userId: auth.user.uid };
+      try {
+        switch (copilotAction) {
+        case "uploadDoc":
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return await handlers.handleUploadDoc(req, res, ctx);
+        case "uploadLogbook":
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return await handlers.handleUploadLogbook(req, res, ctx);
+        case "uploadFVO":
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return await handlers.handleUploadFVO(req, res, ctx);
+        case "addLogEntry":
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return await handlers.handleAddLogEntry(req, res, ctx);
+        case "addGroundTraining":
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return await handlers.handleAddGroundTraining(req, res, ctx);
+        case "addEndorsement":
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return await handlers.handleAddEndorsement(req, res, ctx);
+        case "status":
+          if (method !== "GET") return jsonError(res, 405, "GET required");
+          return await handlers.handleStatus(req, res, ctx);
+        case "currency":
+          if (method !== "GET") return jsonError(res, 405, "GET required");
+          return await handlers.handleCurrency(req, res, ctx);
+        case "generate8710":
+          if (method !== "GET") return jsonError(res, 405, "GET required");
+          return await handlers.handleGenerate8710(req, res, ctx);
+        case "dutyEvent":
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return await handlers.handleDutyEvent(req, res, ctx);
+        case "chat":
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return await handlers.handleChat(req, res, ctx);
+        default:
+          return jsonError(res, 404, "Unknown copilot action: " + copilotAction);
+        }
+      } catch (e) {
+        console.error("copilot:pc12 failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
     return jsonError(res, 404, "Not Found", { route, method });
   }
 );

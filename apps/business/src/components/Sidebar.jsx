@@ -848,6 +848,7 @@ const WORKER_NAV_MAP = {
     { id: "investor-pipeline", label: "Investor Pipeline" },
   ],
   "aviation": [
+    { id: "av-copilot", label: "CoPilot EFB" },
     { id: "av-dispatch", label: "Dispatch" },
     { id: "av-fleet", label: "Fleet Status" },
     { id: "av-crew", label: "Crew" },

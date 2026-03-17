@@ -66,6 +66,7 @@ import TitleEscrowLanding from "./pages/landing/TitleEscrowLanding";
 import PropertyMgmtLanding from "./pages/landing/PropertyMgmtLanding";
 import DeveloperLanding from "./pages/landing/DeveloperLanding";
 import PilotLanding from "./pages/landing/PilotLanding";
+import CoPilotEFB from "./sections/CoPilotEFB";
 import { auth } from "./firebase";
 import { signInWithCustomToken } from "firebase/auth";
 
@@ -4071,6 +4072,8 @@ function AdminShell({ onBackToHub }) {
         return <AlexPipelines />;
       case "pending-signatures":
         return <PendingSignatures />;
+      case "av-copilot":
+        return <CoPilotEFB />;
       default:
         if (currentSection.startsWith("worker-")) return <Dashboard />;
         return <Dashboard />;
