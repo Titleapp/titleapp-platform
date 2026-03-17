@@ -99,6 +99,31 @@
         { "fieldPath": "slug", "order": "ASCENDING" },
         { "fieldPath": "published", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "emailQueue",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "scheduledAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "emailQueue",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "sentAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "sandboxSessions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

@@ -64,6 +64,54 @@ async function sendgridInbound(req, res) {
     intent: null,
   });
 
+  // --- Sandbox reply detection (32.7-T2) ---
+  try {
+    const sandboxUserSnap = await db
+      .collection("users")
+      .where("email", "==", fromEmail)
+      .limit(1)
+      .get();
+
+    if (!sandboxUserSnap.empty) {
+      const sandboxUserId = sandboxUserSnap.docs[0].id;
+
+      // Check for recent drip emails sent to this user
+      const recentDripSnap = await db
+        .collection("emailQueue")
+        .where("userId", "==", sandboxUserId)
+        .where("status", "==", "sent")
+        .orderBy("sentAt", "desc")
+        .limit(1)
+        .get();
+
+      if (!recentDripSnap.empty) {
+        const dripEmail = recentDripSnap.docs[0].data();
+        const sessionId = dripEmail.sessionId;
+
+        if (sessionId) {
+          const sessionRef = db.collection("sandboxSessions").doc(sessionId);
+          const sessionSnap = await sessionRef.get();
+
+          if (sessionSnap.exists) {
+            await sessionRef.update({
+              replies: admin.firestore.FieldValue.arrayUnion({
+                from: fromEmail,
+                subject: subject || "",
+                body: text || "",
+                receivedAt: new Date().toISOString(),
+                dripStage: dripEmail.stage,
+              }),
+              lastReplyAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+            console.log(`[sendgridInbound] Sandbox reply appended: user=${sandboxUserId}, session=${sessionId}`);
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.error("[sendgridInbound] Sandbox reply detection failed (non-blocking):", e.message);
+  }
+
   await logActivity(
     "communication",
     `Inbound email from ${fromEmail}: "${(subject || "").slice(0, 60)}"`,

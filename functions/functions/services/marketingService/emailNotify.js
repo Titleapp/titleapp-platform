@@ -82,4 +82,4 @@ async function sendWelcomeEmail({ name, email, vertical }) {
   await sendViaSendGrid({ to: email, subject, htmlBody });
 }
 
-module.exports = { notifySean, sendWelcomeEmail };
+module.exports = { notifySean, sendWelcomeEmail, sendViaSendGrid };
