@@ -1167,7 +1167,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
           />
           <button type="submit" style={{ padding: "9px 14px", background: "#7c3aed", color: "white", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", flexShrink: 0 }}>Search</button>
         </form>
-        <div className="chatFilterPills" style={{ display: "flex", gap: 6, overflowX: "auto", padding: "8px 14px", WebkitOverflowScrolling: "touch" }}>
+        <div className="chatFilterPills" style={{ display: "flex", flexWrap: "nowrap", gap: 6, overflowX: "auto", padding: "8px 14px", WebkitOverflowScrolling: "touch" }}>
           {WORKER_SUITES.map(suite => (
             <button
               key={suite}
@@ -1292,7 +1292,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
 
             {/* Inline worker cards */}
             {msg.workerCards && msg.workerCards.length > 0 && (
-              <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8, maxWidth: 420 }}>
+              <div className="mobileWorkerCards" style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8, maxWidth: 420 }}>
                 {msg.workerCards.map(w => (
                   <div
                     key={w.slug}
