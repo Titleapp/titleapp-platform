@@ -1106,10 +1106,20 @@
       "type": "standalone",
       "pricing": { "monthly": 29 },
       "status": "waitlist",
-      "capabilitySummary": "Type-specific V-speeds, W&B calculator, checklists, performance data, systems descriptions. ForeFlight sync.",
+      "capabilitySummary": "Type-specific V-speeds, W&B calculator, checklists, performance data, systems descriptions. ForeFlight sync. PC-12 NG: includes FSI training materials (4,209 pages — PIM, MMEL, Primus APEX guide, safety briefs).",
       "temporalType": "always_on",
       "mandatoryWhen": [],
       "tier1Compliance": ["14 CFR 91.103", "14 CFR 91.9", "Aircraft POH/AFM requirements"],
+      "referenceDocuments": [
+        {
+          "name": "FSI PC-12 NG Training Materials",
+          "aircraft": "PC-12/47E",
+          "pages": 4209,
+          "summary": "training/fsi-pc12ng-training.md",
+          "storage": "gs://title-app-alpha.firebasestorage.app/raas/aviation/GLOBAL/reference/fsi/FSI_PC12NG_Materials.pdf",
+          "contents": ["FSI Safety Briefs", "MMEL Doc 02395 Rev 08", "PIM Report 02277", "Honeywell Primus APEX Pilot Guide", "Systems Descriptions", "Knowledge Checks"]
+        }
+      ],
       "vault": {
         "reads": [],
         "writes": ["personal_aircraft_profiles", "personal_checklists", "performance_data"]

@@ -35,8 +35,13 @@
 ## Training References
 | Document | File | Aircraft |
 |----------|------|----------|
+| FSI PC-12 NG Training Materials | `training/fsi-pc12ng-training.md` | PC-12/47E (NG) |
 | Cessna 208B Caravan Training | `training/cessna-208b-caravan-training.md` | 208B EX, Caravan I |
 | King Air Family Training | `training/king-air-family-training.md` | C90, 200/B200, 350 |
+
+### FSI PC-12 NG Training Materials (4,209 pages)
+Full PDF: `gs://title-app-alpha.firebasestorage.app/raas/aviation/GLOBAL/reference/fsi/FSI_PC12NG_Materials.pdf`
+Contents: Safety briefs, MMEL (Doc 02395 Rev 08), PIM (Report 02277), Honeywell Primus APEX Pilot's Guide, systems descriptions, knowledge checks
 
 ## MEL / MMEL References
 | Document | File | Aircraft |
