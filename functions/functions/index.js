@@ -2111,45 +2111,39 @@ Message 8+: If they seem interested, gently offer to set it up. "I can have this
 
 TERMINOLOGY: Always say "Digital Worker." Frame it as hiring an AI team member, not using software.
 
-YOUR ROLE: Guide creators through a 7-step flow to build, test, publish, and grow a Digital Worker. The UI handles most of the visual flow -- your job is conversational guidance.
+YOUR ROLE: Guide creators through a conversational flow to define, build, test, publish, and grow a Digital Worker. The UI handles visual flow -- your job is conversational guidance.
 
-THE 7 STEPS (the UI shows these as a progress bar):
-1. Discover -- They pick a vertical and specialty. The UI shows worker idea cards. You help them choose or refine an idea.
-2. Vibe -- You ask 9 required questions to shape the worker. Ask them one at a time, in order. Keep it conversational. The UI tracks which question you are on.
-3. Build -- The UI shows a build progress animation. You are not needed here unless they ask questions.
-4. Test -- The creator tests their worker as a subscriber would. The right panel shows a three-column Vault simulator. Suggest edge cases based on their rules. If they report a problem, fix it silently. When they are done testing, tell them to click the "Continue to Preflight" button.
-5. Preflight -- Compliance review before publishing. The UI shows 7 gates the creator must pass. Help them understand any that failed.
-6. Distribute -- The UI shows a distribution kit (URL, embed, QR, social copy, outreach emails). Help them customize copy or strategy if asked.
-7. Grow -- You become their distribution coach. Help with social posts, email templates, subscriber growth tactics.
+OPENING QUESTION:
+The creator has already answered: "What do you do that other people always ask you for help with?" Their answer is the first message. Read it carefully.
 
-FAST TRACK -- PASTE FROM OTHER AI:
-When the creator enters the Vibe step, the UI shows a two-path opener: "Paste my summary" or "Walk me through it." If they paste a long description (from ChatGPT, Claude, Gemini, or notes), the system auto-extracts answers and skips to unanswered questions. Validate this -- say "Thinking it through in another tool first is actually a great way to come in with a clear idea."
+CONVERSATION FLOW:
+1. Acknowledge their expertise in one sentence. Then ask your first follow-up question.
+2. Ask 3-5 follow-up questions, ONE AT A TIME, based on what is missing from their answer. Common gaps to probe:
+   - Who specifically uses this day to day -- you, your team, your customers, or all three? (if audience is unclear)
+   - What should this worker never get wrong? Think compliance, accuracy, anything that would cause real problems. (if stakes are unclear)
+   - Are there regulations, compliance rules, or SOPs it needs to follow? (if not mentioned)
+   - What should the output look like -- report, dashboard, email, chat? (if delivery format is unclear)
+   - What state or region does this apply to? (if jurisdiction matters for their domain)
+3. Do NOT ask questions whose answers are already obvious from what they told you.
+4. After 3-5 exchanges, when you have enough to build (name/purpose + audience + at least 2 compliance rules or domain constraints), generate the worker using the WORKER_SPEC protocol below.
 
-WHEN SOMEONE DESCRIBES AN IDEA:
-Acknowledge it briefly and ask the first Vibe question. Do not dump a roadmap. The UI shows the steps visually.
+FAST TRACK:
+If the creator pastes a long description (over 200 words), an existing prompt, or a structured workflow from ChatGPT, Claude, or Gemini, you may have enough after just 1-2 follow-up questions. Validate this: "Thinking it through in another tool first is a great way to come in with a clear idea."
 
-VIBE QUESTIONS (ask one at a time, in this exact order -- all 9 are required):
-1. Tell me more -- what problem keeps coming up that you want a Digital Worker to handle?
-2. Who is the main person using this day to day -- you, your team, your customers, or all three?
-3. What should this worker never get wrong? Think compliance, accuracy, anything that would cause real problems.
-4. Are there any regulations, compliance rules, or SOPs this worker needs to follow? For example -- IRS guidelines, state laws, your company's internal policies, or industry standards. I will bake these directly into the worker's rules.
-5. What data or systems does this worker need to access?
-6. What should the output look like -- dashboard, report, email, chat, something else?
-7. What is broken or missing in your current process?
-8. What state or region does this apply to? And if it is tied to a specific organization, what is the name?
-9. Last one -- what should your worker say when a new subscriber opens it for the first time? This becomes their welcome message. You can skip this and I will generate one from your other answers.
-
-If the creator says no regulations or compliance rules for question 4, respond: "Got it -- I will apply standard compliance defaults for [their industry]." Then move to question 5.
-
-After all 9 answers, the UI generates the Worker Card. Do not generate the Worker Card yourself. Do not ask any more questions after question 9 unless the creator asks to edit something.
+If the creator says no regulations or compliance rules, respond: "Got it -- I will apply standard compliance defaults for your industry." Then move on.
 
 NAME HANDLING:
 Ask for the creator's name exactly once. If you already know their name (from context or session), never ask again. Use their name naturally but do not overuse it.
 
-GROW MODE (Step 6):
-When a Digital Worker is published: switch into distribution coach mode. Help with social media posts, email templates, marketplace optimization. Generate copy they can paste. Suggest concrete next actions. Be encouraging but factual.
+LATER STEPS (the UI handles these after the worker is built):
+- Build -- The UI shows a build progress animation. You are not needed unless they ask questions.
+- Test -- The creator tests their worker. Suggest edge cases. If they report a problem, fix it silently.
+- Preflight -- Automated 16-item deploy gate checklist. If any gate fails, explain what needs fixing.
+- Distribute -- Distribution kit (URL, embed, QR, social copy). Help customize if asked.
+- Grow -- Distribution coach mode. Help with social posts, email templates, subscriber growth.
 
-Revenue context: Creators earn 75% of subscription revenue plus 20% of TitleApp's margin on inference overage. Workers are priced at $29, $49, or $79 per month. At $49/mo that is $36.75/seat to the creator.
+GROW MODE:
+When a Digital Worker is published: switch into distribution coach mode. Revenue context: Creators earn 75% of subscription revenue plus 20% of TitleApp's margin on inference overage. Workers are priced at $29, $49, or $79 per month. At $49/mo that is $36.75/seat to the creator.
 
 ADAPT TO THE USER'S LEVEL:
 - Novice: Do most of the work. "Describe what you want, I will build it."
@@ -2162,17 +2156,17 @@ BREVITY RULES:
 - No emojis. No markdown formatting. Plain text only.
 
 DIGITAL WORKER BUILD PROTOCOL:
-When you have all 9 Vibe answers, output:
+When you have enough information (name/purpose + audience + compliance rules or domain constraints), output:
 [WORKER_SPEC]{"name":"Digital Worker Name","description":"What it does","rules":["Rule 1","Rule 2"],"capabilities":[],"category":"category","targetUser":"who it is for","problemSolves":"what problem it solves","raasRules":"regulations and SOPs"}[/WORKER_SPEC]
 Include this AFTER your conversational text. The system strips it and triggers the build pipeline.
 
 BUILD PIPELINE (the UI handles this visually):
-After [WORKER_SPEC], the UI runs the build pipeline automatically: intake, regulatory research, rules library, quality checks, review. You do not need to run it. If someone asks, explain briefly.
+After [WORKER_SPEC], the UI runs the build pipeline automatically. Every stage requires completion before the next opens. Admin review is the final gate. Do not try to run the pipeline yourself.
 
 IMAGE HANDLING: When the creator sends a screenshot, describe what you see in 1-2 sentences before responding to their question.
 
 AUTH HANDLING:
-You never handle authentication. Never ask for an email address to fix auth problems. Never promise sign-in links. Never attempt to recover auth through conversation. If auth fails, the UI handles it silently. Stay focused on the worker.
+You never handle authentication. Never ask for an email address to fix auth problems. Never promise sign-in links. If auth fails, the UI handles it silently. Stay focused on the worker.
 
 NEVER:
 - Say "go to titleapp.ai" or "sign in somewhere else"
@@ -3636,6 +3630,32 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       }
     }
 
+    // ═══════════════════════════════════════════════════════════════
+    //  SANDBOX PREVIEW — UNAUTHENTICATED (32.7-T2)
+    // ═══════════════════════════════════════════════════════════════
+
+    // GET /v1/sandbox:preview — Public preview page data (no auth)
+    if (route === "/sandbox:preview" && method === "GET") {
+      try {
+        const { getPreviewData } = require("./services/sandbox/previewHandler");
+        return await getPreviewData(req, res);
+      } catch (e) {
+        console.error("sandbox:preview failed:", e);
+        return jsonError(res, 500, "Preview failed");
+      }
+    }
+
+    // POST /v1/sandbox:preview:interest — Email capture on preview page (no auth)
+    if (route === "/sandbox:preview:interest" && method === "POST") {
+      try {
+        const { capturePreviewInterest } = require("./services/sandbox/previewHandler");
+        return await capturePreviewInterest(req, res);
+      } catch (e) {
+        console.error("sandbox:preview:interest failed:", e);
+        return jsonError(res, 500, "Interest capture failed");
+      }
+    }
+
     // POST /v1/magic-link:send — Send magic link (no auth — sign-up entry point)
     if (route === "/magic-link:send" && method === "POST") {
       try {
@@ -4707,6 +4727,32 @@ These should be 2-3 realistic test scenarios the creator should try, derived fro
       } catch (e) {
         console.error("[worker:subscription-status] error:", e.message);
         return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    //  SANDBOX BACKEND — AUTHENTICATED (32.7-T2)
+    // ═══════════════════════════════════════════════════════════════
+
+    // POST /v1/sandbox:session — Create sandbox session from Vibe answers
+    if (route === "/sandbox:session" && method === "POST") {
+      try {
+        const { handleCreateSession } = require("./services/sandbox/specGenerator");
+        return await handleCreateSession(req, res, auth.user);
+      } catch (e) {
+        console.error("sandbox:session failed:", e);
+        return jsonError(res, 500, "Session creation failed");
+      }
+    }
+
+    // GET /v1/sandbox:session:pdf — Download spec one-pager PDF
+    if (route === "/sandbox:session:pdf" && method === "GET") {
+      try {
+        const { handleGetSessionPdf } = require("./services/sandbox/pdfOnePager");
+        return await handleGetSessionPdf(req, res, auth.user);
+      } catch (e) {
+        console.error("sandbox:session:pdf failed:", e);
+        return jsonError(res, 500, "PDF generation failed");
       }
     }
 
@@ -6302,9 +6348,9 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
         const APPROVED = [0, 29, 49, 79];
         const results = [];
 
-        // Scan workers collection
-        const wSnap = await db.collection("workers").get();
-        for (const d of wSnap.docs) {
+        // Scan digitalWorkers collection (primary — has 94 docs)
+        const dwSnap = await db.collection("digitalWorkers").get();
+        for (const d of dwSnap.docs) {
           const data = d.data();
           const price = Number(data.monthlyPrice || data.price || data.pricingTier || 0);
           const compliant = APPROVED.includes(price);
@@ -6312,42 +6358,24 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
           results.push({
             id: d.id, name: data.name || data.title || "unnamed",
             vertical: data.vertical || "unknown", price, compliant,
-            nearestTier: nearest, collection: "workers",
+            nearestTier: nearest, collection: "digitalWorkers",
             creatorId: data.creatorId || null,
           });
         }
 
-        // Scan raasCatalog collection
+        // Scan raasCatalog collection (secondary)
         const cSnap = await db.collection("raasCatalog").get();
         for (const d of cSnap.docs) {
           const data = d.data();
           const price = parseInt(String(data.price_tier || "0").replace(/[^0-9]/g, ""), 10) || 0;
           const compliant = APPROVED.includes(price);
           const nearest = APPROVED.reduce((a, b) => Math.abs(b - price) < Math.abs(a - price) ? b : a);
-          // Skip if already covered by workers collection with same ID
           if (!results.find(r => r.id === d.id)) {
             results.push({
               id: d.id, name: data.name || "unnamed",
               vertical: data.vertical || "unknown", price, compliant,
               nearestTier: nearest, collection: "raasCatalog",
               creatorId: data.creatorId || "titleapp-platform",
-            });
-          }
-        }
-
-        // Scan digitalWorkers collection
-        const dwSnap = await db.collection("digitalWorkers").get();
-        for (const d of dwSnap.docs) {
-          const data = d.data();
-          const price = Number(data.monthlyPrice || data.price || 0);
-          const compliant = APPROVED.includes(price);
-          const nearest = APPROVED.reduce((a, b) => Math.abs(b - price) < Math.abs(a - price) ? b : a);
-          if (!results.find(r => r.id === d.id)) {
-            results.push({
-              id: d.id, name: data.name || data.title || "unnamed",
-              vertical: data.vertical || "unknown", price, compliant,
-              nearestTier: nearest, collection: "digitalWorkers",
-              creatorId: data.creatorId || null,
             });
           }
         }
@@ -6396,7 +6424,7 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
         }
 
         // Sync across collections
-        const syncCollections = ["workers", "raasCatalog", "digitalWorkers"].filter(c => c !== collection);
+        const syncCollections = ["digitalWorkers", "raasCatalog"].filter(c => c !== collection);
         for (const col of syncCollections) {
           const syncRef = db.collection(col).doc(workerId);
           const syncSnap = await syncRef.get();
@@ -6430,8 +6458,8 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
         const results = [];
         const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-        // Unpublished creator workers
-        const wSnap = await db.collection("workers").where("published", "==", false).get();
+        // Unpublished workers from digitalWorkers
+        const wSnap = await db.collection("digitalWorkers").where("published", "==", false).get();
         for (const d of wSnap.docs) {
           const data = d.data();
           const updatedAt = data.updatedAt?.toDate?.() || data.createdAt?.toDate?.() || new Date(0);
@@ -6441,7 +6469,7 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
             createdAt: data.createdAt?.toDate?.()?.toISOString() || null,
             updatedAt: updatedAt.toISOString(),
             isStale: updatedAt < sevenDaysAgo,
-            collection: "workers",
+            collection: "digitalWorkers",
           });
         }
 
@@ -6487,8 +6515,8 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
 
         for (const wid of workerIds) {
           try {
-            // Update workers collection
-            const wRef = db.collection("workers").doc(wid);
+            // Update digitalWorkers collection
+            const wRef = db.collection("digitalWorkers").doc(wid);
             const wSnap = await wRef.get();
             if (wSnap.exists) {
               await wRef.update({
@@ -6533,7 +6561,7 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
         const platformBogoEnabled = settingsSnap.exists ? settingsSnap.data().bogoEnabled !== false : true;
 
         // Get platform workers (only these can be BOGO eligible)
-        const wSnap = await db.collection("workers").where("creatorId", "==", "titleapp-platform").get();
+        const wSnap = await db.collection("digitalWorkers").where("creatorId", "==", "titleapp-platform").get();
         const workers = [];
         let totalRedemptions = 0;
         let totalDiscounted = 0;
@@ -6590,7 +6618,7 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
 
         if (scope === "worker") {
           if (!workerId) return jsonError(res, 400, "workerId required for worker scope");
-          const wRef = db.collection("workers").doc(workerId);
+          const wRef = db.collection("digitalWorkers").doc(workerId);
           const wSnap = await wRef.get();
           if (!wSnap.exists) return jsonError(res, 404, "Worker not found");
           const data = wSnap.data();
@@ -6689,6 +6717,174 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
         return res.json({ ok: true });
       } catch (e) {
         console.error("admin:pipeline:retry failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ----------------------------
+    // 32.7-T3 — CLEAR DEMO DATA (POST)
+    // ----------------------------
+    if (route === "/admin:clearDemoData" && method === "POST") {
+      try {
+        const targets = [
+          { path: "pipeline/b2b/deals", label: "B2B Deals" },
+          { path: "pipeline/investors/deals", label: "Investor Relations" },
+          { path: "messages", label: "Messages" },
+          { path: "draftMessages", label: "Draft Messages" },
+          { path: "campaigns", label: "Campaigns" },
+        ];
+        const report = {};
+
+        for (const target of targets) {
+          // Handle subcollection paths (pipeline/b2b/deals)
+          const parts = target.path.split("/");
+          let ref;
+          if (parts.length === 3) {
+            ref = db.collection(parts[0]).doc(parts[1]).collection(parts[2]);
+          } else {
+            ref = db.collection(target.path);
+          }
+
+          const snap = await ref.get();
+          let deleted = 0;
+
+          // Batch delete in groups of 500
+          const docs = snap.docs;
+          for (let i = 0; i < docs.length; i += 500) {
+            const batch = db.batch();
+            docs.slice(i, i + 500).forEach(d => batch.delete(d.ref));
+            await batch.commit();
+            deleted += Math.min(500, docs.length - i);
+          }
+
+          report[target.label] = deleted;
+        }
+
+        await db.collection("activityLog").add({
+          action: "clear_demo_data", report,
+          userId: user.uid, timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        return res.json({ ok: true, report });
+      } catch (e) {
+        console.error("admin:clearDemoData failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ----------------------------
+    // 32.7-T3 — SEED PROSPECTS (POST)
+    // ----------------------------
+    if (route === "/admin:seedProspects" && method === "POST") {
+      try {
+        const ts = admin.firestore.FieldValue.serverTimestamp();
+        const seeded = [];
+
+        // B2B Deal: Scott Eschelman / JMA Capital
+        const b2bRef = await db.collection("pipeline").doc("b2b").collection("deals").add({
+          company: "JMA Capital",
+          contactName: "Scott Eschelman",
+          vertical: "Real Estate",
+          stage: "CLOSED_WON",
+          estimatedARR: 8880,
+          probability: 100,
+          source: "Direct",
+          lastActivityAt: ts,
+          ownedBy: "sean@titleapp.ai",
+          nextAction: "First major client and investor",
+          history: [{ stage: "CLOSED_WON", action: "Funded", by: "sean@titleapp.ai" }],
+        });
+        seeded.push({ collection: "pipeline/b2b/deals", id: b2bRef.id, name: "Scott Eschelman — JMA Capital" });
+
+        // Investor: Scott Eschelman
+        const inv1Ref = await db.collection("pipeline").doc("investors").collection("deals").add({
+          fullName: "Scott Eschelman",
+          email: "",
+          stage: "FUNDED",
+          amount: null,
+          accredited: true,
+          source: "Direct — JMA Capital",
+          deckViewCount: 0,
+          createdAt: ts,
+        });
+        seeded.push({ collection: "pipeline/investors/deals", id: inv1Ref.id, name: "Scott Eschelman (investor)" });
+
+        // Investor: Ron Palmeri
+        const inv2Ref = await db.collection("pipeline").doc("investors").collection("deals").add({
+          fullName: "Ron Palmeri",
+          email: "",
+          stage: "INTERESTED",
+          amount: null,
+          accredited: true,
+          source: "Direct",
+          deckViewCount: 0,
+          notes: "Sandbox access pending",
+          createdAt: ts,
+        });
+        seeded.push({ collection: "pipeline/investors/deals", id: inv2Ref.id, name: "Ron Palmeri (investor)" });
+
+        await db.collection("activityLog").add({
+          action: "seed_prospects", seeded,
+          userId: user.uid, timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        return res.json({ ok: true, seeded });
+      } catch (e) {
+        console.error("admin:seedProspects failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ----------------------------
+    // 32.7-T3 — USERS LIST (GET)
+    // ----------------------------
+    if (route === "/admin:users:list" && method === "GET") {
+      try {
+        const snap = await db.collection("users").orderBy("createdAt", "desc").limit(500).get();
+        const users = snap.docs.map(d => {
+          const data = d.data();
+          return {
+            uid: d.id,
+            displayName: data.displayName || data.name || "",
+            email: data.email || "",
+            createdAt: data.createdAt?.toDate?.()?.toISOString() || null,
+            lastLoginAt: data.lastLoginAt?.toDate?.()?.toISOString() || null,
+            plan: data.subscriptionTier || data.plan || "free",
+            tenantId: data.tenantId || null,
+            role: data.role || null,
+          };
+        });
+        return res.json({ ok: true, users, total: users.length });
+      } catch (e) {
+        console.error("admin:users:list failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ----------------------------
+    // 32.7-T3 — USERS IMPERSONATE (POST)
+    // ----------------------------
+    if (route === "/admin:users:impersonate" && method === "POST") {
+      try {
+        const { uid } = body;
+        if (!uid) return jsonError(res, 400, "uid required");
+
+        // Only owners can impersonate
+        const OWNER_EMAILS = ["seanlcombs@gmail.com", "sean@titleapp.ai"];
+        if (!OWNER_EMAILS.includes(user.email)) {
+          return jsonError(res, 403, "Only owners can impersonate users");
+        }
+
+        const token = await admin.auth().createCustomToken(uid);
+
+        await db.collection("activityLog").add({
+          action: "impersonate", targetUid: uid,
+          userId: user.uid, timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        return res.json({ ok: true, token });
+      } catch (e) {
+        console.error("admin:users:impersonate failed:", e);
         return jsonError(res, 500, e.message);
       }
     }
@@ -13768,6 +13964,20 @@ exports.stalledDealCheck = onSchedule(
 exports.creatorHealthCheck = onSchedule(
   { schedule: "0 1 * * *", timeZone: "America/Los_Angeles", region: "us-central1" },
   async () => { await handleCreatorHealth(); }
+);
+
+// ----------------------------
+// SANDBOX: Daily abandonment + drip email processing (6 AM PT)
+// ----------------------------
+exports.sandboxDailyProcessor = onSchedule(
+  { schedule: "0 6 * * *", timeZone: "America/Los_Angeles", region: "us-central1" },
+  async () => {
+    const { detectAbandonment } = require("./services/sandbox/abandonmentDetector");
+    const { processDripQueue } = require("./services/sandbox/dripEmailQueue");
+    const abandonResult = await detectAbandonment();
+    const dripResult = await processDripQueue();
+    console.log("[sandboxDailyProcessor]", { abandonResult, dripResult });
+  }
 );
 
 // ----------------------------

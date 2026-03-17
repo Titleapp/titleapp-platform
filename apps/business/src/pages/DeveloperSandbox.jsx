@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { signInWithCustomToken } from "firebase/auth";
 import { auth as firebaseAuth } from "../firebase";
-import WorkerGallery, { HE_SUBJECT_DOMAINS, getWorkerIdeas } from "../components/WorkerGallery";
-import WorkerCard from "../components/WorkerCard";
 import BuildProgress from "../components/BuildProgress";
 import TestWorkerPanel from "../components/TestWorkerPanel";
 import DistributionKit from "../components/DistributionKit";
@@ -39,7 +37,7 @@ class PanelErrorBoundary extends React.Component {
               onClick={() => { this.setState({ hasError: false, error: null, errorInfo: null }); if (this.props.onRecover) this.props.onRecover(); }}
               style={{ padding: "10px 24px", background: "#6B46C1", color: "white", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer" }}
             >
-              {this.props.recoverLabel || "Go back to Worker Card"}
+              {this.props.recoverLabel || "Go back"}
             </button>
             <button
               onClick={() => { try { navigator.clipboard.writeText(errMsg + "\n" + errStack); } catch {} }}
@@ -77,45 +75,18 @@ const S = {
   // Buttons
   btnPrimary: { padding: "10px 20px", background: "#6B46C1", color: "white", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" },
   btnSecondary: { padding: "10px 20px", background: "#FFFFFF", color: "#64748B", border: "1px solid #E2E8F0", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" },
-  // Onboarding overlay
-  overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999 },
-  overlayCard: { background: "#FFFFFF", borderRadius: 16, padding: "48px 40px", maxWidth: 480, textAlign: "center", border: "1px solid #E2E8F0", boxShadow: "0 8px 32px rgba(0,0,0,0.12)" },
-  overlayTitle: { fontSize: 22, fontWeight: 700, color: "#1a1a2e", marginBottom: 16 },
-  overlaySub: { fontSize: 15, color: "#64748B", lineHeight: 1.6, marginBottom: 8 },
-  overlayBtn: { marginTop: 24, padding: "12px 32px", background: "#6B46C1", color: "white", border: "none", borderRadius: 10, fontSize: 15, fontWeight: 600, cursor: "pointer" },
   // Divider
   divider: { width: 4, cursor: "col-resize", background: "#E2E8F0", flexShrink: 0, transition: "background 0.15s" },
   dividerHover: { background: "#6B46C1" },
 };
 
-const FLOW_STEPS = ["Discover", "Vibe", "Build", "Test", "Preflight", "Distribute", "Grow"];
+const FLOW_STEPS = ["Start", "Define", "Build", "Test", "Preflight", "Distribute", "Grow"];
 
 const SURVEY_QUESTIONS = [
   { key: "accuracy", question: "How accurate were the responses?", chips: ["Spot on", "Mostly good", "Needs work", "Way off"] },
   { key: "compliance", question: "Did compliance rules fire when they should?", chips: ["Yes, every time", "Missed some", "Didn't test this", "No rules fired"] },
   { key: "tone", question: "How was the tone and style?", chips: ["Perfect", "Too formal", "Too casual", "Inconsistent"] },
   { key: "readiness", question: "Is this worker ready for subscribers?", chips: ["Ship it", "Almost — minor tweaks", "Needs more work", "Start over"] },
-];
-
-const VERTICALS = [
-  { value: "auto", label: "Auto Dealerships" },
-  { value: "real-estate", label: "Real Estate & Mortgage" },
-  { value: "investment", label: "Investment & Finance" },
-  { value: "aviation", label: "Aviation" },
-  { value: "health-education", label: "Health & EMS Education" },
-  { value: "construction", label: "Construction" },
-  { value: "insurance", label: "Insurance" },
-  { value: "accounting", label: "Accounting & Finance" },
-  { value: "government", label: "Government" },
-  { value: "custom", label: "Custom / Other" },
-];
-
-const HE_MD_GATE_WORKERS = ["HE-013", "HE-025", "HE-027", "HE-028", "HE-030"];
-
-const US_STATES = [
-  "AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD",
-  "MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC",
-  "SD","TN","TX","UT","VT","VA","WA","WV","WI","WY","DC"
 ];
 
 // Get fresh Firebase ID token (or fall back to localStorage)
@@ -195,8 +166,78 @@ function TestPanelFallback({ worker, workerCardData, onReady, onBack }) {
         </button>
         <button onClick={onBack}
           style={{ padding: "10px 24px", background: "#F1F5F9", color: "#64748B", border: "1px solid #E2E8F0", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
-          Back to Worker Card
+          Back
         </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Inline Draft Card (rendered in chat) ──────────────────────
+function InlineDraftCard({ cardData, onContinue, onDownload, onShare, onEdit }) {
+  const [editing, setEditing] = useState(false);
+  const [editName, setEditName] = useState(cardData.name);
+  const [editDesc, setEditDesc] = useState(cardData.description);
+
+  function handleSave() {
+    onEdit({ ...cardData, name: editName, description: editDesc });
+    setEditing(false);
+  }
+
+  const price = cardData.pricingTier === 1 ? "$29" : cardData.pricingTier === 3 ? "$79" : "$49";
+
+  return (
+    <div style={{
+      alignSelf: "flex-start", maxWidth: "90%", borderRadius: 16, overflow: "hidden",
+      border: "1px solid rgba(107,70,193,0.2)", boxShadow: "0 2px 12px rgba(107,70,193,0.08)",
+    }}>
+      <div style={{
+        background: "linear-gradient(135deg, #6B46C1, #7c3aed)", padding: "16px 20px",
+        display: "flex", justifyContent: "space-between", alignItems: "center",
+      }}>
+        <span style={{ color: "white", fontWeight: 700, fontSize: 15 }}>{editing ? editName : cardData.name}</span>
+        <span style={{
+          background: "rgba(255,255,255,0.2)", color: "white", fontSize: 11,
+          fontWeight: 700, padding: "3px 10px", borderRadius: 12, letterSpacing: "0.5px",
+        }}>DRAFT</span>
+      </div>
+      <div style={{ background: "#FFFFFF", padding: "16px 20px" }}>
+        {editing ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
+            <input
+              value={editName}
+              onChange={e => setEditName(e.target.value)}
+              style={{ padding: "8px 10px", border: "1px solid #E2E8F0", borderRadius: 6, fontSize: 14, fontWeight: 600, color: "#1a1a2e" }}
+            />
+            <textarea
+              value={editDesc}
+              onChange={e => setEditDesc(e.target.value)}
+              rows={3}
+              style={{ padding: "8px 10px", border: "1px solid #E2E8F0", borderRadius: 6, fontSize: 13, color: "#1a1a2e", resize: "vertical" }}
+            />
+            <div style={{ display: "flex", gap: 6 }}>
+              <button onClick={handleSave} style={{ padding: "6px 14px", background: "#6B46C1", color: "white", border: "none", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Save</button>
+              <button onClick={() => setEditing(false)} style={{ padding: "6px 14px", background: "#F8F9FC", color: "#64748B", border: "1px solid #E2E8F0", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Cancel</button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div style={{ fontSize: 13, color: "#64748B", lineHeight: 1.6, marginBottom: 12 }}>{cardData.description}</div>
+            <div style={{ display: "flex", gap: 12, fontSize: 12, color: "#94A3B8", marginBottom: 12 }}>
+              {cardData.vertical && <span>{cardData.vertical}</span>}
+              <span>{price}/mo</span>
+            </div>
+          </>
+        )}
+        <div style={{ fontSize: 12, color: "#10b981", fontWeight: 600, marginBottom: 14 }}>Saved to your Vault.</div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button onClick={onContinue} style={{ padding: "8px 16px", background: "#6B46C1", color: "white", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Continue Building</button>
+          <button onClick={onDownload} style={{ padding: "8px 16px", background: "#FFFFFF", color: "#64748B", border: "1px solid #E2E8F0", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Download PDF</button>
+          <button onClick={onShare} style={{ padding: "8px 16px", background: "#FFFFFF", color: "#64748B", border: "1px solid #E2E8F0", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Share Link</button>
+          {!editing && (
+            <button onClick={() => setEditing(true)} style={{ padding: "8px 16px", background: "#F8F9FC", color: "#6B46C1", border: "1px solid rgba(107,70,193,0.2)", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Edit</button>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -224,14 +265,24 @@ export default function DeveloperSandbox() {
           if (parsed.maxFlowStep >= 5) parsed.maxFlowStep = parsed.maxFlowStep + 1;
           parsed._v = 2;
         }
+        // Migrate _v:2 → _v:3: reset to opening screen (new conversation-first flow)
+        if (parsed._v < 3) {
+          // Keep workerCardData and worker if they exist (for resume banner)
+          // Reset flow to opening screen unless already past Build
+          if (parsed.flowStep < 3) {
+            parsed.flowStep = 0;
+            parsed.maxFlowStep = 0;
+          }
+          parsed._v = 3;
+        }
         // Bounds check — clamp to valid range, clear if corrupted
         const maxStep = 7;
         if (parsed.flowStep > maxStep || parsed.maxFlowStep > maxStep) {
-          parsed.flowStep = Math.min(parsed.flowStep || 1, maxStep);
-          parsed.maxFlowStep = Math.min(parsed.maxFlowStep || 1, maxStep);
+          parsed.flowStep = Math.min(parsed.flowStep || 0, maxStep);
+          parsed.maxFlowStep = Math.min(parsed.maxFlowStep || 0, maxStep);
         }
-        if (typeof parsed.flowStep !== "number" || parsed.flowStep < 1) parsed.flowStep = 1;
-        if (typeof parsed.maxFlowStep !== "number" || parsed.maxFlowStep < 1) parsed.maxFlowStep = parsed.flowStep;
+        if (typeof parsed.flowStep !== "number" || parsed.flowStep < 0) parsed.flowStep = 0;
+        if (typeof parsed.maxFlowStep !== "number" || parsed.maxFlowStep < 0) parsed.maxFlowStep = parsed.flowStep;
         // BUG-001: Ensure worker has an id if it exists (pre-31.6 sessions may lack it)
         if (parsed.worker && !parsed.worker.id) {
           parsed.worker.id = "wkr_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
@@ -245,9 +296,15 @@ export default function DeveloperSandbox() {
   }
 
   // Flow state — flowStep only moves forward, never backward
-  const [flowStep, setFlowStep] = useState(() => savedSession.current?.flowStep || 1);
-  const [maxFlowStep, setMaxFlowStep] = useState(() => savedSession.current?.maxFlowStep || savedSession.current?.flowStep || 1);
-  const [showOnboarding, setShowOnboarding] = useState(() => !localStorage.getItem("sandboxOnboardingComplete"));
+  const [flowStep, setFlowStep] = useState(() => {
+    const s = savedSession.current?.flowStep;
+    return typeof s === "number" ? s : 0;
+  });
+  const [maxFlowStep, setMaxFlowStep] = useState(() => {
+    const s = savedSession.current;
+    const max = s?.maxFlowStep ?? s?.flowStep;
+    return typeof max === "number" ? max : 0;
+  });
 
   // Step advancement — only forward
   function advanceToStep(step) {
@@ -262,31 +319,19 @@ export default function DeveloperSandbox() {
     setFlowStep(step);
   }
 
-  // Step 1 — Discover
-  const [vertical, setVertical] = useState(() => savedSession.current?.vertical || "");
-  const [subjectDomain, setSubjectDomain] = useState(() => savedSession.current?.subjectDomain || "");
-  const [selectedIdea, setSelectedIdea] = useState(() => savedSession.current?.selectedIdea || null);
-  const [waitlistEnabled, setWaitlistEnabled] = useState(false);
+  // Opening answer (flowStep 0 → 1)
+  const [openingAnswer, setOpeningAnswer] = useState("");
 
-  // Step 2 — Vibe
-  const [vibeStep, setVibeStep] = useState(() => savedSession.current?.vibeStep || 0);
-  const [vibeFastTrack, setVibeFastTrack] = useState(() => savedSession.current?.vibeFastTrack ?? "pending"); // pending | paste | guided | done
-  const [vibeAnswers, setVibeAnswers] = useState(() => savedSession.current?.vibeAnswers || {});
+  // Worker state (used in steps 2+)
   const [workerCardData, setWorkerCardData] = useState(() => savedSession.current?.workerCardData || null);
-  const [showWorkerCard, setShowWorkerCard] = useState(() => savedSession.current?.showWorkerCard ?? !!savedSession.current?.workerCardData);
-  const [lastUpdatedField, setLastUpdatedField] = useState(null);
-
-  // Step 2b — Sharpening Session (3 sharpening questions after Vibe, before Worker Card)
-  const [sharpeningActive, setSharpeningActive] = useState(false);
-  const [sharpeningStep, setSharpeningStep] = useState(0);
-  const [sharpeningAnswers, setSharpeningAnswers] = useState([]);
+  const [vertical, setVertical] = useState(() => savedSession.current?.vertical || "");
+  const [jurisdiction, setJurisdiction] = useState(() => savedSession.current?.jurisdiction || "");
 
   // Step 3 — Build
   const [worker, setWorker] = useState(() => savedSession.current?.worker || null);
-  const [jurisdiction, setJurisdiction] = useState(() => savedSession.current?.jurisdiction || "");
   const [workerIconUrl, setWorkerIconUrl] = useState(() => savedSession.current?.workerIconUrl || "");
 
-  // Step 4 — Test survey (declared before persist useEffect that references them)
+  // Step 4 — Test survey
   const [surveyStep, setSurveyStep] = useState(() => savedSession.current?.surveyStep || 0);
   const [surveyAnswers, setSurveyAnswers] = useState(() => savedSession.current?.surveyAnswers || {});
   const [surveyComplete, setSurveyComplete] = useState(() => savedSession.current?.surveyComplete || false);
@@ -298,18 +343,18 @@ export default function DeveloperSandbox() {
 
   // Persist session state on key changes
   useEffect(() => {
-    if (!workerCardData && !worker && !vertical) return;
+    if (!workerCardData && !worker && flowStep === 0) return;
     try {
       localStorage.setItem("ta_sandbox_session", JSON.stringify({
-        vertical, subjectDomain, selectedIdea, vibeStep, vibeFastTrack, vibeAnswers,
-        workerCardData, worker, jurisdiction, workerIconUrl, flowStep, maxFlowStep, showWorkerCard,
-        surveyStep, surveyAnswers, surveyComplete, testExchangeCount, _v: 2,
+        workerCardData, worker, vertical, jurisdiction, workerIconUrl,
+        flowStep, maxFlowStep,
+        surveyStep, surveyAnswers, surveyComplete, testExchangeCount, _v: 3,
       }));
       if (workerCardData?.name) {
         sessionStorage.setItem("ta_sandbox_worker_name", workerCardData.name);
       }
     } catch {}
-  }, [vertical, subjectDomain, selectedIdea, vibeStep, vibeFastTrack, vibeAnswers, workerCardData, worker, jurisdiction, workerIconUrl, flowStep, maxFlowStep, showWorkerCard, surveyStep, surveyAnswers, surveyComplete, testExchangeCount]);
+  }, [workerCardData, worker, vertical, jurisdiction, workerIconUrl, flowStep, maxFlowStep, surveyStep, surveyAnswers, surveyComplete, testExchangeCount]);
 
   // Edit mode (post-publish)
   const [editMode, setEditMode] = useState(false);
@@ -326,6 +371,10 @@ export default function DeveloperSandbox() {
   // Session error (silent inline UI, not Alex conversation)
   const [showSessionError, setShowSessionError] = useState(false);
 
+  // Outside tool bridge
+  const [showBridge, setShowBridge] = useState(false);
+  const [bridgePasteBack, setBridgePasteBack] = useState("");
+
   // Clean PII and spec from URL params on mount
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -340,14 +389,13 @@ export default function DeveloperSandbox() {
 
   // Name — captured once, never asked again
   const [creatorName, setCreatorName] = useState(() => {
-    // BUG-006: Check Firebase Auth first, then localStorage, then session
     return firebaseAuth?.currentUser?.displayName
       || localStorage.getItem("DISPLAY_NAME")
       || sessionStorage.getItem("ta_sandbox_name")
       || "";
   });
 
-  // BUG-006: Handle late auth resolution — capture name when onAuthStateChanged fires
+  // Handle late auth resolution — capture name when onAuthStateChanged fires
   useEffect(() => {
     if (creatorName) return;
     const unsub = firebaseAuth?.onAuthStateChanged?.(user => {
@@ -380,6 +428,17 @@ export default function DeveloperSandbox() {
   const [dividerHover, setDividerHover] = useState(false);
   const rootRef = useRef(null);
   const rightPanelRef = useRef(null);
+
+  // Resume banner — detect incomplete session
+  const [resumeWorker, setResumeWorker] = useState(() => {
+    try {
+      const s = savedSession.current;
+      if (s?.workerCardData?.name && s.flowStep > 0 && s.flowStep < 7) {
+        return { name: s.workerCardData.name, flowStep: s.flowStep };
+      }
+    } catch {}
+    return null;
+  });
 
   // Scroll right panel to top on step change
   useEffect(() => {
@@ -425,7 +484,7 @@ export default function DeveloperSandbox() {
 
   useEffect(() => { scrollToBottom(); }, [messages, scrollToBottom]);
 
-  // BUG-005: Auto-expand chat input as user types
+  // Auto-expand chat input as user types
   useEffect(() => {
     if (chatInputRef.current) {
       chatInputRef.current.style.height = "auto";
@@ -436,43 +495,29 @@ export default function DeveloperSandbox() {
   const firstName = creatorName ? creatorName.split(" ")[0] : "";
   const isHE = vertical === "health-education";
 
-  // Initial greeting — mount only, for returning users who already dismissed onboarding
+  // Initial greeting — on mount for returning users at flowStep > 0
   useEffect(() => {
-    if (!showOnboarding) {
-      const savedWorkerName = workerCardData?.name || sessionStorage.getItem("ta_sandbox_worker_name");
-      // BUG-006: Also check Firebase Auth for display name
-      const authName = firebaseAuth?.currentUser?.displayName?.split(" ")[0];
-      const displayFirstName = firstName || authName || "";
-      let greeting;
-      if (displayFirstName && savedWorkerName) {
-        greeting = `Welcome back, ${displayFirstName}. Picked up where you left off: ${savedWorkerName}.`;
-      } else if (displayFirstName) {
-        greeting = `Welcome back, ${displayFirstName}. Ready to pick up where we left off?`;
-      } else {
-        greeting = "I'm Alex. Let's build your first Digital Worker. What industry are you in?";
-      }
-      addAssistantMessage(greeting);
+    if (flowStep === 0) return; // Opening screen handles its own flow
+    const savedWorkerName = workerCardData?.name || sessionStorage.getItem("ta_sandbox_worker_name");
+    const authDisplayName = firebaseAuth?.currentUser?.displayName?.split(" ")[0];
+    const displayFirstName = firstName || authDisplayName || "";
+    let greeting;
+    if (displayFirstName && savedWorkerName) {
+      greeting = `Welcome back, ${displayFirstName}. Picked up where you left off: ${savedWorkerName}.`;
+    } else if (displayFirstName) {
+      greeting = `Welcome back, ${displayFirstName}. Ready to pick up where we left off?`;
+    } else {
+      greeting = "Welcome back. Ready to pick up where we left off?";
+    }
+    addAssistantMessage(greeting);
 
-      // Auto-send pasted spec from landing page (via ?spec= URL param)
-      if (pastedSpec) {
-        setTimeout(() => {
-          addUserMessage(pastedSpec);
-          addAssistantMessage("Got it — reading through this now.\n\nThinking it through in another tool first is actually a great way to come in with a clear idea. That's exactly what this is for.");
-          setFlowStep(2);
-          setVibeFastTrack("paste");
-          const extracted = extractVibeFromPaste(pastedSpec);
-          if (!extracted.problemDescription) extracted.problemDescription = pastedSpec.substring(0, 500);
-          const bulkAnswers = {};
-          for (const [key, val] of Object.entries(extracted)) {
-            if (key === "jurisdiction") setJurisdiction(val);
-            bulkAnswers[key] = val;
-          }
-          setVibeAnswers(prev => ({ ...prev, ...bulkAnswers }));
-        }, 600);
-      }
-
-      // Flow step is now restored from persisted session via useState initializers
-      // No need to re-set here — flowStep and maxFlowStep are already correct
+    // Auto-send pasted spec from landing page (via ?spec= URL param)
+    if (pastedSpec) {
+      setTimeout(() => {
+        addUserMessage(pastedSpec);
+        addAssistantMessage("Got it — reading through this now. Thinking it through in another tool first is a great way to come in with a clear idea.");
+        if (flowStep < 1) advanceToStep(1);
+      }, 600);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -493,485 +538,45 @@ export default function DeveloperSandbox() {
     localStorage.setItem("DISPLAY_NAME", name);
   }
 
-  async function sendMessage() {
-    const text = input.trim();
-    if (!text || sending) return;
-    setInput("");
+  // ── Opening screen submit (flowStep 0 → 1) ────────────────
+  function handleOpeningSubmit() {
+    const text = openingAnswer.trim();
+    if (!text) return;
+    advanceToStep(1);
+    setResumeWorker(null);
+    // Send opening answer as first chat message
     addUserMessage(text);
     setSending(true);
-
-    // If we don't have a name yet and this looks like a name response, capture it
-    if (!creatorName && messages.length <= 2 && text.length < 40 && !text.includes("?")) {
-      captureName(text);
-    }
-
-    try {
-      const token = localStorage.getItem("ID_TOKEN");
-      const headers = { "Content-Type": "application/json" };
-      if (token && token !== "undefined" && token !== "null") headers.Authorization = `Bearer ${token}`;
-      const resp = await fetch(`${API_BASE}/api?path=/v1/chat:message`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          sessionId, surface: "sandbox", userInput: text, flowStep, vertical, subjectDomain,
-          ...(creatorName ? { creatorName } : {}),
-        }),
+    const token = localStorage.getItem("ID_TOKEN");
+    const headers = { "Content-Type": "application/json" };
+    if (token && token !== "undefined" && token !== "null") headers.Authorization = `Bearer ${token}`;
+    fetch(`${API_BASE}/api?path=/v1/chat:message`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        sessionId, surface: "sandbox", userInput: text, flowStep: 1,
+        ...(creatorName ? { creatorName } : {}),
+      }),
+    })
+      .then(r => r.json())
+      .then(result => {
+        const reply = result.message || result.reply;
+        if (result.ok && reply) {
+          addAssistantMessage(reply);
+        } else {
+          addAssistantMessage(reply || "Tell me more about that.");
+        }
+      })
+      .catch(() => {
+        addAssistantMessage("Tell me more about your expertise.");
+      })
+      .finally(() => {
+        setSending(false);
+        chatInputRef.current?.focus();
       });
-      const result = await resp.json();
-      const reply = result.message || result.reply;
-      if (result.ok && reply) {
-        addAssistantMessage(reply);
-        if (result.workerCardData) {
-          setWorkerCardData(result.workerCardData);
-          setShowWorkerCard(true);
-        }
-        if (result.worker) {
-          setWorker(result.worker);
-        }
-      } else {
-        addAssistantMessage(reply || "Something went wrong. Try again.");
-      }
-    } catch (e) {
-      console.error("Chat error:", e);
-      addAssistantMessage("Connection error. Please try again.");
-    } finally {
-      setSending(false);
-      chatInputRef.current?.focus();
-    }
   }
 
-  function handleKeyDown(e) {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
-  }
-
-  function handleOnboardingDismiss() {
-    localStorage.setItem("sandboxOnboardingComplete", "true");
-    setShowOnboarding(false);
-    if (!localStorage.getItem("sandbox_welcomed")) {
-      localStorage.setItem("sandbox_welcomed", "true");
-      setTimeout(() => fireConfetti("full"), 300);
-    }
-    const greeting = firstName
-      ? `Welcome, ${firstName}. I'm Alex. Let's build your first Digital Worker. What is your specialty?`
-      : "I'm Alex. Let's build your first Digital Worker. What industry are you in?";
-    addAssistantMessage(greeting);
-
-    // Auto-send pasted spec from landing page (via ?spec= URL param)
-    if (pastedSpec) {
-      setTimeout(() => {
-        addUserMessage(pastedSpec);
-        addAssistantMessage("Got it — reading through this now.\n\nThinking it through in another tool first is actually a great way to come in with a clear idea. That's exactly what this is for.");
-        setFlowStep(2);
-        setVibeFastTrack("paste");
-        const extracted = extractVibeFromPaste(pastedSpec);
-        if (!extracted.problemDescription) extracted.problemDescription = pastedSpec.substring(0, 500);
-        const bulkAnswers = {};
-        for (const [key, val] of Object.entries(extracted)) {
-          if (key === "jurisdiction") setJurisdiction(val);
-          bulkAnswers[key] = val;
-        }
-        setVibeAnswers(prev => ({ ...prev, ...bulkAnswers }));
-      }, 600);
-    }
-  }
-
-  // ── Step 1 handlers ──────────────────────────────────────────
-
-  function handleVerticalSelect(v) {
-    setVertical(v);
-    fireConfetti("light");
-    const label = VERTICALS.find(x => x.value === v)?.label || v;
-    addUserMessage(label);
-    if (v === "health-education") {
-      addAssistantMessage("Great. Which clinical specialty are you in? This helps me show you the right worker ideas.");
-    } else {
-      addAssistantMessage(`Here are some worker ideas for ${label}. Pick one that is close to what you have in mind, and I'll customize it for you.`);
-    }
-  }
-
-  function handleSubjectDomainSelect(sd) {
-    setSubjectDomain(sd);
-    const label = HE_SUBJECT_DOMAINS.find(x => x.value === sd)?.label || sd;
-    addUserMessage(label);
-    addAssistantMessage(`Perfect. Here are worker ideas for ${label}. Pick one that matches what you want to build.`);
-  }
-
-  function handleIdeaSelect(idea) {
-    setSelectedIdea(idea);
-    sessionStorage.setItem("ta_sandbox_worker_name", idea.name);
-    addUserMessage(`I want something like "${idea.name}"`);
-    // Move to Step 2 — Vibe
-    advanceToStep(2);
-    setVibeStep(0);
-    setVibeFastTrack("pending");
-    // Fast track opener — let creator paste or walk through
-    addAssistantMessage(
-      `"${idea.name}" — good choice. Before we dive in — have you already been thinking this through?\n\nA lot of people sketch out their worker idea in ChatGPT, Claude, Gemini, or even just a notes doc before coming here. If you have a summary or brain dump, just paste it and I'll pull out everything I need.\n\nOr if you'd rather I walk you through it, just say "let's go" and we'll build it together step by step.`
-    );
-  }
-
-  // ── Step 2 handlers (Vibe conversation — 8 required questions) ──
-
-  const VIBE_QUESTIONS = [
-    { key: "problemDescription", question: "Tell me more — what problem keeps coming up that you want a Digital Worker to handle?" },
-    { key: "targetUser", question: "Who is the main person using this day to day — you, your team, your customers, or all three?" },
-    { key: "neverGetWrong", question: "What should this worker never get wrong? Think compliance, accuracy, anything that would cause real problems." },
-    { key: "raasRules", question: "Are there any regulations, compliance rules, or SOPs this worker needs to follow? For example — IRS guidelines, state laws, your company's internal policies, or industry standards. I'll bake these directly into the worker's rules." },
-    { key: "externalData", question: "What data or systems does this worker need to access?" },
-    { key: "outputFormat", question: "What should the output look like — dashboard, report, email, chat, something else?" },
-    { key: "currentProcess", question: "What's broken or missing in your current process?" },
-    { key: "jurisdiction", question: "What state or region does this apply to? And if it's tied to a specific organization, what's the name?" },
-    { key: "welcomeMessage", question: "Last one — what should your worker say when a new subscriber opens it for the first time? This becomes their welcome message. You can skip this and I'll generate one from your other answers." },
-  ];
-
-  // Contextual quick-select chips per Vibe question, vertical-aware
-  function getVibeChips(vert, questionKey) {
-    const map = {
-      problemDescription: {
-        auto: ["Licensing paperwork takes forever", "Inventory tracking is manual", "Compliance deadlines slip through"],
-        "real-estate": ["Title search takes too long", "Closing coordination is chaotic", "Compliance tracking is manual"],
-        investment: ["Due diligence is too slow", "Portfolio reporting takes days", "Deal flow tracking is scattered"],
-        aviation: ["Flight scheduling is manual", "Maintenance tracking gaps", "Crew compliance paperwork"],
-        "health-education": ["Student tracking is fragmented", "Clinical compliance gaps", "Credentialing takes too long"],
-        construction: ["Project tracking across sites", "Permit and inspection delays", "Budget overruns go unnoticed"],
-        insurance: ["Claims processing is slow", "Policy management is manual", "Compliance audits take weeks"],
-        accounting: ["Reconciliation takes days", "Tax deadline tracking is manual", "Client reporting is tedious"],
-        government: ["Permit processing backlog", "Record keeping is fragmented", "Compliance reporting is manual"],
-        _default: ["Manual processes waste time", "Data entry errors cause problems", "Compliance tracking is unreliable"],
-      },
-      targetUser: {
-        _default: ["Just me", "My team", "My clients / customers", "All three"],
-      },
-      neverGetWrong: {
-        auto: ["Title status and lien checks", "DMV compliance deadlines", "Customer disclosure accuracy"],
-        "real-estate": ["Title chain accuracy", "Recording deadlines", "Disclosure requirements"],
-        investment: ["Financial calculations", "Regulatory filing deadlines", "Investor communications"],
-        aviation: ["Safety compliance records", "Certification expiry dates", "Flight hour tracking"],
-        "health-education": ["Clinical protocol accuracy", "HIPAA compliance", "Credential verification"],
-        construction: ["Safety inspection records", "Permit compliance", "Budget accuracy"],
-        _default: ["Compliance requirements", "Financial accuracy", "Data privacy rules"],
-      },
-      raasRules: {
-        auto: ["State DMV regulations", "FTC dealer rules", "No specific rules — use defaults"],
-        "real-estate": ["RESPA / TRID rules", "State recording requirements", "Fair housing regulations"],
-        investment: ["SEC regulations", "FINRA rules", "AML requirements"],
-        aviation: ["FAA Part 91/135", "TSA security directives", "No specific rules — use defaults"],
-        "health-education": ["HIPAA / FERPA rules", "State licensing board rules", "Accreditation standards"],
-        construction: ["OSHA safety standards", "Local building codes", "EPA environmental rules"],
-        _default: ["Industry-specific regulations", "Our internal SOPs", "No specific rules — use defaults"],
-      },
-      externalData: {
-        auto: ["VIN / NHTSA database", "State DMV records", "Our dealer management system"],
-        "real-estate": ["MLS listings", "County recorder database", "Title plant records"],
-        investment: ["Market data feeds", "SEC EDGAR filings", "Our CRM / deal pipeline"],
-        aviation: ["FAA aircraft registry", "Weather data feeds", "Maintenance tracking system"],
-        "health-education": ["Student information system", "Clinical records (EHR)", "Accreditation databases"],
-        construction: ["Project management tools", "Permit databases", "Material pricing feeds"],
-        _default: ["Our internal database", "Third-party APIs", "Spreadsheets and documents"],
-      },
-      outputFormat: {
-        _default: ["Dashboard with key metrics", "PDF reports I can send", "Email or chat notifications", "All of the above"],
-      },
-      currentProcess: {
-        _default: ["Spreadsheets and manual tracking", "Too many disconnected tools", "Mostly email-based workflow"],
-      },
-      jurisdiction: {
-        _default: ["California", "Texas", "New York", "National — all states"],
-      },
-      welcomeMessage: {
-        _default: ["Skip — generate one for me", "Let me write my own"],
-      },
-    };
-    const q = map[questionKey];
-    if (!q) return [];
-    return q[vert] || q._default || [];
-  }
-
-  // Paste-from-AI detection — extract Vibe answers from long text
-  function extractVibeFromPaste(text) {
-    const keywordMap = {
-      problemDescription: /problem|issue|challenge|pain|struggle|bottleneck/i,
-      targetUser: /(?:for|by|used by|audience|target)\s/i,
-      neverGetWrong: /never|accuracy|critical|error|mistake|wrong|compliance/i,
-      raasRules: /regulat|law|rule|standard|sop|guideline|polic/i,
-      externalData: /data|system|integrat|api|database|software|tool|connect/i,
-      outputFormat: /output|report|dashboard|email|alert|notification|format/i,
-      currentProcess: /current|broken|missing|manual|spreadsheet|today|existing|status quo/i,
-      jurisdiction: /(?:state|region|national|country|california|texas|new york|florida|illinois)/i,
-    };
-    const sentences = text.split(/[.\n]+/).map(s => s.trim()).filter(s => s.length > 8);
-    const extracted = {};
-    for (const s of sentences) {
-      for (const [key, regex] of Object.entries(keywordMap)) {
-        if (!extracted[key] && regex.test(s)) {
-          extracted[key] = s;
-          break;
-        }
-      }
-    }
-    return extracted;
-  }
-
-  function handleVibeAnswer(text) {
-    if (vibeFastTrack !== "done") setVibeFastTrack("done");
-    const currentQ = VIBE_QUESTIONS[vibeStep];
-    if (!currentQ) return;
-
-    const newAnswers = { ...vibeAnswers, [currentQ.key]: text };
-    setVibeAnswers(newAnswers);
-    setLastUpdatedField(currentQ.key);
-    setTimeout(() => setLastUpdatedField(null), 1200);
-
-    if (currentQ.key === "jurisdiction") {
-      setJurisdiction(parseJurisdiction(text));
-    }
-
-    // If user says no RAAS rules, acknowledge
-    if (currentQ.key === "raasRules" && /none|no|not really|nothing|n\/a/i.test(text)) {
-      const vertLabel = VERTICALS.find(v => v.value === vertical)?.label || vertical;
-      addAssistantMessage(`Got it — I'll apply standard compliance defaults for ${vertLabel}.`);
-    }
-
-    if (vibeStep < VIBE_QUESTIONS.length - 1) {
-      // Next question
-      const nextStep = vibeStep + 1;
-      setVibeStep(nextStep);
-      // Don't send the RAAS acknowledgment AND the next question in same tick
-      const delay = currentQ.key === "raasRules" && /none|no|not really|nothing|n\/a/i.test(text) ? 1000 : 500;
-      setTimeout(() => {
-        addAssistantMessage(VIBE_QUESTIONS[nextStep].question);
-      }, delay);
-    } else {
-      // All 8 questions answered — lock vibeStep, start sharpening session
-      setVibeStep(VIBE_QUESTIONS.length);
-      startSharpeningSession(newAnswers);
-    }
-  }
-
-  // ── Step 2b: Sharpening Session (3 sharpening questions) ──
-
-  function getSharpeningQuestions(answers) {
-    const name = selectedIdea?.name || "your worker";
-    const problem = answers.problemDescription || "";
-    const target = answers.targetUser || "";
-    const neverWrong = answers.neverGetWrong || "";
-    const process = answers.currentProcess || "";
-
-    // Q1: Scope check — look for multiple jobs/capabilities in the problem description
-    const scopeQ = problem.length > 60 || (problem.match(/and|,|also|plus|as well/gi) || []).length >= 2
-      ? `You mentioned several things: "${problem.substring(0, 80)}..." — that could be two or three different jobs. Do you want ${name} to handle all of that as one worker, or should I split it into a team of specialized workers?`
-      : `Looking at what ${name} needs to do — is this one focused job, or would it work better as two or three specialized workers that work together?`;
-
-    // Q2: Edge case — derive from neverGetWrong or process description
-    const edgeScenario = neverWrong
-      ? `You said this worker should never get wrong: "${neverWrong.substring(0, 80)}." What should it do when it encounters a case it's not sure about — flag it, block it, or escalate to a human?`
-      : process
-        ? `What happens when something goes wrong in the current process? How should ${name} handle edge cases or unexpected inputs?`
-        : `What's the worst thing that could happen if ${name} makes a mistake? How should it handle that scenario?`;
-
-    // Q3: Audience — narrow from targetUser
-    const audienceQ = target.toLowerCase().includes("all") || target.toLowerCase().includes("three") || target.toLowerCase().includes("everyone")
-      ? `You said everyone uses this. But if you could only make one person happy on day one — you, your team, or your customers — who is it?`
-      : `Who is the one person ${name} absolutely has to work for on day one? Paint me a picture — what's their typical day like?`;
-
-    return [scopeQ, edgeScenario, audienceQ];
-  }
-
-  function startSharpeningSession(answers) {
-    setVibeAnswers(answers);
-    setSharpeningActive(true);
-    setSharpeningStep(0);
-    const questions = getSharpeningQuestions(answers);
-    // BUG-007: Split bridge message from first question with a pause
-    addAssistantMessage("Great — I have everything I need to start building your card. Before I do, three quick sharpening questions to make sure I get this exactly right.");
-    setTimeout(() => addAssistantMessage(questions[0]), 1200);
-  }
-
-  async function handleSharpeningAnswer(text) {
-    const questions = getSharpeningQuestions(vibeAnswers);
-    const newAnswers = [...sharpeningAnswers, { question: questions[sharpeningStep], answer: text }];
-    setSharpeningAnswers(newAnswers);
-
-    // Check if creator wants to expand to multiple workers (Q1 scope check)
-    if (sharpeningStep === 0) {
-      const wantsTeam = /team|split|separate|multiple|speciali/i.test(text);
-      if (wantsTeam) {
-        addAssistantMessage("Smart move. You'd need the Creator License to publish all of them — it's $49/year and you earn on every one. Want me to set that up after we finish this first worker?");
-        // Continue to Q2 after a delay
-        setTimeout(() => {
-          setSharpeningStep(1);
-          addAssistantMessage(questions[1]);
-        }, 1500);
-        return;
-      }
-    }
-
-    if (sharpeningStep < 2) {
-      const nextStep = sharpeningStep + 1;
-      setSharpeningStep(nextStep);
-      setTimeout(() => {
-        addAssistantMessage(questions[nextStep]);
-      }, 500);
-    } else {
-      // BUG-002: Sharpening complete — polish answers, then generate Worker Card
-      setSharpeningActive(false);
-      addAssistantMessage("Got it. Polishing your Worker Card copy...");
-      const polished = await polishCardFields(vibeAnswers, newAnswers);
-      const enrichedAnswers = polished
-        ? { ...vibeAnswers,
-            problemDescription: polished.description || vibeAnswers.problemDescription,
-            currentProcess: polished.problemSolves || vibeAnswers.currentProcess,
-            targetUser: polished.targetUser || vibeAnswers.targetUser,
-            neverGetWrong: polished.complianceRules || vibeAnswers.neverGetWrong,
-            welcomeMessage: polished.welcomeMessage || vibeAnswers.welcomeMessage || "",
-            starterPrompts: polished.starterPrompts || [] }
-        : vibeAnswers;
-      setTimeout(() => {
-        generateWorkerCard(enrichedAnswers, newAnswers);
-      }, 300);
-    }
-  }
-
-  // BUG-002: Polish raw vibe answers into marketplace-quality copy via AI
-  async function polishCardFields(answers, sharpening) {
-    try {
-      const sharpeningContext = (sharpening || []).map(s => `Q: ${s.question}\nA: ${s.answer}`).join("\n");
-      const prompt = `You are a marketplace copywriter for TitleApp.ai. Rewrite these raw user inputs into polished, professional marketplace copy. Keep each field concise (1-2 sentences max). Do NOT invent features or claims the user didn't mention. Strip typos, filler phrases, and conversational fragments. No first person. Return valid JSON only, no markdown fences.
-
-Raw inputs:
-- description: ${JSON.stringify(answers.problemDescription || "")}
-- problemSolves: ${JSON.stringify(answers.currentProcess || answers.problemDescription || "")}
-- targetUser: ${JSON.stringify(answers.targetUser || "")}
-- complianceRules: ${JSON.stringify(answers.neverGetWrong || "")}
-
-Sharpening context:
-${sharpeningContext}
-
-Return JSON: { "description": "...", "problemSolves": "...", "targetUser": "...", "complianceRules": "...", "welcomeMessage": "...", "starterPrompts": ["...", "...", "..."] }
-
-For welcomeMessage: Write a 2-sentence greeting. First sentence: "Hi, I'm [worker name]. I help [target user] with [core task]." Second sentence: a specific first action the subscriber should take. No emojis. Professional tone.
-
-For starterPrompts: Write 3 short (under 10 words each) conversation starters a subscriber would click to begin using this worker. Make them specific to the problem domain.`;
-
-      const res = await w1Api("chat:message", {
-        sessionId: "polish_" + Date.now(),
-        surface: "sandbox",
-        userInput: prompt,
-        flowStep: "polish",
-        systemOverride: "You are a concise marketplace copywriter. Return only valid JSON, no explanation or markdown.",
-      });
-      if (res.ok && res.message) {
-        const jsonMatch = res.message.match(/\{[\s\S]*\}/);
-        if (jsonMatch) return JSON.parse(jsonMatch[0]);
-      }
-    } catch (e) {
-      console.warn("[polishCardFields] Failed, using raw answers:", e.message);
-    }
-    return null;
-  }
-
-  // BUG-003: Parse raw jurisdiction text into clean tags
-  function parseJurisdiction(raw) {
-    if (!raw || typeof raw !== "string") return "GLOBAL";
-    // Strip conversational noise after delimiters
-    let cleaned = raw.split(/[.>!]|(?:I don't|I'm |this is|it's |we're |my |I want)/i)[0].trim();
-    if (!cleaned) return "GLOBAL";
-
-    // Check broad coverage
-    if (/national|all\s*(?:50\s*)?states|country-?wide|nation-?wide|every state/i.test(cleaned)) return "National";
-    if (/global|international|worldwide/i.test(cleaned)) return "GLOBAL";
-    if (/\beu\b|european union/i.test(cleaned)) {
-      const hasUS = /\bus\b|united states|america/i.test(cleaned);
-      const hasCan = /\bcanada\b/i.test(cleaned);
-      const parts = ["EU"];
-      if (hasUS) parts.push("US");
-      if (hasCan) parts.push("Canada");
-      return parts.join(" · ");
-    }
-    if (/\bcanada\b/i.test(cleaned) && /\bus\b|united states|america/i.test(cleaned)) return "US · Canada";
-    if (/\bcanada\b/i.test(cleaned)) return "Canada";
-
-    const stateNames = { "alabama": "AL", "alaska": "AK", "arizona": "AZ", "arkansas": "AR", "california": "CA", "colorado": "CO", "connecticut": "CT", "delaware": "DE", "florida": "FL", "georgia": "GA", "hawaii": "HI", "idaho": "ID", "illinois": "IL", "indiana": "IN", "iowa": "IA", "kansas": "KS", "kentucky": "KY", "louisiana": "LA", "maine": "ME", "maryland": "MD", "massachusetts": "MA", "michigan": "MI", "minnesota": "MN", "mississippi": "MS", "missouri": "MO", "montana": "MT", "nebraska": "NE", "nevada": "NV", "new hampshire": "NH", "new jersey": "NJ", "new mexico": "NM", "new york": "NY", "north carolina": "NC", "north dakota": "ND", "ohio": "OH", "oklahoma": "OK", "oregon": "OR", "pennsylvania": "PA", "rhode island": "RI", "south carolina": "SC", "south dakota": "SD", "tennessee": "TN", "texas": "TX", "utah": "UT", "vermont": "VT", "virginia": "VA", "washington": "WA", "west virginia": "WV", "wisconsin": "WI", "wyoming": "WY" };
-    const stateAbbrevs = Object.values(stateNames);
-
-    // Extract state abbreviations
-    const foundAbbrevs = cleaned.match(new RegExp(`\\b(${stateAbbrevs.join("|")})\\b`, "g"));
-    if (foundAbbrevs?.length > 0) {
-      const unique = [...new Set(foundAbbrevs)];
-      return unique.length > 3 ? `Multi-state (${unique.length})` : unique.join(", ");
-    }
-    // Extract state names
-    const lower = cleaned.toLowerCase();
-    const foundNames = [];
-    for (const [name, abbrev] of Object.entries(stateNames)) {
-      if (lower.includes(name)) foundNames.push(abbrev);
-    }
-    if (foundNames.length > 0) {
-      const unique = [...new Set(foundNames)];
-      return unique.length > 3 ? `Multi-state (${unique.length})` : unique.join(", ");
-    }
-    // Fallback: cleaned text capped at 50 chars
-    return cleaned.length <= 50 ? cleaned : "GLOBAL";
-  }
-
-  function generateWorkerCard(answers, sharpening) {
-    const isPublic = (answers.visibility || answers.currentProcess || "").toLowerCase().includes("anyone") ||
-                     (answers.visibility || "").toLowerCase().includes("public") ||
-                     (answers.visibility || "").toLowerCase().includes("marketplace");
-
-    const needsMdGate = isHE && selectedIdea?.lane === "back_me_up";
-    // Robust audience extraction — any non-blank answer counts
-    const rawTarget = answers.targetUser || "";
-    const targetUser = rawTarget.trim() || answers.currentProcess?.match(/(?:for|by)\s+(.+?)(?:\.|,|$)/i)?.[1]?.trim() || "General audience";
-
-    const cardData = {
-      name: selectedIdea?.name || "Custom Worker",
-      description: answers.problemDescription || selectedIdea?.desc || "",
-      problemSolves: answers.currentProcess || answers.problemDescription || selectedIdea?.desc || "General productivity improvement",
-      targetUser,
-      complianceRules: answers.neverGetWrong || "Standard platform compliance (Tier 0 + Tier 1 auto-applied)",
-      raasRules: answers.raasRules && !/none|no|not really|nothing|n\/a/i.test(answers.raasRules) ? answers.raasRules : "",
-      externalData: answers.externalData || "None specified",
-      outputFormat: answers.outputFormat || "",
-      visibility: isPublic ? "Public marketplace" : "Internal only",
-      vertical: VERTICALS.find(v => v.value === vertical)?.label || vertical,
-      jurisdiction: parseJurisdiction(answers.jurisdiction),
-      pricingTier: 2,
-      mdGateRequired: needsMdGate,
-      subjectDomain,
-      lane: selectedIdea?.lane,
-      internal_only: !isPublic,
-      sharpeningAnswers: sharpening || [],
-      welcomeMessage: answers.welcomeMessage && !/skip|no|pass|default|generate/i.test(answers.welcomeMessage) ? answers.welcomeMessage : "",
-      starterPrompts: answers.starterPrompts || [],
-    };
-
-    setWorkerCardData(cardData);
-    setShowWorkerCard(true);
-
-    // Clear chat and send fresh transition message (Fix 3)
-    setTimeout(() => {
-      setMessages([
-        { role: "assistant", text: `Here's your ${cardData.name}. Review it on the right — edit anything, then hit Approve and I'll start building.` }
-      ]);
-    }, 300);
-
-    // Find comparable workers
-    const ideas = getWorkerIdeas(vertical, subjectDomain);
-    const comparables = ideas
-      .filter(i => i.name !== selectedIdea?.name)
-      .slice(0, 3)
-      .map(i => ({
-        name: i.name,
-        price: i.price.includes("79") ? 79 : i.price.includes("49") ? 49 : 29,
-      }));
-    cardData._comparables = comparables;
-  }
-
-  // Override sendMessage for vibe step to route answers
+  // ── Chat send (flowStep 1+) ────────────────────────────────
   async function handleSend() {
     const text = input.trim();
     if ((!text && pendingImages.length === 0) || sending) return;
@@ -983,101 +588,6 @@ For starterPrompts: Write 3 short (under 10 words each) conversation starters a 
       captureName(text);
     }
 
-    // Fast track detection — user responding to the two-path opener
-    if (flowStep === 2 && vibeFastTrack === "pending") {
-      const lower = text.toLowerCase();
-      if (/walk me|let'?s go|step by step|guide me|walk through/i.test(lower) || text.length < 30) {
-        // Path B — guided flow
-        setVibeFastTrack("guided");
-        addAssistantMessage(VIBE_QUESTIONS[0].question);
-        return;
-      }
-      // Path A / C — treat as a paste/summary
-      setVibeFastTrack("paste");
-      addAssistantMessage("Got it — reading through this now.\n\nThinking it through in another tool first is actually a great way to come in with a clear idea. That's exactly what this is for.");
-      const extracted = extractVibeFromPaste(text);
-      // Assign the full text to problemDescription if not already extracted
-      if (!extracted.problemDescription) extracted.problemDescription = text.substring(0, 500);
-      const bulkAnswers = { ...vibeAnswers };
-      for (const [key, val] of Object.entries(extracted)) {
-        if (!bulkAnswers[key]) bulkAnswers[key] = val;
-        if (key === "jurisdiction") setJurisdiction(val);
-      }
-      setVibeAnswers(bulkAnswers);
-      setLastUpdatedField("_bulk");
-      setTimeout(() => setLastUpdatedField(null), 2000);
-      // Find unanswered questions
-      const unanswered = VIBE_QUESTIONS.filter((q, i) => !bulkAnswers[q.key]);
-      if (unanswered.length === 0) {
-        setVibeStep(VIBE_QUESTIONS.length);
-        setVibeFastTrack("done");
-        const filledCount = Object.keys(bulkAnswers).length;
-        setTimeout(() => {
-          addAssistantMessage(`I pulled out all ${filledCount} answers. Let me sharpen a few things.`);
-          setTimeout(() => startSharpeningSession(bulkAnswers), 800);
-        }, 1200);
-      } else {
-        const firstUnanswered = VIBE_QUESTIONS.findIndex(q => !bulkAnswers[q.key]);
-        setVibeStep(firstUnanswered);
-        setVibeFastTrack("done");
-        const filledCount = Object.keys(bulkAnswers).length;
-        setTimeout(() => {
-          addAssistantMessage(`I pulled out ${filledCount} of ${VIBE_QUESTIONS.length} answers. Just a couple of quick gaps:`);
-          setTimeout(() => addAssistantMessage(VIBE_QUESTIONS[firstUnanswered].question), 800);
-        }, 1200);
-      }
-      return;
-    }
-
-    if (flowStep === 2 && vibeStep < VIBE_QUESTIONS.length) {
-      // Paste-from-AI detection: long text (>200 chars) may contain multiple answers
-      if (text.length > 200) {
-        const extracted = extractVibeFromPaste(text);
-        const currentKey = VIBE_QUESTIONS[vibeStep].key;
-        // Always assign the full text to the current question
-        if (!extracted[currentKey]) extracted[currentKey] = text.substring(0, 500);
-        // Bulk-fill all extracted answers
-        const bulkAnswers = { ...vibeAnswers };
-        let lastFilledStep = vibeStep;
-        for (let i = vibeStep; i < VIBE_QUESTIONS.length; i++) {
-          const qKey = VIBE_QUESTIONS[i].key;
-          if (extracted[qKey] && !bulkAnswers[qKey]) {
-            bulkAnswers[qKey] = extracted[qKey];
-            lastFilledStep = i;
-            if (qKey === "jurisdiction") setJurisdiction(extracted[qKey]);
-          }
-        }
-        setVibeAnswers(bulkAnswers);
-        setLastUpdatedField("_bulk");
-        setTimeout(() => setLastUpdatedField(null), 2000);
-        // Advance to first unanswered question, or finish
-        const nextUnanswered = VIBE_QUESTIONS.findIndex((q, i) => i > vibeStep && !bulkAnswers[q.key]);
-        if (nextUnanswered === -1 || Object.keys(bulkAnswers).length >= VIBE_QUESTIONS.length) {
-          setVibeStep(VIBE_QUESTIONS.length);
-          const filledCount = Object.keys(bulkAnswers).length;
-          addAssistantMessage(`Got it — I pulled ${filledCount} answers from what you shared. Let me sharpen a few things.`);
-          setTimeout(() => startSharpeningSession(bulkAnswers), 800);
-        } else {
-          setVibeStep(nextUnanswered);
-          const skipped = nextUnanswered - vibeStep - 1;
-          if (skipped > 0) {
-            addAssistantMessage(`Great — I picked up ${skipped + 1} answers from that. Skipping ahead.`);
-          }
-          setTimeout(() => addAssistantMessage(VIBE_QUESTIONS[nextUnanswered].question), 600);
-        }
-        return;
-      }
-      handleVibeAnswer(text);
-      return;
-    }
-
-    // Sharpening session routing
-    if (flowStep === 2 && sharpeningActive) {
-      handleSharpeningAnswer(text);
-      return;
-    }
-
-    // Default chat flow
     setSending(true);
     const images = [...pendingImages];
     setPendingImages([]);
@@ -1096,7 +606,7 @@ For starterPrompts: Write 3 short (under 10 words each) conversation starters a 
         method: "POST",
         headers,
         body: JSON.stringify({
-          sessionId, surface: "sandbox", userInput: text, flowStep, vertical, subjectDomain,
+          sessionId, surface: "sandbox", userInput: text, flowStep, vertical,
           ...(creatorName ? { creatorName } : {}),
           ...(images.length > 0 ? { imageData: images.map(img => ({ base64: img.base64, mediaType: img.mediaType })) } : {}),
         }),
@@ -1106,7 +616,7 @@ For starterPrompts: Write 3 short (under 10 words each) conversation starters a 
       if (result.ok && reply) {
         addAssistantMessage(reply);
 
-        // Handle worker creation from backend (chat-driven build)
+        // Handle worker creation from backend (chat-driven build via [WORKER_SPEC])
         if (result.buildAnimation && result.cards && result.cards.length > 0) {
           const card = result.cards[0]?.data;
           if (card) {
@@ -1116,19 +626,21 @@ For starterPrompts: Write 3 short (under 10 words each) conversation starters a 
               targetUser: card.targetUser || card.audience || "General audience",
               problemSolves: card.problemSolves || card.problem || card.description || "General productivity improvement",
               complianceRules: (card.rules || []).join(". ") || "Standard compliance",
+              raasRules: (card.rules || []).join(". ") || "",
               vertical: card.category || vertical || "",
-              jurisdiction: "GLOBAL",
+              jurisdiction: card.jurisdiction || "GLOBAL",
               pricingTier: 2,
               internal_only: false,
             };
             setWorkerCardData(cardData);
+            setVertical(card.category || "");
+            setJurisdiction(card.jurisdiction || "GLOBAL");
             setWorker({ id: card.workerId, name: card.name, buildPhase: "draft" });
 
-            setTimeout(() => {
-              addAssistantMessage(`Your ${card.name} is ready. Let me show you around. You can test it, set your price, and publish when you are ready.`);
-              setShowWorkerCard(true);
-              if (flowStep < 2) advanceToStep(2);
-            }, 800);
+            // Add inline draft card to chat
+            setMessages(prev => [...prev, { role: "card", cardData }]);
+
+            if (flowStep < 2) advanceToStep(2);
           }
         }
       } else {
@@ -1154,6 +666,130 @@ For starterPrompts: Write 3 short (under 10 words each) conversation starters a 
     }
   }
 
+  // ── Outside tool bridge ────────────────────────────────────
+  function handleBridgeSend() {
+    const text = bridgePasteBack.trim();
+    if (!text) return;
+    setShowBridge(false);
+    setBridgePasteBack("");
+    setInput("");
+    addUserMessage(text);
+    // Process via normal chat flow
+    setSending(true);
+    const token = localStorage.getItem("ID_TOKEN");
+    const headers = { "Content-Type": "application/json" };
+    if (token && token !== "undefined" && token !== "null") headers.Authorization = `Bearer ${token}`;
+    fetch(`${API_BASE}/api?path=/v1/chat:message`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        sessionId, surface: "sandbox", userInput: text, flowStep, vertical,
+        ...(creatorName ? { creatorName } : {}),
+      }),
+    })
+      .then(r => r.json())
+      .then(result => {
+        const reply = result.message || result.reply;
+        if (result.ok && reply) {
+          addAssistantMessage(reply);
+          if (result.buildAnimation && result.cards && result.cards.length > 0) {
+            const card = result.cards[0]?.data;
+            if (card) {
+              const cardData = {
+                name: card.name || "Your Worker",
+                description: card.description || "",
+                targetUser: card.targetUser || card.audience || "General audience",
+                problemSolves: card.problemSolves || card.problem || card.description || "General productivity improvement",
+                complianceRules: (card.rules || []).join(". ") || "Standard compliance",
+                raasRules: (card.rules || []).join(". ") || "",
+                vertical: card.category || vertical || "",
+                jurisdiction: card.jurisdiction || "GLOBAL",
+                pricingTier: 2,
+                internal_only: false,
+              };
+              setWorkerCardData(cardData);
+              setVertical(card.category || "");
+              setJurisdiction(card.jurisdiction || "GLOBAL");
+              setWorker({ id: card.workerId, name: card.name, buildPhase: "draft" });
+              setMessages(prev => [...prev, { role: "card", cardData }]);
+              if (flowStep < 2) advanceToStep(2);
+            }
+          }
+        } else {
+          addAssistantMessage(reply || "Something went wrong. Try again.");
+        }
+      })
+      .catch(() => {
+        addAssistantMessage("Could not reach the server. Try again in a moment.");
+      })
+      .finally(() => {
+        setSending(false);
+        chatInputRef.current?.focus();
+      });
+  }
+
+  const bridgePrompt = `I want to build an AI tool based on my expertise.
+Here's the problem I solve: ${openingAnswer || "(describe your expertise)"}
+
+Help me define:
+1. Who exactly needs this (job title, situation)
+2. What they're trying to accomplish
+3. Rules or knowledge the AI needs
+4. What a great answer looks like
+5. What a bad answer looks like
+
+Keep it practical. I'm going to build a Digital Worker on TitleApp.ai`;
+
+  // ── InlineDraftCard handlers ────────────────────────────────
+
+  async function handleDraftDownload() {
+    if (!workerCardData) return;
+    try {
+      const genRes = await w1Api("docs:generate", {
+        templateId: "one-pager",
+        data: {
+          title: workerCardData.name,
+          description: workerCardData.description,
+          targetUser: workerCardData.targetUser,
+          problemSolves: workerCardData.problemSolves,
+          complianceRules: workerCardData.complianceRules,
+          vertical: workerCardData.vertical,
+        },
+      });
+      if (genRes.ok && genRes.documentId) {
+        const dlRes = await w1Api("docs:download", { documentId: genRes.documentId });
+        if (dlRes.ok && dlRes.url) {
+          window.open(dlRes.url, "_blank");
+        } else {
+          addAssistantMessage("Could not generate the download link. Try again.");
+        }
+      } else {
+        addAssistantMessage("Document generation failed. Try again.");
+      }
+    } catch {
+      addAssistantMessage("Could not generate the PDF. Try again.");
+    }
+  }
+
+  function handleDraftShare() {
+    const wId = worker?.id;
+    if (!wId) return;
+    const url = `https://app.titleapp.ai/workers/${wId}?preview=true`;
+    navigator.clipboard.writeText(url).then(() => {
+      addAssistantMessage("Share link copied to clipboard.");
+    }).catch(() => {
+      addAssistantMessage(`Share link: ${url}`);
+    });
+  }
+
+  function handleDraftEdit(editedData) {
+    setWorkerCardData(editedData);
+    // Update the card message in chat
+    setMessages(prev => prev.map(m =>
+      m.role === "card" ? { ...m, cardData: editedData } : m
+    ));
+  }
+
   // ── Step 2 → Step 3: Worker Card approved ────────────────────
 
   async function handleWorkerCardApprove(cardData) {
@@ -1161,19 +797,18 @@ For starterPrompts: Write 3 short (under 10 words each) conversation starters a 
     if (!token || token === "undefined" || token === "null") {
       if (signupPromptShown) return; // guard: never fire twice
       setSignupPromptShown(true);
-      setPendingCardData(cardData);
+      setPendingCardData(cardData || workerCardData);
       setShowAuthPrompt(true);
       addAssistantMessage("Before I can build this, I need a quick signup — just your name and email. This creates your workspace so your worker has a home.");
       return;
     }
-    await runBuildPipeline(cardData);
+    await runBuildPipeline(cardData || workerCardData);
   }
 
   async function runBuildPipeline(cardData) {
     setWorkerCardData(cardData);
-    setShowWorkerCard(false);
     advanceToStep(3); // Only forward — never regresses
-    // BUG-004: Clear stale build errors before starting fresh
+    // Clear stale build errors before starting fresh
     setMessages(prev => prev.filter(m =>
       !m.text?.startsWith("Build intake failed") &&
       !m.text?.startsWith("Research step failed") &&
@@ -1182,11 +817,11 @@ For starterPrompts: Write 3 short (under 10 words each) conversation starters a 
     addAssistantMessage("Building your worker now. This takes about a minute. Watch the progress on the right.");
 
     try {
-      const sops = String(vibeAnswers.neverGetWrong || vibeAnswers.complianceRules || "").split(/[.;]/).map(s => s.trim()).filter(Boolean);
-      const raasTier1 = String(vibeAnswers.raasRules || "").split(/[.;]/).map(s => s.trim()).filter(Boolean);
+      const sops = String(cardData?.complianceRules || "").split(/[.;]/).map(s => s.trim()).filter(Boolean);
+      const raasTier1 = String(cardData?.raasRules || "").split(/[.;]/).map(s => s.trim()).filter(Boolean);
       const isPublic = !cardData.internal_only;
 
-      // BUG-001: Generate workerId upfront if we don't have one (Vibe path)
+      // Generate workerId upfront if we don't have one
       const workerId = worker?.id || ("wkr_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8));
       if (!worker?.id) {
         setWorker(prev => ({ ...(prev || {}), id: workerId, name: cardData.name }));
@@ -1196,14 +831,14 @@ For starterPrompts: Write 3 short (under 10 words each) conversation starters a 
       const intakeRes = await w1Api("worker1:intake", {
         workerId,
         name: cardData.name,
-        vertical,
+        vertical: cardData.vertical || vertical,
         jurisdiction: cardData.jurisdiction || jurisdiction || "National",
         description: cardData.description,
         sops,
         raas_tier_1_rules: raasTier1,
         raas_tier_2_policies: sops,
         internal_only: cardData.internal_only,
-        ...(isHE && { subjectDomain, heJurisdiction: cardData.jurisdiction, deploymentTier: isPublic ? 2 : 3, heLane: cardData.lane }),
+        ...(isHE && { heJurisdiction: cardData.jurisdiction, deploymentTier: isPublic ? 2 : 3 }),
       });
       if (!intakeRes.ok) {
         console.error("[Build] intake failed:", intakeRes);
@@ -1293,7 +928,7 @@ For starterPrompts: Write 3 short (under 10 words each) conversation starters a 
     }
   }
 
-  // Handle session error — silent inline UI, not Alex conversation (Fix 12)
+  // Handle session error — silent inline UI, not Alex conversation
   function handleSessionError() {
     setShowSessionError(true);
   }
@@ -1301,10 +936,6 @@ For starterPrompts: Write 3 short (under 10 words each) conversation starters a 
   function handleSessionReauth() {
     setShowSessionError(false);
     setShowAuthPrompt(true);
-  }
-
-  function handleWorkerCardEdit(editedData) {
-    setWorkerCardData(editedData);
   }
 
   // ── Step 3 → Step 4: Build complete → Test ──────────────────
@@ -1383,7 +1014,7 @@ For starterPrompts: Write 3 short (under 10 words each) conversation starters a 
         w1Api("worker:test:audit", {
           workerId: worker.id,
           testSessionId: sessionId,
-          exchanges: count || testExchangeCount,
+          exchanges: testExchangeCount,
           surveyResponses: { ...surveyAnswers, [q.key]: answer },
           testPassedAt: new Date().toISOString(),
         });
@@ -1461,14 +1092,9 @@ For starterPrompts: Write 3 short (under 10 words each) conversation starters a 
     e.stopPropagation();
   }
 
-  // Should we show vertical chips in chat? Only in Step 1, before vertical is selected, no Worker Card
-  const showVerticalChips = flowStep === 1 && !vertical && messages.length > 0 && !showWorkerCard;
-
   // Chat input placeholder based on step
-  const chatPlaceholder = showWorkerCard
-    ? "Ask Alex to change anything..."
-    : flowStep === 1 ? "Tell Alex your specialty..."
-    : flowStep === 2 ? "Answer Alex's questions..."
+  const chatPlaceholder = flowStep <= 2
+    ? "Tell Alex about your expertise..."
     : flowStep === 3 ? "Ask Alex anything about the build..."
     : flowStep === 4 ? "Test your worker — describe any problems..."
     : flowStep === 5 ? "Ask Alex about the preflight checklist..."
@@ -1476,21 +1102,89 @@ For starterPrompts: Write 3 short (under 10 words each) conversation starters a 
     : "Talk to Alex...";
 
   // ── Render ──────────────────────────────────────────────────
+
+  // flowStep 0: Full-screen opening question
+  if (flowStep === 0) {
+    return (
+      <div style={{
+        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+        minHeight: "100vh", background: "#FFFFFF", padding: 24,
+        fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+      }}>
+        {/* Resume banner */}
+        {resumeWorker && (
+          <div style={{
+            position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
+            background: "linear-gradient(135deg, #6B46C1, #7c3aed)", padding: "12px 24px",
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 12,
+          }}>
+            <span style={{ color: "white", fontSize: 14 }}>
+              Your {resumeWorker.name} is waiting. Pick up where you left off.
+            </span>
+            <button
+              onClick={() => {
+                setResumeWorker(null);
+                const s = savedSession.current;
+                if (s?.flowStep) {
+                  setFlowStep(s.flowStep);
+                  setMaxFlowStep(s.maxFlowStep || s.flowStep);
+                }
+              }}
+              style={{
+                padding: "6px 18px", background: "rgba(255,255,255,0.2)", color: "white",
+                border: "1px solid rgba(255,255,255,0.3)", borderRadius: 8,
+                fontSize: 13, fontWeight: 600, cursor: "pointer",
+              }}
+            >
+              Resume
+            </button>
+          </div>
+        )}
+
+        <div style={{ maxWidth: isMobile ? "100%" : 640, width: "100%", textAlign: "center" }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: "#6B46C1", marginBottom: isMobile ? 24 : 40, letterSpacing: "0.5px" }}>TitleApp</div>
+          <h1 style={{
+            fontSize: isMobile ? 24 : 32, fontWeight: 700, color: "#1a1a2e", lineHeight: 1.3,
+            marginBottom: isMobile ? 24 : 32, margin: "0 auto",
+          }}>
+            What do you do that other people always ask you for help with?
+          </h1>
+          <textarea
+            autoFocus
+            value={openingAnswer}
+            onChange={e => setOpeningAnswer(e.target.value)}
+            onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey && openingAnswer.trim()) { e.preventDefault(); handleOpeningSubmit(); } }}
+            placeholder="Describe your expertise..."
+            style={{
+              width: "100%", minHeight: 120, maxHeight: 300, padding: "16px 20px",
+              background: "#F8F9FC", border: "1px solid #E2E8F0", borderRadius: 12,
+              color: "#1a1a2e", fontSize: 16, lineHeight: 1.6, outline: "none", resize: "vertical",
+              fontFamily: "inherit",
+            }}
+          />
+          <button
+            onClick={handleOpeningSubmit}
+            disabled={!openingAnswer.trim()}
+            style={{
+              marginTop: 16, padding: "14px 36px", background: openingAnswer.trim() ? "#6B46C1" : "#E2E8F0",
+              color: openingAnswer.trim() ? "white" : "#94A3B8", border: "none", borderRadius: 10,
+              fontSize: 16, fontWeight: 600, cursor: openingAnswer.trim() ? "pointer" : "default",
+              transition: "background 0.2s",
+            }}
+          >
+            Start Building
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // flowStep 1-2: Chat-only layout (no right panel)
+  // flowStep 3+: Two-panel layout with chat + workspace
+  const showRightPanel = flowStep >= 3;
+
   return (
     <div ref={rootRef} style={{ ...S.root, ...(isMobile ? { flexDirection: "column" } : {}) }}>
-      {/* Onboarding overlay */}
-      {showOnboarding && (
-        <div style={S.overlay}>
-          <div style={S.overlayCard}>
-            <div style={{ fontSize: 28, fontWeight: 700, color: "#6B46C1", marginBottom: 24 }}>TitleApp</div>
-            <div style={S.overlayTitle}>Build your first Digital Worker</div>
-            <div style={S.overlaySub}>Talk to Alex on the left. Watch it come to life on the right.</div>
-            <div style={S.overlaySub}>No code. No forms. Just describe what you need.</div>
-            <button style={S.overlayBtn} onClick={handleOnboardingDismiss}>Let's go</button>
-          </div>
-        </div>
-      )}
-
       {/* Left: Chat Panel */}
       <div
         onDrop={handleDrop}
@@ -1499,7 +1193,9 @@ For starterPrompts: Write 3 short (under 10 words each) conversation starters a 
           ...S.chatPanel,
           ...(isMobile
             ? { width: "100%", minWidth: 0, maxWidth: "none", borderRight: "none", flex: 1 }
-            : { width: `${chatWidthPercent}%`, minWidth: 300 }
+            : showRightPanel
+              ? { width: `${chatWidthPercent}%`, minWidth: 300 }
+              : { width: "100%", maxWidth: 720, margin: "0 auto", borderRight: "none" }
           ),
         }}
       >
@@ -1515,22 +1211,37 @@ For starterPrompts: Write 3 short (under 10 words each) conversation starters a 
         </div>
         <div style={S.chatMessages}>
           <div style={{ flex: 1 }} />
-          {messages.map((msg, i) => (
-            <div key={i} style={msg.role === "user" ? S.msgUser : S.msgAssistant}>
-              {msg.images && msg.images.length > 0 && (
-                <div style={{ display: "flex", gap: 4, marginBottom: 6, flexWrap: "wrap" }}>
-                  {msg.images.map((img, j) => (
-                    img.preview ? (
-                      <img key={j} src={img.preview} alt="" style={{ width: 48, height: 48, borderRadius: 6, objectFit: "cover", border: "1px solid rgba(255,255,255,0.2)" }} />
-                    ) : (
-                      <div key={j} style={{ width: 48, height: 48, borderRadius: 6, background: "rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: "rgba(255,255,255,0.8)", fontWeight: 600 }}>{img.name?.split(".").pop()?.toUpperCase() || "FILE"}</div>
-                    )
-                  ))}
-                </div>
-              )}
-              {msg.text}
-            </div>
-          ))}
+          {messages.map((msg, i) => {
+            // Inline draft card
+            if (msg.role === "card" && msg.cardData) {
+              return (
+                <InlineDraftCard
+                  key={i}
+                  cardData={msg.cardData}
+                  onContinue={() => handleWorkerCardApprove(msg.cardData)}
+                  onDownload={handleDraftDownload}
+                  onShare={handleDraftShare}
+                  onEdit={handleDraftEdit}
+                />
+              );
+            }
+            return (
+              <div key={i} style={msg.role === "user" ? S.msgUser : S.msgAssistant}>
+                {msg.images && msg.images.length > 0 && (
+                  <div style={{ display: "flex", gap: 4, marginBottom: 6, flexWrap: "wrap" }}>
+                    {msg.images.map((img, j) => (
+                      img.preview ? (
+                        <img key={j} src={img.preview} alt="" style={{ width: 48, height: 48, borderRadius: 6, objectFit: "cover", border: "1px solid rgba(255,255,255,0.2)" }} />
+                      ) : (
+                        <div key={j} style={{ width: 48, height: 48, borderRadius: 6, background: "rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: "rgba(255,255,255,0.8)", fontWeight: 600 }}>{img.name?.split(".").pop()?.toUpperCase() || "FILE"}</div>
+                      )
+                    ))}
+                  </div>
+                )}
+                {msg.text}
+              </div>
+            );
+          })}
           {sending && (
             <>
               <style>{`@keyframes thinkBounce { 0%, 60%, 100% { transform: translateY(0) } 30% { transform: translateY(-4px) } }`}</style>
@@ -1540,87 +1251,6 @@ For starterPrompts: Write 3 short (under 10 words each) conversation starters a 
                 ))}
               </div>
             </>
-          )}
-
-          {/* Step 2: Fast track chips — shown before Vibe questions start */}
-          {flowStep === 2 && vibeFastTrack === "pending" && !sending && (
-            <div style={{ display: "flex", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
-              {[
-                { label: "Paste my summary", action: () => { inputRef.current?.focus(); } },
-                { label: "Walk me through it", action: () => { addUserMessage("Walk me through it"); setVibeFastTrack("guided"); addAssistantMessage(VIBE_QUESTIONS[0].question); } },
-              ].map(opt => (
-                <button key={opt.label}
-                  style={{ padding: "8px 16px", background: "#FFFFFF", color: "#6B46C1", border: "1px solid rgba(107,70,193,0.3)", borderRadius: 20, fontSize: 13, cursor: "pointer", fontWeight: 600, transition: "background 0.2s" }}
-                  onClick={opt.action}
-                  onMouseEnter={e => { e.currentTarget.style.background = "rgba(107,70,193,0.06)"; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = "#FFFFFF"; }}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Step 2: Vibe answer chips — quick-select for each question */}
-          {flowStep === 2 && vibeFastTrack !== "pending" && vibeStep < VIBE_QUESTIONS.length && !sharpeningActive && !sending && (
-            <div style={{ display: "flex", gap: 6, marginTop: 4, overflowX: "auto", paddingBottom: 4, flexWrap: "nowrap" }}>
-              {getVibeChips(vertical, VIBE_QUESTIONS[vibeStep].key).map(chip => (
-                <button
-                  key={chip}
-                  style={{
-                    padding: "7px 14px", background: "#FFFFFF", color: "#1a1a2e",
-                    border: "1px solid #E2E8F0", borderRadius: 20, fontSize: 13,
-                    cursor: "pointer", fontWeight: 500, whiteSpace: "nowrap", flexShrink: 0,
-                    transition: "border-color 0.2s, background 0.2s",
-                  }}
-                  onClick={() => { addUserMessage(chip); handleVibeAnswer(chip); }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = "#6B46C1"; e.currentTarget.style.background = "rgba(107,70,193,0.04)"; }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = "#E2E8F0"; e.currentTarget.style.background = "#FFFFFF"; }}
-                >
-                  {chip}
-                </button>
-              ))}
-              <button
-                style={{
-                  padding: "7px 14px", background: "transparent", color: "#94A3B8",
-                  border: "1px dashed #E2E8F0", borderRadius: 20, fontSize: 13,
-                  cursor: "pointer", fontWeight: 500, whiteSpace: "nowrap", flexShrink: 0,
-                }}
-                onClick={() => chatInputRef.current?.focus()}
-              >
-                Something else
-              </button>
-            </div>
-          )}
-
-          {/* Step 1: Vertical chips (inline in chat) — hide once Worker Card shows */}
-          {showVerticalChips && (
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
-              {VERTICALS.map(v => (
-                <button
-                  key={v.value}
-                  style={{ padding: "6px 14px", background: "#FFFFFF", color: "#1a1a2e", border: "1px solid #E2E8F0", borderRadius: 20, fontSize: 13, cursor: "pointer", fontWeight: 500 }}
-                  onClick={() => handleVerticalSelect(v.value)}
-                >
-                  {v.label}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Step 1: Subject domain chips for HE */}
-          {flowStep === 1 && isHE && !subjectDomain && (
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
-              {HE_SUBJECT_DOMAINS.map(sd => (
-                <button
-                  key={sd.value}
-                  style={{ padding: "6px 14px", background: "#FFFFFF", color: "#1a1a2e", border: "1px solid #E2E8F0", borderRadius: 20, fontSize: 13, cursor: "pointer", fontWeight: 500 }}
-                  onClick={() => handleSubjectDomainSelect(sd.value)}
-                >
-                  {sd.label}
-                </button>
-              ))}
-            </div>
           )}
 
           {/* Step 4: Survey chips — Alex guided test survey */}
@@ -1702,7 +1332,7 @@ For starterPrompts: Write 3 short (under 10 words each) conversation starters a 
             </div>
           )}
 
-          {/* Session error — silent inline UI, not Alex (Fix 12) */}
+          {/* Session error — silent inline UI, not Alex */}
           {showSessionError && (
             <div style={{
               alignSelf: "flex-start", background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 12,
@@ -1723,6 +1353,78 @@ For starterPrompts: Write 3 short (under 10 words each) conversation starters a 
           <div ref={messagesEndRef} />
         </div>
         <div style={S.chatInputWrap}>
+          {/* Outside tool bridge */}
+          {flowStep <= 2 && showBridge && (
+            <div style={{
+              background: "#F8F9FC", border: "1px solid #E2E8F0", borderRadius: 12,
+              padding: 16, marginBottom: 12,
+            }}>
+              {!bridgePasteBack ? (
+                <>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a2e", marginBottom: 8 }}>
+                    Draft in ChatGPT, Claude, or Gemini first
+                  </div>
+                  <div style={{ fontSize: 12, color: "#64748B", lineHeight: 1.5, marginBottom: 12 }}>
+                    Copy this prompt, paste it into your favorite AI tool, then bring the result back here.
+                  </div>
+                  <pre style={{
+                    background: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: 8,
+                    padding: 12, fontSize: 12, color: "#1a1a2e", lineHeight: 1.5,
+                    whiteSpace: "pre-wrap", wordWrap: "break-word", maxHeight: 200, overflowY: "auto",
+                    marginBottom: 12,
+                  }}>{bridgePrompt}</pre>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button
+                      onClick={() => { navigator.clipboard.writeText(bridgePrompt); }}
+                      style={{ padding: "8px 16px", background: "#6B46C1", color: "white", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                    >Copy prompt</button>
+                    <button
+                      onClick={() => setBridgePasteBack(" ")}
+                      style={{ padding: "8px 16px", background: "#FFFFFF", color: "#6B46C1", border: "1px solid rgba(107,70,193,0.3)", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                    >I have my result</button>
+                    <button
+                      onClick={() => setShowBridge(false)}
+                      style={{ padding: "8px 16px", background: "transparent", color: "#94A3B8", border: "none", borderRadius: 8, fontSize: 13, cursor: "pointer" }}
+                    >Cancel</button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a2e", marginBottom: 8 }}>
+                    Paste your result
+                  </div>
+                  <textarea
+                    autoFocus
+                    value={bridgePasteBack === " " ? "" : bridgePasteBack}
+                    onChange={e => setBridgePasteBack(e.target.value)}
+                    placeholder="Paste the output from your AI tool here..."
+                    style={{
+                      width: "100%", minHeight: 100, padding: "10px 12px",
+                      background: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: 8,
+                      fontSize: 13, color: "#1a1a2e", outline: "none", resize: "vertical",
+                      marginBottom: 10, fontFamily: "inherit",
+                    }}
+                  />
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button
+                      onClick={handleBridgeSend}
+                      disabled={!bridgePasteBack.trim()}
+                      style={{
+                        padding: "8px 16px", background: bridgePasteBack.trim() ? "#6B46C1" : "#E2E8F0",
+                        color: bridgePasteBack.trim() ? "white" : "#94A3B8", border: "none", borderRadius: 8,
+                        fontSize: 13, fontWeight: 600, cursor: bridgePasteBack.trim() ? "pointer" : "default",
+                      }}
+                    >Send to Alex</button>
+                    <button
+                      onClick={() => { setShowBridge(false); setBridgePasteBack(""); }}
+                      style={{ padding: "8px 16px", background: "transparent", color: "#94A3B8", border: "none", borderRadius: 8, fontSize: 13, cursor: "pointer" }}
+                    >Cancel</button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
           {pendingImages.length > 0 && (
             <div style={{ display: "flex", gap: 6, marginBottom: 8, flexWrap: "wrap" }}>
               {pendingImages.map((img, i) => (
@@ -1747,6 +1449,16 @@ For starterPrompts: Write 3 short (under 10 words each) conversation starters a 
               title="Attach screenshot"
             >&#128206;</button>
             <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp,image/heic,image/heif,application/pdf" multiple style={{ display: "none" }} onChange={handleFileSelect} />
+            {flowStep <= 2 && !showBridge && (
+              <button
+                onClick={() => setShowBridge(true)}
+                style={{
+                  padding: "8px 10px", background: "#F8F9FC", border: "1px solid #E2E8F0", borderRadius: 8,
+                  color: "#64748B", cursor: "pointer", fontSize: 11, flexShrink: 0, lineHeight: 1, fontWeight: 600,
+                }}
+                title="Draft in another tool first"
+              >Draft elsewhere</button>
+            )}
             <textarea
               ref={chatInputRef}
               style={{ ...S.chatInput, flex: 1, overflowY: "auto", minHeight: isMobile ? 52 : 44 }}
@@ -1774,8 +1486,8 @@ For starterPrompts: Write 3 short (under 10 words each) conversation starters a 
         </div>
       </div>
 
-      {/* Draggable divider (desktop only) — Fix 9 */}
-      {!isMobile && (
+      {/* Draggable divider (desktop only, steps 3+) */}
+      {!isMobile && showRightPanel && (
         <div
           style={{
             ...S.divider,
@@ -1788,7 +1500,7 @@ For starterPrompts: Write 3 short (under 10 words each) conversation starters a 
       )}
 
       {/* Mobile: backdrop when sheet is open */}
-      {isMobile && showMobilePanel && (
+      {isMobile && showMobilePanel && showRightPanel && (
         <div
           onClick={() => setShowMobilePanel(false)}
           style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.3)", zIndex: 150 }}
@@ -1796,7 +1508,7 @@ For starterPrompts: Write 3 short (under 10 words each) conversation starters a 
       )}
 
       {/* Mobile: floating preview tab */}
-      {isMobile && !showMobilePanel && flowStep > 1 && (
+      {isMobile && !showMobilePanel && showRightPanel && (
         <button
           onClick={() => setShowMobilePanel(true)}
           style={{
@@ -1811,352 +1523,181 @@ For starterPrompts: Write 3 short (under 10 words each) conversation starters a 
         </button>
       )}
 
-      {/* Right: Workspace — step-specific content */}
-      <div style={{
-        ...S.workPanel,
-        ...(isMobile ? {
-          position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 200,
-          height: showMobilePanel ? "85vh" : 0,
-          overflow: showMobilePanel ? "auto" : "hidden",
-          transition: "height 0.3s ease",
-          borderRadius: showMobilePanel ? "16px 16px 0 0" : 0,
-          boxShadow: showMobilePanel ? "0 -4px 24px rgba(0,0,0,0.15)" : "none",
-        } : {}),
-      }}>
-        {/* Mobile sheet drag handle */}
-        {isMobile && showMobilePanel && (
-          <div
-            onClick={() => setShowMobilePanel(false)}
-            style={{ display: "flex", justifyContent: "center", padding: "10px 0 4px", cursor: "pointer" }}
-          >
-            <div style={{ width: 40, height: 4, borderRadius: 2, background: "#E2E8F0" }} />
+      {/* Right: Workspace — step-specific content (steps 3+) */}
+      {showRightPanel && (
+        <div style={{
+          ...S.workPanel,
+          ...(isMobile ? {
+            position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 200,
+            height: showMobilePanel ? "85vh" : 0,
+            overflow: showMobilePanel ? "auto" : "hidden",
+            transition: "height 0.3s ease",
+            borderRadius: showMobilePanel ? "16px 16px 0 0" : 0,
+            boxShadow: showMobilePanel ? "0 -4px 24px rgba(0,0,0,0.15)" : "none",
+          } : {}),
+        }}>
+          {/* Mobile sheet drag handle */}
+          {isMobile && showMobilePanel && (
+            <div
+              onClick={() => setShowMobilePanel(false)}
+              style={{ display: "flex", justifyContent: "center", padding: "10px 0 4px", cursor: "pointer" }}
+            >
+              <div style={{ width: 40, height: 4, borderRadius: 2, background: "#E2E8F0" }} />
+            </div>
+          )}
+          {/* Step indicator — only shows steps 3-7 */}
+          {isMobile ? (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 16, padding: "10px 16px", borderBottom: "1px solid #E2E8F0", background: "#FFFFFF" }}>
+              <button
+                onClick={() => { if (flowStep > 3 && flowStep - 1 <= maxFlowStep) viewStep(flowStep - 1); }}
+                disabled={flowStep <= 3}
+                style={{ background: "none", border: "none", fontSize: 18, color: flowStep > 3 ? "#6B46C1" : "#E2E8F0", cursor: flowStep > 3 ? "pointer" : "default", minWidth: 44, minHeight: 44, display: "flex", alignItems: "center", justifyContent: "center" }}
+              >&larr;</button>
+              <span style={{ fontSize: 14, fontWeight: 600, color: "#6B46C1" }}>{flowStep - 2} {FLOW_STEPS[flowStep - 1]}</span>
+              <button
+                onClick={() => { if (flowStep < maxFlowStep) viewStep(flowStep + 1); }}
+                disabled={flowStep >= maxFlowStep}
+                style={{ background: "none", border: "none", fontSize: 18, color: flowStep < maxFlowStep ? "#6B46C1" : "#E2E8F0", cursor: flowStep < maxFlowStep ? "pointer" : "default", minWidth: 44, minHeight: 44, display: "flex", alignItems: "center", justifyContent: "center" }}
+              >&rarr;</button>
+            </div>
+          ) : (
+            <div style={{ display: "flex", gap: 0, borderBottom: "1px solid #E2E8F0", padding: "0 16px", background: "#FFFFFF" }}>
+              {FLOW_STEPS.slice(2).map((step, i) => {
+                const stepNum = i + 3; // steps 3-7
+                const isActive = flowStep === stepNum;
+                const isComplete = maxFlowStep > stepNum;
+                const isReachable = stepNum <= maxFlowStep + 1;
+                return (
+                  <div
+                    key={step}
+                    style={{
+                      padding: "12px 16px", fontSize: 13, fontWeight: 600,
+                      color: isActive ? "#6B46C1" : isComplete ? "#10b981" : stepNum <= maxFlowStep ? "#1a1a2e" : "#94A3B8",
+                      borderBottom: `2px solid ${isActive ? "#6B46C1" : "transparent"}`,
+                      display: "flex", alignItems: "center", gap: 6,
+                      cursor: isReachable && !isActive ? "pointer" : "default",
+                      opacity: stepNum > maxFlowStep + 1 ? 0.4 : 1,
+                    }}
+                    onClick={() => { if (isReachable && !isActive) { if (stepNum > maxFlowStep) advanceToStep(stepNum); else viewStep(stepNum); } }}
+                  >
+                    <span style={{
+                      width: 20, height: 20, borderRadius: 10, display: "inline-flex", alignItems: "center", justifyContent: "center",
+                      background: isActive ? "#6B46C1" : isComplete ? "#10b981" : "#E2E8F0",
+                      color: isActive || isComplete ? "white" : "#94A3B8", fontSize: 11, fontWeight: 700,
+                    }}>
+                      {isComplete ? "\u2713" : i + 1}
+                    </span>
+                    {step}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Step description */}
+          <div style={{ textAlign: "center", padding: "8px 16px", fontSize: 13, color: "#94A3B8", background: "#FFFFFF", borderBottom: "1px solid #E2E8F0" }}>
+            {[
+              "Watch Alex build your worker live",
+              "Test your worker before it goes live",
+              "Complete all gates before publishing",
+              "Publish and share your worker",
+              "Alex tracks your earnings and growth",
+            ][flowStep - 3] || ""}
           </div>
-        )}
-        {/* Step indicator — never allows backward navigation past maxFlowStep */}
-        {isMobile ? (
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 16, padding: "10px 16px", borderBottom: "1px solid #E2E8F0", background: "#FFFFFF" }}>
-            <button
-              onClick={() => { if (flowStep > 1 && flowStep - 1 <= maxFlowStep) viewStep(flowStep - 1); }}
-              disabled={flowStep <= 1}
-              style={{ background: "none", border: "none", fontSize: 18, color: flowStep > 1 ? "#6B46C1" : "#E2E8F0", cursor: flowStep > 1 ? "pointer" : "default", minWidth: 44, minHeight: 44, display: "flex", alignItems: "center", justifyContent: "center" }}
-            >&larr;</button>
-            <span style={{ fontSize: 14, fontWeight: 600, color: "#6B46C1" }}>{flowStep} {FLOW_STEPS[flowStep - 1]}</span>
-            <button
-              onClick={() => { if (flowStep < maxFlowStep) viewStep(flowStep + 1); }}
-              disabled={flowStep >= maxFlowStep}
-              style={{ background: "none", border: "none", fontSize: 18, color: flowStep < maxFlowStep ? "#6B46C1" : "#E2E8F0", cursor: flowStep < maxFlowStep ? "pointer" : "default", minWidth: 44, minHeight: 44, display: "flex", alignItems: "center", justifyContent: "center" }}
-            >&rarr;</button>
-          </div>
-        ) : (
-          <div style={{ display: "flex", gap: 0, borderBottom: "1px solid #E2E8F0", padding: "0 16px", background: "#FFFFFF" }}>
-            {FLOW_STEPS.map((step, i) => {
-              const stepNum = i + 1;
-              const isActive = flowStep === stepNum;
-              const isComplete = maxFlowStep > stepNum;
-              const isReachable = stepNum <= maxFlowStep + 1;
-              return (
-                <div
-                  key={step}
-                  style={{
-                    padding: "12px 16px", fontSize: 13, fontWeight: 600,
-                    color: isActive ? "#6B46C1" : isComplete ? "#10b981" : stepNum <= maxFlowStep ? "#1a1a2e" : "#94A3B8",
-                    borderBottom: `2px solid ${isActive ? "#6B46C1" : "transparent"}`,
-                    display: "flex", alignItems: "center", gap: 6,
-                    cursor: isReachable && !isActive ? "pointer" : "default",
-                    opacity: stepNum > maxFlowStep + 1 ? 0.4 : 1,
+
+          <div ref={rightPanelRef} style={S.tabContent}>
+            {/* Step 3 — Build */}
+            {flowStep === 3 && (
+              <PanelErrorBoundary
+                recoverLabel="Retry Build"
+                onRecover={() => { viewStep(2); }}
+              >
+                <BuildProgress
+                  worker={worker}
+                  workerCardData={workerCardData}
+                  onWorkerUpdate={setWorker}
+                  onTestReady={handleBuildComplete}
+                  workerIconUrl={workerIconUrl}
+                  onIconChange={(url) => {
+                    setWorkerIconUrl(url);
+                    setWorkerCardData(prev => prev ? { ...prev, iconDataUrl: url } : prev);
                   }}
-                  onClick={() => { if (isReachable && !isActive) { if (stepNum > maxFlowStep) advanceToStep(stepNum); else viewStep(stepNum); } }}
-                >
-                  <span style={{
-                    width: 20, height: 20, borderRadius: 10, display: "inline-flex", alignItems: "center", justifyContent: "center",
-                    background: isActive ? "#6B46C1" : isComplete ? "#10b981" : "#E2E8F0",
-                    color: isActive || isComplete ? "white" : "#94A3B8", fontSize: 11, fontWeight: 700,
-                  }}>
-                    {isComplete ? "\u2713" : stepNum}
-                  </span>
-                  {step}
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Step description */}
-        <div style={{ textAlign: "center", padding: "8px 16px", fontSize: 13, color: "#94A3B8", background: "#FFFFFF", borderBottom: "1px solid #E2E8F0" }}>
-          {[
-            "Choose your specialty and find a starting point",
-            "Tell Alex what your worker should do",
-            "Watch Alex build your worker live",
-            "Test your worker before it goes live",
-            "Complete all gates before publishing",
-            "Publish and share your worker",
-            "Alex tracks your earnings and growth",
-          ][flowStep - 1]}
-        </div>
-
-        <div ref={rightPanelRef} style={S.tabContent}>
-          {/* Step 1 — Discover */}
-          {flowStep === 1 && (
-            <>
-              {!vertical && (
-                <div style={{ padding: "40px 20px", maxWidth: 600, margin: "0 auto" }}>
-                  <div style={{ textAlign: "center", marginBottom: 32 }}>
-                    <div style={{ fontSize: 22, fontWeight: 700, color: "#1a1a2e", marginBottom: 8 }}>Let's build your first Digital Worker together.</div>
-                    <div style={{ fontSize: 14, color: "#64748B", lineHeight: 1.6 }}>
-                      Seven steps. No code. Alex handles the hard parts.
-                    </div>
-                  </div>
-
-                  {/* Journey cards — 2 rows of 3 */}
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 32 }}>
-                    {FLOW_STEPS.map((step, i) => {
-                      const descriptions = [
-                        "Pick your industry and find a starting point",
-                        "Answer 8 questions so Alex knows what to build",
-                        "Alex assembles compliance rules and logic",
-                        "Talk to your worker as a subscriber would",
-                        "Complete all gates before going live",
-                        "Get your marketing kit — links, copy, QR code",
-                        "Set up weekly check-ins from Alex",
-                      ];
-                      return (
-                        <div key={step} style={{ padding: "14px 12px", background: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: 10 }}>
-                          <div style={{ width: 24, height: 24, borderRadius: 12, background: "#6B46C1", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, marginBottom: 8 }}>{i + 1}</div>
-                          <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a2e", marginBottom: 4 }}>{step}</div>
-                          <div style={{ fontSize: 12, color: "#64748B", lineHeight: 1.5 }}>{descriptions[i]}</div>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  {/* Specialty selector */}
-                  <div style={{ textAlign: "center", marginBottom: 16 }}>
-                    <div style={{ fontSize: 15, fontWeight: 600, color: "#1a1a2e", marginBottom: 12 }}>What is your specialty?</div>
-                  </div>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center" }}>
-                    {VERTICALS.map(v => (
-                      <button
-                        key={v.value}
-                        style={{ padding: "10px 20px", background: "#FFFFFF", color: "#1a1a2e", border: "1px solid #E2E8F0", borderRadius: 8, fontSize: 14, fontWeight: 500, cursor: "pointer", transition: "border-color 0.2s" }}
-                        onClick={() => handleVerticalSelect(v.value)}
-                        onMouseEnter={e => e.target.style.borderColor = "#6B46C1"}
-                        onMouseLeave={e => e.target.style.borderColor = "#E2E8F0"}
-                      >
-                        {v.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {vertical && isHE && !subjectDomain && (
-                <div style={{ textAlign: "center", padding: "40px 20px", color: "#64748B" }}>
-                  <div style={{ fontSize: 18, fontWeight: 600, color: "#1a1a2e", marginBottom: 8 }}>Which clinical specialty?</div>
-                  <div style={{ fontSize: 14, lineHeight: 1.6, marginBottom: 24 }}>
-                    This determines which worker ideas Alex shows you.
-                  </div>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center" }}>
-                    {HE_SUBJECT_DOMAINS.map(sd => (
-                      <button
-                        key={sd.value}
-                        style={{ padding: "10px 20px", background: "#FFFFFF", color: "#1a1a2e", border: "1px solid #E2E8F0", borderRadius: 8, fontSize: 14, fontWeight: 500, cursor: "pointer" }}
-                        onClick={() => handleSubjectDomainSelect(sd.value)}
-                      >
-                        {sd.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {vertical && (!isHE || subjectDomain) && (
-                <WorkerGallery
-                  vertical={vertical}
-                  verticalLabel={VERTICALS.find(x => x.value === vertical)?.label || vertical}
-                  subjectDomain={subjectDomain}
-                  onSelectIdea={handleIdeaSelect}
-                  onWaitlistToggle={() => setWaitlistEnabled(!waitlistEnabled)}
-                  waitlistEnabled={waitlistEnabled}
                 />
-              )}
-            </>
-          )}
+              </PanelErrorBoundary>
+            )}
 
-          {/* Step 2 — Vibe */}
-          {flowStep === 2 && (
-            <>
-              {!showWorkerCard && (
-                <div style={{ maxWidth: 500 }}>
-                  <div style={{ fontSize: 18, fontWeight: 700, color: "#1a1a2e", marginBottom: 4 }}>
-                    {sharpeningActive ? "Sharpening your concept" : "Vibing with Alex"}
-                  </div>
-                  <div style={{ fontSize: 14, color: "#64748B", marginBottom: 24, lineHeight: 1.5 }}>
-                    {sharpeningActive
-                      ? "Three quick sharpening questions to make sure this is exactly right."
-                      : `Alex is asking you ${VIBE_QUESTIONS.length} questions to understand exactly what to build. Answer in the chat.`}
-                  </div>
-                  {/* Progress dots */}
-                  <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
-                    {VIBE_QUESTIONS.map((q, i) => (
-                      <div key={i} style={{
-                        flex: 1, height: 4, borderRadius: 2,
-                        background: i < vibeStep ? "#6B46C1" : i === vibeStep ? "rgba(107,70,193,0.4)" : "#E2E8F0",
-                        transition: "background 0.3s",
-                      }} />
-                    ))}
-                    {/* Sharpening dots (3 extra) */}
-                    {[0, 1, 2].map(i => (
-                      <div key={`s${i}`} style={{
-                        flex: 1, height: 4, borderRadius: 2,
-                        background: !sharpeningActive ? "#E2E8F0"
-                          : i < sharpeningStep ? "#10b981"
-                          : i === sharpeningStep ? "rgba(16,185,129,0.4)"
-                          : "#E2E8F0",
-                        transition: "background 0.3s",
-                      }} />
-                    ))}
-                  </div>
-                  {/* Current question display */}
-                  <div style={{ background: "#FFFFFF", border: `1px solid ${sharpeningActive ? "rgba(16,185,129,0.3)" : "#E2E8F0"}`, borderRadius: 12, padding: 20 }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: sharpeningActive ? "#10b981" : "#64748B", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 8 }}>
-                      {sharpeningActive
-                        ? `Sharpening ${sharpeningStep + 1} of 3`
-                        : vibeStep < VIBE_QUESTIONS.length
-                          ? `Question ${vibeStep + 1} of ${VIBE_QUESTIONS.length}`
-                          : "Generating your Worker Card..."}
-                    </div>
-                    <div style={{ fontSize: 15, color: "#1a1a2e", lineHeight: 1.6 }}>
-                      {sharpeningActive
-                        ? getSharpeningQuestions(vibeAnswers)[sharpeningStep]
-                        : VIBE_QUESTIONS[vibeStep]?.question || "Almost there..."}
-                    </div>
-                  </div>
-                  {/* Answers so far */}
-                  {Object.entries(vibeAnswers).length > 0 && !sharpeningActive && (
-                    <div style={{ marginTop: 20 }}>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: "#64748B", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 8 }}>Your answers so far</div>
-                      {Object.entries(vibeAnswers).map(([key, val]) => {
-                        const q = VIBE_QUESTIONS.find(vq => vq.key === key);
-                        return (
-                          <div key={key} style={{
-                            padding: "8px 12px", borderRadius: 8, marginBottom: 6,
-                            background: (lastUpdatedField === key || lastUpdatedField === "_bulk") ? "rgba(107,70,193,0.06)" : "#F8F9FC",
-                            border: `1px solid ${(lastUpdatedField === key || lastUpdatedField === "_bulk") ? "#6B46C1" : "#E2E8F0"}`,
-                            transition: "border-color 0.4s, background 0.4s",
-                          }}>
-                            <div style={{ fontSize: 11, color: "#64748B", marginBottom: 2 }}>{q?.question.split("?")[0]}</div>
-                            <div style={{ fontSize: 13, color: "#1a1a2e" }}>{val}</div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              )}
+            {/* Step 4 — Test */}
+            {flowStep === 4 && (
+              <PanelErrorBoundary
+                recoverLabel="Back"
+                onRecover={() => { viewStep(3); }}
+              >
+                {worker?.id ? (
+                  <TestWorkerPanel
+                    key={`${worker?.id}_${workerCardData?.name || ""}`}
+                    worker={worker}
+                    workerCardData={workerCardData}
+                    sessionId={sessionId}
+                    onExchange={handleTestExchange}
+                  />
+                ) : (
+                  <TestPanelFallback worker={worker} workerCardData={workerCardData} onReady={(w) => setWorker(w)} onBack={() => { viewStep(3); }} />
+                )}
+              </PanelErrorBoundary>
+            )}
 
-              {showWorkerCard && workerCardData && (
-                <WorkerCard
-                  data={workerCardData}
-                  comparables={workerCardData._comparables || []}
-                  onApprove={handleWorkerCardApprove}
-                  onEdit={handleWorkerCardEdit}
-                  isPublished={false}
-                />
-              )}
-            </>
-          )}
-
-          {/* Step 3 — Build */}
-          {flowStep === 3 && (
-            <PanelErrorBoundary
-              recoverLabel="Back to Worker Card — Retry Build"
-              onRecover={() => { setShowWorkerCard(true); viewStep(2); }}
-            >
-              <BuildProgress
-                worker={worker}
-                workerCardData={workerCardData}
-                onWorkerUpdate={setWorker}
-                onTestReady={handleBuildComplete}
-                workerIconUrl={workerIconUrl}
-                onIconChange={(url) => {
-                  setWorkerIconUrl(url);
-                  setWorkerCardData(prev => prev ? { ...prev, iconDataUrl: url } : prev);
-                }}
-              />
-            </PanelErrorBoundary>
-          )}
-
-          {/* Step 4 — Test */}
-          {flowStep === 4 && (
-            <PanelErrorBoundary
-              recoverLabel="Back to Worker Card"
-              onRecover={() => { setShowWorkerCard(true); viewStep(2); }}
-            >
-              {worker?.id ? (
-                <TestWorkerPanel
-                  key={`${worker?.id}_${workerCardData?.name || ""}`}
+            {/* Step 5 — Preflight */}
+            {flowStep === 5 && (
+              <PanelErrorBoundary
+                recoverLabel="Back to Test"
+                onRecover={() => viewStep(4)}
+              >
+                <PublishPreflight
                   worker={worker}
                   workerCardData={workerCardData}
                   sessionId={sessionId}
-                  onExchange={handleTestExchange}
+                  onPublish={handlePreflightComplete}
                 />
-              ) : (
-                <TestPanelFallback worker={worker} workerCardData={workerCardData} onReady={(w) => setWorker(w)} onBack={() => { setShowWorkerCard(true); viewStep(2); }} />
-              )}
-            </PanelErrorBoundary>
-          )}
+              </PanelErrorBoundary>
+            )}
 
-          {/* Step 5 — Preflight */}
-          {flowStep === 5 && (
-            <PanelErrorBoundary
-              recoverLabel="Back to Test"
-              onRecover={() => viewStep(4)}
-            >
-              <PublishPreflight
+            {/* Step 6 — Distribute */}
+            {flowStep === 6 && (
+              <>
+                <DistributionKit worker={worker} workerCardData={workerCardData} />
+                <CreatorSpotlight worker={worker} workerCardData={workerCardData} />
+                <div style={{ marginTop: 20, textAlign: "center" }}>
+                  <button style={S.btnPrimary} onClick={handleMoveToGrow}>
+                    Continue to Grow
+                  </button>
+                </div>
+              </>
+            )}
+
+            {/* Step 7 — Grow */}
+            {flowStep === 7 && (
+              <CommsPreferences
                 worker={worker}
                 workerCardData={workerCardData}
-                sessionId={sessionId}
-                onPublish={handlePreflightComplete}
+                onComplete={handleCommsComplete}
               />
-            </PanelErrorBoundary>
-          )}
+            )}
+          </div>
 
-          {/* Step 6 — Distribute */}
-          {flowStep === 6 && (
-            <>
-              <DistributionKit worker={worker} workerCardData={workerCardData} />
-              <CreatorSpotlight worker={worker} workerCardData={workerCardData} />
-              <div style={{ marginTop: 20, textAlign: "center" }}>
-                <button style={S.btnPrimary} onClick={handleMoveToGrow}>
-                  Continue to Grow
-                </button>
-              </div>
-            </>
-          )}
-
-          {/* Step 7 — Grow */}
-          {flowStep === 7 && (
-            <CommsPreferences
-              worker={worker}
-              workerCardData={workerCardData}
-              onComplete={handleCommsComplete}
-            />
-          )}
+          {/* Status Bar */}
+          <div style={S.statusBar}>
+            <span style={{ fontWeight: 600, color: "#1a1a2e" }}>
+              Step {flowStep - 2}: {FLOW_STEPS[flowStep - 1]}
+            </span>
+            {workerCardData?.name && <span>{workerCardData.name}</span>}
+            <span style={{ marginLeft: "auto", display: "flex", gap: 3 }}>
+              {FLOW_STEPS.slice(2).map((s, i) => (
+                <span key={s} style={{ width: 24, height: 4, borderRadius: 2, background: i + 3 <= maxFlowStep ? "#6B46C1" : "#E2E8F0" }} />
+              ))}
+            </span>
+          </div>
         </div>
-
-        {/* Status Bar */}
-        <div style={S.statusBar}>
-          <span style={{ fontWeight: 600, color: "#1a1a2e" }}>
-            Step {flowStep}: {FLOW_STEPS[flowStep - 1]}
-          </span>
-          {workerCardData?.name && <span>{workerCardData.name}</span>}
-          <span style={{ marginLeft: "auto", display: "flex", gap: 3 }}>
-            {FLOW_STEPS.map((s, i) => (
-              <span key={s} style={{ width: 24, height: 4, borderRadius: 2, background: i < maxFlowStep ? "#6B46C1" : "#E2E8F0" }} />
-            ))}
-          </span>
-        </div>
-      </div>
+      )}
     </div>
   );
 }
