@@ -43,7 +43,19 @@ export default function WorkerDetailPage({ worker, content, onBack, onSubscribe 
   const [subError, setSubError] = useState(null);
   const [expiredTrial, setExpiredTrial] = useState(null); // { expiredAt, historyPreview[] }
   const [checkingTrial, setCheckingTrial] = useState(false);
+  const [addedToCart, setAddedToCart] = useState(false);
+  const bogoUsed = localStorage.getItem("ta_bogo_used") === "true";
   const color = SUITE_COLORS[worker.suite] || "#7c3aed";
+
+  function handleAddToCart() {
+    const cart = JSON.parse(localStorage.getItem("ta_cart") || "[]");
+    if (!cart.find(item => item.slug === worker.slug)) {
+      cart.push({ slug: worker.slug, name: worker.name, price: worker.price, suite: worker.suite, bogoEligible: worker.bogoEligible });
+      localStorage.setItem("ta_cart", JSON.stringify(cart));
+      window.dispatchEvent(new CustomEvent("ta:cart-updated"));
+    }
+    setAddedToCart(true);
+  }
 
   // Check for expired trial on mount
   useEffect(() => {
@@ -262,6 +274,21 @@ export default function WorkerDetailPage({ worker, content, onBack, onSubscribe 
           )}
           {worker.blockchainEnabled && (
             <div style={{ fontSize: 12, color: "#6b7280", marginTop: 12 }}>Blockchain-verified audit trail</div>
+          )}
+          {worker.bogoEligible && !bogoUsed && (
+            <div style={{ background: "rgba(11,122,110,0.08)", border: "1px solid rgba(11,122,110,0.2)", borderRadius: 12, padding: "16px 20px", marginTop: 16, textAlign: "left", maxWidth: 500, margin: "16px auto 0" }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "#0B7A6E", marginBottom: 4 }}>Buy One, Get One Free</div>
+              <div style={{ fontSize: 13, color: "#475569", lineHeight: 1.5 }}>
+                Buy this worker and get one worker of equal or lesser value free. Add both to cart to apply.
+              </div>
+              <button
+                onClick={handleAddToCart}
+                disabled={addedToCart}
+                style={{ marginTop: 12, padding: "10px 20px", background: addedToCart ? "#94A3B8" : "#0B7A6E", color: "white", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: addedToCart ? "default" : "pointer" }}
+              >
+                {addedToCart ? "Added to Cart" : "Add to Cart"}
+              </button>
+            </div>
           )}
         </div>
 

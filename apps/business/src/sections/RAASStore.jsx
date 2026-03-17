@@ -1,58 +1,45 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
+import { WORKER_ROUTES } from "../pages/WorkerMarketplace";
+import { SUITE_COLORS } from "../utils/workerIcons";
 
-const CATEGORIES = ["All", "Healthcare", "Real Estate", "Auto", "Finance", "Consulting", "Other"];
+// Derive suite list from actual worker data
+const ALL_SUITES = ["All", ...Array.from(new Set(WORKER_ROUTES.filter(w => !w.internal_only).map(w => w.suite)))];
+
+function formatPrice(cents) {
+  if (cents === 0) return "Free";
+  return `$${cents / 100}/mo`;
+}
 
 export default function RAASStore() {
-  const [workers, setWorkers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
-  const [activeCategory, setActiveCategory] = useState("All");
-  const [comingSoonId, setComingSoonId] = useState(null);
+  const [activeSuite, setActiveSuite] = useState("All");
+  const [expandedId, setExpandedId] = useState(null);
 
-  useEffect(() => {
-    loadWorkers();
-  }, []);
-
-  async function loadWorkers() {
-    setLoading(true);
-    setError("");
-    try {
-      const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
-      const resp = await fetch(`${apiBase}/api?path=/v1/raas:catalog`);
-      const data = await resp.json();
-      if (data.ok && data.workers) {
-        setWorkers(data.workers);
-      } else {
-        setWorkers([]);
-      }
-    } catch (e) {
-      console.error("Failed to load marketplace workers:", e);
-      setError("");
-      setWorkers([]);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  function handleAddToVault(workerId) {
-    setComingSoonId(workerId);
-  }
-
-  function navigateToDashboard() {
-    window.dispatchEvent(new CustomEvent("ta:navigate", { detail: { section: "dashboard" } }));
-  }
+  const workers = WORKER_ROUTES.filter(w => !w.internal_only);
 
   const filtered = workers.filter((w) => {
-    const matchesCategory = activeCategory === "All" || (w.category || "Other").toLowerCase() === activeCategory.toLowerCase();
-    if (!matchesCategory) return false;
+    const matchesSuite = activeSuite === "All" || w.suite === activeSuite;
+    if (!matchesSuite) return false;
     if (!searchTerm.trim()) return true;
     const term = searchTerm.toLowerCase();
-    const name = (w.name || "").toLowerCase();
-    const description = (w.description || "").toLowerCase();
-    const category = (w.category || "").toLowerCase();
-    return name.includes(term) || description.includes(term) || category.includes(term);
+    return (
+      (w.name || "").toLowerCase().includes(term) ||
+      (w.description || "").toLowerCase().includes(term) ||
+      (w.suite || "").toLowerCase().includes(term) ||
+      (w.slug || "").toLowerCase().includes(term)
+    );
   });
+
+  const liveCount = workers.filter(w => w.status === "live").length;
+  const plannedCount = workers.filter(w => w.status === "planned" || w.status === "waitlist").length;
+
+  function handleHire(worker) {
+    if (worker.status === "live") {
+      window.dispatchEvent(new CustomEvent("ta:navigate", { detail: { section: worker.slug } }));
+    } else {
+      setExpandedId(expandedId === worker.slug ? null : worker.slug);
+    }
+  }
 
   return (
     <div>
@@ -62,7 +49,7 @@ export default function RAASStore() {
           Marketplace
         </h1>
         <p style={{ fontSize: "15px", color: "#64748b", margin: 0, lineHeight: 1.5 }}>
-          AI-powered services built by experts. Hire them for your workspace.
+          AI-powered apps built by domain experts — browse, subscribe, or build your own.
         </p>
       </div>
 
@@ -87,60 +74,41 @@ export default function RAASStore() {
         />
       </div>
 
-      {/* Category filter pills */}
+      {/* Suite filter pills */}
       <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "24px" }}>
-        {CATEGORIES.map((cat) => (
-          <button
-            key={cat}
-            onClick={() => setActiveCategory(cat)}
-            style={{
-              padding: "6px 16px",
-              fontSize: "13px",
-              fontWeight: 600,
-              borderRadius: "9999px",
-              border: activeCategory === cat ? "1px solid #7c3aed" : "1px solid #e2e8f0",
-              background: activeCategory === cat ? "#7c3aed" : "#fff",
-              color: activeCategory === cat ? "#fff" : "#64748b",
-              cursor: "pointer",
-              transition: "all 0.15s ease",
-            }}
-          >
-            {cat}
-          </button>
-        ))}
+        {ALL_SUITES.map((suite) => {
+          const isActive = activeSuite === suite;
+          return (
+            <button
+              key={suite}
+              onClick={() => setActiveSuite(suite)}
+              style={{
+                padding: "6px 16px",
+                fontSize: "13px",
+                fontWeight: 600,
+                borderRadius: "9999px",
+                border: isActive ? "1px solid #7c3aed" : "1px solid #e2e8f0",
+                background: isActive ? "#7c3aed" : "#fff",
+                color: isActive ? "#fff" : "#64748b",
+                cursor: "pointer",
+                transition: "all 0.15s ease",
+              }}
+            >
+              {suite}
+            </button>
+          );
+        })}
       </div>
 
-      {/* Loading */}
-      {loading && (
-        <div style={{
-          padding: "48px",
-          textAlign: "center",
-          background: "#fff",
-          borderRadius: "12px",
-          border: "1px solid #f1f5f9",
-          boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
-        }}>
-          <div style={{ fontSize: "15px", color: "#64748b" }}>Loading services...</div>
-        </div>
-      )}
+      {/* Results count */}
+      <div style={{ fontSize: "13px", color: "#94a3b8", marginBottom: "16px" }}>
+        {filtered.length} worker{filtered.length !== 1 ? "s" : ""}
+        {activeSuite !== "All" ? ` in ${activeSuite}` : ""}
+        {searchTerm.trim() ? ` matching "${searchTerm}"` : ""}
+      </div>
 
-      {/* Error */}
-      {!loading && error && (
-        <div style={{
-          padding: "20px",
-          background: "#fef2f2",
-          border: "1px solid #fecaca",
-          borderRadius: "12px",
-          color: "#dc2626",
-          fontSize: "14px",
-          marginBottom: "16px",
-        }}>
-          {error}
-        </div>
-      )}
-
-      {/* Empty state */}
-      {!loading && !error && filtered.length === 0 && (
+      {/* Empty state (only if search/filter yields nothing) */}
+      {filtered.length === 0 && (
         <div style={{
           padding: "60px 24px",
           textAlign: "center",
@@ -150,13 +118,13 @@ export default function RAASStore() {
           boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
         }}>
           <div style={{ fontSize: "18px", fontWeight: 600, color: "#1e293b", marginBottom: "8px" }}>
-            No services published yet.
+            No workers found.
           </div>
           <div style={{ fontSize: "14px", color: "#64748b", marginBottom: "20px" }}>
-            Be the first to build one.
+            Try a different search or filter.
           </div>
           <button
-            onClick={navigateToDashboard}
+            onClick={() => { setSearchTerm(""); setActiveSuite("All"); }}
             style={{
               padding: "10px 24px",
               fontSize: "14px",
@@ -168,28 +136,26 @@ export default function RAASStore() {
               cursor: "pointer",
             }}
           >
-            Build a Service
+            Clear Filters
           </button>
         </div>
       )}
 
       {/* Worker grid */}
-      {!loading && !error && filtered.length > 0 && (
+      {filtered.length > 0 && (
         <div style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
+          gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
           gap: "16px",
         }}>
           {filtered.map((worker) => {
-            const subscriberCount = worker.subscriber_count || 0;
-            const rating = worker.rating;
-            const price = worker.price || "Free";
-            const category = worker.category || "Other";
-            const showComingSoon = comingSoonId === worker.id;
+            const isLive = worker.status === "live";
+            const isExpanded = expandedId === worker.slug;
+            const sc = SUITE_COLORS[worker.suite] || { bg: "#f1f5f9", text: "#64748b" };
 
             return (
               <div
-                key={worker.id}
+                key={worker.slug}
                 style={{
                   background: "#fff",
                   borderRadius: "12px",
@@ -201,24 +167,15 @@ export default function RAASStore() {
                   transition: "box-shadow 0.15s ease",
                 }}
               >
-                {/* Service name */}
+                {/* Name */}
                 <div style={{
-                  fontSize: "18px",
+                  fontSize: "17px",
                   fontWeight: 700,
                   color: "#1e293b",
                   marginBottom: "4px",
                   lineHeight: 1.3,
                 }}>
-                  {worker.name || "Untitled Service"}
-                </div>
-
-                {/* Creator */}
-                <div style={{
-                  fontSize: "13px",
-                  color: "#94a3b8",
-                  marginBottom: "10px",
-                }}>
-                  by {worker.creator_name || "Unknown"}
+                  {worker.name}
                 </div>
 
                 {/* Description */}
@@ -234,10 +191,10 @@ export default function RAASStore() {
                   textOverflow: "ellipsis",
                   minHeight: "63px",
                 }}>
-                  {worker.description || "No description provided."}
+                  {worker.description}
                 </div>
 
-                {/* Category badge + titled badge */}
+                {/* Suite badge + status badge */}
                 <div style={{ marginBottom: "12px", display: "flex", flexWrap: "wrap", gap: "6px", alignItems: "center" }}>
                   <span style={{
                     display: "inline-block",
@@ -246,35 +203,42 @@ export default function RAASStore() {
                     padding: "3px 10px",
                     borderRadius: "9999px",
                     background: "#f3e8ff",
-                    color: "#7c3aed",
+                    color: sc || "#7c3aed",
                     letterSpacing: "0.02em",
-                    textTransform: "uppercase",
                   }}>
-                    {category}
+                    {worker.suite}
                   </span>
-                  {worker.titled && (
+                  <span style={{
+                    display: "inline-block",
+                    fontSize: "11px",
+                    fontWeight: 600,
+                    padding: "3px 10px",
+                    borderRadius: "9999px",
+                    background: isLive ? "#dcfce7" : "#fef3c7",
+                    color: isLive ? "#166534" : "#92400e",
+                  }}>
+                    {isLive ? "Live" : "Coming Soon"}
+                  </span>
+                  {worker.bogoEligible && (
                     <span style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: "4px",
+                      display: "inline-block",
                       fontSize: "11px",
-                      fontWeight: 600,
-                      color: "#7c3aed",
-                      background: "#f5f3ff",
-                      padding: "3px 8px",
+                      fontWeight: 700,
+                      padding: "3px 10px",
                       borderRadius: "9999px",
+                      background: "#0B7A6E",
+                      color: "white",
                     }}>
-                      Titled on Polygon
+                      BOGO
                     </span>
                   )}
                 </div>
 
-                {/* Price + subscribers + rating row */}
+                {/* Price */}
                 <div style={{
                   display: "flex",
                   alignItems: "center",
                   gap: "12px",
-                  flexWrap: "wrap",
                   marginBottom: "16px",
                 }}>
                   <span style={{
@@ -282,30 +246,13 @@ export default function RAASStore() {
                     fontWeight: 800,
                     color: "#1e293b",
                   }}>
-                    {price}
-                  </span>
-                  <span style={{
-                    fontSize: "12px",
-                    color: "#94a3b8",
-                    fontWeight: 500,
-                  }}>
-                    {subscriberCount > 0
-                      ? `${subscriberCount} subscriber${subscriberCount !== 1 ? "s" : ""}`
-                      : "New"}
-                  </span>
-                  <span style={{
-                    fontSize: "12px",
-                    color: "#94a3b8",
-                    fontWeight: 500,
-                    marginLeft: "auto",
-                  }}>
-                    {rating != null ? `${rating} / 5` : "No reviews yet"}
+                    {formatPrice(worker.price)}
                   </span>
                 </div>
 
-                {/* Add to Vault button */}
+                {/* Action button */}
                 <div style={{ marginTop: "auto" }}>
-                  {showComingSoon ? (
+                  {isExpanded ? (
                     <div style={{
                       padding: "10px 14px",
                       fontSize: "13px",
@@ -316,25 +263,25 @@ export default function RAASStore() {
                       textAlign: "center",
                       lineHeight: 1.4,
                     }}>
-                      Coming soon -- hire notifications launching next month
+                      This worker is in development. You'll be notified when it launches.
                     </div>
                   ) : (
                     <button
-                      onClick={() => handleAddToVault(worker.id)}
+                      onClick={() => handleHire(worker)}
                       style={{
                         width: "100%",
                         padding: "10px 0",
                         fontSize: "14px",
                         fontWeight: 600,
                         borderRadius: "8px",
-                        border: "2px solid #7c3aed",
-                        background: "transparent",
-                        color: "#7c3aed",
+                        border: isLive ? "none" : "2px solid #7c3aed",
+                        background: isLive ? "linear-gradient(135deg, #7c3aed, #6d28d9)" : "transparent",
+                        color: isLive ? "#fff" : "#7c3aed",
                         cursor: "pointer",
                         transition: "all 0.15s ease",
                       }}
                     >
-                      Hire
+                      {isLive ? "Add to Vault" : "Notify Me"}
                     </button>
                   )}
                 </div>

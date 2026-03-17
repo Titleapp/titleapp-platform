@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import Sidebar from "./Sidebar";
 import ChatPanel from "./ChatPanel";
 import QuickSwitcher from "./QuickSwitcher";
+import CartDrawer from "./CartDrawer";
 import * as api from "../api/client";
 
 export default function AppShell({ children, currentSection, onNavigate, onBackToHub }) {
@@ -122,6 +123,18 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
   }, []);
 
   const [chatOpen, setChatOpen] = useState(false);
+  const [cartOpen, setCartOpen] = useState(false);
+  const [cartCount, setCartCount] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("ta_cart") || "[]").length; } catch { return 0; }
+  });
+
+  useEffect(() => {
+    function onCartUpdated() {
+      try { setCartCount(JSON.parse(localStorage.getItem("ta_cart") || "[]").length); } catch { setCartCount(0); }
+    }
+    window.addEventListener("ta:cart-updated", onCartUpdated);
+    return () => window.removeEventListener("ta:cart-updated", onCartUpdated);
+  }, []);
 
   const currentWorkspaceId = localStorage.getItem("WORKSPACE_ID") || "vault";
 
@@ -202,6 +215,16 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
           </div>
         )}
         {!tenantInfo && <div className="pill">Business</div>}
+        <button
+          onClick={() => setCartOpen(!cartOpen)}
+          style={{ position: "relative", background: "none", border: "none", cursor: "pointer", padding: 6, marginLeft: "auto", color: "#64748b" }}
+          aria-label="Cart"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+          {cartCount > 0 && (
+            <span style={{ position: "absolute", top: 0, right: 0, width: 16, height: 16, borderRadius: 8, background: "#0B7A6E", color: "white", fontSize: 10, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>{cartCount}</span>
+          )}
+        </button>
       </div>
 
       {/* Backdrop for mobile menu */}
@@ -261,25 +284,16 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
           Home
         </button>
         <button
-          className="mobileBottomNavItem"
-          onClick={() => setSidebarOpen(true)}
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <rect x="3" y="3" width="7" height="7" rx="1" />
-            <rect x="14" y="3" width="7" height="7" rx="1" />
-            <rect x="3" y="14" width="7" height="7" rx="1" />
-            <rect x="14" y="14" width="7" height="7" rx="1" />
-          </svg>
-          Workers
-        </button>
-        <button
           className={`mobileBottomNavItem${chatOpen ? " active" : ""}`}
           onClick={() => setChatOpen(!chatOpen)}
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+            <circle cx="9" cy="10" r="1" fill="currentColor" />
+            <circle cx="12" cy="10" r="1" fill="currentColor" />
+            <circle cx="15" cy="10" r="1" fill="currentColor" />
           </svg>
-          Chat
+          Explore
         </button>
         {workspaces.length > 1 && (
           <button
@@ -313,6 +327,9 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
         onNavigate={onNavigate}
         onSwitchWorkspace={handleSwitchWorkspace}
       />
+
+      {/* Cart Drawer */}
+      <CartDrawer isOpen={cartOpen} onClose={() => setCartOpen(false)} />
     </div>
   );
 }

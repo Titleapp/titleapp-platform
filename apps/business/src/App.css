@@ -452,6 +452,9 @@ body{
 .chatPanelHeader svg{
   color:rgba(255,255,255,0.85);
 }
+.chatWorkerSearch{ flex-shrink:0; }
+.chatFilterPills{ scrollbar-width:none; -ms-overflow-style:none; }
+.chatFilterPills::-webkit-scrollbar{ display:none; }
 .chatPanelMessages{
   flex:1;
   overflow-y:auto;
@@ -727,6 +730,11 @@ body, #root, .appShell{ max-width:100vw; overflow-x:hidden; }
     padding:0 0 4px;
   }
   .mobileExtrasRow.open{ display:flex; }
+
+  /* Worker search + filter pills in chat */
+  .chatWorkerSearch{ flex-shrink:0; border-bottom:1px solid #f1f5f9; }
+  .chatFilterPills{ scrollbar-width:none; -ms-overflow-style:none; }
+  .chatFilterPills::-webkit-scrollbar{ display:none; }
 
   /* Main gets full width */
   .main{ padding:18px 14px 100px; width:100%; }

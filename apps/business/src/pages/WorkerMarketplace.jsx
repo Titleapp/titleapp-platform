@@ -3,7 +3,7 @@ import WorkerIcon, { SUITE_COLORS } from "../utils/workerIcons";
 
 export const WORKER_ROUTES = [
   // Phase 1: Acquisition
-  { slug: "cre-analyst", name: "CRE Deal Analyst", description: "Screen and model commercial real estate investment opportunities.", suite: "Real Estate", status: "live", price: 2900 },
+  { slug: "cre-analyst", name: "CRE Deal Analyst", description: "Screen and model commercial real estate investment opportunities.", suite: "Real Estate", status: "live", price: 2900, bogoEligible: true },
   { slug: "investor-relations", name: "Investor Relations", description: "Investor communications, reporting, and capital raising.", suite: "Finance & Investment", status: "live", price: 4900 },
   { slug: "esc-escrow-locker", name: "The Escrow Locker", description: "Offer chain through DTC transfer. Identity verification, bank account linking, RON notarization, and human-authorized disbursement.", suite: "Title & Escrow", status: "planned", price: 7900, vertical: "title_escrow" },
   { slug: "esc-wire-fraud-prevention", name: "Wire Fraud Prevention", description: "Callback protocol, domain verification, and automatic hold on wire instruction changes.", suite: "Title & Escrow", status: "planned", price: 7900, vertical: "title_escrow" },
@@ -20,12 +20,12 @@ export const WORKER_ROUTES = [
   { slug: "environmental-cultural-review", name: "Environmental & Cultural Review Worker", description: "Phase I through remediation. Biological surveys. Archaeological review. Cultural impact. NEPA/CEQA compliance.", suite: "Real Estate", status: "live", price: 2900 },
   { slug: "mortgage-senior-debt", name: "Mortgage & Senior Debt Worker", description: "Know your best loan before the broker calls. Term sheet analysis, loan sizing from binding constraints, comparison across agency, CMBS, and life company.", suite: "Finance & Investment", status: "planned", price: 7900 },
   { slug: "mortgage-broker", name: "Mortgage Broker Worker", description: "Source the best debt. Acquisition loans, construction financing, bridge, perm, refi.", suite: "Finance & Investment", status: "planned", price: 4900 },
-  { slug: "construction-lending", name: "Construction Lending Worker", description: "Compare loan terms, build draw schedules, model interest reserves, track utilization through perm conversion.", suite: "Finance & Investment", status: "live", price: 7900 },
-  { slug: "capital-stack-optimizer", name: "Capital Stack Optimizer", description: "Build optimal debt/equity mix, model LP/GP waterfalls, run sensitivity analysis, and generate investor-ready materials.", suite: "Finance & Investment", status: "live", price: 9900 },
+  { slug: "construction-lending", name: "Construction Lending Worker", description: "Compare loan terms, build draw schedules, model interest reserves, track utilization through perm conversion.", suite: "Finance & Investment", status: "live", price: 7900, bogoEligible: true },
+  { slug: "capital-stack-optimizer", name: "Capital Stack Optimizer", description: "Build optimal debt/equity mix, model LP/GP waterfalls, run sensitivity analysis, and generate investor-ready materials.", suite: "Finance & Investment", status: "live", price: 9900, bogoEligible: true },
 
   // Phase 2: Entitlement & Pre-Construction
   { slug: "entitlement-analyst", name: "Entitlement Analyst Worker", description: "Zoning analysis, entitlement strategy, and approval tracking. Know what you can build before you buy.", suite: "Real Estate", status: "planned", price: 2900 },
-  { slug: "engineering-review", name: "Engineering Review Worker", description: "Civil, structural, traffic, utilities. Every engineering discipline reviewed, coordinated, and tracked.", suite: "Construction", status: "live", price: 2900 },
+  { slug: "engineering-review", name: "Engineering Review Worker", description: "Civil, structural, traffic, utilities. Every engineering discipline reviewed, coordinated, and tracked.", suite: "Construction", status: "live", price: 2900, bogoEligible: true },
   { slug: "architecture-review", name: "Architecture & Design Review Worker", description: "Plan analysis, building code compliance, AHJ coordination. From schematic design through construction documents.", suite: "Construction", status: "live", price: 2900 },
   { slug: "energy-sustainability", name: "Energy & Sustainability Worker", description: "LEED, ENERGY STAR, Title 24, energy modeling — certifications that reduce operating costs and increase value.", suite: "Construction", status: "live", price: 2900 },
   { slug: "accessibility-fair-housing", name: "Accessibility & Fair Housing Worker", description: "ADA compliance, Fair Housing Act, Section 504 — accessibility audits and remediation tracking.", suite: "Real Estate", status: "live", price: 2900 },
@@ -34,7 +34,7 @@ export const WORKER_ROUTES = [
   { slug: "permit-tracker", name: "Permit Submission Worker", description: "File permits, track review cycles, respond to deficiency notices, and manage approvals across every jurisdiction.", suite: "Construction", status: "planned", price: 2900 },
 
   // Phase 3: Construction
-  { slug: "construction-manager", name: "Construction Manager Worker", description: "Your AI superintendent. Scheduling, RFIs, submittals, daily logs, punch lists, and close-out.", suite: "Construction", status: "live", price: 4900 },
+  { slug: "construction-manager", name: "Construction Manager Worker", description: "Your AI superintendent. Scheduling, RFIs, submittals, daily logs, punch lists, and close-out.", suite: "Construction", status: "live", price: 4900, bogoEligible: true },
   { slug: "bid-procurement", name: "Bid & Procurement Worker", description: "The right sub at the right price — bid packages, comparison matrices, anomaly detection, and award recommendations", suite: "Construction", status: "live", price: 5900 },
   { slug: "insurance-risk", name: "Insurance & Risk Worker", description: "Never miss an expired certificate — COI tracking, insurance matrices, risk exposure analysis, and lender compliance reports", suite: "Construction", status: "live", price: 5900 },
   { slug: "quality-control", name: "Quality Control & Inspection Worker", description: "Pass inspections the first time — scheduling, deficiency tracking, trade checklists, and CO tracking", suite: "Construction", status: "live", price: 4900 },

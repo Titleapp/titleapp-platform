@@ -2,6 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { getAuth } from 'firebase/auth';
 import { getFirestore, collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
 import { fireMilestone } from '../utils/celebrations';
+import { WORKER_ROUTES } from '../pages/WorkerMarketplace';
+
+const WORKER_SUITES = ["All", ...Array.from(new Set(WORKER_ROUTES.filter(w => !w.internal_only).map(w => w.suite)))];
 
 // ── Contextual Messages ─────────────────────────────────────────
 
@@ -179,6 +182,8 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
   const [pendingActions, setPendingActions] = useState([]);
   const [showMobileExtras, setShowMobileExtras] = useState(false);
   const chatPanelRef = useRef(null);
+  const [workerSearch, setWorkerSearch] = useState("");
+  const [workerFilter, setWorkerFilter] = useState("All");
 
   // Disclaimer state
   const [disclaimerAccepted, setDisclaimerAccepted] = useState(() => {
@@ -556,9 +561,49 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
 
   // ── Check for local responses (tour, rules, etc.) ─────────────
 
+  function matchWorkerQuery(message) {
+    const lower = message.toLowerCase();
+    const workers = WORKER_ROUTES.filter(w => !w.internal_only);
+
+    // "show me X workers" / "X workers" / "workers for X" / "browse X" / "find X worker"
+    const patterns = [
+      /show\s+me\s+(.+?)\s+workers?/i,
+      /find\s+(.+?)\s+workers?/i,
+      /browse\s+(.+)/i,
+      /workers?\s+for\s+(.+)/i,
+      /what\s+(.+?)\s+workers?\s+do\s+you\s+have/i,
+    ];
+    for (const p of patterns) {
+      const m = message.match(p);
+      if (m) {
+        const term = m[1].toLowerCase().trim();
+        const matched = workers.filter(w =>
+          w.name.toLowerCase().includes(term) ||
+          w.suite.toLowerCase().includes(term) ||
+          w.description.toLowerCase().includes(term) ||
+          (w.vertical || "").toLowerCase().includes(term)
+        );
+        if (matched.length > 0) {
+          return { content: `Here are ${matched.length} worker${matched.length !== 1 ? "s" : ""} matching "${m[1].trim()}":`, workerCards: matched.slice(0, 8) };
+        }
+        return { content: `No workers found matching "${m[1].trim()}". Try a different search or browse by category.`, workerCards: [] };
+      }
+    }
+    // Generic queries
+    if (/what\s+workers?\s+do\s+you\s+have|show\s+me\s+(all\s+)?workers|list\s+workers/i.test(lower)) {
+      const live = workers.filter(w => w.status === "live");
+      return { content: `We have ${live.length} live workers across ${WORKER_SUITES.length - 1} categories. Here are a few popular ones:`, workerCards: live.slice(0, 6) };
+    }
+    return null;
+  }
+
   function getLocalResponse(message) {
     const v = localStorage.getItem('VERTICAL') || 'auto';
     const lower = message.toLowerCase();
+
+    // Worker discovery queries
+    const workerResult = matchWorkerQuery(message);
+    if (workerResult) return workerResult;
 
     if (lower.includes('show me around') || lower.includes('tour') || lower.includes('walk me through')) {
       return TOUR_RESPONSES[v] || TOUR_RESPONSES.auto;
@@ -704,7 +749,11 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
       setIsSending(false);
       if (localResp !== '__SAMPLE_DATA_TRIGGERED__') {
         setTimeout(() => {
-          setMessages(prev => [...prev, { role: 'assistant', content: localResp, isSystem: true }]);
+          if (typeof localResp === 'object' && localResp.workerCards) {
+            setMessages(prev => [...prev, { role: 'assistant', content: localResp.content, workerCards: localResp.workerCards, isSystem: true }]);
+          } else {
+            setMessages(prev => [...prev, { role: 'assistant', content: localResp, isSystem: true }]);
+          }
         }, 400);
       }
       return;
@@ -1028,7 +1077,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
 
         <label style={{ display: 'flex', gap: 10, marginBottom: 10, cursor: 'pointer', fontSize: 13, alignItems: 'flex-start' }}>
           <input type="checkbox" checked={acceptedTerms} onChange={e => setAcceptedTerms(e.target.checked)} style={{ marginTop: 3, flexShrink: 0 }} />
-          <span>I have read and agree to the Terms of Service and Privacy Policy</span>
+          <span>I have read and agree to the <a href="/legal/terms-of-service" target="_blank" style={{ color: '#7c3aed' }}>Terms of Service</a> and <a href="/legal/privacy-policy" target="_blank" style={{ color: '#7c3aed' }}>Privacy Policy</a></span>
         </label>
 
         <label style={{ display: 'flex', gap: 10, marginBottom: 10, cursor: 'pointer', fontSize: 13, alignItems: 'flex-start' }}>
@@ -1058,6 +1107,35 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
     );
   }
 
+  // ── Worker search ────────────────────────────────────────────
+
+  function handleWorkerSearch(e) {
+    e?.preventDefault();
+    if (!workerSearch.trim()) return;
+    const term = workerSearch.toLowerCase();
+    let matched = WORKER_ROUTES.filter(w => !w.internal_only && (
+      w.name.toLowerCase().includes(term) ||
+      w.description.toLowerCase().includes(term) ||
+      w.suite.toLowerCase().includes(term) ||
+      (w.vertical || "").toLowerCase().includes(term)
+    ));
+    if (workerFilter !== "All") matched = matched.filter(w => w.suite === workerFilter);
+    setMessages(prev => [...prev,
+      { role: 'user', content: workerSearch },
+      { role: 'assistant', content: matched.length ? `Found ${matched.length} worker${matched.length !== 1 ? "s" : ""} matching "${workerSearch}":` : `No workers found for "${workerSearch}". Try a different keyword.`, workerCards: matched.slice(0, 8), isSystem: true },
+    ]);
+    setWorkerSearch("");
+  }
+
+  function handleFilterClick(suite) {
+    setWorkerFilter(suite);
+    const workers = WORKER_ROUTES.filter(w => !w.internal_only);
+    const matched = suite === "All" ? workers.filter(w => w.status === "live") : workers.filter(w => w.suite === suite);
+    setMessages(prev => [...prev,
+      { role: 'assistant', content: suite === "All" ? `Showing all ${matched.length} live workers:` : `Showing ${matched.length} ${suite} worker${matched.length !== 1 ? "s" : ""}:`, workerCards: matched.slice(0, 8), isSystem: true },
+    ]);
+  }
+
   // ── Render ────────────────────────────────────────────────────
 
   const chatDisabled = !disclaimerAccepted || isSending || fileUploading;
@@ -1075,6 +1153,35 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
             return cfg.name ? `${cfg.name} -- AI Assistant` : 'AI Assistant';
           } catch { return 'AI Assistant'; }
         })()}</span>
+      </div>
+
+      {/* Worker search + filter pills */}
+      <div className="chatWorkerSearch">
+        <form onSubmit={handleWorkerSearch} style={{ display: "flex", gap: 6, padding: "10px 14px 0" }}>
+          <input
+            type="text"
+            placeholder="Search workers by name, category, or keyword..."
+            value={workerSearch}
+            onChange={(e) => setWorkerSearch(e.target.value)}
+            style={{ flex: 1, padding: "9px 12px", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 8, color: "#1e293b", fontSize: 13, outline: "none" }}
+          />
+          <button type="submit" style={{ padding: "9px 14px", background: "#7c3aed", color: "white", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", flexShrink: 0 }}>Search</button>
+        </form>
+        <div className="chatFilterPills" style={{ display: "flex", gap: 6, overflowX: "auto", padding: "8px 14px", WebkitOverflowScrolling: "touch" }}>
+          {WORKER_SUITES.map(suite => (
+            <button
+              key={suite}
+              onClick={() => handleFilterClick(suite)}
+              style={{
+                padding: "5px 12px", borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: "pointer",
+                whiteSpace: "nowrap", flexShrink: 0, border: "1px solid",
+                background: workerFilter === suite ? "#7c3aed" : "white",
+                color: workerFilter === suite ? "white" : "#64748b",
+                borderColor: workerFilter === suite ? "#7c3aed" : "#e2e8f0",
+              }}
+            >{suite}</button>
+          ))}
+        </div>
       </div>
 
       <div className="chatPanelMessages" ref={conversationRef}>
@@ -1182,6 +1289,33 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
                 </div>
               )}
             </div>
+
+            {/* Inline worker cards */}
+            {msg.workerCards && msg.workerCards.length > 0 && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8, maxWidth: 420 }}>
+                {msg.workerCards.map(w => (
+                  <div
+                    key={w.slug}
+                    onClick={() => { window.dispatchEvent(new CustomEvent("ta:navigate", { detail: { section: w.slug } })); }}
+                    style={{ background: "white", border: "1px solid #e2e8f0", borderRadius: 10, padding: "10px 12px", cursor: "pointer", display: "flex", alignItems: "center", gap: 10, transition: "box-shadow 0.15s" }}
+                    onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.08)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.boxShadow = "none"; }}
+                  >
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: "#1e293b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{w.name}</div>
+                      <div style={{ fontSize: 11, color: "#64748b", lineHeight: 1.4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: 1 }}>{w.description}</div>
+                      <div style={{ display: "flex", gap: 5, marginTop: 4, alignItems: "center", flexWrap: "wrap" }}>
+                        <span style={{ fontSize: 10, fontWeight: 600, padding: "1px 7px", borderRadius: 20, background: "#f3e8ff", color: "#7c3aed" }}>{w.suite}</span>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: "#1e293b" }}>${w.price / 100}/mo</span>
+                        {w.status === "live" && <span style={{ fontSize: 9, fontWeight: 600, padding: "1px 5px", borderRadius: 20, background: "#dcfce7", color: "#166534" }}>Live</span>}
+                        {w.bogoEligible && <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 20, background: "#0B7A6E", color: "white" }}>BOGO</span>}
+                      </div>
+                    </div>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" style={{ flexShrink: 0 }}><polyline points="9 18 15 12 9 6"/></svg>
+                  </div>
+                ))}
+              </div>
+            )}
 
             {/* Disclaimer widget */}
             {msg.disclaimer && showDisclaimer && !disclaimerAccepted && (

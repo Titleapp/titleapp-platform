@@ -4531,6 +4531,104 @@ These should be 2-3 realistic test scenarios the creator should try, derived fro
       }
     }
 
+    // POST /v1/worker:bogoCheckout — BOGO cart checkout (buy one get one free)
+    if (route === "/worker:bogoCheckout" && method === "POST") {
+      const { items, bogoDiscount } = body;
+      if (!items || !Array.isArray(items) || items.length < 1) {
+        return res.json({ ok: false, error: "Cart is empty" });
+      }
+      try {
+        // Check if user already used BOGO
+        const userDoc = await db.collection("users").doc(user.uid).get();
+        const userData = userDoc.exists ? userDoc.data() : {};
+        if (userData.bogoUsed && bogoDiscount) {
+          return res.json({ ok: false, error: "BOGO promotion already used" });
+        }
+
+        // Calculate totals
+        const bogoItems = items.filter(i => i.bogoEligible);
+        let discountSlug = null;
+        let discountAmount = 0;
+        if (bogoDiscount && bogoItems.length >= 2) {
+          const sorted = [...bogoItems].sort((a, b) => a.price - b.price);
+          discountSlug = sorted[0].slug;
+          discountAmount = sorted[0].price;
+        }
+        const netTotal = items.reduce((sum, i) => sum + i.price, 0) - discountAmount;
+
+        // Create subscriptions for all items
+        const subscriptions = [];
+        for (const item of items) {
+          const subRef = await db.collection("subscriptions").add({
+            userId: user.uid,
+            slug: item.slug,
+            price: item.price,
+            isBogo: item.slug === discountSlug,
+            bogoDiscount: item.slug === discountSlug ? item.price : 0,
+            status: "pending_payment",
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+          subscriptions.push({ id: subRef.id, slug: item.slug, isBogo: item.slug === discountSlug });
+        }
+
+        // Mark BOGO as used
+        if (bogoDiscount && bogoItems.length >= 2) {
+          await db.collection("users").doc(user.uid).set({ bogoUsed: true }, { merge: true });
+        }
+
+        // Create Stripe checkout session if net total > 0
+        if (netTotal > 0) {
+          try {
+            const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY || functions.config().stripe?.secret_key);
+            const lineItems = items
+              .filter(i => i.slug !== discountSlug)
+              .map(i => ({
+                price_data: {
+                  currency: "usd",
+                  recurring: { interval: "month" },
+                  product_data: { name: i.name || i.slug },
+                  unit_amount: i.price,
+                },
+                quantity: 1,
+              }));
+
+            const session = await stripe.checkout.sessions.create({
+              mode: "subscription",
+              customer_email: user.email || undefined,
+              line_items: lineItems,
+              success_url: `${req.headers.origin || "https://app.titleapp.ai"}/vault?checkout=success`,
+              cancel_url: `${req.headers.origin || "https://app.titleapp.ai"}/marketplace?checkout=cancelled`,
+              metadata: {
+                userId: user.uid,
+                bogoCheckout: "true",
+                subscriptionIds: subscriptions.map(s => s.id).join(","),
+              },
+            });
+
+            console.log(`[worker:bogoCheckout] ${user.uid} — ${items.length} items, discount $${discountAmount / 100}, Stripe session ${session.id}`);
+            return res.json({ ok: true, subscriptions, checkoutUrl: session.url });
+          } catch (stripeErr) {
+            console.error("[worker:bogoCheckout] Stripe error:", stripeErr.message);
+            // Activate subscriptions directly if Stripe fails (trial mode)
+            for (const sub of subscriptions) {
+              await db.collection("subscriptions").doc(sub.id).update({ status: "active_trial" });
+            }
+            return res.json({ ok: true, subscriptions });
+          }
+        }
+
+        // Free checkout (all items covered by BOGO or $0)
+        for (const sub of subscriptions) {
+          await db.collection("subscriptions").doc(sub.id).update({ status: "active_trial" });
+        }
+        console.log(`[worker:bogoCheckout] ${user.uid} — ${items.length} items, fully discounted`);
+        return res.json({ ok: true, subscriptions });
+      } catch (e) {
+        console.error("[worker:bogoCheckout] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
     // POST /v1/worker:subscription-status — Check subscription status for a worker (expired trial detection)
     if (route === "/worker:subscription-status" && method === "POST") {
       const { workerId, slug } = body;
@@ -6145,6 +6243,32 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
         return res.status(200).json({ ok: true, ...result });
       } catch (e) {
         console.error("admin:registry:seed failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ----------------------------
+    // ADMIN: PRICING AUDIT (34.1)
+    // ----------------------------
+    if (route === "/admin:pricingAudit" && method === "POST") {
+      try {
+        const { runPricingAudit } = require("./admin/pricingAudit");
+        return await runPricingAudit(req, res);
+      } catch (e) {
+        console.error("admin:pricingAudit failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ----------------------------
+    // ADMIN: AVIATION RECOVERY (34.2)
+    // ----------------------------
+    if (route === "/admin:aviationRecovery" && method === "POST") {
+      try {
+        const { runAviationRecovery } = require("./admin/aviationRecovery");
+        return await runAviationRecovery(req, res);
+      } catch (e) {
+        console.error("admin:aviationRecovery failed:", e);
         return jsonError(res, 500, e.message);
       }
     }
