@@ -55,25 +55,25 @@ class PanelErrorBoundary extends React.Component {
 
 // ── Styles ────────────────────────────────────────────────────
 const S = {
-  root: { display: "flex", height: "100vh", overflow: "hidden", background: "#F8F9FC", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", color: "#1a1a2e" },
-  // Left nav — creator studio
-  leftNav: { width: 240, flexShrink: 0, background: "#FFFFFF", borderRight: "1px solid #E2E8F0", overflowY: "auto", display: "flex", flexDirection: "column" },
-  leftNavMobile: { position: "fixed", top: 0, left: 0, bottom: 0, width: 280, zIndex: 300, background: "#FFFFFF", borderRight: "1px solid #E2E8F0", overflowY: "auto", boxShadow: "4px 0 24px rgba(0,0,0,0.12)" },
-  navSection: { padding: "16px 16px 8px", borderBottom: "1px solid #F1F5F9" },
-  navSectionTitle: { fontSize: 11, fontWeight: 700, color: "#94A3B8", letterSpacing: "0.5px", textTransform: "uppercase", marginBottom: 10 },
+  root: { display: "flex", height: "100dvh", overflow: "hidden", background: "#F8F9FC", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", color: "#1a1a2e" },
+  // Left nav — creator studio (dark theme matching Sidebar)
+  leftNav: { flexShrink: 0, background: "linear-gradient(180deg, #0b1020, #0a0f1c)", borderRight: "1px solid rgba(255,255,255,0.06)", overflowY: "auto", display: "flex", flexDirection: "column" },
+  leftNavMobile: { position: "fixed", top: 0, left: 0, bottom: 0, width: 280, zIndex: 300, background: "linear-gradient(180deg, #0b1020, #0a0f1c)", borderRight: "1px solid rgba(255,255,255,0.06)", overflowY: "auto", boxShadow: "4px 0 24px rgba(0,0,0,0.4)" },
+  navSection: { padding: "16px 16px 8px", borderBottom: "1px solid rgba(255,255,255,0.06)" },
+  navSectionTitle: { fontSize: 11, fontWeight: 700, color: "rgba(226,232,240,0.55)", letterSpacing: "0.5px", textTransform: "uppercase", marginBottom: 10 },
   navStatGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 },
-  navStatTile: { background: "#F8F9FC", borderRadius: 8, padding: "10px 12px", textAlign: "center" },
-  navStatValue: { fontSize: 18, fontWeight: 700, color: "#1a1a2e" },
-  navStatLabel: { fontSize: 10, color: "#94A3B8", marginTop: 2 },
-  navItem: { padding: "10px 16px", fontSize: 13, color: "#64748B", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, borderRadius: 6, margin: "2px 8px" },
-  navItemActive: { background: "rgba(107,70,193,0.08)", color: "#6B46C1", fontWeight: 600 },
+  navStatTile: { background: "rgba(255,255,255,0.05)", borderRadius: 8, padding: "10px 12px", textAlign: "center" },
+  navStatValue: { fontSize: 18, fontWeight: 700, color: "#e5e7eb" },
+  navStatLabel: { fontSize: 10, color: "rgba(226,232,240,0.55)", marginTop: 2 },
+  navItem: { padding: "10px 16px", fontSize: 13, color: "rgba(226,232,240,0.85)", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, borderRadius: 6, margin: "2px 8px" },
+  navItemActive: { background: "rgba(124,58,237,0.16)", color: "#ddd6fe", fontWeight: 600, border: "1px solid rgba(124,58,237,0.35)" },
   // Chat panel
   chatPanel: { display: "flex", flexDirection: "column", borderRight: "1px solid #E2E8F0", background: "#FFFFFF" },
-  chatHeader: { padding: "16px 20px", borderBottom: "1px solid #E2E8F0", display: "flex", alignItems: "center", gap: 10 },
+  chatHeader: { padding: "16px 20px", borderBottom: "1px solid #E2E8F0", display: "flex", alignItems: "center", gap: 10, position: "sticky", top: 0, zIndex: 10, background: "#FFFFFF" },
   chatLogo: { fontSize: 14, fontWeight: 700, color: "#6B46C1" },
   chatName: { fontSize: 13, fontWeight: 600, color: "#64748B" },
   chatMessages: { flex: 1, overflowY: "auto", padding: "16px 20px", display: "flex", flexDirection: "column", gap: 12 },
-  chatInputWrap: { padding: "12px 16px", borderTop: "1px solid #E2E8F0" },
+  chatInputWrap: { padding: "12px 16px", borderTop: "1px solid #E2E8F0", paddingBottom: "calc(12px + env(safe-area-inset-bottom, 0px))" },
   chatInput: { width: "100%", padding: "12px 16px", background: "#F8F9FC", border: "1px solid #E2E8F0", borderRadius: 10, color: "#1a1a2e", fontSize: 14, outline: "none", resize: "none" },
   msgUser: { alignSelf: "flex-end", background: "#6B46C1", color: "white", padding: "10px 14px", borderRadius: "14px 14px 4px 14px", maxWidth: "85%", fontSize: 14, lineHeight: 1.5 },
   msgAssistant: { alignSelf: "flex-start", background: "#F4F4F8", color: "#1a1a2e", padding: "10px 14px", borderRadius: "14px 14px 14px 4px", maxWidth: "85%", fontSize: 14, lineHeight: 1.5 },
@@ -376,18 +376,18 @@ function LifecycleCard({ flowStep }) {
 }
 
 // ── Creator Studio Nav (left nav — Column 1) ──
-function CreatorStudioNav({ flowStep, workerCardData, worker, isMobile, onClose }) {
-  const navStyle = isMobile ? S.leftNavMobile : S.leftNav;
+function CreatorStudioNav({ flowStep, workerCardData, worker, isMobile, onClose, style }) {
+  const baseStyle = isMobile ? S.leftNavMobile : S.leftNav;
   return (
-    <div style={navStyle}>
+    <div style={{ ...baseStyle, ...style }}>
       {/* Header */}
-      <div style={{ padding: "16px 16px 12px", borderBottom: "1px solid #E2E8F0", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <div style={{ padding: "16px 16px 12px", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div>
-          <div style={{ fontSize: 14, fontWeight: 700, color: "#6B46C1" }}>Creator Studio</div>
-          <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 2 }}>TitleApp</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: "#7c3aed" }}>Creator Studio</div>
+          <div style={{ fontSize: 11, color: "rgba(226,232,240,0.55)", marginTop: 2 }}>TitleApp</div>
         </div>
         {isMobile && (
-          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, color: "#94A3B8", cursor: "pointer", padding: 4 }}>&times;</button>
+          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, color: "rgba(226,232,240,0.55)", cursor: "pointer", padding: 4 }}>&times;</button>
         )}
       </div>
 
@@ -400,7 +400,7 @@ function CreatorStudioNav({ flowStep, workerCardData, worker, isMobile, onClose 
           <div style={S.navStatTile}><div style={S.navStatValue}>$0</div><div style={S.navStatLabel}>This Month</div></div>
           <div style={S.navStatTile}><div style={S.navStatValue}>&mdash;</div><div style={S.navStatLabel}>Trend</div></div>
         </div>
-        <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 8, lineHeight: 1.5 }}>Publish your first worker to start earning.</div>
+        <div style={{ fontSize: 11, color: "rgba(226,232,240,0.45)", marginTop: 8, lineHeight: 1.5 }}>Publish your first worker to start earning.</div>
       </div>
 
       {/* My Workers */}
@@ -409,17 +409,17 @@ function CreatorStudioNav({ flowStep, workerCardData, worker, isMobile, onClose 
         {workerCardData ? (
           <div style={{ ...S.navItem, ...S.navItemActive, flexDirection: "column", alignItems: "flex-start", gap: 2 }}>
             <div style={{ fontSize: 13, fontWeight: 600 }}>{workerCardData.name}</div>
-            <div style={{ fontSize: 11, color: "#94A3B8" }}>Draft — Continue Building &rarr;</div>
+            <div style={{ fontSize: 11, color: "rgba(226,232,240,0.45)" }}>Draft — Continue Building &rarr;</div>
           </div>
         ) : (
-          <div style={{ fontSize: 12, color: "#94A3B8", padding: "6px 0" }}>No workers yet. Build your first one in the chat.</div>
+          <div style={{ fontSize: 12, color: "rgba(226,232,240,0.45)", padding: "6px 0" }}>No workers yet. Build your first one in the chat.</div>
         )}
       </div>
 
       {/* My Audience */}
       <div style={S.navSection}>
         <div style={S.navSectionTitle}>My Audience</div>
-        <div style={{ fontSize: 12, color: "#94A3B8", padding: "6px 0" }}>Your subscribers will appear here once you publish.</div>
+        <div style={{ fontSize: 12, color: "rgba(226,232,240,0.45)", padding: "6px 0" }}>Your subscribers will appear here once you publish.</div>
       </div>
 
       {/* Sessions */}
@@ -427,8 +427,8 @@ function CreatorStudioNav({ flowStep, workerCardData, worker, isMobile, onClose 
         <div style={S.navSection}>
           <div style={S.navSectionTitle}>Sessions</div>
           <div style={{ ...S.navItem, flexDirection: "column", alignItems: "flex-start", gap: 2 }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: "#1a1a2e" }}>{workerCardData.name}</div>
-            <div style={{ fontSize: 11, color: "#94A3B8" }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: "#e5e7eb" }}>{workerCardData.name}</div>
+            <div style={{ fontSize: 11, color: "rgba(226,232,240,0.45)" }}>
               Stage {flowStep <= 2 ? "1 — Build" : flowStep <= 4 ? "2 — Test" : flowStep <= 5 ? "3 — Publish" : "4 — Grow"}
             </div>
           </div>
@@ -438,7 +438,7 @@ function CreatorStudioNav({ flowStep, workerCardData, worker, isMobile, onClose 
       {/* Vault */}
       <div style={S.navSection}>
         <div style={S.navSectionTitle}>Vault</div>
-        <div style={{ fontSize: 12, color: "#94A3B8", padding: "6px 0" }}>Your files, conversations, and versions live here.</div>
+        <div style={{ fontSize: 12, color: "rgba(226,232,240,0.45)", padding: "6px 0" }}>Your files, conversations, and versions live here.</div>
       </div>
     </div>
   );
@@ -631,10 +631,13 @@ export default function DeveloperSandbox() {
   const [showMobilePanel, setShowMobilePanel] = useState(false);
   const [showMobileNav, setShowMobileNav] = useState(false);
 
-  // Resizable panels
+  // Resizable panels — left nav width (px) + chat/right split (%)
+  const [navWidthPx, setNavWidthPx] = useState(() => {
+    try { const v = parseInt(localStorage.getItem("ta_sandbox_navW")); return v >= 180 && v <= 400 ? v : 240; } catch { return 240; }
+  });
   const [chatWidthPercent, setChatWidthPercent] = useState(40);
-  const [isDragging, setIsDragging] = useState(false);
-  const [dividerHover, setDividerHover] = useState(false);
+  const [isDragging, setIsDragging] = useState(false); // "nav" | "chat" | false
+  const [dividerHover, setDividerHover] = useState(false); // "nav" | "chat" | false
   const rootRef = useRef(null);
   const rightPanelRef = useRef(null);
 
@@ -661,7 +664,7 @@ export default function DeveloperSandbox() {
     return () => mq.removeEventListener("change", handler);
   }, []);
 
-  // Divider drag handlers
+  // Divider drag handlers — supports both "nav" and "chat" dividers
   useEffect(() => {
     if (!isDragging) return;
     function onMouseMove(e) {
@@ -669,15 +672,25 @@ export default function DeveloperSandbox() {
       const rect = rootRef.current.getBoundingClientRect();
       const totalWidth = rect.width;
       const x = e.clientX - rect.left;
-      const minChat = 300;
-      const minWork = 400;
-      const pct = (x / totalWidth) * 100;
-      if (x >= minChat && (totalWidth - x) >= minWork) {
-        setChatWidthPercent(pct);
+
+      if (isDragging === "nav") {
+        // Dragging left nav divider — adjust nav width in px
+        const clamped = Math.max(180, Math.min(400, x));
+        setNavWidthPx(clamped);
+      } else if (isDragging === "chat") {
+        // Dragging chat/right divider — adjust chat width as % of remaining space (after nav)
+        const remaining = totalWidth - navWidthPx - 8; // 8px for both dividers
+        const chatX = x - navWidthPx - 4;
+        const pct = (chatX / remaining) * 100;
+        if (chatX >= 280 && (remaining - chatX) >= 300) {
+          setChatWidthPercent(pct);
+        }
       }
     }
     function onMouseUp() {
       setIsDragging(false);
+      // Persist nav width
+      try { localStorage.setItem("ta_sandbox_navW", String(navWidthPx)); } catch {}
     }
     document.addEventListener("mousemove", onMouseMove);
     document.addEventListener("mouseup", onMouseUp);
@@ -685,7 +698,7 @@ export default function DeveloperSandbox() {
       document.removeEventListener("mousemove", onMouseMove);
       document.removeEventListener("mouseup", onMouseUp);
     };
-  }, [isDragging]);
+  }, [isDragging, navWidthPx]);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -730,8 +743,11 @@ export default function DeveloperSandbox() {
         }, 600);
       }
     } else {
-      // New user — preamble flow
-      addAssistantMessage("You're about to build a Digital Worker — think of it like an AI app built on your expertise. Just like an app does one thing really well, your Digital Worker will know exactly what you know and be available to anyone, anytime, without you having to be in the room.\n\nHere's the process. First we'll build it together — you tell me what you know, I shape it into a worker. If you've already put something together in ChatGPT or another AI tool, you can use that as your starting point. Then we'll test it — you'll actually talk to your own worker and see it work. Once you're happy with it, we help you publish it and get it in front of the right people. After it's live you can keep adding to it, track who's using it, collect feedback, and get paid.\n\nYour pace, your timeline. Some people publish in an hour if they've been thinking about this for a while. Others build over a few months. Either way, we save everything — every conversation, every decision, every version of your worker. We never forget.\n\nMost people have had the experience of building something in another AI tool and coming back to find it has no idea what you're talking about. That's not how this works. Your worker lives in your Vault. It gets better over time, not worse.\n\nReady? Let's start.");
+      // New user — welcome greeting + preamble flow
+      const authDisplayName = firebaseAuth?.currentUser?.displayName?.split(" ")[0];
+      const displayFirstName = firstName || authDisplayName || "";
+      const welcomeLine = displayFirstName ? `Welcome, ${displayFirstName}. ` : "";
+      addAssistantMessage(`${welcomeLine}You're about to build a Digital Worker — think of it like an AI app built on your expertise. Just like an app does one thing really well, your Digital Worker will know exactly what you know and be available to anyone, anytime, without you having to be in the room.\n\nHere's the process. First we'll build it together — you tell me what you know, I shape it into a worker. If you've already put something together in ChatGPT or another AI tool, you can use that as your starting point. Then we'll test it — you'll actually talk to your own worker and see it work. Once you're happy with it, we help you publish it and get it in front of the right people. After it's live you can keep adding to it, track who's using it, collect feedback, and get paid.\n\nYour pace, your timeline. Some people publish in an hour if they've been thinking about this for a while. Others build over a few months. Either way, we save everything — every conversation, every decision, every version of your worker. We never forget.\n\nMost people have had the experience of building something in another AI tool and coming back to find it has no idea what you're talking about. That's not how this works. Your worker lives in your Vault. It gets better over time, not worse.\n\nReady? Let's start.`);
       // Opening question after 1.5s delay
       setTimeout(() => {
         addAssistantMessage("What do you do that other people always ask you for help with?");
@@ -1355,9 +1371,17 @@ export default function DeveloperSandbox() {
         </div>
       )}
 
-      {/* Column 1: Creator Studio Nav (desktop) */}
+      {/* Column 1: Creator Studio Nav (desktop) + divider */}
       {!isMobile && (
-        <CreatorStudioNav flowStep={flowStep} workerCardData={workerCardData} worker={worker} isMobile={false} />
+        <>
+          <CreatorStudioNav flowStep={flowStep} workerCardData={workerCardData} worker={worker} isMobile={false} style={{ width: navWidthPx }} />
+          <div
+            style={{ ...S.divider, ...(isDragging === "nav" || dividerHover === "nav" ? S.dividerHover : {}) }}
+            onMouseDown={() => setIsDragging("nav")}
+            onMouseEnter={() => setDividerHover("nav")}
+            onMouseLeave={() => setDividerHover(false)}
+          />
+        </>
       )}
 
       {/* Mobile nav overlay */}
@@ -1375,10 +1399,8 @@ export default function DeveloperSandbox() {
         style={{
           ...S.chatPanel,
           ...(isMobile
-            ? { width: "100%", minWidth: 0, maxWidth: "none", borderRight: "none", flex: 1 }
-            : showRightPanel
-              ? { width: `${chatWidthPercent}%`, minWidth: 300 }
-              : { width: "100%", maxWidth: 720, margin: "0 auto", borderRight: "none" }
+            ? { width: "100%", minWidth: 0, maxWidth: "none", borderRight: "none", flex: 1, height: "100dvh" }
+            : { flex: `0 0 ${chatWidthPercent}%`, minWidth: 280 }
           ),
         }}
       >
@@ -1653,15 +1675,15 @@ export default function DeveloperSandbox() {
         </div>
       </div>
 
-      {/* Draggable divider (desktop only, steps 3+) */}
+      {/* Draggable divider between chat and right panel (desktop only) */}
       {!isMobile && showRightPanel && (
         <div
           style={{
             ...S.divider,
-            ...(isDragging || dividerHover ? S.dividerHover : {}),
+            ...(isDragging === "chat" || dividerHover === "chat" ? S.dividerHover : {}),
           }}
-          onMouseDown={() => setIsDragging(true)}
-          onMouseEnter={() => setDividerHover(true)}
+          onMouseDown={() => setIsDragging("chat")}
+          onMouseEnter={() => setDividerHover("chat")}
           onMouseLeave={() => setDividerHover(false)}
         />
       )}
@@ -1679,9 +1701,9 @@ export default function DeveloperSandbox() {
         <button
           onClick={() => setShowMobilePanel(true)}
           style={{
-            position: "fixed", bottom: 20, right: 16, zIndex: 100,
-            padding: "12px 20px", background: "#6B46C1", color: "white",
-            border: "none", borderRadius: 24, fontSize: 14, fontWeight: 600,
+            position: "fixed", bottom: "calc(80px + env(safe-area-inset-bottom, 0px))", right: 16, zIndex: 100,
+            padding: "10px 16px", background: "#6B46C1", color: "white",
+            border: "none", borderRadius: 20, fontSize: 13, fontWeight: 600,
             cursor: "pointer", boxShadow: "0 4px 16px rgba(107,70,193,0.3)",
             minHeight: 44, minWidth: 44,
           }}
