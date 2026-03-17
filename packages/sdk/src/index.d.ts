@@ -38,6 +38,8 @@ export interface Worker {
   capabilitySummary: string;
   temporalType: string;
   source: "platform" | "creator";
+  forkable?: boolean;
+  forkedFrom?: string;
 }
 
 export interface WorkerProfile extends Worker {
@@ -106,6 +108,23 @@ export interface CompareResult {
   comparisonFields: string[];
 }
 
+export interface ForkOptions {
+  name: string;
+  ownerId: string;
+  overrides?: {
+    rules?: Record<string, unknown>;
+    systemPrompt?: string;
+    jurisdiction?: string;
+    price?: 0 | 29 | 49 | 79;
+  };
+}
+
+export interface ForkResult {
+  ok: boolean;
+  worker: Worker;
+  forkedFrom: string;
+}
+
 export interface ChatResult {
   ok: boolean;
   response: string;
@@ -147,6 +166,7 @@ export declare class WorkersClient {
   get(slugOrId: string): Promise<WorkerProfileResult>;
   chat(workerId: string, message: string, options?: ChatOptions): Promise<ChatResult>;
   compare(workerIds: string[]): Promise<CompareResult>;
+  fork(workerId: string, options: ForkOptions): Promise<ForkResult>;
 }
 
 export declare class VaultClient {

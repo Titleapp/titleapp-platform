@@ -13171,6 +13171,100 @@ Analyze now:`;
       }
     }
 
+    // POST /v1/workers/:workerId/fork — Fork a worker to create a customized copy (Session 34.6)
+    if (route.match(/^\/workers\/[^/]+\/fork$/) && method === "POST") {
+      try {
+        const workerId = route.split("/")[2];
+        const body = typeof req.body === "string" ? JSON.parse(req.body) : (req.body || {});
+        const { name, ownerId, overrides } = body;
+
+        if (!name || !ownerId) {
+          return jsonError(res, 400, "name and ownerId are required");
+        }
+
+        const db = admin.firestore();
+
+        // Find source worker — check workers collection first, then raasCatalog
+        let sourceDoc = null;
+        let sourceData = null;
+        let sourceCollection = null;
+
+        // Try workers collection (creator workers) by ID or slug
+        const byId = await db.collection("workers").doc(workerId).get();
+        if (byId.exists) {
+          sourceDoc = byId;
+          sourceData = byId.data();
+          sourceCollection = "workers";
+        } else {
+          const bySlug = await db.collection("workers").where("slug", "==", workerId).limit(1).get();
+          if (!bySlug.empty) {
+            sourceDoc = bySlug.docs[0];
+            sourceData = bySlug.docs[0].data();
+            sourceCollection = "workers";
+          }
+        }
+
+        // Try raasCatalog if not found in workers
+        if (!sourceData) {
+          const catalogDoc = await db.collection("raasCatalog").doc(workerId).get();
+          if (catalogDoc.exists) {
+            sourceDoc = catalogDoc;
+            sourceData = catalogDoc.data();
+            sourceCollection = "raasCatalog";
+          }
+        }
+
+        if (!sourceData) {
+          return jsonError(res, 404, `Worker "${workerId}" not found`);
+        }
+
+        // Verify forkable
+        if (!sourceData.forkable) {
+          return jsonError(res, 403, "This worker does not allow forking");
+        }
+
+        // Build forked worker
+        const forkedId = `fork-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+        const now = admin.firestore.FieldValue.serverTimestamp();
+
+        const forkedWorker = {
+          name,
+          creatorId: ownerId,
+          status: "draft",
+          published: false,
+          forkedFrom: sourceDoc.id,
+          forkedFromCollection: sourceCollection,
+          // Inherit from source
+          vertical: sourceData.vertical || null,
+          suite: sourceData.suite || null,
+          type: sourceData.type || "standalone",
+          short_description: sourceData.short_description || sourceData.capabilitySummary || "",
+          long_description: sourceData.long_description || "",
+          tags: sourceData.tags || [],
+          credit_cost: sourceData.credit_cost || "standard",
+          // Apply overrides
+          ...(overrides && overrides.jurisdiction ? { jurisdiction: overrides.jurisdiction } : {}),
+          ...(overrides && overrides.systemPrompt ? { systemPrompt: overrides.systemPrompt } : {}),
+          ...(overrides && overrides.rules ? { customRules: overrides.rules } : {}),
+          ...(overrides && overrides.price !== undefined ? { price_tier: String(overrides.price) } : {}),
+          // Metadata
+          createdAt: now,
+          updatedAt: now,
+        };
+
+        await db.collection("workers").doc(forkedId).set(forkedWorker);
+
+        return res.status(201).json({
+          ok: true,
+          worker: { id: forkedId, ...forkedWorker, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+          forkedFrom: sourceDoc.id,
+        });
+      } catch (e) {
+        console.error("workers:fork failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
     // ═══════════════════════════════════════════════════════════════
     //  WORKER SHARE — AUTHENTICATED ROUTES (Session 30)
     // ═══════════════════════════════════════════════════════════════

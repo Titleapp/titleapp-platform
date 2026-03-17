@@ -220,6 +220,10 @@ const REGISTRY_FIELDS = {
   // Visibility — internal-only workers hidden from public marketplace
   internal_only:           { type: "boolean", required: false },
 
+  // Fork — whether this worker can be forked by other creators
+  forkable:                { type: "boolean", required: false },
+  forked_from:             { type: "string",  required: false },
+
   // HE Suite — subject domain, jurisdiction, deployment tier, disclaimers
   subject_domain:          { type: "string",  required: false },
   jurisdiction:            { type: "string",  required: false },

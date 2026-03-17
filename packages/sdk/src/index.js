@@ -288,6 +288,34 @@ class WorkersClient {
       workerIds: workerIds.slice(0, 4).join(","),
     });
   }
+
+  /**
+   * Fork an existing worker to create a customized copy.
+   *
+   * The source worker must have `forkable: true`. The forked worker is created
+   * as a draft owned by the authenticated user, inheriting the source worker's
+   * configuration with any supplied overrides applied on top.
+   *
+   * @param {string} workerId - The ID or slug of the source worker to fork
+   * @param {Object} options - Fork configuration
+   * @param {string} options.name - Display name for the forked worker
+   * @param {string} options.ownerId - User/tenant ID that will own the fork
+   * @param {Object} [options.overrides] - Optional field overrides
+   * @param {Object} [options.overrides.rules] - Custom RAAS rules object
+   * @param {string} [options.overrides.systemPrompt] - Custom system prompt
+   * @param {string} [options.overrides.jurisdiction] - Target jurisdiction
+   * @param {number} [options.overrides.price] - Price tier (0, 29, 49, or 79)
+   * @returns {Promise<{ok: boolean, worker: Object, forkedFrom: string}>}
+   */
+  async fork(workerId, options) {
+    if (!workerId) {
+      throw new TitleAppError("workerId is required", "MISSING_FIELDS");
+    }
+    if (!options || !options.name || !options.ownerId) {
+      throw new TitleAppError("name and ownerId are required", "MISSING_FIELDS");
+    }
+    return this._client._post(`/v1/workers/${encodeURIComponent(workerId)}/fork`, options);
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════
