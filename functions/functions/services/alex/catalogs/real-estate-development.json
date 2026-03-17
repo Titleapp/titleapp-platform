@@ -3,28 +3,96 @@
   "name": "Real Estate Development",
   "version": "1.0.0",
   "lifecycle": [
-    { "phase": 0, "name": "Site Selection & Market Research", "description": "Evaluate opportunity" },
-    { "phase": 1, "name": "Design & Entitlement", "description": "Plan the work" },
-    { "phase": 2, "name": "Permitting", "description": "Get permission" },
-    { "phase": 3, "name": "Financing & Capital Stack", "description": "Get the money" },
-    { "phase": 4, "name": "Construction", "description": "Do the work" },
-    { "phase": 5, "name": "Stabilization & Lease-Up", "description": "Reach steady state" },
-    { "phase": 6, "name": "Operations", "description": "Stay compliant and operate" },
-    { "phase": 7, "name": "Disposition", "description": "Wind down or sell" }
+    {
+      "phase": 0,
+      "name": "Site Selection & Market Research",
+      "description": "Evaluate opportunity"
+    },
+    {
+      "phase": 1,
+      "name": "Design & Entitlement",
+      "description": "Plan the work"
+    },
+    {
+      "phase": 2,
+      "name": "Permitting",
+      "description": "Get permission"
+    },
+    {
+      "phase": 3,
+      "name": "Financing & Capital Stack",
+      "description": "Get the money"
+    },
+    {
+      "phase": 4,
+      "name": "Construction",
+      "description": "Do the work"
+    },
+    {
+      "phase": 5,
+      "name": "Stabilization & Lease-Up",
+      "description": "Reach steady state"
+    },
+    {
+      "phase": 6,
+      "name": "Operations",
+      "description": "Stay compliant and operate"
+    },
+    {
+      "phase": 7,
+      "name": "Disposition",
+      "description": "Wind down or sell"
+    }
   ],
   "suites": [
-    { "id": "investment", "name": "Investment" },
-    { "id": "entitlement", "name": "Entitlement" },
-    { "id": "design", "name": "Design" },
-    { "id": "permitting", "name": "Permitting" },
-    { "id": "finance", "name": "Finance" },
-    { "id": "construction", "name": "Construction" },
-    { "id": "property-management", "name": "Property Management" },
-    { "id": "operations", "name": "Operations" },
-    { "id": "legal", "name": "Legal" },
-    { "id": "compliance", "name": "Compliance" },
-    { "id": "insurance", "name": "Insurance" },
-    { "id": "platform", "name": "Platform" }
+    {
+      "id": "investment",
+      "name": "Investment"
+    },
+    {
+      "id": "entitlement",
+      "name": "Entitlement"
+    },
+    {
+      "id": "design",
+      "name": "Design"
+    },
+    {
+      "id": "permitting",
+      "name": "Permitting"
+    },
+    {
+      "id": "finance",
+      "name": "Finance"
+    },
+    {
+      "id": "construction",
+      "name": "Construction"
+    },
+    {
+      "id": "property-management",
+      "name": "Property Management"
+    },
+    {
+      "id": "operations",
+      "name": "Operations"
+    },
+    {
+      "id": "legal",
+      "name": "Legal"
+    },
+    {
+      "id": "compliance",
+      "name": "Compliance"
+    },
+    {
+      "id": "insurance",
+      "name": "Insurance"
+    },
+    {
+      "id": "platform",
+      "name": "Platform"
+    }
   ],
   "workers": [
     {
@@ -34,19 +102,35 @@
       "suite": "Investment",
       "phase": 0,
       "type": "standalone",
-      "pricing": { "monthly": 79 },
+      "pricing": {
+        "monthly": 79
+      },
       "status": "waitlist",
       "capabilitySummary": "Market scorecard, demographic trends, supply/demand pipeline, rent/vacancy comps",
       "temporalType": "phase_bound",
       "mandatoryWhen": [],
-      "tier1Compliance": ["Fair Housing (no protected class scoring)", "public data sourcing only"],
+      "tier1Compliance": [
+        "Fair Housing (no protected class scoring)",
+        "public data sourcing only"
+      ],
       "vault": {
         "reads": [],
-        "writes": ["market_scorecard", "demographic_profile", "supply_pipeline_data", "rent_comp_data"]
+        "writes": [
+          "market_scorecard",
+          "demographic_profile",
+          "supply_pipeline_data",
+          "rent_comp_data"
+        ]
       },
       "referrals": [
-        { "event": "Market scores above threshold", "routesTo": "W-002" },
-        { "event": "Environmental risk flags identified", "routesTo": "W-007" }
+        {
+          "event": "Market scores above threshold",
+          "routesTo": "W-002"
+        },
+        {
+          "event": "Environmental risk flags identified",
+          "routesTo": "W-007"
+        }
       ],
       "alexRegistration": {
         "priority": "normal",
@@ -61,20 +145,41 @@
       "suite": "Investment",
       "phase": 0,
       "type": "standalone",
-      "pricing": { "monthly": 79 },
+      "pricing": {
+        "monthly": 79
+      },
       "status": "live",
       "capabilitySummary": "Deal score (0-100) BUY/HOLD/PASS, strengths/risks, side-by-side comparison, key metrics",
       "temporalType": "always_on",
       "mandatoryWhen": [],
       "vault": {
-        "reads": ["market_scorecard", "investment_thesis"],
-        "writes": ["deal_analysis", "deal_score", "deal_comparison_matrix"]
+        "reads": [
+          "market_scorecard",
+          "investment_thesis"
+        ],
+        "writes": [
+          "deal_analysis",
+          "deal_score",
+          "deal_comparison_matrix"
+        ]
       },
       "referrals": [
-        { "event": "BUY or STRONG BUY score triggers due diligence", "routesTo": "W-003" },
-        { "event": "Deal accepted triggers title search", "routesTo": "W-044" },
-        { "event": "Deal accepted triggers capital stack analysis", "routesTo": "W-016" },
-        { "event": "Deal accepted triggers contract review", "routesTo": "W-045" }
+        {
+          "event": "BUY or STRONG BUY score triggers due diligence",
+          "routesTo": "W-003"
+        },
+        {
+          "event": "Deal accepted triggers title search",
+          "routesTo": "W-044"
+        },
+        {
+          "event": "Deal accepted triggers capital stack analysis",
+          "routesTo": "W-016"
+        },
+        {
+          "event": "Deal accepted triggers contract review",
+          "routesTo": "W-045"
+        }
       ],
       "alexRegistration": {
         "priority": "high",
@@ -89,20 +194,40 @@
       "suite": "Investment",
       "phase": 0,
       "type": "standalone",
-      "pricing": { "monthly": 59 },
+      "pricing": {
+        "monthly": 49
+      },
       "status": "waitlist",
       "capabilitySummary": "DD checklist with status, risk flags (red/yellow/green), zoning conformance, timeline/cost estimates",
       "temporalType": "phase_bound",
       "mandatoryWhen": [],
       "vault": {
-        "reads": ["deal_analysis"],
-        "writes": ["dd_checklist", "site_risk_profile", "zoning_analysis"]
+        "reads": [
+          "deal_analysis"
+        ],
+        "writes": [
+          "dd_checklist",
+          "site_risk_profile",
+          "zoning_analysis"
+        ]
       },
       "referrals": [
-        { "event": "Environmental flags identified", "routesTo": "W-007" },
-        { "event": "Zoning non-conformance found", "routesTo": "W-004" },
-        { "event": "Title issues discovered", "routesTo": "W-044" },
-        { "event": "DD complete triggers appraisal", "routesTo": "W-030" }
+        {
+          "event": "Environmental flags identified",
+          "routesTo": "W-007"
+        },
+        {
+          "event": "Zoning non-conformance found",
+          "routesTo": "W-004"
+        },
+        {
+          "event": "Title issues discovered",
+          "routesTo": "W-044"
+        },
+        {
+          "event": "DD complete triggers appraisal",
+          "routesTo": "W-030"
+        }
       ],
       "alexRegistration": {
         "priority": "high",
@@ -117,18 +242,32 @@
       "suite": "Investment",
       "phase": 0,
       "type": "standalone",
-      "pricing": { "monthly": 59 },
+      "pricing": {
+        "monthly": 49
+      },
       "status": "waitlist",
       "capabilitySummary": "Appraisal gap analysis, comp adjustment review, valuation range, lender risk flag",
       "temporalType": "event_driven",
       "mandatoryWhen": [],
       "vault": {
-        "reads": ["deal_analysis", "market_scorecard"],
-        "writes": ["appraisal_review", "valuation_estimate"]
+        "reads": [
+          "deal_analysis",
+          "market_scorecard"
+        ],
+        "writes": [
+          "appraisal_review",
+          "valuation_estimate"
+        ]
       },
       "referrals": [
-        { "event": "Appraisal gap triggers alert to senior debt", "routesTo": "W-013" },
-        { "event": "Valuation confirmed triggers capital stack update", "routesTo": "W-016" }
+        {
+          "event": "Appraisal gap triggers alert to senior debt",
+          "routesTo": "W-013"
+        },
+        {
+          "event": "Valuation confirmed triggers capital stack update",
+          "routesTo": "W-016"
+        }
       ],
       "alexRegistration": {
         "priority": "high",
@@ -143,20 +282,41 @@
       "suite": "Entitlement",
       "phase": 1,
       "type": "standalone",
-      "pricing": { "monthly": 99 },
+      "pricing": {
+        "monthly": 79
+      },
       "status": "waitlist",
       "capabilitySummary": "Entitlement pathway (by-right vs discretionary), approval checklist/timeline, zoning gap analysis, risk assessment",
       "temporalType": "phase_bound",
       "mandatoryWhen": [],
       "vault": {
-        "reads": ["site_risk_profile", "zoning_analysis"],
-        "writes": ["entitlement_strategy", "approval_requirements", "entitlement_timeline"]
+        "reads": [
+          "site_risk_profile",
+          "zoning_analysis"
+        ],
+        "writes": [
+          "entitlement_strategy",
+          "approval_requirements",
+          "entitlement_timeline"
+        ]
       },
       "referrals": [
-        { "event": "Design requirements established", "routesTo": "W-005" },
-        { "event": "CEQA/NEPA review required", "routesTo": "W-007" },
-        { "event": "Public hearing scheduled", "routesTo": "W-010" },
-        { "event": "Entitlements approved triggers permit submission", "routesTo": "W-012" }
+        {
+          "event": "Design requirements established",
+          "routesTo": "W-005"
+        },
+        {
+          "event": "CEQA/NEPA review required",
+          "routesTo": "W-007"
+        },
+        {
+          "event": "Public hearing scheduled",
+          "routesTo": "W-010"
+        },
+        {
+          "event": "Entitlements approved triggers permit submission",
+          "routesTo": "W-012"
+        }
       ],
       "alexRegistration": {
         "priority": "high",
@@ -171,20 +331,40 @@
       "suite": "Design",
       "phase": 1,
       "type": "copilot",
-      "pricing": { "monthly": 79 },
+      "pricing": {
+        "monthly": 79
+      },
       "status": "waitlist",
       "capabilitySummary": "Design compliance checklist, code conformance review, unit mix optimization, cost impact flags",
       "temporalType": "phase_bound",
       "mandatoryWhen": [],
       "vault": {
-        "reads": ["entitlement_strategy", "approval_requirements"],
-        "writes": ["design_review", "program_summary"]
+        "reads": [
+          "entitlement_strategy",
+          "approval_requirements"
+        ],
+        "writes": [
+          "design_review",
+          "program_summary"
+        ]
       },
       "referrals": [
-        { "event": "Structural/MEP review needed", "routesTo": "W-006" },
-        { "event": "Accessibility review needed", "routesTo": "W-009" },
-        { "event": "Fire and life safety review needed", "routesTo": "W-011" },
-        { "event": "Energy compliance review needed", "routesTo": "W-008" }
+        {
+          "event": "Structural/MEP review needed",
+          "routesTo": "W-006"
+        },
+        {
+          "event": "Accessibility review needed",
+          "routesTo": "W-009"
+        },
+        {
+          "event": "Fire and life safety review needed",
+          "routesTo": "W-011"
+        },
+        {
+          "event": "Energy compliance review needed",
+          "routesTo": "W-008"
+        }
       ],
       "alexRegistration": {
         "priority": "normal",
@@ -199,18 +379,31 @@
       "suite": "Design",
       "phase": 1,
       "type": "copilot",
-      "pricing": { "monthly": 79 },
+      "pricing": {
+        "monthly": 79
+      },
       "status": "waitlist",
       "capabilitySummary": "Engineering review checklist, structural assessment, civil/grading review, utility capacity",
       "temporalType": "phase_bound",
       "mandatoryWhen": [],
       "vault": {
-        "reads": ["design_review"],
-        "writes": ["engineering_review", "structural_assessment"]
+        "reads": [
+          "design_review"
+        ],
+        "writes": [
+          "engineering_review",
+          "structural_assessment"
+        ]
       },
       "referrals": [
-        { "event": "MEP coordination needed", "routesTo": "W-029" },
-        { "event": "Engineering complete triggers permit submission", "routesTo": "W-012" }
+        {
+          "event": "MEP coordination needed",
+          "routesTo": "W-029"
+        },
+        {
+          "event": "Engineering complete triggers permit submission",
+          "routesTo": "W-012"
+        }
       ],
       "alexRegistration": {
         "priority": "normal",
@@ -225,19 +418,36 @@
       "suite": "Compliance",
       "phase": 1,
       "type": "standalone",
-      "pricing": { "monthly": 79 },
+      "pricing": {
+        "monthly": 79
+      },
       "status": "waitlist",
       "capabilitySummary": "Environmental screening, required reviews/timeline, cultural resource assessment, mitigation recommendations",
       "temporalType": "phase_bound",
       "mandatoryWhen": [],
       "vault": {
-        "reads": ["site_risk_profile"],
-        "writes": ["environmental_screening", "cultural_assessment", "mitigation_plan"]
+        "reads": [
+          "site_risk_profile"
+        ],
+        "writes": [
+          "environmental_screening",
+          "cultural_assessment",
+          "mitigation_plan"
+        ]
       },
       "referrals": [
-        { "event": "Sustainability review needed", "routesTo": "W-008" },
-        { "event": "Environmental clearance granted", "routesTo": "W-004" },
-        { "event": "Environmental clearance triggers permit submission", "routesTo": "W-012" }
+        {
+          "event": "Sustainability review needed",
+          "routesTo": "W-008"
+        },
+        {
+          "event": "Environmental clearance granted",
+          "routesTo": "W-004"
+        },
+        {
+          "event": "Environmental clearance triggers permit submission",
+          "routesTo": "W-012"
+        }
       ],
       "alexRegistration": {
         "priority": "high",
@@ -252,18 +462,32 @@
       "suite": "Design",
       "phase": 1,
       "type": "standalone",
-      "pricing": { "monthly": 79 },
+      "pricing": {
+        "monthly": 79
+      },
       "status": "waitlist",
       "capabilitySummary": "Energy code compliance, green cert pathway, renewable/efficiency ROI, incentive inventory",
       "temporalType": "phase_bound",
       "mandatoryWhen": [],
       "vault": {
-        "reads": ["design_review"],
-        "writes": ["energy_compliance", "sustainability_strategy", "incentive_inventory"]
+        "reads": [
+          "design_review"
+        ],
+        "writes": [
+          "energy_compliance",
+          "sustainability_strategy",
+          "incentive_inventory"
+        ]
       },
       "referrals": [
-        { "event": "Tax credits identified", "routesTo": "W-017" },
-        { "event": "Energy compliance confirmed triggers permit submission", "routesTo": "W-012" }
+        {
+          "event": "Tax credits identified",
+          "routesTo": "W-017"
+        },
+        {
+          "event": "Energy compliance confirmed triggers permit submission",
+          "routesTo": "W-012"
+        }
       ],
       "alexRegistration": {
         "priority": "normal",
@@ -278,17 +502,27 @@
       "suite": "Compliance",
       "phase": 1,
       "type": "copilot",
-      "pricing": { "monthly": 49 },
+      "pricing": {
+        "monthly": 49
+      },
       "status": "waitlist",
       "capabilitySummary": "Accessibility compliance checklist, FHA analysis, required accessible unit count, common area review",
       "temporalType": "phase_bound",
       "mandatoryWhen": [],
       "vault": {
-        "reads": ["design_review"],
-        "writes": ["accessibility_review", "fha_compliance"]
+        "reads": [
+          "design_review"
+        ],
+        "writes": [
+          "accessibility_review",
+          "fha_compliance"
+        ]
       },
       "referrals": [
-        { "event": "Compliance confirmed triggers permit submission", "routesTo": "W-012" }
+        {
+          "event": "Compliance confirmed triggers permit submission",
+          "routesTo": "W-012"
+        }
       ],
       "alexRegistration": {
         "priority": "normal",
@@ -303,14 +537,21 @@
       "suite": "Entitlement",
       "phase": 1,
       "type": "copilot",
-      "pricing": { "monthly": 79 },
+      "pricing": {
+        "monthly": 79
+      },
       "status": "waitlist",
       "capabilitySummary": "Hearing prep package, community engagement strategy, talking points, notice compliance",
       "temporalType": "event_driven",
       "mandatoryWhen": [],
       "vault": {
-        "reads": ["entitlement_strategy"],
-        "writes": ["hearing_prep", "community_outreach_plan"]
+        "reads": [
+          "entitlement_strategy"
+        ],
+        "writes": [
+          "hearing_prep",
+          "community_outreach_plan"
+        ]
       },
       "referrals": [],
       "alexRegistration": {
@@ -326,18 +567,31 @@
       "suite": "Design",
       "phase": 1,
       "type": "copilot",
-      "pricing": { "monthly": 49 },
+      "pricing": {
+        "monthly": 49
+      },
       "status": "waitlist",
       "capabilitySummary": "Fire protection requirements, egress analysis, alarm/detection requirements, fire marshal notes",
       "temporalType": "phase_bound",
       "mandatoryWhen": [],
       "vault": {
-        "reads": ["design_review"],
-        "writes": ["fire_safety_review", "egress_analysis"]
+        "reads": [
+          "design_review"
+        ],
+        "writes": [
+          "fire_safety_review",
+          "egress_analysis"
+        ]
       },
       "referrals": [
-        { "event": "Fire review complete triggers permit submission", "routesTo": "W-012" },
-        { "event": "Fire protection requirements sent to MEP", "routesTo": "W-029" }
+        {
+          "event": "Fire review complete triggers permit submission",
+          "routesTo": "W-012"
+        },
+        {
+          "event": "Fire protection requirements sent to MEP",
+          "routesTo": "W-029"
+        }
       ],
       "alexRegistration": {
         "priority": "normal",
@@ -352,18 +606,47 @@
       "suite": "Permitting",
       "phase": 2,
       "type": "pipeline",
-      "pricing": { "monthly": 59 },
+      "pricing": {
+        "monthly": 49
+      },
       "status": "waitlist",
       "capabilitySummary": "Submission checklist, permit status tracker, correction tracking, timeline forecast",
       "temporalType": "phase_bound",
       "mandatoryWhen": [],
       "vault": {
-        "reads": ["entitlement_strategy", "approval_requirements", "entitlement_timeline", "design_review", "program_summary", "engineering_review", "structural_assessment", "environmental_screening", "cultural_assessment", "mitigation_plan", "energy_compliance", "sustainability_strategy", "accessibility_review", "fha_compliance", "fire_safety_review", "egress_analysis"],
-        "writes": ["permit_status", "permit_timeline", "correction_log"]
+        "reads": [
+          "entitlement_strategy",
+          "approval_requirements",
+          "entitlement_timeline",
+          "design_review",
+          "program_summary",
+          "engineering_review",
+          "structural_assessment",
+          "environmental_screening",
+          "cultural_assessment",
+          "mitigation_plan",
+          "energy_compliance",
+          "sustainability_strategy",
+          "accessibility_review",
+          "fha_compliance",
+          "fire_safety_review",
+          "egress_analysis"
+        ],
+        "writes": [
+          "permit_status",
+          "permit_timeline",
+          "correction_log"
+        ]
       },
       "referrals": [
-        { "event": "Permit approved triggers construction lending", "routesTo": "W-015" },
-        { "event": "Permit approved triggers construction start", "routesTo": "W-021" }
+        {
+          "event": "Permit approved triggers construction lending",
+          "routesTo": "W-015"
+        },
+        {
+          "event": "Permit approved triggers construction start",
+          "routesTo": "W-021"
+        }
       ],
       "alexRegistration": {
         "priority": "high",
@@ -378,19 +661,38 @@
       "suite": "Finance",
       "phase": 3,
       "type": "standalone",
-      "pricing": { "monthly": 79 },
+      "pricing": {
+        "monthly": 79
+      },
       "status": "waitlist",
       "capabilitySummary": "Loan comparison matrix, DSCR/LTV analysis, rate sensitivity scenarios, term sheet comparison",
       "temporalType": "phase_bound",
       "mandatoryWhen": [],
       "vault": {
-        "reads": ["deal_analysis", "appraisal_review", "capital_stack"],
-        "writes": ["senior_debt_analysis", "loan_comparison", "debt_service_projection"]
+        "reads": [
+          "deal_analysis",
+          "appraisal_review",
+          "capital_stack"
+        ],
+        "writes": [
+          "senior_debt_analysis",
+          "loan_comparison",
+          "debt_service_projection"
+        ]
       },
       "referrals": [
-        { "event": "Appraisal needed for underwriting", "routesTo": "W-030" },
-        { "event": "Debt terms update capital stack", "routesTo": "W-016" },
-        { "event": "Loan closing triggers title work", "routesTo": "W-044" }
+        {
+          "event": "Appraisal needed for underwriting",
+          "routesTo": "W-030"
+        },
+        {
+          "event": "Debt terms update capital stack",
+          "routesTo": "W-016"
+        },
+        {
+          "event": "Loan closing triggers title work",
+          "routesTo": "W-044"
+        }
       ],
       "alexRegistration": {
         "priority": "high",
@@ -405,18 +707,32 @@
       "suite": "Finance",
       "phase": 3,
       "type": "standalone",
-      "pricing": { "monthly": 79 },
+      "pricing": {
+        "monthly": 79
+      },
       "status": "waitlist",
       "capabilitySummary": "Comparison matrix, blended cost of capital, waterfall/priority analysis, intercreditor checklist",
       "temporalType": "phase_bound",
       "mandatoryWhen": [],
       "vault": {
-        "reads": ["capital_stack", "senior_debt_analysis"],
-        "writes": ["mezz_pref_analysis", "blended_cost"]
+        "reads": [
+          "capital_stack",
+          "senior_debt_analysis"
+        ],
+        "writes": [
+          "mezz_pref_analysis",
+          "blended_cost"
+        ]
       },
       "referrals": [
-        { "event": "Mezz/pref terms update capital stack", "routesTo": "W-016" },
-        { "event": "Intercreditor agreement needs legal review", "routesTo": "W-045" }
+        {
+          "event": "Mezz/pref terms update capital stack",
+          "routesTo": "W-016"
+        },
+        {
+          "event": "Intercreditor agreement needs legal review",
+          "routesTo": "W-045"
+        }
       ],
       "alexRegistration": {
         "priority": "normal",
@@ -431,19 +747,38 @@
       "suite": "Finance",
       "phase": 3,
       "type": "standalone",
-      "pricing": { "monthly": 79 },
+      "pricing": {
+        "monthly": 79
+      },
       "status": "waitlist",
       "capabilitySummary": "Construction loan comparison, draw schedule template, interest reserve, C2P conversion analysis",
       "temporalType": "phase_bound",
       "mandatoryWhen": [],
       "vault": {
-        "reads": ["construction_budget", "permit_status", "capital_stack"],
-        "writes": ["construction_loan_analysis", "draw_schedule", "interest_reserve"]
+        "reads": [
+          "construction_budget",
+          "permit_status",
+          "capital_stack"
+        ],
+        "writes": [
+          "construction_loan_analysis",
+          "draw_schedule",
+          "interest_reserve"
+        ]
       },
       "referrals": [
-        { "event": "Loan closed triggers draw management", "routesTo": "W-023" },
-        { "event": "Closing triggers title work", "routesTo": "W-044" },
-        { "event": "Construction loan terms update capital stack", "routesTo": "W-016" }
+        {
+          "event": "Loan closed triggers draw management",
+          "routesTo": "W-023"
+        },
+        {
+          "event": "Closing triggers title work",
+          "routesTo": "W-044"
+        },
+        {
+          "event": "Construction loan terms update capital stack",
+          "routesTo": "W-016"
+        }
       ],
       "alexRegistration": {
         "priority": "high",
@@ -458,22 +793,55 @@
       "suite": "Finance",
       "phase": 3,
       "type": "composite",
-      "pricing": { "monthly": 99 },
+      "pricing": {
+        "monthly": 79
+      },
       "status": "waitlist",
       "capabilitySummary": "Optimized capital stack, blended cost, IRR/equity projections, waterfall, sensitivity analysis",
       "temporalType": "always_on",
       "mandatoryWhen": [],
       "vault": {
-        "reads": ["deal_analysis", "senior_debt_analysis", "mezz_pref_analysis", "construction_loan_analysis", "tax_credit_eligibility", "oz_model", "appraisal_review"],
-        "writes": ["capital_stack", "waterfall_model", "irr_projections", "sensitivity_analysis"]
+        "reads": [
+          "deal_analysis",
+          "senior_debt_analysis",
+          "mezz_pref_analysis",
+          "construction_loan_analysis",
+          "tax_credit_eligibility",
+          "oz_model",
+          "appraisal_review"
+        ],
+        "writes": [
+          "capital_stack",
+          "waterfall_model",
+          "irr_projections",
+          "sensitivity_analysis"
+        ]
       },
       "referrals": [
-        { "event": "Senior debt layer needs optimization", "routesTo": "W-013" },
-        { "event": "Mezz/pref layer needs optimization", "routesTo": "W-014" },
-        { "event": "Construction loan layer needs optimization", "routesTo": "W-015" },
-        { "event": "Tax credit opportunities identified", "routesTo": "W-017" },
-        { "event": "Investor communications needed", "routesTo": "W-019" },
-        { "event": "Securities exemption analysis needed", "routesTo": "W-018" }
+        {
+          "event": "Senior debt layer needs optimization",
+          "routesTo": "W-013"
+        },
+        {
+          "event": "Mezz/pref layer needs optimization",
+          "routesTo": "W-014"
+        },
+        {
+          "event": "Construction loan layer needs optimization",
+          "routesTo": "W-015"
+        },
+        {
+          "event": "Tax credit opportunities identified",
+          "routesTo": "W-017"
+        },
+        {
+          "event": "Investor communications needed",
+          "routesTo": "W-019"
+        },
+        {
+          "event": "Securities exemption analysis needed",
+          "routesTo": "W-018"
+        }
       ],
       "alexRegistration": {
         "priority": "critical",
@@ -488,19 +856,38 @@
       "suite": "Finance",
       "phase": 3,
       "type": "standalone",
-      "pricing": { "monthly": 99 },
+      "pricing": {
+        "monthly": 79
+      },
       "status": "waitlist",
       "capabilitySummary": "Eligibility matrix (all programs), economic impact model, application timeline, compliance requirements",
       "temporalType": "phase_bound",
       "mandatoryWhen": [],
       "vault": {
-        "reads": ["capital_stack", "energy_compliance", "deal_analysis"],
-        "writes": ["tax_credit_eligibility", "credit_model", "compliance_calendar"]
+        "reads": [
+          "capital_stack",
+          "energy_compliance",
+          "deal_analysis"
+        ],
+        "writes": [
+          "tax_credit_eligibility",
+          "credit_model",
+          "compliance_calendar"
+        ]
       },
       "referrals": [
-        { "event": "Tax credits update capital stack", "routesTo": "W-016" },
-        { "event": "Compliance deadlines to tracker", "routesTo": "W-047" },
-        { "event": "Partnership structure needs legal review", "routesTo": "W-045" }
+        {
+          "event": "Tax credits update capital stack",
+          "routesTo": "W-016"
+        },
+        {
+          "event": "Compliance deadlines to tracker",
+          "routesTo": "W-047"
+        },
+        {
+          "event": "Partnership structure needs legal review",
+          "routesTo": "W-045"
+        }
       ],
       "alexRegistration": {
         "priority": "high",
@@ -515,19 +902,36 @@
       "suite": "Finance",
       "phase": 3,
       "type": "standalone",
-      "pricing": { "monthly": 79 },
+      "pricing": {
+        "monthly": 79
+      },
       "status": "waitlist",
       "capabilitySummary": "Exemption pathway analysis, filing requirements/timeline, investor eligibility, offering structure comparison",
       "temporalType": "event_driven",
       "mandatoryWhen": [],
       "vault": {
-        "reads": ["capital_stack", "deal_analysis"],
-        "writes": ["exemption_analysis", "filing_requirements"]
+        "reads": [
+          "capital_stack",
+          "deal_analysis"
+        ],
+        "writes": [
+          "exemption_analysis",
+          "filing_requirements"
+        ]
       },
       "referrals": [
-        { "event": "PPM needs legal review", "routesTo": "W-045" },
-        { "event": "Offering materials needed for investors", "routesTo": "W-019" },
-        { "event": "Offering entity formation needed", "routesTo": "W-046" }
+        {
+          "event": "PPM needs legal review",
+          "routesTo": "W-045"
+        },
+        {
+          "event": "Offering materials needed for investors",
+          "routesTo": "W-019"
+        },
+        {
+          "event": "Offering entity formation needed",
+          "routesTo": "W-046"
+        }
       ],
       "alexRegistration": {
         "priority": "normal",
@@ -542,17 +946,29 @@
       "suite": "Finance",
       "phase": 3,
       "type": "standalone",
-      "pricing": { "monthly": 79 },
+      "pricing": {
+        "monthly": 79
+      },
       "status": "development",
       "capabilitySummary": "Investor update letters, deal summary packages, LP portal content, distribution notices",
       "temporalType": "always_on",
       "mandatoryWhen": [],
       "vault": {
-        "reads": ["capital_stack", "deal_analysis", "financial_performance"],
-        "writes": ["investor_communications", "investor_pipeline"]
+        "reads": [
+          "capital_stack",
+          "deal_analysis",
+          "financial_performance"
+        ],
+        "writes": [
+          "investor_communications",
+          "investor_pipeline"
+        ]
       },
       "referrals": [
-        { "event": "Ongoing reporting needed", "routesTo": "W-051" }
+        {
+          "event": "Ongoing reporting needed",
+          "routesTo": "W-051"
+        }
       ],
       "alexRegistration": {
         "priority": "high",
@@ -567,19 +983,37 @@
       "suite": "Finance",
       "phase": 3,
       "type": "standalone",
-      "pricing": { "monthly": 79 },
+      "pricing": {
+        "monthly": 79
+      },
       "status": "waitlist",
       "capabilitySummary": "OZ eligibility, substantial improvement test, economic model, compliance timeline",
       "temporalType": "event_driven",
       "mandatoryWhen": [],
       "vault": {
-        "reads": ["capital_stack", "deal_analysis"],
-        "writes": ["oz_eligibility", "oz_model", "oz_compliance"]
+        "reads": [
+          "capital_stack",
+          "deal_analysis"
+        ],
+        "writes": [
+          "oz_eligibility",
+          "oz_model",
+          "oz_compliance"
+        ]
       },
       "referrals": [
-        { "event": "OZ model updates capital stack", "routesTo": "W-016" },
-        { "event": "QOF entity formation needed", "routesTo": "W-046" },
-        { "event": "OZ compliance milestones to tracker", "routesTo": "W-047" }
+        {
+          "event": "OZ model updates capital stack",
+          "routesTo": "W-016"
+        },
+        {
+          "event": "QOF entity formation needed",
+          "routesTo": "W-046"
+        },
+        {
+          "event": "OZ compliance milestones to tracker",
+          "routesTo": "W-047"
+        }
       ],
       "alexRegistration": {
         "priority": "normal",
@@ -594,24 +1028,60 @@
       "suite": "Construction",
       "phase": 4,
       "type": "composite",
-      "pricing": { "monthly": 79 },
+      "pricing": {
+        "monthly": 79
+      },
       "status": "waitlist",
       "capabilitySummary": "Project dashboard, RFI log, change order log, progress reports, punchlist",
       "temporalType": "phase_bound",
       "mandatoryWhen": [],
       "vault": {
-        "reads": ["permit_status", "construction_loan_analysis", "capital_stack"],
-        "writes": ["construction_budget", "construction_schedule", "rfi_log", "change_order_log", "progress_reports"]
+        "reads": [
+          "permit_status",
+          "construction_loan_analysis",
+          "capital_stack"
+        ],
+        "writes": [
+          "construction_budget",
+          "construction_schedule",
+          "rfi_log",
+          "change_order_log",
+          "progress_reports"
+        ]
       },
       "referrals": [
-        { "event": "Bid packages ready for procurement", "routesTo": "W-022" },
-        { "event": "Draw request needed", "routesTo": "W-023" },
-        { "event": "Labor forecast needed", "routesTo": "W-024" },
-        { "event": "Insurance verification needed", "routesTo": "W-025" },
-        { "event": "Material procurement needed", "routesTo": "W-026" },
-        { "event": "Inspection scheduling needed", "routesTo": "W-027" },
-        { "event": "Safety plan update needed", "routesTo": "W-028" },
-        { "event": "MEP coordination needed", "routesTo": "W-029" }
+        {
+          "event": "Bid packages ready for procurement",
+          "routesTo": "W-022"
+        },
+        {
+          "event": "Draw request needed",
+          "routesTo": "W-023"
+        },
+        {
+          "event": "Labor forecast needed",
+          "routesTo": "W-024"
+        },
+        {
+          "event": "Insurance verification needed",
+          "routesTo": "W-025"
+        },
+        {
+          "event": "Material procurement needed",
+          "routesTo": "W-026"
+        },
+        {
+          "event": "Inspection scheduling needed",
+          "routesTo": "W-027"
+        },
+        {
+          "event": "Safety plan update needed",
+          "routesTo": "W-028"
+        },
+        {
+          "event": "MEP coordination needed",
+          "routesTo": "W-029"
+        }
       ],
       "alexRegistration": {
         "priority": "critical",
@@ -626,14 +1096,21 @@
       "suite": "Construction",
       "phase": 4,
       "type": "standalone",
-      "pricing": { "monthly": 59 },
+      "pricing": {
+        "monthly": 49
+      },
       "status": "waitlist",
       "capabilitySummary": "Bid comparison matrix, bid leveling, scope gap identification, award recommendation",
       "temporalType": "phase_bound",
       "mandatoryWhen": [],
       "vault": {
-        "reads": ["construction_budget"],
-        "writes": ["bid_comparison", "award_recommendations"]
+        "reads": [
+          "construction_budget"
+        ],
+        "writes": [
+          "bid_comparison",
+          "award_recommendations"
+        ]
       },
       "referrals": [],
       "alexRegistration": {
@@ -649,17 +1126,29 @@
       "suite": "Construction",
       "phase": 4,
       "type": "pipeline",
-      "pricing": { "monthly": 59 },
+      "pricing": {
+        "monthly": 49
+      },
       "status": "waitlist",
       "capabilitySummary": "Draw request package (G702/G703), lien waiver matrix, retainage tracking, draw vs budget reconciliation",
       "temporalType": "phase_bound",
       "mandatoryWhen": [],
       "vault": {
-        "reads": ["construction_budget", "draw_schedule"],
-        "writes": ["draw_requests", "lien_waiver_status", "retainage_tracking"]
+        "reads": [
+          "construction_budget",
+          "draw_schedule"
+        ],
+        "writes": [
+          "draw_requests",
+          "lien_waiver_status",
+          "retainage_tracking"
+        ]
       },
       "referrals": [
-        { "event": "Insurance verification needed before draw release", "routesTo": "W-025" }
+        {
+          "event": "Insurance verification needed before draw release",
+          "routesTo": "W-025"
+        }
       ],
       "alexRegistration": {
         "priority": "high",
@@ -674,14 +1163,25 @@
       "suite": "Construction",
       "phase": 4,
       "type": "standalone",
-      "pricing": { "monthly": 49 },
+      "pricing": {
+        "monthly": 49
+      },
       "status": "waitlist",
       "capabilitySummary": "Labor forecast by trade/week, certified payroll, labor cost tracking, prevailing wage compliance",
       "temporalType": "phase_bound",
-      "mandatoryWhen": ["federal_funding", "prevailing_wage_project"],
+      "mandatoryWhen": [
+        "federal_funding",
+        "prevailing_wage_project"
+      ],
       "vault": {
-        "reads": ["construction_schedule"],
-        "writes": ["labor_forecast", "certified_payroll", "labor_costs"]
+        "reads": [
+          "construction_schedule"
+        ],
+        "writes": [
+          "labor_forecast",
+          "certified_payroll",
+          "labor_costs"
+        ]
       },
       "referrals": [],
       "alexRegistration": {
@@ -697,17 +1197,28 @@
       "suite": "Construction",
       "phase": 4,
       "type": "standalone",
-      "pricing": { "monthly": 59 },
+      "pricing": {
+        "monthly": 49
+      },
       "status": "waitlist",
       "capabilitySummary": "Insurance requirements matrix, certificate compliance tracker, coverage gap analysis, claims log",
       "temporalType": "phase_bound",
       "mandatoryWhen": [],
       "vault": {
-        "reads": ["construction_contracts"],
-        "writes": ["insurance_compliance", "coverage_gaps", "claims_log"]
+        "reads": [
+          "construction_contracts"
+        ],
+        "writes": [
+          "insurance_compliance",
+          "coverage_gaps",
+          "claims_log"
+        ]
       },
       "referrals": [
-        { "event": "Construction complete triggers property insurance transition", "routesTo": "W-049" }
+        {
+          "event": "Construction complete triggers property insurance transition",
+          "routesTo": "W-049"
+        }
       ],
       "alexRegistration": {
         "priority": "high",
@@ -722,14 +1233,21 @@
       "suite": "Construction",
       "phase": 4,
       "type": "standalone",
-      "pricing": { "monthly": 49 },
+      "pricing": {
+        "monthly": 49
+      },
       "status": "waitlist",
       "capabilitySummary": "Long-lead tracker, cost tracking, substitution analysis, delivery coordination",
       "temporalType": "phase_bound",
       "mandatoryWhen": [],
       "vault": {
-        "reads": ["construction_schedule"],
-        "writes": ["material_tracking", "substitution_log"]
+        "reads": [
+          "construction_schedule"
+        ],
+        "writes": [
+          "material_tracking",
+          "substitution_log"
+        ]
       },
       "referrals": [],
       "alexRegistration": {
@@ -745,14 +1263,22 @@
       "suite": "Construction",
       "phase": 4,
       "type": "standalone",
-      "pricing": { "monthly": 49 },
+      "pricing": {
+        "monthly": 49
+      },
       "status": "waitlist",
       "capabilitySummary": "Inspection schedule/tracking, deficiency log, photo documentation, QC compliance report",
       "temporalType": "phase_bound",
       "mandatoryWhen": [],
       "vault": {
-        "reads": ["construction_schedule"],
-        "writes": ["inspection_log", "deficiency_log", "qc_reports"]
+        "reads": [
+          "construction_schedule"
+        ],
+        "writes": [
+          "inspection_log",
+          "deficiency_log",
+          "qc_reports"
+        ]
       },
       "referrals": [],
       "alexRegistration": {
@@ -768,14 +1294,25 @@
       "suite": "Construction",
       "phase": 4,
       "type": "standalone",
-      "pricing": { "monthly": 49 },
+      "pricing": {
+        "monthly": 49
+      },
       "status": "waitlist",
       "capabilitySummary": "Site-specific safety plan, hazard analysis, toolbox talks, incident reports, OSHA 300 log",
       "temporalType": "phase_bound",
-      "mandatoryWhen": ["construction_project", "osha_jurisdiction"],
+      "mandatoryWhen": [
+        "construction_project",
+        "osha_jurisdiction"
+      ],
       "vault": {
-        "reads": ["construction_schedule"],
-        "writes": ["safety_plan", "incident_reports", "osha_300_log"]
+        "reads": [
+          "construction_schedule"
+        ],
+        "writes": [
+          "safety_plan",
+          "incident_reports",
+          "osha_300_log"
+        ]
       },
       "referrals": [],
       "alexRegistration": {
@@ -791,14 +1328,22 @@
       "suite": "Construction",
       "phase": 4,
       "type": "copilot",
-      "pricing": { "monthly": 59 },
+      "pricing": {
+        "monthly": 49
+      },
       "status": "waitlist",
       "capabilitySummary": "Clash/conflict identification, coordination meeting notes, ceiling height/routing analysis, MEP schedule",
       "temporalType": "phase_bound",
       "mandatoryWhen": [],
       "vault": {
-        "reads": ["design_review", "engineering_review"],
-        "writes": ["mep_coordination", "clash_detection"]
+        "reads": [
+          "design_review",
+          "engineering_review"
+        ],
+        "writes": [
+          "mep_coordination",
+          "clash_detection"
+        ]
       },
       "referrals": [],
       "alexRegistration": {
@@ -814,14 +1359,23 @@
       "suite": "Property Management",
       "phase": 5,
       "type": "standalone",
-      "pricing": { "monthly": 59 },
+      "pricing": {
+        "monthly": 49
+      },
       "status": "waitlist",
       "capabilitySummary": "Marketing plan, lease-up velocity tracking, lead pipeline, pricing validation",
       "temporalType": "phase_bound",
       "mandatoryWhen": [],
       "vault": {
-        "reads": ["rent_roll", "market_scorecard"],
-        "writes": ["marketing_plan", "leaseup_velocity", "lead_pipeline"]
+        "reads": [
+          "rent_roll",
+          "market_scorecard"
+        ],
+        "writes": [
+          "marketing_plan",
+          "leaseup_velocity",
+          "lead_pipeline"
+        ]
       },
       "referrals": [],
       "alexRegistration": {
@@ -837,14 +1391,18 @@
       "suite": "Property Management",
       "phase": 5,
       "type": "standalone",
-      "pricing": { "monthly": 29 },
+      "pricing": {
+        "monthly": 29
+      },
       "status": "waitlist",
       "capabilitySummary": "Screening decision recommendation, adverse action notice, approval letter",
       "temporalType": "always_on",
       "mandatoryWhen": [],
       "vault": {
         "reads": [],
-        "writes": ["screening_decisions"]
+        "writes": [
+          "screening_decisions"
+        ]
       },
       "referrals": [],
       "alexRegistration": {
@@ -860,14 +1418,23 @@
       "suite": "Property Management",
       "phase": 5,
       "type": "composite",
-      "pricing": { "monthly": 59 },
+      "pricing": {
+        "monthly": 49
+      },
       "status": "waitlist",
       "capabilitySummary": "Tenant communication management, lease renewal tracking, move-in/out processing, violation notices",
       "temporalType": "always_on",
       "mandatoryWhen": [],
       "vault": {
-        "reads": ["screening_decisions", "maintenance_data"],
-        "writes": ["lease_status", "tenant_communications", "violation_log"]
+        "reads": [
+          "screening_decisions",
+          "maintenance_data"
+        ],
+        "writes": [
+          "lease_status",
+          "tenant_communications",
+          "violation_log"
+        ]
       },
       "referrals": [],
       "alexRegistration": {
@@ -883,18 +1450,33 @@
       "suite": "Property Management",
       "phase": 5,
       "type": "standalone",
-      "pricing": { "monthly": 59 },
+      "pricing": {
+        "monthly": 49
+      },
       "status": "waitlist",
       "capabilitySummary": "Rent roll analysis, revenue optimization, rent increase calendar, loss-to-lease",
       "temporalType": "always_on",
       "mandatoryWhen": [],
       "vault": {
-        "reads": ["market_scorecard", "lease_status"],
-        "writes": ["rent_roll", "revenue_analysis", "rent_increase_schedule"]
+        "reads": [
+          "market_scorecard",
+          "lease_status"
+        ],
+        "writes": [
+          "rent_roll",
+          "revenue_analysis",
+          "rent_increase_schedule"
+        ]
       },
       "referrals": [
-        { "event": "Financial data to accounting", "routesTo": "W-039" },
-        { "event": "Rent roll data to investor reporting", "routesTo": "W-051" }
+        {
+          "event": "Financial data to accounting",
+          "routesTo": "W-039"
+        },
+        {
+          "event": "Rent roll data to investor reporting",
+          "routesTo": "W-051"
+        }
       ],
       "alexRegistration": {
         "priority": "normal",
@@ -909,18 +1491,30 @@
       "suite": "Property Management",
       "phase": 5,
       "type": "standalone",
-      "pricing": { "monthly": 39 },
+      "pricing": {
+        "monthly": 29
+      },
       "status": "waitlist",
       "capabilitySummary": "Work order tracking, PM calendar, maintenance cost tracking, vendor performance",
       "temporalType": "always_on",
       "mandatoryWhen": [],
       "vault": {
         "reads": [],
-        "writes": ["work_orders", "pm_schedule", "maintenance_costs"]
+        "writes": [
+          "work_orders",
+          "pm_schedule",
+          "maintenance_costs"
+        ]
       },
       "referrals": [
-        { "event": "Warranty claim identified", "routesTo": "W-038" },
-        { "event": "Vendor management needed", "routesTo": "W-041" }
+        {
+          "event": "Warranty claim identified",
+          "routesTo": "W-038"
+        },
+        {
+          "event": "Vendor management needed",
+          "routesTo": "W-041"
+        }
       ],
       "alexRegistration": {
         "priority": "normal",
@@ -935,14 +1529,19 @@
       "suite": "Property Management",
       "phase": 5,
       "type": "standalone",
-      "pricing": { "monthly": 39 },
+      "pricing": {
+        "monthly": 29
+      },
       "status": "waitlist",
       "capabilitySummary": "Utility cost analysis, RUBS allocation, consumption anomaly alerts, efficiency recommendations",
       "temporalType": "always_on",
       "mandatoryWhen": [],
       "vault": {
         "reads": [],
-        "writes": ["utility_costs", "rubs_allocation"]
+        "writes": [
+          "utility_costs",
+          "rubs_allocation"
+        ]
       },
       "referrals": [],
       "alexRegistration": {
@@ -958,14 +1557,20 @@
       "suite": "Property Management",
       "phase": 5,
       "type": "standalone",
-      "pricing": { "monthly": 49 },
+      "pricing": {
+        "monthly": 49
+      },
       "status": "waitlist",
       "capabilitySummary": "Assessment tracking, violation management, reserve fund tracking, board meeting prep",
       "temporalType": "always_on",
       "mandatoryWhen": [],
       "vault": {
         "reads": [],
-        "writes": ["hoa_assessments", "reserve_status", "board_packages"]
+        "writes": [
+          "hoa_assessments",
+          "reserve_status",
+          "board_packages"
+        ]
       },
       "referrals": [],
       "alexRegistration": {
@@ -981,14 +1586,23 @@
       "suite": "Property Management",
       "phase": 5,
       "type": "standalone",
-      "pricing": { "monthly": 39 },
+      "pricing": {
+        "monthly": 29
+      },
       "status": "waitlist",
       "capabilitySummary": "Warranty claim tracking, expiration calendar, defect pattern analysis, contractor enforcement",
       "temporalType": "phase_bound",
       "mandatoryWhen": [],
       "vault": {
-        "reads": ["construction_punchlist", "maintenance_data"],
-        "writes": ["warranty_claims", "warranty_calendar", "defect_analysis"]
+        "reads": [
+          "construction_punchlist",
+          "maintenance_data"
+        ],
+        "writes": [
+          "warranty_claims",
+          "warranty_calendar",
+          "defect_analysis"
+        ]
       },
       "referrals": [],
       "alexRegistration": {
@@ -1004,18 +1618,35 @@
       "suite": "Finance",
       "phase": 6,
       "type": "standalone",
-      "pricing": { "monthly": 59 },
+      "pricing": {
+        "monthly": 49
+      },
       "status": "waitlist",
       "capabilitySummary": "P&L by property, balance sheet, cash flow, budget vs actual variance, month-end close",
       "temporalType": "always_on",
       "mandatoryWhen": [],
       "vault": {
-        "reads": ["rent_roll", "utility_costs", "maintenance_costs", "hoa_assessments"],
-        "writes": ["financial_statements", "budget_variance", "close_checklist"]
+        "reads": [
+          "rent_roll",
+          "utility_costs",
+          "maintenance_costs",
+          "hoa_assessments"
+        ],
+        "writes": [
+          "financial_statements",
+          "budget_variance",
+          "close_checklist"
+        ]
       },
       "referrals": [
-        { "event": "Financial data to tax prep", "routesTo": "W-040" },
-        { "event": "Financial data to investor reporting", "routesTo": "W-051" }
+        {
+          "event": "Financial data to tax prep",
+          "routesTo": "W-040"
+        },
+        {
+          "event": "Financial data to investor reporting",
+          "routesTo": "W-051"
+        }
       ],
       "alexRegistration": {
         "priority": "normal",
@@ -1030,14 +1661,22 @@
       "suite": "Finance",
       "phase": 6,
       "type": "standalone",
-      "pricing": { "monthly": 49 },
+      "pricing": {
+        "monthly": 49
+      },
       "status": "waitlist",
       "capabilitySummary": "Assessment review/appeal recommendation, property tax calendar, exemption tracking, CPA document prep",
       "temporalType": "seasonal",
       "mandatoryWhen": [],
       "vault": {
-        "reads": ["financial_statements"],
-        "writes": ["tax_assessments", "tax_calendar", "exemption_status"]
+        "reads": [
+          "financial_statements"
+        ],
+        "writes": [
+          "tax_assessments",
+          "tax_calendar",
+          "exemption_status"
+        ]
       },
       "referrals": [],
       "alexRegistration": {
@@ -1053,14 +1692,22 @@
       "suite": "Operations",
       "phase": 6,
       "type": "standalone",
-      "pricing": { "monthly": 39 },
+      "pricing": {
+        "monthly": 29
+      },
       "status": "waitlist",
       "capabilitySummary": "Contract expiration tracker, vendor scorecards, insurance compliance, renewal recommendations",
       "temporalType": "always_on",
       "mandatoryWhen": [],
       "vault": {
-        "reads": ["maintenance_data"],
-        "writes": ["vendor_contracts", "vendor_scorecards", "insurance_compliance"]
+        "reads": [
+          "maintenance_data"
+        ],
+        "writes": [
+          "vendor_contracts",
+          "vendor_scorecards",
+          "insurance_compliance"
+        ]
       },
       "referrals": [],
       "alexRegistration": {
@@ -1076,17 +1723,31 @@
       "suite": "Finance",
       "phase": 6,
       "type": "standalone",
-      "pricing": { "monthly": 79 },
+      "pricing": {
+        "monthly": 79
+      },
       "status": "waitlist",
       "capabilitySummary": "Quarterly investor reports, distribution calculations, K-1 prep worksheets, IRR/equity multiple tracking",
       "temporalType": "always_on",
       "mandatoryWhen": [],
       "vault": {
-        "reads": ["financial_statements", "rent_roll", "capital_stack"],
-        "writes": ["investor_reports", "distributions", "k1_worksheets", "performance_metrics"]
+        "reads": [
+          "financial_statements",
+          "rent_roll",
+          "capital_stack"
+        ],
+        "writes": [
+          "investor_reports",
+          "distributions",
+          "k1_worksheets",
+          "performance_metrics"
+        ]
       },
       "referrals": [
-        { "event": "K-1 data to tax prep", "routesTo": "W-040" }
+        {
+          "event": "K-1 data to tax prep",
+          "routesTo": "W-040"
+        }
       ],
       "alexRegistration": {
         "priority": "high",
@@ -1101,18 +1762,34 @@
       "suite": "Finance",
       "phase": 6,
       "type": "standalone",
-      "pricing": { "monthly": 49 },
+      "pricing": {
+        "monthly": 49
+      },
       "status": "waitlist",
       "capabilitySummary": "DSCR monitoring, covenant compliance testing, lender reporting package, refinance triggers, maturity tracking",
       "temporalType": "always_on",
       "mandatoryWhen": [],
       "vault": {
-        "reads": ["financial_statements", "senior_debt_analysis"],
-        "writes": ["dscr_monitoring", "covenant_compliance", "lender_reports", "maturity_calendar"]
+        "reads": [
+          "financial_statements",
+          "senior_debt_analysis"
+        ],
+        "writes": [
+          "dscr_monitoring",
+          "covenant_compliance",
+          "lender_reports",
+          "maturity_calendar"
+        ]
       },
       "referrals": [
-        { "event": "Refinance trigger hit", "routesTo": "W-013" },
-        { "event": "Covenant deadlines to tracker", "routesTo": "W-047" }
+        {
+          "event": "Refinance trigger hit",
+          "routesTo": "W-013"
+        },
+        {
+          "event": "Covenant deadlines to tracker",
+          "routesTo": "W-047"
+        }
       ],
       "alexRegistration": {
         "priority": "high",
@@ -1127,19 +1804,38 @@
       "suite": "Investment",
       "phase": 7,
       "type": "standalone",
-      "pricing": { "monthly": 59 },
+      "pricing": {
+        "monthly": 49
+      },
       "status": "waitlist",
       "capabilitySummary": "Disposition timeline/checklist, estimated value range, seller disclosure package, data room prep",
       "temporalType": "event_driven",
       "mandatoryWhen": [],
       "vault": {
-        "reads": ["financial_statements", "rent_roll", "deal_analysis"],
-        "writes": ["disposition_checklist", "valuation_summary", "seller_disclosures"]
+        "reads": [
+          "financial_statements",
+          "rent_roll",
+          "deal_analysis"
+        ],
+        "writes": [
+          "disposition_checklist",
+          "valuation_summary",
+          "seller_disclosures"
+        ]
       },
       "referrals": [
-        { "event": "1031 exchange analysis needed", "routesTo": "W-043" },
-        { "event": "Title work needed for disposition", "routesTo": "W-044" },
-        { "event": "Marketing and data room preparation", "routesTo": "W-050" }
+        {
+          "event": "1031 exchange analysis needed",
+          "routesTo": "W-043"
+        },
+        {
+          "event": "Title work needed for disposition",
+          "routesTo": "W-044"
+        },
+        {
+          "event": "Marketing and data room preparation",
+          "routesTo": "W-050"
+        }
       ],
       "alexRegistration": {
         "priority": "normal",
@@ -1154,19 +1850,36 @@
       "suite": "Finance",
       "phase": 7,
       "type": "standalone",
-      "pricing": { "monthly": 59 },
+      "pricing": {
+        "monthly": 49
+      },
       "status": "waitlist",
       "capabilitySummary": "Eligibility analysis, timeline tracker (45/180-day), identification letter, boot calculation, replacement comparison",
       "temporalType": "event_driven",
       "mandatoryWhen": [],
       "vault": {
-        "reads": ["disposition_details"],
-        "writes": ["exchange_analysis", "exchange_timeline", "identification_list"]
+        "reads": [
+          "disposition_details"
+        ],
+        "writes": [
+          "exchange_analysis",
+          "exchange_timeline",
+          "identification_list"
+        ]
       },
       "referrals": [
-        { "event": "Replacement property needs deal analysis", "routesTo": "W-002" },
-        { "event": "Exchange closing needs title work", "routesTo": "W-044" },
-        { "event": "Exchange deadlines to tracker", "routesTo": "W-047" }
+        {
+          "event": "Replacement property needs deal analysis",
+          "routesTo": "W-002"
+        },
+        {
+          "event": "Exchange closing needs title work",
+          "routesTo": "W-044"
+        },
+        {
+          "event": "Exchange deadlines to tracker",
+          "routesTo": "W-047"
+        }
       ],
       "alexRegistration": {
         "priority": "high",
@@ -1181,17 +1894,30 @@
       "suite": "Investment",
       "phase": 7,
       "type": "standalone",
-      "pricing": { "monthly": 59 },
+      "pricing": {
+        "monthly": 49
+      },
       "status": "waitlist",
       "capabilitySummary": "OM preparation, virtual data room, buyer qualification tracking, NDA management, bid tracking",
       "temporalType": "event_driven",
       "mandatoryWhen": [],
       "vault": {
-        "reads": ["disposition_checklist", "financial_statements", "rent_roll"],
-        "writes": ["offering_memorandum", "data_room", "buyer_tracker"]
+        "reads": [
+          "disposition_checklist",
+          "financial_statements",
+          "rent_roll"
+        ],
+        "writes": [
+          "offering_memorandum",
+          "data_room",
+          "buyer_tracker"
+        ]
       },
       "referrals": [
-        { "event": "Buyer selected triggers title and escrow", "routesTo": "W-044" }
+        {
+          "event": "Buyer selected triggers title and escrow",
+          "routesTo": "W-044"
+        }
       ],
       "alexRegistration": {
         "priority": "normal",
@@ -1206,14 +1932,20 @@
       "suite": "Legal",
       "phase": 8,
       "type": "standalone",
-      "pricing": { "monthly": 59 },
+      "pricing": {
+        "monthly": 49
+      },
       "status": "waitlist",
       "capabilitySummary": "Title exception review, escrow timeline tracking, closing checklist, title insurance comparison",
       "temporalType": "event_driven",
       "mandatoryWhen": [],
       "vault": {
         "reads": [],
-        "writes": ["title_review", "escrow_timeline", "closing_checklist"]
+        "writes": [
+          "title_review",
+          "escrow_timeline",
+          "closing_checklist"
+        ]
       },
       "referrals": [],
       "alexRegistration": {
@@ -1229,14 +1961,20 @@
       "suite": "Legal",
       "phase": 8,
       "type": "copilot",
-      "pricing": { "monthly": 79 },
+      "pricing": {
+        "monthly": 79
+      },
       "status": "waitlist",
       "capabilitySummary": "Contract review summaries, key terms extraction, risk flags, comparison to standards",
       "temporalType": "always_on",
       "mandatoryWhen": [],
       "vault": {
         "reads": [],
-        "writes": ["contract_reviews", "key_terms", "risk_assessments"]
+        "writes": [
+          "contract_reviews",
+          "key_terms",
+          "risk_assessments"
+        ]
       },
       "referrals": [],
       "alexRegistration": {
@@ -1252,17 +1990,26 @@
       "suite": "Legal",
       "phase": 8,
       "type": "standalone",
-      "pricing": { "monthly": 49 },
+      "pricing": {
+        "monthly": 49
+      },
       "status": "waitlist",
       "capabilitySummary": "Entity structure recommendation, formation checklist, compliance calendar, EIN tracking",
       "temporalType": "one_time",
       "mandatoryWhen": [],
       "vault": {
         "reads": [],
-        "writes": ["entity_structure", "formation_status", "entity_compliance"]
+        "writes": [
+          "entity_structure",
+          "formation_status",
+          "entity_compliance"
+        ]
       },
       "referrals": [
-        { "event": "Entity compliance deadlines to tracker", "routesTo": "W-047" }
+        {
+          "event": "Entity compliance deadlines to tracker",
+          "routesTo": "W-047"
+        }
       ],
       "alexRegistration": {
         "priority": "normal",
@@ -1277,14 +2024,28 @@
       "suite": "Compliance",
       "phase": 8,
       "type": "pipeline",
-      "pricing": { "monthly": 39 },
+      "pricing": {
+        "monthly": 29
+      },
       "status": "waitlist",
       "capabilitySummary": "Master compliance calendar, upcoming deadline alerts, missed deadline escalation, compliance dashboard",
       "temporalType": "always_on",
       "mandatoryWhen": [],
       "vault": {
-        "reads": ["compliance_calendar", "tax_calendar", "oz_compliance", "exchange_timeline", "entity_compliance", "covenant_compliance", "maturity_calendar"],
-        "writes": ["compliance_calendar", "deadline_status", "escalation_log"]
+        "reads": [
+          "compliance_calendar",
+          "tax_calendar",
+          "oz_compliance",
+          "exchange_timeline",
+          "entity_compliance",
+          "covenant_compliance",
+          "maturity_calendar"
+        ],
+        "writes": [
+          "compliance_calendar",
+          "deadline_status",
+          "escalation_log"
+        ]
       },
       "referrals": [],
       "alexRegistration": {
@@ -1300,14 +2061,166 @@
       "suite": "Platform",
       "phase": 8,
       "type": "orchestrator",
-      "pricing": { "monthly": 0 },
+      "pricing": {
+        "monthly": 0
+      },
       "status": "live",
       "capabilitySummary": "Daily briefing, task routing, cross-worker summaries, priority recommendations, deadline reminders",
       "temporalType": "always_on",
       "mandatoryWhen": [],
       "vault": {
-        "reads": ["market_scorecard", "demographic_profile", "supply_pipeline_data", "rent_comp_data", "deal_analysis", "deal_score", "deal_comparison_matrix", "dd_checklist", "site_risk_profile", "zoning_analysis", "appraisal_review", "valuation_estimate", "entitlement_strategy", "approval_requirements", "entitlement_timeline", "design_review", "program_summary", "engineering_review", "structural_assessment", "environmental_screening", "cultural_assessment", "mitigation_plan", "energy_compliance", "sustainability_strategy", "incentive_inventory", "accessibility_review", "fha_compliance", "hearing_prep", "community_outreach_plan", "fire_safety_review", "egress_analysis", "permit_status", "permit_timeline", "correction_log", "senior_debt_analysis", "loan_comparison", "debt_service_projection", "mezz_pref_analysis", "blended_cost", "construction_loan_analysis", "draw_schedule", "interest_reserve", "capital_stack", "waterfall_model", "irr_projections", "sensitivity_analysis", "tax_credit_eligibility", "credit_model", "compliance_calendar", "exemption_analysis", "filing_requirements", "investor_communications", "investor_pipeline", "oz_eligibility", "oz_model", "oz_compliance", "construction_budget", "construction_schedule", "rfi_log", "change_order_log", "progress_reports", "bid_comparison", "award_recommendations", "draw_requests", "lien_waiver_status", "retainage_tracking", "labor_forecast", "certified_payroll", "labor_costs", "insurance_compliance", "coverage_gaps", "claims_log", "material_tracking", "substitution_log", "inspection_log", "deficiency_log", "qc_reports", "safety_plan", "incident_reports", "osha_300_log", "mep_coordination", "clash_detection", "marketing_plan", "leaseup_velocity", "lead_pipeline", "screening_decisions", "lease_status", "tenant_communications", "violation_log", "rent_roll", "revenue_analysis", "rent_increase_schedule", "work_orders", "pm_schedule", "maintenance_costs", "utility_costs", "rubs_allocation", "hoa_assessments", "reserve_status", "board_packages", "warranty_claims", "warranty_calendar", "defect_analysis", "financial_statements", "budget_variance", "close_checklist", "tax_assessments", "tax_calendar", "exemption_status", "vendor_contracts", "vendor_scorecards", "investor_reports", "distributions", "k1_worksheets", "performance_metrics", "dscr_monitoring", "covenant_compliance", "lender_reports", "maturity_calendar", "disposition_checklist", "valuation_summary", "seller_disclosures", "exchange_analysis", "exchange_timeline", "identification_list", "offering_memorandum", "data_room", "buyer_tracker", "title_review", "escrow_timeline", "closing_checklist", "contract_reviews", "key_terms", "risk_assessments", "entity_structure", "formation_status", "entity_compliance", "deadline_status", "escalation_log", "coverage_analysis", "policy_comparison", "claims_tracking", "renewal_calendar"],
-        "writes": ["user_profile", "project_profiles", "worker_recommendations", "lifecycle_position", "cross_worker_alerts"]
+        "reads": [
+          "market_scorecard",
+          "demographic_profile",
+          "supply_pipeline_data",
+          "rent_comp_data",
+          "deal_analysis",
+          "deal_score",
+          "deal_comparison_matrix",
+          "dd_checklist",
+          "site_risk_profile",
+          "zoning_analysis",
+          "appraisal_review",
+          "valuation_estimate",
+          "entitlement_strategy",
+          "approval_requirements",
+          "entitlement_timeline",
+          "design_review",
+          "program_summary",
+          "engineering_review",
+          "structural_assessment",
+          "environmental_screening",
+          "cultural_assessment",
+          "mitigation_plan",
+          "energy_compliance",
+          "sustainability_strategy",
+          "incentive_inventory",
+          "accessibility_review",
+          "fha_compliance",
+          "hearing_prep",
+          "community_outreach_plan",
+          "fire_safety_review",
+          "egress_analysis",
+          "permit_status",
+          "permit_timeline",
+          "correction_log",
+          "senior_debt_analysis",
+          "loan_comparison",
+          "debt_service_projection",
+          "mezz_pref_analysis",
+          "blended_cost",
+          "construction_loan_analysis",
+          "draw_schedule",
+          "interest_reserve",
+          "capital_stack",
+          "waterfall_model",
+          "irr_projections",
+          "sensitivity_analysis",
+          "tax_credit_eligibility",
+          "credit_model",
+          "compliance_calendar",
+          "exemption_analysis",
+          "filing_requirements",
+          "investor_communications",
+          "investor_pipeline",
+          "oz_eligibility",
+          "oz_model",
+          "oz_compliance",
+          "construction_budget",
+          "construction_schedule",
+          "rfi_log",
+          "change_order_log",
+          "progress_reports",
+          "bid_comparison",
+          "award_recommendations",
+          "draw_requests",
+          "lien_waiver_status",
+          "retainage_tracking",
+          "labor_forecast",
+          "certified_payroll",
+          "labor_costs",
+          "insurance_compliance",
+          "coverage_gaps",
+          "claims_log",
+          "material_tracking",
+          "substitution_log",
+          "inspection_log",
+          "deficiency_log",
+          "qc_reports",
+          "safety_plan",
+          "incident_reports",
+          "osha_300_log",
+          "mep_coordination",
+          "clash_detection",
+          "marketing_plan",
+          "leaseup_velocity",
+          "lead_pipeline",
+          "screening_decisions",
+          "lease_status",
+          "tenant_communications",
+          "violation_log",
+          "rent_roll",
+          "revenue_analysis",
+          "rent_increase_schedule",
+          "work_orders",
+          "pm_schedule",
+          "maintenance_costs",
+          "utility_costs",
+          "rubs_allocation",
+          "hoa_assessments",
+          "reserve_status",
+          "board_packages",
+          "warranty_claims",
+          "warranty_calendar",
+          "defect_analysis",
+          "financial_statements",
+          "budget_variance",
+          "close_checklist",
+          "tax_assessments",
+          "tax_calendar",
+          "exemption_status",
+          "vendor_contracts",
+          "vendor_scorecards",
+          "investor_reports",
+          "distributions",
+          "k1_worksheets",
+          "performance_metrics",
+          "dscr_monitoring",
+          "covenant_compliance",
+          "lender_reports",
+          "maturity_calendar",
+          "disposition_checklist",
+          "valuation_summary",
+          "seller_disclosures",
+          "exchange_analysis",
+          "exchange_timeline",
+          "identification_list",
+          "offering_memorandum",
+          "data_room",
+          "buyer_tracker",
+          "title_review",
+          "escrow_timeline",
+          "closing_checklist",
+          "contract_reviews",
+          "key_terms",
+          "risk_assessments",
+          "entity_structure",
+          "formation_status",
+          "entity_compliance",
+          "deadline_status",
+          "escalation_log",
+          "coverage_analysis",
+          "policy_comparison",
+          "claims_tracking",
+          "renewal_calendar"
+        ],
+        "writes": [
+          "user_profile",
+          "project_profiles",
+          "worker_recommendations",
+          "lifecycle_position",
+          "cross_worker_alerts"
+        ]
       },
       "referrals": [],
       "alexRegistration": {
@@ -1323,14 +2236,24 @@
       "suite": "Insurance",
       "phase": 8,
       "type": "standalone",
-      "pricing": { "monthly": 49 },
+      "pricing": {
+        "monthly": 49
+      },
       "status": "waitlist",
       "capabilitySummary": "Coverage adequacy analysis, policy comparison, claims tracking, renewal calendar",
       "temporalType": "always_on",
       "mandatoryWhen": [],
       "vault": {
-        "reads": ["property_details", "lender_requirements"],
-        "writes": ["coverage_analysis", "policy_comparison", "claims_tracking", "renewal_calendar"]
+        "reads": [
+          "property_details",
+          "lender_requirements"
+        ],
+        "writes": [
+          "coverage_analysis",
+          "policy_comparison",
+          "claims_tracking",
+          "renewal_calendar"
+        ]
       },
       "referrals": [],
       "alexRegistration": {
@@ -1346,7 +2269,17 @@
       "name": "Scott/JMA Capital",
       "description": "Investor/syndicator bundle for deal analysis, capital structuring, and investor relations",
       "persona": "investor/syndicator",
-      "workerIds": ["W-002", "W-003", "W-016", "W-017", "W-018", "W-019", "W-045", "W-047", "W-048"],
+      "workerIds": [
+        "W-002",
+        "W-003",
+        "W-016",
+        "W-017",
+        "W-018",
+        "W-019",
+        "W-045",
+        "W-047",
+        "W-048"
+      ],
       "monthlyPrice": 740,
       "replaces": "$15K+/mo analyst + legal consultant fees"
     },
@@ -1355,7 +2288,19 @@
       "name": "Layton Construction",
       "description": "General contractor bundle for full construction project management",
       "persona": "GC",
-      "workerIds": ["W-021", "W-022", "W-023", "W-024", "W-025", "W-026", "W-027", "W-028", "W-029", "W-047", "W-048"],
+      "workerIds": [
+        "W-021",
+        "W-022",
+        "W-023",
+        "W-024",
+        "W-025",
+        "W-026",
+        "W-027",
+        "W-028",
+        "W-029",
+        "W-047",
+        "W-048"
+      ],
       "monthlyPrice": 630,
       "replaces": "$25K+/mo in PM staff + consultants"
     },
@@ -1364,7 +2309,60 @@
       "name": "BlackRock",
       "description": "Institutional bundle with all real estate workers for full lifecycle management",
       "persona": "institutional",
-      "workerIds": ["W-001", "W-002", "W-003", "W-004", "W-005", "W-006", "W-007", "W-008", "W-009", "W-010", "W-011", "W-012", "W-013", "W-014", "W-015", "W-016", "W-017", "W-018", "W-019", "W-020", "W-021", "W-022", "W-023", "W-024", "W-025", "W-026", "W-027", "W-028", "W-029", "W-030", "W-031", "W-032", "W-033", "W-034", "W-035", "W-036", "W-037", "W-038", "W-039", "W-040", "W-041", "W-042", "W-043", "W-044", "W-045", "W-046", "W-047", "W-048", "W-049", "W-050", "W-051", "W-052"],
+      "workerIds": [
+        "W-001",
+        "W-002",
+        "W-003",
+        "W-004",
+        "W-005",
+        "W-006",
+        "W-007",
+        "W-008",
+        "W-009",
+        "W-010",
+        "W-011",
+        "W-012",
+        "W-013",
+        "W-014",
+        "W-015",
+        "W-016",
+        "W-017",
+        "W-018",
+        "W-019",
+        "W-020",
+        "W-021",
+        "W-022",
+        "W-023",
+        "W-024",
+        "W-025",
+        "W-026",
+        "W-027",
+        "W-028",
+        "W-029",
+        "W-030",
+        "W-031",
+        "W-032",
+        "W-033",
+        "W-034",
+        "W-035",
+        "W-036",
+        "W-037",
+        "W-038",
+        "W-039",
+        "W-040",
+        "W-041",
+        "W-042",
+        "W-043",
+        "W-044",
+        "W-045",
+        "W-046",
+        "W-047",
+        "W-048",
+        "W-049",
+        "W-050",
+        "W-051",
+        "W-052"
+      ],
       "monthlyPrice": 3216,
       "replaces": "$50K+/mo in consultant fees"
     }

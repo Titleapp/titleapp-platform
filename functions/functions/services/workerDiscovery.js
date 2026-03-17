@@ -230,14 +230,12 @@ async function searchWorkers(req, res) {
   const creatorWorkers = await loadCreatorWorkers();
   let merged = [...catalogWorkers, ...creatorWorkers];
 
-  // 2. Status filter (public: live or waitlist only)
-  if (status) {
-    const allowed = ["live", "waitlist"];
-    if (allowed.includes(status)) {
-      merged = merged.filter(w => w.status === status);
-    }
+  // 2. Status filter (public: live only — hidden/draft/waitlist excluded)
+  if (status === "live") {
+    merged = merged.filter(w => w.status === "live");
   } else {
-    merged = merged.filter(w => w.status === "live" || w.status === "waitlist");
+    // Default: only show live workers in marketplace
+    merged = merged.filter(w => w.status === "live");
   }
 
   // 3. Structured filters

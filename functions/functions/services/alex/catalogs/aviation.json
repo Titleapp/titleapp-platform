@@ -3,25 +3,84 @@
   "name": "Part 135/91 Operations + Pilot Suite",
   "version": "1.0.0",
   "lifecycle": [
-    { "phase": 0, "name": "Cert & Ops Setup", "description": "Certificate application, GOM authoring, regulatory baseline" },
-    { "phase": 1, "name": "Fleet & Airworthiness", "description": "AD/SB tracking, component life, maintenance, parts, duty enforcement" },
-    { "phase": 2, "name": "Crew Management", "description": "Quals, training, medicals, dispatch, FRAT, W&B" },
-    { "phase": 3, "name": "Flight Operations", "description": "Weather, flight following, safety reporting, FOQA, ERP, post-flight" },
-    { "phase": 4, "name": "Safety & SMS", "description": "Hazard register, SMS monitoring, AI safety officer" },
-    { "phase": 5, "name": "Revenue & Customer", "description": "Charter quoting, billing, medevac billing, customer portal" },
-    { "phase": 6, "name": "Compliance & Audit", "description": "Alex CoS, FAR monitor, drug/alcohol, crew scheduling, reserve/swap" },
-    { "phase": 7, "name": "Intelligence Layer", "description": "Airport intel, NOTAM intel, EFB, training courseware, crew housing" }
+    {
+      "phase": 0,
+      "name": "Cert & Ops Setup",
+      "description": "Certificate application, GOM authoring, regulatory baseline"
+    },
+    {
+      "phase": 1,
+      "name": "Fleet & Airworthiness",
+      "description": "AD/SB tracking, component life, maintenance, parts, duty enforcement"
+    },
+    {
+      "phase": 2,
+      "name": "Crew Management",
+      "description": "Quals, training, medicals, dispatch, FRAT, W&B"
+    },
+    {
+      "phase": 3,
+      "name": "Flight Operations",
+      "description": "Weather, flight following, safety reporting, FOQA, ERP, post-flight"
+    },
+    {
+      "phase": 4,
+      "name": "Safety & SMS",
+      "description": "Hazard register, SMS monitoring, AI safety officer"
+    },
+    {
+      "phase": 5,
+      "name": "Revenue & Customer",
+      "description": "Charter quoting, billing, medevac billing, customer portal"
+    },
+    {
+      "phase": 6,
+      "name": "Compliance & Audit",
+      "description": "Alex CoS, FAR monitor, drug/alcohol, crew scheduling, reserve/swap"
+    },
+    {
+      "phase": 7,
+      "name": "Intelligence Layer",
+      "description": "Airport intel, NOTAM intel, EFB, training courseware, crew housing"
+    }
   ],
   "suites": [
-    { "id": "cert-ops", "name": "Cert & Ops" },
-    { "id": "fleet", "name": "Fleet" },
-    { "id": "crew", "name": "Crew" },
-    { "id": "flight-ops", "name": "Flight Ops" },
-    { "id": "safety", "name": "Safety" },
-    { "id": "revenue", "name": "Revenue" },
-    { "id": "compliance", "name": "Compliance" },
-    { "id": "intelligence", "name": "Intelligence" },
-    { "id": "pilot-suite", "name": "Pilot Suite" }
+    {
+      "id": "cert-ops",
+      "name": "Cert & Ops"
+    },
+    {
+      "id": "fleet",
+      "name": "Fleet"
+    },
+    {
+      "id": "crew",
+      "name": "Crew"
+    },
+    {
+      "id": "flight-ops",
+      "name": "Flight Ops"
+    },
+    {
+      "id": "safety",
+      "name": "Safety"
+    },
+    {
+      "id": "revenue",
+      "name": "Revenue"
+    },
+    {
+      "id": "compliance",
+      "name": "Compliance"
+    },
+    {
+      "id": "intelligence",
+      "name": "Intelligence"
+    },
+    {
+      "id": "pilot-suite",
+      "name": "Pilot Suite"
+    }
   ],
   "workers": [
     {
@@ -31,19 +90,36 @@
       "suite": "Compliance",
       "phase": 0,
       "type": "standalone",
-      "pricing": { "monthly": 99 },
+      "pricing": {
+        "monthly": 79
+      },
       "status": "waitlist",
       "capabilitySummary": "Guides operators through initial Part 135 certification or amendment process",
       "temporalType": "always_on",
       "mandatoryWhen": [],
-      "tier1Compliance": ["14 CFR 135.1", "14 CFR 119.35", "14 CFR 119.36", "FAA Order 8900.1 Vol 2"],
+      "tier1Compliance": [
+        "14 CFR 135.1",
+        "14 CFR 119.35",
+        "14 CFR 119.36",
+        "FAA Order 8900.1 Vol 2"
+      ],
       "vault": {
         "reads": [],
-        "writes": ["certificate_application", "ops_specs", "amendment_history"]
+        "writes": [
+          "certificate_application",
+          "ops_specs",
+          "amendment_history"
+        ]
       },
       "referrals": [
-        { "event": "certificate_approved", "routesTo": "AV-002" },
-        { "event": "ops_specs_issued", "routesTo": "AV-003" }
+        {
+          "event": "certificate_approved",
+          "routesTo": "AV-002"
+        },
+        {
+          "event": "ops_specs_issued",
+          "routesTo": "AV-003"
+        }
       ],
       "alexRegistration": {
         "priority": "normal",
@@ -58,19 +134,38 @@
       "suite": "Compliance",
       "phase": 0,
       "type": "standalone",
-      "pricing": { "monthly": 79 },
+      "pricing": {
+        "monthly": 79
+      },
       "status": "waitlist",
       "capabilitySummary": "Authors and maintains General Operations Manual and Principal Operations Inspector submissions",
       "temporalType": "always_on",
       "mandatoryWhen": [],
-      "tier1Compliance": ["14 CFR 135.21", "14 CFR 135.23", "FAA Order 8900.1 Vol 3"],
+      "tier1Compliance": [
+        "14 CFR 135.21",
+        "14 CFR 135.23",
+        "FAA Order 8900.1 Vol 3"
+      ],
       "vault": {
-        "reads": ["certificate_application", "ops_specs"],
-        "writes": ["gom_document", "gom_revision_history", "poi_submission_log"]
+        "reads": [
+          "certificate_application",
+          "ops_specs"
+        ],
+        "writes": [
+          "gom_document",
+          "gom_revision_history",
+          "poi_submission_log"
+        ]
       },
       "referrals": [
-        { "event": "gom_approved", "routesTo": "AV-003" },
-        { "event": "gom_revision_required", "routesTo": "AV-030" }
+        {
+          "event": "gom_approved",
+          "routesTo": "AV-003"
+        },
+        {
+          "event": "gom_revision_required",
+          "routesTo": "AV-030"
+        }
       ],
       "alexRegistration": {
         "priority": "normal",
@@ -85,19 +180,38 @@
       "suite": "Compliance",
       "phase": 0,
       "type": "standalone",
-      "pricing": { "monthly": 79 },
+      "pricing": {
+        "monthly": 79
+      },
       "status": "waitlist",
       "capabilitySummary": "Monitors FAR changes and flags impact on operator certificate and GOM",
       "temporalType": "always_on",
       "mandatoryWhen": [],
-      "tier1Compliance": ["14 CFR Part 135", "14 CFR Part 91", "14 CFR Part 119", "FAA Advisory Circulars"],
+      "tier1Compliance": [
+        "14 CFR Part 135",
+        "14 CFR Part 91",
+        "14 CFR Part 119",
+        "FAA Advisory Circulars"
+      ],
       "vault": {
-        "reads": ["ops_specs", "gom_document"],
-        "writes": ["regulatory_change_alerts", "compliance_impact_assessments"]
+        "reads": [
+          "ops_specs",
+          "gom_document"
+        ],
+        "writes": [
+          "regulatory_change_alerts",
+          "compliance_impact_assessments"
+        ]
       },
       "referrals": [
-        { "event": "far_change_impacts_gom", "routesTo": "AV-002" },
-        { "event": "far_change_impacts_ops", "routesTo": "AV-030" }
+        {
+          "event": "far_change_impacts_gom",
+          "routesTo": "AV-002"
+        },
+        {
+          "event": "far_change_impacts_ops",
+          "routesTo": "AV-030"
+        }
       ],
       "alexRegistration": {
         "priority": "normal",
@@ -112,19 +226,46 @@
       "suite": "Fleet",
       "phase": 0,
       "type": "standalone",
-      "pricing": { "monthly": 79 },
+      "pricing": {
+        "monthly": 79
+      },
       "status": "development",
       "capabilitySummary": "Real-time airworthiness status for every aircraft on the certificate. MEL deferrals, NEF, CDL, and placarded items tracked and fed to dispatch.",
       "temporalType": "always_on",
       "mandatoryWhen": [],
-      "tier1Compliance": ["14 CFR 135.65", "14 CFR 135.411", "14 CFR 135.415", "14 CFR 91.213", "FAA MEL Policy", "MMEL by aircraft type"],
+      "tier1Compliance": [
+        "14 CFR 135.65",
+        "14 CFR 135.411",
+        "14 CFR 135.415",
+        "14 CFR 91.213",
+        "FAA MEL Policy",
+        "MMEL by aircraft type"
+      ],
       "vault": {
-        "reads": ["maintenance_work_orders", "mel_deferrals", "ad_sb_status", "component_life", "flight_hours_cycles"],
-        "writes": ["aircraft_airworthiness_status", "mel_restriction_details", "dispatch_restriction_flags", "maintenance_due_dates", "return_to_service_events"]
+        "reads": [
+          "maintenance_work_orders",
+          "mel_deferrals",
+          "ad_sb_status",
+          "component_life",
+          "flight_hours_cycles"
+        ],
+        "writes": [
+          "aircraft_airworthiness_status",
+          "mel_restriction_details",
+          "dispatch_restriction_flags",
+          "maintenance_due_dates",
+          "return_to_service_events"
+        ]
       },
       "referrals": [
-        { "event": "mel_deferral_logged", "routesTo": "AV-013" },
-        { "event": "aircraft_grounded", "routesTo": "AV-029" }
+        {
+          "event": "mel_deferral_logged",
+          "routesTo": "AV-013"
+        },
+        {
+          "event": "aircraft_grounded",
+          "routesTo": "AV-029"
+        }
       ],
       "alexRegistration": {
         "priority": "high",
@@ -139,19 +280,39 @@
       "suite": "Fleet",
       "phase": 1,
       "type": "standalone",
-      "pricing": { "monthly": 69 },
+      "pricing": {
+        "monthly": 79
+      },
       "status": "waitlist",
       "capabilitySummary": "Tracks airworthiness directives and service bulletins against fleet compliance status",
       "temporalType": "always_on",
       "mandatoryWhen": [],
-      "tier1Compliance": ["14 CFR 39", "14 CFR 135.411", "14 CFR 135.415", "14 CFR 91.403"],
+      "tier1Compliance": [
+        "14 CFR 39",
+        "14 CFR 135.411",
+        "14 CFR 135.415",
+        "14 CFR 91.403"
+      ],
       "vault": {
-        "reads": ["aircraft_airworthiness_status", "component_life"],
-        "writes": ["ad_sb_status", "ad_compliance_matrix", "sb_evaluation_log"]
+        "reads": [
+          "aircraft_airworthiness_status",
+          "component_life"
+        ],
+        "writes": [
+          "ad_sb_status",
+          "ad_compliance_matrix",
+          "sb_evaluation_log"
+        ]
       },
       "referrals": [
-        { "event": "ad_due_soon", "routesTo": "AV-007" },
-        { "event": "emergency_ad_issued", "routesTo": "AV-029" }
+        {
+          "event": "ad_due_soon",
+          "routesTo": "AV-007"
+        },
+        {
+          "event": "emergency_ad_issued",
+          "routesTo": "AV-029"
+        }
       ],
       "alexRegistration": {
         "priority": "high",
@@ -166,19 +327,39 @@
       "suite": "Fleet",
       "phase": 1,
       "type": "standalone",
-      "pricing": { "monthly": 69 },
+      "pricing": {
+        "monthly": 79
+      },
       "status": "waitlist",
       "capabilitySummary": "Tracks component time remaining, overhaul intervals, and life-limited parts",
       "temporalType": "always_on",
       "mandatoryWhen": [],
-      "tier1Compliance": ["14 CFR 135.411", "14 CFR 135.421", "14 CFR 43.10", "14 CFR 91.409"],
+      "tier1Compliance": [
+        "14 CFR 135.411",
+        "14 CFR 135.421",
+        "14 CFR 43.10",
+        "14 CFR 91.409"
+      ],
       "vault": {
-        "reads": ["flight_hours_cycles", "maintenance_work_orders"],
-        "writes": ["component_life", "overhaul_schedule", "life_limited_parts_status"]
+        "reads": [
+          "flight_hours_cycles",
+          "maintenance_work_orders"
+        ],
+        "writes": [
+          "component_life",
+          "overhaul_schedule",
+          "life_limited_parts_status"
+        ]
       },
       "referrals": [
-        { "event": "component_approaching_limit", "routesTo": "AV-007" },
-        { "event": "overhaul_due", "routesTo": "AV-008" }
+        {
+          "event": "component_approaching_limit",
+          "routesTo": "AV-007"
+        },
+        {
+          "event": "overhaul_due",
+          "routesTo": "AV-008"
+        }
       ],
       "alexRegistration": {
         "priority": "normal",
@@ -193,19 +374,40 @@
       "suite": "Fleet",
       "phase": 1,
       "type": "standalone",
-      "pricing": { "monthly": 79 },
+      "pricing": {
+        "monthly": 79
+      },
       "status": "waitlist",
       "capabilitySummary": "Creates and tracks maintenance work orders, journey log entries, and return-to-service sign-offs",
       "temporalType": "event_driven",
       "mandatoryWhen": [],
-      "tier1Compliance": ["14 CFR 43.9", "14 CFR 43.11", "14 CFR 135.439", "14 CFR 91.417"],
+      "tier1Compliance": [
+        "14 CFR 43.9",
+        "14 CFR 43.11",
+        "14 CFR 135.439",
+        "14 CFR 91.417"
+      ],
       "vault": {
-        "reads": ["aircraft_airworthiness_status", "ad_sb_status", "component_life"],
-        "writes": ["maintenance_work_orders", "journey_log_entries", "return_to_service_records"]
+        "reads": [
+          "aircraft_airworthiness_status",
+          "ad_sb_status",
+          "component_life"
+        ],
+        "writes": [
+          "maintenance_work_orders",
+          "journey_log_entries",
+          "return_to_service_records"
+        ]
       },
       "referrals": [
-        { "event": "return_to_service_signed", "routesTo": "AV-004" },
-        { "event": "parts_needed", "routesTo": "AV-008" }
+        {
+          "event": "return_to_service_signed",
+          "routesTo": "AV-004"
+        },
+        {
+          "event": "parts_needed",
+          "routesTo": "AV-008"
+        }
       ],
       "alexRegistration": {
         "priority": "normal",
@@ -220,19 +422,38 @@
       "suite": "Fleet",
       "phase": 1,
       "type": "standalone",
-      "pricing": { "monthly": 59 },
+      "pricing": {
+        "monthly": 49
+      },
       "status": "waitlist",
       "capabilitySummary": "Manages parts inventory, reorder points, and vendor relationships for maintenance operations",
       "temporalType": "always_on",
       "mandatoryWhen": [],
-      "tier1Compliance": ["14 CFR 43.13", "14 CFR 21.303", "14 CFR 91.417"],
+      "tier1Compliance": [
+        "14 CFR 43.13",
+        "14 CFR 21.303",
+        "14 CFR 91.417"
+      ],
       "vault": {
-        "reads": ["maintenance_work_orders", "component_life"],
-        "writes": ["parts_inventory", "reorder_alerts", "vendor_directory"]
+        "reads": [
+          "maintenance_work_orders",
+          "component_life"
+        ],
+        "writes": [
+          "parts_inventory",
+          "reorder_alerts",
+          "vendor_directory"
+        ]
       },
       "referrals": [
-        { "event": "critical_part_out_of_stock", "routesTo": "AV-029" },
-        { "event": "part_received", "routesTo": "AV-007" }
+        {
+          "event": "critical_part_out_of_stock",
+          "routesTo": "AV-029"
+        },
+        {
+          "event": "part_received",
+          "routesTo": "AV-007"
+        }
       ],
       "alexRegistration": {
         "priority": "normal",
@@ -247,19 +468,45 @@
       "suite": "Crew",
       "phase": 1,
       "type": "standalone",
-      "pricing": { "monthly": 79 },
+      "pricing": {
+        "monthly": 79
+      },
       "status": "development",
       "capabilitySummary": "Hard stops on illegal crew assignments. Validates every proposed assignment against 14 CFR 135.267 before it reaches the board.",
       "temporalType": "always_on",
       "mandatoryWhen": [],
-      "tier1Compliance": ["14 CFR 135.267", "14 CFR 135.265", "14 CFR 135.271", "14 CFR 135.263", "14 CFR 91.1059", "FAA Order 8900.1"],
+      "tier1Compliance": [
+        "14 CFR 135.267",
+        "14 CFR 135.265",
+        "14 CFR 135.271",
+        "14 CFR 135.263",
+        "14 CFR 91.1059",
+        "FAA Order 8900.1"
+      ],
       "vault": {
-        "reads": ["pilot_duty_records", "flight_time_records", "rest_period_records", "current_schedule", "historical_flight_legs"],
-        "writes": ["duty_period_status", "legality_determination", "override_log", "cumulative_flight_time"]
+        "reads": [
+          "pilot_duty_records",
+          "flight_time_records",
+          "rest_period_records",
+          "current_schedule",
+          "historical_flight_legs"
+        ],
+        "writes": [
+          "duty_period_status",
+          "legality_determination",
+          "override_log",
+          "cumulative_flight_time"
+        ]
       },
       "referrals": [
-        { "event": "duty_limit_exceeded", "routesTo": "AV-029" },
-        { "event": "heme_rest_violation", "routesTo": "AV-029" }
+        {
+          "event": "duty_limit_exceeded",
+          "routesTo": "AV-029"
+        },
+        {
+          "event": "heme_rest_violation",
+          "routesTo": "AV-029"
+        }
       ],
       "alexRegistration": {
         "priority": "high",
@@ -274,19 +521,39 @@
       "suite": "Crew",
       "phase": 2,
       "type": "standalone",
-      "pricing": { "monthly": 69 },
+      "pricing": {
+        "monthly": 79
+      },
       "status": "waitlist",
       "capabilitySummary": "Tracks pilot qualifications, type ratings, check ride currency, and instrument proficiency",
       "temporalType": "always_on",
       "mandatoryWhen": [],
-      "tier1Compliance": ["14 CFR 135.243", "14 CFR 135.293", "14 CFR 135.297", "14 CFR 61.57"],
+      "tier1Compliance": [
+        "14 CFR 135.243",
+        "14 CFR 135.293",
+        "14 CFR 135.297",
+        "14 CFR 61.57"
+      ],
       "vault": {
-        "reads": ["pilot_certificates", "training_records"],
-        "writes": ["pilot_qualifications", "currency_status", "type_rating_records"]
+        "reads": [
+          "pilot_certificates",
+          "training_records"
+        ],
+        "writes": [
+          "pilot_qualifications",
+          "currency_status",
+          "type_rating_records"
+        ]
       },
       "referrals": [
-        { "event": "currency_expiring_soon", "routesTo": "AV-011" },
-        { "event": "pilot_not_current", "routesTo": "AV-032" }
+        {
+          "event": "currency_expiring_soon",
+          "routesTo": "AV-011"
+        },
+        {
+          "event": "pilot_not_current",
+          "routesTo": "AV-032"
+        }
       ],
       "alexRegistration": {
         "priority": "normal",
@@ -301,19 +568,39 @@
       "suite": "Crew",
       "phase": 2,
       "type": "standalone",
-      "pricing": { "monthly": 59 },
+      "pricing": {
+        "monthly": 49
+      },
       "status": "waitlist",
       "capabilitySummary": "Manages recurrent training schedules, completion records, and regulatory training requirements",
       "temporalType": "always_on",
       "mandatoryWhen": [],
-      "tier1Compliance": ["14 CFR 135.341", "14 CFR 135.343", "14 CFR 135.345", "14 CFR 135.351"],
+      "tier1Compliance": [
+        "14 CFR 135.341",
+        "14 CFR 135.343",
+        "14 CFR 135.345",
+        "14 CFR 135.351"
+      ],
       "vault": {
-        "reads": ["pilot_qualifications", "currency_status"],
-        "writes": ["training_records", "training_schedule", "training_completion_log"]
+        "reads": [
+          "pilot_qualifications",
+          "currency_status"
+        ],
+        "writes": [
+          "training_records",
+          "training_schedule",
+          "training_completion_log"
+        ]
       },
       "referrals": [
-        { "event": "training_due", "routesTo": "AV-029" },
-        { "event": "training_completed", "routesTo": "AV-010" }
+        {
+          "event": "training_due",
+          "routesTo": "AV-029"
+        },
+        {
+          "event": "training_completed",
+          "routesTo": "AV-010"
+        }
       ],
       "alexRegistration": {
         "priority": "normal",
@@ -328,19 +615,38 @@
       "suite": "Crew",
       "phase": 2,
       "type": "standalone",
-      "pricing": { "monthly": 49 },
+      "pricing": {
+        "monthly": 49
+      },
       "status": "waitlist",
       "capabilitySummary": "Tracks medical certificate dates, classes, BasicMed eligibility, and certificate limitations",
       "temporalType": "always_on",
       "mandatoryWhen": [],
-      "tier1Compliance": ["14 CFR 67", "14 CFR 61.23", "14 CFR 68 (BasicMed)", "14 CFR 135.243"],
+      "tier1Compliance": [
+        "14 CFR 67",
+        "14 CFR 61.23",
+        "14 CFR 68 (BasicMed)",
+        "14 CFR 135.243"
+      ],
       "vault": {
-        "reads": ["pilot_certificates"],
-        "writes": ["medical_status", "medical_expiry_dates", "certificate_limitations"]
+        "reads": [
+          "pilot_certificates"
+        ],
+        "writes": [
+          "medical_status",
+          "medical_expiry_dates",
+          "certificate_limitations"
+        ]
       },
       "referrals": [
-        { "event": "medical_expiring_soon", "routesTo": "AV-029" },
-        { "event": "medical_expired", "routesTo": "AV-032" }
+        {
+          "event": "medical_expiring_soon",
+          "routesTo": "AV-029"
+        },
+        {
+          "event": "medical_expired",
+          "routesTo": "AV-032"
+        }
       ],
       "alexRegistration": {
         "priority": "normal",
@@ -355,20 +661,57 @@
       "suite": "Flight Ops",
       "phase": 2,
       "type": "composite",
-      "pricing": { "monthly": 99 },
+      "pricing": {
+        "monthly": 79
+      },
       "status": "development",
       "capabilitySummary": "Assembles complete mission package -- aircraft airworthiness, crew legality, weather authorization, customer requirements, ground logistics -- before any flight is authorized.",
       "temporalType": "event_driven",
       "mandatoryWhen": [],
-      "tier1Compliance": ["14 CFR 135.63", "14 CFR 135.83", "14 CFR 135.117", "14 CFR 135.229", "HIPAA", "DOT 49 CFR 175", "TSA cargo screening", "No Surprises Act"],
+      "tier1Compliance": [
+        "14 CFR 135.63",
+        "14 CFR 135.83",
+        "14 CFR 135.117",
+        "14 CFR 135.229",
+        "HIPAA",
+        "DOT 49 CFR 175",
+        "TSA cargo screening",
+        "No Surprises Act"
+      ],
       "vault": {
-        "reads": ["aircraft_status", "crew_legality", "crew_quals", "frat_score", "weather", "airport_lz_intel", "notams", "weight_balance", "mel_restrictions"],
-        "writes": ["mission_record", "dispatch_authorization", "crew_assignment", "aircraft_assignment", "customer_notification_log", "mission_audit_trail"]
+        "reads": [
+          "aircraft_status",
+          "crew_legality",
+          "crew_quals",
+          "frat_score",
+          "weather",
+          "airport_lz_intel",
+          "notams",
+          "weight_balance",
+          "mel_restrictions"
+        ],
+        "writes": [
+          "mission_record",
+          "dispatch_authorization",
+          "crew_assignment",
+          "aircraft_assignment",
+          "customer_notification_log",
+          "mission_audit_trail"
+        ]
       },
       "referrals": [
-        { "event": "frat_elevated", "routesTo": "AV-029" },
-        { "event": "crew_duty_insufficient", "routesTo": "AV-033" },
-        { "event": "aircraft_mel_restricts", "routesTo": "AV-004" }
+        {
+          "event": "frat_elevated",
+          "routesTo": "AV-029"
+        },
+        {
+          "event": "crew_duty_insufficient",
+          "routesTo": "AV-033"
+        },
+        {
+          "event": "aircraft_mel_restricts",
+          "routesTo": "AV-004"
+        }
       ],
       "alexRegistration": {
         "priority": "high",
@@ -383,19 +726,44 @@
       "suite": "Safety",
       "phase": 2,
       "type": "standalone",
-      "pricing": { "monthly": 59 },
+      "pricing": {
+        "monthly": 49
+      },
       "status": "development",
       "capabilitySummary": "FRAT score gates dispatch authorization. Pilot completes FRAT before every flight. Elevated score requires documented CP override.",
       "temporalType": "event_driven",
       "mandatoryWhen": [],
-      "tier1Compliance": ["14 CFR 135.267", "FAA AC 120-92B", "CAMTS standards", "Company GOM FRAT provisions"],
+      "tier1Compliance": [
+        "14 CFR 135.267",
+        "FAA AC 120-92B",
+        "CAMTS standards",
+        "Company GOM FRAT provisions"
+      ],
       "vault": {
-        "reads": ["current_weather", "mission_details", "pilot_duty_rest", "pilot_currency", "aircraft_status"],
-        "writes": ["frat_score", "risk_category_breakdown", "pilot_self_assessment", "cp_override_record", "mission_risk_audit_trail"]
+        "reads": [
+          "current_weather",
+          "mission_details",
+          "pilot_duty_rest",
+          "pilot_currency",
+          "aircraft_status"
+        ],
+        "writes": [
+          "frat_score",
+          "risk_category_breakdown",
+          "pilot_self_assessment",
+          "cp_override_record",
+          "mission_risk_audit_trail"
+        ]
       },
       "referrals": [
-        { "event": "frat_red_black", "routesTo": "AV-029" },
-        { "event": "pattern_detected", "routesTo": "AV-037" }
+        {
+          "event": "frat_red_black",
+          "routesTo": "AV-029"
+        },
+        {
+          "event": "pattern_detected",
+          "routesTo": "AV-037"
+        }
       ],
       "alexRegistration": {
         "priority": "high",
@@ -410,19 +778,38 @@
       "suite": "Flight Ops",
       "phase": 2,
       "type": "standalone",
-      "pricing": { "monthly": 49 },
+      "pricing": {
+        "monthly": 49
+      },
       "status": "waitlist",
       "capabilitySummary": "Calculates weight and balance for each mission against aircraft-specific envelopes",
       "temporalType": "event_driven",
       "mandatoryWhen": [],
-      "tier1Compliance": ["14 CFR 135.185", "14 CFR 135.191", "14 CFR 91.103"],
+      "tier1Compliance": [
+        "14 CFR 135.185",
+        "14 CFR 135.191",
+        "14 CFR 91.103"
+      ],
       "vault": {
-        "reads": ["aircraft_airworthiness_status", "mission_record"],
-        "writes": ["weight_balance", "cg_envelope_check", "load_manifest"]
+        "reads": [
+          "aircraft_airworthiness_status",
+          "mission_record"
+        ],
+        "writes": [
+          "weight_balance",
+          "cg_envelope_check",
+          "load_manifest"
+        ]
       },
       "referrals": [
-        { "event": "wb_out_of_envelope", "routesTo": "AV-013" },
-        { "event": "overweight_condition", "routesTo": "AV-029" }
+        {
+          "event": "wb_out_of_envelope",
+          "routesTo": "AV-013"
+        },
+        {
+          "event": "overweight_condition",
+          "routesTo": "AV-029"
+        }
       ],
       "alexRegistration": {
         "priority": "normal",
@@ -437,19 +824,38 @@
       "suite": "Flight Ops",
       "phase": 3,
       "type": "standalone",
-      "pricing": { "monthly": 59 },
+      "pricing": {
+        "monthly": 49
+      },
       "status": "waitlist",
       "capabilitySummary": "Aggregates METARs, TAFs, SIGMETs, AIRMETs, PIREPs, and TFRs with plain-language translation",
       "temporalType": "always_on",
       "mandatoryWhen": [],
-      "tier1Compliance": ["14 CFR 135.213", "14 CFR 135.215", "14 CFR 135.219", "14 CFR 135.225"],
+      "tier1Compliance": [
+        "14 CFR 135.213",
+        "14 CFR 135.215",
+        "14 CFR 135.219",
+        "14 CFR 135.225"
+      ],
       "vault": {
-        "reads": ["mission_record"],
-        "writes": ["weather", "weather_briefing", "tfr_alerts"]
+        "reads": [
+          "mission_record"
+        ],
+        "writes": [
+          "weather",
+          "weather_briefing",
+          "tfr_alerts"
+        ]
       },
       "referrals": [
-        { "event": "weather_below_minimums", "routesTo": "AV-013" },
-        { "event": "sigmet_along_route", "routesTo": "AV-029" }
+        {
+          "event": "weather_below_minimums",
+          "routesTo": "AV-013"
+        },
+        {
+          "event": "sigmet_along_route",
+          "routesTo": "AV-029"
+        }
       ],
       "alexRegistration": {
         "priority": "normal",
@@ -464,19 +870,38 @@
       "suite": "Flight Ops",
       "phase": 3,
       "type": "standalone",
-      "pricing": { "monthly": 69 },
+      "pricing": {
+        "monthly": 79
+      },
       "status": "waitlist",
       "capabilitySummary": "Real-time flight tracking with position reporting and ETA management",
       "temporalType": "event_driven",
       "mandatoryWhen": [],
-      "tier1Compliance": ["14 CFR 135.79", "14 CFR 135.81", "FAA AC 135-14A"],
+      "tier1Compliance": [
+        "14 CFR 135.79",
+        "14 CFR 135.81",
+        "FAA AC 135-14A"
+      ],
       "vault": {
-        "reads": ["mission_record", "dispatch_authorization"],
-        "writes": ["flight_tracking_data", "position_reports", "eta_updates"]
+        "reads": [
+          "mission_record",
+          "dispatch_authorization"
+        ],
+        "writes": [
+          "flight_tracking_data",
+          "position_reports",
+          "eta_updates"
+        ]
       },
       "referrals": [
-        { "event": "position_report_overdue", "routesTo": "AV-020" },
-        { "event": "flight_landed", "routesTo": "AV-021" }
+        {
+          "event": "position_report_overdue",
+          "routesTo": "AV-020"
+        },
+        {
+          "event": "flight_landed",
+          "routesTo": "AV-021"
+        }
       ],
       "alexRegistration": {
         "priority": "high",
@@ -491,19 +916,36 @@
       "suite": "Safety",
       "phase": 3,
       "type": "standalone",
-      "pricing": { "monthly": 69 },
+      "pricing": {
+        "monthly": 79
+      },
       "status": "waitlist",
       "capabilitySummary": "Voluntary safety reporting system with anonymous submission and trend analysis",
       "temporalType": "always_on",
       "mandatoryWhen": [],
-      "tier1Compliance": ["14 CFR 5.21", "14 CFR 5.23", "14 CFR 5.25", "FAA AC 120-92B"],
+      "tier1Compliance": [
+        "14 CFR 5.21",
+        "14 CFR 5.23",
+        "14 CFR 5.25",
+        "FAA AC 120-92B"
+      ],
       "vault": {
         "reads": [],
-        "writes": ["safety_reports", "safety_trends", "anonymous_submission_log"]
+        "writes": [
+          "safety_reports",
+          "safety_trends",
+          "anonymous_submission_log"
+        ]
       },
       "referrals": [
-        { "event": "critical_safety_report", "routesTo": "AV-024" },
-        { "event": "hazard_identified", "routesTo": "AV-022" }
+        {
+          "event": "critical_safety_report",
+          "routesTo": "AV-024"
+        },
+        {
+          "event": "hazard_identified",
+          "routesTo": "AV-022"
+        }
       ],
       "alexRegistration": {
         "priority": "normal",
@@ -518,19 +960,38 @@
       "suite": "Safety",
       "phase": 3,
       "type": "standalone",
-      "pricing": { "monthly": 79 },
+      "pricing": {
+        "monthly": 79
+      },
       "status": "waitlist",
       "capabilitySummary": "Flight operational quality assurance -- analyzes flight data for exceedances and trends",
       "temporalType": "event_driven",
       "mandatoryWhen": [],
-      "tier1Compliance": ["14 CFR 13.401", "FAA AC 120-82", "FAA FOQA ASAP protections"],
+      "tier1Compliance": [
+        "14 CFR 13.401",
+        "FAA AC 120-82",
+        "FAA FOQA ASAP protections"
+      ],
       "vault": {
-        "reads": ["flight_tracking_data", "mission_record"],
-        "writes": ["foqa_exceedances", "flight_data_trends", "foqa_alerts"]
+        "reads": [
+          "flight_tracking_data",
+          "mission_record"
+        ],
+        "writes": [
+          "foqa_exceedances",
+          "flight_data_trends",
+          "foqa_alerts"
+        ]
       },
       "referrals": [
-        { "event": "exceedance_detected", "routesTo": "AV-024" },
-        { "event": "repeated_exceedance_pattern", "routesTo": "AV-037" }
+        {
+          "event": "exceedance_detected",
+          "routesTo": "AV-024"
+        },
+        {
+          "event": "repeated_exceedance_pattern",
+          "routesTo": "AV-037"
+        }
       ],
       "alexRegistration": {
         "priority": "normal",
@@ -545,19 +1006,40 @@
       "suite": "Safety",
       "phase": 3,
       "type": "standalone",
-      "pricing": { "monthly": 79 },
+      "pricing": {
+        "monthly": 79
+      },
       "status": "waitlist",
       "capabilitySummary": "Emergency response plan management with automated notification cascades",
       "temporalType": "event_driven",
       "mandatoryWhen": [],
-      "tier1Compliance": ["14 CFR 135.331", "NTSB 830", "FAA AC 120-92B", "Company ERP"],
+      "tier1Compliance": [
+        "14 CFR 135.331",
+        "NTSB 830",
+        "FAA AC 120-92B",
+        "Company ERP"
+      ],
       "vault": {
-        "reads": ["flight_tracking_data", "mission_record", "crew_contact_info"],
-        "writes": ["erp_activation_log", "notification_cascade_log", "incident_records"]
+        "reads": [
+          "flight_tracking_data",
+          "mission_record",
+          "crew_contact_info"
+        ],
+        "writes": [
+          "erp_activation_log",
+          "notification_cascade_log",
+          "incident_records"
+        ]
       },
       "referrals": [
-        { "event": "erp_activated", "routesTo": "AV-029" },
-        { "event": "incident_requires_investigation", "routesTo": "AV-024" }
+        {
+          "event": "erp_activated",
+          "routesTo": "AV-029"
+        },
+        {
+          "event": "incident_requires_investigation",
+          "routesTo": "AV-024"
+        }
       ],
       "alexRegistration": {
         "priority": "high",
@@ -572,19 +1054,39 @@
       "suite": "Flight Ops",
       "phase": 3,
       "type": "standalone",
-      "pricing": { "monthly": 49 },
+      "pricing": {
+        "monthly": 49
+      },
       "status": "waitlist",
       "capabilitySummary": "Replaces Protean OASIS workflow -- auto-populated post-flight debriefs from flight data",
       "temporalType": "event_driven",
       "mandatoryWhen": [],
-      "tier1Compliance": ["14 CFR 135.63", "14 CFR 135.65", "14 CFR 91.417"],
+      "tier1Compliance": [
+        "14 CFR 135.63",
+        "14 CFR 135.65",
+        "14 CFR 91.417"
+      ],
       "vault": {
-        "reads": ["flight_tracking_data", "mission_record", "frat_score"],
-        "writes": ["post_flight_debrief", "flight_hours_cycles", "squawk_reports"]
+        "reads": [
+          "flight_tracking_data",
+          "mission_record",
+          "frat_score"
+        ],
+        "writes": [
+          "post_flight_debrief",
+          "flight_hours_cycles",
+          "squawk_reports"
+        ]
       },
       "referrals": [
-        { "event": "squawk_reported", "routesTo": "AV-007" },
-        { "event": "debrief_complete", "routesTo": "AV-026" }
+        {
+          "event": "squawk_reported",
+          "routesTo": "AV-007"
+        },
+        {
+          "event": "debrief_complete",
+          "routesTo": "AV-026"
+        }
       ],
       "alexRegistration": {
         "priority": "normal",
@@ -599,19 +1101,39 @@
       "suite": "Safety",
       "phase": 4,
       "type": "standalone",
-      "pricing": { "monthly": 59 },
+      "pricing": {
+        "monthly": 49
+      },
       "status": "waitlist",
       "capabilitySummary": "Maintains hazard identification and risk assessment register per SMS requirements",
       "temporalType": "always_on",
       "mandatoryWhen": [],
-      "tier1Compliance": ["14 CFR 5.51", "14 CFR 5.53", "14 CFR 5.55", "FAA AC 120-92B"],
+      "tier1Compliance": [
+        "14 CFR 5.51",
+        "14 CFR 5.53",
+        "14 CFR 5.55",
+        "FAA AC 120-92B"
+      ],
       "vault": {
-        "reads": ["safety_reports", "foqa_exceedances"],
-        "writes": ["hazard_register", "risk_assessments", "mitigation_actions"]
+        "reads": [
+          "safety_reports",
+          "foqa_exceedances"
+        ],
+        "writes": [
+          "hazard_register",
+          "risk_assessments",
+          "mitigation_actions"
+        ]
       },
       "referrals": [
-        { "event": "high_risk_hazard_identified", "routesTo": "AV-024" },
-        { "event": "mitigation_action_due", "routesTo": "AV-029" }
+        {
+          "event": "high_risk_hazard_identified",
+          "routesTo": "AV-024"
+        },
+        {
+          "event": "mitigation_action_due",
+          "routesTo": "AV-029"
+        }
       ],
       "alexRegistration": {
         "priority": "normal",
@@ -626,19 +1148,41 @@
       "suite": "Safety",
       "phase": 4,
       "type": "standalone",
-      "pricing": { "monthly": 69 },
+      "pricing": {
+        "monthly": 79
+      },
       "status": "waitlist",
       "capabilitySummary": "Tracks safety performance indicators and safety objectives against targets",
       "temporalType": "always_on",
       "mandatoryWhen": [],
-      "tier1Compliance": ["14 CFR 5.71", "14 CFR 5.73", "14 CFR 5.75", "FAA AC 120-92B"],
+      "tier1Compliance": [
+        "14 CFR 5.71",
+        "14 CFR 5.73",
+        "14 CFR 5.75",
+        "FAA AC 120-92B"
+      ],
       "vault": {
-        "reads": ["safety_reports", "hazard_register", "foqa_exceedances", "safety_trends"],
-        "writes": ["spi_dashboard", "safety_objectives_status", "management_review_reports"]
+        "reads": [
+          "safety_reports",
+          "hazard_register",
+          "foqa_exceedances",
+          "safety_trends"
+        ],
+        "writes": [
+          "spi_dashboard",
+          "safety_objectives_status",
+          "management_review_reports"
+        ]
       },
       "referrals": [
-        { "event": "spi_threshold_breached", "routesTo": "AV-024" },
-        { "event": "management_review_due", "routesTo": "AV-029" }
+        {
+          "event": "spi_threshold_breached",
+          "routesTo": "AV-024"
+        },
+        {
+          "event": "management_review_due",
+          "routesTo": "AV-029"
+        }
       ],
       "alexRegistration": {
         "priority": "normal",
@@ -653,19 +1197,42 @@
       "suite": "Safety",
       "phase": 4,
       "type": "standalone",
-      "pricing": { "monthly": 79 },
+      "pricing": {
+        "monthly": 79
+      },
       "status": "waitlist",
       "capabilitySummary": "AI-assisted safety analysis with pattern detection across all safety data sources",
       "temporalType": "always_on",
       "mandatoryWhen": [],
-      "tier1Compliance": ["14 CFR Part 5", "FAA AC 120-92B", "ICAO Annex 19"],
+      "tier1Compliance": [
+        "14 CFR Part 5",
+        "FAA AC 120-92B",
+        "ICAO Annex 19"
+      ],
       "vault": {
-        "reads": ["safety_reports", "hazard_register", "foqa_exceedances", "safety_trends", "frat_score", "spi_dashboard"],
-        "writes": ["safety_analysis_reports", "pattern_detection_alerts", "safety_recommendations"]
+        "reads": [
+          "safety_reports",
+          "hazard_register",
+          "foqa_exceedances",
+          "safety_trends",
+          "frat_score",
+          "spi_dashboard"
+        ],
+        "writes": [
+          "safety_analysis_reports",
+          "pattern_detection_alerts",
+          "safety_recommendations"
+        ]
       },
       "referrals": [
-        { "event": "systemic_risk_detected", "routesTo": "AV-029" },
-        { "event": "training_gap_identified", "routesTo": "AV-037" }
+        {
+          "event": "systemic_risk_detected",
+          "routesTo": "AV-029"
+        },
+        {
+          "event": "training_gap_identified",
+          "routesTo": "AV-037"
+        }
       ],
       "alexRegistration": {
         "priority": "high",
@@ -680,19 +1247,38 @@
       "suite": "Revenue",
       "phase": 5,
       "type": "standalone",
-      "pricing": { "monthly": 59 },
+      "pricing": {
+        "monthly": 49
+      },
       "status": "waitlist",
       "capabilitySummary": "Generates charter quotes based on aircraft costs, fuel, crew, landing fees, and margin",
       "temporalType": "event_driven",
       "mandatoryWhen": [],
-      "tier1Compliance": ["14 CFR 135.243", "DOT Consumer Protection", "Truth in pricing requirements"],
+      "tier1Compliance": [
+        "14 CFR 135.243",
+        "DOT Consumer Protection",
+        "Truth in pricing requirements"
+      ],
       "vault": {
-        "reads": ["aircraft_airworthiness_status", "current_schedule"],
-        "writes": ["charter_quotes", "quote_history", "pricing_models"]
+        "reads": [
+          "aircraft_airworthiness_status",
+          "current_schedule"
+        ],
+        "writes": [
+          "charter_quotes",
+          "quote_history",
+          "pricing_models"
+        ]
       },
       "referrals": [
-        { "event": "quote_accepted", "routesTo": "AV-013" },
-        { "event": "invoice_needed", "routesTo": "AV-026" }
+        {
+          "event": "quote_accepted",
+          "routesTo": "AV-013"
+        },
+        {
+          "event": "invoice_needed",
+          "routesTo": "AV-026"
+        }
       ],
       "alexRegistration": {
         "priority": "normal",
@@ -707,19 +1293,39 @@
       "suite": "Revenue",
       "phase": 5,
       "type": "standalone",
-      "pricing": { "monthly": 59 },
+      "pricing": {
+        "monthly": 49
+      },
       "status": "waitlist",
       "capabilitySummary": "Manages customer invoicing, payment tracking, and accounts receivable for charter operations",
       "temporalType": "always_on",
       "mandatoryWhen": [],
-      "tier1Compliance": ["DOT Consumer Protection", "State billing regulations", "Contract terms enforcement"],
+      "tier1Compliance": [
+        "DOT Consumer Protection",
+        "State billing regulations",
+        "Contract terms enforcement"
+      ],
       "vault": {
-        "reads": ["charter_quotes", "mission_record", "post_flight_debrief"],
-        "writes": ["invoices", "payment_records", "ar_aging_reports"]
+        "reads": [
+          "charter_quotes",
+          "mission_record",
+          "post_flight_debrief"
+        ],
+        "writes": [
+          "invoices",
+          "payment_records",
+          "ar_aging_reports"
+        ]
       },
       "referrals": [
-        { "event": "payment_overdue", "routesTo": "AV-029" },
-        { "event": "billing_dispute", "routesTo": "AV-028" }
+        {
+          "event": "payment_overdue",
+          "routesTo": "AV-029"
+        },
+        {
+          "event": "billing_dispute",
+          "routesTo": "AV-028"
+        }
       ],
       "alexRegistration": {
         "priority": "normal",
@@ -734,19 +1340,41 @@
       "suite": "Revenue",
       "phase": 5,
       "type": "standalone",
-      "pricing": { "monthly": 99 },
+      "pricing": {
+        "monthly": 79
+      },
       "status": "waitlist",
       "capabilitySummary": "Specialized medical transport billing -- Medicare, Medicaid, private insurance, No Surprises Act compliance",
       "temporalType": "event_driven",
       "mandatoryWhen": [],
-      "tier1Compliance": ["HIPAA", "No Surprises Act", "Medicare/Medicaid billing regulations", "CMS guidelines", "State balance billing laws"],
+      "tier1Compliance": [
+        "HIPAA",
+        "No Surprises Act",
+        "Medicare/Medicaid billing regulations",
+        "CMS guidelines",
+        "State balance billing laws"
+      ],
       "vault": {
-        "reads": ["mission_record", "dispatch_authorization"],
-        "writes": ["medevac_claims", "insurance_submissions", "collection_records", "compliance_documentation"]
+        "reads": [
+          "mission_record",
+          "dispatch_authorization"
+        ],
+        "writes": [
+          "medevac_claims",
+          "insurance_submissions",
+          "collection_records",
+          "compliance_documentation"
+        ]
       },
       "referrals": [
-        { "event": "claim_denied", "routesTo": "AV-029" },
-        { "event": "hipaa_concern", "routesTo": "AV-030" }
+        {
+          "event": "claim_denied",
+          "routesTo": "AV-029"
+        },
+        {
+          "event": "hipaa_concern",
+          "routesTo": "AV-030"
+        }
       ],
       "alexRegistration": {
         "priority": "normal",
@@ -761,19 +1389,39 @@
       "suite": "Revenue",
       "phase": 5,
       "type": "standalone",
-      "pricing": { "monthly": 49 },
+      "pricing": {
+        "monthly": 49
+      },
       "status": "waitlist",
       "capabilitySummary": "Customer-facing portal for trip requests, itineraries, and document sharing",
       "temporalType": "always_on",
       "mandatoryWhen": [],
-      "tier1Compliance": ["HIPAA (medevac customers)", "DOT Consumer Protection", "Privacy regulations"],
+      "tier1Compliance": [
+        "HIPAA (medevac customers)",
+        "DOT Consumer Protection",
+        "Privacy regulations"
+      ],
       "vault": {
-        "reads": ["charter_quotes", "mission_record", "flight_tracking_data"],
-        "writes": ["trip_requests", "customer_itineraries", "customer_documents"]
+        "reads": [
+          "charter_quotes",
+          "mission_record",
+          "flight_tracking_data"
+        ],
+        "writes": [
+          "trip_requests",
+          "customer_itineraries",
+          "customer_documents"
+        ]
       },
       "referrals": [
-        { "event": "trip_request_received", "routesTo": "AV-025" },
-        { "event": "customer_complaint", "routesTo": "AV-029" }
+        {
+          "event": "trip_request_received",
+          "routesTo": "AV-025"
+        },
+        {
+          "event": "customer_complaint",
+          "routesTo": "AV-029"
+        }
       ],
       "alexRegistration": {
         "priority": "normal",
@@ -788,15 +1436,29 @@
       "suite": "Compliance",
       "phase": 6,
       "type": "orchestrator",
-      "pricing": { "monthly": 0 },
+      "pricing": {
+        "monthly": 0
+      },
       "status": "development",
       "capabilitySummary": "Cross-worker orchestration, anomaly detection, escalation routing. 0500 ops briefing to CP and DOM. Monitors all Vault events.",
       "temporalType": "always_on",
       "mandatoryWhen": [],
-      "tier1Compliance": ["Tier 0 enforcement only -- orchestrator has no direct regulatory requirement"],
+      "tier1Compliance": [
+        "Tier 0 enforcement only -- orchestrator has no direct regulatory requirement"
+      ],
       "vault": {
-        "reads": ["all_worker_outputs", "notification_preferences", "crew_contact_info", "cp_dom_contact_info"],
-        "writes": ["notification_log", "escalation_records", "briefing_delivery_confirmation", "alert_acknowledgment"]
+        "reads": [
+          "all_worker_outputs",
+          "notification_preferences",
+          "crew_contact_info",
+          "cp_dom_contact_info"
+        ],
+        "writes": [
+          "notification_log",
+          "escalation_records",
+          "briefing_delivery_confirmation",
+          "alert_acknowledgment"
+        ]
       },
       "referrals": [],
       "alexRegistration": null
@@ -808,19 +1470,40 @@
       "suite": "Compliance",
       "phase": 6,
       "type": "standalone",
-      "pricing": { "monthly": 69 },
+      "pricing": {
+        "monthly": 79
+      },
       "status": "waitlist",
       "capabilitySummary": "Monitors Federal Aviation Regulation changes and flags impact on operations",
       "temporalType": "always_on",
       "mandatoryWhen": [],
-      "tier1Compliance": ["14 CFR Part 135", "14 CFR Part 91", "14 CFR Part 119", "FAA NPRM tracking"],
+      "tier1Compliance": [
+        "14 CFR Part 135",
+        "14 CFR Part 91",
+        "14 CFR Part 119",
+        "FAA NPRM tracking"
+      ],
       "vault": {
-        "reads": ["ops_specs", "gom_document", "regulatory_change_alerts"],
-        "writes": ["far_change_analysis", "compliance_gap_alerts", "nprm_tracking"]
+        "reads": [
+          "ops_specs",
+          "gom_document",
+          "regulatory_change_alerts"
+        ],
+        "writes": [
+          "far_change_analysis",
+          "compliance_gap_alerts",
+          "nprm_tracking"
+        ]
       },
       "referrals": [
-        { "event": "far_change_requires_gom_update", "routesTo": "AV-002" },
-        { "event": "compliance_gap_found", "routesTo": "AV-029" }
+        {
+          "event": "far_change_requires_gom_update",
+          "routesTo": "AV-002"
+        },
+        {
+          "event": "compliance_gap_found",
+          "routesTo": "AV-029"
+        }
       ],
       "alexRegistration": {
         "priority": "normal",
@@ -835,19 +1518,39 @@
       "suite": "Compliance",
       "phase": 6,
       "type": "standalone",
-      "pricing": { "monthly": 59 },
+      "pricing": {
+        "monthly": 49
+      },
       "status": "waitlist",
       "capabilitySummary": "Manages DOT/FAA drug and alcohol testing program -- random selection, scheduling, record keeping",
       "temporalType": "always_on",
       "mandatoryWhen": [],
-      "tier1Compliance": ["14 CFR Part 120", "49 CFR Part 40", "DOT Drug and Alcohol Testing", "FAA Order 8900.1 Vol 6"],
+      "tier1Compliance": [
+        "14 CFR Part 120",
+        "49 CFR Part 40",
+        "DOT Drug and Alcohol Testing",
+        "FAA Order 8900.1 Vol 6"
+      ],
       "vault": {
-        "reads": ["crew_contact_info"],
-        "writes": ["random_selection_records", "test_scheduling", "test_results_log", "program_compliance_reports"]
+        "reads": [
+          "crew_contact_info"
+        ],
+        "writes": [
+          "random_selection_records",
+          "test_scheduling",
+          "test_results_log",
+          "program_compliance_reports"
+        ]
       },
       "referrals": [
-        { "event": "positive_test_result", "routesTo": "AV-029" },
-        { "event": "program_audit_due", "routesTo": "AV-030" }
+        {
+          "event": "positive_test_result",
+          "routesTo": "AV-029"
+        },
+        {
+          "event": "program_audit_due",
+          "routesTo": "AV-030"
+        }
       ],
       "alexRegistration": {
         "priority": "normal",
@@ -862,19 +1565,45 @@
       "suite": "Crew",
       "phase": 6,
       "type": "standalone",
-      "pricing": { "monthly": 79 },
+      "pricing": {
+        "monthly": 79
+      },
       "status": "development",
       "capabilitySummary": "Builds and publishes crew schedules with every assignment pre-validated for legality before reaching the board.",
       "temporalType": "always_on",
       "mandatoryWhen": [],
-      "tier1Compliance": ["14 CFR 135.267", "14 CFR 135.271", "14 CFR 135.99", "14 CFR 135.243", "14 CFR 91.1"],
+      "tier1Compliance": [
+        "14 CFR 135.267",
+        "14 CFR 135.271",
+        "14 CFR 135.99",
+        "14 CFR 135.243",
+        "14 CFR 91.1"
+      ],
       "vault": {
-        "reads": ["pilot_qualifications", "duty_time_records", "medical_status", "training_currency", "active_missions", "crew_housing"],
-        "writes": ["published_roster", "crew_assignments", "schedule_change_events", "legality_validation_records"]
+        "reads": [
+          "pilot_qualifications",
+          "duty_time_records",
+          "medical_status",
+          "training_currency",
+          "active_missions",
+          "crew_housing"
+        ],
+        "writes": [
+          "published_roster",
+          "crew_assignments",
+          "schedule_change_events",
+          "legality_validation_records"
+        ]
       },
       "referrals": [
-        { "event": "schedule_change", "routesTo": "AV-038" },
-        { "event": "sick_call", "routesTo": "AV-033" }
+        {
+          "event": "schedule_change",
+          "routesTo": "AV-038"
+        },
+        {
+          "event": "sick_call",
+          "routesTo": "AV-033"
+        }
       ],
       "alexRegistration": {
         "priority": "normal",
@@ -889,19 +1618,40 @@
       "suite": "Crew",
       "phase": 6,
       "type": "standalone",
-      "pricing": { "monthly": 59 },
+      "pricing": {
+        "monthly": 49
+      },
       "status": "waitlist",
       "capabilitySummary": "Manages reserve pilot activation and crew swap requests with legality validation",
       "temporalType": "event_driven",
       "mandatoryWhen": [],
-      "tier1Compliance": ["14 CFR 135.267", "14 CFR 135.271", "14 CFR 135.243"],
+      "tier1Compliance": [
+        "14 CFR 135.267",
+        "14 CFR 135.271",
+        "14 CFR 135.243"
+      ],
       "vault": {
-        "reads": ["published_roster", "duty_time_records", "pilot_qualifications", "medical_status"],
-        "writes": ["reserve_activation_log", "swap_requests", "swap_approval_records"]
+        "reads": [
+          "published_roster",
+          "duty_time_records",
+          "pilot_qualifications",
+          "medical_status"
+        ],
+        "writes": [
+          "reserve_activation_log",
+          "swap_requests",
+          "swap_approval_records"
+        ]
       },
       "referrals": [
-        { "event": "no_reserve_available", "routesTo": "AV-029" },
-        { "event": "swap_approved", "routesTo": "AV-032" }
+        {
+          "event": "no_reserve_available",
+          "routesTo": "AV-029"
+        },
+        {
+          "event": "swap_approved",
+          "routesTo": "AV-032"
+        }
       ],
       "alexRegistration": {
         "priority": "normal",
@@ -916,19 +1666,36 @@
       "suite": "Intelligence",
       "phase": 7,
       "type": "standalone",
-      "pricing": { "monthly": 59 },
+      "pricing": {
+        "monthly": 49
+      },
       "status": "waitlist",
       "capabilitySummary": "Airport and helipad database with approach notes, hazards, FBO reviews, and LZ status",
       "temporalType": "always_on",
       "mandatoryWhen": [],
-      "tier1Compliance": ["14 CFR 135.223", "14 CFR 135.225", "FAA Chart Supplement"],
+      "tier1Compliance": [
+        "14 CFR 135.223",
+        "14 CFR 135.225",
+        "FAA Chart Supplement"
+      ],
       "vault": {
         "reads": [],
-        "writes": ["airport_lz_intel", "fbo_reviews", "approach_notes", "hazard_notes"]
+        "writes": [
+          "airport_lz_intel",
+          "fbo_reviews",
+          "approach_notes",
+          "hazard_notes"
+        ]
       },
       "referrals": [
-        { "event": "new_lz_added", "routesTo": "AV-013" },
-        { "event": "hazard_reported_at_airport", "routesTo": "AV-022" }
+        {
+          "event": "new_lz_added",
+          "routesTo": "AV-013"
+        },
+        {
+          "event": "hazard_reported_at_airport",
+          "routesTo": "AV-022"
+        }
       ],
       "alexRegistration": {
         "priority": "normal",
@@ -943,19 +1710,37 @@
       "suite": "Intelligence",
       "phase": 7,
       "type": "standalone",
-      "pricing": { "monthly": 49 },
+      "pricing": {
+        "monthly": 49
+      },
       "status": "waitlist",
       "capabilitySummary": "NOTAM filtering, translation to plain English, and impact assessment for planned routes",
       "temporalType": "event_driven",
       "mandatoryWhen": [],
-      "tier1Compliance": ["14 CFR 91.103", "14 CFR 135.83", "FAA NOTAM system"],
+      "tier1Compliance": [
+        "14 CFR 91.103",
+        "14 CFR 135.83",
+        "FAA NOTAM system"
+      ],
       "vault": {
-        "reads": ["mission_record"],
-        "writes": ["notams", "notam_impact_assessments", "notam_plain_text"]
+        "reads": [
+          "mission_record"
+        ],
+        "writes": [
+          "notams",
+          "notam_impact_assessments",
+          "notam_plain_text"
+        ]
       },
       "referrals": [
-        { "event": "critical_notam_for_mission", "routesTo": "AV-013" },
-        { "event": "tfr_along_route", "routesTo": "AV-016" }
+        {
+          "event": "critical_notam_for_mission",
+          "routesTo": "AV-013"
+        },
+        {
+          "event": "tfr_along_route",
+          "routesTo": "AV-016"
+        }
       ],
       "alexRegistration": {
         "priority": "normal",
@@ -970,19 +1755,39 @@
       "suite": "Intelligence",
       "phase": 7,
       "type": "standalone",
-      "pricing": { "monthly": 49 },
+      "pricing": {
+        "monthly": 49
+      },
       "status": "waitlist",
       "capabilitySummary": "Electronic flight bag companion with ForeFlight integration and flight plan management",
       "temporalType": "always_on",
       "mandatoryWhen": [],
-      "tier1Compliance": ["14 CFR 135.97", "FAA AC 120-76D (EFB)", "14 CFR 91.103"],
+      "tier1Compliance": [
+        "14 CFR 135.97",
+        "FAA AC 120-76D (EFB)",
+        "14 CFR 91.103"
+      ],
       "vault": {
-        "reads": ["mission_record", "weather", "notams", "airport_lz_intel"],
-        "writes": ["flight_plans", "efb_sync_log"]
+        "reads": [
+          "mission_record",
+          "weather",
+          "notams",
+          "airport_lz_intel"
+        ],
+        "writes": [
+          "flight_plans",
+          "efb_sync_log"
+        ]
       },
       "referrals": [
-        { "event": "flight_plan_filed", "routesTo": "AV-013" },
-        { "event": "efb_discrepancy", "routesTo": "AV-029" }
+        {
+          "event": "flight_plan_filed",
+          "routesTo": "AV-013"
+        },
+        {
+          "event": "efb_discrepancy",
+          "routesTo": "AV-029"
+        }
       ],
       "alexRegistration": {
         "priority": "normal",
@@ -997,19 +1802,40 @@
       "suite": "Intelligence",
       "phase": 7,
       "type": "standalone",
-      "pricing": { "monthly": 59 },
+      "pricing": {
+        "monthly": 49
+      },
       "status": "waitlist",
       "capabilitySummary": "Adaptive training modules, recurrent training management, and FAA knowledge test prep",
       "temporalType": "always_on",
       "mandatoryWhen": [],
-      "tier1Compliance": ["14 CFR 135.341", "14 CFR 135.343", "14 CFR 61.56", "14 CFR 61.58"],
+      "tier1Compliance": [
+        "14 CFR 135.341",
+        "14 CFR 135.343",
+        "14 CFR 61.56",
+        "14 CFR 61.58"
+      ],
       "vault": {
-        "reads": ["training_records", "foqa_exceedances", "safety_reports"],
-        "writes": ["courseware_assignments", "training_progress", "knowledge_test_scores"]
+        "reads": [
+          "training_records",
+          "foqa_exceedances",
+          "safety_reports"
+        ],
+        "writes": [
+          "courseware_assignments",
+          "training_progress",
+          "knowledge_test_scores"
+        ]
       },
       "referrals": [
-        { "event": "training_completed", "routesTo": "AV-011" },
-        { "event": "knowledge_test_failed", "routesTo": "AV-029" }
+        {
+          "event": "training_completed",
+          "routesTo": "AV-011"
+        },
+        {
+          "event": "knowledge_test_failed",
+          "routesTo": "AV-029"
+        }
       ],
       "alexRegistration": {
         "priority": "normal",
@@ -1024,19 +1850,38 @@
       "suite": "Intelligence",
       "phase": 7,
       "type": "standalone",
-      "pricing": { "monthly": 39 },
+      "pricing": {
+        "monthly": 29
+      },
       "status": "waitlist",
       "capabilitySummary": "Manages crew housing reservations coordinated with crew schedule changes",
       "temporalType": "event_driven",
       "mandatoryWhen": [],
-      "tier1Compliance": ["14 CFR 135.267 (rest requirements)", "Company GOM rest facility standards", "GSA per diem rates"],
+      "tier1Compliance": [
+        "14 CFR 135.267 (rest requirements)",
+        "Company GOM rest facility standards",
+        "GSA per diem rates"
+      ],
       "vault": {
-        "reads": ["published_roster", "schedule_change_events"],
-        "writes": ["crew_housing", "housing_reservations", "housing_expense_log"]
+        "reads": [
+          "published_roster",
+          "schedule_change_events"
+        ],
+        "writes": [
+          "crew_housing",
+          "housing_reservations",
+          "housing_expense_log"
+        ]
       },
       "referrals": [
-        { "event": "housing_unavailable", "routesTo": "AV-029" },
-        { "event": "schedule_change_impacts_housing", "routesTo": "AV-032" }
+        {
+          "event": "housing_unavailable",
+          "routesTo": "AV-029"
+        },
+        {
+          "event": "schedule_change_impacts_housing",
+          "routesTo": "AV-032"
+        }
       ],
       "alexRegistration": {
         "priority": "normal",
@@ -1051,18 +1896,34 @@
       "suite": "Aviation",
       "phase": null,
       "type": "standalone",
-      "pricing": { "monthly": 0 },
+      "pricing": {
+        "monthly": 0
+      },
       "status": "development",
       "capabilitySummary": "Blockchain-verified personal flight logbook. Replaces paper permanently. Auto-imports from ForeFlight, Schedaero, FVO. PRIA-ready export.",
       "temporalType": "always_on",
       "mandatoryWhen": [],
-      "tier1Compliance": ["14 CFR 61.51", "14 CFR 61.159", "PRIA 49 USC 44703"],
+      "tier1Compliance": [
+        "14 CFR 61.51",
+        "14 CFR 61.159",
+        "PRIA 49 USC 44703"
+      ],
       "vault": {
-        "reads": ["company_mission_records"],
-        "writes": ["personal_flight_record", "cumulative_totals", "last_flight_date", "pria_release_authorizations"]
+        "reads": [
+          "company_mission_records"
+        ],
+        "writes": [
+          "personal_flight_record",
+          "cumulative_totals",
+          "last_flight_date",
+          "pria_release_authorizations"
+        ]
       },
       "referrals": [
-        { "event": "milestone_reached", "routesTo": "AV-P06" }
+        {
+          "event": "milestone_reached",
+          "routesTo": "AV-P06"
+        }
       ],
       "alexRegistration": {
         "priority": "normal",
@@ -1077,19 +1938,39 @@
       "suite": "Aviation",
       "phase": null,
       "type": "standalone",
-      "pricing": { "monthly": 0 },
+      "pricing": {
+        "monthly": 0
+      },
       "status": "waitlist",
       "capabilitySummary": "Real-time currency dashboard -- am I legal for this flight? Day/night landings, instrument currency, flight review, medical class tracking.",
       "temporalType": "always_on",
       "mandatoryWhen": [],
-      "tier1Compliance": ["14 CFR 61.57", "14 CFR 61.56", "14 CFR 61.23", "14 CFR 68 (BasicMed)"],
+      "tier1Compliance": [
+        "14 CFR 61.57",
+        "14 CFR 61.56",
+        "14 CFR 61.23",
+        "14 CFR 68 (BasicMed)"
+      ],
       "vault": {
-        "reads": ["personal_flight_record", "cumulative_totals"],
-        "writes": ["personal_currency_status", "medical_tracking", "legal_for_flight_check"]
+        "reads": [
+          "personal_flight_record",
+          "cumulative_totals"
+        ],
+        "writes": [
+          "personal_currency_status",
+          "medical_tracking",
+          "legal_for_flight_check"
+        ]
       },
       "referrals": [
-        { "event": "currency_lapsing", "routesTo": "AV-P04" },
-        { "event": "medical_expiring", "routesTo": "AV-P06" }
+        {
+          "event": "currency_lapsing",
+          "routesTo": "AV-P04"
+        },
+        {
+          "event": "medical_expiring",
+          "routesTo": "AV-P06"
+        }
       ],
       "alexRegistration": {
         "priority": "normal",
@@ -1104,12 +1985,18 @@
       "suite": "Aviation",
       "phase": null,
       "type": "standalone",
-      "pricing": { "monthly": 29 },
+      "pricing": {
+        "monthly": 29
+      },
       "status": "waitlist",
       "capabilitySummary": "Type-specific V-speeds, W&B calculator, checklists, performance data, systems descriptions. ForeFlight sync. PC-12 NG: includes FSI training materials (4,209 pages — PIM, MMEL, Primus APEX guide, safety briefs).",
       "temporalType": "always_on",
       "mandatoryWhen": [],
-      "tier1Compliance": ["14 CFR 91.103", "14 CFR 91.9", "Aircraft POH/AFM requirements"],
+      "tier1Compliance": [
+        "14 CFR 91.103",
+        "14 CFR 91.9",
+        "Aircraft POH/AFM requirements"
+      ],
       "referenceDocuments": [
         {
           "name": "FSI PC-12 NG Training Materials",
@@ -1117,15 +2004,29 @@
           "pages": 4209,
           "summary": "training/fsi-pc12ng-training.md",
           "storage": "gs://title-app-alpha.firebasestorage.app/raas/aviation/GLOBAL/reference/fsi/FSI_PC12NG_Materials.pdf",
-          "contents": ["FSI Safety Briefs", "MMEL Doc 02395 Rev 08", "PIM Report 02277", "Honeywell Primus APEX Pilot Guide", "Systems Descriptions", "Knowledge Checks"]
+          "contents": [
+            "FSI Safety Briefs",
+            "MMEL Doc 02395 Rev 08",
+            "PIM Report 02277",
+            "Honeywell Primus APEX Pilot Guide",
+            "Systems Descriptions",
+            "Knowledge Checks"
+          ]
         }
       ],
       "vault": {
         "reads": [],
-        "writes": ["personal_aircraft_profiles", "personal_checklists", "performance_data"]
+        "writes": [
+          "personal_aircraft_profiles",
+          "personal_checklists",
+          "performance_data"
+        ]
       },
       "referrals": [
-        { "event": "wb_check_requested", "routesTo": "AV-P05" }
+        {
+          "event": "wb_check_requested",
+          "routesTo": "AV-P05"
+        }
       ],
       "alexRegistration": {
         "priority": "normal",
@@ -1140,19 +2041,39 @@
       "suite": "Aviation",
       "phase": null,
       "type": "standalone",
-      "pricing": { "monthly": 29 },
+      "pricing": {
+        "monthly": 29
+      },
       "status": "waitlist",
       "capabilitySummary": "Full FAA library, certificate progression tracking, AI oral exam prep, written test prep, proficiency trending.",
       "temporalType": "always_on",
       "mandatoryWhen": [],
-      "tier1Compliance": ["14 CFR 61.83", "14 CFR 61.103", "14 CFR 61.129", "14 CFR 61.159"],
+      "tier1Compliance": [
+        "14 CFR 61.83",
+        "14 CFR 61.103",
+        "14 CFR 61.129",
+        "14 CFR 61.159"
+      ],
       "vault": {
-        "reads": ["personal_flight_record", "personal_currency_status"],
-        "writes": ["training_progress_personal", "knowledge_test_prep", "proficiency_trends"]
+        "reads": [
+          "personal_flight_record",
+          "personal_currency_status"
+        ],
+        "writes": [
+          "training_progress_personal",
+          "knowledge_test_prep",
+          "proficiency_trends"
+        ]
       },
       "referrals": [
-        { "event": "checkride_ready", "routesTo": "AV-P06" },
-        { "event": "proficiency_declining", "routesTo": "AV-P06" }
+        {
+          "event": "checkride_ready",
+          "routesTo": "AV-P06"
+        },
+        {
+          "event": "proficiency_declining",
+          "routesTo": "AV-P06"
+        }
       ],
       "alexRegistration": {
         "priority": "normal",
@@ -1167,19 +2088,39 @@
       "suite": "Aviation",
       "phase": null,
       "type": "standalone",
-      "pricing": { "monthly": 29 },
+      "pricing": {
+        "monthly": 29
+      },
       "status": "waitlist",
       "capabilitySummary": "Personal FRAT, weather briefing in plain language, NOTAM filtering, personal minimums enforcement.",
       "temporalType": "event_driven",
       "mandatoryWhen": [],
-      "tier1Compliance": ["14 CFR 91.103", "14 CFR 91.155", "14 CFR 91.175", "FAA WINGS program"],
+      "tier1Compliance": [
+        "14 CFR 91.103",
+        "14 CFR 91.155",
+        "14 CFR 91.175",
+        "FAA WINGS program"
+      ],
       "vault": {
-        "reads": ["personal_aircraft_profiles", "personal_currency_status"],
-        "writes": ["personal_frat_score", "personal_weather_briefing", "personal_flight_plan"]
+        "reads": [
+          "personal_aircraft_profiles",
+          "personal_currency_status"
+        ],
+        "writes": [
+          "personal_frat_score",
+          "personal_weather_briefing",
+          "personal_flight_plan"
+        ]
       },
       "referrals": [
-        { "event": "personal_frat_elevated", "routesTo": "AV-P06" },
-        { "event": "personal_minimums_exceeded", "routesTo": "AV-P06" }
+        {
+          "event": "personal_frat_elevated",
+          "routesTo": "AV-P06"
+        },
+        {
+          "event": "personal_minimums_exceeded",
+          "routesTo": "AV-P06"
+        }
       ],
       "alexRegistration": {
         "priority": "normal",
@@ -1194,15 +2135,27 @@
       "suite": "Aviation",
       "phase": null,
       "type": "orchestrator",
-      "pricing": { "monthly": 0 },
+      "pricing": {
+        "monthly": 0
+      },
       "status": "waitlist",
       "capabilitySummary": "Personal aviation assistant. Daily briefing, currency nudges, training reminders. Same worker as AV-029 in personal context.",
       "temporalType": "always_on",
       "mandatoryWhen": [],
-      "tier1Compliance": ["Tier 0 enforcement only -- orchestrator has no direct regulatory requirement"],
+      "tier1Compliance": [
+        "Tier 0 enforcement only -- orchestrator has no direct regulatory requirement"
+      ],
       "vault": {
-        "reads": ["personal_flight_record", "personal_currency_status", "training_progress_personal", "personal_frat_score"],
-        "writes": ["personal_notification_log", "personal_briefing_log"]
+        "reads": [
+          "personal_flight_record",
+          "personal_currency_status",
+          "training_progress_personal",
+          "personal_frat_score"
+        ],
+        "writes": [
+          "personal_notification_log",
+          "personal_briefing_log"
+        ]
       },
       "referrals": [],
       "alexRegistration": null
@@ -1214,7 +2167,14 @@
       "name": "Operator Essential",
       "description": "Wave 1 core operations package -- dispatch, duty enforcement, aircraft status, risk assessment, scheduling, and Alex orchestration",
       "persona": "Part 135 operator / DOM / Chief Pilot",
-      "workerIds": ["AV-013", "AV-009", "AV-004", "AV-014", "AV-032", "AV-029"],
+      "workerIds": [
+        "AV-013",
+        "AV-009",
+        "AV-004",
+        "AV-014",
+        "AV-032",
+        "AV-029"
+      ],
       "monthlyPrice": 395,
       "replaces": "Scattered spreadsheets, manual duty tracking, phone-based dispatch coordination"
     },
@@ -1223,7 +2183,46 @@
       "name": "Operator Complete",
       "description": "Full Part 135/91 operations suite -- all aviation workers covering cert through intelligence",
       "persona": "Enterprise Part 135 operator",
-      "workerIds": ["AV-001", "AV-002", "AV-003", "AV-004", "AV-005", "AV-006", "AV-007", "AV-008", "AV-009", "AV-010", "AV-011", "AV-012", "AV-013", "AV-014", "AV-015", "AV-016", "AV-017", "AV-018", "AV-019", "AV-020", "AV-021", "AV-022", "AV-023", "AV-024", "AV-025", "AV-026", "AV-027", "AV-028", "AV-029", "AV-030", "AV-031", "AV-032", "AV-033", "AV-034", "AV-035", "AV-036", "AV-037", "AV-038"],
+      "workerIds": [
+        "AV-001",
+        "AV-002",
+        "AV-003",
+        "AV-004",
+        "AV-005",
+        "AV-006",
+        "AV-007",
+        "AV-008",
+        "AV-009",
+        "AV-010",
+        "AV-011",
+        "AV-012",
+        "AV-013",
+        "AV-014",
+        "AV-015",
+        "AV-016",
+        "AV-017",
+        "AV-018",
+        "AV-019",
+        "AV-020",
+        "AV-021",
+        "AV-022",
+        "AV-023",
+        "AV-024",
+        "AV-025",
+        "AV-026",
+        "AV-027",
+        "AV-028",
+        "AV-029",
+        "AV-030",
+        "AV-031",
+        "AV-032",
+        "AV-033",
+        "AV-034",
+        "AV-035",
+        "AV-036",
+        "AV-037",
+        "AV-038"
+      ],
       "monthlyPrice": 2456,
       "replaces": "Ramco + Aladtec + Protean + SharePoint + manual processes -- $10K+/mo in software and labor"
     },
@@ -1232,7 +2231,14 @@
       "name": "Pilot Pro",
       "description": "Complete personal pilot toolkit -- logbook, currency, aircraft profiles, training, flight planning, and Alex",
       "persona": "Individual pilot (private, commercial, ATP)",
-      "workerIds": ["AV-P01", "AV-P02", "AV-P03", "AV-P04", "AV-P05", "AV-P06"],
+      "workerIds": [
+        "AV-P01",
+        "AV-P02",
+        "AV-P03",
+        "AV-P04",
+        "AV-P05",
+        "AV-P06"
+      ],
       "monthlyPrice": 57,
       "replaces": "LogTen Pro + ForeFlight companion apps + paper logbook + manual currency tracking"
     }
