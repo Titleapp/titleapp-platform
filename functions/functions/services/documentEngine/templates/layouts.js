@@ -13,23 +13,28 @@ const MARGINS = {
 };
 
 const FONTS = {
-  heading: { size: 18, font: "Helvetica-Bold" },
-  subheading: { size: 14, font: "Helvetica-Bold" },
-  body: { size: 11, font: "Helvetica" },
-  caption: { size: 9, font: "Helvetica" },
-  footer: { size: 8, font: "Helvetica" },
-  metric: { size: 24, font: "Helvetica-Bold" },
-  label: { size: 10, font: "Helvetica-Bold" },
+  heading: { size: 18, font: "Calibri" },
+  subheading: { size: 14, font: "Calibri" },
+  body: { size: 11, font: "Calibri" },
+  caption: { size: 9, font: "Calibri" },
+  footer: { size: 8, font: "Calibri" },
+  metric: { size: 24, font: "Calibri" },
+  label: { size: 10, font: "Calibri" },
 };
 
 const COLORS = {
-  primary: "#7c3aed",
-  secondary: "#1e1b4b",
-  text: "#111827",
-  textLight: "#6b7280",
-  border: "#e5e7eb",
-  background: "#f9fafb",
+  primary: "#6B46C1",        // Purple (TitleApp brand — matches pitch deck)
+  secondary: "#0D1B2A",      // Dark navy (slide backgrounds)
+  accent: "#A78BFA",         // Light purple (accents, highlights)
+  lightBg: "#EEF2F6",        // Light slide background (alternating)
+  text: "#0F1117",           // Near-black (body text)
+  textLight: "#64748B",       // Slate gray (labels, captions)
+  textMuted: "#99AABB",       // Muted gray (footers, meta)
+  border: "#CBD5E1",          // Light border
+  background: "#f9fafb",     // Off-white
   white: "#ffffff",
+  gold: "#C9A84C",           // Gold accent (RE vertical)
+  teal: "#0B7A6E",           // Teal accent (RE vertical)
 };
 
 module.exports = { PAGE_SIZES, MARGINS, FONTS, COLORS };
