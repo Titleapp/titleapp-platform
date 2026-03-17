@@ -180,8 +180,8 @@ export default function AdminChatPanel({ currentPage }) {
   return (
     <div style={{
       width: "320px",
-      background: "#0b1020",
-      borderRight: "1px solid #1e293b",
+      background: "#FFFFFF",
+      borderRight: "1px solid #e8ebf3",
       display: "flex",
       flexDirection: "column",
       flexShrink: 0,
@@ -189,13 +189,13 @@ export default function AdminChatPanel({ currentPage }) {
       {/* Header */}
       <div style={{
         padding: "12px 16px",
-        borderBottom: "1px solid #1e293b",
+        borderBottom: "1px solid #e8ebf3",
         display: "flex",
         justifyContent: "space-between",
         alignItems: "center",
       }}>
         <div>
-          <div style={{ fontWeight: 700, fontSize: "13px", color: "#e2e8f0" }}>Alex</div>
+          <div style={{ fontWeight: 700, fontSize: "13px", color: "#0f172a" }}>Alex</div>
           <div style={{ fontSize: "11px", color: "#64748b" }}>Admin Assistant</div>
         </div>
         <button
@@ -230,8 +230,8 @@ export default function AdminChatPanel({ currentPage }) {
               maxWidth: "90%",
               padding: "8px 12px",
               borderRadius: msg.role === "user" ? "12px 12px 2px 12px" : "12px 12px 12px 2px",
-              background: msg.role === "user" ? "#7c3aed" : "#1e293b",
-              color: msg.role === "user" ? "#fff" : "#cbd5e1",
+              background: msg.role === "user" ? "#6B46C1" : "#F3F0FF",
+              color: msg.role === "user" ? "#fff" : "#0f172a",
               fontSize: "13px",
               lineHeight: "1.5",
             }}
@@ -244,7 +244,7 @@ export default function AdminChatPanel({ currentPage }) {
             alignSelf: "flex-start",
             padding: "8px 12px",
             borderRadius: "12px 12px 12px 2px",
-            background: "#1e293b",
+            background: "#F3F0FF",
             color: "#64748b",
             fontSize: "13px",
           }}>
@@ -257,7 +257,7 @@ export default function AdminChatPanel({ currentPage }) {
       {/* Input */}
       <form onSubmit={sendMessage} style={{
         padding: "12px",
-        borderTop: "1px solid #1e293b",
+        borderTop: "1px solid #e8ebf3",
       }}>
         <div style={{ display: "flex", gap: "8px" }}>
           <input
@@ -268,10 +268,10 @@ export default function AdminChatPanel({ currentPage }) {
             style={{
               flex: 1,
               padding: "8px 12px",
-              background: "#1e293b",
-              border: "1px solid #334155",
+              background: "#FFFFFF",
+              border: "1px solid #e8ebf3",
               borderRadius: "8px",
-              color: "#e2e8f0",
+              color: "#0f172a",
               fontSize: "13px",
               outline: "none",
             }}

@@ -57,8 +57,8 @@ class PanelErrorBoundary extends React.Component {
 const S = {
   root: { display: "flex", height: "100dvh", overflow: "hidden", background: "#F8F9FC", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", color: "#1a1a2e" },
   // Left nav — creator studio (dark theme matching Sidebar)
-  leftNav: { flexShrink: 0, background: "linear-gradient(180deg, #0b1020, #0a0f1c)", borderRight: "1px solid rgba(255,255,255,0.06)", overflowY: "auto", display: "flex", flexDirection: "column" },
-  leftNavMobile: { position: "fixed", top: 0, left: 0, bottom: 0, width: 280, zIndex: 300, background: "linear-gradient(180deg, #0b1020, #0a0f1c)", borderRight: "1px solid rgba(255,255,255,0.06)", overflowY: "auto", boxShadow: "4px 0 24px rgba(0,0,0,0.4)" },
+  leftNav: { flexShrink: 0, background: "linear-gradient(180deg, #1A1A2E, #141425)", borderRight: "1px solid rgba(255,255,255,0.06)", overflowY: "auto", display: "flex", flexDirection: "column" },
+  leftNavMobile: { position: "fixed", top: 0, left: 0, bottom: 0, width: 280, zIndex: 300, background: "linear-gradient(180deg, #1A1A2E, #141425)", borderRight: "1px solid rgba(255,255,255,0.06)", overflowY: "auto", boxShadow: "4px 0 24px rgba(0,0,0,0.4)" },
   navSection: { padding: "16px 16px 8px", borderBottom: "1px solid rgba(255,255,255,0.06)" },
   navSectionTitle: { fontSize: 11, fontWeight: 700, color: "rgba(226,232,240,0.55)", letterSpacing: "0.5px", textTransform: "uppercase", marginBottom: 10 },
   navStatGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 },
@@ -376,10 +376,47 @@ function LifecycleCard({ flowStep }) {
 }
 
 // ── Creator Studio Nav (left nav — Column 1) ──
-function CreatorStudioNav({ flowStep, workerCardData, worker, isMobile, onClose, style }) {
+function CreatorStudioNav({ flowStep, workerCardData, worker, isMobile, onClose, style, workspaces = [], onSwitchWorkspace }) {
   const baseStyle = isMobile ? S.leftNavMobile : S.leftNav;
+  const [wsDropOpen, setWsDropOpen] = React.useState(false);
   return (
     <div style={{ ...baseStyle, ...style }}>
+      {/* Workspace switcher */}
+      {workspaces.length > 0 && (
+        <div style={{ padding: "12px 12px 0", position: "relative" }}>
+          <button
+            onClick={() => setWsDropOpen(!wsDropOpen)}
+            style={{ width: "100%", padding: "8px 10px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, color: "#e5e7eb", fontSize: 12, fontWeight: 600, cursor: "pointer", textAlign: "left", display: "flex", justifyContent: "space-between", alignItems: "center" }}
+          >
+            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {localStorage.getItem("WORKSPACE_NAME") || "Creator Studio"}
+            </span>
+            <span style={{ fontSize: 10, opacity: 0.5 }}>{wsDropOpen ? "\u25B2" : "\u25BC"}</span>
+          </button>
+          {wsDropOpen && (
+            <div style={{ position: "absolute", left: 12, right: 12, top: "100%", background: "#1e293b", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, zIndex: 100, maxHeight: 200, overflowY: "auto", marginTop: 4 }}>
+              <div
+                onClick={() => { setWsDropOpen(false); window.location.href = "/"; }}
+                style={{ padding: "8px 10px", fontSize: 12, color: "#c4b5fd", cursor: "pointer", borderBottom: "1px solid rgba(255,255,255,0.06)", fontWeight: 600 }}
+              >
+                Alex
+              </div>
+              {workspaces.map(ws => (
+                <div
+                  key={ws.id}
+                  onClick={() => { setWsDropOpen(false); if (onSwitchWorkspace) onSwitchWorkspace(ws); }}
+                  style={{ padding: "8px 10px", fontSize: 12, color: "#e5e7eb", cursor: "pointer" }}
+                  onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.05)"}
+                  onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+                >
+                  {ws.name}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Header */}
       <div style={{ padding: "16px 16px 12px", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div>
@@ -595,6 +632,26 @@ export default function DeveloperSandbox() {
     }
   }, []);
 
+  // Workspace data for switcher
+  const [sandboxWorkspaces, setSandboxWorkspaces] = useState([]);
+  useEffect(() => {
+    const token = localStorage.getItem("ID_TOKEN");
+    if (!token) return;
+    fetch(`${API_BASE}/api?path=/v1/workspaces`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(data => { if (data.ok && data.workspaces) setSandboxWorkspaces(data.workspaces); })
+      .catch(() => {});
+  }, []);
+  function handleSandboxSwitchWorkspace(ws) {
+    localStorage.setItem("VERTICAL", ws.vertical);
+    localStorage.setItem("WORKSPACE_ID", ws.id);
+    localStorage.setItem("WORKSPACE_NAME", ws.name);
+    localStorage.setItem("COMPANY_NAME", ws.name);
+    if (ws.jurisdiction) localStorage.setItem("JURISDICTION", ws.jurisdiction);
+    if (ws.cosConfig) localStorage.setItem("COS_CONFIG", JSON.stringify(ws.cosConfig));
+    window.location.href = "/";
+  }
+
   // Name — captured once, never asked again
   const [creatorName, setCreatorName] = useState(() => {
     return firebaseAuth?.currentUser?.displayName
@@ -633,7 +690,7 @@ export default function DeveloperSandbox() {
 
   // Resizable panels — left nav width (px) + chat/right split (%)
   const [navWidthPx, setNavWidthPx] = useState(() => {
-    try { const v = parseInt(localStorage.getItem("ta_sandbox_navW")); return v >= 180 && v <= 400 ? v : 240; } catch { return 240; }
+    try { const v = parseInt(localStorage.getItem("ta_sandbox_navW")); return v >= 180 && v <= 320 ? v : 240; } catch { return 240; }
   });
   const [chatWidthPercent, setChatWidthPercent] = useState(40);
   const [isDragging, setIsDragging] = useState(false); // "nav" | "chat" | false
@@ -675,7 +732,7 @@ export default function DeveloperSandbox() {
 
       if (isDragging === "nav") {
         // Dragging left nav divider — adjust nav width in px
-        const clamped = Math.max(180, Math.min(400, x));
+        const clamped = Math.max(180, Math.min(320, x));
         setNavWidthPx(clamped);
       } else if (isDragging === "chat") {
         // Dragging chat/right divider — adjust chat width as % of remaining space (after nav)
@@ -1374,7 +1431,7 @@ export default function DeveloperSandbox() {
       {/* Column 1: Creator Studio Nav (desktop) + divider */}
       {!isMobile && (
         <>
-          <CreatorStudioNav flowStep={flowStep} workerCardData={workerCardData} worker={worker} isMobile={false} style={{ width: navWidthPx }} />
+          <CreatorStudioNav flowStep={flowStep} workerCardData={workerCardData} worker={worker} isMobile={false} style={{ width: navWidthPx }} workspaces={sandboxWorkspaces} onSwitchWorkspace={handleSandboxSwitchWorkspace} />
           <div
             style={{ ...S.divider, ...(isDragging === "nav" || dividerHover === "nav" ? S.dividerHover : {}) }}
             onMouseDown={() => setIsDragging("nav")}
@@ -1388,7 +1445,7 @@ export default function DeveloperSandbox() {
       {isMobile && showMobileNav && (
         <>
           <div onClick={() => setShowMobileNav(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.3)", zIndex: 250 }} />
-          <CreatorStudioNav flowStep={flowStep} workerCardData={workerCardData} worker={worker} isMobile={true} onClose={() => setShowMobileNav(false)} />
+          <CreatorStudioNav flowStep={flowStep} workerCardData={workerCardData} worker={worker} isMobile={true} onClose={() => setShowMobileNav(false)} workspaces={sandboxWorkspaces} onSwitchWorkspace={handleSandboxSwitchWorkspace} />
         </>
       )}
 
@@ -1400,7 +1457,7 @@ export default function DeveloperSandbox() {
           ...S.chatPanel,
           ...(isMobile
             ? { width: "100%", minWidth: 0, maxWidth: "none", borderRight: "none", flex: 1, height: "100dvh" }
-            : { flex: `0 0 ${chatWidthPercent}%`, minWidth: 280 }
+            : { flex: `0 0 ${chatWidthPercent}%`, minWidth: 400 }
           ),
         }}
       >

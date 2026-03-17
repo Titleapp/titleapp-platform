@@ -47,8 +47,8 @@
 /* SIDEBAR */
 .ac-sidebar {
   width: 260px;
-  min-width: 260px;
-  background: linear-gradient(180deg, #0b1020, #080d1a);
+  min-width: 180px;
+  background: linear-gradient(180deg, #1A1A2E, #141425);
   color: #e5e7eb;
   display: flex;
   flex-direction: column;

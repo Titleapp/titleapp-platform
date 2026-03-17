@@ -14,8 +14,15 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
   // Resizable panels state
   const savedWidth = parseFloat(localStorage.getItem("PANEL_WIDTH")) || 40;
   const [chatWidth, setChatWidth] = useState(Math.min(65, Math.max(25, savedWidth)));
-  const [isResizing, setIsResizing] = useState(false);
+  const [isResizing, setIsResizing] = useState(false); // false | "chat" | "sidebar"
   const dualPanelRef = useRef(null);
+  const shellRef = useRef(null);
+
+  // Sidebar resize state (Col1: 180-320px, default 280)
+  const [sidebarWidth, setSidebarWidth] = useState(() => {
+    const v = parseInt(localStorage.getItem("SIDEBAR_WIDTH"));
+    return v >= 180 && v <= 320 ? v : 280;
+  });
 
   useEffect(() => {
     loadTenantInfo();
@@ -72,29 +79,41 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
   }
 
   // Resize handlers
-  const handleResizeStart = useCallback((e) => {
+  const handleChatResizeStart = useCallback((e) => {
     e.preventDefault();
-    setIsResizing(true);
+    setIsResizing("chat");
+  }, []);
+
+  const handleSidebarResizeStart = useCallback((e) => {
+    e.preventDefault();
+    setIsResizing("sidebar");
   }, []);
 
   useEffect(() => {
     if (!isResizing) return;
 
     function handleResizeMove(e) {
-      if (!dualPanelRef.current) return;
-      const rect = dualPanelRef.current.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const pct = (x / rect.width) * 100;
-      const clamped = Math.min(65, Math.max(25, pct));
-      setChatWidth(clamped);
+      if (isResizing === "chat") {
+        if (!dualPanelRef.current) return;
+        const rect = dualPanelRef.current.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const pct = (x / rect.width) * 100;
+        const clamped = Math.min(65, Math.max(25, pct));
+        setChatWidth(clamped);
+      } else if (isResizing === "sidebar") {
+        const x = e.clientX;
+        const clamped = Math.min(320, Math.max(180, x));
+        setSidebarWidth(clamped);
+      }
     }
 
     function handleResizeEnd() {
+      if (isResizing === "chat") {
+        setChatWidth(prev => { localStorage.setItem("PANEL_WIDTH", String(prev)); return prev; });
+      } else if (isResizing === "sidebar") {
+        setSidebarWidth(prev => { localStorage.setItem("SIDEBAR_WIDTH", String(prev)); return prev; });
+      }
       setIsResizing(false);
-      setChatWidth(prev => {
-        localStorage.setItem("PANEL_WIDTH", String(prev));
-        return prev;
-      });
     }
 
     document.addEventListener("mousemove", handleResizeMove);
@@ -237,7 +256,7 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
       )}
 
       {/* Sidebar */}
-      <div className={sidebarOpen ? "sidebar sidebarOpen" : "sidebar"}>
+      <div className={sidebarOpen ? "sidebar sidebarOpen" : "sidebar"} style={{ width: sidebarWidth + "px", minWidth: sidebarWidth + "px" }}>
         <Sidebar
           currentSection={currentSection}
           onNavigate={onNavigate}
@@ -253,17 +272,29 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
         />
       </div>
 
+      {/* Sidebar resize handle */}
+      <div
+        className={`resizeHandle${isResizing === "sidebar" ? " active" : ""}`}
+        onMouseDown={handleSidebarResizeStart}
+        onDoubleClick={() => {
+          setSidebarWidth(220);
+          localStorage.setItem("SIDEBAR_WIDTH", "220");
+          setChatWidth(40);
+          localStorage.setItem("PANEL_WIDTH", "40");
+        }}
+      />
+
       {/* Dual-panel: chat sidebar + resize handle + main content */}
       <div className="dualPanel" ref={dualPanelRef}>
         <aside
           className="chatSidebar"
-          style={{ width: chatWidth + "%", maxWidth: "none", minWidth: "280px" }}
+          style={{ width: chatWidth + "%", maxWidth: "none", minWidth: "400px" }}
         >
           <ChatPanel currentSection={currentSection} />
         </aside>
         <div
-          className={`resizeHandle${isResizing ? " active" : ""}`}
-          onMouseDown={handleResizeStart}
+          className={`resizeHandle${isResizing === "chat" ? " active" : ""}`}
+          onMouseDown={handleChatResizeStart}
           onDoubleClick={() => {
             setChatWidth(40);
             localStorage.setItem("PANEL_WIDTH", "40");

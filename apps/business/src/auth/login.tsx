@@ -77,8 +77,7 @@ export default function Login() {
 
       localStorage.setItem("ID_TOKEN", token);
 
-      setStatus("Signed in successfully");
-      window.location.reload();
+      window.location.href = "/";
     } catch (err: any) {
       console.error(err);
       const code = err?.code || "";
@@ -104,8 +103,7 @@ export default function Login() {
 
       localStorage.setItem("ID_TOKEN", token);
 
-      setStatus("Signed in successfully");
-      window.location.reload();
+      window.location.href = "/";
     } catch (err: any) {
       console.error(err);
       if (err?.code === "auth/popup-closed-by-user") {
@@ -145,7 +143,7 @@ export default function Login() {
           />
           <h1 style={{ margin: 0, fontSize: "24px", fontWeight: 700 }}>TitleApp AI</h1>
           <p style={{ margin: "8px 0 0", color: "#6b7280", fontSize: "14px" }}>
-            Sign in to Business
+            Sign in to TitleApp
           </p>
         </div>
 

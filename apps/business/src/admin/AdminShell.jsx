@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import useAdminAuth from "./hooks/useAdminAuth";
 import { auth } from "../firebase";
 import { signOut } from "firebase/auth";
@@ -24,6 +24,7 @@ import PricingCompliance from "./pages/PricingCompliance";
 import WorkerPipeline from "./pages/WorkerPipeline";
 import BogoManager from "./pages/BogoManager";
 import PipelineMonitor from "./pages/PipelineMonitor";
+import UsersPanel from "./pages/UsersPanel";
 import AdminChatPanel from "./components/AdminChatPanel";
 
 const NAV_SECTIONS = [
@@ -70,6 +71,7 @@ const NAV_SECTIONS = [
         label: "Investor Relations",
         permission: "pipeline",
       },
+      { id: "users", label: "Users", permission: "all" },
     ],
   },
   {
@@ -173,6 +175,8 @@ function renderPage(page) {
       return <BogoManager />;
     case "pipeline-monitor":
       return <PipelineMonitor />;
+    case "users":
+      return <UsersPanel />;
     default:
       return <Dashboard />;
   }
@@ -184,6 +188,43 @@ export default function AdminCommandCenter({ onBackToHub }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [staleDraftCount, setStaleDraftCount] = useState(0);
 
+  // Sidebar resize (180-320px)
+  const [acSidebarWidth, setAcSidebarWidth] = useState(() => {
+    const v = parseInt(localStorage.getItem("AC_SIDEBAR_WIDTH"));
+    return v >= 180 && v <= 320 ? v : 260;
+  });
+  const [isResizing, setIsResizing] = useState(false);
+
+  const handleSidebarResizeStart = useCallback((e) => {
+    e.preventDefault();
+    setIsResizing(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isResizing) return;
+    function onMove(e) {
+      setAcSidebarWidth(Math.min(320, Math.max(180, e.clientX)));
+    }
+    function onUp() {
+      setIsResizing(false);
+      setAcSidebarWidth(prev => { localStorage.setItem("AC_SIDEBAR_WIDTH", String(prev)); return prev; });
+    }
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+    return () => {
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+  }, [isResizing]);
+
+  // Workspace data
+  const [workspaces, setWorkspaces] = useState([]);
+  const [wsDropOpen, setWsDropOpen] = useState(false);
+
   useEffect(() => {
     const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
     const token = localStorage.getItem("ID_TOKEN");
@@ -194,7 +235,22 @@ export default function AdminCommandCenter({ onBackToHub }) {
       .then(r => r.json())
       .then(data => { if (data.ok) setStaleDraftCount(data.staleDraftCount || 0); })
       .catch(() => {});
+    // Load workspaces
+    fetch(`${API_BASE}/api?path=/v1/workspaces`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(data => { if (data.ok && data.workspaces) setWorkspaces(data.workspaces); })
+      .catch(() => {});
   }, []);
+
+  function handleSwitchWorkspace(ws) {
+    localStorage.setItem("VERTICAL", ws.vertical);
+    localStorage.setItem("WORKSPACE_ID", ws.id);
+    localStorage.setItem("WORKSPACE_NAME", ws.name);
+    localStorage.setItem("COMPANY_NAME", ws.name);
+    if (ws.jurisdiction) localStorage.setItem("JURISDICTION", ws.jurisdiction);
+    if (ws.cosConfig) localStorage.setItem("COS_CONFIG", JSON.stringify(ws.cosConfig));
+    window.location.reload();
+  }
 
   async function handleSignOut() {
     await signOut(auth);
@@ -227,7 +283,7 @@ export default function AdminCommandCenter({ onBackToHub }) {
       )}
 
       {/* Sidebar */}
-      <aside className={`ac-sidebar ${sidebarOpen ? "ac-sidebar-open" : ""}`}>
+      <aside className={`ac-sidebar ${sidebarOpen ? "ac-sidebar-open" : ""}`} style={{ width: acSidebarWidth + "px", minWidth: acSidebarWidth + "px" }}>
         <div className="ac-sidebar-header">
           <div className="ac-brand">
             <div className="ac-brand-mark">T</div>
@@ -245,6 +301,42 @@ export default function AdminCommandCenter({ onBackToHub }) {
             </svg>
           </button>
         </div>
+
+        {/* Workspace switcher */}
+        {workspaces.length > 0 && (
+          <div style={{ padding: "0 12px 8px", position: "relative" }}>
+            <button
+              onClick={() => setWsDropOpen(!wsDropOpen)}
+              style={{ width: "100%", padding: "8px 10px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, color: "#e5e7eb", fontSize: 12, fontWeight: 600, cursor: "pointer", textAlign: "left", display: "flex", justifyContent: "space-between", alignItems: "center" }}
+            >
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {localStorage.getItem("WORKSPACE_NAME") || "Alex"}
+              </span>
+              <span style={{ fontSize: 10, opacity: 0.5 }}>{wsDropOpen ? "\u25B2" : "\u25BC"}</span>
+            </button>
+            {wsDropOpen && (
+              <div style={{ position: "absolute", left: 12, right: 12, top: "100%", background: "#1e293b", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, zIndex: 100, maxHeight: 200, overflowY: "auto", marginTop: 4 }}>
+                <div
+                  onClick={() => { setWsDropOpen(false); if (onBackToHub) onBackToHub(); }}
+                  style={{ padding: "8px 10px", fontSize: 12, color: "#c4b5fd", cursor: "pointer", borderBottom: "1px solid rgba(255,255,255,0.06)", fontWeight: 600 }}
+                >
+                  Alex
+                </div>
+                {workspaces.map(ws => (
+                  <div
+                    key={ws.id}
+                    onClick={() => { setWsDropOpen(false); handleSwitchWorkspace(ws); }}
+                    style={{ padding: "8px 10px", fontSize: 12, color: "#e5e7eb", cursor: "pointer" }}
+                    onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.05)"}
+                    onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+                  >
+                    {ws.name}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {onBackToHub && (
           <button
@@ -302,6 +394,13 @@ export default function AdminCommandCenter({ onBackToHub }) {
           </button>
         </div>
       </aside>
+
+      {/* Sidebar resize handle */}
+      <div
+        style={{ width: 6, cursor: "col-resize", background: isResizing ? "rgba(124,58,237,0.12)" : "transparent", flexShrink: 0, zIndex: 10 }}
+        onMouseDown={handleSidebarResizeStart}
+        onDoubleClick={() => { setAcSidebarWidth(220); localStorage.setItem("AC_SIDEBAR_WIDTH", "220"); }}
+      />
 
       {/* Main content with Alex chat */}
       <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>

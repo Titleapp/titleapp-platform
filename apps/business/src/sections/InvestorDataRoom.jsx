@@ -113,6 +113,27 @@ export default function InvestorDataRoom() {
     };
   }, [isResizing]);
 
+  // Workspace data for switcher
+  const [idrWorkspaces, setIdrWorkspaces] = useState([]);
+  const [wsDropOpen, setWsDropOpen] = useState(false);
+  useEffect(() => {
+    const token = localStorage.getItem("ID_TOKEN");
+    if (!token) return;
+    fetch(`${API_BASE}/api?path=/v1/workspaces`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(data => { if (data.ok && data.workspaces) setIdrWorkspaces(data.workspaces); })
+      .catch(() => {});
+  }, []);
+  function handleIdrSwitchWorkspace(ws) {
+    localStorage.setItem("VERTICAL", ws.vertical);
+    localStorage.setItem("WORKSPACE_ID", ws.id);
+    localStorage.setItem("WORKSPACE_NAME", ws.name);
+    localStorage.setItem("COMPANY_NAME", ws.name);
+    if (ws.jurisdiction) localStorage.setItem("JURISDICTION", ws.jurisdiction);
+    if (ws.cosConfig) localStorage.setItem("COS_CONFIG", JSON.stringify(ws.cosConfig));
+    window.location.href = "/";
+  }
+
   // Data state
   const [docs, setDocs] = useState([]);
   const [gates, setGates] = useState(null);
@@ -286,7 +307,7 @@ export default function InvestorDataRoom() {
       <aside style={{
         width: sidebarCollapsed ? 60 : 220,
         minWidth: sidebarCollapsed ? 60 : 220,
-        background: "#0b1020",
+        background: "linear-gradient(180deg, #1A1A2E, #141425)",
         display: "flex",
         flexDirection: "column",
         transition: "width 0.2s, min-width 0.2s",
@@ -313,6 +334,42 @@ export default function InvestorDataRoom() {
             </div>
           )}
         </div>
+
+        {/* Workspace switcher */}
+        {!sidebarCollapsed && idrWorkspaces.length > 0 && (
+          <div style={{ padding: "8px 8px 0", position: "relative" }}>
+            <button
+              onClick={() => setWsDropOpen(!wsDropOpen)}
+              style={{ width: "100%", padding: "8px 10px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, color: "#e5e7eb", fontSize: 12, fontWeight: 600, cursor: "pointer", textAlign: "left", display: "flex", justifyContent: "space-between", alignItems: "center" }}
+            >
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {localStorage.getItem("WORKSPACE_NAME") || "Investor Room"}
+              </span>
+              <span style={{ fontSize: 10, opacity: 0.5 }}>{wsDropOpen ? "\u25B2" : "\u25BC"}</span>
+            </button>
+            {wsDropOpen && (
+              <div style={{ position: "absolute", left: 8, right: 8, top: "100%", background: "#1e293b", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, zIndex: 100, maxHeight: 200, overflowY: "auto", marginTop: 4 }}>
+                <div
+                  onClick={() => { setWsDropOpen(false); window.location.href = "/"; }}
+                  style={{ padding: "8px 10px", fontSize: 12, color: "#c4b5fd", cursor: "pointer", borderBottom: "1px solid rgba(255,255,255,0.06)", fontWeight: 600 }}
+                >
+                  Alex
+                </div>
+                {idrWorkspaces.map(ws => (
+                  <div
+                    key={ws.id}
+                    onClick={() => { setWsDropOpen(false); handleIdrSwitchWorkspace(ws); }}
+                    style={{ padding: "8px 10px", fontSize: 12, color: "#e5e7eb", cursor: "pointer" }}
+                    onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.05)"}
+                    onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+                  >
+                    {ws.name}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Nav items */}
         <nav style={{ flex: 1, padding: "12px 8px", overflowY: "auto" }}>

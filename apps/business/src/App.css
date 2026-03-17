@@ -5,8 +5,8 @@
   --muted:#64748b;
   --line:#e8ebf3;
 
-  --sidebar:#0b1020;
-  --sidebar2:#0a0f1c;
+  --sidebar:#1A1A2E;
+  --sidebar2:#141425;
 
   --accent:#7c3aed;   /* purple */
   --accent2:#22c55e;  /* green */
@@ -15,6 +15,14 @@
 
   --shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
   --radius:16px;
+
+  /* 3-column layout palette */
+  --col1-bg:#1A1A2E;
+  --col2-bg:#FFFFFF;
+  --col3-bg:#FFFFFF;
+  --col1-text:#F5F5F5;
+  --chat-bubble-alex:#F3F0FF;
+  --chat-bubble-user:#6B46C1;
 }
 
 *{ box-sizing:border-box; }
@@ -71,7 +79,7 @@ body{
 .sidebar{
   width:280px;
   background:linear-gradient(180deg,var(--sidebar),var(--sidebar2));
-  color:#e5e7eb;
+  color:var(--col1-text);
   padding:14px 12px;
   border-right:1px solid rgba(255,255,255,0.06);
   position:sticky;
@@ -79,6 +87,7 @@ body{
   height:100vh;
   overflow:auto;
   z-index:50;
+  flex-shrink:0;
 }
 .sidebarHeader{
   display:flex;
@@ -402,7 +411,8 @@ body{
   height:100vh;
   position:sticky;
   top:0;
-  background:#f8f9fb;
+  background:var(--col2-bg);
+  min-width:400px;
 }
 .resizeHandle{
   width:6px;
