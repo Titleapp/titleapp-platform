@@ -535,8 +535,8 @@ export default function LandingPage({ vertical, headlines, problems, workers, te
             <div style={S.footerColTitle}>Support</div>
             <a href="#" style={S.footerLink}>Help Center</a>
             <a href="#" style={S.footerLink}>Status</a>
-            <a href="#" style={S.footerLink}>Privacy Policy</a>
-            <a href="#" style={S.footerLink}>Terms</a>
+            <a href="/legal/privacy-policy" style={S.footerLink}>Privacy Policy</a>
+            <a href="/legal/terms-of-service" style={S.footerLink}>Terms</a>
           </div>
         </div>
         <div style={S.footerBottom}>

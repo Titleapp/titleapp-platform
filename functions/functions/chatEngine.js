@@ -353,7 +353,83 @@ function getVehicleColorTheme(color) {
 function getDemoResponse(message) {
   const msg = message.toLowerCase();
 
-  if (msg.includes('car') || msg.includes('vehicle') || msg.includes('vin') || msg.includes('auto') ||
+  // ── Paste detection (large text = ChatGPT/Claude/Gemini export or spec) ──
+  if (message.length > 300 || message.split('\n').length > 5) {
+    var vertical = 'general';
+    var workerType = 'Digital Worker';
+    if (/real estate|property|lease|tenant|mortgage|realt/i.test(message)) { vertical = 'real-estate'; workerType = 'Real Estate Digital Worker'; }
+    else if (/construct|contractor|rfi|submittal|punch list|general contract/i.test(message)) { vertical = 'construction'; workerType = 'Construction Digital Worker'; }
+    else if (/escrow|title search|closing|settlement|deed/i.test(message)) { vertical = 'title-escrow'; workerType = 'Title & Escrow Digital Worker'; }
+    else if (/legal|contract review|compliance|due diligence|attorney/i.test(message)) { vertical = 'legal'; workerType = 'Legal Digital Worker'; }
+    else if (/aviat|flight|pilot|aircraft|faa|part 135/i.test(message)) { vertical = 'aviation'; workerType = 'Aviation Digital Worker'; }
+    else if (/health|medical|ems|patient|hipaa|clinical/i.test(message)) { vertical = 'healthcare'; workerType = 'Healthcare Digital Worker'; }
+    else if (/auto|dealer|vehicle|vin|inventory|dmv/i.test(message)) { vertical = 'auto'; workerType = 'Automotive Digital Worker'; }
+    else if (/govern|permit|inspection|code enforcement|municipal/i.test(message)) { vertical = 'government'; workerType = 'Government Digital Worker'; }
+    else if (/invest|fund|capital|portfolio|irr|waterfall|lp|gp/i.test(message)) { vertical = 'investment'; workerType = 'Finance & Investment Digital Worker'; }
+    return "Got it — I've read through this.\n\nThis maps to a " + workerType + ". " +
+      "The marketplace has workers in the " + vertical + " vertical that handle parts of what you've described, " +
+      "or you could build a custom version tailored to your exact workflow.\n\n" +
+      "This could be your first published worker — you'd earn 75% of every subscription. " +
+      "You can start building in the sandbox right now and I'll carry over everything you've shared here.";
+  }
+
+  // ── "Show me what's available" → triggers browse mode on frontend ──
+  if ((msg.includes('show me what') && msg.includes('available')) || msg === 'show me what is available') {
+    return "Let me open the marketplace for you.";
+  }
+
+  // ── "I have an idea to build" ──
+  if (msg.includes('idea') && msg.includes('build')) {
+    return "Tell me what you want to build — what industry, who uses it, and what problem it solves. Don't worry about the format — I'll figure out what kind of Digital Worker it maps to and what you'd need to get started.";
+  }
+
+  // ── Digital Worker marketplace queries (check first — highest intent) ──
+  if (msg.includes('worker') || msg.includes('marketplace') || msg.includes('browse') ||
+      msg.includes('catalog') || msg.includes('what do you have') || msg.includes('show me')) {
+    // Industry-specific worker queries
+    if (msg.includes('construction') || msg.includes('rfi') || msg.includes('submittal') || msg.includes('punch list')) {
+      return "We have several construction workers -- Construction Manager ($49/mo) handles scheduling, RFIs, submittals, daily logs, budget tracking, and close-out. Construction Lending ($49/mo) covers draw schedules, interest reserves, and CTP conversion. Capital Stack Optimizer ($79/mo) models your full financing structure. All enforce hard stops on change orders and budgets. Want to try one?";
+    }
+    if (msg.includes('escrow') || msg.includes('title') || msg.includes('closing') || msg.includes('settlement')) {
+      return "The Title and Escrow suite has 12 workers. The Escrow Locker ($79/mo) runs the full 8-stage lifecycle from offer chain through DTC transfer. Wire Fraud Prevention ($79/mo) handles callback protocols and domain verification. Title Search and Commitment, Lien Clearance, Closing Disclosure Generator, and more -- each handles a specific stage. Want to see the full list?";
+    }
+    if (msg.includes('inspection') || msg.includes('inspect')) {
+      return "We have Property Inspector for real estate inspections -- available in all 50 states with state-specific checklists and deficiency tracking. For construction, the Construction Manager handles site inspections, punch lists, and compliance checks. For government, there's Inspection Report Generator ($29/mo) with standardized reports, photos, and compliance scoring. Which type of inspection are you doing?";
+    }
+    if (msg.includes('legal') || msg.includes('contract') || msg.includes('due diligence')) {
+      return "The legal suite includes Contract Review ($29/mo) for risk clauses and missing terms, Due Diligence Worker ($39/mo) for M&A checklists and document review, and Privacy Policy Generator for GDPR and CCPA compliance. What kind of legal work are you doing?";
+    }
+    if (msg.includes('mortgage') || msg.includes('underwriting') || msg.includes('loan')) {
+      return "For mortgage, we have the Mortgage Underwriter ($39/mo) -- automated income verification, credit analysis, DTI calculations, and condition tracking. For construction lending, there's a dedicated Construction Lending worker ($49/mo) that models draw schedules and interest reserves. Which do you need?";
+    }
+    if (msg.includes('aviation') || msg.includes('flight') || msg.includes('pilot') || msg.includes('crew')) {
+      return "The aviation suite includes Flight Crew Scheduler ($29/mo) for Part 135 crew scheduling with duty time and rest period enforcement, plus maintenance tracking and compliance workers. What's your operation?";
+    }
+    if (msg.includes('government') || msg.includes('permit') || msg.includes('dmv') || msg.includes('recording')) {
+      return "The government suite covers DMV and fleet registration, permitting, environmental review, inspection reports, code enforcement, and deed recording -- over 50 workers across all departments. What agency or department are you in?";
+    }
+    if (msg.includes('auto') || msg.includes('dealer')) {
+      return "For auto dealers, we have Dealer Licensing and Compliance (free), Vehicle Merchandising and Photography, and inventory management workers. The licensing worker handles FTC Safeguards, OFAC screening, and regulatory calendars. Want to see them?";
+    }
+    // Generic "what workers do you have"
+    return "We have over 200 Digital Workers across 13 industries -- real estate, construction, mortgage, title and escrow, legal, aviation, government, auto, healthcare, investment, and more. Each one is trained on the rules of that industry and enforces compliance automatically. What industry are you in? I can show you the ones that fit.";
+  }
+
+  // ── Industry-specific queries (without saying "worker") ──
+  if (msg.includes('construction') || msg.includes('rfi') || msg.includes('submittal') ||
+      msg.includes('punch list') || msg.includes('change order') || msg.includes('draw schedule')) {
+    return "We have Digital Workers built for construction -- project management, lending, draws, budgets, inspections, and compliance. The Construction Manager ($49/mo) is the most popular. It handles scheduling, RFIs, submittals, daily logs, and enforces hard stops on change orders. Want to see the full construction suite?";
+  }
+  if (msg.includes('escrow') || msg.includes('closing') || msg.includes('settlement') ||
+      msg.includes('wire fraud') || msg.includes('notarization') || msg.includes('disbursement')) {
+    return "Our Title and Escrow suite has 12 workers covering the full escrow lifecycle -- offer chain, identity verification, earnest money, title search, lien clearance, closing disclosure, notarization, disbursement, and recording. The Escrow Locker ($79/mo) orchestrates all 8 stages with 12 hard stops. Want details?";
+  }
+  if (msg.includes('inspection') || msg.includes('inspect') || msg.includes('field') || msg.includes('wearable')) {
+    return "We have inspection workers for multiple industries. Property Inspector handles real estate inspections with state-specific checklists. Construction Manager covers site inspections and punch lists. Government Inspection Report Generator creates standardized reports with photos and compliance scoring. What kind of inspections are you doing?";
+  }
+
+  // ── Original consumer-focused responses ──
+  if (msg.includes('car') || msg.includes('vehicle') || msg.includes('vin') ||
       msg.includes('truck') || msg.includes('motorcycle') || msg.includes('title and service')) {
     return "TitleApp AI creates a verified digital record of your vehicle -- title, service history, mileage, everything in one place. It helps protect your car's value and makes selling easier. Want to get started?";
   }
@@ -376,33 +452,39 @@ function getDemoResponse(message) {
   }
   if (msg.includes('cost') || msg.includes('price') || msg.includes('how much') ||
       msg.includes('pricing') || msg.includes('fee')) {
-    return "TitleApp AI is free for personal use. For businesses, plans start at $9/month for individuals and $99/month for the full suite. No credit card required to start. Want to get going?";
+    return "Digital Workers are priced at $29, $49, or $79 per month depending on complexity. Each comes with a 14-day free trial. Personal vault records are free. No credit card required to start. What are you looking for?";
+  }
+  if (msg.includes('what is a digital worker') || msg.includes('what are digital worker')) {
+    return "A Digital Worker is an AI agent trained on the rules of a specific industry. It enforces compliance automatically, handles repetitive work, and never cuts corners. You describe what it should do, we build it, and it runs 24/7. There are over 200 pre-built workers across 13 industries, or you can build your own. What industry are you in?";
+  }
+  if (msg.includes('build') && (msg.includes('one') || msg.includes('worker') || msg.includes('my own') || msg.includes('app'))) {
+    return "Yes -- you can build a Digital Worker without writing code. Describe what it should do and what rules it needs to follow, and Alex builds it for you in under an hour. Publish it on the marketplace and earn 75% of every subscription. Already mapped it out in ChatGPT or Claude? Just paste it here and I'll tell you exactly what it maps to.";
   }
   if (msg.includes('what') || msg.includes('who') || msg.includes('titleapp') || msg.includes('about')) {
-    return "TitleApp AI creates verified, permanent records of the things that matter to you. Cars, homes, credentials, important documents. Your records are yours -- secured and verifiable. What would you like to keep track of?";
+    return "TitleApp AI is a platform of Digital Workers -- AI agents trained on the rules of specific industries. Over 200 workers across 13 industries handle compliance, document management, and specialized workflows. You can hire pre-built workers or build your own. What industry are you in?";
   }
   if (msg.includes('how') || msg.includes('work')) {
-    return "You tell me what you want to track, I walk you through creating a record step by step. Everything gets stored in a Digital Title Certificate with a logbook that tracks changes over time. Simple as that.";
+    return "Pick a Digital Worker for your industry, set your rules, and put it to work. Each worker enforces compliance, handles documents, and manages workflows specific to your field. You can also build custom workers and sell them on the marketplace. What are you looking for?";
   }
   if (msg.includes('register') || msg.includes('sign up') || msg.includes('create account') ||
       msg.includes('get started') || msg.includes('start')) {
-    return "Great. Click 'Start Free' at the top to create your account. Takes about two minutes. Or tell me what you'd like to track and we can start right here.";
+    return "Great. Click Start Free at the top to create your account. Takes about two minutes. Or tell me what industry you're in and I'll show you the Digital Workers that fit.";
   }
   if (msg.includes('google drive') || msg.includes('gdrive') || msg.includes('dropbox') ||
       msg.includes('why not') || (msg.includes('why') && (msg.includes('better') || msg.includes('different')))) {
     return "Cloud storage can't verify that your records are authentic. We create cryptographic proofs that buyers, lenders, and institutions actually trust. A car with verified service history sells for 10-15% more than one with just PDFs in Google Drive. That's real money.";
   }
   if (msg.includes('what tools') || msg.includes('replace')) {
-    return "Most small businesses pay for a CRM, a document manager, a compliance tracker, and some kind of follow-up tool -- none of which talk to each other. TitleApp handles all of that in one place. One AI, one conversation, one monthly price. Want to see how it would work for your business?";
+    return "Most small businesses pay for a CRM, a document manager, a compliance tracker, and some kind of follow-up tool -- none of which talk to each other. A Digital Worker handles all of that in one place. One AI, one conversation, starting at $29/month. Want to see how it would work for your business?";
   }
   if (msg.includes('one-person') || msg.includes('one person') || msg.includes('solo') || msg.includes('just me')) {
-    return "That's exactly who we built this for. You shouldn't need five subscriptions and a full-time admin to keep your business organized. TitleApp gives you an AI assistant that handles your records, your compliance, and your customer follow-up. $9/month, 14-day free trial. Want to get started?";
+    return "That's exactly who we built this for. You shouldn't need five subscriptions and a full-time admin to keep your business organized. A single Digital Worker handles your records, compliance, and customer follow-up. Starting at $29/month with a 14-day free trial. Want to get started?";
   }
   if (msg.includes('save') || msg.includes('how much could')) {
-    return "The average small business spends $150-300/month on separate tools for CRM, documents, compliance, and follow-up. TitleApp starts at $9/month for individuals and $99/month for the full business suite. That's one tool replacing several, and the AI does the work the other tools leave to you.";
+    return "The average small business spends $150-300/month on separate tools for CRM, documents, compliance, and follow-up. A Digital Worker starts at $29/month and replaces several of those tools. The AI does the work the other tools leave to you.";
   }
   if (msg.includes('simple') || msg.includes('just need')) {
-    return "Simple is what we do. Tell me what you're trying to keep track of and I'll set it up for you right now. No dashboards to learn, no workflows to configure. Just talk to me.";
+    return "Simple is what we do. Tell me what industry you're in and I'll show you the workers that fit. No dashboards to learn, no workflows to configure. Just talk to me.";
   }
   if (msg.includes('inventory') || msg.includes('sales follow') || msg.includes('pipeline') ||
       (msg.includes('onboard') && msg.includes('dealer'))) {
@@ -412,11 +494,10 @@ function getDemoResponse(message) {
       msg.includes('retention') || msg.includes('monitoring')) {
     return "TitleApp AI monitors regulatory changes, tracks document retention, and keeps your records audit-ready. Automated compliance so nothing falls through the cracks. Want to learn more?";
   }
-  if (msg.includes('business') || msg.includes('dealer') || msg.includes('company') ||
-      msg.includes('enterprise')) {
-    return "TitleApp AI gives you an AI team that handles records, compliance, follow-up, and deals -- all in one place. Starting at $9/month. Want to see how it works for your business?";
+  if (msg.includes('business') || msg.includes('company') || msg.includes('enterprise')) {
+    return "TitleApp AI gives you a team of Digital Workers that handle records, compliance, follow-up, and deals -- all in one place. Over 200 workers across 13 industries. Starting at $29/month. What industry are you in?";
   }
-  return "I help you create verified records of the things that matter -- vehicles, property, credentials, important documents. What would you like to keep track of?";
+  return "I'm Alex. TitleApp AI has over 200 Digital Workers across 13 industries -- real estate, construction, mortgage, title and escrow, legal, aviation, government, and more. What industry are you in? I'll show you what fits.";
 }
 
 // ── Default session state ──
@@ -620,8 +701,8 @@ async function processMessage(input, services = {}) {
       cards: [{
         type: 'terms',
         data: {
-          termsUrl: 'https://title-app-alpha.web.app/terms',
-          privacyUrl: 'https://title-app-alpha.web.app/privacy',
+          termsUrl: 'https://app.titleapp.ai/legal/terms-of-service',
+          privacyUrl: 'https://app.titleapp.ai/legal/privacy-policy',
           summary: "Your records are yours. We verify and secure them. We don't sell your data. You can export or delete anytime.",
         },
       }],

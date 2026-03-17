@@ -684,7 +684,7 @@ export default function OnboardingWizard({ onComplete, onStepChange, vertical: p
                   style={{ width: "18px", height: "18px" }}
                 />
                 <span style={{ fontSize: "13px", color: "#6b7280" }}>
-                  By continuing you accept our Terms of Service and Privacy Policy
+                  By continuing you accept our <a href="/legal/terms-of-service" target="_blank" style={{ color: "#7c3aed" }}>Terms of Service</a> and <a href="/legal/privacy-policy" target="_blank" style={{ color: "#7c3aed" }}>Privacy Policy</a>
                 </span>
               </label>
               <button
