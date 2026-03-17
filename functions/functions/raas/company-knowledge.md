@@ -5,11 +5,9 @@
 
 ## What TitleApp Is
 
-TitleApp is the Digital Worker platform -- AI agents governed by human-defined rules with deterministic enforcement and immutable audit trails. Instead of selling software features, TitleApp sells Digital Workers that follow configurable business rules. Each worker runs 24/7, monitoring data, enforcing compliance, executing workflows, and reporting back to the owner.
+TitleApp is a RAAS (Rules + AI-as-a-Service) marketplace for AI-powered Digital Workers serving regulated industries -- real estate, aviation, property management, government, financial services, health/EMS education, mortgage lending, and auto dealer. Every worker passes through a 4-tier rules stack (platform safety → industry regulations → company policies → subscriber preferences) before any output reaches a user. The result is compliance-native AI that regulated industries can actually deploy.
 
-The underlying architecture is called RAAS (Rules + AI-as-a-Service). The platform sits between the AI model and the business outcome. Any AI model (Claude, GPT, Gemini) can be plugged in as the execution engine. TitleApp's value is the rules layer on top -- the governance, the audit trail, the compliance enforcement, the domain-specific knowledge that makes AI outputs trustworthy enough to act on.
-
-Think of it as the compliance infrastructure that lets businesses actually trust AI in regulated environments. The AI does the work. The rules engine makes sure the work is done right.
+TitleApp's Vault architecture -- where data transfer between Vaults is the transaction -- positions the platform as the infrastructure layer for the next generation of regulated AI. This includes serving as the intelligence backbone for emerging wearable + AI markets, where real-time compliance, audit trails, and rules-governed outputs are not optional.
 
 ---
 
@@ -58,11 +56,11 @@ Creators set their price. TitleApp takes a 25% platform fee (75/25 split to crea
 
 ## Current Scale
 
-TitleApp has over 1,000 Digital Workers across multiple verticals, with more added daily. Each worker covers a specific industry workflow at the jurisdiction level -- the same compliance worker replicated across 50 states, 3,000+ counties, or multiple regulatory frameworks multiplies the catalog rapidly.
+TitleApp has 1,000+ Digital Workers across 12 industry suites. Vibe Coding Sandbox live at app.titleapp.ai/sandbox -- non-technical creators can build and publish a compliant Digital Worker in under one hour.
 
 ## Current Verticals
 
-TitleApp serves multiple verticals, each with vertical-specific Digital Workers, rules, workflows, and AI behavior:
+Active verticals: Real Estate, Aviation, Government, Finance & Accounting, Health/EMS Education, Property Management, Mortgage Lending, Auto Dealer. Each with vertical-specific Digital Workers, rules, workflows, and AI behavior:
 
 1. Auto Dealerships: Full dealership operations from licensing and compliance through inventory acquisition, merchandising, sales and desking, F&I, service and parts, retention and marketing, HR and compliance, to intelligence and reporting. Workers include Dealer License Monitor, FTC Safeguards Compliance, Auction Intelligence, Trade-In Valuation, Market Pricing Intelligence, Lead Management, Desking and Deal Structure, F&I Menu Builder, Lender Matching, Equity Mining, and Alex Chief of Staff. Pricing: $29-$79/mo per worker.
 
@@ -76,7 +74,9 @@ TitleApp serves multiple verticals, each with vertical-specific Digital Workers,
 
 6. Property Management: Tenant management, lease administration, maintenance, rent collection, compliance, and financial reporting.
 
-7. Healthcare (planned): Patient record governance, HIPAA compliance enforcement, clinical workflow automation.
+7. Health/EMS Education: 42 workers (HE-001 through HE-042) covering protocol reference, scenario simulation, clinical competency tracking, skills lab management, and continuing education compliance. Jurisdiction-aware with scope-of-practice enforcement.
+
+8. Mortgage Lending: Automated underwriting, income verification, credit analysis, DTI calculations, compliance checking, and loan origination workflow management.
 
 Each vertical has its own Digital Worker catalog, ruleset, system prompts, and domain-specific workflows. New verticals can be built by defining rules and workflows -- the AI execution layer is shared. Every new worker must pass through the Worker #1 governance pipeline before going live.
 
@@ -150,12 +150,17 @@ TitleApp generates revenue through four streams:
 
 ## Use of Funds
 
-From the current raise (net proceeds approximately $803K after Wefunder fees):
+$2.5M raise, Post-Money SAFE, $15M valuation cap, 20% discount. Private placement -- terms available to qualified investors. Net proceeds approximately $2.3M (~8% fees).
 
-- Product Development (45%): Complete vertical build-out, Digital Worker marketplace launch, blockchain provenance integration, and Public API for third-party developers.
-- Go-to-Market (25%): Targeted outreach to auto dealerships (first vertical to market), content marketing, and partnership development with industry associations.
-- Operations (20%): Cloud infrastructure, AI API costs, legal and compliance (securities, data privacy), and accounting.
-- Reserve (10%): Working capital buffer for unexpected costs or extended runway.
+- Product & Engineering (40%, $920K): Complete vertical build-out, Digital Worker marketplace, Vault architecture, Public API expansion.
+- GTM & Sales (25%, $575K): Targeted outreach to early revenue verticals (Real Estate/CRE, Finance & Accounting, Auto Dealer), content marketing, partnership development.
+- Operations (20%, $460K): Cloud infrastructure, AI API costs, legal and compliance, accounting.
+- Vertical Expansion (10%, $230K): Auto, Health/EMS, Mortgage, Property Management vertical launches.
+- Reserve (5%, $115K): Working capital buffer.
+
+Monthly burn: $38,000. Runway at zero revenue: 60 months. Cash flow positive target: Q3 2027 (base) / Q1 2027 (best) / Q4 2026 (stretch).
+
+Investor inquiries: sean@titleapp.ai.
 
 ---
 
@@ -193,7 +198,7 @@ Referral Program: Every paid customer gets a referral code. 30% recurring commis
 ## Roadmap
 
 Completed (Q1 2026):
-- Over 1,000 Digital Workers live across auto dealer, real estate, aviation, and pilot suite verticals -- more added daily
+- 1,000+ Digital Workers live across 12 industry suites
 - Public API v1 with developer documentation
 - Document Engine with PDF, DOCX, XLSX, PPTX generation
 - Worker #1 governance pipeline with gate verification
@@ -218,4 +223,4 @@ Mid-term (Q3-Q4 2026):
 Long-term (2027+):
 - International expansion (UK, EU regulatory frameworks)
 - Enterprise tier with custom Digital Worker rulesets and dedicated support
-- Cash flow positive target: mid-2027
+- Cash flow positive target: Q3 2027 (base) / Q1 2027 (best) / Q4 2026 (stretch)

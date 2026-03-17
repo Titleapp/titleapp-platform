@@ -146,9 +146,9 @@ async function main() {
   await firestorePatch(accessToken, "config/investorDocs", {
     documents: [
       {
-        name: "Pitch Deck v6",
-        filename: "TitleApp_Pitch_Deck_v6.pptx",
-        storagePath: "investorDocs/TitleApp_Pitch_Deck_v6.pptx",
+        name: "Pitch Deck v7",
+        filename: "TitleApp_Pitch_Deck_v7.pptx",
+        storagePath: "investorDocs/TitleApp_Pitch_Deck_v7.pptx",
         type: "pitch_deck",
         description: "Full investor pitch deck -- March 2026",
         requiresVerification: false,
@@ -156,9 +156,9 @@ async function main() {
         tier: 1,
       },
       {
-        name: "One-Pager v6",
-        filename: "TitleApp_One_Pager_v6.pdf",
-        storagePath: "investorDocs/TitleApp_One_Pager_v6.pdf",
+        name: "One-Pager v7",
+        filename: "TitleApp_One_Pager_v7.pdf",
+        storagePath: "investorDocs/TitleApp_One_Pager_v7.pdf",
         type: "one_pager",
         description: "One-page overview -- market, product, team, terms",
         requiresVerification: false,
@@ -166,9 +166,9 @@ async function main() {
         tier: 1,
       },
       {
-        name: "Business Plan v4",
-        filename: "TitleApp_Business_Plan_March2026_v4.docx",
-        storagePath: "investorDocs/TitleApp_Business_Plan_March2026_v4.docx",
+        name: "Business Plan v5",
+        filename: "TitleApp_Business_Plan_March2026_v5.docx",
+        storagePath: "investorDocs/TitleApp_Business_Plan_March2026_v5.docx",
         type: "business_plan",
         description: "Business plan -- March 2026 update",
         requiresVerification: true,
@@ -176,9 +176,9 @@ async function main() {
         tier: 2,
       },
       {
-        name: "Financial Model v1",
-        filename: "TitleApp_Financial_Model_v1.xlsx",
-        storagePath: "investorDocs/TitleApp_Financial_Model_v1.xlsx",
+        name: "Financial Model v2",
+        filename: "TitleApp_Financial_Model_v2.xlsx",
+        storagePath: "investorDocs/TitleApp_Financial_Model_v2.xlsx",
         type: "financial_model",
         description: "36-month, 3-scenario cash flow model",
         requiresVerification: true,
@@ -204,12 +204,12 @@ async function main() {
   console.log("2. Updating config/raise (runway)...");
   await firestorePatch(accessToken, "config/raise", {
     runway: {
-      netProceeds: 803000,
-      monthlyBurn: 27800,
-      zeroRevenueMonths: 29,
-      withRevenueMonths: "33+",
-      displayText: "29 months (zero revenue) | 33+ with revenue",
-      cashFlowPositiveTarget: "mid-2027",
+      netProceeds: 2300000,
+      monthlyBurn: 38000,
+      zeroRevenueMonths: 60,
+      withRevenueMonths: "60+",
+      displayText: "60 months (zero revenue)",
+      cashFlowPositiveTarget: "Q3 2027 (base) / Q1 2027 (best) / Q4 2026 (stretch)",
     },
   });
   console.log("   Done.\n");
@@ -217,10 +217,10 @@ async function main() {
   // 3. Upload files to Cloud Storage
   console.log("3. Uploading files to Cloud Storage...");
   const files = [
-    { local: "TitleApp_Pitch_Deck_v6.pptx", remote: "investorDocs/TitleApp_Pitch_Deck_v6.pptx", contentType: "application/vnd.openxmlformats-officedocument.presentationml.presentation" },
-    { local: "TitleApp_One_Pager_v6.pdf", remote: "investorDocs/TitleApp_One_Pager_v6.pdf", contentType: "application/pdf" },
-    { local: "TitleApp_Business_Plan_March2026_v4.docx", remote: "investorDocs/TitleApp_Business_Plan_March2026_v4.docx", contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" },
-    { local: "TitleApp_Financial_Model_v1.xlsx", remote: "investorDocs/TitleApp_Financial_Model_v1.xlsx", contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" },
+    { local: "TitleApp_Pitch_Deck_v7.pptx", remote: "investorDocs/TitleApp_Pitch_Deck_v7.pptx", contentType: "application/vnd.openxmlformats-officedocument.presentationml.presentation" },
+    { local: "TitleApp_One_Pager_v7.pdf", remote: "investorDocs/TitleApp_One_Pager_v7.pdf", contentType: "application/pdf" },
+    { local: "TitleApp_Business_Plan_March2026_v5.docx", remote: "investorDocs/TitleApp_Business_Plan_March2026_v5.docx", contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" },
+    { local: "TitleApp_Financial_Model_v2.xlsx", remote: "investorDocs/TitleApp_Financial_Model_v2.xlsx", contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" },
   ];
 
   for (const f of files) {
