@@ -92,7 +92,7 @@ const WORKER_DETAIL_CONTENT = {
       { label: "Vault-connected to every construction worker", description: "Budget, schedule, and progress data flows to draws, lending, safety, and procurement." },
     ],
     faq: [
-      { q: "Does this replace my project management software?", a: "It complements it. Think of this as your AI project executive that reads your schedule and budget, flags issues, and connects your construction data to your financing, safety, and quality teams." },
+      { q: "Does this replace my project management software?", a: "It complements it. Think of this as your digital project executive that reads your schedule and budget, flags issues, and connects your construction data to your financing, safety, and quality teams." },
       { q: "Can I import my existing schedule?", a: "Yes. Import CPM schedules and budgets in CSI MasterFormat. We're adding direct integrations with Procore, Buildertrend, and P6." },
       { q: "How does this connect to my lender?", a: "Your construction budget and progress data flows through the Vault to the Construction Draw Worker (W-023) and Construction Lending Worker (W-015). Your draw requests are automatically aligned to your budget — no more reconciliation spreadsheets." },
     ],
@@ -223,7 +223,7 @@ const WORKER_DETAIL_CONTENT = {
     ],
   },
   "chief-of-staff": {
-    headline: "One AI to coordinate them all",
+    headline: "One Digital Worker to coordinate them all",
     subheadline: "Alex manages your workers, plans pipelines, tracks tasks, and keeps everything moving. Free with 3+ workers.",
     steps: [
       { title: "Tell Alex what you need", description: "Describe your goal — Alex figures out which workers to involve and in what order." },
@@ -592,7 +592,7 @@ const WORKER_DETAIL_CONTENT = {
       { label: "Vendor performance scoring", description: "Every vendor tracked: response time, completion quality, pricing, insurance compliance. Data-driven decisions on renewals." },
     ],
     faq: [
-      { q: "Does this replace property management software?", a: "It complements it. Think of this as your AI property manager that handles the documentation, compliance, and reporting while integrating with your existing PM platform." },
+      { q: "Does this replace property management software?", a: "It complements it. Think of this as your digital property manager that handles the documentation, compliance, and reporting while integrating with your existing PM platform." },
       { q: "How does it handle emergencies?", a: "Emergency work orders (flooding, no heat, security breach) route immediately with priority dispatch. The system tracks response time against your SLA and escalates if not addressed." },
       { q: "Can it manage multiple properties?", a: "Yes. Each property has its own operations — tenants, work orders, vendors, inspections. Reporting rolls up to portfolio level for ownership." },
     ],
@@ -3000,7 +3000,7 @@ WORKER_DETAIL_CONTENT["gov-dmv-audit-readiness"] = {
 
 // GOV-015: Alex DMV
 WORKER_DETAIL_CONTENT["gov-alex-dmv"] = {
-  headline: "One AI coordinating your entire DMV operation",
+  headline: "One Digital Worker coordinating your entire DMV operation",
   subheadline: "Alex orchestrates all DMV workers — titles, liens, licensing, fraud, renewals, revenue — so nothing falls through the cracks and every workflow connects.",
   steps: [
     { title: "Connect your DMV workers", description: "Alex sees every active worker in your DMV deployment — intake, liens, fraud, licensing, renewals, fleet, queue, revenue, and audit." },
@@ -3330,7 +3330,7 @@ WORKER_DETAIL_CONTENT["gov-public-portal-status"] = {
 
 // GOV-030: Alex Permitting
 WORKER_DETAIL_CONTENT["gov-alex-permitting"] = {
-  headline: "One AI coordinating your entire permitting operation",
+  headline: "One Digital Worker coordinating your entire permitting operation",
   subheadline: "Alex orchestrates all permitting workers — intake, review, zoning, fees, inspections, and CO — so every application moves through the process without stalling.",
   steps: [
     { title: "Connect your permitting workers", description: "Alex sees every active worker in your permitting deployment — intake, plan review, zoning, fees, inspections, contractors, environmental, and CO." },
@@ -3550,7 +3550,7 @@ WORKER_DETAIL_CONTENT["gov-inspection-backlog-manager"] = {
 
 // GOV-040: Alex Inspector
 WORKER_DETAIL_CONTENT["gov-alex-inspector"] = {
-  headline: "One AI coordinating your entire inspection operation",
+  headline: "One Digital Worker coordinating your entire inspection operation",
   subheadline: "Alex orchestrates all inspection workers — building, fire, health, electrical, plumbing, code enforcement — so every inspection is scheduled, conducted, and followed up.",
   steps: [
     { title: "Connect your inspection workers", description: "Alex sees every active inspection worker — building, fire, health, electrical, plumbing, code enforcement, re-inspection, and backlog management." },
@@ -3924,7 +3924,7 @@ WORKER_DETAIL_CONTENT["gov-historical-records-digitization"] = {
 
 // GOV-057: Alex Recorder
 WORKER_DETAIL_CONTENT["gov-alex-recorder"] = {
-  headline: "One AI coordinating your entire recorder's office",
+  headline: "One Digital Worker coordinating your entire recorder's office",
   subheadline: "Alex orchestrates all recorder workers — intake, chain of title, deed processing, liens, fraud detection, and digitization — so every recording is accurate and every process connects.",
   steps: [
     { title: "Connect your recorder workers", description: "Alex sees every active worker in your recorder deployment — intake, chain of title, deeds, liens, RON, fraud, public records, fees, and digitization." },

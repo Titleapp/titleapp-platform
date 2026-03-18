@@ -34,7 +34,7 @@ Try it: ${workerUrl}
 
 #DigitalWorkers #AI #TitleApp${vertical ? ` #${vertical.replace(/[^a-zA-Z]/g, "")}` : ""}`;
 
-  const tweet = `Just launched "${workerName}" on @TitleApp -- an AI worker with built-in compliance rules. ${workerUrl}`;
+  const tweet = `Just launched "${workerName}" on @TitleApp -- a Digital Worker with built-in compliance rules. ${workerUrl}`;
 
   const smsText = `Check out ${workerName} -- a Digital Worker I built on TitleApp. ${workerUrl}`;
 
@@ -46,7 +46,7 @@ I built a Digital Worker called "${workerName}" on TitleApp.
 
 ${workerDesc}
 
-${targetUser ? `It's built for ${targetUser.toLowerCase()}.` : ""} Every output is validated against compliance rules before delivery -- so you get reliable, governed AI that follows the rules of your industry.
+${targetUser ? `It's built for ${targetUser.toLowerCase()}.` : ""} Every output is validated against compliance rules before delivery -- so you get reliable, governed Digital Workers that follow the rules of your industry.
 
 Try it here: ${workerUrl}
 
@@ -54,7 +54,7 @@ Subscriptions start at $${tierPrice}/mo. You can test it before subscribing.
 
 Let me know what you think.`;
 
-  const outreachEmail = `Subject: AI-powered ${workerName.toLowerCase()} for your team
+  const outreachEmail = `Subject: ${workerName} — a Digital Worker for your team
 
 Hi [Name],
 
@@ -102,12 +102,12 @@ Best regards`;
     { title: "The Problem", body: workerCardData?.problemSolves || workerDesc },
     { title: "The Solution", body: `${workerName} automates this workflow with built-in compliance and audit trails.` },
     { title: "How It Works", body: "1. Subscribe and onboard in minutes\n2. Your worker follows industry-specific compliance rules\n3. Every output is validated before delivery\n4. Full audit trail on every interaction" },
-    { title: "Built For", body: targetUser || "Professionals who need reliable, governed AI" },
+    { title: "Built For", body: targetUser || "Professionals who need reliable, governed Digital Workers" },
     { title: "Compliance Built In", body: workerCardData?.complianceRules || "Standard platform compliance (Tier 0 + Tier 1)" },
     { title: "Pricing", body: `Starting at $${tierPrice}/mo\n14-day free trial included\nNo credit card required to start` },
     { title: "Market Context", body: `${vertical || "Industry"} professionals are spending hours on manual processes that ${workerName} handles in seconds.` },
     { title: "About the Creator", body: "Built by a verified creator on the TitleApp platform.\nEvery worker is reviewed before going live." },
-    { title: "Get Started", body: `Try ${workerName} today\n${workerUrl}\n\nQuestions? Contact the creator directly through TitleApp.` },
+    { title: "Subscribe", body: `Try ${workerName} today\n${workerUrl}\n\nQuestions? Contact the creator directly through TitleApp.` },
   ];
 
   function generateClientDeck() {
@@ -157,7 +157,7 @@ Best regards`;
       lightSlide("About the Creator", deckSlides[8].body),
       // Slide 10 — CTA (dark)
       darkSlide(`${iconImg}
-        <h1 style="font-size:42px;font-weight:700;margin:0 0 16px 0;text-align:center">Get Started with ${workerName}</h1>
+        <h1 style="font-size:42px;font-weight:700;margin:0 0 16px 0;text-align:center">Subscribe to ${workerName}</h1>
         <div style="display:flex;gap:12px;margin-bottom:24px">
           <div style="padding:8px 20px;background:#6B46C1;color:white;border-radius:8px;font-size:14px;font-weight:600">14-Day Free Trial</div>
           <div style="padding:8px 20px;background:rgba(255,255,255,0.1);color:white;border-radius:8px;font-size:14px;font-weight:600;border:1px solid rgba(255,255,255,0.2)">Compliance Guaranteed</div>

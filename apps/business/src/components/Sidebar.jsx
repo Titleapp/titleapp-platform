@@ -1161,7 +1161,7 @@ export default function Sidebar({
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div className="brandName" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {isPersonal ? brandLabel : (workspaceName || "TitleApp AI")}
+              {isPersonal ? brandLabel : (workspaceName || "TitleApp")}
             </div>
             <div className="brandSub">{VERTICAL_LABELS[vertical] || "Business"}</div>
           </div>

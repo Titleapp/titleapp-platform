@@ -1477,7 +1477,7 @@ export default function DeveloperSandbox() {
             <button onClick={() => setShowMobileNav(true)} style={{ background: "none", border: "none", fontSize: 20, color: "#64748B", cursor: "pointer", padding: "4px 8px 4px 0", lineHeight: 1 }}>&#9776;</button>
           )}
           <span style={S.chatLogo}>TitleApp</span>
-          <span style={S.chatName}>Alex — Your AI Builder</span>
+          <span style={S.chatName}>Alex — Chief of Staff</span>
           {localStorage.getItem("ID_TOKEN") && creatorName && (
             <span style={{ marginLeft: "auto", fontSize: 12, color: "#10b981", fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}>
               <span style={{ width: 6, height: 6, borderRadius: 3, background: "#10b981" }} />
@@ -1681,7 +1681,7 @@ export default function DeveloperSandbox() {
                 autoFocus
                 value={bridgePasteBack === " " ? "" : bridgePasteBack}
                 onChange={e => setBridgePasteBack(e.target.value)}
-                placeholder="Paste your prompt, workflow, or description from another AI tool..."
+                placeholder="Paste your prompt, workflow, or description from another tool..."
                 style={{
                   width: "100%", minHeight: 100, padding: "10px 12px",
                   background: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: 8,

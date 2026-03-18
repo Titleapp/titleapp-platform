@@ -359,8 +359,8 @@ export default function WorkerMarketplace({ authenticated, userName, onSubscribe
         <h1 style={S.heroTitle}>{authenticated ? "Pick your first Digital Worker" : "Digital Workers"}</h1>
         <p style={S.heroDesc}>
           {authenticated
-            ? "Subscribe to a worker to get started. Your workspace is created automatically."
-            : "AI-powered professionals governed by human-defined rules. Subscribe to the workers you need."}
+            ? "Subscribe to a worker to start building. Your workspace is created automatically."
+            : "Digital Workers governed by human-defined rules. Subscribe to the workers you need."}
         </p>
         {!authenticated && (
           <div style={S.stats}>

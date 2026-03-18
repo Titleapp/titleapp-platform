@@ -46,9 +46,9 @@ const CONTENT = {
     { value: "0", label: "Cost to Start" }
   ],
   pricing: [
-    { name: "Free", price: "$0", period: "/mo", features: ["Digital logbook", "Basic currency tracking", "FAA library access", "ForeFlight import"], cta: "Start Free", highlighted: false },
-    { name: "Pro", price: "$19", period: "/mo", features: ["All free features", "Blockchain verification", "Advanced analytics", "PRIA-ready export", "Priority support"], cta: "Start Free", highlighted: true },
-    { name: "Pro Plus", price: "$39", period: "/mo", features: ["Everything in Pro", "Flight planner", "Weight and balance", "Multi-aircraft tracking", "Training syllabus integration"], cta: "Start Free", highlighted: false }
+    { name: "Free", price: "$0", period: "/mo", features: ["Digital logbook", "Basic currency tracking", "FAA library access", "ForeFlight import"], cta: "Subscribe", highlighted: false },
+    { name: "Tier 1", price: "$29", period: "/mo", features: ["All free features", "Blockchain verification", "Advanced analytics", "PRIA-ready export", "Priority support"], cta: "Subscribe", highlighted: true },
+    { name: "Tier 2", price: "$49", period: "/mo", features: ["Everything in Tier 1", "Flight planner", "Weight and balance", "Multi-aircraft tracking", "Training syllabus integration"], cta: "Subscribe", highlighted: false }
   ],
   faq: [
     { question: "Can I import my existing logbook?", answer: "Yes. TitleApp supports direct import from ForeFlight, LogTen Pro, and CSV/Excel exports from most digital logbook applications. For paper logbooks, you can enter totals by category and add entries going forward." },
