@@ -485,6 +485,13 @@ async function syncCatalogWorkers(db, opts = {}) {
           capabilitySummary: worker.capabilitySummary || "",
           alexRegistration: worker.alexRegistration || null,
           rulesetId: rulesetId || null,
+          // CoPilot Mode Framework fields
+          modeAware: validated.modeAware || false,
+          modes: validated.modes || [],
+          modeTiers: validated.modeTiers || null,
+          highRisk: validated.highRisk || false,
+          groundUseOnly: validated.groundUseOnly || false,
+          documentHierarchy: validated.documentHierarchy || ["titleapp_baseline", "public_regulatory"],
           syncedAt: new Date().toISOString(),
         });
       }

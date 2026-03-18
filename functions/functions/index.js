@@ -13819,6 +13819,9 @@ Analyze now:`;
         case "chat":
           if (method !== "POST") return jsonError(res, 405, "POST required");
           return await handlers.handleChat(req, res, ctx);
+        case "acknowledge":
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return await handlers.handleAcknowledge(req, res, ctx);
         default:
           return jsonError(res, 404, "Unknown copilot action: " + copilotAction);
         }

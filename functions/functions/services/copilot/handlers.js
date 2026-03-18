@@ -14,22 +14,39 @@
  */
 
 const admin = require("firebase-admin");
+const crypto = require("crypto");
 
 function getDb() {
   return admin.firestore();
 }
+
+const UPLOAD_ACKNOWLEDGMENT_TEXT = "I confirm this document is the correct version for my specific aircraft/equipment, is the current approved revision, and I accept responsibility for uploading incorrect or outdated documentation. TitleApp is not responsible for errors arising from incorrect document uploads.";
+
+const HIGH_RISK_ACKNOWLEDGMENT_TEXT = "This CoPilot is designed for ground use — study, planning, and reference. It is not designed for use as a primary in-flight reference. Always cross-check Direct Mode responses against your paper or EFB documents. The FAA requires you to have approved documentation on board — that requirement exists independently of this tool. This tool makes mistakes. Your judgment is always the final authority.";
+const HIGH_RISK_ACKNOWLEDGMENT_VERSION = "1.0";
 
 // ============================================================
 // 1. uploadDoc — Upload operator doc, extract text, store
 // ============================================================
 async function handleUploadDoc(req, res, { userId }) {
   const db = getDb();
-  const { fileName, mimeType, fileData, docType } = req.body || {};
+  const { fileName, mimeType, fileData, docType, acknowledgment, revisionNumber, effectiveDate } = req.body || {};
 
   if (!fileData) return res.status(400).json({ ok: false, error: "fileData required (base64)" });
   if (!docType) return res.status(400).json({ ok: false, error: "docType required (gom/sop/mmel/oph/afm)" });
 
+  // Require upload acknowledgment
+  if (!acknowledgment) {
+    return res.status(400).json({
+      ok: false,
+      error: "Upload acknowledgment required",
+      code: "ACKNOWLEDGMENT_REQUIRED",
+      acknowledgmentText: UPLOAD_ACKNOWLEDGMENT_TEXT,
+    });
+  }
+
   const buffer = Buffer.from(fileData, "base64");
+  const sha256hash = crypto.createHash("sha256").update(buffer).digest("hex");
   let extractedText = "";
 
   // Extract text from PDF
@@ -54,6 +71,20 @@ async function handleUploadDoc(req, res, { userId }) {
     textLength: extractedText.length,
     uploadedAt: admin.firestore.FieldValue.serverTimestamp(),
     userId,
+    workerId: "copilot-pc12",
+    sha256hash,
+    revisionNumber: revisionNumber || null,
+    effectiveDate: effectiveDate || null,
+  });
+
+  // Write upload metadata to documentUploads collection
+  await db.collection("documentUploads").doc("copilot-pc12").collection("docs").doc(docRef.id).set({
+    fileName: fileName || "unknown",
+    revisionNumber: revisionNumber || null,
+    effectiveDate: effectiveDate || null,
+    uploaderUid: userId,
+    acknowledgmentTimestamp: admin.firestore.FieldValue.serverTimestamp(),
+    sha256hash,
   });
 
   return res.json({
@@ -62,6 +93,7 @@ async function handleUploadDoc(req, res, { userId }) {
     type: docType,
     fileName,
     textLength: extractedText.length,
+    sha256hash,
   });
 }
 
@@ -460,6 +492,19 @@ async function handleChat(req, res, { userId }) {
 
   if (!message) return res.status(400).json({ ok: false, error: "message required" });
 
+  // ── High-Risk Acknowledgment Gate ──
+  // CoPilot is high-risk — require acknowledgment before first use
+  const ackSnap = await db.collection("userAcknowledgments").doc(userId)
+    .collection("workers").doc("copilot-pc12").get();
+  if (!ackSnap.exists || ackSnap.data().version !== HIGH_RISK_ACKNOWLEDGMENT_VERSION) {
+    return res.json({
+      ok: false,
+      requiresAcknowledgment: true,
+      acknowledgmentText: HIGH_RISK_ACKNOWLEDGMENT_TEXT,
+      version: HIGH_RISK_ACKNOWLEDGMENT_VERSION,
+    });
+  }
+
   // Load context for prompt layers
   const [profileSnap, entriesSnap, gtSnap, docsSnap, dutySnap] = await Promise.all([
     db.collection("copilotProfiles").doc(userId).get(),
@@ -476,6 +521,16 @@ async function handleChat(req, res, { userId }) {
   const vaultDocs = docsSnap.docs.map(d => d.data());
   const activeDuty = dutySnap.empty ? null : dutySnap.docs[0].data();
 
+  // ── Session Open Document Reminder ──
+  // First message of session — check if user has operator docs
+  const isFirstMessage = !conversationHistory || !Array.isArray(conversationHistory) || conversationHistory.length === 0;
+  let docReminder = null;
+  if (isFirstMessage) {
+    const { resolveDocuments } = require("../../raas/documentResolver");
+    const docResult = await resolveDocuments(userId, "copilot-pc12", db);
+    docReminder = docResult.reminder; // null if operator docs exist
+  }
+
   // Compute currency and duty for prompt injection
   const { computeCurrency } = require("./logic/currencyTracker");
   const currency = computeCurrency(profile, entries, groundTraining);
@@ -491,6 +546,11 @@ async function handleChat(req, res, { userId }) {
   const isExaminer = forceExaminer || shouldActivateExaminer(message);
   const checkType = isExaminer ? detectCheckType(message) : null;
 
+  // ── Mode Detection ──
+  const { detectMode, buildModeInstruction, annotateModeResponse } = require("../../raas/modeEngine");
+  const detectedMode = detectMode(message, { modeAware: true, modes: ["direct", "operational", "advisory", "training"] });
+  const modeInstruction = buildModeInstruction(detectedMode, { groundUseOnly: true });
+
   // Build system prompt
   const { buildSystemPrompt } = require("./prompts/pc12SystemPrompt");
   const systemPrompt = buildSystemPrompt({
@@ -500,7 +560,7 @@ async function handleChat(req, res, { userId }) {
     vaultDocs,
     examinerMode: isExaminer,
     checkType,
-  });
+  }) + "\n\n" + modeInstruction;
 
   // Build conversation messages
   const messages = [];
@@ -522,21 +582,55 @@ async function handleChat(req, res, { userId }) {
     messages,
   });
 
-  const assistantMessage = response.content
+  let assistantMessage = response.content
     .filter(b => b.type === "text")
     .map(b => b.text)
     .join("\n");
+
+  // Annotate response based on mode
+  assistantMessage = annotateModeResponse(detectedMode, assistantMessage);
+
+  // Prepend doc reminder if first message and no operator docs
+  if (docReminder) {
+    assistantMessage = `> ${docReminder}\n\n${assistantMessage}`;
+  }
 
   return res.json({
     ok: true,
     message: assistantMessage,
     examinerMode: isExaminer,
     checkType,
+    mode: detectedMode,
     usage: {
       inputTokens: response.usage?.input_tokens,
       outputTokens: response.usage?.output_tokens,
     },
   });
+}
+
+// ============================================================
+// 12. acknowledge — High-risk worker acknowledgment
+// ============================================================
+async function handleAcknowledge(req, res, { userId }) {
+  const db = getDb();
+  const { acknowledged, version } = req.body || {};
+
+  if (!acknowledged || !version) {
+    return res.status(400).json({
+      ok: false,
+      error: "acknowledged (true) and version required",
+      acknowledgmentText: HIGH_RISK_ACKNOWLEDGMENT_TEXT,
+      version: HIGH_RISK_ACKNOWLEDGMENT_VERSION,
+    });
+  }
+
+  await db.collection("userAcknowledgments").doc(userId)
+    .collection("workers").doc("copilot-pc12").set({
+      acknowledgedAt: admin.firestore.FieldValue.serverTimestamp(),
+      version,
+    });
+
+  return res.json({ ok: true, acknowledged: true, version });
 }
 
 module.exports = {
@@ -551,4 +645,5 @@ module.exports = {
   handleGenerate8710,
   handleDutyEvent,
   handleChat,
+  handleAcknowledge,
 };

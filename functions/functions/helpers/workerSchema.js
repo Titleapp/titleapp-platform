@@ -110,6 +110,10 @@ const VALID_SUITES = [
 
 const VALID_WORKER_TYPES = ["standalone", "pipeline", "composite", "copilot", "orchestrator"];
 
+// CoPilot Mode Framework — mode-aware workers (aviation, healthcare, legal)
+const VALID_MODES = ["direct", "operational", "advisory", "training"];
+const VALID_MODE_TIERS = ["full", "partial", "advisory"];
+
 const VALID_PRICING_TIERS = [0, 29, 49, 79];
 
 /**
@@ -466,6 +470,44 @@ function validateWorkerRecord(record, opts = {}) {
     errors.push("institutional_sop_uploaded: must be a boolean if provided");
   }
 
+  // 27. modeAware — boolean (CoPilot Mode Framework)
+  if (record.modeAware !== undefined && typeof record.modeAware !== "boolean") {
+    errors.push("modeAware: must be a boolean if provided");
+  }
+
+  // 28. modes — array of valid mode strings
+  if (record.modes !== undefined) {
+    if (!Array.isArray(record.modes)) {
+      errors.push("modes: must be an array if provided");
+    } else {
+      record.modes.forEach((m) => {
+        if (!VALID_MODES.includes(m)) errors.push(`modes: "${m}" is not valid. Must be one of: ${VALID_MODES.join(", ")}`);
+      });
+    }
+  }
+
+  // 29. modeTiers — enum string
+  if (record.modeTiers !== undefined && record.modeTiers !== null) {
+    if (!VALID_MODE_TIERS.includes(record.modeTiers)) {
+      errors.push(`modeTiers: "${record.modeTiers}" is not valid. Must be one of: ${VALID_MODE_TIERS.join(", ")}`);
+    }
+  }
+
+  // 30. highRisk — boolean
+  if (record.highRisk !== undefined && typeof record.highRisk !== "boolean") {
+    errors.push("highRisk: must be a boolean if provided");
+  }
+
+  // 31. groundUseOnly — boolean
+  if (record.groundUseOnly !== undefined && typeof record.groundUseOnly !== "boolean") {
+    errors.push("groundUseOnly: must be a boolean if provided");
+  }
+
+  // 32. documentHierarchy — array
+  if (record.documentHierarchy !== undefined && !Array.isArray(record.documentHierarchy)) {
+    errors.push("documentHierarchy: must be an array if provided");
+  }
+
   // 18. credit_cost — must map to a valid cost type
   if (!record.credit_cost || typeof record.credit_cost !== "string") {
     errors.push("credit_cost: required (one of: " + VALID_CREDIT_COST_TYPES.join(", ") + ")");
@@ -510,6 +552,13 @@ function validateWorkerRecord(record, opts = {}) {
       ...(record.disclaimer_active !== undefined && { disclaimer_active: !!record.disclaimer_active }),
       ...(record.disclaimer_text && { disclaimer_text: record.disclaimer_text }),
       ...(record.institutional_sop_uploaded !== undefined && { institutional_sop_uploaded: !!record.institutional_sop_uploaded }),
+      // CoPilot Mode Framework fields
+      modeAware: !!record.modeAware,
+      modes: Array.isArray(record.modes) ? record.modes : [],
+      modeTiers: record.modeTiers || null,
+      highRisk: !!record.highRisk,
+      groundUseOnly: !!record.groundUseOnly,
+      documentHierarchy: Array.isArray(record.documentHierarchy) ? record.documentHierarchy : ["titleapp_baseline", "public_regulatory"],
     },
     warnings,
   };
@@ -878,6 +927,14 @@ function autoFixWorkerRecord(record, description) {
     record.landing_page_slug = `workers/${record.worker_id || "worker"}`;
   }
 
+  // Fix CoPilot Mode Framework fields — defaults if not present
+  if (record.modeAware === undefined) record.modeAware = false;
+  if (record.modes === undefined) record.modes = [];
+  if (record.modeTiers === undefined) record.modeTiers = null;
+  if (record.highRisk === undefined) record.highRisk = false;
+  if (record.groundUseOnly === undefined) record.groundUseOnly = false;
+  if (record.documentHierarchy === undefined) record.documentHierarchy = ["titleapp_baseline", "public_regulatory"];
+
   // Fix notifications — add default config if missing
   if (!record.notifications || typeof record.notifications !== "object") {
     record.notifications = { ...DEFAULT_NOTIFICATION_CONFIG };
@@ -897,6 +954,8 @@ module.exports = {
   VALID_DEPLOYMENT_TIERS,
   VALID_SUITES,
   VALID_WORKER_TYPES,
+  VALID_MODES,
+  VALID_MODE_TIERS,
   VALID_PRICING_TIERS,
   VALID_STATUSES,
   VALID_VERTICALS,
