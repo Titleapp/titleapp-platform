@@ -157,6 +157,13 @@ async function verifyOtp(req, res) {
         };
       }
       await db.collection("users").doc(uid).set(newUserDoc, { merge: true });
+
+      // Auto-grant Alex entitlement — free for every user from signup
+      await db.collection("users").doc(uid).collection("entitlements").doc("alex").set({
+        grantedAt: admin.firestore.FieldValue.serverTimestamp(),
+        source: "signup_bonus",
+        version: "1.0",
+      });
     } else {
       throw e;
     }

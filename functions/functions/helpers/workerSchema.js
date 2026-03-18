@@ -508,6 +508,22 @@ function validateWorkerRecord(record, opts = {}) {
     errors.push("documentHierarchy: must be an array if provided");
   }
 
+  // 33. documentChecklist — array of checklist items
+  if (record.documentChecklist !== undefined) {
+    if (!Array.isArray(record.documentChecklist)) {
+      errors.push("documentChecklist: must be an array if provided");
+    } else {
+      record.documentChecklist.forEach((item, idx) => {
+        if (!item.docType) errors.push(`documentChecklist[${idx}]: docType required`);
+        if (!item.label) errors.push(`documentChecklist[${idx}]: label required`);
+        if (item.required !== undefined && typeof item.required !== "boolean")
+          errors.push(`documentChecklist[${idx}]: required must be boolean`);
+        if (item.unlocksMode && !VALID_MODES.includes(item.unlocksMode))
+          errors.push(`documentChecklist[${idx}]: unlocksMode must be one of: ${VALID_MODES.join(", ")}`);
+      });
+    }
+  }
+
   // 18. credit_cost — must map to a valid cost type
   if (!record.credit_cost || typeof record.credit_cost !== "string") {
     errors.push("credit_cost: required (one of: " + VALID_CREDIT_COST_TYPES.join(", ") + ")");
@@ -559,6 +575,10 @@ function validateWorkerRecord(record, opts = {}) {
       highRisk: !!record.highRisk,
       groundUseOnly: !!record.groundUseOnly,
       documentHierarchy: Array.isArray(record.documentHierarchy) ? record.documentHierarchy : ["titleapp_baseline", "public_regulatory"],
+      documentChecklist: Array.isArray(record.documentChecklist) ? record.documentChecklist.map(item => ({
+        docType: item.docType, label: item.label, required: !!item.required,
+        unlocksMode: item.unlocksMode || null, description: item.description || "",
+      })) : [],
     },
     warnings,
   };
@@ -934,6 +954,7 @@ function autoFixWorkerRecord(record, description) {
   if (record.highRisk === undefined) record.highRisk = false;
   if (record.groundUseOnly === undefined) record.groundUseOnly = false;
   if (record.documentHierarchy === undefined) record.documentHierarchy = ["titleapp_baseline", "public_regulatory"];
+  if (record.documentChecklist === undefined) record.documentChecklist = [];
 
   // Fix notifications — add default config if missing
   if (!record.notifications || typeof record.notifications !== "object") {

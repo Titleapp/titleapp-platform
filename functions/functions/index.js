@@ -1036,6 +1036,13 @@ exports.api = onRequest(
             };
           }
           await userRef.set(userDoc);
+
+          // Auto-grant Alex entitlement — free for every user from signup
+          await db.collection("users").doc(userRecord.uid).collection("entitlements").doc("alex").set({
+            grantedAt: admin.firestore.FieldValue.serverTimestamp(),
+            source: "signup_bonus",
+            version: "1.0",
+          });
         }
 
         const customToken = await admin.auth().createCustomToken(userRecord.uid);
@@ -3838,12 +3845,155 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       }
     }
 
+    // GET /v1/invite:details — unauthenticated, returns invite metadata
+    if (route === "/invite:details" && method === "GET") {
+      try {
+        const inviteCode = (req.query && req.query.code) || "";
+        if (!inviteCode) return jsonError(res, 400, "Missing invite code");
+
+        const inviteSnap = await db.collection("invites").doc(inviteCode).get();
+        if (!inviteSnap.exists) return jsonError(res, 404, "Invite not found");
+
+        const invite = inviteSnap.data();
+        if (invite.status !== "active") return jsonError(res, 410, "Invite is no longer active");
+        if (invite.expiresAt && invite.expiresAt.toDate() < new Date()) return jsonError(res, 410, "Invite has expired");
+        if (invite.currentUses >= (invite.maxUses || 50)) return jsonError(res, 410, "Invite has been fully redeemed");
+
+        // Return safe metadata only — no sensitive data
+        return res.json({
+          ok: true,
+          personalMessage: invite.personalMessage || null,
+          workerNames: invite.workerNames || [],
+          workerCount: (invite.workerIds || []).length,
+          trialDays: invite.trialDays || 14,
+          sharedConfig: invite.sharedConfig || null,
+        });
+      } catch (e) {
+        console.error("invite:details failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
     // All other routes require Firebase auth
     const auth = await requireFirebaseUser(req, res);
     if (auth.handled) return;
 
     const ctx = getCtx(req, body, auth.user);
     console.log("🧠 CTX:", ctx);
+
+    // POST /v1/user:generateInvite — create an invite link
+    if (route === "/user:generateInvite" && method === "POST") {
+      try {
+        const { workerIds = [], message } = body;
+        if (!Array.isArray(workerIds) || workerIds.length === 0) {
+          return jsonError(res, 400, "workerIds array required");
+        }
+        if (workerIds.length > 10) {
+          return jsonError(res, 400, "Maximum 10 workers per invite");
+        }
+
+        const crypto = require("crypto");
+        const inviteCode = crypto.randomBytes(6).toString("hex"); // 12-char hex
+
+        // Build safe shared config — worker metadata + documentChecklist, NEVER documents
+        const sharedConfig = [];
+        for (const wid of workerIds) {
+          try {
+            const wSnap = await db.collection("digitalWorkers").doc(wid).get();
+            if (wSnap.exists) {
+              const w = wSnap.data();
+              sharedConfig.push({
+                slug: wid,
+                name: w.display_name || wid,
+                price: w.pricing_tier || 0,
+                headline: w.headline || "",
+                documentChecklist: w.documentChecklist || [],
+              });
+            }
+          } catch (wErr) {
+            // Skip workers that can't be loaded
+          }
+        }
+
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + 30); // 30-day expiry
+
+        await db.collection("invites").doc(inviteCode).set({
+          createdBy: auth.user.uid,
+          workerIds,
+          workerNames: sharedConfig.map(w => w.name),
+          sharedConfig,
+          personalMessage: (message || "").substring(0, 500) || null,
+          status: "active",
+          maxUses: 50,
+          currentUses: 0,
+          trialDays: 14,
+          rewardDays: 30,
+          expiresAt: admin.firestore.Timestamp.fromDate(expiresAt),
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        return res.json({
+          ok: true,
+          inviteCode,
+          inviteUrl: `https://titleapp.ai/invite/${inviteCode}`,
+          expiresAt: expiresAt.toISOString(),
+        });
+      } catch (e) {
+        console.error("user:generateInvite failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // POST /v1/invite:redeem — redeem an invite link
+    if (route === "/invite:redeem" && method === "POST") {
+      try {
+        const { code } = body;
+        if (!code) return jsonError(res, 400, "Missing invite code");
+
+        const inviteRef = db.collection("invites").doc(code);
+        const inviteSnap = await inviteRef.get();
+        if (!inviteSnap.exists) return jsonError(res, 404, "Invite not found");
+
+        const invite = inviteSnap.data();
+
+        // Validate invite state
+        if (invite.status !== "active") return jsonError(res, 410, "Invite is no longer active");
+        if (invite.expiresAt && invite.expiresAt.toDate() < new Date()) return jsonError(res, 410, "Invite has expired");
+        if (invite.currentUses >= (invite.maxUses || 50)) return jsonError(res, 410, "Invite has been fully redeemed");
+        if (invite.createdBy === auth.user.uid) return jsonError(res, 400, "Cannot redeem your own invite");
+
+        // Check if user already redeemed this invite
+        const existingRedemption = await inviteRef.collection("redemptions")
+          .where("userId", "==", auth.user.uid)
+          .limit(1)
+          .get();
+        if (!existingRedemption.empty) return jsonError(res, 400, "You have already redeemed this invite");
+
+        // Store redemption
+        await inviteRef.collection("redemptions").add({
+          userId: auth.user.uid,
+          redeemedAt: admin.firestore.FieldValue.serverTimestamp(),
+          referrerRewardStatus: "pending", // Processed after 30 days active + first payment
+        });
+
+        // Increment usage counter
+        await inviteRef.update({
+          currentUses: admin.firestore.FieldValue.increment(1),
+        });
+
+        return res.json({
+          ok: true,
+          trialDays: invite.trialDays || 14,
+          workerIds: invite.workerIds || [],
+          sharedConfig: invite.sharedConfig || [],
+          personalMessage: invite.personalMessage || null,
+        });
+      } catch (e) {
+        console.error("invite:redeem failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
 
     // POST /v1/user:acceptTerms
     if (route === "/user:acceptTerms" && method === "POST") {
@@ -7855,6 +8005,16 @@ Active: ${rc.active ? "Yes" : "No"}`;
                   const { getWorkspace } = require("./helpers/workspaces");
                   const workspace = await getWorkspace(auth.user.uid, workspaceId).catch(() => null);
                   if (workspace && workspace.chiefOfStaff && workspace.chiefOfStaff.enabled) {
+                    // Fetch onboarding profile if it exists
+                    let onboardingStatus = null;
+                    try {
+                      const onboardingSnap = await db.collection("users").doc(auth.user.uid)
+                        .collection("profile").doc("onboarding").get();
+                      if (onboardingSnap.exists) onboardingStatus = onboardingSnap.data();
+                    } catch (obErr) {
+                      // Non-fatal — proceed without onboarding context
+                    }
+
                     const alexService = require("./services/alex");
                     alexSystemPrompt = await alexService.buildAlexPrompt({
                       userId: auth.user.uid,
@@ -7864,8 +8024,33 @@ Active: ${rc.active ? "Yes" : "No"}`;
                       vertical: ctx.vertical || workspace.vertical || "real-estate-development",
                       currentSection: (context || {}).currentSection,
                       workspace,
+                      onboardingStatus,
                     });
                     console.log("Using Alex orchestration prompt for workspace:", workspaceId);
+
+                    // Inject recommendation context if available
+                    try {
+                      const { getRecommendation } = require("./alex/recommendationEngine");
+                      const sessionSnap = await db.collection("messageEvents")
+                        .where("userId", "==", auth.user.uid)
+                        .where("tenantId", "==", ctx.tenantId)
+                        .limit(1)
+                        .get();
+                      const sessionCount = sessionSnap.empty ? 1 : (sessionSnap.docs[0].data().sessionCount || 1);
+                      const rec = await getRecommendation({
+                        userId: auth.user.uid,
+                        vertical: ctx.vertical || workspace.vertical,
+                        persona: workspace.ownerRole || null,
+                        activeWorkerSlugs: workspace.activeWorkers || [],
+                        sessionCount,
+                        db,
+                      });
+                      if (rec && rec.promptText) {
+                        alexSystemPrompt += "\n\nRECOMMENDATION CONTEXT:\n" + rec.promptText;
+                      }
+                    } catch (recErr) {
+                      // Non-fatal — proceed without recommendation
+                    }
                   }
                 }
               } catch (alexErr) {
@@ -8105,6 +8290,31 @@ ${(context || {}).dealContext ? `\nThe user wants to discuss this deal analysis:
                 }
               } catch (routeErr) {
                 console.warn("Alex routing tag parse failed:", routeErr.message);
+              }
+
+              // Parse onboarding profile CREATE_RECORD from Alex's response
+              try {
+                const onboardingMatch = aiResponse.match(/\|\|\|CREATE_RECORD\|\|\|\s*(\{[\s\S]*?"type"\s*:\s*"onboarding_profile"[\s\S]*?\})\s*\|\|\|END_RECORD\|\|\|/);
+                if (onboardingMatch) {
+                  const profile = JSON.parse(onboardingMatch[1]);
+                  // Work context from email domain
+                  const userData = (await db.collection("users").doc(auth.user.uid).get()).data() || {};
+                  const email = userData.email || "";
+                  const domain = email.split("@")[1] || "";
+                  const CONSUMER_DOMAINS = ["gmail.com", "yahoo.com", "hotmail.com", "outlook.com", "icloud.com", "aol.com", "protonmail.com"];
+                  const isWorkEmail = domain && !CONSUMER_DOMAINS.includes(domain.toLowerCase());
+
+                  await db.collection("users").doc(auth.user.uid)
+                    .collection("profile").doc("onboarding").set({
+                      ...profile.metadata,
+                      isWorkContext: profile.metadata.isWorkContext || isWorkEmail,
+                      employerDomain: isWorkEmail ? domain : null,
+                      answeredAt: admin.firestore.FieldValue.serverTimestamp(),
+                    }, { merge: true });
+                  aiResponse = aiResponse.replace(onboardingMatch[0], "").trim();
+                }
+              } catch (obParseErr) {
+                console.warn("Onboarding profile parse failed:", obParseErr.message);
               }
             }
           } catch (apiError) {

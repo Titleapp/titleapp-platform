@@ -61,6 +61,7 @@ async function assemblePrompt(options = {}) {
     alexName = "Alex",
     alexVoice,
     surfaceContext = {},
+    onboardingStatus,
   } = options;
 
   // Core prompt is prepended to ALL surfaces — single source of truth
@@ -96,7 +97,7 @@ async function assemblePrompt(options = {}) {
       const cat = loadCatalog(v);
       return cat ? cat.name : v;
     });
-    sections.push(getIntakeModule().getIntakeInstructions(availableVerticals));
+    sections.push(getIntakeModule().getIntakeInstructions(availableVerticals, onboardingStatus));
   }
 
   // 6. Static: Onboarding instructions

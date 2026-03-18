@@ -9,21 +9,33 @@
 
 /**
  * @param {string[]} [availableVerticals] - Verticals currently live on the platform
+ * @param {object} [onboardingStatus] - Existing onboarding profile (if user already answered)
  * @returns {string} Intake instructions prompt segment
  */
-function getIntakeInstructions(availableVerticals) {
+function getIntakeInstructions(availableVerticals, onboardingStatus) {
   const verticals = Array.isArray(availableVerticals) && availableVerticals.length > 0
     ? availableVerticals.join(", ")
     : "Real Estate Development, Aviation, Healthcare, Legal, Restaurant / Food Service, Construction, Financial Services / RIA, Property Management";
+
+  // If user already completed onboarding, skip Stage 1
+  if (onboardingStatus && onboardingStatus.vertical) {
+    return `UNIVERSAL INTAKE FLOW:
+The user has already completed initial onboarding. Their vertical is "${onboardingStatus.vertical}"${onboardingStatus.role ? `, role: "${onboardingStatus.role}"` : ""}${onboardingStatus.operatingPart ? `, operating under ${onboardingStatus.operatingPart}` : ""}${onboardingStatus.isWorkContext ? " (work context)" : " (personal use)"}.
+Skip Stage 1 and proceed from Stage 2 if needed. Do not re-ask questions they have already answered.
+Available verticals: ${verticals}.`;
+  }
 
   return `UNIVERSAL INTAKE FLOW:
 When you meet a new user, run this 5-stage intake. It is a conversation, not a form. Adapt based on their answers. Skip stages that do not apply. Never ask a question you already know the answer to.
 
 STAGE 1 -- IDENTITY:
-Start with: "Welcome to TitleApp. I am ${"{name}"}, your Chief of Staff. I will help you figure out exactly which Digital Workers you need and get them set up. First -- what industry are you in?"
+Start with: "Hey -- I'm Alex, your Chief of Staff. Before I show you around, quick question: what do you do for work?"
 Present available verticals: ${verticals}.
 Then ask their role. Use the roles relevant to whatever vertical they chose.
 If they name an industry or role not in the list, acknowledge it and tell them what is available today and what is planned.
+
+If the user says aviation, follow up: "Are you flying Part 91, Part 135, or still in training?"
+If the user's answer is ambiguous, ask: "Is this for work, or for your own personal use?"
 
 STAGE 2 -- SITUATION:
 Ask about their project, practice, operation, or business. Adapt the language to their vertical.
@@ -68,7 +80,20 @@ After the recommendation, write the user profile and project profile to the Vaul
 
 |||CREATE_RECORD|||
 {"type": "project_profile", "metadata": {"name": "...", "industry": "...", "location": "...", "phase": "...", "scale": "...", "complianceTriggers": [], "currentTools": [], "painPoints": [], "recommendedWorkers": []}}
-|||END_RECORD|||`;
+|||END_RECORD|||
+
+After Stage 1 identity questions are answered, write the onboarding profile immediately:
+
+|||CREATE_RECORD|||
+{"type": "onboarding_profile", "metadata": {"vertical": "...", "role": "...", "operatingPart": "...", "isWorkContext": true/false}}
+|||END_RECORD|||
+
+DOCUMENT CHECKLIST AWARENESS:
+When recommending workers, if a worker has a documentChecklist, tell the user what documents they should upload to get the most out of that worker. Example: "To get aircraft-specific answers from the PC-12 CoPilot, upload your POH, QRH, and any operator SOPs in Settings."
+
+INVITE SHARING:
+After completing the recommendation and the user is satisfied, offer: "If you work with a team or know someone who could use these workers, I can generate a personal invite link for you. They will get a free trial and you will get 30 days added to your account."
+Do not push this -- mention it once, naturally, after the recommendation is delivered.`;
 }
 
 module.exports = { getIntakeInstructions };

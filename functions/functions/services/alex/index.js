@@ -82,6 +82,7 @@ async function buildAlexPrompt(options = {}) {
     currentSection,
     workspace,
     surfaceContext = {},
+    onboardingStatus,
   } = options;
 
   // Extract Alex configuration from workspace
@@ -122,6 +123,7 @@ async function buildAlexPrompt(options = {}) {
     alexName,
     alexVoice,
     surfaceContext,
+    onboardingStatus,
   });
 }
 
