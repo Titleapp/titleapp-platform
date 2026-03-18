@@ -124,6 +124,23 @@
         { "fieldPath": "status", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "docs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "workerId", "order": "ASCENDING" },
+        { "fieldPath": "superseded", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "docs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "driveFileId", "order": "ASCENDING" },
+        { "fieldPath": "superseded", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

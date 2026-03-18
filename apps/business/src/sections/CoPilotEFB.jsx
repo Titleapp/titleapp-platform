@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { auth } from "../firebase";
+import DriveImportModal from "../components/DriveImportModal";
 
 const API_BASE = "https://api-feyfibglbq-uc.a.run.app/v1";
 
@@ -48,6 +49,9 @@ export default function CoPilotEFB() {
   const [chatLoading, setChatLoading] = useState(false);
   const [examinerMode, setExaminerMode] = useState(false);
   const [uploadMsg, setUploadMsg] = useState("");
+  const [showDriveImport, setShowDriveImport] = useState(false);
+  const [activeImportJobId, setActiveImportJobId] = useState(null);
+  const [importProgress, setImportProgress] = useState(null);
   const [activeMode, setActiveMode] = useState(null);
   const [acknowledged, setAcknowledged] = useState(() => localStorage.getItem("copilot_ack") === "true");
   const [showDocBanner, setShowDocBanner] = useState(true);
@@ -66,6 +70,39 @@ export default function CoPilotEFB() {
       else setShowDocBanner(false);
     } catch { /* ignore */ }
   }
+
+  // Poll import job progress
+  useEffect(() => {
+    if (!activeImportJobId) return;
+    let cancelled = false;
+    const poll = async () => {
+      try {
+        const user = auth.currentUser;
+        if (!user) return;
+        const token = await user.getIdToken();
+        const res = await fetch(`${API_BASE}/vault:importStatus?jobId=${activeImportJobId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        if (cancelled) return;
+        if (data.ok) {
+          setImportProgress(data);
+          if (data.status === "completed" || data.status === "completed_with_errors" || data.status === "failed") {
+            setActiveImportJobId(null);
+            loadDocuments();
+          }
+        }
+      } catch { /* ignore */ }
+    };
+    poll();
+    const interval = setInterval(poll, 3000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [activeImportJobId]);
+
+  const handleImportStarted = useCallback((jobId) => {
+    setActiveImportJobId(jobId);
+    setShowDriveImport(false);
+  }, []);
 
   async function handleAcknowledge() {
     try {
@@ -213,7 +250,7 @@ export default function CoPilotEFB() {
             {tab === "currency" && <CurrencyTab currency={currency} />}
             {tab === "duty" && <DutyTab />}
             {tab === "training" && <TrainingTab />}
-            {tab === "documents" && <DocumentsTab documents={documents} onUpload={handleFileUpload} uploadMsg={uploadMsg} onReload={loadDocuments} />}
+            {tab === "documents" && <DocumentsTab documents={documents} onUpload={handleFileUpload} uploadMsg={uploadMsg} onReload={loadDocuments} onOpenDriveImport={() => setShowDriveImport(true)} importProgress={importProgress} />}
             {tab === "copilot" && (
               <ChatTab
                 messages={chatMessages} input={chatInput} onInput={setChatInput}
@@ -225,6 +262,15 @@ export default function CoPilotEFB() {
           </>
         )}
       </div>
+
+      {showDriveImport && (
+        <DriveImportModal
+          dark
+          workerId="copilot-pc12"
+          onClose={() => setShowDriveImport(false)}
+          onImportStarted={handleImportStarted}
+        />
+      )}
     </div>
   );
 }
@@ -711,7 +757,7 @@ const DOC_TYPES = [
   { id: "wb", label: "W&B (Weight & Balance)", ext: ".pdf" },
 ];
 
-function DocumentsTab({ documents, onUpload, uploadMsg, onReload }) {
+function DocumentsTab({ documents, onUpload, uploadMsg, onReload, onOpenDriveImport, importProgress }) {
   const [uploading, setUploading] = useState(null);
   const [uploadForm, setUploadForm] = useState({ docType: "", revision: "", effectiveDate: "", confirmed: false });
   const [selectedFile, setSelectedFile] = useState(null);
@@ -793,6 +839,52 @@ function DocumentsTab({ documents, onUpload, uploadMsg, onReload }) {
           <EFBButton label={uploading ? "Uploading..." : "Upload Document"} onClick={handleSubmitUpload} color={uploadForm.confirmed ? C.teal : C.border} />
         </Card>
       )}
+      <Card title="Import from Cloud Storage">
+        <div style={{ fontSize: 12, color: C.textMuted, marginBottom: 12 }}>
+          Import documents directly from your cloud storage. Files are processed server-side — no size limits.
+        </div>
+        <div style={{ display: "flex", gap: 10 }}>
+          <button onClick={onOpenDriveImport} style={{
+            background: C.teal, border: "none", borderRadius: 6, color: "#fff",
+            padding: "8px 16px", fontSize: 13, fontWeight: 500, cursor: "pointer",
+            display: "flex", alignItems: "center", gap: 8,
+          }}>
+            <svg width="16" height="16" viewBox="0 0 87.3 78" fill="none"><path d="M6.6 66.85l3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8H0c0 1.55.4 3.1 1.2 4.5l5.4 9.35z" fill="#0066DA"/><path d="M43.65 25L29.9 1.2c-1.35.8-2.5 1.9-3.3 3.3L1.2 52.35c-.8 1.4-1.2 2.95-1.2 4.5h27.5L43.65 25z" fill="#00AC47"/><path d="M73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5H59.85l6.1 10.6 7.6 13.2z" fill="#EA4335"/><path d="M43.65 25L57.4 1.2C56.05.4 54.5 0 52.85 0H34.45c-1.65 0-3.2.45-4.55 1.2L43.65 25z" fill="#00832D"/><path d="M59.85 53H27.5l-13.75 23.8c1.35.8 2.9 1.2 4.55 1.2h50.3c1.65 0 3.2-.45 4.55-1.2L59.85 53z" fill="#2684FC"/><path d="M73.4 26.5l-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3L43.65 25l16.2 28h27.45c0-1.55-.4-3.1-1.2-4.5l-12.7-22z" fill="#FFBA00"/></svg>
+            Google Drive
+          </button>
+          <button disabled style={{
+            background: "none", border: `1px solid ${C.border}`, borderRadius: 6, color: C.textDim,
+            padding: "8px 16px", fontSize: 13, cursor: "not-allowed", opacity: 0.5,
+          }}>Dropbox &middot; Coming soon</button>
+          <button disabled style={{
+            background: "none", border: `1px solid ${C.border}`, borderRadius: 6, color: C.textDim,
+            padding: "8px 16px", fontSize: 13, cursor: "not-allowed", opacity: 0.5,
+          }}>OneDrive &middot; Coming soon</button>
+        </div>
+      </Card>
+
+      {importProgress && (importProgress.status === "processing" || importProgress.status === "completed" || importProgress.status === "completed_with_errors" || importProgress.status === "failed") && (
+        <Card title="Import Progress">
+          <div style={{ fontSize: 12, color: C.textMuted, marginBottom: 8 }}>
+            {importProgress.status === "processing" && `Processing ${importProgress.completedFiles || 0} of ${importProgress.totalFiles} files...`}
+            {importProgress.status === "completed" && `All ${importProgress.totalFiles} files imported successfully.`}
+            {importProgress.status === "completed_with_errors" && `Imported ${importProgress.completedFiles} of ${importProgress.totalFiles} files. ${importProgress.failedFiles} failed.`}
+            {importProgress.status === "failed" && "Import failed."}
+          </div>
+          {(importProgress.fileStatuses || []).map((fs, idx) => (
+            <div key={idx} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 0", borderBottom: `1px solid ${C.border}` }}>
+              <span style={{ fontSize: 13, color: fs.status === "completed" ? C.green : fs.status === "failed" ? C.red : C.yellow, width: 18, textAlign: "center" }}>
+                {fs.status === "completed" ? "\u2713" : fs.status === "failed" ? "\u2717" : "\u25CF"}
+              </span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 12, color: C.text }}>{fs.fileName}</div>
+                <div style={{ fontSize: 11, color: C.textDim }}>{fs.status}{fs.error ? ` — ${fs.error}` : ""}</div>
+              </div>
+            </div>
+          ))}
+        </Card>
+      )}
+
       {uploadMsg && <div style={{ color: C.tealLight, fontSize: 13 }}>{uploadMsg}</div>}
     </div>
   );

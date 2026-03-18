@@ -14041,6 +14041,78 @@ Analyze now:`;
       }
     }
 
+    // ----------------------------
+    // VAULT: GOOGLE DRIVE (34.7-T2)
+    // ----------------------------
+    if (route && route.startsWith("/drive:")) {
+      const driveAction = route.replace("/drive:", "");
+      try {
+        switch (driveAction) {
+        case "authUrl": {
+          if (method !== "GET") return jsonError(res, 405, "GET required");
+          const driveAuth = require("./services/vault/driveAuth");
+          return await driveAuth.handleDriveAuthUrl(req, res, { userId: auth.user.uid });
+        }
+        case "exchangeCode": {
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          const driveAuth = require("./services/vault/driveAuth");
+          return await driveAuth.handleDriveExchangeCode(req, res, { userId: auth.user.uid });
+        }
+        case "disconnect": {
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          const driveAuth = require("./services/vault/driveAuth");
+          return await driveAuth.handleDriveDisconnect(req, res, { userId: auth.user.uid });
+        }
+        case "status": {
+          if (method !== "GET") return jsonError(res, 405, "GET required");
+          const driveAuth = require("./services/vault/driveAuth");
+          return await driveAuth.handleDriveStatus(req, res, { userId: auth.user.uid });
+        }
+        case "browse": {
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          const driveBrowser = require("./services/vault/driveBrowser");
+          return await driveBrowser.handleDriveBrowse(req, res, { userId: auth.user.uid });
+        }
+        case "search": {
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          const driveBrowser = require("./services/vault/driveBrowser");
+          return await driveBrowser.handleDriveSearch(req, res, { userId: auth.user.uid });
+        }
+        default:
+          return jsonError(res, 404, "Unknown drive action: " + driveAction);
+        }
+      } catch (e) {
+        console.error("drive: failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ----------------------------
+    // VAULT: IMPORT PIPELINE (34.7-T2)
+    // ----------------------------
+    if (route && route.startsWith("/vault:")) {
+      const vaultAction = route.replace("/vault:", "");
+      const driveImport = require("./services/vault/driveImport");
+      try {
+        switch (vaultAction) {
+        case "importFromDrive":
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return await driveImport.handleImportFromDrive(req, res, { userId: auth.user.uid });
+        case "importStatus":
+          if (method !== "GET") return jsonError(res, 405, "GET required");
+          return await driveImport.handleImportStatus(req, res, { userId: auth.user.uid });
+        case "checkExisting":
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return await driveImport.handleCheckExisting(req, res, { userId: auth.user.uid });
+        default:
+          return jsonError(res, 404, "Unknown vault action: " + vaultAction);
+        }
+      } catch (e) {
+        console.error("vault: failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
     return jsonError(res, 404, "Not Found", { route, method });
   }
 );

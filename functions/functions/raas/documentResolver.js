@@ -127,8 +127,48 @@ function buildDocReminder() {
   return "Heads up — I'm working from generic reference documents for this aircraft type, not your specific serial number. Upload your POH, QRH, and any operator documents in Settings to get aircraft-specific answers in Direct Mode.";
 }
 
+// ═══════════════════════════════════════════════════════════════
+//  CHUNKED DOCUMENT RESOLUTION — for RAG retrieval (34.7-T2)
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * Resolve chunked/embedded documents available for a user + worker.
+ * These are documents imported via Google Drive with vector embeddings.
+ *
+ * @param {string} userId — Firebase auth UID
+ * @param {string} workerId — worker ID
+ * @param {object} db — Firestore instance
+ * @returns {Promise<object[]>} — array of available chunked documents
+ */
+async function resolveChunkedDocuments(userId, workerId, db) {
+  try {
+    const snap = await db.collection("vaultDocuments").doc(userId)
+      .collection("docs")
+      .where("workerId", "==", workerId)
+      .where("superseded", "==", false)
+      .where("status", "==", "ready")
+      .get();
+
+    return snap.docs.map(doc => ({
+      docId: doc.id,
+      type: "operator_upload_chunked",
+      docType: doc.data().docType,
+      fileName: doc.data().fileName,
+      revisionNumber: doc.data().revisionNumber,
+      effectiveDate: doc.data().effectiveDate,
+      chunkCount: doc.data().chunkCount,
+      version: doc.data().version,
+      available: true,
+    }));
+  } catch (err) {
+    console.error("documentResolver: chunked docs query failed:", err.message);
+    return [];
+  }
+}
+
 module.exports = {
   resolveDocuments,
+  resolveChunkedDocuments,
   formatCitation,
   buildDocReminder,
 };
