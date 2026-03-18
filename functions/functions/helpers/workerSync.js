@@ -128,6 +128,10 @@ const MARKETPLACE_SLUG_MAP = {
   "AV-P05": "av-flight-planning",
   "AV-P06": "av-alex-personal",
   "AV-P07": "av-pc12-ng",
+  "AV-P08": "av-king-air-b200",
+  "AV-P09": "av-king-air-350",
+  "AV-P10": "av-king-air-c90",
+  "AV-P11": "av-caravan-208b",
   // Solar Energy
   "SOL-001": "solar-sales-closer",
   "SOL-002": "solar-permit-navigator",
@@ -265,6 +269,10 @@ const DISPLAY_NAME_MAP = {
   "AV-P05": "Flight Planning",
   "AV-P06": "Alex — Personal",
   "AV-P07": "PC12-NG CoPilot",
+  "AV-P08": "King Air B200 CoPilot",
+  "AV-P09": "King Air 350 CoPilot",
+  "AV-P10": "King Air C90 CoPilot",
+  "AV-P11": "Caravan 208B CoPilot",
   // Health & EMS Education
   "HE-001": "Curriculum Architect",
   "HE-011": "Scenario Simulator",
@@ -337,6 +345,10 @@ const HEADLINE_MAP = {
   "av-flight-planning": "Personal FRAT, plain-language weather, NOTAM filtering, personal minimums",
   "av-alex-personal": "Your personal aviation chief of staff — briefings, nudges, reminders",
   "av-pc12-ng": "Type-rated CoPilot for the PC-12/47E — systems, SOPs, examiner prep",
+  "av-king-air-b200": "Your King Air B200 CoPilot. Every system. Every limitation. Every procedure.",
+  "av-king-air-350": "Your King Air 350 CoPilot. Built for the aircraft that never stops working.",
+  "av-king-air-c90": "Your King Air C90 CoPilot. The trainer and the workhorse.",
+  "av-caravan-208b": "Your Caravan CoPilot. The workhorse deserves a great CoPilot.",
   // Health & EMS Education
   "he-curriculum-architect": "Accreditation-ready programs designed by domain experts, not committees",
   "he-scenario-simulator": "Clinical scenarios that teach judgment, not just protocol recall",
@@ -460,6 +472,14 @@ async function syncCatalogWorkers(db, opts = {}) {
       document_templates: documentTemplates,
       landing_page_slug: `workers/${marketplaceSlug}`,
       status,
+      // CoPilot Mode Framework fields — pass through from catalog
+      modeAware: worker.modeAware || false,
+      modes: worker.modes || [],
+      modeTiers: worker.modeTiers || null,
+      highRisk: worker.highRisk || false,
+      groundUseOnly: worker.groundUseOnly || false,
+      documentHierarchy: worker.documentHierarchy || ["titleapp_baseline", "public_regulatory"],
+      documentChecklist: worker.documentChecklist || [],
     };
 
     // Auto-fix (normalizes non-approved pricing_tier to 0 for draft/waitlist)
@@ -492,6 +512,7 @@ async function syncCatalogWorkers(db, opts = {}) {
           highRisk: validated.highRisk || false,
           groundUseOnly: validated.groundUseOnly || false,
           documentHierarchy: validated.documentHierarchy || ["titleapp_baseline", "public_regulatory"],
+          documentChecklist: validated.documentChecklist || [],
           syncedAt: new Date().toISOString(),
         });
       }

@@ -2790,6 +2790,93 @@ const WORKER_DETAIL_CONTENT = {
       { q: "What's examiner mode?", a: "Simulates a DPE conducting 135.293 competency checks and 135.297 instrument proficiency checks. Adapts difficulty based on your answers. Not a replacement for actual training — a supplement." },
     ],
   },
+  "av-king-air-b200": {
+    headline: "Your King Air B200 CoPilot. Every system. Every limitation. Every procedure.",
+    subheadline: "Type-specific CoPilot for the Beechcraft King Air B200 and B200GT. Emergency procedures, systems knowledge, PT6A-42 engine management, performance, and checkride prep. Upload your POH and QRH for Direct Mode accuracy.",
+    steps: [
+      { title: "Upload Your Documents", description: "Upload your serial-number-specific POH, QRH, MEL, and operator documents. Direct Mode unlocks with your actual aircraft data." },
+      { title: "Study Systems", description: "PT6A-42 engine management, pressurization, electrical, hydraulic, pneumatic — every system explained with AFM references" },
+      { title: "Practice Emergencies", description: "Engine failures, fires, depressurization, electrical emergencies — ground-based study with QRH procedures" },
+      { title: "Prep for Checkrides", description: "Examiner mode simulates 135.293/297 oral exams — DPE-style questions adapted to King Air B200 systems" },
+    ],
+    bridge: { title: "Know Your King Air", text: "The King Air B200 is a twin-engine turboprop workhorse — Part 135 charter, air ambulance, corporate, and government. This CoPilot knows every system, every limitation, and every procedure. Upload your documents for aircraft-specific Direct Mode answers." },
+    valueProps: [
+      { label: "4-Mode Intelligence", description: "Direct, Operational, Advisory, and Training modes — automatically detected from your question" },
+      { label: "PT6A Engine Expert", description: "PT6A-42 engine management, ITT limits, torque management, and compressor wash procedures" },
+      { label: "Document Hierarchy", description: "Your uploaded POH takes priority over generic references — serial-number-specific accuracy" },
+      { label: "Ground Use Only", description: "Designed for study, planning, and reference. Always cross-check against your paper or EFB documents." },
+    ],
+    faq: [
+      { q: "Do I need to upload documents to use it?", a: "No. Advisory and Training modes work immediately using our King Air B200 general reference library. Upload your POH and QRH to unlock Direct Mode with serial-number-specific answers." },
+      { q: "Does it cover the B200GT?", a: "Yes. Both the B200 and B200GT are covered, including Collins Pro Line 21 avionics differences on the GT variant." },
+      { q: "Is this for in-flight use?", a: "No. This is a ground-based study, planning, and reference tool. For actual emergencies, use your paper QRH." },
+    ],
+  },
+  "av-king-air-350": {
+    headline: "Your King Air 350 CoPilot. Built for the aircraft that never stops working.",
+    subheadline: "Type-specific CoPilot for the Beechcraft King Air 350 and 350ER. Systems, procedures, PT6A-60A engine management, performance planning, and recurrent training support. Upload your docs for Direct Mode.",
+    steps: [
+      { title: "Upload Your Documents", description: "Upload your serial-number-specific POH, QRH, MEL, and operator documents. Direct Mode unlocks with your actual aircraft data." },
+      { title: "Study Systems", description: "PT6A-60A engines, autofeather, pressurization, EFIS, and all King Air 350 systems — explained with AFM references" },
+      { title: "Plan Performance", description: "Takeoff and landing distance, climb performance, fuel planning — all configurations and conditions" },
+      { title: "Prep for Recurrent", description: "Examiner mode for 135.293/297 oral prep — adapted to King Air 350 systems and procedures" },
+    ],
+    bridge: { title: "The 350 — Mastered", text: "The King Air 350 is the most capable turboprop in the Beechcraft lineup — commuter-certified, extended range, and in constant demand for Part 135 operations. This CoPilot covers every system, every limitation, and every procedure specific to the 350 and 350ER." },
+    valueProps: [
+      { label: "4-Mode Intelligence", description: "Direct, Operational, Advisory, and Training modes — automatically detected from your question" },
+      { label: "PT6A-60A Expert", description: "Engine management, autofeather system, ITT limits, and performance optimization for the most powerful King Air" },
+      { label: "350C Commuter Coverage", description: "Includes commuter-category certification differences for the 350C variant" },
+      { label: "Ground Use Only", description: "Designed for study, planning, and reference. Always cross-check against your paper or EFB documents." },
+    ],
+    faq: [
+      { q: "Does it cover the 350ER?", a: "Yes. The 350ER extended-range variant is covered, including the additional fuel capacity and revised performance data." },
+      { q: "What about the 350C commuter version?", a: "Yes. Part 23 commuter-category certification differences are included in the compliance layer." },
+      { q: "Can I use it during flight?", a: "No. This is a ground-based study and reference tool. Use your paper QRH and POH for in-flight reference." },
+    ],
+  },
+  "av-king-air-c90": {
+    headline: "Your King Air C90 CoPilot. The trainer and the workhorse.",
+    subheadline: "Type-specific CoPilot for the Beechcraft King Air C90, C90A, C90GT, and C90GTx. Ideal for transition training, owner-operators, and small Part 135 operators. PT6A-135A systems, procedures, and checkride prep.",
+    steps: [
+      { title: "Upload Your Documents", description: "Upload your serial-number-specific POH, QRH, and operator documents. Direct Mode unlocks with your actual aircraft data." },
+      { title: "Learn the Platform", description: "PT6A-21/135A engines, conventional tail differences, electrical and pneumatic systems — the C90 explained completely" },
+      { title: "Transition Training", description: "Coming from a single? The C90 is where most pilots get their multi-turbine type. Systems comparison and transition guidance." },
+      { title: "Checkride Prep", description: "Examiner mode for multi-engine turboprop oral prep — C90-specific systems, emergencies, and procedures" },
+    ],
+    bridge: { title: "Start Here", text: "The King Air C90 is where most pilots enter the turboprop world. Whether you are transitioning from singles, building multi-engine time, or operating a small Part 135 fleet, this CoPilot knows the C90 family inside and out." },
+    valueProps: [
+      { label: "Full C90 Family", description: "C90, C90A, C90GT, C90GTx — all variants covered with their specific differences" },
+      { label: "Transition Support", description: "Built for pilots moving up to multi-engine turboprops — systems comparison and common transition pitfalls" },
+      { label: "PT6A-135A Systems", description: "Engine management, condition lever operation, and turbine-specific procedures for new turboprop pilots" },
+      { label: "Ground Use Only", description: "Designed for study, planning, and reference. Always cross-check against your paper or EFB documents." },
+    ],
+    faq: [
+      { q: "I'm transitioning from a Bonanza — is this useful?", a: "Very. The C90 CoPilot includes transition guidance for pilots coming from high-performance singles. It covers the key differences in systems, procedures, and mental model." },
+      { q: "Which C90 variants are covered?", a: "All of them — C90, C90A, C90B, C90GT, and C90GTx. Variant-specific differences are noted where they matter." },
+    ],
+  },
+  "av-caravan-208b": {
+    headline: "Your Caravan CoPilot. The workhorse deserves a great CoPilot.",
+    subheadline: "Type-specific CoPilot for the Cessna 208B Grand Caravan. Medevac, cargo, jump, and charter operations. PT6A-114A systems, procedures, floatplane considerations, and performance in all configurations. Upload your POH for Direct Mode.",
+    steps: [
+      { title: "Upload Your Documents", description: "Upload your serial-number-specific POH, QRH, MEL, and operator documents. Floatplane supplements welcome." },
+      { title: "Know Your Caravan", description: "PT6A-114A engine, G1000 avionics, fuel system, electrical — every 208B system explained with references" },
+      { title: "Plan Every Mission", description: "Medevac, cargo, jump ops, charter — performance planning for all configurations and loading scenarios" },
+      { title: "Prep for Checkrides", description: "Examiner mode for 208B-specific oral prep — single-engine turboprop systems, procedures, and emergencies" },
+    ],
+    bridge: { title: "One Aircraft, Many Missions", text: "The Cessna 208B Grand Caravan does everything — medevac, cargo, skydive, charter, float operations, and bush flying. This CoPilot covers all configurations and mission types, with special attention to the operational diversity that makes the Caravan unique." },
+    valueProps: [
+      { label: "Every Mission Type", description: "Medevac, cargo, jump ops, charter, float — configuration-specific guidance for the Caravan's diverse roles" },
+      { label: "PT6A-114A Expert", description: "Single-engine turboprop management, beta range, reverse, and condition lever procedures" },
+      { label: "G1000 Avionics", description: "Garmin G1000 NXi integration for the 208B EX — avionics-specific procedures and references" },
+      { label: "Float Awareness", description: "Floatplane and amphibious operations flagged — operator-uploaded supplements required for Direct Mode on floats" },
+    ],
+    faq: [
+      { q: "Does it cover float operations?", a: "Advisory and Training modes include general floatplane awareness. For Direct Mode on floats, upload your float supplement — the POH data varies significantly by float kit manufacturer." },
+      { q: "What about the cargo pod?", a: "Yes. Cargo pod configuration, loading limits, and CG considerations are covered in the baseline reference." },
+      { q: "Is the 208 (non-B) covered?", a: "This CoPilot is optimized for the 208B Grand Caravan. The standard 208 shares many systems but has different performance data. A 208-specific CoPilot is planned." },
+    ],
+  },
 };
 
 // GOV-000: Jurisdiction Onboarding Gateway

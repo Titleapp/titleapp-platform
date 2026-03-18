@@ -192,6 +192,10 @@ export const WORKER_ROUTES = [
   { slug: "av-flight-planning", name: "Flight Planning & Weather", description: "Personal FRAT, plain-language weather, NOTAM filtering, personal minimums", suite: "Aviation", status: "live", price: 2900, vertical: "aviation" },
   { slug: "av-alex-personal", name: "Alex — Personal Aviation Assistant", description: "Daily briefing, currency nudges, training reminders for individual pilots", suite: "Aviation", status: "live", price: 0, vertical: "aviation" },
   { slug: "av-pc12-ng", name: "PC12-NG CoPilot", description: "Type-rated CoPilot for the Pilatus PC-12/47E. Systems, SOPs, examiner prep, duty tracking.", suite: "Aviation", status: "live", price: 2900, vertical: "aviation" },
+  { slug: "av-king-air-b200", name: "King Air B200 CoPilot", description: "Type-specific CoPilot for the Beechcraft King Air B200. Systems, PT6 management, procedures, checkride prep.", suite: "Aviation", status: "live", price: 2900, vertical: "aviation" },
+  { slug: "av-king-air-350", name: "King Air 350 CoPilot", description: "Type-specific CoPilot for the Beechcraft King Air 350. Systems, PT6A-60A management, performance planning.", suite: "Aviation", status: "live", price: 2900, vertical: "aviation" },
+  { slug: "av-king-air-c90", name: "King Air C90GTx CoPilot", description: "Type-specific CoPilot for the King Air C90 family. Transition training, PT6A-135A systems, checkride prep.", suite: "Aviation", status: "live", price: 2900, vertical: "aviation" },
+  { slug: "av-caravan-208b", name: "Caravan 208B CoPilot", description: "Type-specific CoPilot for the Cessna 208B Grand Caravan. Medevac, cargo, charter. PT6A-114A systems.", suite: "Aviation", status: "live", price: 2900, vertical: "aviation" },
 
   // Government — Jurisdiction Onboarding
   { slug: "gov-jurisdiction-onboarding", name: "Jurisdiction Onboarding Gateway", description: "Configure jurisdiction, connect systems, and deploy government workers.", suite: "Government — DMV", status: "planned", price: 0, vertical: "government" },

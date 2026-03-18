@@ -2219,6 +2219,316 @@
         "briefingContribution": "PC-12 duty status, recent flights, examiner prep progress"
       },
       "endpoints": "copilot:pc12:*"
+    },
+    {
+      "id": "AV-P08",
+      "name": "King Air B200 CoPilot",
+      "slug": "av-king-air-b200",
+      "suite": "Aviation",
+      "phase": null,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 29
+      },
+      "status": "live",
+      "capabilitySummary": "Type-specific CoPilot for the Beechcraft King Air B200 and B200GT. Emergency procedures, systems knowledge, PT6A-42 engine management, performance planning, and checkride prep. Upload your POH and QRH for Direct Mode accuracy.",
+      "temporalType": "always_on",
+      "mandatoryWhen": [],
+      "modeAware": true,
+      "modes": ["direct", "operational", "advisory", "training"],
+      "modeTiers": "full",
+      "highRisk": true,
+      "groundUseOnly": true,
+      "documentHierarchy": ["operator_upload", "titleapp_baseline", "public_regulatory"],
+      "tier1Compliance": [
+        "14 CFR Part 91 — general operating and flight rules",
+        "14 CFR Part 135 — commuter and on-demand operations",
+        "14 CFR 135.293/297 — competency and instrument proficiency checks",
+        "14 CFR 61.51 — pilot logbook requirements",
+        "14 CFR 117 — flight and duty time limitations",
+        "14 CFR 91.103 — preflight action requirements",
+        "Beechcraft King Air B200/B200GT AFM",
+        "PT6A-42 engine operating limits and procedures",
+        "Collins Pro Line 21 avionics (B200GT)"
+      ],
+      "referenceDocuments": [
+        {
+          "name": "King Air 300 POH (B200 family reference)",
+          "aircraft": "King Air 300/B200",
+          "storage": "gs://title-app-alpha.firebasestorage.app/raas/aviation/GLOBAL/reference/kingair/King_Air_300_POH.pdf"
+        },
+        {
+          "name": "King Air B200 POH Summary",
+          "aircraft": "King Air B200",
+          "path": "raas/aviation/GLOBAL/reference/poh/king-air-b200.md"
+        },
+        {
+          "name": "King Air Family Training Reference",
+          "aircraft": "King Air family",
+          "path": "raas/aviation/GLOBAL/reference/training/king-air-family-training.md"
+        }
+      ],
+      "vault": {
+        "reads": [
+          "personal_flight_record",
+          "personal_currency_status",
+          "company_mission_records"
+        ],
+        "writes": [
+          "copilot_chat_log",
+          "examiner_session_log",
+          "form_8710_data"
+        ]
+      },
+      "referrals": [
+        {
+          "event": "duty_limit_warning",
+          "routesTo": "AV-P06"
+        },
+        {
+          "event": "currency_expiring",
+          "routesTo": "AV-P02"
+        }
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": false,
+        "briefingContribution": "King Air B200 duty status, recent flights, examiner prep progress"
+      },
+      "endpoints": "copilot:kingair:*"
+    },
+    {
+      "id": "AV-P09",
+      "name": "King Air 350 CoPilot",
+      "slug": "av-king-air-350",
+      "suite": "Aviation",
+      "phase": null,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 29
+      },
+      "status": "live",
+      "capabilitySummary": "Type-specific CoPilot for the Beechcraft King Air 350 and 350ER. Systems knowledge, PT6A-60A engine management, performance planning, and recurrent training support. Upload your docs for Direct Mode.",
+      "temporalType": "always_on",
+      "mandatoryWhen": [],
+      "modeAware": true,
+      "modes": ["direct", "operational", "advisory", "training"],
+      "modeTiers": "full",
+      "highRisk": true,
+      "groundUseOnly": true,
+      "documentHierarchy": ["operator_upload", "titleapp_baseline", "public_regulatory"],
+      "tier1Compliance": [
+        "14 CFR Part 91 — general operating and flight rules",
+        "14 CFR Part 135 — commuter and on-demand operations",
+        "14 CFR 135.293/297 — competency and instrument proficiency checks",
+        "14 CFR 61.51 — pilot logbook requirements",
+        "14 CFR 117 — flight and duty time limitations",
+        "14 CFR 91.103 — preflight action requirements",
+        "Beechcraft King Air 350/350ER/350C AFM",
+        "PT6A-60A engine operating limits and procedures",
+        "Collins Pro Line 21/Fusion avionics",
+        "14 CFR Part 23 commuter category certification (350C)"
+      ],
+      "referenceDocuments": [
+        {
+          "name": "Beechcraft 350/350C POH",
+          "aircraft": "King Air 350/350C",
+          "storage": "gs://title-app-alpha.firebasestorage.app/raas/aviation/GLOBAL/reference/kingair/Beechcraft_350_350C_POH.pdf"
+        },
+        {
+          "name": "King Air 350 POH Summary",
+          "aircraft": "King Air 350",
+          "path": "raas/aviation/GLOBAL/reference/poh/king-air-350.md"
+        },
+        {
+          "name": "King Air Family Training Reference",
+          "aircraft": "King Air family",
+          "path": "raas/aviation/GLOBAL/reference/training/king-air-family-training.md"
+        }
+      ],
+      "vault": {
+        "reads": [
+          "personal_flight_record",
+          "personal_currency_status",
+          "company_mission_records"
+        ],
+        "writes": [
+          "copilot_chat_log",
+          "examiner_session_log",
+          "form_8710_data"
+        ]
+      },
+      "referrals": [
+        {
+          "event": "duty_limit_warning",
+          "routesTo": "AV-P06"
+        },
+        {
+          "event": "currency_expiring",
+          "routesTo": "AV-P02"
+        }
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": false,
+        "briefingContribution": "King Air 350 duty status, recent flights, examiner prep progress"
+      },
+      "endpoints": "copilot:kingair:*"
+    },
+    {
+      "id": "AV-P10",
+      "name": "King Air C90GTx CoPilot",
+      "slug": "av-king-air-c90",
+      "suite": "Aviation",
+      "phase": null,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 29
+      },
+      "status": "live",
+      "capabilitySummary": "Type-specific CoPilot for the Beechcraft King Air C90, C90A, C90GT, and C90GTx. Ideal for transition training, owner-operators, and small Part 135 operators. PT6A-135A systems, procedures, and checkride prep.",
+      "temporalType": "always_on",
+      "mandatoryWhen": [],
+      "modeAware": true,
+      "modes": ["direct", "operational", "advisory", "training"],
+      "modeTiers": "full",
+      "highRisk": true,
+      "groundUseOnly": true,
+      "documentHierarchy": ["operator_upload", "titleapp_baseline", "public_regulatory"],
+      "tier1Compliance": [
+        "14 CFR Part 91 — general operating and flight rules",
+        "14 CFR Part 135 — commuter and on-demand operations",
+        "14 CFR 135.293/297 — competency and instrument proficiency checks",
+        "14 CFR 61.51 — pilot logbook requirements",
+        "14 CFR 117 — flight and duty time limitations",
+        "14 CFR 91.103 — preflight action requirements",
+        "Beechcraft King Air C90/C90A/C90GT/C90GTx AFM",
+        "PT6A-21/PT6A-135A engine operating limits and procedures",
+        "Collins Pro Line 21 avionics (C90GTx)"
+      ],
+      "referenceDocuments": [
+        {
+          "name": "King Air C90 POH Summary",
+          "aircraft": "King Air C90",
+          "path": "raas/aviation/GLOBAL/reference/poh/king-air-c90.md"
+        },
+        {
+          "name": "King Air Family Training Reference",
+          "aircraft": "King Air family",
+          "path": "raas/aviation/GLOBAL/reference/training/king-air-family-training.md"
+        }
+      ],
+      "vault": {
+        "reads": [
+          "personal_flight_record",
+          "personal_currency_status",
+          "company_mission_records"
+        ],
+        "writes": [
+          "copilot_chat_log",
+          "examiner_session_log",
+          "form_8710_data"
+        ]
+      },
+      "referrals": [
+        {
+          "event": "duty_limit_warning",
+          "routesTo": "AV-P06"
+        },
+        {
+          "event": "currency_expiring",
+          "routesTo": "AV-P02"
+        }
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": false,
+        "briefingContribution": "King Air C90 duty status, recent flights, examiner prep progress"
+      },
+      "endpoints": "copilot:kingair:*"
+    },
+    {
+      "id": "AV-P11",
+      "name": "Caravan 208B CoPilot",
+      "slug": "av-caravan-208b",
+      "suite": "Aviation",
+      "phase": null,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 29
+      },
+      "status": "live",
+      "capabilitySummary": "Type-specific CoPilot for the Cessna 208B Grand Caravan. Medevac, cargo, jump, and charter operations. PT6A-114A systems, procedures, floatplane considerations, and performance in all configurations. Upload your POH for Direct Mode.",
+      "temporalType": "always_on",
+      "mandatoryWhen": [],
+      "modeAware": true,
+      "modes": ["direct", "operational", "advisory", "training"],
+      "modeTiers": "full",
+      "highRisk": true,
+      "groundUseOnly": true,
+      "documentHierarchy": ["operator_upload", "titleapp_baseline", "public_regulatory"],
+      "tier1Compliance": [
+        "14 CFR Part 91 — general operating and flight rules",
+        "14 CFR Part 135 — commuter and on-demand operations",
+        "14 CFR 135.293/297 — competency and instrument proficiency checks",
+        "14 CFR 61.51 — pilot logbook requirements",
+        "14 CFR 117 — flight and duty time limitations",
+        "14 CFR 91.103 — preflight action requirements",
+        "Cessna 208B Grand Caravan AFM/POH",
+        "PT6A-114A engine operating limits and procedures",
+        "Garmin G1000 avionics (208B EX)",
+        "Floatplane and amphibious supplements require operator-uploaded docs"
+      ],
+      "referenceDocuments": [
+        {
+          "name": "Cessna 208B EX G1000 Pilot Training Manual",
+          "aircraft": "208B Grand Caravan EX",
+          "storage": "gs://title-app-alpha.firebasestorage.app/raas/aviation/GLOBAL/reference/caravan/C208B_EX_G1000_PTM.pdf"
+        },
+        {
+          "name": "Cessna 208B EX POH",
+          "aircraft": "208B Grand Caravan EX",
+          "storage": "gs://title-app-alpha.firebasestorage.app/raas/aviation/GLOBAL/reference/caravan/C208B_EX_POH.pdf"
+        },
+        {
+          "name": "Cessna 208B Caravan POH Summary",
+          "aircraft": "208B Grand Caravan",
+          "path": "raas/aviation/GLOBAL/reference/poh/cessna-208b-caravan.md"
+        },
+        {
+          "name": "Cessna 208B Caravan Training Reference",
+          "aircraft": "208B Grand Caravan",
+          "path": "raas/aviation/GLOBAL/reference/training/cessna-208b-caravan-training.md"
+        }
+      ],
+      "vault": {
+        "reads": [
+          "personal_flight_record",
+          "personal_currency_status",
+          "company_mission_records"
+        ],
+        "writes": [
+          "copilot_chat_log",
+          "examiner_session_log",
+          "form_8710_data"
+        ]
+      },
+      "referrals": [
+        {
+          "event": "duty_limit_warning",
+          "routesTo": "AV-P06"
+        },
+        {
+          "event": "currency_expiring",
+          "routesTo": "AV-P02"
+        }
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": false,
+        "briefingContribution": "Caravan 208B duty status, recent flights, examiner prep progress"
+      },
+      "endpoints": "copilot:caravan:*"
     }
   ],
   "bundles": [
@@ -2298,9 +2608,13 @@
         "AV-P04",
         "AV-P05",
         "AV-P06",
-        "AV-P07"
+        "AV-P07",
+        "AV-P08",
+        "AV-P09",
+        "AV-P10",
+        "AV-P11"
       ],
-      "monthlyPrice": 86,
+      "monthlyPrice": 202,
       "replaces": "LogTen Pro + ForeFlight companion apps + paper logbook + manual currency tracking"
     }
   ]
