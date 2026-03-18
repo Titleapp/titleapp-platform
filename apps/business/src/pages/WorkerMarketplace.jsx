@@ -21,7 +21,7 @@ export const WORKER_ROUTES = [
   { slug: "mortgage-senior-debt", name: "Mortgage & Senior Debt Worker", description: "Know your best loan before the broker calls. Term sheet analysis, loan sizing from binding constraints, comparison across agency, CMBS, and life company.", suite: "Finance & Investment", status: "planned", price: 7900 },
   { slug: "mortgage-broker", name: "Mortgage Broker Worker", description: "Source the best debt. Acquisition loans, construction financing, bridge, perm, refi.", suite: "Finance & Investment", status: "planned", price: 4900 },
   { slug: "construction-lending", name: "Construction Lending Worker", description: "Compare loan terms, build draw schedules, model interest reserves, track utilization through perm conversion.", suite: "Finance & Investment", status: "live", price: 7900, bogoEligible: true },
-  { slug: "capital-stack-optimizer", name: "Capital Stack Optimizer", description: "Build optimal debt/equity mix, model LP/GP waterfalls, run sensitivity analysis, and generate investor-ready materials.", suite: "Finance & Investment", status: "live", price: 9900, bogoEligible: true },
+  { slug: "capital-stack-optimizer", name: "Capital Stack Optimizer", description: "Build optimal debt/equity mix, model LP/GP waterfalls, run sensitivity analysis, and generate investor-ready materials.", suite: "Finance & Investment", status: "live", price: 7900, bogoEligible: true },
 
   // Phase 2: Entitlement & Pre-Construction
   { slug: "entitlement-analyst", name: "Entitlement Analyst Worker", description: "Zoning analysis, entitlement strategy, and approval tracking. Know what you can build before you buy.", suite: "Real Estate", status: "planned", price: 2900 },
@@ -35,35 +35,35 @@ export const WORKER_ROUTES = [
 
   // Phase 3: Construction
   { slug: "construction-manager", name: "Construction Manager Worker", description: "Your AI superintendent. Scheduling, RFIs, submittals, daily logs, punch lists, and close-out.", suite: "Construction", status: "live", price: 4900, bogoEligible: true },
-  { slug: "bid-procurement", name: "Bid & Procurement Worker", description: "The right sub at the right price — bid packages, comparison matrices, anomaly detection, and award recommendations", suite: "Construction", status: "live", price: 5900 },
-  { slug: "insurance-risk", name: "Insurance & Risk Worker", description: "Never miss an expired certificate — COI tracking, insurance matrices, risk exposure analysis, and lender compliance reports", suite: "Construction", status: "live", price: 5900 },
+  { slug: "bid-procurement", name: "Bid & Procurement Worker", description: "The right sub at the right price — bid packages, comparison matrices, anomaly detection, and award recommendations", suite: "Construction", status: "live", price: 4900 },
+  { slug: "insurance-risk", name: "Insurance & Risk Worker", description: "Never miss an expired certificate — COI tracking, insurance matrices, risk exposure analysis, and lender compliance reports", suite: "Construction", status: "live", price: 4900 },
   { slug: "quality-control", name: "Quality Control & Inspection Worker", description: "Pass inspections the first time — scheduling, deficiency tracking, trade checklists, and CO tracking", suite: "Construction", status: "live", price: 4900 },
   { slug: "safety-osha", name: "Safety & OSHA Worker", description: "Keep your site safe and your OSHA logs clean — safety plans, training tracking, incident logging, and compliance metrics", suite: "Construction", status: "live", price: 4900 },
-  { slug: "mep-coordination", name: "MEP Coordination Worker", description: "No more surprises in the ceiling — clash tracking, coordination meetings, submittal management, and commissioning", suite: "Construction", status: "live", price: 5900 },
-  { slug: "construction-draws", name: "Construction Draw Worker", description: "Draw requests that get funded the first time. G702/G703 packages, lien waiver tracking, retainage management.", suite: "Construction", status: "live", price: 5900 },
+  { slug: "mep-coordination", name: "MEP Coordination Worker", description: "No more surprises in the ceiling — clash tracking, coordination meetings, submittal management, and commissioning", suite: "Construction", status: "live", price: 4900 },
+  { slug: "construction-draws", name: "Construction Draw Worker", description: "Draw requests that get funded the first time. G702/G703 packages, lien waiver tracking, retainage management.", suite: "Construction", status: "live", price: 4900 },
   { slug: "labor-staffing", name: "Labor & Staffing Worker", description: "Certified payroll, prevailing wage compliance, workforce tracking, diversity reporting, and crew scheduling.", suite: "Construction", status: "planned", price: 4900 },
   { slug: "materials-supply-chain", name: "Materials & Supply Chain Worker", description: "No material delays. Procurement scheduling, long-lead tracking, price escalation, stored materials, and substitution management.", suite: "Construction", status: "planned", price: 4900 },
 
   // Phase 3: Financing (additional)
-  { slug: "tax-credit-incentive", name: "Tax Credit & Incentive Worker", description: "Find every dollar the government will give you. LIHTC, Historic, OZ, NMTC, Energy credits — screening, modeling, compliance, and syndicator packages.", suite: "Finance & Investment", status: "planned", price: 9900 },
+  { slug: "tax-credit-incentive", name: "Tax Credit & Incentive Worker", description: "Find every dollar the government will give you. LIHTC, Historic, OZ, NMTC, Energy credits — screening, modeling, compliance, and syndicator packages.", suite: "Finance & Investment", status: "planned", price: 7900 },
   { slug: "mezzanine-preferred-equity", name: "Mezzanine & Preferred Equity Worker", description: "Fill the gap. Structure comparison, waterfall modeling, intercreditor tracking, and investor reporting for subordinate capital.", suite: "Finance & Investment", status: "planned", price: 7900 },
   { slug: "crowdfunding-regd", name: "Crowdfunding & Reg D Worker", description: "Raise capital legally. Exemption analysis, investor qualification, subscription management, compliance calendar, and cap table.", suite: "Finance & Investment", status: "planned", price: 7900 },
-  { slug: "opportunity-zone", name: "Opportunity Zone Worker", description: "QOF compliance, substantial improvement test, investment timeline tracking, and tax benefit modeling.", suite: "Finance & Investment", status: "live", price: 9900 },
+  { slug: "opportunity-zone", name: "Opportunity Zone Worker", description: "QOF compliance, substantial improvement test, investment timeline tracking, and tax benefit modeling.", suite: "Finance & Investment", status: "live", price: 7900 },
 
   // Phase 0: Site Selection & Market Research
   { slug: "market-research", name: "Market Research Worker", description: "Demographics, absorption rates, supply pipeline, and competitive landscape — know your market before you commit.", suite: "Real Estate", status: "live", price: 2900 },
   { slug: "appraisal-valuation", name: "Appraisal & Valuation Review Worker", description: "Appraisal review, comp validation, valuation methodology analysis, and USPAP compliance tracking.", suite: "Real Estate", status: "live", price: 4900 },
-  { slug: "site-due-diligence", name: "Site Due Diligence Worker", description: "Know what you're buying. Environmental, survey, zoning, utility assessment — complete DD management with go/no-go summary.", suite: "Real Estate", status: "planned", price: 5900 },
+  { slug: "site-due-diligence", name: "Site Due Diligence Worker", description: "Know what you're buying. Environmental, survey, zoning, utility assessment — complete DD management with go/no-go summary.", suite: "Real Estate", status: "planned", price: 4900 },
 
   // Phase 1: Design & Entitlement (additional)
-  { slug: "land-use-entitlement", name: "Land Use & Entitlement Worker", description: "Get your approvals. Zoning analysis, application prep, hearing preparation, timeline tracking, and condition management.", suite: "Real Estate", status: "planned", price: 9900 },
+  { slug: "land-use-entitlement", name: "Land Use & Entitlement Worker", description: "Get your approvals. Zoning analysis, application prep, hearing preparation, timeline tracking, and condition management.", suite: "Real Estate", status: "planned", price: 7900 },
 
   // Phase 2: Permitting (additional)
-  { slug: "permit-submission", name: "Permit Submission & Tracking Worker", description: "Every permit tracked. Requirements analysis, plan check management, fee tracking, and timeline modeling.", suite: "Construction", status: "planned", price: 5900 },
+  { slug: "permit-submission", name: "Permit Submission & Tracking Worker", description: "Every permit tracked. Requirements analysis, plan check management, fee tracking, and timeline modeling.", suite: "Construction", status: "planned", price: 4900 },
 
   // Phase 5: Stabilization
-  { slug: "lease-up-marketing", name: "Lease-Up & Marketing Worker", description: "Fill your building faster. Marketing strategy, lead management, absorption forecasting, concession analysis, and lender reporting.", suite: "Real Estate", status: "planned", price: 5900 },
-  { slug: "property-management", name: "Property Management Worker", description: "Run your property like a business. Tenant comms, work orders, lease renewals, vendor management, and operational reporting.", suite: "Real Estate", status: "planned", price: 5900 },
+  { slug: "lease-up-marketing", name: "Lease-Up & Marketing Worker", description: "Fill your building faster. Marketing strategy, lead management, absorption forecasting, concession analysis, and lender reporting.", suite: "Real Estate", status: "planned", price: 4900 },
+  { slug: "property-management", name: "Property Management Worker", description: "Run your property like a business. Tenant comms, work orders, lease renewals, vendor management, and operational reporting.", suite: "Real Estate", status: "planned", price: 4900 },
   { slug: "tenant-screening", name: "Tenant Screening Worker", description: "Credit analysis, background checks, income verification, and rental history — consistent screening every time.", suite: "Real Estate", status: "live", price: 2900 },
   { slug: "rent-roll-revenue", name: "Rent Roll & Revenue Worker", description: "Rent roll analysis, revenue forecasting, lease abstraction, vacancy tracking, and renewal management.", suite: "Real Estate", status: "live", price: 4900 },
   { slug: "maintenance-work-order", name: "Maintenance & Work Order Worker", description: "Work orders, preventive maintenance scheduling, vendor dispatch, and cost tracking.", suite: "Real Estate", status: "live", price: 2900 },
@@ -72,7 +72,7 @@ export const WORKER_ROUTES = [
   { slug: "warranty-defect", name: "Warranty & Defect Worker", description: "Warranty tracking, defect claims, builder liability analysis, and statute of repose management.", suite: "Construction", status: "live", price: 2900 },
 
   // Phase 6: Operations
-  { slug: "accounting", name: "Accounting Worker", description: "Books that are always audit-ready. GAAP financials, job cost reporting, AP/AR, bank reconciliation, and investor packages.", suite: "Finance & Investment", status: "planned", price: 5900 },
+  { slug: "accounting", name: "Accounting Worker", description: "Books that are always audit-ready. GAAP financials, job cost reporting, AP/AR, bank reconciliation, and investor packages.", suite: "Finance & Investment", status: "planned", price: 4900 },
   { slug: "insurance-coi", name: "Insurance & COI Worker", description: "Policy management, COI tracking, claims handling, and renewal coordination. Never miss a coverage gap.", suite: "General Business", status: "planned", price: 2900 },
   { slug: "tax-assessment", name: "Tax & Assessment Worker", description: "Property tax monitoring, assessment review, appeal preparation, exemption tracking, and tax planning.", suite: "Finance & Investment", status: "live", price: 2900 },
   { slug: "vendor-contract", name: "Vendor & Contract Worker", description: "Vendor qualification, contract management, performance tracking, and renewal management.", suite: "General Business", status: "live", price: 2900 },
@@ -82,11 +82,11 @@ export const WORKER_ROUTES = [
   // Phase 7: Disposition
   { slug: "disposition-preparation", name: "Disposition Preparation Worker", description: "Sale prep, property positioning, due diligence assembly, and buyer qualification.", suite: "Real Estate", status: "live", price: 4900 },
   { slug: "disposition-marketing", name: "Disposition Marketing & Data Room Worker", description: "Marketing materials, virtual data room setup, buyer outreach, and offer management.", suite: "Real Estate", status: "live", price: 4900 },
-  { slug: "exchange-1031", name: "1031 Exchange Worker", description: "Exchange qualification, timeline tracking, replacement property identification, and QI coordination.", suite: "Finance & Investment", status: "live", price: 9900 },
+  { slug: "exchange-1031", name: "1031 Exchange Worker", description: "Exchange qualification, timeline tracking, replacement property identification, and QI coordination.", suite: "Finance & Investment", status: "live", price: 7900 },
   { slug: "real-estate-sales", name: "Real Estate Sales Worker", description: "Listings, buyer qualification, showing management, offer negotiation, and transaction coordination.", suite: "Real Estate", status: "planned", price: 2900 },
 
   // Horizontal
-  { slug: "compliance-tracker", name: "Compliance & Deadline Tracker", description: "Never miss a deadline that costs you money. Unified calendar across all workers, multi-tier alerts, cross-worker conflict detection, and compliance reporting.", suite: "General Business", status: "planned", price: 3900 },
+  { slug: "compliance-tracker", name: "Compliance & Deadline Tracker", description: "Never miss a deadline that costs you money. Unified calendar across all workers, multi-tier alerts, cross-worker conflict detection, and compliance reporting.", suite: "General Business", status: "planned", price: 2900 },
   { slug: "legal-contracts", name: "Legal & Contract Worker", description: "Every contract reviewed. Every risk flagged. PSAs, construction contracts, loan docs, leases — risk scoring, amendment tracking, and mechanics lien management.", suite: "Legal", status: "planned", price: 7900 },
 
   { slug: "entity-formation", name: "Entity & Formation Worker", description: "Entity structure analysis, formation filings, operating agreement review, and compliance tracking.", suite: "Legal", status: "live", price: 4900 },
@@ -145,51 +145,51 @@ export const WORKER_ROUTES = [
   { slug: "chief-of-staff", name: "Alex — Chief of Staff", description: "Your AI coordinator. Manages all your workers, plans pipelines, tracks progress. Free with 3+ worker subscriptions.", suite: "Platform", status: "live", price: 0 },
 
   // Aviation — Operator Suite
-  { slug: "av-cert-assistant", name: "Part 135 Certificate Assistant", description: "Guides operators through Part 135 certification and amendment process", suite: "Aviation", status: "planned", price: 9900, vertical: "aviation" },
+  { slug: "av-cert-assistant", name: "Part 135 Certificate Assistant", description: "Guides operators through Part 135 certification and amendment process", suite: "Aviation", status: "planned", price: 7900, vertical: "aviation" },
   { slug: "av-gom-authoring", name: "GOM / POI Authoring", description: "Authors and maintains General Operations Manual and POI submissions", suite: "Aviation", status: "planned", price: 7900, vertical: "aviation" },
   { slug: "av-regulatory-monitor", name: "Regulatory Compliance Monitor", description: "Monitors FAR changes and flags impact on operator certificate", suite: "Aviation", status: "planned", price: 7900, vertical: "aviation" },
   { slug: "av-aircraft-status-mel", name: "Aircraft Status & MEL Tracker", description: "Real-time airworthiness status for every tail on the certificate", suite: "Aviation", status: "planned", price: 7900, vertical: "aviation" },
-  { slug: "av-ad-sb-tracker", name: "AD/SB Compliance Tracker", description: "Tracks airworthiness directives and service bulletins against fleet", suite: "Aviation", status: "planned", price: 6900, vertical: "aviation" },
-  { slug: "av-component-tracker", name: "Component & Life Tracker", description: "Tracks component time remaining, overhaul intervals, and life-limited parts", suite: "Aviation", status: "planned", price: 6900, vertical: "aviation" },
+  { slug: "av-ad-sb-tracker", name: "AD/SB Compliance Tracker", description: "Tracks airworthiness directives and service bulletins against fleet", suite: "Aviation", status: "planned", price: 4900, vertical: "aviation" },
+  { slug: "av-component-tracker", name: "Component & Life Tracker", description: "Tracks component time remaining, overhaul intervals, and life-limited parts", suite: "Aviation", status: "planned", price: 4900, vertical: "aviation" },
   { slug: "av-maintenance-logbook", name: "Maintenance Work Order & Logbook", description: "Creates and tracks maintenance work orders and journey log entries", suite: "Aviation", status: "planned", price: 7900, vertical: "aviation" },
-  { slug: "av-parts-inventory", name: "Parts & Inventory Manager", description: "Manages parts inventory, reorder points, and vendor relationships", suite: "Aviation", status: "planned", price: 5900, vertical: "aviation" },
+  { slug: "av-parts-inventory", name: "Parts & Inventory Manager", description: "Manages parts inventory, reorder points, and vendor relationships", suite: "Aviation", status: "planned", price: 4900, vertical: "aviation" },
   { slug: "av-flight-duty-enforcer", name: "Flight & Duty Time Enforcer", description: "Hard stops on illegal crew assignments at the scheduling board", suite: "Aviation", status: "planned", price: 7900, vertical: "aviation" },
-  { slug: "av-qualification-tracker", name: "Qualification & Currency Tracker", description: "Tracks pilot qualifications, type ratings, and instrument proficiency", suite: "Aviation", status: "planned", price: 6900, vertical: "aviation" },
-  { slug: "av-training-records", name: "Training Records Manager", description: "Manages recurrent training schedules and completion records", suite: "Aviation", status: "planned", price: 5900, vertical: "aviation" },
+  { slug: "av-qualification-tracker", name: "Qualification & Currency Tracker", description: "Tracks pilot qualifications, type ratings, and instrument proficiency", suite: "Aviation", status: "planned", price: 4900, vertical: "aviation" },
+  { slug: "av-training-records", name: "Training Records Manager", description: "Manages recurrent training schedules and completion records", suite: "Aviation", status: "planned", price: 4900, vertical: "aviation" },
   { slug: "av-medical-tracker", name: "Medical & Certificate Tracker", description: "Tracks medical certificate dates, classes, and BasicMed eligibility", suite: "Aviation", status: "planned", price: 4900, vertical: "aviation" },
-  { slug: "av-mission-builder", name: "Mission Builder & Dispatch", description: "Assembles complete mission package — crew, aircraft, weather, risk — before authorization", suite: "Aviation", status: "planned", price: 9900, vertical: "aviation" },
-  { slug: "av-frat", name: "Flight Risk Assessment (FRAT)", description: "Risk quantification that gates dispatch — not advisory, structural", suite: "Aviation", status: "planned", price: 5900, vertical: "aviation" },
+  { slug: "av-mission-builder", name: "Mission Builder & Dispatch", description: "Assembles complete mission package — crew, aircraft, weather, risk — before authorization", suite: "Aviation", status: "planned", price: 7900, vertical: "aviation" },
+  { slug: "av-frat", name: "Flight Risk Assessment (FRAT)", description: "Risk quantification that gates dispatch — not advisory, structural", suite: "Aviation", status: "planned", price: 4900, vertical: "aviation" },
   { slug: "av-weight-balance", name: "Weight & Balance Calculator", description: "Calculates W&B for each mission against aircraft-specific envelopes", suite: "Aviation", status: "planned", price: 4900, vertical: "aviation" },
-  { slug: "av-weather-intel", name: "Weather Intelligence", description: "METARs, TAFs, SIGMETs, PIREPs, TFRs with plain-language translation", suite: "Aviation", status: "planned", price: 5900, vertical: "aviation" },
-  { slug: "av-flight-following", name: "Flight Following & Tracking", description: "Real-time flight tracking with position reporting and ETA management", suite: "Aviation", status: "planned", price: 6900, vertical: "aviation" },
-  { slug: "av-safety-reporting", name: "Safety Reporting (SMS)", description: "Voluntary safety reporting with anonymous submission and trend analysis", suite: "Aviation", status: "planned", price: 6900, vertical: "aviation" },
+  { slug: "av-weather-intel", name: "Weather Intelligence", description: "METARs, TAFs, SIGMETs, PIREPs, TFRs with plain-language translation", suite: "Aviation", status: "planned", price: 4900, vertical: "aviation" },
+  { slug: "av-flight-following", name: "Flight Following & Tracking", description: "Real-time flight tracking with position reporting and ETA management", suite: "Aviation", status: "planned", price: 4900, vertical: "aviation" },
+  { slug: "av-safety-reporting", name: "Safety Reporting (SMS)", description: "Voluntary safety reporting with anonymous submission and trend analysis", suite: "Aviation", status: "planned", price: 4900, vertical: "aviation" },
   { slug: "av-foqa", name: "FOQA / Flight Data Analysis", description: "Flight operational quality assurance — exceedance detection and trends", suite: "Aviation", status: "planned", price: 7900, vertical: "aviation" },
   { slug: "av-emergency-response", name: "Emergency Response (ERP)", description: "Emergency response plan management with automated notification cascades", suite: "Aviation", status: "planned", price: 7900, vertical: "aviation" },
   { slug: "av-post-flight-debrief", name: "Post-Flight Debrief", description: "Auto-populated post-flight debriefs — replaces Protean OASIS workflow", suite: "Aviation", status: "planned", price: 4900, vertical: "aviation" },
-  { slug: "av-hazard-register", name: "Hazard & Risk Register", description: "Hazard identification and risk assessment per SMS requirements", suite: "Aviation", status: "planned", price: 5900, vertical: "aviation" },
-  { slug: "av-sms-monitor", name: "SMS Performance Monitor", description: "Safety performance indicators and objectives tracked against targets", suite: "Aviation", status: "planned", price: 6900, vertical: "aviation" },
+  { slug: "av-hazard-register", name: "Hazard & Risk Register", description: "Hazard identification and risk assessment per SMS requirements", suite: "Aviation", status: "planned", price: 4900, vertical: "aviation" },
+  { slug: "av-sms-monitor", name: "SMS Performance Monitor", description: "Safety performance indicators and objectives tracked against targets", suite: "Aviation", status: "planned", price: 4900, vertical: "aviation" },
   { slug: "av-safety-officer", name: "AI Safety Officer", description: "AI-assisted safety analysis with pattern detection across all data", suite: "Aviation", status: "planned", price: 7900, vertical: "aviation" },
-  { slug: "av-charter-quoting", name: "Charter Quoting Engine", description: "Charter quotes based on aircraft costs, fuel, crew, landing fees, margin", suite: "Aviation", status: "planned", price: 5900, vertical: "aviation" },
-  { slug: "av-billing", name: "Accounts Receivable & Billing", description: "Customer invoicing, payment tracking, and AR for charter operations", suite: "Aviation", status: "planned", price: 5900, vertical: "aviation" },
-  { slug: "av-medevac-billing", name: "Medevac Billing & Collections", description: "Medical transport billing — Medicare, Medicaid, No Surprises Act", suite: "Aviation", status: "planned", price: 9900, vertical: "aviation" },
+  { slug: "av-charter-quoting", name: "Charter Quoting Engine", description: "Charter quotes based on aircraft costs, fuel, crew, landing fees, margin", suite: "Aviation", status: "planned", price: 4900, vertical: "aviation" },
+  { slug: "av-billing", name: "Accounts Receivable & Billing", description: "Customer invoicing, payment tracking, and AR for charter operations", suite: "Aviation", status: "planned", price: 4900, vertical: "aviation" },
+  { slug: "av-medevac-billing", name: "Medevac Billing & Collections", description: "Medical transport billing — Medicare, Medicaid, No Surprises Act", suite: "Aviation", status: "planned", price: 7900, vertical: "aviation" },
   { slug: "av-customer-portal", name: "Customer Portal Manager", description: "Customer-facing portal for trip requests, itineraries, documents", suite: "Aviation", status: "planned", price: 4900, vertical: "aviation" },
   { slug: "av-alex", name: "Alex — Chief of Staff", description: "Cross-worker orchestration, 0500 briefing, anomaly detection, escalation routing", suite: "Aviation", status: "planned", price: 0, vertical: "aviation" },
-  { slug: "av-far-compliance", name: "FAR Compliance Monitor", description: "Monitors FAR changes and flags impact on operations", suite: "Aviation", status: "planned", price: 6900, vertical: "aviation" },
-  { slug: "av-drug-alcohol", name: "Drug & Alcohol Program Manager", description: "DOT/FAA drug and alcohol testing — random selection, scheduling, records", suite: "Aviation", status: "planned", price: 5900, vertical: "aviation" },
+  { slug: "av-far-compliance", name: "FAR Compliance Monitor", description: "Monitors FAR changes and flags impact on operations", suite: "Aviation", status: "planned", price: 4900, vertical: "aviation" },
+  { slug: "av-drug-alcohol", name: "Drug & Alcohol Program Manager", description: "DOT/FAA drug and alcohol testing — random selection, scheduling, records", suite: "Aviation", status: "planned", price: 4900, vertical: "aviation" },
   { slug: "av-crew-scheduling", name: "Crew Scheduling & Roster", description: "Every assignment pre-validated for legality before reaching the board", suite: "Aviation", status: "planned", price: 7900, vertical: "aviation" },
-  { slug: "av-reserve-swap", name: "Reserve & Crew Swap Manager", description: "Reserve pilot activation and crew swap requests with legality checks", suite: "Aviation", status: "planned", price: 5900, vertical: "aviation" },
-  { slug: "av-airport-intel", name: "Airport & Helipad Intelligence", description: "Airport and helipad database with approach notes, hazards, FBO reviews", suite: "Aviation", status: "planned", price: 5900, vertical: "aviation" },
+  { slug: "av-reserve-swap", name: "Reserve & Crew Swap Manager", description: "Reserve pilot activation and crew swap requests with legality checks", suite: "Aviation", status: "planned", price: 4900, vertical: "aviation" },
+  { slug: "av-airport-intel", name: "Airport & Helipad Intelligence", description: "Airport and helipad database with approach notes, hazards, FBO reviews", suite: "Aviation", status: "planned", price: 4900, vertical: "aviation" },
   { slug: "av-notam-intel", name: "NOTAM Intelligence", description: "NOTAM filtering, plain English translation, and route impact assessment", suite: "Aviation", status: "planned", price: 4900, vertical: "aviation" },
   { slug: "av-efb-companion", name: "EFB & Flight Planning Companion", description: "Electronic flight bag companion with ForeFlight integration", suite: "Aviation", status: "planned", price: 4900, vertical: "aviation" },
-  { slug: "av-training-courseware", name: "AI Training & Courseware", description: "Adaptive training, recurrent management, FAA knowledge test prep", suite: "Aviation", status: "planned", price: 5900, vertical: "aviation" },
-  { slug: "av-crew-housing", name: "Crew Housing Coordinator", description: "Crew housing reservations coordinated with schedule changes", suite: "Aviation", status: "planned", price: 3900, vertical: "aviation" },
+  { slug: "av-training-courseware", name: "AI Training & Courseware", description: "Adaptive training, recurrent management, FAA knowledge test prep", suite: "Aviation", status: "planned", price: 4900, vertical: "aviation" },
+  { slug: "av-crew-housing", name: "Crew Housing Coordinator", description: "Crew housing reservations coordinated with schedule changes", suite: "Aviation", status: "planned", price: 2900, vertical: "aviation" },
 
   // Aviation — Pilot Suite
   { slug: "av-digital-logbook", name: "Digital Logbook", description: "Blockchain-verified personal flight logbook — replaces paper permanently", suite: "Aviation", status: "planned", price: 0, vertical: "aviation" },
   { slug: "av-currency-tracker", name: "Currency & Medical Tracker", description: "Am I legal for this flight? Real-time currency dashboard with reg citations", suite: "Aviation", status: "planned", price: 0, vertical: "aviation" },
-  { slug: "av-my-aircraft", name: "My Aircraft / CoPilot", description: "Type-specific V-speeds, W&B, checklists, performance data", suite: "Aviation", status: "planned", price: 1900, vertical: "aviation" },
-  { slug: "av-training-proficiency", name: "Training & Proficiency", description: "Full FAA library, cert progression, AI oral exam prep, written test prep", suite: "Aviation", status: "planned", price: 1900, vertical: "aviation" },
-  { slug: "av-flight-planning", name: "Flight Planning & Weather", description: "Personal FRAT, plain-language weather, NOTAM filtering, personal minimums", suite: "Aviation", status: "planned", price: 1900, vertical: "aviation" },
+  { slug: "av-my-aircraft", name: "My Aircraft / CoPilot", description: "Type-specific V-speeds, W&B, checklists, performance data", suite: "Aviation", status: "planned", price: 2900, vertical: "aviation" },
+  { slug: "av-training-proficiency", name: "Training & Proficiency", description: "Full FAA library, cert progression, AI oral exam prep, written test prep", suite: "Aviation", status: "planned", price: 2900, vertical: "aviation" },
+  { slug: "av-flight-planning", name: "Flight Planning & Weather", description: "Personal FRAT, plain-language weather, NOTAM filtering, personal minimums", suite: "Aviation", status: "planned", price: 2900, vertical: "aviation" },
   { slug: "av-alex-personal", name: "Alex — Personal Aviation Assistant", description: "Daily briefing, currency nudges, training reminders for individual pilots", suite: "Aviation", status: "planned", price: 0, vertical: "aviation" },
 
   // Government — Jurisdiction Onboarding
@@ -259,9 +259,22 @@ export const WORKER_ROUTES = [
   { slug: "gov-recorder-audit-readiness", name: "Recorder Audit Readiness", description: "Self-assessment checklists, finding tracking, and audit prep.", suite: "Government — Recorder", status: "planned", price: 4900, vertical: "government" },
   { slug: "gov-historical-records-worker", name: "Historical Records Digitization Worker", description: "Bulk scanning workflow, OCR quality checks, and indexing.", suite: "Government — Recorder", status: "planned", price: 4900, vertical: "government" },
   { slug: "gov-alex-recorder", name: "Alex — Recorder Chief of Staff", description: "Orchestrates all recorder workers, daily briefing, escalations.", suite: "Government — Recorder", status: "planned", price: 0, vertical: "government" },
+
+  // Solar Energy — Operator Track
+  { slug: "solar-sales-closer", name: "Solar Sales Closer", description: "Qualify leads, calculate savings and payback, navigate PPA/lease/loan/PACE financing, book consultations.", suite: "Solar Energy", status: "live", price: 2900, vertical: "solar_energy" },
+  { slug: "solar-permit-navigator", name: "Solar Permit & Interconnection Navigator", description: "AHJ building permits, electrical permits, utility interconnection, net metering enrollment, inspection scheduling.", suite: "Solar Energy", status: "live", price: 4900, vertical: "solar_energy" },
+  { slug: "solar-hoa-approval", name: "HOA Solar Approval Agent", description: "Navigate HOA approval with state solar access law backing. Prepares applications, drafts variance requests.", suite: "Solar Energy", status: "live", price: 2900, vertical: "solar_energy" },
+  { slug: "solar-insurance-warranty", name: "Solar Insurance & Warranty Coordinator", description: "Policy riders, roof warranty coordination, equipment warranty tracking, workmanship documentation.", suite: "Solar Energy", status: "live", price: 2900, vertical: "solar_energy" },
+  { slug: "solar-easement-title", name: "Solar Easement & Title Worker", description: "Roof leases, ground-mount easements, PACE lien disclosure, title search for solar financing encumbrances.", suite: "Solar Energy", status: "live", price: 4900, vertical: "solar_energy" },
+  { slug: "solar-incentive-tracker", name: "Solar Regulatory & Incentive Tracker", description: "Federal ITC, state tax credits, utility rebates, SREC markets, local programs. Combined incentive stack by address.", suite: "Solar Energy", status: "live", price: 2900, vertical: "solar_energy" },
+  // Solar Energy — Customer Vault Track
+  { slug: "solar-system-monitor", name: "Solar System Monitor", description: "Production vs consumption, net metering credits, payback timeline, ROI. Flags underperformance and equipment issues.", suite: "Solar Energy", status: "live", price: 2900, vertical: "solar_energy" },
+  // Solar Energy — Credit Ledger Track
+  { slug: "solar-credit-ledger", name: "Solar Credit Ledger", description: "Issue, transfer, and retire SRECs as Digital Title Certificates. Blockchain audit trail, registry reporting.", suite: "Solar Energy", status: "live", price: 4900, vertical: "solar_energy" },
+  { slug: "srec-exchange-compliance", name: "SREC Exchange Compliance Worker", description: "KYC/AML, trade verification, 1099-B reporting for SREC exchange participants.", suite: "Solar Energy", status: "live", price: 4900, vertical: "solar_energy" },
 ];
 
-const SUITES = ["All", "Real Estate", "Title & Escrow", "Construction", "Finance & Investment", "General Business", "Legal", "Automotive", "Aviation", "Government — DMV", "Government — Permitting", "Government — Inspector", "Government — Recorder", "Platform"];
+const SUITES = ["All", "Real Estate", "Title & Escrow", "Construction", "Finance & Investment", "General Business", "Legal", "Automotive", "Aviation", "Solar Energy", "Government — DMV", "Government — Permitting", "Government — Inspector", "Government — Recorder", "Platform"];
 
 const S = {
   page: { minHeight: "100vh", background: "#f8fafc", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" },

@@ -66,6 +66,7 @@ import TitleEscrowLanding from "./pages/landing/TitleEscrowLanding";
 import PropertyMgmtLanding from "./pages/landing/PropertyMgmtLanding";
 import DeveloperLanding from "./pages/landing/DeveloperLanding";
 import PilotLanding from "./pages/landing/PilotLanding";
+import AlexWorkspace from "./pages/AlexWorkspace";
 import CoPilotEFB from "./sections/CoPilotEFB";
 import { auth } from "./firebase";
 import { signInWithCustomToken } from "firebase/auth";
@@ -2660,7 +2661,7 @@ const WORKER_DETAIL_CONTENT = {
       { label: "Paper Scanner", description: "AI handwriting recognition for legacy logbook pages — digitize your career history" },
     ],
     faq: [
-      { q: "Is the free tier really free?", a: "Yes. Manual entry and basic tracking are free forever. Pro ($19/mo) adds blockchain verification, ForeFlight auto-import, PRIA export, and photo scanning." },
+      { q: "Is the free tier really free?", a: "Yes. Manual entry and basic tracking are free forever. Pro ($29/mo) adds blockchain verification, ForeFlight auto-import, PRIA export, and photo scanning." },
       { q: "What if I'm on a company subscription?", a: "Company flight records auto-import from AV-013 mission completion events. One logbook, dual context — personal and company flights unified." },
       { q: "Can airlines verify my records?", a: "Yes. PRIA-ready export with blockchain proof-of-integrity certificate. Employers receive a verification link — no paper required." },
     ],
@@ -3943,6 +3944,210 @@ WORKER_DETAIL_CONTENT["gov-alex-recorder"] = {
   ],
 };
 
+// Solar Energy — Operator Track
+WORKER_DETAIL_CONTENT["solar-sales-closer"] = {
+  headline: "Qualify solar leads and close with confidence",
+  subheadline: "Calculate real savings, navigate PPA vs lease vs loan vs PACE, handle objections with data, and book consultations — all from one conversation.",
+  steps: [
+    { title: "Enter the prospect's address", description: "Utility rates, roof orientation, shading analysis, and local incentives load automatically based on ZIP code and utility territory." },
+    { title: "Calculate savings and payback", description: "System size, estimated production, utility offset, and payback period calculated from actual rate schedules — not generic averages." },
+    { title: "Navigate financing options", description: "PPA, lease, loan, cash, and PACE options compared side by side with monthly payment, ownership implications, and ITC eligibility for each." },
+    { title: "Book the consultation", description: "Qualified lead packaged with savings estimate, financing preference, and site assessment — ready for your design team." },
+  ],
+  bridge: { title: "The Bridge", text: "When the lead is qualified, the Sales Closer hands off to the Permit Navigator (SOL-002) for the permitting workflow and the Incentive Tracker (SOL-006) for incentive stacking. If financing involves PACE, the Easement & Title Worker (SOL-005) handles lien disclosure. One Vault — every worker sees the same customer data." },
+  valueProps: [
+    { label: "Real savings calculations", description: "Based on actual utility rates and local production data — not national averages or best-case scenarios." },
+    { label: "Financing comparison", description: "PPA, lease, loan, cash, and PACE compared with monthly cost, ownership, tax credit eligibility, and total cost of ownership." },
+    { label: "Compliance-first sales", description: "FTC consumer protection and state-specific solar sales regulations built into every conversation. TILA disclosures for PACE." },
+    { label: "Objection handling", description: "Common objections addressed with data — roof condition, payback concerns, moving timeline, HOA restrictions." },
+  ],
+  faq: [
+    { q: "Does the worker guarantee savings amounts?", a: "No. All savings calculations include disclaimers that they are estimates based on current rates and production assumptions. Actual results depend on consumption patterns, rate changes, and system performance." },
+    { q: "Can I customize the financing options?", a: "Yes. Configure your approved financing partners, PPA providers, and loan products in your worker rules. The worker only presents options you actually offer." },
+    { q: "What about state-specific regulations?", a: "The worker identifies the prospect's state and applies state-specific consumer protection rules, cooling-off periods, and disclosure requirements automatically." },
+  ],
+};
+
+WORKER_DETAIL_CONTENT["solar-permit-navigator"] = {
+  headline: "Every permit and interconnection — tracked by jurisdiction",
+  subheadline: "AHJ building permits, electrical permits, utility interconnection applications, net metering enrollment, and inspection scheduling — managed from submission to PTO.",
+  steps: [
+    { title: "Identify the jurisdiction", description: "Enter the project address. AHJ requirements, utility rules, and inspection process load based on city, county, and utility territory." },
+    { title: "Prepare permit packages", description: "Building permit, electrical permit, and structural calculations assembled per AHJ requirements. NEC 690/705 compliance verified." },
+    { title: "Submit interconnection application", description: "Utility-specific interconnection forms, net metering enrollment, and required documentation tracked through approval." },
+    { title: "Schedule inspections", description: "Rough, final, and utility witness inspections scheduled and tracked. PTO status monitored until activation." },
+  ],
+  bridge: { title: "The Bridge", text: "The Permit Navigator receives qualified leads from the Sales Closer (SOL-001) and coordinates with the HOA Approval Agent (SOL-003) when HOA review is required. Once permits and interconnection are approved, the Insurance & Warranty Coordinator (SOL-004) takes over for the operations phase." },
+  valueProps: [
+    { label: "Jurisdiction-aware", description: "AHJ requirements, fee schedules, and inspection processes loaded per ZIP code. Knows the difference between two cities in the same state." },
+    { label: "NEC compliance", description: "Article 690 (solar PV) and Article 705 (interconnection) requirements verified before permit submission." },
+    { label: "Interconnection tracking", description: "Utility-specific forms, timelines, and approval status tracked from application to PTO." },
+    { label: "Inspection coordination", description: "Building, electrical, and utility inspections scheduled and tracked with status updates." },
+  ],
+  faq: [
+    { q: "Does it know my specific AHJ?", a: "The worker loads AHJ-specific requirements based on your project address. For jurisdictions not yet in the database, it provides state-level defaults and flags that local verification is needed." },
+    { q: "What about fire setback requirements?", a: "Fire setback rules vary by jurisdiction — some require 3-foot setbacks, others have different requirements. The worker flags applicable setback rules for your specific AHJ." },
+    { q: "Can it handle multiple projects simultaneously?", a: "Yes. Each project tracks its own permit and interconnection status independently. Your dashboard shows all active projects with status and next actions." },
+  ],
+};
+
+WORKER_DETAIL_CONTENT["solar-hoa-approval"] = {
+  headline: "HOA approval with state solar access law on your side",
+  subheadline: "26+ states limit HOA prohibition of solar. This worker knows them all — prepares applications, drafts variance requests, and tracks approval timelines.",
+  steps: [
+    { title: "Identify the HOA and state", description: "Enter the property address. State solar access law loads automatically. HOA CC&Rs and architectural guidelines imported if available." },
+    { title: "Prepare the application", description: "HOA solar application package assembled with system design, site plan, equipment specifications, and state law citations." },
+    { title: "Draft variance requests", description: "If the HOA has restrictions that conflict with state solar access law, variance request drafted with legal backing and precedent." },
+    { title: "Track approval", description: "Application status, committee meeting dates, and required modifications tracked through approval." },
+  ],
+  bridge: { title: "The Bridge", text: "The HOA Approval Agent works alongside the Permit Navigator (SOL-002). HOA approval often runs in parallel with AHJ permitting. Once both are approved, installation can proceed. If the HOA denies the request in violation of state solar access law, the worker documents the legal basis for escalation." },
+  valueProps: [
+    { label: "State law coverage", description: "Solar access laws from 26+ states — CA, AZ, TX, FL, CO, and more. Worker knows which states limit HOA solar restrictions." },
+    { label: "Application preparation", description: "Complete HOA application packages with design specs, site plans, and compliance documentation." },
+    { label: "Legal backing", description: "State statute citations and precedent included when HOA restrictions conflict with solar access law." },
+  ],
+  faq: [
+    { q: "What if the HOA denies my application?", a: "If the denial conflicts with state solar access law, the worker drafts an escalation letter citing the applicable statute. In states with strong solar access laws (CA, AZ, TX), HOAs generally cannot prohibit solar — only impose reasonable aesthetic requirements." },
+    { q: "Does it replace a lawyer?", a: "No. The worker provides regulatory research and document preparation. For contested HOA disputes, it recommends consulting a real estate attorney." },
+  ],
+};
+
+WORKER_DETAIL_CONTENT["solar-insurance-warranty"] = {
+  headline: "Every warranty and policy tracked from install to expiry",
+  subheadline: "Equipment manufacturer warranties, installer workmanship warranties, homeowner policy riders, and subcontractor insurance certificates — all in one place.",
+  steps: [
+    { title: "Log your equipment", description: "Panel manufacturer, inverter brand, battery product, and racking system registered with serial numbers and warranty terms." },
+    { title: "Track warranties", description: "Equipment warranties (typically 25 years panels, 10-12 years inverter), workmanship warranties, and roof warranty coordination tracked with expiration alerts." },
+    { title: "Manage insurance", description: "Homeowner policy rider for solar equipment verified. Subcontractor insurance certificates collected and tracked." },
+    { title: "Handle claims", description: "Warranty claim documentation prepared with equipment records, installation photos, and performance data." },
+  ],
+  bridge: { title: "The Bridge", text: "The Insurance & Warranty Coordinator receives installation records from the Permit Navigator (SOL-002) and feeds warranty status to the System Monitor (SOL-007). When the System Monitor detects underperformance, it routes back to this worker for warranty claim evaluation." },
+  valueProps: [
+    { label: "25-year tracking", description: "Solar panel warranties span decades. This worker tracks every warranty from install date to expiration — nothing expires unnoticed." },
+    { label: "Roof warranty coordination", description: "Roof penetrations for solar mounting can affect roof warranties. Installer and roofer warranty terms coordinated to avoid gaps." },
+    { label: "Claims documentation", description: "Warranty claims packaged with serial numbers, installation records, performance data, and photos." },
+  ],
+  faq: [
+    { q: "Does it track manufacturer warranties automatically?", a: "You register your equipment at installation. The worker tracks warranty terms based on manufacturer specifications and alerts you before expiration." },
+    { q: "What about the roof warranty?", a: "Solar installations often require roof penetrations that can void or modify roof warranties. The worker coordinates between your solar installer and roofer to document warranty terms for both." },
+  ],
+};
+
+WORKER_DETAIL_CONTENT["solar-easement-title"] = {
+  headline: "PACE liens, roof leases, and title issues — handled",
+  subheadline: "Property disclosure for solar liens, roof lease agreements for community solar, land easements for ground-mount systems, and title search for financing encumbrances.",
+  steps: [
+    { title: "Identify financing type", description: "Cash, loan, lease, PPA, or PACE — each has different property implications. PACE creates a lien. Leases create an encumbrance." },
+    { title: "Check title for encumbrances", description: "Existing liens, easements, or restrictions that could affect solar financing identified before commitment." },
+    { title: "Prepare disclosures", description: "State-specific property disclosure requirements for solar liens and leases documented for current and future sale." },
+    { title: "Record agreements", description: "Roof leases, ground-mount easements, and PACE lien documentation prepared for recording." },
+  ],
+  bridge: { title: "The Bridge", text: "The Easement & Title Worker receives financing type from the Sales Closer (SOL-001) and coordinates with the Incentive Tracker (SOL-006) on PACE eligibility. Title search results feed the Permit Navigator (SOL-002) for any restrictions that affect installation." },
+  valueProps: [
+    { label: "PACE lien expertise", description: "PACE lien priority laws vary by state — CA, FL, MO each have different rules. The worker knows the priority position in each state." },
+    { label: "Property disclosure", description: "Most states require disclosure of solar liens or leases when selling. Requirements documented per state law." },
+    { label: "Community solar", description: "Roof lease agreements for community solar projects and land easements for ground-mount systems prepared with standard terms." },
+  ],
+  faq: [
+    { q: "Does PACE affect my mortgage?", a: "PACE liens can have priority over mortgage liens in some states, which affects refinancing and sale. The worker identifies your state's PACE lien priority rules and flags implications." },
+    { q: "What if I sell my home?", a: "Solar leases, PPAs, and PACE liens transfer with the property. The worker prepares disclosure documentation required by your state law." },
+  ],
+};
+
+WORKER_DETAIL_CONTENT["solar-incentive-tracker"] = {
+  headline: "Every solar dollar — federal, state, utility, and local",
+  subheadline: "Federal ITC (30%), state tax credits, utility rebates, SREC markets, and local programs. Combined incentive stack calculated for any address.",
+  steps: [
+    { title: "Enter the project address", description: "State, utility territory, and local jurisdiction identified. All applicable incentive programs loaded." },
+    { title: "Calculate the incentive stack", description: "Federal ITC, state credits, utility rebates, SREC value, and local programs combined. Total incentive value and net system cost calculated." },
+    { title: "Track applications", description: "Rebate applications, tax credit documentation, and SREC registrations tracked with deadlines and status." },
+    { title: "Monitor program changes", description: "Incentive programs change frequently — capacity caps, budget exhaustion, rule changes. Flagged when programs you depend on change." },
+  ],
+  bridge: { title: "The Bridge", text: "The Incentive Tracker feeds savings calculations back to the Sales Closer (SOL-001) for accurate lead qualification. PACE program status coordinates with the Easement & Title Worker (SOL-005) for lien implications. Incentive expiration dates feed the Permit Navigator (SOL-002) for timeline urgency." },
+  valueProps: [
+    { label: "Federal ITC expertise", description: "IRC Section 48 (commercial) and Section 25D (residential) rules, eligible costs, bonus adders, and prevailing wage requirements." },
+    { label: "SREC tracking", description: "State SREC markets (NJ, MA, DC, MD, PA, OH, IL) with current pricing, registration requirements, and trading mechanics." },
+    { label: "Program awareness", description: "Utility rebate capacity caps, application deadlines, and budget status tracked. First-come-first-served programs flagged when capacity is low." },
+    { label: "Combined stack", description: "All incentives combined into a single net cost calculation — federal, state, utility, and local programs stacked correctly." },
+  ],
+  faq: [
+    { q: "Are incentive amounts guaranteed?", a: "No. All incentive amounts are subject to program availability, capacity caps, and rule changes. The worker always caveats amounts and flags when programs have known expiration dates or capacity limits." },
+    { q: "What about the ITC step-down?", a: "The federal ITC is currently 30% for residential and commercial projects meeting prevailing wage requirements. The worker tracks current ITC rules and flags any scheduled changes." },
+    { q: "Does it track SRECs?", a: "Yes. For states with SREC markets, the worker tracks current SREC pricing, registration requirements, and estimated annual SREC income based on system production." },
+  ],
+};
+
+// Solar Energy — Customer Vault Track
+WORKER_DETAIL_CONTENT["solar-system-monitor"] = {
+  headline: "Your solar system — tracked permanently",
+  subheadline: "Production vs consumption, net metering credits, payback timeline, and ROI. Flags underperformance, soiling, and equipment issues. Lives in your Vault forever.",
+  steps: [
+    { title: "System registered at install", description: "Your solar company deploys this worker at installation completion. System specs, equipment details, and warranty dates recorded." },
+    { title: "Monitor production", description: "Daily, monthly, and annual production tracked against expected output. Underperformance flagged with possible causes." },
+    { title: "Track net metering", description: "Net metering credits, utility billing, and export value tracked. Estimated payback timeline updated monthly." },
+    { title: "Get alerts", description: "Soiling alerts, inverter issues, production drops, and warranty expirations flagged before they become problems." },
+  ],
+  bridge: { title: "Your Worker, Your Vault", text: "The System Monitor is deployed by your solar company at installation — then it stays in your Vault permanently. The company relationship ends, but the worker keeps serving you. Production data, warranty tracking, and net metering credits are yours forever." },
+  valueProps: [
+    { label: "Permanent ownership", description: "Deployed at install, lives in your Vault forever. The solar company relationship ends — your monitoring continues." },
+    { label: "Performance tracking", description: "Production vs expected output, degradation monitoring, soiling detection, and seasonal adjustment." },
+    { label: "Financial tracking", description: "Net metering credits, utility offset, cumulative savings, and updated payback timeline." },
+    { label: "Equipment alerts", description: "Inverter faults, panel underperformance, and warranty expiration alerts — issues caught before they cost you money." },
+  ],
+  faq: [
+    { q: "Who pays for this worker?", a: "Your solar company provides the first year free. After that, the $29/mo subscription continues in your Vault — you own the worker and all the data." },
+    { q: "What if I switch solar companies?", a: "The worker stays in your Vault regardless of your relationship with the installer. Your production data, warranty records, and monitoring continue uninterrupted." },
+    { q: "Does it connect to my inverter?", a: "The worker tracks production data entered or imported. Direct inverter API integration stubs are included for future connectivity with Enphase, SolarEdge, and other monitoring platforms." },
+  ],
+};
+
+// Solar Energy — Credit Ledger Track
+WORKER_DETAIL_CONTENT["solar-credit-ledger"] = {
+  headline: "SRECs issued as DTCs — blockchain-verified, registry-reported",
+  subheadline: "Issue SRECs and RECs as Digital Title Certificates. Track generation, transfer, and retirement with an immutable audit trail. Oracle pricing from market feeds. Registry reporting across GATS, NEPOOL, PJM-ERTS, and state programs.",
+  steps: [
+    { title: "Issue credits as DTCs", description: "Generation data from your solar monitoring system (or manual entry) creates a DTC — minted to the blockchain audit trail and assigned to the owner's Vault." },
+    { title: "Transfer via Escrow Locker", description: "Buyer locks funds, seller transfers DTC, funds release on confirmation. Same settlement architecture as real estate title transfer — no counterparty risk." },
+    { title: "Retire credits", description: "Mark DTCs as retired with reason (compliance, voluntary, export). Retirement certificate appended to logbook. Retired credits cannot be transferred — enforced at contract level." },
+    { title: "Track your portfolio", description: "All SRECs across all systems — total MWh, current value, pending transfers, retirement history. Oracle pricing updated daily from SRECTrade and state program feeds." },
+  ],
+  bridge: { title: "The Infrastructure Layer", text: "SOL-008 is the issuance and settlement layer. The SREC Exchange Compliance Worker (SOL-009) handles KYC/AML and trade verification. Together they provide the compliance infrastructure for any white-label exchange — TitleApp verifies authenticity and eligibility, the exchange handles order matching. Same architecture extends to carbon credits, wind RECs, and any tokenized environmental commodity." },
+  valueProps: [
+    { label: "DTC on blockchain", description: "Every credit has an immutable audit trail — issuance, transfers, and retirement recorded permanently. No double-counting, no forgery." },
+    { label: "Escrow Locker settlement", description: "Atomic swap — buyer locks funds, DTC transfers, funds release. Same mechanism that handles real estate title transfers." },
+    { label: "Multi-registry support", description: "GATS, NEPOOL GIS, PJM-ERTS, WREGIS — monthly reporting in each registry's required format (XML, CSV)." },
+    { label: "Oracle pricing", description: "Daily SREC spot prices from SRECTrade and state program feeds. Portfolio valuation always current." },
+  ],
+  faq: [
+    { q: "Are SREC prices guaranteed?", a: "No. SREC markets are volatile and illiquid. The worker tracks current market prices but never guarantees values. All pricing includes appropriate disclaimers." },
+    { q: "Is this a securities offering?", a: "TitleApp issues DTCs as compliance records, not securities. The worker does not provide securities law advice. Operators should consult securities counsel regarding tokenization implications in their jurisdiction." },
+    { q: "Can retired credits be traded?", a: "No. Once a credit is retired, the DTC is permanently marked as retired with the reason recorded. This is enforced at the contract level — retired DTCs cannot be transferred." },
+  ],
+};
+
+WORKER_DETAIL_CONTENT["srec-exchange-compliance"] = {
+  headline: "The compliance layer between your exchange and the market",
+  subheadline: "KYC/AML onboarding, buyer and seller eligibility verification, wallet verification, trade compliance checks, and 1099-B tax reporting — all via API.",
+  steps: [
+    { title: "Onboard participants", description: "Stripe Identity for ID verification, AML screening via existing pipeline. One verification used across Escrow Locker and SREC exchange. Gate to join the exchange." },
+    { title: "Verify trade eligibility", description: "Before any trade executes, the exchange calls POST /v1/solar/credit/verifyTrade. TitleApp confirms DTC authenticity, buyer/seller eligibility, and program compliance." },
+    { title: "Monitor compliance", description: "State RPS program changes, FERC rulings, and EPA guidance monitored. Subscribers alerted when rules affecting their credits change." },
+    { title: "Generate tax documentation", description: "1099-B equivalent documentation for all trades above IRS reporting thresholds. Formatted for seller reporting at year end." },
+  ],
+  bridge: { title: "Exchange Integration", text: "SOL-009 is the API integration point between TitleApp and any white-label exchange (tZERO, Openfinance, or equivalent). The exchange handles order matching and execution. TitleApp handles compliance — KYC/AML, DTC authenticity, program eligibility, and settlement via SOL-008. Every trade verification is a billable API call." },
+  valueProps: [
+    { label: "Trade verification API", description: "POST /v1/solar/credit/verifyTrade — exchange calls before every trade. Returns eligibility, DTC authenticity, and audit trail URL." },
+    { label: "Program eligibility", description: "Not every buyer can purchase every credit. State RPS program rules restrict by utility, load, and compliance obligation type. Worker verifies per-trade." },
+    { label: "KYC/AML gate", description: "No anonymous trading. Every participant verified via Stripe Identity. Wallet addresses linked to verified KYC identities." },
+    { label: "1099-B generation", description: "Year-end tax documentation for all trades above IRS reporting thresholds. Formatted for seller reporting." },
+  ],
+  faq: [
+    { q: "How does the exchange integrate?", a: "The exchange calls POST /v1/solar/credit/verifyTrade before executing any trade. TitleApp returns eligibility, DTC authenticity, buyer/seller verification, and audit trail URL. Rate-limited, API key authenticated." },
+    { q: "What exchanges are supported?", a: "Any white-label exchange can integrate via the verifyTrade API. TitleApp is exchange-agnostic — the compliance layer works with any order matching platform." },
+    { q: "Is KYC required for every trade?", a: "KYC is required once at onboarding. Subsequent trades verify the participant's wallet is linked to a verified KYC identity. No anonymous trading is permitted — hard stop." },
+  ],
+};
+
 // Admin Command Center
 import AdminCommandCenter from "./admin/AdminShell";
 import "./admin/admin.css";
@@ -4130,6 +4335,10 @@ class SandboxErrorBoundary extends React.Component {
 }
 
 export default function App() {
+  // ── /alex route intercept ────────────────────────────────
+  // Standalone Alex Chief of Staff workspace — 3-column layout
+  const isAlexWorkspace = window.location.pathname === "/alex" || window.location.pathname === "/alex/";
+
   // ── /invest/room route intercept ──────────────────────────
   // Completely standalone investor experience — bypasses AdminShell, WorkspaceHub, etc.
   const isInvestorRoom = window.location.pathname === "/invest/room" || window.location.pathname === "/invest/room/";
@@ -4575,6 +4784,25 @@ export default function App() {
     } catch (err) {
       console.error("Failed to create workspace:", err);
     }
+  }
+
+  // ── Alex Workspace: standalone experience ──────────────────
+  if (isAlexWorkspace) {
+    if (handoffInProgress || !authResolved) {
+      return (
+        <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#fafbfc" }}>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontSize: 20, fontWeight: 600, color: "#7c3aed", marginBottom: 16 }}>TitleApp</div>
+            <div style={{ fontSize: 16, color: "#6b7280" }}>Loading Alex...</div>
+          </div>
+        </div>
+      );
+    }
+    if (!token) {
+      window.location.href = "/";
+      return null;
+    }
+    return <AlexWorkspace />;
   }
 
   // ── Investor Data Room: standalone experience ──────────────

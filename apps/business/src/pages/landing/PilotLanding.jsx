@@ -21,7 +21,7 @@ const CONTENT = {
       subhead: "FAR/AIM, PHAK, Weather, Aerodynamics for Naval Aviators \u2014 AI-indexed and searchable."
     },
     {
-      headline: "Free to Start. Pro for $19/month.",
+      headline: "Free to Start. Pro for $29/month.",
       subhead: "No credit card for free tier. 60-day money back on Pro. Code: PILOT3FREE for 3 months free."
     }
   ],

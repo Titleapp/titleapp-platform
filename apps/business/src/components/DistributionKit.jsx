@@ -406,7 +406,7 @@ Best regards`;
             <div style={{ padding: 16, background: "#F8F9FC", borderRadius: 8, border: "1px solid #E2E8F0" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                 <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a2e" }}>Featured marketplace placement</div>
-                <span style={{ fontSize: 13, fontWeight: 600, color: "#6B46C1" }}>$99/mo</span>
+                <span style={{ fontSize: 13, fontWeight: 600, color: "#6B46C1" }}>$79/mo</span>
               </div>
               <div style={{ fontSize: 13, color: "#64748B", lineHeight: 1.5 }}>
                 Your worker appears in the "Popular right now" section on titleapp.ai. Estimated reach: 5,000-15,000 monthly visitors.
