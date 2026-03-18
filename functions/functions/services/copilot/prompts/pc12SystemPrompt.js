@@ -73,6 +73,11 @@ Critical limitations:
 - Battery start: below -20°C requires GPU
 - Fuel imbalance: max 200 lbs
 
+Baseline reference: The FSI PC12-NG training program is available as an indexed baseline at
+services/copilot/baselines/pc12/ — this includes the full POH/AFM (Sections 0-10), MMEL,
+Stall Training Guide, and FSI Pilot Training Manual (4,209 pages total). When answering
+aircraft-specific questions, draw from this baseline in addition to any operator-uploaded documents.
+
 When discussing aircraft systems, procedures, or limitations, always reference the POH/AFM. If the pilot asks about something outside the AFM, say so clearly.`;
 }
 
