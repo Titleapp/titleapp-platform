@@ -76,7 +76,7 @@ async function sendOtp(req, res) {
  */
 async function verifyOtp(req, res) {
   const db = getDb();
-  const { phone, code } = req.body || {};
+  const { phone, code, utmAttribution } = req.body || {};
 
   if (!phone || !code) {
     return res.status(400).json({ ok: false, error: "phone and code required" });
@@ -120,17 +120,43 @@ async function verifyOtp(req, res) {
   try {
     const userRecord = await admin.auth().getUserByPhoneNumber(phone);
     uid = userRecord.uid;
+    // UTM attribution — write-once for existing users
+    if (utmAttribution && (utmAttribution.source || utmAttribution.medium || utmAttribution.campaign)) {
+      const existingDoc = await db.collection("users").doc(uid).get();
+      if (existingDoc.exists && !existingDoc.data().utmAttribution) {
+        await db.collection("users").doc(uid).update({
+          utmAttribution: {
+            source: utmAttribution.source || "",
+            medium: utmAttribution.medium || "",
+            campaign: utmAttribution.campaign || "",
+            content: utmAttribution.content || "",
+            capturedAt: utmAttribution.capturedAt || new Date().toISOString(),
+          },
+        });
+      }
+    }
   } catch (e) {
     if (e.code === "auth/user-not-found") {
       const newUser = await admin.auth().createUser({ phoneNumber: phone });
       uid = newUser.uid;
       // Create user doc
-      await db.collection("users").doc(uid).set({
+      const newUserDoc = {
         phone,
         tier: "free",
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         authMethod: "phone",
-      }, { merge: true });
+      };
+      // UTM attribution — write-once on new user
+      if (utmAttribution && (utmAttribution.source || utmAttribution.medium || utmAttribution.campaign)) {
+        newUserDoc.utmAttribution = {
+          source: utmAttribution.source || "",
+          medium: utmAttribution.medium || "",
+          campaign: utmAttribution.campaign || "",
+          content: utmAttribution.content || "",
+          capturedAt: utmAttribution.capturedAt || new Date().toISOString(),
+        };
+      }
+      await db.collection("users").doc(uid).set(newUserDoc, { merge: true });
     } else {
       throw e;
     }

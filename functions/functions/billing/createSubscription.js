@@ -99,7 +99,16 @@ async function createSubscription(req, res) {
     items,
     payment_behavior: "default_incomplete",
     expand: ["latest_invoice.payment_intent"],
-    metadata: { userId, tier: tier || "pro", ...(promoCode ? { promoCode } : {}) },
+    metadata: {
+      userId,
+      tier: tier || "pro",
+      ...(promoCode ? { promoCode } : {}),
+      ...(userData.utmAttribution ? {
+        utmSource: userData.utmAttribution.source || "",
+        utmMedium: userData.utmAttribution.medium || "",
+        utmCampaign: userData.utmAttribution.campaign || "",
+      } : {}),
+    },
     ...(couponId ? { discounts: [{ coupon: couponId }] } : {}),
   });
 

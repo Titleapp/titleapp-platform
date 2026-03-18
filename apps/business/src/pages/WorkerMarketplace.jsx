@@ -314,11 +314,30 @@ function formatPrice(cents) {
 }
 
 export default function WorkerMarketplace({ authenticated, userName, onSubscribe, onSkip }) {
-  const [filter, setFilter] = useState("All");
+  const [filter, setFilter] = useState(() => {
+    // Check for landing page handoff — ?vertical= or ?search=
+    const landingVertical = sessionStorage.getItem("ta_landing_vertical");
+    if (landingVertical) {
+      sessionStorage.removeItem("ta_landing_vertical");
+      return landingVertical;
+    }
+    return "All";
+  });
+  const [searchQuery, setSearchQuery] = useState(() => {
+    const landingSearch = sessionStorage.getItem("ta_landing_search");
+    if (landingSearch) {
+      sessionStorage.removeItem("ta_landing_search");
+      return landingSearch;
+    }
+    return "";
+  });
   const [subscribing, setSubscribing] = useState(null);
 
   const publicWorkers = WORKER_ROUTES.filter((w) => !w.internal_only);
-  const filtered = filter === "All" ? publicWorkers : publicWorkers.filter((w) => w.suite === filter);
+  const suiteFiltered = filter === "All" ? publicWorkers : publicWorkers.filter((w) => w.suite === filter);
+  const filtered = searchQuery
+    ? suiteFiltered.filter((w) => w.name.toLowerCase().includes(searchQuery.toLowerCase()) || (w.description || "").toLowerCase().includes(searchQuery.toLowerCase()))
+    : suiteFiltered;
   const liveCount = publicWorkers.filter((w) => w.status === "live").length;
   const plannedCount = publicWorkers.filter((w) => w.status === "planned").length;
 

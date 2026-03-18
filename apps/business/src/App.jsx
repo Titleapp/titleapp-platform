@@ -70,6 +70,7 @@ import AlexWorkspace from "./pages/AlexWorkspace";
 import CoPilotEFB from "./sections/CoPilotEFB";
 import { auth } from "./firebase";
 import { signInWithCustomToken } from "firebase/auth";
+import { processLandingHandoff } from "./utils/landingHandoff";
 
 const WORKER_DETAIL_CONTENT = {
   "construction-manager": {
@@ -4413,6 +4414,43 @@ export default function App() {
       // Map generic page names to business app section IDs
       const pageMap = { dataroom: "investor-data-room", "investor-data-room": "investor-data-room", "cap-table": "investor-cap-table", pipeline: "investor-pipeline" };
       sessionStorage.setItem("ta_redirect_page", pageMap[redirectPage] || redirectPage);
+    }
+
+    // UTM capture — store immediately, attach on auth events
+    const utmSource = urlParams.get("utm_source");
+    const utmMedium = urlParams.get("utm_medium");
+    const utmCampaign = urlParams.get("utm_campaign");
+    const utmContent = urlParams.get("utm_content");
+    if (utmSource || utmMedium || utmCampaign) {
+      sessionStorage.setItem("ta_utm", JSON.stringify({
+        source: utmSource || "",
+        medium: utmMedium || "",
+        campaign: utmCampaign || "",
+        content: utmContent || "",
+        capturedAt: new Date().toISOString(),
+      }));
+    }
+
+    // Campaign slug capture — for sandbox pre-load
+    const campaignSlug = urlParams.get("campaign");
+    if (campaignSlug) {
+      sessionStorage.setItem("ta_campaign_slug", campaignSlug);
+    }
+
+    // Landing page handoff — ?q=, ?search=, ?vertical=
+    const handoff = processLandingHandoff();
+    if (handoff.type === "search") {
+      sessionStorage.setItem("ta_landing_search", handoff.value);
+      if (window.location.pathname !== "/workers") {
+        window.location.href = "/workers";
+        return;
+      }
+    } else if (handoff.type === "vertical") {
+      sessionStorage.setItem("ta_landing_vertical", handoff.value);
+      if (window.location.pathname !== "/workers") {
+        window.location.href = "/workers";
+        return;
+      }
     }
 
     if (chatToken) {

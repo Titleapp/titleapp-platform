@@ -385,6 +385,17 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
         } catch (e) { /* ignore */ }
       }
 
+      // Landing page chat handoff — ?q= param auto-send
+      const landingChat = sessionStorage.getItem("ta_landing_chat");
+      if (landingChat) {
+        sessionStorage.removeItem("ta_landing_chat");
+        setMessages([{ role: 'assistant', content: "Connecting you to Alex...", isSystem: true }]);
+        setTimeout(() => {
+          handleSendMessage(landingChat);
+        }, 800);
+        return;
+      }
+
       // Check if disclaimer needed on existing workspace
       if (!disclaimerAccepted) {
         loadDisclaimerFlow();

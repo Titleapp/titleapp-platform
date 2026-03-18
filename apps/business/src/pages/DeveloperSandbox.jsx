@@ -489,6 +489,7 @@ export default function DeveloperSandbox() {
   const [sending, setSending] = useState(false);
   const [welcomeGreeting, setWelcomeGreeting] = useState(null); // greeting text shown above chat
   const [greetingVisible, setGreetingVisible] = useState(false); // controls fade in/out
+  const [campaignWorkerChips, setCampaignWorkerChips] = useState([]); // suggested workers from campaign
   const messagesEndRef = useRef(null);
   const chatInputRef = useRef(null);
 
@@ -811,10 +812,35 @@ export default function DeveloperSandbox() {
       setTimeout(() => setGreetingVisible(true), 50);
       // Preamble — no inline welcome (greeting is separate UI element above chat)
       addAssistantMessage(`You're about to build a Digital Worker — think of it like an AI app built on your expertise. Just like an app does one thing really well, your Digital Worker will know exactly what you know and be available to anyone, anytime, without you having to be in the room.\n\nHere's the process. First we'll build it together — you tell me what you know, I shape it into a worker. If you've already put something together in ChatGPT or another AI tool, you can use that as your starting point. Then we'll test it — you'll actually talk to your own worker and see it work. Once you're happy with it, we help you publish it and get it in front of the right people. After it's live you can keep adding to it, track who's using it, collect feedback, and get paid.\n\nYour pace, your timeline. Some people publish in an hour if they've been thinking about this for a while. Others build over a few months. Either way, we save everything — every conversation, every decision, every version of your worker. We never forget.\n\nMost people have had the experience of building something in another AI tool and coming back to find it has no idea what you're talking about. That's not how this works. Your worker lives in your Vault. It gets better over time, not worse.\n\nReady? Let's start.`);
-      // Opening question after 1.5s delay
-      setTimeout(() => {
-        addAssistantMessage("So — what do you want to build?");
-      }, 1500);
+      // Campaign pre-load — check for campaign slug in sessionStorage
+      const campaignSlug = sessionStorage.getItem("ta_campaign_slug");
+      if (campaignSlug) {
+        sessionStorage.removeItem("ta_campaign_slug");
+        // Fetch campaign context and use opening message + worker chips
+        fetch(`${API_BASE}/api?path=/v1/campaign/${encodeURIComponent(campaignSlug)}`)
+          .then(r => r.json())
+          .then(data => {
+            if (data.ok && data.campaign?.sandboxContext) {
+              const ctx = data.campaign.sandboxContext;
+              setTimeout(() => {
+                addAssistantMessage(ctx.openingMessage);
+                if (ctx.suggestedWorkers && ctx.suggestedWorkers.length > 0) {
+                  setCampaignWorkerChips(ctx.suggestedWorkers);
+                }
+              }, 1500);
+            } else {
+              setTimeout(() => addAssistantMessage("So — what do you want to build?"), 1500);
+            }
+          })
+          .catch(() => {
+            setTimeout(() => addAssistantMessage("So — what do you want to build?"), 1500);
+          });
+      } else {
+        // Default opening question after 1.5s delay
+        setTimeout(() => {
+          addAssistantMessage("So — what do you want to build?");
+        }, 1500);
+      }
 
       // Auto-send pasted spec from landing page (via ?spec= URL param)
       if (pastedSpec) {
@@ -1177,7 +1203,12 @@ export default function DeveloperSandbox() {
       const resp = await fetch(`${API_BASE}/api?path=/v1/auth:signup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: authEmail.trim(), name: authName.trim(), surface: "sandbox" }),
+        body: JSON.stringify({
+          email: authEmail.trim(),
+          name: authName.trim(),
+          surface: "sandbox",
+          ...(sessionStorage.getItem("ta_utm") ? { utmAttribution: JSON.parse(sessionStorage.getItem("ta_utm")) } : {}),
+        }),
       });
       const result = await resp.json();
       if (result.ok && result.token) {
@@ -1554,6 +1585,29 @@ export default function DeveloperSandbox() {
               >
                 Already built something in ChatGPT or Claude? Paste it here instead &rarr;
               </button>
+            </div>
+          )}
+
+          {/* Campaign suggested workers — quick-reply chips */}
+          {campaignWorkerChips.length > 0 && flowStep === 0 && (
+            <div style={{ display: "flex", gap: 6, marginTop: 4, flexWrap: "wrap" }}>
+              {campaignWorkerChips.map(wid => (
+                <button
+                  key={wid}
+                  style={{
+                    padding: "7px 14px", background: "rgba(107,70,193,0.08)", color: "#6B46C1",
+                    border: "1px solid rgba(107,70,193,0.15)", borderRadius: 20, fontSize: 13,
+                    fontWeight: 500, cursor: "pointer", transition: "background 0.15s",
+                  }}
+                  onClick={() => {
+                    addUserMessage(`Tell me about worker ${wid}`);
+                    setCampaignWorkerChips([]);
+                    handleSendMessage(`Tell me about worker ${wid}`);
+                  }}
+                >
+                  {wid}
+                </button>
+              ))}
             </div>
           )}
 

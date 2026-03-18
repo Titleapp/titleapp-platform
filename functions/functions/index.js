@@ -975,7 +975,7 @@ exports.api = onRequest(
 
     // POST /v1/auth:signup — create user from landing page chat
     if (route === "/auth:signup" && method === "POST") {
-      const { email, name, accountType, companyName, companyDescription } = body || {};
+      const { email, name, accountType, companyName, companyDescription, utmAttribution } = body || {};
       if (!email) return jsonError(res, 400, "Missing email");
 
       // Email format validation
@@ -1015,7 +1015,7 @@ exports.api = onRequest(
         const userSnap = await userRef.get();
 
         if (!userSnap.exists) {
-          await userRef.set({
+          const userDoc = {
             email,
             name: name || null,
             accountType: accountType || "consumer",
@@ -1024,7 +1024,18 @@ exports.api = onRequest(
             termsAcceptedAt: null,
             createdAt: nowServerTs(),
             createdVia: "chat",
-          });
+          };
+          // UTM attribution — write-once on new user
+          if (utmAttribution && (utmAttribution.source || utmAttribution.medium || utmAttribution.campaign)) {
+            userDoc.utmAttribution = {
+              source: utmAttribution.source || "",
+              medium: utmAttribution.medium || "",
+              campaign: utmAttribution.campaign || "",
+              content: utmAttribution.content || "",
+              capturedAt: utmAttribution.capturedAt || new Date().toISOString(),
+            };
+          }
+          await userRef.set(userDoc);
         }
 
         const customToken = await admin.auth().createCustomToken(userRecord.uid);
@@ -1060,6 +1071,18 @@ exports.api = onRequest(
       } catch (e) {
         console.error("auth:verifyOtp failed:", e);
         return jsonError(res, 500, "OTP verify failed");
+      }
+    }
+
+    // GET /v1/campaign/:slug — campaign context for landing pages (unauthenticated)
+    if (route.startsWith("/campaign/") && method === "GET") {
+      try {
+        const { getCampaignContext } = require("./campaigns/campaignContexts");
+        req._route = route;
+        return getCampaignContext(req, res);
+      } catch (e) {
+        console.error("campaign context failed:", e);
+        return jsonError(res, 500, "Campaign context failed");
       }
     }
 

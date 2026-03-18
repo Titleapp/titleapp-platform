@@ -153,7 +153,11 @@ export default function Login() {
       const res = await fetch(`${API_BASE}/api?path=/v1/auth/verifyOtp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: phone.trim(), otp: otp.trim() }),
+        body: JSON.stringify({
+          phone: phone.trim(),
+          otp: otp.trim(),
+          ...(sessionStorage.getItem("ta_utm") ? { utmAttribution: JSON.parse(sessionStorage.getItem("ta_utm")) } : {}),
+        }),
       });
       const data = await res.json();
       if (data.ok && data.customToken) {
