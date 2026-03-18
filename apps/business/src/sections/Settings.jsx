@@ -37,11 +37,28 @@ function PersonalSettings() {
     sms: false,
     renewalReminders: true,
     expirationAlerts: true,
+    weeklyDigest: true,
+    workerUpdates: true,
+    frequency: "realtime",
   });
 
   function saveCOS(updated) {
     setChiefOfStaff(updated);
     localStorage.setItem("COS_CONFIG", JSON.stringify(updated));
+  }
+
+  function saveNotificationPrefs(prefs) {
+    localStorage.setItem("NOTIFICATION_PREFS", JSON.stringify(prefs));
+    // Persist to Firestore via API if available
+    const token = localStorage.getItem("ID_TOKEN");
+    if (token) {
+      const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+      fetch(`${API_BASE}/api?path=/v1/me:notificationPreferences`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify(prefs),
+      }).catch(() => {});
+    }
   }
 
   function handleAvatarChange(e) {
@@ -429,6 +446,8 @@ function PersonalSettings() {
           {[
             { key: "email", label: "Email Notifications", desc: "Receive updates and reminders via email" },
             { key: "sms", label: "Text Notifications", desc: "Receive updates via text message" },
+            { key: "weeklyDigest", label: "Weekly Digest", desc: "Receive a weekly summary of your worker activity and insights" },
+            { key: "workerUpdates", label: "Worker Update Alerts", desc: "Get notified when workers you subscribe to publish updates" },
             { key: "renewalReminders", label: "Renewal Reminders", desc: "Get reminded when certifications or licenses are due for renewal" },
             { key: "expirationAlerts", label: "Expiration Alerts", desc: "Get alerted when documents or IDs are about to expire" },
           ].map((item) => (
@@ -436,7 +455,11 @@ function PersonalSettings() {
               <input
                 type="checkbox"
                 checked={notifications[item.key]}
-                onChange={(e) => setNotifications({ ...notifications, [item.key]: e.target.checked })}
+                onChange={(e) => {
+                  const updated = { ...notifications, [item.key]: e.target.checked };
+                  setNotifications(updated);
+                  saveNotificationPrefs(updated);
+                }}
                 style={{ width: "18px", height: "18px" }}
               />
               <div>
@@ -445,6 +468,31 @@ function PersonalSettings() {
               </div>
             </div>
           ))}
+
+          {/* Frequency selector */}
+          <div style={{ display: "flex", alignItems: "center", gap: "12px", marginTop: "4px" }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 600 }}>Notification Frequency</div>
+              <div style={{ fontSize: "13px", color: "var(--textMuted)" }}>How often you receive grouped notifications</div>
+            </div>
+            <select
+              value={notifications.frequency}
+              onChange={(e) => {
+                const updated = { ...notifications, frequency: e.target.value };
+                setNotifications(updated);
+                saveNotificationPrefs(updated);
+              }}
+              style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid #e5e7eb", fontSize: "13px", background: "white", cursor: "pointer" }}
+            >
+              <option value="realtime">Real-time</option>
+              <option value="daily">Daily digest</option>
+              <option value="weekly">Weekly digest</option>
+            </select>
+          </div>
+
+          <div style={{ fontSize: "12px", color: "#94a3b8", marginTop: "4px", lineHeight: 1.5 }}>
+            Every email includes an unsubscribe link at the bottom. Manage your preferences at any time.
+          </div>
         </div>
       </div>
 

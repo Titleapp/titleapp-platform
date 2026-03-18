@@ -4,15 +4,22 @@ import {
   sendSignInLinkToEmail,
   isSignInWithEmailLink,
   signInWithEmailLink,
+  signInWithCustomToken,
   GoogleAuthProvider,
   signInWithPopup,
 } from "firebase/auth";
 import { auth } from "../firebase";
 
+const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+
 export default function Login() {
-  const [mode, setMode] = useState<"magic" | "password">("magic");
+  const [mode, setMode] = useState<"phone" | "magic" | "password">("phone");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [phone, setPhone] = useState("");
+  const [otp, setOtp] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpVerifying, setOtpVerifying] = useState(false);
   const [status, setStatus] = useState("");
   const [linkSent, setLinkSent] = useState(false);
 
@@ -114,6 +121,56 @@ export default function Login() {
     }
   }
 
+  async function handleSendOtp(e: React.FormEvent) {
+    e.preventDefault();
+    const trimmedPhone = phone.trim();
+    if (!trimmedPhone) return;
+    setStatus("Sending verification code...");
+    try {
+      const res = await fetch(`${API_BASE}/api?path=/v1/auth/sendOtp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: trimmedPhone }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setOtpSent(true);
+        setStatus("");
+      } else {
+        setStatus(data.error || "Failed to send code. Try again.");
+      }
+    } catch (err: any) {
+      setStatus(`Failed to send code: ${err?.message || String(err)}`);
+    }
+  }
+
+  async function handleVerifyOtp(e: React.FormEvent) {
+    e.preventDefault();
+    if (!otp.trim()) return;
+    setOtpVerifying(true);
+    setStatus("Verifying...");
+    try {
+      const res = await fetch(`${API_BASE}/api?path=/v1/auth/verifyOtp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: phone.trim(), otp: otp.trim() }),
+      });
+      const data = await res.json();
+      if (data.ok && data.customToken) {
+        const cred = await signInWithCustomToken(auth, data.customToken);
+        const token = await cred.user.getIdToken(true);
+        localStorage.setItem("ID_TOKEN", token);
+        window.location.href = "/";
+      } else {
+        setStatus(data.error || "Invalid code. Try again.");
+        setOtpVerifying(false);
+      }
+    } catch (err: any) {
+      setStatus(`Verification failed: ${err?.message || String(err)}`);
+      setOtpVerifying(false);
+    }
+  }
+
   return (
     <div
       style={{
@@ -188,38 +245,125 @@ export default function Login() {
           <>
             {/* Tab buttons */}
             <div style={{ display: "flex", gap: "8px", marginBottom: "24px" }}>
-              <button
-                onClick={() => setMode("magic")}
-                style={{
-                  flex: 1,
-                  padding: "12px",
-                  background: mode === "magic" ? "rgba(124,58,237,0.1)" : "white",
-                  border: mode === "magic" ? "1px solid rgba(124,58,237,0.3)" : "1px solid #e5e7eb",
-                  borderRadius: "8px",
-                  cursor: "pointer",
-                  fontWeight: mode === "magic" ? 600 : 400,
-                  fontSize: "14px",
-                }}
-              >
-                Magic Link
-              </button>
-              <button
-                onClick={() => setMode("password")}
-                style={{
-                  flex: 1,
-                  padding: "12px",
-                  background: mode === "password" ? "rgba(124,58,237,0.1)" : "white",
-                  border:
-                    mode === "password" ? "1px solid rgba(124,58,237,0.3)" : "1px solid #e5e7eb",
-                  borderRadius: "8px",
-                  cursor: "pointer",
-                  fontWeight: mode === "password" ? 600 : 400,
-                  fontSize: "14px",
-                }}
-              >
-                Password
-              </button>
+              {(["phone", "magic", "password"] as const).map((m) => (
+                <button
+                  key={m}
+                  onClick={() => { setMode(m); setStatus(""); }}
+                  style={{
+                    flex: 1,
+                    padding: "12px",
+                    background: mode === m ? "rgba(124,58,237,0.1)" : "white",
+                    border: mode === m ? "1px solid rgba(124,58,237,0.3)" : "1px solid #e5e7eb",
+                    borderRadius: "8px",
+                    cursor: "pointer",
+                    fontWeight: mode === m ? 600 : 400,
+                    fontSize: "14px",
+                  }}
+                >
+                  {m === "phone" ? "Phone" : m === "magic" ? "Magic Link" : "Password"}
+                </button>
+              ))}
             </div>
+
+            {/* Phone / OTP Form */}
+            {mode === "phone" && !otpSent && (
+              <form onSubmit={handleSendOtp} style={{ display: "grid", gap: "16px" }}>
+                <label style={{ display: "grid", gap: "8px" }}>
+                  <div style={{ fontSize: "14px", fontWeight: 600 }}>Phone Number</div>
+                  <input
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="+1 (555) 555-5555"
+                    autoComplete="tel"
+                    required
+                    style={{
+                      padding: "12px",
+                      fontSize: "14px",
+                      border: "1px solid #e5e7eb",
+                      borderRadius: "8px",
+                    }}
+                  />
+                </label>
+                <button
+                  type="submit"
+                  style={{
+                    padding: "12px",
+                    fontSize: "14px",
+                    fontWeight: 600,
+                    background: "rgb(124,58,237)",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "8px",
+                    cursor: "pointer",
+                  }}
+                >
+                  Send Code
+                </button>
+              </form>
+            )}
+
+            {/* OTP Verification */}
+            {mode === "phone" && otpSent && (
+              <form onSubmit={handleVerifyOtp} style={{ display: "grid", gap: "16px" }}>
+                <div style={{ fontSize: "13px", color: "#6b7280", textAlign: "center" }}>
+                  We sent a 6-digit code to <strong>{phone}</strong>
+                </div>
+                <label style={{ display: "grid", gap: "8px" }}>
+                  <div style={{ fontSize: "14px", fontWeight: 600 }}>Verification Code</div>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={6}
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
+                    placeholder="000000"
+                    autoComplete="one-time-code"
+                    required
+                    style={{
+                      padding: "12px",
+                      fontSize: "20px",
+                      fontWeight: 600,
+                      letterSpacing: "0.3em",
+                      textAlign: "center",
+                      border: "1px solid #e5e7eb",
+                      borderRadius: "8px",
+                    }}
+                  />
+                </label>
+                <button
+                  type="submit"
+                  disabled={otpVerifying || otp.length < 6}
+                  style={{
+                    padding: "12px",
+                    fontSize: "14px",
+                    fontWeight: 600,
+                    background: "rgb(124,58,237)",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "8px",
+                    cursor: otpVerifying ? "wait" : "pointer",
+                    opacity: otpVerifying || otp.length < 6 ? 0.7 : 1,
+                  }}
+                >
+                  {otpVerifying ? "Verifying..." : "Verify"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setOtpSent(false); setOtp(""); setStatus(""); }}
+                  style={{
+                    padding: "8px",
+                    fontSize: "13px",
+                    background: "transparent",
+                    border: "none",
+                    color: "#6b7280",
+                    cursor: "pointer",
+                  }}
+                >
+                  Use a different number
+                </button>
+              </form>
+            )}
 
             {/* Magic Link Form */}
             {mode === "magic" && (

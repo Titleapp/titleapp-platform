@@ -143,6 +143,17 @@ export default function PublishPreflight({ worker, workerCardData, sessionId, on
   // Publish state
   const [publishing, setPublishing] = useState(false);
 
+  // Notification config
+  const workerName = workerCardData?.name || worker?.name || "your worker";
+  const [notifConfig, setNotifConfig] = useState({
+    welcomeMessage: workerCardData?.description || "",
+    weeklyDigestSubject: `Your weekly update from ${workerName}`,
+    weeklyDigestBody: "",
+    lowUsageMessage: "",
+    updateMessage: "",
+  });
+  const [showNotifPreview, setShowNotifPreview] = useState(null);
+
   // MD gate
   const needsMdGate = workerCardData?.mdGateRequired || false;
   const [mdName, setMdName] = useState("");
@@ -411,6 +422,7 @@ export default function PublishPreflight({ worker, workerCardData, sessionId, on
           workerId: worker?.id,
           pricingTier: worker?.pricingTier || workerCardData?.pricingTier || 2,
           ...(needsMdGate && { mdName, mdNpi }),
+          notifConfig,
         }),
       });
       const data = await res.json();
@@ -789,6 +801,91 @@ export default function PublishPreflight({ worker, workerCardData, sessionId, on
           }} />
         </div>
       </div>
+
+      {/* Notification Config */}
+      <div style={{ background: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: 10, padding: 16, marginTop: 16 }}>
+        <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a2e", marginBottom: 4 }}>How we'll keep your subscribers engaged</div>
+        <div style={{ fontSize: 12, color: "#64748B", lineHeight: 1.5, marginBottom: 14 }}>
+          We send these on your behalf from alex@titleapp.ai. Your subscribers can manage their preferences at any time.
+        </div>
+
+        {[
+          { key: "welcome", label: "Welcome Message", desc: "Sent to every new subscriber immediately", field: "welcomeMessage", placeholder: "Welcome! You now have access to..." },
+          { key: "digest", label: "Weekly Digest", desc: "Sent every Monday", field: "weeklyDigestBody", placeholder: "Here's what happened this week...", hasSubject: true },
+          { key: "lowUsage", label: "Low Usage Re-engagement", desc: "Sent if no activity in 7 days", field: "lowUsageMessage", placeholder: "It's been a while — here's what you're missing..." },
+          { key: "update", label: "Update Notification", desc: "Sent when you publish an update", field: "updateMessage", placeholder: "We've made some improvements..." },
+        ].map((card) => (
+          <div key={card.key} style={{ background: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: 10, padding: 14, marginBottom: 8 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a2e" }}>{card.label}</div>
+                <div style={{ fontSize: 11, color: "#64748B" }}>{card.desc}</div>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 11, color: "#10b981", fontWeight: 600 }}>Always on</span>
+                <button
+                  onClick={() => setShowNotifPreview(card.key)}
+                  style={{ padding: "4px 10px", background: "transparent", color: "#6B46C1", border: "1px solid rgba(107,70,193,0.3)", borderRadius: 4, fontSize: 11, fontWeight: 600, cursor: "pointer" }}
+                >
+                  Preview
+                </button>
+              </div>
+            </div>
+            {card.hasSubject && (
+              <input
+                value={notifConfig.weeklyDigestSubject}
+                onChange={e => setNotifConfig(prev => ({ ...prev, weeklyDigestSubject: e.target.value }))}
+                placeholder="Subject line"
+                style={{ width: "100%", padding: "8px 10px", background: "#F8F9FC", border: "1px solid #E2E8F0", borderRadius: 6, color: "#1a1a2e", fontSize: 12, outline: "none", marginBottom: 6 }}
+              />
+            )}
+            <textarea
+              value={notifConfig[card.field]}
+              onChange={e => setNotifConfig(prev => ({ ...prev, [card.field]: e.target.value }))}
+              placeholder={card.placeholder}
+              rows={2}
+              style={{ width: "100%", padding: "8px 10px", background: "#F8F9FC", border: "1px solid #E2E8F0", borderRadius: 6, color: "#1a1a2e", fontSize: 12, resize: "vertical", outline: "none" }}
+            />
+          </div>
+        ))}
+
+        <div style={{ fontSize: 11, color: "#94A3B8", lineHeight: 1.5, marginTop: 6, fontStyle: "italic" }}>
+          These messages keep your subscribers engaged and reduce churn — the more engaged your subscribers, the more you earn.
+        </div>
+      </div>
+
+      {/* Notification Preview Modal */}
+      {showNotifPreview && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 10000 }} onClick={() => setShowNotifPreview(null)}>
+          <div style={{ background: "white", borderRadius: 16, maxWidth: 500, width: "90%", maxHeight: "80vh", display: "flex", flexDirection: "column", boxShadow: "0 8px 40px rgba(0,0,0,0.2)" }} onClick={e => e.stopPropagation()}>
+            <div style={{ padding: "20px 24px", borderBottom: "1px solid #E2E8F0" }}>
+              <div style={{ fontSize: 16, fontWeight: 700, color: "#1a1a2e" }}>Email Preview</div>
+            </div>
+            <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px" }}>
+              <div style={{ fontSize: 12, color: "#94A3B8", marginBottom: 4 }}>From: alex@titleapp.ai</div>
+              <div style={{ fontSize: 12, color: "#94A3B8", marginBottom: 4 }}>To: [subscriber]</div>
+              <div style={{ fontSize: 12, color: "#94A3B8", marginBottom: 12 }}>
+                Subject: {showNotifPreview === "digest" ? notifConfig.weeklyDigestSubject : showNotifPreview === "welcome" ? `Welcome to ${workerName}` : showNotifPreview === "lowUsage" ? `We miss you at ${workerName}` : `${workerName} just got an update`}
+              </div>
+              <div style={{ borderTop: "1px solid #E2E8F0", paddingTop: 16 }}>
+                <div style={{ fontSize: 13, color: "#1a1a2e", lineHeight: 1.7, whiteSpace: "pre-wrap" }}>
+                  Hi [Subscriber Name],{"\n\n"}
+                  {showNotifPreview === "welcome" && (notifConfig.welcomeMessage || `You now have access to ${workerName}.`)}
+                  {showNotifPreview === "digest" && (notifConfig.weeklyDigestBody || `Here's your weekly summary from ${workerName}.`)}
+                  {showNotifPreview === "lowUsage" && (notifConfig.lowUsageMessage || `It's been a while since you used ${workerName}. Here's what you're missing.`)}
+                  {showNotifPreview === "update" && (notifConfig.updateMessage || `${workerName} has been updated with new features and improvements.`)}
+                  {"\n\n"}Best,{"\n"}Alex — your Chief of Staff{"\n"}TitleApp AI
+                </div>
+              </div>
+            </div>
+            <div style={{ padding: "16px 24px", borderTop: "1px solid #E2E8F0", display: "flex", justifyContent: "flex-end" }}>
+              <button onClick={() => setShowNotifPreview(null)} style={{ padding: "10px 20px", background: "#6B46C1", color: "white", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Publish button */}
       <button

@@ -163,7 +163,7 @@ const ID_VERIFY_MESSAGES = {
 
 // ── Component ───────────────────────────────────────────────────
 
-export default function ChatPanel({ currentSection, onboardingStep, disclaimerAccepted: propDisclaimerAccepted }) {
+export default function ChatPanel({ currentSection, onboardingStep, disclaimerAccepted: propDisclaimerAccepted, alexContext }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -256,9 +256,29 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
   // Listen for worker selection from sidebar
   useEffect(() => {
     function handleWorkerSelect(e) {
-      const { slug, name } = e.detail || {};
+      const { slug, name, description, suggestions: workerSuggestions } = e.detail || {};
       if (!name) return;
       setActiveWorkerName(name);
+
+      // First-session check for subscribers
+      const firstSessionKey = "ta_first_session_" + (slug || name);
+      if (slug !== "chief-of-staff" && !localStorage.getItem(firstSessionKey)) {
+        localStorage.setItem(firstSessionKey, "done");
+        const firstMsgs = [
+          { role: 'assistant', content: `Welcome. You're now subscribed to **${name}**${description ? ` — ${description}` : ""}.`, isSystem: true },
+        ];
+        setMessages(prev => [...prev, ...firstMsgs]);
+        setTimeout(() => {
+          setMessages(prev => [...prev, { role: 'assistant', content: `I'm Alex, your Chief of Staff. I'll be working with ${name} to make sure you get the most out of it.`, isSystem: true }]);
+        }, 500);
+        setTimeout(() => {
+          const starters = workerSuggestions || [`What can ${name} do?`, `Show me how to get started`, `What should I know first?`];
+          setMessages(prev => [...prev, { role: 'assistant', content: `Here's what ${name} is best at. You can ask me anything — or start with one of these.`, isSystem: true, suggestions: starters }]);
+          if (conversationRef.current) conversationRef.current.scrollTop = conversationRef.current.scrollHeight;
+        }, 1000);
+        return;
+      }
+
       const greeting = slug === "chief-of-staff"
         ? `Switched to ${name}. I'm your Chief of Staff — I coordinate all your workers and track progress across your workspace.`
         : `Switched to ${name}. Ask me anything related to this worker's domain.`;
@@ -813,7 +833,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
           'X-Tenant-Id': tenantId,
-          'X-Vertical': vertical,
+          'X-Vertical': alexContext?.surface === 'chief-of-staff' ? 'chief-of-staff' : vertical,
           'X-Jurisdiction': jurisdiction,
         },
         body: JSON.stringify({
@@ -823,12 +843,13 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
           context: {
             source: 'business_portal',
             currentSection: currentSection || 'dashboard',
-            vertical,
+            vertical: alexContext?.surface === 'chief-of-staff' ? 'chief-of-staff' : vertical,
             jurisdiction,
             workspaceId: localStorage.getItem('WORKSPACE_ID') || '',
             workspaceName: localStorage.getItem('WORKSPACE_NAME') || '',
             ...(dealContext ? { dealContext } : {}),
             ...(pendingActions.length > 0 ? { pendingActions: pendingActions.map(a => ({ customerName: a.customerName, actionType: a.actionType, context: a.context })) } : {}),
+            ...(alexContext ? { alexContext } : {}),
           },
         }),
       });
