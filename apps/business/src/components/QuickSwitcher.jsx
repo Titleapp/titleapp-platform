@@ -54,6 +54,14 @@ export default function QuickSwitcher({ isOpen, onClose, workspaces, onNavigate,
   // Build searchable items
   const items = [];
 
+  // Alex — Chief of Staff (always first)
+  items.push({
+    type: "workspace",
+    label: "Alex",
+    sublabel: "Chief of Staff",
+    action: () => { window.location.href = "/alex"; },
+  });
+
   // Workspaces
   (workspaces || []).forEach(ws => {
     items.push({

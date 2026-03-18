@@ -66,14 +66,20 @@ async function assemblePrompt(options = {}) {
   // Core prompt is prepended to ALL surfaces — single source of truth
   const core = getCoreModule().getCore({ alexName, alexVoice });
 
-  // For non-business surfaces, core + surface overlay
-  if (surface !== "business") {
+  // For non-business, non-chief-of-staff surfaces: core + surface overlay
+  if (surface !== "business" && surface !== "chief-of-staff") {
     const overlay = getSurfacesModule().getSurfaceOverlay(surface, surfaceContext);
     return overlay ? `${core}\n\n---\n\n${overlay}` : core;
   }
 
+  // Chief of Staff: core + overlay + full modular assembly (cross-vertical)
   // Business surface: core + full modular assembly
   const sections = [core];
+
+  if (surface === "chief-of-staff") {
+    const overlay = getSurfacesModule().getSurfaceOverlay(surface, surfaceContext);
+    if (overlay) sections.push(overlay);
+  }
 
   // 1. Static: Platform rules (identity is in core)
   sections.push(getRulesModule().getRules());

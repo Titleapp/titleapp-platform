@@ -1191,6 +1191,31 @@ export default function Sidebar({
             boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
             maxHeight: 320, overflowY: "auto",
           }}>
+            {/* Alex — Chief of Staff (always first) */}
+            <div
+              onClick={() => { setShowSwitcher(false); window.location.href = "/alex"; }}
+              style={{
+                display: "flex", alignItems: "center", gap: 10,
+                padding: "8px 12px", cursor: "pointer",
+                background: "transparent",
+                borderRadius: 8, margin: "2px 8px",
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+            >
+              <div style={{
+                width: 28, height: 28, borderRadius: 6,
+                background: "linear-gradient(135deg, #a78bfa 0%, #7c3aed 100%)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                color: "white", fontWeight: 600, fontSize: 12, flexShrink: 0,
+              }}>A</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "#e2e8f0" }}>Alex</div>
+                <div style={{ fontSize: 11, color: "#a78bfa" }}>Chief of Staff</div>
+              </div>
+            </div>
+            <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "4px 8px" }} />
+
             {ownWorkspaces.length > 0 && (
               <div style={{ padding: "8px 12px 4px", fontSize: 11, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.5px" }}>
                 Your Workspaces
