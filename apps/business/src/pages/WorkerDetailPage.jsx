@@ -37,6 +37,94 @@ const S = {
   footer: { textAlign: "center", padding: "24px 32px", borderTop: "1px solid #e5e7eb", color: "#9ca3af", fontSize: 13, marginTop: 40 },
 };
 
+function DocumentChecklist({ checklist, workerSlug }) {
+  const [docStatus, setDocStatus] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(`ta_worker_docs_${workerSlug}`) || "{}"); } catch { return {}; }
+  });
+  const [uploading, setUploading] = useState(null);
+  const fileRef = React.useRef(null);
+  const [uploadTarget, setUploadTarget] = useState(null);
+
+  const requiredItems = checklist.filter(d => d.required);
+  const requiredDone = requiredItems.filter(d => docStatus[d.docType]);
+  const allRequiredDone = requiredDone.length === requiredItems.length;
+  const missingRequired = requiredItems.filter(d => !docStatus[d.docType]);
+
+  async function handleUpload(docType) {
+    setUploadTarget(docType);
+    fileRef.current?.click();
+  }
+
+  async function onFileSelected(e) {
+    const file = e.target.files?.[0];
+    if (!file || !uploadTarget) return;
+    setUploading(uploadTarget);
+    try {
+      const token = localStorage.getItem("ID_TOKEN");
+      const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+      const signRes = await fetch(`${apiBase}/api?path=/v1/files:sign`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ filename: file.name, contentType: file.type, sizeBytes: file.size, purpose: "worker_document" }),
+      });
+      const signData = await signRes.json();
+      if (!signData.uploadUrl) throw new Error("Sign failed");
+      await fetch(signData.uploadUrl, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
+      await fetch(`${apiBase}/api?path=/v1/files:finalize`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ fileId: signData.fileId, storagePath: signData.storagePath, contentType: file.type, sizeBytes: file.size }),
+      });
+      const updated = { ...docStatus, [uploadTarget]: { fileId: signData.fileId, uploadedAt: new Date().toISOString() } };
+      setDocStatus(updated);
+      localStorage.setItem(`ta_worker_docs_${workerSlug}`, JSON.stringify(updated));
+    } catch (err) { console.error("Doc upload failed:", err); }
+    setUploading(null);
+    setUploadTarget(null);
+    e.target.value = "";
+  }
+
+  return (
+    <div style={{ marginBottom: 48 }}>
+      <h2 style={S.sectionTitle}>Document Checklist</h2>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+        {allRequiredDone ? (
+          <span style={{ fontSize: 14, fontWeight: 600, color: "#10b981" }}>Direct Mode ready</span>
+        ) : (
+          <span style={{ fontSize: 14, fontWeight: 600, color: "#f59e0b" }}>Partial capability {"\u2014"} {missingRequired.length} required doc{missingRequired.length !== 1 ? "s" : ""} missing</span>
+        )}
+      </div>
+      {!allRequiredDone && (
+        <div style={{ background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#92400e", marginBottom: 16 }}>
+          Some Direct Mode features are limited {"\u2014"} upload your {missingRequired.map(d => d.label).join(", ")} to unlock them.
+        </div>
+      )}
+      <input ref={fileRef} type="file" style={{ display: "none" }} onChange={onFileSelected} accept=".pdf,.doc,.docx,.xlsx,.csv,.txt,.png,.jpg,.jpeg" />
+      {checklist.map(item => (
+        <div key={item.docType} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", background: "white", border: "1px solid #e5e7eb", borderRadius: 10, marginBottom: 8 }}>
+          <span style={{ fontSize: 18, flexShrink: 0 }}>
+            {docStatus[item.docType] ? "\u2713" : item.required ? "\u26A0" : "\u2014"}
+          </span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 14, fontWeight: 500, color: "#1e293b" }}>{item.label}</div>
+            <div style={{ fontSize: 12, color: "#64748b", display: "flex", gap: 8, marginTop: 2 }}>
+              <span style={{ fontWeight: 600, color: item.required ? "#dc2626" : "#6b7280" }}>{item.required ? "Required" : "Recommended"}</span>
+              {item.unlocksMode && <span>Unlocks {item.unlocksMode} mode</span>}
+            </div>
+          </div>
+          {docStatus[item.docType] ? (
+            <span style={{ fontSize: 12, fontWeight: 600, color: "#10b981" }}>Uploaded</span>
+          ) : (
+            <button onClick={() => handleUpload(item.docType)} disabled={uploading === item.docType} style={{ padding: "6px 14px", fontSize: 12, fontWeight: 600, background: "#7c3aed", color: "white", border: "none", borderRadius: 6, cursor: "pointer", opacity: uploading === item.docType ? 0.7 : 1 }}>
+              {uploading === item.docType ? "Uploading..." : "Upload"}
+            </button>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function WorkerDetailPage({ worker, content, onBack, onSubscribe }) {
   const [subscribing, setSubscribing] = useState(false);
   const [subscribed, setSubscribed] = useState(false);
@@ -243,6 +331,10 @@ export default function WorkerDetailPage({ worker, content, onBack, onSubscribe 
               ))}
             </div>
           </>
+        )}
+
+        {worker.documentChecklist && worker.documentChecklist.length > 0 && (
+          <DocumentChecklist checklist={worker.documentChecklist} workerSlug={worker.slug} />
         )}
 
         <div style={S.pricing}>

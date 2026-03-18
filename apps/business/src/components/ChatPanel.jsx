@@ -185,6 +185,9 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
   const [workerSearch, setWorkerSearch] = useState("");
   const [workerFilter, setWorkerFilter] = useState("All");
 
+  // Qualifying onboarding state
+  const [qualifyingMode, setQualifyingMode] = useState(() => !localStorage.getItem('ta_alex_qualified'));
+
   // Disclaimer state
   const [disclaimerAccepted, setDisclaimerAccepted] = useState(() => {
     if (propDisclaimerAccepted) return true;
@@ -344,6 +347,17 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
 
   useEffect(() => {
     if (currentUser && authReady && messages.length === 0) {
+      // Qualifying question for first Alex session
+      if (!localStorage.getItem('ta_alex_qualified') && disclaimerAccepted) {
+        setMessages([{
+          role: 'assistant',
+          content: "Hey \u2014 I'm Alex, your Chief of Staff. Before I show you around, quick question: what do you do for work?",
+          isSystem: true,
+          suggestions: ["I'm a pilot", "I work in real estate", "I run a dealership", "Something else"],
+        }]);
+        return;
+      }
+
       // Check if we should fire celebration (just completed onboarding)
       if (!celebrationFired) {
         try {
@@ -399,6 +413,18 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
       // Check if disclaimer needed on existing workspace
       if (!disclaimerAccepted) {
         loadDisclaimerFlow();
+        return;
+      }
+
+      // Usage-triggered portfolio review
+      const pendingReview = localStorage.getItem("ta_alex_pending_review");
+      const snoozedUntil = localStorage.getItem("ta_alex_review_snoozed");
+      const snoozed = snoozedUntil && new Date(snoozedUntil) > new Date();
+      if (pendingReview === "true" && !snoozed) {
+        localStorage.removeItem("ta_alex_pending_review");
+        window.dispatchEvent(new CustomEvent("ta:alex-review-dismissed"));
+        setMessages([{ role: 'assistant', content: "I took a look at your worker setup and have a few thoughts.", isSystem: true }]);
+        setTimeout(() => sendMessage(null, "Check my portfolio"), 600);
         return;
       }
 
@@ -524,6 +550,13 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
       return `Welcome${nameGreet}. I set up your workspace based on our conversation. Let's pick up where we left off -- what would you like to do first?`;
     }
     return null;
+  }
+
+  function handleQualifyingAnswer(answer) {
+    setQualifyingMode(false);
+    localStorage.setItem('ta_alex_qualified', 'done');
+    setMessages(prev => [...prev, { role: 'user', content: answer }]);
+    setTimeout(() => sendMessage(null, answer), 200);
   }
 
   // Send contextual messages when onboarding step or section changes
@@ -874,6 +907,8 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
         role: 'assistant',
         content: data.response || 'No response received.',
         structuredData: data.structuredData,
+        recommendationCard: data.recommendationCard || null,
+        workerCards: data.workerCards || null,
       }]);
     } catch (error) {
       console.error('Send failed:', error);
@@ -928,6 +963,60 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
   function stopVoiceInput() {
     recognitionRef.current?.stop();
     setIsRecording(false);
+  }
+
+  function InviteGeneratorWidget({ workers }) {
+    const [selectedWorkers, setSelectedWorkers] = useState(workers.map(w => w.slug));
+    const [personalMessage, setPersonalMessage] = useState("");
+    const [generating, setGenerating] = useState(false);
+    const [inviteUrl, setInviteUrl] = useState(null);
+    const [copied, setCopied] = useState(false);
+
+    async function handleGenerate() {
+      setGenerating(true);
+      try {
+        const token = await getAuth().currentUser?.getIdToken();
+        const apiBase = import.meta.env.VITE_API_BASE || 'https://titleapp-frontdoor.titleapp-core.workers.dev';
+        const res = await fetch(`${apiBase}/api?path=/v1/user:generateInvite`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ workerSlugs: selectedWorkers, message: personalMessage }),
+        });
+        const data = await res.json();
+        if (data.ok) setInviteUrl(data.inviteUrl || `https://app.titleapp.ai/invite/${data.inviteCode}`);
+      } catch (e) { console.error("Invite generation failed:", e); }
+      setGenerating(false);
+    }
+
+    return (
+      <div style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: 14, padding: 16, marginTop: 8, maxWidth: 420 }}>
+        {!inviteUrl ? (
+          <>
+            <div style={{ fontSize: 14, fontWeight: 600, color: "#1e293b", marginBottom: 12 }}>Invite a colleague</div>
+            {workers.map(w => (
+              <label key={w.slug} style={{ display: "flex", gap: 8, marginBottom: 6, fontSize: 13, color: "#1e293b", cursor: "pointer", alignItems: "center" }}>
+                <input type="checkbox" checked={selectedWorkers.includes(w.slug)} onChange={e => setSelectedWorkers(prev => e.target.checked ? [...prev, w.slug] : prev.filter(s => s !== w.slug))} />
+                {w.name}
+              </label>
+            ))}
+            <textarea value={personalMessage} onChange={e => setPersonalMessage(e.target.value)} placeholder="Add a personal message (optional)" rows={2} style={{ width: "100%", marginTop: 10, padding: 8, borderRadius: 8, border: "1px solid #e2e8f0", fontSize: 13, resize: "none", fontFamily: "inherit" }} />
+            <button onClick={handleGenerate} disabled={generating || selectedWorkers.length === 0} style={{ marginTop: 10, width: "100%", padding: "10px", background: selectedWorkers.length === 0 ? "#94a3b8" : "#7c3aed", color: "white", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer", opacity: generating ? 0.7 : 1 }}>
+              {generating ? "Generating..." : "Generate Invite Link"}
+            </button>
+            <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 6 }}>You'll get 30 days added to your subscription for each colleague who activates.</div>
+          </>
+        ) : (
+          <>
+            <div style={{ fontSize: 14, fontWeight: 600, color: "#10b981", marginBottom: 8 }}>Invite link created</div>
+            <div style={{ display: "flex", gap: 6, alignItems: "center", background: "#f8fafc", padding: "8px 10px", borderRadius: 8, border: "1px solid #e2e8f0" }}>
+              <input type="text" value={inviteUrl} readOnly style={{ flex: 1, border: "none", background: "transparent", fontSize: 12, color: "#475569", outline: "none" }} />
+              <button onClick={() => { navigator.clipboard.writeText(inviteUrl); setCopied(true); setTimeout(() => setCopied(false), 2000); }} style={{ padding: "4px 10px", fontSize: 12, fontWeight: 600, background: "#7c3aed", color: "white", border: "none", borderRadius: 6, cursor: "pointer" }}>{copied ? "Copied" : "Copy"}</button>
+            </div>
+            <a href={`sms:?body=${encodeURIComponent("Check this out: " + inviteUrl)}`} style={{ display: "inline-block", marginTop: 8, fontSize: 13, color: "#7c3aed", fontWeight: 500, textDecoration: "none" }}>Share via text message</a>
+          </>
+        )}
+      </div>
+    );
   }
 
   function renderStructuredData(data) {
@@ -1019,6 +1108,11 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
           </div>
         </div>
       );
+    }
+
+    // Invite generator widget
+    if (data.type === 'invite_generator') {
+      return <InviteGeneratorWidget workers={data.workers || []} />;
     }
 
     // Document generated — render download card
@@ -1251,8 +1345,28 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
           </div>
         )}
 
+        {/* Qualifying onboarding — centered avatar */}
+        {qualifyingMode && messages.length <= 1 && (
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flex: 1, padding: 40, textAlign: "center" }}>
+            <div style={{ width: 72, height: 72, borderRadius: 36, background: "linear-gradient(135deg, #7c3aed, #6366f1)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 24 }}>
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="white"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            </div>
+            <div style={{ fontSize: 16, fontWeight: 500, color: "#1e293b", lineHeight: 1.6, maxWidth: 380, marginBottom: 24 }}>
+              Hey {"\u2014"} I'm Alex, your Chief of Staff. Before I show you around, quick question: what do you do for work?
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center" }}>
+              {["I'm a pilot", "I work in real estate", "I run a dealership", "Something else"].map(chip => (
+                <button key={chip} onClick={() => handleQualifyingAnswer(chip)} style={{ padding: "8px 16px", fontSize: 13, fontWeight: 500, background: "white", border: "1px solid #e2e8f0", borderRadius: 20, color: "#7c3aed", cursor: "pointer", transition: "all 0.2s" }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = "#7c3aed"; e.currentTarget.style.background = "#faf5ff"; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = "#e2e8f0"; e.currentTarget.style.background = "white"; }}
+                >{chip}</button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Empty state — only show if no messages AND no disclaimer pending */}
-        {messages.length === 0 && !isTyping && !showDisclaimer && (
+        {messages.length === 0 && !isTyping && !showDisclaimer && !qualifyingMode && (
           <div className="chat-welcome">
             {(() => {
               const v = localStorage.getItem('VERTICAL') || 'auto';
@@ -1346,6 +1460,27 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" style={{ flexShrink: 0 }}><polyline points="9 18 15 12 9 6"/></svg>
                   </div>
                 ))}
+              </div>
+            )}
+
+            {/* Recommendation card */}
+            {msg.recommendationCard && (
+              <div style={{ marginTop: 8, maxWidth: 420, background: "white", border: "1px solid #e5e7eb", borderRadius: 14, overflow: "hidden" }}>
+                <div style={{ padding: "14px 16px 10px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: "#1e293b" }}>{msg.recommendationCard.name}</div>
+                  <span style={{ fontSize: 11, fontWeight: 600, padding: "2px 10px", borderRadius: 20, background: "#f3e8ff", color: "#7c3aed" }}>{msg.recommendationCard.suite}</span>
+                </div>
+                <div style={{ padding: "0 16px 12px", fontSize: 13, color: "#64748b", lineHeight: 1.5 }}>{msg.recommendationCard.description}</div>
+                <div style={{ padding: "8px 16px 12px", display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ fontSize: 16, fontWeight: 700, color: "#1e293b" }}>${msg.recommendationCard.price / 100}/mo</span>
+                  {msg.recommendationCard.bogoEligible && localStorage.getItem("ta_bogo_used") !== "true" && (
+                    <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 20, background: "#0B7A6E", color: "white" }}>Free with BOGO</span>
+                  )}
+                </div>
+                <div style={{ padding: "0 16px 14px", display: "flex", gap: 8 }}>
+                  <button onClick={() => { window.dispatchEvent(new CustomEvent("ta:navigate", { detail: { section: msg.recommendationCard.slug } })); }} style={{ flex: 1, padding: "10px 16px", background: "#7c3aed", color: "white", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Subscribe</button>
+                  <button onClick={() => handleSuggestionClick("Tell me more about " + msg.recommendationCard.name)} style={{ flex: 1, padding: "10px 16px", background: "white", color: "#7c3aed", border: "1px solid #e5e7eb", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Tell me more</button>
+                </div>
               </div>
             )}
 

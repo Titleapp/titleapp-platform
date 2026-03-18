@@ -24,6 +24,16 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
     return v >= 180 && v <= 320 ? v : 280;
   });
 
+  // Alex review notification badge
+  const [alexBadge, setAlexBadge] = useState(() => localStorage.getItem("ta_alex_pending_review") === "true");
+  useEffect(() => {
+    function onReview() { setAlexBadge(true); localStorage.setItem("ta_alex_pending_review", "true"); }
+    function onDismiss() { setAlexBadge(false); localStorage.removeItem("ta_alex_pending_review"); }
+    window.addEventListener("ta:alex-has-recommendation", onReview);
+    window.addEventListener("ta:alex-review-dismissed", onDismiss);
+    return () => { window.removeEventListener("ta:alex-has-recommendation", onReview); window.removeEventListener("ta:alex-review-dismissed", onDismiss); };
+  }, []);
+
   useEffect(() => {
     loadTenantInfo();
     loadWorkspaces();
@@ -317,6 +327,8 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
         <button
           className={`mobileBottomNavItem${chatOpen ? " active" : ""}`}
           onClick={() => setChatOpen(!chatOpen)}
+          style={{ position: "relative" }}
+          title={alexBadge ? "Alex has a recommendation" : undefined}
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
@@ -324,6 +336,7 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
             <circle cx="12" cy="10" r="1" fill="currentColor" />
             <circle cx="15" cy="10" r="1" fill="currentColor" />
           </svg>
+          {alexBadge && <span style={{ position: "absolute", top: 4, right: "calc(50% - 16px)", width: 10, height: 10, borderRadius: 5, background: "#7c3aed", border: "2px solid white" }} />}
           Explore
         </button>
         {workspaces.length > 1 && (

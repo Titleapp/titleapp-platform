@@ -68,6 +68,7 @@ import DeveloperLanding from "./pages/landing/DeveloperLanding";
 import PilotLanding from "./pages/landing/PilotLanding";
 import AlexWorkspace from "./pages/AlexWorkspace";
 import CampaignPage from "./pages/campaigns/CampaignPage";
+import InviteLanding from "./pages/InviteLanding";
 import CoPilotEFB from "./sections/CoPilotEFB";
 import { auth } from "./firebase";
 import { signInWithCustomToken } from "firebase/auth";
@@ -4594,6 +4595,11 @@ export default function App() {
   const campaignSlug = campaignMatch ? campaignMatch[1] : null;
   const isCampaignPage = !!campaignSlug;
 
+  // ── /invite/:code route intercept ─────────────────────
+  const inviteMatch = window.location.pathname.match(/^\/invite\/([a-zA-Z0-9]+)\/?$/);
+  const inviteCode = inviteMatch ? inviteMatch[1] : null;
+  const isInvitePage = !!inviteCode;
+
   const [sandboxReady, setSandboxReady] = useState(isSandbox ? false : null);
   const [authResolved, setAuthResolved] = useState(false); // true once onAuthStateChanged fires at least once
 
@@ -5154,6 +5160,9 @@ export default function App() {
 
   // ── Campaign pages: no auth required ──────────────────────────
   if (isCampaignPage) return <CampaignPage slug={campaignSlug} />;
+
+  // ── Invite landing pages: no auth required ────────────────────
+  if (isInvitePage) return <InviteLanding inviteCode={inviteCode} />;
 
   // ── Vertical landing pages: no auth required ────────────────
   if (isAutoLanding) return <AutoLanding />;
