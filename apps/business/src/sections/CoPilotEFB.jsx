@@ -48,10 +48,32 @@ export default function CoPilotEFB() {
   const [chatLoading, setChatLoading] = useState(false);
   const [examinerMode, setExaminerMode] = useState(false);
   const [uploadMsg, setUploadMsg] = useState("");
+  const [activeMode, setActiveMode] = useState(null);
+  const [acknowledged, setAcknowledged] = useState(() => localStorage.getItem("copilot_ack") === "true");
+  const [showDocBanner, setShowDocBanner] = useState(true);
+  const [showModeInfo, setShowModeInfo] = useState(false);
+  const [documents, setDocuments] = useState([]);
   const chatEndRef = useRef(null);
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => { loadData(); loadDocuments(); }, []);
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatMessages]);
+
+  async function loadDocuments() {
+    try {
+      const result = await apiCall("status");
+      if (result.ok && result.documents) setDocuments(result.documents);
+      if (result.ok && !result.readiness?.hasOperatorDocs) setShowDocBanner(true);
+      else setShowDocBanner(false);
+    } catch { /* ignore */ }
+  }
+
+  async function handleAcknowledge() {
+    try {
+      await apiCall("acknowledge", "POST", { acknowledged: true });
+    } catch { /* proceed anyway */ }
+    localStorage.setItem("copilot_ack", "true");
+    setAcknowledged(true);
+  }
 
   async function loadData() {
     setLoading(true);
@@ -96,7 +118,14 @@ export default function CoPilotEFB() {
         examinerMode,
       });
       if (result.ok) {
-        setChatMessages(prev => [...prev, { role: "assistant", content: result.message }]);
+        setChatMessages(prev => [...prev, {
+          role: "assistant",
+          content: result.message,
+          mode: result.mode || null,
+          citation: result.citation || null,
+          sourceType: result.sourceType || null,
+        }]);
+        if (result.mode) setActiveMode(result.mode);
         if (result.examinerMode) setExaminerMode(true);
       }
     } catch (e) {
@@ -112,16 +141,38 @@ export default function CoPilotEFB() {
     { id: "currency", label: "Currency" },
     { id: "duty", label: "Duty" },
     { id: "training", label: "Training" },
+    { id: "documents", label: "Documents" },
     { id: "copilot", label: "CoPilot" },
   ];
 
+  // ── High-risk acknowledgment modal (TASK 3) ──
+  if (!acknowledged) {
+    return (
+      <div style={{ background: C.bg, minHeight: "100vh", color: C.text, fontFamily: "'Inter', -apple-system, sans-serif", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <AcknowledgmentModal onAccept={handleAcknowledge} />
+      </div>
+    );
+  }
+
   return (
     <div style={{ background: C.bg, minHeight: "100vh", color: C.text, fontFamily: "'Inter', -apple-system, sans-serif" }}>
+      {/* Mode info sheet */}
+      {showModeInfo && <ModeInfoSheet onClose={() => setShowModeInfo(false)} onForceMode={(m) => { setActiveMode(m); setShowModeInfo(false); }} />}
       {/* Top bar */}
       <div style={{ background: C.panel, borderBottom: `1px solid ${C.border}`, padding: "12px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <span style={{ color: C.tealLight, fontWeight: 700, fontSize: 18 }}>PC12-47E CoPilot</span>
           <span style={{ color: C.textDim, fontSize: 13 }}>LFN Medevac</span>
+          {activeMode === "direct" && (
+            <button onClick={() => setShowModeInfo(!showModeInfo)} style={{
+              background: "#7c3aed22", border: "1px solid #7c3aed", borderRadius: 4, padding: "2px 8px",
+              color: "#a78bfa", fontSize: 11, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 4,
+              letterSpacing: "0.05em",
+            }}>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM12 17c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zM15.1 8H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
+              DIRECT
+            </button>
+          )}
         </div>
         {currency?.summary && (
           <div style={{ display: "flex", gap: 16, fontSize: 13 }}>
@@ -162,11 +213,13 @@ export default function CoPilotEFB() {
             {tab === "currency" && <CurrencyTab currency={currency} />}
             {tab === "duty" && <DutyTab />}
             {tab === "training" && <TrainingTab />}
+            {tab === "documents" && <DocumentsTab documents={documents} onUpload={handleFileUpload} uploadMsg={uploadMsg} onReload={loadDocuments} />}
             {tab === "copilot" && (
               <ChatTab
                 messages={chatMessages} input={chatInput} onInput={setChatInput}
                 onSend={sendChat} loading={chatLoading} examinerMode={examinerMode}
-                chatEndRef={chatEndRef}
+                chatEndRef={chatEndRef} showDocBanner={showDocBanner}
+                onDismissBanner={() => setShowDocBanner(false)} onGoToDocuments={() => setTab("documents")}
               />
             )}
           </>
@@ -334,9 +387,19 @@ function TrainingTab() {
   );
 }
 
-function ChatTab({ messages, input, onInput, onSend, loading, examinerMode, chatEndRef }) {
+function ChatTab({ messages, input, onInput, onSend, loading, examinerMode, chatEndRef, showDocBanner, onDismissBanner, onGoToDocuments }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "calc(100vh - 200px)" }}>
+      {/* Document upload reminder banner (TASK 3) */}
+      {showDocBanner && (
+        <div style={{ background: C.yellow + "18", border: `1px solid ${C.yellow}44`, borderRadius: 6, padding: "10px 14px", marginBottom: 12, fontSize: 13, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+          <div style={{ color: C.yellow, flex: 1 }}>For the most accurate Direct Mode answers, upload your PC12-NG POH and QRH in Settings. I'll use generic reference docs until then.</div>
+          <div style={{ display: "flex", gap: 12, flexShrink: 0 }}>
+            <button onClick={onDismissBanner} style={{ background: "none", border: "none", color: C.textDim, fontSize: 12, cursor: "pointer" }}>Got it</button>
+            <button onClick={onGoToDocuments} style={{ background: "none", border: "none", color: C.tealLight, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Upload Documents &rarr;</button>
+          </div>
+        </div>
+      )}
       {examinerMode && (
         <div style={{ background: C.yellow + "22", border: `1px solid ${C.yellow}`, borderRadius: 6, padding: "8px 12px", marginBottom: 12, fontSize: 13, color: C.yellow }}>
           Examiner Mode Active — DPE oral simulation in progress
@@ -358,12 +421,36 @@ function ChatTab({ messages, input, onInput, onSend, loading, examinerMode, chat
           </div>
         )}
         {messages.map((m, i) => (
-          <div key={i} style={{
-            alignSelf: m.role === "user" ? "flex-end" : "flex-start",
-            maxWidth: "80%", padding: "10px 14px", borderRadius: 8, fontSize: 13, lineHeight: 1.5,
-            background: m.role === "user" ? C.teal : C.card,
-            color: C.text, whiteSpace: "pre-wrap",
-          }}>{m.content}</div>
+          <div key={i} style={{ alignSelf: m.role === "user" ? "flex-end" : "flex-start", maxWidth: "80%" }}>
+            {/* Direct Mode label (TASK 1) */}
+            {m.mode === "direct" && m.role === "assistant" && (
+              <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 4, paddingLeft: 4 }}>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="#a78bfa"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM12 17c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zM15.1 8H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
+                <span style={{ fontSize: 10, fontWeight: 700, color: "#a78bfa", letterSpacing: "0.1em", textTransform: "uppercase" }}>Direct Mode</span>
+              </div>
+            )}
+            {/* Message bubble */}
+            <div style={{
+              padding: "10px 14px", borderRadius: 8, fontSize: 13, lineHeight: 1.5,
+              background: m.role === "user" ? C.teal : (m.mode === "direct" ? "#1a1033" : C.card),
+              border: m.mode === "direct" && m.role === "assistant" ? "1px solid #7c3aed44" : undefined,
+              color: C.text, whiteSpace: "pre-wrap",
+            }}>{m.content}</div>
+            {/* Citation (TASK 5) */}
+            {m.mode === "direct" && m.role === "assistant" && (
+              <div style={{
+                marginTop: 4, paddingLeft: 4, fontSize: 11, fontStyle: "italic", lineHeight: 1.4,
+                color: m.sourceType === "generic" ? "#d97706" : C.textDim,
+              }}>
+                {m.citation
+                  ? `Source: ${m.citation}`
+                  : m.sourceType === "generic"
+                    ? "Source: PC12-NG General Reference (generic) \u00b7 Upload your POH for aircraft-specific answers"
+                    : null
+                }
+              </div>
+            )}
+          </div>
         ))}
         {loading && <div style={{ color: C.textDim, fontSize: 13, padding: 8 }}>Thinking...</div>}
         <div ref={chatEndRef} />
@@ -543,6 +630,171 @@ function EndorsementForm() {
       </div>
       {msg && <div style={{ color: C.tealLight, fontSize: 13, marginTop: 8 }}>{msg}</div>}
     </>
+  );
+}
+
+// --- TASK 3: High-Risk Acknowledgment Modal ---
+
+function AcknowledgmentModal({ onAccept }) {
+  const [scrolled, setScrolled] = useState(false);
+  const contentRef = useRef(null);
+
+  function handleScroll() {
+    const el = contentRef.current;
+    if (el && el.scrollTop + el.clientHeight >= el.scrollHeight - 20) setScrolled(true);
+  }
+
+  return (
+    <div style={{ maxWidth: 520, width: "100%", margin: "0 24px" }}>
+      <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden" }}>
+        <div style={{ padding: "24px 24px 0", fontWeight: 700, fontSize: 18, color: C.text }}>Before you start</div>
+        <div ref={contentRef} onScroll={handleScroll} style={{
+          padding: "16px 24px", maxHeight: 400, overflowY: "auto", fontSize: 13, lineHeight: 1.7, color: C.textMuted,
+        }}>
+          <p style={{ marginBottom: 12 }}>This CoPilot is a <strong style={{ color: C.text }}>ground-use reference tool only</strong>. It is not certified for in-flight use and must never be used as a primary source during flight operations.</p>
+          <p style={{ marginBottom: 12 }}>Always cross-check CoPilot responses against your approved paper or electronic documents — POH, QRH, GOM, MEL, and OpSpecs. The AI can make mistakes, misinterpret questions, or return outdated information.</p>
+          <p style={{ marginBottom: 12 }}>Direct Mode responses are sourced from documents you upload. If you upload the wrong document, the wrong revision, or a document for a different serial number, the answers will be wrong. <strong style={{ color: C.text }}>You are responsible for verifying your uploads.</strong></p>
+          <p style={{ marginBottom: 12 }}>No AI output from this tool should ever override pilot judgment, company SOPs, or regulatory requirements. <strong style={{ color: C.text }}>Your judgment is the final authority.</strong></p>
+          <p>By continuing, you acknowledge that you understand these limitations and accept full responsibility for how you use the information provided.</p>
+        </div>
+        <div style={{ padding: "16px 24px" }}>
+          <button onClick={onAccept} disabled={!scrolled} style={{
+            width: "100%", background: scrolled ? C.teal : C.border, border: "none", borderRadius: 6,
+            color: scrolled ? "#fff" : C.textDim, padding: "12px", fontSize: 14, fontWeight: 600,
+            cursor: scrolled ? "pointer" : "not-allowed", transition: "all 0.2s",
+          }}>I understand — let's go</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --- TASK 2: Mode Info Sheet ---
+
+function ModeInfoSheet({ onClose, onForceMode }) {
+  const modes = [
+    { id: "direct", label: "Direct", desc: "Returns verbatim text from your uploaded documents with source citations. Used for limitations, checklists, and emergency procedures." },
+    { id: "operational", label: "Operational", desc: "Applies FARs, OpSpecs, and regulatory requirements to your specific question. Cited but not verbatim." },
+    { id: "training", label: "Training", desc: "Socratic study mode for checkride prep, scenario-based learning, and knowledge gap identification." },
+    { id: "advisory", label: "Advisory", desc: "General guidance and reasoning. The default mode for questions that don't require source documents." },
+  ];
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center" }} onClick={onClose}>
+      <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, maxWidth: 400, width: "100%", margin: "0 24px", padding: 24 }} onClick={e => e.stopPropagation()}>
+        <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 16, color: C.text }}>CoPilot Modes</div>
+        {modes.map(m => (
+          <div key={m.id} style={{ padding: "10px 0", borderBottom: `1px solid ${C.border}` }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontWeight: 600, fontSize: 13, color: m.id === "direct" ? "#a78bfa" : C.text }}>{m.label}</span>
+              <button onClick={() => onForceMode(m.id)} style={{
+                background: "none", border: `1px solid ${C.border}`, borderRadius: 4, color: C.textDim,
+                padding: "2px 8px", fontSize: 11, cursor: "pointer",
+              }}>Force</button>
+            </div>
+            <div style={{ fontSize: 12, color: C.textMuted, marginTop: 4, lineHeight: 1.5 }}>{m.desc}</div>
+          </div>
+        ))}
+        <button onClick={onClose} style={{ marginTop: 16, width: "100%", background: C.panel, border: `1px solid ${C.border}`, borderRadius: 6, color: C.text, padding: "8px", fontSize: 13, cursor: "pointer" }}>Close</button>
+      </div>
+    </div>
+  );
+}
+
+// --- TASK 4: Document Upload Tab ---
+
+const DOC_TYPES = [
+  { id: "poh", label: "POH (Pilot Operating Handbook)", ext: ".pdf" },
+  { id: "qrh", label: "QRH (Quick Reference Handbook)", ext: ".pdf" },
+  { id: "gom", label: "GOM (General Operations Manual)", ext: ".pdf" },
+  { id: "mel", label: "MEL (Minimum Equipment List)", ext: ".pdf" },
+  { id: "opspecs", label: "OpSpecs (Operations Specifications)", ext: ".pdf" },
+  { id: "wb", label: "W&B (Weight & Balance)", ext: ".pdf" },
+];
+
+function DocumentsTab({ documents, onUpload, uploadMsg, onReload }) {
+  const [uploading, setUploading] = useState(null);
+  const [uploadForm, setUploadForm] = useState({ docType: "", revision: "", effectiveDate: "", confirmed: false });
+  const [selectedFile, setSelectedFile] = useState(null);
+  const fileRef = useRef(null);
+
+  function getDocStatus(docTypeId) {
+    return (documents || []).find(d => d.docType === docTypeId);
+  }
+
+  async function handleSubmitUpload() {
+    if (!selectedFile || !uploadForm.confirmed) return;
+    setUploading(uploadForm.docType);
+    try {
+      const base64 = await fileToBase64(selectedFile);
+      await apiCall("uploadDoc", "POST", {
+        fileData: base64, fileName: selectedFile.name, mimeType: selectedFile.type,
+        docType: uploadForm.docType, revisionNumber: uploadForm.revision, effectiveDate: uploadForm.effectiveDate,
+      });
+      setUploading(null);
+      setSelectedFile(null);
+      setUploadForm({ docType: "", revision: "", effectiveDate: "", confirmed: false });
+      onReload();
+    } catch (e) {
+      setUploading(null);
+    }
+  }
+
+  return (
+    <div style={{ display: "grid", gap: 16 }}>
+      <Card title="Operator Documents">
+        <div style={{ fontSize: 12, color: C.textMuted, marginBottom: 16 }}>
+          Upload your aircraft-specific documents for accurate Direct Mode responses. Generic references are used until you upload.
+        </div>
+        {DOC_TYPES.map(dt => {
+          const existing = getDocStatus(dt.id);
+          return (
+            <div key={dt.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0", borderBottom: `1px solid ${C.border}` }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ color: existing ? C.green : "#d97706", fontSize: 14 }}>{existing ? "\u2713" : "\u2014"}</span>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: C.text }}>{dt.label}</div>
+                  {existing && (
+                    <div style={{ fontSize: 11, color: C.textDim }}>
+                      {existing.fileName} &middot; Rev {existing.revisionNumber || "?"} &middot; {existing.effectiveDate || "No date"} &middot; Uploaded {existing.uploadDate || ""}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <button onClick={() => {
+                setUploadForm({ docType: dt.id, revision: "", effectiveDate: "", confirmed: false });
+                setSelectedFile(null);
+                fileRef.current?.click();
+              }} style={{
+                background: "none", border: `1px solid ${C.border}`, borderRadius: 4, color: existing ? C.textDim : C.tealLight,
+                padding: "4px 10px", fontSize: 11, cursor: "pointer",
+              }}>{existing ? "Replace" : "Upload"}</button>
+            </div>
+          );
+        })}
+        <input ref={fileRef} type="file" accept=".pdf,.txt" style={{ display: "none" }} onChange={e => {
+          if (e.target.files[0]) setSelectedFile(e.target.files[0]);
+          e.target.value = "";
+        }} />
+      </Card>
+      {selectedFile && uploadForm.docType && (
+        <Card title={`Upload: ${DOC_TYPES.find(d => d.id === uploadForm.docType)?.label || uploadForm.docType}`}>
+          <div style={{ fontSize: 13, color: C.textMuted, marginBottom: 12 }}>File: {selectedFile.name}</div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+            <EFBInput label="Revision Number" value={uploadForm.revision} onChange={v => setUploadForm(f => ({ ...f, revision: v }))} />
+            <EFBInput label="Effective Date" type="date" value={uploadForm.effectiveDate} onChange={v => setUploadForm(f => ({ ...f, effectiveDate: v }))} />
+          </div>
+          <label style={{ display: "flex", alignItems: "flex-start", gap: 8, cursor: "pointer", marginBottom: 12 }}>
+            <input type="checkbox" checked={uploadForm.confirmed} onChange={e => setUploadForm(f => ({ ...f, confirmed: e.target.checked }))}
+              style={{ marginTop: 3 }} />
+            <span style={{ fontSize: 12, color: C.textMuted, lineHeight: 1.5 }}>
+              I confirm this is the correct document for my specific aircraft, current approved revision, and I accept responsibility for incorrect uploads.
+            </span>
+          </label>
+          <EFBButton label={uploading ? "Uploading..." : "Upload Document"} onClick={handleSubmitUpload} color={uploadForm.confirmed ? C.teal : C.border} />
+        </Card>
+      )}
+      {uploadMsg && <div style={{ color: C.tealLight, fontSize: 13 }}>{uploadMsg}</div>}
+    </div>
   );
 }
 
