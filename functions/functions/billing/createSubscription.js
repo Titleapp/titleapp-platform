@@ -6,6 +6,7 @@
 const admin = require("firebase-admin");
 const Stripe = require("stripe");
 const { logActivity } = require("../admin/logActivity");
+const { validateWorkerPrice } = require("../helpers/workerSchema");
 
 function getDb() { return admin.firestore(); }
 function getStripe() {
@@ -30,6 +31,21 @@ async function createSubscription(req, res) {
     return res.status(404).json({ ok: false, error: "User not found" });
   }
   const userData = userSnap.data();
+
+  // Validate tier price against approved pricing floor
+  const pricingConfig = require("../config/pricing");
+  const tierKey = tier || "tier1";
+  const requestedTier = pricingConfig.subscriptionTiers[tierKey];
+  if (!requestedTier) {
+    return res.status(400).json({ ok: false, error: `Unknown tier: ${tierKey}` });
+  }
+  if (requestedTier.price !== null) {
+    try {
+      validateWorkerPrice(requestedTier.price);
+    } catch (e) {
+      return res.status(400).json({ ok: false, error: e.message });
+    }
+  }
 
   // Get or create Stripe customer
   let customerId = userData.stripeCustomerId;

@@ -50,5 +50,6 @@ module.exports = {
   },
 
   // ── Creator Payout ───────────────────────────────────────────
-  creatorMinPayoutThreshold: 0.50,     // $ minimum before transfer
+  creatorMinPayoutThreshold: 50,       // $ minimum before transfer ($50)
+  creatorMaxPayoutHoldWeeks: 4,        // Force payout after 4 weeks regardless of balance
 };

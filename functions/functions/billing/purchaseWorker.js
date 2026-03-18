@@ -1,11 +1,13 @@
 /**
- * purchaseWorker.js — Marketplace purchase with 75/25 split.
- * Subscriber buys/subscribes to a Worker. 75% to creator, 25% to TitleApp.
+ * purchaseWorker.js — Marketplace purchase with revenue split.
+ * Creator workers: 75% to creator via Connect, 25% to TitleApp.
+ * Platform workers: 100% to TitleApp, no split.
  */
 
 const admin = require("firebase-admin");
 const Stripe = require("stripe");
 const { logActivity } = require("../admin/logActivity");
+const { validateWorkerPrice } = require("../helpers/workerSchema");
 
 function getDb() { return admin.firestore(); }
 function getStripe() {
@@ -40,57 +42,112 @@ async function purchaseWorker(req, res) {
   }
   const worker = workerSnap.data();
 
-  // Get creator's Connect account
-  const creatorSnap = await db.collection("users").doc(worker.creatorId).get();
-  if (!creatorSnap.exists || !creatorSnap.data().stripeConnectAccountId) {
-    return res.status(400).json({ ok: false, error: "Creator has no payout account" });
+  const amount = priceAmount || worker.priceMonthly || 0; // cents
+  const amountDollars = Math.round(amount / 100);
+
+  // Pricing floor validation — reject prices outside approved set
+  try {
+    validateWorkerPrice(amountDollars);
+  } catch (e) {
+    return res.status(400).json({ ok: false, error: e.message });
   }
-  const creatorConnectId = creatorSnap.data().stripeConnectAccountId;
 
-  const amount = priceAmount || worker.priceMonthly || 999; // cents
-
-  // Get platform fee config
-  const configSnap = await db.collection("config").doc("stripe").get();
-  const config = configSnap.exists ? configSnap.data() : {};
-  const feePercent = config.connect?.platformFeePercent || 25;
-
-  // Create payment intent with Connect
-  const paymentIntent = await stripe.paymentIntents.create({
-    amount,
-    currency: "usd",
-    customer: buyer.stripeCustomerId,
-    application_fee_amount: Math.round(amount * (feePercent / 100)),
-    transfer_data: {
-      destination: creatorConnectId,
-    },
-    metadata: {
+  // Free workers — no charge needed
+  if (amountDollars === 0) {
+    await db.collection("marketplacePurchases").add({
       buyerUserId,
       workerId,
-      creatorId: worker.creatorId,
-      workerName: worker.name || workerId,
-    },
-    confirm: true,
-    automatic_payment_methods: { enabled: true, allow_redirects: "never" },
-  });
+      creatorId: worker.creatorId || "titleapp-platform",
+      amount: 0,
+      platformFee: 0,
+      creatorShare: 0,
+      stripePaymentIntentId: null,
+      status: "free",
+      timestamp: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    await logActivity("revenue", `Free worker activated: ${worker.name || workerId}`, "info", { buyerUserId, workerId });
+    return res.json({ ok: true, status: "free", amount: 0 });
+  }
+
+  // Determine if platform worker (100% TitleApp) or creator worker (75/25 split)
+  const isPlatformWorker = worker.creatorId === "titleapp-platform" || !worker.creatorId;
+
+  let paymentIntent;
+  let platformFee = 0;
+  let creatorShare = 0;
+
+  if (isPlatformWorker) {
+    // Platform worker — 100% TitleApp, no split
+    paymentIntent = await stripe.paymentIntents.create({
+      amount,
+      currency: "usd",
+      customer: buyer.stripeCustomerId,
+      metadata: {
+        buyerUserId,
+        workerId,
+        creatorId: "titleapp-platform",
+        workerName: worker.name || workerId,
+        type: "platform_worker",
+      },
+      confirm: true,
+      automatic_payment_methods: { enabled: true, allow_redirects: "never" },
+    });
+    platformFee = amount / 100;
+    creatorShare = 0;
+  } else {
+    // Creator worker — 75/25 split via Stripe Connect
+    const creatorSnap = await db.collection("users").doc(worker.creatorId).get();
+    if (!creatorSnap.exists || !creatorSnap.data().stripeConnectAccountId) {
+      return res.status(400).json({ ok: false, error: "Creator has no payout account" });
+    }
+    const creatorConnectId = creatorSnap.data().stripeConnectAccountId;
+
+    const configSnap = await db.collection("config").doc("stripe").get();
+    const config = configSnap.exists ? configSnap.data() : {};
+    const feePercent = config.connect?.platformFeePercent || 25;
+
+    platformFee = Math.round(amount * (feePercent / 100)) / 100;
+    creatorShare = (amount - Math.round(amount * (feePercent / 100))) / 100;
+
+    paymentIntent = await stripe.paymentIntents.create({
+      amount,
+      currency: "usd",
+      customer: buyer.stripeCustomerId,
+      application_fee_amount: Math.round(amount * (feePercent / 100)),
+      transfer_data: {
+        destination: creatorConnectId,
+      },
+      metadata: {
+        buyerUserId,
+        workerId,
+        creatorId: worker.creatorId,
+        workerName: worker.name || workerId,
+        type: "creator_worker",
+      },
+      confirm: true,
+      automatic_payment_methods: { enabled: true, allow_redirects: "never" },
+    });
+  }
 
   // Log marketplace purchase
   await db.collection("marketplacePurchases").add({
     buyerUserId,
     workerId,
-    creatorId: worker.creatorId,
+    creatorId: worker.creatorId || "titleapp-platform",
     amount: amount / 100,
-    platformFee: Math.round(amount * (feePercent / 100)) / 100,
-    creatorShare: (amount - Math.round(amount * (feePercent / 100))) / 100,
+    platformFee,
+    creatorShare,
     stripePaymentIntentId: paymentIntent.id,
     status: paymentIntent.status,
+    isPlatformWorker,
     timestamp: admin.firestore.FieldValue.serverTimestamp(),
   });
 
   await logActivity(
     "revenue",
-    `Marketplace purchase: ${worker.name || workerId} — $${(amount / 100).toFixed(2)} (${feePercent}% platform fee)`,
+    `Marketplace purchase: ${worker.name || workerId} — $${(amount / 100).toFixed(2)} (${isPlatformWorker ? "100% platform" : "75/25 split"})`,
     "success",
-    { buyerUserId, workerId, creatorId: worker.creatorId }
+    { buyerUserId, workerId, creatorId: worker.creatorId || "titleapp-platform" }
   );
 
   return res.json({
@@ -98,8 +155,8 @@ async function purchaseWorker(req, res) {
     paymentIntentId: paymentIntent.id,
     status: paymentIntent.status,
     amount: amount / 100,
-    platformFee: Math.round(amount * (feePercent / 100)) / 100,
-    creatorShare: (amount - Math.round(amount * (feePercent / 100))) / 100,
+    platformFee,
+    creatorShare,
   });
 }
 

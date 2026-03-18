@@ -57,7 +57,7 @@ async function createConnectAccount(req, res) {
     },
     settings: {
       payouts: {
-        schedule: { interval: "weekly", weekly_anchor: "friday" },
+        schedule: { interval: "weekly", weekly_anchor: "monday" },
       },
     },
   });

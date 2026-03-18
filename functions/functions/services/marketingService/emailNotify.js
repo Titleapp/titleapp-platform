@@ -82,4 +82,34 @@ async function sendWelcomeEmail({ name, email, vertical }) {
   await sendViaSendGrid({ to: email, subject, htmlBody });
 }
 
-module.exports = { notifySean, sendWelcomeEmail, sendViaSendGrid };
+async function sendConnectOnboardingEmail({ email, name, onboardingUrl, workerName }) {
+  const firstName = name ? name.split(" ")[0] : "there";
+  const subject = "Set up payouts for your Digital Worker";
+  const htmlBody = `
+<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+  <div style="margin-bottom: 32px;">
+    <span style="font-size: 20px; font-weight: 700; color: #7c3aed;">TitleApp</span>
+  </div>
+  <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">Hi ${firstName},</p>
+  <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">Your Digital Worker${workerName ? " — " + workerName + " —" : ""} has been approved and is live on the marketplace.</p>
+  <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">To start receiving payouts, set up your payment account. Here is how it works:</p>
+  <ul style="font-size: 16px; color: #1a202c; line-height: 1.8; padding-left: 20px;">
+    <li>You receive 75% of every subscription</li>
+    <li>TitleApp receives 25% as a platform fee</li>
+    <li>Payouts are weekly (every Monday), minimum $50</li>
+    <li>Stripe handles tax forms and compliance</li>
+  </ul>
+  <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">
+    <a href="${onboardingUrl}" style="display: inline-block; background: #7c3aed; color: #fff; padding: 12px 28px; border-radius: 6px; text-decoration: none; font-weight: 600;">Set Up Payouts</a>
+  </p>
+  <p style="font-size: 14px; color: #64748b; line-height: 1.6;">Your worker is already live — any earnings before you complete setup will be held and paid out once your account is ready.</p>
+  <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">— Alex</p>
+  <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+    <p style="font-size: 13px; color: #94a3b8;">TitleApp LLC | Start Free. 60-Day Money Back. Your Data Is Always Yours.</p>
+  </div>
+</div>`;
+
+  await sendViaSendGrid({ to: email, subject, htmlBody });
+}
+
+module.exports = { notifySean, sendWelcomeEmail, sendViaSendGrid, sendConnectOnboardingEmail };

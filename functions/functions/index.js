@@ -5386,6 +5386,45 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
             type: "worker_approved", workerId, workerName: worker.name,
             reviewerId: user.uid, tenantId: reviewTenantId, timestamp: nowServerTs(),
           });
+
+          // Auto-create Stripe Connect account for creator if not already set up
+          const creatorUserId = worker.createdBy || user.uid;
+          try {
+            const creatorDoc = await db.collection("users").doc(creatorUserId).get();
+            if (creatorDoc.exists && !creatorDoc.data().stripeConnectAccountId) {
+              const Stripe = require("stripe");
+              const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2024-06-20" });
+              const creatorData = creatorDoc.data();
+              const connectAccount = await stripe.accounts.create({
+                type: "express",
+                email: creatorData.email,
+                metadata: { userId: creatorUserId },
+                capabilities: { card_payments: { requested: true }, transfers: { requested: true } },
+                settings: { payouts: { schedule: { interval: "weekly", weekly_anchor: "monday" } } },
+              });
+              await db.collection("users").doc(creatorUserId).set(
+                { stripeConnectAccountId: connectAccount.id },
+                { merge: true }
+              );
+              // Generate onboarding link and send email
+              const accountLink = await stripe.accountLinks.create({
+                account: connectAccount.id,
+                refresh_url: "https://app.titleapp.ai/sandbox?connect=refresh",
+                return_url: "https://app.titleapp.ai/sandbox?connect=success",
+                type: "account_onboarding",
+              });
+              const { sendConnectOnboardingEmail } = require("./services/marketingService/emailNotify");
+              await sendConnectOnboardingEmail({
+                email: creatorData.email,
+                name: creatorData.name || creatorData.displayName || "",
+                onboardingUrl: accountLink.url,
+                workerName: worker.name,
+              });
+              console.log(`[admin:worker:review] Created Connect account for creator ${creatorUserId}`);
+            }
+          } catch (connectErr) {
+            console.error("[admin:worker:review] Connect onboarding failed (non-blocking):", connectErr.message);
+          }
         } else {
           // Rejected
           await workerRef.update({

@@ -110,6 +110,16 @@ const VALID_WORKER_TYPES = ["standalone", "pipeline", "composite", "copilot", "o
 
 const VALID_PRICING_TIERS = [0, 29, 49, 79];
 
+/**
+ * Shared pricing floor validator — call at the top of any payment function.
+ * Throws if price is not in the approved set.
+ */
+function validateWorkerPrice(price) {
+  if (!VALID_PRICING_TIERS.includes(price)) {
+    throw new Error(`Invalid price $${price}. Must be one of: ${VALID_PRICING_TIERS.join(", ")}`);
+  }
+}
+
 const VALID_STATUSES = ["draft", "waitlist", "live", "development"];
 
 // ═══════════════════════════════════════════════════════════════
@@ -859,6 +869,7 @@ module.exports = {
   validateWorkerRecord,
   validateRegistryRecord,
   autoFixWorkerRecord,
+  validateWorkerPrice,
   parsePriceTier,
   slugify,
 };

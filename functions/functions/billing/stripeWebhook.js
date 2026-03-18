@@ -186,6 +186,29 @@ async function handleCycleClose(db, stripe, invoiceData) {
     }
   });
 
+  // Check for deferred payouts older than 4 weeks — force-process regardless of balance
+  const maxHoldWeeks = pricing.creatorMaxPayoutHoldWeeks || 4;
+  const maxHoldCutoff = new Date(Date.now() - maxHoldWeeks * 7 * 24 * 60 * 60 * 1000);
+  try {
+    const deferredSnap = await db.collection("creatorPayouts")
+      .where("status", "==", "deferred")
+      .where("timestamp", "<=", maxHoldCutoff)
+      .limit(50)
+      .get();
+    for (const doc of deferredSnap.docs) {
+      const deferred = doc.data();
+      const dCreatorId = deferred.creatorId;
+      if (!dCreatorId) continue;
+      // Add deferred amount to current cycle's payout
+      if (!creatorShares[dCreatorId]) creatorShares[dCreatorId] = 0;
+      creatorShares[dCreatorId] += deferred.amount || 0;
+      // Mark deferred record as absorbed into this cycle
+      await doc.ref.update({ status: "absorbed", absorbedAt: admin.firestore.FieldValue.serverTimestamp() });
+    }
+  } catch (e) {
+    console.error("Deferred payout aggregation failed:", e.message);
+  }
+
   for (const [creatorId, amount] of Object.entries(creatorShares)) {
     if (amount < pricing.creatorMinPayoutThreshold) continue;
 
@@ -374,6 +397,27 @@ async function handleStripeWebhook(req, res) {
           stripeInvoiceId: data.id,
         });
 
+        // Mark subscription as past_due in Firestore
+        const failedUserId = data.metadata?.userId;
+        if (failedUserId) {
+          await db.collection("users").doc(failedUserId).set(
+            { stripeSubscriptionStatus: "past_due" },
+            { merge: true }
+          );
+        } else {
+          // Look up user by customer ID
+          const failedUserSnap = await db.collection("users")
+            .where("stripeCustomerId", "==", data.customer)
+            .limit(1)
+            .get();
+          if (!failedUserSnap.empty) {
+            await failedUserSnap.docs[0].ref.set(
+              { stripeSubscriptionStatus: "past_due" },
+              { merge: true }
+            );
+          }
+        }
+
         // Alert Sean if amount > $50
         if (amount > 50) {
           await db.collection("escalations").add({
@@ -423,9 +467,9 @@ async function handleStripeWebhook(req, res) {
       }
 
       case "customer.subscription.deleted": {
-        const userId = data.metadata?.userId;
-        if (userId) {
-          await db.collection("users").doc(userId).set(
+        const deletedUserId = data.metadata?.userId;
+        if (deletedUserId) {
+          await db.collection("users").doc(deletedUserId).set(
             {
               stripeSubscriptionStatus: "canceled",
               tier: "free",
@@ -433,6 +477,25 @@ async function handleStripeWebhook(req, res) {
             },
             { merge: true }
           );
+
+          // Remove active worker subscriptions tied to this Stripe subscription
+          try {
+            const activeSubs = await db.collection("workerSubscriptions")
+              .where("userId", "==", deletedUserId)
+              .where("stripeSubscriptionId", "==", data.id)
+              .get();
+            for (const sub of activeSubs.docs) {
+              await sub.ref.update({
+                status: "cancelled",
+                cancelledAt: admin.firestore.FieldValue.serverTimestamp(),
+              });
+            }
+            if (!activeSubs.empty) {
+              await logActivity("system", `Removed ${activeSubs.size} worker subscription(s) for user ${deletedUserId}`, "info");
+            }
+          } catch (e) {
+            console.error("[webhook] Worker subscription cleanup failed:", e.message);
+          }
         }
         await logActivity("revenue", `Subscription canceled: ${data.id}`, "warning");
         break;
@@ -538,15 +601,33 @@ async function handleStripeWebhook(req, res) {
       }
 
       case "transfer.created": {
-        const amount = data.amount / 100;
+        const transferAmount = data.amount / 100;
         await db.collection("creatorPayouts").add({
           stripeTransferId: data.id,
-          amount,
+          amount: transferAmount,
           currency: data.currency,
           destinationAccount: data.destination,
           timestamp: admin.firestore.FieldValue.serverTimestamp(),
         });
-        await logActivity("revenue", `Creator payout: $${amount.toFixed(2)}`, "info");
+
+        // Emit creator event — look up creator by Connect account
+        try {
+          const creatorByConnect = await db.collection("users")
+            .where("stripeConnectAccountId", "==", data.destination)
+            .limit(1)
+            .get();
+          if (!creatorByConnect.empty) {
+            const { emitCreatorEvent } = require("../services/sandbox/creatorEvents");
+            emitCreatorEvent(creatorByConnect.docs[0].id, "payout_received", {
+              amount: transferAmount,
+              transferId: data.id,
+            });
+          }
+        } catch (e) {
+          console.error("[webhook] Creator event emit failed:", e.message);
+        }
+
+        await logActivity("revenue", `Creator payout: $${transferAmount.toFixed(2)}`, "info");
         break;
       }
 
