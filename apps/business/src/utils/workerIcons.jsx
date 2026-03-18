@@ -1758,6 +1758,7 @@ export const SUITE_COLORS = {
   "Aviation": "#0284c7",
   "Government": "#1a237e",
   "Title & Escrow": "#00695C",
+  "Solar Energy": "#f59e0b",
   "Platform": "#7c3aed",
 };
 
@@ -1772,6 +1773,7 @@ export const VERTICAL_COLORS = {
   "property-mgmt": "#7c3aed",
   government: "#1a237e",
   title_escrow: "#00695C",
+  solar: "#f59e0b",
   custom: "#4f46e5",
 };
 

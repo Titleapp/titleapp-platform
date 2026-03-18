@@ -127,6 +127,16 @@ const MARKETPLACE_SLUG_MAP = {
   "AV-P04": "av-training-proficiency",
   "AV-P05": "av-flight-planning",
   "AV-P06": "av-alex-personal",
+  // Solar Energy
+  "SOL-001": "solar-sales-closer",
+  "SOL-002": "solar-permit-navigator",
+  "SOL-003": "solar-hoa-approval",
+  "SOL-004": "solar-insurance-warranty",
+  "SOL-005": "solar-easement-title",
+  "SOL-006": "solar-incentive-tracker",
+  "SOL-007": "solar-system-monitor",
+  "SOL-008": "solar-credit-ledger",
+  "SOL-009": "srec-exchange-compliance",
 };
 
 // Ruleset ID mapping: marketplace slug → ruleset file name
@@ -257,6 +267,16 @@ const DISPLAY_NAME_MAP = {
   "HE-029": "Protocol Reference",
   "HE-032": "CEU & License Tracker",
   "HE-037": "Creator Analytics",
+  // Solar Energy
+  "SOL-001": "Solar Sales Closer",
+  "SOL-002": "Permit & Interconnection",
+  "SOL-003": "HOA Solar Approval",
+  "SOL-004": "Insurance & Warranty",
+  "SOL-005": "Easement & Title",
+  "SOL-006": "Incentive Tracker",
+  "SOL-007": "System Monitor",
+  "SOL-008": "Credit Ledger",
+  "SOL-009": "Exchange Compliance",
 };
 
 // Headline overrides from App.jsx WORKER_DETAIL_CONTENT (first 80 chars)
@@ -313,6 +333,16 @@ const HEADLINE_MAP = {
   "he-protocol-reference": "The right protocol for your jurisdiction, your scope, your patient",
   "he-ceu-tracker": "Every CE hour tracked, every license renewal flagged before it lapses",
   "he-creator-analytics": "Know which content performs and where your subscribers come from",
+  // Solar Energy
+  "solar-sales-closer": "Qualify leads, calculate savings, navigate financing options",
+  "solar-permit-navigator": "AHJ permits to utility interconnection — every jurisdiction",
+  "solar-hoa-approval": "HOA approval backed by state solar access law",
+  "solar-insurance-warranty": "Equipment warranties, policy riders, and claims tracked",
+  "solar-easement-title": "Roof leases, PACE liens, and title issues handled",
+  "solar-incentive-tracker": "Federal ITC to local rebates — every dollar found",
+  "solar-system-monitor": "Your solar system performance, tracked permanently",
+  "solar-credit-ledger": "SRECs issued as DTCs — blockchain-verified, registry-reported",
+  "srec-exchange-compliance": "KYC/AML and trade verification for SREC exchange participants",
 };
 
 // ═══════════════════════════════════════════════════════════════

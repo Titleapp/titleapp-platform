@@ -1,0 +1,389 @@
+{
+  "vertical": "solar_energy",
+  "name": "Solar Energy",
+  "version": "1.0.0",
+  "lifecycle": [
+    {
+      "phase": 0,
+      "name": "Lead & Site Assessment",
+      "description": "Qualify leads, assess site suitability, estimate system size and savings"
+    },
+    {
+      "phase": 1,
+      "name": "Design & Engineering",
+      "description": "System design, equipment selection, engineering review"
+    },
+    {
+      "phase": 2,
+      "name": "Permitting & Compliance",
+      "description": "AHJ permits, HOA approval, utility interconnection application"
+    },
+    {
+      "phase": 3,
+      "name": "Financing & Incentives",
+      "description": "Financing options, incentive stacking, PACE, ITC eligibility"
+    },
+    {
+      "phase": 4,
+      "name": "Installation & Construction",
+      "description": "Roof or ground-mount install, electrical work, equipment commissioning"
+    },
+    {
+      "phase": 5,
+      "name": "Inspection & Activation",
+      "description": "Building inspection, electrical inspection, utility witness test, PTO"
+    },
+    {
+      "phase": 6,
+      "name": "Operations & Monitoring",
+      "description": "Production monitoring, net metering, performance optimization"
+    },
+    {
+      "phase": 7,
+      "name": "Warranty & Support",
+      "description": "Equipment warranty, workmanship warranty, insurance coordination"
+    }
+  ],
+  "suites": [
+    { "id": "sales", "name": "Sales" },
+    { "id": "permitting", "name": "Permitting & Compliance" },
+    { "id": "legal", "name": "Legal & Title" },
+    { "id": "insurance", "name": "Insurance & Warranty" },
+    { "id": "finance", "name": "Finance & Incentives" },
+    { "id": "operations", "name": "Operations" }
+  ],
+  "tracks": [
+    { "id": "operator", "name": "Operator Track", "description": "Solar company internal teams" },
+    { "id": "customer-vault", "name": "Customer Vault Track", "description": "Homeowner-owned workers deployed at install completion" },
+    { "id": "credit-ledger", "name": "Credit Ledger Track", "description": "REC/SREC tokenization — scoped, not built" }
+  ],
+  "workers": [
+    {
+      "id": "SOL-001",
+      "name": "Solar Sales Closer",
+      "slug": "solar-sales-closer",
+      "suite": "Sales",
+      "phase": 0,
+      "type": "standalone",
+      "pricing": { "monthly": 29 },
+      "status": "live",
+      "capabilitySummary": "Qualifies solar leads, calculates savings and payback period, navigates financing options (PPA/lease/loan/cash/PACE), handles objections, and books consultations",
+      "tags": ["sales", "lead-qualification", "financing", "savings-calculator"],
+      "temporalType": "always_on",
+      "forkedFrom": "real-estate-sales-agent",
+      "track": "operator",
+      "tier1Compliance": [
+        "FTC consumer protection — solar sales practices",
+        "Truth-in-Lending Act (TILA) for PACE financing disclosures",
+        "State solar consumer protection laws (CA, TX, FL, AZ, NJ)",
+        "Cooling-off period and contract disclosure requirements by state",
+        "No guaranteed financial outcomes — savings estimates must include disclaimers"
+      ],
+      "vault": {
+        "reads": ["customer_profile", "property_data", "utility_bills"],
+        "writes": ["lead_qualification", "savings_estimate", "consultation_booking"]
+      },
+      "referrals": [
+        { "event": "lead_qualified", "routesTo": "SOL-002" },
+        { "event": "financing_selected", "routesTo": "SOL-006" }
+      ],
+      "alexRegistration": {
+        "priority": "high",
+        "acceptsTasks": true,
+        "briefingContribution": "lead_pipeline_status"
+      }
+    },
+    {
+      "id": "SOL-002",
+      "name": "Solar Permit & Interconnection Navigator",
+      "slug": "solar-permit-navigator",
+      "suite": "Permitting & Compliance",
+      "phase": 2,
+      "type": "standalone",
+      "pricing": { "monthly": 49 },
+      "status": "live",
+      "capabilitySummary": "Manages full permit-to-interconnection workflow: AHJ building permit, electrical permit, utility interconnection application, net metering enrollment, and inspection scheduling",
+      "tags": ["permitting", "interconnection", "net-metering", "AHJ", "NEC"],
+      "temporalType": "phase_bound",
+      "forkedFrom": "permit-inspection-tracker",
+      "track": "operator",
+      "tier1Compliance": [
+        "NEC 2020/2023 Article 690 — solar PV systems",
+        "NEC Article 705 — interconnected power production sources",
+        "State energy codes vary by jurisdiction",
+        "Utility tariff rules and net metering regulations by state",
+        "AHJ-specific building and electrical permit requirements",
+        "Fire setback requirements vary by jurisdiction",
+        "Must identify applicable rules per ZIP code before advising"
+      ],
+      "vault": {
+        "reads": ["system_design", "property_data", "customer_profile"],
+        "writes": ["permit_application", "interconnection_application", "inspection_schedule", "net_metering_enrollment"]
+      },
+      "referrals": [
+        { "event": "permits_approved", "routesTo": "SOL-004" },
+        { "event": "interconnection_approved", "routesTo": "SOL-007" }
+      ],
+      "alexRegistration": {
+        "priority": "high",
+        "acceptsTasks": true,
+        "briefingContribution": "permit_status"
+      }
+    },
+    {
+      "id": "SOL-003",
+      "name": "HOA Solar Approval Agent",
+      "slug": "solar-hoa-approval",
+      "suite": "Legal & Title",
+      "phase": 2,
+      "type": "standalone",
+      "pricing": { "monthly": 29 },
+      "status": "live",
+      "capabilitySummary": "Navigates HOA approval process for solar installations. Knows state solar access laws (26+ states), prepares HOA application packages, drafts variance requests, and tracks approval timelines",
+      "tags": ["HOA", "solar-access", "approval", "variance"],
+      "temporalType": "phase_bound",
+      "forkedFrom": "hoa-association",
+      "track": "operator",
+      "tier1Compliance": [
+        "State solar access laws — 26+ states limit HOA prohibition of solar",
+        "CA Solar Rights Act (Civil Code 714)",
+        "AZ Solar Rights (ARS 33-439)",
+        "TX Property Code 202.010 — solar device restrictions",
+        "FL Solar Rights (163.04)",
+        "CO HOA solar access provisions",
+        "HOA CC&Rs, architectural guidelines, application procedures",
+        "Must identify applicable state law before advising on HOA interaction"
+      ],
+      "vault": {
+        "reads": ["property_data", "hoa_ccrs", "system_design"],
+        "writes": ["hoa_application", "variance_request", "approval_status"]
+      },
+      "referrals": [
+        { "event": "hoa_approved", "routesTo": "SOL-002" }
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "hoa_approval_status"
+      }
+    },
+    {
+      "id": "SOL-004",
+      "name": "Solar Insurance & Warranty Coordinator",
+      "slug": "solar-insurance-warranty",
+      "suite": "Insurance & Warranty",
+      "phase": 7,
+      "type": "standalone",
+      "pricing": { "monthly": 29 },
+      "status": "live",
+      "capabilitySummary": "Manages homeowner policy riders for solar equipment, roof warranty coordination with installers, equipment manufacturer warranty tracking, and workmanship warranty documentation",
+      "tags": ["insurance", "warranty", "equipment", "claims"],
+      "temporalType": "always_on",
+      "forkedFrom": "insurance-risk",
+      "track": "operator",
+      "tier1Compliance": [
+        "State contractor licensing requirements",
+        "Warranty disclosure laws by state",
+        "Installer workmanship warranty terms",
+        "Equipment manufacturer warranty pass-through requirements",
+        "Insurance certificate requirements for subcontractors"
+      ],
+      "vault": {
+        "reads": ["system_specs", "install_records", "equipment_list"],
+        "writes": ["warranty_tracking", "insurance_rider", "claim_records"]
+      },
+      "referrals": [
+        { "event": "warranty_claim", "routesTo": "SOL-007" }
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "warranty_status"
+      }
+    },
+    {
+      "id": "SOL-005",
+      "name": "Solar Easement & Title Worker",
+      "slug": "solar-easement-title",
+      "suite": "Legal & Title",
+      "phase": 3,
+      "type": "standalone",
+      "pricing": { "monthly": 49 },
+      "status": "live",
+      "capabilitySummary": "Handles roof lease agreements for community solar, land easements for ground-mount systems, property disclosure requirements for solar liens (PACE), and title search for existing encumbrances affecting solar financing",
+      "tags": ["title", "easement", "PACE", "lien", "disclosure"],
+      "temporalType": "phase_bound",
+      "forkedFrom": "title-escrow",
+      "track": "operator",
+      "tier1Compliance": [
+        "PACE disclosure requirements (CFPB guidance)",
+        "PACE lien priority laws — CA, FL, MO have different priority rules",
+        "Property disclosure requirements when selling home with solar lien or lease",
+        "Roof lease agreement requirements for community solar",
+        "Land easement requirements for ground-mount systems",
+        "Must identify state law before advising on PACE lien priority"
+      ],
+      "vault": {
+        "reads": ["property_data", "title_report", "financing_type"],
+        "writes": ["easement_agreement", "lien_disclosure", "title_search_results"]
+      },
+      "referrals": [
+        { "event": "title_clear", "routesTo": "SOL-002" },
+        { "event": "pace_lien_recorded", "routesTo": "SOL-006" }
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "title_status"
+      }
+    },
+    {
+      "id": "SOL-006",
+      "name": "Solar Regulatory & Incentive Tracker",
+      "slug": "solar-incentive-tracker",
+      "suite": "Finance & Incentives",
+      "phase": 3,
+      "type": "standalone",
+      "pricing": { "monthly": 29 },
+      "status": "live",
+      "capabilitySummary": "Tracks and applies all available solar incentives: federal ITC (30%), state tax credits, utility rebates, SREC markets, and local incentive programs. Calculates combined incentive stack for a given address",
+      "tags": ["incentives", "ITC", "SREC", "rebates", "tax-credits"],
+      "temporalType": "always_on",
+      "forkedFrom": "compliance-tracker",
+      "track": "operator",
+      "tier1Compliance": [
+        "Federal ITC rules — IRC Section 48 (commercial) and Section 25D (residential)",
+        "IRS guidance on eligible costs for ITC",
+        "State tax credit rules — amount, eligibility, carryforward vary by state",
+        "Utility rebate program rules — capacity caps, first-come-first-served, deadlines",
+        "SREC market rules by state (NJ, MA, DC, MD, PA, OH, IL)",
+        "FERC Order 2222 — distributed energy resource aggregation",
+        "Must caveat all incentive amounts with 'subject to program availability'",
+        "Incentive programs change frequently — always disclose when information may be outdated"
+      ],
+      "vault": {
+        "reads": ["property_data", "system_specs", "utility_company"],
+        "writes": ["incentive_stack", "rebate_applications", "srec_tracking"]
+      },
+      "referrals": [
+        { "event": "incentives_calculated", "routesTo": "SOL-001" }
+      ],
+      "alexRegistration": {
+        "priority": "high",
+        "acceptsTasks": true,
+        "briefingContribution": "incentive_status"
+      }
+    },
+    {
+      "id": "SOL-007",
+      "name": "Solar System Monitor",
+      "slug": "solar-system-monitor",
+      "suite": "Operations",
+      "phase": 6,
+      "type": "standalone",
+      "pricing": { "monthly": 29 },
+      "status": "live",
+      "capabilitySummary": "Monitors homeowner solar system performance. Tracks production vs consumption, net metering credits, estimated payback timeline, and ROI. Flags underperformance, soiling alerts, and equipment issues. Camera and wearable integration stubs included",
+      "tags": ["monitoring", "performance", "net-metering", "homeowner", "vault-worker"],
+      "temporalType": "always_on",
+      "forkedFrom": null,
+      "track": "customer-vault",
+      "tier1Compliance": [
+        "Homeowner Vault worker — deployed by solar company at install, lives in homeowner Vault permanently",
+        "Net metering interconnection rules (FERC Order 2222 context)",
+        "State net metering tariff rules by utility — vary significantly",
+        "Utility-specific metering and billing rules",
+        "Must identify homeowner's utility and state to correctly interpret bill and credits",
+        "Camera stub: /api/wearable/v1/visual-query accepts image upload for panel condition analysis",
+        "Wearable stub: same endpoint for technician on-roof real-time guidance"
+      ],
+      "vault": {
+        "reads": ["system_specs", "utility_bills", "weather_data"],
+        "writes": ["production_log", "performance_alerts", "net_metering_credits", "roi_tracking"]
+      },
+      "referrals": [
+        { "event": "underperformance_detected", "routesTo": "SOL-004" }
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "system_performance"
+      }
+    },
+    {
+      "id": "SOL-008",
+      "name": "Solar Credit Ledger",
+      "slug": "solar-credit-ledger",
+      "suite": "Finance & Incentives",
+      "phase": 6,
+      "type": "standalone",
+      "pricing": { "monthly": 49 },
+      "status": "live",
+      "capabilitySummary": "Issues SRECs and RECs as Digital Title Certificates (DTCs). Tracks generation, transfer, and retirement. Appends immutable logbook to each credit. Pulls oracle pricing from market feeds. Manages registry reporting across GATS, NEPOOL, PJM-ERTS, and state programs",
+      "tags": ["SREC", "REC", "DTC", "blockchain", "credit-trading", "registry"],
+      "temporalType": "always_on",
+      "forkedFrom": "title-escrow",
+      "track": "credit-ledger",
+      "tier1Compliance": [
+        "EPA ENERGY STAR program requirements",
+        "FERC Order 2222 — distributed energy resource aggregation",
+        "RPS compliance rules vary by state",
+        "SREC program rules — NJ (SREC-II), MA (SMART), MD, PA, DC, OH, IL",
+        "Registry rules: GATS (M-RETs), NEPOOL GIS, PJM-ERTS, WREGIS — different issuance and transfer procedures",
+        "Never guarantee SREC prices — markets are volatile and illiquid",
+        "Retirement is irreversible — always disclose before executing",
+        "Never advise on securities law — SREC tokenization may trigger securities regulations",
+        "Always verify DTC authenticity on blockchain before any transfer"
+      ],
+      "vault": {
+        "reads": ["system_specs", "generation_data", "registry_credentials"],
+        "writes": ["dtc_srec", "transfer_log", "retirement_certificate", "registry_report", "portfolio_summary"]
+      },
+      "referrals": [
+        { "event": "srec_issued", "routesTo": "SOL-009" },
+        { "event": "transfer_requested", "routesTo": "SOL-009" }
+      ],
+      "alexRegistration": {
+        "priority": "high",
+        "acceptsTasks": true,
+        "briefingContribution": "credit_portfolio_status"
+      }
+    },
+    {
+      "id": "SOL-009",
+      "name": "SREC Exchange Compliance Worker",
+      "slug": "srec-exchange-compliance",
+      "suite": "Finance & Incentives",
+      "phase": 6,
+      "type": "standalone",
+      "pricing": { "monthly": 49 },
+      "status": "live",
+      "capabilitySummary": "KYC/AML onboarding for SREC exchange participants. Verifies buyer and seller eligibility by state program rules. Manages wallet verification and trade compliance. Generates 1099-B equivalent documentation for tax reporting. Connects TitleApp compliance layer to white-label exchange infrastructure",
+      "tags": ["KYC", "AML", "exchange", "compliance", "1099-B", "trade-verification"],
+      "temporalType": "always_on",
+      "forkedFrom": "title-escrow",
+      "track": "credit-ledger",
+      "tier1Compliance": [
+        "FinCEN AML/BSA requirements for commodity trading",
+        "IRS 1099-B reporting for credit trades above reporting thresholds",
+        "SEC digital asset guidance — monitor for tokenized SREC classification as security",
+        "State RPS buyer eligibility rules — varies by state compliance program",
+        "Never process a trade without completed KYC — hard stop",
+        "Always verify DTC authenticity on blockchain before any transfer",
+        "Exchange partner platform-specific rules apply"
+      ],
+      "vault": {
+        "reads": ["kyc_records", "dtc_srec", "wallet_verification", "trade_history"],
+        "writes": ["trade_compliance_check", "1099b_report", "regulatory_alerts", "eligibility_verification"]
+      },
+      "referrals": [
+        { "event": "trade_verified", "routesTo": "SOL-008" }
+      ],
+      "alexRegistration": {
+        "priority": "high",
+        "acceptsTasks": true,
+        "briefingContribution": "exchange_compliance_status"
+      }
+    }
+  ]
+}

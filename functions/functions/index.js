@@ -3752,6 +3752,69 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       }
     }
 
+    // ----------------------------
+    // 33.9-T3 — SOLAR CREDIT: VERIFY TRADE (API key auth)
+    // ----------------------------
+    if (route === "/solar/credit/verifyTrade" && method === "POST") {
+      try {
+        // API key authentication (exchange partners)
+        const apiKey = req.headers["x-api-key"] || req.headers["authorization"]?.replace("Bearer ", "");
+        if (!apiKey) return jsonError(res, 401, "API key required");
+        const keySnap = await db.collection("apiKeys").where("key", "==", apiKey).where("active", "==", true).limit(1).get();
+        if (keySnap.empty) return jsonError(res, 401, "Invalid API key");
+
+        const { dtcId, buyerWallet, sellerWallet, quantity, targetProgram } = body;
+        if (!dtcId) return jsonError(res, 400, "dtcId required");
+
+        // Verify DTC exists and is active
+        const dtcSnap = await db.collection("digitalTitleCertificates").doc(dtcId).get();
+        if (!dtcSnap.exists) {
+          return res.status(200).json({ ok: true, eligible: false, dtcAuthentic: false, dtcStatus: "not_found", buyerEligible: false, sellerEligible: false, reason: "DTC not found" });
+        }
+        const dtc = dtcSnap.data();
+        const dtcAuthentic = !!dtc.blockchainHash;
+        const dtcStatus = dtc.status || "unknown";
+
+        if (dtcStatus !== "active") {
+          return res.status(200).json({ ok: true, eligible: false, dtcAuthentic, dtcStatus, buyerEligible: false, sellerEligible: false, reason: `DTC status is '${dtcStatus}' — only active credits can be traded` });
+        }
+
+        // Verify buyer KYC
+        let buyerEligible = false;
+        if (buyerWallet) {
+          const buyerSnap = await db.collection("kycVerifications").where("walletAddress", "==", buyerWallet).where("status", "==", "approved").limit(1).get();
+          buyerEligible = !buyerSnap.empty;
+        }
+
+        // Verify seller KYC + ownership
+        let sellerEligible = false;
+        if (sellerWallet) {
+          const sellerSnap = await db.collection("kycVerifications").where("walletAddress", "==", sellerWallet).where("status", "==", "approved").limit(1).get();
+          sellerEligible = !sellerSnap.empty && dtc.ownerWallet === sellerWallet;
+        }
+
+        const eligible = dtcAuthentic && dtcStatus === "active" && buyerEligible && sellerEligible;
+        const reasons = [];
+        if (!dtcAuthentic) reasons.push("DTC not verified on blockchain");
+        if (!buyerEligible) reasons.push("Buyer KYC not verified or wallet not linked");
+        if (!sellerEligible) reasons.push("Seller KYC not verified, wallet not linked, or not DTC owner");
+
+        return res.status(200).json({
+          ok: true,
+          eligible,
+          dtcAuthentic,
+          dtcStatus,
+          buyerEligible,
+          sellerEligible,
+          reason: eligible ? "Trade eligible" : reasons.join("; "),
+          auditTrailUrl: dtc.blockchainHash ? `https://titleapp.ai/audit/${dtc.blockchainHash}` : null,
+        });
+      } catch (e) {
+        console.error("solar/credit/verifyTrade failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
     // All other routes require Firebase auth
     const auth = await requireFirebaseUser(req, res);
     if (auth.handled) return;

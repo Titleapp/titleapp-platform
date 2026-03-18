@@ -104,6 +104,8 @@ const VALID_SUITES = [
   "Recorder",
   // Title & Escrow suite
   "Title & Escrow",
+  // Solar Energy
+  "Solar Energy",
 ];
 
 const VALID_WORKER_TYPES = ["standalone", "pipeline", "composite", "copilot", "orchestrator"];
@@ -200,6 +202,7 @@ const VALID_VERTICALS = [
   "financial",
   "nursing",
   "health_education",
+  "solar_energy",
 ];
 
 const VALID_PRICE_TIERS_DISPLAY = ["FREE", "$29", "$49", "$79"];
