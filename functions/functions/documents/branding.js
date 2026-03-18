@@ -5,7 +5,7 @@ const admin = require("firebase-admin");
 const STORAGE_BUCKET = process.env.STORAGE_BUCKET || "title-app-alpha.firebasestorage.app";
 
 const DEFAULT_BRANDING = {
-  companyName: "TitleApp AI",
+  companyName: "TitleApp",
   accentColor: "#7c3aed",
   headerColor: "#1a1a1a",
   textColor: "#1a1a1a",

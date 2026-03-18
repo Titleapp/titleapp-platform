@@ -45,7 +45,7 @@ async function setupStripeProducts(req, res) {
   });
 
   const usageCredits = await stripe.products.create({
-    name: "TitleApp AI Credits",
+    name: "TitleApp Credits",
     description: "AI usage credits for TitleApp platform.",
   });
 

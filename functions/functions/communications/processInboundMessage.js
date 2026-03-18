@@ -131,7 +131,7 @@ async function processInboundMessage(messageId) {
 function generateDraft(intent, msg) {
   const templates = {
     schedule_demo: "Thanks for your interest! I'd love to show you how TitleApp can help. Would any of these times work for a quick 15-minute demo?",
-    pricing_question: "Great question! TitleApp starts free with 50 AI calls per month. Pro is $9/month with 500 calls, and Enterprise is $299/month with dedicated support. Happy to walk you through the details.",
+    pricing_question: "Great question! TitleApp Digital Workers start free with 100 credits per month. Plans are $29, $49, or $79 per month depending on complexity — each with a 14-day free trial, no credit card required. Happy to walk you through the details.",
     support_request: "I'm sorry you're running into an issue. I'm looking into this right now and will get back to you shortly with a solution.",
     interested: "Thank you for reaching out! I'd be happy to tell you more about how TitleApp can help. What's your primary use case?",
     not_interested: "Understood, thank you for letting me know. If anything changes, don't hesitate to reach out.",

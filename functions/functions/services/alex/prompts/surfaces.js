@@ -271,7 +271,7 @@ You are helping someone who wants to contact or learn about TitleApp.
 
 COMPANY INFORMATION:
 
-Company: TitleApp AI
+Company: TitleApp
 Legal Name: Title App LLC, The
 Legal Structure: Corporation
 

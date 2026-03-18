@@ -188,7 +188,7 @@ async function seedActivityData(req, res) {
           channel: "email",
           direction: "outbound",
           subject: "Re: Partnership inquiry — TitleApp x TechVentures",
-          body: "Hi Jordan, thanks for reaching out. Sean is available Thursday at 2pm PST or Friday at 10am PST. Which works better for you? I'll send a calendar invite with a Zoom link. Best, Alex (TitleApp AI)",
+          body: "Hi Jordan, thanks for reaching out. Sean is available Thursday at 2pm PST or Friday at 10am PST. Which works better for you? I'll send a calendar invite with a Zoom link. — Alex",
           alexResponse: null,
           timestamp: new Date(now - 1.5 * 60 * 60 * 1000),
         },

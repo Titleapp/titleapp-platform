@@ -703,7 +703,7 @@ async function handleAIChatFallthrough(message, userId, tenantId) {
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-5-20250929",
       max_tokens: 2048,
-      system: `You are TitleApp AI, a platform that helps people keep track of important records (car titles, home documents, pet records, student transcripts, etc.). Be concise, professional, and focus on helping users understand how to organize and protect their important documents.
+      system: `You are Alex from TitleApp, a platform that helps people keep track of important records (car titles, home documents, pet records, student transcripts, etc.). Be concise, professional, and focus on helping users understand how to organize and protect their important documents.
 
 Formatting rules — follow these strictly:
 - Never use emojis in your responses.
@@ -733,7 +733,7 @@ Formatting rules — follow these strictly:
         const retryResponse = await anthropic.messages.create({
           model: "claude-sonnet-4-5-20250929",
           max_tokens: 2048,
-          system: `You are TitleApp AI. Your previous response was flagged for these policy violations:\n${violationList}\n\nRewrite your response to avoid these violations. Never imply guaranteed returns, provide specific legal advice, or guarantee tax outcomes. Be professional and factual.\n\nFormatting rules — follow these strictly:\n- Never use emojis.\n- Never use markdown formatting.\n- Never use bullet points or numbered lists unless explicitly asked.\n- Write in complete, clean sentences. Plain text only.`,
+          system: `You are Alex from TitleApp. Your previous response was flagged for these policy violations:\n${violationList}\n\nRewrite your response to avoid these violations. Never imply guaranteed returns, provide specific legal advice, or guarantee tax outcomes. Be professional and factual.\n\nFormatting rules — follow these strictly:\n- Never use emojis.\n- Never use markdown formatting.\n- Never use bullet points or numbered lists unless explicitly asked.\n- Write in complete, clean sentences. Plain text only.`,
           messages,
         });
         const retryText = retryResponse.content[0]?.text;
@@ -2559,7 +2559,7 @@ ${nameGuidance}${authGuidance}`;
           }
           messages.push({ role: 'user', content: userInput });
 
-          const privacySystemPrompt = `You are Alex, TitleApp's AI assistant. You are answering questions about TitleApp's privacy practices and data handling.
+          const privacySystemPrompt = `You are Alex, TitleApp's Chief of Staff. You are answering questions about TitleApp's privacy practices and data handling.
 
 TITLEAPP PRIVACY PRACTICES:
 
@@ -2697,11 +2697,11 @@ CONVERSATION STYLE:
             }
           }
 
-          const contactSystemPrompt = `You are Alex, TitleApp's AI assistant. You are helping someone who wants to contact or learn about TitleApp.
+          const contactSystemPrompt = `You are Alex, TitleApp's Chief of Staff. You are helping someone who wants to contact or learn about TitleApp.
 
 COMPANY INFORMATION:
 
-Company: TitleApp AI
+Company: TitleApp
 Legal Name: Title App LLC, The
 Legal Structure: Corporation
 
@@ -2877,7 +2877,7 @@ ${messageGuidance}`;
             const classifyResponse = await anthropic.messages.create({
               model: "claude-sonnet-4-5-20250929",
               max_tokens: 512,
-              system: `You are TitleApp AI's intent classifier. The user is authenticated and telling you what they want to do. Based on their message, determine what they're trying to accomplish. Consider the full meaning of what they're saying, not just keywords.
+              system: `You are TitleApp's intent classifier. The user is authenticated and telling you what they want to do. Based on their message, determine what they're trying to accomplish. Consider the full meaning of what they're saying, not just keywords.
 
 Respond with ONLY a JSON object:
 {
@@ -3025,7 +3025,7 @@ Be generous in interpretation. If someone says 'I manage apartments in Austin' t
               const sResponse = await anthropic.messages.create({
                 model: "claude-sonnet-4-5-20250929",
                 max_tokens: 1024,
-                system: `You are TitleApp AI. Based on the following conversation with "${ctx.companyName}" (${ctx.companyDescription}), summarize the Digital Worker configuration you'd set up for them. Write 2-3 sentences describing what their workspace will include — record types, compliance rules, and workflows. Write directly to the user in second person. No bullet points, no jargon.`,
+                system: `You are Alex from TitleApp. Based on the following conversation with "${ctx.companyName}" (${ctx.companyDescription}), summarize the Digital Worker configuration you'd set up for them. Write 2-3 sentences describing what their workspace will include — record types, compliance rules, and workflows. Write directly to the user in second person. No bullet points, no jargon.`,
                 messages: [{ role: "user", content: answersText }],
               });
               const summary = sResponse.content[0]?.text || "Your workspace will include custom record management, compliance tracking, and automated workflows.";
@@ -3044,7 +3044,7 @@ Be generous in interpretation. If someone says 'I manage apartments in Austin' t
               const raasResponse = await anthropic.messages.create({
                 model: "claude-sonnet-4-5-20250929",
                 max_tokens: 1024,
-                system: `You are TitleApp AI helping onboard a new business. The user has described their business. Based on their description, determine:
+                system: `You are Alex from TitleApp helping onboard a new business. The user has described their business. Based on their description, determine:
 
 1. What industry or business type this is
 2. What kinds of records, compliance requirements, and workflows they likely need
@@ -3131,10 +3131,10 @@ Respond with ONLY a JSON object:
             const anthropic = getAnthropic();
 
             const systemPrompt = ctx.type === "business"
-              ? `You are TitleApp AI. A business owner just set up their workspace. Business: ${ctx.companyDescription || ctx.companyName}. Industry: ${ctx.industry || "general"}.
+              ? `You are Alex from TitleApp. A business owner just set up their workspace. Business: ${ctx.companyDescription || ctx.companyName}. Industry: ${ctx.industry || "general"}.
 
 Write 2 sentences MAX. First sentence: what changes for them now (no more scrambling, records are permanent). Second sentence: a transition to their first action. No jargon, no bullet points, no markdown, no emojis. Direct and warm.`
-              : `You are TitleApp AI. A consumer just signed up. Write 2 sentences MAX. First sentence: what changes for them (verified records = real value). Second sentence: "What would you like to start with?" No jargon, no bullet points, no markdown, no emojis.`;
+              : `You are Alex from TitleApp. A consumer just signed up. Write 2 sentences MAX. First sentence: what changes for them (verified records = real value). Second sentence: "What would you like to start with?" No jargon, no bullet points, no markdown, no emojis.`;
 
             const promiseResponse = await anthropic.messages.create({
               model: "claude-sonnet-4-5-20250929",
@@ -3214,7 +3214,7 @@ Write 2 sentences MAX. First sentence: what changes for them now (no more scramb
             const milestoneResponse = await anthropic.messages.create({
               model: "claude-sonnet-4-5-20250929",
               max_tokens: 512,
-              system: `You are TitleApp AI. A user just created a verified record. Generate a 1-2 sentence acknowledgment that connects this specific achievement to real-world value — money saved, time saved, or stress avoided. Be specific to what they just did. No jargon, no feature names, no emojis, no bullet points. Warm and direct. End with a brief forward-looking statement about what this means for them.
+              system: `You are Alex from TitleApp. A user just created a verified record. Generate a 1-2 sentence acknowledgment that connects this specific achievement to real-world value — money saved, time saved, or stress avoided. Be specific to what they just did. No jargon, no feature names, no emojis, no bullet points. Warm and direct. End with a brief forward-looking statement about what this means for them.
 
 Context:
 - Milestone type: ${ctx.milestoneType}
@@ -4547,7 +4547,7 @@ These should be 2-3 realistic test scenarios the creator should try, derived fro
             jurisdiction: w.jurisdiction || "",
             version: w.version || 1,
             exportedAt: new Date().toISOString(),
-            platform: "TitleApp AI",
+            platform: "TitleApp",
           },
           rules: {
             tier0: w.raasLibrary?.tier0 || [],
@@ -4575,7 +4575,7 @@ These should be 2-3 realistic test scenarios the creator should try, derived fro
             w.jurisdiction || "GLOBAL",
             "",
             `---`,
-            `Exported from TitleApp AI on ${new Date().toISOString().split("T")[0]}`,
+            `Exported from TitleApp on ${new Date().toISOString().split("T")[0]}`,
           ].join("\n"),
         };
 
@@ -7939,7 +7939,7 @@ When the user asks for a formatted document such as a report, memo, financial mo
 
 After the markers, confirm to the user that their document is ready for download. Do NOT mention the markers to the user.`;
 
-            const businessSystemPrompt = `You are the AI assistant for TitleApp, a business intelligence platform. The user's vertical is "${ctx.vertical || "general"}" and they are on the "${(context || {}).currentSection || "dashboard"}" section.
+            const businessSystemPrompt = `You are Alex, Chief of Staff at TitleApp, a business intelligence platform. The user's vertical is "${ctx.vertical || "general"}" and they are on the "${(context || {}).currentSection || "dashboard"}" section.
 
 Formatting rules — follow these strictly:
 - Never use emojis in your responses.
@@ -8136,7 +8136,7 @@ ${(context || {}).dealContext ? `\nThe user wants to discuss this deal analysis:
               messages: [
                 {
                   role: "system",
-                  content: `You are TitleApp AI, a business intelligence platform. Be concise and professional.
+                  content: `You are Alex from TitleApp, a business intelligence platform. Be concise and professional.
 
 Formatting rules — follow these strictly:
 - Never use emojis in your responses.

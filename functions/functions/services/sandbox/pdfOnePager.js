@@ -145,7 +145,7 @@ function generateSpecPdf(spec, creatorName) {
     // --- Footer ---
     doc.font("Helvetica").fontSize(7).fillColor(COLORS.mutedGray)
       .text(
-        "AI-generated spec — human review recommended. This document was produced by TitleApp AI and may contain inaccuracies.",
+        "AI-generated spec — human review recommended. This document was produced by TitleApp and may contain inaccuracies.",
         marginL, 752, { width: contentW, align: "center" }
       );
     if (creatorName) {

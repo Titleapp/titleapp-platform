@@ -492,7 +492,7 @@ const CAMPAIGN_DEFINITIONS = [
     channels: ["email", "sms"],
     template: {
       email: {
-        subject: "Your free trial of {{workerName}} has started",
+        subject: "Your 14-day free trial of {{workerName}} has started",
         htmlBody: `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
   <div style="margin-bottom: 32px;"><span style="font-size: 20px; font-weight: 700; color: #7c3aed;">TitleApp</span></div>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">Hi {{firstName}},</p>
@@ -502,7 +502,7 @@ const CAMPAIGN_DEFINITIONS = [
   <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;"><p style="font-size: 13px; color: #94a3b8;">TitleApp LLC</p></div>
 </div>`,
       },
-      sms: { body: "Your free trial of {{workerName}} has started. Try it out: {{platformUrl}}" },
+      sms: { body: "Your 14-day free trial of {{workerName}} has started. Try it out: {{platformUrl}}" },
     },
     delayMinutes: 0,
     variables: ["firstName", "workerName", "platformUrl"],
@@ -523,7 +523,7 @@ const CAMPAIGN_DEFINITIONS = [
         htmlBody: `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
   <div style="margin-bottom: 32px;"><span style="font-size: 20px; font-weight: 700; color: #7c3aed;">TitleApp</span></div>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">Hi {{firstName}},</p>
-  <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">Your free trial of <strong>{{workerName}}</strong> ends in 2 days. Subscribe to keep access — 60-day money-back guarantee if it is not for you.</p>
+  <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">Your 14-day free trial of <strong>{{workerName}}</strong> ends in 2 days. Subscribe to keep access — 60-day money-back guarantee if it is not for you.</p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;"><a href="{{platformUrl}}" style="display: inline-block; background: #7c3aed; color: #fff; padding: 12px 28px; border-radius: 6px; text-decoration: none; font-weight: 600;">Subscribe Now</a></p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">— Alex</p>
   <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;"><p style="font-size: 13px; color: #94a3b8;">TitleApp LLC</p></div>
