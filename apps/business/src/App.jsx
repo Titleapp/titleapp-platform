@@ -2668,6 +2668,128 @@ const WORKER_DETAIL_CONTENT = {
       { q: "Can airlines verify my records?", a: "Yes. PRIA-ready export with blockchain proof-of-integrity certificate. Employers receive a verification link — no paper required." },
     ],
   },
+  "av-currency-tracker": {
+    headline: "Am I legal for this flight? Always know.",
+    subheadline: "Real-time currency dashboard tracking day/night landings, instrument currency, flight review, medical class, and BasicMed. Every regulation cited.",
+    steps: [
+      { title: "Connect Logbook", description: "Reads your Digital Logbook entries — currency calculations update automatically after every flight" },
+      { title: "Set Your Certificates", description: "Enter certificate type, ratings, medical class, and BasicMed status — rules engine configures per your qualifications" },
+      { title: "Check Before You Fly", description: "One-tap legal-for-flight check: passenger currency, IFR currency, medical validity, flight review — all green or hard stop" },
+      { title: "Get Nudged Early", description: "30/60/90-day warnings before currency lapses — never get caught expired" },
+    ],
+    bridge: { title: "Never Fly Illegal", text: "Currency rules are complex — day vs night, 6 calendar months vs 12, IPC requirements, BasicMed limitations. This worker tracks every requirement and tells you exactly where you stand before every flight." },
+    valueProps: [
+      { label: "Real-time Dashboard", description: "Every currency requirement calculated live from your actual logbook entries" },
+      { label: "Regulation Citations", description: "Every status links to the specific 14 CFR section — 61.57, 61.56, 61.23, 68" },
+      { label: "Medical Tracking", description: "Class 1/2/3 expiry, BasicMed status, CACI conditions — all tracked" },
+    ],
+    faq: [
+      { q: "Does it handle BasicMed?", a: "Yes. Tracks BasicMed checklist completion, CMEC exam dates, online course currency, and the 180-day physical requirement." },
+      { q: "What about instrument currency?", a: "Tracks approaches, holds, and intercepting/tracking within the preceding 6 calendar months per 61.57(c). Flags IPC requirement when lapsed." },
+    ],
+  },
+  "av-my-aircraft": {
+    headline: "Your aircraft, always at your fingertips",
+    subheadline: "Type-specific V-speeds, weight & balance calculator, checklists, performance data, and systems descriptions. PC-12 NG includes FSI training library (4,209 pages).",
+    steps: [
+      { title: "Add Your Aircraft", description: "Enter type, tail number, and configuration — V-speeds, limitations, and systems data load automatically" },
+      { title: "Run W&B", description: "Weight and balance calculator with your specific equipment list — CG envelope plotted instantly" },
+      { title: "Access Checklists", description: "Normal, abnormal, and emergency checklists organized by phase of flight" },
+      { title: "Study Systems", description: "Interactive systems descriptions, knowledge checks, and FSI training materials for supported types" },
+    ],
+    bridge: { title: "Know Your Machine", text: "Every aircraft type has its own V-speeds, limitations, systems, and procedures. This worker gives you instant access to everything about your specific aircraft — from preflight to shutdown." },
+    valueProps: [
+      { label: "Type-Specific Data", description: "V-speeds, limitations, and performance data for your exact aircraft type and configuration" },
+      { label: "W&B Calculator", description: "Weight and balance with your equipment list — no more spreadsheets or paper forms" },
+      { label: "FSI Training Library", description: "PC-12 NG: 4,209 pages of FSI materials — PIM, MMEL, Primus APEX guide, safety briefs" },
+    ],
+    faq: [
+      { q: "Which aircraft types are supported?", a: "Launch support for Pilatus PC-12/47E with full FSI training library. Additional types added based on subscriber demand." },
+      { q: "Can I add multiple aircraft?", a: "Yes. Create profiles for every aircraft you fly — switch between them instantly." },
+    ],
+  },
+  "av-training-proficiency": {
+    headline: "From student to ATP — every certificate, tracked",
+    subheadline: "Full FAA library, certificate progression tracking, AI oral exam prep, written test prep, and proficiency trending. Know exactly where you stand.",
+    steps: [
+      { title: "Set Your Goal", description: "Select your target certificate or rating — requirements checklist builds automatically from 14 CFR Part 61" },
+      { title: "Track Progress", description: "Hours, maneuvers, knowledge areas — see exactly what you have and what you need" },
+      { title: "Prep for Checkride", description: "AI oral exam prep with DPE-style questions. Written test prep with explanations for every answer" },
+      { title: "Stay Proficient", description: "Post-certificate proficiency trending — areas of strength and areas needing attention" },
+    ],
+    bridge: { title: "Your Aviation Career, Mapped", text: "The path from private to ATP has dozens of requirements spread across multiple FARs. This worker consolidates everything into a single progression tracker with AI-powered test prep." },
+    valueProps: [
+      { label: "Certificate Progression", description: "Private, instrument, commercial, multi, CFI, ATP — every requirement tracked against your logbook" },
+      { label: "AI Oral Prep", description: "DPE-style questions that adapt to your knowledge gaps — not generic flash cards" },
+      { label: "Proficiency Trending", description: "Post-certificate skill tracking — identify areas needing practice before they become problems" },
+    ],
+    faq: [
+      { q: "Does it replace a CFI?", a: "No. It supplements your instructor by tracking progress, identifying gaps, and providing unlimited practice. Your CFI makes the endorsement decisions." },
+      { q: "Which written tests?", a: "All FAA knowledge tests — PAR, IRA, CAX, FIA, FII, ATP, FOI. Question banks with regulatory explanations." },
+    ],
+  },
+  "av-flight-planning": {
+    headline: "Personal FRAT, weather in plain English, NOTAMs that matter",
+    subheadline: "Risk assessment calibrated to your experience, weather briefings without the jargon, NOTAM filtering that removes the noise, and personal minimums enforcement.",
+    steps: [
+      { title: "Enter Your Flight", description: "Departure, destination, route, altitude — or sync from ForeFlight" },
+      { title: "Assess Risk", description: "Personal FRAT scored against your experience level, currency, and the specific conditions" },
+      { title: "Brief Weather", description: "METARs, TAFs, AIRMETs, SIGMETs translated to plain language with go/no-go recommendation" },
+      { title: "Check NOTAMs", description: "Relevant NOTAMs filtered and prioritized — runway closures and TFRs highlighted, routine noise suppressed" },
+    ],
+    bridge: { title: "Fly Smarter", text: "The FAA expects you to become familiar with all available information (91.103). This worker makes that possible by translating weather products, filtering NOTAMs, and running a personal risk assessment calibrated to you — not a generic checklist." },
+    valueProps: [
+      { label: "Personal FRAT", description: "Risk score calibrated to your certificate, experience, currency, and the specific flight conditions" },
+      { label: "Plain-Language Weather", description: "METARs and TAFs decoded into English with visual flight category and trend analysis" },
+      { label: "Personal Minimums", description: "Set and enforce your own minimums — ceiling, visibility, crosswind, runway length" },
+    ],
+    faq: [
+      { q: "Does this replace a standard weather briefing?", a: "It supplements it. Use it alongside 1800wxbrief.com or Leidos. The plain-language translation helps you understand what the official briefing is actually saying." },
+      { q: "How does the personal FRAT work?", a: "Scores pilot factors (currency, fatigue, experience in conditions), aircraft factors (MEL items, equipment), and environmental factors (weather, terrain, airport) into a composite risk score with mitigations." },
+    ],
+  },
+  "av-alex-personal": {
+    headline: "Your personal aviation chief of staff",
+    subheadline: "Daily briefing with currency status, upcoming flights, training reminders, and medical expiry. The same Alex that runs 135 operations — in your personal context.",
+    steps: [
+      { title: "Morning Briefing", description: "Currency status, medical expiry, upcoming flights, training due dates — one glance" },
+      { title: "Nudges & Reminders", description: "30-day warnings on currency, medical, flight review — proactive, not reactive" },
+      { title: "Cross-Worker Orchestration", description: "Coordinates between your logbook, currency tracker, training, and flight planning workers" },
+      { title: "Career Dashboard", description: "Total time, certificate progression, proficiency trends — your aviation career at a glance" },
+    ],
+    bridge: { title: "Everything Connected", text: "Your logbook feeds your currency tracker. Your currency feeds your flight planning FRAT. Your training progress feeds your career dashboard. Alex connects all of it and tells you what matters today." },
+    valueProps: [
+      { label: "Daily Briefing", description: "One-screen summary of everything that matters to you as a pilot today" },
+      { label: "Proactive Nudges", description: "Currency lapsing, medical expiring, flight review due — warned before it's a problem" },
+      { label: "Free with Pilot Suite", description: "Included at no additional cost when you subscribe to three or more Pilot Suite workers" },
+    ],
+    faq: [
+      { q: "Is this the same Alex as the operator version?", a: "Same intelligence, different context. Operator Alex manages fleet operations. Personal Alex manages your individual pilot life — currency, training, career." },
+      { q: "What does 'free with three workers' mean?", a: "Subscribe to any three Pilot Suite workers and Alex Personal activates automatically at $0/mo." },
+    ],
+  },
+  "av-pc12-ng": {
+    headline: "Type-rated CoPilot for the Pilatus PC-12/47E",
+    subheadline: "5-layer private worker: aircraft systems, operator SOPs, pilot logbook, duty/rest tracking, FAR reference. Examiner mode for 135.293/297 oral prep. FSI training library included.",
+    steps: [
+      { title: "Ask Anything", description: "Systems questions, V-speeds, limitations, MEL items, Primus APEX procedures — instant answers with POH references" },
+      { title: "Track Duty & Rest", description: "14 CFR 117 and 135.267 duty time calculations — know your limits before dispatch calls" },
+      { title: "Prep for Checkrides", description: "Examiner mode simulates 135.293/297 oral exams — DPE-style questions adapted to your weak areas" },
+      { title: "Import & Deduplicate", description: "ForeFlight and FVO auto-import with intelligent deduplication — no duplicate entries, ever" },
+    ],
+    bridge: { title: "Your PC-12, Mastered", text: "The PC-12/47E is a complex single-engine turboprop with Honeywell Primus APEX avionics. This CoPilot knows every system, every limitation, every procedure — and can quiz you on all of it in examiner mode." },
+    valueProps: [
+      { label: "5-Layer Intelligence", description: "Aircraft type data, operator SOPs, your personal logbook, duty/rest status, and FAR reference — all in context" },
+      { label: "Examiner Mode", description: "135.293 competency check and 135.297 instrument proficiency check oral prep — realistic DPE simulation" },
+      { label: "FSI Training Library", description: "4,209 pages of FlightSafety International materials — PIM, MMEL, Primus APEX, safety briefs" },
+      { label: "Smart Deduplication", description: "FVO, ForeFlight, and manual entries merged intelligently — priority-based matching eliminates duplicates" },
+    ],
+    faq: [
+      { q: "Is this only for the PC-12?", a: "Yes. This is a type-specific CoPilot built exclusively for the Pilatus PC-12/47E (NG). Additional type ratings planned based on demand." },
+      { q: "Does it connect to my other Pilot Suite workers?", a: "Yes. Reads your Digital Logbook for flight history, Currency Tracker for legal-for-flight status, and reports duty time to Alex Personal." },
+      { q: "What's examiner mode?", a: "Simulates a DPE conducting 135.293 competency checks and 135.297 instrument proficiency checks. Adapts difficulty based on your answers. Not a replacement for actual training — a supplement." },
+    ],
+  },
 };
 
 // GOV-000: Jurisdiction Onboarding Gateway

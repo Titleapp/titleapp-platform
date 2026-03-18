@@ -1892,14 +1892,14 @@
     {
       "id": "AV-P01",
       "name": "Digital Logbook",
-      "slug": "digital-logbook",
+      "slug": "av-digital-logbook",
       "suite": "Aviation",
       "phase": null,
       "type": "standalone",
       "pricing": {
         "monthly": 0
       },
-      "status": "development",
+      "status": "live",
       "capabilitySummary": "Blockchain-verified personal flight logbook. Replaces paper permanently. Auto-imports from ForeFlight, Schedaero, FVO. PRIA-ready export.",
       "temporalType": "always_on",
       "mandatoryWhen": [],
@@ -1934,14 +1934,14 @@
     {
       "id": "AV-P02",
       "name": "Currency & Medical Tracker",
-      "slug": "currency-medical-tracker-personal",
+      "slug": "av-currency-tracker",
       "suite": "Aviation",
       "phase": null,
       "type": "standalone",
       "pricing": {
         "monthly": 0
       },
-      "status": "waitlist",
+      "status": "live",
       "capabilitySummary": "Real-time currency dashboard -- am I legal for this flight? Day/night landings, instrument currency, flight review, medical class tracking.",
       "temporalType": "always_on",
       "mandatoryWhen": [],
@@ -1981,14 +1981,14 @@
     {
       "id": "AV-P03",
       "name": "My Aircraft / CoPilot",
-      "slug": "my-aircraft-copilot",
+      "slug": "av-my-aircraft",
       "suite": "Aviation",
       "phase": null,
       "type": "standalone",
       "pricing": {
         "monthly": 29
       },
-      "status": "waitlist",
+      "status": "live",
       "capabilitySummary": "Type-specific V-speeds, W&B calculator, checklists, performance data, systems descriptions. ForeFlight sync. PC-12 NG: includes FSI training materials (4,209 pages — PIM, MMEL, Primus APEX guide, safety briefs).",
       "temporalType": "always_on",
       "mandatoryWhen": [],
@@ -2037,14 +2037,14 @@
     {
       "id": "AV-P04",
       "name": "Training & Proficiency",
-      "slug": "training-proficiency",
+      "slug": "av-training-proficiency",
       "suite": "Aviation",
       "phase": null,
       "type": "standalone",
       "pricing": {
         "monthly": 29
       },
-      "status": "waitlist",
+      "status": "live",
       "capabilitySummary": "Full FAA library, certificate progression tracking, AI oral exam prep, written test prep, proficiency trending.",
       "temporalType": "always_on",
       "mandatoryWhen": [],
@@ -2084,14 +2084,14 @@
     {
       "id": "AV-P05",
       "name": "Flight Planning & Weather",
-      "slug": "flight-planning-weather",
+      "slug": "av-flight-planning",
       "suite": "Aviation",
       "phase": null,
       "type": "standalone",
       "pricing": {
         "monthly": 29
       },
-      "status": "waitlist",
+      "status": "live",
       "capabilitySummary": "Personal FRAT, weather briefing in plain language, NOTAM filtering, personal minimums enforcement.",
       "temporalType": "event_driven",
       "mandatoryWhen": [],
@@ -2131,14 +2131,14 @@
     {
       "id": "AV-P06",
       "name": "Alex -- Chief of Staff (Personal)",
-      "slug": "alex-chief-of-staff-personal",
+      "slug": "av-alex-personal",
       "suite": "Aviation",
       "phase": null,
       "type": "orchestrator",
       "pricing": {
         "monthly": 0
       },
-      "status": "waitlist",
+      "status": "live",
       "capabilitySummary": "Personal aviation assistant. Daily briefing, currency nudges, training reminders. Same worker as AV-029 in personal context.",
       "temporalType": "always_on",
       "mandatoryWhen": [],
@@ -2159,6 +2159,66 @@
       },
       "referrals": [],
       "alexRegistration": null
+    },
+    {
+      "id": "AV-P07",
+      "name": "PC12-NG CoPilot",
+      "slug": "av-pc12-ng",
+      "suite": "Aviation",
+      "phase": null,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 29
+      },
+      "status": "live",
+      "capabilitySummary": "Type-rated CoPilot for Pilatus PC-12/47E. 5-layer prompt: aircraft systems, operator SOPs, pilot logbook, duty/rest, FAR reference. Examiner mode for 135.293/297 oral prep. ForeFlight and FVO import with deduplication. FSI training library (4,209 pages).",
+      "temporalType": "always_on",
+      "mandatoryWhen": [],
+      "tier1Compliance": [
+        "14 CFR Part 135 — commuter and on-demand operations",
+        "14 CFR 135.293/297 — competency and instrument proficiency checks",
+        "14 CFR 61.51 — pilot logbook requirements",
+        "14 CFR 117 — flight and duty time limitations",
+        "14 CFR 91.103 — preflight action requirements",
+        "Pilatus PC-12/47E POH/AFM",
+        "Honeywell Primus APEX avionics"
+      ],
+      "referenceDocuments": [
+        {
+          "name": "FSI PC-12 NG Training Materials",
+          "aircraft": "PC-12/47E",
+          "pages": 4209,
+          "storage": "gs://title-app-alpha.firebasestorage.app/raas/aviation/GLOBAL/reference/fsi/FSI_PC12NG_Materials.pdf"
+        }
+      ],
+      "vault": {
+        "reads": [
+          "personal_flight_record",
+          "personal_currency_status",
+          "company_mission_records"
+        ],
+        "writes": [
+          "copilot_chat_log",
+          "examiner_session_log",
+          "form_8710_data"
+        ]
+      },
+      "referrals": [
+        {
+          "event": "duty_limit_warning",
+          "routesTo": "AV-P06"
+        },
+        {
+          "event": "currency_expiring",
+          "routesTo": "AV-P02"
+        }
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": false,
+        "briefingContribution": "PC-12 duty status, recent flights, examiner prep progress"
+      },
+      "endpoints": "copilot:pc12:*"
     }
   ],
   "bundles": [
@@ -2237,9 +2297,10 @@
         "AV-P03",
         "AV-P04",
         "AV-P05",
-        "AV-P06"
+        "AV-P06",
+        "AV-P07"
       ],
-      "monthlyPrice": 57,
+      "monthlyPrice": 86,
       "replaces": "LogTen Pro + ForeFlight companion apps + paper logbook + manual currency tracking"
     }
   ]

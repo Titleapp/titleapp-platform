@@ -185,12 +185,13 @@ export const WORKER_ROUTES = [
   { slug: "av-crew-housing", name: "Crew Housing Coordinator", description: "Crew housing reservations coordinated with schedule changes", suite: "Aviation", status: "planned", price: 2900, vertical: "aviation" },
 
   // Aviation — Pilot Suite
-  { slug: "av-digital-logbook", name: "Digital Logbook", description: "Blockchain-verified personal flight logbook — replaces paper permanently", suite: "Aviation", status: "planned", price: 0, vertical: "aviation" },
-  { slug: "av-currency-tracker", name: "Currency & Medical Tracker", description: "Am I legal for this flight? Real-time currency dashboard with reg citations", suite: "Aviation", status: "planned", price: 0, vertical: "aviation" },
-  { slug: "av-my-aircraft", name: "My Aircraft / CoPilot", description: "Type-specific V-speeds, W&B, checklists, performance data", suite: "Aviation", status: "planned", price: 2900, vertical: "aviation" },
-  { slug: "av-training-proficiency", name: "Training & Proficiency", description: "Full FAA library, cert progression, AI oral exam prep, written test prep", suite: "Aviation", status: "planned", price: 2900, vertical: "aviation" },
-  { slug: "av-flight-planning", name: "Flight Planning & Weather", description: "Personal FRAT, plain-language weather, NOTAM filtering, personal minimums", suite: "Aviation", status: "planned", price: 2900, vertical: "aviation" },
-  { slug: "av-alex-personal", name: "Alex — Personal Aviation Assistant", description: "Daily briefing, currency nudges, training reminders for individual pilots", suite: "Aviation", status: "planned", price: 0, vertical: "aviation" },
+  { slug: "av-digital-logbook", name: "Digital Logbook", description: "Blockchain-verified personal flight logbook — replaces paper permanently", suite: "Aviation", status: "live", price: 0, vertical: "aviation" },
+  { slug: "av-currency-tracker", name: "Currency & Medical Tracker", description: "Am I legal for this flight? Real-time currency dashboard with reg citations", suite: "Aviation", status: "live", price: 0, vertical: "aviation" },
+  { slug: "av-my-aircraft", name: "My Aircraft / CoPilot", description: "Type-specific V-speeds, W&B, checklists, performance data", suite: "Aviation", status: "live", price: 2900, vertical: "aviation" },
+  { slug: "av-training-proficiency", name: "Training & Proficiency", description: "Full FAA library, cert progression, AI oral exam prep, written test prep", suite: "Aviation", status: "live", price: 2900, vertical: "aviation" },
+  { slug: "av-flight-planning", name: "Flight Planning & Weather", description: "Personal FRAT, plain-language weather, NOTAM filtering, personal minimums", suite: "Aviation", status: "live", price: 2900, vertical: "aviation" },
+  { slug: "av-alex-personal", name: "Alex — Personal Aviation Assistant", description: "Daily briefing, currency nudges, training reminders for individual pilots", suite: "Aviation", status: "live", price: 0, vertical: "aviation" },
+  { slug: "av-pc12-ng", name: "PC12-NG CoPilot", description: "Type-rated CoPilot for the Pilatus PC-12/47E. Systems, SOPs, examiner prep, duty tracking.", suite: "Aviation", status: "live", price: 2900, vertical: "aviation" },
 
   // Government — Jurisdiction Onboarding
   { slug: "gov-jurisdiction-onboarding", name: "Jurisdiction Onboarding Gateway", description: "Configure jurisdiction, connect systems, and deploy government workers.", suite: "Government — DMV", status: "planned", price: 0, vertical: "government" },

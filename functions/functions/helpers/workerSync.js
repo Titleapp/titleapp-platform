@@ -127,6 +127,7 @@ const MARKETPLACE_SLUG_MAP = {
   "AV-P04": "av-training-proficiency",
   "AV-P05": "av-flight-planning",
   "AV-P06": "av-alex-personal",
+  "AV-P07": "av-pc12-ng",
   // Solar Energy
   "SOL-001": "solar-sales-closer",
   "SOL-002": "solar-permit-navigator",
@@ -258,8 +259,12 @@ const DISPLAY_NAME_MAP = {
   "AV-029": "Alex — Aviation CoS",
   "AV-032": "Crew Scheduling",
   "AV-P01": "Digital Logbook",
+  "AV-P02": "Currency & Medical",
   "AV-P03": "My Aircraft",
+  "AV-P04": "Training & Proficiency",
+  "AV-P05": "Flight Planning",
   "AV-P06": "Alex — Personal",
+  "AV-P07": "PC12-NG CoPilot",
   // Health & EMS Education
   "HE-001": "Curriculum Architect",
   "HE-011": "Scenario Simulator",
@@ -326,6 +331,12 @@ const HEADLINE_MAP = {
   "av-crew-scheduling": "Every assignment pre-validated for legality before it reaches the board",
   "av-alex": "Your workers, orchestrated — 0500 briefing to anomaly detection",
   "av-digital-logbook": "Blockchain-verified logbook that replaces paper permanently",
+  "av-currency-tracker": "Am I legal for this flight? Currency and medical — always current",
+  "av-my-aircraft": "Type-specific V-speeds, W&B, checklists, and performance data",
+  "av-training-proficiency": "Certificate progression, oral prep, written prep, proficiency trending",
+  "av-flight-planning": "Personal FRAT, plain-language weather, NOTAM filtering, personal minimums",
+  "av-alex-personal": "Your personal aviation chief of staff — briefings, nudges, reminders",
+  "av-pc12-ng": "Type-rated CoPilot for the PC-12/47E — systems, SOPs, examiner prep",
   // Health & EMS Education
   "he-curriculum-architect": "Accreditation-ready programs designed by domain experts, not committees",
   "he-scenario-simulator": "Clinical scenarios that teach judgment, not just protocol recall",
