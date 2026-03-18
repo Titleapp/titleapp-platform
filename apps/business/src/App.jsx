@@ -67,6 +67,7 @@ import PropertyMgmtLanding from "./pages/landing/PropertyMgmtLanding";
 import DeveloperLanding from "./pages/landing/DeveloperLanding";
 import PilotLanding from "./pages/landing/PilotLanding";
 import AlexWorkspace from "./pages/AlexWorkspace";
+import CampaignPage from "./pages/campaigns/CampaignPage";
 import CoPilotEFB from "./sections/CoPilotEFB";
 import { auth } from "./firebase";
 import { signInWithCustomToken } from "firebase/auth";
@@ -4379,6 +4380,11 @@ export default function App() {
   const legalSlug = legalSlugMatch ? legalSlugMatch[1] : null;
   const isLegalPage = !!legalSlug;
 
+  // ── /campaign/:slug route intercept ─────────────────────
+  const campaignMatch = window.location.pathname.match(/^\/campaign\/([a-z0-9-]+)\/?$/);
+  const campaignSlug = campaignMatch ? campaignMatch[1] : null;
+  const isCampaignPage = !!campaignSlug;
+
   const [sandboxReady, setSandboxReady] = useState(isSandbox ? false : null);
   const [authResolved, setAuthResolved] = useState(false); // true once onAuthStateChanged fires at least once
 
@@ -4936,6 +4942,9 @@ export default function App() {
 
   // ── Legal pages: no auth required ────────────────────────────
   if (isLegalPage) return <LegalPage slug={legalSlug} />;
+
+  // ── Campaign pages: no auth required ──────────────────────────
+  if (isCampaignPage) return <CampaignPage slug={campaignSlug} />;
 
   // ── Vertical landing pages: no auth required ────────────────
   if (isAutoLanding) return <AutoLanding />;

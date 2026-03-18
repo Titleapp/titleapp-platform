@@ -25,6 +25,7 @@ import WorkerPipeline from "./pages/WorkerPipeline";
 import BogoManager from "./pages/BogoManager";
 import PipelineMonitor from "./pages/PipelineMonitor";
 import UsersPanel from "./pages/UsersPanel";
+import ABTests from "./pages/ABTests";
 import AdminChatPanel from "./components/AdminChatPanel";
 
 const NAV_SECTIONS = [
@@ -106,6 +107,7 @@ const NAV_SECTIONS = [
       { id: "marketing", label: "Marketing", permission: "campaigns" },
       { id: "lifecycle", label: "Lifecycle", permission: "campaigns" },
       { id: "growth-programs", label: "Growth", permission: "campaigns" },
+      { id: "ab-tests", label: "A/B Tests", permission: "campaigns" },
     ],
   },
   {
@@ -177,6 +179,8 @@ function renderPage(page) {
       return <PipelineMonitor />;
     case "users":
       return <UsersPanel />;
+    case "ab-tests":
+      return <ABTests />;
     default:
       return <Dashboard />;
   }
