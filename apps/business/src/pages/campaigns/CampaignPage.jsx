@@ -1,7 +1,10 @@
 import React, { useEffect, useState, useRef } from "react";
-import { db } from "../../firebase";
+import { db, auth } from "../../firebase";
 import { doc, setDoc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { signInWithCustomToken } from "firebase/auth";
 import { WORKER_ROUTES } from "../WorkerMarketplace";
+
+const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
 
 // ── Campaign Configs (TASK 2-6) ───────────────────────────────────
 
@@ -190,8 +193,18 @@ const S = {
   valueTitle: { fontSize: 16, fontWeight: 600, color: "#111827", marginBottom: 8 },
   valueDesc: { fontSize: 14, color: "#6b7280", lineHeight: 1.5 },
   socialProof: { textAlign: "center", padding: "32px 24px", fontSize: 15, color: "#94a3b8", fontStyle: "italic" },
-  ctaBlock: { textAlign: "center", padding: "64px 24px 80px" },
-  footer: { textAlign: "center", padding: "24px", borderTop: "1px solid #e5e7eb", fontSize: 13, color: "#94a3b8" },
+  ctaBlock: { textAlign: "center", padding: "64px 24px 120px" },
+  footer: { textAlign: "center", padding: "24px 24px 100px", borderTop: "1px solid #e5e7eb", fontSize: 13, color: "#94a3b8" },
+  chatBar: { position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 50, background: "rgba(255,255,255,0.95)", backdropFilter: "blur(12px)", borderTop: "1px solid #e5e7eb", padding: "12px 16px" },
+  chatInner: { maxWidth: 640, margin: "0 auto", display: "flex", gap: 8, alignItems: "center" },
+  chatInput: { flex: 1, padding: "12px 16px", fontSize: 15, background: "#1e293b", color: "#fff", border: "1px solid #334155", borderRadius: 24, outline: "none" },
+  chatSendBtn: { width: 44, height: 44, borderRadius: 22, background: "#7c3aed", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 },
+  otpWrap: { maxWidth: 420, margin: "0 auto", textAlign: "center" },
+  otpLabel: { fontSize: 14, fontWeight: 600, color: "#1e293b", marginBottom: 8 },
+  otpRow: { display: "flex", gap: 8, alignItems: "center", justifyContent: "center" },
+  otpInput: { flex: 1, maxWidth: 260, padding: "12px 16px", fontSize: 15, border: "1px solid #e5e7eb", borderRadius: 10, outline: "none", textAlign: "center" },
+  otpBtn: { padding: "12px 24px", fontSize: 14, fontWeight: 600, color: "#fff", background: "#7c3aed", border: "none", borderRadius: 10, cursor: "pointer", whiteSpace: "nowrap" },
+  otpStatus: { fontSize: 13, marginTop: 6 },
 };
 
 // ── CampaignPage Component ─────────────────────────────────────────
@@ -200,6 +213,14 @@ export default function CampaignPage({ slug }) {
   const config = CAMPAIGNS[slug];
   const [variant, setVariant] = useState(null);
   const logged = useRef(false);
+
+  // Floating chat bar state
+  const [chatInput, setChatInput] = useState("");
+  const [chatMode, setChatMode] = useState("idle"); // idle | phone | otp | verifying
+  const [chatPhone, setChatPhone] = useState("");
+  const [chatOtp, setChatOtp] = useState("");
+  const [chatStatus, setChatStatus] = useState("");
+  const chatInputRef = useRef(null);
 
   useEffect(() => {
     if (!config) return;
@@ -246,6 +267,81 @@ export default function CampaignPage({ slug }) {
   const featured = config.featuredSlugs
     .map((s) => WORKER_ROUTES.find((w) => w.slug === s))
     .filter(Boolean);
+
+  function handleChatSubmit(e) {
+    e?.preventDefault();
+    const msg = chatInput.trim();
+    if (!msg) return;
+    // Store message for post-auth handoff
+    sessionStorage.setItem("ta_landing_chat", msg);
+    sessionStorage.setItem("ta_campaign_context", JSON.stringify({
+      slug, persona: config?.persona, variant,
+    }));
+    sessionStorage.setItem("ta_utm", JSON.stringify({
+      source: "campaign", medium: "chat", campaign: slug,
+      capturedAt: new Date().toISOString(),
+    }));
+    setChatInput("");
+    setChatMode("phone");
+  }
+
+  async function handleChatSendOtp(e) {
+    e?.preventDefault();
+    const trimmed = chatPhone.trim();
+    if (!trimmed) return;
+    setChatStatus("Sending code...");
+    try {
+      const res = await fetch(`${API_BASE}/api?path=/v1/auth/sendOtp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: trimmed }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setChatMode("otp");
+        setChatStatus("");
+      } else {
+        setChatStatus(data.error || "Failed to send code.");
+      }
+    } catch {
+      setChatStatus("Failed to send code. Try again.");
+    }
+  }
+
+  async function handleChatVerifyOtp(e) {
+    e?.preventDefault();
+    if (chatOtp.length < 6) return;
+    setChatMode("verifying");
+    setChatStatus("Verifying...");
+    try {
+      const res = await fetch(`${API_BASE}/api?path=/v1/auth/verifyOtp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phone: chatPhone.trim(),
+          otp: chatOtp.trim(),
+          ...(sessionStorage.getItem("ta_utm") ? { utmAttribution: JSON.parse(sessionStorage.getItem("ta_utm")) } : {}),
+        }),
+      });
+      const data = await res.json();
+      if (data.ok && data.customToken) {
+        const cred = await signInWithCustomToken(auth, data.customToken);
+        const token = await cred.user.getIdToken(true);
+        localStorage.setItem("ID_TOKEN", token);
+        // Log conversion
+        const sessionId = getSessionId();
+        updateDoc(doc(db, "abTests", slug, "sessions", sessionId), { converted: true }).catch(() => {});
+        // Redirect — ChatPanel will pick up ta_landing_chat
+        window.location.href = "/?utm_source=campaign&utm_campaign=" + slug;
+      } else {
+        setChatStatus(data.error || "Invalid code. Try again.");
+        setChatMode("otp");
+      }
+    } catch {
+      setChatStatus("Verification failed. Try again.");
+      setChatMode("otp");
+    }
+  }
 
   function handleCtaClick() {
     // Log conversion
@@ -320,6 +416,78 @@ export default function CampaignPage({ slug }) {
       <footer style={S.footer}>
         &copy; {new Date().getFullYear()} TitleApp. All rights reserved.
       </footer>
+
+      {/* Floating Chat Bar */}
+      <div style={S.chatBar}>
+        {chatMode === "idle" && (
+          <form onSubmit={handleChatSubmit} style={S.chatInner}>
+            <input
+              ref={chatInputRef}
+              type="text"
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+              placeholder="Ask Alex anything..."
+              style={S.chatInput}
+            />
+            <button type="submit" style={{ ...S.chatSendBtn, opacity: chatInput.trim() ? 1 : 0.5 }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </button>
+          </form>
+        )}
+
+        {chatMode === "phone" && (
+          <form onSubmit={handleChatSendOtp} style={S.otpWrap}>
+            <div style={S.otpLabel}>Enter your phone to continue the conversation</div>
+            <div style={S.otpRow}>
+              <input
+                type="tel"
+                value={chatPhone}
+                onChange={(e) => setChatPhone(e.target.value)}
+                placeholder="+1 (555) 555-5555"
+                autoComplete="tel"
+                autoFocus
+                style={S.otpInput}
+              />
+              <button type="submit" style={S.otpBtn}>Send Code</button>
+            </div>
+            {chatStatus && <div style={{ ...S.otpStatus, color: chatStatus.includes("Failed") ? "#dc2626" : "#6b7280" }}>{chatStatus}</div>}
+          </form>
+        )}
+
+        {(chatMode === "otp" || chatMode === "verifying") && (
+          <form onSubmit={handleChatVerifyOtp} style={S.otpWrap}>
+            <div style={S.otpLabel}>We sent a code to {chatPhone}</div>
+            <div style={S.otpRow}>
+              <input
+                type="text"
+                inputMode="numeric"
+                maxLength={6}
+                value={chatOtp}
+                onChange={(e) => setChatOtp(e.target.value.replace(/\D/g, ""))}
+                placeholder="000000"
+                autoComplete="one-time-code"
+                autoFocus
+                style={{ ...S.otpInput, fontSize: 20, fontWeight: 600, letterSpacing: "0.3em" }}
+              />
+              <button
+                type="submit"
+                disabled={chatMode === "verifying" || chatOtp.length < 6}
+                style={{ ...S.otpBtn, opacity: chatMode === "verifying" || chatOtp.length < 6 ? 0.6 : 1 }}
+              >
+                {chatMode === "verifying" ? "Verifying..." : "Verify"}
+              </button>
+            </div>
+            {chatStatus && <div style={{ ...S.otpStatus, color: chatStatus.includes("Invalid") || chatStatus.includes("failed") || chatStatus.includes("Failed") ? "#dc2626" : "#6b7280" }}>{chatStatus}</div>}
+            <button
+              type="button"
+              onClick={() => { setChatMode("phone"); setChatOtp(""); setChatStatus(""); }}
+              style={{ marginTop: 4, background: "none", border: "none", color: "#6b7280", fontSize: 13, cursor: "pointer" }}
+            >
+              Use a different number
+            </button>
+          </form>
+        )}
+      </div>
     </div>
   );
 }

@@ -26,6 +26,7 @@ import BogoManager from "./pages/BogoManager";
 import PipelineMonitor from "./pages/PipelineMonitor";
 import UsersPanel from "./pages/UsersPanel";
 import ABTests from "./pages/ABTests";
+import SalesPanel from "./pages/SalesPanel";
 import AdminChatPanel from "./components/AdminChatPanel";
 
 const NAV_SECTIONS = [
@@ -111,6 +112,10 @@ const NAV_SECTIONS = [
     ],
   },
   {
+    label: "Sales",
+    items: [{ id: "sales", label: "Sales", permission: "pipeline" }],
+  },
+  {
     label: "Operations",
     items: [
       { id: "pricing-compliance", label: "Pricing Compliance", permission: "all" },
@@ -181,6 +186,8 @@ function renderPage(page) {
       return <UsersPanel />;
     case "ab-tests":
       return <ABTests />;
+    case "sales":
+      return <SalesPanel />;
     default:
       return <Dashboard />;
   }

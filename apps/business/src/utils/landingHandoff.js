@@ -1,9 +1,10 @@
 /**
  * landingHandoff.js — Handles URL params from Cloudflare landing page redirect.
  *
- * ?q=[message]    — Pre-populate Alex chat and auto-send
- * ?search=[query] — Pre-populate marketplace search
- * ?vertical=[name] — Open marketplace filtered to vertical
+ * ?q=[message]      — Pre-populate Alex chat and auto-send
+ * ?prompt=[message] — Alias for ?q (used by /meet-alex SMS links)
+ * ?search=[query]   — Pre-populate marketplace search
+ * ?vertical=[name]  — Open marketplace filtered to vertical
  *
  * Call once on app mount. Stores values in sessionStorage, clears URL params.
  */
@@ -13,13 +14,15 @@ export function processLandingHandoff() {
   const result = { type: null, value: null };
 
   const q = params.get("q");
+  const prompt = params.get("prompt");
   const search = params.get("search");
   const vertical = params.get("vertical");
 
-  if (q) {
+  if (q || prompt) {
+    const chatMsg = q || prompt;
     result.type = "chat";
-    result.value = q;
-    sessionStorage.setItem("ta_landing_chat", q);
+    result.value = chatMsg;
+    sessionStorage.setItem("ta_landing_chat", chatMsg);
   } else if (search) {
     result.type = "search";
     result.value = search;
@@ -34,6 +37,7 @@ export function processLandingHandoff() {
   if (result.type) {
     const url = new URL(window.location);
     url.searchParams.delete("q");
+    url.searchParams.delete("prompt");
     url.searchParams.delete("search");
     url.searchParams.delete("vertical");
     const cleanUrl = url.pathname + (url.search || "");
