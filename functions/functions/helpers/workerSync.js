@@ -439,6 +439,7 @@ async function syncCatalogWorkers(db, opts = {}) {
           catalogId: worker.id,
           catalogSlug: worker.slug,
           catalogPhase: worker.phase,
+          notifications: validated.notifications || null,
           temporalType: worker.temporalType || "always_on",
           capabilitySummary: worker.capabilitySummary || "",
           alexRegistration: worker.alexRegistration || null,

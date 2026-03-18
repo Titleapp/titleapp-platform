@@ -22,24 +22,14 @@ async function sendSMS(req, res) {
     return res.status(500).json({ ok: false, error: "Twilio not configured" });
   }
 
-  // Twilio REST API — using fetch instead of SDK to avoid extra dependency
-  const url = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
-  const params = new URLSearchParams({ To: to, From: fromNumber, Body: body });
-
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Authorization": "Basic " + Buffer.from(`${accountSid}:${authToken}`).toString("base64"),
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: params.toString(),
-  });
-
-  const result = await response.json();
-
-  if (!response.ok) {
-    await logActivity("error", `SMS send failed to ${to}: ${result.message || "unknown"}`, "error");
-    return res.status(500).json({ ok: false, error: result.message || "SMS send failed" });
+  // Send via shared Twilio helper
+  const { sendSMSDirect } = require("./twilioHelper");
+  let result;
+  try {
+    result = await sendSMSDirect(to, body);
+  } catch (e) {
+    await logActivity("error", `SMS send failed to ${to}: ${e.message}`, "error");
+    return res.status(500).json({ ok: false, error: e.message });
   }
 
   // Log to messages/ and smsActivity/

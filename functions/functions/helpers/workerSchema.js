@@ -122,6 +122,34 @@ function validateWorkerPrice(price) {
 
 const VALID_STATUSES = ["draft", "waitlist", "live", "development"];
 
+const VALID_DIGEST_OPTIONS = ["daily", "weekly", "none"];
+
+const DEFAULT_NOTIFICATION_CONFIG = {
+  onSubscribe: { email: true, sms: false },
+  onCancel:    { email: true, sms: false },
+  onTrial:     { email: true, sms: false },
+  digest:      "weekly",
+};
+
+/**
+ * Validate a notification config object.
+ * Returns sanitized config or throws on invalid input.
+ */
+function validateNotificationConfig(config) {
+  if (!config || typeof config !== "object") return { ...DEFAULT_NOTIFICATION_CONFIG };
+  const result = {};
+  for (const key of ["onSubscribe", "onCancel", "onTrial"]) {
+    const v = config[key];
+    if (v && typeof v === "object") {
+      result[key] = { email: !!v.email, sms: !!v.sms };
+    } else {
+      result[key] = { ...DEFAULT_NOTIFICATION_CONFIG[key] };
+    }
+  }
+  result.digest = VALID_DIGEST_OPTIONS.includes(config.digest) ? config.digest : "weekly";
+  return result;
+}
+
 // ═══════════════════════════════════════════════════════════════
 //  CREDIT COST MAP — Standard credit costs per operation type
 // ═══════════════════════════════════════════════════════════════
@@ -847,6 +875,13 @@ function autoFixWorkerRecord(record, description) {
     record.landing_page_slug = `workers/${record.worker_id || "worker"}`;
   }
 
+  // Fix notifications — add default config if missing
+  if (!record.notifications || typeof record.notifications !== "object") {
+    record.notifications = { ...DEFAULT_NOTIFICATION_CONFIG };
+  } else {
+    record.notifications = validateNotificationConfig(record.notifications);
+  }
+
   return record;
 }
 
@@ -870,6 +905,9 @@ module.exports = {
   validateRegistryRecord,
   autoFixWorkerRecord,
   validateWorkerPrice,
+  validateNotificationConfig,
+  VALID_DIGEST_OPTIONS,
+  DEFAULT_NOTIFICATION_CONFIG,
   parsePriceTier,
   slugify,
 };

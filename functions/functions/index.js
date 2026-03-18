@@ -1041,6 +1041,28 @@ exports.api = onRequest(
       }
     }
 
+    // POST /v1/auth:sendOtp — SMS OTP send (unauthenticated)
+    if (route === "/auth:sendOtp" && method === "POST") {
+      try {
+        const { sendOtp } = require("./campaigns/otpAuth");
+        return await sendOtp(req, res);
+      } catch (e) {
+        console.error("auth:sendOtp failed:", e);
+        return jsonError(res, 500, "OTP send failed");
+      }
+    }
+
+    // POST /v1/auth:verifyOtp — SMS OTP verify (unauthenticated)
+    if (route === "/auth:verifyOtp" && method === "POST") {
+      try {
+        const { verifyOtp } = require("./campaigns/otpAuth");
+        return await verifyOtp(req, res);
+      } catch (e) {
+        console.error("auth:verifyOtp failed:", e);
+        return jsonError(res, 500, "OTP verify failed");
+      }
+    }
+
     // ----------------------------
     // CHAT ENGINE (new conversational state machine)
     // Handles both authenticated and unauthenticated sessions.
@@ -6401,6 +6423,20 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
         return res.status(200).json({ ok: true, ...result });
       } catch (e) {
         console.error("admin:registry:seed failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ----------------------------
+    // ADMIN: SEED CAMPAIGNS (33.6)
+    // ----------------------------
+    if (route === "/admin:seedCampaigns" && method === "POST") {
+      try {
+        const { seedCampaignDefinitions } = require("./campaigns/campaignDefinitions");
+        const result = await seedCampaignDefinitions(db);
+        return res.json({ ok: true, ...result });
+      } catch (e) {
+        console.error("admin:seedCampaigns failed:", e);
         return jsonError(res, 500, e.message);
       }
     }
@@ -14064,10 +14100,20 @@ exports.sandboxDailyProcessor = onSchedule(
   { schedule: "0 6 * * *", timeZone: "America/Los_Angeles", region: "us-central1" },
   async () => {
     const { detectAbandonment } = require("./services/sandbox/abandonmentDetector");
-    const { processDripQueue } = require("./services/sandbox/dripEmailQueue");
     const abandonResult = await detectAbandonment();
-    const dripResult = await processDripQueue();
-    console.log("[sandboxDailyProcessor]", { abandonResult, dripResult });
+    console.log("[sandboxDailyProcessor]", { abandonResult });
+  }
+);
+
+// ----------------------------
+// MESSAGE QUEUE PROCESSOR (every 15 minutes — email + SMS)
+// ----------------------------
+exports.messageQueueProcessor = onSchedule(
+  { schedule: "*/15 * * * *", timeZone: "America/Los_Angeles", region: "us-central1" },
+  async () => {
+    const { processMessageQueue } = require("./campaigns/messageProcessor");
+    const result = await processMessageQueue();
+    console.log("[messageQueueProcessor]", result);
   }
 );
 

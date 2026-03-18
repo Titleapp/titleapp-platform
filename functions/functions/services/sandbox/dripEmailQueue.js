@@ -22,15 +22,36 @@ async function enqueueDripEmail(userId, stage, sessionId) {
 
   const scheduledAt = new Date(Date.now() + stageConfig.delayDays * 24 * 60 * 60 * 1000);
 
-  await db.collection("emailQueue").add({
+  // Load user for email address
+  const userSnap = await db.collection("users").doc(userId).get();
+  const userData = userSnap.exists ? userSnap.data() : {};
+
+  // Load worker name from session
+  let workerName = "your Digital Worker";
+  if (sessionId) {
+    const sSnap = await db.collection("sandboxSessions").doc(sessionId).get();
+    if (sSnap.exists && sSnap.data().spec) {
+      workerName = sSnap.data().spec.name || workerName;
+    }
+  }
+
+  const firstName = userData.name ? userData.name.split(" ")[0] : null;
+  const htmlBody = buildEmailHtml(stageConfig.stage, firstName, workerName);
+
+  await db.collection("messageQueue").add({
     userId,
+    campaignId: `sandbox_drip_stage_${stageConfig.stage}`,
+    channel: "email",
+    to: userData.email || "",
+    subject: stageConfig.subject,
+    body: htmlBody,
     stage: stageConfig.stage,
     sessionId,
-    subject: stageConfig.subject,
     status: "pending",
     scheduledAt: admin.firestore.Timestamp.fromDate(scheduledAt),
     sentAt: null,
     error: null,
+    attempts: 0,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
   });
 }
