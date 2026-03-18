@@ -10,6 +10,7 @@ const CAMPAIGN_CONTEXTS = {
     slug: "auto-dealer",
     vertical: "auto_dealer",
     persona: "dealer",
+    salesMode: true,
     sandboxContext: {
       openingMessage: "Hey — I'm Alex. TitleApp's Auto Dealer suite starts in your service drive and follows the customer all the way through F&I. And it's free for dealers. Want to see how it works?",
       suggestedWorkers: ["AD-017", "AD-013", "AD-001", "AD-009"],
@@ -20,6 +21,7 @@ const CAMPAIGN_CONTEXTS = {
     slug: "aviation",
     vertical: "aviation",
     persona: "pilot",
+    salesMode: true,
     sandboxContext: {
       openingMessage: "Hey — I'm Alex. Think of me as your personal aviation CoPilot. Your logbook, your training records, your regs — all in one place, on blockchain, forever. What aircraft are you flying?",
       suggestedWorkers: ["AV-P01", "AV-011", "AV-014", "AV-P03"],
@@ -30,6 +32,7 @@ const CAMPAIGN_CONTEXTS = {
     slug: "real-estate",
     vertical: "real_estate_development",
     persona: "developer",
+    salesMode: true,
     sandboxContext: {
       openingMessage: "Hey — I'm Alex. For real estate developers and property managers, TitleApp puts an entire A-team on your project — permitting, construction management, property ops, title and escrow. For less than a few lattes a day. Want to walk through a deal?",
       suggestedWorkers: ["W-021", "W-012", "W-033", "W-002", "W-044"],
@@ -40,9 +43,32 @@ const CAMPAIGN_CONTEXTS = {
     slug: "creators",
     vertical: null,
     persona: "creator",
+    salesMode: true,
     sandboxContext: {
       openingMessage: "Hey — I'm Alex. You've built an audience because you know your field better than anyone. Now your followers can hire you. Forever. Tell me what you do and I'll show you how to build your first Digital Worker in under 10 minutes.",
       suggestedWorkers: [],
+      ctaLabel: "Start for Free",
+    },
+  },
+  "solar-vpp": {
+    slug: "solar-vpp",
+    vertical: "solar_vpp",
+    persona: "installer",
+    salesMode: true,
+    sandboxContext: {
+      openingMessage: "Hey — I'm Alex. TitleApp handles the compliance layer for solar — permitting, interconnection, SREC issuance, exchange compliance. Every rule, every jurisdiction, every step. What part of the stack are you trying to solve?",
+      suggestedWorkers: [],
+      ctaLabel: "Start for Free",
+    },
+  },
+  "re-operations": {
+    slug: "re-operations",
+    vertical: "re_operations",
+    persona: "property_manager",
+    salesMode: true,
+    sandboxContext: {
+      openingMessage: "Hey — I'm Alex. Property managers use TitleApp to clone their best manager across their entire portfolio — tenant comms, maintenance, lease compliance, revenue optimization. How many units are you managing?",
+      suggestedWorkers: ["W-033", "W-044", "W-021"],
       ctaLabel: "Start for Free",
     },
   },

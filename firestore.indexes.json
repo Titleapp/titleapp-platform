@@ -141,6 +141,22 @@
         { "fieldPath": "driveFileId", "order": "ASCENDING" },
         { "fieldPath": "superseded", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "prospectSessions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "campaignSlug", "order": "ASCENDING" },
+        { "fieldPath": "openedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "salesEscalations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "flaggedAt", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

@@ -1100,7 +1100,7 @@ exports.api = onRequest(
     // auth-gated handler below.
     // ----------------------------
     if (route === "/chat:message" && method === "POST" && body.sessionId) {
-      let { sessionId, userInput, action, actionData, fileData, fileName, surface } = body;
+      let { sessionId, userInput, action, actionData, fileData, fileName, surface, campaignSlug, utmSource, utmMedium, utmCampaign } = body;
 
       try {
         // Optional auth — verify token if present but don't reject if missing
@@ -1170,6 +1170,237 @@ exports.api = onRequest(
             surface = 'developer';
             sessionState.step = 'dev_discovery';
             console.log("chatEngine: developer intent detected from landing, redirecting to dev flow");
+          }
+        }
+
+        // ── Sales Mode: prospect-first experience from campaigns/referrals ──
+        if ((surface === 'sales' || sessionState.step === 'sales_discovery') && !action && userInput) {
+          if (!sessionState.salesHistory) sessionState.salesHistory = [];
+          sessionState.step = 'sales_discovery';
+          sessionState.alexMode = 'sales';
+
+          // Persist campaign metadata from first message
+          if (campaignSlug && !sessionState.campaignSlug) sessionState.campaignSlug = campaignSlug;
+          if (utmSource && !sessionState.utmSource) sessionState.utmSource = utmSource;
+          if (utmMedium && !sessionState.utmMedium) sessionState.utmMedium = utmMedium;
+          if (utmCampaign && !sessionState.utmCampaign) sessionState.utmCampaign = utmCampaign;
+
+          // Resolve vertical from campaign context
+          if (!sessionState.vertical && sessionState.campaignSlug) {
+            const { CAMPAIGN_CONTEXTS } = require("./campaigns/campaignContexts");
+            const cc = CAMPAIGN_CONTEXTS[sessionState.campaignSlug];
+            if (cc) sessionState.vertical = cc.vertical;
+          }
+
+          // Build sales system prompt
+          const { getCore } = require("./services/alex/prompts/core");
+          const { getSurfaceOverlay } = require("./services/alex/prompts/surfaces");
+          const corePrompt = getCore();
+          const salesOverlay = getSurfaceOverlay("sales", {
+            vertical: sessionState.vertical || "",
+            campaignSlug: sessionState.campaignSlug || "",
+            prospectName: sessionState.prospectName || "",
+          });
+
+          // Build catalog context — available workers for recommendations
+          let catalogContext = "";
+          try {
+            const catalogSnap = await db.collection("digitalWorkers")
+              .where("status", "==", "live")
+              .limit(30)
+              .get();
+            if (!catalogSnap.empty) {
+              const workers = catalogSnap.docs
+                .filter(d => !sessionState.vertical || d.data().vertical === sessionState.vertical || !d.data().vertical)
+                .slice(0, 15)
+                .map(d => {
+                  const w = d.data();
+                  return `- ${d.id}: ${w.display_name || w.name} ($${w.raas_tier_0 || 0}/mo) — ${(w.description || "").substring(0, 100)}`;
+                });
+              if (workers.length > 0) {
+                catalogContext = "\n\nAVAILABLE DIGITAL WORKERS (use slugs in [WORKER_CARDS] markers):\n" + workers.join("\n");
+              }
+            }
+          } catch (catErr) {
+            console.warn("sales: catalog lookup failed:", catErr.message);
+          }
+
+          const salesSystemPrompt = corePrompt + "\n\n---\n\n" + salesOverlay + catalogContext;
+
+          const messages = [
+            ...sessionState.salesHistory.map(h => ({ role: h.role, content: h.content })),
+            { role: 'user', content: userInput },
+          ];
+
+          try {
+            const anthropic = getAnthropic();
+            const aiResponse = await anthropic.messages.create({
+              model: 'claude-sonnet-4-5-20250929',
+              max_tokens: 1024,
+              system: salesSystemPrompt,
+              messages,
+            });
+
+            let aiText = aiResponse.content[0]?.text || "Hey — I'm Alex, Chief of Staff at TitleApp. Tell me what you do and I'll show you what we have.";
+
+            // Extract name from early conversation if not yet known
+            if (!sessionState.prospectName && sessionState.salesHistory.length <= 4) {
+              const nameMatch = userInput.match(/^(?:I'm|I am|my name is|this is|it's|hey,?\s*i'm)\s+([A-Z][a-z]+)/i);
+              if (nameMatch) sessionState.prospectName = nameMatch[1];
+            }
+
+            // Parse [WORKER_CARDS] marker
+            let workerCards = [];
+            const cardsMatch = aiText.match(/\[WORKER_CARDS\]\s*(\[.*?\])\s*\[\/WORKER_CARDS\]/);
+            if (cardsMatch) {
+              aiText = aiText.replace(/\s*\[WORKER_CARDS\].*?\[\/WORKER_CARDS\]\s*/g, '').trim();
+              try {
+                const slugs = JSON.parse(cardsMatch[1]);
+                for (const slug of slugs.slice(0, 3)) {
+                  const wSnap = await db.collection("digitalWorkers").doc(slug).get();
+                  if (wSnap.exists) {
+                    const w = wSnap.data();
+                    workerCards.push({
+                      slug,
+                      name: w.display_name || w.name || slug,
+                      description: (w.description || "").substring(0, 150),
+                      price: w.raas_tier_0 || 0,
+                    });
+                  }
+                }
+              } catch (parseErr) {
+                console.warn("sales: worker cards parse failed:", parseErr.message);
+              }
+            }
+
+            // Detect [ESCALATE] marker
+            let escalated = false;
+            if (/\[ESCALATE\]/i.test(aiText)) {
+              escalated = true;
+              aiText = aiText.replace(/\s*\[ESCALATE\]\s*/gi, '').trim();
+              // Write escalation to Firestore
+              try {
+                await db.collection("salesEscalations").add({
+                  sessionId: effectiveSessionId,
+                  uid: authUser ? authUser.uid : null,
+                  campaignSlug: sessionState.campaignSlug || null,
+                  utmSource: sessionState.utmSource || null,
+                  prospectName: sessionState.prospectName || null,
+                  prospectMessage: userInput,
+                  flaggedAt: nowServerTs(),
+                  status: "pending",
+                });
+                sessionState.escalated = true;
+              } catch (escErr) {
+                console.warn("sales: escalation write failed:", escErr.message);
+              }
+            }
+
+            // Detect [OPEN_SANDBOX] marker
+            let sandboxRedirect = false;
+            if (/\[OPEN_SANDBOX\]/i.test(aiText)) {
+              sandboxRedirect = true;
+              aiText = aiText.replace(/\s*\[OPEN_SANDBOX\]\s*/gi, '').trim();
+            }
+
+            // Update conversation history
+            sessionState.salesHistory.push({ role: 'user', content: userInput });
+            sessionState.salesHistory.push({ role: 'assistant', content: aiText });
+            if (sessionState.salesHistory.length > 30) {
+              sessionState.salesHistory = sessionState.salesHistory.slice(-30);
+            }
+
+            // Track worker cards shown
+            if (workerCards.length > 0) {
+              if (!sessionState.workerCardsShown) sessionState.workerCardsShown = [];
+              for (const wc of workerCards) {
+                if (!sessionState.workerCardsShown.includes(wc.slug)) {
+                  sessionState.workerCardsShown.push(wc.slug);
+                }
+              }
+            }
+
+            // Persist session
+            await sessionRef.set({
+              state: sessionState,
+              surface: 'sales',
+              userId: authUser ? authUser.uid : null,
+              ...(sessionSnap.exists ? {} : { createdAt: nowServerTs() }),
+              updatedAt: nowServerTs(),
+            }, { merge: true });
+
+            // Write prospect session analytics
+            try {
+              const prospectRef = db.collection("prospectSessions").doc(effectiveSessionId);
+              const prospectSnap = await prospectRef.get();
+              if (prospectSnap.exists) {
+                const update = {
+                  updatedAt: nowServerTs(),
+                  messageCount: admin.firestore.FieldValue.increment(1),
+                };
+                if (workerCards.length > 0) {
+                  update.workerCardsShown = admin.firestore.FieldValue.arrayUnion(...workerCards.map(w => w.slug));
+                }
+                if (escalated) update.escalated = true;
+                if (sandboxRedirect) update.sandboxStarted = true;
+                await prospectRef.update(update);
+              } else {
+                await prospectRef.set({
+                  uid: authUser ? authUser.uid : null,
+                  campaignSlug: sessionState.campaignSlug || null,
+                  utmSource: sessionState.utmSource || null,
+                  utmMedium: sessionState.utmMedium || null,
+                  utmCampaign: sessionState.utmCampaign || null,
+                  vertical: sessionState.vertical || null,
+                  openedAt: nowServerTs(),
+                  updatedAt: nowServerTs(),
+                  workerCardsShown: workerCards.map(w => w.slug),
+                  workerSubscribed: null,
+                  sandboxStarted: sandboxRedirect,
+                  escalated,
+                  convertedAt: null,
+                  messageCount: 1,
+                });
+              }
+            } catch (psErr) {
+              console.warn("sales: prospect session write failed:", psErr.message);
+            }
+
+            // Audit log
+            try {
+              await db.collection("messageEvents").add({
+                tenantId: "titleapp-sales",
+                userId: authUser ? authUser.uid : `anon_${sessionId}`,
+                type: "chat:message:sales",
+                message: userInput,
+                response: aiText,
+                salesContext: {
+                  surface: "sales",
+                  campaignSlug: sessionState.campaignSlug || null,
+                  vertical: sessionState.vertical || null,
+                  prospectName: sessionState.prospectName || null,
+                  escalated,
+                  workerCardsShown: workerCards.map(w => w.slug),
+                },
+                createdAt: nowServerTs(),
+              });
+            } catch (auditErr) {
+              console.warn("sales audit log failed:", auditErr.message);
+            }
+
+            const response = {
+              ok: true,
+              message: aiText,
+              conversationState: 'sales_discovery',
+            };
+            if (workerCards.length > 0) response.workerCards = workerCards;
+            if (sandboxRedirect) response.sandboxRedirect = true;
+            if (escalated) response.escalated = true;
+
+            return res.json(response);
+          } catch (e) {
+            console.error('Sales discovery AI failed:', e.message);
+            return res.status(500).json({ ok: false, error: "AI processing failed" });
           }
         }
 
