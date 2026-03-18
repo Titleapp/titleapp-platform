@@ -487,6 +487,8 @@ export default function DeveloperSandbox() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
+  const [welcomeGreeting, setWelcomeGreeting] = useState(null); // greeting text shown above chat
+  const [greetingVisible, setGreetingVisible] = useState(false); // controls fade in/out
   const messagesEndRef = useRef(null);
   const chatInputRef = useRef(null);
 
@@ -800,14 +802,18 @@ export default function DeveloperSandbox() {
         }, 600);
       }
     } else {
-      // New user — welcome greeting + preamble flow
+      // New user — welcome greeting (UI element) + preamble flow
       const authDisplayName = firebaseAuth?.currentUser?.displayName?.split(" ")[0];
       const displayFirstName = firstName || authDisplayName || "";
-      const welcomeLine = displayFirstName ? `Welcome, ${displayFirstName}. ` : "";
-      addAssistantMessage(`${welcomeLine}You're about to build a Digital Worker — think of it like an AI app built on your expertise. Just like an app does one thing really well, your Digital Worker will know exactly what you know and be available to anyone, anytime, without you having to be in the room.\n\nHere's the process. First we'll build it together — you tell me what you know, I shape it into a worker. If you've already put something together in ChatGPT or another AI tool, you can use that as your starting point. Then we'll test it — you'll actually talk to your own worker and see it work. Once you're happy with it, we help you publish it and get it in front of the right people. After it's live you can keep adding to it, track who's using it, collect feedback, and get paid.\n\nYour pace, your timeline. Some people publish in an hour if they've been thinking about this for a while. Others build over a few months. Either way, we save everything — every conversation, every decision, every version of your worker. We never forget.\n\nMost people have had the experience of building something in another AI tool and coming back to find it has no idea what you're talking about. That's not how this works. Your worker lives in your Vault. It gets better over time, not worse.\n\nReady? Let's start.`);
+      // Show greeting above chat
+      const greetingText = displayFirstName ? `Welcome, ${displayFirstName}.` : (firebaseAuth?.currentUser ? "Welcome back." : "Welcome.");
+      setWelcomeGreeting(greetingText);
+      setTimeout(() => setGreetingVisible(true), 50);
+      // Preamble — no inline welcome (greeting is separate UI element above chat)
+      addAssistantMessage(`You're about to build a Digital Worker — think of it like an AI app built on your expertise. Just like an app does one thing really well, your Digital Worker will know exactly what you know and be available to anyone, anytime, without you having to be in the room.\n\nHere's the process. First we'll build it together — you tell me what you know, I shape it into a worker. If you've already put something together in ChatGPT or another AI tool, you can use that as your starting point. Then we'll test it — you'll actually talk to your own worker and see it work. Once you're happy with it, we help you publish it and get it in front of the right people. After it's live you can keep adding to it, track who's using it, collect feedback, and get paid.\n\nYour pace, your timeline. Some people publish in an hour if they've been thinking about this for a while. Others build over a few months. Either way, we save everything — every conversation, every decision, every version of your worker. We never forget.\n\nMost people have had the experience of building something in another AI tool and coming back to find it has no idea what you're talking about. That's not how this works. Your worker lives in your Vault. It gets better over time, not worse.\n\nReady? Let's start.`);
       // Opening question after 1.5s delay
       setTimeout(() => {
-        addAssistantMessage("What do you do that other people always ask you for help with?");
+        addAssistantMessage("So — what do you want to build?");
       }, 1500);
 
       // Auto-send pasted spec from landing page (via ?spec= URL param)
@@ -844,6 +850,11 @@ export default function DeveloperSandbox() {
     if ((!text && pendingImages.length === 0) || sending) return;
     setInput("");
     setShowPasteArea(false); // Hide paste link once user starts typing
+    // Fade out welcome greeting on first user message
+    if (greetingVisible) {
+      setGreetingVisible(false);
+      setTimeout(() => setWelcomeGreeting(null), 400);
+    }
     addUserMessage(text);
 
     // First user message advances flowStep 0 → 1
@@ -1474,6 +1485,21 @@ export default function DeveloperSandbox() {
             </span>
           )}
         </div>
+        {/* Welcome greeting — persistent line above chat, fades on first message */}
+        {welcomeGreeting && (
+          <div style={{
+            padding: "20px 24px 12px",
+            fontSize: 22,
+            fontWeight: 700,
+            color: "#1a1a2e",
+            opacity: greetingVisible ? 1 : 0,
+            transition: "opacity 0.4s ease",
+            flexShrink: 0,
+          }}>
+            {welcomeGreeting}
+          </div>
+        )}
+
         <div style={S.chatMessages}>
           <div style={{ flex: 1 }} />
           {messages.map((msg, i) => {
