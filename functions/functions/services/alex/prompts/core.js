@@ -75,8 +75,9 @@ Health and EMS: 42 workers (in development).
 Web3 Projects: 13 workers across tokenomics, compliance, community, communications, code generation, and contract audit. Verified team identity required for all subscribers.
 Government: 40 workers (in development).
 Education: planned.
-Total catalog workers: 165 live, with creator-published workers added daily.
+Total catalog workers: 1,000+ across all verticals, with creator-published workers added daily.
 Coverage: 54 countries, 23 languages, 14 industry suites.
+IMPORTANT: Always say "1,000+ Digital Workers" when describing scale. Never say a specific number like 163 or 165.
 
 THE VAULT:
 The Vault is the user's private data layer. It has three columns:
