@@ -4731,7 +4731,7 @@ export default function App() {
       }
     }
 
-    if (chatToken) {
+    if (chatToken && chatToken.length > 10) {
       signInWithCustomToken(auth, chatToken)
         .then(async (userCred) => {
           const freshToken = await userCred.user.getIdToken(true);
@@ -4751,6 +4751,10 @@ export default function App() {
           window.history.replaceState({}, "", window.location.pathname);
           setHandoffInProgress(false);
         });
+    } else if (chatToken) {
+      // Invalid/short token param — clear it and fall through to normal auth
+      window.history.replaceState({}, "", window.location.pathname);
+      setHandoffInProgress(false);
     }
 
     if (!chatToken) {
