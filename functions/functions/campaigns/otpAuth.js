@@ -76,7 +76,9 @@ async function sendOtp(req, res) {
  */
 async function verifyOtp(req, res) {
   const db = getDb();
-  const { phone, code, utmAttribution } = req.body || {};
+  const body = req.body || {};
+  const { phone, utmAttribution } = body;
+  const code = body.code || body.otp; // frontend may send either field name
 
   if (!phone || !code) {
     return res.status(400).json({ ok: false, error: "phone and code required" });
