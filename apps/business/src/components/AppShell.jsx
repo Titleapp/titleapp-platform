@@ -68,6 +68,16 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
       const data = await resp.json();
       if (data.ok && data.workspaces) {
         setWorkspaces(data.workspaces);
+        // Sync localStorage vertical with actual workspace data
+        const wsId = localStorage.getItem("WORKSPACE_ID") || "vault";
+        const matchedWs = data.workspaces.find(w => w.id === wsId);
+        if (matchedWs && matchedWs.vertical) {
+          const storedVertical = localStorage.getItem("VERTICAL");
+          if (storedVertical !== matchedWs.vertical) {
+            localStorage.setItem("VERTICAL", matchedWs.vertical);
+            window.location.reload();
+          }
+        }
       }
     } catch (error) {
       console.error("Failed to load workspaces:", error);

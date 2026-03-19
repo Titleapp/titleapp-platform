@@ -4628,6 +4628,7 @@ export default function App() {
     typeof window !== "undefined" ? localStorage.getItem("ID_TOKEN") : null
   );
   const [currentView, setCurrentView] = useState("loading"); // loading | hub | app | onboarding | builder-interview
+  const [showTransition, setShowTransition] = useState(false);
   const [handoffInProgress, setHandoffInProgress] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     return !!params.get("token");
@@ -4636,6 +4637,13 @@ export default function App() {
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
   const [userName, setUserName] = useState("");
   const viewResolvedRef = useRef(false);
+
+  // Smooth transition: show branded overlay then fade out
+  function transitionTo(view) {
+    setShowTransition(true);
+    setCurrentView(view);
+    setTimeout(() => setShowTransition(false), 1100);
+  }
 
   useEffect(() => {
     // Handle custom token + session handoff from landing page chat
@@ -4819,7 +4827,7 @@ export default function App() {
     const hasSessionOverride = sessionStorage.getItem("ta_preselected_tid") || sessionStorage.getItem("ta_redirect_page") || sessionStorage.getItem("ta_discovered_context");
     if (hasExistingTenant && !hasSessionOverride) {
       viewResolvedRef.current = true;
-      setCurrentView("app");
+      transitionTo("app");
       return;
     }
 
@@ -4867,7 +4875,7 @@ export default function App() {
                 localStorage.setItem("WORKSPACE_NAME", tenant.companyName || tenant.name);
               }
               viewResolvedRef.current = true;
-              setCurrentView("app");
+              transitionTo("app");
               return;
             }
             // Preselected tid didn't match — if redirect page is set, pick best available tenant
@@ -4883,7 +4891,7 @@ export default function App() {
                 localStorage.setItem("WORKSPACE_NAME", tenant.companyName || tenant.name);
               }
               viewResolvedRef.current = true;
-              setCurrentView("app");
+              transitionTo("app");
               return;
             }
           }
@@ -4944,7 +4952,7 @@ export default function App() {
                   }));
                   sessionStorage.removeItem("ta_discovered_context");
                   viewResolvedRef.current = true;
-                  setCurrentView("app");
+                  transitionTo("app");
                   return;
                 }
               }
@@ -4952,14 +4960,14 @@ export default function App() {
               console.error("Auto-workspace from discovery failed:", e);
             }
           }
-          setCurrentView("marketplace");
+          transitionTo("marketplace");
         } else {
           // Check if we were in the middle of onboarding a new workspace
           const pendingOnboarding = localStorage.getItem("PENDING_ONBOARDING");
           if (pendingOnboarding) {
             setNeedsOnboarding(true);
             viewResolvedRef.current = true;
-            setCurrentView("app");
+            transitionTo("app");
           } else if (sessionStorage.getItem("ta_redirect_page")) {
             // Redirect page is set (e.g., investor coming from /invest) — bypass hub
             // Auto-select the best tenant: prefer investor vertical, fall back to first
@@ -4986,11 +4994,11 @@ export default function App() {
               }
             }
             viewResolvedRef.current = true;
-            setCurrentView("app");
+            transitionTo("app");
           } else if (localStorage.getItem("TENANT_ID")) {
             // Returning user with existing workspace — go straight to app
             viewResolvedRef.current = true;
-            setCurrentView("app");
+            transitionTo("app");
           } else if (data.memberships && data.memberships.length === 1) {
             // Single membership — auto-select and go to app
             const mem = data.memberships[0];
@@ -5004,9 +5012,9 @@ export default function App() {
               localStorage.setItem("WORKSPACE_NAME", tenant.companyName || tenant.name);
             }
             viewResolvedRef.current = true;
-            setCurrentView("app");
+            transitionTo("app");
           } else {
-            setCurrentView("hub");
+            transitionTo("hub");
           }
         }
       } catch (err) {
@@ -5014,9 +5022,9 @@ export default function App() {
         // On any failure, go to app if we have a tenant, otherwise hub
         if (localStorage.getItem("TENANT_ID")) {
           viewResolvedRef.current = true;
-          setCurrentView("app");
+          transitionTo("app");
         } else {
-          setCurrentView("hub");
+          transitionTo("hub");
         }
       }
     }
@@ -5026,7 +5034,7 @@ export default function App() {
       if (!viewResolvedRef.current) {
         console.warn("resolveView timed out after 8s — forcing app view");
         viewResolvedRef.current = true;
-        setCurrentView("app");
+        transitionTo("app");
       }
     }, 8000);
 
@@ -5044,7 +5052,7 @@ export default function App() {
     const pendingOnboarding = localStorage.getItem("PENDING_ONBOARDING");
     const shouldOnboard = workspace._needsOnboarding === true || !!pendingOnboarding;
     setNeedsOnboarding(shouldOnboard);
-    setCurrentView("app");
+    transitionTo("app");
     if (window.location.pathname === "/login" || window.location.pathname === "/") {
       window.history.replaceState({}, "", "/dashboard");
     }
@@ -5095,7 +5103,7 @@ export default function App() {
         localStorage.setItem("WORKSPACE_ID", data.workspace.id);
         localStorage.setItem("WORKSPACE_NAME", data.workspace.name);
         viewResolvedRef.current = true;
-        setCurrentView("app");
+        transitionTo("app");
       }
     } catch (err) {
       console.error("Failed to create workspace:", err);
@@ -5272,18 +5280,28 @@ export default function App() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "#f8fafc",
+          background: "#0f172a",
         }}
       >
-        <div style={{ textAlign: "center" }}>
-          <div style={{ fontSize: "20px", fontWeight: 600, color: "#7c3aed", marginBottom: "16px" }}>TitleApp</div>
-          <div style={{ fontSize: "16px", color: "#6b7280" }}>Loading...</div>
-        </div>
+        <div style={{ fontSize: 28, fontWeight: 700, color: "white", letterSpacing: "-0.5px", animation: "taPulse 1.5s ease-in-out infinite" }}>TitleApp</div>
       </div>
     );
   }
 
-  if (!token || currentView === "login") return <LandingPage />;
+  // Crossfade transition overlay — renders above content during view switches
+  const transitionOverlay = showTransition ? (
+    <div style={{
+      position: "fixed", inset: 0,
+      background: "#0f172a",
+      display: "flex", alignItems: "center", justifyContent: "center",
+      zIndex: 9999,
+      animation: "taFadeOut 0.8s ease-in-out 0.3s forwards",
+    }}>
+      <div style={{ fontSize: 28, fontWeight: 700, color: "white", letterSpacing: "-0.5px", animation: "taPulse 1.5s ease-in-out infinite" }}>TitleApp</div>
+    </div>
+  ) : null;
+
+  if (!token || currentView === "login") return <>{transitionOverlay}<LandingPage /></>;
 
   if (currentView === "onboarding") {
     return (
@@ -5304,23 +5322,23 @@ export default function App() {
   }
 
   if (currentView === "marketplace") {
-    return <AdminShell onBackToHub={handleBackToHub} initialSection="raas-store" />;
+    return <>{transitionOverlay}<AdminShell onBackToHub={handleBackToHub} initialSection="raas-store" /></>;
   }
 
   if (currentView === "hub") {
     return (
-      <WorkspaceHub
+      <>{transitionOverlay}<WorkspaceHub
         userName={userName}
         onLaunch={handleWorkspaceLaunch}
         onBuilderStart={() => setCurrentView("builder-interview")}
         onAdminLaunch={() => setCurrentView("admin")}
         onAddWorker={() => setCurrentView("marketplace")}
-      />
+      /></>
     );
   }
 
   if (currentView === "admin") {
-    return <AdminCommandCenter onBackToHub={handleBackToHub} />;
+    return <>{transitionOverlay}<AdminCommandCenter onBackToHub={handleBackToHub} /></>;
   }
 
   if (currentView === "builder-interview") {
@@ -5359,5 +5377,5 @@ export default function App() {
     );
   }
 
-  return <AdminShell onBackToHub={handleBackToHub} />;
+  return <>{transitionOverlay}<AdminShell onBackToHub={handleBackToHub} /></>;
 }

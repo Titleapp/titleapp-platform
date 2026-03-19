@@ -607,6 +607,14 @@ body{
   0%,80%,100%{ transform:translateY(0); opacity:0.4; }
   40%{ transform:translateY(-4px); opacity:1; }
 }
+@keyframes taFadeOut{
+  from{ opacity:1; }
+  to{ opacity:0; pointer-events:none; }
+}
+@keyframes taPulse{
+  0%,100%{ opacity:0.7; }
+  50%{ opacity:1; }
+}
 @keyframes spinKey{
   from{ transform:rotate(0deg); }
   to{ transform:rotate(360deg); }
