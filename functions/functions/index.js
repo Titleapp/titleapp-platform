@@ -1082,6 +1082,32 @@ exports.api = onRequest(
       }
     }
 
+    // POST /v1/alex:promoteGuest — link guest chat session to authenticated user (35.1)
+    if ((route === "/alex:promoteGuest" || route === "/alex/promoteGuest") && method === "POST") {
+      try {
+        const { guestId, uid } = body || {};
+        if (!guestId || !uid) return jsonError(res, 400, "guestId and uid required");
+        const sessionRef = db.collection("chatSessions").doc(guestId);
+        const sessionSnap = await sessionRef.get();
+        if (sessionSnap.exists) {
+          await sessionRef.update({
+            userId: uid,
+            promotedAt: nowServerTs(),
+          });
+          // Also update prospect session if it exists
+          const prospectRef = db.collection("prospectSessions").doc(guestId);
+          const prospectSnap = await prospectRef.get();
+          if (prospectSnap.exists) {
+            await prospectRef.update({ uid, convertedAt: nowServerTs() });
+          }
+        }
+        return res.json({ ok: true });
+      } catch (e) {
+        console.error("alex:promoteGuest failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
     // GET /v1/campaign/:slug — campaign context for landing pages (unauthenticated)
     if (route.startsWith("/campaign/") && method === "GET") {
       try {
@@ -1304,6 +1330,13 @@ exports.api = onRequest(
               aiText = aiText.replace(/\s*\[OPEN_SANDBOX\]\s*/gi, '').trim();
             }
 
+            // Detect [AUTH_GATE] marker — signals frontend to show SSO buttons
+            let suggestAuth = false;
+            if (/\[AUTH_GATE\]/i.test(aiText)) {
+              suggestAuth = true;
+              aiText = aiText.replace(/\s*\[AUTH_GATE\]\s*/gi, '').trim();
+            }
+
             // Update conversation history
             sessionState.salesHistory.push({ role: 'user', content: userInput });
             sessionState.salesHistory.push({ role: 'assistant', content: aiText });
@@ -1397,6 +1430,7 @@ exports.api = onRequest(
             if (workerCards.length > 0) response.workerCards = workerCards;
             if (sandboxRedirect) response.sandboxRedirect = true;
             if (escalated) response.escalated = true;
+            if (suggestAuth) response.suggestAuth = true;
 
             return res.json(response);
           } catch (e) {

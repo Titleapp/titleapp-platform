@@ -1,209 +1,333 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { auth } from "../firebase";
-import { signInWithCustomToken } from "firebase/auth";
+import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
 
-const S = {
-  page: { minHeight: "100vh", minHeight: "100dvh", background: "#0f172a", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "24px 16px" },
-  logo: { fontSize: 14, fontWeight: 700, color: "rgba(255,255,255,0.5)", marginBottom: 48, letterSpacing: "0.05em" },
-  avatar: { width: 80, height: 80, borderRadius: "50%", background: "linear-gradient(135deg, #7c3aed 0%, #6366f1 50%, #0ea5e9 100%)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20, boxShadow: "0 0 40px rgba(124,58,237,0.3)" },
-  heading: { fontSize: 28, fontWeight: 700, color: "#ffffff", marginBottom: 6 },
-  subtext: { fontSize: 15, color: "rgba(255,255,255,0.6)", marginBottom: 32 },
-  form: { width: "100%", maxWidth: 360 },
-  label: { fontSize: 14, fontWeight: 600, color: "rgba(255,255,255,0.8)", marginBottom: 8, display: "block" },
-  input: { width: "100%", padding: "14px 16px", fontSize: 18, border: "1px solid rgba(255,255,255,0.15)", borderRadius: 12, outline: "none", textAlign: "center", boxSizing: "border-box", background: "rgba(255,255,255,0.08)", color: "#ffffff" },
-  btn: { width: "100%", padding: "14px", fontSize: 16, fontWeight: 600, color: "#fff", background: "#7c3aed", border: "none", borderRadius: 12, cursor: "pointer", marginTop: 12 },
-  otpInput: { width: "100%", padding: "14px 16px", fontSize: 24, fontWeight: 600, letterSpacing: "0.3em", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 12, outline: "none", textAlign: "center", boxSizing: "border-box", background: "rgba(255,255,255,0.08)", color: "#ffffff" },
-  otpHint: { fontSize: 13, color: "rgba(255,255,255,0.6)", textAlign: "center", marginBottom: 12 },
-  backBtn: { background: "none", border: "none", color: "rgba(255,255,255,0.5)", fontSize: 13, cursor: "pointer", marginTop: 8, display: "block", margin: "8px auto 0" },
-  status: { fontSize: 13, textAlign: "center", marginTop: 8, padding: "8px 12px", borderRadius: 8 },
-  footer: { position: "fixed", bottom: 24, left: 0, right: 0, textAlign: "center", fontSize: 13, color: "rgba(255,255,255,0.35)" },
+// Map URL vertical params to backend sales verticals
+const VERTICAL_MAP = {
+  "auto-dealer": "auto_dealer", "auto": "auto_dealer", "dealer": "auto_dealer",
+  "solar": "solar_vpp", "solar-vpp": "solar_vpp",
+  "real-estate": "real_estate_development", "re": "real_estate_development",
+  "property-management": "re_operations", "pm": "re_operations",
+  "aviation": "aviation", "pilot": "aviation",
+  "creator": "creators", "creators": "creators", "developer": "creators",
 };
 
-export default function MeetAlex() {
-  const [mode, setMode] = useState("phone"); // phone | otp | verifying | done
-  const [phone, setPhone] = useState("");
-  const [otp, setOtp] = useState("");
-  const [status, setStatus] = useState("");
-  const phoneRef = useRef(null);
-  const otpRef = useRef(null);
+function uuid() {
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, c => {
+    const r = (Math.random() * 16) | 0;
+    return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
+  });
+}
 
-  // Read URL params
-  const [prompt] = useState(() => {
-    const params = new URLSearchParams(window.location.search);
-    return params.get("prompt") || "";
+export default function MeetAlex() {
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState("");
+  const [sending, setSending] = useState(false);
+  const [showAuth, setShowAuth] = useState(false);
+  const [authInProgress, setAuthInProgress] = useState(false);
+  const messagesEndRef = useRef(null);
+  const inputRef = useRef(null);
+
+  // Session & URL params (stable across renders)
+  const [sessionId] = useState(() => {
+    let sid = sessionStorage.getItem("ta_guest_sid");
+    if (!sid) { sid = uuid(); sessionStorage.setItem("ta_guest_sid", sid); }
+    return sid;
   });
   const [vertical] = useState(() => {
-    const params = new URLSearchParams(window.location.search);
-    return params.get("vertical") || "";
+    const v = new URLSearchParams(window.location.search).get("vertical") || "";
+    return VERTICAL_MAP[v] || v || "";
   });
+  const [prompt] = useState(() =>
+    new URLSearchParams(window.location.search).get("prompt") || ""
+  );
 
+  // Auto-scroll to bottom
   useEffect(() => {
-    if (mode === "phone" && phoneRef.current) phoneRef.current.focus();
-    if (mode === "otp" && otpRef.current) otpRef.current.focus();
-  }, [mode]);
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, sending]);
 
-  async function handleSendOtp(e) {
-    e.preventDefault();
-    const trimmed = phone.trim();
-    if (!trimmed) return;
-    setStatus("Sending code...");
-    try {
-      const res = await fetch(`${API_BASE}/api?path=/v1/auth/sendOtp`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: trimmed }),
-      });
-      const data = await res.json();
-      if (data.ok) {
-        setMode("otp");
-        setStatus("");
-      } else {
-        setStatus(data.error || "Failed to send code.");
-      }
-    } catch {
-      setStatus("Failed to send code. Try again.");
+  // Send message to backend
+  const sendMessage = useCallback(async (userText) => {
+    const trimmed = (userText || "").trim();
+
+    // Add user message to UI (skip for initial empty ping)
+    if (trimmed) {
+      setMessages(prev => [...prev, { role: "user", text: trimmed }]);
     }
-  }
+    setSending(true);
 
-  async function handleVerifyOtp(e) {
-    e.preventDefault();
-    if (otp.length < 6) return;
-    setMode("verifying");
-    setStatus("Verifying...");
     try {
-      const utmData = { source: "sms", medium: "meet-alex", campaign: vertical || "intro-text", capturedAt: new Date().toISOString() };
-      sessionStorage.setItem("ta_utm", JSON.stringify(utmData));
-
-      const res = await fetch(`${API_BASE}/api?path=/v1/auth/verifyOtp`, {
+      const res = await fetch(`${API_BASE}/api?path=/v1/chat:message`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          phone: phone.trim(),
-          otp: otp.trim(),
-          utmAttribution: utmData,
+          sessionId,
+          userInput: trimmed || "(initial)",
+          surface: "sales",
+          campaignSlug: vertical,
+          utmSource: "meet-alex",
+          utmMedium: "guest-chat",
         }),
       });
       const data = await res.json();
-      if (data.ok && data.customToken) {
-        const cred = await signInWithCustomToken(auth, data.customToken);
-        const token = await cred.user.getIdToken(true);
-        localStorage.setItem("ID_TOKEN", token);
-        // Store prompt for ChatPanel auto-send
-        if (prompt) {
-          sessionStorage.setItem("ta_landing_chat", prompt);
-        }
-        // Store campaign context for sales mode
-        if (vertical) {
-          sessionStorage.setItem("ta_campaign_context", JSON.stringify({ slug: vertical, persona: vertical, vertical }));
-        }
-        setMode("done");
-        const redirectParams = new URLSearchParams();
-        redirectParams.set("utm_source", "sms");
-        redirectParams.set("utm_medium", "meet-alex");
-        if (vertical) redirectParams.set("utm_campaign", vertical);
-        window.location.href = "/?" + redirectParams.toString();
-      } else {
-        setStatus(data.error || "Invalid code. Try again.");
-        setMode("otp");
+      if (data.ok && data.message) {
+        setMessages(prev => [...prev, {
+          role: "assistant",
+          text: data.message,
+          workerCards: data.workerCards || null,
+        }]);
+        if (data.suggestAuth) setShowAuth(true);
       }
     } catch {
-      setStatus("Verification failed. Try again.");
-      setMode("otp");
+      setMessages(prev => [...prev, { role: "assistant", text: "Something went wrong. Try again." }]);
+    }
+    setSending(false);
+  }, [sessionId, vertical]);
+
+  // On mount: send initial message to get Alex's opening
+  useEffect(() => {
+    if (messages.length === 0) {
+      sendMessage(prompt || "");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function handleSubmit(e) {
+    e.preventDefault();
+    if (!input.trim() || sending) return;
+    const msg = input;
+    setInput("");
+    sendMessage(msg);
+  }
+
+  // Google SSO
+  async function handleGoogleAuth() {
+    setAuthInProgress(true);
+    try {
+      const provider = new GoogleAuthProvider();
+      const cred = await signInWithPopup(auth, provider);
+      const token = await cred.user.getIdToken(true);
+      localStorage.setItem("ID_TOKEN", token);
+
+      // Store UTM
+      sessionStorage.setItem("ta_utm", JSON.stringify({
+        source: "meet-alex", medium: "guest-chat",
+        campaign: vertical || "direct", capturedAt: new Date().toISOString(),
+      }));
+
+      // Store first user message for ChatPanel
+      const firstUserMsg = messages.find(m => m.role === "user");
+      if (firstUserMsg) sessionStorage.setItem("ta_landing_chat", firstUserMsg.text);
+
+      // Promote guest session
+      try {
+        await fetch(`${API_BASE}/api?path=/v1/alex:promoteGuest`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ guestId: sessionId, uid: cred.user.uid }),
+        });
+      } catch { /* non-fatal */ }
+
+      // Store campaign context for sales mode continuity
+      if (vertical) {
+        sessionStorage.setItem("ta_campaign_context", JSON.stringify({ slug: vertical, persona: vertical, vertical }));
+      }
+
+      window.location.href = "/?utm_source=meet-alex&utm_medium=guest-chat" + (vertical ? "&utm_campaign=" + vertical : "");
+    } catch (err) {
+      console.error("Google auth failed:", err);
+      setAuthInProgress(false);
     }
   }
 
-  const isError = status.includes("Failed") || status.includes("failed") || status.includes("Invalid");
+  // Email flow — simple email input + signInWithEmailAndPassword or redirect to login
+  const [emailMode, setEmailMode] = useState(false);
+  const [email, setEmail] = useState("");
+
+  async function handleEmailAuth(e) {
+    e.preventDefault();
+    if (!email.trim()) return;
+    setAuthInProgress(true);
+
+    // Store context before redirect
+    sessionStorage.setItem("ta_utm", JSON.stringify({
+      source: "meet-alex", medium: "guest-chat",
+      campaign: vertical || "direct", capturedAt: new Date().toISOString(),
+    }));
+    const firstUserMsg = messages.find(m => m.role === "user");
+    if (firstUserMsg) sessionStorage.setItem("ta_landing_chat", firstUserMsg.text);
+    if (vertical) {
+      sessionStorage.setItem("ta_campaign_context", JSON.stringify({ slug: vertical, persona: vertical, vertical }));
+    }
+    sessionStorage.setItem("ta_guest_email", email.trim());
+
+    // Redirect to main app which will show the login flow
+    window.location.href = "/?utm_source=meet-alex&utm_medium=guest-chat" + (vertical ? "&utm_campaign=" + vertical : "");
+  }
+
+  // Styles
+  const S = {
+    page: { height: "100vh", height: "100dvh", background: "#0f172a", display: "flex", flexDirection: "column", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" },
+    header: { display: "flex", alignItems: "center", gap: 10, padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.08)", flexShrink: 0 },
+    headerAvatar: { width: 32, height: 32, borderRadius: "50%", background: "linear-gradient(135deg, #7c3aed 0%, #6366f1 50%, #0ea5e9 100%)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 },
+    headerName: { fontSize: 15, fontWeight: 600, color: "#ffffff" },
+    headerSub: { fontSize: 12, color: "rgba(255,255,255,0.45)" },
+    logo: { marginLeft: "auto", fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.3)", letterSpacing: "0.05em" },
+    messageList: { flex: 1, overflowY: "auto", padding: "16px 16px 8px", display: "flex", flexDirection: "column", gap: 12, WebkitOverflowScrolling: "touch" },
+    msgRow: (isUser) => ({ display: "flex", justifyContent: isUser ? "flex-end" : "flex-start", alignItems: "flex-end", gap: 8 }),
+    bubble: (isUser) => ({
+      maxWidth: "80%", padding: "10px 14px", borderRadius: 16, fontSize: 14, lineHeight: 1.5,
+      whiteSpace: "pre-wrap", wordBreak: "break-word",
+      ...(isUser
+        ? { background: "#7c3aed", color: "#fff", borderBottomRightRadius: 4 }
+        : { background: "rgba(255,255,255,0.08)", color: "#e2e8f0", borderBottomLeftRadius: 4 }),
+    }),
+    miniAvatar: { width: 28, height: 28, borderRadius: "50%", background: "linear-gradient(135deg, #7c3aed 0%, #6366f1 50%, #0ea5e9 100%)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 },
+    inputBar: { display: "flex", gap: 8, padding: "12px 16px", borderTop: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)", flexShrink: 0 },
+    input: { flex: 1, padding: "12px 16px", fontSize: 15, border: "1px solid rgba(255,255,255,0.12)", borderRadius: 24, outline: "none", background: "rgba(255,255,255,0.06)", color: "#fff", boxSizing: "border-box", resize: "none", fontFamily: "inherit" },
+    sendBtn: { width: 42, height: 42, borderRadius: "50%", background: "#7c3aed", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, opacity: 1, transition: "opacity 0.15s" },
+    typing: { display: "flex", gap: 4, padding: "10px 14px", borderRadius: 16, background: "rgba(255,255,255,0.08)", borderBottomLeftRadius: 4, maxWidth: "80%" },
+    dot: (i) => ({ width: 6, height: 6, borderRadius: "50%", background: "rgba(255,255,255,0.4)", animation: `typingDot 1.2s infinite ${i * 0.2}s` }),
+    // Auth card
+    authCard: { margin: "0 16px 8px", padding: "16px 20px", background: "rgba(124,58,237,0.1)", border: "1px solid rgba(124,58,237,0.2)", borderRadius: 16 },
+    authTitle: { fontSize: 14, fontWeight: 600, color: "#e2e8f0", marginBottom: 12 },
+    authBtn: (bg) => ({ width: "100%", padding: "12px", fontSize: 14, fontWeight: 600, color: "#fff", background: bg, border: "none", borderRadius: 10, cursor: "pointer", marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }),
+    authDivider: { fontSize: 12, color: "rgba(255,255,255,0.35)", textAlign: "center", margin: "4px 0 8px" },
+    emailInput: { width: "100%", padding: "10px 14px", fontSize: 14, border: "1px solid rgba(255,255,255,0.15)", borderRadius: 10, outline: "none", background: "rgba(255,255,255,0.06)", color: "#fff", boxSizing: "border-box", marginBottom: 8 },
+    workerCard: { display: "flex", gap: 12, padding: "12px 14px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, marginTop: 8 },
+    wcName: { fontSize: 13, fontWeight: 600, color: "#e2e8f0" },
+    wcDesc: { fontSize: 12, color: "rgba(255,255,255,0.5)", marginTop: 2 },
+    wcPrice: { fontSize: 12, fontWeight: 600, color: "#a78bfa", marginTop: 4 },
+  };
 
   return (
     <div style={S.page}>
-      <div style={S.logo}>TITLEAPP</div>
+      {/* Typing animation keyframes */}
+      <style>{`@keyframes typingDot { 0%,60%,100% { opacity: 0.3; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-3px); } }`}</style>
 
-      {/* Alex Avatar */}
-      <div style={S.avatar}>
-        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-        </svg>
+      {/* Header */}
+      <div style={S.header}>
+        <div style={S.headerAvatar}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+          </svg>
+        </div>
+        <div>
+          <div style={S.headerName}>Alex</div>
+          <div style={S.headerSub}>Chief of Staff</div>
+        </div>
+        <div style={S.logo}>TITLEAPP</div>
       </div>
 
-      <div style={S.heading}>Hey, I'm Alex</div>
-      <div style={S.subtext}>Your Chief of Staff</div>
+      {/* Messages */}
+      <div style={S.messageList}>
+        {messages.map((m, i) => (
+          <div key={i}>
+            <div style={S.msgRow(m.role === "user")}>
+              {m.role === "assistant" && (
+                <div style={S.miniAvatar}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                  </svg>
+                </div>
+              )}
+              <div style={S.bubble(m.role === "user")}>{m.text}</div>
+            </div>
+            {/* Worker cards */}
+            {m.workerCards && m.workerCards.length > 0 && (
+              <div style={{ marginLeft: 36, marginTop: 4 }}>
+                {m.workerCards.map((wc, wi) => (
+                  <div key={wi} style={S.workerCard}>
+                    <div style={{ flex: 1 }}>
+                      <div style={S.wcName}>{wc.name}</div>
+                      <div style={S.wcDesc}>{wc.description}</div>
+                      <div style={S.wcPrice}>{wc.price === 0 ? "Free" : `$${wc.price}/mo`}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
 
-      {prompt && (
-        <div style={{ maxWidth: 360, padding: "12px 20px", background: "rgba(124,58,237,0.15)", borderRadius: 12, fontSize: 14, color: "rgba(255,255,255,0.7)", marginBottom: 24, textAlign: "center", fontStyle: "italic" }}>
-          "{prompt}"
+        {/* Typing indicator */}
+        {sending && (
+          <div style={S.msgRow(false)}>
+            <div style={S.miniAvatar}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+              </svg>
+            </div>
+            <div style={S.typing}>
+              <div style={S.dot(0)} /><div style={S.dot(1)} /><div style={S.dot(2)} />
+            </div>
+          </div>
+        )}
+
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Auth card — shown when Alex triggers [AUTH_GATE] */}
+      {showAuth && !authInProgress && (
+        <div style={S.authCard}>
+          <div style={S.authTitle}>Continue with Alex</div>
+          <button onClick={handleGoogleAuth} style={S.authBtn("#4285f4")}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+            Continue with Google
+          </button>
+          <div style={S.authDivider}>or</div>
+          {!emailMode ? (
+            <button onClick={() => setEmailMode(true)} style={S.authBtn("rgba(255,255,255,0.1)")}>
+              Continue with Email
+            </button>
+          ) : (
+            <form onSubmit={handleEmailAuth}>
+              <input
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="your@email.com"
+                autoFocus
+                style={S.emailInput}
+              />
+              <button type="submit" style={S.authBtn("#7c3aed")} disabled={!email.trim()}>
+                Continue
+              </button>
+            </form>
+          )}
         </div>
       )}
 
-      <div style={S.form}>
-        {mode === "phone" && (
-          <form onSubmit={handleSendOtp}>
-            <label style={S.label}>Enter your number to talk to Alex</label>
-            <input
-              ref={phoneRef}
-              type="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="+1 (555) 555-5555"
-              autoComplete="tel"
-              style={S.input}
-            />
-            <button type="submit" style={{ ...S.btn, opacity: phone.trim() ? 1 : 0.6 }}>
-              Send Code
-            </button>
-          </form>
-        )}
+      {authInProgress && (
+        <div style={{ ...S.authCard, textAlign: "center" }}>
+          <div style={{ fontSize: 14, color: "rgba(255,255,255,0.6)" }}>Setting things up...</div>
+        </div>
+      )}
 
-        {(mode === "otp" || mode === "verifying") && (
-          <form onSubmit={handleVerifyOtp}>
-            <div style={S.otpHint}>We sent a 6-digit code to {phone}</div>
-            <input
-              ref={otpRef}
-              type="text"
-              inputMode="numeric"
-              maxLength={6}
-              value={otp}
-              onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
-              placeholder="000000"
-              autoComplete="one-time-code"
-              style={S.otpInput}
-            />
-            <button
-              type="submit"
-              disabled={mode === "verifying" || otp.length < 6}
-              style={{ ...S.btn, opacity: mode === "verifying" || otp.length < 6 ? 0.6 : 1 }}
-            >
-              {mode === "verifying" ? "Verifying..." : "Verify"}
-            </button>
-            <button
-              type="button"
-              onClick={() => { setMode("phone"); setOtp(""); setStatus(""); }}
-              style={S.backBtn}
-            >
-              Use a different number
-            </button>
-          </form>
-        )}
-
-        {mode === "done" && (
-          <div style={{ textAlign: "center", color: "rgba(255,255,255,0.6)", fontSize: 15 }}>
-            Connecting you to Alex...
-          </div>
-        )}
-
-        {status && mode !== "done" && (
-          <div style={{
-            ...S.status,
-            background: isError ? "rgba(220,38,38,0.15)" : "rgba(22,163,74,0.15)",
-            color: isError ? "#fca5a5" : "#86efac",
-          }}>
-            {status}
-          </div>
-        )}
-      </div>
-
-      <div style={S.footer}>14-day free trial. No credit card required.</div>
+      {/* Input bar */}
+      <form onSubmit={handleSubmit} style={S.inputBar}>
+        <input
+          ref={inputRef}
+          type="text"
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          placeholder="Message Alex..."
+          disabled={sending || authInProgress}
+          style={{ ...S.input, opacity: sending ? 0.6 : 1 }}
+        />
+        <button
+          type="submit"
+          disabled={!input.trim() || sending}
+          style={{ ...S.sendBtn, opacity: !input.trim() || sending ? 0.4 : 1 }}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" />
+          </svg>
+        </button>
+      </form>
     </div>
   );
 }
