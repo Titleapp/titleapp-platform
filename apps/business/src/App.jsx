@@ -4663,18 +4663,23 @@ export default function App() {
     }
 
     // Landing page handoff — ?q=, ?search=, ?vertical=
+    // Skip redirect for /meet-alex and /campaign/* — those pages handle their own params
+    const isMeetAlexPath = /^\/meet-alex\/?/.test(window.location.pathname);
+    const isCampaignPath = /^\/campaign\//.test(window.location.pathname);
     const handoff = processLandingHandoff();
-    if (handoff.type === "search") {
-      sessionStorage.setItem("ta_landing_search", handoff.value);
-      if (window.location.pathname !== "/workers") {
-        window.location.href = "/workers";
-        return;
-      }
-    } else if (handoff.type === "vertical") {
-      sessionStorage.setItem("ta_landing_vertical", handoff.value);
-      if (window.location.pathname !== "/workers") {
-        window.location.href = "/workers";
-        return;
+    if (!isMeetAlexPath && !isCampaignPath) {
+      if (handoff.type === "search") {
+        sessionStorage.setItem("ta_landing_search", handoff.value);
+        if (window.location.pathname !== "/workers") {
+          window.location.href = "/workers";
+          return;
+        }
+      } else if (handoff.type === "vertical") {
+        sessionStorage.setItem("ta_landing_vertical", handoff.value);
+        if (window.location.pathname !== "/workers") {
+          window.location.href = "/workers";
+          return;
+        }
       }
     }
 

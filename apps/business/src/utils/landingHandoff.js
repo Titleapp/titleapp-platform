@@ -10,6 +10,12 @@
  */
 
 export function processLandingHandoff() {
+  // Skip handoff for /meet-alex and /campaign/* — those pages handle their own params
+  const path = window.location.pathname;
+  if (/^\/meet-alex\/?/.test(path) || /^\/campaign\//.test(path)) {
+    return { type: null, value: null };
+  }
+
   const params = new URLSearchParams(window.location.search);
   const result = { type: null, value: null };
 

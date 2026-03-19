@@ -5,20 +5,20 @@ import { signInWithCustomToken } from "firebase/auth";
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
 
 const S = {
-  page: { minHeight: "100vh", background: "#f8fafc", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" },
-  logo: { fontSize: 14, fontWeight: 700, color: "#7c3aed", marginBottom: 48 },
-  avatar: { width: 80, height: 80, borderRadius: "50%", background: "linear-gradient(135deg, #7c3aed 0%, #6366f1 50%, #0ea5e9 100%)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20 },
-  heading: { fontSize: 28, fontWeight: 700, color: "#111827", marginBottom: 6 },
-  subtext: { fontSize: 15, color: "#6b7280", marginBottom: 40 },
-  form: { width: "100%", maxWidth: 360, padding: "0 24px" },
-  label: { fontSize: 14, fontWeight: 600, color: "#1e293b", marginBottom: 8, display: "block" },
-  input: { width: "100%", padding: "14px 16px", fontSize: 18, border: "1px solid #e5e7eb", borderRadius: 12, outline: "none", textAlign: "center", boxSizing: "border-box" },
+  page: { minHeight: "100vh", minHeight: "100dvh", background: "#0f172a", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "24px 16px" },
+  logo: { fontSize: 14, fontWeight: 700, color: "rgba(255,255,255,0.5)", marginBottom: 48, letterSpacing: "0.05em" },
+  avatar: { width: 80, height: 80, borderRadius: "50%", background: "linear-gradient(135deg, #7c3aed 0%, #6366f1 50%, #0ea5e9 100%)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20, boxShadow: "0 0 40px rgba(124,58,237,0.3)" },
+  heading: { fontSize: 28, fontWeight: 700, color: "#ffffff", marginBottom: 6 },
+  subtext: { fontSize: 15, color: "rgba(255,255,255,0.6)", marginBottom: 32 },
+  form: { width: "100%", maxWidth: 360 },
+  label: { fontSize: 14, fontWeight: 600, color: "rgba(255,255,255,0.8)", marginBottom: 8, display: "block" },
+  input: { width: "100%", padding: "14px 16px", fontSize: 18, border: "1px solid rgba(255,255,255,0.15)", borderRadius: 12, outline: "none", textAlign: "center", boxSizing: "border-box", background: "rgba(255,255,255,0.08)", color: "#ffffff" },
   btn: { width: "100%", padding: "14px", fontSize: 16, fontWeight: 600, color: "#fff", background: "#7c3aed", border: "none", borderRadius: 12, cursor: "pointer", marginTop: 12 },
-  otpInput: { width: "100%", padding: "14px 16px", fontSize: 24, fontWeight: 600, letterSpacing: "0.3em", border: "1px solid #e5e7eb", borderRadius: 12, outline: "none", textAlign: "center", boxSizing: "border-box" },
-  otpHint: { fontSize: 13, color: "#6b7280", textAlign: "center", marginBottom: 12 },
-  backBtn: { background: "none", border: "none", color: "#6b7280", fontSize: 13, cursor: "pointer", marginTop: 8, display: "block", margin: "8px auto 0" },
+  otpInput: { width: "100%", padding: "14px 16px", fontSize: 24, fontWeight: 600, letterSpacing: "0.3em", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 12, outline: "none", textAlign: "center", boxSizing: "border-box", background: "rgba(255,255,255,0.08)", color: "#ffffff" },
+  otpHint: { fontSize: 13, color: "rgba(255,255,255,0.6)", textAlign: "center", marginBottom: 12 },
+  backBtn: { background: "none", border: "none", color: "rgba(255,255,255,0.5)", fontSize: 13, cursor: "pointer", marginTop: 8, display: "block", margin: "8px auto 0" },
   status: { fontSize: 13, textAlign: "center", marginTop: 8, padding: "8px 12px", borderRadius: 8 },
-  footer: { position: "fixed", bottom: 24, left: 0, right: 0, textAlign: "center", fontSize: 13, color: "#94a3b8" },
+  footer: { position: "fixed", bottom: 24, left: 0, right: 0, textAlign: "center", fontSize: 13, color: "rgba(255,255,255,0.35)" },
 };
 
 export default function MeetAlex() {
@@ -29,10 +29,14 @@ export default function MeetAlex() {
   const phoneRef = useRef(null);
   const otpRef = useRef(null);
 
-  // Read ?prompt= param
+  // Read URL params
   const [prompt] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     return params.get("prompt") || "";
+  });
+  const [vertical] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("vertical") || "";
   });
 
   useEffect(() => {
@@ -69,7 +73,7 @@ export default function MeetAlex() {
     setMode("verifying");
     setStatus("Verifying...");
     try {
-      const utmData = { source: "sms", medium: "meet-alex", campaign: "intro-text", capturedAt: new Date().toISOString() };
+      const utmData = { source: "sms", medium: "meet-alex", campaign: vertical || "intro-text", capturedAt: new Date().toISOString() };
       sessionStorage.setItem("ta_utm", JSON.stringify(utmData));
 
       const res = await fetch(`${API_BASE}/api?path=/v1/auth/verifyOtp`, {
@@ -90,8 +94,16 @@ export default function MeetAlex() {
         if (prompt) {
           sessionStorage.setItem("ta_landing_chat", prompt);
         }
+        // Store campaign context for sales mode
+        if (vertical) {
+          sessionStorage.setItem("ta_campaign_context", JSON.stringify({ slug: vertical, persona: vertical, vertical }));
+        }
         setMode("done");
-        window.location.href = "/";
+        const redirectParams = new URLSearchParams();
+        redirectParams.set("utm_source", "sms");
+        redirectParams.set("utm_medium", "meet-alex");
+        if (vertical) redirectParams.set("utm_campaign", vertical);
+        window.location.href = "/?" + redirectParams.toString();
       } else {
         setStatus(data.error || "Invalid code. Try again.");
         setMode("otp");
@@ -106,7 +118,7 @@ export default function MeetAlex() {
 
   return (
     <div style={S.page}>
-      <div style={S.logo}>TitleApp</div>
+      <div style={S.logo}>TITLEAPP</div>
 
       {/* Alex Avatar */}
       <div style={S.avatar}>
@@ -119,7 +131,7 @@ export default function MeetAlex() {
       <div style={S.subtext}>Your Chief of Staff</div>
 
       {prompt && (
-        <div style={{ maxWidth: 360, padding: "12px 20px", background: "rgba(124,58,237,0.06)", borderRadius: 12, fontSize: 14, color: "#4b5563", marginBottom: 24, textAlign: "center", fontStyle: "italic" }}>
+        <div style={{ maxWidth: 360, padding: "12px 20px", background: "rgba(124,58,237,0.15)", borderRadius: 12, fontSize: 14, color: "rgba(255,255,255,0.7)", marginBottom: 24, textAlign: "center", fontStyle: "italic" }}>
           "{prompt}"
         </div>
       )}
@@ -127,7 +139,7 @@ export default function MeetAlex() {
       <div style={S.form}>
         {mode === "phone" && (
           <form onSubmit={handleSendOtp}>
-            <label style={S.label}>Phone Number</label>
+            <label style={S.label}>Enter your number to talk to Alex</label>
             <input
               ref={phoneRef}
               type="tel"
@@ -175,7 +187,7 @@ export default function MeetAlex() {
         )}
 
         {mode === "done" && (
-          <div style={{ textAlign: "center", color: "#6b7280", fontSize: 15 }}>
+          <div style={{ textAlign: "center", color: "rgba(255,255,255,0.6)", fontSize: 15 }}>
             Connecting you to Alex...
           </div>
         )}
@@ -183,8 +195,8 @@ export default function MeetAlex() {
         {status && mode !== "done" && (
           <div style={{
             ...S.status,
-            background: isError ? "#fef2f2" : "#f0fdf4",
-            color: isError ? "#dc2626" : "#16a34a",
+            background: isError ? "rgba(220,38,38,0.15)" : "rgba(22,163,74,0.15)",
+            color: isError ? "#fca5a5" : "#86efac",
           }}>
             {status}
           </div>

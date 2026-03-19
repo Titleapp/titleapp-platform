@@ -384,25 +384,17 @@ export default function WorkerMarketplace({ authenticated, userName, onSubscribe
         <p style={S.heroDesc}>
           {authenticated
             ? "Subscribe to a worker to start building. Your workspace is created automatically."
-            : "Digital Workers governed by human-defined rules. Subscribe to the workers you need."}
+            : "1,000+ Digital Workers. Built on the rules of your industry. On your team now."}
         </p>
         {!authenticated && (
           <div style={S.stats}>
             <div style={S.stat}>
-              <div style={S.statValue}>{publicWorkers.length}</div>
-              <div style={S.statLabel}>Workers</div>
-            </div>
-            <div style={S.stat}>
-              <div style={S.statValue}>{liveCount}</div>
-              <div style={S.statLabel}>Live</div>
-            </div>
-            <div style={S.stat}>
-              <div style={S.statValue}>{plannedCount}</div>
-              <div style={S.statLabel}>Coming soon</div>
+              <div style={S.statValue}>1,000+</div>
+              <div style={S.statLabel}>Digital Workers</div>
             </div>
             <div style={S.stat}>
               <div style={S.statValue}>{SUITES.length - 1}</div>
-              <div style={S.statLabel}>Suites</div>
+              <div style={S.statLabel}>Industries</div>
             </div>
           </div>
         )}
