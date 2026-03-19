@@ -1062,6 +1062,7 @@ export default function Sidebar({
   workerGroups = [],
   activeWorkers = [],
   chiefOfStaff,
+  guestMode = false,
 }) {
   const [showSwitcher, setShowSwitcher] = useState(false);
   const [selectedWorker, setSelectedWorker] = useState(null);
