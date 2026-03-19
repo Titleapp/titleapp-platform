@@ -7,6 +7,7 @@ import {
   signInWithCustomToken,
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithRedirect,
 } from "firebase/auth";
 import { auth } from "../firebase";
 
@@ -101,7 +102,10 @@ export default function Login() {
     }
   }
 
+  let _googlePopupActive = false;
   async function handleGoogleLogin() {
+    if (_googlePopupActive) return;
+    _googlePopupActive = true;
     setStatus("Signing in with Google...");
     try {
       const provider = new GoogleAuthProvider();
@@ -112,12 +116,19 @@ export default function Login() {
 
       window.location.href = "/";
     } catch (err: any) {
-      console.error(err);
-      if (err?.code === "auth/popup-closed-by-user") {
-        setStatus("");
-      } else {
-        setStatus(`Google sign-in failed: ${err?.message || String(err)}`);
+      if (err?.code === "auth/popup-blocked") {
+        await signInWithRedirect(auth, new GoogleAuthProvider());
+        return;
       }
+      if (err?.code !== "auth/cancelled-popup-request" &&
+          err?.code !== "auth/popup-closed-by-user") {
+        console.error(err);
+        setStatus(`Google sign-in failed: ${err?.message || String(err)}`);
+      } else {
+        setStatus("");
+      }
+    } finally {
+      _googlePopupActive = false;
     }
   }
 

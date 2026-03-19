@@ -4373,7 +4373,7 @@ function AdminShell({ onBackToHub, initialSection }) {
       sessionStorage.removeItem("ta_redirect_page");
       return redirectPage;
     }
-    return "dashboard";
+    return "team-home";
   });
   const [showTour, setShowTour] = useState(false);
 
@@ -4402,14 +4402,18 @@ function AdminShell({ onBackToHub, initialSection }) {
           onSelectTeam={(team) => {
             if (team.teamId === "personal-vault") {
               localStorage.setItem("VERTICAL", "consumer");
-              localStorage.setItem("WORKSPACE_ID", "personal-vault");
+              localStorage.setItem("WORKSPACE_ID", "vault");
               localStorage.setItem("WORKSPACE_NAME", "Personal Vault");
+              localStorage.setItem("TENANT_ID", "vault");
             } else {
               localStorage.setItem("VERTICAL", team.vertical);
               localStorage.setItem("WORKSPACE_ID", team.teamId);
               localStorage.setItem("WORKSPACE_NAME", team.name);
+              localStorage.setItem("TENANT_ID", team.teamId);
             }
-            window.location.reload();
+            // Smooth context switch — reload workspace data without full page reload
+            window.dispatchEvent(new CustomEvent("ta:workspace-changed", { detail: { teamId: team.teamId, vertical: team.vertical, name: team.name } }));
+            setCurrentSection("dashboard");
           }}
           onAddTeam={() => setCurrentSection("team-setup")}
         /></React.Suspense>;

@@ -6,6 +6,7 @@ import {
   signInWithEmailLink,
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithRedirect,
 } from "firebase/auth";
 import { auth } from "../firebase";
 
@@ -182,7 +183,10 @@ function AuthModal({ isOpen, onClose, defaultMode }) {
     }
   }
 
+  let _googlePopupActive = false;
   async function handleGoogleLogin() {
+    if (_googlePopupActive) return;
+    _googlePopupActive = true;
     setStatus("Signing in with Google...");
     try {
       const provider = new GoogleAuthProvider();
@@ -191,12 +195,19 @@ function AuthModal({ isOpen, onClose, defaultMode }) {
       localStorage.setItem("ID_TOKEN", token);
       setStatus("Signed in successfully");
     } catch (err) {
-      console.error(err);
-      if (err?.code === "auth/popup-closed-by-user") {
-        setStatus("");
-      } else {
-        setStatus("Google sign-in failed: " + (err?.message || String(err)));
+      if (err?.code === "auth/popup-blocked") {
+        await signInWithRedirect(auth, new GoogleAuthProvider());
+        return;
       }
+      if (err?.code !== "auth/cancelled-popup-request" &&
+          err?.code !== "auth/popup-closed-by-user") {
+        console.error(err);
+        setStatus("Google sign-in failed: " + (err?.message || String(err)));
+      } else {
+        setStatus("");
+      }
+    } finally {
+      _googlePopupActive = false;
     }
   }
 
@@ -376,6 +387,8 @@ export default function LandingPage() {
   }
 
   async function handleInlineGoogleLogin() {
+    if (_googlePopupActive) return;
+    _googlePopupActive = true;
     setInlineStatus("Signing in with Google...");
     try {
       const provider = new GoogleAuthProvider();
@@ -384,12 +397,19 @@ export default function LandingPage() {
       localStorage.setItem("ID_TOKEN", token);
       setInlineStatus("Signed in successfully");
     } catch (err) {
-      console.error(err);
-      if (err?.code === "auth/popup-closed-by-user") {
-        setInlineStatus("");
-      } else {
-        setInlineStatus("Google sign-in failed: " + (err?.message || String(err)));
+      if (err?.code === "auth/popup-blocked") {
+        await signInWithRedirect(auth, new GoogleAuthProvider());
+        return;
       }
+      if (err?.code !== "auth/cancelled-popup-request" &&
+          err?.code !== "auth/popup-closed-by-user") {
+        console.error(err);
+        setInlineStatus("Google sign-in failed: " + (err?.message || String(err)));
+      } else {
+        setInlineStatus("");
+      }
+    } finally {
+      _googlePopupActive = false;
     }
   }
 

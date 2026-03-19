@@ -3,14 +3,14 @@ import React, { useState } from "react";
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
 
 const VERTICALS = [
-  { key: "aviation", label: "Aviation", icon: "\u2708" },
-  { key: "auto_dealer", label: "Auto Dealer", icon: "\uD83D\uDE97" },
-  { key: "real_estate_development", label: "Real Estate", icon: "\uD83C\uDFE0" },
-  { key: "investment", label: "Investment", icon: "\uD83D\uDCC8" },
-  { key: "solar_vpp", label: "Solar", icon: "\u2600\uFE0F" },
-  { key: "web3", label: "Web3", icon: "\uD83D\uDD37" },
-  { key: "re_operations", label: "Property Management", icon: "\uD83C\uDFE2" },
-  { key: "creators", label: "Creator", icon: "\uD83C\uDFA8" },
+  { key: "aviation", label: "Aviation" },
+  { key: "auto_dealer", label: "Auto Dealer" },
+  { key: "real_estate_development", label: "Real Estate" },
+  { key: "investment", label: "Investment" },
+  { key: "solar_vpp", label: "Solar" },
+  { key: "web3", label: "Web3" },
+  { key: "re_operations", label: "Property Management" },
+  { key: "creators", label: "Creator" },
 ];
 
 const S = {
@@ -84,7 +84,7 @@ export default function TeamSetup({ onComplete }) {
                 onMouseEnter={e => { e.currentTarget.style.borderColor = "#c4b5fd"; }}
                 onMouseLeave={e => { e.currentTarget.style.borderColor = vertical === v.key ? "#7c3aed" : "#e5e7eb"; }}
               >
-                <span>{v.icon}</span> {v.label}
+                {v.label}
               </div>
             ))}
           </div>
@@ -116,7 +116,7 @@ export default function TeamSetup({ onComplete }) {
 
       {step === 3 && (
         <div style={S.done}>
-          <div style={S.doneIcon}>{VERTICALS.find(v => v.key === vertical)?.icon || "\uD83D\uDCBC"}</div>
+          <div style={{ ...S.doneIcon, fontSize: 32, color: "#7c3aed" }}>{(teamName || "T")[0].toUpperCase()}</div>
           <div style={S.doneName}>{teamName} is ready.</div>
           <div style={S.doneSub}>Loading your workspace...</div>
         </div>

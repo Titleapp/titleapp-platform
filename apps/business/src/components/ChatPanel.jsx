@@ -620,6 +620,21 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
     }
   }, [messages, isTyping, showDisclaimer]);
 
+  // Listen for workspace context switches (smooth team switching without reload)
+  useEffect(() => {
+    function handleWorkspaceChange(e) {
+      const detail = e.detail || {};
+      setMessages([]);
+      setGreetingCollapsed(false);
+      // Reload conversation history for the new workspace
+      if (currentUser) {
+        loadConversationHistory();
+      }
+    }
+    window.addEventListener("ta:workspace-changed", handleWorkspaceChange);
+    return () => window.removeEventListener("ta:workspace-changed", handleWorkspaceChange);
+  }, [currentUser]);
+
   async function loadConversationHistory() {
     try {
       const platformSid = sessionStorage.getItem('ta_platform_sid');
@@ -928,6 +943,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
             workspaceId: localStorage.getItem('WORKSPACE_ID') || '',
             workspaceName: localStorage.getItem('WORKSPACE_NAME') || '',
             userName: localStorage.getItem('COMPANY_NAME') || localStorage.getItem('WORKSPACE_NAME') || '',
+            allTeams: (() => { try { const ws = JSON.parse(localStorage.getItem("ta_all_teams") || "[]"); return ws.join(", "); } catch { return ""; } })(),
             ...(dealContext ? { dealContext } : {}),
             ...(pendingActions.length > 0 ? { pendingActions: pendingActions.map(a => ({ customerName: a.customerName, actionType: a.actionType, context: a.context })) } : {}),
             ...(alexContext ? { alexContext } : {}),

@@ -1,19 +1,20 @@
 import React from "react";
 
-const VERTICAL_ICONS = {
-  aviation: "\u2708",
-  auto: "\uD83D\uDE97",
-  "auto_dealer": "\uD83D\uDE97",
-  "real-estate": "\uD83C\uDFE0",
-  "real_estate_development": "\uD83C\uDFE0",
-  investor: "\uD83D\uDCC8",
-  investment: "\uD83D\uDCC8",
-  solar: "\u2600\uFE0F",
-  solar_vpp: "\u2600\uFE0F",
-  web3: "\uD83D\uDD37",
-  "property-mgmt": "\uD83C\uDFE2",
-  consumer: "\uD83C\uDFE0",
-  personal: "\uD83C\uDFE0",
+// Letter-badge colors per vertical
+const VERTICAL_COLORS = {
+  aviation: "#0284c7",
+  auto: "#d97706",
+  auto_dealer: "#d97706",
+  "real-estate": "#16a34a",
+  real_estate_development: "#16a34a",
+  investor: "#7c3aed",
+  investment: "#7c3aed",
+  solar: "#ea580c",
+  solar_vpp: "#ea580c",
+  web3: "#6366f1",
+  "property-mgmt": "#0d9488",
+  consumer: "#7c3aed",
+  personal: "#7c3aed",
 };
 
 const S = {
@@ -21,7 +22,7 @@ const S = {
   cardActive: { borderColor: "#7c3aed", boxShadow: "0 0 0 1px rgba(124,58,237,0.2)" },
   cardPersonal: { background: "#faf5ff", border: "1px solid #e9d5ff" },
   cardEmpty: { background: "#f8fafc", border: "2px dashed #e5e7eb", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: 120 },
-  icon: { fontSize: 24, marginBottom: 8 },
+  icon: { width: 32, height: 32, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700, color: "#fff", marginBottom: 8 },
   name: { fontSize: 15, fontWeight: 600, color: "#111827", marginBottom: 2 },
   org: { fontSize: 12, color: "#6b7280", marginBottom: 8 },
   meta: { fontSize: 12, color: "#94a3b8" },
@@ -33,7 +34,8 @@ const S = {
 };
 
 export function TeamCard({ team, isActive, isPersonal, onClick, onMenu }) {
-  const icon = team.icon || VERTICAL_ICONS[team.vertical] || "\uD83D\uDCBC";
+  const letter = (team.name || team.vertical || "W")[0].toUpperCase();
+  const bgColor = VERTICAL_COLORS[team.vertical] || "#7c3aed";
 
   return (
     <div
@@ -43,7 +45,7 @@ export function TeamCard({ team, isActive, isPersonal, onClick, onMenu }) {
       onMouseLeave={e => { if (!isActive) e.currentTarget.style.borderColor = isPersonal ? "#e9d5ff" : "#e5e7eb"; }}
     >
       {onMenu && <button style={S.menuBtn} onClick={e => { e.stopPropagation(); onMenu(team); }}>&middot;&middot;&middot;</button>}
-      <div style={S.icon}>{icon}</div>
+      <div style={{ ...S.icon, background: bgColor }}>{letter}</div>
       <div style={S.name}>{team.name}</div>
       {team.orgName && <div style={S.org}>{team.orgName}</div>}
       <div style={S.meta}>

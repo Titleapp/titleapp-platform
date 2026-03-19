@@ -42,6 +42,16 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
     loadWorkspaces();
   }, [guestMode]);
 
+  // Reload workspace data on smooth context switch
+  useEffect(() => {
+    function handleWorkspaceChange() {
+      loadWorkspaces();
+      loadTenantInfo();
+    }
+    window.addEventListener("ta:workspace-changed", handleWorkspaceChange);
+    return () => window.removeEventListener("ta:workspace-changed", handleWorkspaceChange);
+  }, []);
+
   async function loadTenantInfo() {
     try {
       const vertical = localStorage.getItem("VERTICAL") || "auto";
@@ -75,9 +85,14 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
           const storedVertical = localStorage.getItem("VERTICAL");
           if (storedVertical !== matchedWs.vertical) {
             localStorage.setItem("VERTICAL", matchedWs.vertical);
-            window.location.reload();
           }
         }
+        // Update active workers in localStorage
+        if (matchedWs) {
+          localStorage.setItem("ACTIVE_WORKERS", JSON.stringify(matchedWs.activeWorkers || []));
+        }
+        // Store all team names for Alex context
+        localStorage.setItem("ta_all_teams", JSON.stringify(data.workspaces.map(w => w.name || w.vertical || "Workspace")));
       }
     } catch (error) {
       console.error("Failed to load workspaces:", error);
@@ -90,6 +105,7 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
     localStorage.setItem("WORKSPACE_NAME", workspace.name);
     localStorage.setItem("COMPANY_NAME", workspace.name);
     localStorage.setItem("TENANT_NAME", workspace.name);
+    localStorage.setItem("TENANT_ID", workspace.id);
     if (workspace.jurisdiction) {
       localStorage.setItem("JURISDICTION", workspace.jurisdiction);
     } else {
@@ -98,7 +114,9 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
     if (workspace.cosConfig) {
       localStorage.setItem("COS_CONFIG", JSON.stringify(workspace.cosConfig));
     }
-    window.location.reload();
+    // Smooth context switch instead of full reload
+    window.dispatchEvent(new CustomEvent("ta:workspace-changed", { detail: { teamId: workspace.id, vertical: workspace.vertical, name: workspace.name } }));
+    window.dispatchEvent(new CustomEvent("ta:navigate", { detail: { section: "dashboard" } }));
   }
 
   // Resize handlers

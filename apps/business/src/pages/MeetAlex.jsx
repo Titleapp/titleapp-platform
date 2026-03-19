@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { auth } from "../firebase";
-import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import { GoogleAuthProvider, signInWithPopup, signInWithRedirect } from "firebase/auth";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
 
@@ -128,6 +128,7 @@ export default function MeetAlex() {
 
   // Google SSO
   async function handleGoogleAuth() {
+    if (authInProgress) return;
     setAuthInProgress(true);
     try {
       const provider = new GoogleAuthProvider();
@@ -165,7 +166,14 @@ export default function MeetAlex() {
       setShowAuth(false);
       setShowDisclaimer(true);
     } catch (err) {
-      console.error("Google auth failed:", err);
+      if (err?.code === "auth/popup-blocked") {
+        await signInWithRedirect(auth, new GoogleAuthProvider());
+        return;
+      }
+      if (err?.code !== "auth/cancelled-popup-request" &&
+          err?.code !== "auth/popup-closed-by-user") {
+        console.error("Google auth failed:", err);
+      }
       setAuthInProgress(false);
     }
   }

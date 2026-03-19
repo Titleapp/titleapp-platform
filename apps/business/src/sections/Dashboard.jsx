@@ -902,31 +902,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Aviation KPI Cards */}
-      {isAviation && (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16, marginBottom: 24 }}>
-          <div style={{ background: "#fff", borderRadius: 12, padding: 20, border: "1px solid #e5e7eb" }}>
-            <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 4 }}>Flight Hours This Month</div>
-            <div style={{ fontSize: 28, fontWeight: 700, color: "#0284c7" }}>&mdash;</div>
-            <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 4 }}>Log flights to track</div>
-          </div>
-          <div style={{ background: "#fff", borderRadius: 12, padding: 20, border: "1px solid #e5e7eb" }}>
-            <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 4 }}>Currency Status</div>
-            <div style={{ fontSize: 28, fontWeight: 700, color: "#16a34a" }}>Current</div>
-            <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 4 }}>All currencies valid</div>
-          </div>
-          <div style={{ background: "#fff", borderRadius: 12, padding: 20, border: "1px solid #e5e7eb" }}>
-            <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 4 }}>Active Missions</div>
-            <div style={{ fontSize: 28, fontWeight: 700, color: "#7c3aed" }}>0</div>
-            <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 4 }}>None scheduled</div>
-          </div>
-          <div style={{ background: "#fff", borderRadius: 12, padding: 20, border: "1px solid #e5e7eb" }}>
-            <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 4 }}>FRAT Score</div>
-            <div style={{ fontSize: 28, fontWeight: 700, color: "#0284c7" }}>&mdash;</div>
-            <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 4 }}>Pre-flight assessment</div>
-          </div>
-        </div>
-      )}
+      {/* Aviation KPI Cards — removed: duplicate of dynamic KPI row above */}
 
       {/* Analyst Operational Tracks */}
       {isAnalyst && (
