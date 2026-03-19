@@ -594,7 +594,46 @@ async function handleAdminOverview(req, res) {
     });
   }
 
-  return res.json({ ok: true, operators: results, count: results.length });
+  // Per-worker document compliance — check which workers require docs and which operators satisfy them
+  const docCompliance = [];
+  try {
+    const catalogSnap = await db.collection("raasCatalog")
+      .where("documentControl.requiresOperatorDocs", "==", true)
+      .limit(100)
+      .get();
+
+    for (const catDoc of catalogSnap.docs) {
+      const catData = catDoc.data();
+      const requiredTypes = (catData.documentControl?.requiredDocTypes || []).map(t => t.toUpperCase());
+      if (requiredTypes.length === 0) continue;
+
+      // Check each operator's compliance for this worker
+      const operatorCompliance = [];
+      for (const opResult of results) {
+        const opTypes = Object.keys(opResult.byType).map(t => t.toUpperCase());
+        const present = requiredTypes.filter(t => opTypes.includes(t));
+        const missing = requiredTypes.filter(t => !opTypes.includes(t));
+        operatorCompliance.push({
+          operatorId: opResult.operatorId,
+          status: missing.length === 0 ? "compliant" : present.length > 0 ? "partial" : "none",
+          present,
+          missing,
+        });
+      }
+
+      docCompliance.push({
+        workerId: catDoc.id,
+        workerName: catData.name || catDoc.id,
+        requiredDocTypes: requiredTypes,
+        blockWithoutDocs: !!catData.documentControl?.blockWithoutDocs,
+        operatorCompliance,
+      });
+    }
+  } catch (compErr) {
+    console.error("handleAdminOverview: doc compliance check failed:", compErr.message);
+  }
+
+  return res.json({ ok: true, operators: results, count: results.length, docCompliance });
 }
 
 // ═══════════════════════════════════════════════════════════════

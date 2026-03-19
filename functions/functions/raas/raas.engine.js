@@ -323,6 +323,9 @@ function validateChatOutput(responseText, chatRules) {
  * @param {number} opts.maxRetries - max retries on violation (default 1)
  * @param {string} opts.mode - "analyst" (fail closed) or "chat" (fail open)
  * @param {Function} opts.callAIWithContext - async function(violationContext) for retry with violation info
+ * @param {Object} opts.workerRecord - worker record (for document mode check)
+ * @param {string} opts.userId - Firebase auth UID (for document mode check)
+ * @param {string} opts.workerId - worker ID (for document mode check)
  */
 async function callAIWithEnforcement(opts) {
   const {
@@ -334,7 +337,37 @@ async function callAIWithEnforcement(opts) {
     maxRetries = 1,
     mode = "analyst",
     callAIWithContext,
+    workerRecord,
+    userId,
+    workerId,
   } = opts;
+
+  // ── Document mode check ──
+  if (workerRecord && userId) {
+    try {
+      const { getWorkerDocumentMode } = require("./documentMode");
+      const docMode = await getWorkerDocumentMode(userId, workerId || workerRecord.worker_id, workerRecord);
+
+      if (docMode.mode === "BLOCKED") {
+        return {
+          output: null,
+          enforcement: {
+            passed: false,
+            hardViolations: [{ ruleId: "DOCUMENT_GATE", violation: docMode.disclaimer }],
+            softWarnings: [],
+            documentMode: docMode,
+          },
+          blocked: true,
+          documentMode: docMode,
+        };
+      }
+
+      // Attach document mode to opts for downstream consumers
+      opts._documentMode = docMode;
+    } catch (docErr) {
+      console.error("[enforcement] Document mode check failed (non-blocking):", docErr.message);
+    }
+  }
 
   let attempts = 0;
   let lastEnforcement = null;
@@ -407,10 +440,13 @@ async function callAIWithEnforcement(opts) {
 
       // For chat output (text)
       const chatCheck = validateChatOutput(rawOutput, chatRules);
-      lastOutput = rawOutput;
+      // Prepend document mode disclaimer if present
+      const docDisclaimer = opts._documentMode?.disclaimer;
+      const finalOutput = docDisclaimer ? `${docDisclaimer}\n\n${rawOutput}` : rawOutput;
+      lastOutput = finalOutput;
 
       if (chatCheck.passed) {
-        return { output: rawOutput, enforcement: chatCheck, blocked: false };
+        return { output: finalOutput, enforcement: chatCheck, blocked: false, documentMode: opts._documentMode || null };
       }
 
       // Chat violations — retry once
@@ -424,7 +460,7 @@ async function callAIWithEnforcement(opts) {
       }
 
       // Chat mode: deliver anyway with warning logged
-      return { output: rawOutput, enforcement: chatCheck, blocked: false };
+      return { output: finalOutput, enforcement: chatCheck, blocked: false, documentMode: opts._documentMode || null };
 
     } catch (e) {
       console.error(`[enforcement] Error during AI call (attempt ${attempts + 1}):`, e.message);

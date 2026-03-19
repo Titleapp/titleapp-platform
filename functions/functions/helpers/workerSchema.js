@@ -303,6 +303,57 @@ function slugify(name) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+//  DOCUMENT CONTROL VALIDATION
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * Validate a documentControl sub-object on a worker record.
+ * @param {object} dc — documentControl config
+ * @returns {{ valid: boolean, errors: string[], warnings: string[] }}
+ */
+function validateDocumentControl(dc) {
+  const errors = [];
+  const warnings = [];
+
+  if (!dc || typeof dc !== "object") {
+    return { valid: true, errors, warnings };
+  }
+
+  if (dc.requiresOperatorDocs !== undefined && typeof dc.requiresOperatorDocs !== "boolean") {
+    errors.push("documentControl.requiresOperatorDocs: must be a boolean");
+  }
+
+  if (dc.requiredDocTypes !== undefined && !Array.isArray(dc.requiredDocTypes)) {
+    errors.push("documentControl.requiredDocTypes: must be an array");
+  }
+
+  if (dc.advisoryWithoutDocs !== undefined && typeof dc.advisoryWithoutDocs !== "boolean") {
+    errors.push("documentControl.advisoryWithoutDocs: must be a boolean");
+  }
+
+  if (dc.blockWithoutDocs !== undefined && typeof dc.blockWithoutDocs !== "boolean") {
+    errors.push("documentControl.blockWithoutDocs: must be a boolean");
+  }
+
+  // If requiresOperatorDocs is true, enforce constraints
+  if (dc.requiresOperatorDocs === true) {
+    if (!Array.isArray(dc.requiredDocTypes) || dc.requiredDocTypes.length === 0) {
+      errors.push("documentControl.requiredDocTypes: must be non-empty when requiresOperatorDocs is true");
+    }
+    if (!dc.advisoryWithoutDocs && !dc.blockWithoutDocs) {
+      errors.push("documentControl: one of advisoryWithoutDocs or blockWithoutDocs must be set when requiresOperatorDocs is true");
+    }
+  }
+
+  // High liability gate warning
+  if (dc.blockWithoutDocs === true) {
+    warnings.push("HIGH_LIABILITY_DOC_GATE: blockWithoutDocs is enabled — worker will refuse to run without operator documents. Requires admin review.");
+  }
+
+  return { valid: errors.length === 0, errors, warnings };
+}
+
+// ═══════════════════════════════════════════════════════════════
 //  BASE VALIDATION (16-field schema — pipeline stages)
 // ═══════════════════════════════════════════════════════════════
 
@@ -527,7 +578,14 @@ function validateWorkerRecord(record, opts = {}) {
     }
   }
 
-  // 34. valueBucket — array of value bucket tags
+  // 34. documentControl — governance pipeline document requirements
+  if (record.documentControl !== undefined) {
+    const dcResult = validateDocumentControl(record.documentControl);
+    if (dcResult.errors.length > 0) errors.push(...dcResult.errors);
+    if (dcResult.warnings.length > 0) warnings.push(...dcResult.warnings);
+  }
+
+  // 35. valueBucket — array of value bucket tags
   if (record.valueBucket !== undefined) {
     if (!Array.isArray(record.valueBucket)) {
       errors.push("valueBucket: must be an array if provided");
@@ -594,6 +652,15 @@ function validateWorkerRecord(record, opts = {}) {
         docType: item.docType, label: item.label, required: !!item.required,
         unlocksMode: item.unlocksMode || null, description: item.description || "",
       })) : [],
+      // Document Control governance fields
+      ...(record.documentControl && {
+        documentControl: {
+          requiresOperatorDocs: !!record.documentControl.requiresOperatorDocs,
+          requiredDocTypes: Array.isArray(record.documentControl.requiredDocTypes) ? record.documentControl.requiredDocTypes : [],
+          advisoryWithoutDocs: record.documentControl.advisoryWithoutDocs !== undefined ? !!record.documentControl.advisoryWithoutDocs : true,
+          blockWithoutDocs: !!record.documentControl.blockWithoutDocs,
+        },
+      }),
     },
     warnings,
   };
@@ -972,6 +1039,16 @@ function autoFixWorkerRecord(record, description) {
   if (record.documentChecklist === undefined) record.documentChecklist = [];
   if (record.valueBucket === undefined) record.valueBucket = [];
 
+  // Fix documentControl — add defaults if missing
+  if (record.documentControl === undefined) {
+    record.documentControl = {
+      requiresOperatorDocs: false,
+      requiredDocTypes: [],
+      advisoryWithoutDocs: true,
+      blockWithoutDocs: false,
+    };
+  }
+
   // Fix notifications — add default config if missing
   if (!record.notifications || typeof record.notifications !== "object") {
     record.notifications = { ...DEFAULT_NOTIFICATION_CONFIG };
@@ -1008,6 +1085,7 @@ module.exports = {
   validateNotificationConfig,
   VALID_DIGEST_OPTIONS,
   DEFAULT_NOTIFICATION_CONFIG,
+  validateDocumentControl,
   parsePriceTier,
   slugify,
 };

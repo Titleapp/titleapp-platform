@@ -1059,6 +1059,89 @@ exports.api = onRequest(
       }
     }
 
+    // POST /v1/auth:sendMagicLink — send magic link email (unauthenticated)
+    if ((route === "/auth:sendMagicLink" || route === "/auth/sendMagicLink") && method === "POST") {
+      try {
+        const { email, guestId, vertical } = body || {};
+        if (!email || !email.includes("@")) return jsonError(res, 400, "Valid email required");
+
+        const crypto = require("crypto");
+        const token = crypto.randomUUID();
+        const db = getDb();
+
+        // Store magic link token
+        await db.collection("magicLinks").doc(token).set({
+          email: email.toLowerCase().trim(),
+          guestId: guestId || null,
+          vertical: vertical || null,
+          createdAt: nowServerTs(),
+          expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+          used: false,
+        });
+
+        // Send via SendGrid
+        const { sendViaSendGrid } = require("./communications/emailNotify");
+        const magicUrl = `https://app.titleapp.ai/auth/magic?token=${token}`;
+        await sendViaSendGrid({
+          to: email,
+          subject: "Your TitleApp link — tap to continue",
+          html: `<div style="font-family: -apple-system, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px;">
+            <div style="font-size: 14px; color: #1e293b; line-height: 1.6; margin-bottom: 24px;">Tap below to pick up where we left off.</div>
+            <a href="${magicUrl}" style="display: inline-block; padding: 14px 32px; background: #7c3aed; color: white; border-radius: 10px; text-decoration: none; font-weight: 600; font-size: 15px;">Continue with Alex</a>
+            <div style="margin-top: 24px; font-size: 12px; color: #94a3b8;">This link expires in 15 minutes.</div>
+            <div style="margin-top: 8px; font-size: 12px; color: #94a3b8;">— Alex, Chief of Staff at TitleApp</div>
+          </div>`,
+        });
+
+        return res.json({ ok: true });
+      } catch (e) {
+        console.error("auth:sendMagicLink failed:", e);
+        return jsonError(res, 500, "Failed to send magic link");
+      }
+    }
+
+    // GET /v1/auth:verifyMagicLink — verify magic link token (unauthenticated)
+    if ((route === "/auth:verifyMagicLink" || route === "/auth/verifyMagicLink") && method === "GET") {
+      try {
+        const token = req.query.token;
+        if (!token) return jsonError(res, 400, "Token required");
+
+        const db = getDb();
+        const linkRef = db.collection("magicLinks").doc(token);
+        const linkSnap = await linkRef.get();
+
+        if (!linkSnap.exists) return jsonError(res, 404, "Invalid or expired link");
+        const linkData = linkSnap.data();
+
+        if (linkData.used) return jsonError(res, 410, "Link already used");
+        if (new Date(linkData.expiresAt) < new Date()) return jsonError(res, 410, "Link expired");
+
+        // Find or create Firebase user
+        let userRecord;
+        try {
+          userRecord = await admin.auth().getUserByEmail(linkData.email);
+        } catch {
+          userRecord = await admin.auth().createUser({ email: linkData.email, emailVerified: true });
+        }
+
+        // Generate custom token
+        const firebaseToken = await admin.auth().createCustomToken(userRecord.uid);
+
+        // Mark link as used
+        await linkRef.update({ used: true, usedAt: nowServerTs() });
+
+        return res.json({
+          ok: true,
+          firebaseToken,
+          guestId: linkData.guestId || null,
+          vertical: linkData.vertical || null,
+        });
+      } catch (e) {
+        console.error("auth:verifyMagicLink failed:", e);
+        return jsonError(res, 500, "Verification failed");
+      }
+    }
+
     // POST /v1/auth:sendOtp — SMS OTP send (unauthenticated)
     // Matches both /auth:sendOtp and /auth/sendOtp (frontend uses slash variant)
     if ((route === "/auth:sendOtp" || route === "/auth/sendOtp") && method === "POST") {
@@ -1285,9 +1368,9 @@ exports.api = onRequest(
             // Query vertical-specific workers first
             if (sessionState.vertical) {
               const vertSnap = await db.collection("digitalWorkers")
-                .where("status", "==", "live")
                 .where("vertical", "==", sessionState.vertical)
-                .limit(20)
+                .where("status", "in", ["live", "coming_soon"])
+                .limit(50)
                 .get();
               workers = vertSnap.docs.map(d => {
                 const w = d.data();
@@ -1311,7 +1394,7 @@ exports.api = onRequest(
               workers = [...workers, ...extras];
             }
             if (workers.length > 0) {
-              catalogContext = "\n\nAVAILABLE DIGITAL WORKERS (use these exact slugs in [WORKER_CARDS] markers — do NOT invent slugs):\n" + workers.join("\n");
+              catalogContext = "\n\nAVAILABLE DIGITAL WORKERS (use these exact slugs in [WORKER_CARDS] markers — do NOT invent slugs — NEVER present workers from memory, ONLY from this list — present ALL relevant workers when asked about the vertical):\n" + workers.join("\n");
             }
           } catch (catErr) {
             console.warn("sales: catalog lookup failed:", catErr.message);
@@ -4053,20 +4136,33 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
         if (!vertical) return jsonError(res, 400, "vertical parameter required");
 
         const db = getDb();
-        let q = db.collection("digitalWorkers").where("status", "==", "live");
-        // Filter by vertical tag
-        q = q.where("vertical", "==", vertical).limit(limit);
+        // Include both live and coming_soon — guest needs the full picture
+        const q = db.collection("digitalWorkers")
+          .where("vertical", "==", vertical)
+          .where("status", "in", ["live", "coming_soon"])
+          .limit(limit);
         const snap = await q.get();
+
+        // Infer valueBucket from name/description when field is missing
+        function inferBuckets(d) {
+          if (d.valueBucket && d.valueBucket.length > 0) return d.valueBucket;
+          const text = ((d.name || "") + " " + (d.headline || "") + " " + (d.description || "")).toLowerCase();
+          const buckets = [];
+          if (/revenue|sales|pricing|deal|lead|profit|earn|roi|quote|invoice|billing/.test(text)) buckets.push("make_money");
+          if (/cost|automat|efficien|time|overhead|streamlin|reduce|optimize/.test(text)) buckets.push("save_money");
+          if (/complian|regulat|permit|licens|audit|safety|legal|certif|inspection/.test(text)) buckets.push("stay_compliant");
+          return buckets.length > 0 ? buckets : ["stay_compliant"];
+        }
 
         const workers = snap.docs.map(doc => {
           const d = doc.data();
           return {
             workerId: doc.id,
-            name: d.name || "",
-            shortDescription: d.headline || d.description || "",
-            price: d.pricing_tier || 0,
+            name: d.display_name || d.name || "",
+            shortDescription: d.short_description || d.headline || d.description || "",
+            price: d.pricing_tier || d.pricing?.monthly || 0,
             vertical: d.vertical || "",
-            valueBucket: d.valueBucket || [],
+            valueBucket: inferBuckets(d),
             status: d.status || "live",
             languages: d.languages || ["en"],
           };
@@ -5603,6 +5699,28 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
         // Merge creator SOPs into tier3
         const tier3 = (intake.sops || []).slice(0, 50).map(s => String(s).substring(0, 1000));
 
+        // Infer document control recommendations by vertical
+        const DOC_TYPE_RECOMMENDATIONS = {
+          aviation:    { requiresOperatorDocs: true,  types: ["POH", "GOM", "MEL", "OpSpecs"] },
+          aviation_135:{ requiresOperatorDocs: true,  types: ["POH", "GOM", "MEL", "OpSpecs"] },
+          pilot_suite: { requiresOperatorDocs: true,  types: ["POH", "GOM", "MEL", "OpSpecs"] },
+          health:      { requiresOperatorDocs: true,  types: ["SOP", "Training"] },
+          health_education: { requiresOperatorDocs: true, types: ["SOP", "Training"] },
+          nursing:     { requiresOperatorDocs: true,  types: ["SOP", "Training"] },
+          re_development: { requiresOperatorDocs: false, types: ["SOP"] },
+          re_sales:    { requiresOperatorDocs: false, types: ["SOP"] },
+          government:  { requiresOperatorDocs: false, types: ["SOP", "Other"] },
+          auto_dealer: { requiresOperatorDocs: false, types: ["SOP"] },
+        };
+        const verticalKey = (intake.vertical || "").toLowerCase().replace(/\s+/g, "_");
+        const docRec = DOC_TYPE_RECOMMENDATIONS[verticalKey] || { requiresOperatorDocs: false, types: [] };
+        const documentControl = {
+          requiresOperatorDocs: docRec.requiresOperatorDocs,
+          requiredDocTypes: docRec.types,
+          advisoryWithoutDocs: true,
+          blockWithoutDocs: false,
+        };
+
         await workerRef.update({
           buildPhase: "brief",
           complianceBrief: {
@@ -5614,6 +5732,7 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
           "raasLibrary.tier1": tier1,
           "raasLibrary.tier2": tier2,
           "raasLibrary.tier3": tier3,
+          documentControl,
           updatedAt: nowServerTs(),
         });
 
@@ -5810,6 +5929,21 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
           },
         ];
 
+        // Check 9: Document Control Completeness
+        const dc = worker.documentControl || {};
+        if (dc.requiresOperatorDocs === true) {
+          const dcHasTypes = Array.isArray(dc.requiredDocTypes) && dc.requiredDocTypes.length > 0;
+          const dcHasChecklist = Array.isArray(worker.documentChecklist) && worker.documentChecklist.length > 0;
+          let dcStatus = "pass";
+          let dcDetails = `Document control configured: ${(dc.requiredDocTypes || []).join(", ")}`;
+          if (!dcHasTypes) { dcStatus = "fail"; dcDetails = "requiresOperatorDocs is true but requiredDocTypes is empty"; }
+          else if (!dcHasChecklist) { dcStatus = "warning"; dcDetails = "requiredDocTypes set but no documentChecklist items — consider adding checklist"; }
+          if (dc.blockWithoutDocs === true) { dcDetails += " | HIGH_LIABILITY_DOC_GATE: worker blocks without operator docs"; }
+          checks.push({ id: "document_control", name: "Document Control Completeness", status: dcStatus, details: dcDetails });
+        } else {
+          checks.push({ id: "document_control", name: "Document Control Completeness", status: "pass", details: "Worker does not require operator documents — auto-pass" });
+        }
+
         const passCount = checks.filter(c => c.status === "pass").length;
         const failCount = checks.filter(c => c.status === "fail").length;
         const passed = failCount === 0;
@@ -5828,7 +5962,7 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
           updatedAt: nowServerTs(),
         });
 
-        console.log(`[worker1:prePublish] ${workerId}: ${score}/8, passed=${passed}`);
+        console.log(`[worker1:prePublish] ${workerId}: ${score}/9, passed=${passed}`);
         return res.json({ ok: true, score, passed, checks });
       } catch (e) {
         console.error("[worker1:prePublish] error:", e.message);
