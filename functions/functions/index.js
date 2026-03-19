@@ -14494,6 +14494,47 @@ Analyze now:`;
       }
     }
 
+    // ----------------------------
+    // DOCUMENT CONTROL (34.10-T2)
+    // ----------------------------
+    if (route && route.startsWith("/docControl:")) {
+      const dcAction = route.replace("/docControl:", "");
+      const docControlService = require("./documentControl/documentControlService");
+      try {
+        switch (dcAction) {
+        case "upload":
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return await docControlService.handleUploadDocument(req, res, { userId: auth.user.uid });
+        case "confirmRevision":
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return await docControlService.handleConfirmRevision(req, res, { userId: auth.user.uid });
+        case "acknowledge":
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return await docControlService.handleAcknowledge(req, res, { userId: auth.user.uid });
+        case "list":
+          if (method !== "GET") return jsonError(res, 405, "GET required");
+          return await docControlService.handleGetDocuments(req, res, { userId: auth.user.uid });
+        case "versionHistory":
+          if (method !== "GET") return jsonError(res, 405, "GET required");
+          return await docControlService.handleGetVersionHistory(req, res, { userId: auth.user.uid });
+        case "updateDistribution":
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return await docControlService.handleUpdateDistributionList(req, res, { userId: auth.user.uid });
+        case "acknowledgmentStatus":
+          if (method !== "GET") return jsonError(res, 405, "GET required");
+          return await docControlService.handleGetAcknowledgmentStatus(req, res, { userId: auth.user.uid });
+        case "adminOverview":
+          if (method !== "GET") return jsonError(res, 405, "GET required");
+          return await docControlService.handleAdminOverview(req, res);
+        default:
+          return jsonError(res, 404, "Unknown docControl action: " + dcAction);
+        }
+      } catch (e) {
+        console.error("docControl: failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
     return jsonError(res, 404, "Not Found", { route, method });
   }
 );
@@ -15035,6 +15076,16 @@ const { checkTrialExpiry } = require("./services/workerTrial");
 exports.checkTrialExpiry = onSchedule(
   { schedule: "0 6 * * *", timeZone: "America/Los_Angeles", region: "us-central1" },
   async () => { await checkTrialExpiry(); }
+);
+
+// ----------------------------
+// DOCUMENT CONTROL: Daily Expiry Check (34.10-T2) — 8am PT daily
+// ----------------------------
+const { checkDocumentExpiry } = require("./documentControl/documentControlService");
+
+exports.documentExpiryCheck = onSchedule(
+  { schedule: "0 8 * * *", timeZone: "America/Los_Angeles", region: "us-central1" },
+  async () => { await checkDocumentExpiry(); }
 );
 
 // ----------------------------

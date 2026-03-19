@@ -282,6 +282,43 @@ async function processImportJob(jobId, userId, workerId, files) {
           chunkDocId: docId,
         });
 
+      // 11. Write to documentControl/ for document control infrastructure (34.10-T2)
+      try {
+        const dcDocId = `dc_${crypto.randomUUID().replace(/-/g, "")}`;
+        await db.collection("documentControl").doc(userId).collection("documents").doc(dcDocId).set({
+          docId: dcDocId,
+          workerId,
+          operatorId: userId,
+          docType: file.docType || "other",
+          fileName: file.fileName,
+          revisionNumber: file.revisionNumber || null,
+          effectiveDate: file.effectiveDate || null,
+          expiryDate: null,
+          status: "active",
+          requiresAcknowledgment: false,
+          acknowledgmentType: "none",
+          blockchainEnabled: false,
+          distributionList: [],
+          storageUrl: storagePath,
+          sha256hash,
+          chunkCount: chunks.length,
+          uploadedBy: userId,
+          uploadedAt: admin.firestore.FieldValue.serverTimestamp(),
+          acknowledgedBy: [],
+          supersededBy: null,
+          supersededAt: null,
+          version,
+          source: "google_drive",
+          driveFileId: file.driveFileId,
+          vaultDocId: docId,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+      } catch (dcErr) {
+        console.error(`documentControl write failed for ${file.fileName}:`, dcErr.message);
+        // Non-fatal — document is still in vault
+      }
+
       completedFiles++;
       await updateJobFileStatus(jobId, i, "completed", {
         completedFiles,

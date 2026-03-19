@@ -25,7 +25,39 @@ async function resolveDocuments(userId, workerId, db) {
   const sources = [];
   let hasOperatorDocs = false;
 
-  // 1. Check for operator-uploaded documents
+  // 0. Check documentControl/ first (34.10-T2) — operator-controlled documents
+  try {
+    const dcSnap = await db
+      .collection("documentControl")
+      .doc(userId)
+      .collection("documents")
+      .where("workerId", "==", workerId)
+      .where("status", "==", "active")
+      .limit(20)
+      .get();
+
+    if (!dcSnap.empty) {
+      hasOperatorDocs = true;
+      dcSnap.forEach((doc) => {
+        const data = doc.data();
+        sources.push({
+          type: "operator_controlled",
+          label: data.fileName || "Operator Document",
+          docId: doc.id,
+          available: true,
+          revisionNumber: data.revisionNumber || null,
+          effectiveDate: data.effectiveDate || null,
+          version: data.version || 1,
+          status: data.status,
+          expiryDate: data.expiryDate || null,
+        });
+      });
+    }
+  } catch (err) {
+    console.error("documentResolver: documentControl query failed:", err.message);
+  }
+
+  // 1. Check for operator-uploaded documents (legacy vaultDocs)
   try {
     const vaultSnap = await db
       .collection("vaultDocs")
@@ -92,6 +124,19 @@ async function resolveDocuments(userId, workerId, db) {
  */
 function formatCitation(sourceType, opts = {}) {
   switch (sourceType) {
+    case "operator_controlled": {
+      const parts = [opts.documentName || "Operator Document"];
+      if (opts.section) parts.push(`Section ${opts.section}`);
+      if (opts.revision) parts.push(`Revision ${opts.revision}`);
+      if (opts.effectiveDate) parts.push(`Effective ${opts.effectiveDate}`);
+      if (opts.version) parts.push(`v${opts.version}`);
+      let citation = `[${parts.join(", ")}]`;
+      if (opts.status === "expired") {
+        citation += " [EXPIRED — verify against current revision]";
+      }
+      return citation;
+    }
+
     case "operator_upload": {
       const parts = [opts.documentName || "Operator Document"];
       if (opts.section) parts.push(`Section ${opts.section}`);
