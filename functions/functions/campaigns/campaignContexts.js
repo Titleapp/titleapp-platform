@@ -72,6 +72,17 @@ const CAMPAIGN_CONTEXTS = {
       ctaLabel: "Start for Free",
     },
   },
+  "web3": {
+    slug: "web3",
+    vertical: "web3",
+    persona: "web3_founder",
+    salesMode: true,
+    sandboxContext: {
+      openingMessage: "Hey — I'm Alex, Chief of Staff at TitleApp. We help Web3 projects build with credibility — verified teams, compliant communications, transparent treasuries, and the technical tools to generate and audit your contracts. No anonymous teams. All receipts. What are you building?",
+      suggestedWorkers: ["W3-001", "W3-003", "W3-012", "W3-013"],
+      ctaLabel: "Start for Free",
+    },
+  },
 };
 
 function getCampaignContext(req, res) {

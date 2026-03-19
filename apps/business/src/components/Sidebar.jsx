@@ -856,6 +856,15 @@ const WORKER_NAV_MAP = {
     { id: "av-scheduling", label: "Scheduling" },
     { id: "av-compliance", label: "Compliance" },
   ],
+  "web3": [
+    { id: "w3-dashboard", label: "Dashboard" },
+    { id: "vault-documents", label: "Document Vault" },
+    { id: "w3-team-roster", label: "Team Roster" },
+    { id: "w3-treasury", label: "Treasury" },
+    { id: "w3-governance", label: "Governance" },
+    { id: "w3-community", label: "Community" },
+    { id: "w3-contracts", label: "Contracts" },
+  ],
 };
 
 // Worker slug → display name

@@ -4493,6 +4493,16 @@ function AdminShell({ onBackToHub, initialSection }) {
         return <PendingSignatures />;
       case "av-copilot":
         return <CoPilotEFB />;
+      case "w3-team-roster": {
+        const TeamVerification = React.lazy(() => import("./pages/web3/TeamVerification"));
+        return <React.Suspense fallback={<div />}><TeamVerification /></React.Suspense>;
+      }
+      case "w3-dashboard":
+      case "w3-treasury":
+      case "w3-governance":
+      case "w3-community":
+      case "w3-contracts":
+        return <Dashboard />;
       default:
         if (currentSection.startsWith("worker-")) return <Dashboard />;
         return <Dashboard />;
@@ -4596,6 +4606,9 @@ export default function App() {
   const campaignMatch = window.location.pathname.match(/^\/campaign\/([a-z0-9-]+)\/?$/);
   const campaignSlug = campaignMatch ? campaignMatch[1] : null;
   const isCampaignPage = !!campaignSlug;
+
+  // ── /w3/roster/:projectId route intercept ────────────
+  const isW3Roster = /^\/w3\/roster\/[a-zA-Z0-9_-]+\/?$/.test(window.location.pathname);
 
   // ── /invite/:code route intercept ─────────────────────
   const inviteMatch = window.location.pathname.match(/^\/invite\/([a-zA-Z0-9]+)\/?$/);
@@ -5203,7 +5216,19 @@ export default function App() {
   if (isLegalPage) return <LegalPage slug={legalSlug} />;
 
   // ── Campaign pages: no auth required ──────────────────────────
-  if (isCampaignPage) return <CampaignPage slug={campaignSlug} />;
+  if (isCampaignPage) {
+    if (campaignSlug === "web3") {
+      const Web3Campaign = React.lazy(() => import("./pages/campaigns/Web3Campaign"));
+      return <React.Suspense fallback={<div style={{ minHeight: "100vh" }} />}><Web3Campaign /></React.Suspense>;
+    }
+    return <CampaignPage slug={campaignSlug} />;
+  }
+
+  // ── Public W3 team roster: no auth required ─────────────────
+  if (isW3Roster) {
+    const PublicTeamRoster = React.lazy(() => import("./pages/web3/PublicTeamRoster"));
+    return <React.Suspense fallback={<div style={{ minHeight: "100vh" }} />}><PublicTeamRoster /></React.Suspense>;
+  }
 
   // ── Invite landing pages: no auth required ────────────────────
   if (isInvitePage) return <InviteLanding inviteCode={inviteCode} />;
