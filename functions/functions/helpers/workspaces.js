@@ -37,10 +37,10 @@ async function getUserWorkspaces(userId) {
   try {
     const subSnap = await getDb().collection('subscriptions')
       .where('userId', '==', userId)
-      .where('status', 'in', ['active', 'trial'])
+      .where('status', 'in', ['active', 'trial', 'active_trial'])
       .get();
     const subscribedSlugs = subSnap.docs
-      .map(d => d.data().workerSlug || d.data().workerId)
+      .map(d => d.data().slug || d.data().workerSlug || d.data().workerId)
       .filter(Boolean);
     if (subscribedSlugs.length > 0) {
       for (const ws of workspaces) {

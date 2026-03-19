@@ -8812,9 +8812,21 @@ Active: ${rc.active ? "Yes" : "No"}`;
                       consumer: "Dashboard, Vehicles, Properties, Documents, Certifications, Activity Log",
                     };
                     const navItems = NAV_BY_VERTICAL[wsVertical] || "Dashboard, Documents, Reports";
-                    if (wsWorkers.length > 0 || wsVertical) {
-                      alexSystemPrompt += `\n\nWORKSPACE CONTEXT:\nVertical: ${wsVertical}\nActive workers: ${wsWorkers.join(", ") || "none"}\nAvailable navigation: ${navItems}\nNEVER reference navigation items, sections, or workers that do not exist in this workspace. Only reference workers and navigation from the lists above.\nWhen a user asks to use a subscribed worker, say "Opening [worker name] now." — never tell them to "go to" or "look for" it.\nNEVER say "go to the Staff section" or "look in Services & Inventory" or reference navigation that does not exist.`;
-                    }
+                    console.log("WORKSPACE CONTEXT DEBUG:", { wsVertical, wsWorkers, navItems, bodySubscribed: body.subscribedWorkers, wsActive: workspace.activeWorkers });
+                    // Always inject workspace context — even if no workers yet
+                    alexSystemPrompt += `\n\nWORKSPACE CONTEXT (CRITICAL — FOLLOW EXACTLY):
+Vertical: ${wsVertical || "unknown"}
+Active workers: ${wsWorkers.join(", ") || "none"}
+Available navigation tabs: ${navItems}
+
+RULES YOU MUST FOLLOW:
+1. ONLY reference navigation items listed above. Do NOT invent tabs like "Settings", "Staff", "Services & Inventory", "Support", or any other navigation that is not in the list.
+2. ONLY reference workers listed above. Do NOT mention workers the user has not subscribed to.
+3. NEVER provide support contacts, phone numbers, or email addresses.
+4. NEVER say "go to the Settings section", "check the Staff tab", "look in Services & Inventory", or reference ANY navigation that does not appear in "Available navigation tabs" above.
+5. When a user asks to use a subscribed worker, say "Opening [worker name] now." — do NOT tell them to "go to" or "look for" it.
+6. If asked about something outside your workspace scope, say "That's not available in your current workspace."
+`;
                   }
                 }
               } catch (alexErr) {

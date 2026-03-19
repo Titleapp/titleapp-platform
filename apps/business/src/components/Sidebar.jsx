@@ -1409,9 +1409,12 @@ export default function Sidebar({
                 onClick={() => onSwitchWorkspace(ws)}
                 style={{ cursor: "pointer" }}
               >
-                <span style={{ fontSize: 14 }}>{
-                  { aviation: "\u2708", auto: "\uD83D\uDE97", auto_dealer: "\uD83D\uDE97", "real-estate": "\uD83C\uDFE0", real_estate_development: "\uD83C\uDFE0", investor: "\uD83D\uDCC8", investment: "\uD83D\uDCC8", solar: "\u2600\uFE0F", solar_vpp: "\u2600\uFE0F", web3: "\uD83D\uDD37", consumer: "\uD83C\uDFE0" }[ws.vertical] || "\uD83D\uDCBC"
-                }</span>
+                <span style={{
+                  width: 20, height: 20, borderRadius: 4, display: "inline-flex",
+                  alignItems: "center", justifyContent: "center",
+                  background: "rgba(124,58,237,0.25)", color: "#c4b5fd",
+                  fontSize: 10, fontWeight: 700, lineHeight: 1, flexShrink: 0,
+                }}>{(ws.name || ws.vertical || "W")[0].toUpperCase()}</span>
                 <span>{ws.name || ws.vertical}</span>
               </div>
             ))}
