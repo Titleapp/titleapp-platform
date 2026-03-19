@@ -236,8 +236,8 @@ function PersonalSettings() {
       <div className="card" style={{ marginBottom: "16px", border: "1px solid #e9d5ff" }}>
         <div className="cardHeader">
           <div>
-            <div className="cardTitle">Alex, Chief of Staff</div>
-            <div className="cardSub">Your Chief of Staff configuration</div>
+            <div className="cardTitle">Your Chief of Staff</div>
+            <div className="cardSub">Rename, change voice, or set language preferences</div>
           </div>
         </div>
         <div style={{ padding: "16px" }}>
@@ -276,6 +276,48 @@ function PersonalSettings() {
                 disabled
                 style={{ width: "100%", padding: "10px", borderRadius: "12px", border: "1px solid var(--line)", background: "#f8fafc", color: "#94a3b8" }}
               />
+            </div>
+
+            {/* Voice / Accent */}
+            <div>
+              <label style={{ display: "block", marginBottom: "6px", fontWeight: 600, fontSize: "13px" }}>Voice / Accent</label>
+              <select
+                value={chiefOfStaff.voice || "american"}
+                onChange={(e) => saveCOS({ ...chiefOfStaff, voice: e.target.value })}
+                style={{ width: "100%", padding: "10px", borderRadius: "12px", border: "1px solid var(--line)" }}
+              >
+                <option value="american">American</option>
+                <option value="british">British</option>
+                <option value="australian">Australian</option>
+                <option value="indian">Indian</option>
+                <option value="irish">Irish</option>
+                <option value="scottish">Scottish</option>
+                <option value="southern">Southern (US)</option>
+                <option value="new_york">New York</option>
+              </select>
+              <div style={{ fontSize: "12px", color: "#94a3b8", marginTop: "4px" }}>Affects tone and phrasing. Guests always see the default Alex.</div>
+            </div>
+
+            {/* Language */}
+            <div>
+              <label style={{ display: "block", marginBottom: "6px", fontWeight: 600, fontSize: "13px" }}>Language</label>
+              <select
+                value={chiefOfStaff.language || "en"}
+                onChange={(e) => saveCOS({ ...chiefOfStaff, language: e.target.value })}
+                style={{ width: "100%", padding: "10px", borderRadius: "12px", border: "1px solid var(--line)" }}
+              >
+                <option value="en">English</option>
+                <option value="es">Espanol</option>
+                <option value="pt">Portugues</option>
+                <option value="fr">Francais</option>
+                <option value="de">Deutsch</option>
+                <option value="it">Italiano</option>
+                <option value="zh">中文</option>
+                <option value="ja">日本語</option>
+                <option value="ko">한국어</option>
+                <option value="hi">हिन्दी</option>
+                <option value="ar">العربية</option>
+              </select>
             </div>
 
             {/* Communication Channel */}
