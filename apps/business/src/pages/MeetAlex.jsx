@@ -12,6 +12,7 @@ const VERTICAL_MAP = {
   "property-management": "re_operations", "pm": "re_operations",
   "aviation": "aviation", "pilot": "aviation",
   "creator": "creators", "creators": "creators", "developer": "creators",
+  "web3": "web3", "crypto": "web3", "nft": "web3",
 };
 
 function uuid() {

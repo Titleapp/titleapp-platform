@@ -587,6 +587,14 @@ export default function Dashboard() {
           customers: { value: "$187,200", trend: "" },
         });
         setValueTracker({ actions: 31, hoursSaved: 34.5, valueSaved: 8625 });
+      } else if (vertical === "aviation") {
+        setKpis({
+          revenue: { value: "—", trend: "Log flights to track" },
+          activeDeals: { value: "Current", trend: "All currencies valid" },
+          aiConversations: { value: "0", trend: "None scheduled" },
+          customers: { value: "—", trend: "Pre-flight assessment" },
+        });
+        setValueTracker({ actions: 0, hoursSaved: 0, valueSaved: 0 });
       } else if (vertical === "property-mgmt") {
         const inventoryResult = await api.getInventory({ vertical, jurisdiction });
         const properties = inventoryResult.inventory || [];
@@ -689,10 +697,19 @@ export default function Dashboard() {
     if (vertical === "property-mgmt") {
       return ["Properties", "Total Units", "Occupancy Rate", "Open Requests"];
     }
+    if (vertical === "aviation") {
+      return ["Flight Hours This Month", "Currency Status", "Active Missions", "FRAT Score"];
+    }
     if (vertical === "investor") {
       return ["Raised to Date", "Investors", "Data Room Views", "Pipeline Value"];
     }
-    return ["Inventory Value", "Available Units", "AI Conversations", "Total Customers"];
+    if (vertical === "solar") {
+      return ["Active Projects", "SREC Credits", "Permits In Progress", "Compliance Status"];
+    }
+    if (vertical === "web3") {
+      return ["Active Workers", "Compliance Status", "Actions This Month", "Documents Stored"];
+    }
+    return ["Workers Active", "Documents Stored", "Actions This Month", "Hours Saved"];
   }
 
   const kpiLabels = getKpiLabels();
@@ -886,24 +903,24 @@ export default function Dashboard() {
       {isAviation && (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16, marginBottom: 24 }}>
           <div style={{ background: "#fff", borderRadius: 12, padding: 20, border: "1px solid #e5e7eb" }}>
-            <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 4 }}>Fleet Status</div>
+            <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 4 }}>Flight Hours This Month</div>
             <div style={{ fontSize: 28, fontWeight: 700, color: "#0284c7" }}>&mdash;</div>
-            <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 4 }}>Aircraft on certificate</div>
+            <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 4 }}>Log flights to track</div>
           </div>
           <div style={{ background: "#fff", borderRadius: 12, padding: 20, border: "1px solid #e5e7eb" }}>
-            <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 4 }}>Crew Legal</div>
-            <div style={{ fontSize: 28, fontWeight: 700, color: "#16a34a" }}>&mdash;</div>
-            <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 4 }}>Pilots current and available</div>
+            <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 4 }}>Currency Status</div>
+            <div style={{ fontSize: 28, fontWeight: 700, color: "#16a34a" }}>Current</div>
+            <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 4 }}>All currencies valid</div>
           </div>
           <div style={{ background: "#fff", borderRadius: 12, padding: 20, border: "1px solid #e5e7eb" }}>
             <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 4 }}>Active Missions</div>
-            <div style={{ fontSize: 28, fontWeight: 700, color: "#7c3aed" }}>&mdash;</div>
-            <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 4 }}>In progress today</div>
+            <div style={{ fontSize: 28, fontWeight: 700, color: "#7c3aed" }}>0</div>
+            <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 4 }}>None scheduled</div>
           </div>
           <div style={{ background: "#fff", borderRadius: 12, padding: 20, border: "1px solid #e5e7eb" }}>
-            <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 4 }}>FRAT Scores</div>
+            <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 4 }}>FRAT Score</div>
             <div style={{ fontSize: 28, fontWeight: 700, color: "#0284c7" }}>&mdash;</div>
-            <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 4 }}>Average today</div>
+            <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 4 }}>Pre-flight assessment</div>
           </div>
         </div>
       )}

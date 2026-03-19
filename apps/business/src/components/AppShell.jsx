@@ -176,6 +176,12 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
   const currentWs = workspaces.find(w => w.id === currentWorkspaceId) || {};
   const workerGroups = currentWs.workerGroups || [];
   const activeWorkers = currentWs.activeWorkers || [];
+  // Store active workers in localStorage so ChatPanel can pass them to Alex
+  useEffect(() => {
+    if (activeWorkers.length > 0) {
+      localStorage.setItem("ACTIVE_WORKERS", JSON.stringify(activeWorkers));
+    }
+  }, [activeWorkers]);
   const chiefOfStaffConfig = (() => {
     try { return JSON.parse(localStorage.getItem("COS_CONFIG") || "{}"); } catch { return {}; }
   })();

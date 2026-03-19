@@ -125,7 +125,10 @@
         "priority": "normal",
         "acceptsTasks": true,
         "briefingContribution": "Certificate application status, ops spec amendments pending"
-      }
+      },
+      "valueBucket": [
+        "stay_compliant"
+      ]
     },
     {
       "id": "AV-002",
@@ -171,7 +174,10 @@
         "priority": "normal",
         "acceptsTasks": true,
         "briefingContribution": "GOM revision status, pending POI submissions"
-      }
+      },
+      "valueBucket": [
+        "stay_compliant"
+      ]
     },
     {
       "id": "AV-003",
@@ -217,7 +223,10 @@
         "priority": "normal",
         "acceptsTasks": true,
         "briefingContribution": "Pending FAR changes, compliance impact flags"
-      }
+      },
+      "valueBucket": [
+        "stay_compliant"
+      ]
     },
     {
       "id": "AV-004",
@@ -271,7 +280,10 @@
         "priority": "high",
         "acceptsTasks": true,
         "briefingContribution": "Aircraft airworthiness status per tail, MEL restrictions, maintenance due alerts"
-      }
+      },
+      "valueBucket": [
+        "save_money"
+      ]
     },
     {
       "id": "AV-005",
@@ -318,7 +330,10 @@
         "priority": "high",
         "acceptsTasks": true,
         "briefingContribution": "AD/SB compliance status, upcoming due dates, emergency ADs"
-      }
+      },
+      "valueBucket": [
+        "stay_compliant"
+      ]
     },
     {
       "id": "AV-006",
@@ -365,7 +380,10 @@
         "priority": "normal",
         "acceptsTasks": true,
         "briefingContribution": "Component life remaining, upcoming overhauls, life-limited parts alerts"
-      }
+      },
+      "valueBucket": [
+        "save_money"
+      ]
     },
     {
       "id": "AV-007",
@@ -413,7 +431,10 @@
         "priority": "normal",
         "acceptsTasks": true,
         "briefingContribution": "Open work orders, pending return-to-service, journey log status"
-      }
+      },
+      "valueBucket": [
+        "save_money"
+      ]
     },
     {
       "id": "AV-008",
@@ -459,7 +480,10 @@
         "priority": "normal",
         "acceptsTasks": false,
         "briefingContribution": "Parts inventory levels, critical shortages, pending orders"
-      }
+      },
+      "valueBucket": [
+        "save_money"
+      ]
     },
     {
       "id": "AV-009",
@@ -512,7 +536,10 @@
         "priority": "high",
         "acceptsTasks": true,
         "briefingContribution": "Crew legality status, duty limit alerts, daily crew legality summary"
-      }
+      },
+      "valueBucket": [
+        "stay_compliant"
+      ]
     },
     {
       "id": "AV-010",
@@ -559,7 +586,10 @@
         "priority": "normal",
         "acceptsTasks": true,
         "briefingContribution": "Pilot currency status, upcoming check ride dates, expiring qualifications"
-      }
+      },
+      "valueBucket": [
+        "save_money"
+      ]
     },
     {
       "id": "AV-011",
@@ -606,7 +636,10 @@
         "priority": "normal",
         "acceptsTasks": true,
         "briefingContribution": "Upcoming training requirements, overdue training alerts"
-      }
+      },
+      "valueBucket": [
+        "save_money"
+      ]
     },
     {
       "id": "AV-012",
@@ -652,7 +685,10 @@
         "priority": "normal",
         "acceptsTasks": false,
         "briefingContribution": "Medical certificate status, upcoming expirations"
-      }
+      },
+      "valueBucket": [
+        "stay_compliant"
+      ]
     },
     {
       "id": "AV-013",
@@ -717,7 +753,10 @@
         "priority": "high",
         "acceptsTasks": true,
         "briefingContribution": "Active missions, dispatch status, pre-departure anomalies"
-      }
+      },
+      "valueBucket": [
+        "save_money"
+      ]
     },
     {
       "id": "AV-014",
@@ -769,7 +808,10 @@
         "priority": "high",
         "acceptsTasks": true,
         "briefingContribution": "FRAT scores across active missions, risk patterns"
-      }
+      },
+      "valueBucket": [
+        "save_money"
+      ]
     },
     {
       "id": "AV-015",
@@ -815,7 +857,10 @@
         "priority": "normal",
         "acceptsTasks": true,
         "briefingContribution": "W&B status for active missions"
-      }
+      },
+      "valueBucket": [
+        "save_money"
+      ]
     },
     {
       "id": "AV-016",
@@ -861,7 +906,10 @@
         "priority": "normal",
         "acceptsTasks": true,
         "briefingContribution": "Weather conditions for active and planned missions"
-      }
+      },
+      "valueBucket": [
+        "save_money"
+      ]
     },
     {
       "id": "AV-017",
@@ -907,7 +955,10 @@
         "priority": "high",
         "acceptsTasks": false,
         "briefingContribution": "Active flight positions, ETAs, overdue position reports"
-      }
+      },
+      "valueBucket": [
+        "save_money"
+      ]
     },
     {
       "id": "AV-018",
@@ -951,7 +1002,10 @@
         "priority": "normal",
         "acceptsTasks": true,
         "briefingContribution": "Recent safety reports, trend summary"
-      }
+      },
+      "valueBucket": [
+        "stay_compliant"
+      ]
     },
     {
       "id": "AV-019",
@@ -997,7 +1051,10 @@
         "priority": "normal",
         "acceptsTasks": true,
         "briefingContribution": "FOQA exceedance summary, flight data trends"
-      }
+      },
+      "valueBucket": [
+        "stay_compliant"
+      ]
     },
     {
       "id": "AV-020",
@@ -1045,7 +1102,10 @@
         "priority": "high",
         "acceptsTasks": true,
         "briefingContribution": "ERP status, active incidents"
-      }
+      },
+      "valueBucket": [
+        "stay_compliant"
+      ]
     },
     {
       "id": "AV-021",
@@ -1092,7 +1152,10 @@
         "priority": "normal",
         "acceptsTasks": true,
         "briefingContribution": "Post-flight debrief status, pending squawks"
-      }
+      },
+      "valueBucket": [
+        "save_money"
+      ]
     },
     {
       "id": "AV-022",
@@ -1139,7 +1202,10 @@
         "priority": "normal",
         "acceptsTasks": true,
         "briefingContribution": "Open hazards, risk assessment status, pending mitigations"
-      }
+      },
+      "valueBucket": [
+        "stay_compliant"
+      ]
     },
     {
       "id": "AV-023",
@@ -1188,7 +1254,10 @@
         "priority": "normal",
         "acceptsTasks": true,
         "briefingContribution": "Safety performance indicators, objectives tracking"
-      }
+      },
+      "valueBucket": [
+        "stay_compliant"
+      ]
     },
     {
       "id": "AV-024",
@@ -1238,7 +1307,10 @@
         "priority": "high",
         "acceptsTasks": true,
         "briefingContribution": "Safety analysis summary, detected patterns, recommendations"
-      }
+      },
+      "valueBucket": [
+        "stay_compliant"
+      ]
     },
     {
       "id": "AV-025",
@@ -1284,7 +1356,10 @@
         "priority": "normal",
         "acceptsTasks": true,
         "briefingContribution": "Pending quotes, quote conversion rate"
-      }
+      },
+      "valueBucket": [
+        "make_money"
+      ]
     },
     {
       "id": "AV-026",
@@ -1331,7 +1406,10 @@
         "priority": "normal",
         "acceptsTasks": true,
         "briefingContribution": "AR aging summary, overdue payments, billing status"
-      }
+      },
+      "valueBucket": [
+        "make_money"
+      ]
     },
     {
       "id": "AV-027",
@@ -1380,7 +1458,10 @@
         "priority": "normal",
         "acceptsTasks": true,
         "briefingContribution": "Medevac billing status, pending claims, collection rates"
-      }
+      },
+      "valueBucket": [
+        "make_money"
+      ]
     },
     {
       "id": "AV-028",
@@ -1427,7 +1508,10 @@
         "priority": "normal",
         "acceptsTasks": false,
         "briefingContribution": "Pending trip requests, customer satisfaction"
-      }
+      },
+      "valueBucket": [
+        "make_money"
+      ]
     },
     {
       "id": "AV-029",
@@ -1461,7 +1545,10 @@
         ]
       },
       "referrals": [],
-      "alexRegistration": null
+      "alexRegistration": null,
+      "valueBucket": [
+        "stay_compliant"
+      ]
     },
     {
       "id": "AV-030",
@@ -1509,7 +1596,10 @@
         "priority": "normal",
         "acceptsTasks": true,
         "briefingContribution": "FAR change alerts, compliance gap status"
-      }
+      },
+      "valueBucket": [
+        "stay_compliant"
+      ]
     },
     {
       "id": "AV-031",
@@ -1556,7 +1646,10 @@
         "priority": "normal",
         "acceptsTasks": true,
         "briefingContribution": "Drug/alcohol program compliance status, upcoming tests"
-      }
+      },
+      "valueBucket": [
+        "stay_compliant"
+      ]
     },
     {
       "id": "AV-032",
@@ -1609,7 +1702,10 @@
         "priority": "normal",
         "acceptsTasks": true,
         "briefingContribution": "Published schedule, day-of changes, swap requests"
-      }
+      },
+      "valueBucket": [
+        "save_money"
+      ]
     },
     {
       "id": "AV-033",
@@ -1657,7 +1753,10 @@
         "priority": "normal",
         "acceptsTasks": true,
         "briefingContribution": "Reserve availability, pending swap requests"
-      }
+      },
+      "valueBucket": [
+        "save_money"
+      ]
     },
     {
       "id": "AV-034",
@@ -1701,7 +1800,10 @@
         "priority": "normal",
         "acceptsTasks": false,
         "briefingContribution": "Airport/LZ intel updates, new hazard reports"
-      }
+      },
+      "valueBucket": [
+        "save_money"
+      ]
     },
     {
       "id": "AV-035",
@@ -1746,7 +1848,10 @@
         "priority": "normal",
         "acceptsTasks": true,
         "briefingContribution": "Critical NOTAMs for today's missions"
-      }
+      },
+      "valueBucket": [
+        "save_money"
+      ]
     },
     {
       "id": "AV-036",
@@ -1793,7 +1898,10 @@
         "priority": "normal",
         "acceptsTasks": false,
         "briefingContribution": "EFB status, flight plan filing status"
-      }
+      },
+      "valueBucket": [
+        "save_money"
+      ]
     },
     {
       "id": "AV-037",
@@ -1841,7 +1949,10 @@
         "priority": "normal",
         "acceptsTasks": true,
         "briefingContribution": "Training assignments, completion rates, knowledge test results"
-      }
+      },
+      "valueBucket": [
+        "save_money"
+      ]
     },
     {
       "id": "AV-038",
@@ -1887,7 +1998,10 @@
         "priority": "normal",
         "acceptsTasks": true,
         "briefingContribution": "Crew housing status, pending reservations"
-      }
+      },
+      "valueBucket": [
+        "save_money"
+      ]
     },
     {
       "id": "AV-P01",
@@ -1929,7 +2043,10 @@
         "priority": "normal",
         "acceptsTasks": false,
         "briefingContribution": "Recent flights, cumulative totals, PRIA status"
-      }
+      },
+      "valueBucket": [
+        "save_money"
+      ]
     },
     {
       "id": "AV-P02",
@@ -1976,7 +2093,10 @@
         "priority": "normal",
         "acceptsTasks": false,
         "briefingContribution": "Personal currency status, medical expiry"
-      }
+      },
+      "valueBucket": [
+        "save_money"
+      ]
     },
     {
       "id": "AV-P03",
@@ -1989,7 +2109,7 @@
         "monthly": 29
       },
       "status": "live",
-      "capabilitySummary": "Type-specific V-speeds, W&B calculator, checklists, performance data, systems descriptions. ForeFlight sync. PC-12 NG: includes FSI training materials (4,209 pages — PIM, MMEL, Primus APEX guide, safety briefs).",
+      "capabilitySummary": "Type-specific V-speeds, W&B calculator, checklists, performance data, systems descriptions. ForeFlight sync. PC-12 NG: includes FSI training materials (4,209 pages \u2014 PIM, MMEL, Primus APEX guide, safety briefs).",
       "temporalType": "always_on",
       "mandatoryWhen": [],
       "tier1Compliance": [
@@ -2032,7 +2152,10 @@
         "priority": "normal",
         "acceptsTasks": false,
         "briefingContribution": "Aircraft profiles, recent performance data"
-      }
+      },
+      "valueBucket": [
+        "save_money"
+      ]
     },
     {
       "id": "AV-P04",
@@ -2079,7 +2202,10 @@
         "priority": "normal",
         "acceptsTasks": false,
         "briefingContribution": "Training progress, proficiency trends"
-      }
+      },
+      "valueBucket": [
+        "save_money"
+      ]
     },
     {
       "id": "AV-P05",
@@ -2126,7 +2252,10 @@
         "priority": "normal",
         "acceptsTasks": true,
         "briefingContribution": "Personal FRAT, weather summary for planned flights"
-      }
+      },
+      "valueBucket": [
+        "save_money"
+      ]
     },
     {
       "id": "AV-P06",
@@ -2158,7 +2287,10 @@
         ]
       },
       "referrals": [],
-      "alexRegistration": null
+      "alexRegistration": null,
+      "valueBucket": [
+        "stay_compliant"
+      ]
     },
     {
       "id": "AV-P07",
@@ -2175,11 +2307,11 @@
       "temporalType": "always_on",
       "mandatoryWhen": [],
       "tier1Compliance": [
-        "14 CFR Part 135 — commuter and on-demand operations",
-        "14 CFR 135.293/297 — competency and instrument proficiency checks",
-        "14 CFR 61.51 — pilot logbook requirements",
-        "14 CFR 117 — flight and duty time limitations",
-        "14 CFR 91.103 — preflight action requirements",
+        "14 CFR Part 135 \u2014 commuter and on-demand operations",
+        "14 CFR 135.293/297 \u2014 competency and instrument proficiency checks",
+        "14 CFR 61.51 \u2014 pilot logbook requirements",
+        "14 CFR 117 \u2014 flight and duty time limitations",
+        "14 CFR 91.103 \u2014 preflight action requirements",
         "Pilatus PC-12/47E POH/AFM",
         "Honeywell Primus APEX avionics"
       ],
@@ -2218,7 +2350,10 @@
         "acceptsTasks": false,
         "briefingContribution": "PC-12 duty status, recent flights, examiner prep progress"
       },
-      "endpoints": "copilot:pc12:*"
+      "endpoints": "copilot:pc12:*",
+      "valueBucket": [
+        "save_money"
+      ]
     },
     {
       "id": "AV-P08",
@@ -2235,18 +2370,27 @@
       "temporalType": "always_on",
       "mandatoryWhen": [],
       "modeAware": true,
-      "modes": ["direct", "operational", "advisory", "training"],
+      "modes": [
+        "direct",
+        "operational",
+        "advisory",
+        "training"
+      ],
       "modeTiers": "full",
       "highRisk": true,
       "groundUseOnly": true,
-      "documentHierarchy": ["operator_upload", "titleapp_baseline", "public_regulatory"],
+      "documentHierarchy": [
+        "operator_upload",
+        "titleapp_baseline",
+        "public_regulatory"
+      ],
       "tier1Compliance": [
-        "14 CFR Part 91 — general operating and flight rules",
-        "14 CFR Part 135 — commuter and on-demand operations",
-        "14 CFR 135.293/297 — competency and instrument proficiency checks",
-        "14 CFR 61.51 — pilot logbook requirements",
-        "14 CFR 117 — flight and duty time limitations",
-        "14 CFR 91.103 — preflight action requirements",
+        "14 CFR Part 91 \u2014 general operating and flight rules",
+        "14 CFR Part 135 \u2014 commuter and on-demand operations",
+        "14 CFR 135.293/297 \u2014 competency and instrument proficiency checks",
+        "14 CFR 61.51 \u2014 pilot logbook requirements",
+        "14 CFR 117 \u2014 flight and duty time limitations",
+        "14 CFR 91.103 \u2014 preflight action requirements",
         "Beechcraft King Air B200/B200GT AFM",
         "PT6A-42 engine operating limits and procedures",
         "Collins Pro Line 21 avionics (B200GT)"
@@ -2295,7 +2439,10 @@
         "acceptsTasks": false,
         "briefingContribution": "King Air B200 duty status, recent flights, examiner prep progress"
       },
-      "endpoints": "copilot:kingair:*"
+      "endpoints": "copilot:kingair:*",
+      "valueBucket": [
+        "save_money"
+      ]
     },
     {
       "id": "AV-P09",
@@ -2312,18 +2459,27 @@
       "temporalType": "always_on",
       "mandatoryWhen": [],
       "modeAware": true,
-      "modes": ["direct", "operational", "advisory", "training"],
+      "modes": [
+        "direct",
+        "operational",
+        "advisory",
+        "training"
+      ],
       "modeTiers": "full",
       "highRisk": true,
       "groundUseOnly": true,
-      "documentHierarchy": ["operator_upload", "titleapp_baseline", "public_regulatory"],
+      "documentHierarchy": [
+        "operator_upload",
+        "titleapp_baseline",
+        "public_regulatory"
+      ],
       "tier1Compliance": [
-        "14 CFR Part 91 — general operating and flight rules",
-        "14 CFR Part 135 — commuter and on-demand operations",
-        "14 CFR 135.293/297 — competency and instrument proficiency checks",
-        "14 CFR 61.51 — pilot logbook requirements",
-        "14 CFR 117 — flight and duty time limitations",
-        "14 CFR 91.103 — preflight action requirements",
+        "14 CFR Part 91 \u2014 general operating and flight rules",
+        "14 CFR Part 135 \u2014 commuter and on-demand operations",
+        "14 CFR 135.293/297 \u2014 competency and instrument proficiency checks",
+        "14 CFR 61.51 \u2014 pilot logbook requirements",
+        "14 CFR 117 \u2014 flight and duty time limitations",
+        "14 CFR 91.103 \u2014 preflight action requirements",
         "Beechcraft King Air 350/350ER/350C AFM",
         "PT6A-60A engine operating limits and procedures",
         "Collins Pro Line 21/Fusion avionics",
@@ -2373,7 +2529,10 @@
         "acceptsTasks": false,
         "briefingContribution": "King Air 350 duty status, recent flights, examiner prep progress"
       },
-      "endpoints": "copilot:kingair:*"
+      "endpoints": "copilot:kingair:*",
+      "valueBucket": [
+        "save_money"
+      ]
     },
     {
       "id": "AV-P10",
@@ -2390,18 +2549,27 @@
       "temporalType": "always_on",
       "mandatoryWhen": [],
       "modeAware": true,
-      "modes": ["direct", "operational", "advisory", "training"],
+      "modes": [
+        "direct",
+        "operational",
+        "advisory",
+        "training"
+      ],
       "modeTiers": "full",
       "highRisk": true,
       "groundUseOnly": true,
-      "documentHierarchy": ["operator_upload", "titleapp_baseline", "public_regulatory"],
+      "documentHierarchy": [
+        "operator_upload",
+        "titleapp_baseline",
+        "public_regulatory"
+      ],
       "tier1Compliance": [
-        "14 CFR Part 91 — general operating and flight rules",
-        "14 CFR Part 135 — commuter and on-demand operations",
-        "14 CFR 135.293/297 — competency and instrument proficiency checks",
-        "14 CFR 61.51 — pilot logbook requirements",
-        "14 CFR 117 — flight and duty time limitations",
-        "14 CFR 91.103 — preflight action requirements",
+        "14 CFR Part 91 \u2014 general operating and flight rules",
+        "14 CFR Part 135 \u2014 commuter and on-demand operations",
+        "14 CFR 135.293/297 \u2014 competency and instrument proficiency checks",
+        "14 CFR 61.51 \u2014 pilot logbook requirements",
+        "14 CFR 117 \u2014 flight and duty time limitations",
+        "14 CFR 91.103 \u2014 preflight action requirements",
         "Beechcraft King Air C90/C90A/C90GT/C90GTx AFM",
         "PT6A-21/PT6A-135A engine operating limits and procedures",
         "Collins Pro Line 21 avionics (C90GTx)"
@@ -2445,7 +2613,10 @@
         "acceptsTasks": false,
         "briefingContribution": "King Air C90 duty status, recent flights, examiner prep progress"
       },
-      "endpoints": "copilot:kingair:*"
+      "endpoints": "copilot:kingair:*",
+      "valueBucket": [
+        "save_money"
+      ]
     },
     {
       "id": "AV-P11",
@@ -2462,18 +2633,27 @@
       "temporalType": "always_on",
       "mandatoryWhen": [],
       "modeAware": true,
-      "modes": ["direct", "operational", "advisory", "training"],
+      "modes": [
+        "direct",
+        "operational",
+        "advisory",
+        "training"
+      ],
       "modeTiers": "full",
       "highRisk": true,
       "groundUseOnly": true,
-      "documentHierarchy": ["operator_upload", "titleapp_baseline", "public_regulatory"],
+      "documentHierarchy": [
+        "operator_upload",
+        "titleapp_baseline",
+        "public_regulatory"
+      ],
       "tier1Compliance": [
-        "14 CFR Part 91 — general operating and flight rules",
-        "14 CFR Part 135 — commuter and on-demand operations",
-        "14 CFR 135.293/297 — competency and instrument proficiency checks",
-        "14 CFR 61.51 — pilot logbook requirements",
-        "14 CFR 117 — flight and duty time limitations",
-        "14 CFR 91.103 — preflight action requirements",
+        "14 CFR Part 91 \u2014 general operating and flight rules",
+        "14 CFR Part 135 \u2014 commuter and on-demand operations",
+        "14 CFR 135.293/297 \u2014 competency and instrument proficiency checks",
+        "14 CFR 61.51 \u2014 pilot logbook requirements",
+        "14 CFR 117 \u2014 flight and duty time limitations",
+        "14 CFR 91.103 \u2014 preflight action requirements",
         "Cessna 208B Grand Caravan AFM/POH",
         "PT6A-114A engine operating limits and procedures",
         "Garmin G1000 avionics (208B EX)",
@@ -2528,7 +2708,10 @@
         "acceptsTasks": false,
         "briefingContribution": "Caravan 208B duty status, recent flights, examiner prep progress"
       },
-      "endpoints": "copilot:caravan:*"
+      "endpoints": "copilot:caravan:*",
+      "valueBucket": [
+        "save_money"
+      ]
     }
   ],
   "bundles": [

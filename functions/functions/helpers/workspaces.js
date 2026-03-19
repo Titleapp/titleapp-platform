@@ -33,6 +33,29 @@ async function getUserWorkspaces(userId) {
     }
   });
 
+  // Merge subscriptions into workspace activeWorkers
+  try {
+    const subSnap = await getDb().collection('subscriptions')
+      .where('userId', '==', userId)
+      .where('status', 'in', ['active', 'trial'])
+      .get();
+    const subscribedSlugs = subSnap.docs
+      .map(d => d.data().workerSlug || d.data().workerId)
+      .filter(Boolean);
+    if (subscribedSlugs.length > 0) {
+      for (const ws of workspaces) {
+        if (ws.type === 'personal') continue;
+        const merged = new Set([...(ws.activeWorkers || []), ...subscribedSlugs]);
+        ws.activeWorkers = [...merged];
+        if (ws.activeWorkers.length >= 3 && !ws.chiefOfStaff) {
+          ws.chiefOfStaff = { enabled: true, name: ws.cosConfig?.name || 'Alex', unlockedAt: new Date().toISOString() };
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('workspaces: subscription merge failed:', e.message);
+  }
+
   // Merge shared workspaces (B2B pushed workers)
   const shared = await getSharedWorkspaces(userId);
   workspaces.push(...shared);

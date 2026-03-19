@@ -4365,8 +4365,9 @@ WORKER_DETAIL_CONTENT["srec-exchange-compliance"] = {
 import AdminCommandCenter from "./admin/AdminShell";
 import "./admin/admin.css";
 
-function AdminShell({ onBackToHub }) {
+function AdminShell({ onBackToHub, initialSection }) {
   const [currentSection, setCurrentSection] = useState(() => {
+    if (initialSection) return initialSection;
     const redirectPage = sessionStorage.getItem("ta_redirect_page");
     if (redirectPage) {
       sessionStorage.removeItem("ta_redirect_page");
@@ -4800,6 +4801,22 @@ export default function App() {
     // this effect after sessionStorage items have been consumed)
     if (viewResolvedRef.current) return;
 
+    // Fast-path: returning user with existing workspace — skip API round-trip
+    const hasExistingTenant = localStorage.getItem("TENANT_ID");
+    const hasSessionOverride = sessionStorage.getItem("ta_preselected_tid") || sessionStorage.getItem("ta_redirect_page") || sessionStorage.getItem("ta_discovered_context");
+    if (hasExistingTenant && !hasSessionOverride) {
+      viewResolvedRef.current = true;
+      setCurrentView("app");
+      return;
+    }
+
+    // Timeout wrapper for fetch calls — prevents indefinite hangs
+    function fetchWithTimeout(url, opts, ms = 5000) {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), ms);
+      return fetch(url, { ...opts, signal: ctrl.signal }).finally(() => clearTimeout(timer));
+    }
+
     async function resolveView() {
       try {
         const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
@@ -4810,7 +4827,7 @@ export default function App() {
           sessionStorage.removeItem("ta_preselected_tid");
 
           // Validate the pre-selection via memberships
-          const response = await fetch(`${apiBase}/api?path=/v1/me:memberships`, {
+          const response = await fetchWithTimeout(`${apiBase}/api?path=/v1/me:memberships`, {
             headers: { Authorization: `Bearer ${token}` },
           });
 
@@ -4860,7 +4877,7 @@ export default function App() {
         }
 
         // Check if user has any memberships at all (for onboarding flow)
-        const response = await fetch(`${apiBase}/api?path=/v1/me:memberships`, {
+        const response = await fetchWithTimeout(`${apiBase}/api?path=/v1/me:memberships`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
@@ -4884,7 +4901,7 @@ export default function App() {
                 const tenantName = dCtx.businessName || (dCtx.intent === "personal" ? "My Vault" : "My Workspace");
                 const tenantType = dCtx.intent === "personal" ? "personal" : "business";
 
-                const createRes = await fetch(`${apiBase}/api?path=/v1/onboarding:claimTenant`, {
+                const createRes = await fetchWithTimeout(`${apiBase}/api?path=/v1/onboarding:claimTenant`, {
                   method: "POST",
                   headers: {
                     Authorization: `Bearer ${token}`,
@@ -4981,11 +4998,26 @@ export default function App() {
         }
       } catch (err) {
         console.error("Failed to resolve view:", err);
-        setCurrentView("hub");
+        // On any failure, go to app if we have a tenant, otherwise hub
+        if (localStorage.getItem("TENANT_ID")) {
+          viewResolvedRef.current = true;
+          setCurrentView("app");
+        } else {
+          setCurrentView("hub");
+        }
       }
     }
 
-    resolveView();
+    // Overall safety net: if resolveView hasn't finished in 8 seconds, force into app
+    const safetyTimer = setTimeout(() => {
+      if (!viewResolvedRef.current) {
+        console.warn("resolveView timed out after 8s — forcing app view");
+        viewResolvedRef.current = true;
+        setCurrentView("app");
+      }
+    }, 8000);
+
+    resolveView().finally(() => clearTimeout(safetyTimer));
   }, [token, handoffInProgress]);
 
   function handleWorkspaceLaunch(workspace) {
@@ -5247,14 +5279,7 @@ export default function App() {
   }
 
   if (currentView === "marketplace") {
-    return (
-      <WorkerMarketplace
-        authenticated
-        userName={userName}
-        onSubscribe={handleFirstSubscribe}
-        onSkip={() => setCurrentView("hub")}
-      />
-    );
+    return <AdminShell onBackToHub={handleBackToHub} initialSection="raas-store" />;
   }
 
   if (currentView === "hub") {

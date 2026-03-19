@@ -104,6 +104,7 @@
         "compliance",
         "licensing"
       ],
+      "valueBucket": ["stay_compliant"],
       "alexRegistration": {
         "priority": "normal",
         "acceptsTasks": true,
@@ -127,6 +128,7 @@
         "compliance",
         "FTC"
       ],
+      "valueBucket": ["stay_compliant"],
       "alexRegistration": {
         "priority": "high",
         "acceptsTasks": true,
@@ -150,6 +152,7 @@
         "inventory",
         "acquisition"
       ],
+      "valueBucket": ["make_money"],
       "alexRegistration": {
         "priority": "normal",
         "acceptsTasks": true,
@@ -173,6 +176,7 @@
         "inventory",
         "valuation"
       ],
+      "valueBucket": ["make_money"],
       "alexRegistration": {
         "priority": "normal",
         "acceptsTasks": true,
@@ -196,6 +200,7 @@
         "inventory",
         "compliance"
       ],
+      "valueBucket": ["save_money"],
       "alexRegistration": {
         "priority": "normal",
         "acceptsTasks": true,
@@ -219,6 +224,7 @@
         "pricing",
         "intelligence"
       ],
+      "valueBucket": ["make_money"],
       "alexRegistration": {
         "priority": "high",
         "acceptsTasks": true,
@@ -242,6 +248,7 @@
         "compliance",
         "marketing"
       ],
+      "valueBucket": ["save_money"],
       "alexRegistration": {
         "priority": "normal",
         "acceptsTasks": true,
@@ -265,6 +272,7 @@
         "pricing",
         "revenue"
       ],
+      "valueBucket": ["make_money"],
       "alexRegistration": {
         "priority": "normal",
         "acceptsTasks": true,
@@ -288,6 +296,7 @@
         "sales",
         "leads"
       ],
+      "valueBucket": ["make_money"],
       "alexRegistration": {
         "priority": "high",
         "acceptsTasks": true,
@@ -311,6 +320,7 @@
         "sales",
         "compliance"
       ],
+      "valueBucket": ["make_money"],
       "alexRegistration": {
         "priority": "high",
         "acceptsTasks": true,
@@ -334,6 +344,7 @@
         "compliance",
         "security"
       ],
+      "valueBucket": ["stay_compliant"],
       "alexRegistration": {
         "priority": "critical",
         "acceptsTasks": false,
@@ -357,6 +368,7 @@
         "finance",
         "compliance"
       ],
+      "valueBucket": ["make_money"],
       "alexRegistration": {
         "priority": "high",
         "acceptsTasks": true,
@@ -380,6 +392,7 @@
         "compliance",
         "finance"
       ],
+      "valueBucket": ["make_money"],
       "alexRegistration": {
         "priority": "critical",
         "acceptsTasks": false,
@@ -403,6 +416,7 @@
         "finance",
         "lending"
       ],
+      "valueBucket": ["make_money"],
       "alexRegistration": {
         "priority": "high",
         "acceptsTasks": true,
@@ -426,6 +440,7 @@
         "finance",
         "compliance"
       ],
+      "valueBucket": ["make_money"],
       "alexRegistration": {
         "priority": "normal",
         "acceptsTasks": true,
@@ -449,6 +464,7 @@
         "service",
         "revenue"
       ],
+      "valueBucket": ["save_money"],
       "alexRegistration": {
         "priority": "normal",
         "acceptsTasks": true,
@@ -473,6 +489,7 @@
         "revenue",
         "sales"
       ],
+      "valueBucket": ["save_money"],
       "alexRegistration": {
         "priority": "high",
         "acceptsTasks": true,
@@ -496,6 +513,7 @@
         "service",
         "inventory"
       ],
+      "valueBucket": ["save_money"],
       "alexRegistration": {
         "priority": "normal",
         "acceptsTasks": true,
@@ -519,6 +537,7 @@
         "service",
         "revenue"
       ],
+      "valueBucket": ["save_money"],
       "alexRegistration": {
         "priority": "normal",
         "acceptsTasks": true,
@@ -543,6 +562,7 @@
         "retention",
         "revenue"
       ],
+      "valueBucket": ["save_money"],
       "alexRegistration": {
         "priority": "normal",
         "acceptsTasks": true,
@@ -567,6 +587,7 @@
         "revenue",
         "sales"
       ],
+      "valueBucket": ["make_money"],
       "alexRegistration": {
         "priority": "high",
         "acceptsTasks": true,
@@ -590,6 +611,7 @@
         "retention",
         "compliance"
       ],
+      "valueBucket": ["make_money"],
       "alexRegistration": {
         "priority": "normal",
         "acceptsTasks": true,
@@ -613,6 +635,7 @@
         "marketing",
         "retention"
       ],
+      "valueBucket": ["make_money"],
       "alexRegistration": {
         "priority": "normal",
         "acceptsTasks": true,
@@ -636,6 +659,7 @@
         "compliance",
         "FTC"
       ],
+      "valueBucket": ["stay_compliant"],
       "alexRegistration": {
         "priority": "critical",
         "acceptsTasks": false,
@@ -659,6 +683,7 @@
         "compliance",
         "TCPA"
       ],
+      "valueBucket": ["stay_compliant"],
       "alexRegistration": {
         "priority": "high",
         "acceptsTasks": false,
@@ -682,6 +707,7 @@
         "compliance",
         "HR"
       ],
+      "valueBucket": ["stay_compliant"],
       "alexRegistration": {
         "priority": "normal",
         "acceptsTasks": true,
@@ -705,6 +731,7 @@
         "integration",
         "intelligence"
       ],
+      "valueBucket": ["stay_compliant"],
       "alexRegistration": {
         "priority": "normal",
         "acceptsTasks": true,
@@ -728,6 +755,7 @@
         "reporting",
         "intelligence"
       ],
+      "valueBucket": ["make_money"],
       "alexRegistration": {
         "priority": "high",
         "acceptsTasks": true,
@@ -751,6 +779,7 @@
         "alex",
         "orchestration"
       ],
+      "valueBucket": ["stay_compliant"],
       "alexRegistration": {
         "priority": "critical",
         "acceptsTasks": true,

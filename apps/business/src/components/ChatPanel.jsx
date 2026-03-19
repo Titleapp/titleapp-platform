@@ -908,6 +908,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
         },
         body: JSON.stringify({
           message: userMessage,
+          subscribedWorkers: (() => { try { return JSON.parse(localStorage.getItem("ACTIVE_WORKERS") || "[]"); } catch { return []; } })(),
           ...(filePayload ? { file: filePayload } : {}),
           ...(filesPayload && filesPayload.length > 1 ? { files: filesPayload } : {}),
           context: {

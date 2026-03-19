@@ -1354,7 +1354,7 @@ exports.api = onRequest(
             if (cc) sessionState.vertical = cc.vertical;
             // Direct vertical mapping fallback if no campaign context
             if (!sessionState.vertical) {
-              const DIRECT_MAP = { auto_dealer: "auto_dealer", solar_vpp: "solar_vpp", real_estate_development: "real_estate_development", re_operations: "re_operations", aviation: "aviation", creators: "creators" };
+              const DIRECT_MAP = { auto_dealer: "auto_dealer", solar_vpp: "solar_vpp", real_estate_development: "real_estate_development", re_operations: "re_operations", aviation: "aviation", creators: "creators", web3: "web3" };
               if (DIRECT_MAP[slug]) sessionState.vertical = DIRECT_MAP[slug];
             }
           }
@@ -4140,7 +4140,7 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
     if (route === "/catalog:byVertical" && method === "GET") {
       try {
         const vertical = req.query.vertical || "";
-        const limit = Math.min(parseInt(req.query.limit) || 12, 50);
+        const limit = Math.min(parseInt(req.query.limit) || 24, 50);
         if (!vertical) return jsonError(res, 400, "vertical parameter required");
 
         const db = getDb();
@@ -8747,6 +8747,22 @@ Active: ${rc.active ? "Yes" : "No"}`;
                       }
                     } catch (recErr) {
                       // Non-fatal — proceed without recommendation
+                    }
+
+                    // Inject workspace context so Alex knows what exists in this workspace
+                    const wsVertical = ctx.vertical || workspace.vertical || "";
+                    const wsWorkers = body.subscribedWorkers || workspace.activeWorkers || [];
+                    const NAV_BY_VERTICAL = {
+                      aviation: "Dashboard, CoPilot EFB, Dispatch, Fleet Status, Crew, Safety, Scheduling, Compliance",
+                      auto: "Dashboard, Inventory, Sales Pipeline, F&I Products, Service, Leads, Customers, Reports",
+                      "real-estate": "Dashboard, Deal Pipeline, Listings, Buyers, Transactions, Properties, Documents, Reports",
+                      "property-mgmt": "Dashboard, Properties, Tenants, Maintenance, Utilities, Contracts, Reports",
+                      analyst: "Dashboard, Research, Portfolio, Clients & LPs, Deal Pipeline, Reports",
+                      investor: "Dashboard, Investor Pipeline, Data Room, Cap Table, Reports",
+                    };
+                    const navItems = NAV_BY_VERTICAL[wsVertical] || "Dashboard, Documents, Reports";
+                    if (wsWorkers.length > 0 || wsVertical) {
+                      alexSystemPrompt += `\n\nWORKSPACE CONTEXT:\nVertical: ${wsVertical}\nActive workers: ${wsWorkers.join(", ") || "none"}\nAvailable navigation: ${navItems}\nNEVER reference navigation items, sections, or workers that do not exist in this workspace. Only reference workers and navigation from the lists above.`;
                     }
                   }
                 }

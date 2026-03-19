@@ -136,7 +136,10 @@
         "priority": "normal",
         "acceptsTasks": true,
         "briefingContribution": "Analyzes market demographics, growth trends, and supply/demand"
-      }
+      },
+      "valueBucket": [
+        "make_money"
+      ]
     },
     {
       "id": "W-002",
@@ -185,7 +188,10 @@
         "priority": "high",
         "acceptsTasks": true,
         "briefingContribution": "Scores CRE deals against investment thesis"
-      }
+      },
+      "valueBucket": [
+        "make_money"
+      ]
     },
     {
       "id": "W-003",
@@ -233,7 +239,10 @@
         "priority": "high",
         "acceptsTasks": true,
         "briefingContribution": "Manages site DD checklists, flags risks"
-      }
+      },
+      "valueBucket": [
+        "make_money"
+      ]
     },
     {
       "id": "W-030",
@@ -273,7 +282,10 @@
         "priority": "high",
         "acceptsTasks": true,
         "briefingContribution": "Reviews appraisals, identifies valuation gaps"
-      }
+      },
+      "valueBucket": [
+        "make_money"
+      ]
     },
     {
       "id": "W-004",
@@ -322,7 +334,10 @@
         "priority": "high",
         "acceptsTasks": true,
         "briefingContribution": "Analyzes zoning conformance, maps entitlement pathways"
-      }
+      },
+      "valueBucket": [
+        "stay_compliant"
+      ]
     },
     {
       "id": "W-005",
@@ -370,7 +385,10 @@
         "priority": "normal",
         "acceptsTasks": true,
         "briefingContribution": "Reviews architectural plans for code compliance"
-      }
+      },
+      "valueBucket": [
+        "save_money"
+      ]
     },
     {
       "id": "W-006",
@@ -409,7 +427,10 @@
         "priority": "normal",
         "acceptsTasks": true,
         "briefingContribution": "Reviews engineering plans for structural/civil compliance"
-      }
+      },
+      "valueBucket": [
+        "save_money"
+      ]
     },
     {
       "id": "W-007",
@@ -453,7 +474,10 @@
         "priority": "high",
         "acceptsTasks": true,
         "briefingContribution": "Screens environmental and cultural resource risks"
-      }
+      },
+      "valueBucket": [
+        "stay_compliant"
+      ]
     },
     {
       "id": "W-008",
@@ -493,7 +517,10 @@
         "priority": "normal",
         "acceptsTasks": true,
         "briefingContribution": "Analyzes energy compliance and sustainability opportunities"
-      }
+      },
+      "valueBucket": [
+        "save_money"
+      ]
     },
     {
       "id": "W-009",
@@ -528,7 +555,10 @@
         "priority": "normal",
         "acceptsTasks": true,
         "briefingContribution": "Reviews plans for accessibility and fair housing compliance"
-      }
+      },
+      "valueBucket": [
+        "stay_compliant"
+      ]
     },
     {
       "id": "W-010",
@@ -558,7 +588,10 @@
         "priority": "normal",
         "acceptsTasks": true,
         "briefingContribution": "Prepares hearing packages and community engagement strategy"
-      }
+      },
+      "valueBucket": [
+        "stay_compliant"
+      ]
     },
     {
       "id": "W-011",
@@ -597,7 +630,10 @@
         "priority": "normal",
         "acceptsTasks": true,
         "briefingContribution": "Reviews fire and life safety requirements"
-      }
+      },
+      "valueBucket": [
+        "stay_compliant"
+      ]
     },
     {
       "id": "W-012",
@@ -652,7 +688,10 @@
         "priority": "high",
         "acceptsTasks": true,
         "briefingContribution": "Tracks permit submissions, corrections, and approvals"
-      }
+      },
+      "valueBucket": [
+        "stay_compliant"
+      ]
     },
     {
       "id": "W-013",
@@ -698,7 +737,10 @@
         "priority": "high",
         "acceptsTasks": true,
         "briefingContribution": "Compares loan offers and models debt service"
-      }
+      },
+      "valueBucket": [
+        "make_money"
+      ]
     },
     {
       "id": "W-014",
@@ -738,7 +780,10 @@
         "priority": "normal",
         "acceptsTasks": true,
         "briefingContribution": "Analyzes mezzanine and preferred equity structures"
-      }
+      },
+      "valueBucket": [
+        "make_money"
+      ]
     },
     {
       "id": "W-015",
@@ -784,7 +829,10 @@
         "priority": "high",
         "acceptsTasks": true,
         "briefingContribution": "Models construction loans and interest reserves"
-      }
+      },
+      "valueBucket": [
+        "make_money"
+      ]
     },
     {
       "id": "W-016",
@@ -847,7 +895,10 @@
         "priority": "critical",
         "acceptsTasks": true,
         "briefingContribution": "Optimizes capital structure across all financing sources"
-      }
+      },
+      "valueBucket": [
+        "make_money"
+      ]
     },
     {
       "id": "W-017",
@@ -893,7 +944,10 @@
         "priority": "high",
         "acceptsTasks": true,
         "briefingContribution": "Identifies tax credits and incentive programs"
-      }
+      },
+      "valueBucket": [
+        "make_money"
+      ]
     },
     {
       "id": "W-018",
@@ -937,7 +991,10 @@
         "priority": "normal",
         "acceptsTasks": true,
         "briefingContribution": "Analyzes securities exemption pathways for capital raises"
-      }
+      },
+      "valueBucket": [
+        "make_money"
+      ]
     },
     {
       "id": "W-019",
@@ -974,7 +1031,10 @@
         "priority": "high",
         "acceptsTasks": true,
         "briefingContribution": "Manages investor communications and LP relations"
-      }
+      },
+      "valueBucket": [
+        "make_money"
+      ]
     },
     {
       "id": "W-020",
@@ -1019,7 +1079,10 @@
         "priority": "normal",
         "acceptsTasks": true,
         "briefingContribution": "Models Opportunity Zone eligibility and economics"
-      }
+      },
+      "valueBucket": [
+        "make_money"
+      ]
     },
     {
       "id": "W-021",
@@ -1087,7 +1150,10 @@
         "priority": "critical",
         "acceptsTasks": true,
         "briefingContribution": "Manages construction schedule, budget, RFIs, and change orders"
-      }
+      },
+      "valueBucket": [
+        "save_money"
+      ]
     },
     {
       "id": "W-022",
@@ -1117,7 +1183,10 @@
         "priority": "normal",
         "acceptsTasks": true,
         "briefingContribution": "Levels bids and recommends awards"
-      }
+      },
+      "valueBucket": [
+        "save_money"
+      ]
     },
     {
       "id": "W-023",
@@ -1154,7 +1223,10 @@
         "priority": "high",
         "acceptsTasks": true,
         "briefingContribution": "Prepares construction draw packages with lien waiver tracking"
-      }
+      },
+      "valueBucket": [
+        "save_money"
+      ]
     },
     {
       "id": "W-024",
@@ -1188,7 +1260,10 @@
         "priority": "normal",
         "acceptsTasks": true,
         "briefingContribution": "Forecasts labor needs and manages certified payroll"
-      }
+      },
+      "valueBucket": [
+        "save_money"
+      ]
     },
     {
       "id": "W-025",
@@ -1224,7 +1299,10 @@
         "priority": "high",
         "acceptsTasks": true,
         "briefingContribution": "Tracks insurance certificates and coverage gaps"
-      }
+      },
+      "valueBucket": [
+        "stay_compliant"
+      ]
     },
     {
       "id": "W-026",
@@ -1254,7 +1332,10 @@
         "priority": "normal",
         "acceptsTasks": true,
         "briefingContribution": "Tracks long-lead materials and delivery schedules"
-      }
+      },
+      "valueBucket": [
+        "save_money"
+      ]
     },
     {
       "id": "W-027",
@@ -1285,7 +1366,10 @@
         "priority": "normal",
         "acceptsTasks": true,
         "briefingContribution": "Schedules and tracks inspections and deficiencies"
-      }
+      },
+      "valueBucket": [
+        "save_money"
+      ]
     },
     {
       "id": "W-028",
@@ -1319,7 +1403,10 @@
         "priority": "critical",
         "acceptsTasks": true,
         "briefingContribution": "Manages site safety plans and OSHA compliance"
-      }
+      },
+      "valueBucket": [
+        "save_money"
+      ]
     },
     {
       "id": "W-029",
@@ -1350,7 +1437,10 @@
         "priority": "normal",
         "acceptsTasks": true,
         "briefingContribution": "Coordinates MEP systems and identifies clashes"
-      }
+      },
+      "valueBucket": [
+        "save_money"
+      ]
     },
     {
       "id": "W-031",
@@ -1382,7 +1472,10 @@
         "priority": "high",
         "acceptsTasks": true,
         "briefingContribution": "Manages lease-up marketing and velocity tracking"
-      }
+      },
+      "valueBucket": [
+        "make_money"
+      ]
     },
     {
       "id": "W-032",
@@ -1409,7 +1502,10 @@
         "priority": "normal",
         "acceptsTasks": true,
         "briefingContribution": "Screens tenant applications with Fair Housing compliance"
-      }
+      },
+      "valueBucket": [
+        "save_money"
+      ]
     },
     {
       "id": "W-033",
@@ -1441,7 +1537,10 @@
         "priority": "normal",
         "acceptsTasks": true,
         "briefingContribution": "Manages tenant communications and lease lifecycle"
-      }
+      },
+      "valueBucket": [
+        "save_money"
+      ]
     },
     {
       "id": "W-034",
@@ -1482,7 +1581,10 @@
         "priority": "normal",
         "acceptsTasks": true,
         "briefingContribution": "Analyzes rent rolls and optimizes revenue"
-      }
+      },
+      "valueBucket": [
+        "make_money"
+      ]
     },
     {
       "id": "W-035",
@@ -1520,7 +1622,10 @@
         "priority": "normal",
         "acceptsTasks": true,
         "briefingContribution": "Tracks work orders and preventive maintenance"
-      }
+      },
+      "valueBucket": [
+        "save_money"
+      ]
     },
     {
       "id": "W-036",
@@ -1548,7 +1653,10 @@
         "priority": "low",
         "acceptsTasks": true,
         "briefingContribution": "Analyzes utility costs and manages RUBS allocation"
-      }
+      },
+      "valueBucket": [
+        "save_money"
+      ]
     },
     {
       "id": "W-037",
@@ -1577,7 +1685,10 @@
         "priority": "low",
         "acceptsTasks": true,
         "briefingContribution": "Manages HOA assessments, violations, and board packages"
-      }
+      },
+      "valueBucket": [
+        "save_money"
+      ]
     },
     {
       "id": "W-038",
@@ -1609,7 +1720,10 @@
         "priority": "normal",
         "acceptsTasks": true,
         "briefingContribution": "Tracks warranty claims and expiration dates"
-      }
+      },
+      "valueBucket": [
+        "save_money"
+      ]
     },
     {
       "id": "W-039",
@@ -1652,7 +1766,10 @@
         "priority": "normal",
         "acceptsTasks": true,
         "briefingContribution": "Manages property-level accounting and financial statements"
-      }
+      },
+      "valueBucket": [
+        "make_money"
+      ]
     },
     {
       "id": "W-040",
@@ -1683,7 +1800,10 @@
         "priority": "normal",
         "acceptsTasks": true,
         "briefingContribution": "Tracks property tax assessments and exemptions"
-      }
+      },
+      "valueBucket": [
+        "make_money"
+      ]
     },
     {
       "id": "W-041",
@@ -1714,7 +1834,10 @@
         "priority": "low",
         "acceptsTasks": true,
         "briefingContribution": "Tracks vendor contracts and performance"
-      }
+      },
+      "valueBucket": [
+        "save_money"
+      ]
     },
     {
       "id": "W-051",
@@ -1753,7 +1876,10 @@
         "priority": "high",
         "acceptsTasks": true,
         "briefingContribution": "Generates investor reports and calculates distributions"
-      }
+      },
+      "valueBucket": [
+        "make_money"
+      ]
     },
     {
       "id": "W-052",
@@ -1795,7 +1921,10 @@
         "priority": "high",
         "acceptsTasks": true,
         "briefingContribution": "Monitors debt covenants and DSCR trending"
-      }
+      },
+      "valueBucket": [
+        "make_money"
+      ]
     },
     {
       "id": "W-042",
@@ -1841,7 +1970,10 @@
         "priority": "normal",
         "acceptsTasks": true,
         "briefingContribution": "Prepares assets for disposition"
-      }
+      },
+      "valueBucket": [
+        "make_money"
+      ]
     },
     {
       "id": "W-043",
@@ -1885,7 +2017,10 @@
         "priority": "high",
         "acceptsTasks": true,
         "briefingContribution": "Tracks 1031 exchange deadlines and eligibility"
-      }
+      },
+      "valueBucket": [
+        "make_money"
+      ]
     },
     {
       "id": "W-050",
@@ -1923,7 +2058,10 @@
         "priority": "normal",
         "acceptsTasks": true,
         "briefingContribution": "Manages disposition marketing and virtual data room"
-      }
+      },
+      "valueBucket": [
+        "make_money"
+      ]
     },
     {
       "id": "W-044",
@@ -1952,7 +2090,10 @@
         "priority": "high",
         "acceptsTasks": true,
         "briefingContribution": "Reviews title exceptions and tracks closings"
-      }
+      },
+      "valueBucket": [
+        "stay_compliant"
+      ]
     },
     {
       "id": "W-045",
@@ -1981,7 +2122,10 @@
         "priority": "high",
         "acceptsTasks": true,
         "briefingContribution": "Reviews contracts and extracts key terms"
-      }
+      },
+      "valueBucket": [
+        "stay_compliant"
+      ]
     },
     {
       "id": "W-046",
@@ -2015,7 +2159,10 @@
         "priority": "normal",
         "acceptsTasks": true,
         "briefingContribution": "Recommends entity structures and tracks formation"
-      }
+      },
+      "valueBucket": [
+        "stay_compliant"
+      ]
     },
     {
       "id": "W-047",
@@ -2052,7 +2199,10 @@
         "priority": "critical",
         "acceptsTasks": true,
         "briefingContribution": "Aggregates all deadlines across all workers"
-      }
+      },
+      "valueBucket": [
+        "stay_compliant"
+      ]
     },
     {
       "id": "W-048",
@@ -2227,7 +2377,10 @@
         "priority": "critical",
         "acceptsTasks": true,
         "briefingContribution": "Orchestrates all workers, generates daily briefings, routes tasks"
-      }
+      },
+      "valueBucket": [
+        "stay_compliant"
+      ]
     },
     {
       "id": "W-049",
@@ -2260,7 +2413,10 @@
         "priority": "normal",
         "acceptsTasks": true,
         "briefingContribution": "Analyzes property insurance coverage and claims"
-      }
+      },
+      "valueBucket": [
+        "stay_compliant"
+      ]
     }
   ],
   "bundles": [
