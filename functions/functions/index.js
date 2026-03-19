@@ -1060,7 +1060,8 @@ exports.api = onRequest(
     }
 
     // POST /v1/auth:sendOtp — SMS OTP send (unauthenticated)
-    if (route === "/auth:sendOtp" && method === "POST") {
+    // Matches both /auth:sendOtp and /auth/sendOtp (frontend uses slash variant)
+    if ((route === "/auth:sendOtp" || route === "/auth/sendOtp") && method === "POST") {
       try {
         const { sendOtp } = require("./campaigns/otpAuth");
         return await sendOtp(req, res);
@@ -1071,7 +1072,7 @@ exports.api = onRequest(
     }
 
     // POST /v1/auth:verifyOtp — SMS OTP verify (unauthenticated)
-    if (route === "/auth:verifyOtp" && method === "POST") {
+    if ((route === "/auth:verifyOtp" || route === "/auth/verifyOtp") && method === "POST") {
       try {
         const { verifyOtp } = require("./campaigns/otpAuth");
         return await verifyOtp(req, res);
