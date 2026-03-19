@@ -8807,10 +8807,13 @@ Active: ${rc.active ? "Yes" : "No"}`;
                       "property-mgmt": "Dashboard, Properties, Tenants, Maintenance, Utilities, Contracts, Reports",
                       analyst: "Dashboard, Research, Portfolio, Clients & LPs, Deal Pipeline, Reports",
                       investor: "Dashboard, Investor Pipeline, Data Room, Cap Table, Reports",
+                      solar: "Dashboard, Projects, Permits, SREC Credits, Compliance, Documents, Reports",
+                      web3: "Dashboard, Document Vault, Team Roster, Treasury, Governance, Community, Contracts",
+                      consumer: "Dashboard, Vehicles, Properties, Documents, Certifications, Activity Log",
                     };
                     const navItems = NAV_BY_VERTICAL[wsVertical] || "Dashboard, Documents, Reports";
                     if (wsWorkers.length > 0 || wsVertical) {
-                      alexSystemPrompt += `\n\nWORKSPACE CONTEXT:\nVertical: ${wsVertical}\nActive workers: ${wsWorkers.join(", ") || "none"}\nAvailable navigation: ${navItems}\nNEVER reference navigation items, sections, or workers that do not exist in this workspace. Only reference workers and navigation from the lists above.`;
+                      alexSystemPrompt += `\n\nWORKSPACE CONTEXT:\nVertical: ${wsVertical}\nActive workers: ${wsWorkers.join(", ") || "none"}\nAvailable navigation: ${navItems}\nNEVER reference navigation items, sections, or workers that do not exist in this workspace. Only reference workers and navigation from the lists above.\nWhen a user asks to use a subscribed worker, say "Opening [worker name] now." — never tell them to "go to" or "look for" it.\nNEVER say "go to the Staff section" or "look in Services & Inventory" or reference navigation that does not exist.`;
                     }
                   }
                 }

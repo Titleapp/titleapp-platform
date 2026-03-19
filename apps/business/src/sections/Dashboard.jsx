@@ -698,16 +698,19 @@ export default function Dashboard() {
       return ["Properties", "Total Units", "Occupancy Rate", "Open Requests"];
     }
     if (vertical === "aviation") {
-      return ["Flight Hours This Month", "Currency Status", "Active Missions", "FRAT Score"];
+      return ["Flight Hours This Month", "Currency Status", "Active CoPilots", "FRAT Score"];
     }
-    if (vertical === "investor") {
-      return ["Raised to Date", "Investors", "Data Room Views", "Pipeline Value"];
+    if (vertical === "investor" || vertical === "investment") {
+      return ["Total AUM", "Active Relationships", "Prospects", "Communications This Month"];
     }
-    if (vertical === "solar") {
+    if (vertical === "consumer" || vertical === "personal") {
+      return ["Workers Active", "Documents", "Signatures", "Hours Saved"];
+    }
+    if (vertical === "solar" || vertical === "solar_vpp") {
       return ["Active Projects", "SREC Credits", "Permits In Progress", "Compliance Status"];
     }
     if (vertical === "web3") {
-      return ["Active Workers", "Compliance Status", "Actions This Month", "Documents Stored"];
+      return ["Team Verified", "Workers Active", "Vault Documents", "Community Health"];
     }
     return ["Workers Active", "Documents Stored", "Actions This Month", "Hours Saved"];
   }

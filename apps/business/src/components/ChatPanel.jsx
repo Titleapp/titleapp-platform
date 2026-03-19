@@ -183,6 +183,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
   const [showMobileExtras, setShowMobileExtras] = useState(false);
   const chatPanelRef = useRef(null);
   const [workerSearch, setWorkerSearch] = useState("");
+  const [greetingCollapsed, setGreetingCollapsed] = useState(false);
   const [workerFilter, setWorkerFilter] = useState("All");
 
   // Qualifying onboarding state
@@ -202,6 +203,13 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
   const [celebrationFired, setCelebrationFired] = useState(() => {
     return sessionStorage.getItem('ta_onboarding_celebrated') === 'true';
   });
+
+  // Auto-collapse greeting after 5 seconds
+  useEffect(() => {
+    if (greetingCollapsed || messages.length > 0) return;
+    const timer = setTimeout(() => setGreetingCollapsed(true), 5000);
+    return () => clearTimeout(timer);
+  }, [greetingCollapsed, messages.length]);
 
   // Adjust mobile chat panel when virtual keyboard opens/closes
   useEffect(() => {
@@ -808,6 +816,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
     e?.preventDefault();
     const messageToSend = (overrideMessage || input).trim();
     if (!messageToSend || isSending) return;
+    setGreetingCollapsed(true);
 
     if (!disclaimerAccepted) {
       // Don't allow sending messages until disclaimer accepted
@@ -918,6 +927,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
             jurisdiction,
             workspaceId: localStorage.getItem('WORKSPACE_ID') || '',
             workspaceName: localStorage.getItem('WORKSPACE_NAME') || '',
+            userName: localStorage.getItem('COMPANY_NAME') || localStorage.getItem('WORKSPACE_NAME') || '',
             ...(dealContext ? { dealContext } : {}),
             ...(pendingActions.length > 0 ? { pendingActions: pendingActions.map(a => ({ customerName: a.customerName, actionType: a.actionType, context: a.context })) } : {}),
             ...(alexContext ? { alexContext } : {}),
@@ -1394,46 +1404,46 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
           </div>
         )}
 
-        {/* Empty state — only show if no messages AND no disclaimer pending */}
-        {messages.length === 0 && !isTyping && !showDisclaimer && !qualifyingMode && (
-          <div className="chat-welcome">
-            {(() => {
-              const v = localStorage.getItem('VERTICAL') || 'auto';
-              if (v === 'consumer') {
-                let cosName = "Alex, your Chief of Staff";
-                try {
-                  const cfg = JSON.parse(localStorage.getItem('COS_CONFIG') || '{}');
-                  if (cfg.name) cosName = `${cfg.name}, your Chief of Staff`;
-                } catch {}
-                return (
-                  <>
-                    <p>Hi. I'm {cosName}.</p>
-                    {currentUser ? (
-                      <p>I can help you manage your vehicles, properties, documents, and certifications. What would you like to do?</p>
-                    ) : (
-                      <p>Please sign in to start chatting.</p>
-                    )}
-                  </>
-                );
-              }
-              let cosLabel = "Alex, your Chief of Staff";
-              try {
-                const cfg2 = JSON.parse(localStorage.getItem('COS_CONFIG') || '{}');
-                if (cfg2.name) cosLabel = `${cfg2.name}, your Chief of Staff`;
-              } catch {}
-              return (
-                <>
-                  <p>Hi. I'm {cosLabel}.</p>
-                  {currentUser ? (
-                    <p>Ask me anything about your records, documents, customers, inventory, or business operations.</p>
-                  ) : (
-                    <p>Please sign in to start chatting.</p>
-                  )}
-                </>
-              );
-            })()}
-          </div>
-        )}
+        {/* Greeting — time-aware, context-aware, collapses after 5s or first message */}
+        {messages.length === 0 && !isTyping && !showDisclaimer && !qualifyingMode && (() => {
+          if (!currentUser) {
+            return (
+              <div className="chat-welcome">
+                <p>Hi. I'm Alex, your Chief of Staff.</p>
+                <p>Please sign in to start chatting.</p>
+              </div>
+            );
+          }
+          const hour = new Date().getHours();
+          const timeGreeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+          const greetName = (() => { const cn = localStorage.getItem("COMPANY_NAME") || localStorage.getItem("WORKSPACE_NAME") || ""; return cn.split(" ")[0] || ""; })();
+          const vLabel = { aviation: "Aviation", auto: "Auto Dealer", "real-estate": "Real Estate", investor: "Investor Relations", consumer: "Personal Vault", solar: "Solar", web3: "Web3", "property-mgmt": "Property Management", analyst: "Investment Analyst" }[localStorage.getItem("VERTICAL") || ""] || "";
+          const wkrs = (() => { try { return JSON.parse(localStorage.getItem("ACTIVE_WORKERS") || "[]"); } catch { return []; } })();
+          const wCount = wkrs.length;
+          const contextLine = vLabel ? `Last active: ${vLabel}${wCount > 0 ? ` \u2014 ${wCount} worker${wCount !== 1 ? "s" : ""} running` : ""}` : "";
+
+          if (greetingCollapsed) {
+            return (
+              <div
+                onClick={() => setGreetingCollapsed(false)}
+                style={{ padding: "10px 16px", cursor: "pointer", fontSize: 13, color: "#94a3b8", fontStyle: "italic", borderBottom: "1px solid #f1f5f9" }}
+              >
+                Ask Alex anything...
+              </div>
+            );
+          }
+          return (
+            <div style={{ padding: "24px 20px", borderBottom: "1px solid #f1f5f9" }}>
+              <div style={{ fontSize: 18, fontWeight: 600, color: "#111827", marginBottom: 4 }}>
+                {timeGreeting}{greetName ? ` ${greetName}` : ""}.
+              </div>
+              {contextLine && (
+                <div style={{ fontSize: 13, color: "#7c3aed", fontWeight: 500, marginBottom: 8 }}>{contextLine}</div>
+              )}
+              <div style={{ fontSize: 14, color: "#6b7280" }}>What are we working on today?</div>
+            </div>
+          );
+        })()}
 
         {/* Messages */}
         {messages.map((msg, idx) => {

@@ -865,6 +865,13 @@ const WORKER_NAV_MAP = {
     { id: "w3-community", label: "Community" },
     { id: "w3-contracts", label: "Contracts" },
   ],
+  "consumer": [
+    { id: "my-vehicles", label: "Vehicles" },
+    { id: "my-properties", label: "Properties" },
+    { id: "my-documents", label: "Documents" },
+    { id: "my-certifications", label: "Certifications" },
+    { id: "my-logbook", label: "Activity Log" },
+  ],
 };
 
 // Worker slug → display name
@@ -1355,6 +1362,39 @@ export default function Sidebar({
           </div>
         )}
       </div>
+
+      {/* ═══ PERSONAL VAULT (always pinned for business workspaces) ═══ */}
+      {!isPersonal && (
+        <>
+          <div className="sidebarSection">
+            <button
+              className={`navItem ${currentSection === "personal-vault" ? "navItemActive" : ""}`}
+              onClick={() => handleNavClick("personal-vault")}
+              style={{ width: "100%", textAlign: "left", cursor: "pointer", fontSize: 12, color: "rgba(255,255,255,0.6)", fontWeight: 500, padding: "7px 10px" }}
+            >
+              Personal Vault
+            </button>
+          </div>
+          <div style={{ height: "1px", background: "rgba(255,255,255,0.08)", margin: "4px 16px" }} />
+        </>
+      )}
+
+      {/* ═══ PERSONAL VAULT — always pinned ═══ */}
+      {!isPersonal && !guestMode && (
+        <div className="sidebarSection" style={{ paddingBottom: 0 }}>
+          <div
+            className={`navItem${currentSection === "vault-documents" || currentSection === "vault-assets" ? " active" : ""}`}
+            onClick={() => onNavigate("vault-documents")}
+            style={{ cursor: "pointer" }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+            <span>Personal Vault</span>
+          </div>
+        </div>
+      )}
+
+      {/* Divider */}
+      {!isPersonal && !guestMode && <div style={{ height: "1px", background: "rgba(255,255,255,0.08)", margin: "4px 16px" }} />}
 
       {/* ═══ SECTION 1: DIGITAL WORKERS ═══ */}
       <div className="sidebarSection">
