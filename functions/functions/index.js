@@ -15116,13 +15116,23 @@ exports.messageQueueProcessor = onSchedule(
 );
 
 // ----------------------------
-// ADMIN: DAILY DIGEST (Scheduled 7am PST)
+// ADMIN: DAILY DIGEST (Scheduled 4am HST / 6am PST / 2pm UTC)
 // ----------------------------
 const { generateDailyDigest: handleDailyDigest } = require("./admin/generateDailyDigest");
 
 exports.generateDailyDigest = onSchedule(
-  { schedule: "0 7 * * *", timeZone: "America/Los_Angeles", region: "us-central1" },
+  { schedule: "0 14 * * *", timeZone: "UTC", region: "us-central1" },
   async () => { await handleDailyDigest(); }
+);
+
+// ----------------------------
+// SUBSCRIBER DAILY DIGEST (4am UTC — all paid subscribers)
+// ----------------------------
+const { processSubscriberDigests } = require("./campaigns/subscriberDigest");
+
+exports.subscriberDailyDigest = onSchedule(
+  { schedule: "0 4 * * *", timeZone: "UTC", region: "us-central1" },
+  async () => { await processSubscriberDigests(); }
 );
 
 // ----------------------------
