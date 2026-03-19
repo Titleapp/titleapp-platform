@@ -5173,8 +5173,23 @@ export default function App() {
   // ── Invite landing pages: no auth required ────────────────────
   if (isInvitePage) return <InviteLanding inviteCode={inviteCode} />;
 
-  // ── Meet Alex: no auth required ─────────────────────────────
-  if (isMeetAlex) return <MeetAlex />;
+  // ── Meet Alex: guest shell — three-panel with guest mode ────
+  if (isMeetAlex) {
+    const guestVertical = new URLSearchParams(window.location.search).get("vertical") || "";
+    const guestId = sessionStorage.getItem("ta_guest_sid") || Math.random().toString(36).slice(2) + Date.now().toString(36);
+    if (!sessionStorage.getItem("ta_guest_sid")) sessionStorage.setItem("ta_guest_sid", guestId);
+    return (
+      <AppShell
+        currentSection="meet-alex"
+        onNavigate={() => {}}
+        guestMode={true}
+        guestVertical={guestVertical}
+        guestId={guestId}
+      >
+        <MeetAlex />
+      </AppShell>
+    );
+  }
 
   // ── Vertical landing pages: no auth required ────────────────
   if (isAutoLanding) return <AutoLanding />;

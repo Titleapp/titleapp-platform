@@ -1,11 +1,13 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, lazy, Suspense } from "react";
 import Sidebar from "./Sidebar";
 import ChatPanel from "./ChatPanel";
 import QuickSwitcher from "./QuickSwitcher";
 import CartDrawer from "./CartDrawer";
 import * as api from "../api/client";
 
-export default function AppShell({ children, currentSection, onNavigate, onBackToHub }) {
+const GuestWorkspace = lazy(() => import("./RightPanel/GuestWorkspace"));
+
+export default function AppShell({ children, currentSection, onNavigate, onBackToHub, guestMode, guestVertical, guestId }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [tenantInfo, setTenantInfo] = useState(null);
   const [workspaces, setWorkspaces] = useState([]);
@@ -35,9 +37,10 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
   }, []);
 
   useEffect(() => {
+    if (guestMode) return;
     loadTenantInfo();
     loadWorkspaces();
-  }, []);
+  }, [guestMode]);
 
   async function loadTenantInfo() {
     try {
@@ -271,9 +274,9 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
       <div className={sidebarOpen ? "sidebar sidebarOpen" : "sidebar"} style={{ width: sidebarWidth + "px", minWidth: sidebarWidth + "px" }}>
         <Sidebar
           currentSection={currentSection}
-          onNavigate={onNavigate}
+          onNavigate={guestMode ? () => {} : onNavigate}
           onClose={() => setSidebarOpen(false)}
-          tenantName={tenantInfo?.name}
+          tenantName={guestMode ? "TitleApp" : tenantInfo?.name}
           onBackToHub={onBackToHub}
           workspaces={workspaces}
           currentWorkspaceId={currentWorkspaceId}
@@ -281,6 +284,7 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
           workerGroups={workerGroups}
           activeWorkers={activeWorkers}
           chiefOfStaff={chiefOfStaff}
+          guestMode={guestMode}
         />
       </div>
 
@@ -302,7 +306,7 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
           className="chatSidebar"
           style={{ width: chatWidth + "%", maxWidth: "none", minWidth: "400px" }}
         >
-          <ChatPanel currentSection={currentSection} />
+          {guestMode ? children : <ChatPanel currentSection={currentSection} />}
         </aside>
         <div
           className={`resizeHandle${isResizing === "chat" ? " active" : ""}`}
@@ -312,7 +316,13 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
             localStorage.setItem("PANEL_WIDTH", "40");
           }}
         />
-        <main className="main">{children}</main>
+        <main className="main">
+          {guestMode ? (
+            <Suspense fallback={<div style={{ padding: 40, color: "#94a3b8" }}>Loading...</div>}>
+              <GuestWorkspace vertical={guestVertical} />
+            </Suspense>
+          ) : children}
+        </main>
       </div>
 
       {/* Mobile bottom navigation */}
