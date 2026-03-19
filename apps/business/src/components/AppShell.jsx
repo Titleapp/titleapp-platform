@@ -151,7 +151,9 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  const [chatOpen, setChatOpen] = useState(false);
+  const [chatOpen, setChatOpen] = useState(() => {
+    try { return new URLSearchParams(window.location.search).get("promoted") === "true"; } catch { return false; }
+  });
   const [cartOpen, setCartOpen] = useState(false);
   const [cartCount, setCartCount] = useState(() => {
     try { return JSON.parse(localStorage.getItem("ta_cart") || "[]").length; } catch { return 0; }

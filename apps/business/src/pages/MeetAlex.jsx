@@ -118,9 +118,11 @@ export default function MeetAlex() {
         campaign: vertical || "direct", capturedAt: new Date().toISOString(),
       }));
 
-      // Store first user message for ChatPanel
-      const firstUserMsg = messages.find(m => m.role === "user");
-      if (firstUserMsg) sessionStorage.setItem("ta_landing_chat", firstUserMsg.text);
+      // Store full guest conversation for ChatPanel to render
+      const guestConvo = messages.filter(m => m.text && m.text.trim());
+      if (guestConvo.length > 0) {
+        sessionStorage.setItem("ta_guest_promoted", JSON.stringify(guestConvo));
+      }
 
       // Promote guest session
       try {
@@ -136,7 +138,7 @@ export default function MeetAlex() {
         sessionStorage.setItem("ta_campaign_context", JSON.stringify({ slug: vertical, persona: vertical, vertical }));
       }
 
-      window.location.href = "/?utm_source=meet-alex&utm_medium=guest-chat" + (vertical ? "&utm_campaign=" + vertical : "");
+      window.location.href = "/?promoted=true" + (vertical ? "&vertical=" + vertical : "") + "&utm_source=meet-alex&utm_medium=guest-chat" + (vertical ? "&utm_campaign=" + vertical : "");
     } catch (err) {
       console.error("Google auth failed:", err);
       setAuthInProgress(false);
@@ -157,15 +159,17 @@ export default function MeetAlex() {
       source: "meet-alex", medium: "guest-chat",
       campaign: vertical || "direct", capturedAt: new Date().toISOString(),
     }));
-    const firstUserMsg = messages.find(m => m.role === "user");
-    if (firstUserMsg) sessionStorage.setItem("ta_landing_chat", firstUserMsg.text);
+    const guestConvo = messages.filter(m => m.text && m.text.trim());
+    if (guestConvo.length > 0) {
+      sessionStorage.setItem("ta_guest_promoted", JSON.stringify(guestConvo));
+    }
     if (vertical) {
       sessionStorage.setItem("ta_campaign_context", JSON.stringify({ slug: vertical, persona: vertical, vertical }));
     }
     sessionStorage.setItem("ta_guest_email", email.trim());
 
     // Redirect to main app which will show the login flow
-    window.location.href = "/?utm_source=meet-alex&utm_medium=guest-chat" + (vertical ? "&utm_campaign=" + vertical : "");
+    window.location.href = "/?promoted=true" + (vertical ? "&vertical=" + vertical : "") + "&utm_source=meet-alex&utm_medium=guest-chat" + (vertical ? "&utm_campaign=" + vertical : "");
   }
 
   // Styles

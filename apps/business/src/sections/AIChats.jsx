@@ -264,7 +264,7 @@ export default function AIChats() {
               </div>
               <div style={{ padding: "14px 16px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
-                  <span style={{ fontWeight: 700, fontSize: "15px", color: "#1e293b" }}>AI Assistant</span>
+                  <span style={{ fontWeight: 700, fontSize: "15px", color: "#1e293b" }}>Alex</span>
                   <span style={{ fontSize: "10px", fontWeight: 600, padding: "2px 8px", borderRadius: "20px", background: "#f0fdf4", color: "#16a34a" }}>Active</span>
                 </div>
                 <div style={{ fontSize: "13px", color: "#64748b", lineHeight: 1.6, marginBottom: "12px" }}>

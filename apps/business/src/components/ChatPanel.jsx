@@ -399,6 +399,32 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
         } catch (e) { /* ignore */ }
       }
 
+      // Meet-Alex promoted guest session — render full guest conversation
+      const guestPromoted = sessionStorage.getItem("ta_guest_promoted");
+      if (guestPromoted) {
+        sessionStorage.removeItem("ta_guest_promoted");
+        // Clear promoted URL param
+        try {
+          const url = new URL(window.location.href);
+          url.searchParams.delete("promoted");
+          window.history.replaceState({}, "", url.toString());
+        } catch { /* ignore */ }
+        try {
+          const guestMessages = JSON.parse(guestPromoted);
+          const rendered = guestMessages.map(m => ({
+            role: m.role,
+            content: m.text || m.content || "",
+          }));
+          // Add greeting as Alex's continuation
+          rendered.push({
+            role: "assistant",
+            content: "Welcome back — picked up right where we left off. What would you like to do next?",
+          });
+          setMessages(rendered);
+        } catch { /* ignore parse error */ }
+        return;
+      }
+
       // Landing page chat handoff — ?q= param auto-send
       const landingChat = sessionStorage.getItem("ta_landing_chat");
       if (landingChat) {
@@ -1275,11 +1301,11 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
           <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
         </svg>
         <span>{(() => {
-          if (activeWorkerName) return `${activeWorkerName} -- AI Assistant`;
+          if (activeWorkerName) return `${activeWorkerName} -- Chief of Staff`;
           try {
             const cfg = JSON.parse(localStorage.getItem('COS_CONFIG') || '{}');
-            return cfg.name ? `${cfg.name} -- AI Assistant` : 'AI Assistant';
-          } catch { return 'AI Assistant'; }
+            return cfg.name ? `${cfg.name} -- Chief of Staff` : 'Alex, Chief of Staff';
+          } catch { return 'Alex, Chief of Staff'; }
         })()}</span>
       </div>
 

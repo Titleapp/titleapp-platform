@@ -174,8 +174,8 @@ export default function Onboarding({ onComplete, onStepChange }: OnboardingProps
       }
       if (aiPersonaName.trim() || aiPersonaTitle.trim()) {
         payload.aiPersona = {
-          name: aiPersonaName.trim() || "TitleApp AI Assistant",
-          title: aiPersonaTitle.trim() || "AI Assistant",
+          name: aiPersonaName.trim() || "Alex",
+          title: aiPersonaTitle.trim() || "Chief of Staff",
         };
       }
 
@@ -264,11 +264,11 @@ export default function Onboarding({ onComplete, onStepChange }: OnboardingProps
         >
           <div style={{ marginBottom: "24px" }}>
             <h2 style={{ margin: "0 0 8px 0", fontSize: "24px", fontWeight: 700 }}>
-              Name Your AI Assistant
+              Name Your Chief of Staff
             </h2>
             <p style={{ margin: 0, color: "#6b7280", fontSize: "15px", lineHeight: 1.5 }}>
-              Your AI assistant handles outreach and follow-ups on your behalf.
-              Give it a name and title that will appear on emails and messages.
+              Your Chief of Staff handles outreach and follow-ups on your behalf.
+              Give them a name and title that will appear on emails and messages.
             </p>
           </div>
 
@@ -311,7 +311,7 @@ export default function Onboarding({ onComplete, onStepChange }: OnboardingProps
                 <option value="Chief of Staff">Chief of Staff</option>
                 <option value="Operations Associate">Operations Associate</option>
                 <option value="Client Relations">Client Relations</option>
-                <option value="AI Assistant">AI Assistant</option>
+                <option value="Chief of Staff">Chief of Staff</option>
               </select>
               <input
                 type="text"
@@ -342,7 +342,7 @@ export default function Onboarding({ onComplete, onStepChange }: OnboardingProps
               <div style={{ fontWeight: 600, marginBottom: "4px" }}>Preview</div>
               <div>Outbound messages will be signed:</div>
               <div style={{ marginTop: "8px", fontStyle: "italic", color: "#6b7280" }}>
-                {aiPersonaName.trim() || "TitleApp AI Assistant"}{aiPersonaTitle.trim() ? `, ${aiPersonaTitle.trim()}` : ""} -- {companyName || "Your Company"}
+                {aiPersonaName.trim() || "Alex"}{aiPersonaTitle.trim() ? `, ${aiPersonaTitle.trim()}` : ""} -- {companyName || "Your Company"}
               </div>
             </div>
           )}
@@ -539,10 +539,10 @@ export default function Onboarding({ onComplete, onStepChange }: OnboardingProps
         >
           <div style={{ marginBottom: "24px" }}>
             <h2 style={{ margin: "0 0 8px 0", fontSize: "24px", fontWeight: 700 }}>
-              AI Assistant Rules
+              Alex Rules
             </h2>
             <p style={{ margin: 0, color: "#6b7280", fontSize: "15px", lineHeight: 1.5 }}>
-              Any custom rules for your AI assistant? For example, tone of voice,
+              Any custom rules for Alex? For example, tone of voice,
               topics to avoid, preferred terminology, or specific workflows.
             </p>
           </div>

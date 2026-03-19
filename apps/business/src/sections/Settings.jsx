@@ -232,12 +232,12 @@ function PersonalSettings() {
         </div>
       </div>
 
-      {/* AI Assistant */}
+      {/* Alex — Chief of Staff */}
       <div className="card" style={{ marginBottom: "16px", border: "1px solid #e9d5ff" }}>
         <div className="cardHeader">
           <div>
-            <div className="cardTitle">AI Assistant</div>
-            <div className="cardSub">Your personal AI assistant configuration</div>
+            <div className="cardTitle">Alex, Chief of Staff</div>
+            <div className="cardSub">Your Chief of Staff configuration</div>
           </div>
         </div>
         <div style={{ padding: "16px" }}>
@@ -250,7 +250,7 @@ function PersonalSettings() {
             lineHeight: "1.6",
             marginBottom: "20px",
           }}>
-            Your AI assistant manages follow-ups, tracks deadlines, and communicates on your behalf within the boundaries you set. Name them, choose how they reach you, and decide how much autonomy they get.
+            Alex manages follow-ups, tracks deadlines, and communicates on your behalf within the boundaries you set. Choose how Alex reaches you and decide how much autonomy to grant.
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: "18px" }}>
@@ -272,7 +272,7 @@ function PersonalSettings() {
               <label style={{ display: "block", marginBottom: "6px", fontWeight: 600, fontSize: "13px" }}>Title</label>
               <input
                 type="text"
-                value="AI Assistant"
+                value="Chief of Staff"
                 disabled
                 style={{ width: "100%", padding: "10px", borderRadius: "12px", border: "1px solid var(--line)", background: "#f8fafc", color: "#94a3b8" }}
               />
@@ -1030,12 +1030,12 @@ function BusinessSettings() {
         </div>
       </div>
 
-      {/* AI Assistant Rules */}
+      {/* Alex Rules */}
       <div className="card" style={{ marginBottom: "16px" }}>
         <div className="cardHeader">
           <div>
-            <div className="cardTitle">AI Assistant Rules</div>
-            <div className="cardSub">Custom rules and compliance settings for your AI assistant</div>
+            <div className="cardTitle">Alex Rules</div>
+            <div className="cardSub">Custom rules and compliance settings for Alex</div>
           </div>
         </div>
         <div style={{ padding: "16px" }}>
@@ -1110,7 +1110,7 @@ function BusinessSettings() {
           <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '8px' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '14px' }}>
               <div>&#10003; Unlimited deal analysis</div>
-              <div>&#10003; AI Assistant</div>
+              <div>&#10003; Alex, Chief of Staff</div>
               <div>&#10003; AI deal sourcing (overnight scans)</div>
               <div>&#10003; Risk scoring & validation</div>
               <div>&#10003; IC-ready report generation</div>
