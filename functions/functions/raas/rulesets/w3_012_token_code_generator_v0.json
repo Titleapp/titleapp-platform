@@ -1,0 +1,127 @@
+{
+  "id": "w3_012_token_code_generator_v0",
+  "version": "v0",
+  "domain": "web3",
+  "description": "Token contract code generation — enforces security standards, refuses dangerous patterns, requires disclaimers on all output. Supports Solana SPL (Anchor/Metaplex) and EVM ERC-20 (OpenZeppelin v5).",
+  "required_inputs": ["token_name", "symbol", "total_supply", "chain"],
+  "hard_stops": [
+    {
+      "id": "hidden_mint_function",
+      "logic": "REFUSE to generate hidden mint functions that allow unlimited secret minting not visible in tokenomics documentation",
+      "eval": { "type": "pattern_block", "pattern": "hidden_mint" }
+    },
+    {
+      "id": "blacklist_blackhole",
+      "logic": "REFUSE to generate blacklist or blackhole mechanisms that trap token holders and prevent them from selling or transferring",
+      "eval": { "type": "pattern_block", "pattern": "blacklist_mechanism" }
+    },
+    {
+      "id": "rugpull_ownership",
+      "logic": "REFUSE to generate ownership patterns enabling rugpull — immediate ownership transfer to burn address with hidden backdoor, LP removal functions",
+      "eval": { "type": "pattern_block", "pattern": "rugpull_ownership" }
+    },
+    {
+      "id": "excessive_tax",
+      "logic": "REFUSE to generate tax or fee mechanisms above 10% on any transfer direction — honeypot indicator",
+      "eval": { "type": "pattern_block", "pattern": "excessive_fee", "threshold": 10 }
+    },
+    {
+      "id": "single_key_pause",
+      "logic": "REFUSE to generate pause functions controlled by a single key with no timelock or multisig requirement",
+      "eval": { "type": "pattern_block", "pattern": "single_key_pause" }
+    },
+    {
+      "id": "property_misrepresentation",
+      "logic": "REFUSE to generate any code that would misrepresent the token's properties, supply, or mechanics to buyers",
+      "eval": { "type": "pattern_block", "pattern": "misrepresentation" }
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "no_freeze_authority_warning",
+      "logic": "If freeze authority is enabled, warn the operator that this allows freezing individual accounts and may reduce buyer confidence",
+      "severity": "medium"
+    },
+    {
+      "id": "mint_authority_retained",
+      "logic": "If mint authority is not revoked (fixed supply = false), flag that additional tokens can be minted and this should be documented in tokenomics",
+      "severity": "medium"
+    },
+    {
+      "id": "auto_burn_complexity",
+      "logic": "Auto-burn on transfer adds gas cost and complexity — flag for operator review",
+      "severity": "low"
+    }
+  ],
+  "required_outputs": [
+    {
+      "id": "security_disclaimer",
+      "content": "This code is provided for review and educational purposes. It is not guaranteed to be secure. Review by a qualified developer is required before deployment. TitleApp is not responsible for deployed contracts.",
+      "placement": "every_output"
+    },
+    {
+      "id": "audit_recommendation",
+      "content": "Run W3-013 Token Contract Auditor on this code before deploying to any chain.",
+      "placement": "every_output"
+    },
+    {
+      "id": "regulatory_recommendation",
+      "content": "Use W3-003 Regulatory Framing Worker before public launch to ensure compliance positioning.",
+      "placement": "every_output"
+    }
+  ],
+  "supported_chains": {
+    "solana_spl": {
+      "framework": "Anchor",
+      "metadata_standard": "Metaplex",
+      "decimals_default": 9,
+      "file_extension": ".rs"
+    },
+    "ethereum_erc20": {
+      "framework": "OpenZeppelin Contracts v5",
+      "decimals_default": 18,
+      "file_extension": ".sol"
+    },
+    "polygon_erc20": {
+      "framework": "OpenZeppelin Contracts v5",
+      "decimals_default": 18,
+      "file_extension": ".sol",
+      "note": "Same as Ethereum, different RPC"
+    },
+    "avalanche_erc20": {
+      "framework": "OpenZeppelin Contracts v5",
+      "decimals_default": 18,
+      "file_extension": ".sol",
+      "note": "Same as Ethereum"
+    },
+    "base_erc20": {
+      "framework": "OpenZeppelin Contracts v5",
+      "decimals_default": 18,
+      "file_extension": ".sol",
+      "note": "Coinbase L2, same standard"
+    }
+  },
+  "output_formats": [
+    { "id": "contract_code", "description": "Contract source file (.rs for Solana, .sol for EVM)" },
+    { "id": "deployment_script", "description": "Shell or JS deployment script" },
+    { "id": "parameter_docs", "description": "Human-readable summary of all settings and parameters" },
+    { "id": "pre_deploy_checklist", "description": "What to verify before deploying to mainnet" },
+    { "id": "mint_platform_recommendations", "description": "Where to take this code next — Pump.fun, Metaplex, Thirdweb, Remix, Hardhat" }
+  ],
+  "recommended_mint_platforms": {
+    "solana": ["Pump.fun", "Metaplex Candy Machine v3", "Helius Mint API"],
+    "evm": ["Thirdweb", "OpenZeppelin Wizard", "Remix IDE", "Hardhat"]
+  },
+  "input_parameters": [
+    { "id": "token_name", "required": true, "description": "Display name (e.g. The Crypto Dog)" },
+    { "id": "symbol", "required": true, "description": "Ticker symbol (max 10 chars, e.g. DOG)" },
+    { "id": "total_supply", "required": true, "description": "Fixed total supply (e.g. 1000000000)" },
+    { "id": "decimals", "required": false, "description": "9 for Solana SPL, 18 for EVM standard" },
+    { "id": "mint_authority", "required": false, "description": "Who can mint additional tokens (or none = fixed supply)" },
+    { "id": "freeze_authority", "required": false, "description": "Who can freeze accounts (or none = recommended)" },
+    { "id": "burn_mechanism", "required": false, "description": "none / manual / auto-burn on transfer (%)" },
+    { "id": "vesting_schedule", "required": false, "description": "Team/advisor lockup parameters" },
+    { "id": "metadata_uri", "required": false, "description": "Arweave/IPFS URI for token image and description" },
+    { "id": "chain", "required": true, "description": "solana / ethereum / polygon / avalanche / base" }
+  ]
+}

@@ -154,6 +154,8 @@ const MARKETPLACE_SLUG_MAP = {
   "W3-009": "w3-sentiment-monitor",
   "W3-010": "w3-community-ir",
   "W3-011": "w3-alex-web3",
+  "W3-012": "w3-token-code-generator",
+  "W3-013": "w3-contract-auditor",
 };
 
 // Ruleset ID mapping: marketplace slug → ruleset file name
@@ -247,6 +249,9 @@ const RULESET_MAP = {
   "av-training-proficiency": "av_p04_training_proficiency_v0",
   "av-flight-planning": "av_p05_flight_planning_v0",
   "av-alex-personal": "av_p06_alex_personal_v0",
+  // Web3
+  "w3-token-code-generator": "w3_012_token_code_generator_v0",
+  "w3-contract-auditor": "w3_013_contract_auditor_v0",
 };
 
 // Display name overrides (marketplace uses shorter names)
@@ -314,6 +319,8 @@ const DISPLAY_NAME_MAP = {
   "W3-009": "Sentiment Monitor",
   "W3-010": "Community IR & Announcements",
   "W3-011": "Alex \u2014 Web3 Chief of Staff",
+  "W3-012": "Token Code Generator",
+  "W3-013": "Token Contract Auditor",
 };
 
 // Headline overrides from App.jsx WORKER_DETAIL_CONTENT (first 80 chars)
@@ -402,6 +409,8 @@ const HEADLINE_MAP = {
   "w3-sentiment-monitor": "Community sentiment tracked in real time — before it becomes a problem",
   "w3-community-ir": "Holder communications and project updates — compliant, on-brand, on-time",
   "w3-alex-web3": "Your Web3 project, orchestrated — compliance to community",
+  "w3-token-code-generator": "Production-ready token contract code — Solana SPL and EVM ERC-20 — with deployment scripts and security checks",
+  "w3-contract-auditor": "Automated security audit for token contracts — vulnerability detection, rugpull patterns, severity-graded findings",
 };
 
 // ═══════════════════════════════════════════════════════════════

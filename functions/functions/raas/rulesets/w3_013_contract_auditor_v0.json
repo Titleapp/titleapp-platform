@@ -1,0 +1,152 @@
+{
+  "id": "w3_013_contract_auditor_v0",
+  "version": "v0",
+  "domain": "web3",
+  "description": "Token contract security auditor — analyzes Solana Anchor/SPL and EVM Solidity contracts for vulnerabilities, rugpull patterns, and compliance issues. Produces severity-graded audit report. HIGH_LIABILITY_DOC_GATE required.",
+  "required_inputs": ["contract_code", "chain"],
+  "hard_stops": [
+    {
+      "id": "no_contract_code",
+      "logic": "Contract code must be provided before audit can begin — paste directly or upload .rs/.sol file",
+      "eval": { "type": "required_inputs_check" }
+    },
+    {
+      "id": "high_liability_doc_gate",
+      "logic": "HIGH_LIABILITY_DOC_GATE — operator must attest that audit output will be reviewed by a qualified developer before any contract is deployed. Same gate pattern as Medical Director and Legal Counsel.",
+      "eval": { "type": "attestation_required", "gate": "HIGH_LIABILITY_DOC_GATE" }
+    }
+  ],
+  "vulnerability_checks": {
+    "critical": [
+      {
+        "id": "hidden_mint",
+        "name": "Hidden Mint Functions",
+        "description": "Functions that allow unlimited minting not visible in tokenomics documentation",
+        "patterns": ["mint()", "mintTo() without supply cap", "_mint() in non-constructor context", "uncapped mint authority"]
+      },
+      {
+        "id": "rugpull_patterns",
+        "name": "Rugpull Patterns",
+        "description": "Ownership transfer to burn address with hidden backdoor, LP removal functions, emergency withdraw with no timelock",
+        "patterns": ["renounceOwnership() with backdoor", "removeLiquidity() owner-only", "emergencyWithdraw() no timelock"]
+      },
+      {
+        "id": "honeypot_mechanisms",
+        "name": "Honeypot Mechanisms",
+        "description": "Blacklist functions that prevent selling, asymmetric tax on sells vs buys, transfer restrictions on non-owner accounts",
+        "patterns": ["isBlacklisted mapping", "sellTax > buyTax * 2", "canTransfer modifier excluding owner"]
+      }
+    ],
+    "high": [
+      {
+        "id": "reentrancy",
+        "name": "Reentrancy Vulnerability",
+        "description": "Classic EVM reentrancy — external calls before state updates",
+        "patterns": ["call.value() before state change", "transfer() in loop", "missing ReentrancyGuard"]
+      },
+      {
+        "id": "access_control",
+        "name": "Access Control Issues",
+        "description": "Single-key admin functions with no timelock or multisig requirement",
+        "patterns": ["onlyOwner without timelock", "single address admin", "missing role-based access"]
+      },
+      {
+        "id": "oracle_manipulation",
+        "name": "Oracle Manipulation",
+        "description": "Price oracle dependencies susceptible to flash loan attacks",
+        "patterns": ["single-block price query", "no TWAP", "manipulable reserve ratio"]
+      },
+      {
+        "id": "integer_overflow",
+        "name": "Integer Overflow/Underflow",
+        "description": "Unchecked arithmetic in pre-Solidity 0.8 patterns or unchecked blocks",
+        "patterns": ["unchecked { }", "pre-0.8 without SafeMath", "wrapping arithmetic"]
+      }
+    ],
+    "medium": [
+      {
+        "id": "excessive_fees",
+        "name": "Excessive Transfer Fees",
+        "description": "Transfer taxes above 10% — honeypot indicator",
+        "threshold": 10
+      },
+      {
+        "id": "pause_functions",
+        "name": "Pausable Without Timelock",
+        "description": "Admin ability to pause all trading without timelock or governance vote",
+        "patterns": ["Pausable without timelock", "pause() onlyOwner"]
+      },
+      {
+        "id": "centralization_risk",
+        "name": "Centralization Risk",
+        "description": "Single wallet controls mint, burn, pause, or other critical functions",
+        "patterns": ["single owner controls >2 critical functions"]
+      }
+    ],
+    "low": [
+      {
+        "id": "standard_deviation",
+        "name": "Standard Deviation",
+        "description": "Deviations from OpenZeppelin or Metaplex standard implementation patterns",
+        "patterns": ["custom ERC-20 instead of OpenZeppelin", "non-standard transfer logic"]
+      },
+      {
+        "id": "documentation_gaps",
+        "name": "Documentation Gaps",
+        "description": "Missing NatSpec comments, undocumented functions, unclear parameter names",
+        "patterns": ["functions without @dev or @notice", "no SPDX license identifier"]
+      }
+    ]
+  },
+  "required_outputs": [
+    {
+      "id": "audit_disclaimer",
+      "content": "This audit does not guarantee security. It identifies known vulnerability patterns but unknown vulnerabilities may exist. This audit does not replace a professional security audit for high-value deployments.",
+      "placement": "every_output"
+    },
+    {
+      "id": "professional_audit_recommendation",
+      "content": "For contracts holding or managing more than $100,000 in value, engage a professional audit firm: Certik, Halborn, Trail of Bits, OpenZeppelin Security.",
+      "placement": "every_output"
+    },
+    {
+      "id": "document_control_entry",
+      "content": "All audit outputs are stored in Document Control as an immutable record — timestamped and signed.",
+      "placement": "every_output"
+    }
+  ],
+  "output_formats": [
+    {
+      "id": "audit_report",
+      "description": "Findings by severity — Critical, High, Medium, Low, Info sections",
+      "format": "pdf"
+    },
+    {
+      "id": "risk_summary",
+      "description": "One-paragraph plain English verdict of the contract's security posture",
+      "format": "text"
+    },
+    {
+      "id": "remediation_recommendations",
+      "description": "How to fix each finding — specific code changes recommended",
+      "format": "markdown"
+    },
+    {
+      "id": "clean_bill_of_health",
+      "description": "Statement issued only if no critical or high findings detected",
+      "format": "text",
+      "condition": "no_critical_or_high_findings"
+    },
+    {
+      "id": "document_control_entry",
+      "description": "Audit stored in Vault — immutable record, timestamped, signed",
+      "format": "vault_entry"
+    }
+  ],
+  "governance_gate": {
+    "type": "HIGH_LIABILITY_DOC_GATE",
+    "description": "Operator must attest that output will be reviewed by qualified developer before any contract is deployed",
+    "attestation_text": "I understand that this audit is informational only and does not certify contracts as secure. I will have a qualified developer review all findings before deploying any contract.",
+    "same_pattern_as": ["Medical Director (Health & EMS)", "Legal Counsel (W3-003)"]
+  }
+}

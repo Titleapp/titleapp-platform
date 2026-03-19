@@ -480,6 +480,87 @@
         "acceptsTasks": true,
         "briefingContribution": "web3_project_overview"
       }
+    },
+    {
+      "id": "W3-012",
+      "name": "Token Code Generator",
+      "slug": "w3-token-code-generator",
+      "suite": "Launch",
+      "phase": 1,
+      "type": "standalone",
+      "pricing": { "monthly": 49 },
+      "status": "live",
+      "capabilitySummary": "Generates production-ready token contract code for Solana SPL (Anchor + Metaplex) and EVM ERC-20 (OpenZeppelin v5). Takes operator parameters — name, symbol, supply, decimals, mint/freeze authority, burn mechanism, vesting schedule, metadata URI, chain — and outputs deployment-ready code with scripts, parameter documentation, and pre-deployment checklist. Recommended mint platforms referenced in output. TitleApp generates the code — operator deploys elsewhere.",
+      "tags": ["token", "smart-contract", "solana", "erc-20", "code-generation", "deployment"],
+      "temporalType": "phase_bound",
+      "valueBucket": ["make_money"],
+      "tier1Compliance": [
+        "All team member identities must be verified through TitleApp before any Web3 worker publishes content.",
+        "Never use 'investment', 'securities', 'returns', 'profit', or 'yield' when describing NFTs or tokens. Use 'digital collectible', 'trading card', 'utility token', or 'membership pass' exclusively.",
+        "Securities disclaimer required on every output: This worker does not provide investment advice. Tokens and NFTs are utility items, not securities.",
+        "Never guarantee token value appreciation, floor price maintenance, or any financial outcome.",
+        "Project Attestation must be completed and on file before any Web3 worker publishes content.",
+        "REFUSE to generate hidden mint functions that allow unlimited secret minting not visible in tokenomics.",
+        "REFUSE to generate blacklist or blackhole mechanisms that trap token holders.",
+        "REFUSE to generate ownership patterns enabling rugpull — immediate ownership transfer to burn address with hidden backdoor.",
+        "REFUSE to generate tax or fee mechanisms above 10% on any transfer — honeypot indicator.",
+        "REFUSE to generate pause functions controlled by a single key with no timelock or multisig.",
+        "REFUSE to generate any code that would misrepresent the token's properties to buyers.",
+        "ALWAYS include standard security disclaimer: code is provided for review, not guaranteed secure, review by qualified developer required before deployment, TitleApp is not responsible for deployed contracts.",
+        "ALWAYS recommend running W3-013 Token Contract Auditor before deploying.",
+        "ALWAYS recommend using W3-003 Regulatory Framing Worker before public launch."
+      ],
+      "vault": {
+        "reads": ["project_profile", "tokenomics_model", "regulatory_framework"],
+        "writes": ["contract_code", "deployment_script", "parameter_docs", "pre_deploy_checklist"]
+      },
+      "referrals": [
+        { "event": "Contract code generated", "routesTo": "W3-013" },
+        { "event": "Pre-launch regulatory review needed", "routesTo": "W3-003" }
+      ],
+      "alexRegistration": {
+        "priority": "standard",
+        "acceptsTasks": true,
+        "briefingContribution": "contract_code_status"
+      }
+    },
+    {
+      "id": "W3-013",
+      "name": "Token Contract Auditor",
+      "slug": "w3-contract-auditor",
+      "suite": "Compliance",
+      "phase": 2,
+      "type": "standalone",
+      "pricing": { "monthly": 79 },
+      "status": "live",
+      "capabilitySummary": "Analyzes token contract code for security vulnerabilities, compliance issues, and rugpull patterns. Supports Solana Anchor/SPL and EVM Solidity contracts. Checks: hidden mint (CRITICAL), rugpull patterns (CRITICAL), honeypot mechanisms (CRITICAL), reentrancy (HIGH), access control (HIGH), oracle manipulation (HIGH), integer overflow (HIGH), excessive fees (MEDIUM), pause functions (MEDIUM), centralization risk (MEDIUM), standard deviation (LOW), documentation gaps (INFO). Produces severity-graded audit report with risk summary, remediation recommendations, and Document Control entry. HIGH_LIABILITY_DOC_GATE — operator must attest output reviewed by qualified developer before deployment.",
+      "tags": ["audit", "security", "smart-contract", "vulnerability", "compliance", "rugpull-detection"],
+      "temporalType": "always_on",
+      "valueBucket": ["stay_compliant"],
+      "tier1Compliance": [
+        "All team member identities must be verified through TitleApp before any Web3 worker publishes content.",
+        "Never use 'investment', 'securities', 'returns', 'profit', or 'yield' when describing NFTs or tokens. Use 'digital collectible', 'trading card', 'utility token', or 'membership pass' exclusively.",
+        "Securities disclaimer required on every output: This worker does not provide investment advice. Tokens and NFTs are utility items, not securities.",
+        "Never guarantee token value appreciation, floor price maintenance, or any financial outcome.",
+        "Project Attestation must be completed and on file before any Web3 worker publishes content.",
+        "ALWAYS include disclaimer: this audit does not guarantee security and does not replace professional audit for high-value deployments.",
+        "ALWAYS recommend professional audit firm (Certik, Halborn, Trail of Bits) for contracts holding or managing more than $100K in value.",
+        "ALL audit outputs must be stored in Document Control as an immutable record — timestamped and signed.",
+        "HIGH_LIABILITY_DOC_GATE: operator must attest that audit output will be reviewed by a qualified developer before any contract is deployed. Same gate pattern as Medical Director and Legal Counsel."
+      ],
+      "vault": {
+        "reads": ["contract_code", "project_profile", "tokenomics_model"],
+        "writes": ["audit_report", "risk_summary", "remediation_plan"]
+      },
+      "referrals": [
+        { "event": "Audit complete with issues", "routesTo": "W3-012" },
+        { "event": "Audit complete clean — pre-launch", "routesTo": "W3-003" }
+      ],
+      "alexRegistration": {
+        "priority": "high",
+        "acceptsTasks": true,
+        "briefingContribution": "audit_status"
+      }
     }
   ]
 }
