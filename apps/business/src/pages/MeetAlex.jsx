@@ -145,11 +145,33 @@ export default function MeetAlex() {
         sessionStorage.setItem("ta_campaign_context", JSON.stringify({ slug: vertical, persona: vertical, vertical }));
       }
 
-      window.location.href = "/?promoted=true" + (vertical ? "&vertical=" + vertical : "") + "&utm_source=meet-alex&utm_medium=guest-chat" + (vertical ? "&utm_campaign=" + vertical : "");
+      // Show disclaimer inline, then unlock shell
+      setShowAuth(false);
+      setShowDisclaimer(true);
     } catch (err) {
       console.error("Google auth failed:", err);
       setAuthInProgress(false);
     }
+  }
+
+  // Disclaimer acceptance — fires after SSO success
+  const [showDisclaimer, setShowDisclaimer] = useState(false);
+  const ID_CHECK_VERTICALS = ["solar_vpp", "aviation", "real_estate_development", "title", "health", "finance"];
+
+  function handleDisclaimerAccept() {
+    setShowDisclaimer(false);
+    setAuthInProgress(false);
+
+    // ID check message for high-trust verticals
+    if (ID_CHECK_VERTICALS.includes(vertical)) {
+      setMessages(prev => [...prev, {
+        role: "assistant",
+        text: "Just so you know — because you're working with " + (vertical.replace(/_/g, " ")) + ", we may do a quick ID check at some point. Takes 60 seconds, keeps everything secure. I'll let you know when it comes up.",
+      }]);
+    }
+
+    // Redirect to authenticated shell
+    window.location.href = "/?promoted=true" + (vertical ? "&vertical=" + vertical : "") + "&utm_source=meet-alex&utm_medium=guest-chat" + (vertical ? "&utm_campaign=" + vertical : "");
   }
 
   // Email flow — simple email input + signInWithEmailAndPassword or redirect to login
@@ -312,9 +334,22 @@ export default function MeetAlex() {
         </div>
       )}
 
-      {authInProgress && (
+      {authInProgress && !showDisclaimer && (
         <div style={{ ...S.authCard, textAlign: "center" }}>
           <div style={{ fontSize: 14, color: "rgba(255,255,255,0.6)" }}>Setting things up...</div>
+        </div>
+      )}
+
+      {/* Disclaimer — inline after SSO success */}
+      {showDisclaimer && (
+        <div style={S.authCard}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: "#e2e8f0", marginBottom: 8 }}>Before we continue</div>
+          <div style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", lineHeight: 1.6, marginBottom: 16 }}>
+            TitleApp Digital Workers provide information and automation within defined business rules. They do not constitute professional advice (legal, financial, medical, or aviation). All outputs include an audit trail. By continuing, you agree to the TitleApp Terms of Service and Privacy Policy.
+          </div>
+          <button onClick={handleDisclaimerAccept} style={{ ...S.sendBtn, width: "100%", borderRadius: 10, height: "auto", padding: "12px 24px", fontSize: 14, fontWeight: 600 }}>
+            I understand — let's go
+          </button>
         </div>
       )}
 
