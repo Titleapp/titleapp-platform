@@ -1082,23 +1082,37 @@ exports.api = onRequest(
       }
     }
 
-    // POST /v1/alex:promoteGuest — link guest chat session to authenticated user (35.1)
+    // POST /v1/alex:promoteGuest — link guest chat session to authenticated user (35.3-T2)
     if ((route === "/alex:promoteGuest" || route === "/alex/promoteGuest") && method === "POST") {
       try {
-        const { guestId, uid } = body || {};
+        const { guestId, uid, prospectName, vertical, conversationSummary } = body || {};
         if (!guestId || !uid) return jsonError(res, 400, "guestId and uid required");
         const sessionRef = db.collection("chatSessions").doc(guestId);
         const sessionSnap = await sessionRef.get();
         if (sessionSnap.exists) {
+          const sessionData = sessionSnap.data();
+          const state = sessionData.state || {};
           await sessionRef.update({
             userId: uid,
             promotedAt: nowServerTs(),
+            promotionContext: {
+              prospectName: prospectName || state.prospectName || null,
+              vertical: vertical || state.vertical || null,
+              campaignSlug: state.campaignSlug || null,
+              workerCardsShown: state.workerCardsShown || [],
+              conversationSummary: conversationSummary || null,
+              salesHistory: (state.salesHistory || []).slice(-10),
+            },
           });
           // Also update prospect session if it exists
           const prospectRef = db.collection("prospectSessions").doc(guestId);
           const prospectSnap = await prospectRef.get();
           if (prospectSnap.exists) {
-            await prospectRef.update({ uid, convertedAt: nowServerTs() });
+            await prospectRef.update({
+              uid,
+              convertedAt: nowServerTs(),
+              prospectName: prospectName || state.prospectName || null,
+            });
           }
         }
         return res.json({ ok: true });
@@ -1177,6 +1191,27 @@ exports.api = onRequest(
           sessionState.userId = authUser.uid;
         }
 
+        // Check for promoted guest session context (35.3-T2)
+        if (sessionSnap.exists && !sessionState.promotionLoaded) {
+          const snapData = typeof sessionSnap.data === "function" ? sessionSnap.data() : sessionSnap;
+          const promotionCtx = snapData.promotionContext;
+          if (promotionCtx) {
+            if (promotionCtx.prospectName && !sessionState.prospectName) {
+              sessionState.prospectName = promotionCtx.prospectName;
+            }
+            if (promotionCtx.vertical && !sessionState.vertical) {
+              sessionState.vertical = promotionCtx.vertical;
+            }
+            if (promotionCtx.salesHistory && promotionCtx.salesHistory.length > 0 && !sessionState.salesHistory) {
+              sessionState.salesHistory = promotionCtx.salesHistory;
+              sessionState.step = "sales_discovery";
+              sessionState.alexMode = "sales";
+            }
+            sessionState.promotionLoaded = true;
+            console.log("chatEngine: loaded promotion context for user", authUser?.uid, "name:", promotionCtx.prospectName);
+          }
+        }
+
         // ── Investor intent detection: redirect landing visitors with investor keywords ──
         if (surface === 'landing' && !action && userInput &&
             (!sessionState.step || sessionState.step === 'idle' || sessionState.step === 'discovery')) {
@@ -1229,24 +1264,40 @@ exports.api = onRequest(
             prospectName: sessionState.prospectName || "",
           });
 
-          // Build catalog context — available workers for recommendations
+          // Build catalog context — vertical-specific workers first, then cross-vertical
           let catalogContext = "";
           try {
-            const catalogSnap = await db.collection("digitalWorkers")
-              .where("status", "==", "live")
-              .limit(30)
-              .get();
-            if (!catalogSnap.empty) {
-              const workers = catalogSnap.docs
-                .filter(d => !sessionState.vertical || d.data().vertical === sessionState.vertical || !d.data().vertical)
-                .slice(0, 15)
+            let workers = [];
+            // Query vertical-specific workers first
+            if (sessionState.vertical) {
+              const vertSnap = await db.collection("digitalWorkers")
+                .where("status", "==", "live")
+                .where("vertical", "==", sessionState.vertical)
+                .limit(20)
+                .get();
+              workers = vertSnap.docs.map(d => {
+                const w = d.data();
+                return `- ${d.id}: ${w.display_name || w.name} ($${w.pricing?.monthly || w.raas_tier_0 || 0}/mo) — ${(w.short_description || w.capabilitySummary || w.description || "").substring(0, 100)}`;
+              });
+            }
+            // If few vertical-specific results, add cross-vertical
+            if (workers.length < 5) {
+              const allSnap = await db.collection("digitalWorkers")
+                .where("status", "==", "live")
+                .limit(30)
+                .get();
+              const existing = new Set(workers.map(w => w.split(":")[0].trim().replace("- ", "")));
+              const extras = allSnap.docs
+                .filter(d => !existing.has(d.id))
+                .slice(0, 15 - workers.length)
                 .map(d => {
                   const w = d.data();
-                  return `- ${d.id}: ${w.display_name || w.name} ($${w.raas_tier_0 || 0}/mo) — ${(w.description || "").substring(0, 100)}`;
+                  return `- ${d.id}: ${w.display_name || w.name} ($${w.pricing?.monthly || w.raas_tier_0 || 0}/mo) — ${(w.short_description || w.capabilitySummary || w.description || "").substring(0, 100)}`;
                 });
-              if (workers.length > 0) {
-                catalogContext = "\n\nAVAILABLE DIGITAL WORKERS (use slugs in [WORKER_CARDS] markers):\n" + workers.join("\n");
-              }
+              workers = [...workers, ...extras];
+            }
+            if (workers.length > 0) {
+              catalogContext = "\n\nAVAILABLE DIGITAL WORKERS (use these exact slugs in [WORKER_CARDS] markers — do NOT invent slugs):\n" + workers.join("\n");
             }
           } catch (catErr) {
             console.warn("sales: catalog lookup failed:", catErr.message);
@@ -1271,8 +1322,10 @@ exports.api = onRequest(
             let aiText = aiResponse.content[0]?.text || "Hey — I'm Alex, Chief of Staff at TitleApp. Tell me what you do and I'll show you what we have.";
 
             // Extract name from early conversation if not yet known
-            if (!sessionState.prospectName && sessionState.salesHistory.length <= 4) {
-              const nameMatch = userInput.match(/^(?:I'm|I am|my name is|this is|it's|hey,?\s*i'm)\s+([A-Z][a-z]+)/i);
+            if (!sessionState.prospectName && sessionState.salesHistory.length <= 6) {
+              const nameMatch = userInput.match(
+                /(?:^|\b)(?:I'm|I am|my name is|this is|it's|hey,?\s*i'm|name'?s|call me|they call me|i go by)\s+([A-Z][a-z]{1,15})/i
+              );
               if (nameMatch) sessionState.prospectName = nameMatch[1];
             }
 
@@ -1290,8 +1343,8 @@ exports.api = onRequest(
                     workerCards.push({
                       slug,
                       name: w.display_name || w.name || slug,
-                      description: (w.description || "").substring(0, 150),
-                      price: w.raas_tier_0 || 0,
+                      description: (w.short_description || w.capabilitySummary || "").substring(0, 150),
+                      price: w.pricing?.monthly || 0,
                     });
                   }
                 }

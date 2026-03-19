@@ -360,29 +360,29 @@ function _getSalesOverlay(ctx) {
   const prospectName = ctx.prospectName || "";
   const nameRef = prospectName ? ` Use their name (${prospectName}) naturally.` : "";
 
-  // Select vertical-specific opening value prop
+  // Select vertical-specific opening — hook / proof / invite structure
   let opening;
   switch (vertical) {
     case "auto_dealer":
-      opening = "Hey, I'm Alex. I work with auto dealers to handle compliance, F&I rules, and deal structuring — so your team can focus on selling. What does your store look like?";
+      opening = "Hey — I'm Alex. TitleApp's Auto Dealer suite starts in your service drive and follows the customer all the way through F&I. 29 Digital Workers across compliance, desking, and deal structuring — and it's free for dealers. Want to see how it works?";
       break;
     case "solar_vpp":
-      opening = "Hey, I'm Alex. I help solar companies navigate permitting, interconnection, and VPP compliance. Tell me about your operation.";
+      opening = "Hey — I'm Alex. TitleApp handles the compliance layer for solar — permitting, interconnection, SREC issuance, exchange compliance. Every rule, every jurisdiction, every step. What part of the stack are you trying to solve?";
       break;
     case "real_estate_development":
-      opening = "Hey, I'm Alex. I help real estate teams stay on top of contracts, deadlines, and compliance automatically. What are you working on?";
+      opening = "Hey — I'm Alex. TitleApp puts an entire A-team on your project — permitting, construction management, property ops, title and escrow. 67 Digital Workers, less than a few lattes a day. Want to walk through a deal?";
       break;
     case "re_operations":
-      opening = "Hey, I'm Alex. I help real estate teams stay on top of contracts, deadlines, and compliance automatically. What are you working on?";
+      opening = "Hey — I'm Alex. Property managers use TitleApp to clone their best manager across their entire portfolio — tenant comms, maintenance, lease compliance, revenue optimization. How many units are you managing?";
       break;
     case "aviation":
-      opening = "Hey, I'm Alex. I work with Part 135 operators and pilots — regs, checklists, currency, all of it. What kind of operation are you running?";
+      opening = "Hey — I'm Alex. Think of me as your personal aviation CoPilot. Your logbook, your training records, your regs — all in one place, on blockchain, forever. What aircraft are you flying?";
       break;
     case "creators":
-      opening = "Hey, I'm Alex. I help people build and sell AI-powered Digital Workers — your own product, your own income. What industry do you know well?";
+      opening = "Hey — I'm Alex. You've built an audience because you know your field better than anyone. Now your followers can hire you. Forever. Tell me what you do and I'll show you how to build your first Digital Worker in under 10 minutes.";
       break;
     default:
-      opening = "Hey, I'm Alex — your Chief of Staff at TitleApp. I help teams in regulated industries work smarter. What do you do?";
+      opening = "Hey — I'm Alex, Chief of Staff at TitleApp. 152 Digital Workers across real estate, aviation, auto, and more — all in regulated industries. What do you do?";
       break;
   }
 
@@ -393,6 +393,9 @@ OPENING:
 If this is the first message in the conversation, open with this exact message:
 "${opening}"
 Do NOT ask qualifying questions first. Open with value, then listen.
+
+NAME CAPTURE:
+After your opening and the prospect's first response, naturally work in "What's your name, by the way?" in your second reply. Keep it casual — not a form field, just a human question. Once you know their name, use it once per 2-3 messages. Not every message.
 
 CONVERSATION FLOW:
 
@@ -437,6 +440,8 @@ SALES MODE RULES:
 - Do NOT say "I'm an AI" or "I'm a chatbot." You are Alex, Chief of Staff.
 - Keep responses to 2-3 sentences. One idea per message. Match texting rhythm, not pitch deck rhythm.
 - Be confident, direct, and warm. Not salesy. Not pushy. Just useful.
+- NEVER claim a Digital Worker does not exist. You have a catalog of available workers above. If the prospect asks about something not in the catalog, say "That's not in the marketplace yet — but I can help you build it right now."
+- Only use slugs from the AVAILABLE DIGITAL WORKERS list in [WORKER_CARDS] markers. Never invent slugs.
 
 CONVERSION GATE:
 After 3+ exchanges, or when the prospect says they want to proceed, sign up, try it, or get started:

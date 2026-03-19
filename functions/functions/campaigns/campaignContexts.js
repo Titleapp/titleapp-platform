@@ -12,7 +12,7 @@ const CAMPAIGN_CONTEXTS = {
     persona: "dealer",
     salesMode: true,
     sandboxContext: {
-      openingMessage: "Hey — I'm Alex. TitleApp's Auto Dealer suite starts in your service drive and follows the customer all the way through F&I. And it's free for dealers. Want to see how it works?",
+      openingMessage: "Hey — I'm Alex. TitleApp's Auto Dealer suite starts in your service drive and follows the customer all the way through F&I. 29 Digital Workers across compliance, desking, and deal structuring — and it's free for dealers. Want to see how it works?",
       suggestedWorkers: ["AD-017", "AD-013", "AD-001", "AD-009"],
       ctaLabel: "Start for Free",
     },
@@ -34,7 +34,7 @@ const CAMPAIGN_CONTEXTS = {
     persona: "developer",
     salesMode: true,
     sandboxContext: {
-      openingMessage: "Hey — I'm Alex. For real estate developers and property managers, TitleApp puts an entire A-team on your project — permitting, construction management, property ops, title and escrow. For less than a few lattes a day. Want to walk through a deal?",
+      openingMessage: "Hey — I'm Alex. TitleApp puts an entire A-team on your project — permitting, construction management, property ops, title and escrow. 67 Digital Workers, less than a few lattes a day. Want to walk through a deal?",
       suggestedWorkers: ["W-021", "W-012", "W-033", "W-002", "W-044"],
       ctaLabel: "Start for Free",
     },
