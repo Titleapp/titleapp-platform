@@ -282,10 +282,11 @@ export default function MeetAlex() {
     authBtn: (bg) => ({ width: "100%", padding: "12px", fontSize: 14, fontWeight: 600, color: "#fff", background: bg, border: "none", borderRadius: 10, cursor: "pointer", marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }),
     authDivider: { fontSize: 12, color: "#94a3b8", textAlign: "center", margin: "4px 0 8px" },
     emailInput: { width: "100%", padding: "10px 14px", fontSize: 14, border: "1px solid #e5e7eb", borderRadius: 10, outline: "none", background: "#f8fafc", color: "#1e293b", boxSizing: "border-box", marginBottom: 8 },
-    workerCard: { display: "flex", gap: 12, padding: "12px 14px", background: "#f8fafc", border: "1px solid #e5e7eb", borderRadius: 12, marginTop: 8 },
+    workerCard: { display: "flex", gap: 12, padding: "12px 14px", background: "#f8fafc", border: "1px solid #e5e7eb", borderRadius: 12, marginTop: 8, cursor: "pointer", transition: "box-shadow 0.15s ease, border-color 0.15s ease" },
     wcName: { fontSize: 13, fontWeight: 600, color: "#111827" },
     wcDesc: { fontSize: 12, color: "#6b7280", marginTop: 2 },
     wcPrice: { fontSize: 12, fontWeight: 600, color: "#7c3aed", marginTop: 4 },
+    wcCta: { fontSize: 11, fontWeight: 600, color: "#fff", background: "#7c3aed", borderRadius: 6, padding: "4px 10px", marginTop: 6, display: "inline-block" },
   };
 
   return (
@@ -325,11 +326,18 @@ export default function MeetAlex() {
             {m.workerCards && m.workerCards.length > 0 && (
               <div style={{ marginLeft: 36, marginTop: 4 }}>
                 {m.workerCards.map((wc, wi) => (
-                  <div key={wi} style={S.workerCard}>
+                  <div
+                    key={wi}
+                    style={S.workerCard}
+                    onClick={() => setShowAuth(true)}
+                    onMouseEnter={(e) => { e.currentTarget.style.boxShadow = "0 2px 8px rgba(124,58,237,0.15)"; e.currentTarget.style.borderColor = "#c4b5fd"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.borderColor = "#e5e7eb"; }}
+                  >
                     <div style={{ flex: 1 }}>
                       <div style={S.wcName}>{wc.name}</div>
                       <div style={S.wcDesc}>{wc.description}</div>
                       <div style={S.wcPrice}>{wc.price === 0 ? "Free" : `$${wc.price}/mo`}</div>
+                      <div style={S.wcCta}>{wc.price === 0 ? "Get this worker" : `Subscribe — $${wc.price}/mo`}</div>
                     </div>
                   </div>
                 ))}
@@ -359,10 +367,10 @@ export default function MeetAlex() {
       {showAuth && !authInProgress && !disclaimerAccepted && (
         <div style={S.authCard}>
           <div style={S.authTitle}>Before we continue</div>
-          <div style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", lineHeight: 1.6, marginBottom: 12, maxHeight: 120, overflowY: "auto" }}>
+          <div style={{ fontSize: 13, color: "#1e1e2e", lineHeight: 1.6, marginBottom: 12, maxHeight: 120, overflowY: "auto" }}>
             TitleApp Digital Workers provide information and automation within defined business rules. They do not constitute professional advice (legal, financial, medical, or aviation). All outputs include an audit trail. By continuing, you agree to the TitleApp Terms of Service and Privacy Policy.
           </div>
-          <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, color: "#e2e8f0" }}>
+          <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, color: "#1e1e2e" }}>
             <input type="checkbox" checked={tosChecked} onChange={e => setTosChecked(e.target.checked)} style={{ width: 16, height: 16, accentColor: "#7c3aed" }} />
             I agree to the TitleApp Terms of Service
           </label>
@@ -402,15 +410,15 @@ export default function MeetAlex() {
 
       {authInProgress && !showDisclaimer && (
         <div style={{ ...S.authCard, textAlign: "center" }}>
-          <div style={{ fontSize: 14, color: "rgba(255,255,255,0.6)" }}>Setting things up...</div>
+          <div style={{ fontSize: 14, color: "#6b7280" }}>Setting things up...</div>
         </div>
       )}
 
       {/* Disclaimer — inline after SSO success */}
       {showDisclaimer && (
         <div style={S.authCard}>
-          <div style={{ fontSize: 14, fontWeight: 600, color: "#e2e8f0", marginBottom: 8 }}>Before we continue</div>
-          <div style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", lineHeight: 1.6, marginBottom: 16 }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: "#1e1e2e", marginBottom: 8 }}>Before we continue</div>
+          <div style={{ fontSize: 13, color: "#1e1e2e", lineHeight: 1.6, marginBottom: 16 }}>
             TitleApp Digital Workers provide information and automation within defined business rules. They do not constitute professional advice (legal, financial, medical, or aviation). All outputs include an audit trail. By continuing, you agree to the TitleApp Terms of Service and Privacy Policy.
           </div>
           <button onClick={handleDisclaimerAccept} style={{ ...S.sendBtn, width: "100%", borderRadius: 10, height: "auto", padding: "12px 24px", fontSize: 14, fontWeight: 600 }}>

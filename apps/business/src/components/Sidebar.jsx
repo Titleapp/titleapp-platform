@@ -1067,17 +1067,17 @@ export default function Sidebar({
   const [showSwitcher, setShowSwitcher] = useState(false);
   const [selectedWorker, setSelectedWorker] = useState(null);
   const [workersExpanded, setWorkersExpanded] = useState(false);
-  const vertical = localStorage.getItem("VERTICAL") || "auto";
+  const vertical = guestMode ? "" : (localStorage.getItem("VERTICAL") || "auto");
   const isPersonal = vertical === "consumer";
 
-  const rawWsName = localStorage.getItem("WORKSPACE_NAME") || "";
+  const rawWsName = guestMode ? "" : (localStorage.getItem("WORKSPACE_NAME") || "");
   const isRawId = /^ws_\d+_[a-z0-9]+$/i.test(rawWsName);
   const workspaceName = isRawId ? "" : rawWsName;
-  const companyName = workspaceName || tenantName || localStorage.getItem("COMPANY_NAME") || localStorage.getItem("TENANT_NAME") || "";
+  const companyName = guestMode ? (tenantName || "TitleApp") : (workspaceName || tenantName || localStorage.getItem("COMPANY_NAME") || localStorage.getItem("TENANT_NAME") || "");
   const firstName = companyName.split(" ")[0] || "";
-  const brandLabel = isPersonal && firstName
+  const brandLabel = guestMode ? (tenantName || "TitleApp") : (isPersonal && firstName
     ? `${firstName}'s Vault`
-    : (workspaceName || tenantName || (isPersonal ? "Personal Vault" : "Business"));
+    : (workspaceName || tenantName || (isPersonal ? "Personal Vault" : "Business")));
 
   function handleNavClick(sectionId) {
     onNavigate(sectionId);
