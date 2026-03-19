@@ -1344,11 +1344,19 @@ exports.api = onRequest(
           if (utmMedium && !sessionState.utmMedium) sessionState.utmMedium = utmMedium;
           if (utmCampaign && !sessionState.utmCampaign) sessionState.utmCampaign = utmCampaign;
 
-          // Resolve vertical from campaign context
+          // Resolve vertical from campaign context (try both hyphen and underscore keys)
           if (!sessionState.vertical && sessionState.campaignSlug) {
             const { CAMPAIGN_CONTEXTS } = require("./campaigns/campaignContexts");
-            const cc = CAMPAIGN_CONTEXTS[sessionState.campaignSlug];
+            const slug = sessionState.campaignSlug;
+            const cc = CAMPAIGN_CONTEXTS[slug]
+              || CAMPAIGN_CONTEXTS[slug.replace(/_/g, "-")]
+              || CAMPAIGN_CONTEXTS[slug.replace(/-/g, "_")];
             if (cc) sessionState.vertical = cc.vertical;
+            // Direct vertical mapping fallback if no campaign context
+            if (!sessionState.vertical) {
+              const DIRECT_MAP = { auto_dealer: "auto_dealer", solar_vpp: "solar_vpp", real_estate_development: "real_estate_development", re_operations: "re_operations", aviation: "aviation", creators: "creators" };
+              if (DIRECT_MAP[slug]) sessionState.vertical = DIRECT_MAP[slug];
+            }
           }
 
           // Build sales system prompt

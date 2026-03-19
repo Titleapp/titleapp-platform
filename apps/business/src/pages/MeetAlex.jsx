@@ -246,12 +246,12 @@ export default function MeetAlex() {
 
   // Styles
   const S = {
-    page: { height: "100vh", height: "100dvh", background: "#0f172a", display: "flex", flexDirection: "column", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" },
-    header: { display: "flex", alignItems: "center", gap: 10, padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.08)", flexShrink: 0 },
+    page: { height: "100%", background: "#ffffff", display: "flex", flexDirection: "column", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" },
+    header: { display: "flex", alignItems: "center", gap: 10, padding: "12px 16px", borderBottom: "1px solid #e5e7eb", flexShrink: 0, background: "#ffffff" },
     headerAvatar: { width: 32, height: 32, borderRadius: "50%", background: "linear-gradient(135deg, #7c3aed 0%, #6366f1 50%, #0ea5e9 100%)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 },
-    headerName: { fontSize: 15, fontWeight: 600, color: "#ffffff" },
-    headerSub: { fontSize: 12, color: "rgba(255,255,255,0.45)" },
-    logo: { marginLeft: "auto", fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.3)", letterSpacing: "0.05em" },
+    headerName: { fontSize: 15, fontWeight: 600, color: "#111827" },
+    headerSub: { fontSize: 12, color: "#94a3b8" },
+    logo: { marginLeft: "auto", fontSize: 12, fontWeight: 700, color: "#cbd5e1", letterSpacing: "0.05em" },
     messageList: { flex: 1, overflowY: "auto", padding: "16px 16px 8px", display: "flex", flexDirection: "column", gap: 12, WebkitOverflowScrolling: "touch" },
     msgRow: (isUser) => ({ display: "flex", justifyContent: isUser ? "flex-end" : "flex-start", alignItems: "flex-end", gap: 8 }),
     bubble: (isUser) => ({
@@ -259,24 +259,24 @@ export default function MeetAlex() {
       whiteSpace: "pre-wrap", wordBreak: "break-word",
       ...(isUser
         ? { background: "#7c3aed", color: "#fff", borderBottomRightRadius: 4 }
-        : { background: "rgba(255,255,255,0.08)", color: "#e2e8f0", borderBottomLeftRadius: 4 }),
+        : { background: "#f3f4f6", color: "#1e293b", borderBottomLeftRadius: 4 }),
     }),
     miniAvatar: { width: 28, height: 28, borderRadius: "50%", background: "linear-gradient(135deg, #7c3aed 0%, #6366f1 50%, #0ea5e9 100%)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 },
-    inputBar: { display: "flex", gap: 8, padding: "12px 16px", borderTop: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)", flexShrink: 0 },
-    input: { flex: 1, padding: "12px 16px", fontSize: 15, border: "1px solid rgba(255,255,255,0.12)", borderRadius: 24, outline: "none", background: "rgba(255,255,255,0.06)", color: "#fff", boxSizing: "border-box", resize: "none", fontFamily: "inherit" },
+    inputBar: { display: "flex", gap: 8, padding: "12px 16px", borderTop: "1px solid #e5e7eb", background: "#ffffff", flexShrink: 0 },
+    input: { flex: 1, padding: "12px 16px", fontSize: 15, border: "1px solid #e5e7eb", borderRadius: 24, outline: "none", background: "#f8fafc", color: "#1e293b", boxSizing: "border-box", resize: "none", fontFamily: "inherit" },
     sendBtn: { width: 42, height: 42, borderRadius: "50%", background: "#7c3aed", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, opacity: 1, transition: "opacity 0.15s" },
-    typing: { display: "flex", gap: 4, padding: "10px 14px", borderRadius: 16, background: "rgba(255,255,255,0.08)", borderBottomLeftRadius: 4, maxWidth: "80%" },
-    dot: (i) => ({ width: 6, height: 6, borderRadius: "50%", background: "rgba(255,255,255,0.4)", animation: `typingDot 1.2s infinite ${i * 0.2}s` }),
+    typing: { display: "flex", gap: 4, padding: "10px 14px", borderRadius: 16, background: "#f3f4f6", borderBottomLeftRadius: 4, maxWidth: "80%" },
+    dot: (i) => ({ width: 6, height: 6, borderRadius: "50%", background: "#94a3b8", animation: `typingDot 1.2s infinite ${i * 0.2}s` }),
     // Auth card
-    authCard: { margin: "0 16px 8px", padding: "16px 20px", background: "rgba(124,58,237,0.1)", border: "1px solid rgba(124,58,237,0.2)", borderRadius: 16 },
-    authTitle: { fontSize: 14, fontWeight: 600, color: "#e2e8f0", marginBottom: 12 },
+    authCard: { margin: "0 16px 8px", padding: "16px 20px", background: "#f3f0ff", border: "1px solid #e9d5ff", borderRadius: 16 },
+    authTitle: { fontSize: 14, fontWeight: 600, color: "#111827", marginBottom: 12 },
     authBtn: (bg) => ({ width: "100%", padding: "12px", fontSize: 14, fontWeight: 600, color: "#fff", background: bg, border: "none", borderRadius: 10, cursor: "pointer", marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }),
-    authDivider: { fontSize: 12, color: "rgba(255,255,255,0.35)", textAlign: "center", margin: "4px 0 8px" },
-    emailInput: { width: "100%", padding: "10px 14px", fontSize: 14, border: "1px solid rgba(255,255,255,0.15)", borderRadius: 10, outline: "none", background: "rgba(255,255,255,0.06)", color: "#fff", boxSizing: "border-box", marginBottom: 8 },
-    workerCard: { display: "flex", gap: 12, padding: "12px 14px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, marginTop: 8 },
-    wcName: { fontSize: 13, fontWeight: 600, color: "#e2e8f0" },
-    wcDesc: { fontSize: 12, color: "rgba(255,255,255,0.5)", marginTop: 2 },
-    wcPrice: { fontSize: 12, fontWeight: 600, color: "#a78bfa", marginTop: 4 },
+    authDivider: { fontSize: 12, color: "#94a3b8", textAlign: "center", margin: "4px 0 8px" },
+    emailInput: { width: "100%", padding: "10px 14px", fontSize: 14, border: "1px solid #e5e7eb", borderRadius: 10, outline: "none", background: "#f8fafc", color: "#1e293b", boxSizing: "border-box", marginBottom: 8 },
+    workerCard: { display: "flex", gap: 12, padding: "12px 14px", background: "#f8fafc", border: "1px solid #e5e7eb", borderRadius: 12, marginTop: 8 },
+    wcName: { fontSize: 13, fontWeight: 600, color: "#111827" },
+    wcDesc: { fontSize: 12, color: "#6b7280", marginTop: 2 },
+    wcPrice: { fontSize: 12, fontWeight: 600, color: "#7c3aed", marginTop: 4 },
   };
 
   return (

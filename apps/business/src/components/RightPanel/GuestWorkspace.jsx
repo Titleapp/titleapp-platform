@@ -35,33 +35,33 @@ const LANGUAGES = [
 ];
 
 const S = {
-  wrap: { height: "100%", display: "flex", flexDirection: "column", background: "#0f172a", color: "#e2e8f0", overflowY: "auto" },
-  statsBar: { padding: "16px 20px", borderBottom: "1px solid #1e293b", flexShrink: 0 },
-  statsRow: { display: "flex", gap: 16, flexWrap: "wrap", fontSize: 13, fontWeight: 600, color: "#94a3b8" },
+  wrap: { height: "100%", display: "flex", flexDirection: "column", background: "#f8fafc", color: "#1e293b", overflowY: "auto" },
+  statsBar: { padding: "16px 20px", borderBottom: "1px solid #e5e7eb", flexShrink: 0, background: "#ffffff" },
+  statsRow: { display: "flex", gap: 16, flexWrap: "wrap", fontSize: 13, fontWeight: 600, color: "#64748b" },
   statItem: { display: "flex", alignItems: "center", gap: 4 },
-  statNum: { color: "#e2e8f0", fontWeight: 700 },
-  langRow: { display: "flex", flexWrap: "wrap", gap: "4px 10px", fontSize: 11, color: "#475569", marginTop: 10 },
-  langNote: { fontSize: 11, color: "#64748b", marginTop: 6, fontStyle: "italic" },
-  tabs: { display: "flex", gap: 0, borderBottom: "1px solid #1e293b", flexShrink: 0 },
-  tab: { flex: 1, padding: "10px 16px", fontSize: 13, fontWeight: 500, color: "#64748b", background: "none", border: "none", borderBottom: "2px solid transparent", cursor: "pointer", textAlign: "center", transition: "color 0.2s" },
-  tabActive: { color: "#e2e8f0", borderBottomColor: "#7c3aed" },
+  statNum: { color: "#111827", fontWeight: 700 },
+  langRow: { display: "flex", flexWrap: "wrap", gap: "4px 10px", fontSize: 11, color: "#94a3b8", marginTop: 10 },
+  langNote: { fontSize: 11, color: "#94a3b8", marginTop: 6, fontStyle: "italic" },
+  tabs: { display: "flex", gap: 0, borderBottom: "1px solid #e5e7eb", flexShrink: 0, background: "#ffffff" },
+  tab: { flex: 1, padding: "10px 16px", fontSize: 13, fontWeight: 500, color: "#94a3b8", background: "none", border: "none", borderBottom: "2px solid transparent", cursor: "pointer", textAlign: "center", transition: "color 0.2s" },
+  tabActive: { color: "#111827", borderBottomColor: "#7c3aed" },
   cardList: { flex: 1, padding: 16, overflowY: "auto" },
-  card: { background: "#1e293b", border: "1px solid #334155", borderRadius: 10, padding: "14px 16px", marginBottom: 10, cursor: "pointer", transition: "border-color 0.2s" },
+  card: { background: "#ffffff", border: "1px solid #e5e7eb", borderRadius: 10, padding: "14px 16px", marginBottom: 10, cursor: "pointer", transition: "border-color 0.2s" },
   cardHighlight: { borderColor: "#7c3aed", boxShadow: "0 0 0 1px rgba(124,58,237,0.3)" },
-  cardName: { fontSize: 14, fontWeight: 600, color: "#e2e8f0", marginBottom: 4 },
-  cardDesc: { fontSize: 12, color: "#94a3b8", lineHeight: 1.5, marginBottom: 8 },
+  cardName: { fontSize: 14, fontWeight: 600, color: "#111827", marginBottom: 4 },
+  cardDesc: { fontSize: 12, color: "#6b7280", lineHeight: 1.5, marginBottom: 8 },
   cardFooter: { display: "flex", justifyContent: "space-between", alignItems: "center" },
-  priceBadge: { fontSize: 12, fontWeight: 600, padding: "2px 10px", borderRadius: 12, background: "rgba(124,58,237,0.15)", color: "#a78bfa" },
+  priceBadge: { fontSize: 12, fontWeight: 600, padding: "2px 10px", borderRadius: 12, background: "rgba(124,58,237,0.08)", color: "#7c3aed" },
   statusBadge: { fontSize: 11, fontWeight: 600 },
   statusLive: { color: "#10b981" },
   statusSoon: { color: "#f59e0b" },
-  detailPanel: { padding: 20, borderTop: "1px solid #1e293b" },
-  detailTitle: { fontSize: 18, fontWeight: 700, color: "#e2e8f0", marginBottom: 8 },
-  detailDesc: { fontSize: 14, color: "#94a3b8", lineHeight: 1.6, marginBottom: 16 },
-  detailMeta: { fontSize: 12, color: "#64748b", marginBottom: 16 },
+  detailPanel: { padding: 20, borderTop: "1px solid #e5e7eb", background: "#ffffff" },
+  detailTitle: { fontSize: 18, fontWeight: 700, color: "#111827", marginBottom: 8 },
+  detailDesc: { fontSize: 14, color: "#6b7280", lineHeight: 1.6, marginBottom: 16 },
+  detailMeta: { fontSize: 12, color: "#94a3b8", marginBottom: 16 },
   subscribeBtn: { padding: "10px 24px", background: "#7c3aed", color: "white", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer", width: "100%" },
-  backBtn: { background: "none", border: "none", color: "#94a3b8", fontSize: 13, cursor: "pointer", marginBottom: 12, padding: 0 },
-  empty: { padding: 40, textAlign: "center", color: "#64748b", fontSize: 14 },
+  backBtn: { background: "none", border: "none", color: "#6b7280", fontSize: 13, cursor: "pointer", marginBottom: 12, padding: 0 },
+  empty: { padding: 40, textAlign: "center", color: "#94a3b8", fontSize: 14 },
 };
 
 function formatPrice(price) {
@@ -131,9 +131,9 @@ export default function GuestWorkspace({ vertical }) {
           <div style={S.detailDesc}>
             Alex is helping you scope a custom worker suite. Answer her questions in the chat and she will build a full spec — rules, workflows, compliance, pricing — in about 15 minutes.
           </div>
-          <div style={{ background: "#1e293b", borderRadius: 10, padding: 16, marginTop: 16, border: "1px solid #334155" }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: "#94a3b8", marginBottom: 8 }}>What happens next</div>
-            <div style={{ fontSize: 13, color: "#64748b", lineHeight: 1.6 }}>
+          <div style={{ background: "#f3f0ff", borderRadius: 10, padding: 16, marginTop: 16, border: "1px solid #e9d5ff" }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "#6b21a8", marginBottom: 8 }}>What happens next</div>
+            <div style={{ fontSize: 13, color: "#6b7280", lineHeight: 1.6 }}>
               1. Alex asks about your workflows and rules{"\n"}
               2. She generates a full worker spec{"\n"}
               3. You review and approve{"\n"}
