@@ -63,6 +63,15 @@ module.exports = {
   autoRechargeThresholdDefault: 20,    // trigger recharge at $20
   autoRechargeAmountDefault: 100,      // default recharge amount
 
+  // ── Stripe Product Price IDs (created by scripts/createBillingProducts.js) ──
+  stripeProducts: {
+    signatureOverage: null,  // price_xxx — $1.00/unit, fill after running script
+    blockchainOverage: null, // price_xxx — $1.00/unit, fill after running script
+    topUp100: null,          // price_xxx — $100.00 one-time
+    topUp500: null,          // price_xxx — $500.00 one-time
+    topUp1000: null,         // price_xxx — $1,000.00 one-time
+  },
+
   // ── Stripe Meter Event Names ─────────────────────────────────
   stripeMeterEvents: {
     inferenceOverage: 'inference_credits_overage',

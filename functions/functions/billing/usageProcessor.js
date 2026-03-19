@@ -141,27 +141,22 @@ async function processUsageEvents() {
               threshold: billing.autoRechargeThreshold || pricing.autoRechargeThresholdDefault,
             });
           }
-        } else if (userData.stripeMeteredItemId) {
-          // Report to Stripe metered billing
+        } else if (userData.stripeCustomerId) {
+          // Charge overage via Stripe Invoice Items
           try {
-            const stripe = getStripe();
-            for (const [type, count] of Object.entries(overages)) {
-              const meterEvent = type === "signature_request"
-                ? pricing.stripeMeterEvents.signatureOverage
-                : pricing.stripeMeterEvents.blockchainOverage;
-
-              await stripe.billing.meterEvents.create({
-                event_name: meterEvent,
-                payload: {
-                  stripe_customer_id: userData.stripeCustomerId,
-                  value: String(count),
-                },
-              }).catch(err => {
-                console.error(`Stripe meter report failed for ${operatorId}/${type}:`, err.message);
-              });
-            }
+            await chargeOverageToStripe(operatorId, overages, userData.stripeCustomerId);
           } catch (stripeErr) {
-            console.error(`Stripe metering failed for ${operatorId}:`, stripeErr.message);
+            console.error(`Stripe overage charge failed for ${operatorId}:`, stripeErr.message);
+            // Fall through to degrade
+            await db.collection("users").doc(operatorId).update({
+              "billing.degraded": true,
+              "billing.degradedAt": admin.firestore.FieldValue.serverTimestamp(),
+              "billing.degradedReason": "stripe_charge_failed",
+            });
+            await _enqueueAlexNotification(operatorId, "billing_degraded", {
+              overageAmount: totalOverageAmount,
+              overages,
+            });
           }
         } else {
           // No balance, no Stripe metering — flag operator
@@ -240,24 +235,32 @@ async function handleTopUpBalance(req, res, { userId }) {
     await db.collection("users").doc(userId).update({ stripeCustomerId: customerId });
   }
 
+  // Resolve Stripe price ID from config
+  const priceKey = "topUp" + amount;
+  const priceId = pricing.stripeProducts?.[priceKey];
+
   // Create Checkout session for one-time payment
+  const lineItems = priceId
+    ? [{ price: priceId, quantity: 1 }]
+    : [{
+        price_data: {
+          currency: "usd",
+          product_data: {
+            name: `TitleApp Balance Top-Up — $${amount}`,
+            description: "Prepaid balance for usage overages (signatures, blockchain records)",
+          },
+          unit_amount: amount * 100, // cents
+        },
+        quantity: 1,
+      }];
+
   const session = await stripe.checkout.sessions.create({
     customer: customerId,
     mode: "payment",
-    line_items: [{
-      price_data: {
-        currency: "usd",
-        product_data: {
-          name: `TitleApp Balance Top-Up — $${amount}`,
-          description: "Prepaid balance for usage overages (signatures, blockchain records)",
-        },
-        unit_amount: amount * 100, // cents
-      },
-      quantity: 1,
-    }],
+    line_items: lineItems,
     metadata: { userId, type: "balance_topup", amount: String(amount) },
-    success_url: successUrl || "https://titleapp.ai?topup=success",
-    cancel_url: cancelUrl || "https://titleapp.ai?topup=cancel",
+    success_url: successUrl || "https://app.titleapp.ai/vault?topup=success",
+    cancel_url: cancelUrl || "https://app.titleapp.ai/vault?topup=cancelled",
   });
 
   return res.json({ ok: true, checkoutUrl: session.url, sessionId: session.id });
@@ -674,6 +677,69 @@ async function handleGetKentFlags(req, res) {
       },
     },
   });
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  STRIPE OVERAGE INVOICING
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * Charge overage to Stripe via Invoice Items.
+ * Creates line items for each overage type, then creates + finalizes + pays an invoice.
+ */
+async function chargeOverageToStripe(userId, overages, customerId) {
+  const stripe = getStripe();
+
+  for (const [eventType, count] of Object.entries(overages)) {
+    const priceId = eventType === "signature_request"
+      ? pricing.stripeProducts?.signatureOverage
+      : pricing.stripeProducts?.blockchainOverage;
+
+    if (priceId) {
+      // Use saved Stripe price
+      await stripe.invoiceItems.create({
+        customer: customerId,
+        price: priceId,
+        quantity: count,
+        description: `${eventType} overage — ${count} units`,
+      });
+    } else {
+      // Fallback: inline amount (before products are created in Stripe)
+      const rate = pricing.overageRates[eventType] || 1.00;
+      await stripe.invoiceItems.create({
+        customer: customerId,
+        amount: Math.round(rate * count * 100), // cents
+        currency: "usd",
+        description: `${eventType} overage — ${count} × $${rate.toFixed(2)}`,
+      });
+    }
+  }
+
+  // Create, finalize, and pay the invoice
+  const invoice = await stripe.invoices.create({
+    customer: customerId,
+    auto_advance: true,
+    description: "TitleApp usage overage",
+  });
+  await stripe.invoices.finalizeInvoice(invoice.id);
+  await stripe.invoices.pay(invoice.id);
+
+  // Record payment in Firestore
+  const db = getDb();
+  const totalAmount = Object.entries(overages).reduce((sum, [type, count]) => {
+    return sum + (count * (pricing.overageRates[type] || 1.00));
+  }, 0);
+
+  await db.collection("payments").add({
+    userId,
+    type: "overage_invoice",
+    amount: totalAmount,
+    stripeInvoiceId: invoice.id,
+    overages,
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+
+  console.log(`chargeOverageToStripe: ${userId} — $${totalAmount.toFixed(2)} (invoice ${invoice.id})`);
 }
 
 // ═══════════════════════════════════════════════════════════════
