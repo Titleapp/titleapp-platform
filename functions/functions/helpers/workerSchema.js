@@ -106,6 +106,12 @@ const VALID_SUITES = [
   "Title & Escrow",
   // Solar Energy
   "Solar Energy",
+  // Web3
+  "Web3",
+  "Tokenomics",
+  "Launch",
+  "Community",
+  "Communications",
 ];
 
 const VALID_WORKER_TYPES = ["standalone", "pipeline", "composite", "copilot", "orchestrator"];
@@ -210,6 +216,7 @@ const VALID_VERTICALS = [
   "nursing",
   "health_education",
   "solar_energy",
+  "web3",
 ];
 
 const VALID_PRICE_TIERS_DISPLAY = ["FREE", "$29", "$49", "$79"];
@@ -919,6 +926,20 @@ const SUITE_ALIAS_MAP = {
   "design": "Design",
   "entitlement": "Entitlement",
   "platform": "Platform",
+  // Web3
+  "web3": "Web3",
+  "blockchain": "Web3",
+  "crypto": "Web3",
+  "nft": "Web3",
+  "dao": "Web3",
+  "defi": "Web3",
+  "token": "Tokenomics",
+  "tokenomics": "Tokenomics",
+  "launch": "Launch",
+  "community": "Community",
+  "telegram": "Community",
+  "discord": "Community",
+  "communications": "Communications",
 };
 
 /**

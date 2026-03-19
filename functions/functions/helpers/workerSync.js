@@ -142,6 +142,18 @@ const MARKETPLACE_SLUG_MAP = {
   "SOL-007": "solar-system-monitor",
   "SOL-008": "solar-credit-ledger",
   "SOL-009": "srec-exchange-compliance",
+  // Web3
+  "W3-001": "w3-token-economics",
+  "W3-002": "w3-nft-launch",
+  "W3-003": "w3-regulatory-framing",
+  "W3-004": "w3-smart-contract-audit",
+  "W3-005": "w3-treasury-reporter",
+  "W3-006": "w3-governance-docs",
+  "W3-007": "w3-telegram-community",
+  "W3-008": "w3-social-narrative",
+  "W3-009": "w3-sentiment-monitor",
+  "W3-010": "w3-community-ir",
+  "W3-011": "w3-alex-web3",
 };
 
 // Ruleset ID mapping: marketplace slug → ruleset file name
@@ -290,6 +302,18 @@ const DISPLAY_NAME_MAP = {
   "SOL-007": "System Monitor",
   "SOL-008": "Credit Ledger",
   "SOL-009": "Exchange Compliance",
+  // Web3
+  "W3-001": "Token Economics Modeler",
+  "W3-002": "NFT Launch Strategist",
+  "W3-003": "Regulatory Framing",
+  "W3-004": "Smart Contract Audit Prep",
+  "W3-005": "Treasury Transparency",
+  "W3-006": "Governance Documentation",
+  "W3-007": "Telegram Community Manager",
+  "W3-008": "Social Narrative",
+  "W3-009": "Sentiment Monitor",
+  "W3-010": "Community IR & Announcements",
+  "W3-011": "Alex \u2014 Web3 Chief of Staff",
 };
 
 // Headline overrides from App.jsx WORKER_DETAIL_CONTENT (first 80 chars)
@@ -366,6 +390,18 @@ const HEADLINE_MAP = {
   "solar-system-monitor": "Your solar system performance, tracked permanently",
   "solar-credit-ledger": "SRECs issued as DTCs — blockchain-verified, registry-reported",
   "srec-exchange-compliance": "KYC/AML and trade verification for SREC exchange participants",
+  // Web3
+  "w3-token-economics": "Token supply, distribution, and vesting — modeled before you launch",
+  "w3-nft-launch": "Mint strategy, pricing, and distribution — ready for launch day",
+  "w3-regulatory-framing": "Legal framing that keeps your project off the wrong side of the Howey Test",
+  "w3-smart-contract-audit": "Audit-ready contracts before the auditor shows up",
+  "w3-treasury-reporter": "Treasury balances transparent to your community, every cycle",
+  "w3-governance-docs": "Governance proposals, votes, and documentation — all on the record",
+  "w3-telegram-community": "Your Telegram community managed 24/7 with compliance guardrails",
+  "w3-social-narrative": "Social narrative that builds trust without making promises",
+  "w3-sentiment-monitor": "Community sentiment tracked in real time — before it becomes a problem",
+  "w3-community-ir": "Holder communications and project updates — compliant, on-brand, on-time",
+  "w3-alex-web3": "Your Web3 project, orchestrated — compliance to community",
 };
 
 // ═══════════════════════════════════════════════════════════════

@@ -72,10 +72,11 @@ Real Estate Development: 67 workers across 8 phases (site selection through disp
 Aviation (Part 135/91 + Pilot Suite): 56 workers covering cert and ops through intelligence. 11 CoPilots live (AV-P01 through AV-P11) with 4-mode framework (Direct, Operational, Advisory, Training). PC12-NG (AV-P07) is the reference implementation with operator baselines and type-specific training material indexed. Ground-use only -- CoPilots are study and reference tools, never used in flight.
 Auto Dealer: 29 workers across 9 phases (setup and licensing through intelligence).
 Health and EMS: 42 workers (in development).
+Web3 Projects: 11 workers across tokenomics, compliance, community, and communications. Verified team identity required for all subscribers.
 Government: 40 workers (in development).
 Education: planned.
-Total catalog workers: 152 live, with creator-published workers added daily.
-Coverage: 54 countries, 23 languages, 13 industry suites.
+Total catalog workers: 163 live, with creator-published workers added daily.
+Coverage: 54 countries, 23 languages, 14 industry suites.
 
 THE VAULT:
 The Vault is the user's private data layer. It has three columns:

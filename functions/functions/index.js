@@ -5719,6 +5719,7 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
           re_sales:    { requiresOperatorDocs: false, types: ["SOP"] },
           government:  { requiresOperatorDocs: false, types: ["SOP", "Other"] },
           auto_dealer: { requiresOperatorDocs: false, types: ["SOP"] },
+          web3:        { requiresOperatorDocs: true,  types: ["ProjectAttestation", "TeamRoster", "SOP"] },
         };
         const verticalKey = (intake.vertical || "").toLowerCase().replace(/\s+/g, "_");
         const docRec = DOC_TYPE_RECOMMENDATIONS[verticalKey] || { requiresOperatorDocs: false, types: [] };

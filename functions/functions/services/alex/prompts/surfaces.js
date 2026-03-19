@@ -381,8 +381,11 @@ function _getSalesOverlay(ctx) {
     case "creators":
       opening = "Hey — I'm Alex. You've built an audience because you know your field better than anyone. Now your followers can hire you. Forever. Tell me what you do and I'll show you how to build your first Digital Worker in under 10 minutes.";
       break;
+    case "web3":
+      opening = "Hey — I'm Alex. I help Web3 projects stay compliant, build trust with their community, and run operations 24/7. What are you building?";
+      break;
     default:
-      opening = "Hey — I'm Alex, Chief of Staff at TitleApp. 152 Digital Workers across real estate, aviation, auto, and more — all in regulated industries. What do you do?";
+      opening = "Hey — I'm Alex, Chief of Staff at TitleApp. 163 Digital Workers across real estate, aviation, auto, web3, and more — all in regulated industries. What do you do?";
       break;
   }
 

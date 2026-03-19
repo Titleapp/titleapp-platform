@@ -1,0 +1,485 @@
+{
+  "vertical": "web3",
+  "name": "Web3 Projects",
+  "version": "1.0.0",
+  "lifecycle": [
+    {
+      "phase": 0,
+      "name": "Token Design & Economics",
+      "description": "Define token supply, distribution, utility, and economic model"
+    },
+    {
+      "phase": 1,
+      "name": "Smart Contract & Audit",
+      "description": "Contract development, audit preparation, and security review"
+    },
+    {
+      "phase": 2,
+      "name": "Regulatory Framing",
+      "description": "Legal framing, compliance posture, and regulatory filings"
+    },
+    {
+      "phase": 3,
+      "name": "Launch & Distribution",
+      "description": "NFT/token launch execution, minting, and distribution"
+    },
+    {
+      "phase": 4,
+      "name": "Governance & Treasury",
+      "description": "DAO governance setup, treasury management, and transparency"
+    },
+    {
+      "phase": 5,
+      "name": "Community & Communications",
+      "description": "Community building, social presence, and sentiment monitoring"
+    },
+    {
+      "phase": 6,
+      "name": "Ongoing Compliance",
+      "description": "Continuous compliance monitoring and team verification"
+    },
+    {
+      "phase": 7,
+      "name": "Operations & Orchestration",
+      "description": "Cross-functional coordination and operational oversight"
+    }
+  ],
+  "suites": [
+    { "id": "tokenomics", "name": "Tokenomics" },
+    { "id": "launch", "name": "Launch" },
+    { "id": "compliance", "name": "Compliance" },
+    { "id": "community", "name": "Community" },
+    { "id": "communications", "name": "Communications" },
+    { "id": "platform", "name": "Platform" }
+  ],
+  "workers": [
+    {
+      "id": "W3-001",
+      "name": "Token Economics Modeler",
+      "slug": "w3-token-economics",
+      "suite": "Tokenomics",
+      "phase": 0,
+      "type": "standalone",
+      "pricing": { "monthly": 49 },
+      "status": "live",
+      "capabilitySummary": "Models tokenomics, supply schedules, emission curves, vesting cliff analysis, treasury allocation, and LP fee projections. Produces community-readable summaries and monitoring alerts.",
+      "tags": ["tokenomics", "supply-schedule", "vesting", "treasury", "LP-fees"],
+      "temporalType": "phase_bound",
+      "valueBucket": ["make_money"],
+      "tier1Compliance": [
+        "All team member identities must be verified through TitleApp before any Web3 worker publishes content.",
+        "Never use 'investment', 'securities', 'returns', 'profit', or 'yield' when describing NFTs or tokens. Use 'digital collectible', 'trading card', 'utility token', or 'membership pass' exclusively.",
+        "Securities disclaimer required on every output: This worker does not provide investment advice. Tokens and NFTs are utility items, not securities.",
+        "Never guarantee token value appreciation, floor price maintenance, or any financial outcome.",
+        "Project Attestation must be completed and on file before any Web3 worker publishes content.",
+        "All projections must be labeled as estimates, not guarantees.",
+        "No APY or yield claims without underlying data and risk disclaimer.",
+        "All tokenomics scenarios must include a bear case.",
+        "Standard risk disclaimer required on every output."
+      ],
+      "vault": {
+        "reads": ["project_profile", "token_supply_data"],
+        "writes": ["tokenomics_model", "distribution_schedule", "vesting_analysis"]
+      },
+      "referrals": [
+        { "event": "Tokenomics model complete", "routesTo": "W3-003" },
+        { "event": "Launch parameters defined", "routesTo": "W3-002" }
+      ],
+      "alexRegistration": {
+        "priority": "high",
+        "acceptsTasks": true,
+        "briefingContribution": "tokenomics_status"
+      }
+    },
+    {
+      "id": "W3-002",
+      "name": "NFT Launch Strategist",
+      "slug": "w3-nft-launch",
+      "suite": "Launch",
+      "phase": 3,
+      "type": "standalone",
+      "pricing": { "monthly": 49 },
+      "status": "live",
+      "capabilitySummary": "Scopes mint strategy: supply, pricing, rarity distribution, whitelist structure, revenue allocation, storage cost modeling, and configuration checklist. Produces launch-ready specification documents.",
+      "tags": ["nft", "mint", "launch", "whitelist", "rarity", "candy-machine"],
+      "temporalType": "phase_bound",
+      "valueBucket": ["make_money"],
+      "tier1Compliance": [
+        "All team member identities must be verified through TitleApp before any Web3 worker publishes content.",
+        "Never use 'investment', 'securities', 'returns', 'profit', or 'yield' when describing NFTs or tokens. Use 'digital collectible', 'trading card', 'utility token', or 'membership pass' exclusively.",
+        "Securities disclaimer required on every output: This worker does not provide investment advice. Tokens and NFTs are utility items, not securities.",
+        "Never guarantee token value appreciation, floor price maintenance, or any financial outcome.",
+        "Project Attestation must be completed and on file before any Web3 worker publishes content.",
+        "No guaranteed sell-out claims.",
+        "Revenue allocation must include a reserve.",
+        "Storage costs must be pre-funded and documented.",
+        "All mint mechanics must be documented before launch.",
+        "Presale activation requires Tier 2 KYC and AML gate."
+      ],
+      "vault": {
+        "reads": ["project_profile", "tokenomics_model"],
+        "writes": ["launch_spec", "mint_config", "revenue_allocation"]
+      },
+      "referrals": [
+        { "event": "Launch spec complete", "routesTo": "W3-003" },
+        { "event": "Smart contracts needed", "routesTo": "W3-004" }
+      ],
+      "alexRegistration": {
+        "priority": "high",
+        "acceptsTasks": true,
+        "briefingContribution": "launch_readiness"
+      }
+    },
+    {
+      "id": "W3-003",
+      "name": "Regulatory Framing Worker",
+      "slug": "w3-regulatory-framing",
+      "suite": "Compliance",
+      "phase": 2,
+      "type": "standalone",
+      "pricing": { "monthly": 79 },
+      "status": "live",
+      "capabilitySummary": "Analyzes project structure against the Howey test, documents NFT-as-utility vs security arguments, produces jurisdiction-specific risk flag reports. Does not replace a lawyer.",
+      "tags": ["regulatory", "howey-test", "compliance", "securities", "legal-framing"],
+      "temporalType": "always_on",
+      "valueBucket": ["stay_compliant"],
+      "tier1Compliance": [
+        "All team member identities must be verified through TitleApp before any Web3 worker publishes content.",
+        "Never use 'investment', 'securities', 'returns', 'profit', or 'yield' when describing NFTs or tokens. Use 'digital collectible', 'trading card', 'utility token', or 'membership pass' exclusively.",
+        "Securities disclaimer required on every output: This worker does not provide investment advice. Tokens and NFTs are utility items, not securities.",
+        "Never guarantee token value appreciation, floor price maintenance, or any financial outcome.",
+        "Project Attestation must be completed and on file before any Web3 worker publishes content.",
+        "LEGAL COUNSEL GATE: Creator must confirm engagement of licensed legal counsel for securities law matters before this worker activates.",
+        "DISCLAIMER ON EVERY OUTPUT: This worker provides informational documentation only. It does not constitute legal advice and does not create an attorney-client relationship. All output must be reviewed by qualified legal counsel before public use.",
+        "Howey Test analysis must use SEC vs. W.J. Howey Co. (1946) framework with all four prongs documented.",
+        "FinCEN guidance on virtual currency must be referenced when applicable.",
+        "State money transmitter law applicability must be flagged per jurisdiction.",
+        "All regulatory framing documents must include date of analysis and note that regulations may have changed."
+      ],
+      "vault": {
+        "reads": ["project_profile", "tokenomics_model", "launch_spec"],
+        "writes": ["howey_analysis", "utility_documentation", "jurisdiction_risk_matrix", "legal_briefing"]
+      },
+      "referrals": [
+        { "event": "Regulatory framing complete", "routesTo": "W3-004" },
+        { "event": "Governance structure needed", "routesTo": "W3-006" }
+      ],
+      "alexRegistration": {
+        "priority": "critical",
+        "acceptsTasks": true,
+        "briefingContribution": "compliance_posture"
+      }
+    },
+    {
+      "id": "W3-004",
+      "name": "Smart Contract Audit Prep",
+      "slug": "w3-smart-contract-audit",
+      "suite": "Compliance",
+      "phase": 1,
+      "type": "standalone",
+      "pricing": { "monthly": 79 },
+      "status": "live",
+      "capabilitySummary": "Documents contract architecture, produces function-by-function spec, flags common vulnerability patterns, generates audit-ready technical documentation. Reduces audit time and cost.",
+      "tags": ["smart-contract", "audit", "security", "vulnerability", "solidity"],
+      "temporalType": "phase_bound",
+      "valueBucket": ["stay_compliant"],
+      "tier1Compliance": [
+        "All team member identities must be verified through TitleApp before any Web3 worker publishes content.",
+        "Never use 'investment', 'securities', 'returns', 'profit', or 'yield' when describing NFTs or tokens. Use 'digital collectible', 'trading card', 'utility token', or 'membership pass' exclusively.",
+        "Securities disclaimer required on every output: This worker does not provide investment advice. Tokens and NFTs are utility items, not securities.",
+        "Never guarantee token value appreciation, floor price maintenance, or any financial outcome.",
+        "Project Attestation must be completed and on file before any Web3 worker publishes content.",
+        "This worker does not certify contract security. A third-party professional audit is always required before deployment.",
+        "All admin key patterns must be flagged.",
+        "Timelock requirements must be documented.",
+        "Emergency pause functions must be documented as required.",
+        "Multi-sig requirements for treasury access must be documented.",
+        "All findings must be documented even if resolved."
+      ],
+      "vault": {
+        "reads": ["project_profile", "tokenomics_model"],
+        "writes": ["contract_architecture_spec", "vulnerability_prescan", "audit_brief", "remediation_checklist"]
+      },
+      "referrals": [
+        { "event": "Audit prep complete", "routesTo": "W3-002" },
+        { "event": "Regulatory concerns identified", "routesTo": "W3-003" }
+      ],
+      "alexRegistration": {
+        "priority": "high",
+        "acceptsTasks": true,
+        "briefingContribution": "contract_readiness"
+      }
+    },
+    {
+      "id": "W3-005",
+      "name": "Treasury Transparency Reporter",
+      "slug": "w3-treasury-reporter",
+      "suite": "Compliance",
+      "phase": 4,
+      "type": "standalone",
+      "pricing": { "monthly": 29 },
+      "status": "live",
+      "capabilitySummary": "Generates weekly on-chain treasury reports from public wallet addresses. Formats into community-readable governance documents. Every report signed and timestamped in Document Control.",
+      "tags": ["treasury", "transparency", "on-chain", "governance", "reporting"],
+      "temporalType": "always_on",
+      "valueBucket": ["stay_compliant"],
+      "tier1Compliance": [
+        "All team member identities must be verified through TitleApp before any Web3 worker publishes content.",
+        "Never use 'investment', 'securities', 'returns', 'profit', or 'yield' when describing NFTs or tokens. Use 'digital collectible', 'trading card', 'utility token', or 'membership pass' exclusively.",
+        "Securities disclaimer required on every output: This worker does not provide investment advice. Tokens and NFTs are utility items, not securities.",
+        "Never guarantee token value appreciation, floor price maintenance, or any financial outcome.",
+        "Project Attestation must be completed and on file before any Web3 worker publishes content.",
+        "All figures must be sourced from on-chain data only.",
+        "No projections in treasury reports.",
+        "Community vault transactions must include stated purpose.",
+        "All reports must include document hash for verification."
+      ],
+      "vault": {
+        "reads": ["project_profile", "treasury_wallets"],
+        "writes": ["treasury_report", "governance_record"]
+      },
+      "referrals": [
+        { "event": "Treasury anomaly detected", "routesTo": "W3-003" },
+        { "event": "Governance proposal needed", "routesTo": "W3-006" }
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "treasury_status"
+      }
+    },
+    {
+      "id": "W3-006",
+      "name": "Governance Documentation Worker",
+      "slug": "w3-governance-docs",
+      "suite": "Compliance",
+      "phase": 4,
+      "type": "standalone",
+      "pricing": { "monthly": 49 },
+      "status": "live",
+      "capabilitySummary": "Version-controls white papers, amendment tracking, community vote documentation, proposal formatting, and voting result records. Every change signed and timestamped.",
+      "tags": ["governance", "proposals", "voting", "white-paper", "documentation"],
+      "temporalType": "always_on",
+      "valueBucket": ["stay_compliant"],
+      "tier1Compliance": [
+        "All team member identities must be verified through TitleApp before any Web3 worker publishes content.",
+        "Never use 'investment', 'securities', 'returns', 'profit', or 'yield' when describing NFTs or tokens. Use 'digital collectible', 'trading card', 'utility token', or 'membership pass' exclusively.",
+        "Securities disclaimer required on every output: This worker does not provide investment advice. Tokens and NFTs are utility items, not securities.",
+        "Never guarantee token value appreciation, floor price maintenance, or any financial outcome.",
+        "Project Attestation must be completed and on file before any Web3 worker publishes content.",
+        "All proposals must include implementation timeline.",
+        "Budget requests must include treasury balance check.",
+        "Amendments must reference original document version.",
+        "Voting results are immutable once recorded."
+      ],
+      "vault": {
+        "reads": ["project_profile", "treasury_report"],
+        "writes": ["governance_proposal", "amendment_record", "vote_result", "white_paper_version"]
+      },
+      "referrals": [
+        { "event": "Treasury impact proposal", "routesTo": "W3-005" },
+        { "event": "Regulatory review needed", "routesTo": "W3-003" }
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "governance_status"
+      }
+    },
+    {
+      "id": "W3-007",
+      "name": "Telegram Community Manager",
+      "slug": "w3-telegram-community",
+      "suite": "Community",
+      "phase": 5,
+      "type": "standalone",
+      "pricing": { "monthly": 49 },
+      "status": "live",
+      "capabilitySummary": "24/7 Telegram channel management via Bot API. Answers common questions, responds to FUD with factual responses, routes escalations, enforces channel rules, welcomes new members.",
+      "tags": ["telegram", "community", "moderation", "fud-response", "bot"],
+      "temporalType": "always_on",
+      "valueBucket": ["save_money"],
+      "tier1Compliance": [
+        "All team member identities must be verified through TitleApp before any Web3 worker publishes content.",
+        "Never use 'investment', 'securities', 'returns', 'profit', or 'yield' when describing NFTs or tokens. Use 'digital collectible', 'trading card', 'utility token', or 'membership pass' exclusively.",
+        "Securities disclaimer required on every output: This worker does not provide investment advice. Tokens and NFTs are utility items, not securities.",
+        "Never guarantee token value appreciation, floor price maintenance, or any financial outcome.",
+        "Project Attestation must be completed and on file before any Web3 worker publishes content.",
+        "Community Manager role must be identity-verified before this worker activates.",
+        "Never makes price predictions in any form.",
+        "No financial advice in any form.",
+        "FUD responses must be factual, not dismissive.",
+        "No pump language: 'to the moon', '100x', 'guaranteed', 'can't lose', FOMO triggers are all blocked.",
+        "All moderation actions must be logged.",
+        "Escalation triggers must be documented."
+      ],
+      "vault": {
+        "reads": ["project_profile", "fud_response_library"],
+        "writes": ["community_log", "escalation_report", "channel_health_summary"]
+      },
+      "referrals": [
+        { "event": "Regulatory question from community", "routesTo": "W3-003" },
+        { "event": "Treasury question from community", "routesTo": "W3-005" }
+      ],
+      "alexRegistration": {
+        "priority": "high",
+        "acceptsTasks": true,
+        "briefingContribution": "community_health"
+      }
+    },
+    {
+      "id": "W3-008",
+      "name": "X / Social Narrative Worker",
+      "slug": "w3-social-narrative",
+      "suite": "Community",
+      "phase": 5,
+      "type": "standalone",
+      "pricing": { "monthly": 49 },
+      "status": "live",
+      "capabilitySummary": "Manages project X presence in brand voice. Two modes: Review Mode (operator approves before post) and Auto Mode (explicit opt-in). Milestone announcements, community updates, launch copy, AMA summaries.",
+      "tags": ["twitter", "x", "social-media", "brand-voice", "announcements"],
+      "temporalType": "always_on",
+      "valueBucket": ["save_money"],
+      "tier1Compliance": [
+        "All team member identities must be verified through TitleApp before any Web3 worker publishes content.",
+        "Never use 'investment', 'securities', 'returns', 'profit', or 'yield' when describing NFTs or tokens. Use 'digital collectible', 'trading card', 'utility token', or 'membership pass' exclusively.",
+        "Securities disclaimer required on every output: This worker does not provide investment advice. Tokens and NFTs are utility items, not securities.",
+        "Never guarantee token value appreciation, floor price maintenance, or any financial outcome.",
+        "Project Attestation must be completed and on file before any Web3 worker publishes content.",
+        "Social Media role must be identity-verified before this worker activates.",
+        "Review Mode is the default and recommended mode. Operator must explicitly enable Auto Mode with acknowledgment of risk.",
+        "No price predictions in any post.",
+        "No profit promises in any post.",
+        "Financial content requires risk disclaimer.",
+        "No countdown pressure tactics or FOMO triggers.",
+        "No celebrity endorsement implications without verified written consent.",
+        "All claims must be verifiable."
+      ],
+      "vault": {
+        "reads": ["project_profile", "governance_proposal"],
+        "writes": ["post_calendar", "announcement_copy", "ama_summary"]
+      },
+      "referrals": [
+        { "event": "Compliance review needed for post", "routesTo": "W3-003" },
+        { "event": "Community sentiment shift", "routesTo": "W3-009" }
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "social_narrative_status"
+      }
+    },
+    {
+      "id": "W3-009",
+      "name": "Social Listening & Sentiment Monitor",
+      "slug": "w3-sentiment-monitor",
+      "suite": "Community",
+      "phase": 5,
+      "type": "standalone",
+      "pricing": { "monthly": 49 },
+      "status": "live",
+      "capabilitySummary": "Morning intelligence briefing: community sentiment across X, Telegram public channels, and Reddit. Tracks sentiment shifts, flags coordinated narratives, identifies emerging FUD.",
+      "tags": ["sentiment", "social-listening", "fud-detection", "narrative-tracking"],
+      "temporalType": "always_on",
+      "valueBucket": ["save_money"],
+      "tier1Compliance": [
+        "All team member identities must be verified through TitleApp before any Web3 worker publishes content.",
+        "Never use 'investment', 'securities', 'returns', 'profit', or 'yield' when describing NFTs or tokens. Use 'digital collectible', 'trading card', 'utility token', or 'membership pass' exclusively.",
+        "Securities disclaimer required on every output: This worker does not provide investment advice. Tokens and NFTs are utility items, not securities.",
+        "Never guarantee token value appreciation, floor price maintenance, or any financial outcome.",
+        "Project Attestation must be completed and on file before any Web3 worker publishes content.",
+        "Public data only — no scraping, no unauthorized data collection.",
+        "All data access must be within platform API rate limits.",
+        "Sentiment analysis must be labeled as estimate, not fact.",
+        "No doxxing of community members under any circumstances.",
+        "Privacy-first data handling required."
+      ],
+      "vault": {
+        "reads": ["project_profile"],
+        "writes": ["sentiment_briefing", "fud_alert", "narrative_trend_report", "community_health_score"]
+      },
+      "referrals": [
+        { "event": "Coordinated FUD detected", "routesTo": "W3-007" },
+        { "event": "Narrative requires response", "routesTo": "W3-008" }
+      ],
+      "alexRegistration": {
+        "priority": "high",
+        "acceptsTasks": true,
+        "briefingContribution": "sentiment_summary"
+      }
+    },
+    {
+      "id": "W3-010",
+      "name": "Community IR & Announcements Worker",
+      "slug": "w3-community-ir",
+      "suite": "Communications",
+      "phase": 5,
+      "type": "standalone",
+      "pricing": { "monthly": 49 },
+      "status": "live",
+      "capabilitySummary": "Automated holder communications. Project updates, milestone announcements, treasury reports, governance results pushed to community channels in brand voice.",
+      "tags": ["investor-relations", "announcements", "communications", "holder-updates"],
+      "temporalType": "always_on",
+      "valueBucket": ["make_money"],
+      "tier1Compliance": [
+        "All team member identities must be verified through TitleApp before any Web3 worker publishes content.",
+        "Never use 'investment', 'securities', 'returns', 'profit', or 'yield' when describing NFTs or tokens. Use 'digital collectible', 'trading card', 'utility token', or 'membership pass' exclusively.",
+        "Securities disclaimer required on every output: This worker does not provide investment advice. Tokens and NFTs are utility items, not securities.",
+        "Never guarantee token value appreciation, floor price maintenance, or any financial outcome.",
+        "Project Attestation must be completed and on file before any Web3 worker publishes content.",
+        "No price discussion in announcements.",
+        "No financial projections in any communication.",
+        "All financial content requires risk disclaimer.",
+        "All announcements must be reviewed by a verified team member before send."
+      ],
+      "vault": {
+        "reads": ["project_profile", "treasury_report", "governance_proposal", "vote_result"],
+        "writes": ["announcement_calendar", "milestone_communication", "treasury_update_post"]
+      },
+      "referrals": [
+        { "event": "Treasury data needed for update", "routesTo": "W3-005" },
+        { "event": "Governance result to announce", "routesTo": "W3-006" }
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "communications_status"
+      }
+    },
+    {
+      "id": "W3-011",
+      "name": "Alex \u2014 Web3 Chief of Staff",
+      "slug": "w3-alex-web3",
+      "suite": "Platform",
+      "phase": 7,
+      "type": "orchestrator",
+      "pricing": { "monthly": 0 },
+      "status": "live",
+      "capabilitySummary": "Alex in Web3 context. Knows all 10 suite workers, the project's tokenomics, governance structure, team roster, and community. Routes questions to the right worker.",
+      "tags": ["alex", "chief-of-staff", "orchestrator", "web3"],
+      "temporalType": "always_on",
+      "valueBucket": ["stay_compliant"],
+      "tier1Compliance": [
+        "All team member identities must be verified through TitleApp before any Web3 worker publishes content.",
+        "Never use 'investment', 'securities', 'returns', 'profit', or 'yield' when describing NFTs or tokens. Use 'digital collectible', 'trading card', 'utility token', or 'membership pass' exclusively.",
+        "Securities disclaimer required on every output: This worker does not provide investment advice. Tokens and NFTs are utility items, not securities.",
+        "Never guarantee token value appreciation, floor price maintenance, or any financial outcome.",
+        "Project Attestation must be completed and on file before any Web3 worker publishes content.",
+        "Never escalate to founder unless explicitly requested or question exceeds worker scope.",
+        "Always offer custom worker build before escalation.",
+        "Never makes financial recommendations.",
+        "Trading cards not investments — enforced in all contexts."
+      ],
+      "vault": {
+        "reads": ["project_profile", "tokenomics_model", "treasury_report", "team_roster"],
+        "writes": []
+      },
+      "referrals": [],
+      "alexRegistration": {
+        "priority": "critical",
+        "acceptsTasks": true,
+        "briefingContribution": "web3_project_overview"
+      }
+    }
+  ]
+}
