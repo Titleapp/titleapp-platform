@@ -114,6 +114,9 @@ const VALID_WORKER_TYPES = ["standalone", "pipeline", "composite", "copilot", "o
 const VALID_MODES = ["direct", "operational", "advisory", "training"];
 const VALID_MODE_TIERS = ["full", "partial", "advisory"];
 
+// Value buckets — how workers create value for subscribers
+const VALID_VALUE_BUCKETS = ["make_money", "save_money", "stay_compliant"];
+
 const VALID_PRICING_TIERS = [0, 29, 49, 79];
 
 /**
@@ -520,6 +523,18 @@ function validateWorkerRecord(record, opts = {}) {
           errors.push(`documentChecklist[${idx}]: required must be boolean`);
         if (item.unlocksMode && !VALID_MODES.includes(item.unlocksMode))
           errors.push(`documentChecklist[${idx}]: unlocksMode must be one of: ${VALID_MODES.join(", ")}`);
+      });
+    }
+  }
+
+  // 34. valueBucket — array of value bucket tags
+  if (record.valueBucket !== undefined) {
+    if (!Array.isArray(record.valueBucket)) {
+      errors.push("valueBucket: must be an array if provided");
+    } else {
+      record.valueBucket.forEach((v, idx) => {
+        if (!VALID_VALUE_BUCKETS.includes(v))
+          errors.push(`valueBucket[${idx}]: "${v}" is not valid. Must be one of: ${VALID_VALUE_BUCKETS.join(", ")}`);
       });
     }
   }
@@ -955,6 +970,7 @@ function autoFixWorkerRecord(record, description) {
   if (record.groundUseOnly === undefined) record.groundUseOnly = false;
   if (record.documentHierarchy === undefined) record.documentHierarchy = ["titleapp_baseline", "public_regulatory"];
   if (record.documentChecklist === undefined) record.documentChecklist = [];
+  if (record.valueBucket === undefined) record.valueBucket = [];
 
   // Fix notifications — add default config if missing
   if (!record.notifications || typeof record.notifications !== "object") {
@@ -977,6 +993,7 @@ module.exports = {
   VALID_WORKER_TYPES,
   VALID_MODES,
   VALID_MODE_TIERS,
+  VALID_VALUE_BUCKETS,
   VALID_PRICING_TIERS,
   VALID_STATUSES,
   VALID_VERTICALS,

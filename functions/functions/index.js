@@ -3995,6 +3995,44 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
     }
 
     // ═══════════════════════════════════════════════════════════════
+    //  PUBLIC CATALOG — UNAUTHENTICATED
+    // ═══════════════════════════════════════════════════════════════
+
+    // GET /v1/catalog:byVertical — Public catalog query for guest shell (no auth, rate limited)
+    if (route === "/catalog:byVertical" && method === "GET") {
+      try {
+        const vertical = req.query.vertical || "";
+        const limit = Math.min(parseInt(req.query.limit) || 12, 50);
+        if (!vertical) return jsonError(res, 400, "vertical parameter required");
+
+        const db = getDb();
+        let q = db.collection("digitalWorkers").where("status", "==", "live");
+        // Filter by vertical tag
+        q = q.where("vertical", "==", vertical).limit(limit);
+        const snap = await q.get();
+
+        const workers = snap.docs.map(doc => {
+          const d = doc.data();
+          return {
+            workerId: doc.id,
+            name: d.name || "",
+            shortDescription: d.headline || d.description || "",
+            price: d.pricing_tier || 0,
+            vertical: d.vertical || "",
+            valueBucket: d.valueBucket || [],
+            status: d.status || "live",
+            languages: d.languages || ["en"],
+          };
+        });
+
+        return res.json({ ok: true, workers, count: workers.length });
+      } catch (e) {
+        console.error("catalog:byVertical failed:", e);
+        return jsonError(res, 500, "Catalog query failed");
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
     //  MARKETPLACE DISCOVERY — UNAUTHENTICATED (Worker Discovery API)
     // ═══════════════════════════════════════════════════════════════
 
