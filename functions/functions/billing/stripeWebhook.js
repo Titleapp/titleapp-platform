@@ -548,6 +548,14 @@ async function handleStripeWebhook(req, res) {
           break;
         }
 
+        // Balance top-up (34.11-T2)
+        if (checkoutType === "balance_topup" && userId) {
+          const { creditBalanceFromCheckout } = require("./usageProcessor");
+          await creditBalanceFromCheckout(data);
+          await logActivity("revenue", `Balance top-up: $${data.metadata?.amount || "?"} for user ${userId}`, "success");
+          break;
+        }
+
         // Credit pack purchase
         const credits = parseInt(data.metadata?.credits || "0", 10);
         if (credits > 0 && userId) {

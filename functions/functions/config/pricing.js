@@ -43,10 +43,32 @@ module.exports = {
   creatorSubscriptionSharePct: 0.75,
   platformSubscriptionSharePct: 0.25,
 
+  // ── Document Control Usage Allowances (per tier, per month) ──
+  documentControlAllowances: {
+    free:       { signatures: 0,  blockchainRecords: 0  },
+    tier1:      { signatures: 5,  blockchainRecords: 5  },
+    tier2:      { signatures: 10, blockchainRecords: 10 },
+    tier3:      { signatures: 20, blockchainRecords: 20 },
+    enterprise: { signatures: null, blockchainRecords: null }, // custom
+  },
+
+  // ── Overage Rates ($ per event after monthly allowance) ─────
+  overageRates: {
+    signature_request: 1.00,           // $1 per signature after allowance
+    blockchain_record: 1.00,           // $1 per blockchain record after allowance
+  },
+
+  // ── Deposit / Prepay ───────────────────────────────────────
+  depositAmounts: [100, 500, 1000],    // operator top-up choices
+  autoRechargeThresholdDefault: 20,    // trigger recharge at $20
+  autoRechargeAmountDefault: 100,      // default recharge amount
+
   // ── Stripe Meter Event Names ─────────────────────────────────
   stripeMeterEvents: {
     inferenceOverage: 'inference_credits_overage',
     auditTrailRecords: 'audit_trail_records',
+    signatureOverage: 'signature_requests_overage',
+    blockchainOverage: 'blockchain_records_overage',
   },
 
   // ── Creator Payout ───────────────────────────────────────────

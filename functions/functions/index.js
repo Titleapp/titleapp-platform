@@ -14535,6 +14535,38 @@ Analyze now:`;
       }
     }
 
+    // ----------------------------
+    // BILLING: Usage Metering & Balance (34.11-T2)
+    // ----------------------------
+    if (route && route.startsWith("/billing:")) {
+      const billingAction = route.replace("/billing:", "");
+      const usageProcessor = require("./billing/usageProcessor");
+      try {
+        switch (billingAction) {
+        case "topUp":
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return await usageProcessor.handleTopUpBalance(req, res, { userId: auth.user.uid });
+        case "status":
+          if (method !== "GET") return jsonError(res, 405, "GET required");
+          return await usageProcessor.handleGetBillingStatus(req, res, { userId: auth.user.uid });
+        case "updateAutoRecharge":
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          return await usageProcessor.handleUpdateAutoRecharge(req, res, { userId: auth.user.uid });
+        case "usageHistory":
+          if (method !== "GET") return jsonError(res, 405, "GET required");
+          return await usageProcessor.handleGetUsageHistory(req, res, { userId: auth.user.uid });
+        case "kentFlags":
+          if (method !== "GET") return jsonError(res, 405, "GET required");
+          return await usageProcessor.handleGetKentFlags(req, res);
+        default:
+          return jsonError(res, 404, "Unknown billing action: " + billingAction);
+        }
+      } catch (e) {
+        console.error("billing: failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
     return jsonError(res, 404, "Not Found", { route, method });
   }
 );
@@ -15086,6 +15118,24 @@ const { checkDocumentExpiry } = require("./documentControl/documentControlServic
 exports.documentExpiryCheck = onSchedule(
   { schedule: "0 8 * * *", timeZone: "America/Los_Angeles", region: "us-central1" },
   async () => { await checkDocumentExpiry(); }
+);
+
+// ----------------------------
+// BILLING: Usage Event Processor (34.11-T2) — hourly
+// ----------------------------
+const { processUsageEvents, checkBalanceRecharge } = require("./billing/usageProcessor");
+
+exports.usageEventProcessor = onSchedule(
+  { schedule: "0 * * * *", timeZone: "America/Los_Angeles", region: "us-central1" },
+  async () => { await processUsageEvents(); }
+);
+
+// ----------------------------
+// BILLING: Balance Recharge Check (34.11-T2) — every 15 minutes
+// ----------------------------
+exports.balanceRechargeCheck = onSchedule(
+  { schedule: "*/15 * * * *", timeZone: "America/Los_Angeles", region: "us-central1" },
+  async () => { await checkBalanceRecharge(); }
 );
 
 // ----------------------------
