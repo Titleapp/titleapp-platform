@@ -6935,6 +6935,124 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
     }
 
     // ----------------------------
+    // ADMIN: SALES — SEND INTRO TEXT (34.9-T2)
+    // ----------------------------
+    if (route === "/admin:sendIntroText" && method === "POST") {
+      try {
+        const { phone, name, template, message, link } = getBody(req);
+        if (!phone || !message) return jsonError(res, 400, "phone and message required");
+        const { sendSMSDirect } = require("./communications/twilioHelper");
+        await sendSMSDirect(phone.trim(), message);
+        // Track as prospect session
+        await db.collection("prospectSessions").add({
+          phone: phone.trim(),
+          name: name || null,
+          source: template || "manual",
+          status: "sent",
+          sentBy: auth.user.uid,
+          link: link || null,
+          openedAt: nowServerTs(),
+          updatedAt: nowServerTs(),
+          messageCount: 0,
+          workerCardsShown: [],
+          workerSubscribed: null,
+          sandboxStarted: false,
+          escalated: false,
+          convertedAt: null,
+        });
+        return res.json({ ok: true });
+      } catch (e) {
+        console.error("admin:sendIntroText failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ----------------------------
+    // ADMIN: SALES — PROSPECT SESSIONS (34.9-T2)
+    // ----------------------------
+    if (route === "/admin:prospectSessions" && method === "GET") {
+      try {
+        const snap = await db.collection("prospectSessions")
+          .orderBy("openedAt", "desc")
+          .limit(50)
+          .get();
+        const sessions = snap.docs.map(d => {
+          const data = d.data();
+          return {
+            id: d.id,
+            phone: data.phone || null,
+            name: data.name || data.prospectName || null,
+            source: data.source || data.campaignSlug || null,
+            status: data.uid ? (data.messageCount > 0 ? "engaged" : "authed") : (data.status || "started"),
+            firstMessage: data.firstMessage || null,
+            timestamp: data.openedAt ? data.openedAt.toDate().toISOString() : null,
+            messageCount: data.messageCount || 0,
+            workerCardsShown: data.workerCardsShown || [],
+            escalated: data.escalated || false,
+            vertical: data.vertical || null,
+          };
+        });
+        return res.json({ ok: true, sessions });
+      } catch (e) {
+        console.error("admin:prospectSessions failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ----------------------------
+    // ADMIN: SALES — ESCALATIONS (34.9-T2)
+    // ----------------------------
+    if (route === "/admin:escalations" && method === "GET") {
+      try {
+        const snap = await db.collection("salesEscalations")
+          .orderBy("flaggedAt", "desc")
+          .limit(50)
+          .get();
+        const escalations = snap.docs.map(d => {
+          const data = d.data();
+          return {
+            id: d.id,
+            sessionId: data.sessionId || null,
+            uid: data.uid || null,
+            campaignSlug: data.campaignSlug || null,
+            utmSource: data.utmSource || null,
+            prospectName: data.prospectName || null,
+            prospectMessage: data.prospectMessage || null,
+            flaggedAt: data.flaggedAt ? data.flaggedAt.toDate().toISOString() : null,
+            status: data.status || "pending",
+          };
+        });
+        return res.json({ ok: true, escalations });
+      } catch (e) {
+        console.error("admin:escalations failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ----------------------------
+    // ADMIN: SALES — CONVERSION FUNNEL (34.9-T2)
+    // ----------------------------
+    if (route === "/admin:salesFunnel" && method === "GET") {
+      try {
+        const snap = await db.collection("prospectSessions").get();
+        let linksSent = 0, pageVisits = 0, otpStarted = 0, authenticated = 0, firstMessage = 0, subscribed = 0;
+        for (const d of snap.docs) {
+          const data = d.data();
+          linksSent++;
+          if (data.messageCount > 0 || data.uid) pageVisits++;
+          if (data.uid || data.status === "authed" || data.status === "engaged") otpStarted++;
+          if (data.uid) authenticated++;
+          if (data.messageCount > 0) firstMessage++;
+          if (data.workerSubscribed) subscribed++;
+        }
+        return res.json({ ok: true, linksSent, pageVisits, otpStarted, authenticated, firstMessage, subscribed });
+      } catch (e) {
+        console.error("admin:salesFunnel failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ----------------------------
     // 34.4 — PRICING COMPLIANCE (GET)
     // ----------------------------
     if (route === "/admin:pricing:compliance" && method === "GET") {
@@ -8246,18 +8364,50 @@ Active: ${rc.active ? "Yes" : "No"}`;
                       // Non-fatal — proceed without onboarding context
                     }
 
+                    // Detect Sales Mode from campaign/UTM context
+                    let chatSurface = "business";
+                    const campaignCtx = (context || {}).campaignContext;
+                    const ctxUtmSource = (context || {}).utmSource || "";
+                    const ctxUtmMedium = (context || {}).utmMedium || "";
+                    const ctxUtmCampaign = (context || {}).utmCampaign || "";
+                    const isSalesMode =
+                      campaignCtx ||
+                      ctxUtmMedium === "text" || ctxUtmMedium === "referral" || ctxUtmMedium === "meet-alex" || ctxUtmMedium === "chat" ||
+                      ctxUtmSource === "campaign" || ctxUtmSource === "sms";
+
+                    if (isSalesMode) {
+                      chatSurface = "sales";
+                      console.log("Sales Mode detected for auth chat:", { campaignSlug: campaignCtx?.slug, utmSource: ctxUtmSource, utmMedium: ctxUtmMedium });
+                    }
+
+                    // Map campaign persona to sales vertical
+                    let salesVertical = ctx.vertical || workspace.vertical || "real-estate-development";
+                    if (isSalesMode && campaignCtx) {
+                      const personaMap = { dealer: "auto_dealer", pilot: "aviation", developer: "real_estate_development", "property-manager": "re_operations", creator: "creators" };
+                      if (campaignCtx.persona && personaMap[campaignCtx.persona]) {
+                        salesVertical = personaMap[campaignCtx.persona];
+                      }
+                    }
+
                     const alexService = require("./services/alex");
                     alexSystemPrompt = await alexService.buildAlexPrompt({
                       userId: auth.user.uid,
                       workspaceId,
-                      surface: "business",
+                      surface: chatSurface,
                       activeWorkers: workspace.activeWorkers || [],
-                      vertical: ctx.vertical || workspace.vertical || "real-estate-development",
+                      vertical: isSalesMode ? salesVertical : (ctx.vertical || workspace.vertical || "real-estate-development"),
                       currentSection: (context || {}).currentSection,
                       workspace,
                       onboardingStatus,
+                      ...(isSalesMode ? {
+                        surfaceContext: {
+                          vertical: salesVertical,
+                          campaignSlug: campaignCtx?.slug || ctxUtmCampaign || "",
+                          prospectName: "",
+                        },
+                      } : {}),
                     });
-                    console.log("Using Alex orchestration prompt for workspace:", workspaceId);
+                    console.log("Using Alex orchestration prompt for workspace:", workspaceId, "surface:", chatSurface);
 
                     // Inject recommendation context if available
                     try {
