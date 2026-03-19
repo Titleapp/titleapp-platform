@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import WorkerIcon, { SUITE_COLORS } from "../utils/workerIcons";
+import DocumentControlTab from "./vault/DocumentControlTab";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
 
@@ -125,6 +126,12 @@ function DocumentChecklist({ checklist, workerSlug }) {
   );
 }
 
+const TAB_STYLES = {
+  bar: { display: "flex", gap: 0, background: "#0f172a", borderBottom: "1px solid #1e293b", padding: "0 32px", position: "sticky", top: 0, zIndex: 9 },
+  tab: { padding: "12px 20px", fontSize: 14, fontWeight: 500, color: "#94a3b8", background: "none", border: "none", borderBottom: "2px solid transparent", cursor: "pointer", transition: "color 0.2s, border-color 0.2s" },
+  tabActive: { color: "#e2e8f0", borderBottomColor: "#7c3aed" },
+};
+
 export default function WorkerDetailPage({ worker, content, onBack, onSubscribe }) {
   const [subscribing, setSubscribing] = useState(false);
   const [subscribed, setSubscribed] = useState(false);
@@ -132,6 +139,7 @@ export default function WorkerDetailPage({ worker, content, onBack, onSubscribe 
   const [expiredTrial, setExpiredTrial] = useState(null); // { expiredAt, historyPreview[] }
   const [checkingTrial, setCheckingTrial] = useState(false);
   const [addedToCart, setAddedToCart] = useState(false);
+  const [activeTab, setActiveTab] = useState("overview");
   const bogoUsed = localStorage.getItem("ta_bogo_used") === "true";
   const color = SUITE_COLORS[worker.suite] || "#7c3aed";
 
@@ -224,6 +232,42 @@ export default function WorkerDetailPage({ worker, content, onBack, onSubscribe 
         <p style={S.heroSub}>{content.subheadline || worker.description}</p>
       </div>
 
+      {/* Tab bar — visible for subscribed users */}
+      {subscribed && (
+        <div style={TAB_STYLES.bar}>
+          {["overview", "documents", "history", "settings"].map(tab => (
+            <button
+              key={tab}
+              style={{ ...TAB_STYLES.tab, ...(activeTab === tab ? TAB_STYLES.tabActive : {}) }}
+              onClick={() => setActiveTab(tab)}
+            >
+              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Documents tab */}
+      {subscribed && activeTab === "documents" && (
+        <div style={{ maxWidth: 800, margin: "0 auto", padding: "24px 24px 48px" }}>
+          <DocumentControlTab workerId={worker.id} />
+        </div>
+      )}
+
+      {/* History tab placeholder */}
+      {subscribed && activeTab === "history" && (
+        <div style={{ maxWidth: 800, margin: "0 auto", padding: "48px 24px", textAlign: "center", color: "#94a3b8" }}>
+          Activity history coming soon
+        </div>
+      )}
+
+      {/* Settings tab placeholder */}
+      {subscribed && activeTab === "settings" && (
+        <div style={{ maxWidth: 800, margin: "0 auto", padding: "48px 24px", textAlign: "center", color: "#94a3b8" }}>
+          Worker settings coming soon
+        </div>
+      )}
+
       {/* Expired trial re-entry screen */}
       {expiredTrial && !subscribed && (
         <div style={{ maxWidth: 600, margin: "0 auto", padding: "48px 24px" }}>
@@ -296,7 +340,7 @@ export default function WorkerDetailPage({ worker, content, onBack, onSubscribe 
         </div>
       )}
 
-      <div style={S.main}>
+      <div style={S.main} hidden={subscribed && activeTab !== "overview"}>
         {content.steps && content.steps.length > 0 && (
           <>
             <h2 style={S.sectionTitle}>How It Works</h2>
