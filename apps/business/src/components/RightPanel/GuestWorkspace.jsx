@@ -92,6 +92,9 @@ export default function GuestWorkspace({ vertical }) {
     loadWorkers();
   }, [mappedVertical]);
 
+  const [sandboxOpen, setSandboxOpen] = useState(false);
+  const [sandboxWorkerName, setSandboxWorkerName] = useState("");
+
   // Listen for Alex panel sync events
   useEffect(() => {
     function onHighlight(e) {
@@ -101,13 +104,46 @@ export default function GuestWorkspace({ vertical }) {
         if (w) setActiveWorker(w);
       }
     }
+    function onSandbox(e) {
+      setSandboxWorkerName(e.detail?.workerName || "");
+      setSandboxOpen(true);
+    }
+    window.addEventListener("ta:panel-open-sandbox", onSandbox);
     window.addEventListener("ta:panel-highlight-worker", onHighlight);
-    return () => window.removeEventListener("ta:panel-highlight-worker", onHighlight);
+    return () => {
+      window.removeEventListener("ta:panel-highlight-worker", onHighlight);
+      window.removeEventListener("ta:panel-open-sandbox", onSandbox);
+    };
   }, [workers]);
 
   const filteredWorkers = workers.filter(w =>
     !w.valueBucket || w.valueBucket.length === 0 || w.valueBucket.includes(activeBucket)
   );
+
+  if (sandboxOpen) {
+    return (
+      <div style={S.wrap}>
+        <StatsHeader />
+        <div style={S.detailPanel}>
+          <button style={S.backBtn} onClick={() => setSandboxOpen(false)}>&larr; Back to workers</button>
+          <div style={S.detailTitle}>Vibe Coding Sandbox</div>
+          {sandboxWorkerName && <div style={{ fontSize: 14, color: "#a78bfa", fontWeight: 600, marginBottom: 12 }}>Building: {sandboxWorkerName}</div>}
+          <div style={S.detailDesc}>
+            Alex is helping you scope a custom worker suite. Answer her questions in the chat and she will build a full spec — rules, workflows, compliance, pricing — in about 15 minutes.
+          </div>
+          <div style={{ background: "#1e293b", borderRadius: 10, padding: 16, marginTop: 16, border: "1px solid #334155" }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "#94a3b8", marginBottom: 8 }}>What happens next</div>
+            <div style={{ fontSize: 13, color: "#64748b", lineHeight: 1.6 }}>
+              1. Alex asks about your workflows and rules{"\n"}
+              2. She generates a full worker spec{"\n"}
+              3. You review and approve{"\n"}
+              4. Workers go live in your Vault
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (activeWorker) {
     return (

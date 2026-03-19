@@ -276,7 +276,7 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
           currentSection={currentSection}
           onNavigate={guestMode ? () => {} : onNavigate}
           onClose={() => setSidebarOpen(false)}
-          tenantName={guestMode ? "TitleApp" : tenantInfo?.name}
+          tenantName={guestMode ? ({ solar: "Solar Energy", solar_vpp: "Solar Energy", "auto-dealer": "Auto Dealer", auto_dealer: "Auto Dealer", "real-estate": "Real Estate", real_estate_development: "Real Estate", aviation: "Aviation", creator: "Creator Studio", creators: "Creator Studio" }[guestVertical] || "TitleApp") : tenantInfo?.name}
           onBackToHub={onBackToHub}
           workspaces={workspaces}
           currentWorkspaceId={currentWorkspaceId}

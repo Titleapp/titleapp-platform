@@ -4601,6 +4601,9 @@ export default function App() {
   const inviteCode = inviteMatch ? inviteMatch[1] : null;
   const isInvitePage = !!inviteCode;
 
+  // ── /auth/magic route intercept ─────────────────────
+  const isAuthMagic = /^\/auth\/magic\/?$/.test(window.location.pathname);
+
   // ── /meet-alex route intercept ────────────────────────
   const isMeetAlex = /^\/meet-alex\/?$/.test(window.location.pathname);
 
@@ -5172,6 +5175,12 @@ export default function App() {
 
   // ── Invite landing pages: no auth required ────────────────────
   if (isInvitePage) return <InviteLanding inviteCode={inviteCode} />;
+
+  // ── Auth magic link landing page ──────────────────────────
+  if (isAuthMagic) {
+    const AuthMagic = React.lazy(() => import("./pages/AuthMagic"));
+    return <React.Suspense fallback={<div style={{ minHeight: "100vh", background: "#0f172a" }} />}><AuthMagic /></React.Suspense>;
+  }
 
   // ── Meet Alex: guest shell — three-panel with guest mode ────
   if (isMeetAlex) {
