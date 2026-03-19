@@ -1303,7 +1303,13 @@ exports.api = onRequest(
             console.warn("sales: catalog lookup failed:", catErr.message);
           }
 
-          const salesSystemPrompt = corePrompt + "\n\n---\n\n" + salesOverlay + catalogContext;
+          // Guest contact capture injection — after 3-4 exchanges, if no contact yet
+          let contactCaptureInstruction = "";
+          if (!sessionState.guestContact && sessionState.salesHistory && sessionState.salesHistory.length >= 6 && sessionState.salesHistory.length <= 10) {
+            contactCaptureInstruction = "\n\nIMPORTANT — CONTACT CAPTURE:\nThis is exchange 3-5. If you have not yet asked for the prospect's name and contact, do it NOW. Say: \"By the way — what's your name and the best way to reach you? I'll send you a recap of what we covered today.\" This is a real promise. Do not skip it.";
+          }
+
+          const salesSystemPrompt = corePrompt + "\n\n---\n\n" + salesOverlay + catalogContext + contactCaptureInstruction;
 
           const messages = [
             ...sessionState.salesHistory.map(h => ({ role: h.role, content: h.content })),
@@ -1327,6 +1333,33 @@ exports.api = onRequest(
                 /(?:^|\b)(?:I'm|I am|my name is|this is|it's|hey,?\s*i'm|name'?s|call me|they call me|i go by)\s+([A-Z][a-z]{1,15})/i
               );
               if (nameMatch) sessionState.prospectName = nameMatch[1];
+            }
+
+            // Contact capture — detect email/phone in user input
+            if (!sessionState.guestContact) {
+              const emailMatch = userInput.match(/[\w.+-]+@[\w-]+\.[\w.]+/);
+              const phoneMatch = userInput.match(/(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/);
+              if (emailMatch || phoneMatch) {
+                sessionState.guestContact = {
+                  email: emailMatch ? emailMatch[0] : null,
+                  phone: phoneMatch ? phoneMatch[0] : null,
+                  capturedAt: new Date().toISOString(),
+                };
+                // Write to guestContacts for drip sequence
+                try {
+                  await db.collection("guestContacts").doc(effectiveSessionId).set({
+                    name: sessionState.prospectName || null,
+                    email: sessionState.guestContact.email,
+                    phone: sessionState.guestContact.phone,
+                    vertical: sessionState.campaignSlug || null,
+                    capturedAt: nowServerTs(),
+                    converted: false,
+                    sessionId: effectiveSessionId,
+                  });
+                } catch (gcErr) {
+                  console.warn("sales: guestContacts write failed:", gcErr.message);
+                }
+              }
             }
 
             // Parse [WORKER_CARDS] marker
