@@ -1082,6 +1082,20 @@ exports.api = onRequest(
       }
     }
 
+    // POST /v1/alex:summarizeGuestSession — generate + deliver session summary
+    if (route === "/alex:summarizeGuestSession" && method === "POST") {
+      try {
+        const { guestId } = body || {};
+        if (!guestId) return jsonError(res, 400, "guestId required");
+        const { summarizeGuestSession } = require("./services/alex/guestSummary");
+        const result = await summarizeGuestSession(guestId);
+        return res.json(result);
+      } catch (e) {
+        console.error("alex:summarizeGuestSession failed:", e);
+        return jsonError(res, 500, "Summary generation failed");
+      }
+    }
+
     // POST /v1/alex:promoteGuest — link guest chat session to authenticated user (35.3-T2)
     if ((route === "/alex:promoteGuest" || route === "/alex/promoteGuest") && method === "POST") {
       try {
