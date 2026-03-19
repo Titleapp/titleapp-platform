@@ -4395,6 +4395,29 @@ function AdminShell({ onBackToHub, initialSection }) {
 
   function renderSection() {
     switch (currentSection) {
+      case "home":
+      case "team-home": {
+        const TeamHome = React.lazy(() => import("./pages/TeamHome"));
+        return <React.Suspense fallback={<div />}><TeamHome
+          onSelectTeam={(team) => {
+            if (team.teamId === "personal-vault") {
+              localStorage.setItem("VERTICAL", "consumer");
+              localStorage.setItem("WORKSPACE_ID", "personal-vault");
+              localStorage.setItem("WORKSPACE_NAME", "Personal Vault");
+            } else {
+              localStorage.setItem("VERTICAL", team.vertical);
+              localStorage.setItem("WORKSPACE_ID", team.teamId);
+              localStorage.setItem("WORKSPACE_NAME", team.name);
+            }
+            window.location.reload();
+          }}
+          onAddTeam={() => setCurrentSection("team-setup")}
+        /></React.Suspense>;
+      }
+      case "team-setup": {
+        const TeamSetup = React.lazy(() => import("./pages/TeamSetup"));
+        return <React.Suspense fallback={<div />}><TeamSetup onComplete={() => window.location.reload()} /></React.Suspense>;
+      }
       case "dashboard":
         return <Dashboard />;
       case "analyst":

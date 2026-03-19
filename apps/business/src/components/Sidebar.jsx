@@ -1396,6 +1396,35 @@ export default function Sidebar({
       {/* Divider */}
       {!isPersonal && !guestMode && <div style={{ height: "1px", background: "rgba(255,255,255,0.08)", margin: "4px 16px" }} />}
 
+      {/* ═══ YOUR TEAMS ═══ */}
+      {!guestMode && workspaces.length > 1 && (
+        <div className="sidebarSection" style={{ paddingBottom: 0 }}>
+          <div className="sidebarLabel">Your Teams</div>
+          <nav className="nav">
+            {workspaces.slice(0, 10).map(ws => (
+              <div
+                key={ws.id}
+                className={`navItem${ws.id === currentWorkspaceId ? " active" : ""}`}
+                onClick={() => onSwitchWorkspace(ws)}
+                style={{ cursor: "pointer" }}
+              >
+                <span style={{ fontSize: 14 }}>{
+                  { aviation: "\u2708", auto: "\uD83D\uDE97", auto_dealer: "\uD83D\uDE97", "real-estate": "\uD83C\uDFE0", real_estate_development: "\uD83C\uDFE0", investor: "\uD83D\uDCC8", investment: "\uD83D\uDCC8", solar: "\u2600\uFE0F", solar_vpp: "\u2600\uFE0F", web3: "\uD83D\uDD37", consumer: "\uD83C\uDFE0" }[ws.vertical] || "\uD83D\uDCBC"
+                }</span>
+                <span>{ws.name || ws.vertical}</span>
+              </div>
+            ))}
+            <div className="navItem" onClick={() => onNavigate("team-setup")} style={{ cursor: "pointer", color: "rgba(148,163,184,0.8)" }}>
+              <span>+</span>
+              <span>Add a Team</span>
+            </div>
+          </nav>
+        </div>
+      )}
+
+      {/* Divider */}
+      {!guestMode && workspaces.length > 1 && <div style={{ height: "1px", background: "rgba(255,255,255,0.08)", margin: "4px 16px" }} />}
+
       {/* ═══ SECTION 1: DIGITAL WORKERS ═══ */}
       <div className="sidebarSection">
         <div className="sidebarLabel">Digital Workers</div>
