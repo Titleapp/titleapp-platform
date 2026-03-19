@@ -48,9 +48,9 @@ const CAMPAIGNS = {
     secondaryCta: "Browse aviation workers",
     secondaryLink: "/workers/aviation",
     valueProps: [
-      { icon: "shield", title: "Rules-first AI", desc: "Every response is grounded in actual FARs, ACs, and type-specific procedures. No hallucinations." },
-      { icon: "folder", title: "Your full aviation record in one place", desc: "Logbook, training, currency, endorsements, 8710 prep." },
-      { icon: "plane", title: "Type-specific CoPilots", desc: "PC12, King Air, Bell 407, EC135, and more. Your aircraft, your procedures." },
+      { icon: "shield", title: "Rules-first AI — Direct Mode, sourced from your actual documents", desc: "Every response is grounded in actual FARs, ACs, and type-specific procedures. Your CoPilot cites the source. No hallucinations." },
+      { icon: "folder", title: "Your documents, version controlled, connected to your CoPilot", desc: "SOPs, manuals, training records — Document Control tracks revisions and acknowledgments. Your CoPilot always cites the current approved version." },
+      { icon: "plane", title: "Type-specific CoPilots", desc: "PC12, King Air, C90, Caravan, and more. Your aircraft, your procedures, your operator baselines." },
     ],
     socialProof: "Pilots use TitleApp to stay current, stay legal, and prep for checkrides with confidence.",
     featuredSlugs: ["digital-aircraft-log", "pilot-training-records-worker", "pre-flight-risk-analysis", "copilot-pc12-ng"],
@@ -72,7 +72,7 @@ const CAMPAIGNS = {
     secondaryLink: "/workers/real-estate",
     valueProps: [
       { icon: "check", title: "Compliance enforced, not suggested", desc: "Every permit deadline, draw schedule, and inspection requirement tracked and flagged." },
-      { icon: "team", title: "A-team coverage at a fraction of the cost", desc: "Construction, permitting, title, escrow, all connected." },
+      { icon: "folder", title: "Every plan revision, every permit acknowledgment, tracked", desc: "Document Control handles version control, distribution, and acknowledgment tracking across your entire project team." },
       { icon: "scale", title: "Scale without headcount", desc: "Manage 10 projects with the same overhead as 1." },
     ],
     socialProof: "Developers using TitleApp report fewer missed deadlines and faster draw approvals.",

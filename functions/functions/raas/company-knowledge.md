@@ -25,7 +25,7 @@ The pivot from "title verification" to "Digital Worker platform" happened when t
 
 ## Platform Architecture
 
-TitleApp has three layers:
+TitleApp has four pillars and three layers:
 
 1. Door 1 (Dashboard): A React admin interface for visibility. Read-only view into what the AI has already done. This is not the primary interface -- it is the audit window.
 
@@ -34,6 +34,8 @@ TitleApp has three layers:
 3. Rules Engine (Backend): The RAAS enforcement layer. Every AI output passes through deterministic validation before reaching the user. Hard stops (must-not-violate rules) fail closed. Soft flags (warnings) get logged. The engine supports tenant-configurable risk profiles, so each business can tune their compliance thresholds.
 
 How it works: Human-defined rules constrain every AI interaction. The rules are deterministic -- not suggestions, not guardrails, but hard enforcement. Cross-model enforcement means the same rules work regardless of whether Claude, GPT, or Gemini is the execution engine. Every action produces an immutable audit trail.
+
+4. Document Control: The fourth platform pillar. Version control, distribution, and acknowledgment tracking for operator documents. Replaces standalone tools like Content Locker, Comply365, and LMS acknowledgment systems. Features include version control, distribution lists, acknowledgment tracking (checkbox and e-signature via Dropbox Sign), and an optional blockchain audit trail for tamper-proof proof-of-acknowledgment. Connected to the RAAS engine -- CoPilots always cite the current approved revision. Aviation is the V1 reference implementation. Included with the platform, not a separate subscription.
 
 Supporting infrastructure:
 - Append-only Firestore (event-sourced records -- nothing is overwritten, ever)
@@ -66,7 +68,7 @@ Active verticals: Real Estate, Aviation, Government, Finance & Accounting, Healt
 
 2. Real Estate Development: Full CRE lifecycle from site selection and due diligence through entitlement, design, financing, construction, lease-up, stabilization, and disposition. Workers include CRE Deal Analyst, Site Selector, Zoning Analyst, Capital Stack Optimizer, Construction Lending, Construction Manager, Environmental Compliance, and Alex Chief of Staff.
 
-3. Aviation Part 135/91 and Pilot Suite: Full flight operations from certificate management and GOM authoring through fleet airworthiness, crew management, flight ops, safety and SMS, revenue and billing, compliance, and intelligence. Plus a Pilot Suite for personal pilots. Workers include Part 135 Certificate Assistant, GOM Authoring, AD/SB Tracker, Safety Reporting, FOQA, Charter Quoting, and Alex Aviation Chief of Staff.
+3. Aviation Part 135/91 and Pilot Suite: Full flight operations from certificate management and GOM authoring through fleet airworthiness, crew management, flight ops, safety and SMS, revenue and billing, compliance, and intelligence. Plus a Pilot Suite for personal pilots. 11 CoPilots live (AV-P01 through AV-P11) with a 4-mode framework (Direct, Operational, Advisory, Training). The PC12-NG CoPilot (AV-P07) is the reference implementation with 4,209 pages of FSI training material and operator-specific procedures indexed. Workers include Part 135 Certificate Assistant, GOM Authoring, AD/SB Tracker, Safety Reporting, FOQA, Charter Quoting, and Alex Aviation Chief of Staff.
 
 4. Investment Analysis: Deal screening, risk assessment, portfolio monitoring, LP communications, and compliance-first analysis with evidence requirements.
 
@@ -112,7 +114,7 @@ TitleApp sits at the intersection of several categories. The key framing: TitleA
 - AI agent frameworks (CrewAI, AutoGen): Developer tools for building agents. No governance, no compliance, no audit trail. TitleApp provides the compliance layer that makes agents safe to deploy.
 - Horizontal AI assistants (Microsoft Copilot, Glean): Broad capabilities but no deterministic rule enforcement or immutable audit trail.
 
-TitleApp's differentiation: cross-model enforcement (works with any AI model) + immutable audit trail + DIY builder for domain experts + accessible pricing + marketplace network effects.
+TitleApp's differentiation: cross-model enforcement (works with any AI model) + immutable audit trail + DIY builder for domain experts + accessible pricing + marketplace network effects + Document Control (version control, distribution, acknowledgment tracking connected directly to the AI governance layer -- replaces Content Locker, Comply365, and LMS acknowledgment tools as a platform-included capability, not a bolt-on).
 
 ---
 
@@ -145,6 +147,8 @@ TitleApp generates revenue through four streams:
 3. Digital Worker Marketplace: Creators build and sell Digital Workers (rule packages + workflows) on the TitleApp marketplace. TitleApp takes a 25% platform fee (75/25 split to creators). Creator License is $49/year (free until July 1, 2026 with code DEV100). $2 Identity Check always required. This is the network effect -- more creators mean more verticals mean more subscribers.
 
 4. AI Usage Fees: Heavy AI usage (large document analysis, complex multi-step workflows, high-volume automation) incurs usage-based fees on top of the base subscription.
+
+5. Usage Metering: Signatures and blockchain compliance records follow the same model as inference credits -- included monthly allowance with $1 per overage. Usage events logged in Firestore.
 
 ---
 
