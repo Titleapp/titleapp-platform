@@ -228,7 +228,7 @@ export default function RulesResources() {
           <div className="empty" style={{ padding: "40px 20px", textAlign: "center" }}>
             <div style={{ fontSize: "16px", fontWeight: 600, marginBottom: "8px" }}>No workflows configured yet</div>
             <div style={{ fontSize: "14px", color: "var(--textMuted)", marginBottom: "16px", maxWidth: "400px", margin: "0 auto 16px" }}>
-              Workflows define the rules your AI assistant follows. They are configured per vertical and jurisdiction. Create your first workflow or ask the AI assistant to set one up for you.
+              Workflows define the rules your Digital Workers follow. They are configured per vertical and jurisdiction. Create your first workflow or ask Alex to set one up for you.
             </div>
             <div style={{ display: "flex", gap: "8px", justifyContent: "center" }}>
               <button
@@ -545,7 +545,7 @@ export default function RulesResources() {
             )}
           </div>
           <div style={{ padding: "12px", background: "#f8f4ff", borderRadius: "8px", fontSize: "13px", color: "#6b7280" }}>
-            SOP documents feed into your enforcement engine. The AI assistant will reference these when handling your business operations.
+            SOP documents feed into your enforcement engine. Alex will reference these when handling your business operations.
           </div>
         </div>
       </FormModal>

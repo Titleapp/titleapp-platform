@@ -10,14 +10,14 @@ const WORKER_SUITES = ["All", ...Array.from(new Set(WORKER_ROUTES.filter(w => !w
 
 const CONTEXTUAL_MESSAGES = {
   "choose-path": "Welcome. Pick the path that fits -- I'll tailor everything from there.",
-  "business-basics": "Just the essentials. I'll use this to configure your AI assistant and compliance rules.",
+  "business-basics": "Just the essentials. I'll use this to configure your Chief of Staff and compliance rules.",
   integrations: "Tell me what you already use. I'll build the connectors so your data flows in automatically.",
   "data-import": "You can upload your own files or explore with sample data. Either way, you'll see value in about 60 seconds.",
   "first-value": "I already scanned your data and found a few things worth your attention.",
   terms: "This is our standard terms and liability agreement. Take a look and let me know if you have questions.",
   idVerify: "Quick identity check -- keeps your records secure and verified. $2, once a year.",
   details: "This is where we set your foundation. The jurisdiction matters because compliance rules vary by state.",
-  raas: "Tell me how you want your AI assistant to work. I'll follow these rules in every interaction.",
+  raas: "Tell me how you want your Chief of Staff to work. I'll follow these rules in every interaction.",
   criteria: "This is your target box. Every deal gets screened against these numbers automatically.",
   sampleDeals: "Drop your deal memos here. I'll pull out the key data so you don't have to enter it manually.",
   dealerData: "Upload your dealership data. The more I know about your inventory and customers, the more I can help.",
@@ -48,7 +48,7 @@ const PERSONAL_CONTEXTUAL_MESSAGES = {
   "my-documents": "Your important documents. I can help you store and organize IDs, contracts, tax records, insurance policies, and anything else that matters.",
   "my-certifications": "Your certifications and credentials. I can help you add licenses, track expiration dates, and set up renewal reminders.",
   "my-logbook": "Your activity logbook. Every Digital Title Certificate and action is recorded here permanently.",
-  settings: "Your Vault settings. You can update your profile, configure your AI assistant, and manage notification preferences.",
+  settings: "Your Vault settings. You can update your profile, configure your Chief of Staff, and manage notification preferences.",
 };
 
 // ── Celebration Messages ────────────────────────────────────────
@@ -817,7 +817,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
     if (!currentUser) {
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: 'Please sign in to use the AI assistant.',
+        content: 'Please sign in to continue.',
         isError: true,
       }]);
       return;
@@ -1399,10 +1399,10 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
             {(() => {
               const v = localStorage.getItem('VERTICAL') || 'auto';
               if (v === 'consumer') {
-                let cosName = 'your AI assistant';
+                let cosName = "Alex, your Chief of Staff";
                 try {
                   const cfg = JSON.parse(localStorage.getItem('COS_CONFIG') || '{}');
-                  if (cfg.name) cosName = `${cfg.name}, your AI assistant`;
+                  if (cfg.name) cosName = `${cfg.name}, your Chief of Staff`;
                 } catch {}
                 return (
                   <>
@@ -1415,10 +1415,10 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
                   </>
                 );
               }
-              let cosLabel = 'your AI assistant';
+              let cosLabel = "Alex, your Chief of Staff";
               try {
                 const cfg2 = JSON.parse(localStorage.getItem('COS_CONFIG') || '{}');
-                if (cfg2.name) cosLabel = `${cfg2.name}, your AI assistant`;
+                if (cfg2.name) cosLabel = `${cfg2.name}, your Chief of Staff`;
               } catch {}
               return (
                 <>

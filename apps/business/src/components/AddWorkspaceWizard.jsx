@@ -651,7 +651,7 @@ export default function AddWorkspaceWizard({ existingWorkspaces, onCreated, onCa
               {verticalInfo && (
                 <div style={{ marginBottom: 16 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: '#334155', marginBottom: 8 }}>
-                    Your AI assistant will manage:
+                    Alex will manage:
                   </div>
                   {verticalInfo.cosManages.map((item, i) => (
                     <div key={i} style={{ fontSize: 13, color: '#475569', padding: '3px 0', paddingLeft: 16, position: 'relative' }}>

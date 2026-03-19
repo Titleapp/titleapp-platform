@@ -75,7 +75,7 @@ export default function FloatingChat({ demoMode = false }) {
     if (!currentUser) {
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: 'Please sign in to use the AI assistant.',
+        content: 'Please sign in to continue.',
         isError: true
       }]);
       return;
@@ -274,7 +274,7 @@ export default function FloatingChat({ demoMode = false }) {
         <div className="chat-panel-conversation" ref={conversationRef}>
           {messages.length === 0 && !isTyping && (
             <div className="chat-welcome">
-              <p>Hi. I'm your TitleApp AI assistant.</p>
+              <p>Hi. I'm Alex, your Chief of Staff at TitleApp.</p>
               {currentUser ? (
                 <p>Ask me anything about your records, documents, customers, inventory, or business operations.</p>
               ) : (

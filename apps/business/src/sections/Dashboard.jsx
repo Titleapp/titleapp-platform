@@ -258,7 +258,7 @@ function ConsumerDashboard() {
         {/* My GPTs */}
         <div className="card" style={{ padding: "20px" }}>
           <div style={{ fontWeight: 700, fontSize: "15px", color: "#1e293b", marginBottom: "4px" }}>My GPTs</div>
-          <div style={{ fontSize: "12px", color: "#64748b", marginBottom: "14px" }}>Your specialized AI assistants</div>
+          <div style={{ fontSize: "12px", color: "#64748b", marginBottom: "14px" }}>Your Digital Workers</div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "14px" }}>
             <span style={{ fontSize: "12px", fontWeight: 600, padding: "4px 10px", borderRadius: "20px", background: "#f3e8ff", color: "#7c3aed" }}>Alex</span>
           </div>
@@ -462,7 +462,7 @@ export default function Dashboard() {
       return "Your workspace is set up for real estate. Let's get your first listing or property entered so your AI can start working.";
     if (analyst || /\b(deal|invest|portfolio|fund|analysis)\b/i.test(summary))
       return "Your analysis workspace is ready. Upload a deal memo or set your screening criteria so your AI can start sourcing opportunities.";
-    return "Your AI assistant is ready. Tell it what you need help with and it'll take it from there.";
+    return "Alex is ready. Tell it what you need help with and it'll take it from there.";
   }
 
   function getContextualChatPrompt(summary, auto, re, analyst) {

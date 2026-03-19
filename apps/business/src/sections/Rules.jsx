@@ -14,7 +14,7 @@ const RULES_CONFIGS = {
       globalLevel: 1,
       sales: { respondToLeads: 1, sendOutboundOffers: 1, negotiatePricing: 1, maxDiscount: 500, scheduleTestDrives: 1, generateBuyersOrders: 1, maxAutonomousDealValue: 35000 },
       service: { bookAppointments: 1, authorizeWarrantyWork: 1, maxWarrantyValue: 500, sendServiceReminders: 1, recommendUpsells: 1, scheduleRecallNotifications: 1 },
-      communication: { sendEmails: true, emailLevel: 1, sendTexts: true, textLevel: 1, makePhoneCalls: false, dailyMessageLimit: 50, disclaimerText: "This message was sent by an AI assistant on behalf of {dealership name}", quietHoursStart: "21:00", quietHoursEnd: "08:00" },
+      communication: { sendEmails: true, emailLevel: 1, sendTexts: true, textLevel: 1, makePhoneCalls: false, dailyMessageLimit: 50, disclaimerText: "This message was sent by a Digital Worker on behalf of {dealership name}", quietHoursStart: "21:00", quietHoursEnd: "08:00" },
       marketing: { createCampaigns: 1, maxCampaignBudget: 250, submitCoopClaims: 1, manageBudgetReallocation: 1 },
       fi: { recommendProducts: 1, modelFinancing: 1, generateDisclosures: 1, maxBundleValue: 5000 },
     },
@@ -77,7 +77,7 @@ const RULES_CONFIGS = {
       clientLp: { draftUpdates: 1, sendQuarterlyLetters: 1, respondToInquiries: 1, scheduleMeetings: 1, maxCommunicationFrequency: 10 },
       trading: { generateRecommendations: 1, setPriceAlerts: 1, draftICMemos: 1, maxPositionSize: 1000000 },
       compliance: { preScreenCommunications: 1, flagRegulatoryIssues: 1, maintainComplianceLog: 1, reviewMarketingMaterials: 1 },
-      communication: { sendEmails: true, emailLevel: 1, sendTexts: true, textLevel: 1, makePhoneCalls: false, dailyMessageLimit: 20, disclaimerText: "This message was sent by an AI assistant on behalf of {firm name}", quietHoursStart: "21:00", quietHoursEnd: "08:00" },
+      communication: { sendEmails: true, emailLevel: 1, sendTexts: true, textLevel: 1, makePhoneCalls: false, dailyMessageLimit: 20, disclaimerText: "This message was sent by a Digital Worker on behalf of {firm name}", quietHoursStart: "21:00", quietHoursEnd: "08:00" },
       marketing: { publishThoughtLeadership: 1, manageLinkedIn: 1, createEventMaterials: 1, maxCampaignBudget: 500 },
     },
     sections: [
@@ -142,7 +142,7 @@ const RULES_CONFIGS = {
       globalLevel: 1,
       sales: { respondToLeads: 1, sendRecommendations: 1, scheduleShowings: 1, draftOffers: 1, draftDescriptions: 1, generateCMAs: 1, postClosingFollowup: 1, priceAdjustmentRecs: 1 },
       pm: { respondToTenants: 1, processMaintenanceRequests: 1, maxAutoDispatch: 500, sendRentReminders: 1, serveLateNotices: 1, draftRenewals: 1, maxRentIncrease: 5, marketVacantUnits: 1, screenApplications: 1, ownerCommunication: 1 },
-      communication: { sendEmails: true, emailLevel: 1, sendTexts: true, textLevel: 1, makePhoneCalls: false, dailyMessageLimit: 100, disclaimerText: "This message was sent by an AI assistant on behalf of {brokerage name}", quietHoursStart: "21:00", quietHoursEnd: "08:00" },
+      communication: { sendEmails: true, emailLevel: 1, sendTexts: true, textLevel: 1, makePhoneCalls: false, dailyMessageLimit: 100, disclaimerText: "This message was sent by a Digital Worker on behalf of {brokerage name}", quietHoursStart: "21:00", quietHoursEnd: "08:00" },
       marketing: { socialMedia: 1, paidAdvertising: 1, directMail: 1, emailCampaigns: 1, maxCampaignBudget: 500 },
     },
     sections: [

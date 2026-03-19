@@ -35,7 +35,7 @@ export default function OnboardingTour({ onComplete, vertical = 'auto' }) {
       },
       {
         title: 'AI Chat Assistant',
-        content: 'Click the chat button in the bottom right to talk to your AI assistant. Ask about customers, inventory, records, or get help with any task.',
+        content: 'Click the chat button in the bottom right to talk to Alex. Ask about customers, inventory, records, or get help with any task.',
         highlight: '.floating-chat-button',
         action: 'Try It',
       },

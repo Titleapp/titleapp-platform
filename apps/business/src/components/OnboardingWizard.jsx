@@ -1344,7 +1344,7 @@ export default function OnboardingWizard({ onComplete, onStepChange, vertical: p
             background: "rgba(255,255,255,0.12)", borderRadius: "12px", padding: "20px 24px",
           }}>
             <div style={{ fontSize: "14px", opacity: 0.8 }}>Setting up your workspace</div>
-            <div style={{ fontSize: "14px", opacity: 0.8 }}>Configuring AI assistant for {verticalLabel}</div>
+            <div style={{ fontSize: "14px", opacity: 0.8 }}>Configuring Alex for {verticalLabel}</div>
             <div style={{ fontSize: "14px", opacity: 0.8 }}>Loading {jurisdiction} compliance rules</div>
           </div>
           <div style={{
