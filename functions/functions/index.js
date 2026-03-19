@@ -4382,12 +4382,60 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       }
     }
 
+    // ──────────────────────────────────────────────────────────
+    //  WEB3 TEAM VERIFICATION — UNAUTHENTICATED (36.1-T2)
+    // ──────────────────────────────────────────────────────────
+
+    // POST /v1/web3:startAttestation — start project attestation (no auth)
+    if (route === "/web3:startAttestation" && method === "POST") {
+      try {
+        const { handleStartAttestation } = require("./web3/teamVerification");
+        return await handleStartAttestation(req, res, { body, jsonError });
+      } catch (e) {
+        console.error("web3:startAttestation failed:", e);
+        return jsonError(res, 500, "Attestation start failed");
+      }
+    }
+
+    // POST /v1/web3:submitAttestation — submit 3 attestations (no auth)
+    if (route === "/web3:submitAttestation" && method === "POST") {
+      try {
+        const { handleSubmitAttestation } = require("./web3/teamVerification");
+        return await handleSubmitAttestation(req, res, { body, jsonError });
+      } catch (e) {
+        console.error("web3:submitAttestation failed:", e);
+        return jsonError(res, 500, "Attestation submit failed");
+      }
+    }
+
+    // GET /v1/web3:teamRoster — public verified team roster (no auth)
+    if (route === "/web3:teamRoster" && method === "GET") {
+      try {
+        const { handleTeamRoster } = require("./web3/teamVerification");
+        return await handleTeamRoster(req, res, { jsonError });
+      } catch (e) {
+        console.error("web3:teamRoster failed:", e);
+        return jsonError(res, 500, "Team roster failed");
+      }
+    }
+
     // All other routes require Firebase auth
     const auth = await requireFirebaseUser(req, res);
     if (auth.handled) return;
 
     const ctx = getCtx(req, body, auth.user);
     console.log("🧠 CTX:", ctx);
+
+    // POST /v1/web3:inviteTeamMember — invite team member (authenticated, owner only)
+    if (route === "/web3:inviteTeamMember" && method === "POST") {
+      try {
+        const { handleInviteTeamMember } = require("./web3/teamVerification");
+        return await handleInviteTeamMember(req, res, { body, user: auth.user, jsonError });
+      } catch (e) {
+        console.error("web3:inviteTeamMember failed:", e);
+        return jsonError(res, 500, "Team invite failed");
+      }
+    }
 
     // POST /v1/user:generateInvite — create an invite link
     if (route === "/user:generateInvite" && method === "POST") {
