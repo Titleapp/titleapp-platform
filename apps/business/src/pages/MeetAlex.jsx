@@ -80,6 +80,13 @@ export default function MeetAlex() {
           workerCards: data.workerCards || null,
         }]);
         if (data.suggestAuth) setShowAuth(true);
+        // Panel sync: emit worker highlights for right panel
+        if (data.workerCards && data.workerCards.length > 0) {
+          const ids = data.workerCards.map(c => c.slug || c.workerId).filter(Boolean);
+          if (ids.length === 1) {
+            window.dispatchEvent(new CustomEvent("ta:panel-highlight-worker", { detail: { workerId: ids[0] } }));
+          }
+        }
       }
     } catch {
       setMessages(prev => [...prev, { role: "assistant", text: "Something went wrong. Try again." }]);
