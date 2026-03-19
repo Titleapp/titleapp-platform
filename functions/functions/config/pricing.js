@@ -65,11 +65,11 @@ module.exports = {
 
   // ── Stripe Product Price IDs (created by scripts/createBillingProducts.js) ──
   stripeProducts: {
-    signatureOverage: null,  // price_xxx — $1.00/unit, fill after running script
-    blockchainOverage: null, // price_xxx — $1.00/unit, fill after running script
-    topUp100: null,          // price_xxx — $100.00 one-time
-    topUp500: null,          // price_xxx — $500.00 one-time
-    topUp1000: null,         // price_xxx — $1,000.00 one-time
+    signatureOverage: 'price_1TCYuiH3orVQEXOAiiDNQxR8',
+    blockchainOverage: 'price_1TCYujH3orVQEXOAcV6gnd0z',
+    topUp100: 'price_1TCYujH3orVQEXOAjD7ze444',
+    topUp500: 'price_1TCYukH3orVQEXOAmK5DJcpW',
+    topUp1000: 'price_1TCYukH3orVQEXOAy5nQEAMA',
   },
 
   // ── Stripe Meter Event Names ─────────────────────────────────
