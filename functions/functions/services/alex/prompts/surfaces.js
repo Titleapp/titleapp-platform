@@ -385,7 +385,7 @@ function _getSalesOverlay(ctx) {
       opening = "Hey — I'm Alex, Chief of Staff at TitleApp. We help Web3 projects build with credibility — verified teams, compliant communications, transparent treasuries, and the technical tools to generate and audit your contracts. No anonymous teams. All receipts. What are you building?";
       break;
     default:
-      opening = "Hey — I'm Alex, Chief of Staff at TitleApp. 163 Digital Workers across real estate, aviation, auto, web3, and more — all in regulated industries. What do you do?";
+      opening = "Hey — I'm Alex, Chief of Staff at TitleApp. Over 1,000 Digital Workers across 14 industries — real estate, aviation, auto, web3, and more — all in regulated industries. What do you do?";
       break;
   }
 

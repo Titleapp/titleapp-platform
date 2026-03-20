@@ -412,7 +412,7 @@ function getDemoResponse(message) {
       return "For auto dealers, we have Dealer Licensing and Compliance (free), Vehicle Merchandising and Photography, and inventory management workers. The licensing worker handles FTC Safeguards, OFAC screening, and regulatory calendars. Want to see them?";
     }
     // Generic "what workers do you have"
-    return "We have over 200 Digital Workers across 13 industries -- real estate, construction, mortgage, title and escrow, legal, aviation, government, auto, healthcare, investment, and more. Each one is trained on the rules of that industry and enforces compliance automatically. What industry are you in? I can show you the ones that fit.";
+    return "We have over 1,000 Digital Workers across 14 industries -- real estate, construction, mortgage, title and escrow, legal, aviation, government, auto, healthcare, investment, and more. Each one is trained on the rules of that industry and enforces compliance automatically. What industry are you in? I can show you the ones that fit.";
   }
 
   // ── Industry-specific queries (without saying "worker") ──
@@ -455,13 +455,13 @@ function getDemoResponse(message) {
     return "Digital Workers are priced at $29, $49, or $79 per month depending on complexity. Each comes with a 14-day free trial. Personal vault records are free. No credit card required to start. What are you looking for?";
   }
   if (msg.includes('what is a digital worker') || msg.includes('what are digital worker')) {
-    return "A Digital Worker is an AI agent trained on the rules of a specific industry. It enforces compliance automatically, handles repetitive work, and never cuts corners. You describe what it should do, we build it, and it runs 24/7. There are over 200 pre-built workers across 13 industries, or you can build your own. What industry are you in?";
+    return "A Digital Worker is an AI agent trained on the rules of a specific industry. It enforces compliance automatically, handles repetitive work, and never cuts corners. You describe what it should do, we build it, and it runs 24/7. There are over 1,000 pre-built workers across 14 industries, or you can build your own. What industry are you in?";
   }
   if (msg.includes('build') && (msg.includes('one') || msg.includes('worker') || msg.includes('my own') || msg.includes('app'))) {
     return "Yes -- you can build a Digital Worker without writing code. Describe what it should do and what rules it needs to follow, and Alex builds it for you in under an hour. Publish it on the marketplace and earn 75% of every subscription. Already mapped it out in ChatGPT or Claude? Just paste it here and I'll tell you exactly what it maps to.";
   }
   if (msg.includes('what') || msg.includes('who') || msg.includes('titleapp') || msg.includes('about')) {
-    return "TitleApp is a platform of Digital Workers -- AI agents trained on the rules of specific industries. Over 200 workers across 13 industries handle compliance, document management, and specialized workflows. You can hire pre-built workers or build your own. What industry are you in?";
+    return "TitleApp is a platform of Digital Workers -- AI agents trained on the rules of specific industries. Over 1,000 workers across 14 industries handle compliance, document management, and specialized workflows. You can hire pre-built workers or build your own. What industry are you in?";
   }
   if (msg.includes('how') || msg.includes('work')) {
     return "Pick a Digital Worker for your industry, set your rules, and put it to work. Each worker enforces compliance, handles documents, and manages workflows specific to your field. You can also build custom workers and sell them on the marketplace. What are you looking for?";
@@ -495,9 +495,9 @@ function getDemoResponse(message) {
     return "TitleApp monitors regulatory changes, tracks document retention, and keeps your records audit-ready. Automated compliance so nothing falls through the cracks. Want to learn more?";
   }
   if (msg.includes('business') || msg.includes('company') || msg.includes('enterprise')) {
-    return "TitleApp gives you a team of Digital Workers that handle records, compliance, follow-up, and deals -- all in one place. Over 200 workers across 13 industries. Starting at $29/month. What industry are you in?";
+    return "TitleApp gives you a team of Digital Workers that handle records, compliance, follow-up, and deals -- all in one place. Over 1,000 workers across 14 industries. Starting at $29/month. What industry are you in?";
   }
-  return "I'm Alex. TitleApp has over 200 Digital Workers across 13 industries -- real estate, construction, mortgage, title and escrow, legal, aviation, government, and more. What industry are you in? I'll show you what fits.";
+  return "I'm Alex. TitleApp has over 1,000 Digital Workers across 14 industries -- real estate, construction, mortgage, title and escrow, legal, aviation, government, and more. What industry are you in? I'll show you what fits.";
 }
 
 // ── Default session state ──
