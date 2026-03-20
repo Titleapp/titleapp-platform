@@ -355,6 +355,35 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
 
   useEffect(() => {
     if (currentUser && authReady && messages.length === 0) {
+      // Meet-Alex promoted guest session — render full guest conversation
+      // MUST be checked FIRST — before qualifying question, celebration, or any other init
+      const guestPromoted = sessionStorage.getItem("ta_guest_promoted");
+      if (guestPromoted) {
+        sessionStorage.removeItem("ta_guest_promoted");
+        // Clear promoted URL param
+        try {
+          const url = new URL(window.location.href);
+          url.searchParams.delete("promoted");
+          window.history.replaceState({}, "", url.toString());
+        } catch { /* ignore */ }
+        try {
+          const guestMessages = JSON.parse(guestPromoted);
+          const rendered = guestMessages.map(m => ({
+            role: m.role,
+            content: m.text || m.content || "",
+            workerCards: m.workerCards || null,
+          }));
+          rendered.push({
+            role: "assistant",
+            content: "You're in. Picking up right where we left off.",
+          });
+          setMessages(rendered);
+          // User already had a full conversation — skip qualifying question
+          localStorage.setItem('ta_alex_qualified', 'true');
+        } catch { /* ignore parse error */ }
+        return;
+      }
+
       // Qualifying question for first Alex session
       if (!localStorage.getItem('ta_alex_qualified') && disclaimerAccepted) {
         setMessages([{
@@ -405,32 +434,6 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
             return;
           }
         } catch (e) { /* ignore */ }
-      }
-
-      // Meet-Alex promoted guest session — render full guest conversation
-      const guestPromoted = sessionStorage.getItem("ta_guest_promoted");
-      if (guestPromoted) {
-        sessionStorage.removeItem("ta_guest_promoted");
-        // Clear promoted URL param
-        try {
-          const url = new URL(window.location.href);
-          url.searchParams.delete("promoted");
-          window.history.replaceState({}, "", url.toString());
-        } catch { /* ignore */ }
-        try {
-          const guestMessages = JSON.parse(guestPromoted);
-          const rendered = guestMessages.map(m => ({
-            role: m.role,
-            content: m.text || m.content || "",
-          }));
-          // Add greeting as Alex's continuation
-          rendered.push({
-            role: "assistant",
-            content: "Welcome back — picked up right where we left off. What would you like to do next?",
-          });
-          setMessages(rendered);
-        } catch { /* ignore parse error */ }
-        return;
       }
 
       // Landing page chat handoff — ?q= param auto-send

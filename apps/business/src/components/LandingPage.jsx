@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  sendEmailVerification,
+  sendPasswordResetEmail,
   sendSignInLinkToEmail,
   isSignInWithEmailLink,
   signInWithEmailLink,
@@ -115,8 +118,10 @@ function AuthModal({ isOpen, onClose, defaultMode }) {
   const [mode, setMode] = useState(defaultMode || "magic");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [status, setStatus] = useState("");
   const [linkSent, setLinkSent] = useState(false);
+  const isSignUp = defaultMode === "signup" || mode === "signup";
 
   useEffect(() => {
     if (isOpen) setMode(defaultMode || "magic");
@@ -183,6 +188,43 @@ function AuthModal({ isOpen, onClose, defaultMode }) {
     }
   }
 
+  async function handleSignUp(e) {
+    e.preventDefault();
+    if (!email || !password) { setStatus("Please fill in all fields."); return; }
+    if (password !== confirmPassword) { setStatus("Passwords do not match."); return; }
+    if (password.length < 8) { setStatus("Password must be at least 8 characters."); return; }
+    setStatus("Creating account...");
+    try {
+      const cred = await createUserWithEmailAndPassword(auth, email, password);
+      sendEmailVerification(cred.user).catch(console.error);
+      const token = await cred.user.getIdToken(true);
+      localStorage.setItem("ID_TOKEN", token);
+      setStatus("Account created successfully");
+    } catch (err) {
+      console.error(err);
+      switch (err?.code) {
+        case "auth/email-already-in-use":
+          setStatus("An account with this email already exists. Sign in instead."); break;
+        case "auth/invalid-email":
+          setStatus("Please enter a valid email address."); break;
+        case "auth/weak-password":
+          setStatus("Password must be at least 8 characters."); break;
+        default:
+          setStatus("Account creation failed. Please try again.");
+      }
+    }
+  }
+
+  async function handleForgotPassword() {
+    if (!email) { setStatus("Enter your email address first, then click Forgot password."); return; }
+    try {
+      await sendPasswordResetEmail(auth, email);
+      setStatus("Password reset email sent. Check your inbox.");
+    } catch {
+      setStatus("Could not send reset email. Check the address and try again.");
+    }
+  }
+
   let _googlePopupActive = false;
   async function handleGoogleLogin() {
     if (_googlePopupActive) return;
@@ -213,7 +255,7 @@ function AuthModal({ isOpen, onClose, defaultMode }) {
 
   if (!isOpen) return null;
 
-  const isError = status.includes("Failed") || status.includes("failed") || status.includes("No password");
+  const isError = status && !status.includes("sent") && !status.includes("Signed") && !status.includes("created") && !status.includes("Completing") && !status.includes("Sending") && !status.includes("Signing") && !status.includes("Creating");
 
   return (
     <div
@@ -245,7 +287,7 @@ function AuthModal({ isOpen, onClose, defaultMode }) {
             <LogoIcon size={48} />
           </div>
           <h2 style={{ margin: 0, fontSize: "20px", fontWeight: 700 }}>
-            {defaultMode === "signup" ? "Create your free account" : "Sign in to TitleApp AI"}
+            {isSignUp ? "Create your free account" : "Sign in to TitleApp"}
           </h2>
         </div>
 
@@ -261,10 +303,10 @@ function AuthModal({ isOpen, onClose, defaultMode }) {
         ) : (
           <>
             <div style={{ display: "flex", gap: "8px", marginBottom: "20px" }}>
-              {["magic", "password"].map((m) => (
+              {["magic", "password", "signup"].map((m) => (
                 <button
                   key={m}
-                  onClick={() => setMode(m)}
+                  onClick={() => { setMode(m); setStatus(""); }}
                   style={{
                     flex: 1, padding: "10px", borderRadius: "8px", cursor: "pointer", fontSize: "14px",
                     background: mode === m ? "rgba(124,58,237,0.1)" : "white",
@@ -272,7 +314,7 @@ function AuthModal({ isOpen, onClose, defaultMode }) {
                     fontWeight: mode === m ? 600 : 400,
                   }}
                 >
-                  {m === "magic" ? "Magic Link" : "Password"}
+                  {m === "magic" ? "Magic Link" : m === "password" ? "Password" : "Sign Up"}
                 </button>
               ))}
             </div>
@@ -299,8 +341,31 @@ function AuthModal({ isOpen, onClose, defaultMode }) {
                   <div style={{ fontSize: "14px", fontWeight: 600 }}>Password</div>
                   <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="--------" autoComplete="current-password" required style={{ padding: "12px", fontSize: "14px", border: "1px solid #e5e7eb", borderRadius: "8px" }} />
                 </label>
+                <div style={{ textAlign: "right", marginTop: "-8px" }}>
+                  <button type="button" onClick={handleForgotPassword} style={{ background: "none", border: "none", color: "#7c3aed", fontSize: "13px", cursor: "pointer", padding: 0 }}>Forgot password?</button>
+                </div>
                 <button type="submit" style={{ padding: "12px", fontSize: "14px", fontWeight: 600, background: "#7c3aed", color: "white", border: "none", borderRadius: "8px", cursor: "pointer" }}>
                   Sign In
+                </button>
+              </form>
+            )}
+
+            {mode === "signup" && (
+              <form onSubmit={handleSignUp} style={{ display: "grid", gap: "14px" }}>
+                <label style={{ display: "grid", gap: "6px" }}>
+                  <div style={{ fontSize: "14px", fontWeight: 600 }}>Email</div>
+                  <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" autoComplete="email" required style={{ padding: "12px", fontSize: "14px", border: "1px solid #e5e7eb", borderRadius: "8px" }} />
+                </label>
+                <label style={{ display: "grid", gap: "6px" }}>
+                  <div style={{ fontSize: "14px", fontWeight: 600 }}>Password</div>
+                  <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="--------" autoComplete="new-password" required style={{ padding: "12px", fontSize: "14px", border: "1px solid #e5e7eb", borderRadius: "8px" }} />
+                </label>
+                <label style={{ display: "grid", gap: "6px" }}>
+                  <div style={{ fontSize: "14px", fontWeight: 600 }}>Confirm Password</div>
+                  <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="--------" autoComplete="new-password" required style={{ padding: "12px", fontSize: "14px", border: "1px solid #e5e7eb", borderRadius: "8px" }} />
+                </label>
+                <button type="submit" style={{ padding: "12px", fontSize: "14px", fontWeight: 600, background: "#7c3aed", color: "white", border: "none", borderRadius: "8px", cursor: "pointer" }}>
+                  Create Account
                 </button>
               </form>
             )}

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { auth } from "../firebase";
-import { GoogleAuthProvider, signInWithPopup, signInWithRedirect } from "firebase/auth";
+import { GoogleAuthProvider, signInWithPopup, signInWithRedirect, signInWithEmailAndPassword } from "firebase/auth";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
 
@@ -142,33 +142,7 @@ export default function MeetAlex() {
       const cred = await signInWithPopup(auth, provider);
       const token = await cred.user.getIdToken(true);
       localStorage.setItem("ID_TOKEN", token);
-
-      // Store UTM
-      sessionStorage.setItem("ta_utm", JSON.stringify({
-        source: "meet-alex", medium: "guest-chat",
-        campaign: vertical || "direct", capturedAt: new Date().toISOString(),
-      }));
-
-      // Store full guest conversation for ChatPanel to render
-      const guestConvo = messages.filter(m => m.text && m.text.trim());
-      if (guestConvo.length > 0) {
-        sessionStorage.setItem("ta_guest_promoted", JSON.stringify(guestConvo));
-      }
-
-      // Promote guest session (fire and forget — do not block redirect)
-      fetch(`${API_BASE}/api?path=/v1/alex:promoteGuest`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ guestId: sessionId, uid: cred.user.uid }),
-      }).catch(() => {});
-
-      // Persist guest ToS acceptance so authenticated ChatPanel doesn't re-prompt
-      localStorage.setItem('DISCLAIMER_ACCEPTED', 'true');
-
-      // Store campaign context for sales mode continuity
-      if (vertical) {
-        sessionStorage.setItem("ta_campaign_context", JSON.stringify({ slug: vertical, persona: vertical, vertical }));
-      }
+      saveHandoffBeforeRedirect(token, cred.user.uid);
 
       // Redirect immediately to authenticated shell
       window.location.href = "/?promoted=true" + (vertical ? "&vertical=" + vertical : "") + "&utm_source=meet-alex&utm_medium=guest-chat" + (vertical ? "&utm_campaign=" + vertical : "");
@@ -182,6 +156,63 @@ export default function MeetAlex() {
         console.error("Google auth failed:", err);
       }
       setAuthInProgress(false);
+    }
+  }
+
+  // Email/password auth state
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authError, setAuthError] = useState("");
+
+  // Shared handoff logic — called by both Google and email auth paths
+  function saveHandoffBeforeRedirect(token, uid) {
+    sessionStorage.setItem("ta_utm", JSON.stringify({
+      source: "meet-alex", medium: "guest-chat",
+      campaign: vertical || "direct", capturedAt: new Date().toISOString(),
+    }));
+    const guestConvo = messages.filter(m => m.text && m.text.trim());
+    if (guestConvo.length > 0) {
+      sessionStorage.setItem("ta_guest_promoted", JSON.stringify(guestConvo));
+    }
+    fetch(`${API_BASE}/api?path=/v1/alex:promoteGuest`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ guestId: sessionId, uid }),
+    }).catch(() => {});
+    localStorage.setItem('DISCLAIMER_ACCEPTED', 'true');
+    if (vertical) {
+      sessionStorage.setItem("ta_campaign_context", JSON.stringify({ slug: vertical, persona: vertical, vertical }));
+    }
+  }
+
+  // Email/password sign-in
+  async function handleEmailAuth() {
+    if (authInProgress) return;
+    if (!authEmail || !authPassword) { setAuthError("Please enter your email and password."); return; }
+    setAuthInProgress(true);
+    setAuthError("");
+    try {
+      const cred = await signInWithEmailAndPassword(auth, authEmail, authPassword);
+      const token = await cred.user.getIdToken(true);
+      localStorage.setItem("ID_TOKEN", token);
+      saveHandoffBeforeRedirect(token, cred.user.uid);
+      window.location.href = "/?promoted=true" + (vertical ? "&vertical=" + vertical : "") + "&utm_source=meet-alex&utm_medium=guest-chat" + (vertical ? "&utm_campaign=" + vertical : "");
+    } catch (err) {
+      setAuthInProgress(false);
+      switch (err?.code) {
+        case "auth/user-not-found":
+          setAuthError("No account found. Try Google sign-in or create an account at titleapp.ai."); break;
+        case "auth/wrong-password":
+        case "auth/invalid-credential":
+        case "auth/invalid-login-credentials":
+          setAuthError("Incorrect password. Try again or use Google to sign in."); break;
+        case "auth/invalid-email":
+          setAuthError("Please enter a valid email address."); break;
+        case "auth/too-many-requests":
+          setAuthError("Too many attempts. Please wait and try again."); break;
+        default:
+          setAuthError("Sign-in failed. Please try again.");
+      }
     }
   }
 
@@ -319,11 +350,19 @@ export default function MeetAlex() {
       {showAuth && !authInProgress && disclaimerAccepted && (
         <div style={S.authCard}>
           <div style={S.authTitle}>Sign in to continue</div>
-          <button onClick={handleGoogleAuth} style={S.authBtn("#7c3aed")}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+          <input type="email" value={authEmail} onChange={e => setAuthEmail(e.target.value)} placeholder="Email" autoComplete="email" style={{ width: "100%", padding: "10px 12px", fontSize: 14, border: "1px solid #d1d5db", borderRadius: 8, outline: "none", boxSizing: "border-box", marginBottom: 8 }} />
+          <input type="password" value={authPassword} onChange={e => setAuthPassword(e.target.value)} placeholder="Password" autoComplete="current-password" onKeyDown={e => e.key === "Enter" && handleEmailAuth()} style={{ width: "100%", padding: "10px 12px", fontSize: 14, border: "1px solid #d1d5db", borderRadius: 8, outline: "none", boxSizing: "border-box", marginBottom: 8 }} />
+          <button onClick={handleEmailAuth} style={S.authBtn("#7c3aed")}>Sign In</button>
+          {authError && <div style={{ fontSize: 12, color: "#dc2626", marginBottom: 8 }}>{authError}</div>}
+          <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "8px 0" }}>
+            <div style={{ flex: 1, height: 1, background: "#d1d5db" }} />
+            <span style={{ fontSize: 12, color: "#94a3b8" }}>or</span>
+            <div style={{ flex: 1, height: 1, background: "#d1d5db" }} />
+          </div>
+          <button onClick={handleGoogleAuth} style={{ ...S.authBtn("white"), color: "#374151", border: "1px solid #d1d5db" }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
             Continue with Google
           </button>
-          <div style={{ fontSize: 12, color: "#94a3b8", textAlign: "center", marginTop: 4 }}>More sign-in options coming soon.</div>
         </div>
       )}
 
