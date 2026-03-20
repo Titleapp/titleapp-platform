@@ -1523,6 +1523,23 @@ exports.api = onRequest(
               console.warn("sales audit log failed:", auditErr.message);
             }
 
+            // Detect vertical from conversation content
+            function detectVertical(userMsg, responseText) {
+              const text = (userMsg + ' ' + responseText).toLowerCase();
+              if (/pilot|aviation|pc.?12|medevac|part.?135|part.?91|copilot|aircraft|flight crew|logbook|notam|frat/.test(text)) return 'aviation';
+              if (/dealer|dealership|f&i|inventory|auto|service drive|finance.*insurance|automotive/.test(text)) return 'auto-dealer';
+              if (/real estate|title|escrow|cre|development|permit|commercial.*real/.test(text)) return 'real-estate';
+              if (/solar|vpp|energy|microgrid/.test(text)) return 'solar';
+              if (/web3|crypto|token|nft|blockchain/.test(text)) return 'web3';
+              if (/healthcare|medical|ems|ambulance|hospital/.test(text)) return 'healthcare';
+              if (/government|municipal|city|county|public sector/.test(text)) return 'government';
+              if (/legal|attorney|law firm|litigation/.test(text)) return 'legal';
+              if (/creator|content creator|youtube|influencer|podcast/.test(text)) return 'creators';
+              if (/property management|landlord|tenant screening|rent|lease/.test(text)) return 'property-management';
+              return null;
+            }
+            const detectedVertical = detectVertical(userInput, aiText);
+
             const response = {
               ok: true,
               message: aiText,
@@ -1532,6 +1549,7 @@ exports.api = onRequest(
             if (sandboxRedirect) response.sandboxRedirect = true;
             if (escalated) response.escalated = true;
             if (suggestAuth) response.suggestAuth = true;
+            if (detectedVertical) response.detectedVertical = detectedVertical;
 
             return res.json(response);
           } catch (e) {
@@ -5230,13 +5248,13 @@ These should be 2-3 realistic test scenarios the creator should try, derived fro
       const { workerId, stars, review } = body;
       if (!workerId || !stars || stars < 1 || stars > 5) return res.json({ ok: false, error: "Invalid rating (1-5 stars required)" });
       try {
-        const ratingId = `${workerId}_${user.uid}`;
+        const ratingId = `${workerId}_${ctx.userId}`;
         await db.doc(`ratings/${ratingId}`).set({
-          workerId, userId: user.uid, stars: Math.round(stars),
+          workerId, userId: ctx.userId, stars: Math.round(stars),
           review: (review || "").substring(0, 500),
           createdAt: nowServerTs(), updatedAt: nowServerTs(),
         }, { merge: true });
-        console.log(`[worker:rate] ${user.uid} rated ${workerId}: ${stars} stars`);
+        console.log(`[worker:rate] ${ctx.userId} rated ${workerId}: ${stars} stars`);
         return res.json({ ok: true });
       } catch (e) {
         console.error("[worker:rate] error:", e.message);
@@ -5261,6 +5279,7 @@ These should be 2-3 realistic test scenarios the creator should try, derived fro
 
     // POST /v1/worker:subscribe — Subscribe to a worker (creates Stripe checkout or adds to vault)
     if (route === "/worker:subscribe" && method === "POST") {
+      console.log(`[worker:subscribe] HIT — uid=${ctx.userId}, body=`, JSON.stringify(body));
       const { workerId, slug } = body;
       if (!workerId && !slug) return res.json({ ok: false, error: "Missing workerId or slug" });
       try {
@@ -5269,6 +5288,11 @@ These should be 2-3 realistic test scenarios the creator should try, derived fro
         if (slug) {
           const mSnap = await db.doc(`marketplace/${slug}`).get();
           if (mSnap.exists) workerDoc = mSnap.data();
+        }
+        // Check digitalWorkers collection (primary catalog source)
+        if (!workerDoc && (workerId || slug)) {
+          const dwSnap = await db.doc(`digitalWorkers/${workerId || slug}`).get();
+          if (dwSnap.exists) workerDoc = { ...dwSnap.data(), workerId: dwSnap.id };
         }
         if (!workerDoc && workerId) {
           // Try to find by querying published workers
@@ -5280,7 +5304,7 @@ These should be 2-3 realistic test scenarios the creator should try, derived fro
 
         // Check if already subscribed
         const existingSub = await db.collection("subscriptions")
-          .where("userId", "==", user.uid)
+          .where("userId", "==", ctx.userId)
           .where("workerId", "==", workerId || workerDoc.workerId)
           .where("status", "==", "active")
           .limit(1).get();
@@ -5290,7 +5314,7 @@ These should be 2-3 realistic test scenarios the creator should try, derived fro
 
         // Create subscription record (free trial — no Stripe checkout needed for trial)
         const subRef = await db.collection("subscriptions").add({
-          userId: user.uid,
+          userId: ctx.userId,
           workerId: workerId || workerDoc.workerId,
           slug: slug || workerDoc.slug,
           workerName: workerDoc.name || workerDoc.display_name || "Digital Worker",
@@ -5300,7 +5324,7 @@ These should be 2-3 realistic test scenarios the creator should try, derived fro
         });
 
         // Add worker to user's vault
-        await db.doc(`vaults/${user.uid}/workers/${workerId || workerDoc.workerId}`).set({
+        await db.doc(`vaults/${ctx.userId}/workers/${workerId || workerDoc.workerId}`).set({
           workerId: workerId || workerDoc.workerId,
           workerName: workerDoc.name || workerDoc.display_name || "Digital Worker",
           slug: slug || workerDoc.slug,
@@ -5311,7 +5335,7 @@ These should be 2-3 realistic test scenarios the creator should try, derived fro
 
         // Queue opening message from worker
         await db.collection("workerMessages").add({
-          userId: user.uid,
+          userId: ctx.userId,
           workerId: workerId || workerDoc.workerId,
           direction: "worker_to_user",
           message: `Hi, I'm ${workerDoc.name || workerDoc.display_name || "your new Digital Worker"}. I'm ready to help. What would you like to start with?`,
@@ -5319,7 +5343,7 @@ These should be 2-3 realistic test scenarios the creator should try, derived fro
           read: false,
         });
 
-        console.log(`[worker:subscribe] ${user.uid} subscribed to ${workerId || workerDoc.workerId}`);
+        console.log(`[worker:subscribe] ${ctx.userId} subscribed to ${workerId || workerDoc.workerId}`);
         return res.json({ ok: true, subscribed: true, subscriptionId: subRef.id });
       } catch (e) {
         console.error("[worker:subscribe] error:", e.message);
@@ -5342,7 +5366,7 @@ These should be 2-3 realistic test scenarios the creator should try, derived fro
           }
         }
         // Check if user already used BOGO
-        const userDoc = await db.collection("users").doc(user.uid).get();
+        const userDoc = await db.collection("users").doc(ctx.userId).get();
         const userData = userDoc.exists ? userDoc.data() : {};
         if (userData.bogoUsed && bogoDiscount) {
           return res.json({ ok: false, error: "BOGO promotion already used" });
@@ -5377,7 +5401,7 @@ These should be 2-3 realistic test scenarios the creator should try, derived fro
         const subscriptions = [];
         for (const item of items) {
           const subRef = await db.collection("subscriptions").add({
-            userId: user.uid,
+            userId: ctx.userId,
             slug: item.slug,
             price: item.price,
             isBogo: item.slug === discountSlug,
@@ -5390,7 +5414,7 @@ These should be 2-3 realistic test scenarios the creator should try, derived fro
 
         // Mark BOGO as used
         if (bogoDiscount && bogoItems.length >= 2) {
-          await db.collection("users").doc(user.uid).set({ bogoUsed: true }, { merge: true });
+          await db.collection("users").doc(ctx.userId).set({ bogoUsed: true }, { merge: true });
         }
 
         // Create Stripe checkout session if net total > 0
@@ -5411,18 +5435,18 @@ These should be 2-3 realistic test scenarios the creator should try, derived fro
 
             const session = await stripe.checkout.sessions.create({
               mode: "subscription",
-              customer_email: user.email || undefined,
+              customer_email: ctx.email || auth.user?.email || undefined,
               line_items: lineItems,
               success_url: `${req.headers.origin || "https://app.titleapp.ai"}/vault?checkout=success`,
               cancel_url: `${req.headers.origin || "https://app.titleapp.ai"}/marketplace?checkout=cancelled`,
               metadata: {
-                userId: user.uid,
+                userId: ctx.userId,
                 bogoCheckout: "true",
                 subscriptionIds: subscriptions.map(s => s.id).join(","),
               },
             });
 
-            console.log(`[worker:bogoCheckout] ${user.uid} — ${items.length} items, discount $${discountAmount / 100}, Stripe session ${session.id}`);
+            console.log(`[worker:bogoCheckout] ${ctx.userId} — ${items.length} items, discount $${discountAmount / 100}, Stripe session ${session.id}`);
             return res.json({ ok: true, subscriptions, checkoutUrl: session.url });
           } catch (stripeErr) {
             console.error("[worker:bogoCheckout] Stripe error:", stripeErr.message);
@@ -5438,7 +5462,7 @@ These should be 2-3 realistic test scenarios the creator should try, derived fro
         for (const sub of subscriptions) {
           await db.collection("subscriptions").doc(sub.id).update({ status: "active_trial" });
         }
-        console.log(`[worker:bogoCheckout] ${user.uid} — ${items.length} items, fully discounted`);
+        console.log(`[worker:bogoCheckout] ${ctx.userId} — ${items.length} items, fully discounted`);
         return res.json({ ok: true, subscriptions });
       } catch (e) {
         console.error("[worker:bogoCheckout] error:", e.message);
