@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import { db, auth } from "../../firebase";
 import { doc, setDoc, updateDoc, serverTimestamp } from "firebase/firestore";
-import { signInWithCustomToken } from "firebase/auth";
+import { GoogleAuthProvider, signInWithPopup, signInWithRedirect } from "firebase/auth";
 import { WORKER_ROUTES } from "../WorkerMarketplace";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
@@ -216,10 +216,7 @@ export default function CampaignPage({ slug }) {
 
   // Floating chat bar state
   const [chatInput, setChatInput] = useState("");
-  const [chatMode, setChatMode] = useState("idle"); // idle | phone | otp | verifying
-  const [chatPhone, setChatPhone] = useState("");
-  const [chatOtp, setChatOtp] = useState("");
-  const [chatStatus, setChatStatus] = useState("");
+  const [chatMode, setChatMode] = useState("idle"); // idle | google
   const chatInputRef = useRef(null);
 
   useEffect(() => {
@@ -282,64 +279,30 @@ export default function CampaignPage({ slug }) {
       capturedAt: new Date().toISOString(),
     }));
     setChatInput("");
-    setChatMode("phone");
+    setChatMode("google");
   }
 
-  async function handleChatSendOtp(e) {
-    e?.preventDefault();
-    const trimmed = chatPhone.trim();
-    if (!trimmed) return;
-    setChatStatus("Sending code...");
+  async function handleChatGoogleAuth() {
     try {
-      const res = await fetch(`${API_BASE}/api?path=/v1/auth/sendOtp`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: trimmed }),
-      });
-      const data = await res.json();
-      if (data.ok) {
-        setChatMode("otp");
-        setChatStatus("");
-      } else {
-        setChatStatus(data.error || "Failed to send code.");
+      const provider = new GoogleAuthProvider();
+      const cred = await signInWithPopup(auth, provider);
+      const token = await cred.user.getIdToken(true);
+      localStorage.setItem("ID_TOKEN", token);
+      // Log conversion
+      const sessionId = getSessionId();
+      updateDoc(doc(db, "abTests", slug, "sessions", sessionId), { converted: true }).catch(() => {});
+      // Redirect — ChatPanel will pick up ta_landing_chat
+      window.location.href = "/?utm_source=campaign&utm_campaign=" + slug;
+    } catch (err) {
+      if (err?.code === "auth/popup-blocked") {
+        await signInWithRedirect(auth, new GoogleAuthProvider());
+        return;
       }
-    } catch {
-      setChatStatus("Failed to send code. Try again.");
-    }
-  }
-
-  async function handleChatVerifyOtp(e) {
-    e?.preventDefault();
-    if (chatOtp.length < 6) return;
-    setChatMode("verifying");
-    setChatStatus("Verifying...");
-    try {
-      const res = await fetch(`${API_BASE}/api?path=/v1/auth/verifyOtp`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          phone: chatPhone.trim(),
-          otp: chatOtp.trim(),
-          ...(sessionStorage.getItem("ta_utm") ? { utmAttribution: JSON.parse(sessionStorage.getItem("ta_utm")) } : {}),
-        }),
-      });
-      const data = await res.json();
-      if (data.ok && data.customToken) {
-        const cred = await signInWithCustomToken(auth, data.customToken);
-        const token = await cred.user.getIdToken(true);
-        localStorage.setItem("ID_TOKEN", token);
-        // Log conversion
-        const sessionId = getSessionId();
-        updateDoc(doc(db, "abTests", slug, "sessions", sessionId), { converted: true }).catch(() => {});
-        // Redirect — ChatPanel will pick up ta_landing_chat
-        window.location.href = "/?utm_source=campaign&utm_campaign=" + slug;
-      } else {
-        setChatStatus(data.error || "Invalid code. Try again.");
-        setChatMode("otp");
+      if (err?.code !== "auth/cancelled-popup-request" &&
+          err?.code !== "auth/popup-closed-by-user") {
+        console.error("Google auth failed:", err);
       }
-    } catch {
-      setChatStatus("Verification failed. Try again.");
-      setChatMode("otp");
+      setChatMode("idle");
     }
   }
 
@@ -435,57 +398,15 @@ export default function CampaignPage({ slug }) {
           </form>
         )}
 
-        {chatMode === "phone" && (
-          <form onSubmit={handleChatSendOtp} style={S.otpWrap}>
-            <div style={S.otpLabel}>Enter your phone to continue the conversation</div>
-            <div style={S.otpRow}>
-              <input
-                type="tel"
-                value={chatPhone}
-                onChange={(e) => setChatPhone(e.target.value)}
-                placeholder="+1 (555) 555-5555"
-                autoComplete="tel"
-                autoFocus
-                style={S.otpInput}
-              />
-              <button type="submit" style={S.otpBtn}>Send Code</button>
-            </div>
-            {chatStatus && <div style={{ ...S.otpStatus, color: chatStatus.includes("Failed") ? "#dc2626" : "#6b7280" }}>{chatStatus}</div>}
-          </form>
-        )}
-
-        {(chatMode === "otp" || chatMode === "verifying") && (
-          <form onSubmit={handleChatVerifyOtp} style={S.otpWrap}>
-            <div style={S.otpLabel}>We sent a code to {chatPhone}</div>
-            <div style={S.otpRow}>
-              <input
-                type="text"
-                inputMode="numeric"
-                maxLength={6}
-                value={chatOtp}
-                onChange={(e) => setChatOtp(e.target.value.replace(/\D/g, ""))}
-                placeholder="000000"
-                autoComplete="one-time-code"
-                autoFocus
-                style={{ ...S.otpInput, fontSize: 20, fontWeight: 600, letterSpacing: "0.3em" }}
-              />
-              <button
-                type="submit"
-                disabled={chatMode === "verifying" || chatOtp.length < 6}
-                style={{ ...S.otpBtn, opacity: chatMode === "verifying" || chatOtp.length < 6 ? 0.6 : 1 }}
-              >
-                {chatMode === "verifying" ? "Verifying..." : "Verify"}
-              </button>
-            </div>
-            {chatStatus && <div style={{ ...S.otpStatus, color: chatStatus.includes("Invalid") || chatStatus.includes("failed") || chatStatus.includes("Failed") ? "#dc2626" : "#6b7280" }}>{chatStatus}</div>}
-            <button
-              type="button"
-              onClick={() => { setChatMode("phone"); setChatOtp(""); setChatStatus(""); }}
-              style={{ marginTop: 4, background: "none", border: "none", color: "#6b7280", fontSize: 13, cursor: "pointer" }}
-            >
-              Use a different number
+        {chatMode === "google" && (
+          <div style={S.otpWrap}>
+            <div style={S.otpLabel}>Sign in to continue the conversation</div>
+            <button onClick={handleChatGoogleAuth} style={{ ...S.otpBtn, width: "100%", maxWidth: 320, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "12px 24px" }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+              Continue with Google
             </button>
-          </form>
+            <div style={{ fontSize: 12, color: "#94a3b8", textAlign: "center", marginTop: 8 }}>More sign-in options coming soon.</div>
+          </div>
         )}
       </div>
     </div>

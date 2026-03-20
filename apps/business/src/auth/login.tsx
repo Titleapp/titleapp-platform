@@ -1,106 +1,13 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
-  signInWithEmailAndPassword,
-  sendSignInLinkToEmail,
-  isSignInWithEmailLink,
-  signInWithEmailLink,
-  signInWithCustomToken,
   GoogleAuthProvider,
   signInWithPopup,
   signInWithRedirect,
 } from "firebase/auth";
 import { auth } from "../firebase";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
-
 export default function Login() {
-  const [mode, setMode] = useState<"phone" | "magic" | "password">("phone");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [phone, setPhone] = useState("");
-  const [otp, setOtp] = useState("");
-  const [otpSent, setOtpSent] = useState(false);
-  const [otpVerifying, setOtpVerifying] = useState(false);
   const [status, setStatus] = useState("");
-  const [linkSent, setLinkSent] = useState(false);
-
-  useEffect(() => {
-    // Check if user is completing magic link sign-in
-    if (isSignInWithEmailLink(auth, window.location.href)) {
-      handleMagicLinkCallback();
-    }
-  }, []);
-
-  async function handleMagicLinkCallback() {
-    let emailForSignIn = window.localStorage.getItem("emailForSignIn");
-    if (!emailForSignIn) {
-      emailForSignIn = window.prompt("Please provide your email for confirmation");
-    }
-
-    if (!emailForSignIn) return;
-
-    try {
-      setStatus("Completing sign in...");
-      const cred = await signInWithEmailLink(auth, emailForSignIn, window.location.href);
-      const token = await cred.user.getIdToken(true);
-
-      localStorage.setItem("ID_TOKEN", token);
-
-      window.localStorage.removeItem("emailForSignIn");
-      window.location.href = "/"; // Clean URL
-    } catch (err: any) {
-      console.error(err);
-      setStatus(`Failed to complete sign in: ${err?.message || String(err)}`);
-    }
-  }
-
-  async function handleMagicLink(e: React.FormEvent) {
-    e.preventDefault();
-    setStatus("Sending magic link...");
-
-    const actionCodeSettings = {
-      url: window.location.origin + "/",
-      handleCodeInApp: true,
-    };
-
-    try {
-      const trimmedEmail = email.trim().toLowerCase();
-      await sendSignInLinkToEmail(auth, trimmedEmail, actionCodeSettings);
-      window.localStorage.setItem("emailForSignIn", trimmedEmail);
-      setLinkSent(true);
-      setStatus("");
-    } catch (err: any) {
-      console.error(err);
-      setStatus(`Failed to send link: ${err?.message || String(err)}`);
-    }
-  }
-
-  async function handlePasswordLogin(e: React.FormEvent) {
-    e.preventDefault();
-    setStatus("Signing in...");
-
-    try {
-      const cred = await signInWithEmailAndPassword(auth, email, password);
-      const token = await cred.user.getIdToken(true);
-
-      localStorage.setItem("ID_TOKEN", token);
-
-      window.location.href = "/";
-    } catch (err: any) {
-      console.error(err);
-      const code = err?.code || "";
-      if (
-        code === "auth/wrong-password" ||
-        code === "auth/user-not-found" ||
-        code === "auth/invalid-credential" ||
-        code === "auth/invalid-login-credentials"
-      ) {
-        setStatus("No password set for this account. Please use Magic Link or Google to sign in.");
-      } else {
-        setStatus(`Login failed: ${err?.message || String(err)}`);
-      }
-    }
-  }
 
   let _googlePopupActive = false;
   async function handleGoogleLogin() {
@@ -132,60 +39,6 @@ export default function Login() {
     }
   }
 
-  async function handleSendOtp(e: React.FormEvent) {
-    e.preventDefault();
-    const trimmedPhone = phone.trim();
-    if (!trimmedPhone) return;
-    setStatus("Sending verification code...");
-    try {
-      const res = await fetch(`${API_BASE}/api?path=/v1/auth/sendOtp`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: trimmedPhone }),
-      });
-      const data = await res.json();
-      if (data.ok) {
-        setOtpSent(true);
-        setStatus("");
-      } else {
-        setStatus(data.error || "Failed to send code. Try again.");
-      }
-    } catch (err: any) {
-      setStatus(`Failed to send code: ${err?.message || String(err)}`);
-    }
-  }
-
-  async function handleVerifyOtp(e: React.FormEvent) {
-    e.preventDefault();
-    if (!otp.trim()) return;
-    setOtpVerifying(true);
-    setStatus("Verifying...");
-    try {
-      const res = await fetch(`${API_BASE}/api?path=/v1/auth/verifyOtp`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          phone: phone.trim(),
-          otp: otp.trim(),
-          ...(sessionStorage.getItem("ta_utm") ? { utmAttribution: JSON.parse(sessionStorage.getItem("ta_utm")) } : {}),
-        }),
-      });
-      const data = await res.json();
-      if (data.ok && data.customToken) {
-        const cred = await signInWithCustomToken(auth, data.customToken);
-        const token = await cred.user.getIdToken(true);
-        localStorage.setItem("ID_TOKEN", token);
-        window.location.href = "/";
-      } else {
-        setStatus(data.error || "Invalid code. Try again.");
-        setOtpVerifying(false);
-      }
-    } catch (err: any) {
-      setStatus(`Verification failed: ${err?.message || String(err)}`);
-      setOtpVerifying(false);
-    }
-  }
-
   return (
     <div
       style={{
@@ -210,320 +63,57 @@ export default function Login() {
         <div style={{ textAlign: "center", marginBottom: "32px" }}>
           <img
             src="/logo.png"
-            alt="TitleApp AI"
+            alt="TitleApp"
             style={{ width: "48px", height: "48px", borderRadius: "12px", marginBottom: "16px" }}
           />
-          <h1 style={{ margin: 0, fontSize: "24px", fontWeight: 700 }}>TitleApp AI</h1>
-          <p style={{ margin: "8px 0 0", color: "#6b7280", fontSize: "14px" }}>
-            Sign in to TitleApp
-          </p>
+          <h1 style={{ margin: 0, fontSize: "24px", fontWeight: 700 }}>Sign in to TitleApp</h1>
         </div>
 
-        {linkSent ? (
+        <button
+          onClick={handleGoogleLogin}
+          style={{
+            width: "100%",
+            padding: "14px",
+            fontSize: "15px",
+            fontWeight: 600,
+            background: "rgb(124,58,237)",
+            color: "white",
+            border: "none",
+            borderRadius: "10px",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "10px",
+          }}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="white">
+            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/>
+            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+          </svg>
+          Continue with Google
+        </button>
+
+        <p style={{ fontSize: "13px", color: "#94a3b8", textAlign: "center", marginTop: "16px" }}>
+          More sign-in options coming soon.
+        </p>
+
+        {status && (
           <div
             style={{
-              padding: "20px",
-              background: "#f0fdf4",
-              border: "1px solid #86efac",
-              borderRadius: "12px",
-              textAlign: "center",
+              marginTop: "16px",
+              padding: "12px",
+              background: status.includes("failed") || status.includes("Failed") ? "#fff5f5" : "#f0fdf4",
+              border: status.includes("failed") || status.includes("Failed") ? "1px solid #fecaca" : "1px solid #86efac",
+              borderRadius: "8px",
+              fontSize: "13px",
+              color: status.includes("failed") || status.includes("Failed") ? "#dc2626" : "#16a34a",
             }}
           >
-            <div style={{ fontSize: "16px", fontWeight: 600, marginBottom: "8px" }}>
-              Check your email
-            </div>
-            <div style={{ fontSize: "14px", color: "#6b7280" }}>
-              We sent a magic link to <strong>{email}</strong>
-            </div>
-            <div style={{ fontSize: "13px", color: "#6b7280", marginTop: "12px" }}>
-              Click the link in your email to sign in
-            </div>
-            <button
-              onClick={() => {
-                setLinkSent(false);
-                setEmail("");
-              }}
-              style={{
-                marginTop: "16px",
-                padding: "10px 20px",
-                background: "white",
-                border: "1px solid #e5e7eb",
-                borderRadius: "8px",
-                cursor: "pointer",
-                fontSize: "14px",
-              }}
-            >
-              Use different email
-            </button>
+            {status}
           </div>
-        ) : (
-          <>
-            {/* Tab buttons */}
-            <div style={{ display: "flex", gap: "8px", marginBottom: "24px" }}>
-              {(["phone", "magic", "password"] as const).map((m) => (
-                <button
-                  key={m}
-                  onClick={() => { setMode(m); setStatus(""); }}
-                  style={{
-                    flex: 1,
-                    padding: "12px",
-                    background: mode === m ? "rgba(124,58,237,0.1)" : "white",
-                    border: mode === m ? "1px solid rgba(124,58,237,0.3)" : "1px solid #e5e7eb",
-                    borderRadius: "8px",
-                    cursor: "pointer",
-                    fontWeight: mode === m ? 600 : 400,
-                    fontSize: "14px",
-                  }}
-                >
-                  {m === "phone" ? "Phone" : m === "magic" ? "Magic Link" : "Password"}
-                </button>
-              ))}
-            </div>
-
-            {/* Phone / OTP Form */}
-            {mode === "phone" && !otpSent && (
-              <form onSubmit={handleSendOtp} style={{ display: "grid", gap: "16px" }}>
-                <label style={{ display: "grid", gap: "8px" }}>
-                  <div style={{ fontSize: "14px", fontWeight: 600 }}>Phone Number</div>
-                  <input
-                    type="tel"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="+1 (555) 555-5555"
-                    autoComplete="tel"
-                    required
-                    style={{
-                      padding: "12px",
-                      fontSize: "14px",
-                      border: "1px solid #e5e7eb",
-                      borderRadius: "8px",
-                    }}
-                  />
-                </label>
-                <button
-                  type="submit"
-                  style={{
-                    padding: "12px",
-                    fontSize: "14px",
-                    fontWeight: 600,
-                    background: "rgb(124,58,237)",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "8px",
-                    cursor: "pointer",
-                  }}
-                >
-                  Send Code
-                </button>
-              </form>
-            )}
-
-            {/* OTP Verification */}
-            {mode === "phone" && otpSent && (
-              <form onSubmit={handleVerifyOtp} style={{ display: "grid", gap: "16px" }}>
-                <div style={{ fontSize: "13px", color: "#6b7280", textAlign: "center" }}>
-                  We sent a 6-digit code to <strong>{phone}</strong>
-                </div>
-                <label style={{ display: "grid", gap: "8px" }}>
-                  <div style={{ fontSize: "14px", fontWeight: 600 }}>Verification Code</div>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    maxLength={6}
-                    value={otp}
-                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
-                    placeholder="000000"
-                    autoComplete="one-time-code"
-                    required
-                    style={{
-                      padding: "12px",
-                      fontSize: "20px",
-                      fontWeight: 600,
-                      letterSpacing: "0.3em",
-                      textAlign: "center",
-                      border: "1px solid #e5e7eb",
-                      borderRadius: "8px",
-                    }}
-                  />
-                </label>
-                <button
-                  type="submit"
-                  disabled={otpVerifying || otp.length < 6}
-                  style={{
-                    padding: "12px",
-                    fontSize: "14px",
-                    fontWeight: 600,
-                    background: "rgb(124,58,237)",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "8px",
-                    cursor: otpVerifying ? "wait" : "pointer",
-                    opacity: otpVerifying || otp.length < 6 ? 0.7 : 1,
-                  }}
-                >
-                  {otpVerifying ? "Verifying..." : "Verify"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setOtpSent(false); setOtp(""); setStatus(""); }}
-                  style={{
-                    padding: "8px",
-                    fontSize: "13px",
-                    background: "transparent",
-                    border: "none",
-                    color: "#6b7280",
-                    cursor: "pointer",
-                  }}
-                >
-                  Use a different number
-                </button>
-              </form>
-            )}
-
-            {/* Magic Link Form */}
-            {mode === "magic" && (
-              <form onSubmit={handleMagicLink} style={{ display: "grid", gap: "16px" }}>
-                <label style={{ display: "grid", gap: "8px" }}>
-                  <div style={{ fontSize: "14px", fontWeight: 600 }}>Email</div>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@example.com"
-                    autoComplete="email"
-                    required
-                    style={{
-                      padding: "12px",
-                      fontSize: "14px",
-                      border: "1px solid #e5e7eb",
-                      borderRadius: "8px",
-                    }}
-                  />
-                </label>
-
-                <button
-                  type="submit"
-                  style={{
-                    padding: "12px",
-                    fontSize: "14px",
-                    fontWeight: 600,
-                    background: "rgb(124,58,237)",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "8px",
-                    cursor: "pointer",
-                  }}
-                >
-                  Send Magic Link
-                </button>
-              </form>
-            )}
-
-            {/* Password Form */}
-            {mode === "password" && (
-              <form onSubmit={handlePasswordLogin} style={{ display: "grid", gap: "16px" }}>
-                <label style={{ display: "grid", gap: "8px" }}>
-                  <div style={{ fontSize: "14px", fontWeight: 600 }}>Email</div>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@example.com"
-                    autoComplete="email"
-                    required
-                    style={{
-                      padding: "12px",
-                      fontSize: "14px",
-                      border: "1px solid #e5e7eb",
-                      borderRadius: "8px",
-                    }}
-                  />
-                </label>
-
-                <label style={{ display: "grid", gap: "8px" }}>
-                  <div style={{ fontSize: "14px", fontWeight: 600 }}>Password</div>
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    autoComplete="current-password"
-                    required
-                    style={{
-                      padding: "12px",
-                      fontSize: "14px",
-                      border: "1px solid #e5e7eb",
-                      borderRadius: "8px",
-                    }}
-                  />
-                </label>
-
-                <button
-                  type="submit"
-                  style={{
-                    padding: "12px",
-                    fontSize: "14px",
-                    fontWeight: 600,
-                    background: "rgb(124,58,237)",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "8px",
-                    cursor: "pointer",
-                  }}
-                >
-                  Sign In
-                </button>
-              </form>
-            )}
-
-            {/* Status message */}
-            {status && (
-              <div
-                style={{
-                  marginTop: "16px",
-                  padding: "12px",
-                  background: status.includes("Failed") || status.includes("failed") || status.includes("No password") ? "#fff5f5" : "#f0fdf4",
-                  border: status.includes("Failed") || status.includes("failed") || status.includes("No password")
-                    ? "1px solid #fecaca"
-                    : "1px solid #86efac",
-                  borderRadius: "8px",
-                  fontSize: "13px",
-                  color: status.includes("Failed") || status.includes("failed") || status.includes("No password") ? "#dc2626" : "#16a34a",
-                }}
-              >
-                {status}
-              </div>
-            )}
-
-            {/* SSO Options */}
-            <div style={{ marginTop: "24px", paddingTop: "24px", borderTop: "1px solid #e5e7eb" }}>
-              <div
-                style={{
-                  fontSize: "13px",
-                  color: "#6b7280",
-                  textAlign: "center",
-                  marginBottom: "12px",
-                }}
-              >
-                Or continue with
-              </div>
-              <div style={{ display: "grid", gap: "8px" }}>
-                <button
-                  onClick={handleGoogleLogin}
-                  style={{
-                    padding: "12px",
-                    fontSize: "14px",
-                    background: "white",
-                    border: "1px solid #e5e7eb",
-                    borderRadius: "8px",
-                    cursor: "pointer",
-                  }}
-                >
-                  Google
-                </button>
-              </div>
-            </div>
-          </>
         )}
       </div>
     </div>

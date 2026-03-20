@@ -1059,111 +1059,21 @@ exports.api = onRequest(
       }
     }
 
-    // POST /v1/auth:sendMagicLink — send magic link email (unauthenticated)
+    // ── TEMPORARILY DISABLED — Twilio TrustHub pending, restore when approved ──
+    // Magic link + OTP auth routes commented out in 37.6
     if ((route === "/auth:sendMagicLink" || route === "/auth/sendMagicLink") && method === "POST") {
-      try {
-        const { email, guestId, vertical } = body || {};
-        if (!email || !email.includes("@")) return jsonError(res, 400, "Valid email required");
-
-        const crypto = require("crypto");
-        const token = crypto.randomUUID();
-        const db = getDb();
-
-        // Store magic link token
-        await db.collection("magicLinks").doc(token).set({
-          email: email.toLowerCase().trim(),
-          guestId: guestId || null,
-          vertical: vertical || null,
-          createdAt: nowServerTs(),
-          expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
-          used: false,
-        });
-
-        // Send via SendGrid
-        const { sendViaSendGrid } = require("./communications/emailNotify");
-        const magicUrl = `https://app.titleapp.ai/auth/magic?token=${token}`;
-        await sendViaSendGrid({
-          to: email,
-          subject: "Your TitleApp link — tap to continue",
-          html: `<div style="font-family: -apple-system, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px;">
-            <div style="font-size: 14px; color: #1e293b; line-height: 1.6; margin-bottom: 24px;">Tap below to pick up where we left off.</div>
-            <a href="${magicUrl}" style="display: inline-block; padding: 14px 32px; background: #7c3aed; color: white; border-radius: 10px; text-decoration: none; font-weight: 600; font-size: 15px;">Continue with Alex</a>
-            <div style="margin-top: 24px; font-size: 12px; color: #94a3b8;">This link expires in 15 minutes.</div>
-            <div style="margin-top: 8px; font-size: 12px; color: #94a3b8;">— Alex, Chief of Staff at TitleApp</div>
-          </div>`,
-        });
-
-        return res.json({ ok: true });
-      } catch (e) {
-        console.error("auth:sendMagicLink failed:", e);
-        return jsonError(res, 500, "Failed to send magic link");
-      }
+      return jsonError(res, 503, "Magic link temporarily unavailable. Please use Google sign-in.");
     }
-
-    // GET /v1/auth:verifyMagicLink — verify magic link token (unauthenticated)
     if ((route === "/auth:verifyMagicLink" || route === "/auth/verifyMagicLink") && method === "GET") {
-      try {
-        const token = req.query.token;
-        if (!token) return jsonError(res, 400, "Token required");
-
-        const db = getDb();
-        const linkRef = db.collection("magicLinks").doc(token);
-        const linkSnap = await linkRef.get();
-
-        if (!linkSnap.exists) return jsonError(res, 404, "Invalid or expired link");
-        const linkData = linkSnap.data();
-
-        if (linkData.used) return jsonError(res, 410, "Link already used");
-        if (new Date(linkData.expiresAt) < new Date()) return jsonError(res, 410, "Link expired");
-
-        // Find or create Firebase user
-        let userRecord;
-        try {
-          userRecord = await admin.auth().getUserByEmail(linkData.email);
-        } catch {
-          userRecord = await admin.auth().createUser({ email: linkData.email, emailVerified: true });
-        }
-
-        // Generate custom token
-        const firebaseToken = await admin.auth().createCustomToken(userRecord.uid);
-
-        // Mark link as used
-        await linkRef.update({ used: true, usedAt: nowServerTs() });
-
-        return res.json({
-          ok: true,
-          firebaseToken,
-          guestId: linkData.guestId || null,
-          vertical: linkData.vertical || null,
-        });
-      } catch (e) {
-        console.error("auth:verifyMagicLink failed:", e);
-        return jsonError(res, 500, "Verification failed");
-      }
+      return jsonError(res, 503, "Magic link temporarily unavailable. Please use Google sign-in.");
     }
-
-    // POST /v1/auth:sendOtp — SMS OTP send (unauthenticated)
-    // Matches both /auth:sendOtp and /auth/sendOtp (frontend uses slash variant)
     if ((route === "/auth:sendOtp" || route === "/auth/sendOtp") && method === "POST") {
-      try {
-        const { sendOtp } = require("./campaigns/otpAuth");
-        return await sendOtp(req, res);
-      } catch (e) {
-        console.error("auth:sendOtp failed:", e);
-        return jsonError(res, 500, "OTP send failed");
-      }
+      return jsonError(res, 503, "SMS sign-in temporarily unavailable. Please use Google sign-in.");
     }
-
-    // POST /v1/auth:verifyOtp — SMS OTP verify (unauthenticated)
     if ((route === "/auth:verifyOtp" || route === "/auth/verifyOtp") && method === "POST") {
-      try {
-        const { verifyOtp } = require("./campaigns/otpAuth");
-        return await verifyOtp(req, res);
-      } catch (e) {
-        console.error("auth:verifyOtp failed:", e);
-        return jsonError(res, 500, "OTP verify failed");
-      }
+      return jsonError(res, 503, "SMS sign-in temporarily unavailable. Please use Google sign-in.");
     }
+    // ── END TEMPORARILY DISABLED ──
 
     // POST /v1/alex:summarizeGuestSession — generate + deliver session summary
     if (route === "/alex:summarizeGuestSession" && method === "POST") {

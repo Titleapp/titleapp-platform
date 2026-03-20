@@ -110,6 +110,13 @@ export default function MeetAlex() {
     setSending(false);
   }, [sessionId, vertical]);
 
+  // On mount: if already authenticated, redirect to home
+  useEffect(() => {
+    if (localStorage.getItem("ID_TOKEN") && auth.currentUser) {
+      window.location.href = "/";
+    }
+  }, []);
+
   // On mount: send initial message to get Alex's opening
   useEffect(() => {
     if (messages.length === 0) {
@@ -148,23 +155,20 @@ export default function MeetAlex() {
         sessionStorage.setItem("ta_guest_promoted", JSON.stringify(guestConvo));
       }
 
-      // Promote guest session
-      try {
-        await fetch(`${API_BASE}/api?path=/v1/alex:promoteGuest`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ guestId: sessionId, uid: cred.user.uid }),
-        });
-      } catch { /* non-fatal */ }
+      // Promote guest session (fire and forget — do not block redirect)
+      fetch(`${API_BASE}/api?path=/v1/alex:promoteGuest`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ guestId: sessionId, uid: cred.user.uid }),
+      }).catch(() => {});
 
       // Store campaign context for sales mode continuity
       if (vertical) {
         sessionStorage.setItem("ta_campaign_context", JSON.stringify({ slug: vertical, persona: vertical, vertical }));
       }
 
-      // Show disclaimer inline, then unlock shell
-      setShowAuth(false);
-      setShowDisclaimer(true);
+      // Redirect immediately to authenticated shell
+      window.location.href = "/?promoted=true" + (vertical ? "&vertical=" + vertical : "") + "&utm_source=meet-alex&utm_medium=guest-chat" + (vertical ? "&utm_campaign=" + vertical : "");
     } catch (err) {
       if (err?.code === "auth/popup-blocked") {
         await signInWithRedirect(auth, new GoogleAuthProvider());
@@ -178,80 +182,9 @@ export default function MeetAlex() {
     }
   }
 
-  // Disclaimer acceptance — fires after SSO success
-  const [showDisclaimer, setShowDisclaimer] = useState(false);
-  const ID_CHECK_VERTICALS = ["solar_vpp", "aviation", "real_estate_development", "title", "health", "finance"];
-
-  function handleDisclaimerAccept() {
-    setShowDisclaimer(false);
-    setAuthInProgress(false);
-
-    // ID check message for high-trust verticals
-    if (ID_CHECK_VERTICALS.includes(vertical)) {
-      setMessages(prev => [...prev, {
-        role: "assistant",
-        text: "Just so you know — because you're working with " + (vertical.replace(/_/g, " ")) + ", we may do a quick ID check at some point. Takes 60 seconds, keeps everything secure. I'll let you know when it comes up.",
-      }]);
-    }
-
-    // Redirect to authenticated shell
-    window.location.href = "/?promoted=true" + (vertical ? "&vertical=" + vertical : "") + "&utm_source=meet-alex&utm_medium=guest-chat" + (vertical ? "&utm_campaign=" + vertical : "");
-  }
-
   // Disclaimer + auth state
   const [tosChecked, setTosChecked] = useState(false);
   const [disclaimerAccepted, setDisclaimerAccepted] = useState(false);
-
-  // Magic link state
-  const [magicEmail, setMagicEmail] = useState("");
-  const [magicSending, setMagicSending] = useState(false);
-  const [magicSent, setMagicSent] = useState(false);
-
-  async function handleMagicLink(e) {
-    e.preventDefault();
-    if (!magicEmail.trim() || magicSending) return;
-    setMagicSending(true);
-    try {
-      const res = await fetch(`${API_BASE}/api?path=/v1/auth:sendMagicLink`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: magicEmail.trim(), guestId: sessionId, vertical }),
-      });
-      const data = await res.json();
-      if (data.ok) {
-        setMagicSent(true);
-        setMessages(prev => [...prev, { role: "assistant", text: "I just sent you a magic link. Check your email and tap the link to pick up right where we left off." }]);
-      }
-    } catch { /* non-fatal */ }
-    setMagicSending(false);
-  }
-
-  // Email flow — simple email input + signInWithEmailAndPassword or redirect to login
-  const [emailMode, setEmailMode] = useState(false);
-  const [email, setEmail] = useState("");
-
-  async function handleEmailAuth(e) {
-    e.preventDefault();
-    if (!email.trim()) return;
-    setAuthInProgress(true);
-
-    // Store context before redirect
-    sessionStorage.setItem("ta_utm", JSON.stringify({
-      source: "meet-alex", medium: "guest-chat",
-      campaign: vertical || "direct", capturedAt: new Date().toISOString(),
-    }));
-    const guestConvo = messages.filter(m => m.text && m.text.trim());
-    if (guestConvo.length > 0) {
-      sessionStorage.setItem("ta_guest_promoted", JSON.stringify(guestConvo));
-    }
-    if (vertical) {
-      sessionStorage.setItem("ta_campaign_context", JSON.stringify({ slug: vertical, persona: vertical, vertical }));
-    }
-    sessionStorage.setItem("ta_guest_email", email.trim());
-
-    // Redirect to main app which will show the login flow
-    window.location.href = "/?promoted=true" + (vertical ? "&vertical=" + vertical : "") + "&utm_source=meet-alex&utm_medium=guest-chat" + (vertical ? "&utm_campaign=" + vertical : "");
-  }
 
   // Styles
   const S = {
@@ -280,8 +213,6 @@ export default function MeetAlex() {
     authCard: { margin: "0 16px 8px", padding: "16px 20px", background: "#f3f0ff", border: "1px solid #e9d5ff", borderRadius: 16 },
     authTitle: { fontSize: 14, fontWeight: 600, color: "#111827", marginBottom: 12 },
     authBtn: (bg) => ({ width: "100%", padding: "12px", fontSize: 14, fontWeight: 600, color: "#fff", background: bg, border: "none", borderRadius: 10, cursor: "pointer", marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }),
-    authDivider: { fontSize: 12, color: "#94a3b8", textAlign: "center", margin: "4px 0 8px" },
-    emailInput: { width: "100%", padding: "10px 14px", fontSize: 14, border: "1px solid #e5e7eb", borderRadius: 10, outline: "none", background: "#f8fafc", color: "#1e293b", boxSizing: "border-box", marginBottom: 8 },
     workerCard: { display: "flex", gap: 12, padding: "12px 14px", background: "#f8fafc", border: "1px solid #e5e7eb", borderRadius: 12, marginTop: 8, cursor: "pointer", transition: "box-shadow 0.15s ease, border-color 0.15s ease" },
     wcName: { fontSize: 13, fontWeight: 600, color: "#111827" },
     wcDesc: { fontSize: 12, color: "#6b7280", marginTop: 2 },
@@ -385,45 +316,17 @@ export default function MeetAlex() {
       {showAuth && !authInProgress && disclaimerAccepted && (
         <div style={S.authCard}>
           <div style={S.authTitle}>Sign in to continue</div>
-          {/* Primary: magic link */}
-          <form onSubmit={handleMagicLink} style={{ marginBottom: 8 }}>
-            <input
-              type="email"
-              value={magicEmail}
-              onChange={e => setMagicEmail(e.target.value)}
-              placeholder="your@email.com"
-              autoFocus
-              style={S.emailInput}
-            />
-            <button type="submit" style={S.authBtn("#7c3aed")} disabled={!magicEmail.trim() || magicSending}>
-              {magicSending ? "Sending..." : magicSent ? "Link sent — check your email" : "Send magic link"}
-            </button>
-          </form>
-          <div style={S.authDivider}>or</div>
-          {/* Secondary: Google SSO */}
-          <button onClick={handleGoogleAuth} style={S.authBtn("#4285f4")}>
+          <button onClick={handleGoogleAuth} style={S.authBtn("#7c3aed")}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
             Continue with Google
           </button>
+          <div style={{ fontSize: 12, color: "#94a3b8", textAlign: "center", marginTop: 4 }}>More sign-in options coming soon.</div>
         </div>
       )}
 
-      {authInProgress && !showDisclaimer && (
+      {authInProgress && (
         <div style={{ ...S.authCard, textAlign: "center" }}>
-          <div style={{ fontSize: 14, color: "#6b7280" }}>Setting things up...</div>
-        </div>
-      )}
-
-      {/* Disclaimer — inline after SSO success */}
-      {showDisclaimer && (
-        <div style={S.authCard}>
-          <div style={{ fontSize: 14, fontWeight: 600, color: "#1e1e2e", marginBottom: 8 }}>Before we continue</div>
-          <div style={{ fontSize: 13, color: "#1e1e2e", lineHeight: 1.6, marginBottom: 16 }}>
-            TitleApp Digital Workers provide information and automation within defined business rules. They do not constitute professional advice (legal, financial, medical, or aviation). All outputs include an audit trail. By continuing, you agree to the TitleApp Terms of Service and Privacy Policy.
-          </div>
-          <button onClick={handleDisclaimerAccept} style={{ ...S.sendBtn, width: "100%", borderRadius: 10, height: "auto", padding: "12px 24px", fontSize: 14, fontWeight: 600 }}>
-            I understand — let's go
-          </button>
+          <div style={{ fontSize: 14, color: "#6b7280" }}>Signing in...</div>
         </div>
       )}
 
