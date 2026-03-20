@@ -531,6 +531,29 @@ async function handleChat(req, res, { userId }) {
     docReminder = docResult.reminder; // null if operator docs exist
   }
 
+  // ── Query ingested operator document chunks ──
+  let operatorDocChunks = [];
+  try {
+    const [operatorChunkSnap, whitelabelChunkSnap] = await Promise.all([
+      db.collection("workerDocumentChunks")
+        .where("workerId", "==", "pc12-ng-copilot")
+        .where("ownerUid", "==", userId)
+        .limit(5)
+        .get(),
+      db.collection("workerDocumentChunks")
+        .where("workerId", "==", "pc12-ng-copilot")
+        .where("isWhiteLabel", "==", true)
+        .limit(3)
+        .get(),
+    ]);
+    operatorDocChunks = [
+      ...operatorChunkSnap.docs.map(d => d.data()),
+      ...whitelabelChunkSnap.docs.map(d => d.data()),
+    ];
+  } catch (chunkErr) {
+    console.warn("[copilot] workerDocumentChunks query failed (non-blocking):", chunkErr.message);
+  }
+
   // Compute currency and duty for prompt injection
   const { computeCurrency } = require("./logic/currencyTracker");
   const currency = computeCurrency(profile, entries, groundTraining);
@@ -558,6 +581,7 @@ async function handleChat(req, res, { userId }) {
     dutyStatus,
     profile,
     vaultDocs,
+    operatorDocChunks,
     examinerMode: isExaminer,
     checkType,
   }) + "\n\n" + modeInstruction;

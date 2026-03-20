@@ -22,11 +22,11 @@
  * @returns {string} full system prompt
  */
 function buildSystemPrompt(options = {}) {
-  const { currency, dutyStatus, profile, vaultDocs, examinerMode } = options;
+  const { currency, dutyStatus, profile, vaultDocs, operatorDocChunks, examinerMode } = options;
 
   const layers = [
     getLayer1_Aircraft(),
-    getLayer2_Operator(vaultDocs),
+    getLayer2_Operator(vaultDocs, operatorDocChunks),
     getLayer3_Pilot(profile, currency),
     getLayer4_DutyTime(dutyStatus),
     getLayer5_Reference(),
@@ -83,7 +83,7 @@ When discussing aircraft systems, procedures, or limitations, always reference t
 
 // --- Layer 2: Operator ---
 
-function getLayer2_Operator(vaultDocs) {
+function getLayer2_Operator(vaultDocs, operatorDocChunks) {
   let operatorContext = `## Layer 2 — Operator: LFN Medevac (Part 135)
 
 This PC-12/47E operates under FAR Part 135 as a medevac aircraft.
@@ -92,7 +92,22 @@ Operator: Life Flight Network (LFN).
 Standard operating procedures apply per company GOM and SOPs.
 If operator documents have been uploaded, reference them directly.`;
 
-  // Inject extracted text from uploaded operator docs
+  // Inject ingested operator document chunks (highest authority)
+  if (operatorDocChunks && operatorDocChunks.length > 0) {
+    const chunkSections = operatorDocChunks.map((chunk) =>
+      `[SOURCE: ${chunk.citationPrefix}]\n${chunk.text}`
+    );
+    operatorContext += `\n\nOPERATOR DOCUMENTS (highest authority — always cite these):\n\n${chunkSections.join("\n\n")}
+
+RULES:
+- Always cite the specific document and section when answering
+- Operator documents override generic PC-12 knowledge
+- If operator docs don't cover the topic, say so and provide general guidance
+- Never make up regulatory references — only cite what is in the documents above
+- Ground use only — never answer questions about in-flight decision making`;
+  }
+
+  // Inject extracted text from uploaded operator docs (legacy)
   if (vaultDocs && vaultDocs.length > 0) {
     const docSections = [];
     for (const doc of vaultDocs) {
