@@ -9046,17 +9046,157 @@ ${(context || {}).dealContext ? `\nThe user wants to discuss this deal analysis:
             // Select system prompt: Alex orchestration > personal vault > business legacy
             const selectedSystemPrompt = alexSystemPrompt || (isPersonalVault ? personalSystemPrompt : businessSystemPrompt);
 
-            const response = await anthropic.messages.create({
-              model: "claude-sonnet-4-5-20250929",
-              max_tokens: 4096,
-              system: selectedSystemPrompt,
-              messages,
-            });
+            // ══════════════════════════════════════════════════════════
+            //  WORKER ZERO — RAAS INPUT + OUTPUT FILTER (37.5)
+            // ══════════════════════════════════════════════════════════
+            let raasInputResult = null;
+            let raasOutputResult = null;
+            let alexAuditData = null;
 
-            aiResponse = response.content[0]?.text || "I apologize, but I couldn't generate a response. Please try again.";
+            if (alexSystemPrompt) {
+              try {
+                const { getRulePack, determineMode } = require("./services/alex/rulePacks/alex-rule-pack-v1");
+                const { runInputFilter } = require("./services/alex/alexInputFilter");
+
+                // Determine mode and build user context
+                const wsData = workspace || {};
+                const alexMode = determineMode(auth.user, wsData);
+                const subscribedWorkers = wsData.activeWorkers || [];
+                const userContext = {
+                  subscribedWorkers,
+                  teams: wsData.teams || [],
+                  activeTeamId: wsData.activeTeamId || ctx.tenantId || null,
+                  activeTeamVertical: wsData.vertical || ctx.vertical || null,
+                  vaultDocumentCount: 0,
+                  usageLog: [],
+                };
+
+                const rulePack = getRulePack(userContext, alexMode);
+
+                // ── INPUT FILTER ──
+                raasInputResult = await runInputFilter({ message, rulePack, userContext });
+
+                // If handoff triggered — skip LLM entirely
+                if (raasInputResult.handoffTrigger) {
+                  const handoff = raasInputResult.handoffTrigger;
+                  aiResponse = handoff.message;
+
+                  if (handoff.subscribed) {
+                    structuredData = { type: "worker_route", targetWorker: handoff.workerSlug };
+                  } else if (handoff.workerSlug) {
+                    const alexSvc = require("./services/alex");
+                    const wk = alexSvc.getWorker(userContext.activeTeamVertical || "real-estate-development", handoff.workerSlug);
+                    if (wk) {
+                      structuredData = { type: "worker_recommendation", worker: { id: wk.id, slug: wk.slug, name: wk.name, price: wk.pricing?.monthly || 0, capabilitySummary: wk.capabilitySummary } };
+                    } else {
+                      structuredData = { type: "worker_recommendation", worker: { slug: handoff.workerSlug, name: handoff.workerName } };
+                    }
+                  }
+
+                  // Store audit data for logging after response
+                  alexAuditData = { mode: alexMode, rulePack, userContext, inputResult: raasInputResult };
+
+                  // Skip LLM — jump to audit log + return
+                  // (aiResponse is already set, structuredData is set)
+                }
+
+                // Store context for output filter (used after LLM call)
+                if (!raasInputResult.handoffTrigger) {
+                  alexAuditData = { mode: alexMode, rulePack, userContext, inputResult: raasInputResult };
+                }
+              } catch (raasErr) {
+                console.warn("[Worker Zero] RAAS input filter failed (non-blocking):", raasErr.message);
+              }
+            }
+
+            // ── LLM CALL (skip if handoff already handled) ──
+            if (!raasInputResult?.handoffTrigger) {
+              const response = await anthropic.messages.create({
+                model: "claude-sonnet-4-5-20250929",
+                max_tokens: 4096,
+                system: selectedSystemPrompt,
+                messages,
+              });
+
+              aiResponse = response.content[0]?.text || "I apologize, but I couldn't generate a response. Please try again.";
+
+              // ── OUTPUT FILTER ──
+              if (alexSystemPrompt && alexAuditData) {
+                try {
+                  const { runOutputFilter, buildViolationContext, SAFE_FALLBACK, MAX_REGENERATIONS } = require("./services/alex/alexOutputFilter");
+                  const { rulePack } = alexAuditData;
+
+                  raasOutputResult = runOutputFilter({ response: aiResponse, rulePack, userContext: alexAuditData.userContext });
+
+                  // If violations found — retry with violation context
+                  if (!raasOutputResult.approved) {
+                    let regenerations = 0;
+                    while (!raasOutputResult.approved && regenerations < MAX_REGENERATIONS) {
+                      regenerations++;
+                      const violationCtx = buildViolationContext(raasOutputResult.violations);
+                      const retryMessages = [...messages, { role: "assistant", content: aiResponse }, { role: "user", content: `Your previous response contained rule violations. Correct these:\n${violationCtx}\n\nRegenerate your response without these violations.` }];
+
+                      const retryResponse = await anthropic.messages.create({
+                        model: "claude-sonnet-4-5-20250929",
+                        max_tokens: 4096,
+                        system: selectedSystemPrompt,
+                        messages: retryMessages,
+                      });
+
+                      aiResponse = retryResponse.content[0]?.text || SAFE_FALLBACK;
+                      raasOutputResult = runOutputFilter({ response: aiResponse, rulePack, userContext: alexAuditData.userContext });
+                      raasOutputResult.regenerationCount = regenerations;
+                    }
+
+                    // If still violating after max retries — safe fallback
+                    if (!raasOutputResult.approved) {
+                      console.warn(`[Worker Zero] Output still violating after ${MAX_REGENERATIONS} retries, using safe fallback`);
+                      aiResponse = SAFE_FALLBACK;
+                      raasOutputResult.response = SAFE_FALLBACK;
+                      raasOutputResult.approved = true;
+                    }
+                  }
+                } catch (outputErr) {
+                  console.warn("[Worker Zero] RAAS output filter failed (non-blocking):", outputErr.message);
+                }
+              }
+            }
+
+            // ── AUDIT LOG ──
+            if (alexAuditData) {
+              try {
+                const { logAlexInteraction } = require("./services/alex/auditLog");
+                await logAlexInteraction({
+                  userId: auth.user.uid,
+                  sessionId: ctx.tenantId || "default",
+                  mode: alexAuditData.mode,
+                  activeVertical: alexAuditData.userContext?.activeTeamVertical || null,
+                  activeTeamId: alexAuditData.userContext?.activeTeamId || null,
+                  rulePackVersion: "alex-rule-pack-v1",
+                  input: {
+                    raw: message,
+                    handoffTriggered: !!(raasInputResult && raasInputResult.handoffTrigger),
+                    handoffTarget: raasInputResult?.handoffTrigger?.workerSlug || null,
+                    hardStopTriggered: !!(raasInputResult && raasInputResult.hardStopTriggered),
+                  },
+                  output: {
+                    response: aiResponse,
+                    violations: raasOutputResult?.violations || [],
+                    regenerationCount: raasOutputResult?.regenerationCount || 0,
+                    approved: raasOutputResult ? raasOutputResult.approved : true,
+                  },
+                  layer2Snapshot: {
+                    subscribedWorkers: alexAuditData.userContext?.subscribedWorkers || [],
+                    activeTeamId: alexAuditData.userContext?.activeTeamId || null,
+                  },
+                });
+              } catch (auditErr) {
+                console.warn("[Worker Zero] Audit log failed (non-blocking):", auditErr.message);
+              }
+            }
 
             // Parse routing tags from Alex's response (if using Alex orchestration)
-            if (alexSystemPrompt && aiResponse) {
+            if (alexSystemPrompt && aiResponse && !raasInputResult?.handoffTrigger) {
               try {
                 const alexService = require("./services/alex");
                 const { cleanResponse, route } = alexService.parseRoutingTag(aiResponse);
