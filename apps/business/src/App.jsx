@@ -4400,7 +4400,7 @@ function AdminShell({ onBackToHub, initialSection }) {
         const TeamHome = React.lazy(() => import("./pages/TeamHome"));
         return <React.Suspense fallback={<div />}><TeamHome
           onSelectTeam={(team) => {
-            if (team.teamId === "personal-vault") {
+            if (team.teamId === "personal-vault" || team.teamId === "vault") {
               localStorage.setItem("VERTICAL", "consumer");
               localStorage.setItem("WORKSPACE_ID", "vault");
               localStorage.setItem("WORKSPACE_NAME", "Personal Vault");
@@ -5074,10 +5074,8 @@ export default function App() {
 
   function handleWorkspaceLaunch(workspace) {
     // WorkspaceHub already set localStorage values
-    // Also set TENANT_ID for backward compatibility with existing API calls
-    if (workspace.id !== "vault") {
-      localStorage.setItem("TENANT_ID", workspace.id);
-    }
+    // Set TENANT_ID for all workspaces including vault
+    localStorage.setItem("TENANT_ID", workspace.id);
     // Check if this workspace needs onboarding (newly created or incomplete)
     // Use both the prop flag AND localStorage (localStorage is the reliable signal)
     const pendingOnboarding = localStorage.getItem("PENDING_ONBOARDING");

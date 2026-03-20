@@ -63,15 +63,6 @@ export default function TeamHome({ onSelectTeam, onAddTeam }) {
     ? `Last active: ${activeTeam.name}${totalWorkers > 0 ? ` \u2014 ${totalWorkers} worker${totalWorkers !== 1 ? "s" : ""} running` : ""}`
     : "";
 
-  // Personal Vault card (always present)
-  const personalVault = {
-    teamId: "personal-vault",
-    name: "Personal Vault",
-    vertical: "personal",
-    documentCount: parseInt(localStorage.getItem("ta_vault_doc_count") || "0"),
-    active: true,
-  };
-
   if (loading) {
     return <div style={{ padding: 64, textAlign: "center", color: "#94a3b8" }}>Loading...</div>;
   }
@@ -104,19 +95,12 @@ export default function TeamHome({ onSelectTeam, onAddTeam }) {
       {/* Team grid */}
       <div style={S.sectionLabel}>Your Teams</div>
       <div style={S.grid}>
-        {/* Personal Vault — always first */}
-        <TeamCard
-          team={personalVault}
-          isPersonal={true}
-          isActive={activeTeamId === "personal-vault"}
-          onClick={() => onSelectTeam && onSelectTeam(personalVault)}
-        />
-
-        {/* User teams */}
+        {/* Teams from API (Personal Vault is included by backend as first item) */}
         {teams.map(team => (
           <TeamCard
             key={team.teamId}
             team={team}
+            isPersonal={team.teamId === "vault"}
             isActive={team.teamId === activeTeamId}
             onClick={() => onSelectTeam && onSelectTeam(team)}
             onMenu={() => {}} // stubbed for now

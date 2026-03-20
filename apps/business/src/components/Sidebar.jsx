@@ -866,11 +866,9 @@ const WORKER_NAV_MAP = {
     { id: "w3-contracts", label: "Contracts" },
   ],
   "consumer": [
-    { id: "my-vehicles", label: "Vehicles" },
-    { id: "my-properties", label: "Properties" },
-    { id: "my-documents", label: "Documents" },
-    { id: "my-certifications", label: "Certifications" },
-    { id: "my-logbook", label: "Activity Log" },
+    { id: "vault-documents", label: "Documents" },
+    { id: "pending-signatures", label: "Signatures" },
+    { id: "my-logbook", label: "Activity" },
   ],
 };
 

@@ -162,6 +162,9 @@ export default function MeetAlex() {
         body: JSON.stringify({ guestId: sessionId, uid: cred.user.uid }),
       }).catch(() => {});
 
+      // Persist guest ToS acceptance so authenticated ChatPanel doesn't re-prompt
+      localStorage.setItem('DISCLAIMER_ACCEPTED', 'true');
+
       // Store campaign context for sales mode continuity
       if (vertical) {
         sessionStorage.setItem("ta_campaign_context", JSON.stringify({ slug: vertical, persona: vertical, vertical }));

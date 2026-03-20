@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { getAuth } from 'firebase/auth';
-import { getFirestore, collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
+import { getFirestore, collection, query, where, orderBy, limit, getDocs, doc, getDoc } from 'firebase/firestore';
 import { fireMilestone } from '../utils/celebrations';
 import { WORKER_ROUTES } from '../pages/WorkerMarketplace';
 
@@ -466,6 +466,18 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
     }
   }, [currentUser, authReady]);
 
+  // Check Firestore for previously accepted disclaimer (survives localStorage clears)
+  useEffect(() => {
+    if (currentUser && authReady && !disclaimerAccepted) {
+      getDoc(doc(db, 'users', currentUser.uid)).then(snap => {
+        if (snap.exists() && snap.data().disclaimerAccepted) {
+          localStorage.setItem('DISCLAIMER_ACCEPTED', 'true');
+          setDisclaimerAccepted(true);
+        }
+      }).catch(() => {});
+    }
+  }, [currentUser, authReady, disclaimerAccepted]);
+
   function fireCelebration() {
     const v = localStorage.getItem('VERTICAL') || 'auto';
     const config = CELEBRATION_MESSAGES[v] || CELEBRATION_MESSAGES.auto;
@@ -518,12 +530,10 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
     localStorage.setItem('DISCLAIMER_ACCEPTED', 'true');
     localStorage.setItem('DISCLAIMER_VERSION', '2026-02-24-v2');
     localStorage.setItem('DISCLAIMER_ACCEPTED_AT', new Date().toISOString());
-    setDisclaimerAccepted(true);
-    setShowDisclaimer(false);
 
-    // Store in Firestore via API
+    // Write to Firestore FIRST, then unblock chat
     try {
-      const token = await currentUser.getIdToken();
+      const token = await currentUser.getIdToken(true);
       const tenantId = localStorage.getItem('TENANT_ID') || '';
       const apiBase = import.meta.env.VITE_API_BASE || 'https://titleapp-frontdoor.titleapp-core.workers.dev';
       await fetch(`${apiBase}/api?path=/v1/workspace:acceptDisclaimer`, {
@@ -543,6 +553,10 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
     } catch (err) {
       console.error('Failed to store disclaimer acceptance:', err);
     }
+
+    // Unblock chat only after Firestore write completes (localStorage is sync fallback)
+    setDisclaimerAccepted(true);
+    setShowDisclaimer(false);
 
     // Show celebration suggestions + ID verify
     const config = CELEBRATION_MESSAGES[v] || CELEBRATION_MESSAGES.auto;
@@ -915,7 +929,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
     setIsTyping(true);
 
     try {
-      const token = await currentUser.getIdToken();
+      const token = await currentUser.getIdToken(true);
       const tenantId = localStorage.getItem('TENANT_ID') || localStorage.getItem('WORKSPACE_ID') || '';
       const vertical = localStorage.getItem('VERTICAL') || 'auto';
       const jurisdiction = localStorage.getItem('JURISDICTION') || '';
@@ -968,9 +982,13 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
     } catch (error) {
       console.error('Send failed:', error);
       setIsTyping(false);
+      const msg = error.message || '';
+      const errorContent = (msg.includes('Forbidden') || msg.includes('403'))
+        ? 'Session expired. Please reload the page and try again.'
+        : (msg || 'Failed to send message. Please try again.');
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: error.message || 'Failed to send message. Please try again.',
+        content: errorContent,
         isError: true,
       }]);
     } finally {
