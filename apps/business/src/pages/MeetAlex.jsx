@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import { signInAnonymously } from "firebase/auth";
+import { auth } from "../firebase";
 import { VERTICAL_MAP } from "../hooks/useVisitorContext";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
@@ -16,6 +18,7 @@ export default function MeetAlex() {
   const [sending, setSending] = useState(false);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+  const [nameCollected, setNameCollected] = useState(false);
 
   // Session & URL params (stable across renders)
   const [sessionId] = useState(() => {
@@ -30,6 +33,13 @@ export default function MeetAlex() {
   const [prompt] = useState(() =>
     new URLSearchParams(window.location.search).get("prompt") || ""
   );
+
+  // Anonymous auth on mount — gives the user a Firebase UID for subscriptions
+  useEffect(() => {
+    if (!auth.currentUser) {
+      signInAnonymously(auth).catch(err => console.error("[MeetAlex] anon auth:", err));
+    }
+  }, []);
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -134,14 +144,13 @@ export default function MeetAlex() {
     return () => window.removeEventListener("ta:worker-subscribed", onSubscribed);
   }, []);
 
-  // Opening message — hardcoded, no API round-trip
+  // Opening message — name-first, no API round-trip
   useEffect(() => {
     if (messages.length === 0) {
       setMessages([{
         role: "assistant",
-        text: "Hey \u2014 I'm Alex. Pick a worker or tell me what you do.",
+        text: "Hey \u2014 what's your name?",
       }]);
-      if (prompt) sendMessage(prompt);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -151,6 +160,21 @@ export default function MeetAlex() {
     if (!input.trim() || sending) return;
     const msg = input;
     setInput("");
+
+    // First message = name
+    if (!nameCollected) {
+      const name = msg.trim();
+      setNameCollected(true);
+      sessionStorage.setItem("ta_guest_name", name);
+      setMessages(prev => [
+        ...prev,
+        { role: "user", text: name },
+        { role: "assistant", text: `Got it ${name}. Pick a worker from the panel and let's go.` },
+      ]);
+      if (prompt) sendMessage(prompt);
+      return;
+    }
+
     sendMessage(msg);
   }
 
@@ -258,7 +282,7 @@ export default function MeetAlex() {
           type="text"
           value={input}
           onChange={e => setInput(e.target.value)}
-          placeholder="Message Alex..."
+          placeholder={nameCollected ? "Message Alex..." : "Your name..."}
           disabled={sending}
           style={{ ...S.input, opacity: sending ? 0.6 : 1 }}
         />

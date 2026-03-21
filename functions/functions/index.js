@@ -4347,6 +4347,58 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       }
     }
 
+    // GET /v1/leaderboard:top10 — Public leaderboard for guest storefront (no auth)
+    if (route === "/leaderboard:top10" && method === "GET") {
+      try {
+        const vertical = req.query.vertical || "";
+        if (!vertical) return jsonError(res, 400, "vertical parameter required");
+
+        const db = getDb();
+        // Try today's leaderboard first, then fall back to most recent
+        const today = new Date().toISOString().slice(0, 10);
+        let doc = await db.doc(`leaderboards/top10_${vertical}_${today}`).get();
+
+        if (!doc.exists) {
+          // Fall back: query most recent leaderboard for this vertical
+          const fallback = await db.collection("leaderboards")
+            .where("vertical", "==", vertical)
+            .orderBy("date", "desc")
+            .limit(1)
+            .get();
+          if (!fallback.empty) doc = fallback.docs[0];
+        }
+
+        if (!doc || !doc.exists) {
+          // No leaderboard yet — build on-the-fly from digitalWorkers
+          const dwSnap = await db.collection("digitalWorkers")
+            .where("vertical", "==", vertical)
+            .where("status", "==", "live")
+            .limit(10)
+            .get();
+          const workers = dwSnap.docs.map((d, i) => {
+            const w = d.data();
+            return {
+              rank: i + 1,
+              workerId: d.id,
+              slug: w.slug || d.id,
+              name: w.display_name || w.name || d.id,
+              tagline: w.tagline || w.shortDescription || w.description || "",
+              price: w.pricing_tier || w.price || 0,
+              subscriberCount: w.subscriber_count || 0,
+              featured: w.featured || false,
+            };
+          });
+          return res.json({ ok: true, vertical, date: today, workers, source: "live_query" });
+        }
+
+        const data = doc.data();
+        return res.json({ ok: true, vertical, date: data.date, workers: data.workers || [], source: "leaderboard" });
+      } catch (e) {
+        console.error("leaderboard:top10 failed:", e);
+        return jsonError(res, 500, "Leaderboard query failed");
+      }
+    }
+
     // All other routes require Firebase auth
     const auth = await requireFirebaseUser(req, res);
     if (auth.handled) return;
@@ -7205,6 +7257,60 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
         return res.json({ ok: true, ...result });
       } catch (e) {
         console.error("admin:seedCampaigns failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ----------------------------
+    // ADMIN: BUILD LEADERBOARD (39.3)
+    // ----------------------------
+    if (route === "/admin:buildLeaderboard" && method === "POST") {
+      try {
+        const vertical = body.vertical;
+        if (!vertical) return jsonError(res, 400, "vertical required");
+
+        const db = getDb();
+        const dwSnap = await db.collection("digitalWorkers")
+          .where("vertical", "==", vertical)
+          .where("status", "==", "live")
+          .get();
+
+        // Build ranked list: subscriber_count DESC, featured boost
+        const raw = dwSnap.docs.map(d => {
+          const w = d.data();
+          return {
+            workerId: d.id,
+            slug: w.slug || d.id,
+            name: w.display_name || w.name || d.id,
+            tagline: w.tagline || w.shortDescription || w.description || "",
+            price: w.pricing_tier || w.price || 0,
+            subscriberCount: w.subscriber_count || 0,
+            featured: w.featured || false,
+          };
+        });
+
+        // Sort: featured first, then by subscriber_count desc
+        raw.sort((a, b) => {
+          if (a.featured && !b.featured) return -1;
+          if (!a.featured && b.featured) return 1;
+          return (b.subscriberCount || 0) - (a.subscriberCount || 0);
+        });
+
+        const top10 = raw.slice(0, 10).map((w, i) => ({ ...w, rank: i + 1 }));
+        const today = new Date().toISOString().slice(0, 10);
+        const docId = `top10_${vertical}_${today}`;
+
+        await db.doc(`leaderboards/${docId}`).set({
+          vertical,
+          date: today,
+          workers: top10,
+          builtAt: new Date().toISOString(),
+          workerCount: dwSnap.size,
+        });
+
+        return res.json({ ok: true, docId, workerCount: dwSnap.size, top10Count: top10.length });
+      } catch (e) {
+        console.error("admin:buildLeaderboard failed:", e);
         return jsonError(res, 500, e.message);
       }
     }

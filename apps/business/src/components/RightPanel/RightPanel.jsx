@@ -223,13 +223,27 @@ function WorkerCard({ worker, onSelect }) {
         onMouseEnter={e => { e.currentTarget.style.borderColor = "#7c3aed"; }}
         onMouseLeave={e => { e.currentTarget.style.borderColor = "#e5e7eb"; }}
       >
-        <div style={S.cardName}>{worker.name}</div>
-        <div style={S.cardDesc}>{worker.shortDescription || worker.description}</div>
-        <div style={S.cardFooter}>
-          <span style={S.priceBadge}>{formatPrice(worker.price)}</span>
-          <button style={{ ...S.getBtn, opacity: submitting ? 0.6 : 1 }} onClick={handleGetWorker} disabled={submitting}>
-            {submitting ? "..." : worker.price === 0 || !worker.price ? "Get this worker" : "Subscribe"}
-          </button>
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+          {worker.rank && (
+            <div style={{ fontSize: 22, fontWeight: 800, color: "#e5e7eb", lineHeight: 1, minWidth: 24, flexShrink: 0 }}>
+              {worker.rank}
+            </div>
+          )}
+          <div style={{ flex: 1 }}>
+            <div style={S.cardName}>{worker.name || worker.display_name}</div>
+            <div style={S.cardDesc}>{worker.tagline || worker.shortDescription || worker.description}</div>
+            <div style={S.cardFooter}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={S.priceBadge}>{formatPrice(worker.price)}</span>
+                {worker.subscriberCount > 0 && (
+                  <span style={{ fontSize: 11, color: "#94a3b8" }}>{worker.subscriberCount.toLocaleString()} using this</span>
+                )}
+              </div>
+              <button style={{ ...S.getBtn, opacity: submitting ? 0.6 : 1 }} onClick={handleGetWorker} disabled={submitting}>
+                {submitting ? "..." : worker.price === 0 || !worker.price ? "Get this worker" : "Subscribe"}
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -317,9 +331,9 @@ export default function RightPanel() {
   const { state, vertical, verticalLabel, workers, selectedWorker, showRecommendations, showWorkerDetail, goBack, dismiss, clearVerticalFilter, setWorkers } = panel;
   const [loading, setLoading] = useState(false);
 
-  // Load workers from API on mount — no hardcoded fallback
+  // Load workers from leaderboard API on mount
   useEffect(() => {
-    loadWorkers(vertical);
+    loadLeaderboard(vertical);
   }, [vertical]);
 
   // Listen for Alex recommendation events
@@ -328,7 +342,7 @@ export default function RightPanel() {
       const { vertical: v, workers: w, verticalLabel: label } = e.detail || {};
       if (v) {
         showRecommendations(w || [], v, label || null);
-        if (!w || w.length === 0) loadWorkers(v);
+        if (!w || w.length === 0) loadLeaderboard(v);
       }
     }
     function onHighlight(e) {
@@ -346,11 +360,12 @@ export default function RightPanel() {
     };
   }, [workers, showRecommendations, showWorkerDetail]);
 
-  async function loadWorkers(v) {
+  async function loadLeaderboard(v) {
     setLoading(true);
     try {
       if (v) {
-        const res = await fetch(`${API_BASE}/api?path=/v1/catalog:byVertical&vertical=${encodeURIComponent(v)}&limit=3`);
+        // Try leaderboard first — ranked by subscribers, live data
+        const res = await fetch(`${API_BASE}/api?path=/v1/leaderboard:top10&vertical=${encodeURIComponent(v)}`);
         const data = await res.json();
         if (data.ok && data.workers && data.workers.length > 0) {
           setWorkers(data.workers);
@@ -358,12 +373,13 @@ export default function RightPanel() {
           return;
         }
       }
-      // Fallback: featured workers
-      const res = await fetch(`${API_BASE}/api?path=/v1/marketplace:featured&limit=3`);
+      // No vertical or no leaderboard — fall back to catalog
+      const fallbackVertical = v || "aviation";
+      const res = await fetch(`${API_BASE}/api?path=/v1/catalog:byVertical&vertical=${encodeURIComponent(fallbackVertical)}&limit=10`);
       const data = await res.json();
       if (data.ok && data.workers) setWorkers(data.workers);
     } catch (err) {
-      console.error("Failed to load catalog:", err);
+      console.error("Failed to load leaderboard:", err);
     }
     setLoading(false);
   }
@@ -416,7 +432,7 @@ export default function RightPanel() {
       <div style={S.wrap}>
         <StatsHeader />
         <div style={S.breadcrumb}>
-          <span style={S.breadcrumbLabel}>{verticalLabel || "Popular"}</span> Workers
+          <span style={S.breadcrumbLabel}>Top 10 in {verticalLabel || "All Industries"} Today</span>
         </div>
         <div style={S.cardList}>
           {loading ? (
@@ -452,7 +468,7 @@ export default function RightPanel() {
 
       {state === "STATE-2" && verticalLabel && (
         <div style={S.breadcrumb}>
-          <span style={S.breadcrumbLabel}>{verticalLabel}</span> Workers
+          <span style={S.breadcrumbLabel}>Top 10 in {verticalLabel} Today</span>
         </div>
       )}
 
