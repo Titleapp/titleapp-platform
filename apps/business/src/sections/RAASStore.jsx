@@ -33,11 +33,30 @@ export default function RAASStore() {
   const liveCount = workers.filter(w => w.status === "live").length;
   const plannedCount = workers.filter(w => w.status === "planned" || w.status === "waitlist").length;
 
-  function handleHire(worker) {
-    if (worker.status === "live") {
-      window.dispatchEvent(new CustomEvent("ta:navigate", { detail: { section: worker.slug } }));
-    } else {
+  async function handleHire(worker) {
+    if (worker.status !== "live") {
       setExpandedId(expandedId === worker.slug ? null : worker.slug);
+      return;
+    }
+    // Subscribe to worker via API
+    const token = localStorage.getItem("ID_TOKEN");
+    const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+    try {
+      const res = await fetch(`${apiBase}/api?path=/v1/worker:subscribe`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ workerId: worker.slug, slug: worker.slug }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        window.dispatchEvent(new CustomEvent("ta:workspace-changed", { detail: {} }));
+        alert(`${worker.name || worker.display_name || "Worker"} added to your account.`);
+      } else {
+        alert(data.message || data.error || "Could not add worker.");
+      }
+    } catch (err) {
+      console.error("Subscribe failed:", err);
+      alert("Something went wrong. Please try again.");
     }
   }
 

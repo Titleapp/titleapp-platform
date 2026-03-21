@@ -351,6 +351,39 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
     return () => unsubscribe();
   }, []);
 
+  // ── Auto-subscribe pending worker after auth (independent of messages) ──
+  const pendingWorkerHandled = useRef(false);
+  useEffect(() => {
+    if (!currentUser || !authReady || pendingWorkerHandled.current) return;
+    const pending = sessionStorage.getItem('ta_pending_worker');
+    if (pending) {
+      pendingWorkerHandled.current = true;
+      sessionStorage.removeItem('ta_pending_worker');
+      try {
+        const pw = JSON.parse(pending);
+        setTimeout(() => subscribeToWorker(pw), 1500);
+      } catch { /* ignore */ }
+    }
+  }, [currentUser, authReady]);
+
+  // ── Post-subscribe confirmation (from MeetAlex inline email auth) ──
+  useEffect(() => {
+    if (!currentUser || !authReady) return;
+    const confirmation = sessionStorage.getItem("ta_subscribe_confirmation");
+    if (confirmation) {
+      sessionStorage.removeItem("ta_subscribe_confirmation");
+      try {
+        const { name } = JSON.parse(confirmation);
+        setMessages(prev => [...prev, {
+          role: "assistant",
+          content: `You're all set. ${name} is on your team now. What do you want to start with?`,
+          isCelebration: true,
+        }]);
+        window.dispatchEvent(new CustomEvent("ta:workspace-changed", { detail: {} }));
+      } catch { /* ignore */ }
+    }
+  }, [currentUser, authReady]);
+
   // ── Celebration + initial messages on mount ───────────────────
 
   useEffect(() => {
@@ -844,6 +877,103 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
     });
   }
 
+  // ── Intercept |||COMMAND||| blocks from Alex responses ──────
+  function interceptAlexCommands(text) {
+    if (!text || typeof text !== 'string') return { clean: text, commands: [] };
+    const commandRegex = /\|\|\|([A-Z_]+)\|\|\|([\s\S]*?)\|\|\|END_\1\|\|\|/g;
+    let clean = text;
+    const commands = [];
+    let match;
+    while ((match = commandRegex.exec(text)) !== null) {
+      try {
+        commands.push({ type: match[1], payload: JSON.parse(match[2].trim()) });
+      } catch (err) {
+        console.error('Failed to parse Alex command:', match[1], err);
+      }
+      clean = clean.replace(match[0], '').trim();
+    }
+    return { clean, commands };
+  }
+
+  async function executeAlexCommand(type, payload) {
+    const token = localStorage.getItem("ID_TOKEN");
+    const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+    switch (type) {
+      case 'CREATE_WORKSPACE':
+        try {
+          const res = await fetch(`${apiBase}/api?path=/v1/onboarding:claimTenant`, {
+            method: "POST",
+            headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+            body: JSON.stringify({
+              tenantName: payload.name || payload.tenantName || "My Workspace",
+              vertical: payload.workspaceType || payload.vertical || "auto",
+              tenantType: payload.tenantType || "business",
+              jurisdiction: payload.jurisdiction || "GLOBAL",
+            }),
+          });
+          const data = await res.json();
+          if (data.ok && data.tenantId) {
+            localStorage.setItem("TENANT_ID", data.tenantId);
+            localStorage.setItem("VERTICAL", payload.workspaceType || payload.vertical || "auto");
+            localStorage.setItem("WORKSPACE_NAME", payload.name || payload.tenantName || "My Workspace");
+            localStorage.setItem("COMPANY_NAME", payload.name || payload.tenantName || "My Workspace");
+            window.dispatchEvent(new CustomEvent("ta:workspace-changed", {
+              detail: { teamId: data.tenantId, vertical: payload.workspaceType || payload.vertical, name: payload.name || payload.tenantName }
+            }));
+          }
+        } catch (err) { console.error("Workspace creation failed:", err); }
+        break;
+      case 'ADD_WORKER':
+        window.dispatchEvent(new CustomEvent("ta:navigate", { detail: { section: payload.workerId || payload.slug || "raas-store" } }));
+        break;
+      case 'SWITCH_TEAM':
+        if (payload.teamId) {
+          localStorage.setItem("TENANT_ID", payload.teamId);
+          if (payload.vertical) localStorage.setItem("VERTICAL", payload.vertical);
+          if (payload.name) localStorage.setItem("WORKSPACE_NAME", payload.name);
+          window.dispatchEvent(new CustomEvent("ta:workspace-changed", { detail: payload }));
+        }
+        break;
+      default:
+        console.warn('Unknown Alex command:', type);
+    }
+  }
+
+  // ── Subscribe to a worker via /worker:subscribe ───────────
+  async function subscribeToWorker(worker) {
+    const token = localStorage.getItem("ID_TOKEN");
+    const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+    try {
+      const res = await fetch(`${apiBase}/api?path=/v1/worker:subscribe`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ workerId: worker.workerId || worker.slug, slug: worker.slug || worker.workerId }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: `${worker.name || 'Worker'} is now active in your account. You can find it in your Digital Workers.`,
+          isCelebration: true,
+        }]);
+        window.dispatchEvent(new CustomEvent("ta:workspace-changed", { detail: {} }));
+      } else {
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: data.message || data.error || 'Could not add worker. Please try again.',
+          isError: true,
+        }]);
+      }
+    } catch (err) {
+      console.error("Subscribe failed:", err);
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: 'Something went wrong adding this worker. Please try again.',
+        isError: true,
+      }]);
+    }
+  }
+
   async function sendMessage(e, overrideMessage) {
     e?.preventDefault();
     const messageToSend = (overrideMessage || input).trim();
@@ -975,9 +1105,12 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
 
       setIsTyping(false);
       setDealContext(null);
+      // Intercept |||COMMAND||| blocks before storing in state
+      const { clean: cleanResponse, commands } = interceptAlexCommands(data.response || '');
+      for (const cmd of commands) executeAlexCommand(cmd.type, cmd.payload);
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: data.response || 'No response received.',
+        content: cleanResponse || 'No response received.',
         structuredData: data.structuredData,
         recommendationCard: data.recommendationCard || null,
         workerCards: data.workerCards || null,
@@ -1189,6 +1322,30 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
     // Invite generator widget
     if (data.type === 'invite_generator') {
       return <InviteGeneratorWidget workers={data.workers || []} />;
+    }
+
+    // Worker recommendation — render subscribe card
+    if (data.type === 'worker_recommendation' && data.worker) {
+      const w = data.worker;
+      const priceDisplay = !w.price ? 'Free' : w.price >= 100 ? `$${w.price / 100}/mo` : `$${w.price}/mo`;
+      return (
+        <div style={{ border: '1px solid #e5e7eb', borderRadius: 14, overflow: 'hidden', marginTop: 8, background: 'white', maxWidth: 420 }}>
+          <div style={{ padding: '14px 16px 8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: '#1e293b' }}>{w.name}</div>
+            {w.suite && <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 10px', borderRadius: 20, background: '#f3e8ff', color: '#7c3aed' }}>{w.suite}</span>}
+          </div>
+          {w.capabilitySummary && <div style={{ padding: '0 16px 10px', fontSize: 13, color: '#64748b', lineHeight: 1.5 }}>{w.capabilitySummary}</div>}
+          <div style={{ padding: '4px 16px 10px', fontSize: 16, fontWeight: 700, color: '#1e293b' }}>{priceDisplay}</div>
+          <div style={{ padding: '0 16px 14px' }}>
+            <button onClick={() => subscribeToWorker({ workerId: w.slug || w.id, slug: w.slug || w.id, name: w.name, price: w.price })} style={{ width: '100%', padding: '10px 16px', background: '#7c3aed', color: 'white', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Get this worker</button>
+          </div>
+        </div>
+      );
+    }
+
+    // Worker route — show navigation to active worker
+    if (data.type === 'worker_route' && data.targetWorker) {
+      return null; // Worker is already subscribed, no card needed
     }
 
     // Document generated — render download card
@@ -1485,7 +1642,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
         {/* Messages */}
         {messages.map((msg, idx) => {
           // Detect document JSON embedded in message content
-          let displayContent = msg.content;
+          let displayContent = interceptAlexCommands(msg.content).clean;
           let embeddedDoc = null;
           if (typeof displayContent === 'string' && displayContent.includes('"document_generated"') && displayContent.includes('"downloadUrl"')) {
             try {
@@ -1518,22 +1675,20 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
                 {msg.workerCards.map(w => (
                   <div
                     key={w.slug}
-                    onClick={() => { window.dispatchEvent(new CustomEvent("ta:navigate", { detail: { section: w.slug } })); }}
+                    onClick={() => subscribeToWorker({ workerId: w.slug, slug: w.slug, name: w.name, price: w.price })}
                     style={{ background: "white", border: "1px solid #e2e8f0", borderRadius: 10, padding: "10px 12px", cursor: "pointer", display: "flex", alignItems: "center", gap: 10, transition: "box-shadow 0.15s" }}
-                    onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.08)"; }}
-                    onMouseLeave={e => { e.currentTarget.style.boxShadow = "none"; }}
+                    onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 2px 8px rgba(124,58,237,0.15)"; e.currentTarget.style.borderColor = "#c4b5fd"; }}
+                    onMouseLeave={e => { e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.borderColor = "#e2e8f0"; }}
                   >
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 13, fontWeight: 600, color: "#1e293b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{w.name}</div>
                       <div style={{ fontSize: 11, color: "#64748b", lineHeight: 1.4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: 1 }}>{w.description}</div>
                       <div style={{ display: "flex", gap: 5, marginTop: 4, alignItems: "center", flexWrap: "wrap" }}>
-                        <span style={{ fontSize: 10, fontWeight: 600, padding: "1px 7px", borderRadius: 20, background: "#f3e8ff", color: "#7c3aed" }}>{w.suite}</span>
-                        <span style={{ fontSize: 11, fontWeight: 700, color: "#1e293b" }}>${w.price / 100}/mo</span>
+                        <span style={{ fontSize: 10, fontWeight: 600, padding: "1px 7px", borderRadius: 20, background: "#f3e8ff", color: "#7c3aed" }}>{w.price === 0 ? "Free" : `$${w.price / 100}/mo`}</span>
                         {w.status === "live" && <span style={{ fontSize: 9, fontWeight: 600, padding: "1px 5px", borderRadius: 20, background: "#dcfce7", color: "#166534" }}>Live</span>}
-                        {w.bogoEligible && <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 20, background: "#0B7A6E", color: "white" }}>BOGO</span>}
                       </div>
                     </div>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" style={{ flexShrink: 0 }}><polyline points="9 18 15 12 9 6"/></svg>
+                    <button onClick={e => { e.stopPropagation(); subscribeToWorker({ workerId: w.slug, slug: w.slug, name: w.name, price: w.price }); }} style={{ fontSize: 11, fontWeight: 600, color: "#fff", background: "#7c3aed", border: "none", borderRadius: 6, padding: "5px 12px", cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap" }}>Get this worker</button>
                   </div>
                 ))}
               </div>
@@ -1554,7 +1709,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
                   )}
                 </div>
                 <div style={{ padding: "0 16px 14px", display: "flex", gap: 8 }}>
-                  <button onClick={() => { window.dispatchEvent(new CustomEvent("ta:navigate", { detail: { section: msg.recommendationCard.slug } })); }} style={{ flex: 1, padding: "10px 16px", background: "#7c3aed", color: "white", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Subscribe</button>
+                  <button onClick={() => subscribeToWorker({ workerId: msg.recommendationCard.slug, slug: msg.recommendationCard.slug, name: msg.recommendationCard.name, price: msg.recommendationCard.price })} style={{ flex: 1, padding: "10px 16px", background: "#7c3aed", color: "white", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Get this worker</button>
                   <button onClick={() => handleSuggestionClick("Tell me more about " + msg.recommendationCard.name)} style={{ flex: 1, padding: "10px 16px", background: "white", color: "#7c3aed", border: "1px solid #e5e7eb", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Tell me more</button>
                 </div>
               </div>

@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from "react";
 import "./App.css";
 import LandingPage from "./components/LandingPage";
 import OnboardingWizard from "./components/OnboardingWizard";
-import OnboardingTour from "./components/OnboardingTour";
+// OnboardingTour removed in 37.11 — replaced by STATE-5 onboarding checklist
 import AppShell from "./components/AppShell";
 import ChatPanel from "./components/ChatPanel";
 import WorkspaceHub from "./components/WorkspaceHub";
@@ -72,7 +72,7 @@ import InviteLanding from "./pages/InviteLanding";
 import MeetAlex from "./pages/MeetAlex";
 import CoPilotEFB from "./sections/CoPilotEFB";
 import { auth } from "./firebase";
-import { signInWithCustomToken } from "firebase/auth";
+import { signInWithCustomToken, getRedirectResult } from "firebase/auth";
 import { processLandingHandoff } from "./utils/landingHandoff";
 
 const WORKER_DETAIL_CONTENT = {
@@ -4375,15 +4375,6 @@ function AdminShell({ onBackToHub, initialSection }) {
     }
     return "team-home";
   });
-  const [showTour, setShowTour] = useState(false);
-
-  useEffect(() => {
-    const hasSeenTour = localStorage.getItem('hasSeenOnboardingTour');
-    if (!hasSeenTour) {
-      setTimeout(() => setShowTour(true), 500);
-    }
-  }, []);
-
   useEffect(() => {
     function handleNav(e) {
       const section = e.detail?.section;
@@ -4539,17 +4530,9 @@ function AdminShell({ onBackToHub, initialSection }) {
   const vertical = localStorage.getItem("VERTICAL") || "auto";
 
   return (
-    <>
-      <AppShell currentSection={currentSection} onNavigate={setCurrentSection} onBackToHub={onBackToHub}>
-        {renderSection()}
-      </AppShell>
-      {showTour && (
-        <OnboardingTour
-          vertical={vertical}
-          onComplete={() => setShowTour(false)}
-        />
-      )}
-    </>
+    <AppShell currentSection={currentSection} onNavigate={setCurrentSection} onBackToHub={onBackToHub}>
+      {renderSection()}
+    </AppShell>
   );
 }
 
@@ -4645,8 +4628,12 @@ export default function App() {
   // ── /auth/magic route intercept ─────────────────────
   const isAuthMagic = /^\/auth\/magic\/?$/.test(window.location.pathname);
 
+  // ── /subscribe/success route intercept ────────────────
+  const isSubscribeSuccess = /^\/subscribe\/success\/?$/.test(window.location.pathname);
+
   // ── /meet-alex route intercept ────────────────────────
   const isMeetAlex = /^\/meet-alex\/?$/.test(window.location.pathname);
+  const [meetAlexLock, setMeetAlexLock] = useState(false);
 
   const [sandboxReady, setSandboxReady] = useState(isSandbox ? false : null);
   const [authResolved, setAuthResolved] = useState(false); // true once onAuthStateChanged fires at least once
@@ -4671,6 +4658,44 @@ export default function App() {
     setCurrentView(view);
     setTimeout(() => setShowTransition(false), 1100);
   }
+
+  // Handle Google signInWithRedirect result on mount — must be in App.jsx (always mounted)
+  useEffect(() => {
+    getRedirectResult(auth).then((result) => {
+      if (result?.user) {
+        result.user.getIdToken(true).then((idToken) => {
+          localStorage.setItem("ID_TOKEN", idToken);
+          // Call promoteGuest to link guest session to authenticated user
+          const guestId = sessionStorage.getItem("ta_guest_sid");
+          if (guestId) {
+            const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+            fetch(`${apiBase}/api?path=/v1/alex:promoteGuest`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+              body: JSON.stringify({ guestId, uid: result.user.uid }),
+            }).catch(() => {});
+          }
+          // ta_pending_worker is already in sessionStorage from MeetAlex — leave it for ChatPanel
+          // SPA navigate: update URL without full page reload so Firebase auth stays live
+          const utm = sessionStorage.getItem("ta_utm");
+          let utmParams = "&utm_source=meet-alex&utm_medium=guest-chat";
+          let verticalParam = "";
+          if (utm) {
+            try {
+              const u = JSON.parse(utm);
+              if (u.campaign) { verticalParam = "&vertical=" + u.campaign; utmParams = "&utm_source=" + (u.source || "meet-alex") + "&utm_medium=" + (u.medium || "guest-chat") + "&utm_campaign=" + u.campaign; }
+            } catch {}
+          }
+          window.history.replaceState({}, "", "/?promoted=true" + verticalParam + utmParams);
+          // setToken triggers re-render — isMeetAlex becomes false (pathname is now /),
+          // view resolution picks up promoted=true and routes to app
+          setToken(idToken);
+        });
+      }
+    }).catch((err) => {
+      console.error("[App] getRedirectResult failed:", err);
+    });
+  }, []);
 
   useEffect(() => {
     // Handle custom token + session handoff from landing page chat
@@ -4791,6 +4816,18 @@ export default function App() {
     return () => {
       window.removeEventListener("storage", onStorage);
       unsubscribe();
+    };
+  }, []);
+
+  // ── MeetAlex lock: keep guest shell rendered during inline auth + subscribe ──
+  useEffect(() => {
+    const lock = () => setMeetAlexLock(true);
+    const unlock = () => setMeetAlexLock(false);
+    window.addEventListener("ta:meet-alex-lock", lock);
+    window.addEventListener("ta:meet-alex-unlock", unlock);
+    return () => {
+      window.removeEventListener("ta:meet-alex-lock", lock);
+      window.removeEventListener("ta:meet-alex-unlock", unlock);
     };
   }, []);
 
@@ -4990,6 +5027,13 @@ export default function App() {
             } catch (e) {
               console.error("Auto-workspace from discovery failed:", e);
             }
+          }
+          // Promoted guest from MeetAlex — go to app (TeamHome), not marketplace
+          const promoParams = new URLSearchParams(window.location.search);
+          if (promoParams.get("promoted") === "true" || sessionStorage.getItem("ta_guest_promoted")) {
+            viewResolvedRef.current = true;
+            transitionTo("app");
+            return;
           }
           transitionTo("marketplace");
         } else {
@@ -5276,8 +5320,16 @@ export default function App() {
     return <React.Suspense fallback={<div style={{ minHeight: "100vh", background: "#0f172a" }} />}><AuthMagic /></React.Suspense>;
   }
 
+  // ── Subscribe success page ──────────────────────────────
+  if (isSubscribeSuccess) {
+    const SubscribeSuccess = React.lazy(() => import("./pages/SubscribeSuccess"));
+    return <React.Suspense fallback={<div style={{ minHeight: "100vh" }} />}><SubscribeSuccess /></React.Suspense>;
+  }
+
   // ── Meet Alex: guest shell — three-panel with guest mode ────
-  if (isMeetAlex) {
+  // Show MeetAlex for unauthenticated users, or while auth+subscribe is in progress
+  // (meetAlexLock). Once lock releases and token exists, fall through to workspace.
+  if (isMeetAlex && (!token || meetAlexLock)) {
     const guestVertical = new URLSearchParams(window.location.search).get("vertical") || "";
     const guestId = sessionStorage.getItem("ta_guest_sid") || Math.random().toString(36).slice(2) + Date.now().toString(36);
     if (!sessionStorage.getItem("ta_guest_sid")) sessionStorage.setItem("ta_guest_sid", guestId);

@@ -1,19 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { auth } from "../firebase";
-import { GoogleAuthProvider, signInWithPopup, signInWithRedirect, signInWithEmailAndPassword } from "firebase/auth";
+import { VERTICAL_MAP } from "../hooks/useVisitorContext";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
-
-// Map URL vertical params to backend sales verticals
-const VERTICAL_MAP = {
-  "auto-dealer": "auto_dealer", "auto": "auto_dealer", "dealer": "auto_dealer",
-  "solar": "solar_vpp", "solar-vpp": "solar_vpp",
-  "real-estate": "real_estate_development", "re": "real_estate_development",
-  "property-management": "re_operations", "pm": "re_operations",
-  "aviation": "aviation", "pilot": "aviation",
-  "creator": "creators", "creators": "creators", "developer": "creators",
-  "web3": "web3", "crypto": "web3", "nft": "web3",
-};
 
 function uuid() {
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, c => {
@@ -26,8 +14,6 @@ export default function MeetAlex() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
-  const [showAuth, setShowAuth] = useState(false);
-  const [authInProgress, setAuthInProgress] = useState(false);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -39,7 +25,7 @@ export default function MeetAlex() {
   });
   const [vertical] = useState(() => {
     const v = new URLSearchParams(window.location.search).get("vertical") || "";
-    return VERTICAL_MAP[v] || v || "";
+    return VERTICAL_MAP[v]?.firestoreValue || v || "";
   });
   const [prompt] = useState(() =>
     new URLSearchParams(window.location.search).get("prompt") || ""
@@ -53,8 +39,6 @@ export default function MeetAlex() {
   // Send message to backend
   const sendMessage = useCallback(async (userText) => {
     const trimmed = (userText || "").trim();
-
-    // Add user message to UI (skip for initial empty ping)
     if (trimmed) {
       setMessages(prev => [...prev, { role: "user", text: trimmed }]);
     }
@@ -77,7 +61,7 @@ export default function MeetAlex() {
       if (data.ok && data.message) {
         let displayText = data.message;
 
-        // Parse [SANDBOX_OPEN:workerName] marker — open sandbox in right panel
+        // Parse [SANDBOX_OPEN:workerName] marker
         const sandboxMatch = displayText.match(/\[SANDBOX_OPEN:([^\]]+)\]/);
         if (sandboxMatch) {
           displayText = displayText.replace(/\s*\[SANDBOX_OPEN:[^\]]+\]\s*/g, "").trim();
@@ -95,13 +79,25 @@ export default function MeetAlex() {
           text: displayText,
           workerCards: data.workerCards || null,
         }]);
-        if (data.suggestAuth) setShowAuth(true);
+
         // Panel sync: emit worker highlights for right panel
         if (data.workerCards && data.workerCards.length > 0) {
           const ids = data.workerCards.map(c => c.slug || c.workerId).filter(Boolean);
           if (ids.length === 1) {
             window.dispatchEvent(new CustomEvent("ta:panel-highlight-worker", { detail: { workerId: ids[0] } }));
           }
+        }
+
+        // Vertical detection → dispatch to right panel
+        if (data.detectedVertical) {
+          const mapped = VERTICAL_MAP[data.detectedVertical];
+          window.dispatchEvent(new CustomEvent("ta:panel-show-recommendations", {
+            detail: {
+              vertical: mapped ? mapped.firestoreValue : data.detectedVertical,
+              workers: data.workerCards || [],
+              verticalLabel: mapped ? mapped.label : data.detectedVertical,
+            }
+          }));
         }
       }
     } catch {
@@ -110,17 +106,42 @@ export default function MeetAlex() {
     setSending(false);
   }, [sessionId, vertical]);
 
-  // On mount: if already authenticated, redirect to home
+  // Listen for "Get this worker" taps from right panel
   useEffect(() => {
-    if (localStorage.getItem("ID_TOKEN") && auth.currentUser) {
-      window.location.href = "/";
+    function onWorkerTapped(e) {
+      const { name } = e.detail || {};
+      if (name) {
+        setMessages(prev => [...prev, {
+          role: "assistant",
+          text: `Good pick. Create an account below the card to get ${name}.`,
+        }]);
+      }
     }
+    window.addEventListener("ta:panel-worker-tapped", onWorkerTapped);
+    return () => window.removeEventListener("ta:panel-worker-tapped", onWorkerTapped);
   }, []);
 
-  // On mount: send initial message to get Alex's opening
+  // Listen for subscribe completion — show Alex confirmation
+  useEffect(() => {
+    function onSubscribed(e) {
+      const { name } = e.detail || {};
+      setMessages(prev => [...prev, {
+        role: "assistant",
+        text: `You're all set. ${name || "Your worker"} is on your team now.`,
+      }]);
+    }
+    window.addEventListener("ta:worker-subscribed", onSubscribed);
+    return () => window.removeEventListener("ta:worker-subscribed", onSubscribed);
+  }, []);
+
+  // Opening message — hardcoded, no API round-trip
   useEffect(() => {
     if (messages.length === 0) {
-      sendMessage(prompt || "");
+      setMessages([{
+        role: "assistant",
+        text: "Hey \u2014 I'm Alex. Pick a worker or tell me what you do.",
+      }]);
+      if (prompt) sendMessage(prompt);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -132,93 +153,6 @@ export default function MeetAlex() {
     setInput("");
     sendMessage(msg);
   }
-
-  // Google SSO
-  async function handleGoogleAuth() {
-    if (authInProgress) return;
-    setAuthInProgress(true);
-    try {
-      const provider = new GoogleAuthProvider();
-      const cred = await signInWithPopup(auth, provider);
-      const token = await cred.user.getIdToken(true);
-      localStorage.setItem("ID_TOKEN", token);
-      saveHandoffBeforeRedirect(token, cred.user.uid);
-
-      // Redirect immediately to authenticated shell
-      window.location.href = "/?promoted=true" + (vertical ? "&vertical=" + vertical : "") + "&utm_source=meet-alex&utm_medium=guest-chat" + (vertical ? "&utm_campaign=" + vertical : "");
-    } catch (err) {
-      if (err?.code === "auth/popup-blocked") {
-        await signInWithRedirect(auth, new GoogleAuthProvider());
-        return;
-      }
-      if (err?.code !== "auth/cancelled-popup-request" &&
-          err?.code !== "auth/popup-closed-by-user") {
-        console.error("Google auth failed:", err);
-      }
-      setAuthInProgress(false);
-    }
-  }
-
-  // Email/password auth state
-  const [authEmail, setAuthEmail] = useState("");
-  const [authPassword, setAuthPassword] = useState("");
-  const [authError, setAuthError] = useState("");
-
-  // Shared handoff logic — called by both Google and email auth paths
-  function saveHandoffBeforeRedirect(token, uid) {
-    sessionStorage.setItem("ta_utm", JSON.stringify({
-      source: "meet-alex", medium: "guest-chat",
-      campaign: vertical || "direct", capturedAt: new Date().toISOString(),
-    }));
-    const guestConvo = messages.filter(m => m.text && m.text.trim());
-    if (guestConvo.length > 0) {
-      sessionStorage.setItem("ta_guest_promoted", JSON.stringify(guestConvo));
-    }
-    fetch(`${API_BASE}/api?path=/v1/alex:promoteGuest`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ guestId: sessionId, uid }),
-    }).catch(() => {});
-    localStorage.setItem('DISCLAIMER_ACCEPTED', 'true');
-    if (vertical) {
-      sessionStorage.setItem("ta_campaign_context", JSON.stringify({ slug: vertical, persona: vertical, vertical }));
-    }
-  }
-
-  // Email/password sign-in
-  async function handleEmailAuth() {
-    if (authInProgress) return;
-    if (!authEmail || !authPassword) { setAuthError("Please enter your email and password."); return; }
-    setAuthInProgress(true);
-    setAuthError("");
-    try {
-      const cred = await signInWithEmailAndPassword(auth, authEmail, authPassword);
-      const token = await cred.user.getIdToken(true);
-      localStorage.setItem("ID_TOKEN", token);
-      saveHandoffBeforeRedirect(token, cred.user.uid);
-      window.location.href = "/?promoted=true" + (vertical ? "&vertical=" + vertical : "") + "&utm_source=meet-alex&utm_medium=guest-chat" + (vertical ? "&utm_campaign=" + vertical : "");
-    } catch (err) {
-      setAuthInProgress(false);
-      switch (err?.code) {
-        case "auth/user-not-found":
-          setAuthError("No account found. Try Google sign-in or create an account at titleapp.ai."); break;
-        case "auth/wrong-password":
-        case "auth/invalid-credential":
-        case "auth/invalid-login-credentials":
-          setAuthError("Incorrect password. Try again or use Google to sign in."); break;
-        case "auth/invalid-email":
-          setAuthError("Please enter a valid email address."); break;
-        case "auth/too-many-requests":
-          setAuthError("Too many attempts. Please wait and try again."); break;
-        default:
-          setAuthError("Sign-in failed. Please try again.");
-      }
-    }
-  }
-
-  // Disclaimer + auth state
-  const [tosChecked, setTosChecked] = useState(false);
-  const [disclaimerAccepted, setDisclaimerAccepted] = useState(false);
 
   // Styles
   const S = {
@@ -240,13 +174,9 @@ export default function MeetAlex() {
     miniAvatar: { width: 28, height: 28, borderRadius: "50%", background: "linear-gradient(135deg, #7c3aed 0%, #6366f1 50%, #0ea5e9 100%)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 },
     inputBar: { display: "flex", gap: 8, padding: "12px 16px", borderTop: "1px solid #e5e7eb", background: "#ffffff", flexShrink: 0 },
     input: { flex: 1, padding: "12px 16px", fontSize: 15, border: "1px solid #e5e7eb", borderRadius: 24, outline: "none", background: "#f8fafc", color: "#1e293b", boxSizing: "border-box", resize: "none", fontFamily: "inherit" },
-    sendBtn: { width: 42, height: 42, borderRadius: "50%", background: "#7c3aed", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, opacity: 1, transition: "opacity 0.15s" },
+    sendBtn: { width: 42, height: 42, borderRadius: "50%", background: "#7c3aed", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "opacity 0.15s" },
     typing: { display: "flex", gap: 4, padding: "10px 14px", borderRadius: 16, background: "#f3f4f6", borderBottomLeftRadius: 4, maxWidth: "80%" },
     dot: (i) => ({ width: 6, height: 6, borderRadius: "50%", background: "#94a3b8", animation: `typingDot 1.2s infinite ${i * 0.2}s` }),
-    // Auth card
-    authCard: { margin: "0 16px 8px", padding: "16px 20px", background: "#f3f0ff", border: "1px solid #e9d5ff", borderRadius: 16 },
-    authTitle: { fontSize: 14, fontWeight: 600, color: "#111827", marginBottom: 12 },
-    authBtn: (bg) => ({ width: "100%", padding: "12px", fontSize: 14, fontWeight: 600, color: "#fff", background: bg, border: "none", borderRadius: 10, cursor: "pointer", marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }),
     workerCard: { display: "flex", gap: 12, padding: "12px 14px", background: "#f8fafc", border: "1px solid #e5e7eb", borderRadius: 12, marginTop: 8, cursor: "pointer", transition: "box-shadow 0.15s ease, border-color 0.15s ease" },
     wcName: { fontSize: 13, fontWeight: 600, color: "#111827" },
     wcDesc: { fontSize: 12, color: "#6b7280", marginTop: 2 },
@@ -256,7 +186,6 @@ export default function MeetAlex() {
 
   return (
     <div style={S.page}>
-      {/* Typing animation keyframes */}
       <style>{`@keyframes typingDot { 0%,60%,100% { opacity: 0.3; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-3px); } }`}</style>
 
       {/* Header */}
@@ -287,22 +216,16 @@ export default function MeetAlex() {
               )}
               <div style={S.bubble(m.role === "user")}>{m.text}</div>
             </div>
-            {/* Worker cards */}
+            {/* Worker cards inline */}
             {m.workerCards && m.workerCards.length > 0 && (
               <div style={{ marginLeft: 36, marginTop: 4 }}>
                 {m.workerCards.map((wc, wi) => (
-                  <div
-                    key={wi}
-                    style={S.workerCard}
-                    onClick={() => setShowAuth(true)}
-                    onMouseEnter={(e) => { e.currentTarget.style.boxShadow = "0 2px 8px rgba(124,58,237,0.15)"; e.currentTarget.style.borderColor = "#c4b5fd"; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.borderColor = "#e5e7eb"; }}
-                  >
+                  <div key={wi} style={S.workerCard}>
                     <div style={{ flex: 1 }}>
                       <div style={S.wcName}>{wc.name}</div>
                       <div style={S.wcDesc}>{wc.description}</div>
                       <div style={S.wcPrice}>{wc.price === 0 ? "Free" : `$${wc.price}/mo`}</div>
-                      <div style={S.wcCta}>{wc.price === 0 ? "Get this worker" : `Subscribe — $${wc.price}/mo`}</div>
+                      <div style={S.wcCta}>{wc.price === 0 ? "Get this worker" : `Subscribe \u2014 $${wc.price}/mo`}</div>
                     </div>
                   </div>
                 ))}
@@ -328,50 +251,6 @@ export default function MeetAlex() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Auth card — disclaimer FIRST, then auth options */}
-      {showAuth && !authInProgress && !disclaimerAccepted && (
-        <div style={S.authCard}>
-          <div style={S.authTitle}>Before we continue</div>
-          <div style={{ fontSize: 13, color: "#1e1e2e", lineHeight: 1.6, marginBottom: 12, maxHeight: 120, overflowY: "auto" }}>
-            TitleApp Digital Workers provide information and automation within defined business rules. They do not constitute professional advice (legal, financial, medical, or aviation). All outputs include an audit trail. By continuing, you agree to the TitleApp Terms of Service and Privacy Policy.
-          </div>
-          <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, color: "#1e1e2e" }}>
-            <input type="checkbox" checked={tosChecked} onChange={e => setTosChecked(e.target.checked)} style={{ width: 16, height: 16, accentColor: "#7c3aed" }} />
-            I agree to the TitleApp Terms of Service
-          </label>
-          {tosChecked && (
-            <button onClick={() => setDisclaimerAccepted(true)} style={{ ...S.sendBtn, width: "100%", borderRadius: 10, height: "auto", padding: "12px 24px", fontSize: 14, fontWeight: 600, marginTop: 12 }}>
-              Continue
-            </button>
-          )}
-        </div>
-      )}
-
-      {showAuth && !authInProgress && disclaimerAccepted && (
-        <div style={S.authCard}>
-          <div style={S.authTitle}>Sign in to continue</div>
-          <input type="email" value={authEmail} onChange={e => setAuthEmail(e.target.value)} placeholder="Email" autoComplete="email" style={{ width: "100%", padding: "10px 12px", fontSize: 14, border: "1px solid #d1d5db", borderRadius: 8, outline: "none", boxSizing: "border-box", marginBottom: 8 }} />
-          <input type="password" value={authPassword} onChange={e => setAuthPassword(e.target.value)} placeholder="Password" autoComplete="current-password" onKeyDown={e => e.key === "Enter" && handleEmailAuth()} style={{ width: "100%", padding: "10px 12px", fontSize: 14, border: "1px solid #d1d5db", borderRadius: 8, outline: "none", boxSizing: "border-box", marginBottom: 8 }} />
-          <button onClick={handleEmailAuth} style={S.authBtn("#7c3aed")}>Sign In</button>
-          {authError && <div style={{ fontSize: 12, color: "#dc2626", marginBottom: 8 }}>{authError}</div>}
-          <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "8px 0" }}>
-            <div style={{ flex: 1, height: 1, background: "#d1d5db" }} />
-            <span style={{ fontSize: 12, color: "#94a3b8" }}>or</span>
-            <div style={{ flex: 1, height: 1, background: "#d1d5db" }} />
-          </div>
-          <button onClick={handleGoogleAuth} style={{ ...S.authBtn("white"), color: "#374151", border: "1px solid #d1d5db" }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
-            Continue with Google
-          </button>
-        </div>
-      )}
-
-      {authInProgress && (
-        <div style={{ ...S.authCard, textAlign: "center" }}>
-          <div style={{ fontSize: 14, color: "#6b7280" }}>Signing in...</div>
-        </div>
-      )}
-
       {/* Input bar */}
       <form onSubmit={handleSubmit} style={S.inputBar}>
         <input
@@ -380,7 +259,7 @@ export default function MeetAlex() {
           value={input}
           onChange={e => setInput(e.target.value)}
           placeholder="Message Alex..."
-          disabled={sending || authInProgress}
+          disabled={sending}
           style={{ ...S.input, opacity: sending ? 0.6 : 1 }}
         />
         <button

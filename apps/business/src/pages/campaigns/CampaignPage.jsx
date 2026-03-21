@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import { db, auth } from "../../firebase";
 import { doc, setDoc, updateDoc, serverTimestamp } from "firebase/firestore";
-import { GoogleAuthProvider, signInWithPopup, signInWithRedirect, signInWithEmailAndPassword } from "firebase/auth";
+import { GoogleAuthProvider, signInWithRedirect, getRedirectResult, signInWithEmailAndPassword } from "firebase/auth";
 import { WORKER_ROUTES } from "../WorkerMarketplace";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
@@ -222,6 +222,23 @@ export default function CampaignPage({ slug }) {
   const [chatPassword, setChatPassword] = useState("");
   const [chatAuthError, setChatAuthError] = useState("");
 
+  // Handle Google redirect result
+  useEffect(() => {
+    getRedirectResult(auth).then((result) => {
+      if (result?.user) {
+        result.user.getIdToken(true).then((token) => {
+          localStorage.setItem("ID_TOKEN", token);
+          const sessionId = getSessionId();
+          updateDoc(doc(db, "abTests", slug, "sessions", sessionId), { converted: true }).catch(() => {});
+          window.location.href = "/?utm_source=campaign&utm_campaign=" + slug;
+        });
+      }
+    }).catch((err) => {
+      console.error("Google redirect result failed:", err);
+      setChatMode("idle");
+    });
+  }, []);
+
   useEffect(() => {
     if (!config) return;
     // Assign A/B variant (consistent per session)
@@ -311,28 +328,8 @@ export default function CampaignPage({ slug }) {
     }
   }
 
-  async function handleChatGoogleAuth() {
-    try {
-      const provider = new GoogleAuthProvider();
-      const cred = await signInWithPopup(auth, provider);
-      const token = await cred.user.getIdToken(true);
-      localStorage.setItem("ID_TOKEN", token);
-      // Log conversion
-      const sessionId = getSessionId();
-      updateDoc(doc(db, "abTests", slug, "sessions", sessionId), { converted: true }).catch(() => {});
-      // Redirect — ChatPanel will pick up ta_landing_chat
-      window.location.href = "/?utm_source=campaign&utm_campaign=" + slug;
-    } catch (err) {
-      if (err?.code === "auth/popup-blocked") {
-        await signInWithRedirect(auth, new GoogleAuthProvider());
-        return;
-      }
-      if (err?.code !== "auth/cancelled-popup-request" &&
-          err?.code !== "auth/popup-closed-by-user") {
-        console.error("Google auth failed:", err);
-      }
-      setChatMode("idle");
-    }
+  function handleChatGoogleAuth() {
+    signInWithRedirect(auth, new GoogleAuthProvider());
   }
 
   function handleCtaClick() {

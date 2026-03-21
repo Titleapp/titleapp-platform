@@ -44,7 +44,6 @@ async function getUserWorkspaces(userId) {
       .filter(Boolean);
     if (subscribedSlugs.length > 0) {
       for (const ws of workspaces) {
-        if (ws.type === 'personal') continue;
         const merged = new Set([...(ws.activeWorkers || []), ...subscribedSlugs]);
         ws.activeWorkers = [...merged];
         if (ws.activeWorkers.length >= 3 && !ws.chiefOfStaff) {

@@ -4,10 +4,13 @@ import ChatPanel from "./ChatPanel";
 import QuickSwitcher from "./QuickSwitcher";
 import CartDrawer from "./CartDrawer";
 import * as api from "../api/client";
+import { RightPanelProvider } from "../context/RightPanelContext";
+import { useVisitorContext } from "../hooks/useVisitorContext";
 
-const GuestWorkspace = lazy(() => import("./RightPanel/GuestWorkspace"));
+const RightPanel = lazy(() => import("./RightPanel/RightPanel"));
 
 export default function AppShell({ children, currentSection, onNavigate, onBackToHub, guestMode, guestVertical, guestId }) {
+  const visitorCtx = useVisitorContext();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [tenantInfo, setTenantInfo] = useState(null);
   const [workspaces, setWorkspaces] = useState([]);
@@ -352,9 +355,11 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
         />
         <main className="main">
           {guestMode ? (
-            <Suspense fallback={<div style={{ padding: 40, color: "#94a3b8" }}>Loading...</div>}>
-              <GuestWorkspace vertical={guestVertical} />
-            </Suspense>
+            <RightPanelProvider initialState={visitorCtx.state} initialVertical={visitorCtx.vertical} initialVerticalLabel={visitorCtx.verticalLabel}>
+              <Suspense fallback={<div style={{ padding: 40, color: "#94a3b8" }}>Loading...</div>}>
+                <RightPanel />
+              </Suspense>
+            </RightPanelProvider>
           ) : children}
         </main>
       </div>

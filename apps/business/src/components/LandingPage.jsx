@@ -1,1080 +1,321 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
-import {
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  sendEmailVerification,
-  sendPasswordResetEmail,
-  sendSignInLinkToEmail,
-  isSignInWithEmailLink,
-  signInWithEmailLink,
-  GoogleAuthProvider,
-  signInWithPopup,
-  signInWithRedirect,
-} from "firebase/auth";
-import { auth } from "../firebase";
+import React from "react";
 
-// ── Slide Data ─────────────────────────────────────────────────────
+// ── TitleApp Landing Page ─────────────────────────────────────────
+// Dark premium aesthetic. Four vertical CTAs. No auth — that happens on /meet-alex.
 
-const SLIDES = [
-  {
-    id: "personal",
-    headline: "Your stuff really matters.\nNow it's really protected.",
-    subtitle: "Vehicles, property, documents, deadlines -- tracked and organized by AI.",
-    bubbles: [
-      "Track my car's value",
-      "When does my passport expire?",
-      "Organize my documents",
-      "I just need something simple",
-    ],
-  },
-  {
-    id: "entrepreneur",
-    headline: "You have the expertise.\nNow build your AI business.",
-    subtitle: "Turn what you know into a service people pay for. No code. 30 minutes.",
-    bubbles: [
-      "I help people relocate abroad",
-      "I want to build an AI service",
-      "Turn my consulting into a product",
-      "What can I build?",
-    ],
-  },
-  {
-    id: "compliance",
-    headline: "Compliance shouldn't keep\nyou up at night.",
-    subtitle: "Rules change constantly. TitleApp keeps up so you don't have to.",
-    bubbles: [
-      "Set up compliance monitoring",
-      "Audit my current records",
-      "Industry regulation updates",
-      "Document retention policies",
-    ],
-  },
-  {
-    id: "sales",
-    headline: "While you were living your life,\nyour AI was closing deals.",
-    subtitle: "Every lead remembered. Every follow-up sent. Every deal tracked.",
-    bubbles: [
-      "Show me my stale inventory",
-      "Who's my hottest lead?",
-      "Draft a follow-up",
-      "How much could I save?",
-    ],
-  },
+const VERTICALS = [
+  { label: "Aviation", desc: "CoPilots for PC12-NG, King Air, Caravan, and more. Logbook, currency, training.", param: "aviation", count: "56 workers" },
+  { label: "Auto Dealer", desc: "F&I, deal jacket, inventory, compliance. Every phase of the deal lifecycle.", param: "auto-dealer", count: "29 workers" },
+  { label: "Real Estate", desc: "Title search, closing coordination, compliance monitoring. 8 development phases.", param: "real-estate", count: "67 workers" },
+  { label: "Web3", desc: "Tokenomics, regulatory compliance, community management. Team verification built in.", param: "web3", count: "11 workers" },
 ];
 
-const REF_MAP = {
-  expat: "entrepreneur",
-  builder: "entrepreneur",
-  realestate: "sales",
-  auto: "sales",
-  aviation: "compliance",
-};
+const STATS = [
+  { num: "1,000+", label: "Digital Workers" },
+  { num: "14", label: "Industry Suites" },
+  { num: "54", label: "Countries" },
+  { num: "24/7", label: "Always On" },
+];
 
-const UTM_MAP = {
-  linkedin: "compliance",
-  tiktok: "entrepreneur",
-};
-
-function getLockedSlideIndex() {
-  const params = new URLSearchParams(window.location.search);
-  const ref = params.get("ref");
-  const utm = params.get("utm_source");
-
-  let targetId = null;
-  if (ref && REF_MAP[ref]) targetId = REF_MAP[ref];
-  else if (utm && UTM_MAP[utm]) targetId = UTM_MAP[utm];
-
-  if (targetId) {
-    const idx = SLIDES.findIndex((s) => s.id === targetId);
-    if (idx >= 0) return idx;
-  }
-  return null;
-}
-
-// ── Logo SVG ───────────────────────────────────────────────────────
-
-function LogoIcon({ size = 40 }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 200 200" fill="none">
-      <circle cx="100" cy="100" r="95" fill="#7c3aed" />
-      <circle cx="100" cy="100" r="80" fill="#7c3aed" stroke="white" strokeWidth="2" />
-      <circle cx="100" cy="100" r="70" fill="none" stroke="white" strokeWidth="1" strokeDasharray="3,5" />
-      <line x1="100" y1="5" x2="100" y2="30" stroke="white" strokeWidth="2" />
-      <line x1="100" y1="170" x2="100" y2="195" stroke="white" strokeWidth="2" />
-      <line x1="5" y1="100" x2="30" y2="100" stroke="white" strokeWidth="2" />
-      <line x1="170" y1="100" x2="195" y2="100" stroke="white" strokeWidth="2" />
-      <circle cx="100" cy="80" r="18" fill="white" />
-      <circle cx="100" cy="80" r="8" fill="#7c3aed" />
-      <rect x="94" y="90" width="12" height="35" fill="white" />
-      <rect x="94" y="115" width="8" height="4" fill="white" />
-      <rect x="94" y="122" width="5" height="3" fill="white" />
-    </svg>
-  );
-}
-
-// ── Auth Modal ─────────────────────────────────────────────────────
-
-function AuthModal({ isOpen, onClose, defaultMode }) {
-  const [mode, setMode] = useState(defaultMode || "magic");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [status, setStatus] = useState("");
-  const [linkSent, setLinkSent] = useState(false);
-  const isSignUp = defaultMode === "signup" || mode === "signup";
-
-  useEffect(() => {
-    if (isOpen) setMode(defaultMode || "magic");
-  }, [isOpen, defaultMode]);
-
-  useEffect(() => {
-    if (isSignInWithEmailLink(auth, window.location.href)) {
-      handleMagicLinkCallback();
-    }
-  }, []);
-
-  async function handleMagicLinkCallback() {
-    let emailForSignIn = window.localStorage.getItem("emailForSignIn");
-    if (!emailForSignIn) {
-      emailForSignIn = window.prompt("Please provide your email for confirmation");
-    }
-    if (!emailForSignIn) return;
-
-    try {
-      setStatus("Completing sign in...");
-      const cred = await signInWithEmailLink(auth, emailForSignIn, window.location.href);
-      const token = await cred.user.getIdToken(true);
-      localStorage.setItem("ID_TOKEN", token);
-      window.localStorage.removeItem("emailForSignIn");
-      window.history.replaceState({}, "", window.location.pathname);
-    } catch (err) {
-      console.error(err);
-      setStatus("Failed to complete sign in: " + (err?.message || String(err)));
-    }
-  }
-
-  async function handleMagicLink(e) {
-    e.preventDefault();
-    setStatus("Sending magic link...");
-    const actionCodeSettings = { url: window.location.origin + "/", handleCodeInApp: true };
-    try {
-      const trimmedEmail = email.trim().toLowerCase();
-      await sendSignInLinkToEmail(auth, trimmedEmail, actionCodeSettings);
-      window.localStorage.setItem("emailForSignIn", trimmedEmail);
-      setLinkSent(true);
-      setStatus("");
-    } catch (err) {
-      console.error(err);
-      setStatus("Failed to send link: " + (err?.message || String(err)));
-    }
-  }
-
-  async function handlePasswordLogin(e) {
-    e.preventDefault();
-    setStatus("Signing in...");
-    try {
-      const cred = await signInWithEmailAndPassword(auth, email, password);
-      const token = await cred.user.getIdToken(true);
-      localStorage.setItem("ID_TOKEN", token);
-      setStatus("Signed in successfully");
-    } catch (err) {
-      console.error(err);
-      const code = err?.code || "";
-      if (code === "auth/wrong-password" || code === "auth/user-not-found" || code === "auth/invalid-credential" || code === "auth/invalid-login-credentials") {
-        setStatus("No password set for this account. Please use Magic Link or Google to sign in.");
-      } else {
-        setStatus("Login failed: " + (err?.message || String(err)));
-      }
-    }
-  }
-
-  async function handleSignUp(e) {
-    e.preventDefault();
-    if (!email || !password) { setStatus("Please fill in all fields."); return; }
-    if (password !== confirmPassword) { setStatus("Passwords do not match."); return; }
-    if (password.length < 8) { setStatus("Password must be at least 8 characters."); return; }
-    setStatus("Creating account...");
-    try {
-      const cred = await createUserWithEmailAndPassword(auth, email, password);
-      sendEmailVerification(cred.user).catch(console.error);
-      const token = await cred.user.getIdToken(true);
-      localStorage.setItem("ID_TOKEN", token);
-      setStatus("Account created successfully");
-    } catch (err) {
-      console.error(err);
-      switch (err?.code) {
-        case "auth/email-already-in-use":
-          setStatus("An account with this email already exists. Sign in instead."); break;
-        case "auth/invalid-email":
-          setStatus("Please enter a valid email address."); break;
-        case "auth/weak-password":
-          setStatus("Password must be at least 8 characters."); break;
-        default:
-          setStatus("Account creation failed. Please try again.");
-      }
-    }
-  }
-
-  async function handleForgotPassword() {
-    if (!email) { setStatus("Enter your email address first, then click Forgot password."); return; }
-    try {
-      await sendPasswordResetEmail(auth, email);
-      setStatus("Password reset email sent. Check your inbox.");
-    } catch {
-      setStatus("Could not send reset email. Check the address and try again.");
-    }
-  }
-
-  let _googlePopupActive = false;
-  async function handleGoogleLogin() {
-    if (_googlePopupActive) return;
-    _googlePopupActive = true;
-    setStatus("Signing in with Google...");
-    try {
-      const provider = new GoogleAuthProvider();
-      const cred = await signInWithPopup(auth, provider);
-      const token = await cred.user.getIdToken(true);
-      localStorage.setItem("ID_TOKEN", token);
-      setStatus("Signed in successfully");
-    } catch (err) {
-      if (err?.code === "auth/popup-blocked") {
-        await signInWithRedirect(auth, new GoogleAuthProvider());
-        return;
-      }
-      if (err?.code !== "auth/cancelled-popup-request" &&
-          err?.code !== "auth/popup-closed-by-user") {
-        console.error(err);
-        setStatus("Google sign-in failed: " + (err?.message || String(err)));
-      } else {
-        setStatus("");
-      }
-    } finally {
-      _googlePopupActive = false;
-    }
-  }
-
-  if (!isOpen) return null;
-
-  const isError = status && !status.includes("sent") && !status.includes("Signed") && !status.includes("created") && !status.includes("Completing") && !status.includes("Sending") && !status.includes("Signing") && !status.includes("Creating");
-
-  return (
-    <div
-      onClick={onClose}
-      style={{
-        position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 500,
-        background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center",
-        animation: "fadeIn 0.2s ease-out",
-      }}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          width: "100%", maxWidth: "420px", padding: "32px", background: "white",
-          borderRadius: "16px", border: "1px solid #e5e7eb", position: "relative",
-          animation: "slideUp 0.3s ease-out",
-        }}
-      >
-        <button
-          onClick={onClose}
-          style={{
-            position: "absolute", top: "16px", right: "16px", background: "none",
-            border: "none", fontSize: "20px", color: "#94a3b8", cursor: "pointer",
-          }}
-        >x</button>
-
-        <div style={{ textAlign: "center", marginBottom: "24px" }}>
-          <div style={{ display: "flex", justifyContent: "center", marginBottom: "12px" }}>
-            <LogoIcon size={48} />
-          </div>
-          <h2 style={{ margin: 0, fontSize: "20px", fontWeight: 700 }}>
-            {isSignUp ? "Create your free account" : "Sign in to TitleApp"}
-          </h2>
-        </div>
-
-        {linkSent ? (
-          <div style={{ padding: "20px", background: "#f0fdf4", border: "1px solid #86efac", borderRadius: "12px", textAlign: "center" }}>
-            <div style={{ fontSize: "16px", fontWeight: 600, marginBottom: "8px" }}>Check your email</div>
-            <div style={{ fontSize: "14px", color: "#6b7280" }}>We sent a magic link to <strong>{email}</strong></div>
-            <div style={{ fontSize: "13px", color: "#6b7280", marginTop: "12px" }}>Click the link in your email to sign in</div>
-            <button onClick={() => { setLinkSent(false); setEmail(""); }} style={{ marginTop: "16px", padding: "10px 20px", background: "white", border: "1px solid #e5e7eb", borderRadius: "8px", cursor: "pointer", fontSize: "14px" }}>
-              Use different email
-            </button>
-          </div>
-        ) : (
-          <>
-            <div style={{ display: "flex", gap: "8px", marginBottom: "20px" }}>
-              {["magic", "password", "signup"].map((m) => (
-                <button
-                  key={m}
-                  onClick={() => { setMode(m); setStatus(""); }}
-                  style={{
-                    flex: 1, padding: "10px", borderRadius: "8px", cursor: "pointer", fontSize: "14px",
-                    background: mode === m ? "rgba(124,58,237,0.1)" : "white",
-                    border: mode === m ? "1px solid rgba(124,58,237,0.3)" : "1px solid #e5e7eb",
-                    fontWeight: mode === m ? 600 : 400,
-                  }}
-                >
-                  {m === "magic" ? "Magic Link" : m === "password" ? "Password" : "Sign Up"}
-                </button>
-              ))}
-            </div>
-
-            {mode === "magic" && (
-              <form onSubmit={handleMagicLink} style={{ display: "grid", gap: "14px" }}>
-                <label style={{ display: "grid", gap: "6px" }}>
-                  <div style={{ fontSize: "14px", fontWeight: 600 }}>Email</div>
-                  <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" autoComplete="email" required style={{ padding: "12px", fontSize: "14px", border: "1px solid #e5e7eb", borderRadius: "8px" }} />
-                </label>
-                <button type="submit" style={{ padding: "12px", fontSize: "14px", fontWeight: 600, background: "#7c3aed", color: "white", border: "none", borderRadius: "8px", cursor: "pointer" }}>
-                  Send Magic Link
-                </button>
-              </form>
-            )}
-
-            {mode === "password" && (
-              <form onSubmit={handlePasswordLogin} style={{ display: "grid", gap: "14px" }}>
-                <label style={{ display: "grid", gap: "6px" }}>
-                  <div style={{ fontSize: "14px", fontWeight: 600 }}>Email</div>
-                  <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" autoComplete="email" required style={{ padding: "12px", fontSize: "14px", border: "1px solid #e5e7eb", borderRadius: "8px" }} />
-                </label>
-                <label style={{ display: "grid", gap: "6px" }}>
-                  <div style={{ fontSize: "14px", fontWeight: 600 }}>Password</div>
-                  <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="--------" autoComplete="current-password" required style={{ padding: "12px", fontSize: "14px", border: "1px solid #e5e7eb", borderRadius: "8px" }} />
-                </label>
-                <div style={{ textAlign: "right", marginTop: "-8px" }}>
-                  <button type="button" onClick={handleForgotPassword} style={{ background: "none", border: "none", color: "#7c3aed", fontSize: "13px", cursor: "pointer", padding: 0 }}>Forgot password?</button>
-                </div>
-                <button type="submit" style={{ padding: "12px", fontSize: "14px", fontWeight: 600, background: "#7c3aed", color: "white", border: "none", borderRadius: "8px", cursor: "pointer" }}>
-                  Sign In
-                </button>
-              </form>
-            )}
-
-            {mode === "signup" && (
-              <form onSubmit={handleSignUp} style={{ display: "grid", gap: "14px" }}>
-                <label style={{ display: "grid", gap: "6px" }}>
-                  <div style={{ fontSize: "14px", fontWeight: 600 }}>Email</div>
-                  <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" autoComplete="email" required style={{ padding: "12px", fontSize: "14px", border: "1px solid #e5e7eb", borderRadius: "8px" }} />
-                </label>
-                <label style={{ display: "grid", gap: "6px" }}>
-                  <div style={{ fontSize: "14px", fontWeight: 600 }}>Password</div>
-                  <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="--------" autoComplete="new-password" required style={{ padding: "12px", fontSize: "14px", border: "1px solid #e5e7eb", borderRadius: "8px" }} />
-                </label>
-                <label style={{ display: "grid", gap: "6px" }}>
-                  <div style={{ fontSize: "14px", fontWeight: 600 }}>Confirm Password</div>
-                  <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="--------" autoComplete="new-password" required style={{ padding: "12px", fontSize: "14px", border: "1px solid #e5e7eb", borderRadius: "8px" }} />
-                </label>
-                <button type="submit" style={{ padding: "12px", fontSize: "14px", fontWeight: 600, background: "#7c3aed", color: "white", border: "none", borderRadius: "8px", cursor: "pointer" }}>
-                  Create Account
-                </button>
-              </form>
-            )}
-
-            {status && (
-              <div style={{ marginTop: "14px", padding: "12px", background: isError ? "#fff5f5" : "#f0fdf4", border: isError ? "1px solid #fecaca" : "1px solid #86efac", borderRadius: "8px", fontSize: "13px", color: isError ? "#dc2626" : "#16a34a" }}>
-                {status}
-              </div>
-            )}
-
-            <div style={{ marginTop: "20px", paddingTop: "20px", borderTop: "1px solid #e5e7eb" }}>
-              <div style={{ fontSize: "13px", color: "#6b7280", textAlign: "center", marginBottom: "10px" }}>Or continue with</div>
-              <button onClick={handleGoogleLogin} style={{ width: "100%", padding: "12px", fontSize: "14px", background: "white", border: "1px solid #e5e7eb", borderRadius: "8px", cursor: "pointer" }}>
-                Google
-              </button>
-            </div>
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ── Landing Page ───────────────────────────────────────────────────
+const HOW_IT_WORKS = [
+  { step: "1", title: "Pick a worker", desc: "Browse by industry. Every worker is trained on the rules of your field." },
+  { step: "2", title: "Start free", desc: "14-day free trial. No credit card. Cancel anytime." },
+  { step: "3", title: "Work gets done", desc: "Your Digital Worker handles the compliance-heavy work. You keep the audit trail." },
+];
 
 export default function LandingPage() {
-  const [currentSlide, setCurrentSlide] = useState(0);
-  const [authOpen, setAuthOpen] = useState(false);
-  const [authMode, setAuthMode] = useState("magic"); // "magic" | "signup"
-  const [chatActive, setChatActive] = useState(false);
-  const [chatInput, setChatInput] = useState("");
-  const [chatMessages, setChatMessages] = useState([]);
-  const [chatTyping, setChatTyping] = useState(false);
-  const [discoveredContext, setDiscoveredContext] = useState(null);
-  const chatRef = useRef(null);
-  const chatEndRef = useRef(null);
-  const inputRef = useRef(null);
-  const lockedSlide = useRef(getLockedSlideIndex());
-  const rotationRef = useRef(null);
-  const pausedRef = useRef(false);
-
-  // Inline auth state (for sign-in rendered inside chat)
-  const [inlineAuthMode, setInlineAuthMode] = useState("magic"); // "magic" | "password"
-  const [inlineEmail, setInlineEmail] = useState("");
-  const [inlinePassword, setInlinePassword] = useState("");
-  const [inlineStatus, setInlineStatus] = useState("");
-  const [inlineLinkSent, setInlineLinkSent] = useState(false);
-
-  // ── Inline auth handlers (for chat-embedded sign-in) ──────────
-
-  async function handleInlineMagicLink(e) {
-    e.preventDefault();
-    setInlineStatus("Sending magic link...");
-    const actionCodeSettings = { url: window.location.origin + "/", handleCodeInApp: true };
-    try {
-      const trimmedEmail = inlineEmail.trim().toLowerCase();
-      await sendSignInLinkToEmail(auth, trimmedEmail, actionCodeSettings);
-      window.localStorage.setItem("emailForSignIn", trimmedEmail);
-      setInlineLinkSent(true);
-      setInlineStatus("");
-    } catch (err) {
-      console.error(err);
-      setInlineStatus("Failed to send link: " + (err?.message || String(err)));
-    }
-  }
-
-  async function handleInlinePasswordLogin(e) {
-    e.preventDefault();
-    setInlineStatus("Signing in...");
-    try {
-      const cred = await signInWithEmailAndPassword(auth, inlineEmail, inlinePassword);
-      const token = await cred.user.getIdToken(true);
-      localStorage.setItem("ID_TOKEN", token);
-      setInlineStatus("Signed in successfully");
-    } catch (err) {
-      console.error(err);
-      const code = err?.code || "";
-      if (code === "auth/wrong-password" || code === "auth/user-not-found" || code === "auth/invalid-credential" || code === "auth/invalid-login-credentials") {
-        setInlineStatus("No password set for this account. Use Magic Link or Google instead.");
-      } else {
-        setInlineStatus("Login failed: " + (err?.message || String(err)));
-      }
-    }
-  }
-
-  async function handleInlineGoogleLogin() {
-    if (_googlePopupActive) return;
-    _googlePopupActive = true;
-    setInlineStatus("Signing in with Google...");
-    try {
-      const provider = new GoogleAuthProvider();
-      const cred = await signInWithPopup(auth, provider);
-      const token = await cred.user.getIdToken(true);
-      localStorage.setItem("ID_TOKEN", token);
-      setInlineStatus("Signed in successfully");
-    } catch (err) {
-      if (err?.code === "auth/popup-blocked") {
-        await signInWithRedirect(auth, new GoogleAuthProvider());
-        return;
-      }
-      if (err?.code !== "auth/cancelled-popup-request" &&
-          err?.code !== "auth/popup-closed-by-user") {
-        console.error(err);
-        setInlineStatus("Google sign-in failed: " + (err?.message || String(err)));
-      } else {
-        setInlineStatus("");
-      }
-    } finally {
-      _googlePopupActive = false;
-    }
-  }
-
-  // Auto-rotate slides
-  useEffect(() => {
-    if (lockedSlide.current !== null) {
-      setCurrentSlide(lockedSlide.current);
-      return;
-    }
-
-    function tick() {
-      if (!pausedRef.current) {
-        setCurrentSlide((prev) => (prev + 1) % SLIDES.length);
-      }
-    }
-    rotationRef.current = setInterval(tick, 5000);
-    return () => clearInterval(rotationRef.current);
-  }, []);
-
-  // Scroll chat to bottom
-  useEffect(() => {
-    if (chatEndRef.current) chatEndRef.current.scrollIntoView({ behavior: "smooth" });
-  }, [chatMessages, chatTyping]);
-
-  // Check for magic link callback on mount
-  useEffect(() => {
-    if (isSignInWithEmailLink(auth, window.location.href)) {
-      setAuthOpen(true);
-    }
-  }, []);
-
-  // When user signs in, persist landing context for the dashboard to pick up
-  useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((user) => {
-      if (user && chatMessages.length > 0) {
-        const ctx = discoveredContext || {};
-        const chatSummary = chatMessages
-          .filter((m) => m.role === "user")
-          .map((m) => m.content)
-          .join(" | ");
-        const landingContext = {
-          ...ctx,
-          chatSummary,
-          messageCount: chatMessages.length,
-          timestamp: new Date().toISOString(),
-        };
-        localStorage.setItem("LANDING_CONTEXT", JSON.stringify(landingContext));
-      }
-    });
-    return () => unsubscribe();
-  }, [chatMessages, discoveredContext]);
-
-  function goToSlide(idx) {
-    setCurrentSlide(idx);
-    if (rotationRef.current) clearInterval(rotationRef.current);
-    if (lockedSlide.current === null) {
-      rotationRef.current = setInterval(() => {
-        if (!pausedRef.current) setCurrentSlide((prev) => (prev + 1) % SLIDES.length);
-      }, 5000);
-    }
-  }
-
-  function handleBubbleClick(text) {
-    setChatInput(text);
-    activateChat(text);
-  }
-
-  function activateChat(initialMessage) {
-    setChatActive(true);
-    if (rotationRef.current) clearInterval(rotationRef.current);
-
-    const welcome = { role: "assistant", content: "Hey! Welcome to TitleApp. What brings you here today?" };
-    const msg = initialMessage || chatInput.trim();
-    if (msg) {
-      setChatMessages([welcome, { role: "user", content: msg }]);
-      setChatInput("");
-      sendChatMessage(msg);
-    } else {
-      setChatMessages([welcome]);
-    }
-  }
-
-  async function sendChatMessage(message) {
-    setChatTyping(true);
-    try {
-      const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
-      const sessionId = sessionStorage.getItem("ta_sid") || ("sess_" + Date.now().toString(36) + "_" + Math.random().toString(36).substr(2, 8));
-      sessionStorage.setItem("ta_sid", sessionId);
-
-      const response = await fetch(`${apiBase}/api?path=/v1/chat:message`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId, surface: "landing", userInput: message }),
-      });
-      const result = await response.json();
-      setChatTyping(false);
-
-      if (result.ok && result.message) {
-        // Detect [SHOW_SIGNUP] token — strip it and show setup button (no auto-popup)
-        let displayMessage = result.message;
-        let shouldShowButton = result.suggestSignup || result.showSignup || false;
-        if (/\[SHOW[_\s]?SIGNUP\]/i.test(displayMessage)) {
-          displayMessage = displayMessage.replace(/\s*\[SHOW[_\s]?SIGNUP\]\s*/gi, "").trim();
-          shouldShowButton = true;
-        }
-
-        setChatMessages((prev) => [...prev, {
-          role: "assistant",
-          content: displayMessage,
-          showSetupButton: shouldShowButton,
-        }]);
-      } else {
-        setChatMessages((prev) => [...prev, { role: "assistant", content: "Tell me more about what you're looking for." }]);
-      }
-
-      // Track discovered context
-      if (result.discoveredContext) {
-        setDiscoveredContext(result.discoveredContext);
-        sessionStorage.setItem("ta_discovered_context", JSON.stringify(result.discoveredContext));
-      }
-    } catch (err) {
-      console.error("Chat error:", err);
-      setChatTyping(false);
-      setChatMessages((prev) => [...prev, { role: "assistant", content: "I'm having trouble connecting. Let me try that again." }]);
-    }
-  }
-
-  function handleChatSubmit(e) {
-    e?.preventDefault();
-    const msg = chatInput.trim();
-    if (!msg) return;
-
-    if (!chatActive) {
-      activateChat(msg);
-    } else {
-      setChatMessages((prev) => [...prev, { role: "user", content: msg }]);
-      setChatInput("");
-      sendChatMessage(msg);
-    }
-  }
-
-  function handleBackToLanding() {
-    setChatActive(false);
-    setChatMessages([]);
-    setChatInput("");
-    if (lockedSlide.current === null) {
-      rotationRef.current = setInterval(() => {
-        if (!pausedRef.current) setCurrentSlide((prev) => (prev + 1) % SLIDES.length);
-      }, 5000);
-    }
-  }
-
-  const slide = SLIDES[currentSlide];
+  const appBase = window.location.hostname === "localhost"
+    ? ""
+    : "https://app.titleapp.ai";
 
   return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%)", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif", color: "#2c3e50", display: "flex", flexDirection: "column" }}>
-
-      {/* Header */}
-      <header style={{
-        position: "fixed", top: 0, left: 0, right: 0, zIndex: 200, display: "flex", justifyContent: "space-between",
-        alignItems: "center", padding: "1.5rem 3rem", background: "rgba(255,255,255,0.95)", boxShadow: "0 2px 10px rgba(0,0,0,0.05)",
-      }}>
-        <div
-          onClick={chatActive ? handleBackToLanding : undefined}
-          style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "1.5rem", fontWeight: 700, color: "#7c3aed", cursor: chatActive ? "pointer" : "default" }}
-        >
-          <LogoIcon size={40} />
-          <span>TitleApp AI</span>
+    <div style={S.page}>
+      {/* ── Header ── */}
+      <header style={S.header}>
+        <div style={S.logoWrap}>
+          <div style={S.logoIcon}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" />
+            </svg>
+          </div>
+          <span style={S.logoText}>TitleApp</span>
         </div>
-        <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
-          <a
-            href="https://us-central1-title-app-alpha.cloudfunctions.net/publicApi/v1/docs"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ fontSize: "14px", color: "#64748b", textDecoration: "none", cursor: "pointer", transition: "color 0.2s" }}
-            onMouseEnter={(e) => { e.currentTarget.style.color = "#7c3aed"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.color = "#64748b"; }}
-          >
-            Developers
-          </a>
-          <span
-            onClick={() => {
-              const investorMsg = "Tell me about investing in TitleApp";
-              setChatInput(investorMsg);
-              activateChat(investorMsg);
-            }}
-            style={{ fontSize: "14px", color: "#64748b", textDecoration: "none", cursor: "pointer", transition: "color 0.2s" }}
-            onMouseEnter={(e) => { e.currentTarget.style.color = "#7c3aed"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.color = "#64748b"; }}
-          >
-            Investors
-          </span>
-          <button
-            onClick={() => { setAuthMode("magic"); setAuthOpen(true); }}
-            style={{ padding: "0.75rem 1.5rem", borderRadius: "8px", fontWeight: 600, cursor: "pointer", border: "2px solid transparent", background: "transparent", color: "#7c3aed", fontSize: "1rem", transition: "all 0.3s" }}
-            onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#7c3aed"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.borderColor = "transparent"; }}
-          >
-            Sign In
-          </button>
-          <button
-            onClick={() => { setAuthMode("signup"); setAuthOpen(true); }}
-            style={{ padding: "0.75rem 1.5rem", borderRadius: "8px", fontWeight: 600, cursor: "pointer", border: "none", background: "#7c3aed", color: "white", fontSize: "1rem", transition: "all 0.3s" }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = "#6d28d9"; e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 4px 12px rgba(124,58,237,0.3)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = "#7c3aed"; e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "none"; }}
-          >
-            Start Free
-          </button>
+        <div style={S.headerRight}>
+          <a href={`${appBase}/meet-alex`} style={S.headerLink}>Meet Alex</a>
+          <a href={`${appBase}/sandbox`} style={S.headerLink}>Creators</a>
+          <a href={`${appBase}/meet-alex`} style={S.headerCta}>Start Free</a>
         </div>
       </header>
 
-      {/* Page content */}
-      <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden", paddingTop: "90px" }}>
-
-        {/* Hero + Chat Landing */}
-        {!chatActive && (
-          <>
-            <div
-              style={{ maxWidth: "800px", margin: "0 auto", padding: "2rem 2rem 1rem", textAlign: "center" }}
-              onMouseEnter={() => { pausedRef.current = true; }}
-              onMouseLeave={() => { pausedRef.current = false; }}
-            >
-              {/* Slides */}
-              <div style={{ display: "grid", minHeight: "200px" }}>
-                {SLIDES.map((s, i) => (
-                  <div
-                    key={s.id}
-                    style={{
-                      gridArea: "1 / 1", opacity: i === currentSlide ? 1 : 0,
-                      transition: "opacity 0.6s ease", pointerEvents: i === currentSlide ? "auto" : "none",
-                    }}
-                  >
-                    <h1 style={{ fontSize: "3.5rem", fontWeight: 800, lineHeight: 1.2, marginBottom: "1.5rem", color: "#1a202c", whiteSpace: "pre-line" }}>
-                      {s.headline}
-                    </h1>
-                    <p style={{ fontSize: "1.25rem", color: "#64748b", marginBottom: "2rem", lineHeight: 1.6 }}>
-                      {s.subtitle}
-                    </p>
-                  </div>
-                ))}
-              </div>
-
-              {/* Dots */}
-              <div style={{ display: "flex", justifyContent: "center", gap: "8px", marginTop: "1rem" }}>
-                {SLIDES.map((_, i) => (
-                  <button
-                    key={i}
-                    onClick={() => goToSlide(i)}
-                    style={{
-                      width: "8px", height: "8px", borderRadius: "50%", border: "none", padding: 0,
-                      background: i === currentSlide ? "#7c3aed" : "#cbd5e1", cursor: "pointer", transition: "background 0.3s",
-                    }}
-                  />
-                ))}
-              </div>
-            </div>
-
-            {/* Chat Input */}
-            <div style={{ maxWidth: "600px", width: "100%", margin: "2rem auto 1rem", padding: "0 2rem", display: "flex", gap: "0.75rem" }}>
-              <input
-                ref={inputRef}
-                type="text"
-                value={chatInput}
-                onChange={(e) => setChatInput(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") handleChatSubmit(e); }}
-                placeholder="Ask me anything about TitleApp AI..."
-                style={{
-                  flex: 1, height: "48px", padding: "0 1.5rem", border: "2px solid #e2e8f0",
-                  borderRadius: "12px", fontSize: "1.1rem", outline: "none", transition: "all 0.3s",
-                }}
-                onFocus={(e) => { e.target.style.borderColor = "#7c3aed"; e.target.style.boxShadow = "0 0 0 3px rgba(124,58,237,0.1)"; }}
-                onBlur={(e) => { e.target.style.borderColor = "#e2e8f0"; e.target.style.boxShadow = "none"; }}
-              />
-              <button
-                onClick={handleChatSubmit}
-                style={{
-                  width: "50px", height: "50px", background: "#7c3aed", border: "none", borderRadius: "12px",
-                  color: "white", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-                  transition: "all 0.3s",
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = "#6d28d9"; e.currentTarget.style.transform = "scale(1.05)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = "#7c3aed"; e.currentTarget.style.transform = "none"; }}
-              >
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
-                </svg>
-              </button>
-            </div>
-
-            {/* Suggestion Bubbles */}
-            <div style={{ maxWidth: "800px", margin: "0 auto", padding: "0 2rem" }}>
-              <div style={{ display: "grid" }}>
-                {SLIDES.map((s, i) => (
-                  <div
-                    key={s.id}
-                    style={{
-                      gridArea: "1 / 1", opacity: i === currentSlide ? 1 : 0,
-                      transition: "opacity 0.6s ease", pointerEvents: i === currentSlide ? "auto" : "none",
-                      display: "flex", flexWrap: "wrap", gap: "0.75rem", justifyContent: "center", padding: "0.5rem 0",
-                    }}
-                  >
-                    {s.bubbles.map((b) => (
-                      <button
-                        key={b}
-                        onClick={() => handleBubbleClick(b)}
-                        style={{
-                          padding: "0.75rem 1.25rem", background: "#f1f5f9", border: "2px solid #e2e8f0",
-                          borderRadius: "20px", color: "#475569", cursor: "pointer", fontSize: "0.95rem",
-                          transition: "all 0.3s",
-                        }}
-                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#7c3aed"; e.currentTarget.style.background = "#f3e8ff"; e.currentTarget.style.color = "#7c3aed"; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#e2e8f0"; e.currentTarget.style.background = "#f1f5f9"; e.currentTarget.style.color = "#475569"; }}
-                      >
-                        {b}
-                      </button>
-                    ))}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </>
-        )}
-
-        {/* Chat Mode */}
-        {chatActive && (
-          <div style={{ maxWidth: "800px", margin: "0 auto", padding: "1rem 2rem", paddingBottom: "100px" }}>
-            <div ref={chatRef} style={{ display: "flex", flexDirection: "column" }}>
-              {chatMessages.map((msg, i) => (
-                <div key={i} style={{ marginBottom: "1rem" }}>
-                  <div
-                    style={{
-                      padding: "1rem", borderRadius: "12px",
-                      animation: "slideIn 0.3s ease",
-                      ...(msg.role === "user"
-                        ? { background: "#7c3aed", color: "white", marginLeft: "20%" }
-                        : { background: "#f1f5f9", color: "#1a202c", marginRight: "20%" }),
-                      whiteSpace: "pre-line",
-                    }}
-                  >
-                    {msg.content}
-                  </div>
-                  {msg.showSetupButton && (
-                    <div style={{ marginRight: "10%", marginTop: "12px" }}>
-                      <div style={{
-                        background: "white", borderRadius: "16px", border: "1px solid #e5e7eb",
-                        padding: "24px", animation: "slideIn 0.3s ease",
-                        boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
-                      }}>
-                        {inlineLinkSent ? (
-                          <div style={{ padding: "8px", textAlign: "center" }}>
-                            <div style={{ width: "48px", height: "48px", borderRadius: "50%", background: "#f0fdf4", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px", fontSize: "24px" }}>&#10003;</div>
-                            <div style={{ fontSize: "16px", fontWeight: 600, marginBottom: "8px" }}>Check your email</div>
-                            <div style={{ fontSize: "14px", color: "#6b7280" }}>We sent a sign-in link to <strong>{inlineEmail}</strong></div>
-                            <div style={{ fontSize: "13px", color: "#6b7280", marginTop: "8px" }}>Click the link in your email to continue</div>
-                            <button
-                              onClick={() => { setInlineLinkSent(false); setInlineEmail(""); }}
-                              style={{ marginTop: "16px", padding: "8px 16px", background: "white", border: "1px solid #e5e7eb", borderRadius: "8px", cursor: "pointer", fontSize: "13px" }}
-                            >
-                              Use different email
-                            </button>
-                          </div>
-                        ) : (
-                          <>
-                            <div style={{ fontSize: "16px", fontWeight: 700, marginBottom: "4px", color: "#1e293b" }}>
-                              Create your free account
-                            </div>
-                            <div style={{ fontSize: "13px", color: "#6b7280", marginBottom: "16px" }}>
-                              Sign in to set up your workspace
-                            </div>
-
-                            {/* Mode toggle */}
-                            <div style={{ display: "flex", gap: "6px", marginBottom: "14px" }}>
-                              {["magic", "password"].map((m) => (
-                                <button
-                                  key={m}
-                                  onClick={() => setInlineAuthMode(m)}
-                                  style={{
-                                    padding: "7px 14px", borderRadius: "8px", cursor: "pointer", fontSize: "13px",
-                                    background: inlineAuthMode === m ? "rgba(124,58,237,0.1)" : "white",
-                                    border: inlineAuthMode === m ? "1px solid rgba(124,58,237,0.3)" : "1px solid #e5e7eb",
-                                    fontWeight: inlineAuthMode === m ? 600 : 400,
-                                  }}
-                                >
-                                  {m === "magic" ? "Magic Link" : "Password"}
-                                </button>
-                              ))}
-                            </div>
-
-                            {/* Magic Link form */}
-                            {inlineAuthMode === "magic" && (
-                              <form onSubmit={handleInlineMagicLink} style={{ display: "grid", gap: "10px" }}>
-                                <input
-                                  type="email" value={inlineEmail}
-                                  onChange={(e) => setInlineEmail(e.target.value)}
-                                  placeholder="you@example.com" autoComplete="email" required
-                                  style={{ padding: "11px 14px", fontSize: "14px", border: "1px solid #e5e7eb", borderRadius: "8px", outline: "none" }}
-                                  onFocus={(e) => { e.target.style.borderColor = "#7c3aed"; }}
-                                  onBlur={(e) => { e.target.style.borderColor = "#e5e7eb"; }}
-                                />
-                                <button type="submit" style={{
-                                  padding: "11px", fontSize: "14px", fontWeight: 600,
-                                  background: "#7c3aed", color: "white", border: "none", borderRadius: "8px", cursor: "pointer",
-                                }}>
-                                  Send Magic Link
-                                </button>
-                              </form>
-                            )}
-
-                            {/* Password form */}
-                            {inlineAuthMode === "password" && (
-                              <form onSubmit={handleInlinePasswordLogin} style={{ display: "grid", gap: "10px" }}>
-                                <input
-                                  type="email" value={inlineEmail}
-                                  onChange={(e) => setInlineEmail(e.target.value)}
-                                  placeholder="you@example.com" autoComplete="email" required
-                                  style={{ padding: "11px 14px", fontSize: "14px", border: "1px solid #e5e7eb", borderRadius: "8px", outline: "none" }}
-                                  onFocus={(e) => { e.target.style.borderColor = "#7c3aed"; }}
-                                  onBlur={(e) => { e.target.style.borderColor = "#e5e7eb"; }}
-                                />
-                                <input
-                                  type="password" value={inlinePassword}
-                                  onChange={(e) => setInlinePassword(e.target.value)}
-                                  placeholder="Password" autoComplete="current-password" required
-                                  style={{ padding: "11px 14px", fontSize: "14px", border: "1px solid #e5e7eb", borderRadius: "8px", outline: "none" }}
-                                  onFocus={(e) => { e.target.style.borderColor = "#7c3aed"; }}
-                                  onBlur={(e) => { e.target.style.borderColor = "#e5e7eb"; }}
-                                />
-                                <button type="submit" style={{
-                                  padding: "11px", fontSize: "14px", fontWeight: 600,
-                                  background: "#7c3aed", color: "white", border: "none", borderRadius: "8px", cursor: "pointer",
-                                }}>
-                                  Sign In
-                                </button>
-                              </form>
-                            )}
-
-                            {/* Status message */}
-                            {inlineStatus && (
-                              <div style={{
-                                marginTop: "10px", padding: "10px", borderRadius: "8px", fontSize: "13px",
-                                background: inlineStatus.includes("ailed") || inlineStatus.includes("No password") ? "#fff5f5" : "#f0fdf4",
-                                border: inlineStatus.includes("ailed") || inlineStatus.includes("No password") ? "1px solid #fecaca" : "1px solid #86efac",
-                                color: inlineStatus.includes("ailed") || inlineStatus.includes("No password") ? "#dc2626" : "#16a34a",
-                              }}>
-                                {inlineStatus}
-                              </div>
-                            )}
-
-                            {/* Google divider + button */}
-                            <div style={{ marginTop: "14px", paddingTop: "14px", borderTop: "1px solid #e5e7eb" }}>
-                              <div style={{ fontSize: "12px", color: "#94a3b8", textAlign: "center", marginBottom: "10px" }}>or continue with</div>
-                              <button
-                                onClick={handleInlineGoogleLogin}
-                                style={{
-                                  width: "100%", padding: "11px", fontSize: "14px", fontWeight: 500,
-                                  background: "white", border: "1px solid #e5e7eb", borderRadius: "8px", cursor: "pointer",
-                                  display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",
-                                  transition: "all 0.2s",
-                                }}
-                                onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#7c3aed"; e.currentTarget.style.background = "#faf5ff"; }}
-                                onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#e5e7eb"; e.currentTarget.style.background = "white"; }}
-                              >
-                                <svg width="18" height="18" viewBox="0 0 24 24">
-                                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
-                                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                                  <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-                                  <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-                                </svg>
-                                Google
-                              </button>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))}
-              {chatTyping && (
-                <div style={{ marginBottom: "1rem", padding: "1rem", borderRadius: "12px", background: "#f1f5f9", marginRight: "20%", display: "flex", alignItems: "center", gap: "10px" }}>
-                  <svg width="28" height="28" viewBox="0 0 200 200" fill="none" style={{ animation: "spinKey 1.5s ease-in-out infinite", flexShrink: 0 }}>
-                    <circle cx="100" cy="100" r="95" fill="#7c3aed"/>
-                    <circle cx="100" cy="100" r="80" fill="#7c3aed" stroke="white" strokeWidth="2"/>
-                    <circle cx="100" cy="100" r="70" fill="none" stroke="white" strokeWidth="1" strokeDasharray="3,5"/>
-                    <circle cx="100" cy="80" r="18" fill="white"/>
-                    <circle cx="100" cy="80" r="8" fill="#7c3aed"/>
-                    <rect x="94" y="90" width="12" height="35" fill="white"/>
-                    <rect x="94" y="115" width="8" height="4" fill="white"/>
-                    <rect x="94" y="122" width="5" height="3" fill="white"/>
-                  </svg>
-                </div>
-              )}
-              <div ref={chatEndRef} />
-            </div>
-
+      {/* ── Hero ── */}
+      <section style={S.hero}>
+        <div style={S.heroInner}>
+          <div style={S.heroTag}>The Digital Worker Platform</div>
+          <h1 style={S.heroH1}>They're on your team now.</h1>
+          <p style={S.heroSub}>Real expertise. On call. Forever.</p>
+          <p style={S.heroBody}>
+            Digital Workers handle the compliance-heavy work in regulated industries.
+            Trained on the rules of your field. Audit trail on every output.
+          </p>
+          <div style={S.heroCtas}>
+            <a href={`${appBase}/meet-alex`} style={S.btnPrimary}>Meet Your Team</a>
+            <a href="#verticals" style={S.btnSecondary}>Browse Industries</a>
           </div>
-        )}
-      </div>
-
-      {/* Fixed chat input when in chat mode */}
-      {chatActive && (
-        <div style={{
-          position: "fixed", bottom: 0, left: 0, right: 0, maxWidth: "800px", margin: "0 auto",
-          padding: "0.75rem 2rem", background: "white", boxShadow: "0 -2px 12px rgba(0,0,0,0.05)", zIndex: 100,
-          display: "flex", gap: "0.75rem",
-        }}>
-          <input
-            type="text"
-            value={chatInput}
-            onChange={(e) => setChatInput(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") handleChatSubmit(e); }}
-            placeholder="Type a message..."
-            autoFocus
-            style={{
-              flex: 1, height: "48px", padding: "0 1.5rem", border: "2px solid #e2e8f0",
-              borderRadius: "12px", fontSize: "1.1rem", outline: "none",
-            }}
-            onFocus={(e) => { e.target.style.borderColor = "#7c3aed"; e.target.style.boxShadow = "0 0 0 3px rgba(124,58,237,0.1)"; }}
-            onBlur={(e) => { e.target.style.borderColor = "#e2e8f0"; e.target.style.boxShadow = "none"; }}
-          />
-          <button
-            onClick={handleChatSubmit}
-            style={{
-              width: "50px", height: "50px", background: "#7c3aed", border: "none", borderRadius: "12px",
-              color: "white", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-            }}
-          >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
-            </svg>
-          </button>
         </div>
-      )}
+      </section>
 
-      {/* Footer */}
-      {!chatActive && (
-        <footer style={{
-          background: "#f8fafc", padding: "24px 2rem", textAlign: "center",
-          borderTop: "1px solid #e2e8f0", fontSize: "13px", color: "#94a3b8",
-        }}>
-          <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "16px", flexWrap: "wrap", marginBottom: "8px" }}>
-            <span style={{ fontWeight: 600, color: "#64748b" }}>TitleApp AI</span>
-            <span style={{ color: "#cbd5e1" }}>&middot;</span>
-            <a
-              href="https://us-central1-title-app-alpha.cloudfunctions.net/publicApi/v1/docs"
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ color: "#64748b", textDecoration: "none", transition: "color 0.2s" }}
-              onMouseEnter={(e) => { e.currentTarget.style.color = "#7c3aed"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.color = "#64748b"; }}
-            >
-              Developers
-            </a>
-            <span style={{ color: "#cbd5e1" }}>&middot;</span>
-            <span
-              onClick={() => {
-                const investorMsg = "Tell me about investing in TitleApp";
-                setChatInput(investorMsg);
-                activateChat(investorMsg);
-              }}
-              style={{ color: "#64748b", textDecoration: "none", cursor: "pointer", transition: "color 0.2s" }}
-              onMouseEnter={(e) => { e.currentTarget.style.color = "#7c3aed"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.color = "#64748b"; }}
-            >
-              Investors
-            </span>
-            <span style={{ color: "#cbd5e1" }}>&middot;</span>
-            <span style={{ color: "#94a3b8" }}>Privacy</span>
-            <span style={{ color: "#cbd5e1" }}>&middot;</span>
-            <span style={{ color: "#94a3b8" }}>Terms</span>
+      {/* ── Stats Bar ── */}
+      <section style={S.statsBar}>
+        <div style={S.statsInner}>
+          {STATS.map(s => (
+            <div key={s.label} style={S.statItem}>
+              <div style={S.statNum}>{s.num}</div>
+              <div style={S.statLabel}>{s.label}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ── Verticals ── */}
+      <section id="verticals" style={S.section}>
+        <div style={S.sectionInner}>
+          <h2 style={S.sectionH2}>Choose your industry.</h2>
+          <p style={S.sectionSub}>Every vertical has dedicated Digital Workers built by people who know the rules.</p>
+          <div style={S.verticalGrid}>
+            {VERTICALS.map(v => (
+              <a key={v.param} href={`${appBase}/meet-alex?vertical=${v.param}&v=2`} style={S.verticalCard}>
+                <div style={S.verticalName}>{v.label}</div>
+                <div style={S.verticalDesc}>{v.desc}</div>
+                <div style={S.verticalFooter}>
+                  <span style={S.verticalCount}>{v.count}</span>
+                  <span style={S.verticalArrow}>&rarr;</span>
+                </div>
+              </a>
+            ))}
           </div>
-          <div>&copy; 2026 TitleApp AI</div>
-        </footer>
-      )}
+        </div>
+      </section>
 
-      {/* Auth Modal */}
-      <AuthModal
-        isOpen={authOpen}
-        onClose={() => setAuthOpen(false)}
-        defaultMode={authMode}
-      />
+      {/* ── How It Works ── */}
+      <section style={{ ...S.section, background: "#0d0d1a" }}>
+        <div style={S.sectionInner}>
+          <h2 style={S.sectionH2}>Three steps. Under 60 seconds.</h2>
+          <div style={S.stepsGrid}>
+            {HOW_IT_WORKS.map(h => (
+              <div key={h.step} style={S.stepCard}>
+                <div style={S.stepNum}>{h.step}</div>
+                <div style={S.stepTitle}>{h.title}</div>
+                <div style={S.stepDesc}>{h.desc}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
 
-      <style>{`
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        @keyframes slideUp {
-          from { opacity: 0; transform: translateY(20px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes slideIn {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes spinKey {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
+      {/* ── Alex ── */}
+      <section style={S.section}>
+        <div style={S.sectionInner}>
+          <div style={S.alexCard}>
+            <div style={S.alexAvatar}>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+              </svg>
+            </div>
+            <div>
+              <div style={S.alexName}>Alex</div>
+              <div style={S.alexRole}>Chief of Staff</div>
+            </div>
+            <div style={S.alexBody}>
+              Alex is your first hire. Free on every account. She knows every worker in the marketplace,
+              helps you pick the right ones for your field, and coordinates everything once they're on your team.
+            </div>
+            <a href={`${appBase}/meet-alex`} style={S.btnPrimary}>Talk to Alex</a>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Pricing ── */}
+      <section style={{ ...S.section, background: "#0d0d1a" }}>
+        <div style={S.sectionInner}>
+          <h2 style={S.sectionH2}>Simple pricing. No surprises.</h2>
+          <p style={S.sectionSub}>Every worker includes a 14-day free trial. No credit card required.</p>
+          <div style={S.pricingGrid}>
+            {[
+              { tier: "Free", price: "$0", desc: "Digital Logbook, Currency Tracker, Alex. Always free." },
+              { tier: "Standard", price: "$29/mo", desc: "Single-domain workers. My Aircraft, Training & Proficiency, and more." },
+              { tier: "Professional", price: "$49/mo", desc: "Multi-domain workers. Title Search, F&I Products, Tokenomics Analyst." },
+              { tier: "Enterprise", price: "$79/mo", desc: "Type-specific CoPilots. PC12-NG, King Air B200, King Air 350, C90GTx, Caravan 208B." },
+            ].map(p => (
+              <div key={p.tier} style={S.priceCard}>
+                <div style={S.priceTier}>{p.tier}</div>
+                <div style={S.priceAmount}>{p.price}</div>
+                <div style={S.priceDesc}>{p.desc}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Final CTA ── */}
+      <section style={S.finalCta}>
+        <h2 style={{ fontSize: 32, fontWeight: 800, color: "white", marginBottom: 8 }}>Meet your team at TitleApp.</h2>
+        <p style={{ fontSize: 16, color: "rgba(255,255,255,0.6)", marginBottom: 28 }}>Start free. No credit card. Workers ready in seconds.</p>
+        <a href={`${appBase}/meet-alex`} style={{ ...S.btnPrimary, fontSize: 16, padding: "14px 36px" }}>Start Free</a>
+      </section>
+
+      {/* ── Footer ── */}
+      <footer style={S.footer}>
+        <div style={S.footerInner}>
+          <div style={S.footerBrand}>
+            <span style={{ fontWeight: 700, color: "white" }}>TitleApp</span>
+            <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 13, marginLeft: 8 }}>The Digital Worker Platform</span>
+          </div>
+          <div style={S.footerLinks}>
+            <a href={`${appBase}/legal/privacy-policy`} style={S.footerLink}>Privacy</a>
+            <a href={`${appBase}/legal/terms-of-service`} style={S.footerLink}>Terms</a>
+            <a href={`${appBase}/meet-alex?prompt=I%20want%20to%20invest`} style={S.footerLink}>Investors</a>
+            <a href={`${appBase}/sandbox`} style={S.footerLink}>Creators</a>
+          </div>
+          <div style={{ fontSize: 12, color: "rgba(255,255,255,0.3)" }}>
+            The Title App LLC &middot; 1209 N Orange St, Wilmington DE 19801
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
+
+// ── Styles ────────────────────────────────────────────────────────
+
+const S = {
+  page: {
+    minHeight: "100vh", background: "#0a0a14",
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    color: "white", overflowX: "hidden",
+  },
+
+  // Header
+  header: {
+    position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
+    display: "flex", justifyContent: "space-between", alignItems: "center",
+    padding: "16px 32px", background: "rgba(10,10,20,0.9)", backdropFilter: "blur(12px)",
+    borderBottom: "1px solid rgba(255,255,255,0.06)",
+  },
+  logoWrap: { display: "flex", alignItems: "center", gap: 10 },
+  logoIcon: {
+    width: 36, height: 36, borderRadius: 10,
+    background: "linear-gradient(135deg, #7c3aed, #6366f1)",
+    display: "flex", alignItems: "center", justifyContent: "center",
+  },
+  logoText: { fontSize: 20, fontWeight: 700, color: "white", letterSpacing: "-0.3px" },
+  headerRight: { display: "flex", alignItems: "center", gap: 24 },
+  headerLink: { fontSize: 14, color: "rgba(255,255,255,0.6)", textDecoration: "none" },
+  headerCta: {
+    fontSize: 14, fontWeight: 600, color: "white", textDecoration: "none",
+    padding: "8px 20px", borderRadius: 8, background: "#7c3aed",
+  },
+
+  // Hero
+  hero: {
+    paddingTop: 140, paddingBottom: 80,
+    background: "radial-gradient(ellipse at 50% 0%, rgba(124,58,237,0.15) 0%, transparent 70%)",
+  },
+  heroInner: { maxWidth: 720, margin: "0 auto", textAlign: "center", padding: "0 24px" },
+  heroTag: {
+    fontSize: 13, fontWeight: 600, color: "#7c3aed", letterSpacing: "0.05em",
+    textTransform: "uppercase", marginBottom: 20,
+  },
+  heroH1: { fontSize: 52, fontWeight: 800, lineHeight: 1.1, marginBottom: 12, color: "white", letterSpacing: "-1px" },
+  heroSub: { fontSize: 22, color: "rgba(255,255,255,0.5)", marginBottom: 20, fontWeight: 400 },
+  heroBody: { fontSize: 16, color: "rgba(255,255,255,0.45)", lineHeight: 1.7, marginBottom: 32, maxWidth: 560, margin: "0 auto 32px" },
+  heroCtas: { display: "flex", gap: 16, justifyContent: "center", flexWrap: "wrap" },
+  btnPrimary: {
+    display: "inline-block", padding: "12px 28px", fontSize: 15, fontWeight: 600,
+    color: "white", background: "#7c3aed", borderRadius: 10, textDecoration: "none",
+    transition: "transform 0.15s, box-shadow 0.15s",
+  },
+  btnSecondary: {
+    display: "inline-block", padding: "12px 28px", fontSize: 15, fontWeight: 600,
+    color: "rgba(255,255,255,0.7)", background: "rgba(255,255,255,0.06)",
+    border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, textDecoration: "none",
+  },
+
+  // Stats
+  statsBar: { borderTop: "1px solid rgba(255,255,255,0.06)", borderBottom: "1px solid rgba(255,255,255,0.06)" },
+  statsInner: {
+    maxWidth: 900, margin: "0 auto", display: "flex", justifyContent: "space-around",
+    padding: "28px 24px", flexWrap: "wrap", gap: 16,
+  },
+  statItem: { textAlign: "center", minWidth: 100 },
+  statNum: { fontSize: 28, fontWeight: 800, color: "white" },
+  statLabel: { fontSize: 13, color: "rgba(255,255,255,0.4)", marginTop: 2 },
+
+  // Sections
+  section: { padding: "72px 24px", background: "#0a0a14" },
+  sectionInner: { maxWidth: 960, margin: "0 auto" },
+  sectionH2: { fontSize: 32, fontWeight: 800, color: "white", textAlign: "center", marginBottom: 8 },
+  sectionSub: { fontSize: 16, color: "rgba(255,255,255,0.45)", textAlign: "center", marginBottom: 40 },
+
+  // Vertical cards
+  verticalGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16 },
+  verticalCard: {
+    display: "block", padding: "24px 20px", borderRadius: 14,
+    background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)",
+    textDecoration: "none", transition: "border-color 0.2s, background 0.2s",
+    cursor: "pointer",
+  },
+  verticalName: { fontSize: 18, fontWeight: 700, color: "white", marginBottom: 8 },
+  verticalDesc: { fontSize: 13, color: "rgba(255,255,255,0.5)", lineHeight: 1.6, marginBottom: 16 },
+  verticalFooter: { display: "flex", justifyContent: "space-between", alignItems: "center" },
+  verticalCount: { fontSize: 12, color: "#7c3aed", fontWeight: 600 },
+  verticalArrow: { fontSize: 16, color: "#7c3aed" },
+
+  // Steps
+  stepsGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 20 },
+  stepCard: { padding: "28px 24px", borderRadius: 14, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" },
+  stepNum: { fontSize: 32, fontWeight: 800, color: "#7c3aed", marginBottom: 12 },
+  stepTitle: { fontSize: 16, fontWeight: 700, color: "white", marginBottom: 6 },
+  stepDesc: { fontSize: 14, color: "rgba(255,255,255,0.5)", lineHeight: 1.6 },
+
+  // Alex
+  alexCard: {
+    maxWidth: 560, margin: "0 auto", padding: "32px 28px", borderRadius: 16,
+    background: "rgba(124,58,237,0.08)", border: "1px solid rgba(124,58,237,0.2)",
+    textAlign: "center",
+  },
+  alexAvatar: {
+    width: 56, height: 56, borderRadius: "50%", margin: "0 auto 8px",
+    background: "linear-gradient(135deg, #7c3aed 0%, #6366f1 50%, #0ea5e9 100%)",
+    display: "flex", alignItems: "center", justifyContent: "center",
+  },
+  alexName: { fontSize: 18, fontWeight: 700, color: "white" },
+  alexRole: { fontSize: 13, color: "rgba(255,255,255,0.5)", marginBottom: 16 },
+  alexBody: { fontSize: 14, color: "rgba(255,255,255,0.55)", lineHeight: 1.7, marginBottom: 20 },
+
+  // Pricing
+  pricingGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16 },
+  priceCard: {
+    padding: "24px 20px", borderRadius: 14,
+    background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)",
+    textAlign: "center",
+  },
+  priceTier: { fontSize: 13, fontWeight: 600, color: "#7c3aed", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 },
+  priceAmount: { fontSize: 28, fontWeight: 800, color: "white", marginBottom: 8 },
+  priceDesc: { fontSize: 13, color: "rgba(255,255,255,0.45)", lineHeight: 1.6 },
+
+  // Final CTA
+  finalCta: {
+    padding: "72px 24px", textAlign: "center",
+    background: "radial-gradient(ellipse at 50% 100%, rgba(124,58,237,0.12) 0%, transparent 70%)",
+  },
+
+  // Footer
+  footer: { padding: "32px 24px", borderTop: "1px solid rgba(255,255,255,0.06)" },
+  footerInner: {
+    maxWidth: 960, margin: "0 auto", display: "flex", flexDirection: "column",
+    alignItems: "center", gap: 12, textAlign: "center",
+  },
+  footerBrand: { fontSize: 15 },
+  footerLinks: { display: "flex", gap: 20 },
+  footerLink: { fontSize: 13, color: "rgba(255,255,255,0.4)", textDecoration: "none" },
+};
