@@ -1,10 +1,19 @@
 import React, { useState, useEffect } from "react";
 import { auth } from "../../firebase";
-import { signInAnonymously } from "firebase/auth";
 import { useRightPanel } from "../../context/RightPanelContext";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
-const API_DIRECT = "https://api-feyfibglbq-uc.a.run.app";
+
+function getGuestId() {
+  let id = localStorage.getItem("ta_guest_id");
+  if (!id) {
+    id = typeof crypto !== "undefined" && crypto.randomUUID
+      ? crypto.randomUUID()
+      : `g-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    localStorage.setItem("ta_guest_id", id);
+  }
+  return id;
+}
 
 // ── Styles ──────────────────────────────────────────────────────
 
@@ -75,14 +84,31 @@ function StatsHeader() {
   );
 }
 
-// ── Subscribe helper (calls Cloud Run directly — Frontdoor blocks auth POST) ──
+// ── Subscribe helper ──
 
-async function subscribeToWorker(token, worker) {
+async function subscribeToWorker(worker) {
   const workerId = worker.workerId || worker.slug;
-  const res = await fetch(`${API_DIRECT}/v1/worker:subscribe`, {
+  const headers = { "Content-Type": "application/json" };
+  const bodyData = { workerId, slug: workerId };
+
+  // Try Firebase auth token first, fall back to guestId
+  const currentUser = auth.currentUser;
+  if (currentUser) {
+    try {
+      const token = await currentUser.getIdToken(true);
+      headers.Authorization = `Bearer ${token}`;
+    } catch (e) {
+      // Token refresh failed — use guestId
+      bodyData.guestId = getGuestId();
+    }
+  } else {
+    bodyData.guestId = getGuestId();
+  }
+
+  const res = await fetch(`${API_BASE}/api?path=/v1/worker:subscribe`, {
     method: "POST",
-    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ workerId, slug: workerId }),
+    headers,
+    body: JSON.stringify(bodyData),
   });
   if (!res.ok) {
     const text = await res.text().catch(() => "");
@@ -116,23 +142,8 @@ function WorkerCard({ worker, onSelect }) {
     e.stopPropagation();
     setSubmitting(true);
     setError("");
-
-    let currentUser = auth.currentUser;
-    if (!currentUser) {
-      try {
-        const cred = await signInAnonymously(auth);
-        currentUser = cred.user;
-      } catch (err) {
-        console.error("[subscribe] anon auth failed:", err);
-        setSubmitting(false);
-        setError("Something went wrong. Try again.");
-        return;
-      }
-    }
-
     try {
-      const token = await currentUser.getIdToken(true);
-      await subscribeToWorker(token, worker);
+      await subscribeToWorker(worker);
       setSubscribed(true);
     } catch (err) {
       console.error("[subscribe] failed:", err);

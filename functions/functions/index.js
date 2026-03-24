@@ -4430,6 +4430,102 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       }
     }
 
+    // POST /v1/worker:subscribe — Subscribe to a worker (free workers accept guestId, no auth required)
+    if (route === "/worker:subscribe" && method === "POST") {
+      let userId = null;
+
+      // Try Bearer token auth first (for logged-in or anonymous Firebase users)
+      const subToken = getAuthBearerToken(req);
+      if (subToken) {
+        try {
+          const decoded = await admin.auth().verifyIdToken(subToken);
+          userId = decoded.uid;
+        } catch (e) {
+          // Token invalid — fall through to guestId
+          console.warn("[worker:subscribe] token invalid, trying guestId");
+        }
+      }
+
+      // Fall back to guestId (for free workers when anonymous auth is disabled)
+      if (!userId && body.guestId) {
+        userId = `guest-${body.guestId}`;
+      }
+
+      if (!userId) return jsonError(res, 401, "Authentication required");
+
+      console.log(`[worker:subscribe] HIT — uid=${userId}, body=`, JSON.stringify(body));
+
+      const { workerId, slug } = body;
+      if (!workerId && !slug) return res.json({ ok: false, error: "Missing workerId or slug" });
+
+      try {
+        // Look up worker from digitalWorkers collection (primary catalog source)
+        let workerDoc = null;
+        if (slug) {
+          const dwSnap = await db.doc(`digitalWorkers/${slug}`).get();
+          if (dwSnap.exists) workerDoc = { ...dwSnap.data(), workerId: dwSnap.id };
+        }
+        if (!workerDoc && workerId) {
+          const dwSnap = await db.doc(`digitalWorkers/${workerId}`).get();
+          if (dwSnap.exists) workerDoc = { ...dwSnap.data(), workerId: dwSnap.id };
+        }
+        if (!workerDoc) return res.json({ ok: false, error: "Worker not found in marketplace" });
+
+        // For paid workers, require proper auth (not guest)
+        const workerPrice = workerDoc.pricing_tier || workerDoc.price || 0;
+        if (workerPrice > 0 && userId.startsWith("guest-")) {
+          return jsonError(res, 403, "Account required for paid workers");
+        }
+
+        // Check if already subscribed
+        const existingSub = await db.collection("subscriptions")
+          .where("userId", "==", userId)
+          .where("workerId", "==", workerId || workerDoc.workerId)
+          .where("status", "==", "active")
+          .limit(1).get();
+        if (!existingSub.empty) {
+          return res.json({ ok: true, subscribed: true, message: "Already subscribed" });
+        }
+
+        // Create subscription record
+        const subRef = await db.collection("subscriptions").add({
+          userId,
+          workerId: workerId || workerDoc.workerId,
+          slug: slug || workerDoc.slug,
+          workerName: workerDoc.name || workerDoc.display_name || "Digital Worker",
+          status: "active",
+          trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+          createdAt: nowServerTs(),
+        });
+
+        // Add worker to user's vault
+        await db.doc(`vaults/${userId}/workers/${workerId || workerDoc.workerId}`).set({
+          workerId: workerId || workerDoc.workerId,
+          workerName: workerDoc.name || workerDoc.display_name || "Digital Worker",
+          slug: slug || workerDoc.slug,
+          subscriptionId: subRef.id,
+          addedAt: nowServerTs(),
+          source: "marketplace",
+        });
+
+        // Queue opening message from worker
+        await db.collection("workerMessages").add({
+          userId,
+          workerId: workerId || workerDoc.workerId,
+          direction: "worker_to_user",
+          message: `Hi, I'm ${workerDoc.name || workerDoc.display_name || "your new Digital Worker"}. I'm ready to help. What would you like to start with?`,
+          createdAt: nowServerTs(),
+          read: false,
+        });
+
+        console.log(`[worker:subscribe] ${userId} subscribed to ${workerId || workerDoc.workerId}`);
+        return res.json({ ok: true, subscribed: true, subscriptionId: subRef.id });
+      } catch (e) {
+        console.error("[worker:subscribe] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
     // All other routes require Firebase auth
     const auth = await requireFirebaseUser(req, res);
     if (auth.handled) return;
@@ -5356,80 +5452,6 @@ These should be 2-3 realistic test scenarios the creator should try, derived fro
         return res.json({ ok: true, ratings, average: Math.round(avg * 10) / 10, count: ratings.length });
       } catch (e) {
         console.error("[worker:ratings] error:", e.message);
-        return res.json({ ok: false, error: e.message });
-      }
-    }
-
-    // POST /v1/worker:subscribe — Subscribe to a worker (creates Stripe checkout or adds to vault)
-    if (route === "/worker:subscribe" && method === "POST") {
-      console.log(`[worker:subscribe] HIT — uid=${ctx.userId}, isAnonymous=${auth.user?.firebase?.sign_in_provider === 'anonymous'}, body=`, JSON.stringify(body));
-      const { workerId, slug } = body;
-      if (!workerId && !slug) return res.json({ ok: false, error: "Missing workerId or slug" });
-      try {
-        // Look up worker from marketplace or workers collection
-        let workerDoc = null;
-        if (slug) {
-          const mSnap = await db.doc(`marketplace/${slug}`).get();
-          if (mSnap.exists) workerDoc = mSnap.data();
-        }
-        // Check digitalWorkers collection (primary catalog source)
-        if (!workerDoc && (workerId || slug)) {
-          const dwSnap = await db.doc(`digitalWorkers/${workerId || slug}`).get();
-          if (dwSnap.exists) workerDoc = { ...dwSnap.data(), workerId: dwSnap.id };
-        }
-        if (!workerDoc && workerId) {
-          // Try to find by querying published workers
-          const snap = await db.collectionGroup("workers").where("buildPhase", "==", "published").limit(200).get();
-          const found = snap.docs.find(d => d.id === workerId);
-          if (found) workerDoc = found.data();
-        }
-        if (!workerDoc) return res.json({ ok: false, error: "Worker not found in marketplace" });
-
-        // Check if already subscribed
-        const existingSub = await db.collection("subscriptions")
-          .where("userId", "==", ctx.userId)
-          .where("workerId", "==", workerId || workerDoc.workerId)
-          .where("status", "==", "active")
-          .limit(1).get();
-        if (!existingSub.empty) {
-          return res.json({ ok: true, subscribed: true, message: "Already subscribed" });
-        }
-
-        // Create subscription record (free trial — no Stripe checkout needed for trial)
-        const subRef = await db.collection("subscriptions").add({
-          userId: ctx.userId,
-          workerId: workerId || workerDoc.workerId,
-          slug: slug || workerDoc.slug,
-          workerName: workerDoc.name || workerDoc.display_name || "Digital Worker",
-          status: "active",
-          trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
-          createdAt: nowServerTs(),
-        });
-
-        // Add worker to user's vault
-        await db.doc(`vaults/${ctx.userId}/workers/${workerId || workerDoc.workerId}`).set({
-          workerId: workerId || workerDoc.workerId,
-          workerName: workerDoc.name || workerDoc.display_name || "Digital Worker",
-          slug: slug || workerDoc.slug,
-          subscriptionId: subRef.id,
-          addedAt: nowServerTs(),
-          source: "marketplace",
-        });
-
-        // Queue opening message from worker
-        await db.collection("workerMessages").add({
-          userId: ctx.userId,
-          workerId: workerId || workerDoc.workerId,
-          direction: "worker_to_user",
-          message: `Hi, I'm ${workerDoc.name || workerDoc.display_name || "your new Digital Worker"}. I'm ready to help. What would you like to start with?`,
-          createdAt: nowServerTs(),
-          read: false,
-        });
-
-        console.log(`[worker:subscribe] ${ctx.userId} subscribed to ${workerId || workerDoc.workerId}`);
-        return res.json({ ok: true, subscribed: true, subscriptionId: subRef.id });
-      } catch (e) {
-        console.error("[worker:subscribe] error:", e.message);
         return res.json({ ok: false, error: e.message });
       }
     }
