@@ -50,9 +50,9 @@ const MARKETPLACE_SLUG_MAP = {
   "W-026": "quality-control",
   "W-027": "lease-up-marketing",
   "W-028": "safety-osha",
-  "W-029": "insurance-risk",
+  "W-029": "mep-systems",
   "W-030": "appraisal-valuation",
-  "W-031": "property-management",
+  "W-031": "lease-up",
   "W-032": "tenant-screening",
   "W-033": "property-management",
   "W-034": "rent-roll-revenue",
@@ -156,6 +156,36 @@ const MARKETPLACE_SLUG_MAP = {
   "W3-011": "w3-alex-web3",
   "W3-012": "w3-token-code-generator",
   "W3-013": "w3-contract-auditor",
+  // Auto Dealer
+  "AD-001": "ad-dealer-license-monitor",
+  "AD-002": "ad-ftc-safeguards",
+  "AD-003": "ad-auction-intelligence",
+  "AD-004": "ad-trade-in-valuation",
+  "AD-005": "ad-vehicle-history-recon",
+  "AD-006": "ad-market-pricing",
+  "AD-007": "ad-vdp-photo-compliance",
+  "AD-008": "ad-incentive-rebate",
+  "AD-009": "ad-lead-management",
+  "AD-010": "ad-desking-deal",
+  "AD-011": "ad-ofac-screening",
+  "AD-012": "ad-fi-menu-builder",
+  "AD-013": "ad-fi-compliance",
+  "AD-014": "ad-lender-matching",
+  "AD-015": "ad-reserve-chargeback",
+  "AD-016": "ad-ro-writer",
+  "AD-017": "ad-service-mpi",
+  "AD-018": "ad-parts-inventory",
+  "AD-019": "ad-warranty-claims",
+  "AD-020": "ad-declined-service",
+  "AD-021": "ad-equity-mining",
+  "AD-022": "ad-csi-reviews",
+  "AD-023": "ad-conquest-loyalty",
+  "AD-024": "ad-cars-rule",
+  "AD-025": "ad-tcpa-compliance",
+  "AD-026": "ad-hr-payroll",
+  "AD-027": "ad-dms-integration",
+  "AD-028": "ad-daily-report",
+  "AD-029": "ad-alex",
 };
 
 // Ruleset ID mapping: marketplace slug → ruleset file name
@@ -321,6 +351,36 @@ const DISPLAY_NAME_MAP = {
   "W3-011": "Alex \u2014 Web3 Chief of Staff",
   "W3-012": "Token Code Generator",
   "W3-013": "Token Contract Auditor",
+  // Auto Dealer
+  "AD-001": "Dealer License Monitor",
+  "AD-002": "FTC Safeguards Compliance",
+  "AD-003": "Auction Intelligence",
+  "AD-004": "Trade-In Valuation",
+  "AD-005": "Vehicle History & Recon",
+  "AD-006": "Market Pricing Intelligence",
+  "AD-007": "VDP & Photo Compliance",
+  "AD-008": "Incentive & Rebate Tracker",
+  "AD-009": "Lead Management",
+  "AD-010": "Desking & Deal Structure",
+  "AD-011": "OFAC & Red Flags",
+  "AD-012": "F&I Menu Builder",
+  "AD-013": "F&I Compliance Monitor",
+  "AD-014": "Lender Matching",
+  "AD-015": "Reserve & Chargeback Tracker",
+  "AD-016": "RO Writer Assist",
+  "AD-017": "Service MPI & Trade Flag",
+  "AD-018": "Parts Inventory & Returns",
+  "AD-019": "Warranty Claims Optimizer",
+  "AD-020": "Declined Service Follow-Up",
+  "AD-021": "Equity Mining & Retention",
+  "AD-022": "CSI & Review Management",
+  "AD-023": "Conquest & Loyalty Campaigns",
+  "AD-024": "FTC CARS Rule Monitor",
+  "AD-025": "TCPA Compliance",
+  "AD-026": "HR & Payroll Compliance",
+  "AD-027": "DMS Integration Monitor",
+  "AD-028": "Daily Gross & Velocity Report",
+  "AD-029": "Alex \u2014 Auto Dealer CoS",
 };
 
 // Headline overrides from App.jsx WORKER_DETAIL_CONTENT (first 80 chars)
@@ -411,6 +471,45 @@ const HEADLINE_MAP = {
   "w3-alex-web3": "Your Web3 project, orchestrated — compliance to community",
   "w3-token-code-generator": "Production-ready token contract code — Solana SPL and EVM ERC-20 — with deployment scripts and security checks",
   "w3-contract-auditor": "Automated security audit for token contracts — vulnerability detection, rugpull patterns, severity-graded findings",
+  // Auto Dealer
+  "ad-dealer-license-monitor": "Dealer license expiry, DMV renewals, bond compliance — tracked across all states",
+  "ad-ftc-safeguards": "FTC Safeguards Rule gaps found and remediated before the audit",
+  "ad-auction-intelligence": "Auction sourcing, market comp, and acquisition targeting in one worker",
+  "ad-trade-in-valuation": "Real-time trade appraisal against KBB and Manheim — counter-offer ready",
+  "ad-vehicle-history-recon": "Carfax, recon cost, and retail-ready timeline — before the car hits the lot",
+  "ad-market-pricing": "Competitive pricing, days-on-lot alerts, and markdown timing",
+  "ad-vdp-photo-compliance": "Every VDP checked for photo count, price accuracy, and description quality",
+  "ad-incentive-rebate": "OEM incentives, regional rebates, and stacking rules — always current",
+  "ad-lead-management": "Internet leads routed in 90 seconds, follow-up cadence enforced",
+  "ad-desking-deal": "Deal structure, payment options, and profit threshold — calculated before the handshake",
+  "ad-ofac-screening": "OFAC, Red Flags Rule, and military lending — screened on every deal",
+  "ad-fi-menu-builder": "Compliant F&I menu built from deal data with penetration tracking",
+  "ad-fi-compliance": "Every product verified at published price — ECOA monitoring and audit trail",
+  "ad-lender-matching": "Best lender for the deal — approval status and stipulations tracked",
+  "ad-reserve-chargeback": "F&I reserve tracked, chargeback risk flagged, early payoffs alerted",
+  "ad-ro-writer": "Op codes suggested, declined services flagged, labor time monitored",
+  "ad-service-mpi": "When repair cost exceeds vehicle value — service-to-sales trigger fires",
+  "ad-parts-inventory": "Parts on-hand, warranty return deadlines, and aging inventory flagged",
+  "ad-warranty-claims": "Op code optimization, claim status, and rejection pattern detection",
+  "ad-declined-service": "Declined services re-engaged at 3, 14, 30, and 60 days automatically",
+  "ad-equity-mining": "Customer equity positions monitored — pull-ahead opportunities flagged",
+  "ad-csi-reviews": "CSI scores monitored, reviews requested, complaints routed before they post",
+  "ad-conquest-loyalty": "Conquest targets identified, loyalty outreach managed, campaign ROI tracked",
+  "ad-cars-rule": "FTC CARS Rule compliance tracked — prohibited dealer practices flagged",
+  "ad-tcpa-compliance": "Text and call consent, suppression lists, and opt-out compliance managed",
+  "ad-hr-payroll": "Dealer HR compliance, wage/hour, and commissioned sales comp rules",
+  "ad-dms-integration": "Reynolds, CDK, and Dealertrack data quality monitored for integration errors",
+  "ad-daily-report": "Daily and weekly gross reporting by department with trend alerts",
+  "ad-alex": "Your dealership, orchestrated — ops briefing to pricing recommendations",
+};
+
+// Catalog vertical → Firestore vertical (matches frontend VERTICAL_MAP firestoreValues)
+const CATALOG_VERTICAL_MAP = {
+  "auto_dealer": "auto_dealer",
+  "aviation": "aviation",
+  "real-estate-development": "real_estate_development",
+  "solar_energy": "solar_vpp",
+  "web3": "web3",
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -437,6 +536,11 @@ async function syncCatalogWorkers(db, opts = {}) {
   for (const file of catalogFiles) {
     const catalog = JSON.parse(fs.readFileSync(path.join(catalogsDir, file), "utf8"));
     if (Array.isArray(catalog.workers)) {
+      // Attach normalized vertical from catalog root to each worker
+      const catalogVertical = CATALOG_VERTICAL_MAP[catalog.vertical] || catalog.vertical || "";
+      for (const w of catalog.workers) {
+        w._vertical = catalogVertical;
+      }
       allWorkers.push(...catalog.workers);
     }
   }
@@ -541,6 +645,8 @@ async function syncCatalogWorkers(db, opts = {}) {
         // Write to Firestore
         await db.doc(`digitalWorkers/${marketplaceSlug}`).set({
           ...validated,
+          // Vertical (for catalog:byVertical and leaderboard queries)
+          vertical: worker._vertical || "",
           // Additional metadata
           catalogId: worker.id,
           catalogSlug: worker.slug,
@@ -559,7 +665,7 @@ async function syncCatalogWorkers(db, opts = {}) {
           documentHierarchy: validated.documentHierarchy || ["titleapp_baseline", "public_regulatory"],
           documentChecklist: validated.documentChecklist || [],
           syncedAt: new Date().toISOString(),
-        });
+        }, { merge: true });
       }
 
       results.synced++;

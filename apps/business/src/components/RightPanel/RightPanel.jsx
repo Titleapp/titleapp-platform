@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { auth } from "../../firebase";
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signInAnonymously } from "firebase/auth";
 import { useRightPanel } from "../../context/RightPanelContext";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
@@ -107,27 +107,30 @@ function WorkerCard({ worker, onSelect }) {
 
   async function handleGetWorker(e) {
     e.stopPropagation();
+    setSubmitting(true);
 
-    // If already authenticated, subscribe directly
-    const currentUser = auth.currentUser;
-    if (currentUser) {
-      setSubmitting(true);
+    // Get or create anonymous session — no auth wall
+    let currentUser = auth.currentUser;
+    if (!currentUser) {
       try {
-        const token = await currentUser.getIdToken(true);
-        await subscribeToWorker(token, worker);
-        setSubscribed(true);
+        const cred = await signInAnonymously(auth);
+        currentUser = cred.user;
       } catch {
-        setError("Subscribe failed. Try again.");
+        setSubmitting(false);
+        setError("Something went wrong. Try again.");
+        return;
       }
-      setSubmitting(false);
-      return;
     }
 
-    // Not authenticated — show inline auth form
-    setShowAuth(true);
-    window.dispatchEvent(new CustomEvent("ta:panel-worker-tapped", {
-      detail: { workerId: worker.workerId || worker.slug, name: worker.name },
-    }));
+    // Subscribe directly
+    try {
+      const token = await currentUser.getIdToken(true);
+      await subscribeToWorker(token, worker);
+      setSubscribed(true);
+    } catch {
+      setError("Subscribe failed. Try again.");
+    }
+    setSubmitting(false);
   }
 
   async function handleAuthSubmit() {

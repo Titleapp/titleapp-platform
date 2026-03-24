@@ -280,12 +280,12 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
                   const first = (tenantInfo.name || "").split(" ")[0];
                   return first ? `${first}'s Vault` : "My Vault";
                 }
-                return tenantInfo.name || "Business";
+                return tenantInfo.name || "Personal";
               })()}
             </div>
           </div>
         )}
-        {!tenantInfo && <div className="pill">Business</div>}
+        {!tenantInfo && <div className="pill">Personal</div>}
         <button
           onClick={() => setCartOpen(!cartOpen)}
           style={{ position: "relative", background: "none", border: "none", cursor: "pointer", padding: 6, marginLeft: "auto", color: "#64748b" }}

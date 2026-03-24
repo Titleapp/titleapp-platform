@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { signInAnonymously } from "firebase/auth";
+import { signInAnonymously, EmailAuthProvider, linkWithCredential } from "firebase/auth";
 import { auth } from "../firebase";
 import { VERTICAL_MAP } from "../hooks/useVisitorContext";
 
@@ -19,6 +19,13 @@ export default function MeetAlex() {
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const [nameCollected, setNameCollected] = useState(false);
+  const userMsgCount = useRef(0);
+  const [showSave, setShowSave] = useState(false);
+  const [savedAccount, setSavedAccount] = useState(false);
+  const [saveEmail, setSaveEmail] = useState("");
+  const [savePassword, setSavePassword] = useState("");
+  const [saveError, setSaveError] = useState("");
+  const [saveSending, setSaveSending] = useState(false);
 
   // Session & URL params (stable across renders)
   const [sessionId] = useState(() => {
@@ -155,6 +162,67 @@ export default function MeetAlex() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Save moment — upgrade anonymous → real account
+  async function handleSaveAccount() {
+    if (!saveEmail) { setSaveError("Enter your email."); return; }
+    if (!savePassword || savePassword.length < 6) { setSaveError("Password needs 6+ characters."); return; }
+    setSaveSending(true);
+    setSaveError("");
+
+    // Lock MeetAlex so App.jsx doesn't unmount during transition
+    window.dispatchEvent(new CustomEvent("ta:meet-alex-lock"));
+
+    try {
+      const credential = EmailAuthProvider.credential(saveEmail, savePassword);
+      const result = await linkWithCredential(auth.currentUser, credential);
+      const idToken = await result.user.getIdToken(true);
+      localStorage.setItem("ID_TOKEN", idToken);
+      localStorage.setItem("DISCLAIMER_ACCEPTED", "true");
+      setSavedAccount(true);
+      setShowSave(false);
+
+      const guestName = sessionStorage.getItem("ta_guest_name") || "";
+      setMessages(prev => [...prev, {
+        role: "assistant",
+        text: `Saved${guestName ? `, ${guestName}` : ""}. Taking you to your workspace.`,
+      }]);
+
+      // Promote guest session
+      const guestId = sessionStorage.getItem("ta_guest_sid");
+      if (guestId) {
+        fetch(`${API_BASE}/api?path=/v1/alex:promoteGuest`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+          body: JSON.stringify({ guestId, uid: result.user.uid }),
+        }).catch(() => {});
+      }
+
+      // Handoff data for workspace
+      sessionStorage.setItem("ta_utm", JSON.stringify({
+        source: "meet-alex", medium: "guest-chat",
+        campaign: vertical || "direct", capturedAt: new Date().toISOString(),
+      }));
+      sessionStorage.setItem("ta_guest_promoted", "true");
+
+      // Transition to workspace after confirmation
+      setTimeout(() => {
+        const v = vertical ? `&vertical=${vertical}` : "";
+        window.history.replaceState({}, "", `/?promoted=true${v}&utm_source=meet-alex&utm_medium=guest-chat`);
+        window.dispatchEvent(new CustomEvent("ta:meet-alex-unlock"));
+      }, 2500);
+    } catch (err) {
+      setSaveSending(false);
+      window.dispatchEvent(new CustomEvent("ta:meet-alex-unlock"));
+      if (err?.code === "auth/email-already-in-use") {
+        setSaveError("That email is already registered. Try another.");
+      } else if (err?.code === "auth/invalid-email") {
+        setSaveError("Please enter a valid email.");
+      } else {
+        setSaveError("Something went wrong. Try again.");
+      }
+    }
+  }
+
   function handleSubmit(e) {
     e.preventDefault();
     if (!input.trim() || sending) return;
@@ -176,6 +244,12 @@ export default function MeetAlex() {
     }
 
     sendMessage(msg);
+
+    // After 3 user messages, show save prompt
+    userMsgCount.current++;
+    if (userMsgCount.current >= 3 && !showSave && !savedAccount) {
+      setTimeout(() => setShowSave(true), 3000);
+    }
   }
 
   // Styles
@@ -257,6 +331,26 @@ export default function MeetAlex() {
             )}
           </div>
         ))}
+
+        {/* Save prompt — inline after 3+ exchanges */}
+        {showSave && !savedAccount && (
+          <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+            <div style={S.miniAvatar}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+              </svg>
+            </div>
+            <div style={{ maxWidth: "80%", padding: "12px 14px", borderRadius: 16, background: "#f3f0ff", border: "1px solid #e9d5ff", borderBottomLeftRadius: 4 }}>
+              <div style={{ fontSize: 14, color: "#1e293b", marginBottom: 10 }}>Save your stuff? Drop your email so you can come back anytime.</div>
+              <input type="email" value={saveEmail} onChange={e => setSaveEmail(e.target.value)} placeholder="Email" autoComplete="email" style={{ width: "100%", padding: "10px 12px", fontSize: 14, border: "1px solid #d1d5db", borderRadius: 8, outline: "none", boxSizing: "border-box", marginBottom: 6 }} />
+              <input type="password" value={savePassword} onChange={e => setSavePassword(e.target.value)} placeholder="Password (6+ characters)" autoComplete="new-password" onKeyDown={e => e.key === "Enter" && handleSaveAccount()} style={{ width: "100%", padding: "10px 12px", fontSize: 14, border: "1px solid #d1d5db", borderRadius: 8, outline: "none", boxSizing: "border-box", marginBottom: 8 }} />
+              <button onClick={handleSaveAccount} disabled={saveSending} style={{ width: "100%", padding: "10px", fontSize: 14, fontWeight: 600, color: "#fff", background: "#7c3aed", border: "none", borderRadius: 8, cursor: saveSending ? "wait" : "pointer", opacity: saveSending ? 0.7 : 1 }}>
+                {saveSending ? "Saving..." : "Save my progress"}
+              </button>
+              {saveError && <div style={{ fontSize: 12, color: "#dc2626", marginTop: 6 }}>{saveError}</div>}
+            </div>
+          </div>
+        )}
 
         {/* Typing indicator */}
         {sending && (

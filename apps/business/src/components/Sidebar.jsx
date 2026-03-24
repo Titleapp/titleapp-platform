@@ -1196,7 +1196,7 @@ export default function Sidebar({
             <div className="brandName" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {isPersonal ? brandLabel : (workspaceName || "TitleApp")}
             </div>
-            <div className="brandSub">{VERTICAL_LABELS[vertical] || "Business"}</div>
+            <div className="brandSub">{VERTICAL_LABELS[vertical] || "Personal"}</div>
           </div>
           {workspaces.length > 1 && (
             <svg
@@ -1578,7 +1578,7 @@ export default function Sidebar({
             onClick={() => handleNavClick("settings")}
             style={{ width: "100%", textAlign: "left", cursor: "pointer" }}
           >
-            Workspace Settings
+            Settings
           </button>
           <button
             className={`navItem ${currentSection === "rules" ? "navItemActive" : ""}`}

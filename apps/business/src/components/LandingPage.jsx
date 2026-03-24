@@ -1,7 +1,7 @@
-import React from "react";
+import React, { useState, useRef, useCallback } from "react";
 
 // ── TitleApp Landing Page ─────────────────────────────────────────
-// Dark premium aesthetic. Four vertical CTAs. No auth — that happens on /meet-alex.
+// White premium aesthetic. Chat bar hero. Four vertical CTAs. No auth — that happens on /meet-alex.
 
 const VERTICALS = [
   { label: "Aviation", desc: "CoPilots for PC12-NG, King Air, Caravan, and more. Logbook, currency, training.", param: "aviation", count: "56 workers" },
@@ -13,8 +13,20 @@ const VERTICALS = [
 const STATS = [
   { num: "1,000+", label: "Digital Workers" },
   { num: "14", label: "Industry Suites" },
-  { num: "54", label: "Countries" },
+  { num: "20+", label: "Languages" },
   { num: "24/7", label: "Always On" },
+];
+
+const LANGUAGES = [
+  "English", "Spanish", "French", "German", "Portuguese", "Italian", "Dutch",
+  "Polish", "Swedish", "Norwegian", "Danish", "Finnish", "Japanese", "Korean",
+  "Chinese", "Arabic", "Hindi", "Turkish", "Thai", "Vietnamese", "Indonesian",
+];
+
+const CHIPS = [
+  { label: "I'm a pilot looking for a CoPilot", prompt: "I'm a pilot and I'm looking for a CoPilot for my aircraft" },
+  { label: "My dealership needs compliance help", prompt: "I run an auto dealership and need help with compliance and F&I" },
+  { label: "I work in real estate development", prompt: "I work in real estate development and need help with title and closing" },
 ];
 
 const HOW_IT_WORKS = [
@@ -28,8 +40,64 @@ export default function LandingPage() {
     ? ""
     : "https://app.titleapp.ai";
 
+  const [query, setQuery] = useState("");
+  const [listening, setListening] = useState(false);
+  const [fading, setFading] = useState(false);
+  const [fadeVisible, setFadeVisible] = useState(false);
+  const inputRef = useRef(null);
+  const recognitionRef = useRef(null);
+
+  function navigateWithFade(url) {
+    setFading(true);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => setFadeVisible(true));
+    });
+    setTimeout(() => { window.location.href = url; }, 450);
+  }
+
+  function handleSubmit() {
+    const text = query.trim();
+    if (!text) return;
+    navigateWithFade(`${appBase}/meet-alex?prompt=${encodeURIComponent(text)}`);
+  }
+
+  function handleChip(prompt) {
+    setQuery(prompt);
+    navigateWithFade(`${appBase}/meet-alex?prompt=${encodeURIComponent(prompt)}`);
+  }
+
+  const toggleMic = useCallback(() => {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) return;
+
+    if (listening) {
+      recognitionRef.current?.stop();
+      setListening(false);
+      return;
+    }
+
+    const recognition = new SR();
+    recognition.lang = "en-US";
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+    recognition.onresult = (e) => { setQuery(e.results[0][0].transcript); setListening(false); };
+    recognition.onerror = () => setListening(false);
+    recognition.onend = () => setListening(false);
+    recognitionRef.current = recognition;
+    recognition.start();
+    setListening(true);
+  }, [listening]);
+
   return (
     <div style={S.page}>
+      {/* Fade overlay */}
+      {fading && (
+        <div style={{
+          position: "fixed", inset: 0, background: "#ffffff", zIndex: 9999,
+          opacity: fadeVisible ? 1 : 0, transition: "opacity 400ms ease",
+        }} />
+      )}
+
       {/* ── Header ── */}
       <header style={S.header}>
         <div style={S.logoWrap}>
@@ -53,13 +121,41 @@ export default function LandingPage() {
           <div style={S.heroTag}>The Digital Worker Platform</div>
           <h1 style={S.heroH1}>They're on your team now.</h1>
           <p style={S.heroSub}>Real expertise. On call. Forever.</p>
-          <p style={S.heroBody}>
-            Digital Workers handle the compliance-heavy work in regulated industries.
-            Trained on the rules of your field. Audit trail on every output.
-          </p>
-          <div style={S.heroCtas}>
-            <a href={`${appBase}/meet-alex`} style={S.btnPrimary}>Meet Your Team</a>
-            <a href="#verticals" style={S.btnSecondary}>Browse Industries</a>
+
+          {/* Chat bar */}
+          <div style={S.chatBar}>
+            <input
+              ref={inputRef}
+              type="text"
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && handleSubmit()}
+              placeholder="Ask Alex anything..."
+              style={S.chatInput}
+            />
+            <button onClick={toggleMic} style={{ ...S.chatBtn, color: listening ? "#7c3aed" : "#9ca3af" }} title="Voice input">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                <line x1="12" y1="19" x2="12" y2="23" />
+                <line x1="8" y1="23" x2="16" y2="23" />
+              </svg>
+            </button>
+            <button onClick={handleSubmit} disabled={!query.trim()} style={{ ...S.chatBtn, color: query.trim() ? "#7c3aed" : "#d1d5db" }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="22" y1="2" x2="11" y2="13" />
+                <polygon points="22 2 15 22 11 13 2 9 22 2" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Prompt chips */}
+          <div style={S.chipRow}>
+            {CHIPS.map(c => (
+              <button key={c.label} onClick={() => handleChip(c.prompt)} style={S.chip}>
+                {c.label}
+              </button>
+            ))}
           </div>
         </div>
       </section>
@@ -72,6 +168,16 @@ export default function LandingPage() {
               <div style={S.statNum}>{s.num}</div>
               <div style={S.statLabel}>{s.label}</div>
             </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ── Language Pills ── */}
+      <section style={S.langSection}>
+        <div style={S.langLabel}>Every worker speaks your language</div>
+        <div style={S.langPills}>
+          {LANGUAGES.map(l => (
+            <span key={l} style={S.langPill}>{l}</span>
           ))}
         </div>
       </section>
@@ -97,7 +203,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── How It Works ── */}
-      <section style={{ ...S.section, background: "#0d0d1a" }}>
+      <section style={{ ...S.section, background: "#f9fafb" }}>
         <div style={S.sectionInner}>
           <h2 style={S.sectionH2}>Three steps. Under 60 seconds.</h2>
           <div style={S.stepsGrid}>
@@ -135,7 +241,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── Pricing ── */}
-      <section style={{ ...S.section, background: "#0d0d1a" }}>
+      <section style={{ ...S.section, background: "#f9fafb" }}>
         <div style={S.sectionInner}>
           <h2 style={S.sectionH2}>Simple pricing. No surprises.</h2>
           <p style={S.sectionSub}>Every worker includes a 14-day free trial. No credit card required.</p>
@@ -158,8 +264,8 @@ export default function LandingPage() {
 
       {/* ── Final CTA ── */}
       <section style={S.finalCta}>
-        <h2 style={{ fontSize: 32, fontWeight: 800, color: "white", marginBottom: 8 }}>Meet your team at TitleApp.</h2>
-        <p style={{ fontSize: 16, color: "rgba(255,255,255,0.6)", marginBottom: 28 }}>Start free. No credit card. Workers ready in seconds.</p>
+        <h2 style={{ fontSize: 32, fontWeight: 800, color: "#111827", marginBottom: 8 }}>Meet your team at TitleApp.</h2>
+        <p style={{ fontSize: 16, color: "#6b7280", marginBottom: 28 }}>Start free. No credit card. Workers ready in seconds.</p>
         <a href={`${appBase}/meet-alex`} style={{ ...S.btnPrimary, fontSize: 16, padding: "14px 36px" }}>Start Free</a>
       </section>
 
@@ -167,8 +273,8 @@ export default function LandingPage() {
       <footer style={S.footer}>
         <div style={S.footerInner}>
           <div style={S.footerBrand}>
-            <span style={{ fontWeight: 700, color: "white" }}>TitleApp</span>
-            <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 13, marginLeft: 8 }}>The Digital Worker Platform</span>
+            <span style={{ fontWeight: 700, color: "#111827" }}>TitleApp</span>
+            <span style={{ color: "#9ca3af", fontSize: 13, marginLeft: 8 }}>The Digital Worker Platform</span>
           </div>
           <div style={S.footerLinks}>
             <a href={`${appBase}/legal/privacy-policy`} style={S.footerLink}>Privacy</a>
@@ -176,7 +282,7 @@ export default function LandingPage() {
             <a href={`${appBase}/meet-alex?prompt=I%20want%20to%20invest`} style={S.footerLink}>Investors</a>
             <a href={`${appBase}/sandbox`} style={S.footerLink}>Creators</a>
           </div>
-          <div style={{ fontSize: 12, color: "rgba(255,255,255,0.3)" }}>
+          <div style={{ fontSize: 12, color: "#9ca3af" }}>
             The Title App LLC &middot; 1209 N Orange St, Wilmington DE 19801
           </div>
         </div>
@@ -189,17 +295,17 @@ export default function LandingPage() {
 
 const S = {
   page: {
-    minHeight: "100vh", background: "#0a0a14",
+    minHeight: "100vh", background: "#ffffff",
     fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-    color: "white", overflowX: "hidden",
+    color: "#111827", overflowX: "hidden",
   },
 
   // Header
   header: {
     position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
     display: "flex", justifyContent: "space-between", alignItems: "center",
-    padding: "16px 32px", background: "rgba(10,10,20,0.9)", backdropFilter: "blur(12px)",
-    borderBottom: "1px solid rgba(255,255,255,0.06)",
+    padding: "16px 32px", background: "rgba(255,255,255,0.92)", backdropFilter: "blur(12px)",
+    borderBottom: "1px solid #f0f0f0",
   },
   logoWrap: { display: "flex", alignItems: "center", gap: 10 },
   logoIcon: {
@@ -207,80 +313,105 @@ const S = {
     background: "linear-gradient(135deg, #7c3aed, #6366f1)",
     display: "flex", alignItems: "center", justifyContent: "center",
   },
-  logoText: { fontSize: 20, fontWeight: 700, color: "white", letterSpacing: "-0.3px" },
+  logoText: { fontSize: 20, fontWeight: 700, color: "#111827", letterSpacing: "-0.3px" },
   headerRight: { display: "flex", alignItems: "center", gap: 24 },
-  headerLink: { fontSize: 14, color: "rgba(255,255,255,0.6)", textDecoration: "none" },
+  headerLink: { fontSize: 14, color: "#6b7280", textDecoration: "none" },
   headerCta: {
     fontSize: 14, fontWeight: 600, color: "white", textDecoration: "none",
     padding: "8px 20px", borderRadius: 8, background: "#7c3aed",
   },
 
   // Hero
-  hero: {
-    paddingTop: 140, paddingBottom: 80,
-    background: "radial-gradient(ellipse at 50% 0%, rgba(124,58,237,0.15) 0%, transparent 70%)",
-  },
+  hero: { paddingTop: 140, paddingBottom: 48, background: "#ffffff" },
   heroInner: { maxWidth: 720, margin: "0 auto", textAlign: "center", padding: "0 24px" },
   heroTag: {
     fontSize: 13, fontWeight: 600, color: "#7c3aed", letterSpacing: "0.05em",
     textTransform: "uppercase", marginBottom: 20,
   },
-  heroH1: { fontSize: 52, fontWeight: 800, lineHeight: 1.1, marginBottom: 12, color: "white", letterSpacing: "-1px" },
-  heroSub: { fontSize: 22, color: "rgba(255,255,255,0.5)", marginBottom: 20, fontWeight: 400 },
-  heroBody: { fontSize: 16, color: "rgba(255,255,255,0.45)", lineHeight: 1.7, marginBottom: 32, maxWidth: 560, margin: "0 auto 32px" },
-  heroCtas: { display: "flex", gap: 16, justifyContent: "center", flexWrap: "wrap" },
-  btnPrimary: {
-    display: "inline-block", padding: "12px 28px", fontSize: 15, fontWeight: 600,
-    color: "white", background: "#7c3aed", borderRadius: 10, textDecoration: "none",
-    transition: "transform 0.15s, box-shadow 0.15s",
+  heroH1: { fontSize: 52, fontWeight: 800, lineHeight: 1.1, marginBottom: 12, color: "#111827", letterSpacing: "-1px" },
+  heroSub: { fontSize: 22, color: "#6b7280", marginBottom: 28, fontWeight: 400 },
+
+  // Chat bar
+  chatBar: {
+    display: "flex", alignItems: "center", gap: 0,
+    maxWidth: 560, margin: "0 auto 16px", padding: "4px 4px 4px 20px",
+    borderRadius: 16, border: "2px solid #e5e7eb", background: "#ffffff",
+    boxShadow: "0 4px 24px rgba(0,0,0,0.06)", transition: "border-color 0.2s",
   },
-  btnSecondary: {
-    display: "inline-block", padding: "12px 28px", fontSize: 15, fontWeight: 600,
-    color: "rgba(255,255,255,0.7)", background: "rgba(255,255,255,0.06)",
-    border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, textDecoration: "none",
+  chatInput: {
+    flex: 1, border: "none", outline: "none", fontSize: 16, color: "#111827",
+    background: "transparent", padding: "12px 0", fontFamily: "inherit",
+  },
+  chatBtn: {
+    width: 40, height: 40, borderRadius: 10, border: "none", background: "transparent",
+    cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+    transition: "color 0.15s",
+  },
+
+  // Chips
+  chipRow: {
+    display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap",
+    maxWidth: 600, margin: "0 auto",
+  },
+  chip: {
+    fontSize: 13, color: "#6b7280", background: "#f3f4f6", border: "1px solid #e5e7eb",
+    borderRadius: 20, padding: "6px 16px", cursor: "pointer",
+    fontFamily: "inherit", transition: "background 0.15s, border-color 0.15s",
   },
 
   // Stats
-  statsBar: { borderTop: "1px solid rgba(255,255,255,0.06)", borderBottom: "1px solid rgba(255,255,255,0.06)" },
+  statsBar: { borderTop: "1px solid #f0f0f0", borderBottom: "1px solid #f0f0f0", marginTop: 20 },
   statsInner: {
     maxWidth: 900, margin: "0 auto", display: "flex", justifyContent: "space-around",
     padding: "28px 24px", flexWrap: "wrap", gap: 16,
   },
   statItem: { textAlign: "center", minWidth: 100 },
-  statNum: { fontSize: 28, fontWeight: 800, color: "white" },
-  statLabel: { fontSize: 13, color: "rgba(255,255,255,0.4)", marginTop: 2 },
+  statNum: { fontSize: 28, fontWeight: 800, color: "#111827" },
+  statLabel: { fontSize: 13, color: "#9ca3af", marginTop: 2 },
+
+  // Language section
+  langSection: { padding: "20px 24px 0", textAlign: "center" },
+  langLabel: { fontSize: 14, fontWeight: 600, color: "#6b7280", marginBottom: 10 },
+  langPills: {
+    display: "flex", gap: 6, justifyContent: "center", flexWrap: "wrap",
+    maxWidth: 640, margin: "0 auto",
+  },
+  langPill: {
+    fontSize: 11, color: "#6b7280", background: "#f9fafb", border: "1px solid #e5e7eb",
+    borderRadius: 12, padding: "3px 10px",
+  },
 
   // Sections
-  section: { padding: "72px 24px", background: "#0a0a14" },
+  section: { padding: "72px 24px", background: "#ffffff" },
   sectionInner: { maxWidth: 960, margin: "0 auto" },
-  sectionH2: { fontSize: 32, fontWeight: 800, color: "white", textAlign: "center", marginBottom: 8 },
-  sectionSub: { fontSize: 16, color: "rgba(255,255,255,0.45)", textAlign: "center", marginBottom: 40 },
+  sectionH2: { fontSize: 32, fontWeight: 800, color: "#111827", textAlign: "center", marginBottom: 8 },
+  sectionSub: { fontSize: 16, color: "#6b7280", textAlign: "center", marginBottom: 40 },
 
   // Vertical cards
   verticalGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16 },
   verticalCard: {
     display: "block", padding: "24px 20px", borderRadius: 14,
-    background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)",
-    textDecoration: "none", transition: "border-color 0.2s, background 0.2s",
+    background: "#ffffff", border: "1px solid #e5e7eb",
+    textDecoration: "none", transition: "border-color 0.2s, box-shadow 0.2s",
     cursor: "pointer",
   },
-  verticalName: { fontSize: 18, fontWeight: 700, color: "white", marginBottom: 8 },
-  verticalDesc: { fontSize: 13, color: "rgba(255,255,255,0.5)", lineHeight: 1.6, marginBottom: 16 },
+  verticalName: { fontSize: 18, fontWeight: 700, color: "#111827", marginBottom: 8 },
+  verticalDesc: { fontSize: 13, color: "#6b7280", lineHeight: 1.6, marginBottom: 16 },
   verticalFooter: { display: "flex", justifyContent: "space-between", alignItems: "center" },
   verticalCount: { fontSize: 12, color: "#7c3aed", fontWeight: 600 },
   verticalArrow: { fontSize: 16, color: "#7c3aed" },
 
   // Steps
   stepsGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 20 },
-  stepCard: { padding: "28px 24px", borderRadius: 14, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" },
+  stepCard: { padding: "28px 24px", borderRadius: 14, background: "#ffffff", border: "1px solid #e5e7eb" },
   stepNum: { fontSize: 32, fontWeight: 800, color: "#7c3aed", marginBottom: 12 },
-  stepTitle: { fontSize: 16, fontWeight: 700, color: "white", marginBottom: 6 },
-  stepDesc: { fontSize: 14, color: "rgba(255,255,255,0.5)", lineHeight: 1.6 },
+  stepTitle: { fontSize: 16, fontWeight: 700, color: "#111827", marginBottom: 6 },
+  stepDesc: { fontSize: 14, color: "#6b7280", lineHeight: 1.6 },
 
   // Alex
   alexCard: {
     maxWidth: 560, margin: "0 auto", padding: "32px 28px", borderRadius: 16,
-    background: "rgba(124,58,237,0.08)", border: "1px solid rgba(124,58,237,0.2)",
+    background: "#faf5ff", border: "1px solid #e9d5ff",
     textAlign: "center",
   },
   alexAvatar: {
@@ -288,34 +419,43 @@ const S = {
     background: "linear-gradient(135deg, #7c3aed 0%, #6366f1 50%, #0ea5e9 100%)",
     display: "flex", alignItems: "center", justifyContent: "center",
   },
-  alexName: { fontSize: 18, fontWeight: 700, color: "white" },
-  alexRole: { fontSize: 13, color: "rgba(255,255,255,0.5)", marginBottom: 16 },
-  alexBody: { fontSize: 14, color: "rgba(255,255,255,0.55)", lineHeight: 1.7, marginBottom: 20 },
+  alexName: { fontSize: 18, fontWeight: 700, color: "#111827" },
+  alexRole: { fontSize: 13, color: "#6b7280", marginBottom: 16 },
+  alexBody: { fontSize: 14, color: "#6b7280", lineHeight: 1.7, marginBottom: 20 },
 
   // Pricing
   pricingGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16 },
   priceCard: {
     padding: "24px 20px", borderRadius: 14,
-    background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)",
+    background: "#ffffff", border: "1px solid #e5e7eb",
     textAlign: "center",
   },
   priceTier: { fontSize: 13, fontWeight: 600, color: "#7c3aed", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 },
-  priceAmount: { fontSize: 28, fontWeight: 800, color: "white", marginBottom: 8 },
-  priceDesc: { fontSize: 13, color: "rgba(255,255,255,0.45)", lineHeight: 1.6 },
+  priceAmount: { fontSize: 28, fontWeight: 800, color: "#111827", marginBottom: 8 },
+  priceDesc: { fontSize: 13, color: "#6b7280", lineHeight: 1.6 },
 
   // Final CTA
-  finalCta: {
-    padding: "72px 24px", textAlign: "center",
-    background: "radial-gradient(ellipse at 50% 100%, rgba(124,58,237,0.12) 0%, transparent 70%)",
+  finalCta: { padding: "72px 24px", textAlign: "center", background: "#faf5ff" },
+
+  // Buttons
+  btnPrimary: {
+    display: "inline-block", padding: "12px 28px", fontSize: 15, fontWeight: 600,
+    color: "white", background: "#7c3aed", borderRadius: 10, textDecoration: "none",
+    transition: "transform 0.15s, box-shadow 0.15s",
+  },
+  btnSecondary: {
+    display: "inline-block", padding: "12px 28px", fontSize: 15, fontWeight: 600,
+    color: "#6b7280", background: "#f3f4f6",
+    border: "1px solid #e5e7eb", borderRadius: 10, textDecoration: "none",
   },
 
   // Footer
-  footer: { padding: "32px 24px", borderTop: "1px solid rgba(255,255,255,0.06)" },
+  footer: { padding: "32px 24px", borderTop: "1px solid #f0f0f0" },
   footerInner: {
     maxWidth: 960, margin: "0 auto", display: "flex", flexDirection: "column",
     alignItems: "center", gap: 12, textAlign: "center",
   },
   footerBrand: { fontSize: 15 },
   footerLinks: { display: "flex", gap: 20 },
-  footerLink: { fontSize: 13, color: "rgba(255,255,255,0.4)", textDecoration: "none" },
+  footerLink: { fontSize: 13, color: "#9ca3af", textDecoration: "none" },
 };

@@ -4797,7 +4797,7 @@ export default function App() {
     window.addEventListener("storage", onStorage);
 
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
-      if (user) {
+      if (user && !user.isAnonymous) {
         try {
           const freshToken = await user.getIdToken(true);
           localStorage.setItem("ID_TOKEN", freshToken);
@@ -4806,10 +4806,11 @@ export default function App() {
         } catch (err) {
           console.error("Failed to refresh token:", err);
         }
-      } else {
+      } else if (!user) {
         localStorage.removeItem("ID_TOKEN");
         setToken(null);
       }
+      // Anonymous users: don't set token — guest stays on MeetAlex
       setAuthResolved(true);
     });
 

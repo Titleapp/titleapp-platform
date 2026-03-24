@@ -4064,6 +4064,26 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
     //  PUBLIC CATALOG — UNAUTHENTICATED
     // ═══════════════════════════════════════════════════════════════
 
+    // Map URL vertical → Firestore suite arrays + ID prefix for filtering
+    // Suite values in digitalWorkers are generic (e.g. auto dealer workers have suite="General Business")
+    // so we use ID prefix as a reliable secondary filter
+    function getVerticalConfig(v) {
+      const map = {
+        'aviation':    { suites: ['Aviation'], prefix: 'av-' },
+        'pilot':       { suites: ['Aviation'], prefix: 'av-' },
+        'auto-dealer': { suites: ['General Business', 'Compliance'], prefix: 'ad-' },
+        'auto_dealer': { suites: ['General Business', 'Compliance'], prefix: 'ad-' },
+        'auto':        { suites: ['General Business', 'Compliance'], prefix: 'ad-' },
+        'web3':        { suites: ['Community', 'Compliance', 'Tokenomics', 'Launch', 'Communications', 'Platform'], prefix: 'w3-' },
+        'solar':       { suites: ['Finance', 'Legal', 'Compliance', 'Insurance', 'General Business', 'Operations'], prefix: 'solar-' },
+        'solar_vpp':   { suites: ['Finance', 'Legal', 'Compliance', 'Insurance', 'General Business', 'Operations'], prefix: 'solar-' },
+        'real-estate': { suites: ['Investment', 'Finance', 'Legal', 'Insurance', 'Construction', 'Design', 'Entitlement', 'Operations', 'Property Management', 'Permitting'], prefix: null },
+        'real_estate_development': { suites: ['Investment', 'Finance', 'Legal', 'Insurance', 'Construction', 'Design', 'Entitlement', 'Operations', 'Property Management', 'Permitting'], prefix: null },
+        're':          { suites: ['Investment', 'Finance', 'Legal', 'Insurance', 'Construction', 'Design', 'Entitlement', 'Operations', 'Property Management', 'Permitting'], prefix: null },
+      };
+      return map[v] || map[v?.toLowerCase()] || { suites: [v], prefix: null };
+    }
+
     // GET /v1/catalog:byVertical — Public catalog query for guest shell (no auth, rate limited)
     if (route === "/catalog:byVertical" && method === "GET") {
       try {
@@ -4071,12 +4091,13 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
         const limit = Math.min(parseInt(req.query.limit) || 24, 50);
         if (!vertical) return jsonError(res, 400, "vertical parameter required");
 
-        const db = getDb();
-        // Include both live and coming_soon — guest needs the full picture
+        // Map URL vertical to suite array + optional ID prefix filter
+        const vc = getVerticalConfig(vertical);
+        // Firestore 'in' supports up to 30 values
         const q = db.collection("digitalWorkers")
-          .where("vertical", "==", vertical)
+          .where("suite", "in", vc.suites)
           .where("status", "in", ["live", "coming_soon"])
-          .limit(limit);
+          .limit(vc.prefix ? 100 : limit); // over-fetch if filtering by prefix
         const snap = await q.get();
 
         // Infer valueBucket from name/description when field is missing
@@ -4090,19 +4111,22 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
           return buckets.length > 0 ? buckets : ["stay_compliant"];
         }
 
-        const workers = snap.docs.map(doc => {
-          const d = doc.data();
-          return {
-            workerId: doc.id,
-            name: d.display_name || d.name || "",
-            shortDescription: d.short_description || d.headline || d.description || "",
-            price: d.pricing_tier || d.pricing?.monthly || 0,
-            vertical: d.vertical || "",
-            valueBucket: inferBuckets(d),
-            status: d.status || "live",
-            languages: d.languages || ["en"],
-          };
-        });
+        let workers = snap.docs
+          .filter(doc => !vc.prefix || doc.id.startsWith(vc.prefix))
+          .slice(0, limit)
+          .map(doc => {
+            const d = doc.data();
+            return {
+              workerId: doc.id,
+              name: d.display_name || d.name || "",
+              shortDescription: d.short_description || d.headline || d.description || "",
+              price: d.pricing_tier || d.pricing?.monthly || 0,
+              vertical: d.suite || d.vertical || "",
+              valueBucket: inferBuckets(d),
+              status: d.status || "live",
+              languages: d.languages || ["en"],
+            };
+          });
 
         return res.json({ ok: true, workers, count: workers.length });
       } catch (e) {
@@ -4353,40 +4377,47 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
         const vertical = req.query.vertical || "";
         if (!vertical) return jsonError(res, 400, "vertical parameter required");
 
-        const db = getDb();
         // Try today's leaderboard first, then fall back to most recent
         const today = new Date().toISOString().slice(0, 10);
         let doc = await db.doc(`leaderboards/top10_${vertical}_${today}`).get();
 
         if (!doc.exists) {
           // Fall back: query most recent leaderboard for this vertical
-          const fallback = await db.collection("leaderboards")
-            .where("vertical", "==", vertical)
-            .orderBy("date", "desc")
-            .limit(1)
-            .get();
-          if (!fallback.empty) doc = fallback.docs[0];
+          try {
+            const fallback = await db.collection("leaderboards")
+              .where("vertical", "==", vertical)
+              .orderBy("date", "desc")
+              .limit(1)
+              .get();
+            if (!fallback.empty) doc = fallback.docs[0];
+          } catch (indexErr) {
+            console.warn("leaderboard fallback query failed (likely missing index):", indexErr.message);
+          }
         }
 
         if (!doc || !doc.exists) {
           // No leaderboard yet — build on-the-fly from digitalWorkers
+          const vc = getVerticalConfig(vertical);
           const dwSnap = await db.collection("digitalWorkers")
-            .where("vertical", "==", vertical)
+            .where("suite", "in", vc.suites)
             .where("status", "==", "live")
-            .limit(10)
+            .limit(vc.prefix ? 100 : 10)
             .get();
-          const workers = dwSnap.docs.map((d, i) => {
-            const w = d.data();
-            return {
-              rank: i + 1,
-              workerId: d.id,
-              slug: w.slug || d.id,
-              name: w.display_name || w.name || d.id,
-              tagline: w.tagline || w.shortDescription || w.description || "",
-              price: w.pricing_tier || w.price || 0,
-              subscriberCount: w.subscriber_count || 0,
-              featured: w.featured || false,
-            };
+          const workers = dwSnap.docs
+            .filter(d => !vc.prefix || d.id.startsWith(vc.prefix))
+            .slice(0, 10)
+            .map((d, i) => {
+              const w = d.data();
+              return {
+                rank: i + 1,
+                workerId: d.id,
+                slug: w.slug || d.id,
+                name: w.display_name || w.name || d.id,
+                tagline: w.headline || w.tagline || w.shortDescription || w.description || "",
+                price: w.pricing_tier || w.price || 0,
+                subscriberCount: w.subscriber_count || 0,
+                featured: w.featured || false,
+              };
           });
           return res.json({ ok: true, vertical, date: today, workers, source: "live_query" });
         }
@@ -6344,7 +6375,6 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
     // MARKETING: Admin — toggle promo code
     if (route === "/admin:promo:toggle" && method === "POST") {
       try {
-        const db = getDb();
         const { code } = body;
         if (!code) return res.status(400).json({ ok: false, error: "code required", code: "MISSING_FIELDS" });
         const docRef = db.doc(`promoCodes/${code}`);
@@ -7268,25 +7298,26 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       try {
         const vertical = body.vertical;
         if (!vertical) return jsonError(res, 400, "vertical required");
-
-        const db = getDb();
+        const vc = getVerticalConfig(vertical);
         const dwSnap = await db.collection("digitalWorkers")
-          .where("vertical", "==", vertical)
+          .where("suite", "in", vc.suites)
           .where("status", "==", "live")
           .get();
 
         // Build ranked list: subscriber_count DESC, featured boost
-        const raw = dwSnap.docs.map(d => {
-          const w = d.data();
-          return {
-            workerId: d.id,
-            slug: w.slug || d.id,
-            name: w.display_name || w.name || d.id,
-            tagline: w.tagline || w.shortDescription || w.description || "",
-            price: w.pricing_tier || w.price || 0,
-            subscriberCount: w.subscriber_count || 0,
-            featured: w.featured || false,
-          };
+        const raw = dwSnap.docs
+          .filter(d => !vc.prefix || d.id.startsWith(vc.prefix))
+          .map(d => {
+            const w = d.data();
+            return {
+              workerId: d.id,
+              slug: w.slug || d.id,
+              name: w.display_name || w.name || d.id,
+              tagline: w.headline || w.tagline || w.shortDescription || w.description || "",
+              price: w.pricing_tier || w.price || 0,
+              subscriberCount: w.subscriber_count || 0,
+              featured: w.featured || false,
+            };
         });
 
         // Sort: featured first, then by subscriber_count desc
