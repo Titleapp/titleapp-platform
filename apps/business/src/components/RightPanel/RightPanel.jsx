@@ -85,6 +85,11 @@ async function subscribeToWorker(token, worker) {
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
     body: JSON.stringify({ workerId, slug: workerId }),
   });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    console.error("[subscribe] HTTP error:", res.status, text);
+    throw new Error(text || `HTTP ${res.status}`);
+  }
   const data = await res.json();
   if (!data.ok) throw new Error(data.error || "Subscribe failed");
   window.dispatchEvent(new CustomEvent("ta:worker-subscribed", {
@@ -127,7 +132,8 @@ function WorkerCard({ worker, onSelect }) {
       const token = await currentUser.getIdToken(true);
       await subscribeToWorker(token, worker);
       setSubscribed(true);
-    } catch {
+    } catch (err) {
+      console.error("[handleGetWorker] subscribe failed:", err);
       setError("Subscribe failed. Try again.");
     }
     setSubmitting(false);
@@ -242,13 +248,22 @@ function WorkerCard({ worker, onSelect }) {
                   <span style={{ fontSize: 11, color: "#94a3b8" }}>{worker.subscriberCount.toLocaleString()} using this</span>
                 )}
               </div>
-              <button style={{ ...S.getBtn, opacity: submitting ? 0.6 : 1 }} onClick={handleGetWorker} disabled={submitting}>
-                {submitting ? "..." : worker.price === 0 || !worker.price ? "Get this worker" : "Subscribe"}
+              <button
+                style={{ ...S.getBtn, opacity: submitting ? 0.6 : 1 }}
+                onClick={worker.price > 0 ? (e) => { e.stopPropagation(); setShowAuth(!showAuth); } : handleGetWorker}
+                disabled={submitting}
+              >
+                {submitting ? "..." : worker.price > 0 ? `Subscribe \u2014 $${worker.price}/mo` : "Get this worker"}
               </button>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Error — always visible */}
+      {error && !subscribed && (
+        <div style={{ ...S.authError, padding: "6px 16px" }}>{error}</div>
+      )}
 
       {/* Inline auth form — appears below the card */}
       {showAuth && !subscribed && (
@@ -265,7 +280,6 @@ function WorkerCard({ worker, onSelect }) {
               <button onClick={handleAuthSubmit} disabled={submitting} style={{ ...S.authSubmit, opacity: submitting ? 0.7 : 1, cursor: submitting ? "wait" : "pointer" }}>
                 {submitting ? "Setting up..." : isSignIn ? "Sign in & get worker" : "Create account & get worker"}
               </button>
-              {error && <div style={S.authError}>{error}</div>}
               <button onClick={() => { setIsSignIn(!isSignIn); setError(""); }} style={S.authToggle}>
                 {isSignIn ? "Need an account? Sign up" : "Already have an account? Sign in instead"}
               </button>

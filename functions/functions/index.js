@@ -5362,7 +5362,7 @@ These should be 2-3 realistic test scenarios the creator should try, derived fro
 
     // POST /v1/worker:subscribe — Subscribe to a worker (creates Stripe checkout or adds to vault)
     if (route === "/worker:subscribe" && method === "POST") {
-      console.log(`[worker:subscribe] HIT — uid=${ctx.userId}, body=`, JSON.stringify(body));
+      console.log(`[worker:subscribe] HIT — uid=${ctx.userId}, isAnonymous=${auth.user?.firebase?.sign_in_provider === 'anonymous'}, body=`, JSON.stringify(body));
       const { workerId, slug } = body;
       if (!workerId && !slug) return res.json({ ok: false, error: "Missing workerId or slug" });
       try {
