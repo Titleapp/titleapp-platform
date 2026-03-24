@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { auth } from "../../firebase";
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signInAnonymously } from "firebase/auth";
+import { signInAnonymously } from "firebase/auth";
 import { useRightPanel } from "../../context/RightPanelContext";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+const API_DIRECT = "https://api-feyfibglbq-uc.a.run.app";
 
 // ── Styles ──────────────────────────────────────────────────────
 
@@ -37,11 +38,9 @@ const S = {
   recHeader: { position: "relative", padding: "16px 20px", borderBottom: "1px solid #e5e7eb", background: "#ffffff", flexShrink: 0 },
   recTitle: { fontSize: 14, fontWeight: 700, color: "#111827" },
   recSub: { fontSize: 12, color: "#6b7280", marginTop: 2 },
-  // Inline auth
+  // Inline prompts
   authWrap: { margin: "0 0 10px", padding: "14px 16px", background: "#f3f0ff", border: "1px solid #e9d5ff", borderRadius: 10 },
   authInput: { width: "100%", padding: "10px 12px", fontSize: 14, border: "1px solid #d1d5db", borderRadius: 8, outline: "none", boxSizing: "border-box", marginBottom: 8 },
-  authSubmit: { width: "100%", padding: "12px", fontSize: 14, fontWeight: 600, color: "#fff", background: "#7c3aed", border: "none", borderRadius: 10, cursor: "pointer", marginBottom: 6 },
-  authToggle: { background: "none", border: "none", fontSize: 12, color: "#7c3aed", cursor: "pointer", textAlign: "center", width: "100%", padding: "4px 0" },
   authError: { fontSize: 12, color: "#dc2626", marginBottom: 6 },
 };
 
@@ -76,11 +75,11 @@ function StatsHeader() {
   );
 }
 
-// ── Subscribe helper ────────────────────────────────────────────
+// ── Subscribe helper (calls Cloud Run directly — Frontdoor blocks auth POST) ──
 
 async function subscribeToWorker(token, worker) {
   const workerId = worker.workerId || worker.slug;
-  const res = await fetch(`${API_BASE}/api?path=/v1/worker:subscribe`, {
+  const res = await fetch(`${API_DIRECT}/v1/worker:subscribe`, {
     method: "POST",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
     body: JSON.stringify({ workerId, slug: workerId }),
@@ -98,121 +97,79 @@ async function subscribeToWorker(token, worker) {
   return data;
 }
 
-// ── Worker Card with inline auth ────────────────────────────────
+// ── Worker Card — Spotify model ─────────────────────────────────
+// Free: click → subscribe instantly with anonymous UID, zero auth
+// Paid: click → email-only prompt, magic link sent, no password
 
 function WorkerCard({ worker, onSelect }) {
-  const [showAuth, setShowAuth] = useState(false);
-  const [tosChecked, setTosChecked] = useState(false);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [isSignIn, setIsSignIn] = useState(false);
   const [subscribed, setSubscribed] = useState(false);
+  // Paid worker: email-only magic link flow
+  const [showEmail, setShowEmail] = useState(false);
+  const [email, setEmail] = useState("");
+  const [linkSent, setLinkSent] = useState(false);
 
-  async function handleGetWorker(e) {
+  const isFree = !worker.price || worker.price === 0;
+
+  async function handleGetFreeWorker(e) {
     e.stopPropagation();
     setSubmitting(true);
+    setError("");
 
-    // Get or create anonymous session — no auth wall
     let currentUser = auth.currentUser;
     if (!currentUser) {
       try {
         const cred = await signInAnonymously(auth);
         currentUser = cred.user;
-      } catch {
+      } catch (err) {
+        console.error("[subscribe] anon auth failed:", err);
         setSubmitting(false);
         setError("Something went wrong. Try again.");
         return;
       }
     }
 
-    // Subscribe directly
     try {
       const token = await currentUser.getIdToken(true);
       await subscribeToWorker(token, worker);
       setSubscribed(true);
     } catch (err) {
-      console.error("[handleGetWorker] subscribe failed:", err);
+      console.error("[subscribe] failed:", err);
       setError("Subscribe failed. Try again.");
     }
     setSubmitting(false);
   }
 
-  async function handleAuthSubmit() {
-    if (!tosChecked) { setError("Please agree to the Terms of Service."); return; }
-    if (!email || !password) { setError("Enter your email and password."); return; }
+  async function handleSendLink(e) {
+    e?.preventDefault();
+    if (!email || !email.includes("@")) { setError("Enter a valid email."); return; }
     setSubmitting(true);
     setError("");
 
-    // Lock MeetAlex in place so App.jsx doesn't unmount it during auth
-    window.dispatchEvent(new CustomEvent("ta:meet-alex-lock"));
-
     try {
-      let cred;
-      try {
-        if (isSignIn) {
-          cred = await signInWithEmailAndPassword(auth, email, password);
-        } else {
-          cred = await createUserWithEmailAndPassword(auth, email, password);
-        }
-      } catch (createErr) {
-        if (createErr.code === "auth/email-already-in-use") {
-          cred = await signInWithEmailAndPassword(auth, email, password);
-        } else throw createErr;
-      }
-
-      const token = await cred.user.getIdToken(true);
-      localStorage.setItem("ID_TOKEN", token);
-      localStorage.setItem("DISCLAIMER_ACCEPTED", "true");
-
-      // Subscribe immediately — no redirect
-      await subscribeToWorker(token, worker);
-      setSubscribed(true);
-
-      // Promote guest session
-      const guestId = sessionStorage.getItem("ta_guest_sid");
-      if (guestId) {
-        fetch(`${API_BASE}/api?path=/v1/alex:promoteGuest`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ guestId, uid: cred.user.uid }),
-        }).catch(() => {});
-      }
-
-      // Save handoff data for workspace transition
+      const workerId = worker.workerId || worker.slug;
       const vertical = new URLSearchParams(window.location.search).get("vertical") || "";
-      sessionStorage.setItem("ta_utm", JSON.stringify({
-        source: "meet-alex", medium: "guest-chat",
-        campaign: vertical || "direct", capturedAt: new Date().toISOString(),
-      }));
-      sessionStorage.setItem("ta_guest_promoted", "true");
-
-      // Let Alex confirmation show for 2.5s, then transition to workspace
-      setTimeout(() => {
-        const v = vertical ? `&vertical=${vertical}` : "";
-        window.history.replaceState({}, "", `/?promoted=true${v}&utm_source=meet-alex&utm_medium=guest-chat`);
-        window.dispatchEvent(new CustomEvent("ta:meet-alex-unlock"));
-      }, 2500);
-
+      const res = await fetch(`${API_BASE}/api?path=/v1/magic-link:send`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email,
+          intent: "subscribe",
+          workerId,
+          workerName: worker.name,
+          vertical,
+          utmSource: "meet-alex",
+        }),
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Failed to send link");
+      setLinkSent(true);
     } catch (err) {
-      setSubmitting(false);
-      window.dispatchEvent(new CustomEvent("ta:meet-alex-unlock"));
-      switch (err?.code) {
-        case "auth/weak-password":
-          setError("Password must be at least 6 characters."); break;
-        case "auth/invalid-email":
-          setError("Please enter a valid email address."); break;
-        case "auth/wrong-password":
-        case "auth/invalid-credential":
-        case "auth/invalid-login-credentials":
-          setError("Incorrect password. Try again."); break;
-        case "auth/too-many-requests":
-          setError("Too many attempts. Wait and try again."); break;
-        default:
-          setError("Sign-up failed. Please try again.");
-      }
+      console.error("[magic-link] failed:", err);
+      setError("Could not send link. Try again.");
     }
+    setSubmitting(false);
   }
 
   if (subscribed) {
@@ -250,10 +207,10 @@ function WorkerCard({ worker, onSelect }) {
               </div>
               <button
                 style={{ ...S.getBtn, opacity: submitting ? 0.6 : 1 }}
-                onClick={worker.price > 0 ? (e) => { e.stopPropagation(); setShowAuth(!showAuth); } : handleGetWorker}
+                onClick={isFree ? handleGetFreeWorker : (e) => { e.stopPropagation(); setShowEmail(!showEmail); }}
                 disabled={submitting}
               >
-                {submitting ? "..." : worker.price > 0 ? `Subscribe \u2014 $${worker.price}/mo` : "Get this worker"}
+                {submitting ? "..." : isFree ? "Get this worker" : `Subscribe \u2014 $${worker.price}/mo`}
               </button>
             </div>
           </div>
@@ -261,30 +218,33 @@ function WorkerCard({ worker, onSelect }) {
       </div>
 
       {/* Error — always visible */}
-      {error && !subscribed && (
-        <div style={{ ...S.authError, padding: "6px 16px" }}>{error}</div>
+      {error && <div style={{ ...S.authError, padding: "6px 16px" }}>{error}</div>}
+
+      {/* Paid worker: email-only magic link prompt */}
+      {showEmail && !subscribed && !linkSent && (
+        <div style={{ ...S.authWrap, padding: "12px 16px" }}>
+          <div style={{ fontSize: 13, color: "#1e293b", marginBottom: 8, lineHeight: 1.5 }}>
+            Drop your email and we'll send you a link to subscribe.
+          </div>
+          <form onSubmit={handleSendLink} style={{ display: "flex", gap: 8 }}>
+            <input
+              type="email" value={email} onChange={e => setEmail(e.target.value)}
+              placeholder="you@email.com" autoComplete="email" autoFocus
+              style={{ ...S.authInput, marginBottom: 0, flex: 1 }}
+            />
+            <button type="submit" disabled={submitting} style={{ ...S.getBtn, padding: "10px 16px", fontSize: 13, flexShrink: 0, opacity: submitting ? 0.7 : 1 }}>
+              {submitting ? "..." : "Send link"}
+            </button>
+          </form>
+        </div>
       )}
 
-      {/* Inline auth form — appears below the card */}
-      {showAuth && !subscribed && (
-        <div style={S.authWrap}>
-          <label style={{ display: "flex", alignItems: "flex-start", gap: 8, cursor: "pointer", fontSize: 12, color: "#1e1e2e", marginBottom: 10, lineHeight: 1.5 }}>
-            <input type="checkbox" checked={tosChecked} onChange={e => setTosChecked(e.target.checked)} style={{ width: 16, height: 16, accentColor: "#7c3aed", marginTop: 2, flexShrink: 0 }} />
-            I agree to the TitleApp Terms of Service and Privacy Policy. Digital Workers do not constitute professional advice.
-          </label>
-
-          {tosChecked && (
-            <>
-              <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Email" autoComplete="email" style={S.authInput} />
-              <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Password (6+ characters)" autoComplete={isSignIn ? "current-password" : "new-password"} onKeyDown={e => e.key === "Enter" && handleAuthSubmit()} style={S.authInput} />
-              <button onClick={handleAuthSubmit} disabled={submitting} style={{ ...S.authSubmit, opacity: submitting ? 0.7 : 1, cursor: submitting ? "wait" : "pointer" }}>
-                {submitting ? "Setting up..." : isSignIn ? "Sign in & get worker" : "Create account & get worker"}
-              </button>
-              <button onClick={() => { setIsSignIn(!isSignIn); setError(""); }} style={S.authToggle}>
-                {isSignIn ? "Need an account? Sign up" : "Already have an account? Sign in instead"}
-              </button>
-            </>
-          )}
+      {/* Magic link sent confirmation */}
+      {linkSent && (
+        <div style={{ ...S.authWrap, padding: "12px 16px", background: "#f0fdf4", borderColor: "#bbf7d0" }}>
+          <div style={{ fontSize: 13, color: "#166534", fontWeight: 600 }}>
+            Check your inbox. We sent a link to {email}.
+          </div>
         </div>
       )}
     </div>
