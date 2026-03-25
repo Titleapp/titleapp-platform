@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { auth } from "../../firebase";
+import { GoogleAuthProvider, linkWithPopup, linkWithRedirect, signInWithCredential } from "firebase/auth";
 import { useRightPanel } from "../../context/RightPanelContext";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
@@ -53,9 +54,27 @@ const S = {
   authError: { fontSize: 12, color: "#dc2626", marginBottom: 6 },
 };
 
+const VERTICAL_LABELS = {
+  aviation: "Aviation", pilot: "Aviation", "real-estate": "Real Estate",
+  "auto-dealer": "Auto Dealer", auto: "Auto Dealer", web3: "Web3",
+  solar: "Solar", nursing: "Nursing", health: "Healthcare",
+  games: "Games", government: "Government",
+};
+
 function formatPrice(price) {
   if (!price || price === 0) return "Free";
   return `$${price}/mo`;
+}
+
+function generateDefaultPrompts(capabilitySummary, workerName) {
+  if (!capabilitySummary) return [`What can ${workerName || "you"} help me with?`];
+  const sentences = capabilitySummary.split(/[.;]/).map(s => s.trim()).filter(s => s.length > 15);
+  const prompts = sentences.slice(0, 3).map(s => {
+    const lower = s.charAt(0).toLowerCase() + s.slice(1).replace(/\.$/, "");
+    return `Help me with ${lower}`;
+  });
+  if (prompts.length === 0) prompts.push(`What can ${workerName || "you"} help me with?`);
+  return prompts;
 }
 
 // ── Stats Header ────────────────────────────────────────────────
@@ -118,7 +137,7 @@ async function subscribeToWorker(worker) {
   const data = await res.json();
   if (!data.ok) throw new Error(data.error || "Subscribe failed");
   window.dispatchEvent(new CustomEvent("ta:worker-subscribed", {
-    detail: { workerId, name: worker.name },
+    detail: { workerId, name: worker.name, price: worker.price || 0 },
   }));
   return data;
 }
@@ -127,108 +146,37 @@ async function subscribeToWorker(worker) {
 // Free: click → subscribe instantly with guestId, zero auth
 // Paid: click → email prompt → Stripe Checkout → webhook creates subscription
 
-function WorkerCard({ worker, onSelect }) {
+function WorkerCard({ worker, onSelect, onOpen }) {
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [subscribed, setSubscribed] = useState(false);
-  const [showEmail, setShowEmail] = useState(false);
-  const [email, setEmail] = useState("");
-  // Stripe Checkout polling
-  const [checkingOut, setCheckingOut] = useState(false);
-  const [pollInfo, setPollInfo] = useState(null); // { sessionId, userId, workerId }
-  const pollRef = useRef(null);
 
   const isFree = !worker.price || worker.price === 0;
 
-  async function handleGetFreeWorker(e) {
+  async function handleClick(e) {
     e.stopPropagation();
     setSubmitting(true);
     setError("");
     try {
-      await subscribeToWorker(worker);
-      setSubscribed(true);
+      if (isFree) {
+        await subscribeToWorker(worker);
+        setSubscribed(true);
+      }
+      // Open worker immediately — free or paid
+      if (onOpen) onOpen(worker);
+      // For paid workers, fire preview event so MeetAlex sends greeting
+      if (!isFree) {
+        const workerId = worker.workerId || worker.slug;
+        window.dispatchEvent(new CustomEvent("ta:worker-preview-opened", {
+          detail: { workerId, workerName: worker.name || worker.display_name, price: worker.price, slug: worker.slug || workerId },
+        }));
+      }
     } catch (err) {
-      console.error("[subscribe] failed:", err);
-      setError("Subscribe failed. Try again.");
+      console.error("[worker] failed:", err);
+      setError(isFree ? "Subscribe failed. Try again." : "Could not open worker.");
     }
     setSubmitting(false);
   }
-
-  async function handleCheckout(e) {
-    e?.preventDefault();
-    if (!email || !email.includes("@")) { setError("Enter a valid email."); return; }
-    setCheckingOut(true);
-    setError("");
-
-    try {
-      const workerId = worker.workerId || worker.slug;
-      const headers = { "Content-Type": "application/json" };
-      const bodyData = { workerId, slug: workerId, email };
-
-      const currentUser = auth.currentUser;
-      if (currentUser) {
-        try { const token = await currentUser.getIdToken(true); headers.Authorization = `Bearer ${token}`; }
-        catch { bodyData.guestId = getGuestId(); }
-      } else {
-        bodyData.guestId = getGuestId();
-      }
-
-      const res = await fetch(`${API_BASE}/api?path=/v1/worker:checkout`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify(bodyData),
-      });
-      const data = await res.json();
-
-      if (data.subscribed) { setSubscribed(true); setCheckingOut(false); return; }
-      if (!data.ok || !data.checkoutUrl) throw new Error(data.error || "Failed to create checkout");
-
-      window.open(data.checkoutUrl, "_blank");
-
-      const uid = currentUser?.uid || `guest-${getGuestId()}`;
-      setPollInfo({ sessionId: data.sessionId, userId: uid, workerId });
-    } catch (err) {
-      console.error("[worker:checkout] failed:", err);
-      setError("Could not start checkout. Try again.");
-      setCheckingOut(false);
-    }
-  }
-
-  // Poll for checkout completion
-  useEffect(() => {
-    if (!pollInfo) return;
-    let cancelled = false;
-    let attempts = 0;
-
-    pollRef.current = setInterval(async () => {
-      if (cancelled || attempts >= 60) {
-        clearInterval(pollRef.current);
-        if (attempts >= 60) {
-          setError("Checkout timed out. Refresh if you completed payment.");
-          setCheckingOut(false);
-          setPollInfo(null);
-        }
-        return;
-      }
-      attempts++;
-      try {
-        const qs = `workerId=${encodeURIComponent(pollInfo.workerId)}&userId=${encodeURIComponent(pollInfo.userId)}&sessionId=${encodeURIComponent(pollInfo.sessionId)}`;
-        const r = await fetch(`${API_BASE}/api?path=/v1/worker:checkoutStatus&${qs}`);
-        const d = await r.json();
-        if (d.status === "complete") {
-          clearInterval(pollRef.current);
-          setSubscribed(true);
-          setCheckingOut(false);
-          setPollInfo(null);
-          window.dispatchEvent(new CustomEvent("ta:worker-subscribed", {
-            detail: { workerId: pollInfo.workerId, name: worker.name },
-          }));
-        }
-      } catch { /* retry next interval */ }
-    }, 5000);
-
-    return () => { cancelled = true; clearInterval(pollRef.current); };
-  }, [pollInfo]);
 
   if (subscribed) {
     return (
@@ -264,48 +212,17 @@ function WorkerCard({ worker, onSelect }) {
                 )}
               </div>
               <button
-                style={{ ...S.getBtn, opacity: submitting || checkingOut ? 0.6 : 1 }}
-                onClick={isFree ? handleGetFreeWorker : (e) => { e.stopPropagation(); setShowEmail(!showEmail); }}
-                disabled={submitting || checkingOut}
+                style={{ ...S.getBtn, opacity: submitting ? 0.6 : 1 }}
+                onClick={handleClick}
+                disabled={submitting}
               >
-                {submitting ? "..." : isFree ? "Get this worker" : `Subscribe \u2014 $${worker.price}/mo`}
+                {submitting ? "..." : isFree ? "Get this worker" : "Start 14-day free trial"}
               </button>
             </div>
           </div>
         </div>
       </div>
-
-      {/* Error — always visible */}
       {error && <div style={{ ...S.authError, padding: "6px 16px" }}>{error}</div>}
-
-      {/* Paid worker: email + Stripe Checkout */}
-      {showEmail && !checkingOut && !pollInfo && (
-        <div style={{ ...S.authWrap, padding: "12px 16px" }}>
-          <div style={{ fontSize: 13, color: "#1e293b", marginBottom: 8, lineHeight: 1.5 }}>
-            Enter your email to subscribe. 14-day free trial.
-          </div>
-          <form onSubmit={handleCheckout} style={{ display: "flex", gap: 8 }}>
-            <input
-              type="email" value={email} onChange={e => setEmail(e.target.value)}
-              placeholder="you@email.com" autoComplete="email" autoFocus
-              style={{ ...S.authInput, marginBottom: 0, flex: 1 }}
-            />
-            <button type="submit" disabled={checkingOut} style={{ ...S.getBtn, padding: "10px 16px", fontSize: 13, flexShrink: 0, opacity: checkingOut ? 0.7 : 1 }}>
-              {checkingOut ? "..." : "Subscribe"}
-            </button>
-          </form>
-        </div>
-      )}
-
-      {/* Checkout in progress — polling for completion */}
-      {pollInfo && (
-        <div style={{ ...S.authWrap, padding: "12px 16px", background: "#eff6ff", borderColor: "#bfdbfe" }}>
-          <div style={{ fontSize: 13, color: "#1e40af", fontWeight: 600 }}>Completing payment...</div>
-          <div style={{ fontSize: 12, color: "#3b82f6", marginTop: 4 }}>
-            Complete checkout in the new tab. This will update automatically.
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -356,6 +273,204 @@ function ProductIntro() {
         <div>Workers handle the work.</div>
         <div>Your Vault holds everything.</div>
       </div>
+    </div>
+  );
+}
+
+// ── Trial Banner — appears in WORKSPACE_HOME after 3+ exchanges ──
+
+function TrialBanner({ worker }) {
+  const [messageCount, setMessageCount] = useState(0);
+  const [dismissed, setDismissed] = useState(() => sessionStorage.getItem(`ta_trial_dismissed_${worker.workerId || worker.slug}`) === "1");
+  const [showCheckout, setShowCheckout] = useState(false);
+  const [trialStarted, setTrialStarted] = useState(false);
+  const [showEmailFallback, setShowEmailFallback] = useState(false);
+  const [email, setEmail] = useState("");
+  const [checkoutError, setCheckoutError] = useState("");
+  const [processing, setProcessing] = useState(false);
+
+  const workerId = worker.workerId || worker.slug;
+  const workerName = worker.name || worker.display_name || "this worker";
+  const isFree = !worker.price || worker.price === 0;
+
+  // Listen for message count updates
+  useEffect(() => {
+    function onCount(e) {
+      const { count, workerSlug } = e.detail || {};
+      if (workerSlug === workerId || !workerSlug) setMessageCount(count || 0);
+    }
+    window.addEventListener("ta:worker-message-count", onCount);
+    return () => window.removeEventListener("ta:worker-message-count", onCount);
+  }, [workerId]);
+
+  // Listen for worker-subscribed to mark trial started
+  useEffect(() => {
+    function onSubscribed(e) {
+      if ((e.detail?.workerId) === workerId) setTrialStarted(true);
+    }
+    window.addEventListener("ta:worker-subscribed", onSubscribed);
+    return () => window.removeEventListener("ta:worker-subscribed", onSubscribed);
+  }, [workerId]);
+
+  function handleDismiss() {
+    sessionStorage.setItem(`ta_trial_dismissed_${workerId}`, "1");
+    setDismissed(true);
+  }
+
+  async function startTrialWithToken(idToken) {
+    const res = await fetch(`${API_BASE}/api?path=/v1/subscription:startTrial`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+      body: JSON.stringify({ workerId }),
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || "Trial start failed");
+    setTrialStarted(true);
+    window.dispatchEvent(new CustomEvent("ta:worker-subscribed", {
+      detail: { workerId, name: workerName, price: worker.price || 0 },
+    }));
+    // Alex confirmation
+    window.dispatchEvent(new CustomEvent("ta:panel-ask-alex", {
+      detail: { text: `You're all set. Your 14-day trial of ${workerName} starts now. No charge today.`, fromSystem: true },
+    }));
+  }
+
+  async function handleGoogleAuth() {
+    setProcessing(true);
+    setCheckoutError("");
+    const anonUid = auth.currentUser?.uid;
+    try {
+      const provider = new GoogleAuthProvider();
+      const result = await linkWithPopup(auth.currentUser, provider);
+      const idToken = await result.user.getIdToken(true);
+      localStorage.setItem("ID_TOKEN", idToken);
+      await startTrialWithToken(idToken);
+    } catch (err) {
+      if (err?.code === "auth/popup-blocked") {
+        try { await linkWithRedirect(auth.currentUser, new GoogleAuthProvider()); } catch { /* redirect navigates away */ }
+        setProcessing(false);
+        return;
+      }
+      if (err?.code === "auth/credential-already-in-use") {
+        try {
+          const credential = GoogleAuthProvider.credentialFromError(err);
+          const result = await signInWithCredential(auth, credential);
+          const idToken = await result.user.getIdToken(true);
+          localStorage.setItem("ID_TOKEN", idToken);
+          // Transfer subscriptions from anon UID
+          if (anonUid && anonUid !== result.user.uid) {
+            fetch(`${API_BASE}/api?path=/v1/subscription:transfer`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+              body: JSON.stringify({ fromUid: anonUid, toUid: result.user.uid }),
+            }).catch(() => {});
+          }
+          await startTrialWithToken(idToken);
+        } catch (innerErr) {
+          setCheckoutError("Sign-in failed. Try again.");
+        }
+        setProcessing(false);
+        return;
+      }
+      console.error("[TrialBanner] Google auth error:", err);
+      setCheckoutError("Sign-in failed. Try again.");
+    }
+    setProcessing(false);
+  }
+
+  async function handleEmailMagicLink(e) {
+    e?.preventDefault();
+    if (!email || !email.includes("@")) { setCheckoutError("Enter a valid email."); return; }
+    setProcessing(true);
+    setCheckoutError("");
+    try {
+      const res = await fetch(`${API_BASE}/api?path=/v1/magic-link:send`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, workerId: "platform-trial", workerSlug: workerId, workerName, preAuthUid: auth.currentUser?.uid }),
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Failed to send");
+      setCheckoutError("");
+      setShowEmailFallback(false);
+      setShowCheckout(false);
+      // Show confirmation in Alex
+      window.dispatchEvent(new CustomEvent("ta:panel-ask-alex", {
+        detail: { text: `Check your email for a sign-in link. Once you're in, your trial will start automatically.`, fromSystem: true },
+      }));
+    } catch (err) {
+      setCheckoutError(err.message || "Failed to send email.");
+    }
+    setProcessing(false);
+  }
+
+  // Don't show for free workers
+  if (isFree) return null;
+  // Trial already started
+  if (trialStarted) {
+    return (
+      <div style={{ margin: "16px 0", padding: "14px 16px", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 10 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: "#16a34a" }}>Trial active — 14 days remaining</div>
+      </div>
+    );
+  }
+  // Not enough messages or dismissed
+  if (messageCount < 3 || dismissed) return null;
+
+  // Checkout UI
+  if (showCheckout) {
+    return (
+      <div style={{ margin: "16px 0", padding: "16px", background: "#f3f0ff", border: "1px solid #e9d5ff", borderRadius: 10 }}>
+        <div style={{ fontSize: 14, fontWeight: 600, color: "#111827", marginBottom: 12 }}>Start your 14-day free trial</div>
+        {checkoutError && <div style={{ fontSize: 12, color: "#dc2626", marginBottom: 8 }}>{checkoutError}</div>}
+        <button
+          onClick={handleGoogleAuth}
+          disabled={processing}
+          style={{
+            width: "100%", padding: "12px 16px", fontSize: 14, fontWeight: 600, cursor: "pointer",
+            background: "#ffffff", border: "1px solid #d1d5db", borderRadius: 8, marginBottom: 8,
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+            opacity: processing ? 0.6 : 1, color: "#1f2937", fontFamily: "inherit",
+          }}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+          Continue with Google
+        </button>
+        {!showEmailFallback ? (
+          <button
+            onClick={() => setShowEmailFallback(true)}
+            style={{ background: "none", border: "none", color: "#7c3aed", fontSize: 13, cursor: "pointer", width: "100%", textAlign: "center", padding: 4, fontFamily: "inherit" }}
+          >
+            Or use your email
+          </button>
+        ) : (
+          <form onSubmit={handleEmailMagicLink} style={{ display: "flex", gap: 8, marginTop: 4 }}>
+            <input
+              type="email" value={email} onChange={e => setEmail(e.target.value)}
+              placeholder="you@email.com" autoComplete="email" autoFocus
+              style={{ ...S.authInput, marginBottom: 0, flex: 1 }}
+            />
+            <button type="submit" disabled={processing} style={{ ...S.getBtn, padding: "10px 14px", fontSize: 13, flexShrink: 0 }}>
+              {processing ? "..." : "Send link"}
+            </button>
+          </form>
+        )}
+      </div>
+    );
+  }
+
+  // Trial banner
+  return (
+    <div style={{ margin: "16px 0", padding: "14px 16px", background: "#f3f0ff", border: "1px solid #e9d5ff", borderRadius: 10, position: "relative" }}>
+      <button onClick={handleDismiss} style={{ position: "absolute", top: 8, right: 10, background: "none", border: "none", fontSize: 16, color: "#94a3b8", cursor: "pointer", lineHeight: 1 }}>&times;</button>
+      <div style={{ fontSize: 14, fontWeight: 600, color: "#111827", marginBottom: 4 }}>Enjoying {workerName}?</div>
+      <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 12 }}>Start your free 14-day trial. No charge today.</div>
+      <button
+        onClick={() => setShowCheckout(true)}
+        style={{ ...S.subscribeBtn, marginBottom: 0 }}
+      >
+        Start my trial
+      </button>
     </div>
   );
 }
@@ -420,11 +535,89 @@ export default function RightPanel() {
     setLoading(false);
   }
 
+  // Listen for worker selection — show workspace home
+  useEffect(() => {
+    function onSelectWorker(e) {
+      const { slug } = e.detail || {};
+      if (!slug) return;
+      // Check if worker is already in loaded workers list
+      const existing = workers.find(w => (w.workerId || w.slug) === slug);
+      if (existing) {
+        panel.showWorkerHome(existing);
+        return;
+      }
+      // Fetch from catalog
+      fetch(`${API_BASE}/api?path=/v1/catalog:byVertical&vertical=all&limit=200`)
+        .then(r => r.json())
+        .then(data => {
+          const w = (data.workers || []).find(w => (w.workerId || w.slug) === slug);
+          if (w) panel.showWorkerHome(w);
+        }).catch(() => {});
+    }
+    window.addEventListener("ta:select-worker", onSelectWorker);
+    return () => window.removeEventListener("ta:select-worker", onSelectWorker);
+  }, [workers, panel]);
+
   function handleAskAlex(worker) {
     window.dispatchEvent(new CustomEvent("ta:panel-ask-alex", { detail: { text: `Tell me about ${worker.name}` } }));
   }
 
   const showStats = state === "STATE-1" || state === "STATE-2";
+
+  // ── WORKSPACE_HOME: Worker just opened — show capabilities + quick-start ──
+  if (state === "WORKSPACE_HOME" && panel.activeWorkerData) {
+    const w = panel.activeWorkerData;
+    const prompts = w.quickStartPrompts || generateDefaultPrompts(w.capabilitySummary, w.name || w.display_name);
+
+    return (
+      <div style={S.wrap}>
+        <div style={{ padding: 24, flex: 1, display: "flex", flexDirection: "column" }}>
+          <div style={{ fontSize: 20, fontWeight: 700, color: "#111827", marginBottom: 4 }}>
+            {w.name || w.display_name}
+          </div>
+          {w.tagline && (
+            <div style={{ fontSize: 13, color: "#7c3aed", fontWeight: 500, marginBottom: 12 }}>{w.tagline}</div>
+          )}
+
+          {w.capabilitySummary && (
+            <div style={{ fontSize: 14, color: "#6b7280", lineHeight: 1.6, marginBottom: 24 }}>
+              {w.capabilitySummary}
+            </div>
+          )}
+
+          <div style={S.sectionLabel}>Quick start</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 24 }}>
+            {prompts.map((p, i) => (
+              <button
+                key={i}
+                onClick={() => window.dispatchEvent(new CustomEvent("ta:panel-ask-alex", { detail: { text: p } }))}
+                style={{
+                  padding: "8px 14px", fontSize: 13, borderRadius: 20,
+                  background: "#f3f0ff", border: "1px solid #e9d5ff",
+                  color: "#7c3aed", cursor: "pointer", fontWeight: 500,
+                  fontFamily: "inherit", textAlign: "left", lineHeight: 1.4,
+                }}
+              >
+                {p}
+              </button>
+            ))}
+          </div>
+
+          <div style={S.sectionLabel}>Recent activity</div>
+          <div style={{ fontSize: 13, color: "#94a3b8", marginBottom: 24 }}>
+            Your work with {w.name || "this worker"} will appear here
+          </div>
+
+          <div style={S.sectionLabel}>Documents</div>
+          <div style={{ fontSize: 13, color: "#94a3b8" }}>
+            Upload documents to give {w.name || "this worker"} more context
+          </div>
+
+          <TrialBanner worker={w} />
+        </div>
+      </div>
+    );
+  }
 
   // ── STATE-4: Worker Detail ──────────────────────────────────
   if (state === "STATE-4" && selectedWorker) {
@@ -454,7 +647,7 @@ export default function RightPanel() {
             Every response logged. Ground use only.
           </div>
 
-          <WorkerCard worker={selectedWorker} onSelect={() => {}} />
+          <WorkerCard worker={selectedWorker} onSelect={() => {}} onOpen={panel.showWorkerHome} />
 
           <button style={{ ...S.askBtn, marginTop: 8 }} onClick={() => handleAskAlex(selectedWorker)}>Ask Alex about this</button>
         </div>
@@ -468,7 +661,7 @@ export default function RightPanel() {
       <div style={S.wrap}>
         <StatsHeader />
         <div style={S.breadcrumb}>
-          <span style={S.breadcrumbLabel}>Top 10 in {verticalLabel || "All Industries"} Today</span>
+          <span style={S.breadcrumbLabel}>Top 10 in {verticalLabel || VERTICAL_LABELS[vertical] || "All Industries"} Today</span>
         </div>
         <div style={S.cardList}>
           {loading ? (
@@ -477,7 +670,7 @@ export default function RightPanel() {
             <div style={S.empty}>No workers available yet</div>
           ) : (
             workers.map((w, i) => (
-              <WorkerCard key={w.workerId || i} worker={w} onSelect={showWorkerDetail} />
+              <WorkerCard key={w.workerId || i} worker={w} onSelect={showWorkerDetail} onOpen={panel.showWorkerHome} />
             ))
           )}
         </div>
@@ -504,7 +697,7 @@ export default function RightPanel() {
 
       {state === "STATE-2" && verticalLabel && (
         <div style={S.breadcrumb}>
-          <span style={S.breadcrumbLabel}>Top 10 in {verticalLabel} Today</span>
+          <span style={S.breadcrumbLabel}>Top 10 in {verticalLabel || VERTICAL_LABELS[vertical] || "All Industries"} Today</span>
         </div>
       )}
 
@@ -515,7 +708,7 @@ export default function RightPanel() {
           <div style={S.empty}>No workers available yet</div>
         ) : (
           workers.map((w, i) => (
-            <WorkerCard key={w.workerId || i} worker={w} onSelect={showWorkerDetail} />
+            <WorkerCard key={w.workerId || i} worker={w} onSelect={showWorkerDetail} onOpen={panel.showWorkerHome} />
           ))
         )}
       </div>

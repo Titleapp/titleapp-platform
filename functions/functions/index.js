@@ -4646,6 +4646,28 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       }
     }
 
+    // POST /v1/guestLead:save — store lead contact from chat (before auth gate)
+    if (route === "/guestLead:save" && method === "POST") {
+      const { uid, contact, workerSlug, vertical: leadVertical } = body;
+      if (!uid || !contact) return jsonError(res, 400, "uid and contact required");
+
+      try {
+        await db.collection("guestLeads").doc(uid).set({
+          contact: contact.trim(),
+          workerSlug: workerSlug || null,
+          vertical: leadVertical || null,
+          capturedAt: admin.firestore.FieldValue.serverTimestamp(),
+          converted: false,
+          recoveryEmailSent: false,
+        }, { merge: true });
+        console.log(`[guestLead:save] Stored lead for ${uid}: ${contact}`);
+        return res.json({ ok: true });
+      } catch (e) {
+        console.error("[guestLead:save] error:", e.message);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
     // All other routes require Firebase auth
     const auth = await requireFirebaseUser(req, res);
     if (auth.handled) return;
@@ -4702,6 +4724,90 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
         return res.json({ ok: true, transferred: workerIds.length, workerIds });
       } catch (e) {
         console.error("[subscription:transfer] error:", e.message);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // POST /v1/subscription:startTrial — start trial on a paid worker (authenticated)
+    if (route === "/subscription:startTrial" && method === "POST") {
+      const userId = auth.user.uid;
+      const { workerId } = body;
+      if (!workerId) return jsonError(res, 400, "workerId required");
+
+      try {
+        // Look up worker
+        const dwSnap = await db.doc(`digitalWorkers/${workerId}`).get();
+        if (!dwSnap.exists) return jsonError(res, 404, "Worker not found");
+        const workerDoc = dwSnap.data();
+        const workerName = workerDoc.name || workerDoc.display_name || "Digital Worker";
+
+        // Check already subscribed
+        const existingSub = await db.collection("subscriptions")
+          .where("userId", "==", userId)
+          .where("workerId", "==", workerId)
+          .where("status", "in", ["active", "active_trial", "trial"])
+          .limit(1).get();
+        if (!existingSub.empty) return res.json({ ok: true, subscribed: true, message: "Already subscribed" });
+
+        // Also check for anonymous UID subscriptions and transfer
+        const anonUid = body.anonUid;
+        if (anonUid && anonUid !== userId) {
+          const anonSubs = await db.collection("subscriptions")
+            .where("userId", "==", anonUid)
+            .get();
+          for (const subDoc of anonSubs.docs) {
+            await subDoc.ref.update({ userId });
+            const wId = subDoc.data().workerId || subDoc.data().slug;
+            const vSnap = await db.doc(`vaults/${anonUid}/workers/${wId}`).get();
+            if (vSnap.exists) {
+              await db.doc(`vaults/${userId}/workers/${wId}`).set(vSnap.data());
+              await vSnap.ref.delete();
+            }
+          }
+        }
+
+        const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+
+        // Create subscription
+        const subRef = await db.collection("subscriptions").add({
+          userId,
+          workerId,
+          slug: workerId,
+          workerName,
+          price: workerDoc.pricing_tier || workerDoc.price || 0,
+          status: "active_trial",
+          trialEndsAt,
+          createdAt: nowServerTs(),
+        });
+
+        // Add to vault
+        await db.doc(`vaults/${userId}/workers/${workerId}`).set({
+          workerId,
+          workerName,
+          slug: workerId,
+          subscriptionId: subRef.id,
+          addedAt: nowServerTs(),
+          source: "trial_start",
+        });
+
+        // Queue opening message
+        await db.collection("workerMessages").add({
+          userId,
+          workerId,
+          direction: "worker_to_user",
+          message: `Hi, I'm ${workerName}. I'm ready to help. What would you like to start with?`,
+          createdAt: nowServerTs(),
+          read: false,
+        });
+
+        // Mark guest lead as converted if exists
+        await db.collection("guestLeads").doc(userId).update({ converted: true }).catch(() => {});
+        if (anonUid) await db.collection("guestLeads").doc(anonUid).update({ converted: true }).catch(() => {});
+
+        console.log(`[subscription:startTrial] ${userId} started trial on ${workerId}`);
+        return res.json({ ok: true, subscribed: true, subscriptionId: subRef.id });
+      } catch (e) {
+        console.error("[subscription:startTrial] error:", e.message);
         return jsonError(res, 500, e.message);
       }
     }
@@ -16031,6 +16137,16 @@ exports.usageEventProcessor = onSchedule(
 exports.balanceRechargeCheck = onSchedule(
   { schedule: "*/15 * * * *", timeZone: "America/Los_Angeles", region: "us-central1" },
   async () => { await checkBalanceRecharge(); }
+);
+
+// ----------------------------
+// PIPELINE: Guest Lead Recovery (39.9-T2) — daily 9 AM HST
+// ----------------------------
+const { guestLeadRecovery } = require("./pipeline/guestLeadRecovery");
+
+exports.guestLeadRecovery = onSchedule(
+  { schedule: "0 9 * * *", timeZone: "Pacific/Honolulu", region: "us-central1" },
+  async () => { await guestLeadRecovery(); }
 );
 
 // ----------------------------

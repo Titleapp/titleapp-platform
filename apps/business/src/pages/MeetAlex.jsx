@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { signInAnonymously, EmailAuthProvider, linkWithCredential } from "firebase/auth";
+import { signInAnonymously, GoogleAuthProvider, linkWithPopup, linkWithRedirect, signInWithCredential } from "firebase/auth";
 import { auth } from "../firebase";
 import { VERTICAL_MAP } from "../hooks/useVisitorContext";
 
@@ -23,9 +23,16 @@ export default function MeetAlex() {
   const [showSave, setShowSave] = useState(false);
   const [savedAccount, setSavedAccount] = useState(false);
   const [saveEmail, setSaveEmail] = useState("");
-  const [savePassword, setSavePassword] = useState("");
   const [saveError, setSaveError] = useState("");
   const [saveSending, setSaveSending] = useState(false);
+  const [saveStatus, setSaveStatus] = useState(""); // "" | "check-inbox"
+  const [resendCountdown, setResendCountdown] = useState(0);
+
+  // Worker preview lead capture
+  const previewWorkerRef = useRef(null);       // { workerId, workerName, slug }
+  const [leadCaptureQueued, setLeadCaptureQueued] = useState(false);
+  const [awaitingLead, setAwaitingLead] = useState(false);
+  const previewMsgCount = useRef(0);
 
   // Session & URL params (stable across renders)
   const [sessionId] = useState(() => {
@@ -52,6 +59,13 @@ export default function MeetAlex() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, sending]);
+
+  // Resend countdown timer
+  useEffect(() => {
+    if (resendCountdown <= 0) return;
+    const t = setTimeout(() => setResendCountdown(c => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [resendCountdown]);
 
   // Send message to backend
   const sendMessage = useCallback(async (userText) => {
@@ -123,6 +137,24 @@ export default function MeetAlex() {
     setSending(false);
   }, [sessionId, vertical]);
 
+  // Listen for paid worker preview — send greeting + queue lead capture
+  useEffect(() => {
+    function onPreview(e) {
+      const { workerId, workerName, slug } = e.detail || {};
+      if (!workerId) return;
+      previewWorkerRef.current = { workerId, workerName, slug };
+      previewMsgCount.current = 0;
+      // Alex greeting with worker context
+      setMessages(prev => [...prev, {
+        role: "assistant",
+        text: `Hey \u2014 I'm your ${workerName || "Digital Worker"}. Ask me anything.`,
+      }]);
+      setLeadCaptureQueued(true);
+    }
+    window.addEventListener("ta:worker-preview-opened", onPreview);
+    return () => window.removeEventListener("ta:worker-preview-opened", onPreview);
+  }, []);
+
   // Listen for "Get this worker" taps from right panel
   useEffect(() => {
     function onWorkerTapped(e) {
@@ -141,11 +173,11 @@ export default function MeetAlex() {
   // Listen for subscribe completion — show Alex confirmation
   useEffect(() => {
     function onSubscribed(e) {
-      const { name } = e.detail || {};
-      setMessages(prev => [...prev, {
-        role: "assistant",
-        text: `You're all set. ${name || "Your worker"} is on your team now.`,
-      }]);
+      const { name, price } = e.detail || {};
+      const msg = (price && price > 0)
+        ? `You're all set. Your 14-day trial of ${name || "your worker"} starts now. No charge today.`
+        : `You're all set. ${name || "Your worker"} is on your team now.`;
+      setMessages(prev => [...prev, { role: "assistant", text: msg }]);
     }
     window.addEventListener("ta:worker-subscribed", onSubscribed);
     return () => window.removeEventListener("ta:worker-subscribed", onSubscribed);
@@ -162,65 +194,147 @@ export default function MeetAlex() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Save moment — upgrade anonymous → real account
-  async function handleSaveAccount() {
-    if (!saveEmail) { setSaveError("Enter your email."); return; }
-    if (!savePassword || savePassword.length < 6) { setSaveError("Password needs 6+ characters."); return; }
+  // Shared transition after successful auth upgrade
+  function completeAuthUpgrade(idToken, uid) {
+    localStorage.setItem("ID_TOKEN", idToken);
+    localStorage.setItem("DISCLAIMER_ACCEPTED", "true");
+    setSavedAccount(true);
+    setShowSave(false);
+
+    const guestName = sessionStorage.getItem("ta_guest_name") || "";
+    setMessages(prev => [...prev, {
+      role: "assistant",
+      text: `Saved${guestName ? `, ${guestName}` : ""}. Taking you to your workspace.`,
+    }]);
+
+    // Promote guest session
+    const guestId = sessionStorage.getItem("ta_guest_sid");
+    if (guestId) {
+      fetch(`${API_BASE}/api?path=/v1/alex:promoteGuest`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+        body: JSON.stringify({ guestId, uid }),
+      }).catch(() => {});
+    }
+
+    sessionStorage.setItem("ta_utm", JSON.stringify({
+      source: "meet-alex", medium: "guest-chat",
+      campaign: vertical || "direct", capturedAt: new Date().toISOString(),
+    }));
+    sessionStorage.setItem("ta_guest_promoted", "true");
+
+    setTimeout(() => {
+      const v = vertical ? `&vertical=${vertical}` : "";
+      window.history.replaceState({}, "", `/?promoted=true${v}&utm_source=meet-alex&utm_medium=guest-chat`);
+      window.dispatchEvent(new CustomEvent("ta:meet-alex-unlock"));
+    }, 2500);
+  }
+
+  // Save moment — Google auth (primary)
+  async function handleGoogleSave() {
+    setSaveSending(true);
+    setSaveError("");
+    window.dispatchEvent(new CustomEvent("ta:meet-alex-lock"));
+
+    const anonUid = auth.currentUser?.uid;
+    sessionStorage.setItem("ta_pre_link_anon_uid", anonUid || "");
+
+    try {
+      const provider = new GoogleAuthProvider();
+      const result = await linkWithPopup(auth.currentUser, provider);
+      const idToken = await result.user.getIdToken(true);
+      completeAuthUpgrade(idToken, result.user.uid);
+    } catch (err) {
+      if (err?.code === "auth/popup-blocked") {
+        // Mobile fallback — redirect-based flow
+        try {
+          await linkWithRedirect(auth.currentUser, new GoogleAuthProvider());
+        } catch { /* redirect will navigate away */ }
+        return;
+      }
+
+      if (err?.code === "auth/credential-already-in-use") {
+        // Google account already exists — sign in and transfer subscriptions
+        try {
+          const credential = GoogleAuthProvider.credentialFromError(err);
+          const result = await signInWithCredential(auth, credential);
+          const idToken = await result.user.getIdToken(true);
+
+          // Transfer subscriptions from anonymous UID to real UID
+          if (anonUid && anonUid !== result.user.uid) {
+            fetch(`${API_BASE}/api?path=/v1/subscription:transfer`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+              body: JSON.stringify({ fromUid: anonUid, toUid: result.user.uid }),
+            }).catch(() => {});
+          }
+
+          completeAuthUpgrade(idToken, result.user.uid);
+          return;
+        } catch {
+          setSaveError("Sign-in failed. Try again.");
+        }
+      }
+
+      // Cancelled or other error
+      if (err?.code !== "auth/cancelled-popup-request" && err?.code !== "auth/popup-closed-by-user") {
+        setSaveError("Google sign-in failed. Try again.");
+      }
+      setSaveSending(false);
+      window.dispatchEvent(new CustomEvent("ta:meet-alex-unlock"));
+    }
+  }
+
+  // Save moment — Magic link (fallback)
+  async function handleMagicLinkSave() {
+    if (!saveEmail || !saveEmail.includes("@")) { setSaveError("Enter a valid email."); return; }
     setSaveSending(true);
     setSaveError("");
 
-    // Lock MeetAlex so App.jsx doesn't unmount during transition
-    window.dispatchEvent(new CustomEvent("ta:meet-alex-lock"));
+    sessionStorage.setItem("ta_pre_magic_uid", auth.currentUser?.uid || "");
 
     try {
-      const credential = EmailAuthProvider.credential(saveEmail, savePassword);
-      const result = await linkWithCredential(auth.currentUser, credential);
-      const idToken = await result.user.getIdToken(true);
-      localStorage.setItem("ID_TOKEN", idToken);
-      localStorage.setItem("DISCLAIMER_ACCEPTED", "true");
-      setSavedAccount(true);
-      setShowSave(false);
-
-      const guestName = sessionStorage.getItem("ta_guest_name") || "";
-      setMessages(prev => [...prev, {
-        role: "assistant",
-        text: `Saved${guestName ? `, ${guestName}` : ""}. Taking you to your workspace.`,
-      }]);
-
-      // Promote guest session
-      const guestId = sessionStorage.getItem("ta_guest_sid");
-      if (guestId) {
-        fetch(`${API_BASE}/api?path=/v1/alex:promoteGuest`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
-          body: JSON.stringify({ guestId, uid: result.user.uid }),
-        }).catch(() => {});
-      }
-
-      // Handoff data for workspace
-      sessionStorage.setItem("ta_utm", JSON.stringify({
-        source: "meet-alex", medium: "guest-chat",
-        campaign: vertical || "direct", capturedAt: new Date().toISOString(),
-      }));
-      sessionStorage.setItem("ta_guest_promoted", "true");
-
-      // Transition to workspace after confirmation
-      setTimeout(() => {
-        const v = vertical ? `&vertical=${vertical}` : "";
-        window.history.replaceState({}, "", `/?promoted=true${v}&utm_source=meet-alex&utm_medium=guest-chat`);
-        window.dispatchEvent(new CustomEvent("ta:meet-alex-unlock"));
-      }, 2500);
-    } catch (err) {
-      setSaveSending(false);
-      window.dispatchEvent(new CustomEvent("ta:meet-alex-unlock"));
-      if (err?.code === "auth/email-already-in-use") {
-        setSaveError("That email is already registered. Try another.");
-      } else if (err?.code === "auth/invalid-email") {
-        setSaveError("Please enter a valid email.");
+      const res = await fetch(`${API_BASE}/api?path=/v1/magic-link:send`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: saveEmail,
+          workerId: "alex-platform",
+          workerSlug: "alex",
+          workerName: "Alex",
+          preAuthUid: auth.currentUser?.uid || null,
+        }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setSaveStatus("check-inbox");
+        setResendCountdown(60);
       } else {
-        setSaveError("Something went wrong. Try again.");
+        setSaveError(data.error || "Could not send link. Try again.");
       }
+    } catch {
+      setSaveError("Something went wrong. Try again.");
     }
+    setSaveSending(false);
+  }
+
+  // Resend magic link
+  async function handleResendMagicLink() {
+    setResendCountdown(60);
+    setSaveError("");
+    try {
+      await fetch(`${API_BASE}/api?path=/v1/magic-link:send`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: saveEmail,
+          workerId: "alex-platform",
+          workerSlug: "alex",
+          workerName: "Alex",
+          preAuthUid: auth.currentUser?.uid || null,
+        }),
+      });
+    } catch { /* non-fatal */ }
   }
 
   function handleSubmit(e) {
@@ -243,7 +357,61 @@ export default function MeetAlex() {
       return;
     }
 
-    sendMessage(msg);
+    // Lead capture: detect email or phone when awaiting
+    const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
+    const phoneRegex = /[+]?[1-9][0-9]{7,14}/;
+    if (awaitingLead) {
+      const match = msg.match(emailRegex) || msg.match(phoneRegex);
+      if (match) {
+        // Store lead
+        const contact = match[0];
+        const pw = previewWorkerRef.current;
+        const uid = auth.currentUser?.uid || sessionStorage.getItem("ta_guest_sid") || "unknown";
+        fetch(`${API_BASE}/api?path=/v1/guestLead:save`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ uid, contact, workerSlug: pw?.slug || pw?.workerId || "", vertical }),
+        }).catch(() => {});
+        setMessages(prev => [
+          ...prev,
+          { role: "user", text: msg },
+          { role: "assistant", text: "Got it. Now \u2014 what do you want to know?" },
+        ]);
+        setAwaitingLead(false);
+      } else if (/\b(no|skip|later|nah|not now)\b/i.test(msg)) {
+        setMessages(prev => [
+          ...prev,
+          { role: "user", text: msg },
+          { role: "assistant", text: "No problem. What can I help you with?" },
+        ]);
+        setAwaitingLead(false);
+      } else {
+        // Not recognized — send normally
+        sendMessage(msg);
+        setAwaitingLead(false);
+      }
+    } else if (leadCaptureQueued) {
+      // Send the user message normally, then queue lead capture as Alex's next message
+      sendMessage(msg);
+      setLeadCaptureQueued(false);
+      setTimeout(() => {
+        setMessages(prev => [...prev, {
+          role: "assistant",
+          text: "Before we dive in \u2014 what's a good email or number so I can save this for you?",
+        }]);
+        setAwaitingLead(true);
+      }, 1500);
+    } else {
+      sendMessage(msg);
+    }
+
+    // Track message count for worker preview (TrialBanner)
+    if (previewWorkerRef.current) {
+      previewMsgCount.current++;
+      window.dispatchEvent(new CustomEvent("ta:worker-message-count", {
+        detail: { count: previewMsgCount.current, workerSlug: previewWorkerRef.current.slug || previewWorkerRef.current.workerId },
+      }));
+    }
 
     // After 3 user messages, show save prompt
     userMsgCount.current++;
@@ -323,7 +491,7 @@ export default function MeetAlex() {
                       <div style={S.wcName}>{wc.name}</div>
                       <div style={S.wcDesc}>{wc.description}</div>
                       <div style={S.wcPrice}>{wc.price === 0 ? "Free" : `$${wc.price}/mo`}</div>
-                      <div style={S.wcCta}>{wc.price === 0 ? "Get this worker" : `Subscribe \u2014 $${wc.price}/mo`}</div>
+                      <div style={S.wcCta}>{wc.price === 0 ? "Get this worker" : "Start 14-day free trial"}</div>
                     </div>
                   </div>
                 ))}
@@ -341,12 +509,45 @@ export default function MeetAlex() {
               </svg>
             </div>
             <div style={{ maxWidth: "80%", padding: "12px 14px", borderRadius: 16, background: "#f3f0ff", border: "1px solid #e9d5ff", borderBottomLeftRadius: 4 }}>
-              <div style={{ fontSize: 14, color: "#1e293b", marginBottom: 10 }}>Save your stuff? Drop your email so you can come back anytime.</div>
-              <input type="email" value={saveEmail} onChange={e => setSaveEmail(e.target.value)} placeholder="Email" autoComplete="email" style={{ width: "100%", padding: "10px 12px", fontSize: 14, border: "1px solid #d1d5db", borderRadius: 8, outline: "none", boxSizing: "border-box", marginBottom: 6 }} />
-              <input type="password" value={savePassword} onChange={e => setSavePassword(e.target.value)} placeholder="Password (6+ characters)" autoComplete="new-password" onKeyDown={e => e.key === "Enter" && handleSaveAccount()} style={{ width: "100%", padding: "10px 12px", fontSize: 14, border: "1px solid #d1d5db", borderRadius: 8, outline: "none", boxSizing: "border-box", marginBottom: 8 }} />
-              <button onClick={handleSaveAccount} disabled={saveSending} style={{ width: "100%", padding: "10px", fontSize: 14, fontWeight: 600, color: "#fff", background: "#7c3aed", border: "none", borderRadius: 8, cursor: saveSending ? "wait" : "pointer", opacity: saveSending ? 0.7 : 1 }}>
-                {saveSending ? "Saving..." : "Save my progress"}
-              </button>
+              <div style={{ fontSize: 14, color: "#1e293b", marginBottom: 10 }}>Save your stuff? Quick sign-in so you can come back anytime.</div>
+
+              {saveStatus !== "check-inbox" ? (
+                <>
+                  {/* Primary: Google */}
+                  <button onClick={handleGoogleSave} disabled={saveSending} style={{ width: "100%", padding: "10px", fontSize: 14, fontWeight: 600, color: "#1e293b", background: "#ffffff", border: "1px solid #d1d5db", borderRadius: 8, cursor: saveSending ? "wait" : "pointer", opacity: saveSending ? 0.7 : 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, fontFamily: "inherit", marginBottom: 10 }}>
+                    <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59a14.5 14.5 0 0 1 0-9.18l-7.98-6.19a24.01 24.01 0 0 0 0 21.56l7.98-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+                    {saveSending ? "Signing in..." : "Continue with Google"}
+                  </button>
+
+                  {/* Divider */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                    <div style={{ flex: 1, height: 1, background: "#e5e7eb" }} />
+                    <span style={{ fontSize: 12, color: "#94a3b8" }}>or</span>
+                    <div style={{ flex: 1, height: 1, background: "#e5e7eb" }} />
+                  </div>
+
+                  {/* Fallback: Magic link */}
+                  <input type="email" value={saveEmail} onChange={e => setSaveEmail(e.target.value)} placeholder="your@email.com" autoComplete="email" style={{ width: "100%", padding: "10px 12px", fontSize: 14, border: "1px solid #d1d5db", borderRadius: 8, outline: "none", boxSizing: "border-box", marginBottom: 8 }} />
+                  <button onClick={handleMagicLinkSave} disabled={saveSending} style={{ width: "100%", padding: "10px", fontSize: 14, fontWeight: 600, color: "#7c3aed", background: "transparent", border: "1px solid #e9d5ff", borderRadius: 8, cursor: saveSending ? "wait" : "pointer", opacity: saveSending ? 0.7 : 1, fontFamily: "inherit" }}>
+                    {saveSending ? "Sending..." : "Send me a sign-in link"}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <div style={{ fontSize: 14, color: "#10b981", fontWeight: 600 }}>Check your inbox</div>
+                  <div style={{ fontSize: 13, color: "#6b7280", marginTop: 4, marginBottom: 8 }}>
+                    We sent a link to {saveEmail}. Click it to save your progress.
+                  </div>
+                  <button
+                    onClick={handleResendMagicLink}
+                    disabled={resendCountdown > 0}
+                    style={{ fontSize: 13, color: resendCountdown > 0 ? "#94a3b8" : "#7c3aed", background: "none", border: "none", cursor: resendCountdown > 0 ? "default" : "pointer", padding: 0, fontFamily: "inherit" }}
+                  >
+                    {resendCountdown > 0 ? `Resend in ${resendCountdown}s` : "Resend link"}
+                  </button>
+                </>
+              )}
+
               {saveError && <div style={{ fontSize: 12, color: "#dc2626", marginTop: 6 }}>{saveError}</div>}
             </div>
           </div>
