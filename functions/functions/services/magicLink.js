@@ -22,7 +22,7 @@ const crypto = require("crypto");
 function getDb() { return admin.firestore(); }
 
 const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY || "";
-const MAGIC_LINK_EXPIRY_MINUTES = 15;
+const MAGIC_LINK_EXPIRY_MINUTES = 60;
 
 // ═══════════════════════════════════════════════════════════════
 //  EMAIL

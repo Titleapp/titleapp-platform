@@ -4653,6 +4653,59 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
     const ctx = getCtx(req, body, auth.user);
     console.log("🧠 CTX:", ctx);
 
+    // POST /v1/subscription:transfer — transfer subscriptions from anonymous/guest UID to real UID
+    if (route === "/subscription:transfer" && method === "POST") {
+      const { fromUid, toUid } = body;
+      if (!fromUid || !toUid) return jsonError(res, 400, "fromUid and toUid required");
+      if (auth.user.uid !== toUid) return jsonError(res, 403, "Can only transfer to your own account");
+
+      try {
+        const subsSnap = await db.collection("subscriptions")
+          .where("userId", "==", fromUid)
+          .get();
+
+        if (subsSnap.empty) return res.json({ ok: true, transferred: 0, workerIds: [] });
+
+        const workerIds = [];
+        for (const subDoc of subsSnap.docs) {
+          const sub = subDoc.data();
+          const wId = sub.workerId || sub.slug;
+
+          // Check if toUid already has this worker
+          const existing = await db.collection("subscriptions")
+            .where("userId", "==", toUid)
+            .where("workerId", "==", wId)
+            .where("status", "in", ["active", "active_trial", "trial"])
+            .limit(1).get();
+
+          if (existing.empty) {
+            // Create new sub under toUid
+            await db.collection("subscriptions").add({
+              ...sub,
+              userId: toUid,
+              transferredFrom: fromUid,
+              transferredAt: nowServerTs(),
+            });
+            // Transfer vault entry
+            const vaultSnap = await db.doc(`vaults/${fromUid}/workers/${wId}`).get();
+            if (vaultSnap.exists) {
+              await db.doc(`vaults/${toUid}/workers/${wId}`).set(vaultSnap.data());
+              await vaultSnap.ref.delete();
+            }
+            workerIds.push(wId);
+          }
+          // Delete old doc regardless
+          await subDoc.ref.delete();
+        }
+
+        console.log(`[subscription:transfer] ${fromUid} → ${toUid}: ${workerIds.length} transferred`);
+        return res.json({ ok: true, transferred: workerIds.length, workerIds });
+      } catch (e) {
+        console.error("[subscription:transfer] error:", e.message);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
     // POST /v1/web3:inviteTeamMember — invite team member (authenticated, owner only)
     if (route === "/web3:inviteTeamMember" && method === "POST") {
       try {

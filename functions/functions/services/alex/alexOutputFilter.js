@@ -16,6 +16,39 @@
 const SAFE_FALLBACK = "I want to make sure I give you accurate information. Let me connect you with the right worker for this.";
 const MAX_REGENERATIONS = 2;
 
+// Valid nav items by context — anything else is a hallucination
+const VALID_NAV_ITEMS = {
+  universal: [
+    "Dashboard", "Deal Pipeline", "Documents", "Signatures",
+    "Reports", "Clients & Contacts", "Settings", "Worker Rules",
+    "Personal Vault", "Browse Marketplace", "Document Vault",
+  ],
+  aviation: [
+    "CoPilot EFB", "Dispatch", "Fleet Status", "Crew",
+    "Safety", "Scheduling", "Compliance", "Logbook",
+    "Currency", "My Aircraft", "Training", "Flight Planning",
+  ],
+  "real-estate": [
+    "Properties", "Deals", "Title & Escrow", "Deal Screening",
+    "Portfolio", "Assumptions", "Evidence Table", "Investor Pipeline",
+    "Waterfall", "Data Room", "Reporting", "Draw Requests",
+    "Lien Waivers", "Retainage", "Schedule of Values",
+    "Leasing", "Marketing", "Rent Roll", "Work Orders",
+    "Tenants", "Maintenance", "Appraisal Review",
+  ],
+  auto: [
+    "Inventory", "Appraisals", "Desking", "CRM",
+    "F&I Menu", "Compliance", "Trade-In", "Lead Management",
+    "Service Appointments", "MPI Dashboard", "Parts",
+    "Warranty Claims", "Body Shop", "Floor Plan",
+  ],
+  government: [
+    "Intake", "Queue", "Inspections", "Permits",
+    "Code Enforcement", "Violations", "Compliance",
+    "Reports", "Scheduling", "Portal Dashboard",
+  ],
+};
+
 /**
  * Check a response against Layer 1 hard stop patterns.
  *
@@ -108,6 +141,41 @@ function checkLayer3(response, layer3) {
 }
 
 /**
+ * Check for hallucinated nav items — references to UI sections that don't exist.
+ *
+ * @param {string} response
+ * @param {string} vertical — current user vertical
+ * @returns {Array} — violations found
+ */
+function checkNavHallucination(response, vertical) {
+  const validItems = [
+    ...VALID_NAV_ITEMS.universal,
+    ...(VALID_NAV_ITEMS[vertical] || []),
+  ];
+  const validLower = validItems.map(v => v.toLowerCase());
+
+  // Match phrases like "go to X in", "open X", "click on X", "navigate to X", "the X tab/section/page"
+  const navPatterns = [
+    /(?:go\s+to|open|click\s+on|navigate\s+to|visit|head\s+to)\s+(?:the\s+)?([A-Z][\w\s&]+?)(?:\s+(?:in|tab|section|page|panel|screen)|\.|,|$)/gi,
+    /(?:the|your)\s+([A-Z][\w\s&]+?)\s+(?:tab|section|page|panel|screen)/gi,
+  ];
+
+  const hallucinated = [];
+  for (const pattern of navPatterns) {
+    let match;
+    while ((match = pattern.exec(response)) !== null) {
+      const item = match[1].trim();
+      if (item.length < 3 || item.length > 40) continue;
+      if (!validLower.some(v => v === item.toLowerCase() || item.toLowerCase().includes(v) || v.includes(item.toLowerCase()))) {
+        hallucinated.push(item);
+      }
+    }
+  }
+
+  return hallucinated.length > 0 ? hallucinated : null;
+}
+
+/**
  * Run the full output filter on an LLM response.
  *
  * @param {Object} params
@@ -143,6 +211,19 @@ function runOutputFilter({ response, rulePack, userContext }) {
     violations.push(...checkLayer3(response, rulePack.layer3));
   }
 
+  // Nav item hallucination check (always active)
+  const vertical = rulePack.layer3?.activeVertical || userContext?.vertical || "";
+  const hallucinatedNav = checkNavHallucination(response, vertical);
+  if (hallucinatedNav) {
+    auditLog.checksRun.push("navItemHallucination");
+    const validItems = [...VALID_NAV_ITEMS.universal, ...(VALID_NAV_ITEMS[vertical] || [])];
+    violations.push({
+      ruleId: "nav_item_hallucination",
+      layer: 1,
+      message: `Hallucinated nav items: ${hallucinatedNav.join(", ")}. Only reference: ${validItems.join(", ")}`,
+    });
+  }
+
   const approved = violations.length === 0;
 
   return {
@@ -174,4 +255,6 @@ module.exports = {
   checkLayer1,
   checkLayer2,
   checkLayer3,
+  checkNavHallucination,
+  VALID_NAV_ITEMS,
 };
