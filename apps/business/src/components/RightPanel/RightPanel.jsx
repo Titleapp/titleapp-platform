@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { auth } from "../../firebase";
 import { useRightPanel } from "../../context/RightPanelContext";
 
@@ -124,17 +124,19 @@ async function subscribeToWorker(worker) {
 }
 
 // ── Worker Card — Spotify model ─────────────────────────────────
-// Free: click → subscribe instantly with anonymous UID, zero auth
-// Paid: click → email-only prompt, magic link sent, no password
+// Free: click → subscribe instantly with guestId, zero auth
+// Paid: click → email prompt → Stripe Checkout → webhook creates subscription
 
 function WorkerCard({ worker, onSelect }) {
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [subscribed, setSubscribed] = useState(false);
-  // Paid worker: email-only magic link flow
   const [showEmail, setShowEmail] = useState(false);
   const [email, setEmail] = useState("");
-  const [linkSent, setLinkSent] = useState(false);
+  // Stripe Checkout polling
+  const [checkingOut, setCheckingOut] = useState(false);
+  const [pollInfo, setPollInfo] = useState(null); // { sessionId, userId, workerId }
+  const pollRef = useRef(null);
 
   const isFree = !worker.price || worker.price === 0;
 
@@ -152,41 +154,81 @@ function WorkerCard({ worker, onSelect }) {
     setSubmitting(false);
   }
 
-  async function handleSendLink(e) {
+  async function handleCheckout(e) {
     e?.preventDefault();
     if (!email || !email.includes("@")) { setError("Enter a valid email."); return; }
-    setSubmitting(true);
+    setCheckingOut(true);
     setError("");
 
     try {
-      // Store current UID so magic link verify can upgrade instead of creating new session
-      const currentUid = auth.currentUser?.uid || null;
-      if (currentUid) sessionStorage.setItem("ta_pre_magic_uid", currentUid);
-
       const workerId = worker.workerId || worker.slug;
-      const vertical = new URLSearchParams(window.location.search).get("vertical") || "";
-      const res = await fetch(`${API_BASE}/api?path=/v1/magic-link:send`, {
+      const headers = { "Content-Type": "application/json" };
+      const bodyData = { workerId, slug: workerId, email };
+
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+        try { const token = await currentUser.getIdToken(true); headers.Authorization = `Bearer ${token}`; }
+        catch { bodyData.guestId = getGuestId(); }
+      } else {
+        bodyData.guestId = getGuestId();
+      }
+
+      const res = await fetch(`${API_BASE}/api?path=/v1/worker:checkout`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email,
-          intent: "subscribe",
-          workerId,
-          workerName: worker.name,
-          vertical,
-          utmSource: "meet-alex",
-          preAuthUid: currentUid,
-        }),
+        headers,
+        body: JSON.stringify(bodyData),
       });
       const data = await res.json();
-      if (!data.ok) throw new Error(data.error || "Failed to send link");
-      setLinkSent(true);
+
+      if (data.subscribed) { setSubscribed(true); setCheckingOut(false); return; }
+      if (!data.ok || !data.checkoutUrl) throw new Error(data.error || "Failed to create checkout");
+
+      window.open(data.checkoutUrl, "_blank");
+
+      const uid = currentUser?.uid || `guest-${getGuestId()}`;
+      setPollInfo({ sessionId: data.sessionId, userId: uid, workerId });
     } catch (err) {
-      console.error("[magic-link] failed:", err);
-      setError("Could not send link. Try again.");
+      console.error("[worker:checkout] failed:", err);
+      setError("Could not start checkout. Try again.");
+      setCheckingOut(false);
     }
-    setSubmitting(false);
   }
+
+  // Poll for checkout completion
+  useEffect(() => {
+    if (!pollInfo) return;
+    let cancelled = false;
+    let attempts = 0;
+
+    pollRef.current = setInterval(async () => {
+      if (cancelled || attempts >= 60) {
+        clearInterval(pollRef.current);
+        if (attempts >= 60) {
+          setError("Checkout timed out. Refresh if you completed payment.");
+          setCheckingOut(false);
+          setPollInfo(null);
+        }
+        return;
+      }
+      attempts++;
+      try {
+        const qs = `workerId=${encodeURIComponent(pollInfo.workerId)}&userId=${encodeURIComponent(pollInfo.userId)}&sessionId=${encodeURIComponent(pollInfo.sessionId)}`;
+        const r = await fetch(`${API_BASE}/api?path=/v1/worker:checkoutStatus&${qs}`);
+        const d = await r.json();
+        if (d.status === "complete") {
+          clearInterval(pollRef.current);
+          setSubscribed(true);
+          setCheckingOut(false);
+          setPollInfo(null);
+          window.dispatchEvent(new CustomEvent("ta:worker-subscribed", {
+            detail: { workerId: pollInfo.workerId, name: worker.name },
+          }));
+        }
+      } catch { /* retry next interval */ }
+    }, 5000);
+
+    return () => { cancelled = true; clearInterval(pollRef.current); };
+  }, [pollInfo]);
 
   if (subscribed) {
     return (
@@ -222,9 +264,9 @@ function WorkerCard({ worker, onSelect }) {
                 )}
               </div>
               <button
-                style={{ ...S.getBtn, opacity: submitting ? 0.6 : 1 }}
+                style={{ ...S.getBtn, opacity: submitting || checkingOut ? 0.6 : 1 }}
                 onClick={isFree ? handleGetFreeWorker : (e) => { e.stopPropagation(); setShowEmail(!showEmail); }}
-                disabled={submitting}
+                disabled={submitting || checkingOut}
               >
                 {submitting ? "..." : isFree ? "Get this worker" : `Subscribe \u2014 $${worker.price}/mo`}
               </button>
@@ -236,30 +278,31 @@ function WorkerCard({ worker, onSelect }) {
       {/* Error — always visible */}
       {error && <div style={{ ...S.authError, padding: "6px 16px" }}>{error}</div>}
 
-      {/* Paid worker: email-only magic link prompt */}
-      {showEmail && !subscribed && !linkSent && (
+      {/* Paid worker: email + Stripe Checkout */}
+      {showEmail && !checkingOut && !pollInfo && (
         <div style={{ ...S.authWrap, padding: "12px 16px" }}>
           <div style={{ fontSize: 13, color: "#1e293b", marginBottom: 8, lineHeight: 1.5 }}>
-            Drop your email and we'll send you a link to subscribe.
+            Enter your email to subscribe. 14-day free trial.
           </div>
-          <form onSubmit={handleSendLink} style={{ display: "flex", gap: 8 }}>
+          <form onSubmit={handleCheckout} style={{ display: "flex", gap: 8 }}>
             <input
               type="email" value={email} onChange={e => setEmail(e.target.value)}
               placeholder="you@email.com" autoComplete="email" autoFocus
               style={{ ...S.authInput, marginBottom: 0, flex: 1 }}
             />
-            <button type="submit" disabled={submitting} style={{ ...S.getBtn, padding: "10px 16px", fontSize: 13, flexShrink: 0, opacity: submitting ? 0.7 : 1 }}>
-              {submitting ? "..." : "Send link"}
+            <button type="submit" disabled={checkingOut} style={{ ...S.getBtn, padding: "10px 16px", fontSize: 13, flexShrink: 0, opacity: checkingOut ? 0.7 : 1 }}>
+              {checkingOut ? "..." : "Subscribe"}
             </button>
           </form>
         </div>
       )}
 
-      {/* Magic link sent confirmation */}
-      {linkSent && (
-        <div style={{ ...S.authWrap, padding: "12px 16px", background: "#f0fdf4", borderColor: "#bbf7d0" }}>
-          <div style={{ fontSize: 13, color: "#166534", fontWeight: 600 }}>
-            Check your inbox. We sent a link to {email}.
+      {/* Checkout in progress — polling for completion */}
+      {pollInfo && (
+        <div style={{ ...S.authWrap, padding: "12px 16px", background: "#eff6ff", borderColor: "#bfdbfe" }}>
+          <div style={{ fontSize: 13, color: "#1e40af", fontWeight: 600 }}>Completing payment...</div>
+          <div style={{ fontSize: 12, color: "#3b82f6", marginTop: 4 }}>
+            Complete checkout in the new tab. This will update automatically.
           </div>
         </div>
       )}

@@ -548,6 +548,72 @@ async function handleStripeWebhook(req, res) {
           break;
         }
 
+        // Worker subscription activation (Stripe Checkout for paid workers)
+        if (checkoutType === "worker_subscription" && userId) {
+          const wsWorkerId = data.metadata?.workerId;
+          const wsSubscriptionId = data.metadata?.subscriptionId;
+          const wsWorkerName = data.metadata?.workerName || "Digital Worker";
+
+          if (wsWorkerId) {
+            // Activate the pending subscription
+            if (wsSubscriptionId) {
+              await db.collection("subscriptions").doc(wsSubscriptionId).update({
+                status: "active_trial",
+                stripeSubscriptionId: data.subscription || null,
+                stripeCheckoutSessionId: data.id,
+                activatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+              });
+            } else {
+              await db.collection("subscriptions").add({
+                userId,
+                workerId: wsWorkerId,
+                slug: wsWorkerId,
+                workerName: wsWorkerName,
+                status: "active_trial",
+                stripeSubscriptionId: data.subscription || null,
+                stripeCheckoutSessionId: data.id,
+                activatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+                createdAt: admin.firestore.FieldValue.serverTimestamp(),
+              });
+            }
+
+            // Add to vault
+            await db.doc(`vaults/${userId}/workers/${wsWorkerId}`).set({
+              workerId: wsWorkerId,
+              workerName: wsWorkerName,
+              slug: wsWorkerId,
+              subscriptionId: wsSubscriptionId || null,
+              addedAt: admin.firestore.FieldValue.serverTimestamp(),
+              source: "stripe_checkout",
+            });
+
+            // Queue opening message
+            await db.collection("workerMessages").add({
+              userId,
+              workerId: wsWorkerId,
+              direction: "worker_to_user",
+              message: `Hi, I'm ${wsWorkerName}. I'm ready to help. What would you like to start with?`,
+              createdAt: admin.firestore.FieldValue.serverTimestamp(),
+              read: false,
+            });
+
+            // Store Stripe subscription ID on user doc
+            if (data.subscription) {
+              await db.collection("users").doc(userId).set({
+                stripeSubscriptionId: data.subscription,
+                stripeSubscriptionStatus: "trialing",
+              }, { merge: true });
+            }
+
+            await logActivity("revenue", `Worker subscription: ${wsWorkerName} for ${userId}`, "success", {
+              workerId: wsWorkerId, userId,
+            });
+          }
+          break;
+        }
+
         // Balance top-up (34.11-T2)
         if (checkoutType === "balance_topup" && userId) {
           const { creditBalanceFromCheckout } = require("./usageProcessor");

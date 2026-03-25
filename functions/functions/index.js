@@ -4526,6 +4526,126 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       }
     }
 
+    // POST /v1/worker:checkout — Create Stripe Checkout session for paid worker
+    if (route === "/worker:checkout" && method === "POST") {
+      let userId = null;
+      const ckToken = getAuthBearerToken(req);
+      if (ckToken) {
+        try { const decoded = await admin.auth().verifyIdToken(ckToken); userId = decoded.uid; }
+        catch (e) { console.warn("[worker:checkout] token invalid, trying guestId"); }
+      }
+      if (!userId && body.guestId) userId = `guest-${body.guestId}`;
+      if (!userId) return jsonError(res, 401, "Authentication required");
+
+      const { email, workerId, slug } = body;
+      if (!email || !email.includes("@")) return jsonError(res, 400, "Valid email required");
+      const lookupId = slug || workerId;
+      if (!lookupId) return jsonError(res, 400, "Missing workerId or slug");
+
+      try {
+        const dwSnap = await db.doc(`digitalWorkers/${lookupId}`).get();
+        if (!dwSnap.exists) return jsonError(res, 404, "Worker not found");
+        const workerDoc = { ...dwSnap.data(), workerId: dwSnap.id };
+
+        const workerPrice = workerDoc.pricing_tier || workerDoc.price || 0;
+        if (workerPrice === 0) return jsonError(res, 400, "Use worker:subscribe for free workers");
+
+        // Check already subscribed
+        const existingSub = await db.collection("subscriptions")
+          .where("userId", "==", userId)
+          .where("workerId", "==", lookupId)
+          .where("status", "in", ["active", "active_trial", "trial"])
+          .limit(1).get();
+        if (!existingSub.empty) return res.json({ ok: true, subscribed: true, message: "Already subscribed" });
+
+        // Get or create Stripe customer
+        const stripe = getStripe();
+        let customerId = null;
+        if (!userId.startsWith("guest-")) {
+          const userSnap = await db.collection("users").doc(userId).get();
+          if (userSnap.exists) customerId = userSnap.data().stripeCustomerId || null;
+        }
+        if (!customerId) {
+          const customer = await stripe.customers.create({ email, metadata: { userId } });
+          customerId = customer.id;
+          await db.collection("users").doc(userId).set(
+            { email, stripeCustomerId: customerId, createdAt: nowServerTs() },
+            { merge: true }
+          );
+        }
+
+        // Create pending subscription
+        const workerName = workerDoc.name || workerDoc.display_name || "Digital Worker";
+        const subRef = await db.collection("subscriptions").add({
+          userId,
+          workerId: lookupId,
+          slug: lookupId,
+          workerName,
+          price: workerPrice,
+          status: "pending_payment",
+          stripeCustomerId: customerId,
+          email,
+          createdAt: nowServerTs(),
+        });
+
+        // Create Stripe Checkout session
+        const origin = req.headers.origin || "https://app.titleapp.ai";
+        const session = await stripe.checkout.sessions.create({
+          mode: "subscription",
+          customer: customerId,
+          line_items: [{
+            price_data: {
+              currency: "usd",
+              recurring: { interval: "month" },
+              product_data: { name: workerName },
+              unit_amount: workerPrice * 100,
+            },
+            quantity: 1,
+          }],
+          subscription_data: {
+            trial_period_days: 14,
+            metadata: { userId, workerId: lookupId },
+          },
+          metadata: {
+            type: "worker_subscription",
+            userId,
+            workerId: lookupId,
+            workerName,
+            subscriptionId: subRef.id,
+          },
+          success_url: `${origin}?worker_checkout=success&workerId=${encodeURIComponent(lookupId)}`,
+          cancel_url: `${origin}?worker_checkout=cancelled&workerId=${encodeURIComponent(lookupId)}`,
+        });
+
+        await subRef.update({ stripeCheckoutSessionId: session.id });
+        console.log(`[worker:checkout] ${userId} — ${lookupId} $${workerPrice}/mo, session ${session.id}`);
+        return res.json({ ok: true, checkoutUrl: session.url, sessionId: session.id });
+      } catch (e) {
+        console.error("[worker:checkout] error:", e.message);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // GET /v1/worker:checkoutStatus — Poll for checkout completion
+    if (route === "/worker:checkoutStatus" && (method === "GET" || method === "POST")) {
+      const qWorkerId = req.query?.workerId || body.workerId;
+      const qUserId = req.query?.userId || body.userId;
+      if (!qWorkerId || !qUserId) return jsonError(res, 400, "workerId and userId required");
+
+      try {
+        const subSnap = await db.collection("subscriptions")
+          .where("userId", "==", qUserId)
+          .where("workerId", "==", qWorkerId)
+          .where("status", "in", ["active", "active_trial", "trial"])
+          .limit(1).get();
+        if (!subSnap.empty) return res.json({ ok: true, status: "complete", subscribed: true });
+        return res.json({ ok: true, status: "pending" });
+      } catch (e) {
+        console.error("[worker:checkoutStatus] error:", e.message);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
     // All other routes require Firebase auth
     const auth = await requireFirebaseUser(req, res);
     if (auth.handled) return;
