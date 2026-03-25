@@ -86,6 +86,7 @@ export default function MeetAlex() {
           campaignSlug: vertical,
           utmSource: "meet-alex",
           utmMedium: "guest-chat",
+          selectedWorker: previewWorkerRef.current?.slug || previewWorkerRef.current?.workerId || null,
         }),
       });
       const data = await res.json();
