@@ -114,7 +114,7 @@ async function sendMagicLink(req, res) {
 
   // Build magic link URL
   const baseUrl = "https://app.titleapp.ai";
-  const magicUrl = `${baseUrl}/magic?token=${token}&worker=${workerSlug || workerId}`;
+  const magicUrl = `${baseUrl}/auth/magic?token=${token}&worker=${workerSlug || workerId}`;
 
   // Send email
   const displayName = workerName || "your AI worker";
@@ -243,6 +243,49 @@ async function verifyMagicLink(req, res) {
   const { startTrial } = require("./workerTrial");
   const trialResult = await startTrial(uid, linkData.workerId);
 
+  // Transfer guest subscriptions to real UID
+  const guestId = req.body.guestId;
+  let transferred = 0;
+  if (guestId) {
+    try {
+      const guestUid = `guest-${guestId}`;
+      const guestSubs = await db.collection("subscriptions")
+        .where("userId", "==", guestUid)
+        .where("status", "==", "active")
+        .get();
+
+      for (const subDoc of guestSubs.docs) {
+        const sub = subDoc.data();
+        // Check if user already has this worker
+        const existing = await db.collection("subscriptions")
+          .where("userId", "==", uid)
+          .where("workerId", "==", sub.workerId)
+          .where("status", "==", "active")
+          .limit(1).get();
+        if (existing.empty) {
+          // Transfer subscription
+          await subDoc.ref.update({ userId: uid });
+          // Transfer vault entry
+          const vaultSnap = await db.doc(`vaults/${guestUid}/workers/${sub.workerId}`).get();
+          if (vaultSnap.exists) {
+            await db.doc(`vaults/${uid}/workers/${sub.workerId}`).set(vaultSnap.data());
+            await vaultSnap.ref.delete();
+          }
+          transferred++;
+        } else {
+          // Duplicate — delete guest subscription
+          await subDoc.ref.delete();
+          await db.doc(`vaults/${guestUid}/workers/${sub.workerId}`).delete();
+        }
+      }
+      if (transferred > 0) {
+        console.log(`[magic-link:verify] Transferred ${transferred} guest subscriptions from ${guestUid} to ${uid}`);
+      }
+    } catch (transferErr) {
+      console.warn("[magic-link:verify] Guest subscription transfer failed:", transferErr.message);
+    }
+  }
+
   // Generate Firebase custom token
   const customToken = await admin.auth().createCustomToken(uid);
 
@@ -254,6 +297,7 @@ async function verifyMagicLink(req, res) {
     workerId: linkData.workerId,
     workerSlug: linkData.workerSlug,
     trial: trialResult,
+    transferred,
   });
 }
 

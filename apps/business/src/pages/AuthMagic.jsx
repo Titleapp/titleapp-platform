@@ -15,7 +15,14 @@ export default function AuthMagic() {
       if (!token) { setStatus("error"); setErrorMsg("No token provided"); return; }
 
       try {
-        const res = await fetch(`${API_BASE}/api?path=/v1/auth:verifyMagicLink&token=${encodeURIComponent(token)}`);
+        // Send guestId so backend can transfer guest subscriptions to real UID
+        const guestId = localStorage.getItem("ta_guest_id") || null;
+
+        const res = await fetch(`${API_BASE}/api?path=/v1/magic-link:verify`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token, guestId }),
+        });
         const data = await res.json();
 
         if (!data.ok) {
@@ -25,17 +32,17 @@ export default function AuthMagic() {
         }
 
         // Sign in with Firebase custom token
-        const cred = await signInWithCustomToken(auth, data.firebaseToken);
+        const cred = await signInWithCustomToken(auth, data.customToken);
         const idToken = await cred.user.getIdToken(true);
         localStorage.setItem("ID_TOKEN", idToken);
 
         // Promote guest session if guestId present
-        if (data.guestId) {
+        if (guestId) {
           try {
             await fetch(`${API_BASE}/api?path=/v1/alex:promoteGuest`, {
               method: "POST",
               headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
-              body: JSON.stringify({ guestId: data.guestId, uid: cred.user.uid }),
+              body: JSON.stringify({ guestId, uid: cred.user.uid }),
             });
           } catch { /* non-fatal */ }
         }
