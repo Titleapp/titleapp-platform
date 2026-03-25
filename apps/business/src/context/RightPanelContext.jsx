@@ -8,9 +8,12 @@ export function RightPanelProvider({ children, initialState, initialVertical, in
   const [verticalLabel, setVerticalLabel] = useState(initialVerticalLabel || null);
   const [workers, setWorkers] = useState([]);
   const [selectedWorker, setSelectedWorker] = useState(null);
+  const [activeWorkerData, setActiveWorkerData] = useState(null);
   const originRef = useRef(initialState || "STATE-1");
 
   const showRecommendations = useCallback((workerList, detectedVertical, detectedLabel) => {
+    // Lock: never revert from WORKSPACE_HOME — worker stays open until user explicitly leaves
+    if (state === "WORKSPACE_HOME") return;
     // STATE-2 visitors: only accept workers matching their vertical (containment)
     if (state === "STATE-2" && detectedVertical && detectedVertical !== vertical) return;
     if (workerList && workerList.length > 0) setWorkers(workerList);
@@ -20,9 +23,11 @@ export function RightPanelProvider({ children, initialState, initialVertical, in
   }, [state, vertical]);
 
   const showWorkerDetail = useCallback((worker) => {
+    // Lock: never revert from WORKSPACE_HOME
+    if (state === "WORKSPACE_HOME") return;
     setSelectedWorker(worker);
     setState("STATE-4");
-  }, []);
+  }, [state]);
 
   const goBack = useCallback(() => {
     setSelectedWorker(null);
@@ -38,6 +43,11 @@ export function RightPanelProvider({ children, initialState, initialVertical, in
     setSelectedWorker(null);
   }, []);
 
+  const showWorkerHome = useCallback((workerData) => {
+    setActiveWorkerData(workerData);
+    setState("WORKSPACE_HOME");
+  }, []);
+
   const clearVerticalFilter = useCallback(() => {
     setVertical(null);
     setVerticalLabel(null);
@@ -45,10 +55,15 @@ export function RightPanelProvider({ children, initialState, initialVertical, in
     setState("STATE-1");
   }, []);
 
+  const leaveWorkspace = useCallback(() => {
+    setActiveWorkerData(null);
+    setState(originRef.current);
+  }, []);
+
   return (
     <RightPanelContext.Provider value={{
-      state, vertical, verticalLabel, workers, selectedWorker,
-      showRecommendations, showWorkerDetail, goBack, dismiss, clearVerticalFilter,
+      state, vertical, verticalLabel, workers, selectedWorker, activeWorkerData,
+      showRecommendations, showWorkerDetail, showWorkerHome, goBack, dismiss, clearVerticalFilter, leaveWorkspace,
       setWorkers,
     }}>
       {children}

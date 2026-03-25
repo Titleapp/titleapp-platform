@@ -55,6 +55,25 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
     return () => window.removeEventListener("ta:workspace-changed", handleWorkspaceChange);
   }, []);
 
+  // Auto-open worker from URL param or sessionStorage after auth
+  const autoWorkerHandled = useRef(false);
+  useEffect(() => {
+    if (guestMode || workspaces.length === 0 || autoWorkerHandled.current) return;
+    const params = new URLSearchParams(window.location.search);
+    const workerSlug = params.get("worker") || sessionStorage.getItem("ta_auto_worker");
+    if (!workerSlug) return;
+    autoWorkerHandled.current = true;
+    sessionStorage.removeItem("ta_auto_worker");
+    params.delete("worker");
+    const qs = params.toString();
+    window.history.replaceState({}, "", qs ? `/?${qs}` : "/");
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent("ta:select-worker", {
+        detail: { slug: workerSlug, name: workerSlug },
+      }));
+    }, 500);
+  }, [workspaces, guestMode]);
+
   async function loadTenantInfo() {
     try {
       const vertical = localStorage.getItem("VERTICAL") || "auto";

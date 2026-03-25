@@ -139,6 +139,20 @@ const VALID_STATUSES = ["draft", "waitlist", "live", "development"];
 
 const VALID_DIGEST_OPTIONS = ["daily", "weekly", "none"];
 
+// Platform substrate — 8 capabilities available to every worker
+const DEFAULT_PLATFORM_SUBSTRATE = {
+  email: true,
+  sms: true,
+  documentGeneration: true,
+  eSignatures: true,
+  vault: true,
+  auditTrail: true,
+  payments: true,
+  identityVerification: false,
+};
+
+const VALID_QUALITY_STATUSES = ["unaudited", "red", "yellow", "green"];
+
 const DEFAULT_NOTIFICATION_CONFIG = {
   onSubscribe: { email: true, sms: false },
   onCancel:    { email: true, sms: false },
@@ -601,6 +615,46 @@ function validateWorkerRecord(record, opts = {}) {
         if (!VALID_VALUE_BUCKETS.includes(v))
           errors.push(`valueBucket[${idx}]: "${v}" is not valid. Must be one of: ${VALID_VALUE_BUCKETS.join(", ")}`);
       });
+    }
+  }
+
+  // 36. workspaceLaunchPage — prePublish gate
+  if (record.workspaceLaunchPage !== undefined) {
+    const lp = record.workspaceLaunchPage;
+    if (typeof lp !== "object" || lp === null) {
+      errors.push("workspaceLaunchPage: must be an object if provided");
+    } else {
+      if (!lp.tagline || typeof lp.tagline !== "string" || !lp.tagline.trim()) {
+        errors.push("workspaceLaunchPage.tagline: required non-empty string");
+      }
+      if (!lp.whatYoullHave || typeof lp.whatYoullHave !== "string" || !lp.whatYoullHave.trim()) {
+        errors.push("workspaceLaunchPage.whatYoullHave: required non-empty string");
+      }
+      if (!Array.isArray(lp.quickStartPrompts) || lp.quickStartPrompts.length !== 3) {
+        errors.push("workspaceLaunchPage.quickStartPrompts: must be an array of exactly 3 items");
+      }
+    }
+  }
+
+  // 37. platformSubstrate — prePublish gate
+  if (record.platformSubstrate !== undefined) {
+    const ps = record.platformSubstrate;
+    if (typeof ps !== "object" || ps === null) {
+      errors.push("platformSubstrate: must be an object if provided");
+    } else {
+      const requiredKeys = ["email", "sms", "documentGeneration", "eSignatures", "vault", "auditTrail", "payments", "identityVerification"];
+      for (const key of requiredKeys) {
+        if (ps[key] === undefined) {
+          errors.push(`platformSubstrate.${key}: required boolean field`);
+        }
+      }
+    }
+  }
+
+  // 38. qualityStatus — enum
+  if (record.qualityStatus !== undefined) {
+    if (!VALID_QUALITY_STATUSES.includes(record.qualityStatus)) {
+      errors.push(`qualityStatus: "${record.qualityStatus}" is not valid. Must be one of: ${VALID_QUALITY_STATUSES.join(", ")}`);
     }
   }
 
@@ -1070,6 +1124,31 @@ function autoFixWorkerRecord(record, description) {
     };
   }
 
+  // Fix platformSubstrate — add defaults if missing
+  if (!record.platformSubstrate || typeof record.platformSubstrate !== "object") {
+    record.platformSubstrate = { ...DEFAULT_PLATFORM_SUBSTRATE };
+  }
+
+  // Fix workspaceLaunchPage — add empty defaults if missing
+  if (!record.workspaceLaunchPage || typeof record.workspaceLaunchPage !== "object") {
+    record.workspaceLaunchPage = {
+      tagline: "",
+      valueProp: "",
+      whatYoullHave: "",
+      quickStartPrompts: [],
+      activeSubstrateFeatures: ["auditTrail", "vault"],
+    };
+  }
+
+  // Fix verticalIntegrations — add empty array if missing
+  if (!Array.isArray(record.verticalIntegrations)) {
+    record.verticalIntegrations = [];
+  }
+
+  // Fix quality fields — add unaudited defaults if missing
+  if (record.qualityStatus === undefined) record.qualityStatus = "unaudited";
+  if (record.qualityScore === undefined) record.qualityScore = null;
+
   // Fix notifications — add default config if missing
   if (!record.notifications || typeof record.notifications !== "object") {
     record.notifications = { ...DEFAULT_NOTIFICATION_CONFIG };
@@ -1109,4 +1188,6 @@ module.exports = {
   validateDocumentControl,
   parsePriceTier,
   slugify,
+  DEFAULT_PLATFORM_SUBSTRATE,
+  VALID_QUALITY_STATUSES,
 };

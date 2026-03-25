@@ -12,6 +12,7 @@ export default function AuthMagic() {
     async function verify() {
       const params = new URLSearchParams(window.location.search);
       const token = params.get("token");
+      const workerParam = params.get("worker");
       if (!token) { setStatus("error"); setErrorMsg("No token provided"); return; }
 
       try {
@@ -68,10 +69,14 @@ export default function AuthMagic() {
 
         setStatus("success");
 
-        // Redirect to vault with context
+        // Redirect to vault with context — preserve worker slug for auto-open
         const vertical = data.vertical || "";
+        const workerSlug = workerParam || data.workerSlug || "";
         setTimeout(() => {
-          window.location.href = "/?promoted=true" + (vertical ? "&vertical=" + vertical : "") + "&utm_source=magic-link";
+          window.location.href = "/?promoted=true"
+            + (vertical ? "&vertical=" + vertical : "")
+            + (workerSlug ? "&worker=" + workerSlug : "")
+            + "&utm_source=magic-link";
         }, 1000);
       } catch (err) {
         setStatus("error");

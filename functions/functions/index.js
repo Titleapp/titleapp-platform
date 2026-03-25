@@ -1242,6 +1242,117 @@ exports.api = onRequest(
           }
         }
 
+        // ── Worker-specific chat: bypass Alex entirely when a worker is active ──
+        if (body.selectedWorker && body.selectedWorker !== "chief-of-staff" && !action && userInput) {
+          const workerSlug = body.selectedWorker;
+          try {
+            const dwSnap = await db.doc(`digitalWorkers/${workerSlug}`).get();
+            if (dwSnap.exists) {
+              const dw = dwSnap.data();
+              const workerName = dw.display_name || dw.name || workerSlug;
+              const headline = dw.headline || dw.capabilitySummary || "";
+              const capabilities = dw.capabilitySummary || headline || "";
+
+              // Build RAAS tier 0-3 rules
+              const raasSections = [];
+              const tier0 = Array.isArray(dw.raas_tier_0) ? dw.raas_tier_0 : [];
+              const tier1 = Array.isArray(dw.raas_tier_1) ? dw.raas_tier_1 : (typeof dw.raas_tier_1 === "object" ? Object.values(dw.raas_tier_1) : []);
+              const tier2 = Array.isArray(dw.raas_tier_2) ? dw.raas_tier_2 : (typeof dw.raas_tier_2 === "object" ? Object.values(dw.raas_tier_2) : []);
+              const tier3 = Array.isArray(dw.raas_tier_3) ? dw.raas_tier_3 : (typeof dw.raas_tier_3 === "object" ? Object.values(dw.raas_tier_3) : []);
+
+              if (tier0.length) raasSections.push("GLOBAL RULES:\n" + tier0.map((r, i) => `${i + 1}. ${r}`).join("\n"));
+              if (tier1.length) raasSections.push("CORE RULES:\n" + tier1.map((r, i) => `${i + 1}. ${r}`).join("\n"));
+              if (tier2.length) raasSections.push("VERTICAL RULES:\n" + tier2.map((r, i) => `${i + 1}. ${r}`).join("\n"));
+              if (tier3.length) raasSections.push("WORKER-SPECIFIC RULES:\n" + tier3.map((r, i) => `${i + 1}. ${r}`).join("\n"));
+
+              const workerPrompt = `You are ${workerName}, a Digital Worker on TitleApp.
+${headline}
+
+WHAT YOU DO:
+${capabilities}
+
+${raasSections.length > 0 ? "BEHAVIORAL RULES (MANDATORY):\n" + raasSections.join("\n\n") : ""}
+
+FORMATTING RULES -- follow these strictly:
+- Never use emojis in your responses.
+- Never use markdown formatting such as asterisks, bold, italic, or headers.
+- Never use bullet points or numbered lists unless the user explicitly asks for a list.
+- Write in complete, clean sentences. Use plain text only.
+- Keep your tone warm but professional -- direct, calm, no hype.
+
+RESPONSE LENGTH:
+Keep ALL chat responses under 500 words. For longer deliverables, use GENERATE_DOCUMENT markers.
+
+IDENTITY RULES:
+1. You are ${workerName}. Never say you are Alex or Chief of Staff.
+2. Stay within your domain of expertise described above. If the user asks about something outside your scope, say "That is outside my area. Want me to route you to Alex or another worker?"
+3. Workers are called Digital Workers -- never call them tools, chatbots, agents, or GPTs.
+4. Never call yourself an AI assistant, chatbot, or helper.`;
+
+              // Load conversation history
+              if (!sessionState.salesHistory) sessionState.salesHistory = [];
+              const messages = [
+                ...sessionState.salesHistory.map(h => ({ role: h.role, content: h.content })),
+                { role: 'user', content: userInput },
+              ];
+
+              const anthropic = getAnthropic();
+              const aiResponse = await anthropic.messages.create({
+                model: 'claude-sonnet-4-5-20250929',
+                max_tokens: 1024,
+                system: workerPrompt,
+                messages,
+              });
+
+              let aiText = aiResponse.content[0]?.text || `I'm ${workerName}. How can I help?`;
+
+              // Update conversation history
+              sessionState.salesHistory.push({ role: 'user', content: userInput });
+              sessionState.salesHistory.push({ role: 'assistant', content: aiText });
+              if (sessionState.salesHistory.length > 30) {
+                sessionState.salesHistory = sessionState.salesHistory.slice(-30);
+              }
+
+              // Persist session
+              await sessionRef.set({
+                state: sessionState,
+                surface: 'worker',
+                activeWorker: workerSlug,
+                userId: authUser ? authUser.uid : null,
+                ...(sessionSnap.exists ? {} : { createdAt: nowServerTs() }),
+                updatedAt: nowServerTs(),
+              }, { merge: true });
+
+              // Audit log
+              try {
+                await db.collection("messageEvents").add({
+                  tenantId: "titleapp-worker",
+                  userId: authUser ? authUser.uid : `anon_${sessionId}`,
+                  type: "chat:message:worker",
+                  message: userInput,
+                  response: aiText,
+                  workerSlug,
+                  createdAt: nowServerTs(),
+                });
+              } catch (auditErr) {
+                console.warn("worker chat audit failed:", auditErr.message);
+              }
+
+              console.log(`[chatEngine] Worker-direct response for: ${workerSlug} (${workerName})`);
+
+              // Clean response — no detectedVertical, no workerCards, no Alex markers
+              return res.json({
+                ok: true,
+                message: aiText,
+                conversationState: 'worker_active',
+              });
+            }
+          } catch (workerErr) {
+            console.error(`[chatEngine] Worker handler failed for ${workerSlug}:`, workerErr.message);
+            // Fall through to sales mode
+          }
+        }
+
         // ── Sales Mode: prospect-first experience from campaigns/referrals ──
         if ((surface === 'sales' || sessionState.step === 'sales_discovery') && !action && userInput) {
           if (!sessionState.salesHistory) sessionState.salesHistory = [];

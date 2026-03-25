@@ -572,6 +572,17 @@ export default function RightPanel() {
     return (
       <div style={S.wrap}>
         <div style={{ padding: 24, flex: 1, display: "flex", flexDirection: "column" }}>
+          <button
+            onClick={() => panel.leaveWorkspace()}
+            style={{
+              display: "flex", alignItems: "center", gap: 4, background: "none",
+              border: "none", color: "#7c3aed", fontSize: 13, fontWeight: 500,
+              cursor: "pointer", padding: 0, marginBottom: 16, fontFamily: "inherit",
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
+            Back to {panel.verticalLabel || "workers"}
+          </button>
           <div style={{ fontSize: 20, fontWeight: 700, color: "#111827", marginBottom: 4 }}>
             {w.name || w.display_name}
           </div>

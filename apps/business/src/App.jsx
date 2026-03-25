@@ -4665,10 +4665,20 @@ export default function App() {
       if (result?.user) {
         result.user.getIdToken(true).then((idToken) => {
           localStorage.setItem("ID_TOKEN", idToken);
+          const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+          // Transfer subscriptions from anonymous session if applicable
+          const storedAnonUid = sessionStorage.getItem("ta_pre_link_anon_uid");
+          if (storedAnonUid && storedAnonUid !== result.user.uid) {
+            fetch(`${apiBase}/api?path=/v1/subscription:transfer`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+              body: JSON.stringify({ fromUid: storedAnonUid, toUid: result.user.uid }),
+            }).catch(() => {});
+            sessionStorage.removeItem("ta_pre_link_anon_uid");
+          }
           // Call promoteGuest to link guest session to authenticated user
           const guestId = sessionStorage.getItem("ta_guest_sid");
           if (guestId) {
-            const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
             fetch(`${apiBase}/api?path=/v1/alex:promoteGuest`, {
               method: "POST",
               headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
