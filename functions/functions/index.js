@@ -8937,6 +8937,71 @@ RULES YOU MUST FOLLOW:
               }
             }
 
+            // ── Worker-specific prompt: if a worker is selected, override Alex prompt ──
+            if (alexSystemPrompt && body.selectedWorker && body.selectedWorker !== "chief-of-staff") {
+              try {
+                const workerSlug = body.selectedWorker;
+                const dwSnap = await db.doc(`digitalWorkers/${workerSlug}`).get();
+                if (dwSnap.exists) {
+                  const dw = dwSnap.data();
+                  const workerName = dw.display_name || dw.name || workerSlug;
+                  const headline = dw.headline || dw.capabilitySummary || "";
+                  const capabilities = dw.capabilitySummary || headline || "";
+
+                  // Assemble RAAS rules from tiers
+                  const raasSections = [];
+                  const tier0 = Array.isArray(dw.raas_tier_0) ? dw.raas_tier_0 : [];
+                  const tier1 = Array.isArray(dw.raas_tier_1) ? dw.raas_tier_1 : (typeof dw.raas_tier_1 === "object" ? Object.values(dw.raas_tier_1) : []);
+                  const tier2 = Array.isArray(dw.raas_tier_2) ? dw.raas_tier_2 : (typeof dw.raas_tier_2 === "object" ? Object.values(dw.raas_tier_2) : []);
+                  const tier3 = Array.isArray(dw.raas_tier_3) ? dw.raas_tier_3 : (typeof dw.raas_tier_3 === "object" ? Object.values(dw.raas_tier_3) : []);
+
+                  if (tier0.length) raasSections.push("GLOBAL RULES:\n" + tier0.map((r, i) => `${i + 1}. ${r}`).join("\n"));
+                  if (tier1.length) raasSections.push("CORE RULES:\n" + tier1.map((r, i) => `${i + 1}. ${r}`).join("\n"));
+                  if (tier2.length) raasSections.push("VERTICAL RULES:\n" + tier2.map((r, i) => `${i + 1}. ${r}`).join("\n"));
+                  if (tier3.length) raasSections.push("WORKER-SPECIFIC RULES:\n" + tier3.map((r, i) => `${i + 1}. ${r}`).join("\n"));
+
+                  const wsVertical2 = ctx.vertical || workspace.vertical || "";
+                  const wsWorkers2 = body.subscribedWorkers || workspace.activeWorkers || [];
+                  const userName2 = (body.context || {}).userName || "";
+
+                  alexSystemPrompt = `You are ${workerName}, a Digital Worker on TitleApp.
+${headline}
+
+WHAT YOU DO:
+${capabilities}
+
+${raasSections.length > 0 ? "BEHAVIORAL RULES (MANDATORY):\n" + raasSections.join("\n\n") : ""}
+
+FORMATTING RULES -- follow these strictly:
+- Never use emojis in your responses.
+- Never use markdown formatting such as asterisks, bold, italic, or headers.
+- Never use bullet points or numbered lists unless the user explicitly asks for a list.
+- Write in complete, clean sentences. Use plain text only.
+- Keep your tone warm but professional -- direct, calm, no hype.
+
+RESPONSE LENGTH:
+Keep ALL chat responses under 500 words. For longer deliverables, use GENERATE_DOCUMENT markers.
+
+WORKSPACE CONTEXT:
+User name: ${userName2 || "unknown"}
+Active team: ${(body.context || {}).workspaceName || "unknown"} (${wsVertical2 || "unknown"})
+Subscribed workers in this team: ${wsWorkers2.join(", ") || "none"}
+
+IDENTITY RULES:
+1. You are ${workerName}. Never say you are Alex or Chief of Staff.
+2. Stay within your domain of expertise described above. If the user asks about something outside your scope, say "That is outside my area. Want me to route you to Alex or another worker?"
+3. Workers are called Digital Workers -- never call them tools, chatbots, agents, or GPTs.
+4. Never call yourself an AI assistant, chatbot, or helper.`;
+
+                  console.log(`[chat:message] Using worker-specific prompt for: ${workerSlug} (${workerName})`);
+                } else {
+                  console.warn(`[chat:message] selectedWorker "${workerSlug}" not found in digitalWorkers, using Alex prompt`);
+                }
+              } catch (workerPromptErr) {
+                console.warn("[chat:message] Worker prompt build failed, using Alex:", workerPromptErr.message);
+              }
+            }
+
             const personalSystemPrompt = `You are the user's personal Chief of Staff in their TitleApp Vault. You do everything for them directly in this chat. You create records, store files, manage logbooks, handle attestations, and organize their entire digital life. The dashboard is a read-only view into what you have already done -- the user never needs to leave this chat to accomplish anything.
 
 Your role:

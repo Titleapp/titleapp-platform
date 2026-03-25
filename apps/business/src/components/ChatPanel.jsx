@@ -172,6 +172,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
   const [lastContextStep, setLastContextStep] = useState(null);
   const conversationRef = useRef(null);
   const [activeWorkerName, setActiveWorkerName] = useState(null);
+  const [activeWorkerSlug, setActiveWorkerSlug] = useState(null);
 
   const [dealContext, setDealContext] = useState(null);
   const [attachedFiles, setAttachedFiles] = useState([]);
@@ -270,6 +271,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
       const { slug, name, description, suggestions: workerSuggestions } = e.detail || {};
       if (!name) return;
       setActiveWorkerName(name);
+      setActiveWorkerSlug(slug || null);
 
       // First-session check for subscribers
       const firstSessionKey = "ta_first_session_" + (slug || name);
@@ -1079,6 +1081,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
         },
         body: JSON.stringify({
           message: userMessage,
+          selectedWorker: activeWorkerSlug || null,
           subscribedWorkers: (() => { try { return JSON.parse(localStorage.getItem("ACTIVE_WORKERS") || "[]"); } catch { return []; } })(),
           ...(filePayload ? { file: filePayload } : {}),
           ...(filesPayload && filesPayload.length > 1 ? { files: filesPayload } : {}),
