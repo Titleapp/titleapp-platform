@@ -68,7 +68,7 @@ async function sendEmail({ to, subject, htmlBody }) {
  */
 async function sendMagicLink(req, res) {
   const db = getDb();
-  const { email, workerId, workerSlug, workerName, creatorName } = req.body || {};
+  const { email, workerId, workerSlug, workerName, creatorName, preAuthUid } = req.body || {};
 
   if (!email) return res.status(400).json({ ok: false, error: "email required" });
   if (!workerId) return res.status(400).json({ ok: false, error: "workerId required" });
@@ -106,6 +106,7 @@ async function sendMagicLink(req, res) {
     workerSlug: workerSlug || null,
     workerName: workerName || null,
     creatorName: creatorName || null,
+    preAuthUid: preAuthUid || null,
     createdAt: now,
     expiresAt,
     usedAt: null,
@@ -213,29 +214,56 @@ async function verifyMagicLink(req, res) {
   const email = linkData.email;
 
   // Find or create Firebase Auth user
+  // If preAuthUid is present (anonymous session), upgrade it instead of creating new
   let uid;
-  try {
-    const userRecord = await admin.auth().getUserByEmail(email);
-    uid = userRecord.uid;
-  } catch (e) {
-    if (e.code === "auth/user-not-found") {
-      // Create new user
-      const newUser = await admin.auth().createUser({
-        email,
-        emailVerified: true,
-      });
-      uid = newUser.uid;
+  const preAuthUid = linkData.preAuthUid || null;
 
-      // Create Firestore user doc
+  if (preAuthUid) {
+    try {
+      const existingUser = await admin.auth().getUser(preAuthUid);
+      // Upgrade anonymous user — add email, keep same UID
+      if (!existingUser.email) {
+        await admin.auth().updateUser(preAuthUid, { email, emailVerified: true });
+        console.log(`[magic-link:verify] Upgraded anonymous user ${preAuthUid} with email ${email}`);
+      }
+      uid = preAuthUid;
+
+      // Update Firestore user doc
       await db.collection("users").doc(uid).set({
         email,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        source: "magic_link",
+        upgradedAt: admin.firestore.FieldValue.serverTimestamp(),
+        source: "magic_link_upgrade",
         sourceWorkerId: linkData.workerId,
         sourceWorkerSlug: linkData.workerSlug || null,
       }, { merge: true });
-    } else {
-      throw e;
+    } catch (upgradeErr) {
+      console.warn("[magic-link:verify] Could not upgrade pre-auth user, falling through:", upgradeErr.message);
+      // Fall through to normal find-or-create flow
+    }
+  }
+
+  if (!uid) {
+    try {
+      const userRecord = await admin.auth().getUserByEmail(email);
+      uid = userRecord.uid;
+    } catch (e) {
+      if (e.code === "auth/user-not-found") {
+        const newUser = await admin.auth().createUser({
+          email,
+          emailVerified: true,
+        });
+        uid = newUser.uid;
+
+        await db.collection("users").doc(uid).set({
+          email,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          source: "magic_link",
+          sourceWorkerId: linkData.workerId,
+          sourceWorkerSlug: linkData.workerSlug || null,
+        }, { merge: true });
+      } else {
+        throw e;
+      }
     }
   }
 

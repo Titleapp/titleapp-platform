@@ -159,6 +159,10 @@ function WorkerCard({ worker, onSelect }) {
     setError("");
 
     try {
+      // Store current UID so magic link verify can upgrade instead of creating new session
+      const currentUid = auth.currentUser?.uid || null;
+      if (currentUid) sessionStorage.setItem("ta_pre_magic_uid", currentUid);
+
       const workerId = worker.workerId || worker.slug;
       const vertical = new URLSearchParams(window.location.search).get("vertical") || "";
       const res = await fetch(`${API_BASE}/api?path=/v1/magic-link:send`, {
@@ -171,6 +175,7 @@ function WorkerCard({ worker, onSelect }) {
           workerName: worker.name,
           vertical,
           utmSource: "meet-alex",
+          preAuthUid: currentUid,
         }),
       });
       const data = await res.json();

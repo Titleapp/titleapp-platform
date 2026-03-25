@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { auth } from "../firebase";
-import { signInWithCustomToken } from "firebase/auth";
+import { signInWithCustomToken, EmailAuthProvider, linkWithCredential } from "firebase/auth";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
 
@@ -15,13 +15,15 @@ export default function AuthMagic() {
       if (!token) { setStatus("error"); setErrorMsg("No token provided"); return; }
 
       try {
-        // Send guestId so backend can transfer guest subscriptions to real UID
         const guestId = localStorage.getItem("ta_guest_id") || null;
+        // Check for stored anonymous UID from pre-magic-link session
+        const preAuthUid = sessionStorage.getItem("ta_pre_magic_uid")
+          || (auth.currentUser?.isAnonymous ? auth.currentUser.uid : null);
 
         const res = await fetch(`${API_BASE}/api?path=/v1/magic-link:verify`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token, guestId }),
+          body: JSON.stringify({ token, guestId, preAuthUid }),
         });
         const data = await res.json();
 
@@ -31,10 +33,27 @@ export default function AuthMagic() {
           return;
         }
 
-        // Sign in with Firebase custom token
-        const cred = await signInWithCustomToken(auth, data.customToken);
-        const idToken = await cred.user.getIdToken(true);
+        // Upgrade anonymous session via linkWithCredential if possible,
+        // otherwise sign in with custom token
+        let idToken;
+        if (auth.currentUser?.isAnonymous && preAuthUid && data.uid === preAuthUid) {
+          // Backend upgraded the anonymous user — link credential to preserve UID
+          try {
+            const credential = EmailAuthProvider.credential(data.email, token);
+            await linkWithCredential(auth.currentUser, credential);
+            idToken = await auth.currentUser.getIdToken(true);
+          } catch {
+            // linkWithCredential may fail if email link auth isn't configured —
+            // fall back to signInWithCustomToken (same UID, session refreshed)
+            const cred = await signInWithCustomToken(auth, data.customToken);
+            idToken = await cred.user.getIdToken(true);
+          }
+        } else {
+          const cred = await signInWithCustomToken(auth, data.customToken);
+          idToken = await cred.user.getIdToken(true);
+        }
         localStorage.setItem("ID_TOKEN", idToken);
+        sessionStorage.removeItem("ta_pre_magic_uid");
 
         // Promote guest session if guestId present
         if (guestId) {
@@ -42,7 +61,7 @@ export default function AuthMagic() {
             await fetch(`${API_BASE}/api?path=/v1/alex:promoteGuest`, {
               method: "POST",
               headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
-              body: JSON.stringify({ guestId, uid: cred.user.uid }),
+              body: JSON.stringify({ guestId, uid: data.uid }),
             });
           } catch { /* non-fatal */ }
         }
