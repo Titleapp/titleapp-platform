@@ -6109,6 +6109,137 @@ These should be 2-3 realistic test scenarios the creator should try, derived fro
       }
     }
 
+    // ── Game Worker Endpoints ──────────────────────────────────────────
+
+    // POST /v1/game:detectMode — Detect RAAS mode (light vs regulated)
+    if (route === "/game:detectMode" && method === "POST") {
+      try {
+        const { detectRaasMode } = require("./services/game");
+        const result = detectRaasMode({
+          description: body.description || "",
+          vertical: body.vertical || "",
+          examScope: body.examScope || "",
+          mentions: Array.isArray(body.mentions) ? body.mentions : [],
+        });
+        return res.json({ ok: true, ...result });
+      } catch (e) {
+        console.error("game:detectMode failed:", e.message);
+        return jsonError(res, 500, "Mode detection failed");
+      }
+    }
+
+    // POST /v1/game:compileRules — Compile RAAS Light game rules
+    if (route === "/game:compileRules" && method === "POST") {
+      try {
+        const { compileGameRules } = require("./services/game");
+        const prompt = compileGameRules(body.gameConfig || {});
+        return res.json({ ok: true, prompt });
+      } catch (e) {
+        console.error("game:compileRules failed:", e.message);
+        return jsonError(res, 500, "Rule compilation failed");
+      }
+    }
+
+    // POST /v1/game:generateQuestions — Generate questions from vertical rule pack
+    if (route === "/game:generateQuestions" && method === "POST") {
+      try {
+        const { generateQuestions } = require("./services/game");
+        const result = await generateQuestions({
+          gameConfig: body.gameConfig || {},
+          rulePackContent: body.rulePackContent || undefined,
+        });
+        return res.json({ ok: true, ...result });
+      } catch (e) {
+        console.error("game:generateQuestions failed:", e.message);
+        return jsonError(res, 500, "Question generation failed");
+      }
+    }
+
+    // POST /v1/game:generateStressTest — Generate stress test prompts
+    if (route === "/game:generateStressTest" && method === "POST") {
+      try {
+        const { generateStressTestPrompts } = require("./services/game");
+        const prompts = await generateStressTestPrompts(body.gameConfig || {});
+        return res.json({ ok: true, prompts });
+      } catch (e) {
+        console.error("game:generateStressTest failed:", e.message);
+        return jsonError(res, 500, "Stress test generation failed");
+      }
+    }
+
+    // POST /v1/game:logEvent — Log game audit trail event
+    if (route === "/game:logEvent" && method === "POST") {
+      try {
+        const { logGameEvent } = require("./services/game");
+        const result = await logGameEvent({
+          session_id: body.session_id,
+          worker_id: body.worker_id,
+          subscriber_id: body.subscriber_id || auth.user.uid,
+          question_id: body.question_id,
+          answer_given: body.answer_given,
+          correct: body.correct,
+          rule_violated: body.rule_violated,
+        }, body.gameConfig || {});
+        return res.json({ ok: true, ...result });
+      } catch (e) {
+        console.error("game:logEvent failed:", e.message);
+        return jsonError(res, 500, "Audit log failed");
+      }
+    }
+
+    // POST /v1/game:ctaTrigger — Emit CTA trigger event (all worker types)
+    if (route === "/game:ctaTrigger" && method === "POST") {
+      try {
+        const { emitCtaTrigger } = require("./services/game");
+        const result = await emitCtaTrigger(body.trigger, {
+          userId: body.userId || auth.user.uid,
+          workerId: body.workerId,
+          workerName: body.workerName,
+          creatorHandle: body.creatorHandle,
+          sandboxUrl: body.sandboxUrl,
+          metadata: body.metadata,
+        });
+        return res.json(result);
+      } catch (e) {
+        console.error("game:ctaTrigger failed:", e.message);
+        return jsonError(res, 500, "CTA trigger failed");
+      }
+    }
+
+    // ── Image Generation ──────────────────────────────────────────────
+
+    // POST /v1/image:generate — Generate image via fal.ai
+    if (route === "/image:generate" && method === "POST") {
+      const { workerId, prompt, style, size } = body;
+      if (!workerId) return jsonError(res, 400, "Missing workerId");
+      if (!prompt || typeof prompt !== "string") return jsonError(res, 400, "Missing or invalid prompt");
+      if (prompt.length > 500) return jsonError(res, 400, "Prompt exceeds 500 character limit");
+      try {
+        const { generateImage } = require("./services/image");
+        // Detect vertical from worker record for PHI scrub
+        const workerRef = db.doc(`tenants/${auth.user.uid}/workers/${workerId}`);
+        const workerSnap = await workerRef.get();
+        const vertical = workerSnap.exists ? (workerSnap.data().intake?.vertical || "") : "";
+
+        const result = await generateImage({
+          prompt,
+          style: style || "cartoon",
+          size: size || "square",
+          workerId,
+          creatorId: auth.user.uid,
+          vertical,
+        });
+        if (result.error) {
+          const status = result.error === "rate_limit" ? 429 : 500;
+          return jsonError(res, status, result.message || result.error);
+        }
+        return res.json({ ok: true, ...result });
+      } catch (e) {
+        console.error("image:generate failed:", e.message);
+        return jsonError(res, 500, "Image generation failed");
+      }
+    }
+
     // ── Worker #1 — Digital Worker Creator Pipeline ──────────────────────
 
     // Platform-level rules (Tier 0) — imported from shared schema (single source of truth)
@@ -6170,6 +6301,48 @@ These should be 2-3 realistic test scenarios the creator should try, derived fro
         const worker = workerSnap.data();
         const intake = worker.intake;
         if (!intake) return res.json({ ok: false, error: "No intake data — run worker1:intake first" });
+
+        // ── RAAS Light bypass: game workers skip regulatory research ──
+        if (worker.gameConfig?.raasMode === "light") {
+          const gc = worker.gameConfig;
+          const gameTier1 = [
+            gc.winCondition ? `WIN: ${gc.winCondition}` : null,
+            gc.loseCondition ? `LOSE: ${gc.loseCondition}` : null,
+            ...(gc.constraints || []).map(c => `CONSTRAINT: ${c}`),
+          ].filter(Boolean);
+          const gameTier2 = [
+            `Feedback mode: ${gc.feedbackMode || "teach"}`,
+            `Rounds: ${gc.rounds || "unlimited"}`,
+            gc.feedbackMode === "teach"
+              ? "When player answers incorrectly, explain why and help them learn."
+              : "When player answers incorrectly, mark wrong and move on.",
+          ];
+          const gameTier3 = (intake.sops || []).slice(0, 50);
+
+          await workerRef.update({
+            buildPhase: "brief",
+            complianceBrief: {
+              summary: "Game design rules — RAAS Light. No regulatory citations required.",
+              regulationCount: 0,
+              jurisdictionNotes: "Not applicable — game worker with creator-defined rules.",
+              acknowledgedAt: null,
+            },
+            "raasLibrary.tier1": gameTier1,
+            "raasLibrary.tier2": gameTier2,
+            "raasLibrary.tier3": gameTier3,
+            requiresOperatorDocs: false,
+            documentControl: { requiresOperatorDocs: false, requiredDocTypes: [], advisoryWithoutDocs: true, blockWithoutDocs: false },
+            updatedAt: nowServerTs(),
+          });
+
+          console.log(`[worker1:research] RAAS Light bypass for ${workerId}: ${gameTier1.length} game rules, ${gameTier2.length} best practices`);
+          return res.json({
+            ok: true, raasMode: "light",
+            brief: { summary: "Game design rules — RAAS Light.", regulationCount: 0, jurisdictionNotes: "Not applicable." },
+            ruleCount: { tier0: TIER0_RULES.length, tier1: gameTier1.length, tier2: gameTier2.length, tier3: gameTier3.length, total: TIER0_RULES.length + gameTier1.length + gameTier2.length + gameTier3.length },
+            buildPhase: "brief",
+          });
+        }
 
         // Set researching phase
         await workerRef.update({ buildPhase: "researching", updatedAt: nowServerTs() });
@@ -6317,7 +6490,9 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
           });
         }
 
-        const updates = { buildPhase: "library", updatedAt: nowServerTs(), version: currentVersion + 1 };
+        // Game workers go to "test" phase; others go to "library"
+        const nextPhase = existing.worker_type === "game" ? "test" : "library";
+        const updates = { buildPhase: nextPhase, updatedAt: nowServerTs(), version: currentVersion + 1 };
         if (Array.isArray(tier2)) {
           updates["raasLibrary.tier2"] = tier2.slice(0, 15).map(r => String(r).substring(0, 1000));
         }
@@ -6334,10 +6509,51 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
         updates.rulesHash = computeHash(allRules);
 
         await workerRef.update(updates);
-        console.log(`[worker1:rules:save] Saved rules for ${workerId}`);
-        return res.json({ ok: true, buildPhase: "library" });
+        console.log(`[worker1:rules:save] Saved rules for ${workerId}, phase → ${nextPhase}`);
+        return res.json({ ok: true, buildPhase: nextPhase });
       } catch (e) {
         console.error("[worker1:rules:save] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // POST /v1/worker1:test:complete — Advance game worker from test → prePublish
+    if (route === "/worker1:test:complete" && method === "POST") {
+      const { tenantId, workerId } = body;
+      if (!tenantId || !workerId) return res.json({ ok: false, error: "Missing tenantId or workerId" });
+      try {
+        const workerRef = db.doc(`tenants/${tenantId}/workers/${workerId}`);
+        const workerSnap = await workerRef.get();
+        if (!workerSnap.exists) return res.json({ ok: false, error: "Digital Worker not found" });
+        const worker = workerSnap.data();
+        if (worker.buildPhase !== "test") {
+          return res.json({ ok: false, error: `Cannot complete test — current phase is "${worker.buildPhase}", expected "test"` });
+        }
+        await workerRef.update({ buildPhase: "prePublish", updatedAt: nowServerTs() });
+        console.log(`[worker1:test:complete] ${workerId}: test → prePublish`);
+        return res.json({ ok: true, buildPhase: "prePublish" });
+      } catch (e) {
+        console.error("[worker1:test:complete] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // POST /v1/worker:version:increment — Increment worker version
+    if (route === "/worker:version:increment" && method === "POST") {
+      const { tenantId, workerId, changeNote, notifyFollowers, isMajor } = body;
+      if (!tenantId || !workerId) return res.json({ ok: false, error: "Missing tenantId or workerId" });
+      try {
+        const { incrementVersion } = require("./services/version");
+        const result = await incrementVersion({
+          tenantId,
+          workerId,
+          changeNote: changeNote || "",
+          notifyFollowers: notifyFollowers === true,
+          isMajor: isMajor === true,
+        });
+        return res.json({ ok: true, ...result });
+      } catch (e) {
+        console.error("[worker:version:increment] error:", e.message);
         return res.json({ ok: false, error: e.message });
       }
     }
@@ -6488,6 +6704,18 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
           checks.push({ id: "document_control", name: "Document Control Completeness", status: "pass", details: "Worker does not require operator documents — auto-pass" });
         }
 
+        // Check 10: Game Preflight Accuracy
+        if (worker.worker_type === "game") {
+          const { checkPreflightAccuracy } = require("./services/game");
+          const pf = checkPreflightAccuracy(worker.gameConfig || {});
+          checks.push({
+            id: "game_preflight_accuracy",
+            name: "Game Preflight Accuracy",
+            status: pf.status,
+            details: pf.message,
+          });
+        }
+
         const passCount = checks.filter(c => c.status === "pass").length;
         const failCount = checks.filter(c => c.status === "fail").length;
         const passed = failCount === 0;
@@ -6506,7 +6734,7 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
           updatedAt: nowServerTs(),
         });
 
-        console.log(`[worker1:prePublish] ${workerId}: ${score}/9, passed=${passed}`);
+        console.log(`[worker1:prePublish] ${workerId}: ${score}/${checks.length}, passed=${passed}`);
         return res.json({ ok: true, score, passed, checks });
       } catch (e) {
         console.error("[worker1:prePublish] error:", e.message);

@@ -8,6 +8,7 @@ import ChatPanel from "./components/ChatPanel";
 import WorkspaceHub from "./components/WorkspaceHub";
 import BuilderInterview from "./components/BuilderInterview";
 import Dashboard from "./sections/Dashboard";
+import WorkerHome from "./sections/WorkerHome";
 import Analyst from "./sections/Analyst";
 import RulesResources from "./sections/RulesResources";
 import Inventory from "./sections/Inventory";
@@ -4414,7 +4415,7 @@ function AdminShell({ onBackToHub, initialSection }) {
         return <React.Suspense fallback={<div />}><TeamSetup onComplete={() => window.location.reload()} /></React.Suspense>;
       }
       case "dashboard":
-        return <Dashboard />;
+        return <WorkerHome />;
       case "analyst":
         return <Analyst />;
       case "rules-resources":
@@ -4522,8 +4523,8 @@ function AdminShell({ onBackToHub, initialSection }) {
       case "w3-contracts":
         return <Dashboard />;
       default:
-        if (currentSection.startsWith("worker-")) return <Dashboard />;
-        return <Dashboard />;
+        if (currentSection.startsWith("worker-")) return <WorkerHome />;
+        return <WorkerHome />;
     }
   }
 

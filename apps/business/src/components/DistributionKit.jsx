@@ -4,7 +4,7 @@ const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.ti
 const QR_API_PNG = "https://api.qrserver.com/v1/create-qr-code/?size=600x600&format=png&data=";
 const QR_API_SVG = "https://api.qrserver.com/v1/create-qr-code/?size=600x600&format=svg&data=";
 
-export default function DistributionKit({ worker, workerCardData }) {
+export default function DistributionKit({ worker, workerCardData, hasUpdatedSinceLaunch }) {
   const [copied, setCopied] = useState(null);
   const [showPaidOptions, setShowPaidOptions] = useState(false);
   const [deckGenerating, setDeckGenerating] = useState(false);
@@ -233,12 +233,40 @@ Best regards`;
     <div style={{ maxWidth: 680 }}>
       <div style={{ fontSize: 18, fontWeight: 700, color: "#1a1a2e", marginBottom: 4 }}>Distribution Kit</div>
       <div style={{ fontSize: 14, color: "#64748B", marginBottom: 24 }}>
-        Everything you need to market your worker. Copy and paste -- Alex wrote it all for you.
+        Everything you need to share your {workerCardData?.gameConfig?.isGame ? "game" : "worker"}. Copy and paste — Alex wrote it all for you.
       </div>
+
+      {/* Start Small */}
+      <div style={{ ...sectionStyle, background: "linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)", border: "1px solid #e9d5ff" }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: "#6B46C1", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 8 }}>Start Small First</div>
+        <div style={{ fontSize: 14, color: "#1e293b", lineHeight: 1.6, marginBottom: 12 }}>
+          Share with 3-5 people you trust before you go wide.<br />
+          Ask them: What's confusing? What's missing?<br />
+          Their feedback makes v2 much stronger.
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ flex: 1, padding: "10px 12px", background: "rgba(255,255,255,0.7)", borderRadius: 6, border: "1px solid #e9d5ff", color: "#6B46C1", fontSize: 14, fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{workerUrl}</div>
+          <button style={copyBtnStyle("private-url")} onClick={() => copyText("private-url", workerUrl)}>{copied === "private-url" ? "Copied" : "Copy your private link"}</button>
+        </div>
+        <div style={{ fontSize: 13, color: "#64748B", marginTop: 12, lineHeight: 1.6, fontStyle: "italic" }}>
+          The first people to use your {workerCardData?.gameConfig?.isGame ? "game" : "worker"} shape what it becomes. They're not beta testers. They're founding members.
+        </div>
+      </div>
+
+      {/* Go Wide — only after first update */}
+      {hasUpdatedSinceLaunch && (
+        <div style={{ ...sectionStyle, background: "linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)", border: "1px solid #a7f3d0", textAlign: "center" }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: "#065f46", marginBottom: 8 }}>Ready to share with everyone?</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "center" }}>
+            <div style={{ padding: "10px 12px", background: "rgba(255,255,255,0.7)", borderRadius: 6, border: "1px solid #a7f3d0", color: "#6B46C1", fontSize: 14, fontFamily: "monospace" }}>{workerUrl}</div>
+            <button style={copyBtnStyle("go-wide")} onClick={() => copyText("go-wide", workerUrl)}>{copied === "go-wide" ? "Copied" : "Copy"}</button>
+          </div>
+        </div>
+      )}
 
       {/* Live URL */}
       <div style={sectionStyle}>
-        <span style={labelStyle}>Live worker URL</span>
+        <span style={labelStyle}>{hasUpdatedSinceLaunch ? "Your live link" : "Your private link"}</span>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <div style={{ flex: 1, padding: "10px 12px", background: "#F8F9FC", borderRadius: 6, border: "1px solid #E2E8F0", color: "#6B46C1", fontSize: 14, fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{workerUrl}</div>
           <button style={copyBtnStyle("url")} onClick={() => copyText("url", workerUrl)}>{copied === "url" ? "Copied" : "Copy"}</button>

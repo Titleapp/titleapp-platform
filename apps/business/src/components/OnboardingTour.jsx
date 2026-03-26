@@ -22,7 +22,7 @@ export default function OnboardingTour({ onComplete, vertical = 'auto' }) {
   const getTourSteps = () => {
     const commonSteps = [
       {
-        title: 'Welcome to TitleApp AI',
+        title: 'Welcome to TitleApp',
         content: 'Let me show you around. This quick tour will help you get started with your AI-powered business platform.',
         action: 'Get Started',
         highlight: null,

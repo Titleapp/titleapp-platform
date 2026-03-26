@@ -389,7 +389,7 @@ export default function BuilderInterview({ onComplete, onCancel }) {
             <rect x="94" y="122" width="5" height="3" fill="white"/>
           </svg>
           <div>
-            <span style={{ color: '#7c3aed', fontWeight: 700, fontSize: 18 }}>TitleApp AI</span>
+            <span style={{ color: '#7c3aed', fontWeight: 700, fontSize: 18 }}>TitleApp</span>
             <span style={{ color: '#94a3b8', marginLeft: 8, fontSize: 14 }}>Build an AI Service</span>
           </div>
         </div>

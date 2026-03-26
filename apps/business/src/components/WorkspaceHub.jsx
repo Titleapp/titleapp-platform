@@ -237,7 +237,7 @@ export default function WorkspaceHub({ userName, onLaunch, onBuilderStart, onAdm
       <div style={{ maxWidth: 720, width: '100%' }}>
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
           <div style={{ fontSize: 20, fontWeight: 700, color: '#7c3aed', marginBottom: 8 }}>
-            TitleApp AI
+            TitleApp
           </div>
           <div style={{ fontSize: 18, fontWeight: 600, color: '#1e293b' }}>
             {userName ? `Welcome back, ${userName}` : 'Welcome back'}

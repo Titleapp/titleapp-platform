@@ -1046,7 +1046,29 @@ const VERTICAL_LABELS = {
   investor: "Investor Relations",
   "property-mgmt": "Property Management",
   consumer: "Personal Vault",
+  "auto-dealer": "Auto Dealer",
+  real_estate_development: "Real Estate",
+  web3: "Web3",
+  solar: "Solar",
+  government: "Government",
 };
+
+// Determine vertical from worker slug prefix
+function normalizeVertical(slug) {
+  if (!slug) return "Other";
+  if (slug.startsWith("av-")) return "Aviation";
+  if (slug.startsWith("ad-")) return "Auto Dealer";
+  if (slug.startsWith("w3-") || slug.startsWith("web3")) return "Web3";
+  if (slug.startsWith("gov-")) return "Government";
+  if (slug.startsWith("solar")) return "Solar";
+  if (slug.startsWith("esc-")) return "Real Estate";
+  // RE workers: cre-, investor-, construction-, mortgage-, property-, etc.
+  const reStarts = ["cre-", "investor-", "construction-", "mortgage-", "capital-", "property-", "bid-", "insurance-", "quality-", "safety-", "mep-", "labor-", "materials-", "mezzanine-", "crowdfunding-", "site-", "land-", "permit-", "lease-", "accounting-", "market-", "architecture-", "engineering-", "environmental-", "energy-", "accessibility-", "government-", "fire-", "opportunity-", "appraisal-", "tenant-", "rent-", "maintenance-", "utility-", "hoa-", "warranty-", "vendor-", "disposition-", "exchange-", "entity-", "legal-", "compliance-"];
+  for (const p of reStarts) {
+    if (slug.startsWith(p)) return "Real Estate";
+  }
+  return "Other";
+}
 
 export default function Sidebar({
   currentSection,
@@ -1111,6 +1133,7 @@ export default function Sidebar({
         name: chiefOfStaff.name || "Alex",
         isChiefOfStaff: true,
         active: true,
+        vertical: "Platform",
       });
     }
     // Active workers from workspace
@@ -1121,18 +1144,40 @@ export default function Sidebar({
           name: WORKER_DISPLAY_NAMES[wId] || wId.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase()),
           isChiefOfStaff: false,
           active: true,
+          vertical: normalizeVertical(wId),
         });
       } else if (wId && typeof wId === "object") {
+        const slug = wId.slug || wId.id || "unknown";
         workers.push({
-          slug: wId.slug || wId.id || "unknown",
-          name: wId.displayName || wId.name || WORKER_DISPLAY_NAMES[wId.slug] || "Worker",
+          slug,
+          name: wId.displayName || wId.name || WORKER_DISPLAY_NAMES[slug] || "Worker",
           isChiefOfStaff: wId.isChiefOfStaff || false,
           active: true,
+          vertical: normalizeVertical(slug),
         });
       }
     }
     return workers;
   }, [activeWorkers, chiefOfStaff]);
+
+  // Group workers by vertical for display
+  const groupedWorkers = useMemo(() => {
+    const groups = {};
+    const cos = [];
+    for (const w of workerList) {
+      if (w.isChiefOfStaff) { cos.push(w); continue; }
+      const v = w.vertical || "Other";
+      if (!groups[v]) groups[v] = [];
+      groups[v].push(w);
+    }
+    // Sort groups: alphabetical, "Other" last
+    const sorted = Object.entries(groups).sort(([a], [b]) => {
+      if (a === "Other") return 1;
+      if (b === "Other") return -1;
+      return a.localeCompare(b);
+    });
+    return { cos, groups: sorted };
+  }, [workerList]);
 
 
   // Build "My Work" nav items — universal + vertical + worker-triggered
@@ -1146,18 +1191,25 @@ export default function Sidebar({
       { id: "clients-lps", label: "Clients & Contacts" },
     ];
 
-    // Add vertical-specific items
-    const verticalItems = WORKER_NAV_MAP[vertical] || [];
+    // Add vertical-specific items — only if user has matching workers
+    const workerSlugs = activeWorkers.map(w => typeof w === "string" ? w : w?.slug || "");
+    const hasAviation = workerSlugs.some(s => s.startsWith("av-"));
+    const hasAuto = workerSlugs.some(s => s.startsWith("ad-"));
     const existingIds = new Set(items.map(i => i.id));
-    for (const vi of verticalItems) {
-      if (!existingIds.has(vi.id)) {
-        items.push(vi);
-        existingIds.add(vi.id);
+
+    // Gate vertical nav: only show if user has workers in that vertical
+    if (vertical === "aviation" && hasAviation) {
+      for (const vi of (WORKER_NAV_MAP["aviation"] || [])) {
+        if (!existingIds.has(vi.id)) { items.push(vi); existingIds.add(vi.id); }
+      }
+    } else if (vertical !== "aviation") {
+      const verticalItems = WORKER_NAV_MAP[vertical] || [];
+      for (const vi of verticalItems) {
+        if (!existingIds.has(vi.id)) { items.push(vi); existingIds.add(vi.id); }
       }
     }
 
     // Add worker-triggered items
-    const workerSlugs = activeWorkers.map(w => typeof w === "string" ? w : w?.slug || "");
     for (const slug of workerSlugs) {
       const workerItems = WORKER_NAV_MAP[slug] || [];
       for (const wi of workerItems) {
@@ -1427,97 +1479,91 @@ export default function Sidebar({
       {/* Divider */}
       {!guestMode && workspaces.length > 1 && <div style={{ height: "1px", background: "rgba(255,255,255,0.08)", margin: "4px 16px" }} />}
 
-      {/* ═══ SECTION 1: DIGITAL WORKERS ═══ */}
+      {/* ═══ SECTION 1: DIGITAL WORKERS (grouped by vertical) ═══ */}
       <div className="sidebarSection">
         <div className="sidebarLabel">Digital Workers</div>
 
         <nav className="nav">
-          {/* Worker list — collapsible when >6 */}
-          {(() => {
-            const COLLAPSE_THRESHOLD = 6;
-            const COLLAPSED_SHOW = 3;
-            const shouldCollapse = workerList.length > COLLAPSE_THRESHOLD;
-            const visibleWorkers = shouldCollapse && !workersExpanded
-              ? workerList.slice(0, COLLAPSED_SHOW)
-              : workerList;
-            const hiddenCount = workerList.length - COLLAPSED_SHOW;
-
+          {/* Chief of Staff — always first */}
+          {groupedWorkers.cos.map(worker => {
+            const isSelected = selectedWorker === worker.slug;
             return (
-              <div style={shouldCollapse && workersExpanded ? {
-                maxHeight: 240, overflowY: "auto", overflowX: "hidden",
-              } : undefined}>
-                {visibleWorkers.map(worker => {
-                  const isSelected = selectedWorker === worker.slug;
-                  return (
-                    <button
-                      key={worker.slug}
-                      className={`navItem ${isSelected ? "navItemActive" : ""}`}
-                      onClick={() => handleWorkerClick(worker)}
-                      style={{
-                        width: "100%", textAlign: "left", cursor: "pointer",
-                        display: "flex", alignItems: "center", gap: 8,
-                        padding: "7px 10px", fontSize: 13,
-                        ...(worker.isChiefOfStaff ? {
-                          background: isSelected
-                            ? "rgba(124,58,237,0.16)"
-                            : "linear-gradient(135deg, rgba(124,58,237,0.08) 0%, rgba(99,102,241,0.08) 100%)",
-                          borderRadius: 10,
-                          marginBottom: 2,
-                        } : {}),
-                      }}
-                    >
-                      <span style={{ position: "relative", flexShrink: 0, width: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        <WorkerIcon
-                          slug={worker.slug}
-                          size={16}
-                          color={worker.isChiefOfStaff ? "#c4b5fd" : (isSelected ? "#ddd6fe" : "rgba(255,255,255,0.55)")}
-                        />
-                        {worker.active && (
-                          <span style={{
-                            position: "absolute", bottom: -1, right: -1,
-                            width: 6, height: 6, borderRadius: "50%",
-                            background: "#22c55e", border: "1.5px solid #0b1020",
-                          }} />
-                        )}
-                      </span>
-                      <span style={{
-                        flex: 1,
-                        color: worker.isChiefOfStaff ? "#c4b5fd" : "rgba(255,255,255,0.85)",
-                        fontWeight: worker.isChiefOfStaff ? 600 : 400,
-                      }}>
-                        {worker.name}
-                        {worker.fromCompany && (
-                          <span style={{ fontSize: 10, color: "#94A3B8", fontWeight: 400, display: "block", marginTop: 1 }}>
-                            From {worker.fromCompany}
-                          </span>
-                        )}
-                      </span>
-                      {worker.isChiefOfStaff && (
-                        <span style={{ fontSize: 10, color: "#7c3aed", fontWeight: 600 }}>CoS</span>
-                      )}
-                    </button>
-                  );
-                })}
+              <button
+                key={worker.slug}
+                className={`navItem ${isSelected ? "navItemActive" : ""}`}
+                onClick={() => handleWorkerClick(worker)}
+                style={{
+                  width: "100%", textAlign: "left", cursor: "pointer",
+                  display: "flex", alignItems: "center", gap: 8,
+                  padding: "7px 10px", fontSize: 13,
+                  background: isSelected
+                    ? "rgba(124,58,237,0.16)"
+                    : "linear-gradient(135deg, rgba(124,58,237,0.08) 0%, rgba(99,102,241,0.08) 100%)",
+                  borderRadius: 10, marginBottom: 2,
+                }}
+              >
+                <span style={{ position: "relative", flexShrink: 0, width: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <WorkerIcon slug={worker.slug} size={16} color="#c4b5fd" />
+                  <span style={{ position: "absolute", bottom: -1, right: -1, width: 6, height: 6, borderRadius: "50%", background: "#22c55e", border: "1.5px solid #0b1020" }} />
+                </span>
+                <span style={{ flex: 1, color: "#c4b5fd", fontWeight: 600 }}>{worker.name}</span>
+                <span style={{ fontSize: 10, color: "#7c3aed", fontWeight: 600 }}>CoS</span>
+              </button>
+            );
+          })}
 
-                {/* Collapse/expand toggle */}
-                {shouldCollapse && (
+          {/* Workers grouped by vertical */}
+          {groupedWorkers.groups.map(([verticalName, workers]) => (
+            <div key={verticalName}>
+              <div style={{
+                fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,0.35)",
+                textTransform: "uppercase", letterSpacing: "0.5px",
+                padding: "8px 10px 3px",
+              }}>
+                {verticalName}
+              </div>
+              {workers.map(worker => {
+                const isSelected = selectedWorker === worker.slug;
+                return (
                   <button
-                    onClick={() => setWorkersExpanded(!workersExpanded)}
+                    key={worker.slug}
+                    className={`navItem ${isSelected ? "navItemActive" : ""}`}
+                    onClick={() => handleWorkerClick(worker)}
                     style={{
                       width: "100%", textAlign: "left", cursor: "pointer",
-                      background: "none", border: "none",
-                      fontSize: 11, color: "rgba(255,255,255,0.4)", fontWeight: 500,
-                      padding: "5px 10px",
+                      display: "flex", alignItems: "center", gap: 8,
+                      padding: "7px 10px", fontSize: 13,
                     }}
-                    onMouseEnter={e => { e.currentTarget.style.color = "rgba(255,255,255,0.7)"; }}
-                    onMouseLeave={e => { e.currentTarget.style.color = "rgba(255,255,255,0.4)"; }}
                   >
-                    {workersExpanded ? "Show less" : `+ ${hiddenCount} more workers`}
+                    <span style={{ position: "relative", flexShrink: 0, width: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <WorkerIcon slug={worker.slug} size={16} color={isSelected ? "#ddd6fe" : "rgba(255,255,255,0.55)"} />
+                      <span style={{ position: "absolute", bottom: -1, right: -1, width: 6, height: 6, borderRadius: "50%", background: "#22c55e", border: "1.5px solid #0b1020" }} />
+                    </span>
+                    <span style={{ flex: 1, color: "rgba(255,255,255,0.85)", fontWeight: 400 }}>
+                      {worker.name}
+                    </span>
                   </button>
-                )}
-              </div>
-            );
-          })()}
+                );
+              })}
+            </div>
+          ))}
+
+          {/* Expand/collapse for many workers */}
+          {workerList.length > 8 && !workersExpanded && (
+            <button
+              onClick={() => setWorkersExpanded(true)}
+              style={{
+                width: "100%", textAlign: "left", cursor: "pointer",
+                background: "none", border: "none",
+                fontSize: 11, color: "rgba(255,255,255,0.4)", fontWeight: 500,
+                padding: "5px 10px",
+              }}
+              onMouseEnter={e => { e.currentTarget.style.color = "rgba(255,255,255,0.7)"; }}
+              onMouseLeave={e => { e.currentTarget.style.color = "rgba(255,255,255,0.4)"; }}
+            >
+              + {workerList.length - 8} more workers
+            </button>
+          )}
 
           {/* Empty state */}
           {workerList.length === 0 && (

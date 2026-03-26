@@ -2,6 +2,7 @@ import React, { useState } from "react";
 
 // Pricing tiers from config/pricing.js (read-only display)
 const TIERS = [
+  { id: 0, label: "Free", price: 0, credits: 50 },
   { id: 1, label: "Tier 1", price: 29, credits: 500 },
   { id: 2, label: "Tier 2", price: 49, credits: 1500 },
   { id: 3, label: "Tier 3", price: 79, credits: 3000 },
@@ -41,7 +42,7 @@ export default function WorkerCard({ data, comparables, onApprove, onEdit, isPub
 
   return (
     <div>
-      <div style={{ fontSize: 18, fontWeight: 700, color: "#1a1a2e", marginBottom: 4 }}>Worker Card</div>
+      <div style={{ fontSize: 18, fontWeight: 700, color: "#1a1a2e", marginBottom: 4 }}>{data.gameConfig?.isGame ? "Game Card" : "Worker Card"}</div>
       <div style={{ fontSize: 14, color: "#64748B", marginBottom: 16 }}>
         Review what Alex built from your conversation. Edit anything, then approve to start building.
       </div>
@@ -77,6 +78,32 @@ export default function WorkerCard({ data, comparables, onApprove, onEdit, isPub
           <div style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", marginTop: 4 }}>
             {data.vertical} / {(data.jurisdiction || "GLOBAL").substring(0, 40)}
           </div>
+          {/* Game badges — only when gameConfig exists */}
+          {data.gameConfig?.isGame && (
+            <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
+              <span style={{ padding: "3px 8px", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", borderRadius: 4, background: "rgba(124,58,237,0.3)", color: "white" }}>
+                GAME
+              </span>
+              {data.gameConfig.raasMode && (
+                <span style={{
+                  padding: "3px 8px", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", borderRadius: 4,
+                  background: data.gameConfig.raasMode === "regulated" ? "rgba(124,58,237,0.3)" : "rgba(255,255,255,0.2)",
+                  color: "white",
+                }}>
+                  RAAS {data.gameConfig.raasMode === "regulated" ? "REGULATED" : "LIGHT"}
+                </span>
+              )}
+              {data.gameConfig.gameMode && (
+                <span style={{
+                  padding: "3px 8px", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", borderRadius: 4,
+                  background: data.gameConfig.gameMode === "conversational" ? "rgba(16,185,129,0.3)" : "rgba(255,255,255,0.2)",
+                  color: "white",
+                }}>
+                  {data.gameConfig.gameMode === "canvas" ? "CANVAS \u2014 COMING SOON" : "CONVERSATIONAL"}
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
         {/* What it does */}
@@ -151,7 +178,7 @@ export default function WorkerCard({ data, comparables, onApprove, onEdit, isPub
                   border: `1px solid ${selectedTier === t.id ? "#6B46C1" : "#E2E8F0"}`,
                 }}
               >
-                <div style={{ fontSize: 16, fontWeight: 700, color: selectedTier === t.id ? "#6B46C1" : "#1a1a2e" }}>${t.price}/mo</div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: selectedTier === t.id ? "#6B46C1" : "#1a1a2e" }}>{t.price === 0 ? "Free" : `$${t.price}/mo`}</div>
                 <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 2 }}>{t.credits} credits</div>
               </div>
             ))}
@@ -174,50 +201,61 @@ export default function WorkerCard({ data, comparables, onApprove, onEdit, isPub
         {/* Earnings projection */}
         <div style={{ ...sectionStyle, background: "rgba(16,185,129,0.02)" }}>
           <div style={labelStyle}>Your earnings projection</div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-            <span style={{ fontSize: 13, color: "#64748B" }}>At</span>
-            <input
-              type="number" min={1} max={1000} value={projectedSubs}
-              onChange={e => setProjectedSubs(Math.max(1, parseInt(e.target.value) || 1))}
-              style={{ width: 60, padding: "4px 8px", background: "#F8F9FC", border: "1px solid #E2E8F0", borderRadius: 6, color: "#1a1a2e", fontSize: 14, fontWeight: 600, textAlign: "center", outline: "none" }}
-            />
-            <span style={{ fontSize: 13, color: "#64748B" }}>subscribers on {tier.label} (${tier.price}/mo)</span>
-          </div>
-
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <div style={{ padding: "12px 16px", background: "#F8F9FC", borderRadius: 8, border: "1px solid #E2E8F0" }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: "#94A3B8", textTransform: "uppercase", marginBottom: 4 }}>75% of Subscription Revenue</div>
-              <div style={{ fontSize: 22, fontWeight: 700, color: "#10b981" }}>${projection.monthly.toFixed(0)}/mo</div>
-              <div style={{ fontSize: 12, color: "#64748B", marginTop: 2 }}>You earn ${projection.perSubscriber.toFixed(2)} per subscriber per month, paid monthly.</div>
+          {tier.price === 0 ? (
+            <div style={{ padding: "16px", background: "#F8F9FC", borderRadius: 8, border: "1px solid #E2E8F0" }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a2e", marginBottom: 4 }}>Free — open to everyone</div>
+              <div style={{ fontSize: 13, color: "#64748B", lineHeight: 1.5 }}>
+                Creator earns: $0. Your worker is live and shareable. Audit trail off by default. ~50 credits per session.
+              </div>
             </div>
-            <div style={{ padding: "12px 16px", background: "#F8F9FC", borderRadius: 8, border: "1px solid #E2E8F0", position: "relative" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: "#94A3B8", textTransform: "uppercase", marginBottom: 4 }}>Bonus: Usage Earnings</div>
-                <span
-                  onClick={() => setShowOverageTip(!showOverageTip)}
-                  style={{ cursor: "pointer", fontSize: 13, color: "#94A3B8", marginBottom: 4, userSelect: "none" }}
-                  title="Click for example"
-                >&#9432;</span>
+          ) : (
+            <>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                <span style={{ fontSize: 13, color: "#64748B" }}>At</span>
+                <input
+                  type="number" min={1} max={1000} value={projectedSubs}
+                  onChange={e => setProjectedSubs(Math.max(1, parseInt(e.target.value) || 1))}
+                  style={{ width: 60, padding: "4px 8px", background: "#F8F9FC", border: "1px solid #E2E8F0", borderRadius: 6, color: "#1a1a2e", fontSize: 14, fontWeight: 600, textAlign: "center", outline: "none" }}
+                />
+                <span style={{ fontSize: 13, color: "#64748B" }}>subscribers on {tier.label} (${tier.price}/mo)</span>
               </div>
-              <div style={{ fontSize: 12, color: "#64748B", lineHeight: 1.5, marginTop: 4 }}>
-                When subscribers use more than their plan includes, TitleApp charges overage fees. You earn 20% of TitleApp's margin on those fees — typically $2–$8 per heavy user per month.
-              </div>
-              {showOverageTip && (
-                <div style={{
-                  position: "absolute", top: "100%", left: 0, right: 0, zIndex: 10,
-                  marginTop: 4, padding: "12px 14px", background: "#1a1a2e", color: "#E2E8F0",
-                  borderRadius: 8, fontSize: 12, lineHeight: 1.6, boxShadow: "0 4px 16px rgba(0,0,0,0.2)",
-                }}>
-                  Example: A subscriber on the ${tier.price}/mo plan uses 2,000 credits (500 over their limit). TitleApp charges $10 in overage. TitleApp's margin is ~85%, so you earn 20% of $8.50 = $1.70 from that one subscriber that month.
-                  <div onClick={() => setShowOverageTip(false)} style={{ marginTop: 6, fontSize: 11, color: "#94A3B8", cursor: "pointer" }}>Dismiss</div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div style={{ padding: "12px 16px", background: "#F8F9FC", borderRadius: 8, border: "1px solid #E2E8F0" }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: "#94A3B8", textTransform: "uppercase", marginBottom: 4 }}>75% of Subscription Revenue</div>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: "#10b981" }}>${projection.monthly.toFixed(0)}/mo</div>
+                  <div style={{ fontSize: 12, color: "#64748B", marginTop: 2 }}>You earn ${projection.perSubscriber.toFixed(2)} per subscriber per month, paid monthly.</div>
                 </div>
-              )}
-            </div>
-          </div>
+                <div style={{ padding: "12px 16px", background: "#F8F9FC", borderRadius: 8, border: "1px solid #E2E8F0", position: "relative" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: "#94A3B8", textTransform: "uppercase", marginBottom: 4 }}>Bonus: Usage Earnings</div>
+                    <span
+                      onClick={() => setShowOverageTip(!showOverageTip)}
+                      style={{ cursor: "pointer", fontSize: 13, color: "#94A3B8", marginBottom: 4, userSelect: "none" }}
+                      title="Click for example"
+                    >&#9432;</span>
+                  </div>
+                  <div style={{ fontSize: 12, color: "#64748B", lineHeight: 1.5, marginTop: 4 }}>
+                    When subscribers use more than their plan includes, TitleApp charges overage fees. You earn 20% of TitleApp's margin on those fees — typically $2–$8 per heavy user per month.
+                  </div>
+                  {showOverageTip && (
+                    <div style={{
+                      position: "absolute", top: "100%", left: 0, right: 0, zIndex: 10,
+                      marginTop: 4, padding: "12px 14px", background: "#1a1a2e", color: "#E2E8F0",
+                      borderRadius: 8, fontSize: 12, lineHeight: 1.6, boxShadow: "0 4px 16px rgba(0,0,0,0.2)",
+                    }}>
+                      Example: A subscriber on the ${tier.price}/mo plan uses 2,000 credits (500 over their limit). TitleApp charges $10 in overage. TitleApp's margin is ~85%, so you earn 20% of $8.50 = $1.70 from that one subscriber that month.
+                      <div onClick={() => setShowOverageTip(false)} style={{ marginTop: 6, fontSize: 11, color: "#94A3B8", cursor: "pointer" }}>Dismiss</div>
+                    </div>
+                  )}
+                </div>
+              </div>
 
-          <div style={{ fontSize: 12, color: "#94A3B8", marginTop: 10, lineHeight: 1.5 }}>
-            At {projectedSubs} subscribers on {tier.label} (${tier.price}/mo), you earn approximately ${projection.monthly.toFixed(0)}/mo from subscriptions plus bonus usage earnings from heavy users.
-          </div>
+              <div style={{ fontSize: 12, color: "#94A3B8", marginTop: 10, lineHeight: 1.5 }}>
+                At {projectedSubs} subscribers on {tier.label} (${tier.price}/mo), you earn approximately ${projection.monthly.toFixed(0)}/mo from subscriptions plus bonus usage earnings from heavy users.
+              </div>
+            </>
+          )}
         </div>
 
         {/* Actions */}

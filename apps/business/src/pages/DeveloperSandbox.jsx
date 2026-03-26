@@ -3,6 +3,9 @@ import { signInWithCustomToken } from "firebase/auth";
 import { auth as firebaseAuth } from "../firebase";
 import BuildProgress from "../components/BuildProgress";
 import TestWorkerPanel from "../components/TestWorkerPanel";
+import CanvasComingSoon from "../components/sandbox/CanvasComingSoon";
+import { getPostLaunchMessage } from "../components/studio/PostLaunchAlex";
+import CanvasImagePanel from "../components/canvas/CanvasImagePanel";
 import DistributionKit from "../components/DistributionKit";
 import CommsPreferences from "../components/CommsPreferences";
 import PublishPreflight from "../components/PublishPreflight";
@@ -337,7 +340,7 @@ function LifecycleCard({ flowStep }) {
   const stages = [
     { num: 1, title: "Build", desc: "Tell me what you know. I'll shape it into a worker. Use your existing ChatGPT or Claude work if you have it.", range: [0, 1, 2] },
     { num: 2, title: "Test", desc: "Talk to your own worker. See it in action. Refine it until it's right.", range: [3, 4] },
-    { num: 3, title: "Publish", desc: "Set your price. We help you list it and get it in front of the right people.", range: [5] },
+    { num: 3, title: "Launch", desc: "Set your price. Launch it. Get it in front of the right people.", range: [5] },
     { num: 4, title: "Grow", desc: "Track usage, collect feedback, push updates, get paid.", range: [6, 7] },
   ];
 
@@ -437,16 +440,29 @@ function CreatorStudioNav({ flowStep, workerCardData, worker, isMobile, onClose,
           <div style={S.navStatTile}><div style={S.navStatValue}>$0</div><div style={S.navStatLabel}>This Month</div></div>
           <div style={S.navStatTile}><div style={S.navStatValue}>&mdash;</div><div style={S.navStatLabel}>Trend</div></div>
         </div>
-        <div style={{ fontSize: 11, color: "rgba(226,232,240,0.45)", marginTop: 8, lineHeight: 1.5 }}>Publish your first worker to start earning.</div>
+        <div style={{ fontSize: 11, color: "rgba(226,232,240,0.45)", marginTop: 8, lineHeight: 1.5 }}>{workerCardData?.gameConfig?.isGame ? "Launch your first game to start earning." : "Launch your first worker to start earning."}</div>
       </div>
 
-      {/* My Workers */}
+      {/* My Workers / My Games */}
       <div style={S.navSection}>
-        <div style={S.navSectionTitle}>My Workers</div>
+        <div style={S.navSectionTitle}>{workerCardData?.gameConfig?.isGame ? "My Games" : "My Workers"}</div>
         {workerCardData ? (
           <div style={{ ...S.navItem, ...S.navItemActive, flexDirection: "column", alignItems: "flex-start", gap: 2 }}>
-            <div style={{ fontSize: 13, fontWeight: 600 }}>{workerCardData.name}</div>
-            <div style={{ fontSize: 11, color: "rgba(226,232,240,0.45)" }}>Draft — Continue Building &rarr;</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ fontSize: 13, fontWeight: 600 }}>{workerCardData.name}</span>
+              {flowStep >= 6 && <span style={{ fontSize: 10, color: "rgba(226,232,240,0.3)", fontWeight: 400 }}>v1.0</span>}
+            </div>
+            {flowStep >= 6 ? (
+              <button
+                onClick={() => viewStep(2)}
+                title={workerCardData?.gameConfig?.isGame ? "Your game gets better every time you update it" : "Your worker gets better every time you update it"}
+                style={{ fontSize: 11, color: "#7c3aed", background: "none", border: "none", cursor: "pointer", padding: 0, fontWeight: 500 }}
+              >
+                Update {workerCardData.name} &rarr;
+              </button>
+            ) : (
+              <div style={{ fontSize: 11, color: "rgba(226,232,240,0.45)" }}>Draft — Continue Building &rarr;</div>
+            )}
           </div>
         ) : (
           <div style={{ fontSize: 12, color: "rgba(226,232,240,0.45)", padding: "6px 0" }}>No workers yet. Build your first one in the chat.</div>
@@ -456,7 +472,7 @@ function CreatorStudioNav({ flowStep, workerCardData, worker, isMobile, onClose,
       {/* My Audience */}
       <div style={S.navSection}>
         <div style={S.navSectionTitle}>My Audience</div>
-        <div style={{ fontSize: 12, color: "rgba(226,232,240,0.45)", padding: "6px 0" }}>Your subscribers will appear here once you publish.</div>
+        <div style={{ fontSize: 12, color: "rgba(226,232,240,0.45)", padding: "6px 0" }}>Your subscribers will appear here once you launch.</div>
       </div>
 
       {/* Sessions */}
@@ -466,7 +482,7 @@ function CreatorStudioNav({ flowStep, workerCardData, worker, isMobile, onClose,
           <div style={{ ...S.navItem, flexDirection: "column", alignItems: "flex-start", gap: 2 }}>
             <div style={{ fontSize: 12, fontWeight: 600, color: "#e5e7eb" }}>{workerCardData.name}</div>
             <div style={{ fontSize: 11, color: "rgba(226,232,240,0.45)" }}>
-              Stage {flowStep <= 2 ? "1 — Build" : flowStep <= 4 ? "2 — Test" : flowStep <= 5 ? "3 — Publish" : "4 — Grow"}
+              Stage {flowStep <= 2 ? "1 — Build" : flowStep <= 4 ? "2 — Test" : flowStep <= 5 ? "3 — Launch" : "4 — Grow"}
             </div>
           </div>
         </div>
@@ -561,6 +577,8 @@ export default function DeveloperSandbox() {
 
   // View a completed step (for step indicator clicks) — does NOT change maxFlowStep
   function viewStep(step) {
+    // Track when creator returns to edit after launching
+    if (flowStep >= 6 && step < 6) setHasUpdatedSinceLaunch(true);
     setFlowStep(step);
   }
 
@@ -581,6 +599,11 @@ export default function DeveloperSandbox() {
   const [surveyAnswers, setSurveyAnswers] = useState(() => savedSession.current?.surveyAnswers || {});
   const [surveyComplete, setSurveyComplete] = useState(() => savedSession.current?.surveyComplete || false);
   const [testExchangeCount, setTestExchangeCount] = useState(() => savedSession.current?.testExchangeCount || 0);
+  const [canvasDismissed, setCanvasDismissed] = useState(false);
+  const [hasUpdatedSinceLaunch, setHasUpdatedSinceLaunch] = useState(false);
+  const [canvasAssets, setCanvasAssets] = useState([]);
+  const [canvasStyle, setCanvasStyle] = useState(null);
+  const [imageGenerating, setImageGenerating] = useState(false);
 
   // Exchange counter (steps 1-2) — used for extractSpec fallback + progressive card
   const [exchangeCount, setExchangeCount] = useState(0);
@@ -948,6 +971,7 @@ export default function DeveloperSandbox() {
         if (result.buildAnimation && result.cards && result.cards.length > 0) {
           const card = result.cards[0]?.data;
           if (card) {
+            const isGame = !!card.gameConfig?.isGame;
             const cardData = {
               name: card.name || "Your Worker",
               description: card.description || "",
@@ -957,8 +981,9 @@ export default function DeveloperSandbox() {
               raasRules: (card.rules || []).join(". ") || "",
               vertical: card.category || vertical || "",
               jurisdiction: card.jurisdiction || "GLOBAL",
-              pricingTier: 2,
+              pricingTier: isGame ? 0 : 2,
               internal_only: false,
+              gameConfig: card.gameConfig || undefined,
             };
             setWorkerCardData(cardData);
             setVertical(card.category || "");
@@ -984,6 +1009,20 @@ export default function DeveloperSandbox() {
               }, 600);
             }, 1200);
           }
+        }
+
+        // Canvas image generation — T2 returns imageUrl
+        if (result.imageUrl) {
+          setCanvasAssets(prev => [...prev, {
+            id: Date.now().toString(),
+            imageUrl: result.imageUrl,
+            prompt: result.imagePrompt || "",
+            style: canvasStyle || null,
+          }]);
+          setImageGenerating(false);
+        }
+        if (result.imageGenerating) {
+          setImageGenerating(true);
         }
       } else {
         addAssistantMessage(reply || "Something went wrong. Try again.");
@@ -1037,6 +1076,7 @@ export default function DeveloperSandbox() {
           if (result.buildAnimation && result.cards && result.cards.length > 0) {
             const card = result.cards[0]?.data;
             if (card) {
+              const isGame2 = !!card.gameConfig?.isGame;
               const cardData = {
                 name: card.name || "Your Worker",
                 description: card.description || "",
@@ -1046,8 +1086,9 @@ export default function DeveloperSandbox() {
                 raasRules: (card.rules || []).join(". ") || "",
                 vertical: card.category || vertical || "",
                 jurisdiction: card.jurisdiction || "GLOBAL",
-                pricingTier: 2,
+                pricingTier: isGame2 ? 0 : 2,
                 internal_only: false,
+                gameConfig: card.gameConfig || undefined,
               };
               setWorkerCardData(cardData);
               setVertical(card.category || "");
@@ -1307,7 +1348,9 @@ export default function DeveloperSandbox() {
     advanceToStep(6);
     fireConfetti("full");
     setTimeout(() => fireConfetti("medium"), 500);
-    addAssistantMessage(`"${publishedWorker.name || workerCardData?.name}" is live. Your distribution kit is ready on the right. Copy, paste, and share.`);
+    const wName = publishedWorker.name || workerCardData?.name || "Your worker";
+    const isGame = !!workerCardData?.gameConfig?.isGame;
+    addAssistantMessage(getPostLaunchMessage(wName, isGame));
   }
 
   // ── Step 6 → Step 7: Distribution done → Grow ─────────────
@@ -1982,6 +2025,21 @@ export default function DeveloperSandbox() {
                     setWorkerCardData(prev => prev ? { ...prev, iconDataUrl: url } : prev);
                   }}
                 />
+                {(canvasAssets.length > 0 || imageGenerating) && (
+                  <div style={{ marginTop: 20 }}>
+                    <CanvasImagePanel
+                      assets={canvasAssets}
+                      isGenerating={imageGenerating}
+                      selectedStyle={canvasStyle}
+                      onStyleSelect={setCanvasStyle}
+                      workerCardData={workerCardData}
+                      onRetry={() => { /* T2 will wire retry to /v1/image:generate */ }}
+                      onUseAs={(asset, role) => {
+                        setCanvasAssets(prev => prev.map(a => a === asset ? { ...a, useAs: role } : a));
+                      }}
+                    />
+                  </div>
+                )}
               </PanelErrorBoundary>
             )}
 
@@ -1991,7 +2049,9 @@ export default function DeveloperSandbox() {
                 recoverLabel="Back"
                 onRecover={() => { viewStep(3); }}
               >
-                {worker?.id ? (
+                {workerCardData?.gameConfig?.gameMode === "canvas" && !canvasDismissed ? (
+                  <CanvasComingSoon onContinue={() => setCanvasDismissed(true)} />
+                ) : worker?.id ? (
                   <TestWorkerPanel
                     key={`${worker?.id}_${workerCardData?.name || ""}`}
                     worker={worker}
@@ -2023,7 +2083,7 @@ export default function DeveloperSandbox() {
             {/* Step 6 — Distribute */}
             {flowStep === 6 && (
               <>
-                <DistributionKit worker={worker} workerCardData={workerCardData} />
+                <DistributionKit worker={worker} workerCardData={workerCardData} hasUpdatedSinceLaunch={hasUpdatedSinceLaunch} />
                 <CreatorSpotlight worker={worker} workerCardData={workerCardData} />
                 <div style={{ marginTop: 20, textAlign: "center" }}>
                   <button style={S.btnPrimary} onClick={handleMoveToGrow}>

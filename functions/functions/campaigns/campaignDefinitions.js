@@ -703,6 +703,33 @@ const CAMPAIGN_DEFINITIONS = [
     maxPerUser: null,
     smsOptOutRequired: true,
   },
+  {
+    campaignId: "worker_updated_notification",
+    name: "Worker Updated Notification",
+    category: "engagement",
+    trigger: { event: "worker_updated" },
+    channels: ["email"],
+    template: {
+      email: {
+        subject: "{{workerName}} just got better",
+        htmlBody: `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+  <div style="margin-bottom: 32px;"><span style="font-size: 20px; font-weight: 700; color: #7c3aed;">TitleApp</span></div>
+  <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">Hi {{firstName}},</p>
+  <p style="font-size: 16px; color: #1a202c; line-height: 1.6;"><strong>{{workerName}}</strong> has been updated with meaningful improvements:</p>
+  <p style="font-size: 16px; color: #4b5563; line-height: 1.6; padding: 16px; background: #f9fafb; border-radius: 8px;">{{changeNote}}</p>
+  <p style="font-size: 16px; color: #1a202c; line-height: 1.6;"><a href="{{platformUrl}}" style="display: inline-block; background: #7c3aed; color: #fff; padding: 12px 28px; border-radius: 6px; text-decoration: none; font-weight: 600;">Try the Update</a></p>
+  <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">— Alex</p>
+  <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;"><p style="font-size: 13px; color: #94a3b8;">TitleApp LLC | You're receiving this because you follow this Digital Worker.</p></div>
+</div>`,
+      },
+    },
+    delayMinutes: 0,
+    variables: ["firstName", "workerName", "changeNote", "platformUrl"],
+    status: "active",
+    priority: 3,
+    maxPerUser: 0,
+    smsOptOutRequired: false,
+  },
 ];
 
 /**

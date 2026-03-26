@@ -348,7 +348,7 @@ export default function DealershipDataStep({ onComplete, onSkip }: DealershipDat
             Your data is being processed
           </div>
           <p style={{ fontSize: "14px", color: "#374151", margin: 0 }}>
-            TitleApp AI will analyze your data and start helping you match customers to vehicles,
+            TitleApp will analyze your data and start helping you match customers to vehicles,
             suggest optimal pricing, and identify sales opportunities.
           </p>
         </div>

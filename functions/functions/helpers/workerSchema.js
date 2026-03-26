@@ -114,7 +114,13 @@ const VALID_SUITES = [
   "Communications",
 ];
 
-const VALID_WORKER_TYPES = ["standalone", "pipeline", "composite", "copilot", "orchestrator"];
+const VALID_WORKER_TYPES = ["standalone", "pipeline", "composite", "copilot", "orchestrator", "game"];
+
+// Game worker enums
+const VALID_GAME_MODES = ["conversational", "canvas"];
+const VALID_RAAS_MODES = ["light", "regulated"];
+const VALID_FEEDBACK_MODES = ["teach", "flag"];
+const VALID_CTA_TRIGGERS = ["session_end", "score_shown", "share_page"];
 
 // CoPilot Mode Framework — mode-aware workers (aviation, healthcare, legal)
 const VALID_MODES = ["direct", "operational", "advisory", "training"];
@@ -372,6 +378,89 @@ function validateDocumentControl(dc) {
   }
 
   return { valid: errors.length === 0, errors, warnings };
+}
+
+/**
+ * Validate gameConfig block for game workers.
+ * @param {object} gc — gameConfig
+ * @param {number} pricingTier — worker pricing tier
+ * @returns {{ errors: string[], warnings: string[] }}
+ */
+function validateGameConfig(gc, pricingTier) {
+  const errors = [];
+  const warnings = [];
+
+  if (!gc || typeof gc !== "object") {
+    errors.push("gameConfig: required for game workers");
+    return { errors, warnings };
+  }
+
+  if (gc.gameMode !== undefined && !VALID_GAME_MODES.includes(gc.gameMode)) {
+    errors.push(`gameConfig.gameMode: "${gc.gameMode}" is not valid. Must be one of: ${VALID_GAME_MODES.join(", ")}`);
+  }
+
+  if (gc.raasMode !== undefined && !VALID_RAAS_MODES.includes(gc.raasMode)) {
+    errors.push(`gameConfig.raasMode: "${gc.raasMode}" is not valid. Must be one of: ${VALID_RAAS_MODES.join(", ")}`);
+  }
+
+  if (gc.raasMode === "regulated" && !gc.verticalRulePack) {
+    errors.push("gameConfig.verticalRulePack: required when raasMode is regulated");
+  }
+
+  if (gc.rounds !== undefined && gc.rounds !== "unlimited") {
+    if (typeof gc.rounds !== "number" || gc.rounds < 1) {
+      errors.push("gameConfig.rounds: must be a positive number or \"unlimited\"");
+    }
+  }
+
+  if (gc.passingScore !== undefined && gc.passingScore !== null) {
+    if (typeof gc.passingScore !== "number" || gc.passingScore < 0 || gc.passingScore > 100) {
+      errors.push("gameConfig.passingScore: must be null or a number 0-100");
+    }
+  }
+
+  if (gc.feedbackMode !== undefined && !VALID_FEEDBACK_MODES.includes(gc.feedbackMode)) {
+    errors.push(`gameConfig.feedbackMode: "${gc.feedbackMode}" is not valid. Must be one of: ${VALID_FEEDBACK_MODES.join(", ")}`);
+  }
+
+  if (gc.winCondition !== undefined && (typeof gc.winCondition !== "string")) {
+    errors.push("gameConfig.winCondition: must be a string");
+  }
+
+  if (gc.loseCondition !== undefined && (typeof gc.loseCondition !== "string")) {
+    errors.push("gameConfig.loseCondition: must be a string");
+  }
+
+  if (gc.constraints !== undefined && !Array.isArray(gc.constraints)) {
+    errors.push("gameConfig.constraints: must be an array of strings");
+  }
+
+  if (gc.auditTrail !== undefined && typeof gc.auditTrail !== "boolean") {
+    errors.push("gameConfig.auditTrail: must be a boolean");
+  }
+
+  // $79 regulated: auditTrail locked on
+  if (pricingTier === 79 && gc.raasMode === "regulated" && gc.auditTrail === false) {
+    errors.push("gameConfig.auditTrail: cannot be disabled for $79 regulated game workers");
+  }
+
+  if (gc.ctaTrigger !== undefined && !VALID_CTA_TRIGGERS.includes(gc.ctaTrigger)) {
+    errors.push(`gameConfig.ctaTrigger: "${gc.ctaTrigger}" is not valid. Must be one of: ${VALID_CTA_TRIGGERS.join(", ")}`);
+  }
+
+  if (gc.preflightAccuracyChecked !== undefined && typeof gc.preflightAccuracyChecked !== "boolean") {
+    errors.push("gameConfig.preflightAccuracyChecked: must be a boolean");
+  }
+
+  if (gc.canvasUpgradeEligible !== undefined && typeof gc.canvasUpgradeEligible !== "boolean") {
+    errors.push("gameConfig.canvasUpgradeEligible: must be a boolean");
+  }
+
+  if (gc.stressTestPrompts !== undefined && !Array.isArray(gc.stressTestPrompts)) {
+    errors.push("gameConfig.stressTestPrompts: must be an array of strings");
+  }
+
+  return { errors, warnings };
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -656,6 +745,13 @@ function validateWorkerRecord(record, opts = {}) {
     if (!VALID_QUALITY_STATUSES.includes(record.qualityStatus)) {
       errors.push(`qualityStatus: "${record.qualityStatus}" is not valid. Must be one of: ${VALID_QUALITY_STATUSES.join(", ")}`);
     }
+  }
+
+  // 39. gameConfig — game worker configuration
+  if (record.worker_type === "game" || record.gameConfig !== undefined) {
+    const gcResult = validateGameConfig(record.gameConfig || {}, record.pricing_tier);
+    if (gcResult.errors.length > 0) errors.push(...gcResult.errors);
+    if (gcResult.warnings.length > 0) warnings.push(...gcResult.warnings);
   }
 
   // 18. credit_cost — must map to a valid cost type
@@ -1149,6 +1245,46 @@ function autoFixWorkerRecord(record, description) {
   if (record.qualityStatus === undefined) record.qualityStatus = "unaudited";
   if (record.qualityScore === undefined) record.qualityScore = null;
 
+  // Fix gameConfig — add defaults for game workers
+  if (record.worker_type === "game" || record.gameConfig) {
+    if (!record.gameConfig || typeof record.gameConfig !== "object") {
+      record.gameConfig = {};
+    }
+    const gc = record.gameConfig;
+    if (!gc.gameMode) gc.gameMode = "conversational";
+    if (!gc.raasMode) gc.raasMode = "light";
+    if (!gc.feedbackMode) gc.feedbackMode = "teach";
+    if (gc.rounds === undefined) gc.rounds = 10;
+    if (gc.passingScore === undefined) gc.passingScore = null;
+    if (gc.winCondition === undefined) gc.winCondition = "";
+    if (gc.loseCondition === undefined) gc.loseCondition = "";
+    if (!Array.isArray(gc.constraints)) gc.constraints = [];
+    if (gc.canvasUpgradeEligible === undefined) gc.canvasUpgradeEligible = true;
+    if (gc.preflightAccuracyChecked === undefined) gc.preflightAccuracyChecked = false;
+    if (!Array.isArray(gc.stressTestPrompts)) gc.stressTestPrompts = [];
+    if (!Array.isArray(gc.assets)) gc.assets = [];
+    if (!gc.ctaTrigger) gc.ctaTrigger = "session_end";
+    if (gc.verticalRulePack === undefined) gc.verticalRulePack = null;
+    if (gc.examScope === undefined) gc.examScope = null;
+    // $79 regulated: auditTrail locked on
+    if (record.pricing_tier === 79 && gc.raasMode === "regulated") {
+      gc.auditTrail = true;
+    } else if (gc.auditTrail === undefined) {
+      gc.auditTrail = gc.raasMode === "regulated" && record.pricing_tier >= 29;
+    }
+  }
+
+  // Fix versionInfo — add default version tracking
+  if (!record.versionInfo || typeof record.versionInfo !== "object") {
+    record.versionInfo = {
+      currentVersion: record.buildPhase === "live" ? "1.0" : null,
+      versionHistory: [],
+      lastUpdatedAt: null,
+      lastNotifiedAt: null,
+      totalUpdates: 0,
+    };
+  }
+
   // Fix notifications — add default config if missing
   if (!record.notifications || typeof record.notifications !== "object") {
     record.notifications = { ...DEFAULT_NOTIFICATION_CONFIG };
@@ -1186,8 +1322,13 @@ module.exports = {
   VALID_DIGEST_OPTIONS,
   DEFAULT_NOTIFICATION_CONFIG,
   validateDocumentControl,
+  validateGameConfig,
   parsePriceTier,
   slugify,
   DEFAULT_PLATFORM_SUBSTRATE,
   VALID_QUALITY_STATUSES,
+  VALID_GAME_MODES,
+  VALID_RAAS_MODES,
+  VALID_FEEDBACK_MODES,
+  VALID_CTA_TRIGGERS,
 };

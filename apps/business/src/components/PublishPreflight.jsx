@@ -533,9 +533,9 @@ export default function PublishPreflight({ worker, workerCardData, sessionId, on
   return (
     <div style={S.container}>
       <div style={S.header}>
-        <div style={S.title}>Publish Preflight</div>
+        <div style={S.title}>Launch Preflight</div>
         <div style={S.sub}>
-          Complete all gates to publish your worker. {completedCount} of {totalGates} done.
+          Complete all gates to launch your worker. {completedCount} of {totalGates} done.
         </div>
       </div>
 
@@ -874,7 +874,7 @@ export default function PublishPreflight({ worker, workerCardData, sessionId, on
                   {showNotifPreview === "digest" && (notifConfig.weeklyDigestBody || `Here's your weekly summary from ${workerName}.`)}
                   {showNotifPreview === "lowUsage" && (notifConfig.lowUsageMessage || `It's been a while since you used ${workerName}. Here's what you're missing.`)}
                   {showNotifPreview === "update" && (notifConfig.updateMessage || `${workerName} has been updated with new features and improvements.`)}
-                  {"\n\n"}Best,{"\n"}Alex — your Chief of Staff{"\n"}TitleApp AI
+                  {"\n\n"}Best,{"\n"}Alex — your Chief of Staff{"\n"}TitleApp
                 </div>
               </div>
             </div>
@@ -899,7 +899,7 @@ export default function PublishPreflight({ worker, workerCardData, sessionId, on
         onClick={handlePublish}
         disabled={publishing || !canPublish}
       >
-        {publishing ? "Publishing..." : canPublish ? "Looks good — publish it" : "Complete all gates above to publish"}
+        {publishing ? "Launching..." : canPublish ? "Looks good — launch it" : "Complete all gates above to launch"}
       </button>
       {!allPassed && (
         <div style={{ fontSize: 11, color: "#94A3B8", textAlign: "center", marginTop: 6 }}>

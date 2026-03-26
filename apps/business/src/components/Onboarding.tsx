@@ -232,7 +232,7 @@ export default function Onboarding({ onComplete, onStepChange }: OnboardingProps
       <TermsAndConditions
         onAccept={() => setStep("welcome")}
         onDecline={() => {
-          alert("You must accept the terms to use TitleApp AI");
+          alert("You must accept the terms to use TitleApp");
           window.location.href = "/";
         }}
       />
@@ -1070,7 +1070,7 @@ export default function Onboarding({ onComplete, onStepChange }: OnboardingProps
       >
         <div style={{ fontSize: "48px", marginBottom: "24px", fontWeight: 300, letterSpacing: "-2px" }}>TitleApp</div>
         <h1 style={{ fontSize: "40px", fontWeight: 700, margin: "0 0 16px 0" }}>
-          Welcome to TitleApp AI
+          Welcome to TitleApp
         </h1>
         <p style={{ fontSize: "20px", opacity: 0.95, marginBottom: "40px", lineHeight: 1.5 }}>
           Your AI-powered platform for title, ownership, and business automation

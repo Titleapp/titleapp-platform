@@ -278,7 +278,7 @@ export default function Reports() {
   function exportCSV() {
     const kpis = getKpiConfig();
     const rows = [
-      ["TitleApp AI -- Monthly Report"],
+      ["TitleApp -- Monthly Report"],
       ["Date Range", dateRange],
       ["Vertical", vertical],
       [""],
@@ -302,7 +302,7 @@ export default function Reports() {
   function exportPDF() {
     const win = window.open("", "_blank");
     const kpis = getKpiConfig();
-    win.document.write(`<html><head><title>TitleApp AI Report</title><style>
+    win.document.write(`<html><head><title>TitleApp Report</title><style>
       body{font-family:system-ui,sans-serif;padding:40px;color:#1e293b}
       h1{font-size:24px;margin-bottom:4px}
       h2{font-size:18px;margin-top:24px;margin-bottom:8px;color:#475569}
@@ -316,7 +316,7 @@ export default function Reports() {
       .kpi-value{font-size:24px;font-weight:800;margin-top:4px}
       @media print{body{padding:20px}}
     </style></head><body>`);
-    win.document.write(`<h1>TitleApp AI -- ${isVault ? "Vault" : "Business"} Report</h1><div class="sub">Generated ${new Date().toLocaleDateString()}</div>`);
+    win.document.write(`<h1>TitleApp -- ${isVault ? "Vault" : "Business"} Report</h1><div class="sub">Generated ${new Date().toLocaleDateString()}</div>`);
     win.document.write(`<div class="kpis">${kpis.map(k => `<div class="kpi"><div class="kpi-label">${k.label}</div><div class="kpi-value">${k.value}</div></div>`).join("")}</div>`);
     win.document.write(`<h2>Recent Activity</h2><table><tr><th>Time</th><th>Event</th></tr>${recentEvents.map(e => `<tr><td>${e.time}</td><td>${e.text}</td></tr>`).join("")}</table>`);
     win.document.write(`</body></html>`);
@@ -327,7 +327,7 @@ export default function Reports() {
   function exportExcel() {
     const kpis = getKpiConfig();
     const rows = [
-      ["TitleApp AI -- Monthly Report"],
+      ["TitleApp -- Monthly Report"],
       ["Date Range", dateRange],
       [""],
       ["KPI", "Value"],

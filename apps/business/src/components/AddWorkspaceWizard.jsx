@@ -268,7 +268,7 @@ export default function AddWorkspaceWizard({ existingWorkspaces, onCreated, onCa
       <div style={{ maxWidth: 640, width: '100%' }}>
         <div style={{ marginBottom: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
-            <div style={{ fontSize: 20, fontWeight: 700, color: '#7c3aed' }}>TitleApp AI</div>
+            <div style={{ fontSize: 20, fontWeight: 700, color: '#7c3aed' }}>TitleApp</div>
             <div style={{ fontSize: 14, color: '#64748b', marginTop: 2 }}>Add a Business Workspace</div>
           </div>
           <button

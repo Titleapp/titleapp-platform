@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { auth as firebaseAuth } from "../firebase";
+import { getFallbackPrompts } from "../constants/gameVerticals";
+import GameEndScreen from "./sandbox/GameEndScreen";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
 
@@ -79,6 +81,7 @@ export default function TestWorkerPanel({ worker, workerCardData, sessionId, onE
   const [exchangeCount, setExchangeCount] = useState(0);
   const [edgeCases, setEdgeCases] = useState([]);
   const [authError, setAuthError] = useState(false);
+  const [gameResult, setGameResult] = useState(null);
   const [starterPromptsVisible, setStarterPromptsVisible] = useState(true);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [mobileWorkspaceOpen, setMobileWorkspaceOpen] = useState(false);
@@ -240,6 +243,13 @@ export default function TestWorkerPanel({ worker, workerCardData, sessionId, onE
 
     if (data.suggestedEdgeCases && data.suggestedEdgeCases.length > 0) {
       setEdgeCases(data.suggestedEdgeCases);
+    } else if (edgeCases.length === 0) {
+      const vertical = workerCardData?.vertical || worker?.vertical;
+      const raasMode = workerCardData?.gameConfig?.raasMode;
+      setEdgeCases(getFallbackPrompts(vertical, raasMode));
+    }
+    if (data.gameResult) {
+      setGameResult(data.gameResult);
     }
   }
 
@@ -300,6 +310,11 @@ export default function TestWorkerPanel({ worker, workerCardData, sessionId, onE
     edgeCaseWrap: { display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16, flexShrink: 0 },
     edgeCaseChip: { padding: "6px 12px", background: "rgba(107,70,193,0.06)", color: "#6B46C1", border: "1px solid rgba(107,70,193,0.15)", borderRadius: 20, fontSize: 12, cursor: "pointer", fontWeight: 500 },
   };
+
+  // Game end screen — shown when backend returns gameResult
+  if (gameResult) {
+    return <GameEndScreen gameResult={gameResult} workerSlug={worker?.slug || worker?.id} />;
+  }
 
   // Interface preference chooser — shown before test begins
   if (!interfacePref) {

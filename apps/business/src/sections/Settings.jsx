@@ -1099,7 +1099,7 @@ function BusinessSettings() {
           {/* Current Plan */}
           <div style={{ padding: '16px', background: '#f5f3ff', borderRadius: '8px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
-              <div style={{ fontSize: '18px', fontWeight: '700' }}>TitleApp AI Pro</div>
+              <div style={{ fontSize: '18px', fontWeight: '700' }}>TitleApp Pro</div>
               <div style={{ fontSize: '13px', color: '#64748b' }}>$9/user/month · Billed monthly</div>
             </div>
             <span style={{ padding: '4px 12px', background: '#ede9fe', color: '#7c3aed', borderRadius: '20px', fontSize: '13px', fontWeight: '600' }}>Active</span>

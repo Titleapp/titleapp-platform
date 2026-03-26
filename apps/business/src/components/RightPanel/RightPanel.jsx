@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { auth } from "../../firebase";
 import { GoogleAuthProvider, linkWithPopup, linkWithRedirect, signInWithCredential } from "firebase/auth";
 import { useRightPanel } from "../../context/RightPanelContext";
+import SessionEndCTA from "../worker/SessionEndCTA";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
 
@@ -625,6 +626,8 @@ export default function RightPanel() {
           </div>
 
           <TrialBanner worker={w} />
+
+          <SessionEndCTA style={{ marginTop: 24 }} />
         </div>
       </div>
     );

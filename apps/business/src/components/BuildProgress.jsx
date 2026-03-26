@@ -15,6 +15,7 @@ const STAGE_MESSAGES = [
 ];
 
 const TIERS = [
+  { id: 0, label: "Free", price: 0, credits: 50 },
   { id: 1, label: "Tier 1", price: 29, credits: 500 },
   { id: 2, label: "Tier 2", price: 49, credits: 1500 },
   { id: 3, label: "Tier 3", price: 79, credits: 3000 },
@@ -121,7 +122,7 @@ export default function BuildProgress({ worker, workerCardData, onWorkerUpdate, 
     try { localStorage.setItem(buildKey, String(buildCount + 1)); } catch {}
   }, []);
 
-  const tier = TIERS.find(t => t.id === selectedTier) || TIERS[1];
+  const tier = TIERS.find(t => t.id === selectedTier) || TIERS[2];
 
   // Matrix code streaming animation (second build only)
   useEffect(() => {
@@ -257,7 +258,7 @@ export default function BuildProgress({ worker, workerCardData, onWorkerUpdate, 
     <div style={{ maxWidth: 600 }}>
       <div style={{ fontSize: 18, fontWeight: 700, color: "#1a1a2e", marginBottom: 4 }}>Your worker is ready</div>
       <div style={{ fontSize: 14, color: "#64748B", marginBottom: 24 }}>
-        Review the preview below, set your price, then test it before publishing.
+        Review the preview below, set your price, then test it before launching.
       </div>
 
       {/* Live preview card */}
@@ -393,13 +394,15 @@ export default function BuildProgress({ worker, workerCardData, onWorkerUpdate, 
                 border: `1px solid ${selectedTier === t.id ? "#6B46C1" : "#E2E8F0"}`,
               }}
             >
-              <div style={{ fontSize: 18, fontWeight: 700, color: selectedTier === t.id ? "#6B46C1" : "#1a1a2e" }}>${t.price}/mo</div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: selectedTier === t.id ? "#6B46C1" : "#1a1a2e" }}>{t.price === 0 ? "Free" : `$${t.price}/mo`}</div>
               <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 2 }}>{t.credits} credits</div>
             </div>
           ))}
         </div>
         <div style={{ fontSize: 12, color: "#64748B" }}>
-          You earn ${(tier.price * 0.75).toFixed(2)}/mo per subscriber (75% of subscription revenue)
+          {tier.price === 0
+            ? "Free — open to everyone. You earn $0."
+            : `You earn $${(tier.price * 0.75).toFixed(2)}/mo per subscriber (75% of subscription revenue)`}
         </div>
       </div>
 
@@ -415,7 +418,7 @@ export default function BuildProgress({ worker, workerCardData, onWorkerUpdate, 
         Continue to Test
       </button>
       <div style={{ fontSize: 12, color: "#94A3B8", textAlign: "center", marginTop: 8 }}>
-        Test your worker as a subscriber would before publishing.
+        Test your worker as a subscriber would before launching.
       </div>
     </div>
   );
