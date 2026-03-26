@@ -4652,13 +4652,16 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
         }
 
         // Create subscription record
+        const isFreeWorker = !workerPrice || workerPrice === 0;
         const subRef = await db.collection("subscriptions").add({
           userId,
           workerId: workerId || workerDoc.workerId,
           slug: slug || workerDoc.slug,
           workerName: workerDoc.name || workerDoc.display_name || "Digital Worker",
           status: "active",
-          trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+          trialStatus: "trial_active",
+          trialStartedAt: nowServerTs(),
+          trialEndsAt: isFreeWorker ? null : new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
           createdAt: nowServerTs(),
         });
 
@@ -4940,6 +4943,8 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
           workerName,
           price: workerDoc.pricing_tier || workerDoc.price || 0,
           status: "active_trial",
+          trialStatus: "trial_active",
+          trialStartedAt: nowServerTs(),
           trialEndsAt,
           createdAt: nowServerTs(),
         });
@@ -6803,6 +6808,18 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
         return res.json({ ok: true, ...results });
       } catch (e) {
         console.error("[admin:workers:sync] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // POST /v1/admin:workers:sync:scheduled — Manual trigger for nightly catalog sync
+    if (route === "/admin:workers:sync:scheduled" && method === "POST") {
+      try {
+        const { scheduledWorkerSync } = require("./pipeline/scheduledWorkerSync");
+        const results = await scheduledWorkerSync();
+        return res.json({ ok: true, ...results });
+      } catch (e) {
+        console.error("[admin:workers:sync:scheduled] error:", e.message);
         return res.json({ ok: false, error: e.message });
       }
     }
@@ -16311,6 +16328,16 @@ const { guestLeadRecovery } = require("./pipeline/guestLeadRecovery");
 exports.guestLeadRecovery = onSchedule(
   { schedule: "0 9 * * *", timeZone: "Pacific/Honolulu", region: "us-central1" },
   async () => { await guestLeadRecovery(); }
+);
+
+// ----------------------------
+// PIPELINE: Nightly Worker Sync (39.11-T2) — midnight HST (10:00 UTC)
+// ----------------------------
+const { scheduledWorkerSync } = require("./pipeline/scheduledWorkerSync");
+
+exports.scheduledWorkerSync = onSchedule(
+  { schedule: "0 0 * * *", timeZone: "Pacific/Honolulu", region: "us-central1" },
+  async () => { await scheduledWorkerSync(); }
 );
 
 // ----------------------------

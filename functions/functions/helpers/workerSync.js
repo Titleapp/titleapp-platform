@@ -886,4 +886,5 @@ module.exports = {
   RULESET_MAP,
   DISPLAY_NAME_MAP,
   HEADLINE_MAP,
+  CATALOG_VERTICAL_MAP,
 };

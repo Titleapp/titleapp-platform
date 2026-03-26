@@ -37,10 +37,17 @@ async function getUserWorkspaces(userId) {
   try {
     const subSnap = await getDb().collection('subscriptions')
       .where('userId', '==', userId)
-      .where('status', 'in', ['active', 'trial', 'active_trial'])
       .get();
-    const subscribedSlugs = subSnap.docs
-      .map(d => d.data().slug || d.data().workerSlug || d.data().workerId)
+
+    // Filter in memory — exclude cancelled and expired
+    const activeSubs = subSnap.docs.filter(d => {
+      const data = d.data();
+      const ts = data.trialStatus || data.status || '';
+      return !['cancelled', 'trial_expired'].includes(ts);
+    });
+
+    const subscribedSlugs = activeSubs
+      .map(d => d.data().workerId || d.data().workerSlug || d.data().slug)
       .filter(Boolean);
     if (subscribedSlugs.length > 0) {
       for (const ws of workspaces) {
