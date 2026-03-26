@@ -1525,24 +1525,42 @@ export default function Sidebar({
               {workers.map(worker => {
                 const isSelected = selectedWorker === worker.slug;
                 return (
-                  <button
-                    key={worker.slug}
-                    className={`navItem ${isSelected ? "navItemActive" : ""}`}
-                    onClick={() => handleWorkerClick(worker)}
-                    style={{
-                      width: "100%", textAlign: "left", cursor: "pointer",
-                      display: "flex", alignItems: "center", gap: 8,
-                      padding: "7px 10px", fontSize: 13,
-                    }}
-                  >
-                    <span style={{ position: "relative", flexShrink: 0, width: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <WorkerIcon slug={worker.slug} size={16} color={isSelected ? "#ddd6fe" : "rgba(255,255,255,0.55)"} />
-                      <span style={{ position: "absolute", bottom: -1, right: -1, width: 6, height: 6, borderRadius: "50%", background: "#22c55e", border: "1.5px solid #0b1020" }} />
-                    </span>
-                    <span style={{ flex: 1, color: "rgba(255,255,255,0.85)", fontWeight: 400 }}>
-                      {worker.name}
-                    </span>
-                  </button>
+                  <div key={worker.slug}>
+                    <button
+                      className={`navItem ${isSelected ? "navItemActive" : ""}`}
+                      onClick={() => handleWorkerClick(worker)}
+                      style={{
+                        width: "100%", textAlign: "left", cursor: "pointer",
+                        display: "flex", alignItems: "center", gap: 8,
+                        padding: "7px 10px", fontSize: 13,
+                      }}
+                    >
+                      <span style={{ position: "relative", flexShrink: 0, width: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <WorkerIcon slug={worker.slug} size={16} color={isSelected ? "#ddd6fe" : "rgba(255,255,255,0.55)"} />
+                        <span style={{ position: "absolute", bottom: -1, right: -1, width: 6, height: 6, borderRadius: "50%", background: "#22c55e", border: "1.5px solid #0b1020" }} />
+                      </span>
+                      <span style={{ flex: 1, color: "rgba(255,255,255,0.85)", fontWeight: 400 }}>
+                        {worker.name}
+                      </span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        window.dispatchEvent(new CustomEvent("ta:update-worker", { detail: { slug: worker.slug, name: worker.name } }));
+                        if (onClose) onClose();
+                      }}
+                      title="Your worker gets better every time you update it"
+                      style={{
+                        width: "100%", textAlign: "left", cursor: "pointer",
+                        background: "none", border: "none",
+                        padding: "2px 10px 6px 38px", fontSize: 11,
+                        color: "rgba(255,255,255,0.3)", fontWeight: 500,
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.color = "#7c3aed"; }}
+                      onMouseLeave={e => { e.currentTarget.style.color = "rgba(255,255,255,0.3)"; }}
+                    >
+                      Update &rarr;
+                    </button>
+                  </div>
                 );
               })}
             </div>
