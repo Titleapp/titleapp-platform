@@ -4280,8 +4280,10 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
           .slice(0, limit)
           .map(doc => {
             const d = doc.data();
+            const lp = d.workspaceLaunchPage || {};
             return {
               workerId: doc.id,
+              slug: d.slug || doc.id,
               name: d.display_name || d.name || "",
               shortDescription: d.short_description || d.headline || d.description || "",
               price: d.pricing_tier || d.pricing?.monthly || 0,
@@ -4289,6 +4291,11 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
               valueBucket: inferBuckets(d),
               status: d.status || "live",
               languages: d.languages || ["en"],
+              tagline: lp.tagline || "",
+              whatYoullHave: lp.whatYoullHave || "",
+              quickStartPrompts: Array.isArray(lp.quickStartPrompts) ? lp.quickStartPrompts : [],
+              activeSubstrateFeatures: Array.isArray(lp.activeSubstrateFeatures) ? lp.activeSubstrateFeatures : [],
+              workerType: d.worker_type || "worker",
             };
           });
 

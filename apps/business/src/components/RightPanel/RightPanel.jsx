@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { auth } from "../../firebase";
 import { GoogleAuthProvider, linkWithPopup, linkWithRedirect, signInWithCredential } from "firebase/auth";
 import { useRightPanel } from "../../context/RightPanelContext";
+import { useWorkerState } from "../../context/WorkerStateContext";
+import WorkerIcon, { getThemeAccent, getVerticalIconSlug } from "../../utils/workerIcons";
 import SessionEndCTA from "../worker/SessionEndCTA";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
@@ -76,6 +78,402 @@ function generateDefaultPrompts(capabilitySummary, workerName) {
   });
   if (prompts.length === 0) prompts.push(`What can ${workerName || "you"} help me with?`);
   return prompts;
+}
+
+// ── 40.2-T1: Worker Canvas with Arrival Animation ──────────────────
+
+function WorkerCanvas({ workerData, verticalLabel, onLeave }) {
+  const ws = useWorkerState();
+  const w = workerData;
+  const prompts = w.quickStartPrompts || generateDefaultPrompts(w.capabilitySummary, w.name || w.display_name);
+  const vertical = verticalLabel || w.vertical || w.suite || "Other";
+  const isGame = !!w.gameConfig?.isGame;
+  const accent = getThemeAccent(vertical, isGame);
+  const iconSlug = getVerticalIconSlug(vertical);
+
+  // Arrival state machine
+  const [arrivalPhase, setArrivalPhase] = useState("idle"); // idle | heartbeat | reveal | done
+  const [showName, setShowName] = useState(false);
+  const [showTagline, setShowTagline] = useState(false);
+  const [showCapability, setShowCapability] = useState(false);
+  const [showChips, setShowChips] = useState([]);
+  const [showBadges, setShowBadges] = useState(false);
+  const [showSweep, setShowSweep] = useState(false);
+  const [iconAnchored, setIconAnchored] = useState(false);
+  const [showSkeleton, setShowSkeleton] = useState(false);
+  const arrivalCancelled = useRef(false);
+  const timeoutsRef = useRef([]);
+  const heartbeatRef = useRef(null);
+  const prevWorkerRef = useRef(null);
+
+  // Clear all scheduled timeouts
+  const clearTimeouts = useCallback(() => {
+    timeoutsRef.current.forEach(clearTimeout);
+    timeoutsRef.current = [];
+  }, []);
+
+  const schedule = useCallback((fn, ms) => {
+    const id = setTimeout(() => {
+      if (!arrivalCancelled.current) fn();
+    }, ms);
+    timeoutsRef.current.push(id);
+    return id;
+  }, []);
+
+  // Determine workerState from context (or fallback to local)
+  const workerState = ws?.workerState || "idle";
+  const workerReady = ws?.workerReady !== undefined ? ws.workerReady : true;
+  const isTransitioning = ws?.isTransitioning || false;
+
+  // Skeleton loading — show after 300ms if not ready
+  useEffect(() => {
+    if (!workerReady) {
+      const t = setTimeout(() => setShowSkeleton(true), 300);
+      return () => clearTimeout(t);
+    }
+    setShowSkeleton(false);
+  }, [workerReady]);
+
+  // Trigger arrival when workerState becomes 'arrival'
+  useEffect(() => {
+    if (workerState !== "arrival") return;
+    // Reset all reveal states
+    arrivalCancelled.current = false;
+    clearTimeouts();
+    setArrivalPhase("heartbeat");
+    setShowName(false);
+    setShowTagline(false);
+    setShowCapability(false);
+    setShowChips([]);
+    setShowBadges(false);
+    setShowSweep(false);
+    setIconAnchored(false);
+  }, [workerState, clearTimeouts]);
+
+  // Skip arrival on worker switch if same worker re-selected or data already present
+  useEffect(() => {
+    const wId = w.workerId || w.slug;
+    if (prevWorkerRef.current === wId) return;
+    prevWorkerRef.current = wId;
+    // If context is already idle (no arrival triggered), show content immediately
+    if (workerState === "idle" && workerReady) {
+      setArrivalPhase("done");
+      setShowName(true);
+      setShowTagline(true);
+      setShowCapability(true);
+      setShowChips(prompts.map((_, i) => i));
+      setShowBadges(true);
+      setIconAnchored(true);
+    }
+  }, [w, workerState, workerReady, prompts]);
+
+  // Heartbeat animationend → start reveal sequence
+  const handleHeartbeatEnd = useCallback(() => {
+    if (arrivalCancelled.current) return;
+    setArrivalPhase("reveal");
+    // Staggered content reveal
+    schedule(() => setIconAnchored(true), 0);
+    schedule(() => setShowName(true), 200);
+    schedule(() => setShowTagline(true), 500);
+    schedule(() => setShowCapability(true), 750);
+    prompts.forEach((_, i) => {
+      schedule(() => setShowChips(prev => [...prev, i]), 900 + i * 150);
+    });
+    schedule(() => setShowBadges(true), 1350);
+    schedule(() => setShowSweep(true), 1600);
+    schedule(() => {
+      setArrivalPhase("done");
+      setShowSweep(false);
+      if (ws?.setWorkerState) ws.setWorkerState("idle");
+    }, 2000);
+  }, [prompts, schedule, ws]);
+
+  // Early interrupt: if user sends message during arrival, skip to working
+  useEffect(() => {
+    if (workerState === "working" && arrivalPhase !== "done") {
+      arrivalCancelled.current = true;
+      clearTimeouts();
+      setArrivalPhase("done");
+      setShowName(true);
+      setShowTagline(true);
+      setShowCapability(true);
+      setShowChips(prompts.map((_, i) => i));
+      setShowBadges(true);
+      setIconAnchored(true);
+      setShowSweep(false);
+    }
+  }, [workerState, arrivalPhase, prompts, clearTimeouts]);
+
+  // Cleanup on unmount
+  useEffect(() => () => clearTimeouts(), [clearTimeouts]);
+
+  // Breathe duration based on worker state
+  const breatheDuration = workerState === "working" ? "1.8s" : "4s";
+
+  // Confirmation pulse on complete state
+  const [confirmPulse, setConfirmPulse] = useState(false);
+  useEffect(() => {
+    if (workerState === "complete") {
+      setConfirmPulse(true);
+    }
+  }, [workerState]);
+
+  const handleConfirmPulseEnd = useCallback(() => {
+    setConfirmPulse(false);
+    if (ws?.setWorkerState) ws.setWorkerState("idle");
+  }, [ws]);
+
+  const contentVisible = arrivalPhase === "done" || arrivalPhase === "reveal";
+
+  return (
+    <div
+      className="worker-canvas-container"
+      style={{
+        "--worker-accent": accent,
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        background: "#0f1219",
+        color: "#e5e7eb",
+        overflowY: "auto",
+        position: "relative",
+        opacity: isTransitioning ? 0.6 : 1,
+        transition: "opacity 150ms ease-out",
+      }}
+    >
+      {/* Back button */}
+      <div style={{ padding: "16px 24px 0", flexShrink: 0 }}>
+        <button
+          onClick={onLeave}
+          style={{
+            display: "flex", alignItems: "center", gap: 4, background: "none",
+            border: "none", color: "var(--worker-accent)", fontSize: 13, fontWeight: 500,
+            cursor: "pointer", padding: 0, marginBottom: 16, fontFamily: "inherit",
+          }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
+          Back to {verticalLabel || "workers"}
+        </button>
+      </div>
+
+      {/* Skeleton loading state */}
+      {!workerReady && showSkeleton && (
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 40 }}>
+          <div style={{ marginBottom: 32, opacity: 0.4 }}>
+            <WorkerIcon slug={iconSlug} size={48} color={accent} />
+          </div>
+          <div style={{
+            width: "100%", maxWidth: 280, height: 32, borderRadius: 8, marginBottom: 12,
+            background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent)",
+            backgroundSize: "200% 100%",
+            animation: "shimmer 1.5s linear infinite",
+          }} />
+          <div style={{
+            width: "60%", maxWidth: 180, height: 20, borderRadius: 6, marginBottom: 16,
+            background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent)",
+            backgroundSize: "200% 100%",
+            animation: "shimmer 1.5s linear infinite",
+          }} />
+          <div style={{ display: "flex", gap: 8 }}>
+            {[1, 2, 3].map(i => (
+              <div key={i} style={{
+                width: 80, height: 32, borderRadius: 16,
+                background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent)",
+                backgroundSize: "200% 100%",
+                animation: "shimmer 1.5s linear infinite",
+              }} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Arrival + Content area */}
+      {workerReady && (
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "0 24px 24px", position: "relative" }}>
+
+          {/* Heartbeat center area — shown during heartbeat phase */}
+          {(arrivalPhase === "heartbeat" || (arrivalPhase === "idle" && workerState === "arrival")) && (
+            <div style={{
+              flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
+              position: "absolute", inset: 0, zIndex: 2,
+            }}>
+              <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <WorkerIcon slug={iconSlug} size={48} color={accent} />
+                {/* Heartbeat ring */}
+                <div
+                  ref={heartbeatRef}
+                  className="heartbeat-ring"
+                  onAnimationEnd={handleHeartbeatEnd}
+                  style={{
+                    position: "absolute",
+                    width: 80, height: 80,
+                    borderRadius: "50%",
+                    border: `1.5px solid var(--worker-accent)`,
+                    animation: "heartbeat-arrival 700ms ease-out 2",
+                    animationFillMode: "forwards",
+                    pointerEvents: "none",
+                  }}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Anchored icon + content — shown during reveal and after */}
+          {contentVisible && (
+            <>
+              {/* Icon anchored top-left */}
+              <div style={{
+                display: "flex", alignItems: "center", gap: 12, marginBottom: 12, marginTop: 8,
+                position: "relative",
+              }}>
+                <div
+                  className="worker-icon-breathe"
+                  style={{
+                    animation: arrivalPhase === "done" ? `breathe ${breatheDuration} ease-in-out infinite` : "none",
+                    "--breathe-duration": breatheDuration,
+                    transition: iconAnchored ? "transform 400ms ease-out" : "none",
+                  }}
+                >
+                  <WorkerIcon slug={iconSlug} size={32} color={accent} />
+                </div>
+
+                {/* Confirmation pulse ring */}
+                {confirmPulse && (
+                  <div
+                    className="heartbeat-ring"
+                    onAnimationEnd={handleConfirmPulseEnd}
+                    style={{
+                      position: "absolute", left: -8, top: -8,
+                      width: 48, height: 48,
+                      borderRadius: "50%",
+                      border: `1.5px solid var(--worker-accent)`,
+                      animation: "heartbeat-arrival 700ms ease-out 1",
+                      animationFillMode: "forwards",
+                      pointerEvents: "none",
+                    }}
+                  />
+                )}
+              </div>
+
+              {/* Worker name */}
+              <div
+                className="arrival-name"
+                style={{
+                  fontSize: 22, fontWeight: 700, color: "var(--worker-accent)", marginBottom: 4,
+                  opacity: showName ? 1 : 0,
+                  transform: showName ? "translateY(0)" : "translateY(4px)",
+                  animation: showName && arrivalPhase === "reveal" ? "fadeIn 300ms ease-out forwards" : "none",
+                }}
+              >
+                {w.name || w.display_name}
+              </div>
+
+              {/* Tagline */}
+              {w.tagline && (
+                <div
+                  className="arrival-tagline"
+                  style={{
+                    fontSize: 14, color: "var(--worker-accent)", fontWeight: 500, marginBottom: 12,
+                    opacity: showTagline ? 0.8 : 0,
+                    transform: showTagline ? "translateY(0)" : "translateY(4px)",
+                    animation: showTagline && arrivalPhase === "reveal" ? "fadeIn 250ms ease-out forwards" : "none",
+                  }}
+                >
+                  {w.tagline}
+                </div>
+              )}
+
+              {/* Capability summary (whatYoullHave) */}
+              {w.capabilitySummary && (
+                <div
+                  className="arrival-capability"
+                  style={{
+                    fontSize: 14, color: "rgba(255,255,255,0.6)", lineHeight: 1.6, marginBottom: 24,
+                    opacity: showCapability ? 1 : 0,
+                    transform: showCapability ? "translateY(0)" : "translateY(4px)",
+                    animation: showCapability && arrivalPhase === "reveal" ? "fadeIn 250ms ease-out forwards" : "none",
+                  }}
+                >
+                  {w.capabilitySummary}
+                </div>
+              )}
+
+              {/* Quick start chips */}
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 24 }}>
+                {prompts.map((p, i) => (
+                  <button
+                    key={i}
+                    className="arrival-chips"
+                    onClick={() => {
+                      window.dispatchEvent(new CustomEvent("ta:panel-ask-alex", { detail: { text: p } }));
+                      if (ws?.startWorking) ws.startWorking();
+                    }}
+                    style={{
+                      padding: "8px 14px", fontSize: 13, borderRadius: 20,
+                      background: "rgba(255,255,255,0.05)",
+                      border: `1px solid var(--worker-accent)`,
+                      color: "var(--worker-accent)", cursor: "pointer", fontWeight: 500,
+                      fontFamily: "inherit", textAlign: "left", lineHeight: 1.4,
+                      opacity: showChips.includes(i) ? 1 : 0,
+                      transform: showChips.includes(i) ? "translateY(0)" : "translateY(4px)",
+                      animation: showChips.includes(i) && arrivalPhase === "reveal" ? "fadeIn 200ms ease-out forwards" : "none",
+                      transition: arrivalPhase === "done" ? "background 150ms" : "none",
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.1)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; }}
+                  >
+                    {p}
+                  </button>
+                ))}
+              </div>
+
+              {/* Substrate badges (recent activity + documents) */}
+              <div
+                className="arrival-badges"
+                style={{
+                  opacity: showBadges ? 1 : 0,
+                  transform: showBadges ? "translateY(0)" : "translateY(4px)",
+                  animation: showBadges && arrivalPhase === "reveal" ? "fadeIn 200ms ease-out forwards" : "none",
+                }}
+              >
+                <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.4)", letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: 8 }}>
+                  Recent activity
+                </div>
+                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.3)", marginBottom: 24 }}>
+                  Your work with {w.name || "this worker"} will appear here
+                </div>
+
+                <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.4)", letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: 8 }}>
+                  Documents
+                </div>
+                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.3)" }}>
+                  Upload documents to give {w.name || "this worker"} more context
+                </div>
+              </div>
+
+              <TrialBanner worker={w} />
+              <SessionEndCTA style={{ marginTop: 24 }} />
+            </>
+          )}
+
+          {/* Sweep line — bottom of canvas */}
+          {showSweep && (
+            <div
+              className="arrival-sweep"
+              style={{
+                position: "absolute",
+                bottom: 0, left: 0,
+                height: 2,
+                background: "var(--worker-accent)",
+                opacity: 0.2,
+                animation: "sweep 400ms ease-out forwards",
+              }}
+            />
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 // ── Stats Header ────────────────────────────────────────────────
@@ -566,70 +964,14 @@ export default function RightPanel() {
   const showStats = state === "STATE-1" || state === "STATE-2";
 
   // ── WORKSPACE_HOME: Worker just opened — show capabilities + quick-start ──
+  // 40.2-T1: Arrival animation system
   if (state === "WORKSPACE_HOME" && panel.activeWorkerData) {
-    const w = panel.activeWorkerData;
-    const prompts = w.quickStartPrompts || generateDefaultPrompts(w.capabilitySummary, w.name || w.display_name);
-
     return (
-      <div style={S.wrap}>
-        <div style={{ padding: 24, flex: 1, display: "flex", flexDirection: "column" }}>
-          <button
-            onClick={() => panel.leaveWorkspace()}
-            style={{
-              display: "flex", alignItems: "center", gap: 4, background: "none",
-              border: "none", color: "#7c3aed", fontSize: 13, fontWeight: 500,
-              cursor: "pointer", padding: 0, marginBottom: 16, fontFamily: "inherit",
-            }}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
-            Back to {panel.verticalLabel || "workers"}
-          </button>
-          <div style={{ fontSize: 20, fontWeight: 700, color: "#111827", marginBottom: 4 }}>
-            {w.name || w.display_name}
-          </div>
-          {w.tagline && (
-            <div style={{ fontSize: 13, color: "#7c3aed", fontWeight: 500, marginBottom: 12 }}>{w.tagline}</div>
-          )}
-
-          {w.capabilitySummary && (
-            <div style={{ fontSize: 14, color: "#6b7280", lineHeight: 1.6, marginBottom: 24 }}>
-              {w.capabilitySummary}
-            </div>
-          )}
-
-          <div style={S.sectionLabel}>Quick start</div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 24 }}>
-            {prompts.map((p, i) => (
-              <button
-                key={i}
-                onClick={() => window.dispatchEvent(new CustomEvent("ta:panel-ask-alex", { detail: { text: p } }))}
-                style={{
-                  padding: "8px 14px", fontSize: 13, borderRadius: 20,
-                  background: "#f3f0ff", border: "1px solid #e9d5ff",
-                  color: "#7c3aed", cursor: "pointer", fontWeight: 500,
-                  fontFamily: "inherit", textAlign: "left", lineHeight: 1.4,
-                }}
-              >
-                {p}
-              </button>
-            ))}
-          </div>
-
-          <div style={S.sectionLabel}>Recent activity</div>
-          <div style={{ fontSize: 13, color: "#94a3b8", marginBottom: 24 }}>
-            Your work with {w.name || "this worker"} will appear here
-          </div>
-
-          <div style={S.sectionLabel}>Documents</div>
-          <div style={{ fontSize: 13, color: "#94a3b8" }}>
-            Upload documents to give {w.name || "this worker"} more context
-          </div>
-
-          <TrialBanner worker={w} />
-
-          <SessionEndCTA style={{ marginTop: 24 }} />
-        </div>
-      </div>
+      <WorkerCanvas
+        workerData={panel.activeWorkerData}
+        verticalLabel={panel.verticalLabel}
+        onLeave={() => panel.leaveWorkspace()}
+      />
     );
   }
 

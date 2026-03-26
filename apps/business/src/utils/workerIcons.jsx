@@ -1790,6 +1790,51 @@ export const VERTICAL_ICON_SLUGS = {
   custom: "engineering-review",
 };
 
+// ── 40.2-T1: Vertical theme accent system ──
+// Four theme packages for the Studio layout accent color.
+// Maps normalizeVertical() output → theme → hex accent.
+export const VERTICAL_THEME_MAP = {
+  "Aviation": "machines",
+  "Auto Dealer": "machines",
+  "Real Estate": "finance",
+  "Web3": "finance",
+  "Solar": "healthcare",
+  "Government": "finance",
+  "Other": "games",
+};
+
+export const THEME_ACCENT = {
+  machines: "#0284c7",   // instrument blue
+  finance: "#16a34a",    // capital green
+  healthcare: "#0891b2", // clinical cyan
+  games: "#7c3aed",      // TitleApp purple
+};
+
+/**
+ * Get the scoped accent color for a worker's vertical.
+ * Games always get purple. Everything else maps through VERTICAL_THEME_MAP.
+ */
+export function getThemeAccent(vertical, isGame) {
+  if (isGame) return THEME_ACCENT.games;
+  const theme = VERTICAL_THEME_MAP[vertical] || "games";
+  return THEME_ACCENT[theme] || THEME_ACCENT.games;
+}
+
+/**
+ * Get the icon slug for a vertical (for arrival heartbeat icon).
+ */
+export function getVerticalIconSlug(vertical) {
+  const map = {
+    "Aviation": "permit-tracker",
+    "Auto Dealer": "car-sales",
+    "Real Estate": "property-management",
+    "Web3": "engineering-review",
+    "Solar": "engineering-review",
+    "Government": "gov-jurisdiction-onboarding",
+  };
+  return map[vertical] || "engineering-review";
+}
+
 export default function WorkerIcon({ slug, size = 24, color = "#7c3aed", className = "" }) {
   const gidRef = useRef(`wg${Math.random().toString(36).slice(2, 8)}`);
   const gid = gidRef.current;

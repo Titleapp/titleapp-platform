@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import "./App.css";
+import "./styles/heartbeat.css";
 import LandingPage from "./components/LandingPage";
 import OnboardingWizard from "./components/OnboardingWizard";
 // OnboardingTour removed in 37.11 — replaced by STATE-5 onboarding checklist

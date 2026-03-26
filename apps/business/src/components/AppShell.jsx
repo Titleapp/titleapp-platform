@@ -5,6 +5,7 @@ import QuickSwitcher from "./QuickSwitcher";
 import CartDrawer from "./CartDrawer";
 import * as api from "../api/client";
 import { RightPanelProvider } from "../context/RightPanelContext";
+import { WorkerStateProvider } from "../context/WorkerStateContext.jsx";
 import { useVisitorContext } from "../hooks/useVisitorContext";
 
 const RightPanel = lazy(() => import("./RightPanel/RightPanel"));
@@ -238,6 +239,7 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
   const chiefOfStaff = chiefOfStaffConfig.name ? { enabled: true, ...chiefOfStaffConfig } : null;
 
   return (
+    <WorkerStateProvider>
     <div className="appShell">
       {/* Mobile topbar */}
       <div className="topbar">
@@ -453,5 +455,6 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
       {/* Cart Drawer */}
       <CartDrawer isOpen={cartOpen} onClose={() => setCartOpen(false)} />
     </div>
+    </WorkerStateProvider>
   );
 }

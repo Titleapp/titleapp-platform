@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { getAuth, signOut } from "firebase/auth";
-import WorkerIcon from "../utils/workerIcons";
+import WorkerIcon, { getThemeAccent } from "../utils/workerIcons";
+import { useWorkerState } from "../context/WorkerStateContext.jsx";
 
 // Worker slug → additional "My Work" nav items
 const WORKER_NAV_MAP = {
@@ -1087,6 +1088,7 @@ export default function Sidebar({
   const [showSwitcher, setShowSwitcher] = useState(false);
   const [selectedWorker, setSelectedWorker] = useState(null);
   const [workersExpanded, setWorkersExpanded] = useState(false);
+  const workerCtx = useWorkerState();
   const vertical = guestMode ? "" : (localStorage.getItem("VERTICAL") || "auto");
   const isPersonal = vertical === "consumer";
 
@@ -1106,7 +1108,15 @@ export default function Sidebar({
 
   function handleWorkerClick(worker) {
     setSelectedWorker(worker.slug);
-    window.dispatchEvent(new CustomEvent("ta:select-worker", { detail: { slug: worker.slug, name: worker.name } }));
+    if (workerCtx?.selectWorker) workerCtx.selectWorker(worker.slug);
+    window.dispatchEvent(new CustomEvent("ta:select-worker", {
+      detail: {
+        slug: worker.slug,
+        name: worker.name,
+        vertical: worker.vertical,
+        workerType: worker.workerType || "worker",
+      }
+    }));
     if (onClose) onClose();
   }
 
@@ -1169,6 +1179,10 @@ export default function Sidebar({
       const v = w.vertical || "Other";
       if (!groups[v]) groups[v] = [];
       groups[v].push(w);
+    }
+    // Sort workers within each group alphabetically by name
+    for (const v in groups) {
+      groups[v].sort((a, b) => a.name.localeCompare(b.name));
     }
     // Sort groups: alphabetical, "Other" last
     const sorted = Object.entries(groups).sort(([a], [b]) => {
@@ -1513,10 +1527,13 @@ export default function Sidebar({
           })}
 
           {/* Workers grouped by vertical */}
-          {groupedWorkers.groups.map(([verticalName, workers]) => (
+          {groupedWorkers.groups.map(([verticalName, workers], gi) => {
+            const accent = getThemeAccent(verticalName, false);
+            return (
             <div key={verticalName}>
+              {gi > 0 && <div style={{ height: 1, background: accent, opacity: 0.3, margin: "4px 10px" }} />}
               <div style={{
-                fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,0.35)",
+                fontSize: 10, fontWeight: 600, color: accent,
                 textTransform: "uppercase", letterSpacing: "0.5px",
                 padding: "8px 10px 3px",
               }}>
@@ -1564,7 +1581,8 @@ export default function Sidebar({
                 );
               })}
             </div>
-          ))}
+          );
+          })}
 
           {/* Expand/collapse for many workers */}
           {workerList.length > 8 && !workersExpanded && (

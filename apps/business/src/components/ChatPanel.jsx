@@ -4,6 +4,7 @@ import { getFirestore, collection, query, where, orderBy, limit, getDocs, doc, g
 import { fireMilestone } from '../utils/celebrations';
 import { WORKER_ROUTES } from '../pages/WorkerMarketplace';
 import SessionEndCTA from './worker/SessionEndCTA';
+import { useWorkerState } from '../context/WorkerStateContext.jsx';
 
 const WORKER_SUITES = ["All", ...Array.from(new Set(WORKER_ROUTES.filter(w => !w.internal_only).map(w => w.suite)))];
 
@@ -188,6 +189,8 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
   const [greetingCollapsed, setGreetingCollapsed] = useState(false);
   const [workerFilter, setWorkerFilter] = useState("All");
 
+  const workerCtx = useWorkerState();
+
   // Qualifying onboarding state
   const [qualifyingMode, setQualifyingMode] = useState(() => !localStorage.getItem('ta_alex_qualified'));
 
@@ -266,44 +269,71 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
     return () => window.removeEventListener('ta:chatPrompt', handleChatPrompt);
   }, [dealContext]);
 
-  // Listen for worker selection from sidebar
+  // Listen for worker selection from sidebar — set active worker, defer opener to workerReady
   useEffect(() => {
     function handleWorkerSelect(e) {
-      const { slug, name, description, suggestions: workerSuggestions } = e.detail || {};
+      const { slug, name } = e.detail || {};
       if (!name) return;
       setActiveWorkerName(name);
       setActiveWorkerSlug(slug || null);
 
-      // First-session check for subscribers
-      const firstSessionKey = "ta_first_session_" + (slug || name);
-      if (slug !== "chief-of-staff" && !localStorage.getItem(firstSessionKey)) {
-        localStorage.setItem(firstSessionKey, "done");
-        const firstMsgs = [
-          { role: 'assistant', content: `Welcome. You're now subscribed to **${name}**${description ? ` — ${description}` : ""}.`, isSystem: true },
-        ];
-        setMessages(prev => [...prev, ...firstMsgs]);
+      // Chief of Staff — immediate greeting, no context fetch needed
+      if (slug === "chief-of-staff") {
+        setMessages(prev => [...prev, { role: 'assistant', content: `Switched to ${name}. I'm your Chief of Staff — I coordinate all your workers and track progress across your workspace.` }]);
         setTimeout(() => {
-          setMessages(prev => [...prev, { role: 'assistant', content: `I'm Alex, your Chief of Staff. I'll be working with ${name} to make sure you get the most out of it.`, isSystem: true }]);
-        }, 500);
-        setTimeout(() => {
-          const starters = workerSuggestions || [`What can ${name} do?`, `Show me how to get started`, `What should I know first?`];
-          setMessages(prev => [...prev, { role: 'assistant', content: `Here's what ${name} is best at. You can ask me anything — or start with one of these.`, isSystem: true, suggestions: starters }]);
           if (conversationRef.current) conversationRef.current.scrollTop = conversationRef.current.scrollHeight;
-        }, 1000);
-        return;
+        }, 100);
       }
-
-      const greeting = slug === "chief-of-staff"
-        ? `Switched to ${name}. I'm your Chief of Staff — I coordinate all your workers and track progress across your workspace.`
-        : `Switched to ${name}. Ask me anything related to this worker's domain.`;
-      setMessages(prev => [...prev, { role: 'assistant', content: greeting }]);
-      setTimeout(() => {
-        if (conversationRef.current) conversationRef.current.scrollTop = conversationRef.current.scrollHeight;
-      }, 100);
+      // Other workers: opener fires from workerReady useEffect below
     }
     window.addEventListener('ta:select-worker', handleWorkerSelect);
     return () => window.removeEventListener('ta:select-worker', handleWorkerSelect);
   }, []);
+
+  // Worker-specific opener — fires when workerReady becomes true from WorkerStateContext
+  const openerFiredRef = useRef(null);
+  useEffect(() => {
+    if (!workerCtx?.workerReady || !workerCtx?.activeWorkerData) return;
+    const w = workerCtx.activeWorkerData;
+    const workerId = w.workerId || w.slug;
+
+    // Prevent duplicate openers for same worker
+    if (openerFiredRef.current === workerId) return;
+    openerFiredRef.current = workerId;
+
+    // Skip chief-of-staff (handled above)
+    if (workerId === "chief-of-staff") return;
+
+    const tagline = w.tagline || w.name || "";
+    const whatYoullHave = w.whatYoullHave || "";
+    const prompts = w.quickStartPrompts || [];
+    const workerType = w.workerType || "worker";
+
+    // Return visit check
+    const sessionKey = "ta_session_" + workerId;
+    const isReturn = !!localStorage.getItem(sessionKey);
+    localStorage.setItem(sessionKey, "done");
+
+    let opener;
+    if (isReturn) {
+      opener = `Welcome back. ${tagline}. Where did we leave off?`;
+    } else if (workerType === "game") {
+      opener = `Ready to play? ${tagline}.${prompts[0] ? ` Tap '${prompts[0]}' to start.` : ""}`;
+    } else {
+      opener = `Hey — I'm your ${tagline.charAt(0).toLowerCase() + tagline.slice(1)}.${whatYoullHave ? ` ${whatYoullHave}.` : ""} What do you want to tackle first?`;
+    }
+
+    setMessages(prev => [...prev, {
+      role: 'assistant',
+      content: opener,
+      isSystem: true,
+      suggestions: prompts.length > 0 ? prompts : undefined,
+    }]);
+
+    setTimeout(() => {
+      if (conversationRef.current) conversationRef.current.scrollTop = conversationRef.current.scrollHeight;
+    }, 100);
+  }, [workerCtx?.workerReady, workerCtx?.activeWorkerData]);
 
   // Listen for onboarding completion to fire celebration
   useEffect(() => {
@@ -1063,6 +1093,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
     }
 
     setIsTyping(true);
+    if (workerCtx?.startWorking) workerCtx.startWorking();
 
     try {
       const token = await currentUser.getIdToken(true);
@@ -1109,6 +1140,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
 
       setIsTyping(false);
       setDealContext(null);
+      if (workerCtx?.completeWork) workerCtx.completeWork();
       // Intercept |||COMMAND||| blocks before storing in state
       const { clean: cleanResponse, commands } = interceptAlexCommands(data.response || '');
       for (const cmd of commands) executeAlexCommand(cmd.type, cmd.payload);
@@ -1122,6 +1154,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
     } catch (error) {
       console.error('Send failed:', error);
       setIsTyping(false);
+      if (workerCtx?.resetState) workerCtx.resetState();
       const msg = error.message || '';
       const errorContent = (msg.includes('Forbidden') || msg.includes('403'))
         ? 'Session expired. Please reload the page and try again.'
