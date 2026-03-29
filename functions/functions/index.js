@@ -19,6 +19,10 @@ const Anthropic = require("@anthropic-ai/sdk");
 // OpenAI (ChatGPT)
 const { OpenAI } = require("openai");
 
+// API Health Monitor (41.3-T2)
+const { callWithHealthCheck, getHealthStatus, getErrorMessage } = require("./services/apiHealth");
+const EXTERNAL_APIS = require("./config/externalApis");
+
 // RAAS handlers (v0)
 const {
   handleRaasWorkflows,
@@ -403,13 +407,25 @@ function identityDocId({ uid, tenantId, purpose }) {
  */
 async function decodeVinInternal(vin) {
   const vinStr = String(vin).toUpperCase().trim();
-  const nhtsaUrl = `https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVinValues/${vinStr}?format=json`;
+  const nhtsaUrl = `${EXTERNAL_APIS.NHTSA_VIN_DECODE}Values/${vinStr}?format=json`;
   console.log("🔍 chatEngine: decoding VIN via NHTSA:", vinStr);
 
-  const nhtsaResponse = await fetch(nhtsaUrl);
-  if (!nhtsaResponse.ok) throw new Error(`NHTSA API returned ${nhtsaResponse.status}`);
+  const healthResult = await callWithHealthCheck({
+    serviceName: "nhtsa",
+    fn: async () => {
+      const r = await fetch(nhtsaUrl);
+      if (!r.ok) throw new Error(`NHTSA API returned ${r.status}`);
+      return r.json();
+    },
+    timeout: 10000,
+  });
 
-  const nhtsaData = await nhtsaResponse.json();
+  if (!healthResult.success) {
+    const msg = getErrorMessage("nhtsa");
+    return { valid: false, vin: vinStr, healthError: msg.message };
+  }
+
+  const nhtsaData = healthResult.data;
   const result = nhtsaData.Results?.[0];
 
   if (!result || (result.ErrorCode && result.ErrorCode !== "0" && result.ErrorCode !== 0)) {
@@ -4842,6 +4858,17 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       }
     }
 
+    // GET /v1/api-health — Data Link Health status (41.3-T2)
+    if (route === "/api-health" && method === "GET") {
+      try {
+        const healthStatus = await getHealthStatus();
+        return res.json({ ok: true, ...healthStatus });
+      } catch (e) {
+        console.error("[api-health] error:", e.message);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
     // All other routes require Firebase auth
     const auth = await requireFirebaseUser(req, res);
     if (auth.handled) return;
@@ -6563,6 +6590,87 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
         console.error("[worker:version:increment] error:", e.message);
         return res.json({ ok: false, error: e.message });
       }
+    }
+
+    // ── Connector Library Endpoints ──
+
+    // GET /v1/connectors/available — Returns connectors for a vertical
+    if (route === "/connectors/available" && method === "GET") {
+      const vertical = req.query.vertical || "";
+      const pricingTier = Number(req.query.pricingTier) || 0;
+      if (!vertical) return res.json({ ok: false, error: "Missing vertical param" });
+      const { getConnectorsForVertical } = require("./config/connectors");
+      const connectors = getConnectorsForVertical(vertical).map(c => ({
+        ...c,
+        locked: c.tierRequired === "paid" && pricingTier === 0,
+      }));
+      return res.json({ ok: true, connectors, vertical });
+    }
+
+    // POST /v1/connectors/activate — Activates a connector on a worker
+    if (route === "/connectors/activate" && method === "POST") {
+      const { tenantId, workerId, connectorId } = body;
+      if (!tenantId || !workerId || !connectorId) return res.json({ ok: false, error: "Missing tenantId, workerId, or connectorId" });
+      try {
+        const { validateConnectorActivation } = require("./services/connectors/validator");
+        const { CONNECTORS, estimateSessionCost } = require("./config/connectors");
+        const workerRef = db.doc(`tenants/${tenantId}/workers/${workerId}`);
+        const snap = await workerRef.get();
+        if (!snap.exists) return res.json({ ok: false, error: "Worker not found" });
+        const worker = snap.data();
+        const validation = validateConnectorActivation(connectorId, worker.pricing_tier);
+        if (!validation.allowed) return res.json({ ok: false, error: validation.reason, alexMessage: validation.alexMessage });
+        const connector = CONNECTORS[connectorId];
+        if (!connector) return res.json({ ok: false, error: "Unknown connector" });
+        const dc = worker.dataConnectors || { active: [], estimatedCostPerSession: 0 };
+        if (!dc.active.includes(connectorId)) dc.active.push(connectorId);
+        dc.estimatedCostPerSession = estimateSessionCost(dc.active);
+        dc.lastUpdatedAt = nowServerTs();
+        await workerRef.update({ dataConnectors: dc });
+        console.log(`[connectors/activate] ${connectorId} activated on ${workerId}`);
+        return res.json({ ok: true, connectorId, label: connector.label, dataConnectors: dc });
+      } catch (e) {
+        console.error("[connectors/activate] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // POST /v1/connectors/deactivate — Deactivates a connector on a worker
+    if (route === "/connectors/deactivate" && method === "POST") {
+      const { tenantId, workerId, connectorId } = body;
+      if (!tenantId || !workerId || !connectorId) return res.json({ ok: false, error: "Missing tenantId, workerId, or connectorId" });
+      try {
+        const { estimateSessionCost } = require("./config/connectors");
+        const workerRef = db.doc(`tenants/${tenantId}/workers/${workerId}`);
+        const snap = await workerRef.get();
+        if (!snap.exists) return res.json({ ok: false, error: "Worker not found" });
+        const worker = snap.data();
+        const dc = worker.dataConnectors || { active: [], estimatedCostPerSession: 0 };
+        dc.active = dc.active.filter(id => id !== connectorId);
+        dc.estimatedCostPerSession = estimateSessionCost(dc.active);
+        dc.lastUpdatedAt = nowServerTs();
+        await workerRef.update({ dataConnectors: dc });
+        console.log(`[connectors/deactivate] ${connectorId} deactivated on ${workerId}`);
+        return res.json({ ok: true, connectorId, dataConnectors: dc });
+      } catch (e) {
+        console.error("[connectors/deactivate] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // POST /v1/connectors/estimate — Returns estimated cost per session for connector set
+    if (route === "/connectors/estimate" && method === "POST") {
+      const { connectorIds } = body;
+      if (!Array.isArray(connectorIds)) return res.json({ ok: false, error: "connectorIds must be an array" });
+      const { estimateSessionCost, CONNECTORS } = require("./config/connectors");
+      const total = estimateSessionCost(connectorIds);
+      const breakdown = connectorIds.map(id => ({
+        id,
+        label: CONNECTORS[id]?.label || id,
+        costPerSession: CONNECTORS[id]?.costPerSession ?? 0,
+        costLabel: CONNECTORS[id]?.costLabel || "",
+      }));
+      return res.json({ ok: true, estimatedCostPerSession: total, breakdown });
     }
 
     // POST /v1/worker:update — Post-publish edit (partial updates)
@@ -10562,16 +10670,26 @@ Never attempt to output an entire multi-page document in a single response. For 
           });
         }
 
-        // Call NHTSA API
-        const nhtsaUrl = `https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVinValues/${vinStr}?format=json`;
+        // Call NHTSA API via health monitor
+        const nhtsaUrl = `${EXTERNAL_APIS.NHTSA_VIN_DECODE}Values/${vinStr}?format=json`;
         console.log("🔍 Decoding VIN via NHTSA:", vinStr);
 
-        const nhtsaResponse = await fetch(nhtsaUrl);
-        if (!nhtsaResponse.ok) {
-          throw new Error(`NHTSA API returned ${nhtsaResponse.status}`);
+        const healthResult = await callWithHealthCheck({
+          serviceName: "nhtsa",
+          fn: async () => {
+            const r = await fetch(nhtsaUrl);
+            if (!r.ok) throw new Error(`NHTSA API returned ${r.status}`);
+            return r.json();
+          },
+          timeout: 10000,
+        });
+
+        if (!healthResult.success) {
+          const msg = getErrorMessage("nhtsa");
+          return res.json({ valid: false, vin: vinStr, errors: [msg.message] });
         }
 
-        const nhtsaData = await nhtsaResponse.json();
+        const nhtsaData = healthResult.data;
         const result = nhtsaData.Results?.[0];
 
         if (!result) {

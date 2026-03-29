@@ -1274,6 +1274,14 @@ function autoFixWorkerRecord(record, description) {
     }
   }
 
+  // Fix dataConnectors — add defaults if missing
+  if (!record.dataConnectors || typeof record.dataConnectors !== "object") {
+    record.dataConnectors = { active: [], estimatedCostPerSession: 0, lastUpdatedAt: null };
+  } else {
+    if (!Array.isArray(record.dataConnectors.active)) record.dataConnectors.active = [];
+    if (record.dataConnectors.estimatedCostPerSession === undefined) record.dataConnectors.estimatedCostPerSession = 0;
+  }
+
   // Fix versionInfo — add default version tracking
   if (!record.versionInfo || typeof record.versionInfo !== "object") {
     record.versionInfo = {
