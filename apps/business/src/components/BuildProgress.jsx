@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import ConnectorLibrary from "./canvas/ConnectorLibrary";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
 
@@ -379,6 +380,9 @@ export default function BuildProgress({ worker, workerCardData, onWorkerUpdate, 
           </div>
         )}
       </div>
+
+      {/* Data Connections */}
+      <ConnectorLibrary worker={worker} workerCardData={workerCardData} selectedTier={selectedTier} />
 
       {/* Price setting */}
       <div style={{ background: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: 12, padding: 20, marginBottom: 20 }}>

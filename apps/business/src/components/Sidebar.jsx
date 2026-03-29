@@ -2,6 +2,7 @@ import React, { useState, useMemo } from "react";
 import { getAuth, signOut } from "firebase/auth";
 import WorkerIcon, { getThemeAccent } from "../utils/workerIcons";
 import { useWorkerState } from "../context/WorkerStateContext.jsx";
+import DataLinkStatus from "./studio/DataLinkStatus";
 
 // Worker slug → additional "My Work" nav items
 const WORKER_NAV_MAP = {
@@ -1495,7 +1496,7 @@ export default function Sidebar({
 
       {/* ═══ SECTION 1: DIGITAL WORKERS (grouped by vertical) ═══ */}
       <div className="sidebarSection">
-        <div className="sidebarLabel">Digital Workers</div>
+        <div className="sidebarLabel" style={{ display: "flex", alignItems: "center" }}>Digital Workers<DataLinkStatus /></div>
 
         <nav className="nav">
           {/* Chief of Staff — always first */}
