@@ -180,10 +180,16 @@ function buildAdminHtml({ today, rev, analytics, activeDeals, totalPipeline, inv
     </div>`;
   }
 
+  const isSandbox = process.env.CONTROL_CENTER_DATA_MODE !== "live";
+  const sandboxBanner = isSandbox
+    ? `<div style="background:#f59e0b;color:#1e1b4b;text-align:center;padding:10px 24px;font-size:13px;font-weight:700;letter-spacing:1px">DEV / SANDBOX — Data is placeholder until live connections are established</div>`
+    : "";
+
   return `<!DOCTYPE html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;padding:0;background:#f3f4f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">
 <div style="max-width:600px;margin:0 auto;background:#ffffff">
+  ${sandboxBanner}
   <div style="background:#1e1b4b;padding:24px;color:#ffffff">
     <table width="100%"><tr>
       <td style="font-size:18px;font-weight:700;letter-spacing:2px;color:#a78bfa">TITLEAPP</td>

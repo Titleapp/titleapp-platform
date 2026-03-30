@@ -6592,6 +6592,35 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       }
     }
 
+    // ── Data Link Health Monitor ──
+
+    // GET /v1/api-health — Returns health status for all tracked external services
+    if (route === "/api-health" && method === "GET") {
+      try {
+        const { getAllHealthStatuses } = require("./services/health");
+        const statuses = await getAllHealthStatuses();
+        const overall = statuses.every(s => s.status === "healthy") ? "healthy"
+          : statuses.some(s => s.status === "down") ? "down" : "degraded";
+        return res.json({ ok: true, overall, services: statuses });
+      } catch (e) {
+        console.error("[api-health] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // GET /v1/api-health/:service — Returns health for a specific service
+    if (route.startsWith("/api-health/") && method === "GET") {
+      const serviceName = route.replace("/api-health/", "");
+      try {
+        const { getServiceHealth } = require("./services/health");
+        const health = await getServiceHealth(serviceName);
+        if (!health) return res.json({ ok: false, error: "Service not tracked" });
+        return res.json({ ok: true, ...health });
+      } catch (e) {
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
     // ── Connector Library Endpoints ──
 
     // GET /v1/connectors/available — Returns connectors for a vertical
