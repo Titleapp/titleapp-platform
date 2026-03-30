@@ -1,0 +1,51 @@
+{
+  "id": "aviation_compliance_v1",
+  "version": "v1",
+  "domain": "aviation",
+  "description": "Aviation content and data compliance rules — gates what content workers can generate and what data can appear in outputs. Loaded before any content generation in the aviation vertical.",
+  "required_inputs": ["vertical", "output_type"],
+  "hard_stops": [
+    {
+      "id": "no_safety_data_in_marketing",
+      "logic": "ZERO safety-critical operational data in any social or marketing output. Content generation fails if METAR, NOTAM, TFR, or winds aloft data detected in social output.",
+      "eval": { "field": "output.containsOperationalData", "operator": "==", "threshold": true },
+      "action": "block",
+      "message": "Operational data (weather, NOTAMs, TFRs) cannot appear in marketing or social content."
+    },
+    {
+      "id": "no_flight_details_in_marketing",
+      "logic": "ZERO specific flight details in any marketing content. Tail numbers, routes, crew names cannot appear in social posts.",
+      "eval": { "field": "output.containsFlightDetails", "operator": "==", "threshold": true },
+      "action": "block",
+      "message": "Specific flight details (tail numbers, routes, crew names) cannot appear in marketing content."
+    }
+  ],
+  "soft_guides": [
+    {
+      "id": "brand_ops_content_only",
+      "logic": "Brand and operational content only for marketing. Alex generates content about the operator brand, not specific operations.",
+      "guidance": "Marketing content should focus on the operator's brand, capabilities, and service areas — never specific operational details."
+    }
+  ],
+  "automated_actions": [
+    {
+      "id": "preflight_audit_trail",
+      "logic": "Audit trail entry on every preflight output. Every CoPilot/EFB/FRAT output writes to the audit trail.",
+      "trigger": "output_generated",
+      "action": "write_audit_record",
+      "scope": ["copilot", "efb", "frat", "daily_ops"]
+    },
+    {
+      "id": "data_gap_flags",
+      "logic": "Explicit data gap flags in safety-critical outputs. If any data source is unavailable, output must flag the gap explicitly.",
+      "trigger": "data_source_unavailable",
+      "action": "flag_data_gap",
+      "required": true,
+      "message_template": "DATA GAP: {{serviceName}} data is currently unavailable. This output does not include {{dataType}}."
+    }
+  ],
+  "applies_to": ["aviation"],
+  "enforcement": "pre_output",
+  "created_at": "2026-03-30",
+  "updated_at": "2026-03-30"
+}

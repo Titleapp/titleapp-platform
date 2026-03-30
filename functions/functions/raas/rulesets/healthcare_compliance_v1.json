@@ -1,0 +1,50 @@
+{
+  "id": "healthcare_compliance_v1",
+  "version": "v1",
+  "domain": "healthcare",
+  "description": "Healthcare content and data compliance rules — gates what content workers can generate and ensures PHI protection. Loaded before any content generation in the healthcare vertical.",
+  "required_inputs": ["vertical", "output_type"],
+  "hard_stops": [
+    {
+      "id": "no_phi_in_output",
+      "logic": "ZERO patient information in any output. PHI detection in any input triggers refusal.",
+      "eval": { "field": "input.containsPHI", "operator": "==", "threshold": true },
+      "action": "block",
+      "message": "Patient health information detected. This content cannot be processed. Remove all patient-identifying information before proceeding."
+    },
+    {
+      "id": "no_unapproved_clinical_claims",
+      "logic": "ZERO unapproved clinical claims. Any clinical efficacy claim requires regulatory disclaimer.",
+      "eval": { "field": "output.containsClinicalClaim", "operator": "==", "threshold": true },
+      "action": "block",
+      "message": "Clinical efficacy claims require regulatory disclaimers. Add appropriate disclaimers or remove the claim."
+    }
+  ],
+  "soft_guides": [
+    {
+      "id": "npi_credential_scope",
+      "logic": "NPI verification outputs include credential scope. NPPES data presented with provider scope and limitations.",
+      "guidance": "When displaying NPI verification results, always include the provider's credential scope, specialty, and any limitations on practice."
+    }
+  ],
+  "automated_actions": [
+    {
+      "id": "educational_disclaimer",
+      "logic": "Educational purposes only disclaimer on all clinical content. Every healthcare output includes the disclaimer.",
+      "trigger": "output_generated",
+      "action": "append_disclaimer",
+      "disclaimer": "This information is for educational purposes only and does not constitute medical advice. Always consult a qualified healthcare professional for clinical decisions."
+    },
+    {
+      "id": "drug_reference_disclaimer",
+      "logic": "Drug reference outputs include prescribing disclaimer. Every openFDA output includes professional use disclaimer.",
+      "trigger": "drug_reference_output",
+      "action": "append_disclaimer",
+      "disclaimer": "Drug information sourced from FDA labels. For professional use only. Verify all prescribing information against current FDA-approved labeling before clinical use."
+    }
+  ],
+  "applies_to": ["health-ems", "healthcare", "nursing", "health"],
+  "enforcement": "pre_output",
+  "created_at": "2026-03-30",
+  "updated_at": "2026-03-30"
+}
