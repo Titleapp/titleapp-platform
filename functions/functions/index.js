@@ -4858,17 +4858,6 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       }
     }
 
-    // GET /v1/api-health — Data Link Health status (41.3-T2)
-    if (route === "/api-health" && method === "GET") {
-      try {
-        const healthStatus = await getHealthStatus();
-        return res.json({ ok: true, ...healthStatus });
-      } catch (e) {
-        console.error("[api-health] error:", e.message);
-        return jsonError(res, 500, e.message);
-      }
-    }
-
     // All other routes require Firebase auth
     const auth = await requireFirebaseUser(req, res);
     if (auth.handled) return;
@@ -6647,8 +6636,8 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
         const snap = await workerRef.get();
         if (!snap.exists) return res.json({ ok: false, error: "Worker not found" });
         const worker = snap.data();
-        const validation = validateConnectorActivation(connectorId, worker.pricing_tier);
-        if (!validation.allowed) return res.json({ ok: false, error: validation.reason, alexMessage: validation.alexMessage });
+        const validation = validateConnectorActivation(connectorId, worker.pricing_tier, worker);
+        if (!validation.allowed) return res.json({ ok: false, error: validation.error || validation.reason, alexMessage: validation.alexMessage });
         const connector = CONNECTORS[connectorId];
         if (!connector) return res.json({ ok: false, error: "Unknown connector" });
         const dc = worker.dataConnectors || { active: [], estimatedCostPerSession: 0 };

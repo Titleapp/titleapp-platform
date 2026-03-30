@@ -600,8 +600,18 @@ async function syncCatalogWorkers(db, opts = {}) {
     const headline = HEADLINE_MAP[marketplaceSlug] || worker.capabilitySummary || displayName;
 
     // Determine status — use catalog status, map "development" → "draft"
+    // Preserve existing "live" status if worker already exists in Firestore
+    // (Session 43: do not retroactively change 81 workers already set to live)
     let status = worker.status || "waitlist";
     if (status === "development") status = "draft";
+    if (!dryRun && status === "waitlist") {
+      try {
+        const existingSnap = await db.doc(`digitalWorkers/${marketplaceSlug}`).get();
+        if (existingSnap.exists && existingSnap.data().status === "live") {
+          status = "live"; // preserve existing live status
+        }
+      } catch (_) { /* ignore — use catalog status */ }
+    }
 
     // Build the unified record
     const record = {

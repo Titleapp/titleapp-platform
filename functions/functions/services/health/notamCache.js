@@ -40,6 +40,7 @@ async function getCachedNotams(icao, fetchFn) {
     notams,
     fetchedAt: admin.firestore.FieldValue.serverTimestamp(),
     fetchedAtMs: Date.now(),
+    expiresAt: new Date(Date.now() + CACHE_TTL_MS),
   });
 
   return { data: notams, cached: false };

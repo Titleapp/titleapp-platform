@@ -182,7 +182,7 @@ function buildAdminHtml({ today, rev, analytics, activeDeals, totalPipeline, inv
 
   const isSandbox = process.env.CONTROL_CENTER_DATA_MODE !== "live";
   const sandboxBanner = isSandbox
-    ? `<div style="background:#f59e0b;color:#1e1b4b;text-align:center;padding:10px 24px;font-size:13px;font-weight:700;letter-spacing:1px">DEV / SANDBOX — Data is placeholder until live connections are established</div>`
+    ? `<div style="background:#f59e0b;color:#1e1b4b;text-align:center;padding:10px 24px;font-size:13px;font-weight:700;letter-spacing:1px">DEVELOPMENT ENVIRONMENT — NOT PRODUCTION DATA</div>`
     : "";
 
   return `<!DOCTYPE html>
