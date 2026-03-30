@@ -19,6 +19,7 @@
 
 const admin = require("firebase-admin");
 const Stripe = require("stripe");
+const { callWithHealthCheck } = require("./apiHealth");
 
 function getDb() { return admin.firestore(); }
 function getStripe() {
@@ -88,42 +89,41 @@ function emailTemplate(firstName, bodyHtml) {
  * If the endpoint is unavailable, returns null (falls back to manual_review).
  */
 async function checkFaaCert(certNumber) {
-  try {
-    const url = `https://amsrvs.registry.faa.gov/airmeninquiry/Main.aspx?certNum=${encodeURIComponent(certNumber)}`;
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10000);
+  const url = `https://amsrvs.registry.faa.gov/airmeninquiry/Main.aspx?certNum=${encodeURIComponent(certNumber)}`;
 
-    const res = await fetch(url, {
-      method: "GET",
-      signal: controller.signal,
-      headers: { "User-Agent": "TitleApp-Verification/1.0" },
-    });
-    clearTimeout(timeout);
+  const healthResult = await callWithHealthCheck({
+    serviceName: "faa_airmen",
+    fn: async () => {
+      const r = await fetch(url, {
+        method: "GET",
+        headers: { "User-Agent": "TitleApp-Verification/1.0" },
+      });
+      if (!r.ok) throw new Error(`FAA lookup returned ${r.status}`);
+      return r.text();
+    },
+    timeout: 10000,
+  });
 
-    if (!res.ok) {
-      console.warn(`[cfiVerification] FAA lookup returned ${res.status}`);
-      return null;
-    }
-
-    const html = await res.text();
-
-    // Look for certificate type indicators in the response
-    const hasCfi = /flight instructor/i.test(html) || /CFI/i.test(html);
-    const hasCfii = /instrument/i.test(html) && hasCfi;
-    const hasMei = /multi.?engine/i.test(html) && /instructor/i.test(html);
-
-    const ratings = [];
-    if (hasCfi) ratings.push("CFI");
-    if (hasCfii) ratings.push("CFII");
-    if (hasMei) ratings.push("MEI");
-
-    const found = html.length > 1000 && !(/no records found/i.test(html));
-
-    return { found, hasCfi, ratings };
-  } catch (e) {
-    console.warn("[cfiVerification] FAA lookup failed:", e.message);
+  if (!healthResult.success) {
+    console.warn("[cfiVerification] FAA lookup failed:", healthResult.error);
     return null; // Fail open → manual_review
   }
+
+  const html = healthResult.data;
+
+  // Look for certificate type indicators in the response
+  const hasCfi = /flight instructor/i.test(html) || /CFI/i.test(html);
+  const hasCfii = /instrument/i.test(html) && hasCfi;
+  const hasMei = /multi.?engine/i.test(html) && /instructor/i.test(html);
+
+  const ratings = [];
+  if (hasCfi) ratings.push("CFI");
+  if (hasCfii) ratings.push("CFII");
+  if (hasMei) ratings.push("MEI");
+
+  const found = html.length > 1000 && !(/no records found/i.test(html));
+
+  return { found, hasCfi, ratings };
 }
 
 // ═══════════════════════════════════════════════════════════════

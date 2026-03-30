@@ -17,6 +17,7 @@
 
 const admin = require("firebase-admin");
 const crypto = require("crypto");
+const { callWithHealthCheck, getErrorMessage } = require("../apiHealth");
 
 function getDb() { return admin.firestore(); }
 
@@ -201,30 +202,31 @@ async function generateImage({ prompt, style = "cartoon", size = "square", worke
   // ── Build styled prompt ────────────────────────────────────
   const styledPrompt = buildPrompt(finalPrompt, style);
 
-  // ── Call fal.ai with timeout ───────────────────────────────
-  let result;
-  try {
-    result = await Promise.race([
-      fal.subscribe(DEFAULT_MODEL, {
-        input: {
-          prompt: styledPrompt,
-          image_size: size,
-          num_inference_steps: 8,
-          num_images: 1,
-        },
-      }),
-      new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("generation_timeout")), GENERATION_TIMEOUT_MS)
-      ),
-    ]);
-  } catch (err) {
-    if (err.message === "generation_timeout") {
+  // ── Call fal.ai via health monitor ─────────────────────────
+  const healthResult = await callWithHealthCheck({
+    serviceName: "fal_ai",
+    fn: () => fal.subscribe(DEFAULT_MODEL, {
+      input: {
+        prompt: styledPrompt,
+        image_size: size,
+        num_inference_steps: 8,
+        num_images: 1,
+      },
+    }),
+    timeout: GENERATION_TIMEOUT_MS,
+  });
+
+  if (!healthResult.success) {
+    const msg = getErrorMessage("fal_ai");
+    if (healthResult.error === "timeout") {
       return { error: "generation_timeout", message: "Image generation timed out. Please try again." };
     }
-    throw err;
+    return { error: "service_unavailable", message: msg.message };
   }
 
-  const falUrl = result.data.images[0].url;
+  const falResult = healthResult.data;
+
+  const falUrl = falResult.data.images[0].url;
   const assetId = "asset_" + Date.now().toString(36) + crypto.randomBytes(4).toString("hex");
 
   // ── Copy to Firebase Storage (fal.ai URLs are temporary) ───
