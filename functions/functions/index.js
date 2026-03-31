@@ -16572,6 +16572,21 @@ exports.subscriberDailyDigest = onSchedule(
 );
 
 // ----------------------------
+// COS WORKERS: Morning Run (7am PT) + Evening Run (6pm PT)
+// ----------------------------
+const { runCosMorning, runCosEvening } = require("./services/cosScheduler");
+
+exports.cosWorkerMorningRun = onSchedule(
+  { schedule: "0 7 * * *", timeZone: "America/Los_Angeles", region: "us-central1" },
+  async () => { await runCosMorning(); }
+);
+
+exports.cosWorkerEveningRun = onSchedule(
+  { schedule: "0 18 * * *", timeZone: "America/Los_Angeles", region: "us-central1" },
+  async () => { await runCosEvening(); }
+);
+
+// ----------------------------
 // VERIFICATION: Daily student & CFI checks (6 AM ET / 3 AM PT)
 // ----------------------------
 const { checkStudentVerifications: handleCheckStudents } = require("./services/studentVerification");
