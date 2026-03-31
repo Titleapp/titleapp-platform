@@ -599,16 +599,27 @@ async function syncCatalogWorkers(db, opts = {}) {
     // Resolve headline
     const headline = HEADLINE_MAP[marketplaceSlug] || worker.capabilitySummary || displayName;
 
-    // Determine status — use catalog status, map "development" → "draft"
-    // Preserve existing "live" status if worker already exists in Firestore
-    // (Session 43: do not retroactively change 81 workers already set to live)
-    let status = worker.status || "waitlist";
-    if (status === "development") status = "draft";
-    if (!dryRun && status === "waitlist") {
+    // Determine status — honor catalog status field (Memo 43.5a Step 4)
+    // STATUS_MAP is the canonical mapping. Never assume live.
+    const STATUS_MAP = { live: "live", waitlist: "waitlist", development: "draft" };
+    const catalogStatus = worker.status || "waitlist";
+    let status = STATUS_MAP[catalogStatus] || "waitlist";
+
+    // Preserve existing Firestore status for fields set outside sync
+    // (raasStatus, connectors, etc. are never overwritten by sync)
+    if (!dryRun) {
       try {
         const existingSnap = await db.doc(`digitalWorkers/${marketplaceSlug}`).get();
-        if (existingSnap.exists && existingSnap.data().status === "live") {
-          status = "live"; // preserve existing live status
+        if (existingSnap.exists) {
+          const existingStatus = existingSnap.data().status;
+          if (existingStatus && existingStatus !== status) {
+            console.log(`[workerSync] ${marketplaceSlug} status change: ${existingStatus} → ${status}`);
+          }
+          // Preserve live status — never demote a live worker via sync
+          if (existingStatus === "live" && status === "waitlist") {
+            status = "live";
+            console.log(`[workerSync] ${marketplaceSlug} preserving live status (catalog says waitlist)`);
+          }
         }
       } catch (_) { /* ignore — use catalog status */ }
     }

@@ -19,7 +19,7 @@
 
 const admin = require("firebase-admin");
 const Stripe = require("stripe");
-const { callWithHealthCheck } = require("./apiHealth");
+const { callWithHealthCheck } = require("./health");
 
 function getDb() { return admin.firestore(); }
 function getStripe() {

@@ -19,8 +19,8 @@ const Anthropic = require("@anthropic-ai/sdk");
 // OpenAI (ChatGPT)
 const { OpenAI } = require("openai");
 
-// API Health Monitor (41.3-T2)
-const { callWithHealthCheck, getHealthStatus, getErrorMessage } = require("./services/apiHealth");
+// API Health Monitor (consolidated — services/health is authoritative)
+const { callWithHealthCheck, getAllHealthStatuses: getHealthStatus, getErrorMessage } = require("./services/health");
 const EXTERNAL_APIS = require("./config/externalApis");
 
 // RAAS handlers (v0)
@@ -6678,8 +6678,8 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
 
     // ── Connector Library Endpoints ──
 
-    // GET /v1/connectors/available — Returns connectors for a vertical
-    if (route === "/connectors/available" && method === "GET") {
+    // GET /v1/connectors/available or /v1/connectors — Returns connectors for a vertical
+    if ((route === "/connectors/available" || route === "/connectors") && method === "GET") {
       const vertical = req.query.vertical || "";
       const pricingTier = Number(req.query.pricingTier) || 0;
       if (!vertical) return res.json({ ok: false, error: "Missing vertical param" });
@@ -6755,6 +6755,69 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
         costLabel: CONNECTORS[id]?.costLabel || "",
       }));
       return res.json({ ok: true, estimatedCostPerSession: total, breakdown });
+    }
+
+    // POST /v1/admin/workers/raas-review — RAAS compliance review (Memo 43.5a Step 5)
+    if (route === "/admin/workers/raas-review" && method === "POST") {
+      const { workerId, reviewedBy, decision, notes } = body;
+      if (!workerId || !reviewedBy || !decision) {
+        return jsonError(res, 400, "Missing workerId, reviewedBy, or decision");
+      }
+      const validDecisions = ["compliant", "needs_work", "retire"];
+      if (!validDecisions.includes(decision)) {
+        return jsonError(res, 400, "decision must be: compliant, needs_work, or retire");
+      }
+
+      try {
+        const workerRef = db.collection("digitalWorkers").doc(workerId);
+        const workerSnap = await workerRef.get();
+        if (!workerSnap.exists) return jsonError(res, 404, `Worker ${workerId} not found`);
+
+        const update = {
+          raasReviewedAt: admin.firestore.FieldValue.serverTimestamp(),
+          raasReviewedBy: reviewedBy,
+          raasReviewNotes: notes || null,
+        };
+
+        if (decision === "compliant") {
+          update.raasStatus = "compliant";
+          update.raasFoundation = "aviation-v1";
+          update.raasCompliantAt = admin.firestore.FieldValue.serverTimestamp();
+          update.status = "live";
+        } else if (decision === "needs_work") {
+          update.raasStatus = "pending_review";
+          update.raasNotes = notes || null;
+          // status stays as-is (waitlist)
+        } else if (decision === "retire") {
+          update.status = "retired";
+          update.raasStatus = "retired";
+        }
+
+        await workerRef.update(update);
+
+        // Audit trail
+        await db.collection("alexAuditLog").doc("raas-reviews").collection("entries").add({
+          workerId,
+          decision,
+          reviewedBy,
+          notes: notes || null,
+          timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        const result = await workerRef.get();
+        const d = result.data();
+        console.log(`[raas-review] ${workerId}: ${decision} by ${reviewedBy}`);
+        return res.json({
+          ok: true,
+          workerId,
+          decision,
+          raasStatus: d.raasStatus,
+          status: d.status,
+        });
+      } catch (e) {
+        console.error("[raas-review] error:", e.message);
+        return jsonError(res, 500, e.message);
+      }
     }
 
     // POST /v1/worker:update — Post-publish edit (partial updates)

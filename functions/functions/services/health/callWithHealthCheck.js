@@ -63,7 +63,18 @@ async function logAviationDataGap(serviceName, errorMessage) {
  * @param {boolean} [opts.isAviation=false] - if true, logs data gap to God Key audit trail
  * @returns {Promise<{ ok: boolean, data?: any, fallback?: string, cached?: boolean }>}
  */
-async function callWithHealthCheck(serviceName, fn, opts = {}) {
+async function callWithHealthCheck(serviceNameOrOpts, fn, opts = {}) {
+  // Support both signatures:
+  //   callWithHealthCheck("serviceName", fn, opts)         — Session 43 style
+  //   callWithHealthCheck({serviceName, fn, fallback, timeout})  — 41.3-T2 style
+  let serviceName;
+  if (typeof serviceNameOrOpts === "object" && serviceNameOrOpts !== null) {
+    serviceName = serviceNameOrOpts.serviceName;
+    fn = serviceNameOrOpts.fn;
+    opts = { timeoutMs: serviceNameOrOpts.timeout, fallbackMessage: undefined };
+  } else {
+    serviceName = serviceNameOrOpts;
+  }
   const { timeoutMs = 15000, fallbackMessage } = opts;
   const isAviation = opts.isAviation || AVIATION_SAFETY_SERVICES.includes(serviceName);
   const db = getDb();
@@ -87,7 +98,7 @@ async function callWithHealthCheck(serviceName, fn, opts = {}) {
       consecutiveFailures: 0,
     }, { merge: true });
 
-    return { ok: true, data: result };
+    return { ok: true, success: true, data: result };
   } catch (err) {
     const isTimeout = err.message === "timeout";
     console.error(`[healthCheck] ${serviceName} failed: ${err.message}`);
@@ -119,6 +130,8 @@ async function callWithHealthCheck(serviceName, fn, opts = {}) {
 
     return {
       ok: false,
+      success: false,
+      error: err.message,
       fallback: isTimeout
         ? "Data source responding slowly. Using cached data where available."
         : defaultFallback,

@@ -9,6 +9,8 @@ module.exports = {
   get getAllHealthStatuses() { return require("./callWithHealthCheck").getAllHealthStatuses; },
   get getServiceHealth() { return require("./callWithHealthCheck").getServiceHealth; },
   get logAviationDataGap() { return require("./callWithHealthCheck").logAviationDataGap; },
+  get getErrorMessage() { return require("./messages").getErrorMessage; },
+  get ERROR_MESSAGES() { return require("./messages").ERROR_MESSAGES; },
   get getCachedNotams() { return require("./notamCache").getCachedNotams; },
   get invalidateNotamCache() { return require("./notamCache").invalidateNotamCache; },
   get getPollingStrategy() { return require("./adsbPolling").getPollingStrategy; },

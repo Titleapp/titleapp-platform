@@ -17,7 +17,7 @@
 
 const admin = require("firebase-admin");
 const crypto = require("crypto");
-const { callWithHealthCheck, getErrorMessage } = require("../apiHealth");
+const { callWithHealthCheck, getErrorMessage } = require("../health");
 
 function getDb() { return admin.firestore(); }
 
