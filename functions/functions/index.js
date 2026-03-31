@@ -4858,12 +4858,78 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       }
     }
 
+    // ── Universal OAuth Callback (unauthenticated — platform redirects here) ──
+
+    // GET /v1/auth/:platform/callback — exchanges code for token, redirects to Studio
+    if (route.startsWith("/auth/") && route.endsWith("/callback") && method === "GET") {
+      const parts = route.split("/");
+      const platformId = parts[2]; // /auth/{platform}/callback
+      const code = req.query.code;
+      const state = req.query.state;
+      if (!code || !state) return jsonError(res, 400, "Missing code or state parameter");
+      try {
+        const { handleCallback } = require("./services/oauth");
+        const result = await handleCallback(platformId, code, state);
+        console.log(`[oauth/callback] ${platformId} connected for ${result.subscriberId}`);
+        // Redirect subscriber back to Studio with success indicator
+        return res.redirect(`https://app.titleapp.ai/studio?oauth=${platformId}&status=connected`);
+      } catch (e) {
+        console.error(`[oauth/callback] ${platformId} error:`, e.message);
+        return res.redirect(`https://app.titleapp.ai/studio?oauth=${platformId}&status=error&message=${encodeURIComponent(e.message)}`);
+      }
+    }
+
     // All other routes require Firebase auth
     const auth = await requireFirebaseUser(req, res);
     if (auth.handled) return;
 
     const ctx = getCtx(req, body, auth.user);
     console.log("🧠 CTX:", ctx);
+
+    // ── Universal OAuth (authenticated routes) ──
+
+    // GET /v1/auth/:platform/connect — redirects subscriber to platform OAuth screen
+    if (route.startsWith("/auth/") && route.endsWith("/connect") && method === "GET") {
+      const parts = route.split("/");
+      const platformId = parts[2];
+      const subscriberId = req.query.subscriberId || auth.user.uid;
+      try {
+        const { getAuthorizationUrl } = require("./services/oauth");
+        const url = await getAuthorizationUrl(platformId, subscriberId);
+        return res.redirect(url);
+      } catch (e) {
+        console.error(`[oauth/connect] ${platformId} error:`, e.message);
+        return jsonError(res, 400, e.message);
+      }
+    }
+
+    // GET /v1/auth/:platform/status — returns connection status
+    if (route.startsWith("/auth/") && route.endsWith("/status") && method === "GET") {
+      const parts = route.split("/");
+      const platformId = parts[2];
+      const subscriberId = req.query.subscriberId || auth.user.uid;
+      try {
+        const { getConnectionStatus } = require("./services/oauth");
+        const status = await getConnectionStatus(platformId, subscriberId);
+        return res.json({ ok: true, ...status });
+      } catch (e) {
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // DELETE /v1/auth/:platform/disconnect — removes stored token
+    if (route.startsWith("/auth/") && route.endsWith("/disconnect") && method === "DELETE") {
+      const parts = route.split("/");
+      const platformId = parts[2];
+      const subscriberId = body.subscriberId || auth.user.uid;
+      try {
+        const { disconnectPlatform } = require("./services/oauth");
+        const result = await disconnectPlatform(platformId, subscriberId);
+        return res.json({ ok: true, ...result });
+      } catch (e) {
+        return res.json({ ok: false, error: e.message });
+      }
+    }
 
     // POST /v1/subscription:transfer — transfer subscriptions from anonymous/guest UID to real UID
     if (route === "/subscription:transfer" && method === "POST") {
