@@ -33,7 +33,7 @@ Use Option B terminal method for all new keys.
 | ~20 | GOOGLE_MAPS_API_KEY | Google Maps Platform | Session 41 | 6 APIs restricted to app.titleapp.ai/* |
 | ~21 | ADSB_EXCHANGE_API_KEY | ADS-B Exchange | Session 41 | Via RapidAPI - live aircraft tracking |
 | ~22 | NOTAMIFY_API_KEY | Notamify | Session 41 | NOTAMs - $0.30/call - cache aggressively |
-| ~23 | HELIUS_API_KEY | Helius Solana | Session 41 | God Key blockchain - audit trail minting |
+| ~23 | HELIUS_API_KEY | Helius Solana | Session 41 | The Ledger blockchain - audit trail minting |
 | 24 | REALIE_API_KEY | Realie | Session 41 Mar 28 | Property data - replaces Estated |
 | 25 | VINCARIO_API_KEY | Vincario | Session 41 Mar 28 | VIN decode + market value |
 | 26 | VINCARIO_SECRET_KEY | Vincario | Session 41 Mar 28 | Required alongside API key |
@@ -97,7 +97,7 @@ Use Option B terminal method for all new keys.
 
 ## Architecture Notes
 
-### God Key Blockchain Architecture
+### The Ledger Blockchain Architecture
 - TitleApp holds platform master custody wallet via Helius
 - All audit records minted automatically at near-zero cost
 - Subscribers pay delivery fee ($0.25-$1.00) to receive records in their wallet

@@ -29,19 +29,19 @@ const ALEX_FALLBACK_MESSAGES = {
   quickbooks: "Accounting data temporarily unavailable. Try again in a few minutes.",
 };
 
-// Aviation safety connectors — failures log to God Key audit trail
+// Aviation safety connectors — failures log to The Ledger audit trail
 const AVIATION_SAFETY_SERVICES = [
   "notamify", "aviationweather", "adsb_exchange",
   "faa_charts", "faa_nasr", "tfr_feed",
 ];
 
 /**
- * Log aviation data gap to God Key audit trail.
+ * Log aviation data gap to The Ledger audit trail.
  */
 async function logAviationDataGap(serviceName, errorMessage) {
   try {
     const db = getDb();
-    await db.collection("godKeyAuditTrail").add({
+    await db.collection("theLedgerAuditTrail").add({
       type: "DATA_GAP",
       serviceName,
       error: errorMessage,
@@ -60,7 +60,7 @@ async function logAviationDataGap(serviceName, errorMessage) {
  * @param {Object} [opts]
  * @param {number} [opts.timeoutMs=15000] - timeout for the call
  * @param {string} [opts.fallbackMessage] - Alex-friendly message on failure
- * @param {boolean} [opts.isAviation=false] - if true, logs data gap to God Key audit trail
+ * @param {boolean} [opts.isAviation=false] - if true, logs data gap to The Ledger audit trail
  * @returns {Promise<{ ok: boolean, data?: any, fallback?: string, cached?: boolean }>}
  */
 async function callWithHealthCheck(serviceNameOrOpts, fn, opts = {}) {
@@ -123,7 +123,7 @@ async function callWithHealthCheck(serviceNameOrOpts, fn, opts = {}) {
       console.error(`[healthCheck] Failed to log health for ${serviceName}:`, logErr.message);
     }
 
-    // Aviation safety services: log data gap to God Key audit trail
+    // Aviation safety services: log data gap to The Ledger audit trail
     if (isAviation) {
       await logAviationDataGap(serviceName, err.message);
     }

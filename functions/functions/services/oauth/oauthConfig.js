@@ -33,16 +33,17 @@ const OAUTH_PLATFORMS = {
     connectorId: "tiktok_posting",
   },
 
-  buffer: {
-    id: "buffer",
-    label: "Buffer",
-    authUrl: "https://bufferapp.com/oauth2/authorize",
-    tokenUrl: "https://api.bufferapp.com/1/oauth2/token.json",
+  unified: {
+    id: "unified",
+    label: "Unified.to Social",
+    authUrl: "https://app.unified.to/oauth/authorize",
+    tokenUrl: "https://api.unified.to/oauth/token",
     scopes: [],
-    clientIdEnv: "BUFFER_CLIENT_ID",
-    clientSecretEnv: "BUFFER_CLIENT_SECRET",
-    redirectUri: "https://app.titleapp.ai/auth/buffer/callback",
-    connectorId: "buffer_posting",
+    clientIdEnv: "UNIFIED_API_KEY",
+    clientSecretEnv: "UNIFIED_WORKSPACE_SECRET",
+    redirectUri: "https://app.titleapp.ai/auth/unified/callback",
+    connectorId: "unified",
+    extraParams: { workspace_id_env: "UNIFIED_WORKSPACE_ID" },
   },
 
   google_business: {

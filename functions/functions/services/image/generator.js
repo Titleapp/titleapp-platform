@@ -26,7 +26,7 @@ const { fal } = require("@fal-ai/client");
 fal.config({ credentials: process.env.FAL_API_KEY });
 
 const DEFAULT_MODEL = "fal-ai/flux/turbo";
-const MAX_IMAGES_PER_WORKER = 10;
+const MAX_IMAGES_PER_WORKER = 50;
 const GENERATION_TIMEOUT_MS = 30000;
 
 // ── Style map ────────────────────────────────────────────────
@@ -51,6 +51,25 @@ const PHI_PATTERNS = [
 
 const PHI_VERTICALS = ["nursing", "health", "healthcare", "ems"];
 
+// ── Aviation content gate — block crew PII in image prompts ──
+const AVIATION_PII_PATTERNS = [
+  /\b[NnCc]-?\d{3,5}[A-Za-z]{0,2}\b/g,              // tail numbers (N12345, C-GABC)
+  /\bcrew\s+(?:name|member)\s*[:=]?\s*[A-Z][a-z]+/gi, // crew name: First
+  /\bcaptain\s+[A-Z][a-z]+/gi,                         // Captain Smith
+  /\bfirst\s+officer\s+[A-Z][a-z]+/gi,                 // First Officer Jones
+  /\bFO\s+[A-Z][a-z]+/gi,                              // FO Jones
+  /\bflight\s*#?\s*\d{2,6}/gi,                         // flight #1234
+];
+
+const AVIATION_VERTICALS = ["aviation", "pilot", "flight"];
+
+// ── NSFW / profanity gate — all verticals ────────────────────
+const NSFW_PATTERNS = [
+  /\b(?:nude|naked|nsfw|pornograph|explicit|gore|violent\s+death)\b/gi,
+  /\b(?:kill|murder|torture|dismember|mutilat)\b/gi,
+  /\b(?:drug\s+use|inject(?:ing)?\s+(?:heroin|meth|cocaine))\b/gi,
+];
+
 /**
  * Scrub potential PHI from image prompt.
  * @param {string} prompt
@@ -67,6 +86,38 @@ function scrubPhi(prompt) {
   }
 
   return { scrubbed, wasScrubbed };
+}
+
+/**
+ * Scrub aviation PII from image prompt (tail numbers, crew names, flight numbers).
+ * @param {string} prompt
+ * @returns {{ scrubbed: string, wasScrubbed: boolean }}
+ */
+function scrubAviationPii(prompt) {
+  let scrubbed = prompt;
+  let wasScrubbed = false;
+
+  for (const pattern of AVIATION_PII_PATTERNS) {
+    const replaced = scrubbed.replace(pattern, "[REDACTED]");
+    if (replaced !== scrubbed) wasScrubbed = true;
+    scrubbed = replaced;
+  }
+
+  return { scrubbed, wasScrubbed };
+}
+
+/**
+ * Check prompt for NSFW/prohibited content.
+ * @param {string} prompt
+ * @returns {{ blocked: boolean, reason?: string }}
+ */
+function checkNsfw(prompt) {
+  for (const pattern of NSFW_PATTERNS) {
+    if (pattern.test(prompt)) {
+      return { blocked: true, reason: "Prompt contains prohibited content." };
+    }
+  }
+  return { blocked: false };
 }
 
 /**
@@ -175,7 +226,7 @@ async function logUsageEvent({ userId, workerId, model, cost }) {
 async function generateImage({ prompt, style = "cartoon", size = "square", workerId, creatorId, vertical }) {
   const db = getDb();
 
-  // ── Rate limit: 10 images per worker ───────────────────────
+  // ── Rate limit: 50 images per worker ───────────────────────
   const tenantRef = db.doc(`tenants/${creatorId}/workers/${workerId}`);
   const tenantSnap = await tenantRef.get();
   if (tenantSnap.exists) {
@@ -186,9 +237,16 @@ async function generateImage({ prompt, style = "cartoon", size = "square", worke
     }
   }
 
+  // ── NSFW / profanity gate — all verticals ─────────────────
+  const nsfwCheck = checkNsfw(prompt);
+  if (nsfwCheck.blocked) {
+    return { error: "content_blocked", message: nsfwCheck.reason };
+  }
+
   // ── PHI scrub for health verticals ─────────────────────────
   let finalPrompt = prompt;
   let phiScrubbed = false;
+  let aviationScrubbed = false;
   const normalizedVertical = (vertical || "").toLowerCase().replace(/\s+/g, "_");
   if (PHI_VERTICALS.includes(normalizedVertical)) {
     const result = scrubPhi(prompt);
@@ -196,6 +254,16 @@ async function generateImage({ prompt, style = "cartoon", size = "square", worke
     phiScrubbed = result.wasScrubbed;
     if (phiScrubbed) {
       console.warn(`[image:generator] PHI scrub applied for ${workerId} (vertical: ${vertical})`);
+    }
+  }
+
+  // ── Aviation PII scrub — tail numbers, crew names, flight numbers ──
+  if (AVIATION_VERTICALS.includes(normalizedVertical)) {
+    const result = scrubAviationPii(finalPrompt);
+    finalPrompt = result.scrubbed;
+    aviationScrubbed = result.wasScrubbed;
+    if (aviationScrubbed) {
+      console.warn(`[image:generator] Aviation PII scrub applied for ${workerId} (vertical: ${vertical})`);
     }
   }
 
@@ -242,7 +310,7 @@ async function generateImage({ prompt, style = "cartoon", size = "square", worke
   await storeAsset({ workerId, creatorId, imageUrl, prompt: finalPrompt, style, model: DEFAULT_MODEL, assetId });
   await logUsageEvent({ userId: creatorId, workerId, model: DEFAULT_MODEL, cost: 0.008 });
 
-  return { imageUrl, prompt: finalPrompt, model: DEFAULT_MODEL, assetId, phiScrubbed };
+  return { imageUrl, prompt: finalPrompt, model: DEFAULT_MODEL, assetId, phiScrubbed, aviationScrubbed };
 }
 
-module.exports = { generateImage, buildPrompt, scrubPhi };
+module.exports = { generateImage, buildPrompt, scrubPhi, scrubAviationPii, checkNsfw };
