@@ -55,12 +55,69 @@ async function logAviationDataGap(serviceName, errorMessage) {
 }
 
 /**
+ * Check credit balance and deduct credits for a connector call.
+ * @param {string} userId — Firebase auth UID
+ * @param {string} connectorId — connector ID from config/connectors.js
+ * @param {number} creditCost — credits to deduct
+ * @param {Object} [context] — optional context for usage event
+ * @param {string} [context.workerId] — worker that triggered the call
+ * @returns {Promise<{ allowed: boolean, error?: string, creditsAvailable?: number }>}
+ */
+async function checkAndDeductCredits(userId, connectorId, creditCost, context = {}) {
+  if (!userId || !creditCost || creditCost <= 0) return { allowed: true };
+
+  const db = getDb();
+  const userRef = db.doc(`users/${userId}`);
+
+  try {
+    const userSnap = await userRef.get();
+    const userData = userSnap.exists ? userSnap.data() : {};
+    const currentBalance = userData.billing?.prepaidCredits ?? userData.prepaidCredits ?? 0;
+
+    if (currentBalance < creditCost) {
+      return {
+        allowed: false,
+        error: "INSUFFICIENT_CREDITS",
+        message: "This action requires Data Credits. Top up your account to continue.",
+        creditsRequired: creditCost,
+        creditsAvailable: currentBalance,
+      };
+    }
+
+    // Deduct credits
+    await userRef.update({
+      "billing.prepaidCredits": admin.firestore.FieldValue.increment(-creditCost),
+    });
+
+    // Log usage event
+    await db.collection("usageEvents").add({
+      userId,
+      workerId: context.workerId || null,
+      connectorId,
+      creditsUsed: creditCost,
+      event_type: "connector_call",
+      pass_through: true,
+      timestamp: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    return { allowed: true, creditsRemaining: currentBalance - creditCost };
+  } catch (e) {
+    console.error(`[creditCheck] Failed for ${userId}/${connectorId}:`, e.message);
+    // On error, allow the call — don't block on billing failures
+    return { allowed: true };
+  }
+}
+
+/**
  * @param {string} serviceName - e.g. "aviationweather", "notamify", "realie"
  * @param {Function} fn - async function that makes the external API call
  * @param {Object} [opts]
  * @param {number} [opts.timeoutMs=15000] - timeout for the call
  * @param {string} [opts.fallbackMessage] - Alex-friendly message on failure
  * @param {boolean} [opts.isAviation=false] - if true, logs data gap to The Ledger audit trail
+ * @param {string} [opts.userId] - if provided with connectorId, checks credit balance
+ * @param {string} [opts.connectorId] - connector ID for credit check
+ * @param {string} [opts.workerId] - worker context for usage logging
  * @returns {Promise<{ ok: boolean, data?: any, fallback?: string, cached?: boolean }>}
  */
 async function callWithHealthCheck(serviceNameOrOpts, fn, opts = {}) {
@@ -71,14 +128,40 @@ async function callWithHealthCheck(serviceNameOrOpts, fn, opts = {}) {
   if (typeof serviceNameOrOpts === "object" && serviceNameOrOpts !== null) {
     serviceName = serviceNameOrOpts.serviceName;
     fn = serviceNameOrOpts.fn;
-    opts = { timeoutMs: serviceNameOrOpts.timeout, fallbackMessage: undefined };
+    opts = {
+      timeoutMs: serviceNameOrOpts.timeout,
+      fallbackMessage: undefined,
+      userId: serviceNameOrOpts.userId,
+      connectorId: serviceNameOrOpts.connectorId,
+      workerId: serviceNameOrOpts.workerId,
+    };
   } else {
     serviceName = serviceNameOrOpts;
   }
-  const { timeoutMs = 15000, fallbackMessage } = opts;
+  const { timeoutMs = 15000, fallbackMessage, userId, connectorId, workerId } = opts;
   const isAviation = opts.isAviation || AVIATION_SAFETY_SERVICES.includes(serviceName);
   const db = getDb();
   const healthRef = db.doc(`apiHealth/${serviceName}`);
+
+  // ── Credit check (if userId and connectorId provided) ───────
+  if (userId && connectorId) {
+    const { CONNECTORS } = require("../../config/connectors");
+    const connector = CONNECTORS[connectorId];
+    const creditCost = connector?.creditCost || 0;
+    if (creditCost > 0) {
+      const creditResult = await checkAndDeductCredits(userId, connectorId, creditCost, { workerId });
+      if (!creditResult.allowed) {
+        return {
+          ok: false,
+          success: false,
+          error: creditResult.error,
+          message: creditResult.message,
+          creditsRequired: creditResult.creditsRequired,
+          creditsAvailable: creditResult.creditsAvailable,
+        };
+      }
+    }
+  }
 
   const defaultFallback = fallbackMessage || ALEX_FALLBACK_MESSAGES[serviceName]
     || `Data temporarily unavailable. Working with cached or estimated data.`;
@@ -160,4 +243,4 @@ async function getServiceHealth(serviceName) {
   return snap.exists ? { id: snap.id, ...snap.data() } : null;
 }
 
-module.exports = { callWithHealthCheck, getAllHealthStatuses, getServiceHealth, logAviationDataGap };
+module.exports = { callWithHealthCheck, checkAndDeductCredits, getAllHealthStatuses, getServiceHealth, logAviationDataGap };

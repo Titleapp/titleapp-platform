@@ -559,6 +559,7 @@ async function handleStripeWebhook(req, res) {
             if (wsSubscriptionId) {
               await db.collection("subscriptions").doc(wsSubscriptionId).update({
                 status: "active_trial",
+                trialStatus: "trial_active",
                 stripeSubscriptionId: data.subscription || null,
                 stripeCheckoutSessionId: data.id,
                 activatedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -571,6 +572,7 @@ async function handleStripeWebhook(req, res) {
                 slug: wsWorkerId,
                 workerName: wsWorkerName,
                 status: "active_trial",
+                trialStatus: "trial_active",
                 stripeSubscriptionId: data.subscription || null,
                 stripeCheckoutSessionId: data.id,
                 activatedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -605,6 +607,26 @@ async function handleStripeWebhook(req, res) {
                 stripeSubscriptionId: data.subscription,
                 stripeSubscriptionStatus: "trialing",
               }, { merge: true });
+            }
+
+            // Initialize credit balance based on worker tier
+            try {
+              const TIER_CREDITS = { 0: 100, 29: 500, 49: 1500, 79: 3000 };
+              const dwSnap = await db.doc(`digitalWorkers/${wsWorkerId}`).get();
+              const workerTier = dwSnap.exists ? (dwSnap.data().pricing_tier || dwSnap.data().price || 49) : 49;
+              const creditAllocation = TIER_CREDITS[workerTier] || 500;
+
+              await db.doc(`users/${userId}`).set({
+                billing: {
+                  prepaidCredits: admin.firestore.FieldValue.increment(creditAllocation),
+                  tier: `$${workerTier}`,
+                  lastCreditAllocationAt: admin.firestore.FieldValue.serverTimestamp(),
+                },
+              }, { merge: true });
+
+              console.log(`[stripeWebhook] Allocated ${creditAllocation} credits to ${userId} (tier: $${workerTier})`);
+            } catch (creditErr) {
+              console.error(`[stripeWebhook] Credit allocation failed for ${userId}:`, creditErr.message);
             }
 
             await logActivity("revenue", `Worker subscription: ${wsWorkerName} for ${userId}`, "success", {

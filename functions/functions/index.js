@@ -5062,6 +5062,23 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
         await db.collection("guestLeads").doc(userId).update({ converted: true }).catch(() => {});
         if (anonUid) await db.collection("guestLeads").doc(anonUid).update({ converted: true }).catch(() => {});
 
+        // Initialize credit balance based on worker tier
+        try {
+          const TIER_CREDITS = { 0: 100, 29: 500, 49: 1500, 79: 3000 };
+          const workerTier = workerDoc.pricing_tier || workerDoc.price || 49;
+          const creditAllocation = TIER_CREDITS[workerTier] || 500;
+          await db.doc(`users/${userId}`).set({
+            billing: {
+              prepaidCredits: admin.firestore.FieldValue.increment(creditAllocation),
+              tier: `$${workerTier}`,
+              lastCreditAllocationAt: nowServerTs(),
+            },
+          }, { merge: true });
+          console.log(`[subscription:startTrial] Allocated ${creditAllocation} credits to ${userId} (tier: $${workerTier})`);
+        } catch (creditErr) {
+          console.error(`[subscription:startTrial] Credit allocation failed:`, creditErr.message);
+        }
+
         console.log(`[subscription:startTrial] ${userId} started trial on ${workerId}`);
         return res.json({ ok: true, subscribed: true, subscriptionId: subRef.id });
       } catch (e) {
@@ -6094,7 +6111,7 @@ These should be 2-3 realistic test scenarios the creator should try, derived fro
             console.error("[worker:bogoCheckout] Stripe error:", stripeErr.message);
             // Activate subscriptions directly if Stripe fails (trial mode)
             for (const sub of subscriptions) {
-              await db.collection("subscriptions").doc(sub.id).update({ status: "active_trial" });
+              await db.collection("subscriptions").doc(sub.id).update({ status: "active_trial", trialStatus: "trial_active" });
             }
             return res.json({ ok: true, subscriptions });
           }
@@ -6102,7 +6119,7 @@ These should be 2-3 realistic test scenarios the creator should try, derived fro
 
         // Free checkout (all items covered by BOGO or $0)
         for (const sub of subscriptions) {
-          await db.collection("subscriptions").doc(sub.id).update({ status: "active_trial" });
+          await db.collection("subscriptions").doc(sub.id).update({ status: "active_trial", trialStatus: "trial_active" });
         }
         console.log(`[worker:bogoCheckout] ${ctx.userId} — ${items.length} items, fully discounted`);
         return res.json({ ok: true, subscriptions });
@@ -6133,8 +6150,14 @@ These should be 2-3 realistic test scenarios the creator should try, derived fro
         const trialEnd = sub.trialEndAt?.toMillis?.() || sub.trialEndAt || 0;
         const cancelledAt = sub.cancelledAt?.toMillis?.() || sub.cancelledAt || 0;
 
-        if (sub.status === "active" || (sub.status === "trialing" && trialEnd > now)) {
-          return res.json({ ok: true, status: "active" });
+        const activeStatuses = ["active", "active_trial", "trialing", "trial"];
+        if (activeStatuses.includes(sub.status) || sub.trialStatus === "trial_active" || sub.trialStatus === "subscribed") {
+          // If trialing with an end date, check if expired
+          if ((sub.status === "trialing" || sub.status === "active_trial" || sub.trialStatus === "trial_active") && trialEnd > 0 && trialEnd < now) {
+            // Trial has expired — fall through to expired logic below
+          } else {
+            return res.json({ ok: true, status: "active" });
+          }
         }
 
         // Expired trial or cancelled

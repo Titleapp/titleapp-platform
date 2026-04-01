@@ -6,6 +6,7 @@
 
 module.exports = {
   get callWithHealthCheck() { return require("./callWithHealthCheck").callWithHealthCheck; },
+  get checkAndDeductCredits() { return require("./callWithHealthCheck").checkAndDeductCredits; },
   get getAllHealthStatuses() { return require("./callWithHealthCheck").getAllHealthStatuses; },
   get getServiceHealth() { return require("./callWithHealthCheck").getServiceHealth; },
   get logAviationDataGap() { return require("./callWithHealthCheck").logAviationDataGap; },
