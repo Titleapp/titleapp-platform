@@ -379,7 +379,7 @@ function LifecycleCard({ flowStep }) {
 }
 
 // ── Creator Studio Nav (left nav — Column 1) ──
-function CreatorStudioNav({ flowStep, workerCardData, worker, isMobile, onClose, style, workspaces = [], onSwitchWorkspace }) {
+function CreatorStudioNav({ flowStep, workerCardData, worker, isMobile, onClose, style, workspaces = [], onSwitchWorkspace, onViewStep }) {
   const baseStyle = isMobile ? S.leftNavMobile : S.leftNav;
   const [wsDropOpen, setWsDropOpen] = React.useState(false);
   return (
@@ -454,7 +454,7 @@ function CreatorStudioNav({ flowStep, workerCardData, worker, isMobile, onClose,
             </div>
             {flowStep >= 6 ? (
               <button
-                onClick={() => viewStep(2)}
+                onClick={() => onViewStep?.(2)}
                 title={workerCardData?.gameConfig?.isGame ? "Your game gets better every time you update it" : "Your worker gets better every time you update it"}
                 style={{ fontSize: 11, color: "#7c3aed", background: "none", border: "none", cursor: "pointer", padding: 0, fontWeight: 500 }}
               >
@@ -630,7 +630,7 @@ export default function DeveloperSandbox() {
         sessionStorage.setItem("ta_sandbox_worker_name", workerCardData.name);
       }
     } catch {}
-  }, [workerCardData, worker, vertical, jurisdiction, workerIconUrl, flowStep, maxFlowStep, exchangeCount, surveyStep, surveyAnswers, surveyComplete, testExchangeCount]);
+  }, [workerCardData, worker, vertical, jurisdiction, workerIconUrl, flowStep, maxFlowStep, exchangeCount, creatorPath, surveyStep, surveyAnswers, surveyComplete, testExchangeCount]);
 
   // Edit mode (post-publish)
   const [editMode, setEditMode] = useState(false);
@@ -1527,7 +1527,7 @@ export default function DeveloperSandbox() {
       {/* Column 1: Creator Studio Nav (desktop) + divider */}
       {!isMobile && (
         <>
-          <CreatorStudioNav flowStep={flowStep} workerCardData={workerCardData} worker={worker} isMobile={false} style={{ width: navWidthPx }} workspaces={sandboxWorkspaces} onSwitchWorkspace={handleSandboxSwitchWorkspace} />
+          <CreatorStudioNav flowStep={flowStep} workerCardData={workerCardData} worker={worker} isMobile={false} style={{ width: navWidthPx }} workspaces={sandboxWorkspaces} onSwitchWorkspace={handleSandboxSwitchWorkspace} onViewStep={viewStep} />
           <div
             style={{ ...S.divider, ...(isDragging === "nav" || dividerHover === "nav" ? S.dividerHover : {}) }}
             onMouseDown={() => setIsDragging("nav")}
@@ -1541,7 +1541,7 @@ export default function DeveloperSandbox() {
       {isMobile && showMobileNav && (
         <>
           <div onClick={() => setShowMobileNav(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.3)", zIndex: 250 }} />
-          <CreatorStudioNav flowStep={flowStep} workerCardData={workerCardData} worker={worker} isMobile={true} onClose={() => setShowMobileNav(false)} workspaces={sandboxWorkspaces} onSwitchWorkspace={handleSandboxSwitchWorkspace} />
+          <CreatorStudioNav flowStep={flowStep} workerCardData={workerCardData} worker={worker} isMobile={true} onClose={() => setShowMobileNav(false)} workspaces={sandboxWorkspaces} onSwitchWorkspace={handleSandboxSwitchWorkspace} onViewStep={viewStep} />
         </>
       )}
 
@@ -1654,9 +1654,8 @@ export default function DeveloperSandbox() {
                     fontWeight: 500, cursor: "pointer", transition: "background 0.15s",
                   }}
                   onClick={() => {
-                    addUserMessage(`Tell me about worker ${wid}`);
                     setCampaignWorkerChips([]);
-                    handleSendMessage(`Tell me about worker ${wid}`);
+                    setInput(`Tell me about worker ${wid}`);
                   }}
                 >
                   {wid}
