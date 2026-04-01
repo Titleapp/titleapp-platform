@@ -91,6 +91,34 @@ function WorkerCanvas({ workerData, verticalLabel, onLeave }) {
   const accent = getThemeAccent(vertical, isGame);
   const iconSlug = getVerticalIconSlug(vertical);
 
+  // Operating mode configuration
+  const MODE_CONFIG = {
+    pro: {
+      label: "Operating from verified documents",
+      bg: "rgba(22, 163, 74, 0.1)",
+      border: "rgba(22, 163, 74, 0.25)",
+      color: "#16a34a",
+      icon: "M9 12l2 2 4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0z",
+    },
+    advisory: {
+      label: "Based on general best practice \u2014 upload your documents to activate Pro Mode",
+      bg: "rgba(217, 119, 6, 0.1)",
+      border: "rgba(217, 119, 6, 0.25)",
+      color: "#d97706",
+      icon: "M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z",
+    },
+    flagged: {
+      label: "Document review required",
+      bg: "rgba(220, 38, 38, 0.1)",
+      border: "rgba(220, 38, 38, 0.25)",
+      color: "#dc2626",
+      icon: "M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z",
+    },
+  };
+  // Default all workers to advisory until Studio Locker is built
+  const operatingMode = "advisory";
+  const modeInfo = MODE_CONFIG[operatingMode];
+
   // Arrival state machine
   const [arrivalPhase, setArrivalPhase] = useState("idle"); // idle | heartbeat | reveal | done
   const [showName, setShowName] = useState(false);
@@ -254,6 +282,22 @@ function WorkerCanvas({ workerData, verticalLabel, onLeave }) {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
           Back to {verticalLabel || "workers"}
         </button>
+      </div>
+
+      {/* Operating mode band */}
+      <div style={{
+        display: "flex", alignItems: "center", gap: 8,
+        padding: "8px 24px",
+        background: modeInfo.bg,
+        borderBottom: `1px solid ${modeInfo.border}`,
+        flexShrink: 0,
+      }}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={modeInfo.color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+          <path d={modeInfo.icon} />
+        </svg>
+        <span style={{ fontSize: 12, color: modeInfo.color, fontWeight: 500, lineHeight: 1.4 }}>
+          {modeInfo.label}
+        </span>
       </div>
 
       {/* Skeleton loading state */}

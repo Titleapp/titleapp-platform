@@ -506,6 +506,9 @@ export default function DeveloperSandbox() {
   const [welcomeGreeting, setWelcomeGreeting] = useState(null); // greeting text shown above chat
   const [greetingVisible, setGreetingVisible] = useState(false); // controls fade in/out
   const [campaignWorkerChips, setCampaignWorkerChips] = useState([]); // suggested workers from campaign
+  const [creatorPath, setCreatorPath] = useState(() => savedSession.current?.creatorPath || null); // null | "worker" | "game-casual" | "game-regulated"
+  const [showPathChips, setShowPathChips] = useState(false);
+  const [showGameTypeChips, setShowGameTypeChips] = useState(false);
   const messagesEndRef = useRef(null);
   const chatInputRef = useRef(null);
 
@@ -619,7 +622,7 @@ export default function DeveloperSandbox() {
     try {
       localStorage.setItem("ta_sandbox_session", JSON.stringify({
         workerCardData, worker, vertical, jurisdiction, workerIconUrl,
-        flowStep, maxFlowStep, exchangeCount,
+        flowStep, maxFlowStep, exchangeCount, creatorPath,
         surveyStep, surveyAnswers, surveyComplete, testExchangeCount, _v: 4,
       }));
       if (workerCardData?.name) {
@@ -861,7 +864,13 @@ export default function DeveloperSandbox() {
       } else {
         // Default opening question after 1.5s delay
         setTimeout(() => {
-          addAssistantMessage("So — what do you want to build?");
+          if (savedSession.current?.creatorPath) {
+            // Returning session — already chose path
+            addAssistantMessage("So \u2014 what do you want to build?");
+          } else {
+            addAssistantMessage("Before we start \u2014 are you building a Digital Worker or a Game?");
+            setShowPathChips(true);
+          }
         }, 1500);
       }
 
@@ -956,7 +965,7 @@ export default function DeveloperSandbox() {
         method: "POST",
         headers,
         body: JSON.stringify({
-          sessionId, surface: "sandbox", userInput: text, flowStep: Math.max(flowStep, 1), vertical,
+          sessionId, surface: "sandbox", userInput: text, flowStep: Math.max(flowStep, 1), vertical, creatorPath,
           ...(creatorName ? { creatorName } : {}),
           ...(shouldExtractSpec ? { extractSpec: true } : {}),
           ...(images.length > 0 ? { imageData: images.map(img => ({ base64: img.base64, mediaType: img.mediaType })) } : {}),
@@ -971,7 +980,8 @@ export default function DeveloperSandbox() {
         if (result.buildAnimation && result.cards && result.cards.length > 0) {
           const card = result.cards[0]?.data;
           if (card) {
-            const isGame = !!card.gameConfig?.isGame;
+            const isGame = !!card.gameConfig?.isGame || creatorPath === "game-casual" || creatorPath === "game-regulated";
+            const derivedGameConfig = card.gameConfig || (isGame ? { isGame: true, gameMode: creatorPath === "game-casual" ? "casual" : "training" } : undefined);
             const cardData = {
               name: card.name || "Your Worker",
               description: card.description || "",
@@ -983,7 +993,7 @@ export default function DeveloperSandbox() {
               jurisdiction: card.jurisdiction || "GLOBAL",
               pricingTier: isGame ? 0 : 2,
               internal_only: false,
-              gameConfig: card.gameConfig || undefined,
+              gameConfig: derivedGameConfig,
             };
             setWorkerCardData(cardData);
             setVertical(card.category || "");
@@ -1651,6 +1661,80 @@ export default function DeveloperSandbox() {
                   {wid}
                 </button>
               ))}
+            </div>
+          )}
+
+          {/* Worker vs Game — initial path choice */}
+          {showPathChips && flowStep === 0 && !creatorPath && (
+            <div style={{ display: "flex", gap: 6, marginTop: 4, flexWrap: "wrap" }}>
+              <button
+                style={{
+                  padding: "7px 14px", background: "rgba(107,70,193,0.08)", color: "#6B46C1",
+                  border: "1px solid rgba(107,70,193,0.15)", borderRadius: 20, fontSize: 13,
+                  fontWeight: 500, cursor: "pointer", transition: "background 0.15s",
+                }}
+                onClick={() => {
+                  setShowPathChips(false);
+                  setCreatorPath("worker");
+                  addUserMessage("Digital Worker");
+                  setTimeout(() => addAssistantMessage("So \u2014 what do you want to build?"), 500);
+                }}
+              >
+                Digital Worker
+              </button>
+              <button
+                style={{
+                  padding: "7px 14px", background: "rgba(107,70,193,0.08)", color: "#6B46C1",
+                  border: "1px solid rgba(107,70,193,0.15)", borderRadius: 20, fontSize: 13,
+                  fontWeight: 500, cursor: "pointer", transition: "background 0.15s",
+                }}
+                onClick={() => {
+                  setShowPathChips(false);
+                  addUserMessage("Game");
+                  setTimeout(() => {
+                    addAssistantMessage("Is this a casual game (a pub quiz, a treasure hunt, a company trivia game) or a training and certification game (exam prep, compliance simulation)?");
+                    setShowGameTypeChips(true);
+                  }, 500);
+                }}
+              >
+                Game
+              </button>
+            </div>
+          )}
+
+          {/* Game type — casual vs training */}
+          {showGameTypeChips && flowStep === 0 && !creatorPath && (
+            <div style={{ display: "flex", gap: 6, marginTop: 4, flexWrap: "wrap" }}>
+              <button
+                style={{
+                  padding: "7px 14px", background: "rgba(107,70,193,0.08)", color: "#6B46C1",
+                  border: "1px solid rgba(107,70,193,0.15)", borderRadius: 20, fontSize: 13,
+                  fontWeight: 500, cursor: "pointer", transition: "background 0.15s",
+                }}
+                onClick={() => {
+                  setShowGameTypeChips(false);
+                  setCreatorPath("game-casual");
+                  addUserMessage("Casual game");
+                  setTimeout(() => addAssistantMessage("Great \u2014 casual games get full creative freedom. No compliance requirements, just fun. What kind of game are you thinking? Describe the experience you want players to have."), 500);
+                }}
+              >
+                Casual game
+              </button>
+              <button
+                style={{
+                  padding: "7px 14px", background: "rgba(107,70,193,0.08)", color: "#6B46C1",
+                  border: "1px solid rgba(107,70,193,0.15)", borderRadius: 20, fontSize: 13,
+                  fontWeight: 500, cursor: "pointer", transition: "background 0.15s",
+                }}
+                onClick={() => {
+                  setShowGameTypeChips(false);
+                  setCreatorPath("game-regulated");
+                  addUserMessage("Training and certification");
+                  setTimeout(() => addAssistantMessage("Training games need accuracy. We\u2019ll build in compliance rules and source verification from the start. What subject area and what certification or exam are you targeting?"), 500);
+                }}
+              >
+                Training & certification
+              </button>
             </div>
           )}
 
