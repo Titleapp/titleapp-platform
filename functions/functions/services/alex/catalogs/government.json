@@ -1,0 +1,1506 @@
+{
+  "vertical": "government",
+  "name": "Government Operations",
+  "version": "1.0.0",
+  "lifecycle": [
+    {
+      "phase": 0,
+      "name": "DMV & Title",
+      "description": "Vehicle registration, title transfer, VIN verification, licensing, emissions"
+    },
+    {
+      "phase": 1,
+      "name": "Permitting",
+      "description": "Building permits, plan review, zoning, contractor licensing, environmental review"
+    },
+    {
+      "phase": 2,
+      "name": "Inspections",
+      "description": "Building, electrical, plumbing, mechanical, fire, structural, health, ADA"
+    },
+    {
+      "phase": 3,
+      "name": "Recording Services",
+      "description": "Document recording, deed processing, mortgage, lien, UCC, GIS mapping"
+    },
+    {
+      "phase": 4,
+      "name": "Operations",
+      "description": "Cross-department orchestration, fraud detection, revenue, queuing"
+    }
+  ],
+  "suites": [
+    {
+      "id": "dmv-title",
+      "name": "DMV & Title"
+    },
+    {
+      "id": "permitting",
+      "name": "Permitting"
+    },
+    {
+      "id": "inspections",
+      "name": "Inspections"
+    },
+    {
+      "id": "recording",
+      "name": "Recording Services"
+    },
+    {
+      "id": "operations",
+      "name": "Operations"
+    }
+  ],
+  "workers": [
+    {
+      "id": "GOV-000",
+      "name": "Jurisdiction Onboarding",
+      "slug": "gov-jurisdiction-onboarding",
+      "suite": "Operations",
+      "phase": 4,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "Jurisdiction Onboarding — validates FIPS code, EIN, contact domain, and suite eligibility before provisioning a government tenant",
+      "tags": [
+        "government"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "government_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "GOV-001",
+      "name": "Title Registration",
+      "slug": "gov-title-registration",
+      "suite": "DMV & Title",
+      "phase": 0,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "Title Registration — processes vehicle title transfers, validates VIN integrity, NMVTIS checks, odometer fraud detection, and lienholder verification",
+      "tags": [
+        "dmv"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "dmv_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "GOV-002",
+      "name": "Vehicle Registration Renewal",
+      "slug": "gov-registration-renewal",
+      "suite": "DMV & Title",
+      "phase": 0,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "Vehicle Registration Renewal — processes annual registration renewals, validates emissions compliance, insurance verification, and outstanding violation checks",
+      "tags": [
+        "dmv"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "dmv_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "GOV-003",
+      "name": "Driver License Issuance",
+      "slug": "gov-license-issuance",
+      "suite": "DMV & Title",
+      "phase": 0,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "Driver License Issuance — processes new and renewal driver license applications, validates identity documents, vision screening, and REAL ID compliance",
+      "tags": [
+        "dmv"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "dmv_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "GOV-004",
+      "name": "VIN Verification",
+      "slug": "gov-vin-verification",
+      "suite": "DMV & Title",
+      "phase": 0,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "VIN Verification — validates vehicle identification numbers against NHTSA decode, checks for theft records, and verifies physical VIN plate integrity",
+      "tags": [
+        "dmv"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "dmv_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "GOV-005",
+      "name": "Lien Processing",
+      "slug": "gov-lien-processing",
+      "suite": "DMV & Title",
+      "phase": 0,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "Lien Processing — manages lien filings, releases, and ELT (Electronic Lien and Title) transactions for vehicle titles",
+      "tags": [
+        "dmv"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "dmv_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "GOV-006",
+      "name": "Emissions Compliance",
+      "slug": "gov-emissions-compliance",
+      "suite": "DMV & Title",
+      "phase": 0,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "Emissions Compliance — manages vehicle emissions testing records, exemptions, and compliance tracking per Clean Air Act and state programs",
+      "tags": [
+        "dmv"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "dmv_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "GOV-007",
+      "name": "Dealer Licensing",
+      "slug": "gov-dealer-licensing",
+      "suite": "DMV & Title",
+      "phase": 0,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "Dealer Licensing — processes new and renewal dealer license applications, validates bond, lot, and insurance requirements",
+      "tags": [
+        "dmv"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "dmv_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "GOV-008",
+      "name": "Salvage and Rebuilt Title",
+      "slug": "gov-salvage-rebuilt-title",
+      "suite": "DMV & Title",
+      "phase": 0,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "Salvage and Rebuilt Title — processes branded title applications for salvage, rebuilt, and flood-damaged vehicles with enhanced inspection requirements",
+      "tags": [
+        "dmv"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "dmv_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "GOV-009",
+      "name": "Fleet Registration",
+      "slug": "gov-fleet-registration",
+      "suite": "DMV & Title",
+      "phase": 0,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "Fleet Registration — processes bulk vehicle registration for government and commercial fleets, IRP/IFTA compliance, and apportioned plates",
+      "tags": [
+        "dmv"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "dmv_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "GOV-010",
+      "name": "Commercial Driver License Processing",
+      "slug": "gov-cdl-processing",
+      "suite": "DMV & Title",
+      "phase": 0,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "Commercial Driver License Processing — manages CDL applications, endorsements, medical certifications, and FMCSA Drug & Alcohol Clearinghouse checks",
+      "tags": [
+        "dmv"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "dmv_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "GOV-011",
+      "name": "DMV Correspondence",
+      "slug": "gov-dmv-correspondence",
+      "suite": "DMV & Title",
+      "phase": 0,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "DMV Correspondence — manages automated and manual communications including suspension notices, renewal reminders, and hearing notifications",
+      "tags": [
+        "dmv"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "dmv_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "GOV-012",
+      "name": "DMV Hearings and Appeals",
+      "slug": "gov-hearings-appeals",
+      "suite": "DMV & Title",
+      "phase": 0,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "DMV Hearings and Appeals — schedules administrative hearings, tracks evidence submissions, and generates hearing officer decision documents",
+      "tags": [
+        "dmv"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "dmv_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "GOV-013",
+      "name": "DMV Fraud Detection",
+      "slug": "gov-fraud-detection",
+      "suite": "DMV & Title",
+      "phase": 0,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "DMV Fraud Detection — identifies suspicious patterns in title applications, registration renewals, and identity documents to flag potential fraud for investigation",
+      "tags": [
+        "dmv"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "dmv_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "GOV-014",
+      "name": "DMV Revenue Reconciliation",
+      "slug": "gov-revenue-reconciliation",
+      "suite": "DMV & Title",
+      "phase": 0,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "DMV Revenue Reconciliation — reconciles daily fee collections, tracks outstanding balances, and generates revenue reports for treasury",
+      "tags": [
+        "dmv"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "dmv_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "GOV-015",
+      "name": "DMV Customer Queue Management",
+      "slug": "gov-customer-queue",
+      "suite": "DMV & Title",
+      "phase": 0,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "DMV Customer Queue Management — manages appointment scheduling, walk-in queues, estimated wait times, and service window routing",
+      "tags": [
+        "dmv"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "dmv_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "GOV-016",
+      "name": "Permit Intake",
+      "slug": "gov-permit-intake",
+      "suite": "Permitting",
+      "phase": 1,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "Permit Intake — validates building/trade permit applications, checks contractor licensing and insurance, enforces zoning and environmental prerequisites",
+      "tags": [
+        "permitting"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "permitting_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "GOV-017",
+      "name": "Plan Review",
+      "slug": "gov-plan-review",
+      "suite": "Permitting",
+      "phase": 1,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "Plan Review — routes building plans to appropriate review disciplines, tracks review cycles, manages applicant resubmittals, and enforces code compliance checklists",
+      "tags": [
+        "permitting"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "permitting_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "GOV-018",
+      "name": "Zoning Verification",
+      "slug": "gov-zoning-verification",
+      "suite": "Permitting",
+      "phase": 1,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "Zoning Verification — validates proposed use against zoning ordinance, checks setbacks, lot coverage, FAR, height limits, and parking requirements",
+      "tags": [
+        "permitting"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "permitting_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "GOV-019",
+      "name": "Contractor License Verification",
+      "slug": "gov-contractor-license-verify",
+      "suite": "Permitting",
+      "phase": 1,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "Contractor License Verification — validates contractor licensing status, classification, bond, workers compensation, and insurance before permit issuance",
+      "tags": [
+        "permitting"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "permitting_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "GOV-020",
+      "name": "Fire Prevention Review",
+      "slug": "gov-fire-prevention-review",
+      "suite": "Permitting",
+      "phase": 1,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "Fire Prevention Review — reviews building plans and permit applications for fire code compliance including sprinkler, alarm, egress, and fire separation requirements",
+      "tags": [
+        "permitting"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "permitting_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "GOV-021",
+      "name": "Environmental Review",
+      "slug": "gov-environmental-review",
+      "suite": "Permitting",
+      "phase": 1,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "Environmental Review — manages NEPA/CEQA/SEPA compliance, wetland delineation, stormwater management, and endangered species consultation for development permits",
+      "tags": [
+        "permitting"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "permitting_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "GOV-022",
+      "name": "Variance and Conditional Use Permit Processing",
+      "slug": "gov-variance-cup",
+      "suite": "Permitting",
+      "phase": 1,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "Variance and Conditional Use Permit Processing — manages applications for zoning variances, conditional/special use permits, and administrative adjustments",
+      "tags": [
+        "permitting"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "permitting_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "GOV-023",
+      "name": "Subdivision Review",
+      "slug": "gov-subdivision-review",
+      "suite": "Permitting",
+      "phase": 1,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "Subdivision Review — reviews and processes preliminary and final plat applications, lot configurations, infrastructure dedications, and improvement agreements",
+      "tags": [
+        "permitting"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "permitting_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "GOV-024",
+      "name": "Impact Fee Calculation",
+      "slug": "gov-impact-fee-calc",
+      "suite": "Permitting",
+      "phase": 1,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "Impact Fee Calculation — calculates development impact fees for transportation, parks, schools, fire, and utility infrastructure based on project scope and land use",
+      "tags": [
+        "permitting"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "permitting_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "GOV-025",
+      "name": "Code Enforcement",
+      "slug": "gov-code-enforcement",
+      "suite": "Permitting",
+      "phase": 1,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "Code Enforcement — manages property maintenance complaints, violation investigations, notice and order issuance, abatement tracking, and compliance monitoring",
+      "tags": [
+        "permitting"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "permitting_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "GOV-026",
+      "name": "Certificate of Occupancy",
+      "slug": "gov-certificate-occupancy",
+      "suite": "Permitting",
+      "phase": 1,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "Certificate of Occupancy — validates all final inspections, fire sign-offs, utility connections, and as-built conditions before issuing occupancy authorization",
+      "tags": [
+        "permitting"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "permitting_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "GOV-027",
+      "name": "Sign Permit",
+      "slug": "gov-sign-permit",
+      "suite": "Permitting",
+      "phase": 1,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "Sign Permit — processes sign permit applications, validates sign code compliance including size, height, illumination, and location restrictions",
+      "tags": [
+        "permitting"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "permitting_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "GOV-028",
+      "name": "Demolition Permit",
+      "slug": "gov-demolition-permit",
+      "suite": "Permitting",
+      "phase": 1,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "Demolition Permit — processes demolition permit applications, verifies asbestos surveys, utility disconnections, historic review, and OSHA compliance",
+      "tags": [
+        "permitting"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "permitting_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "GOV-029",
+      "name": "Grading and Excavation Permit",
+      "slug": "gov-grading-excavation",
+      "suite": "Permitting",
+      "phase": 1,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "Grading and Excavation Permit — processes earthwork permits, validates erosion control plans, geotechnical reports, and stormwater management requirements",
+      "tags": [
+        "permitting"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "permitting_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "GOV-030",
+      "name": "Right-of-Way Encroachment",
+      "slug": "gov-row-encroachment",
+      "suite": "Permitting",
+      "phase": 1,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "Right-of-Way Encroachment — processes encroachment permits for work within public rights-of-way including utility cuts, sidewalk repairs, and temporary street closures",
+      "tags": [
+        "permitting"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "permitting_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "GOV-031",
+      "name": "Building Inspector",
+      "slug": "gov-building-inspector",
+      "suite": "Operations",
+      "phase": 4,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "Building Inspector — manages field inspections, enforces code compliance, escalates life-safety violations, and validates GPS-verified site presence",
+      "tags": [
+        "inspector"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "inspector_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "GOV-032",
+      "name": "Electrical Inspector",
+      "slug": "gov-electrical-inspector",
+      "suite": "Operations",
+      "phase": 4,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "Electrical Inspector — conducts electrical system inspections for NEC compliance, verifies panel sizing, grounding, GFCI/AFCI protection, and load calculations",
+      "tags": [
+        "inspector"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "inspector_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "GOV-033",
+      "name": "Plumbing Inspector",
+      "slug": "gov-plumbing-inspector",
+      "suite": "Operations",
+      "phase": 4,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "Plumbing Inspector — inspects plumbing installations for UPC/IPC compliance including DWV systems, water supply, backflow prevention, and fixture counts",
+      "tags": [
+        "inspector"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "inspector_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "GOV-034",
+      "name": "Mechanical/HVAC Inspector",
+      "slug": "gov-mechanical-inspector",
+      "suite": "Operations",
+      "phase": 4,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "Mechanical/HVAC Inspector — inspects heating, ventilation, and air conditioning installations for IMC compliance, refrigerant handling, ductwork, and combustion air",
+      "tags": [
+        "inspector"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "inspector_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "GOV-035",
+      "name": "Fire Inspector",
+      "slug": "gov-fire-inspector",
+      "suite": "Operations",
+      "phase": 4,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "Fire Inspector — conducts fire safety inspections, validates sprinkler and alarm systems, verifies egress compliance, and enforces IFC occupancy limits",
+      "tags": [
+        "inspector"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "inspector_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "GOV-036",
+      "name": "Structural Inspector",
+      "slug": "gov-structural-inspector",
+      "suite": "Operations",
+      "phase": 4,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "Structural Inspector — inspects foundation, framing, and structural systems for compliance with IBC structural provisions, engineered plans, and special inspection requirements",
+      "tags": [
+        "inspector"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "inspector_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "GOV-037",
+      "name": "Elevator Inspector",
+      "slug": "gov-elevator-inspector",
+      "suite": "Operations",
+      "phase": 4,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "Elevator Inspector — inspects elevators, escalators, and conveyances for ASME A17.1 compliance, annual certifications, and safety device testing",
+      "tags": [
+        "inspector"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "inspector_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "GOV-038",
+      "name": "Health and Food Safety Inspector",
+      "slug": "gov-health-food-inspector",
+      "suite": "Operations",
+      "phase": 4,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "Health and Food Safety Inspector — conducts food establishment inspections, validates temperature controls, sanitation, and FDA Food Code compliance",
+      "tags": [
+        "inspector"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "inspector_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "GOV-039",
+      "name": "ADA and Accessibility Inspector",
+      "slug": "gov-ada-accessibility",
+      "suite": "Operations",
+      "phase": 4,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "ADA and Accessibility Inspector — verifies compliance with ADA, ABA, Fair Housing Act, and ICC A117.1 accessibility standards for new construction and alterations",
+      "tags": [
+        "inspector"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "inspector_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "GOV-040",
+      "name": "Environmental Compliance Inspector",
+      "slug": "gov-environmental-compliance",
+      "suite": "Operations",
+      "phase": 4,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "Environmental Compliance Inspector — inspects construction sites for erosion control, stormwater BMP maintenance, dust control, and NPDES permit compliance",
+      "tags": [
+        "inspector"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "inspector_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "GOV-041",
+      "name": "Document Recording",
+      "slug": "gov-document-recording",
+      "suite": "Operations",
+      "phase": 4,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "Document Recording — validates and records deeds, mortgages, liens, and other instruments against the official land record with hash integrity and notarization verification",
+      "tags": [
+        "recorder"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "recorder_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "GOV-042",
+      "name": "Deed Processing",
+      "slug": "gov-deed-processing",
+      "suite": "Operations",
+      "phase": 4,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "Deed Processing — validates and records warranty deeds, quitclaim deeds, and special purpose deeds with chain-of-title verification and transfer tax assessment",
+      "tags": [
+        "recorder"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "recorder_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "GOV-043",
+      "name": "Mortgage and Deed of Trust Recording",
+      "slug": "gov-mortgage-recording",
+      "suite": "Operations",
+      "phase": 4,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "Mortgage and Deed of Trust Recording — records mortgage instruments, assignments, modifications, and subordination agreements with lien priority tracking",
+      "tags": [
+        "recorder"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "recorder_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "GOV-044",
+      "name": "Lien Filing",
+      "slug": "gov-lien-filing",
+      "suite": "Operations",
+      "phase": 4,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "Lien Filing — records mechanic's liens, tax liens, judgment liens, and HOA liens with statutory deadline tracking and proper notice verification",
+      "tags": [
+        "recorder"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "recorder_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "GOV-045",
+      "name": "UCC Filing",
+      "slug": "gov-ucc-filing",
+      "suite": "Operations",
+      "phase": 4,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "UCC Filing — processes Uniform Commercial Code financing statements, amendments, continuations, and terminations for secured transactions",
+      "tags": [
+        "recorder"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "recorder_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "GOV-046",
+      "name": "Plat and Map Recording",
+      "slug": "gov-plat-map-recording",
+      "suite": "Operations",
+      "phase": 4,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "Plat and Map Recording — records subdivision plats, lot line adjustments, parcel maps, and condominium plans with surveyor certification and planning approval verification",
+      "tags": [
+        "recorder"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "recorder_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "GOV-047",
+      "name": "Vital Records",
+      "slug": "gov-vital-records",
+      "suite": "Operations",
+      "phase": 4,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "Vital Records — manages birth certificates, death certificates, marriage licenses, and domestic partnership registrations with identity verification and fraud prevention",
+      "tags": [
+        "recorder"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "recorder_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "GOV-048",
+      "name": "Notary Administration",
+      "slug": "gov-notary-administration",
+      "suite": "Operations",
+      "phase": 4,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "Notary Administration — manages notary public commissions, notary journal audits, RON provider registrations, and notary complaint investigations",
+      "tags": [
+        "recorder"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "recorder_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "GOV-049",
+      "name": "eRecording Gateway",
+      "slug": "gov-erecording-gateway",
+      "suite": "Operations",
+      "phase": 4,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "eRecording Gateway — manages electronic recording submissions from title companies and law firms via PRIA/URPERA standards, validates digital signatures and document formatting",
+      "tags": [
+        "recorder"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "recorder_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "GOV-050",
+      "name": "Title Search",
+      "slug": "gov-title-search",
+      "suite": "Operations",
+      "phase": 4,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "Title Search — conducts grantor/grantee index searches, builds chain of title, identifies encumbrances, and generates title abstracts from recorded documents",
+      "tags": [
+        "recorder"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "recorder_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "GOV-051",
+      "name": "Easement and Right-of-Way Recording",
+      "slug": "gov-easement-row-recording",
+      "suite": "Operations",
+      "phase": 4,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "Easement and Right-of-Way Recording — records easement grants, dedications, vacations, and utility easements with beneficiary and burdened parcel tracking",
+      "tags": [
+        "recorder"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "recorder_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "GOV-052",
+      "name": "Lis Pendens and Court Orders",
+      "slug": "gov-lis-pendens-court-orders",
+      "suite": "Operations",
+      "phase": 4,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "Lis Pendens and Court Orders — records notices of pending litigation, court-ordered transfers, foreclosure notices, and abstracts of judgment against real property",
+      "tags": [
+        "recorder"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "recorder_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "GOV-053",
+      "name": "Tax Lien and Assessment Recording",
+      "slug": "gov-tax-lien-assessment",
+      "suite": "Operations",
+      "phase": 4,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "Tax Lien and Assessment Recording — records property tax liens, special assessment liens, and tax sale certificates with statutory notice compliance",
+      "tags": [
+        "recorder"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "recorder_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "GOV-054",
+      "name": "Redaction and Privacy",
+      "slug": "gov-redaction-privacy",
+      "suite": "Operations",
+      "phase": 4,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "Redaction and Privacy — manages PII redaction requests, SSN/DOB removal from recorded documents, and address confidentiality program compliance",
+      "tags": [
+        "recorder"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "recorder_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "GOV-055",
+      "name": "GIS and Parcel Mapping",
+      "slug": "gov-gis-parcel-mapping",
+      "suite": "Operations",
+      "phase": 4,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "GIS and Parcel Mapping — maintains parcel boundary data, processes splits and merges, updates GIS layers from recorded plats, and manages spatial data integrity",
+      "tags": [
+        "recorder"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "recorder_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "GOV-056",
+      "name": "Document Preservation and Digitization",
+      "slug": "gov-document-preservation",
+      "suite": "Operations",
+      "phase": 4,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "Document Preservation and Digitization — manages document scanning, indexing, microfilm/digital conversion, and long-term archival of recorded instruments",
+      "tags": [
+        "recorder"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "recorder_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "GOV-057",
+      "name": "Alex Government Chief of Staff",
+      "slug": "gov-alex-government-cos",
+      "suite": "Operations",
+      "phase": 4,
+      "type": "orchestrator",
+      "pricing": {
+        "monthly": 0
+      },
+      "status": "live",
+      "capabilitySummary": "Alex Government Chief of Staff — orchestrates cross-suite workflows, manages inter-department handoffs, tracks SLA compliance, and provides jurisdiction-wide analytics",
+      "tags": [
+        "government"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
+      "alexRegistration": {
+        "priority": "critical",
+        "acceptsTasks": true,
+        "briefingContribution": "government_status"
+      },
+      "temporalType": "always_on"
+    }
+  ]
+}

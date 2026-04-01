@@ -1,0 +1,338 @@
+{
+  "vertical": "re_professional",
+  "name": "Real Estate Professional Services",
+  "version": "1.0.0",
+  "lifecycle": [
+    {
+      "phase": 0,
+      "name": "Pre-Close",
+      "description": "Title search, commitment, lien clearance, disclosure preparation"
+    },
+    {
+      "phase": 1,
+      "name": "Closing",
+      "description": "Escrow management, closing disclosure, FIRPTA, commission, HOA estoppel"
+    },
+    {
+      "phase": 2,
+      "name": "Post-Close",
+      "description": "Recording monitoring, status tracking, operations"
+    }
+  ],
+  "suites": [
+    {
+      "id": "title-search",
+      "name": "Title & Search"
+    },
+    {
+      "id": "escrow-closing",
+      "name": "Escrow & Closing"
+    },
+    {
+      "id": "operations",
+      "name": "Operations"
+    }
+  ],
+  "workers": [
+    {
+      "id": "ESC-001",
+      "name": "The Escrow Locker",
+      "slug": "esc-escrow-locker",
+      "suite": "Title & Search",
+      "phase": 0,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 79
+      },
+      "status": "live",
+      "capabilitySummary": "The Escrow Locker — manages the full lifecycle of an escrow transaction from offer acceptance through disbursement and recording. Enforces identity verification, wire security, condition satisfaction, and audit retention across all parties and stages.",
+      "tags": [
+        "title-escrow"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "escrow_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "ESC-002",
+      "name": "Wire Fraud Prevention",
+      "slug": "esc-wire-fraud-prevention",
+      "suite": "Title & Search",
+      "phase": 0,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 79
+      },
+      "status": "live",
+      "capabilitySummary": "Wire Fraud Prevention — validates wire instructions, detects domain mismatches, enforces callback verification, and flags suspicious patterns before any funds are disbursed.",
+      "tags": [
+        "title-escrow"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "escrow_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "ESC-003",
+      "name": "Title Search and Commitment",
+      "slug": "esc-title-search-commitment",
+      "suite": "Title & Search",
+      "phase": 0,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "Title Search and Commitment — processes title searches, classifies exceptions in Schedule B, identifies deal-killer defects, tracks curative actions, and produces commitment documents for underwriting.",
+      "tags": [
+        "title-escrow"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "escrow_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "ESC-004",
+      "name": "Lien Clearance",
+      "slug": "esc-lien-clearance",
+      "suite": "Escrow & Closing",
+      "phase": 1,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "Lien Clearance — tracks existing liens on the property, coordinates payoff demands, monitors release recordings, and blocks DTC transfer and closing until all liens are satisfied and released.",
+      "tags": [
+        "title-escrow"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "escrow_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "ESC-005",
+      "name": "Disclosure Package",
+      "slug": "esc-disclosure-package",
+      "suite": "Escrow & Closing",
+      "phase": 1,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "Disclosure Package — manages state-specific disclosure requirements, tracks delivery confirmation, handles HOA document collection, and blocks closing when mandatory disclosures are missing.",
+      "tags": [
+        "title-escrow"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "escrow_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "ESC-006",
+      "name": "Closing Disclosure",
+      "slug": "esc-closing-disclosure",
+      "suite": "Escrow & Closing",
+      "phase": 1,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "Closing Disclosure — generates and validates Closing Disclosure (CD) and HUD-1 settlement statements, enforces TRID tolerance checks, verifies proration accuracy, and blocks signing and disbursement when discrepancies exist.",
+      "tags": [
+        "title-escrow"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "escrow_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "ESC-007",
+      "name": "FIRPTA and 1031 Exchange",
+      "slug": "esc-firpta-1031-exchange",
+      "suite": "Escrow & Closing",
+      "phase": 1,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "FIRPTA and 1031 Exchange — enforces FIRPTA withholding requirements for foreign sellers, manages IRC Section 1031 exchange timelines and identification rules, tracks qualified intermediary coordination, and blocks closing or exchange completion when compliance gaps exist.",
+      "tags": [
+        "title-escrow"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "escrow_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "ESC-008",
+      "name": "Commission Reconciliation",
+      "slug": "esc-commission-reconciliation",
+      "suite": "Escrow & Closing",
+      "phase": 1,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "Commission Reconciliation — reconciles agent commissions, broker splits, referral fees, and transaction coordinator fees against the settlement statement. Blocks disbursement when totals do not balance or trust accounts are unverified.",
+      "tags": [
+        "title-escrow"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "escrow_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "ESC-009",
+      "name": "HOA Estoppel",
+      "slug": "esc-hoa-estoppel",
+      "suite": "Escrow & Closing",
+      "phase": 1,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "HOA Estoppel — requests and processes HOA estoppel certificates, tracks unpaid dues and special assessments, monitors transfer fees, and blocks closing when outstanding HOA obligations or pending litigation exist.",
+      "tags": [
+        "title-escrow"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "escrow_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "ESC-010",
+      "name": "Status Portal",
+      "slug": "esc-status-portal",
+      "suite": "Title & Search",
+      "phase": 0,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "Status Portal — provides real-time transaction status to authorized parties, enforces access control, masks PII in status views, and notifies parties of condition changes, stage advances, and approaching deadlines.",
+      "tags": [
+        "title-escrow"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "escrow_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "ESC-011",
+      "name": "Recording Monitor",
+      "slug": "esc-recording-monitor",
+      "suite": "Title & Search",
+      "phase": 0,
+      "type": "standalone",
+      "pricing": {
+        "monthly": 49
+      },
+      "status": "live",
+      "capabilitySummary": "Recording Monitor — tracks document recording with county recorder offices, monitors e-recording submissions, confirms recording numbers, and blocks DTC transfer until recording is confirmed. Handles recording rejections and document corrections.",
+      "tags": [
+        "title-escrow"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "escrow_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "ESC-012",
+      "name": "Alex Chief of Staff for Title and Escrow",
+      "slug": "esc-alex-title-escrow",
+      "suite": "Operations",
+      "phase": 2,
+      "type": "orchestrator",
+      "pricing": {
+        "monthly": 0
+      },
+      "status": "live",
+      "capabilitySummary": "Alex Chief of Staff for Title and Escrow — monitors all active Escrow Lockers, surfaces anomalies and stalled transactions, escalates unresolved wire fraud alerts, provides daily briefings, and tracks stage breakdowns across the portfolio.",
+      "tags": [
+        "title-escrow"
+      ],
+      "valueBucket": [
+        "stay_compliant"
+      ],
+      "alexRegistration": {
+        "priority": "critical",
+        "acceptsTasks": true,
+        "briefingContribution": "escrow_status"
+      },
+      "temporalType": "always_on"
+    }
+  ]
+}

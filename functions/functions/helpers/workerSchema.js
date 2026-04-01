@@ -1225,15 +1225,11 @@ function autoFixWorkerRecord(record, description) {
     record.platformSubstrate = { ...DEFAULT_PLATFORM_SUBSTRATE };
   }
 
-  // Fix workspaceLaunchPage — add empty defaults if missing
-  if (!record.workspaceLaunchPage || typeof record.workspaceLaunchPage !== "object") {
-    record.workspaceLaunchPage = {
-      tagline: "",
-      valueProp: "",
-      whatYoullHave: "",
-      quickStartPrompts: [],
-      activeSubstrateFeatures: ["auditTrail", "vault"],
-    };
+  // Fix workspaceLaunchPage — only normalize if already present (validation skips when undefined)
+  if (record.workspaceLaunchPage && typeof record.workspaceLaunchPage === "object") {
+    if (!record.workspaceLaunchPage.activeSubstrateFeatures) {
+      record.workspaceLaunchPage.activeSubstrateFeatures = ["auditTrail", "vault"];
+    }
   }
 
   // Fix verticalIntegrations — add empty array if missing

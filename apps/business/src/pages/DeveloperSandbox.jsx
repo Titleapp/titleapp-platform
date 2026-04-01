@@ -506,11 +506,6 @@ export default function DeveloperSandbox() {
   const [welcomeGreeting, setWelcomeGreeting] = useState(null); // greeting text shown above chat
   const [greetingVisible, setGreetingVisible] = useState(false); // controls fade in/out
   const [campaignWorkerChips, setCampaignWorkerChips] = useState([]); // suggested workers from campaign
-  const [creatorPath, setCreatorPath] = useState(() => savedSession.current?.creatorPath || null); // null | "worker" | "game-casual" | "game-regulated"
-  const [showPathChips, setShowPathChips] = useState(false);
-  const [showGameTypeChips, setShowGameTypeChips] = useState(false);
-  const messagesEndRef = useRef(null);
-  const chatInputRef = useRef(null);
 
   // ── Session persistence — SYNCHRONOUS load before useState initializers ──
   const savedSession = useRef(null);
@@ -558,6 +553,12 @@ export default function DeveloperSandbox() {
       try { localStorage.removeItem("ta_sandbox_session"); } catch {}
     }
   }
+
+  const [creatorPath, setCreatorPath] = useState(() => savedSession.current?.creatorPath || null); // null | "worker" | "game-casual" | "game-regulated"
+  const [showPathChips, setShowPathChips] = useState(false);
+  const [showGameTypeChips, setShowGameTypeChips] = useState(false);
+  const messagesEndRef = useRef(null);
+  const chatInputRef = useRef(null);
 
   // Flow state — flowStep only moves forward, never backward
   const [flowStep, setFlowStep] = useState(() => {
