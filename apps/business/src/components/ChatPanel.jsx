@@ -6,6 +6,7 @@ import { WORKER_ROUTES } from '../pages/WorkerMarketplace';
 import SessionEndCTA from './worker/SessionEndCTA';
 import { useWorkerState } from '../context/WorkerStateContext.jsx';
 import { useRightPanel } from '../context/RightPanelContext';
+import CanvasResolver from '../services/CanvasResolver';
 
 const WORKER_SUITES = ["All", ...Array.from(new Set(WORKER_ROUTES.filter(w => !w.internal_only).map(w => w.suite)))];
 
@@ -1213,6 +1214,11 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
         recommendationCard: data.recommendationCard || null,
         workerCards: data.workerCards || null,
       }]);
+
+      // Canvas Protocol (44.9) — resolve canvas signal from API response
+      if (data.canvasSignal && panel?.showCanvas) {
+        CanvasResolver.resolve(data.canvasSignal, data.canvasContext || {}, panel.showCanvas);
+      }
     } catch (error) {
       console.error('Send failed:', error);
       setIsTyping(false);

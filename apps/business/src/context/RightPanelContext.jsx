@@ -9,6 +9,8 @@ export function RightPanelProvider({ children, initialState, initialVertical, in
   const [workers, setWorkers] = useState([]);
   const [selectedWorker, setSelectedWorker] = useState(null);
   const [activeWorkerData, setActiveWorkerData] = useState(null);
+  const [canvasData, setCanvasData] = useState(null); // { resolved, context }
+  const prevStateRef = useRef(null); // for canvas dismiss → return to previous
   const originRef = useRef(initialState || "STATE-1");
 
   const showRecommendations = useCallback((workerList, detectedVertical, detectedLabel) => {
@@ -60,10 +62,23 @@ export function RightPanelProvider({ children, initialState, initialVertical, in
     setState(originRef.current);
   }, []);
 
+  // Canvas Protocol (44.9) — show canvas card in right panel
+  const showCanvas = useCallback((resolved, context) => {
+    if (state !== "CANVAS") prevStateRef.current = state;
+    setCanvasData({ resolved, context });
+    setState("CANVAS");
+  }, [state]);
+
+  const dismissCanvas = useCallback(() => {
+    setCanvasData(null);
+    setState(prevStateRef.current || originRef.current);
+  }, []);
+
   return (
     <RightPanelContext.Provider value={{
-      state, vertical, verticalLabel, workers, selectedWorker, activeWorkerData,
+      state, vertical, verticalLabel, workers, selectedWorker, activeWorkerData, canvasData,
       showRecommendations, showWorkerDetail, showWorkerHome, goBack, dismiss, clearVerticalFilter, leaveWorkspace,
+      showCanvas, dismissCanvas,
       setWorkers,
     }}>
       {children}

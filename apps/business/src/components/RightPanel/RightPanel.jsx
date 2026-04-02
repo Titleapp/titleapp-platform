@@ -1018,6 +1018,11 @@ export default function RightPanel() {
 
   const showStats = state === "STATE-1" || state === "STATE-2";
 
+  // ── CANVAS: Canvas Protocol card (44.9) ──────────────────────
+  if (state === "CANVAS" && canvasData) {
+    return <CanvasPanel canvasData={canvasData} onDismiss={dismissCanvas} />;
+  }
+
   // ── WORKSPACE_HOME: Worker just opened — show capabilities + quick-start ──
   // 40.2-T1: Arrival animation system
   if (state === "WORKSPACE_HOME" && panel.activeWorkerData) {

@@ -1419,11 +1419,26 @@ IDENTITY RULES:
 
               console.log(`[chatEngine] Worker-direct response for: ${workerSlug} (${workerName})`);
 
+              // Canvas Protocol (44.9) — extract signal from conversation context
+              let canvasSignal = null;
+              try {
+                const signalExtractor = require("./services/canvas/signalExtractor");
+                canvasSignal = signalExtractor.extract(
+                  userInput,
+                  sessionState.salesHistory || [],
+                  workerSlug,
+                  dw.vertical || dw.catalogVertical || ""
+                );
+              } catch (sigErr) {
+                console.warn("canvas signal extraction failed:", sigErr.message);
+              }
+
               // Clean response — no detectedVertical, no workerCards, no Alex markers
               return res.json({
                 ok: true,
                 message: aiText,
                 conversationState: 'worker_active',
+                canvasSignal,
               });
             }
           } catch (workerErr) {
@@ -4731,7 +4746,7 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
         const existingSub = await db.collection("subscriptions")
           .where("userId", "==", userId)
           .where("workerId", "==", workerId || workerDoc.workerId)
-          .where("status", "==", "active")
+          .where("trialStatus", "in", ACTIVE_STATUSES)
           .limit(1).get();
         if (!existingSub.empty) {
           return res.json({ ok: true, subscribed: true, message: "Already subscribed" });
@@ -6126,7 +6141,7 @@ These should be 2-3 realistic test scenarios the creator should try, derived fro
             price: item.price,
             isBogo: item.slug === discountSlug,
             bogoDiscount: item.slug === discountSlug ? item.price : 0,
-            status: "pending_payment",
+            trialStatus: TRIAL_ACTIVE, // BOGO: activate immediately, Stripe confirms via webhook
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
           });
           subscriptions.push({ id: subRef.id, slug: item.slug, isBogo: item.slug === discountSlug });
