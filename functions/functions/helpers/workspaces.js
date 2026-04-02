@@ -1,4 +1,5 @@
 const admin = require('firebase-admin');
+const { isActive, normalizeLegacyStatus } = require('../config/subscriptionStatus');
 
 function getDb() {
   return admin.firestore();
@@ -42,8 +43,7 @@ async function getUserWorkspaces(userId) {
     // Filter in memory — exclude cancelled and expired
     const activeSubs = subSnap.docs.filter(d => {
       const data = d.data();
-      const ts = data.trialStatus || data.status || '';
-      return !['cancelled', 'trial_expired'].includes(ts);
+      return isActive(data.trialStatus || normalizeLegacyStatus(data.status));
     });
 
     const subscribedSlugs = activeSubs

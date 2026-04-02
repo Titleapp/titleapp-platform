@@ -20,6 +20,7 @@
 const admin = require("firebase-admin");
 const crypto = require("crypto");
 const { sendError, CODES } = require("../helpers/apiResponse");
+const { SUBSCRIBED, isActive } = require("../config/subscriptionStatus");
 
 function getDb() { return admin.firestore(); }
 
@@ -320,13 +321,13 @@ async function checkWorkerAccess(req, res) {
   }
 
   const data = subSnap.data();
-  const hasAccess = ["trial_active", "trial_ending", "subscribed"].includes(data.trialStatus);
+  const hasAccess = isActive(data.trialStatus);
 
   return res.json({
     ok: true,
     hasAccess,
     trialStatus: data.trialStatus,
-    redirectToVault: data.trialStatus === "subscribed",
+    redirectToVault: data.trialStatus === SUBSCRIBED,
   });
 }
 

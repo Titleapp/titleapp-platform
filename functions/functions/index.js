@@ -22,6 +22,7 @@ const { OpenAI } = require("openai");
 // API Health Monitor (consolidated — services/health is authoritative)
 const { callWithHealthCheck, getAllHealthStatuses: getHealthStatus, getErrorMessage } = require("./services/health");
 const EXTERNAL_APIS = require("./config/externalApis");
+const { TRIAL_ACTIVE, SUBSCRIBED, TRIAL_EXPIRED, CANCELLED, ACTIVE_STATUSES, isActive } = require("./config/subscriptionStatus");
 
 // RAAS handlers (v0)
 const {
@@ -4743,8 +4744,7 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
           workerId: workerId || workerDoc.workerId,
           slug: slug || workerDoc.slug,
           workerName: workerDoc.name || workerDoc.display_name || "Digital Worker",
-          status: "active",
-          trialStatus: "trial_active",
+          trialStatus: TRIAL_ACTIVE,
           trialStartedAt: nowServerTs(),
           trialEndsAt: isFreeWorker ? null : new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
           createdAt: nowServerTs(),
@@ -4806,7 +4806,7 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
         const existingSub = await db.collection("subscriptions")
           .where("userId", "==", userId)
           .where("workerId", "==", lookupId)
-          .where("status", "in", ["active", "active_trial", "trial"])
+          .where("trialStatus", "in", ACTIVE_STATUSES)
           .limit(1).get();
         if (!existingSub.empty) return res.json({ ok: true, subscribed: true, message: "Already subscribed" });
 
@@ -4888,7 +4888,7 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
         const subSnap = await db.collection("subscriptions")
           .where("userId", "==", qUserId)
           .where("workerId", "==", qWorkerId)
-          .where("status", "in", ["active", "active_trial", "trial"])
+          .where("trialStatus", "in", ACTIVE_STATUSES)
           .limit(1).get();
         if (!subSnap.empty) return res.json({ ok: true, status: "complete", subscribed: true });
         return res.json({ ok: true, status: "pending" });
@@ -5015,7 +5015,7 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
           const existing = await db.collection("subscriptions")
             .where("userId", "==", toUid)
             .where("workerId", "==", wId)
-            .where("status", "in", ["active", "active_trial", "trial"])
+            .where("trialStatus", "in", ACTIVE_STATUSES)
             .limit(1).get();
 
           if (existing.empty) {
@@ -5063,7 +5063,7 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
         const existingSub = await db.collection("subscriptions")
           .where("userId", "==", userId)
           .where("workerId", "==", workerId)
-          .where("status", "in", ["active", "active_trial", "trial"])
+          .where("trialStatus", "in", ACTIVE_STATUSES)
           .limit(1).get();
         if (!existingSub.empty) return res.json({ ok: true, subscribed: true, message: "Already subscribed" });
 
@@ -5093,8 +5093,7 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
           slug: workerId,
           workerName,
           price: workerDoc.pricing_tier || workerDoc.price || 0,
-          status: "active_trial",
-          trialStatus: "trial_active",
+          trialStatus: TRIAL_ACTIVE,
           trialStartedAt: nowServerTs(),
           trialEndsAt,
           createdAt: nowServerTs(),
@@ -6173,7 +6172,7 @@ These should be 2-3 realistic test scenarios the creator should try, derived fro
             console.error("[worker:bogoCheckout] Stripe error:", stripeErr.message);
             // Activate subscriptions directly if Stripe fails (trial mode)
             for (const sub of subscriptions) {
-              await db.collection("subscriptions").doc(sub.id).update({ status: "active_trial", trialStatus: "trial_active" });
+              await db.collection("subscriptions").doc(sub.id).update({ trialStatus: TRIAL_ACTIVE });
             }
             return res.json({ ok: true, subscriptions });
           }
@@ -6181,7 +6180,7 @@ These should be 2-3 realistic test scenarios the creator should try, derived fro
 
         // Free checkout (all items covered by BOGO or $0)
         for (const sub of subscriptions) {
-          await db.collection("subscriptions").doc(sub.id).update({ status: "active_trial", trialStatus: "trial_active" });
+          await db.collection("subscriptions").doc(sub.id).update({ trialStatus: TRIAL_ACTIVE });
         }
         console.log(`[worker:bogoCheckout] ${ctx.userId} — ${items.length} items, fully discounted`);
         return res.json({ ok: true, subscriptions });
@@ -6212,10 +6211,9 @@ These should be 2-3 realistic test scenarios the creator should try, derived fro
         const trialEnd = sub.trialEndAt?.toMillis?.() || sub.trialEndAt || 0;
         const cancelledAt = sub.cancelledAt?.toMillis?.() || sub.cancelledAt || 0;
 
-        const activeStatuses = ["active", "active_trial", "trialing", "trial"];
-        if (activeStatuses.includes(sub.status) || sub.trialStatus === "trial_active" || sub.trialStatus === "subscribed") {
+        if (isActive(sub.trialStatus)) {
           // If trialing with an end date, check if expired
-          if ((sub.status === "trialing" || sub.status === "active_trial" || sub.trialStatus === "trial_active") && trialEnd > 0 && trialEnd < now) {
+          if (sub.trialStatus === TRIAL_ACTIVE && trialEnd > 0 && trialEnd < now) {
             // Trial has expired — fall through to expired logic below
           } else {
             return res.json({ ok: true, status: "active" });

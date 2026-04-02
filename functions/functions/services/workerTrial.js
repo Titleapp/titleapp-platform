@@ -18,6 +18,7 @@
 "use strict";
 
 const admin = require("firebase-admin");
+const { TRIAL_ACTIVE, SUBSCRIBED, TRIAL_EXPIRED, CANCELLED, TRIAL_ENDING, NOT_STARTED } = require("../config/subscriptionStatus");
 
 function getDb() { return admin.firestore(); }
 
@@ -60,10 +61,10 @@ async function startTrial(userId, workerId) {
   // If already subscribed, don't overwrite
   if (subSnap.exists) {
     const data = subSnap.data();
-    if (data.trialStatus === "subscribed") {
-      return { status: "already_subscribed", trialStatus: "subscribed" };
+    if (data.trialStatus === SUBSCRIBED) {
+      return { status: "already_subscribed", trialStatus: SUBSCRIBED };
     }
-    if (data.trialStatus === "trial_active" || data.trialStatus === "trial_ending") {
+    if (data.trialStatus === TRIAL_ACTIVE || data.trialStatus === TRIAL_ENDING) {
       return { status: "trial_already_active", trialStatus: data.trialStatus };
     }
   }
@@ -80,7 +81,7 @@ async function startTrial(userId, workerId) {
   const subscriptionData = {
     userId,
     workerId,
-    trialStatus: trialDays === 0 ? "not_started" : "trial_active",
+    trialStatus: trialDays === 0 ? NOT_STARTED : TRIAL_ACTIVE,
     trialStartedAt: now,
     trialDays,
     trialEndsAt,
@@ -97,14 +98,14 @@ async function startTrial(userId, workerId) {
   if (trialDays === 0) {
     return {
       status: "no_trial",
-      trialStatus: "not_started",
+      trialStatus: NOT_STARTED,
       requiresPayment: true,
     };
   }
 
   return {
     status: "trial_started",
-    trialStatus: "trial_active",
+    trialStatus: TRIAL_ACTIVE,
     trialDays,
     trialEndsAt: trialEndsAt.toDate().toISOString(),
   };
@@ -130,14 +131,14 @@ async function getSubscriptionStatus(req, res) {
   const subSnap = await db.collection("subscriptions").doc(subId).get();
 
   if (!subSnap.exists) {
-    return res.json({ ok: true, subscription: null, trialStatus: "not_started" });
+    return res.json({ ok: true, subscription: null, trialStatus: NOT_STARTED });
   }
 
   const data = subSnap.data();
 
   // Calculate days remaining
   let daysRemaining = null;
-  if (data.trialEndsAt && (data.trialStatus === "trial_active" || data.trialStatus === "trial_ending")) {
+  if (data.trialEndsAt && (data.trialStatus === TRIAL_ACTIVE || data.trialStatus === TRIAL_ENDING)) {
     const endsMs = data.trialEndsAt._seconds
       ? data.trialEndsAt._seconds * 1000
       : data.trialEndsAt.toMillis ? data.trialEndsAt.toMillis() : 0;
@@ -178,12 +179,12 @@ async function activateSubscription(req, res) {
   const subRef = db.collection("subscriptions").doc(subId);
 
   await subRef.set({
-    trialStatus: "subscribed",
+    trialStatus: SUBSCRIBED,
     subscribedAt: admin.firestore.FieldValue.serverTimestamp(),
     stripeSubscriptionId: stripeSubscriptionId || null,
   }, { merge: true });
 
-  return res.json({ ok: true, trialStatus: "subscribed" });
+  return res.json({ ok: true, trialStatus: SUBSCRIBED });
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -211,11 +212,11 @@ async function cancelSubscription(req, res) {
   }
 
   await subRef.update({
-    trialStatus: "cancelled",
+    trialStatus: CANCELLED,
     cancelledAt: admin.firestore.FieldValue.serverTimestamp(),
   });
 
-  return res.json({ ok: true, trialStatus: "cancelled" });
+  return res.json({ ok: true, trialStatus: CANCELLED });
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -254,7 +255,7 @@ async function subscribeSuite(req, res) {
     batch.set(subRef, {
       userId: user.uid,
       workerId,
-      trialStatus: "subscribed",
+      trialStatus: SUBSCRIBED,
       subscribedAt: now,
       suiteId,
       stripeSubscriptionId: stripeSubscriptionId || null,
@@ -268,7 +269,7 @@ async function subscribeSuite(req, res) {
     ok: true,
     suiteId,
     workerCount: workerIds.length,
-    trialStatus: "subscribed",
+    trialStatus: SUBSCRIBED,
   });
 }
 
@@ -289,7 +290,7 @@ async function checkTrialExpiry() {
 
   // Query active trials
   const activeTrials = await db.collection("subscriptions")
-    .where("trialStatus", "in", ["trial_active", "trial_ending"])
+    .where("trialStatus", "in", [TRIAL_ACTIVE, TRIAL_ENDING])
     .get();
 
   for (const doc of activeTrials.docs) {
@@ -306,7 +307,7 @@ async function checkTrialExpiry() {
       // Day 12 notification (2 days left)
       if (daysLeft <= 2 && daysLeft > 0 && !data.day12NotifiedAt) {
         await doc.ref.update({
-          trialStatus: "trial_ending",
+          trialStatus: TRIAL_ENDING,
           day12NotifiedAt: admin.firestore.Timestamp.now(),
         });
 
@@ -362,9 +363,9 @@ async function checkTrialExpiry() {
       }
 
       // Day 15+: expire trial
-      if (daysLeft < -1 && data.trialStatus !== "trial_expired") {
+      if (daysLeft < -1 && data.trialStatus !== TRIAL_EXPIRED) {
         await doc.ref.update({
-          trialStatus: "trial_expired",
+          trialStatus: TRIAL_EXPIRED,
         });
         expiredCount++;
       }

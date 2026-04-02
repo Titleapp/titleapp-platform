@@ -13,6 +13,7 @@ const admin = require("firebase-admin");
 const Stripe = require("stripe");
 const { logActivity } = require("../admin/logActivity");
 const pricing = require("../config/pricing");
+const { TRIAL_ACTIVE, CANCELLED } = require("../config/subscriptionStatus");
 
 function getDb() {
   return admin.firestore();
@@ -487,6 +488,7 @@ async function handleStripeWebhook(req, res) {
             for (const sub of activeSubs.docs) {
               await sub.ref.update({
                 status: "cancelled",
+                trialStatus: CANCELLED,
                 cancelledAt: admin.firestore.FieldValue.serverTimestamp(),
               });
             }
@@ -558,8 +560,7 @@ async function handleStripeWebhook(req, res) {
             // Activate the pending subscription
             if (wsSubscriptionId) {
               await db.collection("subscriptions").doc(wsSubscriptionId).update({
-                status: "active_trial",
-                trialStatus: "trial_active",
+                trialStatus: TRIAL_ACTIVE,
                 stripeSubscriptionId: data.subscription || null,
                 stripeCheckoutSessionId: data.id,
                 activatedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -571,8 +572,7 @@ async function handleStripeWebhook(req, res) {
                 workerId: wsWorkerId,
                 slug: wsWorkerId,
                 workerName: wsWorkerName,
-                status: "active_trial",
-                trialStatus: "trial_active",
+                trialStatus: TRIAL_ACTIVE,
                 stripeSubscriptionId: data.subscription || null,
                 stripeCheckoutSessionId: data.id,
                 activatedAt: admin.firestore.FieldValue.serverTimestamp(),

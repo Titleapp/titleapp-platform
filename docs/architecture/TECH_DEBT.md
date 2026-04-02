@@ -25,16 +25,9 @@ The single source of truth for all verticals. All files that currently define ve
 
 **Priority:** P0
 **Files:** Firestore `subscriptions/` collection, backend query helpers
+**Status:** Resolved in 44.7
 
-Two incompatible subscription formats exist:
-- Old format uses `status` field with values like `active`, `trialing`
-- New format uses `trialStatus` field with values `trial_active`, `subscribed`, `trial_expired`, `cancelled`
-
-**Fix:**
-1. Run migration script to normalize all docs to canonical format (see `/functions/functions/config/subscriptionStatus.js`)
-2. Remove `status` field from all documents
-3. Update all queries to use `trialStatus` exclusively
-4. Update `getUserWorkspaces()` in `helpers/workspaces.js` to filter on `trialStatus`
+All subscription writes now use `trialStatus` exclusively (no more `status` field written). All Firestore queries filter on `trialStatus`. `normalizeLegacyStatus()` handles existing documents with only `status` set. `status` field removal from existing documents pending — all reads migrated, field cleanup in future session.
 
 ---
 
@@ -91,17 +84,9 @@ The current workspace picker / "Switch Workspace" / "Add a Team" UI must be repl
 
 **Priority:** P0
 **File:** `/functions/functions/config/subscriptionStatus.js`
-**Status:** Created in 41.1
+**Status:** Resolved in 44.7
 
-Canonical subscription status values so `trial_active` is never hardcoded as a string literal again. All backend code must import from this file.
-
-**Files that need migration:**
-- `functions/functions/services/workerTrial.js` — hardcoded status strings
-- `functions/functions/services/workerShare.js` — status checks
-- `functions/functions/helpers/workspaces.js` — subscription filtering
-- `functions/functions/index.js` — inline status checks in subscription routes
-- `apps/business/src/components/Sidebar.jsx` — frontend status filtering
-- `apps/business/src/sections/WorkerHome.jsx` — frontend status filtering
+All backend files now import from `config/subscriptionStatus.js`: index.js, stripeWebhook.js, workspaces.js, workerTrial.js, workerShare.js, subscriptionCheck.js, fix-subscription-status.js. Frontend files (Sidebar.jsx, WorkerHome.jsx) only call the API — no subscription status logic to migrate.
 
 ---
 
@@ -110,11 +95,11 @@ Canonical subscription status values so `trial_active` is never hardcoded as a s
 | Code | Issue | Priority | Status |
 |------|-------|----------|--------|
 | VERTICAL-001 | Single vertical registry | P0 | Config created, migration pending |
-| SUBSCRIPTION-001 | Normalize subscription docs | P0 | Constants created, migration pending |
+| SUBSCRIPTION-001 | Normalize subscription docs | P0 | Resolved in 44.7 — all writes use trialStatus, all queries filter on trialStatus |
 | USER-001 | Normalize user docs | P1 | Not started |
 | AVATAR-001 | Persistent avatar component | P1 | Not started |
 | WORKSPACE-001 | Replace workspace picker | P1 | Not started |
-| STATUS-001 | Subscription status constants | P0 | Config created, migration pending |
+| STATUS-001 | Subscription status constants | P0 | Resolved in 44.7 — all backend code imports from config/subscriptionStatus.js |
 
 ---
 

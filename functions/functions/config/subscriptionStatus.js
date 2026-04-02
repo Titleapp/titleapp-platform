@@ -19,11 +19,17 @@ const TRIAL_EXPIRED = 'trial_expired';
 /** Cancelled — user cancelled their subscription */
 const CANCELLED = 'cancelled';
 
+/** Trial ending — 2 days before expiry, notifications sent */
+const TRIAL_ENDING = 'trial_ending';
+
+/** Not started — trialDays === 0 (free workers awaiting first use) */
+const NOT_STARTED = 'not_started';
+
 /** All valid status values */
-const VALID_STATUSES = [TRIAL_ACTIVE, SUBSCRIBED, TRIAL_EXPIRED, CANCELLED];
+const VALID_STATUSES = [TRIAL_ACTIVE, SUBSCRIBED, TRIAL_EXPIRED, CANCELLED, TRIAL_ENDING, NOT_STARTED];
 
 /** Statuses that represent an active subscription (worker should be accessible) */
-const ACTIVE_STATUSES = [TRIAL_ACTIVE, SUBSCRIBED];
+const ACTIVE_STATUSES = [TRIAL_ACTIVE, SUBSCRIBED, TRIAL_ENDING, NOT_STARTED];
 
 /** Statuses that represent an inactive subscription (worker should not be accessible) */
 const INACTIVE_STATUSES = [TRIAL_EXPIRED, CANCELLED];
@@ -69,6 +75,7 @@ function normalizeLegacyStatus(legacyStatus) {
     'unpaid': TRIAL_EXPIRED,
     'incomplete': TRIAL_ACTIVE,
     'incomplete_expired': TRIAL_EXPIRED,
+    'active_trial': TRIAL_ACTIVE,
     'canceled': CANCELLED,
     'cancelled': CANCELLED,
     'expired': TRIAL_EXPIRED,
@@ -82,6 +89,8 @@ module.exports = {
   SUBSCRIBED,
   TRIAL_EXPIRED,
   CANCELLED,
+  TRIAL_ENDING,
+  NOT_STARTED,
   VALID_STATUSES,
   ACTIVE_STATUSES,
   INACTIVE_STATUSES,

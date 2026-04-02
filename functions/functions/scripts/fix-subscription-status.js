@@ -11,6 +11,7 @@
 "use strict";
 
 const admin = require("firebase-admin");
+const { TRIAL_ACTIVE, TRIAL_EXPIRED, normalizeLegacyStatus } = require("../config/subscriptionStatus");
 
 if (!admin.apps.length) {
   admin.initializeApp({ projectId: "title-app-alpha" });
@@ -50,14 +51,14 @@ async function fixSubscriptionStatus() {
         : new Date(trialExpiry).getTime();
 
       if (expiryMs > Date.now()) {
-        newStatus = "trial_active";
+        newStatus = data.status ? normalizeLegacyStatus(data.status) : TRIAL_ACTIVE;
       } else {
-        newStatus = "trial_expired";
+        newStatus = TRIAL_EXPIRED;
         expired++;
       }
     } else {
       // No expiry — free worker, set active
-      newStatus = "trial_active";
+      newStatus = data.status ? normalizeLegacyStatus(data.status) : TRIAL_ACTIVE;
     }
 
     try {

@@ -10,6 +10,7 @@
  */
 
 const admin = require("firebase-admin");
+const { isActive, normalizeLegacyStatus } = require("../config/subscriptionStatus");
 
 function getDb() {
   return admin.firestore();
@@ -49,7 +50,6 @@ async function requireActiveSubscription(workerId, tenantId, opts = {}) {
   const subSnap = await db.collection("subscriptions")
     .where("tenantId", "==", tenantId)
     .where("workerId", "==", workerId)
-    .where("status", "in", ["active", "past_due", "canceled"])
     .orderBy("createdAt", "desc")
     .limit(1)
     .get();
@@ -88,8 +88,8 @@ async function requireActiveSubscription(workerId, tenantId, opts = {}) {
     };
   }
 
-  // Active subscription — full access
-  if (sub.status === "active") {
+  // Active subscription — full access (canonical trialStatus or Stripe-native status)
+  if (isActive(sub.trialStatus) || sub.status === "active") {
     return { allowed: true, readOnly: false, reason: null, subscription: sub };
   }
 
