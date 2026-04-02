@@ -119,8 +119,8 @@ export default function LandingPage() {
       <section style={S.hero}>
         <div style={S.heroInner}>
           <div style={S.heroTag}>The Digital Worker Platform</div>
-          <h1 style={S.heroH1}>They're on your team now.</h1>
-          <p style={S.heroSub}>Real expertise. On call. Forever.</p>
+          <h1 style={S.heroH1}>Finally. AI that knows what it's talking about.</h1>
+          <p style={S.heroSub}>Digital Workers handle the compliance-heavy work in your field. Trained on the rules. Audit trail on every output.</p>
 
           {/* Chat bar */}
           <div style={S.chatBar}>
