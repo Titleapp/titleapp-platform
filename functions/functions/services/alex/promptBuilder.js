@@ -176,7 +176,7 @@ ${routingIndex}`;
 
 function buildUserProfileSection(profile) {
   const parts = ["USER PROFILE:"];
-  if (profile.name) parts.push(`Name: ${profile.name}`);
+  if (profile.name) parts.push(`SUBSCRIBER NAME: ${profile.name}. Always address this person by this name. Never use any other name.`);
   if (profile.role) parts.push(`Role: ${profile.role}`);
   if (profile.industry) parts.push(`Industry: ${profile.industry}`);
   if (profile.communicationMode) parts.push(`Preferred mode: ${profile.communicationMode}`);
@@ -195,6 +195,17 @@ function buildProjectsSection(projects) {
 
 function buildVaultSummarySection(summary) {
   if (typeof summary === "string") return `VAULT SUMMARY:\n${summary}`;
+
+  // 44.2 Bug 3b — Vault documents injected for context (prevents amnesia)
+  if (summary && summary.documents && Array.isArray(summary.documents)) {
+    const parts = [`VAULT DOCUMENTS (${summary.documentCount} uploaded by subscriber — reference these, never ask the subscriber to re-upload):`];
+    for (const doc of summary.documents) {
+      const line = `- ${doc.name} (${doc.type})${doc.summary ? ": " + doc.summary : ""}`;
+      parts.push(line);
+    }
+    return parts.join("\n");
+  }
+
   const parts = ["VAULT SUMMARY:"];
   for (const [workerSlug, data] of Object.entries(summary)) {
     if (typeof data === "string") {

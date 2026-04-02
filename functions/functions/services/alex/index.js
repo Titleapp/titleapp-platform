@@ -83,6 +83,7 @@ async function buildAlexPrompt(options = {}) {
     workspace,
     surfaceContext = {},
     onboardingStatus,
+    vaultSummary,
   } = options;
 
   // Extract Alex configuration from workspace
@@ -118,7 +119,7 @@ async function buildAlexPrompt(options = {}) {
     communicationMode,
     userProfile,
     projects,
-    vaultSummary: null, // Vault data loaded on-demand, not pre-fetched
+    vaultSummary: vaultSummary || null,
     alerts: null, // Alerts loaded on-demand
     alexName,
     alexVoice,

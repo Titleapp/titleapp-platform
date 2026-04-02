@@ -362,7 +362,7 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
       <div className="dualPanel" ref={dualPanelRef}>
         <aside
           className="chatSidebar"
-          style={{ width: chatWidth + "%", maxWidth: "none", minWidth: "400px" }}
+          style={{ width: chatWidth + "%", maxWidth: "none" }}
         >
           {guestMode ? children : <ChatPanel currentSection={currentSection} />}
         </aside>

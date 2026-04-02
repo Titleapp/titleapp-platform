@@ -226,6 +226,16 @@ function runOutputFilter({ response, rulePack, userContext }) {
 
   const approved = violations.length === 0;
 
+  // Enforcement logging — log every filter run for diagnostics
+  auditLog.timestamp = new Date().toISOString();
+  auditLog.approved = approved;
+  auditLog.violationCount = violations.length;
+  auditLog.vertical = vertical || "unknown";
+  if (violations.length > 0) {
+    auditLog.violationDetails = violations.map(v => ({ ruleId: v.ruleId, layer: v.layer }));
+    console.warn(`[outputFilter] BLOCKED — ${violations.length} violation(s):`, violations.map(v => v.ruleId).join(", "));
+  }
+
   return {
     approved,
     response: approved ? response : null,

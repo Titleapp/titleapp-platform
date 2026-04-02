@@ -421,6 +421,17 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
 
   useEffect(() => {
     if (currentUser && authReady && messages.length === 0) {
+      // 44.2 Bug 7 — Delay first message 300ms to allow profile data to settle
+      // Prevents malformed first-visit prompts when profile loads async
+      const profileTimer = setTimeout(() => {
+        renderInitialMessage();
+      }, 300);
+      return () => clearTimeout(profileTimer);
+    }
+  }, [currentUser, authReady, disclaimerAccepted]);
+
+  function renderInitialMessage() {
+    if (messages.length > 0) return; // Guard against race
       // Meet-Alex promoted guest session — render full guest conversation
       // MUST be checked FIRST — before qualifying question, celebration, or any other init
       const guestPromoted = sessionStorage.getItem("ta_guest_promoted");
@@ -532,8 +543,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
       }
 
       loadConversationHistory();
-    }
-  }, [currentUser, authReady]);
+  }
 
   // Check Firestore for previously accepted disclaimer (survives localStorage clears)
   useEffect(() => {

@@ -359,20 +359,63 @@ async function generateSubscriberDigest(userId) {
   // 8. Pick priority
   const priority = pickSubscriberPriority(docs, usageData, workerData);
 
-  // 9. Build HTML email
-  const htmlBody = buildSubscriberHtml({
-    today, userName, priority, workers: workerData, docs, usageData, attentionItems,
-  });
+  // 8b. 44.2 Bug 8 — Detect zero-content state and build quiet day email
+  const hasContent = workerData.some(w => w.runs > 0) || docs.length > 0 || attentionItems.length > 0 || usageData.creditsUsed > 0;
 
-  // 10. Build plain text fallback
-  const plainLines = [];
-  plainLines.push(`TitleApp Briefing — ${today}`);
-  plainLines.push(`Priority: ${priority.text}`);
-  if (workerData.length > 0) {
-    plainLines.push(`Workers: ${workerData.length} active`);
+  let htmlBody, plainText;
+  if (!hasContent) {
+    // Quiet day — build minimal meaningful email
+    let forwardNote = "Your workers are standing by. Open TitleApp when you're ready.";
+    // Check for nearest expiring document
+    const expiringDoc = docs.find(d => docStatus(d) === "yellow");
+    if (expiringDoc) {
+      const expiry = expiringDoc.expiryDate?._seconds ? new Date(expiringDoc.expiryDate._seconds * 1000) : new Date(expiringDoc.expiryDate);
+      forwardNote = `Keep an eye on ${expiringDoc.fileName || "a document"} — it expires ${expiry.toISOString().slice(0, 10)}.`;
+    } else if (workerData.length === 0) {
+      forwardNote = "Browse the marketplace to find your first Digital Worker — I'll help you get set up.";
+    }
+
+    const sectionStyle = `style="padding:16px 24px;border-bottom:1px solid #e5e7eb"`;
+    htmlBody = `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f3f4f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">
+<div style="max-width:600px;margin:0 auto;background:#ffffff">
+  <div style="background:#1e1b4b;padding:24px;color:#ffffff">
+    <table width="100%"><tr>
+      <td style="font-size:18px;font-weight:700;letter-spacing:2px;color:#a78bfa">TITLEAPP</td>
+      <td style="text-align:right;font-size:13px;color:#c4b5fd">${today}</td>
+    </tr></table>
+    <p style="margin:4px 0 0;font-size:13px;color:#c4b5fd">Alex — Your Chief of Staff</p>
+  </div>
+  <div ${sectionStyle}>
+    <p style="font-size:16px;margin:0">Good morning${userName ? " " + userName : ""}.</p>
+    <p style="font-size:14px;margin:8px 0 0;color:#374151">Quiet day — no significant changes since yesterday.</p>
+    <p style="font-size:14px;margin:8px 0 0;color:#6b7280">${forwardNote}</p>
+  </div>
+  <div style="padding:16px 24px;background:#f9fafb;border-top:1px solid #e5e7eb">
+    <p style="font-size:13px;color:#6b7280;margin:0">Reply to this email to talk to me.</p>
+    <p style="font-size:13px;color:#6b7280;margin:4px 0 0">app.titleapp.ai/vault</p>
+  </div>
+</div>
+</body></html>`;
+
+    plainText = `TitleApp Briefing — ${today}\nQuiet day — no significant changes since yesterday.\n${forwardNote}`;
+  } else {
+    // 9. Build full HTML email
+    htmlBody = buildSubscriberHtml({
+      today, userName, priority, workers: workerData, docs, usageData, attentionItems,
+    });
+
+    // 10. Build plain text fallback
+    const plainLines = [];
+    plainLines.push(`TitleApp Briefing — ${today}`);
+    plainLines.push(`Priority: ${priority.text}`);
+    if (workerData.length > 0) {
+      plainLines.push(`Workers: ${workerData.length} active`);
+    }
+    plainLines.push(`Credits: ${creditsUsed}/${creditsAllowance}`);
+    plainText = plainLines.join("\n");
   }
-  plainLines.push(`Credits: ${creditsUsed}/${creditsAllowance}`);
-  const plainText = plainLines.join("\n");
 
   // 11. Send via SendGrid
   const sendgridKey = process.env.SENDGRID_API_KEY;

@@ -1353,6 +1353,20 @@ IDENTITY RULES:
 4. Never call yourself an AI assistant, chatbot, or helper.`;
               }
 
+              // Inject subscriber name into worker prompt (44.2 — Bug 3a: prevent name hallucination)
+              if (authUser && workerPrompt) {
+                try {
+                  const nameSnap = await db.doc(`users/${authUser.uid}`).get();
+                  const nameData = nameSnap.exists ? nameSnap.data() : {};
+                  const subscriberName = nameData.subscriberProfile?.name || nameData.name || nameData.displayName || authUser.displayName || "";
+                  if (subscriberName) {
+                    workerPrompt = `You are speaking with ${subscriberName}. Always use their correct name. Never invent or guess a name.\n\n${workerPrompt}`;
+                  }
+                } catch (nameErr) {
+                  // Non-fatal — proceed without name
+                }
+              }
+
               // Load conversation history
               if (!sessionState.salesHistory) sessionState.salesHistory = [];
               const messages = [
@@ -9870,6 +9884,25 @@ Active: ${rc.active ? "Yes" : "No"}`;
                       }
                     }
 
+                    // 44.2 Bug 3b — Query Vault documents for context injection
+                    let vaultSummary = null;
+                    try {
+                      const vaultSnap = await db.collection("vaultDocuments").doc(auth.user.uid)
+                        .collection("docs").orderBy("uploadedAt", "desc").limit(10).get();
+                      if (!vaultSnap.empty) {
+                        vaultSummary = {
+                          documentCount: vaultSnap.size,
+                          documents: vaultSnap.docs.map(d => ({
+                            name: d.data().fileName || d.data().name || d.id,
+                            type: d.data().fileType || "document",
+                            summary: (d.data().summary || d.data().extractedText || "").slice(0, 200),
+                          })),
+                        };
+                      }
+                    } catch (vaultErr) {
+                      // Non-fatal — proceed without vault context
+                    }
+
                     const alexService = require("./services/alex");
                     alexSystemPrompt = await alexService.buildAlexPrompt({
                       userId: auth.user.uid,
@@ -9880,6 +9913,7 @@ Active: ${rc.active ? "Yes" : "No"}`;
                       currentSection: (context || {}).currentSection,
                       workspace,
                       onboardingStatus,
+                      vaultSummary,
                       ...(isSalesMode ? {
                         surfaceContext: {
                           vertical: salesVertical,
