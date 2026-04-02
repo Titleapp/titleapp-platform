@@ -1266,22 +1266,69 @@ exports.api = onRequest(
             if (dwSnap.exists) {
               const dw = dwSnap.data();
               const workerName = dw.display_name || dw.name || workerSlug;
-              const headline = dw.headline || dw.capabilitySummary || "";
-              const capabilities = dw.capabilitySummary || headline || "";
 
-              // Build RAAS tier 0-3 rules
-              const raasSections = [];
-              const tier0 = Array.isArray(dw.raas_tier_0) ? dw.raas_tier_0 : [];
-              const tier1 = Array.isArray(dw.raas_tier_1) ? dw.raas_tier_1 : (typeof dw.raas_tier_1 === "object" ? Object.values(dw.raas_tier_1) : []);
-              const tier2 = Array.isArray(dw.raas_tier_2) ? dw.raas_tier_2 : (typeof dw.raas_tier_2 === "object" ? Object.values(dw.raas_tier_2) : []);
-              const tier3 = Array.isArray(dw.raas_tier_3) ? dw.raas_tier_3 : (typeof dw.raas_tier_3 === "object" ? Object.values(dw.raas_tier_3) : []);
+              // ── Session credit deduction (44.1) — deduct on first message to this worker ──
+              if (dw.creditCost && dw.creditTiming === "session_open") {
+                const creditKey = `creditCharged_${workerSlug}`;
+                if (!sessionState[creditKey] && authUser) {
+                  const { checkAndDeductCredits } = require("./services/health/callWithHealthCheck");
+                  const creditResult = await checkAndDeductCredits(
+                    authUser.uid, `worker_session_${workerSlug}`, Number(dw.creditCost), { workerId: workerSlug }
+                  );
+                  if (!creditResult.allowed) {
+                    return res.json({
+                      ok: false,
+                      error: "INSUFFICIENT_CREDITS",
+                      message: creditResult.message || "This worker requires credits. Top up your account to continue.",
+                      creditsRequired: creditResult.creditsRequired,
+                      creditsAvailable: creditResult.creditsAvailable,
+                    });
+                  }
+                  sessionState[creditKey] = true;
+                }
+              }
 
-              if (tier0.length) raasSections.push("GLOBAL RULES:\n" + tier0.map((r, i) => `${i + 1}. ${r}`).join("\n"));
-              if (tier1.length) raasSections.push("CORE RULES:\n" + tier1.map((r, i) => `${i + 1}. ${r}`).join("\n"));
-              if (tier2.length) raasSections.push("VERTICAL RULES:\n" + tier2.map((r, i) => `${i + 1}. ${r}`).join("\n"));
-              if (tier3.length) raasSections.push("WORKER-SPECIFIC RULES:\n" + tier3.map((r, i) => `${i + 1}. ${r}`).join("\n"));
+              // ── System prompt: check workerSystemPrompts/{slug} first, fall back to auto-generation ──
+              let workerPrompt = null;
+              try {
+                const promptSnap = await db.doc(`workerSystemPrompts/${workerSlug}`).get();
+                if (promptSnap.exists && promptSnap.data().systemPrompt) {
+                  workerPrompt = promptSnap.data().systemPrompt;
+                  // Inject subscriberProfile context if available (44.1 — radar + briefing preferences)
+                  if (authUser) {
+                    try {
+                      const userSnap = await db.doc(`users/${authUser.uid}`).get();
+                      const profile = userSnap.exists ? (userSnap.data().subscriberProfile || {}) : {};
+                      if (Object.keys(profile).length > 0) {
+                        workerPrompt += `\n\nSUBSCRIBER PROFILE (read from Firestore — do not ask for information already present):\n${JSON.stringify(profile, null, 2)}`;
+                      }
+                    } catch (profileErr) {
+                      console.warn("worker chat: failed to load subscriberProfile:", profileErr.message);
+                    }
+                  }
+                }
+              } catch (promptErr) {
+                console.warn("worker chat: workerSystemPrompts lookup failed:", promptErr.message);
+              }
 
-              const workerPrompt = `You are ${workerName}, a Digital Worker on TitleApp.
+              // Fall back to auto-generated prompt from digitalWorkers fields
+              if (!workerPrompt) {
+                const headline = dw.headline || dw.capabilitySummary || "";
+                const capabilities = dw.capabilitySummary || headline || "";
+
+                // Build RAAS tier 0-3 rules
+                const raasSections = [];
+                const tier0 = Array.isArray(dw.raas_tier_0) ? dw.raas_tier_0 : [];
+                const tier1 = Array.isArray(dw.raas_tier_1) ? dw.raas_tier_1 : (typeof dw.raas_tier_1 === "object" ? Object.values(dw.raas_tier_1) : []);
+                const tier2 = Array.isArray(dw.raas_tier_2) ? dw.raas_tier_2 : (typeof dw.raas_tier_2 === "object" ? Object.values(dw.raas_tier_2) : []);
+                const tier3 = Array.isArray(dw.raas_tier_3) ? dw.raas_tier_3 : (typeof dw.raas_tier_3 === "object" ? Object.values(dw.raas_tier_3) : []);
+
+                if (tier0.length) raasSections.push("GLOBAL RULES:\n" + tier0.map((r, i) => `${i + 1}. ${r}`).join("\n"));
+                if (tier1.length) raasSections.push("CORE RULES:\n" + tier1.map((r, i) => `${i + 1}. ${r}`).join("\n"));
+                if (tier2.length) raasSections.push("VERTICAL RULES:\n" + tier2.map((r, i) => `${i + 1}. ${r}`).join("\n"));
+                if (tier3.length) raasSections.push("WORKER-SPECIFIC RULES:\n" + tier3.map((r, i) => `${i + 1}. ${r}`).join("\n"));
+
+                workerPrompt = `You are ${workerName}, a Digital Worker on TitleApp.
 ${headline}
 
 WHAT YOU DO:
@@ -1304,6 +1351,7 @@ IDENTITY RULES:
 2. Stay within your domain of expertise described above. If the user asks about something outside your scope, say "That is outside my area. Want me to route you to Alex or another worker?"
 3. Workers are called Digital Workers -- never call them tools, chatbots, agents, or GPTs.
 4. Never call yourself an AI assistant, chatbot, or helper.`;
+              }
 
               // Load conversation history
               if (!sessionState.salesHistory) sessionState.salesHistory = [];

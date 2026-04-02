@@ -1,0 +1,131 @@
+{
+  "vertical": "platform",
+  "name": "Platform — Business in a Box",
+  "version": "1.0.0",
+  "lifecycle": [
+    {
+      "phase": 0,
+      "name": "Finance & Accounting",
+      "description": "Zero-setup financial intelligence, tax prep, and research radar"
+    },
+    {
+      "phase": 1,
+      "name": "People & HR",
+      "description": "Hiring, payroll, compliance, and HR research radar"
+    },
+    {
+      "phase": 2,
+      "name": "Marketing & Content",
+      "description": "Ready-to-send content, email campaigns, and press"
+    },
+    {
+      "phase": 3,
+      "name": "Operations & Intelligence",
+      "description": "Daily briefing, revenue dashboard, and subscriber intelligence"
+    }
+  ],
+  "suites": [
+    {
+      "id": "finance",
+      "name": "Finance"
+    },
+    {
+      "id": "people",
+      "name": "People"
+    },
+    {
+      "id": "marketing",
+      "name": "Marketing"
+    },
+    {
+      "id": "operations",
+      "name": "Operations"
+    }
+  ],
+  "workers": [
+    {
+      "id": "PLAT-001",
+      "name": "Alex Business Accounting",
+      "slug": "platform-accounting",
+      "suite": "Finance",
+      "phase": 0,
+      "type": "platform",
+      "pricing": {
+        "monthly": 0
+      },
+      "status": "live",
+      "capabilitySummary": "Zero-setup financial intelligence. Accept any input — photo, PDF, Excel, CSV, or conversation. Build Chart of Accounts, generate plain-English P&L, project cash position. Tax prep support with quarterly checklists. Alex Found Something research radar for tax credits and regulatory guidance.",
+      "tags": ["accounting", "finance", "tax", "radar"],
+      "valueBucket": ["save_money", "stay_compliant"],
+      "alexRegistration": {
+        "priority": "high",
+        "acceptsTasks": true,
+        "briefingContribution": "financial_health"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "PLAT-002",
+      "name": "Alex HR & People",
+      "slug": "platform-hr",
+      "suite": "People",
+      "phase": 1,
+      "type": "platform",
+      "pricing": {
+        "monthly": 0
+      },
+      "status": "live",
+      "capabilitySummary": "People operations co-pilot with three subscriber bands: under 5 employees (conversation-first), 5-100 (normalize what they have), over 100 (right-sizing audit). Generate finished documents — offer letters, PIPs, termination letters. Hard stop on protected class complaints. Alex Found Something HR and payroll research radar.",
+      "tags": ["hr", "people", "payroll", "hiring", "radar"],
+      "valueBucket": ["save_money", "stay_compliant"],
+      "alexRegistration": {
+        "priority": "high",
+        "acceptsTasks": true,
+        "briefingContribution": "people_ops"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "PLAT-003",
+      "name": "Alex Marketing & Content",
+      "slug": "platform-marketing",
+      "suite": "Marketing",
+      "phase": 2,
+      "type": "platform",
+      "pricing": {
+        "monthly": 0
+      },
+      "status": "live",
+      "capabilitySummary": "Professional content co-pilot. Ready-to-send LinkedIn posts, email campaigns, press releases, and thought leadership — not templates. Brand voice via Pro Tips. Two questions max before generating. Minimum 2 variations on all short-form content. Regulated vertical compliance flag with VERIFY tags.",
+      "tags": ["marketing", "content", "social", "email", "press"],
+      "valueBucket": ["make_money"],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "content_pipeline"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "PLAT-004",
+      "name": "Control Center Pro",
+      "slug": "platform-control-center-pro",
+      "suite": "Operations",
+      "phase": 3,
+      "type": "platform",
+      "pricing": {
+        "monthly": 0
+      },
+      "status": "live",
+      "capabilitySummary": "Command bridge for subscriber-operators. Daily briefing via chosen channel (text, email, in-app). Revenue dashboard with MRR and churn. Subscriber intelligence with engagement tracking. Credit consumption monitoring. Burn rate alerts — burn exceeds MRR is always first sentence.",
+      "tags": ["operations", "dashboard", "briefing", "intelligence"],
+      "valueBucket": ["make_money", "save_money"],
+      "alexRegistration": {
+        "priority": "high",
+        "acceptsTasks": true,
+        "briefingContribution": "daily_ops"
+      },
+      "temporalType": "always_on"
+    }
+  ]
+}

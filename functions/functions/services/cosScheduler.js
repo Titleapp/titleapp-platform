@@ -698,7 +698,58 @@ async function sendDigestEmail(email, subject, htmlBody, plainText) {
 //  ORCHESTRATORS
 // ═══════════════════════════════════════════════════════════════
 
+// ═══════════════════════════════════════════════════════════════
+//  TEXT BRIEFING FORMATTER — 5 bullets, <160 chars each (44.1)
+// ═══════════════════════════════════════════════════════════════
+
+function buildTextBriefing(runType, { userName, today, priority, cc }) {
+  const bullets = [];
+
+  // Lead with priority
+  const pText = priority.text.length > 140 ? priority.text.slice(0, 137) + "..." : priority.text;
+  bullets.push(pText);
+
+  // Revenue
+  bullets.push(`Revenue: $${(cc.rev.mtd || 0).toLocaleString()} MTD ${plainTrendArrow(cc.rev.mtd || 0, cc.prevRev.mtd || 0)} target $${cc.monthlyTarget.toLocaleString()}`);
+
+  // Pipeline
+  if (cc.deals.length > 0) {
+    bullets.push(`Pipeline: ${cc.deals.length} deals, $${(cc.totalPipeline / 1000).toFixed(0)}K ARR`);
+  }
+
+  // Stalled / action
+  if (cc.stalledDeals.length > 0) {
+    bullets.push(`${cc.stalledDeals.length} stalled deal${cc.stalledDeals.length > 1 ? "s" : ""} need follow-up`);
+  } else if (runType === "morning") {
+    bullets.push(`${cc.analytics.signupsToday || 0} signups, ${cc.workerRuns || 0} worker runs`);
+  }
+
+  // Sign-off
+  const greeting = runType === "morning" ? "Good morning" : "End of day";
+  bullets.push(`${greeting}${userName ? " " + userName : ""}. — Alex`);
+
+  // Cap at 5 bullets, each <160 chars
+  return bullets.slice(0, 5).map(b => b.length > 160 ? b.slice(0, 157) + "..." : b).join("\n");
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  SMS SENDER — via Twilio helper (44.1)
+// ═══════════════════════════════════════════════════════════════
+
+async function sendDigestSMS(phone, textBody) {
+  if (!phone) return false;
+  try {
+    const { sendSMSDirect } = require("../communications/twilioHelper");
+    await sendSMSDirect(phone, textBody);
+    return true;
+  } catch (err) {
+    console.error(`cosScheduler: SMS send failed for ${phone}:`, err.message);
+    return false;
+  }
+}
+
 async function runCosWorkers(runType) {
+  const db = getDb();
   const today = new Date().toISOString().slice(0, 10);
   let totalSent = 0;
   let totalErrors = 0;
@@ -743,7 +794,43 @@ async function runCosWorkers(runType) {
         ? `Good morning — here is your day`
         : `End of day — here is what happened`;
 
-      const sent = await sendDigestEmail(sub.email, subject, htmlBody, plainText);
+      // ── Delivery channel routing (44.1 — Control Center Pro) ──
+      let userProfile = {};
+      try {
+        const userSnap = await db.doc(`users/${sub.userId}`).get();
+        userProfile = userSnap.exists ? (userSnap.data().subscriberProfile || {}) : {};
+      } catch {}
+
+      const channels = userProfile.briefingChannel || "email";
+      const channelList = Array.isArray(channels) ? channels : [channels];
+      let sent = false;
+
+      for (const channel of channelList) {
+        try {
+          if (channel === "email") {
+            const emailOk = await sendDigestEmail(sub.email, subject, htmlBody, plainText);
+            if (emailOk) sent = true;
+          } else if (channel === "text") {
+            const phone = userProfile.phone || sub.phone;
+            const textBody = buildTextBriefing(runType, templateData);
+            const smsOk = await sendDigestSMS(phone, textBody);
+            if (smsOk) sent = true;
+          } else if (channel === "in-app") {
+            await db.doc(`briefings/${sub.userId}`).set({
+              date: today,
+              runType,
+              html: htmlBody,
+              plainText,
+              priority: { level: priority.level, text: priority.text },
+              createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+            sent = true;
+          }
+        } catch (chErr) {
+          console.warn(`cosScheduler: ${channel} delivery failed for ${sub.userId}:`, chErr.message);
+        }
+      }
+
       if (sent) totalSent++;
       else totalErrors++;
     } catch (err) {

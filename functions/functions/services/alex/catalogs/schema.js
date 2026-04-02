@@ -8,7 +8,7 @@
  * that conform to this schema — no code changes to Alex.
  */
 
-const VALID_TYPES = ["standalone", "pipeline", "composite", "copilot", "orchestrator"];
+const VALID_TYPES = ["standalone", "pipeline", "composite", "copilot", "orchestrator", "platform"];
 const VALID_STATUSES = ["live", "development", "waitlist", "deprecated"];
 const VALID_TEMPORAL_TYPES = ["always_on", "phase_bound", "event_driven", "seasonal", "one_time"];
 const VALID_PRIORITIES = ["critical", "high", "normal", "low"];

@@ -258,6 +258,12 @@ const MARKETPLACE_SLUG_MAP = {
   "ESC-010": "esc-status-portal",
   "ESC-011": "esc-recording-monitor",
   "ESC-012": "esc-alex-title-escrow",
+
+  // Platform — Business in a Box (Session 44.1)
+  "PLAT-001": "platform-accounting",
+  "PLAT-002": "platform-hr",
+  "PLAT-003": "platform-marketing",
+  "PLAT-004": "platform-control-center-pro",
 };
 
 // Ruleset ID mapping: marketplace slug → ruleset file name
@@ -426,6 +432,12 @@ const RULESET_MAP = {
   "esc-status-portal": "esc_010_status_portal_v0",
   "esc-recording-monitor": "esc_011_recording_monitor_v0",
   "esc-alex-title-escrow": "esc_012_alex_title_escrow_v0",
+
+  // Platform — Business in a Box (Session 44.1)
+  "platform-accounting": null,
+  "platform-hr": null,
+  "platform-marketing": null,
+  "platform-control-center-pro": null,
 };
 
 // Display name overrides (marketplace uses shorter names)

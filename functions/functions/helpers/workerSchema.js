@@ -114,7 +114,7 @@ const VALID_SUITES = [
   "Communications",
 ];
 
-const VALID_WORKER_TYPES = ["standalone", "pipeline", "composite", "copilot", "orchestrator", "game"];
+const VALID_WORKER_TYPES = ["standalone", "pipeline", "composite", "copilot", "orchestrator", "game", "platform"];
 
 // Game worker enums
 const VALID_GAME_MODES = ["conversational", "canvas"];
