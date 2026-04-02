@@ -5,6 +5,7 @@ import { fireMilestone } from '../utils/celebrations';
 import { WORKER_ROUTES } from '../pages/WorkerMarketplace';
 import SessionEndCTA from './worker/SessionEndCTA';
 import { useWorkerState } from '../context/WorkerStateContext.jsx';
+import { useRightPanel } from '../context/RightPanelContext';
 
 const WORKER_SUITES = ["All", ...Array.from(new Set(WORKER_ROUTES.filter(w => !w.internal_only).map(w => w.suite)))];
 
@@ -190,6 +191,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
   const [workerFilter, setWorkerFilter] = useState("All");
 
   const workerCtx = useWorkerState();
+  const panel = useRightPanel();
 
   // Qualifying onboarding state
   const [qualifyingMode, setQualifyingMode] = useState(() => !localStorage.getItem('ta_alex_qualified'));
@@ -465,7 +467,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
       if (!localStorage.getItem('ta_alex_qualified') && disclaimerAccepted) {
         setMessages([{
           role: 'assistant',
-          content: "Hey \u2014 I'm Alex, your Chief of Staff. Before I show you around, quick question: what do you do for work?",
+          content: "What can I help you with today?",
           isSystem: true,
           suggestions: ["I'm a pilot", "I work in real estate", "I run a dealership", "Something else"],
         }]);
@@ -684,6 +686,39 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
     localStorage.setItem('ta_alex_qualified', 'done');
     setMessages(prev => [...prev, { role: 'user', content: answer }]);
     setTimeout(() => sendMessage(null, answer), 200);
+  }
+
+  // Signal extractor — keyword → vertical mapping for canvas
+  const SIGNAL_KEYWORDS = {
+    "pilot": { vertical: "aviation", label: "Aviation" },
+    "aviation": { vertical: "aviation", label: "Aviation" },
+    "aircraft": { vertical: "aviation", label: "Aviation" },
+    "flying": { vertical: "aviation", label: "Aviation" },
+    "real estate": { vertical: "real-estate", label: "Real Estate" },
+    "title": { vertical: "real-estate", label: "Real Estate" },
+    "escrow": { vertical: "real-estate", label: "Real Estate" },
+    "property": { vertical: "real-estate", label: "Real Estate" },
+    "dealership": { vertical: "auto", label: "Auto Dealer" },
+    "dealer": { vertical: "auto", label: "Auto Dealer" },
+    "automotive": { vertical: "auto", label: "Auto Dealer" },
+    "car": { vertical: "auto", label: "Auto Dealer" },
+    "government": { vertical: "government", label: "Government" },
+    "county": { vertical: "government", label: "Government" },
+    "dmv": { vertical: "government", label: "Government" },
+    "permits": { vertical: "government", label: "Government" },
+    "solar": { vertical: "solar", label: "Solar Energy" },
+    "web3": { vertical: "web3", label: "Web3" },
+    "blockchain": { vertical: "web3", label: "Web3" },
+    "crypto": { vertical: "web3", label: "Web3" },
+  };
+
+  function extractSignal(text) {
+    if (!text) return null;
+    const lower = text.toLowerCase();
+    for (const [keyword, signal] of Object.entries(SIGNAL_KEYWORDS)) {
+      if (lower.includes(keyword)) return signal;
+    }
+    return null;
   }
 
   // Send contextual messages when onboarding step or section changes
@@ -1154,6 +1189,23 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
       // Intercept |||COMMAND||| blocks before storing in state
       const { clean: cleanResponse, commands } = interceptAlexCommands(data.response || '');
       for (const cmd of commands) executeAlexCommand(cmd.type, cmd.payload);
+
+      // Signal extractor — update canvas when user mentions a vertical
+      if (!activeWorkerSlug) {
+        const signal = extractSignal(userMessage);
+        if (signal && panel?.showRecommendations) {
+          const searchBase = import.meta.env.VITE_API_BASE || 'https://titleapp-frontdoor.titleapp-core.workers.dev';
+          fetch(`${searchBase}/api?path=/v1/marketplace:search&vertical=${signal.vertical}&limit=10`)
+            .then(r => r.json())
+            .then(searchData => {
+              if (searchData.ok && searchData.workers?.length > 0) {
+                panel.showRecommendations(searchData.workers, signal.vertical, signal.label);
+              }
+            })
+            .catch(() => {});
+        }
+      }
+
       setMessages(prev => [...prev, {
         role: 'assistant',
         content: cleanResponse || 'No response received.',
@@ -1628,11 +1680,11 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
         {/* Qualifying onboarding — centered avatar */}
         {qualifyingMode && messages.length <= 1 && (
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flex: 1, padding: 40, textAlign: "center" }}>
-            <div style={{ width: 72, height: 72, borderRadius: 36, background: "linear-gradient(135deg, #7c3aed, #6366f1)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 24 }}>
+            <div className="alex-avatar-pulse" style={{ width: 72, height: 72, borderRadius: 36, background: "linear-gradient(135deg, #7c3aed, #6366f1)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 24 }}>
               <svg width="36" height="36" viewBox="0 0 24 24" fill="white"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
             </div>
             <div style={{ fontSize: 16, fontWeight: 500, color: "#1e293b", lineHeight: 1.6, maxWidth: 380, marginBottom: 24 }}>
-              Hey {"\u2014"} I'm Alex, your Chief of Staff. Before I show you around, quick question: what do you do for work?
+              What can I help you with today?
             </div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center" }}>
               {["I'm a pilot", "I work in real estate", "I run a dealership", "Something else"].map(chip => (
@@ -1891,11 +1943,14 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
           </button>
+          {disclaimerAccepted && !input.trim() && (
+            <div className="chat-input-dot" style={{ alignSelf: 'center' }} />
+          )}
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={disclaimerAccepted ? "Ask me anything..." : "Please accept the terms above to continue"}
+            placeholder={disclaimerAccepted ? "Type or speak..." : "Please accept the terms above to continue"}
             rows={2}
             disabled={chatDisabled}
             style={{ opacity: disclaimerAccepted ? 1 : 0.5 }}

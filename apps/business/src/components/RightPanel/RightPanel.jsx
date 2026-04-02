@@ -5,6 +5,7 @@ import { useRightPanel } from "../../context/RightPanelContext";
 import { useWorkerState } from "../../context/WorkerStateContext";
 import WorkerIcon, { getThemeAccent, getVerticalIconSlug } from "../../utils/workerIcons";
 import SessionEndCTA from "../worker/SessionEndCTA";
+import CanvasPanel from "../canvas/CanvasPanel";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
 
@@ -673,49 +674,59 @@ function WorkerCard({ worker, onSelect, onOpen }) {
 // ── STATE-1: Cold Visitor — Product Intro Visual ────────────────
 
 function ProductIntro() {
+  const [featured, setFeatured] = useState([]);
+  const [freeWorkers, setFreeWorkers] = useState([]);
+
+  useEffect(() => {
+    fetch(`${API_BASE}/api?path=/v1/marketplace:featured`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.ok && data.workers) {
+          setFeatured(data.workers.slice(0, 6));
+          setFreeWorkers(data.workers.filter(w => !w.monthlyPrice || w.monthlyPrice === 0).slice(0, 3));
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   return (
-    <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 24px", textAlign: "center" }}>
-      <div style={{ width: 80, height: 80, borderRadius: "50%", background: "#6B21A8", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 8 }}>
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-        </svg>
-      </div>
-      <div style={{ fontSize: 16, fontWeight: 700, color: "#111827", marginBottom: 2 }}>Alex</div>
-      <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 24 }}>Chief of Staff</div>
-
-      <div style={{ width: 2, height: 24, background: "#E2D9F3", marginBottom: 8 }} />
-
-      <div style={{ display: "flex", gap: 16, marginBottom: 8 }}>
-        {[
-          { name: "PC12-NG CoPilot", vertical: "Aviation" },
-          { name: "Title Search", vertical: "Real Estate" },
-          { name: "F&I Products", vertical: "Auto Dealer" },
-        ].map(w => (
-          <div key={w.name} style={{ width: 110, padding: "12px 8px", borderRadius: 10, background: "#1E1E2E", textAlign: "center" }}>
-            <div style={{ fontSize: 11, fontWeight: 600, color: "#ffffff", marginBottom: 4 }}>{w.name}</div>
-            <div style={{ fontSize: 10, color: "#94a3b8" }}>{w.vertical}</div>
+    <div style={{ flex: 1, overflowY: "auto", padding: "20px 16px" }}>
+      <div style={S.sectionLabel}>Popular Today</div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 24 }}>
+        {featured.length > 0 ? featured.map((w, i) => (
+          <div key={w.workerId || i} style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 10, padding: "12px 14px", cursor: "pointer", transition: "border-color 0.15s" }}
+            onMouseEnter={e => e.currentTarget.style.borderColor = "#7c3aed"}
+            onMouseLeave={e => e.currentTarget.style.borderColor = "#e5e7eb"}
+          >
+            <div style={{ fontSize: 13, fontWeight: 600, color: "#111827", marginBottom: 2 }}>{w.name}</div>
+            <div style={{ fontSize: 11, color: "#6b7280" }}>{w.vertical || ""}</div>
+            <div style={{ fontSize: 11, fontWeight: 600, color: "#7c3aed", marginTop: 6 }}>
+              {w.monthlyPrice ? `$${w.monthlyPrice}/mo` : "Free"}
+            </div>
           </div>
+        )) : Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} style={{ background: "#f8fafc", border: "1px solid #e5e7eb", borderRadius: 10, padding: "12px 14px", height: 60 }} />
         ))}
       </div>
 
-      <div style={{ width: 2, height: 24, background: "#E2D9F3", marginBottom: 8 }} />
-
-      <div style={{ width: 160, padding: "14px 16px", borderRadius: 12, background: "#7C3AED", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 32 }}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-        </svg>
-        <div>
-          <div style={{ fontSize: 13, fontWeight: 600, color: "#ffffff" }}>Your Vault</div>
-          <div style={{ fontSize: 10, color: "#e9d5ff" }}>Shared data layer</div>
-        </div>
+      <div style={{ textAlign: "center", fontSize: 13, color: "#6b7280", marginBottom: 24, lineHeight: 1.6 }}>
+        Tell Alex what you do — your canvas fills with workers built for your industry.
       </div>
 
-      <div style={{ fontSize: 15, color: "#6B7280", lineHeight: 1.8 }}>
-        <div>Alex is your Chief of Staff.</div>
-        <div>Workers handle the work.</div>
-        <div>Your Vault holds everything.</div>
-      </div>
+      {freeWorkers.length > 0 && (
+        <>
+          <div style={S.sectionLabel}>Free to Try</div>
+          {freeWorkers.map((w, i) => (
+            <div key={w.workerId || i} style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 10, padding: "12px 14px", marginBottom: 8, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "#111827" }}>{w.name}</div>
+                <div style={{ fontSize: 11, color: "#6b7280" }}>{w.vertical || ""}</div>
+              </div>
+              <div style={{ fontSize: 11, fontWeight: 600, color: "#16a34a" }}>Free</div>
+            </div>
+          ))}
+        </>
+      )}
     </div>
   );
 }
@@ -922,7 +933,7 @@ function TrialBanner({ worker }) {
 
 export default function RightPanel() {
   const panel = useRightPanel();
-  const { state, vertical, verticalLabel, workers, selectedWorker, showRecommendations, showWorkerDetail, goBack, dismiss, clearVerticalFilter, setWorkers } = panel;
+  const { state, vertical, verticalLabel, workers, selectedWorker, showRecommendations, showWorkerDetail, goBack, dismiss, clearVerticalFilter, setWorkers, canvasData, dismissCanvas } = panel;
   const [loading, setLoading] = useState(false);
 
   // Load workers from leaderboard API on mount

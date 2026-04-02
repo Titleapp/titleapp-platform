@@ -518,6 +518,7 @@ body{
 .chatPanelInput textarea:focus{
   border-color:var(--accent);
   background:white;
+  box-shadow:0 0 0 3px rgba(124,58,237,0.08);
 }
 .chatPanelInput textarea::placeholder{
   color:#94A3B8;
@@ -538,6 +539,34 @@ body{
 .chatPanelInput button:disabled{
   opacity:0.4;
   cursor:not-allowed;
+}
+
+/* Alex pulse ring — single pulse on mount */
+@keyframes alexPulse{
+  0%{box-shadow:0 0 0 0 rgba(124,58,237,0.4);}
+  70%{box-shadow:0 0 0 12px rgba(124,58,237,0);}
+  100%{box-shadow:0 0 0 12px rgba(124,58,237,0);}
+}
+.alex-avatar-pulse{
+  animation:alexPulse 1.5s ease-out 1;
+}
+
+/* Pulsing ready dot */
+@keyframes inputPulse{
+  0%,100%{opacity:0.4;}
+  50%{opacity:1;}
+}
+.chat-input-dot{
+  width:6px;
+  height:6px;
+  border-radius:50%;
+  background:#3b82f6;
+  animation:inputPulse 2s ease-in-out infinite;
+}
+
+@media(prefers-reduced-motion:reduce){
+  .alex-avatar-pulse{animation:none;}
+  .chat-input-dot{animation:none;opacity:0.7;}
 }
 
 /* Chat message styles */
