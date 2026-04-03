@@ -487,7 +487,6 @@ async function handleStripeWebhook(req, res) {
               .get();
             for (const sub of activeSubs.docs) {
               await sub.ref.update({
-                status: "cancelled",
                 trialStatus: CANCELLED,
                 cancelledAt: admin.firestore.FieldValue.serverTimestamp(),
               });

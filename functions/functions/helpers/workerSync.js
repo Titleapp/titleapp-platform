@@ -659,13 +659,26 @@ const HEADLINE_MAP = {
   "ad-alex": "Your dealership, orchestrated — ops briefing to pricing recommendations",
 };
 
-// Catalog vertical → Firestore vertical (matches frontend VERTICAL_MAP firestoreValues)
+// Catalog vertical → Firestore vertical (VERTICAL-001: uses config/verticals.js aliases)
+const { normalizeVertical } = require("../config/verticals");
 const CATALOG_VERTICAL_MAP = {
   "auto_dealer": "auto_dealer",
   "aviation": "aviation",
   "real-estate-development": "real_estate_development",
   "solar_energy": "solar_vpp",
   "web3": "web3",
+  "platform": "platform",
+  "government": "government",
+  "real-estate-professional": "real_estate_professional",
+  "title-escrow": "title_escrow",
+  "construction": "construction",
+  "mortgage": "mortgage",
+  "legal": "legal",
+  "healthcare": "healthcare",
+  "investment": "investment",
+  "relocation": "relocation",
+  "nursing": "nursing",
+  "games": "games",
 };
 
 // ═══════════════════════════════════════════════════════════════

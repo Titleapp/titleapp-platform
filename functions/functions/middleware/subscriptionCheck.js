@@ -88,13 +88,13 @@ async function requireActiveSubscription(workerId, tenantId, opts = {}) {
     };
   }
 
-  // Active subscription — full access (canonical trialStatus or Stripe-native status)
-  if (isActive(sub.trialStatus) || sub.status === "active") {
+  // Active subscription — full access (canonical trialStatus, with legacy fallback)
+  if (isActive(sub.trialStatus || normalizeLegacyStatus(sub.status))) {
     return { allowed: true, readOnly: false, reason: null, subscription: sub };
   }
 
-  // Past due — check grace period
-  if (sub.status === "past_due") {
+  // Past due — check grace period (Stripe writes stripeSubscriptionStatus on user doc)
+  if (sub.stripeSubscriptionStatus === "past_due" || sub.status === "past_due") {
     const pastDueSince = sub.pastDueSince
       ? (sub.pastDueSince.toDate ? sub.pastDueSince.toDate() : new Date(sub.pastDueSince))
       : new Date();

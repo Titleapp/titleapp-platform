@@ -223,20 +223,11 @@ const VALID_DEPLOYMENT_TIERS = [1, 2, 3];
 //  VALID ENUM VALUES — Registry Extension
 // ═══════════════════════════════════════════════════════════════
 
+// VALID_VERTICALS derived from config/verticals.js — single source of truth (VERTICAL-001)
+const { VERTICALS, LEGACY_ALIASES } = require("../config/verticals");
 const VALID_VERTICALS = [
-  "auto_dealer",
-  "re_development",
-  "re_sales",
-  "property_management",
-  "aviation_135",
-  "pilot_suite",
-  "government",
-  "title_escrow",
-  "financial",
-  "nursing",
-  "health_education",
-  "solar_energy",
-  "web3",
+  ...Object.keys(VERTICALS),
+  ...Object.keys(LEGACY_ALIASES),
 ];
 
 const VALID_PRICE_TIERS_DISPLAY = ["FREE", "$29", "$49", "$79"];

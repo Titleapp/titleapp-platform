@@ -53,11 +53,101 @@ const VERTICALS = {
     navItems: ['Tokens', 'Smart Contracts', 'Wallets'],
     defaultSort: 'top10',
   },
+  'platform': {
+    id: 'platform',
+    label: 'Platform',
+    emoji: '\u2699\uFE0F',
+    catalogFile: 'platform.json',
+    firestorePrefix: 'pl-',
+    navItems: ['Accounting', 'HR', 'Marketing', 'Control Center'],
+    defaultSort: 'top10',
+  },
+  'government': {
+    id: 'government',
+    label: 'Government',
+    emoji: '\uD83C\uDFDB\uFE0F',
+    catalogFile: 'government.json',
+    firestorePrefix: 'gov-',
+    navItems: ['Permitting', 'DMV', 'Inspector', 'Recorder'],
+    defaultSort: 'top10',
+  },
+  'real-estate-professional': {
+    id: 'real-estate-professional',
+    label: 'Real Estate Pro',
+    emoji: '\uD83C\uDFE2',
+    catalogFile: 'real-estate-professional.json',
+    firestorePrefix: 're-pro-',
+    navItems: ['Listings', 'Compliance', 'Transactions'],
+    defaultSort: 'top10',
+  },
+  'title-escrow': {
+    id: 'title-escrow',
+    label: 'Title & Escrow',
+    emoji: '\uD83D\uDD10',
+    catalogFile: null,
+    firestorePrefix: 'esc-',
+    navItems: ['Escrow', 'Title Search', 'Closing'],
+    defaultSort: 'top10',
+  },
+  'construction': {
+    id: 'construction',
+    label: 'Construction',
+    emoji: '\uD83D\uDEA7',
+    catalogFile: null,
+    firestorePrefix: 'con-',
+    navItems: ['Project Management', 'Inspections', 'Permits'],
+    defaultSort: 'top10',
+  },
+  'mortgage': {
+    id: 'mortgage',
+    label: 'Mortgage',
+    emoji: '\uD83C\uDFE6',
+    catalogFile: null,
+    firestorePrefix: 'mtg-',
+    navItems: ['Underwriting', 'Origination', 'Servicing'],
+    defaultSort: 'top10',
+  },
+  'legal': {
+    id: 'legal',
+    label: 'Legal',
+    emoji: '\u2696\uFE0F',
+    catalogFile: null,
+    firestorePrefix: 'leg-',
+    navItems: ['Contracts', 'Compliance', 'Litigation'],
+    defaultSort: 'top10',
+  },
+  'healthcare': {
+    id: 'healthcare',
+    label: 'Healthcare',
+    emoji: '\uD83C\uDFE5',
+    catalogFile: null,
+    firestorePrefix: 'hc-',
+    navItems: ['Protocols', 'Compliance', 'Training'],
+    defaultSort: 'top10',
+  },
+  'investment': {
+    id: 'investment',
+    label: 'Investment',
+    emoji: '\uD83D\uDCCA',
+    catalogFile: null,
+    firestorePrefix: 'inv-',
+    navItems: ['Fund Admin', 'Reporting', 'Portfolio'],
+    defaultSort: 'top10',
+  },
+  'relocation': {
+    id: 'relocation',
+    label: 'Relocation',
+    emoji: '\uD83D\uDE9A',
+    catalogFile: null,
+    firestorePrefix: 'rel-',
+    navItems: ['Moving', 'Coordination', 'Compliance'],
+    defaultSort: 'top10',
+  },
   'nursing': {
     id: 'nursing',
     label: 'Nursing',
-    emoji: '\uD83C\uDFE5',
-    catalogFile: null,            // future vertical
+    emoji: '\uD83D\uDC89',
+    catalogFile: null,
     firestorePrefix: 'nu-',
     navItems: [],
     defaultSort: 'top10',
@@ -66,7 +156,7 @@ const VERTICALS = {
     id: 'games',
     label: 'Games',
     emoji: '\uD83C\uDFAE',
-    catalogFile: null,            // future vertical
+    catalogFile: null,
     firestorePrefix: 'gm-',
     navItems: [],
     defaultSort: 'top10',
@@ -82,14 +172,28 @@ const LEGACY_ALIASES = {
   'auto_dealer': 'auto-dealer',
   'auto dealer': 'auto-dealer',
   'autodealer': 'auto-dealer',
+  'automotive': 'auto-dealer',
 
-  // Real estate variants
+  // Real estate development variants
   'analyst': 'real-estate',
   'real_estate': 'real-estate',
   'real estate': 'real-estate',
   'real-estate-development': 'real-estate',
+  'real_estate_development': 'real-estate',
   'real estate development': 'real-estate',
   'realestate': 'real-estate',
+  're_development': 'real-estate',
+  're_sales': 'real-estate',
+
+  // Real estate professional variants
+  'real-estate-pro': 'real-estate-professional',
+  'real_estate_professional': 'real-estate-professional',
+  're-pro': 'real-estate-professional',
+
+  // Title & Escrow variants
+  'title_escrow': 'title-escrow',
+  'title-and-escrow': 'title-escrow',
+  'escrow': 'title-escrow',
 
   // Web3 variants
   'web3-projects': 'web3',
@@ -98,20 +202,41 @@ const LEGACY_ALIASES = {
   // Solar variants
   'solar-energy': 'solar',
   'solar_energy': 'solar',
+  'solar_vpp': 'solar',
 
   // Nursing / Health variants
   'health-ems': 'nursing',
   'health_ems': 'nursing',
-  'health': 'nursing',
-  'ems': 'nursing',
+  'health-ems-education': 'healthcare',
+  'health_education': 'healthcare',
+
+  // Healthcare variants
+  'health': 'healthcare',
+  'ems': 'healthcare',
 
   // Game variants
   'game-light': 'games',
   'game-regulated': 'games',
   'game': 'games',
 
-  // Government (future)
+  // Government variants
   'gov': 'government',
+  'municipal': 'government',
+  'civic': 'government',
+
+  // Aviation variants
+  'aviation_135': 'aviation',
+  'pilot_suite': 'aviation',
+
+  // Financial → investment
+  'financial': 'investment',
+  'finance': 'investment',
+
+  // Property management → real-estate
+  'property_management': 'real-estate',
+
+  // Marketing → platform
+  'marketing': 'platform',
 };
 
 /**
