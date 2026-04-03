@@ -1,38 +1,81 @@
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useRef, useCallback, useMemo } from "react";
 
 // ── TitleApp Landing Page ─────────────────────────────────────────
-// White premium aesthetic. Chat bar hero. Four vertical CTAs. No auth — that happens on /meet-alex.
+// White premium aesthetic. Chat bar hero. Industry carousel. No auth — that happens on /login.
 
 const VERTICALS = [
-  { label: "Aviation", desc: "CoPilots for PC12-NG, King Air, Caravan, and more. Logbook, currency, training.", param: "aviation", count: "56 workers" },
-  { label: "Auto Dealer", desc: "F&I, deal jacket, inventory, compliance. Every phase of the deal lifecycle.", param: "auto-dealer", count: "29 workers" },
   { label: "Real Estate", desc: "Title search, closing coordination, compliance monitoring. 8 development phases.", param: "real-estate", count: "67 workers" },
-  { label: "Web3", desc: "Tokenomics, regulatory compliance, community management. Team verification built in.", param: "web3", count: "11 workers" },
+  { label: "Construction", desc: "Permitting, inspections, lien tracking, project compliance.", param: "construction", count: "12 workers" },
+  { label: "Mortgage", desc: "Loan origination, underwriting support, disclosure compliance.", param: "mortgage", count: "10 workers" },
+  { label: "Aviation", desc: "CoPilots for PC12-NG, King Air, Caravan. Logbook, currency, training.", param: "aviation", count: "56 workers" },
+  { label: "Auto Dealer", desc: "F&I, deal jacket, inventory, compliance. Every phase of the deal lifecycle.", param: "auto-dealer", count: "29 workers" },
+  { label: "Government", desc: "DMV & Title, permitting, inspections, recording services, operations.", param: "government", count: "58 workers" },
+  { label: "Legal", desc: "Contract review, compliance tracking, regulatory filing.", param: "legal", count: "8 workers" },
+  { label: "Healthcare", desc: "Patient records compliance, billing, credentialing.", param: "healthcare", count: "10 workers" },
+  { label: "Health & EMS", desc: "EMS protocols, training compliance, certification tracking.", param: "health-ems-education", count: "42 workers" },
+  { label: "Solar", desc: "Proposal generation, permitting, interconnection compliance.", param: "solar", count: "8 workers" },
+  { label: "Investment", desc: "Portfolio analysis, deal screening, evidence-first diligence.", param: "investment", count: "6 workers" },
+  { label: "Relocation", desc: "Move management, corporate relocation, vendor coordination.", param: "relocation", count: "4 workers" },
+  { label: "Title & Escrow", desc: "Title search, escrow closing, settlement compliance.", param: "title-escrow", count: "12 workers" },
+  { label: "Platform", desc: "Business in a Box — accounting, HR, marketing, control center.", param: "platform", count: "4 workers" },
 ];
 
 const STATS = [
   { num: "1,000+", label: "Digital Workers" },
-  { num: "14", label: "Industry Suites" },
+  { num: "14", label: "Industries" },
   { num: "20+", label: "Languages" },
   { num: "24/7", label: "Always On" },
 ];
 
 const LANGUAGES = [
-  "English", "Spanish", "French", "German", "Portuguese", "Italian", "Dutch",
-  "Polish", "Swedish", "Norwegian", "Danish", "Finnish", "Japanese", "Korean",
-  "Chinese", "Arabic", "Hindi", "Turkish", "Thai", "Vietnamese", "Indonesian",
+  { code: "en", native: "English" },
+  { code: "es", native: "Español" },
+  { code: "fr", native: "Français" },
+  { code: "de", native: "Deutsch" },
+  { code: "pt", native: "Português" },
+  { code: "it", native: "Italiano" },
+  { code: "nl", native: "Nederlands" },
+  { code: "pl", native: "Polski" },
+  { code: "sv", native: "Svenska" },
+  { code: "no", native: "Norsk" },
+  { code: "da", native: "Dansk" },
+  { code: "fi", native: "Suomi" },
+  { code: "ja", native: "日本語" },
+  { code: "ko", native: "한국어" },
+  { code: "zh", native: "中文" },
+  { code: "ar", native: "عربي" },
+  { code: "hi", native: "हिन्दी" },
+  { code: "tr", native: "Türkçe" },
+  { code: "th", native: "ไทย" },
+  { code: "vi", native: "Tiếng Việt" },
+  { code: "id", native: "Bahasa Indonesia" },
 ];
 
-const CHIPS = [
-  { label: "I'm a pilot looking for a CoPilot", prompt: "I'm a pilot and I'm looking for a CoPilot for my aircraft" },
-  { label: "My dealership needs compliance help", prompt: "I run an auto dealership and need help with compliance and F&I" },
-  { label: "I work in real estate development", prompt: "I work in real estate development and need help with title and closing" },
+/* TODO: wire to Firestore before public launch — digitalWorkers collection, sort by sessionCount desc, limit 10 */
+const TOP_WORKERS = [
+  { name: "Business Accounting", vertical: "Platform", rating: "4.9" },
+  { name: "Control Center Pro", vertical: "Platform", rating: "5.0" },
+  { name: "HR & People", vertical: "Platform", rating: "4.8" },
+  { name: "Marketing & Content", vertical: "Platform", rating: "4.9" },
+  { name: "PC12-NG CoPilot", vertical: "Aviation", rating: "5.0" },
+  { name: "Title Search Pro", vertical: "Real Estate", rating: "4.9" },
+  { name: "Portfolio Analyst", vertical: "Investment", rating: "4.8" },
+  { name: "F&I Compliance", vertical: "Auto Dealer", rating: "4.9" },
+  { name: "Solar Proposal Builder", vertical: "Solar", rating: "5.0" },
+  { name: "FOIA Request Manager", vertical: "Government", rating: "4.8" },
 ];
 
 const HOW_IT_WORKS = [
   { step: "1", title: "Pick a worker", desc: "Browse by industry. Every worker is trained on the rules of your field." },
   { step: "2", title: "Start free", desc: "14-day free trial. No credit card. Cancel anytime." },
   { step: "3", title: "Work gets done", desc: "Your Digital Worker handles the compliance-heavy work. You keep the audit trail." },
+];
+
+const PRICING_TIERS = [
+  { tier: "Free", price: "$0", per: "", desc: "Alex + hundreds of free workers. Always free. No credit card." },
+  { tier: "Standard", price: "$29", per: "/mo", desc: "Standard complexity workers and databases." },
+  { tier: "Professional", price: "$49", per: "/mo", desc: "Advanced complexity workers and databases." },
+  { tier: "Enterprise", price: "$79", per: "/mo", desc: "Maximum complexity workers and databases." },
 ];
 
 export default function LandingPage() {
@@ -46,6 +89,17 @@ export default function LandingPage() {
   const [fadeVisible, setFadeVisible] = useState(false);
   const inputRef = useRef(null);
   const recognitionRef = useRef(null);
+  const industryRef = useRef(null);
+
+  const browserLang = useMemo(() => {
+    try { return (navigator.language || "en").split("-")[0].toLowerCase(); }
+    catch { return "en"; }
+  }, []);
+
+  const sortedLangs = useMemo(() =>
+    [...LANGUAGES].sort((a, b) =>
+      a.code === browserLang ? -1 : b.code === browserLang ? 1 : 0
+    ), [browserLang]);
 
   function navigateWithFade(url) {
     setFading(true);
@@ -59,11 +113,6 @@ export default function LandingPage() {
     const text = query.trim();
     if (!text) return;
     navigateWithFade(`${appBase}/meet-alex?prompt=${encodeURIComponent(text)}`);
-  }
-
-  function handleChip(prompt) {
-    setQuery(prompt);
-    navigateWithFade(`${appBase}/meet-alex?prompt=${encodeURIComponent(prompt)}`);
   }
 
   const toggleMic = useCallback(() => {
@@ -88,6 +137,13 @@ export default function LandingPage() {
     setListening(true);
   }, [listening]);
 
+  function scrollIndustry(dir) {
+    const el = industryRef.current;
+    if (!el) return;
+    const cardWidth = el.querySelector("[data-vcard]")?.offsetWidth || 240;
+    el.scrollBy({ left: dir * (cardWidth + 16), behavior: "smooth" });
+  }
+
   return (
     <div style={S.page}>
       {/* Fade overlay */}
@@ -109,7 +165,7 @@ export default function LandingPage() {
           <span style={S.logoText}>TitleApp</span>
         </div>
         <div style={S.headerRight}>
-          <a href={`${appBase}/meet-alex`} style={S.headerLink}>Meet Alex</a>
+          <a href={`${appBase}/login`} style={S.headerLink}>Sign In</a>
           <a href={`${appBase}/sandbox`} style={S.headerLink}>Creators</a>
           <a href={`${appBase}/meet-alex`} style={S.headerCta}>Start Free</a>
         </div>
@@ -120,7 +176,7 @@ export default function LandingPage() {
         <div style={S.heroInner}>
           <div style={S.heroTag}>The Digital Worker Platform</div>
           <h1 style={S.heroH1}>Finally. AI that knows what it's talking about.</h1>
-          <p style={S.heroSub}>Digital Workers handle the compliance-heavy work in your field. Trained on the rules. Audit trail on every output.</p>
+          <p style={S.heroSub}>Every Digital Worker is trained on your industry's rules and built by leading experts in your field.</p>
 
           {/* Chat bar */}
           <div style={S.chatBar}>
@@ -148,13 +204,23 @@ export default function LandingPage() {
               </svg>
             </button>
           </div>
+        </div>
+      </section>
 
-          {/* Prompt chips */}
-          <div style={S.chipRow}>
-            {CHIPS.map(c => (
-              <button key={c.label} onClick={() => handleChip(c.prompt)} style={S.chip}>
-                {c.label}
-              </button>
+      {/* ── Top Workers ── */}
+      {/* TODO: wire to Firestore before public launch — digitalWorkers collection, sort by sessionCount desc, limit 10 */}
+      <section style={S.topWorkersSection}>
+        <div style={S.sectionInner}>
+          <h2 style={S.sectionH2}>Top Workers Today</h2>
+          <p style={S.sectionSub}>Trusted by professionals across 14 industries.</p>
+          <div style={S.topWorkersScroll}>
+            {TOP_WORKERS.map(w => (
+              <a key={w.name} href="https://app.titleapp.ai" style={S.topWorkerCard}>
+                <div style={S.topWorkerName}>{w.name}</div>
+                <div style={S.topWorkerVertical}>{w.vertical}</div>
+                <div style={S.topWorkerRating}>&#11088; {w.rating}</div>
+                <div style={S.topWorkerCta}>Try it</div>
+              </a>
             ))}
           </div>
         </div>
@@ -176,28 +242,36 @@ export default function LandingPage() {
       <section style={S.langSection}>
         <div style={S.langLabel}>Every worker speaks your language</div>
         <div style={S.langPills}>
-          {LANGUAGES.map(l => (
-            <span key={l} style={S.langPill}>{l}</span>
+          {sortedLangs.map(l => (
+            <span key={l.code} style={{
+              ...S.langPill,
+              ...(l.code === browserLang ? { fontWeight: 700, color: "#7c3aed", borderColor: "#7c3aed" } : {}),
+            }}>{l.native}</span>
           ))}
         </div>
       </section>
 
-      {/* ── Verticals ── */}
+      {/* ── Industry Carousel ── */}
+      {/* TODO: wire worker counts to live Firestore counts before launch */}
       <section id="verticals" style={S.section}>
         <div style={S.sectionInner}>
           <h2 style={S.sectionH2}>Choose your industry.</h2>
           <p style={S.sectionSub}>Every vertical has dedicated Digital Workers built by people who know the rules.</p>
-          <div style={S.verticalGrid}>
-            {VERTICALS.map(v => (
-              <a key={v.param} href={`${appBase}/meet-alex?vertical=${v.param}&v=2`} style={S.verticalCard}>
-                <div style={S.verticalName}>{v.label}</div>
-                <div style={S.verticalDesc}>{v.desc}</div>
-                <div style={S.verticalFooter}>
-                  <span style={S.verticalCount}>{v.count}</span>
-                  <span style={S.verticalArrow}>&rarr;</span>
-                </div>
-              </a>
-            ))}
+          <div style={S.carouselWrap}>
+            <button onClick={() => scrollIndustry(-1)} style={{ ...S.carouselArrow, left: -4 }} aria-label="Scroll left">&#8249;</button>
+            <div ref={industryRef} style={S.carouselTrack}>
+              {VERTICALS.map(v => (
+                <a key={v.param} data-vcard="" href={`${appBase}/meet-alex?vertical=${v.param}&v=2`} style={S.verticalCard}>
+                  <div style={S.verticalName}>{v.label}</div>
+                  <div style={S.verticalDesc}>{v.desc}</div>
+                  <div style={S.verticalFooter}>
+                    <span style={S.verticalCount}>{v.count}</span>
+                    <span style={S.verticalArrow}>&rarr;</span>
+                  </div>
+                </a>
+              ))}
+            </div>
+            <button onClick={() => scrollIndustry(1)} style={{ ...S.carouselArrow, right: -4 }} aria-label="Scroll right">&#8250;</button>
           </div>
         </div>
       </section>
@@ -241,23 +315,41 @@ export default function LandingPage() {
       </section>
 
       {/* ── Pricing ── */}
-      <section style={{ ...S.section, background: "#f9fafb" }}>
+      <section style={{ ...S.section, background: "#f8fafc" }}>
         <div style={S.sectionInner}>
           <h2 style={S.sectionH2}>Simple pricing. No surprises.</h2>
-          <p style={S.sectionSub}>Every worker includes a 14-day free trial. No credit card required.</p>
+
+          {/* Trust bar */}
+          <div style={S.trustBar}>
+            <span style={S.trustItem}>14-day free trial on everything.</span>
+            <span style={S.trustItem}>60-day money back guarantee — no questions asked.</span>
+            <span style={S.trustItem}>Cancel anytime. No unsubscribe hell.</span>
+          </div>
+
+          {/* Individual Plans */}
+          <div style={S.pricingTrackLabel}>Individual Plans</div>
           <div style={S.pricingGrid}>
-            {[
-              { tier: "Free", price: "$0", desc: "Digital Logbook, Currency Tracker, Alex. Always free." },
-              { tier: "Standard", price: "$29/mo", desc: "Single-domain workers. My Aircraft, Training & Proficiency, and more." },
-              { tier: "Professional", price: "$49/mo", desc: "Multi-domain workers. Title Search, F&I Products, Tokenomics Analyst." },
-              { tier: "Enterprise", price: "$79/mo", desc: "Type-specific CoPilots. PC12-NG, King Air B200, King Air 350, C90GTx, Caravan 208B." },
-            ].map(p => (
+            {PRICING_TIERS.map(p => (
               <div key={p.tier} style={S.priceCard}>
                 <div style={S.priceTier}>{p.tier}</div>
-                <div style={S.priceAmount}>{p.price}</div>
+                <div style={S.priceAmount}>{p.price}{p.per && <span style={S.pricePer}>{p.per}</span>}</div>
                 <div style={S.priceDesc}>{p.desc}</div>
+                <a href="https://app.titleapp.ai" style={S.priceBtn}>
+                  {p.tier === "Free" ? "Get Started" : "Start Free Trial"}
+                </a>
               </div>
             ))}
+          </div>
+
+          {/* Business in a Box */}
+          <div style={S.pricingTrackLabel}>Business in a Box</div>
+          <div style={S.biabCard}>
+            <div style={S.biabBadge}>Recommended</div>
+            <div style={S.biabHeadline}>Your entire industry team.</div>
+            <div style={S.biabPrice}>$99<span style={S.biabPer}>/mo</span></div>
+            <div style={S.biabSub}>15-20 expert Digital Workers. Built for your industry. $3 a day.</div>
+            <div style={S.biabData}>Need more data? No problem — charge it up just like your Claude or ChatGPT account.</div>
+            <a href="https://app.titleapp.ai" style={S.biabCta}>Get Started</a>
           </div>
         </div>
       </section>
@@ -348,15 +440,29 @@ const S = {
     transition: "color 0.15s",
   },
 
-  // Chips
-  chipRow: {
-    display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap",
-    maxWidth: 600, margin: "0 auto",
+  // Top Workers
+  topWorkersSection: { padding: "40px 24px 0", background: "#ffffff" },
+  topWorkersScroll: {
+    display: "flex", gap: 16, overflowX: "auto", scrollSnapType: "x mandatory",
+    paddingBottom: 8, WebkitOverflowScrolling: "touch",
+    msOverflowStyle: "none", scrollbarWidth: "none",
   },
-  chip: {
-    fontSize: 13, color: "#6b7280", background: "#f3f4f6", border: "1px solid #e5e7eb",
-    borderRadius: 20, padding: "6px 16px", cursor: "pointer",
-    fontFamily: "inherit", transition: "background 0.15s, border-color 0.15s",
+  topWorkerCard: {
+    flex: "0 0 180px", scrollSnapAlign: "start", padding: "20px 16px",
+    borderRadius: 14, background: "#ffffff", border: "1px solid #e5e7eb",
+    textDecoration: "none", textAlign: "center", transition: "border-color 0.2s, box-shadow 0.2s",
+    cursor: "pointer",
+  },
+  topWorkerName: { fontSize: 14, fontWeight: 700, color: "#111827", marginBottom: 8 },
+  topWorkerVertical: {
+    display: "inline-block", fontSize: 11, fontWeight: 600, color: "#7c3aed",
+    background: "#f3e8ff", borderRadius: 12, padding: "2px 10px", marginBottom: 8,
+  },
+  topWorkerRating: { fontSize: 13, color: "#6b7280", marginBottom: 12 },
+  topWorkerCta: {
+    fontSize: 13, fontWeight: 600, color: "#7c3aed",
+    border: "1px solid #7c3aed", borderRadius: 8, padding: "6px 16px",
+    display: "inline-block",
   },
 
   // Stats
@@ -387,13 +493,27 @@ const S = {
   sectionH2: { fontSize: 32, fontWeight: 800, color: "#111827", textAlign: "center", marginBottom: 8 },
   sectionSub: { fontSize: 16, color: "#6b7280", textAlign: "center", marginBottom: 40 },
 
-  // Vertical cards
-  verticalGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16 },
+  // Industry carousel
+  carouselWrap: { position: "relative", overflow: "hidden" },
+  carouselTrack: {
+    display: "flex", gap: 16, overflowX: "auto", scrollSnapType: "x mandatory",
+    scrollBehavior: "smooth", paddingBottom: 8,
+    WebkitOverflowScrolling: "touch", msOverflowStyle: "none", scrollbarWidth: "none",
+  },
+  carouselArrow: {
+    position: "absolute", top: "50%", transform: "translateY(-50%)", zIndex: 5,
+    width: 36, height: 36, borderRadius: "50%",
+    background: "rgba(255,255,255,0.95)", border: "1px solid #e2e8f0",
+    boxShadow: "0 2px 8px rgba(0,0,0,0.1)", cursor: "pointer",
+    display: "flex", alignItems: "center", justifyContent: "center",
+    fontSize: 24, color: "#475569", lineHeight: 1,
+  },
   verticalCard: {
+    flex: "0 0 calc(25% - 12px)", minWidth: 220, scrollSnapAlign: "start",
     display: "block", padding: "24px 20px", borderRadius: 14,
     background: "#ffffff", border: "1px solid #e5e7eb",
     textDecoration: "none", transition: "border-color 0.2s, box-shadow 0.2s",
-    cursor: "pointer",
+    cursor: "pointer", boxSizing: "border-box",
   },
   verticalName: { fontSize: 18, fontWeight: 700, color: "#111827", marginBottom: 8 },
   verticalDesc: { fontSize: 13, color: "#6b7280", lineHeight: 1.6, marginBottom: 16 },
@@ -424,15 +544,54 @@ const S = {
   alexBody: { fontSize: 14, color: "#6b7280", lineHeight: 1.7, marginBottom: 20 },
 
   // Pricing
-  pricingGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16 },
+  trustBar: {
+    display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 24,
+    margin: "16px auto 40px", maxWidth: 800,
+  },
+  trustItem: { fontSize: 14, color: "#1e293b", fontWeight: 500 },
+  pricingTrackLabel: {
+    textAlign: "center", fontSize: 13, fontWeight: 600, color: "#64748b",
+    textTransform: "uppercase", letterSpacing: "1px", marginBottom: 16,
+  },
+  pricingGrid: {
+    display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 16,
+    maxWidth: 960, margin: "0 auto 40px",
+  },
   priceCard: {
-    padding: "24px 20px", borderRadius: 14,
-    background: "#ffffff", border: "1px solid #e5e7eb",
-    textAlign: "center",
+    flex: "1 1 200px", maxWidth: 220, padding: "24px 20px", borderRadius: 14,
+    background: "#ffffff", border: "1px solid #e5e7eb", textAlign: "center",
   },
   priceTier: { fontSize: 13, fontWeight: 600, color: "#7c3aed", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 },
-  priceAmount: { fontSize: 28, fontWeight: 800, color: "#111827", marginBottom: 8 },
-  priceDesc: { fontSize: 13, color: "#6b7280", lineHeight: 1.6 },
+  priceAmount: { fontSize: 28, fontWeight: 800, color: "#1e293b", marginBottom: 8 },
+  pricePer: { fontSize: 14, fontWeight: 400, color: "#64748b" },
+  priceDesc: { fontSize: 13, color: "#64748b", lineHeight: 1.6, marginBottom: 16 },
+  priceBtn: {
+    display: "block", padding: 10, borderRadius: 8,
+    border: "1px solid #7c3aed", color: "#7c3aed",
+    fontWeight: 600, fontSize: 13, textDecoration: "none",
+  },
+
+  // Business in a Box
+  biabCard: {
+    maxWidth: 480, margin: "0 auto", borderRadius: 16, padding: 32,
+    background: "linear-gradient(135deg, #1e1b4b 0%, #312e81 100%)",
+    border: "2px solid #7c3aed", textAlign: "center",
+  },
+  biabBadge: {
+    display: "inline-block", fontSize: 11, fontWeight: 600, color: "#a78bfa",
+    background: "rgba(167,139,250,0.15)", padding: "4px 12px", borderRadius: 20,
+    marginBottom: 16, textTransform: "uppercase",
+  },
+  biabHeadline: { fontSize: 21, fontWeight: 700, color: "#ffffff", marginBottom: 8 },
+  biabPrice: { fontSize: 40, fontWeight: 700, color: "#ffffff" },
+  biabPer: { fontSize: 16, fontWeight: 400, color: "#a78bfa" },
+  biabSub: { fontSize: 14, color: "#c4b5fd", margin: "12px 0" },
+  biabData: { fontSize: 13, color: "#94a3b8", marginBottom: 20 },
+  biabCta: {
+    display: "inline-block", padding: "12px 32px", borderRadius: 8,
+    background: "#7c3aed", color: "#ffffff", fontWeight: 600,
+    fontSize: 14, textDecoration: "none",
+  },
 
   // Final CTA
   finalCta: { padding: "72px 24px", textAlign: "center", background: "#faf5ff" },
@@ -442,11 +601,6 @@ const S = {
     display: "inline-block", padding: "12px 28px", fontSize: 15, fontWeight: 600,
     color: "white", background: "#7c3aed", borderRadius: 10, textDecoration: "none",
     transition: "transform 0.15s, box-shadow 0.15s",
-  },
-  btnSecondary: {
-    display: "inline-block", padding: "12px 28px", fontSize: 15, fontWeight: 600,
-    color: "#6b7280", background: "#f3f4f6",
-    border: "1px solid #e5e7eb", borderRadius: 10, textDecoration: "none",
   },
 
   // Footer
