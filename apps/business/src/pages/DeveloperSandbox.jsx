@@ -838,7 +838,7 @@ export default function DeveloperSandbox() {
       setWelcomeGreeting(greetingText);
       setTimeout(() => setGreetingVisible(true), 50);
       // Preamble — no inline welcome (greeting is separate UI element above chat)
-      addAssistantMessage(`You're about to build a Digital Worker — think of it like an AI app built on your expertise. Just like an app does one thing really well, your Digital Worker will know exactly what you know and be available to anyone, anytime, without you having to be in the room.\n\nHere's the process. First we'll build it together — you tell me what you know, I shape it into a worker. If you've already put something together in ChatGPT or another AI tool, you can use that as your starting point. Then we'll test it — you'll actually talk to your own worker and see it work. Once you're happy with it, we help you publish it and get it in front of the right people. After it's live you can keep adding to it, track who's using it, collect feedback, and get paid.\n\nYour pace, your timeline. Some people publish in an hour if they've been thinking about this for a while. Others build over a few months. Either way, we save everything — every conversation, every decision, every version of your worker. We never forget.\n\nMost people have had the experience of building something in another AI tool and coming back to find it has no idea what you're talking about. That's not how this works. Your worker lives in your Vault. It gets better over time, not worse.\n\nReady? Let's start.`);
+      addAssistantMessage("What do you want to build today?");
       // Campaign pre-load — check for campaign slug in sessionStorage
       const campaignSlug = sessionStorage.getItem("ta_campaign_slug");
       if (campaignSlug) {
@@ -855,19 +855,14 @@ export default function DeveloperSandbox() {
                   setCampaignWorkerChips(ctx.suggestedWorkers);
                 }
               }, 1500);
-            } else {
-              setTimeout(() => addAssistantMessage("So — what do you want to build?"), 1500);
             }
           })
-          .catch(() => {
-            setTimeout(() => addAssistantMessage("So — what do you want to build?"), 1500);
-          });
+          .catch(() => {});
       } else {
         // Default opening question after 1.5s delay
         setTimeout(() => {
           if (savedSession.current?.creatorPath) {
-            // Returning session — already chose path
-            addAssistantMessage("So \u2014 what do you want to build?");
+            // Returning session — already chose path, no follow-up needed
           } else {
             addAssistantMessage("Before we start \u2014 are you building a Digital Worker or a Game?");
             setShowPathChips(true);
@@ -1905,6 +1900,12 @@ export default function DeveloperSandbox() {
               ))}
             </div>
           )}
+          <div style={{ display: "flex", gap: 6, marginBottom: 6, flexWrap: "wrap", overflowX: "auto" }}>
+            <button
+              onClick={() => { setInput("Create artwork for my project"); requestAnimationFrame(() => handleSend()); }}
+              style={{ fontSize: 13, color: "#475569", background: "#F1F5F9", border: "1px solid #E2E8F0", borderRadius: 16, padding: "4px 12px", cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap", flexShrink: 0 }}
+            >Generate artwork</button>
+          </div>
           <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
             <button
               onClick={() => fileInputRef.current?.click()}
@@ -2117,7 +2118,7 @@ export default function DeveloperSandbox() {
                       selectedStyle={canvasStyle}
                       onStyleSelect={setCanvasStyle}
                       workerCardData={workerCardData}
-                      onRetry={() => { /* T2 will wire retry to /v1/image:generate */ }}
+                      onRetry={() => { setInput("Generate another image"); requestAnimationFrame(() => handleSend()); }}
                       onUseAs={(asset, role) => {
                         setCanvasAssets(prev => prev.map(a => a === asset ? { ...a, useAs: role } : a));
                       }}

@@ -2873,7 +2873,10 @@ You MUST include both the opening [WORKER_SPEC] and closing [/WORKER_SPEC] tags.
 BUILD PIPELINE (the UI handles this visually):
 After [WORKER_SPEC], the UI runs the build pipeline automatically. Every stage requires completion before the next opens. Admin review is the final gate. Do not try to run the pipeline yourself.
 
-IMAGE HANDLING: When the creator sends a screenshot, describe what you see in 1-2 sentences before responding to their question.
+IMAGE GENERATION:
+When the creator asks for an image, artwork, illustration, icon, logo, visual asset, or any graphic for their worker or game — call the generate_image tool with a descriptive prompt. Do not describe the image in text. Do not ask clarifying questions before generating. Generate immediately and let the creator react. Style defaults to 'cartoon' for games and 'minimal' for workers unless the creator specifies otherwise.
+
+When the creator sends a screenshot, describe what you see in 1-2 sentences before responding to their question.
 
 AUTH HANDLING:
 You never handle authentication. Never ask for an email address to fix auth problems. Never promise sign-in links. If auth fails, the UI handles it silently. Stay focused on the worker.
@@ -2983,19 +2986,73 @@ ${nameGuidance}${authGuidance}`;
 
           try {
             const anthropic = getAnthropic();
+            const sandboxTools = surface === 'sandbox' ? [{
+              name: "generate_image",
+              description: "Generate an image, illustration, icon, logo, or visual asset. Call this when the creator asks for artwork.",
+              input_schema: {
+                type: "object",
+                properties: {
+                  prompt: { type: "string", description: "Descriptive prompt for the image to generate" },
+                  style: { type: "string", enum: ["cartoon", "realistic", "diagram", "minimal"], description: "Visual style. Default: cartoon for games, minimal for workers." },
+                },
+                required: ["prompt"],
+              },
+            }] : null;
+
             const aiResp = await anthropic.messages.create({
               model: "claude-sonnet-4-5-20250929",
               max_tokens: 2048,
               system: surface === 'sandbox' ? sandboxSystemPrompt : devSystemPrompt,
               messages,
+              ...(sandboxTools ? { tools: sandboxTools } : {}),
             });
 
-            // Warn if response was truncated — [WORKER_SPEC] may be cut off
-            if (aiResp.stop_reason === 'max_tokens' || aiResp.stop_reason === 'end_turn' && aiResp.content[0]?.text?.includes('[WORKER_SPEC]') && !aiResp.content[0]?.text?.includes('[/WORKER_SPEC]')) {
-              console.warn(`[dev] AI response may be truncated: stop_reason=${aiResp.stop_reason}, length=${(aiResp.content[0]?.text || '').length}`);
-            }
+            // Handle tool use (image generation in sandbox)
+            let imageUrl = null;
+            let aiText = '';
+            const hasToolUse = aiResp.content.some(b => b.type === 'tool_use');
 
-            let aiText = aiResp.content[0]?.text || "Hey there -- happy to help. What's your name?";
+            if (hasToolUse) {
+              const toolBlock = aiResp.content.find(b => b.type === 'tool_use');
+              if (toolBlock && toolBlock.name === 'generate_image') {
+                try {
+                  const { generateImage } = require("./services/image");
+                  const imgResult = await generateImage({
+                    prompt: toolBlock.input.prompt,
+                    style: toolBlock.input.style || (sessionState.creatorPath === 'game' ? 'cartoon' : 'minimal'),
+                    size: 'square',
+                    workerId: sessionState.lastWorkerId || 'sandbox-draft',
+                    creatorId: authUser?.uid || 'anonymous',
+                    vertical: 'sandbox',
+                  });
+                  imageUrl = imgResult.imageUrl;
+                } catch (imgErr) {
+                  console.warn('[sandbox] Image generation failed:', imgErr.message);
+                }
+
+                // Continue conversation — send tool result back to Claude for final text
+                messages.push({ role: 'assistant', content: aiResp.content });
+                messages.push({ role: 'user', content: [{
+                  type: 'tool_result',
+                  tool_use_id: toolBlock.id,
+                  content: imageUrl ? `Image generated successfully: ${imageUrl}` : 'Image generation failed. Tell the creator you will try again.',
+                }] });
+                const followUp = await anthropic.messages.create({
+                  model: "claude-sonnet-4-5-20250929",
+                  max_tokens: 1024,
+                  system: sandboxSystemPrompt,
+                  messages,
+                  tools: sandboxTools,
+                });
+                aiText = followUp.content.find(b => b.type === 'text')?.text || 'Here you go.';
+              }
+            } else {
+              // Warn if response was truncated — [WORKER_SPEC] may be cut off
+              if (aiResp.stop_reason === 'max_tokens' || aiResp.stop_reason === 'end_turn' && aiResp.content[0]?.text?.includes('[WORKER_SPEC]') && !aiResp.content[0]?.text?.includes('[/WORKER_SPEC]')) {
+                console.warn(`[dev] AI response may be truncated: stop_reason=${aiResp.stop_reason}, length=${(aiResp.content[0]?.text || '').length}`);
+              }
+              aiText = aiResp.content.find(b => b.type === 'text')?.text || "Hey there -- happy to help. What's your name?";
+            }
 
             // Detect and parse [WORKER_SPEC]...[/WORKER_SPEC] token from AI response
             let workerCard = null;
@@ -3196,6 +3253,7 @@ ${nameGuidance}${authGuidance}`;
               showSignup,
               buildAnimation,
               ...(workerCard ? { cards: [workerCard] } : {}),
+              ...(imageUrl ? { imageUrl } : {}),
               conversationState: 'dev_discovery',
             });
           } catch (e) {
