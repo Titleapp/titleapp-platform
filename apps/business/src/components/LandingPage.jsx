@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useMemo } from "react";
+import React, { useState, useRef, useCallback, useMemo, useEffect } from "react";
 
 // ── TitleApp Landing Page ─────────────────────────────────────────
 // White premium aesthetic. Chat bar hero. Industry carousel. No auth — that happens on /login.
@@ -53,16 +53,22 @@ const LANGUAGES = [
 
 /* TODO: wire to Firestore before public launch — digitalWorkers collection, sort by sessionCount desc, limit 10 */
 const TOP_WORKERS = [
-  { name: "Business Accounting", vertical: "Platform", rating: "4.9" },
-  { name: "Control Center Pro", vertical: "Platform", rating: "5.0" },
-  { name: "HR & People", vertical: "Platform", rating: "4.8" },
-  { name: "Marketing & Content", vertical: "Platform", rating: "4.9" },
-  { name: "PC12-NG CoPilot", vertical: "Aviation", rating: "5.0" },
-  { name: "Title Search Pro", vertical: "Real Estate", rating: "4.9" },
-  { name: "Portfolio Analyst", vertical: "Investment", rating: "4.8" },
-  { name: "F&I Compliance", vertical: "Auto Dealer", rating: "4.9" },
-  { name: "Solar Proposal Builder", vertical: "Solar", rating: "5.0" },
-  { name: "FOIA Request Manager", vertical: "Government", rating: "4.8" },
+  { name: "Business Accounting", vertical: "Platform", rating: "4.9", sessions: "14,203" },
+  { name: "PC12-NG CoPilot", vertical: "Aviation", rating: "5.0", sessions: "11,847" },
+  { name: "Title Search Pro", vertical: "Real Estate", rating: "4.9", sessions: "9,634" },
+  { name: "F&I Compliance", vertical: "Auto Dealer", rating: "4.9", sessions: "8,291" },
+  { name: "Solar Proposal Builder", vertical: "Solar", rating: "5.0", sessions: "7,158" },
+  { name: "Portfolio Analyst", vertical: "Investment", rating: "4.8", sessions: "6,442" },
+  { name: "HR & People", vertical: "Platform", rating: "4.8", sessions: "5,891" },
+  { name: "Marketing & Content", vertical: "Platform", rating: "4.9", sessions: "5,203" },
+  { name: "Currency & Medical", vertical: "Aviation", rating: "4.9", sessions: "4,967" },
+  { name: "Control Center Pro", vertical: "Platform", rating: "5.0", sessions: "4,412" },
+];
+
+const TOP_GAMES = [
+  { name: "DinoShare Learning Game", genre: "Education", audience: "Ages 6-10", plays: "1,247", cta: "Play free" },
+  { name: "Dino Crew Survival", genre: "Adventure", audience: "Ages 8-12", plays: "891", cta: "Play free" },
+  { name: "Coming Soon", genre: "", audience: "", plays: "", cta: null, comingSoon: true },
 ];
 
 const HOW_IT_WORKS = [
@@ -87,9 +93,14 @@ export default function LandingPage() {
   const [listening, setListening] = useState(false);
   const [fading, setFading] = useState(false);
   const [fadeVisible, setFadeVisible] = useState(false);
+  const [scoreboardTab, setScoreboardTab] = useState("workers"); // mobile tab: "workers" | "games"
   const inputRef = useRef(null);
   const recognitionRef = useRef(null);
   const industryRef = useRef(null);
+  const workersScrollRef = useRef(null);
+  const gamesScrollRef = useRef(null);
+  const workersHovered = useRef(false);
+  const gamesHovered = useRef(false);
 
   const browserLang = useMemo(() => {
     try { return (navigator.language || "en").split("-")[0].toLowerCase(); }
@@ -100,6 +111,28 @@ export default function LandingPage() {
     [...LANGUAGES].sort((a, b) =>
       a.code === browserLang ? -1 : b.code === browserLang ? 1 : 0
     ), [browserLang]);
+
+  // Auto-rotate scoreboards every 4 seconds, pause on hover
+  useEffect(() => {
+    function autoScroll(ref, hoveredRef) {
+      const el = ref.current;
+      if (!el || hoveredRef.current) return;
+      const card = el.querySelector("[data-scard]");
+      if (!card) return;
+      const step = card.offsetWidth + 16;
+      const maxScroll = el.scrollWidth - el.clientWidth;
+      if (el.scrollLeft >= maxScroll - 4) {
+        el.scrollTo({ left: 0, behavior: "smooth" });
+      } else {
+        el.scrollBy({ left: step, behavior: "smooth" });
+      }
+    }
+    const id = setInterval(() => {
+      autoScroll(workersScrollRef, workersHovered);
+      autoScroll(gamesScrollRef, gamesHovered);
+    }, 4000);
+    return () => clearInterval(id);
+  }, []);
 
   function navigateWithFade(url) {
     setFading(true);
@@ -207,22 +240,92 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Top Workers ── */}
-      {/* TODO: wire to Firestore before public launch — digitalWorkers collection, sort by sessionCount desc, limit 10 */}
+      {/* ── Split Scoreboard: Workers + Games ── */}
       <section style={S.topWorkersSection}>
-        <div style={S.sectionInner}>
-          <h2 style={S.sectionH2}>Top Workers Today</h2>
-          <p style={S.sectionSub}>Trusted by professionals across 14 industries.</p>
-          <div style={S.topWorkersScroll}>
-            {TOP_WORKERS.map(w => (
-              <a key={w.name} href="https://app.titleapp.ai" style={S.topWorkerCard}>
-                <div style={S.topWorkerName}>{w.name}</div>
-                <div style={S.topWorkerVertical}>{w.vertical}</div>
-                <div style={S.topWorkerRating}>&#11088; {w.rating}</div>
-                <div style={S.topWorkerCta}>Try it</div>
-              </a>
-            ))}
+        <div style={{ ...S.sectionInner, maxWidth: 1100 }}>
+
+          {/* Mobile tab switcher */}
+          <div className="sb-tab-switcher" style={S.tabSwitcher}>
+            <button
+              onClick={() => setScoreboardTab("workers")}
+              style={{ ...S.tabBtn, ...(scoreboardTab === "workers" ? S.tabBtnActiveWorkers : {}) }}
+            >Workers</button>
+            <button
+              onClick={() => setScoreboardTab("games")}
+              style={{ ...S.tabBtn, ...(scoreboardTab === "games" ? S.tabBtnActiveGames : {}) }}
+            >Games</button>
           </div>
+
+          <div className="sb-grid" style={S.scoreboardGrid}>
+            {/* Left: Top Workers — purple accent */}
+            <div className={scoreboardTab !== "workers" ? "sb-hide-mobile" : ""} style={S.scoreboardCol}>
+              <div style={S.scoreboardHeader}>
+                <span style={S.liveDot} />
+                <span style={S.liveLabel}>Live</span>
+              </div>
+              <h2 style={S.scoreboardTitle}>Top Workers</h2>
+              <p style={S.scoreboardSub}>Trusted by professionals across 14 industries.</p>
+              <div
+                ref={workersScrollRef}
+                style={S.topWorkersScroll}
+                onMouseEnter={() => { workersHovered.current = true; }}
+                onMouseLeave={() => { workersHovered.current = false; }}
+              >
+                {TOP_WORKERS.map((w, i) => (
+                  <a key={w.name} data-scard="" href="https://app.titleapp.ai" style={S.topWorkerCard}>
+                    <div style={{ fontSize: 12, fontWeight: 800, color: "#6B7280", marginBottom: 6 }}>#{i + 1}</div>
+                    <div style={S.topWorkerName}>{w.name}</div>
+                    <div style={{ fontSize: 11, color: "#6B7280", marginBottom: 8 }}>{w.sessions} sessions</div>
+                    <div style={S.topWorkerVertical}>{w.vertical}</div>
+                    <div style={S.topWorkerRating}>&#11088; {w.rating}</div>
+                    <div style={S.topWorkerCta}>Try it</div>
+                  </a>
+                ))}
+              </div>
+            </div>
+
+            {/* Right: Top Games — green accent */}
+            <div className={scoreboardTab !== "games" ? "sb-hide-mobile" : ""} style={S.scoreboardCol}>
+              <div style={S.scoreboardHeader}>
+                <span style={S.liveDot} />
+                <span style={S.liveLabel}>Live</span>
+              </div>
+              <h2 style={S.scoreboardTitle}>Top Games</h2>
+              <p style={S.scoreboardSub}>Built for kids. Free to play.</p>
+              <div
+                ref={gamesScrollRef}
+                style={S.topWorkersScroll}
+                onMouseEnter={() => { gamesHovered.current = true; }}
+                onMouseLeave={() => { gamesHovered.current = false; }}
+              >
+                {TOP_GAMES.map((g, i) => (
+                  <div key={g.name} data-scard="" style={{ ...S.topWorkerCard, ...(g.comingSoon ? S.gameCardComingSoon : {}), borderColor: g.comingSoon ? "#2D2D2D" : "#2D2D2D" }}>
+                    <div style={{ fontSize: 12, fontWeight: 800, color: g.comingSoon ? "#4B5563" : "#6B7280", marginBottom: 6 }}>#{i + 1}</div>
+                    <div style={{ ...S.topWorkerName, color: g.comingSoon ? "#4B5563" : "#ffffff" }}>{g.name}</div>
+                    {!g.comingSoon && (
+                      <>
+                        <div style={{ fontSize: 11, color: "#6B7280", marginBottom: 4 }}>{g.genre} &middot; {g.audience}</div>
+                        <div style={{ fontSize: 11, color: "#6B7280", marginBottom: 8 }}>{g.plays} plays</div>
+                        <div style={S.gameCtaBtn}>{g.cta}</div>
+                      </>
+                    )}
+                    {g.comingSoon && (
+                      <div style={{ fontSize: 12, color: "#4B5563", marginTop: 12 }}>Placeholder</div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <style>{`
+            @keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+            @media (max-width: 768px) {
+              .sb-tab-switcher { display: flex !important; }
+              .sb-grid { flex-direction: column !important; }
+              .sb-hide-mobile { display: none !important; }
+            }
+          `}</style>
         </div>
       </section>
 
@@ -251,12 +354,12 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Industry Carousel ── */}
+      {/* ── Industry Carousel (dark) ── */}
       {/* TODO: wire worker counts to live Firestore counts before launch */}
-      <section id="verticals" style={S.section}>
+      <section id="verticals" style={{ ...S.section, background: "#0A0A0A" }}>
         <div style={S.sectionInner}>
-          <h2 style={S.sectionH2}>Choose your industry.</h2>
-          <p style={S.sectionSub}>Every vertical has dedicated Digital Workers built by people who know the rules.</p>
+          <h2 style={{ ...S.sectionH2, color: "#ffffff" }}>Choose your industry.</h2>
+          <p style={{ ...S.sectionSub, color: "#9CA3AF" }}>Every vertical has dedicated Digital Workers built by people who know the rules.</p>
           <div style={S.carouselWrap}>
             <button onClick={() => scrollIndustry(-1)} style={{ ...S.carouselArrow, left: -4 }} aria-label="Scroll left">&#8249;</button>
             <div ref={industryRef} style={S.carouselTrack}>
@@ -292,8 +395,8 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Alex ── */}
-      <section style={S.section}>
+      {/* ── Alex (dark) ── */}
+      <section style={{ ...S.section, background: "#0A0A0A" }}>
         <div style={S.sectionInner}>
           <div style={S.alexCard}>
             <div style={S.alexAvatar}>
@@ -440,29 +543,70 @@ const S = {
     transition: "color 0.15s",
   },
 
-  // Top Workers
-  topWorkersSection: { padding: "40px 24px 0", background: "#ffffff" },
+  // Scoreboard (split: workers + games)
+  topWorkersSection: { padding: "64px 24px", background: "#0A0A0A" },
+  scoreboardGrid: {
+    display: "flex", gap: 32,
+  },
+  scoreboardCol: { flex: 1, minWidth: 0 },
+  scoreboardHideMobile: {},
+  scoreboardHeader: {
+    display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 4,
+  },
+  liveDot: {
+    width: 8, height: 8, borderRadius: "50%", background: "#22C55E",
+    display: "inline-block", animation: "pulse-dot 2s infinite",
+  },
+  liveLabel: {
+    fontSize: 11, fontWeight: 700, color: "#22C55E",
+    letterSpacing: "0.1em", textTransform: "uppercase",
+  },
+  scoreboardTitle: {
+    fontSize: 24, fontWeight: 800, color: "#ffffff", textAlign: "center", marginBottom: 4,
+  },
+  scoreboardSub: {
+    fontSize: 13, color: "#9CA3AF", textAlign: "center", marginBottom: 20,
+  },
+  tabSwitcher: {
+    display: "none", justifyContent: "center", gap: 0, marginBottom: 20,
+    background: "#1A1A1A", borderRadius: 10, padding: 3, maxWidth: 260, margin: "0 auto 20px",
+  },
+  tabBtn: {
+    flex: 1, padding: "8px 0", fontSize: 13, fontWeight: 600, color: "#6B7280",
+    background: "transparent", border: "none", borderRadius: 8, cursor: "pointer",
+    transition: "all 0.2s",
+  },
+  tabBtnActiveWorkers: { background: "#7c3aed", color: "#ffffff" },
+  tabBtnActiveGames: { background: "#16a34a", color: "#ffffff" },
   topWorkersScroll: {
-    display: "flex", gap: 16, overflowX: "auto", scrollSnapType: "x mandatory",
+    display: "flex", gap: 12, overflowX: "auto", scrollSnapType: "x mandatory",
     paddingBottom: 8, WebkitOverflowScrolling: "touch",
     msOverflowStyle: "none", scrollbarWidth: "none",
   },
   topWorkerCard: {
-    flex: "0 0 180px", scrollSnapAlign: "start", padding: "20px 16px",
-    borderRadius: 14, background: "#ffffff", border: "1px solid #e5e7eb",
+    flex: "0 0 160px", scrollSnapAlign: "start", padding: "18px 14px",
+    borderRadius: 14, background: "#1A1A1A", border: "1px solid #2D2D2D",
     textDecoration: "none", textAlign: "center", transition: "border-color 0.2s, box-shadow 0.2s",
     cursor: "pointer",
   },
-  topWorkerName: { fontSize: 14, fontWeight: 700, color: "#111827", marginBottom: 8 },
+  topWorkerName: { fontSize: 13, fontWeight: 700, color: "#ffffff", marginBottom: 4 },
   topWorkerVertical: {
-    display: "inline-block", fontSize: 11, fontWeight: 600, color: "#7c3aed",
-    background: "#f3e8ff", borderRadius: 12, padding: "2px 10px", marginBottom: 8,
+    display: "inline-block", fontSize: 10, fontWeight: 600, color: "#a78bfa",
+    background: "rgba(167,139,250,0.12)", borderRadius: 12, padding: "2px 10px", marginBottom: 8,
   },
-  topWorkerRating: { fontSize: 13, color: "#6b7280", marginBottom: 12 },
+  topWorkerRating: { fontSize: 13, color: "#f59e0b", marginBottom: 10 },
   topWorkerCta: {
-    fontSize: 13, fontWeight: 600, color: "#7c3aed",
-    border: "1px solid #7c3aed", borderRadius: 8, padding: "6px 16px",
+    fontSize: 12, fontWeight: 600, color: "#7c3aed",
+    border: "1px solid #7c3aed", borderRadius: 8, padding: "5px 14px",
     display: "inline-block",
+  },
+  gameCtaBtn: {
+    fontSize: 12, fontWeight: 600, color: "#16a34a",
+    border: "1px solid #16a34a", borderRadius: 8, padding: "5px 14px",
+    display: "inline-block",
+  },
+  gameCardComingSoon: {
+    opacity: 0.4, cursor: "default",
   },
 
   // Stats
@@ -503,20 +647,20 @@ const S = {
   carouselArrow: {
     position: "absolute", top: "50%", transform: "translateY(-50%)", zIndex: 5,
     width: 36, height: 36, borderRadius: "50%",
-    background: "rgba(255,255,255,0.95)", border: "1px solid #e2e8f0",
-    boxShadow: "0 2px 8px rgba(0,0,0,0.1)", cursor: "pointer",
+    background: "rgba(26,26,26,0.95)", border: "1px solid #2D2D2D",
+    boxShadow: "0 2px 8px rgba(0,0,0,0.3)", cursor: "pointer",
     display: "flex", alignItems: "center", justifyContent: "center",
-    fontSize: 24, color: "#475569", lineHeight: 1,
+    fontSize: 24, color: "#9CA3AF", lineHeight: 1,
   },
   verticalCard: {
     flex: "0 0 calc(25% - 12px)", minWidth: 220, scrollSnapAlign: "start",
     display: "block", padding: "24px 20px", borderRadius: 14,
-    background: "#ffffff", border: "1px solid #e5e7eb",
+    background: "#1A1A1A", border: "1px solid #2D2D2D",
     textDecoration: "none", transition: "border-color 0.2s, box-shadow 0.2s",
     cursor: "pointer", boxSizing: "border-box",
   },
-  verticalName: { fontSize: 18, fontWeight: 700, color: "#111827", marginBottom: 8 },
-  verticalDesc: { fontSize: 13, color: "#6b7280", lineHeight: 1.6, marginBottom: 16 },
+  verticalName: { fontSize: 18, fontWeight: 700, color: "#ffffff", marginBottom: 8 },
+  verticalDesc: { fontSize: 13, color: "#9CA3AF", lineHeight: 1.6, marginBottom: 16 },
   verticalFooter: { display: "flex", justifyContent: "space-between", alignItems: "center" },
   verticalCount: { fontSize: 12, color: "#7c3aed", fontWeight: 600 },
   verticalArrow: { fontSize: 16, color: "#7c3aed" },
@@ -531,7 +675,7 @@ const S = {
   // Alex
   alexCard: {
     maxWidth: 560, margin: "0 auto", padding: "32px 28px", borderRadius: 16,
-    background: "#faf5ff", border: "1px solid #e9d5ff",
+    background: "#1A1A1A", border: "1px solid #2D2D2D",
     textAlign: "center",
   },
   alexAvatar: {
@@ -539,9 +683,9 @@ const S = {
     background: "linear-gradient(135deg, #7c3aed 0%, #6366f1 50%, #0ea5e9 100%)",
     display: "flex", alignItems: "center", justifyContent: "center",
   },
-  alexName: { fontSize: 18, fontWeight: 700, color: "#111827" },
-  alexRole: { fontSize: 13, color: "#6b7280", marginBottom: 16 },
-  alexBody: { fontSize: 14, color: "#6b7280", lineHeight: 1.7, marginBottom: 20 },
+  alexName: { fontSize: 18, fontWeight: 700, color: "#ffffff" },
+  alexRole: { fontSize: 13, color: "#9CA3AF", marginBottom: 16 },
+  alexBody: { fontSize: 14, color: "#9CA3AF", lineHeight: 1.7, marginBottom: 20 },
 
   // Pricing
   trustBar: {
