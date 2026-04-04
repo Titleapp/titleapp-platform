@@ -3043,6 +3043,25 @@ ${nameGuidance}${authGuidance}`;
                   console.warn('[sandbox] Image generation failed:', imgErr.message);
                 }
 
+                // Persist asset to creator's library
+                let savedAssetId = null;
+                if (imageUrl && authUser?.uid) {
+                  try {
+                    const { saveAsset } = require("./services/assets");
+                    savedAssetId = await saveAsset(authUser.uid, {
+                      imageUrl,
+                      style: toolBlock.input.style || 'cartoon',
+                      assetType: 'character',
+                      prompt: toolBlock.input.prompt,
+                      projectId: sessionState.lastWorkerId || null,
+                      projectName: null,
+                      sessionId,
+                    });
+                  } catch (e) {
+                    console.warn('[sandbox] Asset save failed:', e.message);
+                  }
+                }
+
                 // Continue conversation — send tool result back to Claude for final text
                 messages.push({ role: 'assistant', content: aiResp.content });
                 messages.push({ role: 'user', content: [{
@@ -3267,6 +3286,7 @@ ${nameGuidance}${authGuidance}`;
               buildAnimation,
               ...(workerCard ? { cards: [workerCard] } : {}),
               ...(imageUrl ? { imageUrl } : {}),
+              ...(savedAssetId ? { assetId: savedAssetId } : {}),
               conversationState: 'dev_discovery',
             });
           } catch (e) {
@@ -6540,6 +6560,17 @@ These should be 2-3 realistic test scenarios the creator should try, derived fro
             updatedAt: nowServerTs(),
           });
         }
+        // Inject associated assets into build spec
+        try {
+          const { getAssociatedAssets } = require("./services/assets");
+          const buildAssets = await getAssociatedAssets(auth.user.uid, workerId);
+          if (buildAssets.length > 0) {
+            await workerRef.update({ buildAssets });
+          }
+        } catch (assetErr) {
+          console.warn("[worker1:intake] Asset injection failed:", assetErr.message);
+        }
+
         console.log(`[worker1:intake] Saved intake for ${workerId} in tenant ${tenantId}`);
         return res.json({ ok: true, workerId, buildPhase: "intake" });
       } catch (e) {
@@ -16159,6 +16190,56 @@ Analyze now:`;
         return await generateSuiteSlug(req, res);
       } catch (e) {
         console.error("suite-slug:generate failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ----------------------------
+    // ASSET MANAGEMENT
+    // ----------------------------
+
+    // POST /v1/asset:associate — Associate asset with a worker/game build
+    if (route === "/asset:associate" && method === "POST") {
+      const { assetId, workerId } = body;
+      if (!assetId) return jsonError(res, 400, "Missing assetId");
+      try {
+        const { associateAsset } = require("./services/assets");
+        await associateAsset(auth.user.uid, assetId, workerId || null);
+        return res.json({ ok: true });
+      } catch (e) {
+        console.error("asset:associate failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // POST /v1/asset:delete — Delete an asset from creator's library
+    if (route === "/asset:delete" && method === "POST") {
+      const { assetId } = body;
+      if (!assetId) return jsonError(res, 400, "Missing assetId");
+      try {
+        const { deleteAsset } = require("./services/assets");
+        await deleteAsset(auth.user.uid, assetId);
+        return res.json({ ok: true });
+      } catch (e) {
+        console.error("asset:delete failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // GET /v1/assets:list — List creator's assets with optional filters
+    if (route === "/assets:list" && method === "GET") {
+      try {
+        const { listAssets } = require("./services/assets");
+        const result = await listAssets(auth.user.uid, {
+          projectId: req.query.projectId || null,
+          assetType: req.query.assetType || null,
+          search: req.query.search || null,
+          cursor: req.query.cursor || null,
+          limit: parseInt(req.query.limit) || 20,
+        });
+        return res.json({ ok: true, ...result });
+      } catch (e) {
+        console.error("assets:list failed:", e);
         return jsonError(res, 500, e.message);
       }
     }

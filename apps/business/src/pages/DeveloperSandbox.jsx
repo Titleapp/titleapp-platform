@@ -6,6 +6,7 @@ import TestWorkerPanel from "../components/TestWorkerPanel";
 import CanvasComingSoon from "../components/sandbox/CanvasComingSoon";
 import { getPostLaunchMessage } from "../components/studio/PostLaunchAlex";
 import CanvasImagePanel from "../components/canvas/CanvasImagePanel";
+import MyImagesPanel from "../components/MyImagesPanel";
 import DistributionKit from "../components/DistributionKit";
 import CommsPreferences from "../components/CommsPreferences";
 import PublishPreflight from "../components/PublishPreflight";
@@ -73,12 +74,12 @@ const S = {
   // Chat panel
   chatPanel: { display: "flex", flexDirection: "column", borderRight: "1px solid #E2E8F0", background: "#FFFFFF" },
   chatHeader: { padding: "16px 20px", borderBottom: "1px solid #E2E8F0", display: "flex", alignItems: "center", gap: 10, position: "sticky", top: 0, zIndex: 10, background: "#FFFFFF" },
-  chatLogo: { fontSize: 14, fontWeight: 700, color: "#6B46C1" },
+  chatLogo: { fontSize: 14, fontWeight: 700, color: "var(--accent, #6B46C1)" },
   chatName: { fontSize: 13, fontWeight: 600, color: "#64748B" },
   chatMessages: { flex: 1, overflowY: "auto", padding: "16px 20px", display: "flex", flexDirection: "column", gap: 12 },
   chatInputWrap: { padding: "12px 16px", borderTop: "1px solid #E2E8F0", paddingBottom: "calc(12px + env(safe-area-inset-bottom, 0px))" },
   chatInput: { width: "100%", padding: "12px 16px", background: "#F8F9FC", border: "1px solid #E2E8F0", borderRadius: 10, color: "#1a1a2e", fontSize: 14, outline: "none", resize: "none" },
-  msgUser: { alignSelf: "flex-end", background: "#6B46C1", color: "white", padding: "10px 14px", borderRadius: "14px 14px 4px 14px", maxWidth: "85%", fontSize: 14, lineHeight: 1.5 },
+  msgUser: { alignSelf: "flex-end", background: "var(--accent, #6B46C1)", color: "white", padding: "10px 14px", borderRadius: "14px 14px 4px 14px", maxWidth: "85%", fontSize: 14, lineHeight: 1.5 },
   msgAssistant: { alignSelf: "flex-start", background: "#F4F4F8", color: "#1a1a2e", padding: "10px 14px", borderRadius: "14px 14px 14px 4px", maxWidth: "85%", fontSize: 14, lineHeight: 1.5 },
   typing: { alignSelf: "flex-start", color: "#64748B", fontSize: 13, padding: "8px 0" },
   // Right panel — workspace
@@ -87,11 +88,11 @@ const S = {
   // Status bar
   statusBar: { padding: "8px 20px", borderTop: "1px solid #E2E8F0", background: "#FFFFFF", display: "flex", alignItems: "center", gap: 16, fontSize: 12, color: "#64748B" },
   // Buttons
-  btnPrimary: { padding: "10px 20px", background: "#6B46C1", color: "white", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" },
+  btnPrimary: { padding: "10px 20px", background: "var(--accent, #6B46C1)", color: "white", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" },
   btnSecondary: { padding: "10px 20px", background: "#FFFFFF", color: "#64748B", border: "1px solid #E2E8F0", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" },
   // Divider
   divider: { width: 4, cursor: "col-resize", background: "#E2E8F0", flexShrink: 0, transition: "background 0.15s" },
-  dividerHover: { background: "#6B46C1" },
+  dividerHover: { background: "var(--accent, #6B46C1)" },
 };
 
 const FLOW_STEPS = ["Start", "Define", "Build", "Test", "Preflight", "Distribute", "Grow"];
@@ -351,8 +352,8 @@ function LifecycleCard({ flowStep }) {
         {stages.map(stage => {
           const isActive = stage.range.includes(flowStep);
           const isComplete = flowStep > Math.max(...stage.range);
-          const circleColor = isComplete ? "#10b981" : isActive ? "#6B46C1" : "#E2E8F0";
-          const textColor = isComplete ? "#10b981" : isActive ? "#6B46C1" : "#94A3B8";
+          const circleColor = isComplete ? "#10b981" : isActive ? "var(--accent, #6B46C1)" : "#E2E8F0";
+          const textColor = isComplete ? "#10b981" : isActive ? "var(--accent, #6B46C1)" : "#94A3B8";
           return (
             <div key={stage.num} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
               <div style={{
@@ -379,7 +380,7 @@ function LifecycleCard({ flowStep }) {
 }
 
 // ── Creator Studio Nav (left nav — Column 1) ──
-function CreatorStudioNav({ flowStep, workerCardData, worker, isMobile, onClose, style, workspaces = [], onSwitchWorkspace, onViewStep }) {
+function CreatorStudioNav({ flowStep, workerCardData, worker, isMobile, onClose, style, workspaces = [], onSwitchWorkspace, onViewStep, onShowMyImages, showMyImages }) {
   const baseStyle = isMobile ? S.leftNavMobile : S.leftNav;
   const [wsDropOpen, setWsDropOpen] = React.useState(false);
   return (
@@ -423,7 +424,7 @@ function CreatorStudioNav({ flowStep, workerCardData, worker, isMobile, onClose,
       {/* Header */}
       <div style={{ padding: "16px 16px 12px", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div>
-          <div style={{ fontSize: 14, fontWeight: 700, color: "#7c3aed" }}>Creator Studio</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: "var(--accent, #7c3aed)" }}>Creator Studio</div>
           <div style={{ fontSize: 11, color: "rgba(226,232,240,0.55)", marginTop: 2 }}>TitleApp</div>
         </div>
         {isMobile && (
@@ -443,10 +444,10 @@ function CreatorStudioNav({ flowStep, workerCardData, worker, isMobile, onClose,
         <div style={{ fontSize: 11, color: "rgba(226,232,240,0.45)", marginTop: 8, lineHeight: 1.5 }}>{workerCardData?.gameConfig?.isGame ? "Launch your first game to start earning." : "Launch your first worker to start earning."}</div>
       </div>
 
-      {/* My Workers / My Games */}
+      {/* My Workers */}
       <div style={S.navSection}>
-        <div style={S.navSectionTitle}>{workerCardData?.gameConfig?.isGame ? "My Games" : "My Workers"}</div>
-        {workerCardData ? (
+        <div style={S.navSectionTitle}>My Workers</div>
+        {workerCardData && !workerCardData?.gameConfig?.isGame ? (
           <div style={{ ...S.navItem, ...S.navItemActive, flexDirection: "column", alignItems: "flex-start", gap: 2 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <span style={{ fontSize: 13, fontWeight: 600 }}>{workerCardData.name}</span>
@@ -455,8 +456,8 @@ function CreatorStudioNav({ flowStep, workerCardData, worker, isMobile, onClose,
             {flowStep >= 6 ? (
               <button
                 onClick={() => onViewStep?.(2)}
-                title={workerCardData?.gameConfig?.isGame ? "Your game gets better every time you update it" : "Your worker gets better every time you update it"}
-                style={{ fontSize: 11, color: "#7c3aed", background: "none", border: "none", cursor: "pointer", padding: 0, fontWeight: 500 }}
+                title="Your worker gets better every time you update it"
+                style={{ fontSize: 11, color: "var(--accent, #7c3aed)", background: "none", border: "none", cursor: "pointer", padding: 0, fontWeight: 500 }}
               >
                 Update {workerCardData.name} &rarr;
               </button>
@@ -465,7 +466,33 @@ function CreatorStudioNav({ flowStep, workerCardData, worker, isMobile, onClose,
             )}
           </div>
         ) : (
-          <div style={{ fontSize: 12, color: "rgba(226,232,240,0.45)", padding: "6px 0" }}>No workers yet. Build your first one in the chat.</div>
+          <div style={{ fontSize: 12, color: "rgba(226,232,240,0.45)", padding: "6px 0" }}>No workers yet.</div>
+        )}
+      </div>
+
+      {/* My Games */}
+      <div style={S.navSection}>
+        <div style={S.navSectionTitle}>My Games</div>
+        {workerCardData?.gameConfig?.isGame ? (
+          <div style={{ ...S.navItem, ...S.navItemActive, flexDirection: "column", alignItems: "flex-start", gap: 2, borderColor: "rgba(22,163,74,0.35)", background: "rgba(22,163,74,0.16)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ fontSize: 13, fontWeight: 600 }}>{workerCardData.name}</span>
+              {flowStep >= 6 && <span style={{ fontSize: 10, color: "rgba(226,232,240,0.3)", fontWeight: 400 }}>v1.0</span>}
+            </div>
+            {flowStep >= 6 ? (
+              <button
+                onClick={() => onViewStep?.(2)}
+                title="Your game gets better every time you update it"
+                style={{ fontSize: 11, color: "#4ade80", background: "none", border: "none", cursor: "pointer", padding: 0, fontWeight: 500 }}
+              >
+                Update {workerCardData.name} &rarr;
+              </button>
+            ) : (
+              <div style={{ fontSize: 11, color: "rgba(226,232,240,0.45)" }}>Draft — Continue Building &rarr;</div>
+            )}
+          </div>
+        ) : (
+          <div style={{ fontSize: 12, color: "rgba(226,232,240,0.45)", padding: "6px 0" }}>No games yet.</div>
         )}
       </div>
 
@@ -473,6 +500,20 @@ function CreatorStudioNav({ flowStep, workerCardData, worker, isMobile, onClose,
       <div style={S.navSection}>
         <div style={S.navSectionTitle}>My Audience</div>
         <div style={{ fontSize: 12, color: "rgba(226,232,240,0.45)", padding: "6px 0" }}>Your subscribers will appear here once you launch.</div>
+      </div>
+
+      {/* My Images */}
+      <div style={S.navSection}>
+        <div
+          onClick={() => onShowMyImages && onShowMyImages()}
+          style={{
+            ...S.navItem,
+            ...(showMyImages ? S.navItemActive : {}),
+            cursor: "pointer",
+          }}
+        >
+          My Images
+        </div>
       </div>
 
       {/* Sessions */}
@@ -608,6 +649,8 @@ export default function DeveloperSandbox() {
   const [canvasAssets, setCanvasAssets] = useState([]);
   const [canvasStyle, setCanvasStyle] = useState(null);
   const [imageGenerating, setImageGenerating] = useState(false);
+  const [includedAssetIds, setIncludedAssetIds] = useState([]);
+  const [showMyImages, setShowMyImages] = useState(false);
 
   // Exchange counter (steps 1-2) — used for extractSpec fallback + progressive card
   const [exchangeCount, setExchangeCount] = useState(0);
@@ -1017,13 +1060,15 @@ export default function DeveloperSandbox() {
           }
         }
 
-        // Canvas image generation — T2 returns imageUrl
+        // Canvas image generation — T2 returns imageUrl + assetId
         if (result.imageUrl) {
           setCanvasAssets(prev => [...prev, {
             id: Date.now().toString(),
+            assetId: result.assetId || null,
             imageUrl: result.imageUrl,
             prompt: result.imagePrompt || "",
             style: canvasStyle || null,
+            savedToLibrary: !!result.assetId,
           }]);
           setImageGenerating(false);
         }
@@ -1164,6 +1209,63 @@ export default function DeveloperSandbox() {
     setWorkerCardData(editedData);
   }
 
+  // ── Asset action handlers ───────────────────────────────────
+  async function handleIncludeInBuild(asset, included) {
+    const token = await getFreshToken();
+    if (!token) return;
+    const assetId = asset.assetId || asset.id;
+    const wId = worker?.id || null;
+    if (included) {
+      setIncludedAssetIds(prev => [...prev, assetId]);
+    } else {
+      setIncludedAssetIds(prev => prev.filter(id => id !== assetId));
+    }
+    try {
+      await fetch(`${API_BASE}/api?path=/v1/asset:associate`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ assetId, workerId: included ? wId : null }),
+      });
+    } catch (e) {
+      console.warn("[sandbox] asset:associate failed:", e.message);
+    }
+  }
+
+  async function handleSaveToLibrary(asset) {
+    const token = await getFreshToken();
+    if (!token) return;
+    const assetId = asset.assetId || asset.id;
+    setCanvasAssets(prev => prev.map(a =>
+      (a.assetId === assetId || a.id === assetId) ? { ...a, savedToLibrary: true } : a
+    ));
+    try {
+      await fetch(`${API_BASE}/api?path=/v1/asset:associate`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ assetId, workerId: null }),
+      });
+    } catch (e) {
+      console.warn("[sandbox] save to library failed:", e.message);
+    }
+  }
+
+  async function handleDeleteAsset(asset) {
+    const token = await getFreshToken();
+    if (!token) return;
+    const assetId = asset.assetId || asset.id;
+    setCanvasAssets(prev => prev.filter(a => a.assetId !== assetId && a.id !== assetId));
+    setIncludedAssetIds(prev => prev.filter(id => id !== assetId));
+    try {
+      await fetch(`${API_BASE}/api?path=/v1/asset:delete`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ assetId }),
+      });
+    } catch (e) {
+      console.warn("[sandbox] asset:delete failed:", e.message);
+    }
+  }
+
   // ── Step 2 → Step 3: Worker Card approved ────────────────────
 
   async function handleWorkerCardApprove(cardData) {
@@ -1176,7 +1278,19 @@ export default function DeveloperSandbox() {
       addAssistantMessage("Before I can build this, I need a quick signup — just your name and email. This creates your workspace so your worker has a home.");
       return;
     }
-    await runBuildPipeline(cardData || workerCardData);
+    const finalCard = cardData || workerCardData;
+    // Game routing gate — games skip the worker1:intake pipeline
+    if (finalCard?.gameConfig?.isGame) {
+      setWorkerCardData(finalCard);
+      advanceToStep(3);
+      addAssistantMessage("Building your game now. Packaging game rules with your artwork...");
+      setTimeout(() => {
+        advanceToStep(4);
+        addAssistantMessage("Your game is ready to test. Try it out on the right.");
+      }, 3000);
+      return;
+    }
+    await runBuildPipeline(finalCard);
   }
 
   async function runBuildPipeline(cardData) {
@@ -1488,7 +1602,12 @@ export default function DeveloperSandbox() {
   const showRightPanel = true;
 
   return (
-    <div ref={rootRef} style={{ ...S.root, ...(isMobile ? { flexDirection: "column" } : {}) }}>
+    <div ref={rootRef} style={{
+      ...S.root,
+      ...(isMobile ? { flexDirection: "column" } : {}),
+      '--accent': workerCardData?.gameConfig?.isGame ? '#16A34A' : '#6B46C1',
+      '--accent-light': workerCardData?.gameConfig?.isGame ? '#DCFCE7' : 'rgba(107,70,193,0.08)',
+    }}>
       {/* Resume banner */}
       {resumeWorker && (
         <div style={{
@@ -1522,7 +1641,7 @@ export default function DeveloperSandbox() {
       {/* Column 1: Creator Studio Nav (desktop) + divider */}
       {!isMobile && (
         <>
-          <CreatorStudioNav flowStep={flowStep} workerCardData={workerCardData} worker={worker} isMobile={false} style={{ width: navWidthPx }} workspaces={sandboxWorkspaces} onSwitchWorkspace={handleSandboxSwitchWorkspace} onViewStep={viewStep} />
+          <CreatorStudioNav flowStep={flowStep} workerCardData={workerCardData} worker={worker} isMobile={false} style={{ width: navWidthPx }} workspaces={sandboxWorkspaces} onSwitchWorkspace={handleSandboxSwitchWorkspace} onViewStep={viewStep} onShowMyImages={() => setShowMyImages(prev => !prev)} showMyImages={showMyImages} />
           <div
             style={{ ...S.divider, ...(isDragging === "nav" || dividerHover === "nav" ? S.dividerHover : {}) }}
             onMouseDown={() => setIsDragging("nav")}
@@ -1536,7 +1655,7 @@ export default function DeveloperSandbox() {
       {isMobile && showMobileNav && (
         <>
           <div onClick={() => setShowMobileNav(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.3)", zIndex: 250 }} />
-          <CreatorStudioNav flowStep={flowStep} workerCardData={workerCardData} worker={worker} isMobile={true} onClose={() => setShowMobileNav(false)} workspaces={sandboxWorkspaces} onSwitchWorkspace={handleSandboxSwitchWorkspace} onViewStep={viewStep} />
+          <CreatorStudioNav flowStep={flowStep} workerCardData={workerCardData} worker={worker} isMobile={true} onClose={() => setShowMobileNav(false)} workspaces={sandboxWorkspaces} onSwitchWorkspace={handleSandboxSwitchWorkspace} onViewStep={viewStep} onShowMyImages={() => { setShowMyImages(prev => !prev); setShowMobileNav(false); }} showMyImages={showMyImages} />
         </>
       )}
 
@@ -1590,13 +1709,13 @@ export default function DeveloperSandbox() {
                   <button
                     onClick={() => handleWorkerCardApprove(workerCardData)}
                     style={{
-                      padding: "12px 28px", background: "#6B46C1", color: "white",
+                      padding: "12px 28px", background: "var(--accent, #6B46C1)", color: "white",
                       border: "none", borderRadius: 10, fontSize: 15, fontWeight: 600,
-                      cursor: "pointer", boxShadow: "0 2px 12px rgba(107,70,193,0.2)",
+                      cursor: "pointer", boxShadow: "0 2px 12px rgba(0,0,0,0.15)",
                       transition: "transform 0.15s, box-shadow 0.15s",
                     }}
-                    onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 4px 16px rgba(107,70,193,0.3)"; }}
-                    onMouseLeave={e => { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "0 2px 12px rgba(107,70,193,0.2)"; }}
+                    onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 4px 16px rgba(0,0,0,0.2)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "0 2px 12px rgba(0,0,0,0.15)"; }}
                   >
                     {msg.text} &rarr;
                   </button>
@@ -1919,7 +2038,7 @@ export default function DeveloperSandbox() {
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={handleChatKeyDown}
-              onFocus={e => { e.target.style.borderColor = "#6B46C1"; e.target.style.boxShadow = "0 0 0 3px rgba(107,70,193,0.12)"; }}
+              onFocus={e => { e.target.style.borderColor = "var(--accent, #6B46C1)"; e.target.style.boxShadow = "0 0 0 3px rgba(0,0,0,0.06)"; }}
               onBlur={e => { e.target.style.borderColor = "#E2E8F0"; e.target.style.boxShadow = "none"; }}
               placeholder={chatPlaceholder}
               rows={2}
@@ -1928,7 +2047,7 @@ export default function DeveloperSandbox() {
               onClick={handleSend}
               disabled={sending || (!input.trim() && pendingImages.length === 0)}
               style={{
-                padding: "10px 16px", background: input.trim() ? "#6B46C1" : "#E2E8F0",
+                padding: "10px 16px", background: input.trim() ? "var(--accent, #6B46C1)" : "#E2E8F0",
                 color: input.trim() ? "white" : "#94A3B8", border: "none", borderRadius: 8,
                 fontSize: 14, fontWeight: 600, cursor: input.trim() ? "pointer" : "default",
                 flexShrink: 0, transition: "background 0.2s",
@@ -1967,7 +2086,7 @@ export default function DeveloperSandbox() {
           onClick={() => setShowMobilePanel(true)}
           style={{
             position: "fixed", bottom: "calc(80px + env(safe-area-inset-bottom, 0px))", right: 16, zIndex: 100,
-            padding: "10px 16px", background: "#6B46C1", color: "white",
+            padding: "10px 16px", background: "var(--accent, #6B46C1)", color: "white",
             border: "none", borderRadius: 20, fontSize: 13, fontWeight: 600,
             cursor: "pointer", boxShadow: "0 4px 16px rgba(107,70,193,0.3)",
             minHeight: 44, minWidth: 44,
@@ -2002,7 +2121,7 @@ export default function DeveloperSandbox() {
           {/* Step indicator — simple header for steps 0-2, tabs for 3-7 */}
           {flowStep <= 2 ? (
             <div style={{ textAlign: "center", padding: "14px 16px", borderBottom: "1px solid #E2E8F0", background: "#FFFFFF" }}>
-              <div style={{ fontSize: 14, fontWeight: 600, color: "#6B46C1" }}>Your Workspace</div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: "var(--accent, #6B46C1)" }}>Your Workspace</div>
               <div style={{ fontSize: 12, color: "#94A3B8", marginTop: 2 }}>
                 {workerCardData ? "Your worker card is ready" :
                  exchangeCount === 0 ? "Follow the steps to build your Digital Worker" :
@@ -2014,13 +2133,13 @@ export default function DeveloperSandbox() {
               <button
                 onClick={() => { if (flowStep > 3 && flowStep - 1 <= maxFlowStep) viewStep(flowStep - 1); }}
                 disabled={flowStep <= 3}
-                style={{ background: "none", border: "none", fontSize: 18, color: flowStep > 3 ? "#6B46C1" : "#E2E8F0", cursor: flowStep > 3 ? "pointer" : "default", minWidth: 44, minHeight: 44, display: "flex", alignItems: "center", justifyContent: "center" }}
+                style={{ background: "none", border: "none", fontSize: 18, color: flowStep > 3 ? "var(--accent, #6B46C1)" : "#E2E8F0", cursor: flowStep > 3 ? "pointer" : "default", minWidth: 44, minHeight: 44, display: "flex", alignItems: "center", justifyContent: "center" }}
               >&larr;</button>
-              <span style={{ fontSize: 14, fontWeight: 600, color: "#6B46C1" }}>{flowStep - 2} {FLOW_STEPS[flowStep - 1]}</span>
+              <span style={{ fontSize: 14, fontWeight: 600, color: "var(--accent, #6B46C1)" }}>{flowStep - 2} {FLOW_STEPS[flowStep - 1]}</span>
               <button
                 onClick={() => { if (flowStep < maxFlowStep) viewStep(flowStep + 1); }}
                 disabled={flowStep >= maxFlowStep}
-                style={{ background: "none", border: "none", fontSize: 18, color: flowStep < maxFlowStep ? "#6B46C1" : "#E2E8F0", cursor: flowStep < maxFlowStep ? "pointer" : "default", minWidth: 44, minHeight: 44, display: "flex", alignItems: "center", justifyContent: "center" }}
+                style={{ background: "none", border: "none", fontSize: 18, color: flowStep < maxFlowStep ? "var(--accent, #6B46C1)" : "#E2E8F0", cursor: flowStep < maxFlowStep ? "pointer" : "default", minWidth: 44, minHeight: 44, display: "flex", alignItems: "center", justifyContent: "center" }}
               >&rarr;</button>
             </div>
           ) : (
@@ -2035,8 +2154,8 @@ export default function DeveloperSandbox() {
                     key={step}
                     style={{
                       padding: "12px 16px", fontSize: 13, fontWeight: 600,
-                      color: isActive ? "#6B46C1" : isComplete ? "#10b981" : stepNum <= maxFlowStep ? "#1a1a2e" : "#94A3B8",
-                      borderBottom: `2px solid ${isActive ? "#6B46C1" : "transparent"}`,
+                      color: isActive ? "var(--accent, #6B46C1)" : isComplete ? "#10b981" : stepNum <= maxFlowStep ? "#1a1a2e" : "#94A3B8",
+                      borderBottom: `2px solid ${isActive ? "var(--accent, #6B46C1)" : "transparent"}`,
                       display: "flex", alignItems: "center", gap: 6,
                       cursor: isReachable && !isActive ? "pointer" : "default",
                       opacity: stepNum > maxFlowStep + 1 ? 0.4 : 1,
@@ -2045,7 +2164,7 @@ export default function DeveloperSandbox() {
                   >
                     <span style={{
                       width: 20, height: 20, borderRadius: 10, display: "inline-flex", alignItems: "center", justifyContent: "center",
-                      background: isActive ? "#6B46C1" : isComplete ? "#10b981" : "#E2E8F0",
+                      background: isActive ? "var(--accent, #6B46C1)" : isComplete ? "#10b981" : "#E2E8F0",
                       color: isActive || isComplete ? "white" : "#94A3B8", fontSize: 11, fontWeight: 700,
                     }}>
                       {isComplete ? "\u2713" : i + 1}
@@ -2071,6 +2190,11 @@ export default function DeveloperSandbox() {
           )}
 
           <div ref={rightPanelRef} style={S.tabContent}>
+            {/* My Images panel — shown when toggled from nav */}
+            {showMyImages && (
+              <MyImagesPanel onClose={() => setShowMyImages(false)} />
+            )}
+
             {/* Steps 0-2 — Lifecycle card + Progressive card / Draft card */}
             {flowStep <= 2 && (
               <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
@@ -2122,6 +2246,11 @@ export default function DeveloperSandbox() {
                       onUseAs={(asset, role) => {
                         setCanvasAssets(prev => prev.map(a => a === asset ? { ...a, useAs: role } : a));
                       }}
+                      onIncludeInBuild={handleIncludeInBuild}
+                      onSaveToLibrary={handleSaveToLibrary}
+                      onDelete={handleDeleteAsset}
+                      currentWorkerId={worker?.id}
+                      includedAssetIds={includedAssetIds}
                     />
                   </div>
                 )}
@@ -2196,7 +2325,7 @@ export default function DeveloperSandbox() {
             {workerCardData?.name && <span>{workerCardData.name}</span>}
             <span style={{ marginLeft: "auto", display: "flex", gap: 3 }}>
               {FLOW_STEPS.slice(2).map((s, i) => (
-                <span key={s} style={{ width: 24, height: 4, borderRadius: 2, background: i + 3 <= maxFlowStep ? "#6B46C1" : "#E2E8F0" }} />
+                <span key={s} style={{ width: 24, height: 4, borderRadius: 2, background: i + 3 <= maxFlowStep ? "var(--accent, #6B46C1)" : "#E2E8F0" }} />
               ))}
             </span>
           </div>

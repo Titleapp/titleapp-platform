@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useCallback, useRef } from "react";
 import CanvasImageCard from "./CanvasImageCard";
 
 const STYLE_CHIPS = [
@@ -26,9 +26,35 @@ export default function CanvasImagePanel({
   isGenerating,
   workerCardData,
   onUseAs,
+  onIncludeInBuild,
+  onSaveToLibrary,
+  onDelete,
+  currentWorkerId,
+  includedAssetIds = [],
 }) {
   const displayAssets = assets.slice(-6);
   const autoStyle = selectedStyle || getDefaultStyle(workerCardData);
+
+  // Undo toast state
+  const [undoToast, setUndoToast] = useState(null);
+  const undoTimerRef = useRef(null);
+
+  const handleDelete = useCallback((asset) => {
+    // Optimistic delete — call parent
+    if (onDelete) onDelete(asset);
+    // Show undo toast
+    setUndoToast(asset);
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+    undoTimerRef.current = setTimeout(() => setUndoToast(null), 5000);
+  }, [onDelete]);
+
+  const handleUndo = useCallback(() => {
+    if (!undoToast) return;
+    // Re-add asset — parent should handle re-insertion
+    if (onSaveToLibrary) onSaveToLibrary(undoToast);
+    setUndoToast(null);
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+  }, [undoToast, onSaveToLibrary]);
   const showStyleSelector = displayAssets.length > 0;
 
   return (
@@ -49,9 +75,9 @@ export default function CanvasImagePanel({
               style={{
                 flex: 1, padding: "8px 6px", textAlign: "center", cursor: "pointer",
                 borderRadius: 8, fontSize: 12, fontWeight: 600,
-                background: autoStyle === chip.id ? "rgba(107,70,193,0.08)" : "#f8fafc",
-                border: `1px solid ${autoStyle === chip.id ? "#6B46C1" : "#e2e8f0"}`,
-                color: autoStyle === chip.id ? "#6B46C1" : "#64748b",
+                background: autoStyle === chip.id ? "var(--accent-light, rgba(107,70,193,0.08))" : "#f8fafc",
+                border: `1px solid ${autoStyle === chip.id ? "var(--accent, #6B46C1)" : "#e2e8f0"}`,
+                color: autoStyle === chip.id ? "var(--accent, #6B46C1)" : "#64748b",
               }}
             >
               {chip.label}
@@ -68,7 +94,17 @@ export default function CanvasImagePanel({
         marginBottom: 16,
       }}>
         {displayAssets.map((asset, i) => (
-          <CanvasImageCard key={asset.id || i} asset={asset} onUseAs={onUseAs} />
+          <CanvasImageCard
+            key={asset.id || i}
+            asset={asset}
+            onUseAs={onUseAs}
+            onIncludeInBuild={onIncludeInBuild}
+            onSaveToLibrary={onSaveToLibrary}
+            onDelete={handleDelete}
+            includedInBuild={includedAssetIds.includes(asset.assetId || asset.id)}
+            savedToLibrary={asset.savedToLibrary || false}
+            showLedgerButton={!!asset.assetId}
+          />
         ))}
 
         {/* Generating placeholder */}
@@ -116,6 +152,28 @@ export default function CanvasImagePanel({
           <div style={{ fontSize: 14, color: "#94a3b8" }}>
             Ask Alex to generate images — they'll appear here.
           </div>
+        </div>
+      )}
+
+      {/* Undo delete toast */}
+      {undoToast && (
+        <div style={{
+          position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)",
+          background: "#1a1a2e", color: "#fff", padding: "10px 20px", borderRadius: 10,
+          display: "flex", alignItems: "center", gap: 12, zIndex: 1000,
+          boxShadow: "0 4px 16px rgba(0,0,0,0.2)", fontSize: 13,
+        }}>
+          <span>Image deleted.</span>
+          <button
+            onClick={handleUndo}
+            style={{
+              background: "transparent", border: "1px solid rgba(255,255,255,0.3)",
+              color: "#fff", padding: "4px 12px", borderRadius: 6,
+              fontSize: 12, fontWeight: 600, cursor: "pointer",
+            }}
+          >
+            Undo
+          </button>
         </div>
       )}
 
