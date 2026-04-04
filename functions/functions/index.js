@@ -476,9 +476,19 @@ async function signupInternal({ email, name, accountType, companyName, companyDe
   const userRef = db.collection("users").doc(userRecord.uid);
   const userSnap = await userRef.get();
   if (!userSnap.exists) {
+    // Derive firstName + avatarInitials from name (46.3 USER-001)
+    const nameParts = (name || '').trim().split(/\s+/).filter(Boolean);
+    const firstName = nameParts[0] || null;
+    const avatarInitials = nameParts.length >= 2
+      ? (nameParts[0][0] + nameParts[nameParts.length - 1][0]).toUpperCase()
+      : nameParts[0] ? nameParts[0][0].toUpperCase() : null;
+
     await userRef.set({
       email,
       name: name || null,
+      ...(firstName && { firstName }),
+      ...(avatarInitials && { avatarInitials }),
+      activeProfileId: 'default',
       accountType: accountType || "consumer",
       companyName: companyName || null,
       companyDescription: companyDescription || null,
@@ -3025,7 +3035,10 @@ ${nameGuidance}${authGuidance}`;
                     creatorId: authUser?.uid || 'anonymous',
                     vertical: 'sandbox',
                   });
-                  imageUrl = imgResult.imageUrl;
+                  if (imgResult.error) {
+                    console.warn('[sandbox] Image generation error:', imgResult.error, imgResult.message);
+                  }
+                  imageUrl = imgResult.imageUrl || null;
                 } catch (imgErr) {
                   console.warn('[sandbox] Image generation failed:', imgErr.message);
                 }

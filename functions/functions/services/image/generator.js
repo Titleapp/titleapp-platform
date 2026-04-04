@@ -25,7 +25,7 @@ function getDb() { return admin.firestore(); }
 const { fal } = require("@fal-ai/client");
 fal.config({ credentials: process.env.FAL_API_KEY });
 
-const DEFAULT_MODEL = "fal-ai/flux/turbo";
+const DEFAULT_MODEL = "fal-ai/flux/schnell";
 const MAX_IMAGES_PER_WORKER = 50;
 const GENERATION_TIMEOUT_MS = 30000;
 
