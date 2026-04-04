@@ -284,36 +284,29 @@ export default function LandingPage() {
               </div>
             </div>
 
-            {/* Right: Top Games — green accent */}
-            <div className={scoreboardTab !== "games" ? "sb-hide-mobile" : ""} style={S.scoreboardCol}>
-              <div style={S.scoreboardHeader}>
-                <span style={S.liveDot} />
-                <span style={S.liveLabel}>Live</span>
-              </div>
-              <h2 style={S.scoreboardTitle}>Top Games</h2>
-              <p style={S.scoreboardSub}>Built for kids. Free to play.</p>
-              <div
-                ref={gamesScrollRef}
-                style={S.topWorkersScroll}
-                onMouseEnter={() => { gamesHovered.current = true; }}
-                onMouseLeave={() => { gamesHovered.current = false; }}
-              >
-                {TOP_GAMES.map((g, i) => (
-                  <div key={g.name} data-scard="" style={{ ...S.topWorkerCard, ...(g.comingSoon ? S.gameCardComingSoon : {}), borderColor: g.comingSoon ? "#2D2D2D" : "#2D2D2D" }}>
-                    <div style={{ fontSize: 12, fontWeight: 800, color: g.comingSoon ? "#4B5563" : "#6B7280", marginBottom: 6 }}>#{i + 1}</div>
-                    <div style={{ ...S.topWorkerName, color: g.comingSoon ? "#4B5563" : "#ffffff" }}>{g.name}</div>
-                    {!g.comingSoon && (
-                      <>
-                        <div style={{ fontSize: 11, color: "#6B7280", marginBottom: 4 }}>{g.genre} &middot; {g.audience}</div>
-                        <div style={{ fontSize: 11, color: "#6B7280", marginBottom: 8 }}>{g.plays} plays</div>
-                        <div style={S.gameCtaBtn}>{g.cta}</div>
-                      </>
-                    )}
-                    {g.comingSoon && (
-                      <div style={{ fontSize: 12, color: "#4B5563", marginTop: 12 }}>Placeholder</div>
-                    )}
-                  </div>
-                ))}
+            {/* Right: Games — compact "Coming Soon" teaser */}
+            <div className={scoreboardTab !== "games" ? "sb-hide-mobile" : ""} style={S.gamesTeaser}>
+              <div style={S.gamesTeaserInner}>
+                <div style={S.gamesTeaserIcon}>
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polygon points="5 3 19 12 5 21 5 3" />
+                  </svg>
+                </div>
+                <div style={S.gamesTeaserBadge}>Coming Soon</div>
+                <h3 style={S.gamesTeaserTitle}>TitleApp Games</h3>
+                <p style={S.gamesTeaserDesc}>Educational games for kids. Built on the same platform. Free to play.</p>
+                <div style={S.gamesTeaserPreview}>
+                  {TOP_GAMES.filter(g => !g.comingSoon).map((g, i) => (
+                    <div key={g.name} style={S.gamesTeaserItem}>
+                      <span style={S.gamesTeaserRank}>#{i + 1}</span>
+                      <div>
+                        <div style={S.gamesTeaserItemName}>{g.name}</div>
+                        <div style={S.gamesTeaserItemMeta}>{g.genre} &middot; {g.audience}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div style={S.gamesTeaserNotify}>Notify me when games launch</div>
               </div>
             </div>
           </div>
@@ -548,7 +541,7 @@ const S = {
   scoreboardGrid: {
     display: "flex", gap: 32,
   },
-  scoreboardCol: { flex: 1, minWidth: 0 },
+  scoreboardCol: { flex: 7, minWidth: 0 },
   scoreboardHideMobile: {},
   scoreboardHeader: {
     display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 4,
@@ -607,6 +600,49 @@ const S = {
   },
   gameCardComingSoon: {
     opacity: 0.4, cursor: "default",
+  },
+  gamesTeaser: {
+    flex: 3, minWidth: 0, display: "flex", alignItems: "center", justifyContent: "center",
+  },
+  gamesTeaserInner: {
+    width: "100%", padding: "28px 24px", borderRadius: 16,
+    background: "#1A1A1A", border: "1px solid #2D2D2D", textAlign: "center",
+  },
+  gamesTeaserIcon: {
+    width: 56, height: 56, borderRadius: "50%", margin: "0 auto 12px",
+    background: "rgba(22,163,106,0.1)", border: "1px solid rgba(22,163,106,0.2)",
+    display: "flex", alignItems: "center", justifyContent: "center",
+  },
+  gamesTeaserBadge: {
+    display: "inline-block", fontSize: 11, fontWeight: 700, color: "#16a34a",
+    background: "rgba(22,163,106,0.1)", border: "1px solid rgba(22,163,106,0.2)",
+    borderRadius: 20, padding: "3px 12px", marginBottom: 12,
+    textTransform: "uppercase", letterSpacing: "0.05em",
+  },
+  gamesTeaserTitle: {
+    fontSize: 20, fontWeight: 800, color: "#ffffff", marginBottom: 6,
+  },
+  gamesTeaserDesc: {
+    fontSize: 13, color: "#9CA3AF", lineHeight: 1.6, marginBottom: 20,
+  },
+  gamesTeaserPreview: {
+    display: "flex", flexDirection: "column", gap: 8, marginBottom: 20,
+  },
+  gamesTeaserItem: {
+    display: "flex", alignItems: "center", gap: 10, padding: "8px 12px",
+    background: "#111111", borderRadius: 10, textAlign: "left",
+  },
+  gamesTeaserRank: {
+    fontSize: 12, fontWeight: 800, color: "#16a34a", flexShrink: 0,
+  },
+  gamesTeaserItemName: {
+    fontSize: 13, fontWeight: 600, color: "#ffffff",
+  },
+  gamesTeaserItemMeta: {
+    fontSize: 11, color: "#6B7280",
+  },
+  gamesTeaserNotify: {
+    fontSize: 12, color: "#4B5563", fontStyle: "italic",
   },
 
   // Stats
