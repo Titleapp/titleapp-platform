@@ -256,6 +256,7 @@ async function verifyMagicLink(req, res) {
 
         await db.collection("users").doc(uid).set({
           email,
+          activeProfileId: 'default',
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
           source: "magic_link",
           sourceWorkerId: linkData.workerId,

@@ -141,10 +141,11 @@ async function verifyOtp(req, res) {
     if (e.code === "auth/user-not-found") {
       const newUser = await admin.auth().createUser({ phoneNumber: phone });
       uid = newUser.uid;
-      // Create user doc
+      // Create user doc (46.3 USER-001: add activeProfileId)
       const newUserDoc = {
         phone,
         tier: "free",
+        activeProfileId: 'default',
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         authMethod: "phone",
       };
