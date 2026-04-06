@@ -2463,6 +2463,15 @@ Message 8+: If they seem interested, gently offer to set it up. "I can have this
           if (!sessionState.devHistory) sessionState.devHistory = [];
           sessionState.step = 'dev_discovery';
 
+          // Persist creatorPath in session state — never let it go undefined once set
+          if (body.creatorPath && !sessionState.creatorPath) {
+            sessionState.creatorPath = body.creatorPath;
+          }
+          // Infer from workerCardData if missing
+          if (!sessionState.creatorPath && sessionState.workerGameConfig?.isGame) {
+            sessionState.creatorPath = 'game-casual';
+          }
+
           // Seed devName from returning user's auth profile (sent by frontend)
           // Frontend sends creatorName (sandbox) or returnUserName (developer landing)
           if (!sessionState.devName && (body.returnUserName || body.creatorName)) {
@@ -2821,9 +2830,16 @@ Message 8+: If they seem interested, gently offer to set it up. "I can have this
           }
 
           // Sandbox-specific prompt for the DIY Digital Worker builder environment
-          const creatorPathCtx = body.creatorPath
-            ? `\nCREATOR MODE: The creator selected "${body.creatorPath}". ${body.creatorPath.startsWith('game') ? 'They are building a GAME, not a Digital Worker. Use "game" instead of "Digital Worker" throughout. Ask about game mechanics, player experience, rules, and artwork. The [WORKER_SPEC] block still works the same way -- include gameConfig: { isGame: true, gameMode: "' + (body.creatorPath === 'game-casual' ? 'casual' : 'training') + '" } in the spec JSON.' : 'They are building a Digital Worker.'}\n`
-            : '';
+          const resolvedPath = sessionState.creatorPath || body.creatorPath || null;
+          const isGamePath = resolvedPath && resolvedPath.startsWith('game');
+          const gameMode = resolvedPath === 'game-casual' ? 'casual' : 'training';
+          const workerName = sessionState.devWorkerName || '';
+          let creatorPathCtx = '';
+          if (isGamePath) {
+            creatorPathCtx = `\nCRITICAL — GAME MODE: You are helping ${sessionState.devName || 'the creator'} build a GAME${workerName ? ' called "' + workerName + '"' : ''}. This is a game, not a Digital Worker. NEVER refer to it as a Digital Worker. NEVER suggest switching to the worker pipeline. Always say "game." Ask about game mechanics, player experience, rules, and artwork. The [WORKER_SPEC] block still works the same way -- include "gameConfig": { "isGame": true, "gameMode": "${gameMode}" } in the spec JSON.\n`;
+          } else if (resolvedPath === 'worker') {
+            creatorPathCtx = '\nCREATOR MODE: The creator is building a Digital Worker.\n';
+          }
           const sandboxSystemPrompt = `You are Alex. You help people build and publish AI workers and games -- no coding needed. You are inside the Vibe Coding Sandbox on TitleApp.
 ${creatorPathCtx}
 TERMINOLOGY: Always say "Digital Worker" for workers. For games, say "game."
@@ -3146,6 +3162,13 @@ ${nameGuidance}${authGuidance}`;
                 const workerName = String(workerSpec.name || 'My Worker').substring(0, 200);
                 const workerDesc = String(workerSpec.description || '').substring(0, 2000);
                 const workerCategory = workerSpec.category || 'custom';
+
+                // Persist worker/game name and gameConfig in session for prompt reinforcement
+                sessionState.devWorkerName = workerName;
+                if (workerSpec.gameConfig?.isGame) {
+                  sessionState.workerGameConfig = workerSpec.gameConfig;
+                  if (!sessionState.creatorPath) sessionState.creatorPath = 'game-casual';
+                }
 
                 if (targetTenantId) {
                   // Create Worker — auto-fix then validate through unified schema gate

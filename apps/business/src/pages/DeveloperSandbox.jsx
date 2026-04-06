@@ -39,7 +39,7 @@ class PanelErrorBoundary extends React.Component {
           <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
             <button
               onClick={() => { this.setState({ hasError: false, error: null, errorInfo: null }); if (this.props.onRecover) this.props.onRecover(); }}
-              style={{ padding: "10px 24px", background: "#6B46C1", color: "white", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer" }}
+              style={{ padding: "10px 24px", background: "var(--accent, #6B46C1)", color: "white", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer" }}
             >
               {this.props.recoverLabel || "Go back"}
             </button>
@@ -176,7 +176,7 @@ function TestPanelFallback({ worker, workerCardData, onReady, onBack }) {
       <div style={{ fontSize: 14, color: "#64748B", marginBottom: 16 }}>Reconnecting to {name}.</div>
       <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
         <button onClick={() => { const w = { ...(worker || {}), id: "wkr_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8), name: workerCardData?.name }; onReady(w); }}
-          style={{ padding: "10px 24px", background: "#6B46C1", color: "white", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+          style={{ padding: "10px 24px", background: "var(--accent, #6B46C1)", color: "white", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
           Retry
         </button>
         <button onClick={onBack}
@@ -199,15 +199,13 @@ function InlineDraftCard({ cardData, onContinue, onDownload, onShare, onEdit }) 
     setEditing(false);
   }
 
-  const price = cardData.pricingTier === 1 ? "$29" : cardData.pricingTier === 3 ? "$79" : "$49";
-
   return (
     <div style={{
       alignSelf: "flex-start", maxWidth: "90%", borderRadius: 16, overflow: "hidden",
-      border: "1px solid rgba(107,70,193,0.2)", boxShadow: "0 2px 12px rgba(107,70,193,0.08)",
+      border: "1px solid color-mix(in srgb, var(--accent, #6B46C1) 20%, transparent)", boxShadow: "0 2px 12px color-mix(in srgb, var(--accent, #6B46C1) 8%, transparent)",
     }}>
       <div style={{
-        background: "linear-gradient(135deg, #6B46C1, #7c3aed)", padding: "16px 20px",
+        background: `linear-gradient(135deg, var(--accent, #6B46C1), color-mix(in srgb, var(--accent, #6B46C1) 85%, white))`, padding: "16px 20px",
         display: "flex", justifyContent: "space-between", alignItems: "center",
       }}>
         <span style={{ color: "white", fontWeight: 700, fontSize: 15 }}>{editing ? editName : cardData.name}</span>
@@ -231,7 +229,7 @@ function InlineDraftCard({ cardData, onContinue, onDownload, onShare, onEdit }) 
               style={{ padding: "8px 10px", border: "1px solid #E2E8F0", borderRadius: 6, fontSize: 13, color: "#1a1a2e", resize: "vertical" }}
             />
             <div style={{ display: "flex", gap: 6 }}>
-              <button onClick={handleSave} style={{ padding: "6px 14px", background: "#6B46C1", color: "white", border: "none", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Save</button>
+              <button onClick={handleSave} style={{ padding: "6px 14px", background: "var(--accent, #6B46C1)", color: "white", border: "none", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Save</button>
               <button onClick={() => setEditing(false)} style={{ padding: "6px 14px", background: "#F8F9FC", color: "#64748B", border: "1px solid #E2E8F0", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Cancel</button>
             </div>
           </div>
@@ -240,17 +238,17 @@ function InlineDraftCard({ cardData, onContinue, onDownload, onShare, onEdit }) 
             <div style={{ fontSize: 13, color: "#64748B", lineHeight: 1.6, marginBottom: 12 }}>{cardData.description}</div>
             <div style={{ display: "flex", gap: 12, fontSize: 12, color: "#94A3B8", marginBottom: 12 }}>
               {cardData.vertical && <span>{cardData.vertical}</span>}
-              <span>{price}/mo</span>
+              <span>Free to build and test</span>
             </div>
           </>
         )}
         <div style={{ fontSize: 12, color: "#10b981", fontWeight: 600, marginBottom: 14 }}>Saved to your Vault.</div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <button onClick={onContinue} style={{ padding: "8px 16px", background: "#6B46C1", color: "white", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Continue Building</button>
+          <button onClick={onContinue} style={{ padding: "8px 16px", background: "var(--accent, #6B46C1)", color: "white", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Continue Building</button>
           <button onClick={onDownload} style={{ padding: "8px 16px", background: "#FFFFFF", color: "#64748B", border: "1px solid #E2E8F0", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Download PDF</button>
           <button onClick={onShare} style={{ padding: "8px 16px", background: "#FFFFFF", color: "#64748B", border: "1px solid #E2E8F0", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Share Link</button>
           {!editing && (
-            <button onClick={() => setEditing(true)} style={{ padding: "8px 16px", background: "#F8F9FC", color: "#6B46C1", border: "1px solid rgba(107,70,193,0.2)", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Edit</button>
+            <button onClick={() => setEditing(true)} style={{ padding: "8px 16px", background: "#F8F9FC", color: "var(--accent, #6B46C1)", border: "1px solid color-mix(in srgb, var(--accent, #6B46C1) 20%, transparent)", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Edit</button>
           )}
         </div>
       </div>
@@ -311,11 +309,11 @@ function ProgressiveCard({ exchangeCount, progressiveFields, workerCardData }) {
             </div>
           )}
 
-          {/* Category + Price */}
+          {/* Category */}
           {exchangeCount >= 2 ? (
             <div style={{ display: "flex", gap: 12, fontSize: 12, color: "#94A3B8", marginBottom: 12 }}>
               <span>{category || "Custom"}</span>
-              <span>$49/mo</span>
+              <span>Free to build and test</span>
             </div>
           ) : (
             <div style={{ display: "flex", gap: 12, marginBottom: 12 }}>
@@ -337,8 +335,13 @@ function ProgressiveCard({ exchangeCount, progressiveFields, workerCardData }) {
 }
 
 // ── Lifecycle Reference Card (right panel — "How This Works") ──
-function LifecycleCard({ flowStep }) {
-  const stages = [
+function LifecycleCard({ flowStep, isGame }) {
+  const stages = isGame ? [
+    { num: 1, title: "Build", desc: "Describe your game. I'll shape the rules, characters, and mechanics.", range: [0, 1, 2] },
+    { num: 2, title: "Test", desc: "Play your own game. See it in action. Refine until it's fun.", range: [3, 4] },
+    { num: 3, title: "Launch", desc: "Publish your game. Get it in front of players.", range: [5] },
+    { num: 4, title: "Grow", desc: "Track plays, collect feedback, push updates.", range: [6, 7] },
+  ] : [
     { num: 1, title: "Build", desc: "Tell me what you know. I'll shape it into a worker. Use your existing ChatGPT or Claude work if you have it.", range: [0, 1, 2] },
     { num: 2, title: "Test", desc: "Talk to your own worker. See it in action. Refine it until it's right.", range: [3, 4] },
     { num: 3, title: "Launch", desc: "Set your price. Launch it. Get it in front of the right people.", range: [5] },
@@ -373,7 +376,9 @@ function LifecycleCard({ flowStep }) {
         })}
       </div>
       <div style={{ fontSize: 11, color: "#94A3B8", fontStyle: "italic", marginTop: 14, lineHeight: 1.5 }}>
-        One hour or a few months — your worker is always saved exactly where you left it.
+        {isGame
+          ? "One hour or a few months — your game is always saved exactly where you left it."
+          : "One hour or a few months — your worker is always saved exactly where you left it."}
       </div>
     </div>
   );
@@ -1269,15 +1274,7 @@ export default function DeveloperSandbox() {
   // ── Step 2 → Step 3: Worker Card approved ────────────────────
 
   async function handleWorkerCardApprove(cardData) {
-    const token = localStorage.getItem("ID_TOKEN");
-    if (!token || token === "undefined" || token === "null") {
-      if (signupPromptShown) return; // guard: never fire twice
-      setSignupPromptShown(true);
-      setPendingCardData(cardData || workerCardData);
-      setShowAuthPrompt(true);
-      addAssistantMessage("Before I can build this, I need a quick signup — just your name and email. This creates your workspace so your worker has a home.");
-      return;
-    }
+    // Auth gate deferred to Launch step — Build and Test are always free
     const finalCard = cardData || workerCardData;
     // Game routing gate — games skip the worker1:intake pipeline
     if (finalCard?.gameConfig?.isGame) {
@@ -1457,6 +1454,13 @@ export default function DeveloperSandbox() {
   // ── Step 4 → Step 5: Test complete → Preflight ───────────
 
   function handleTestComplete() {
+    // Auth gate — publishing requires an account
+    const token = localStorage.getItem("ID_TOKEN");
+    if (!token) {
+      setShowAuthPrompt(true);
+      addAssistantMessage("Before we move to Preflight, let's create your account. Sign up below — it's free.");
+      return;
+    }
     advanceToStep(5);
     addAssistantMessage("Testing complete. Now let's get the paperwork done — review each gate on the right and I'll submit for admin review when you're ready.");
   }
@@ -1763,8 +1767,8 @@ export default function DeveloperSandbox() {
                 <button
                   key={wid}
                   style={{
-                    padding: "7px 14px", background: "rgba(107,70,193,0.08)", color: "#6B46C1",
-                    border: "1px solid rgba(107,70,193,0.15)", borderRadius: 20, fontSize: 13,
+                    padding: "7px 14px", background: "var(--accent-light, rgba(107,70,193,0.08))", color: "var(--accent, #6B46C1)",
+                    border: "1px solid color-mix(in srgb, var(--accent, #6B46C1) 15%, transparent)", borderRadius: 20, fontSize: 13,
                     fontWeight: 500, cursor: "pointer", transition: "background 0.15s",
                   }}
                   onClick={() => {
@@ -1870,8 +1874,8 @@ export default function DeveloperSandbox() {
                 <button
                   key={chip}
                   style={{
-                    padding: "7px 14px", background: "rgba(107,70,193,0.08)", color: "#6B46C1",
-                    border: "1px solid rgba(107,70,193,0.15)", borderRadius: 20, fontSize: 13,
+                    padding: "7px 14px", background: "var(--accent-light, rgba(107,70,193,0.08))", color: "var(--accent, #6B46C1)",
+                    border: "1px solid color-mix(in srgb, var(--accent, #6B46C1) 15%, transparent)", borderRadius: 20, fontSize: 13,
                     cursor: "pointer", fontWeight: 500, whiteSpace: "nowrap",
                     transition: "background 0.2s",
                   }}
@@ -1891,7 +1895,7 @@ export default function DeveloperSandbox() {
               <button
                 onClick={handleTestComplete}
                 style={{
-                  padding: "10px 24px", background: surveyComplete ? "#6B46C1" : "#94A3B8", color: "white",
+                  padding: "10px 24px", background: surveyComplete ? "var(--accent, #6B46C1)" : "#94A3B8", color: "white",
                   border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer",
                 }}
               >
@@ -1903,8 +1907,8 @@ export default function DeveloperSandbox() {
           {/* Inline signup — rendered as a distinct card, not a chat bubble */}
           {showAuthPrompt && (
             <div style={{
-              alignSelf: "center", background: "#FFFFFF", border: "2px solid #6B46C1", borderRadius: 16,
-              padding: "24px 20px", maxWidth: 360, width: "100%", boxShadow: "0 4px 24px rgba(107,70,193,0.12)",
+              alignSelf: "center", background: "#FFFFFF", border: "2px solid var(--accent, #6B46C1)", borderRadius: 16,
+              padding: "24px 20px", maxWidth: 360, width: "100%", boxShadow: "0 4px 24px color-mix(in srgb, var(--accent, #6B46C1) 12%, transparent)",
             }}>
               <div style={{ fontSize: 16, fontWeight: 700, color: "#1a1a2e", marginBottom: 4 }}>Create your workspace</div>
               <div style={{ fontSize: 13, color: "#64748B", lineHeight: 1.5, marginBottom: 16 }}>
@@ -1931,7 +1935,7 @@ export default function DeveloperSandbox() {
                 <button
                   type="submit"
                   disabled={authLoading}
-                  style={{ padding: "12px 20px", background: "#6B46C1", color: "white", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: authLoading ? "wait" : "pointer", opacity: authLoading ? 0.7 : 1 }}
+                  style={{ padding: "12px 20px", background: "var(--accent, #6B46C1)", color: "white", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: authLoading ? "wait" : "pointer", opacity: authLoading ? 0.7 : 1 }}
                 >
                   {authLoading ? "Creating your workspace..." : "Sign up and build"}
                 </button>
@@ -1953,7 +1957,7 @@ export default function DeveloperSandbox() {
               </div>
               <button
                 onClick={handleSessionReauth}
-                style={{ padding: "10px 20px", background: "#6B46C1", color: "white", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer" }}
+                style={{ padding: "10px 20px", background: "var(--accent, #6B46C1)", color: "white", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer" }}
               >
                 Sign in
               </button>
@@ -1989,7 +1993,7 @@ export default function DeveloperSandbox() {
                   onClick={handleBridgeSend}
                   disabled={!bridgePasteBack.trim()}
                   style={{
-                    padding: "8px 16px", background: bridgePasteBack.trim() ? "#6B46C1" : "#E2E8F0",
+                    padding: "8px 16px", background: bridgePasteBack.trim() ? "var(--accent, #6B46C1)" : "#E2E8F0",
                     color: bridgePasteBack.trim() ? "white" : "#94A3B8", border: "none", borderRadius: 8,
                     fontSize: 13, fontWeight: 600, cursor: bridgePasteBack.trim() ? "pointer" : "default",
                   }}
@@ -2121,10 +2125,17 @@ export default function DeveloperSandbox() {
           {/* Step indicator — simple header for steps 0-2, tabs for 3-7 */}
           {flowStep <= 2 ? (
             <div style={{ textAlign: "center", padding: "14px 16px", borderBottom: "1px solid #E2E8F0", background: "#FFFFFF" }}>
-              <div style={{ fontSize: 14, fontWeight: 600, color: "var(--accent, #6B46C1)" }}>Your Workspace</div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: "var(--accent, #6B46C1)" }}>Your Workspace</div>
+                {(creatorPath && creatorPath.startsWith('game')) || workerCardData?.gameConfig?.isGame ? (
+                  <span style={{ fontSize: 10, fontWeight: 700, color: "#16A34A", background: "#DCFCE7", padding: "2px 8px", borderRadius: 10 }}>GAME</span>
+                ) : creatorPath === 'worker' || workerCardData ? (
+                  <span style={{ fontSize: 10, fontWeight: 700, color: "var(--accent, #6B46C1)", background: "var(--accent-light, rgba(107,70,193,0.08))", padding: "2px 8px", borderRadius: 10 }}>WORKER</span>
+                ) : null}
+              </div>
               <div style={{ fontSize: 12, color: "#94A3B8", marginTop: 2 }}>
-                {workerCardData ? "Your worker card is ready" :
-                 exchangeCount === 0 ? "Follow the steps to build your Digital Worker" :
+                {workerCardData ? (workerCardData.gameConfig?.isGame ? "Your game card is ready" : "Your worker card is ready") :
+                 exchangeCount === 0 ? (creatorPath && creatorPath.startsWith('game') ? "Follow the steps to build your game" : "Follow the steps to build your Digital Worker") :
                  `Exchange ${exchangeCount} of ~5`}
               </div>
             </div>
@@ -2198,7 +2209,7 @@ export default function DeveloperSandbox() {
             {/* Steps 0-2 — Lifecycle card + Progressive card / Draft card */}
             {flowStep <= 2 && (
               <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-                <LifecycleCard flowStep={flowStep} />
+                <LifecycleCard flowStep={flowStep} isGame={!!(workerCardData?.gameConfig?.isGame || (creatorPath && creatorPath.startsWith('game')))} />
                 {workerCardData ? (
                   <InlineDraftCard
                     cardData={workerCardData}
@@ -2214,6 +2225,28 @@ export default function DeveloperSandbox() {
                     workerCardData={workerCardData}
                   />
                 ) : null}
+
+                {/* Canvas images — render below card during Build phase (steps 0-2) */}
+                {(canvasAssets.length > 0 || imageGenerating) && (
+                  <div style={{ marginTop: 20 }}>
+                    <CanvasImagePanel
+                      assets={canvasAssets}
+                      isGenerating={imageGenerating}
+                      selectedStyle={canvasStyle}
+                      onStyleSelect={setCanvasStyle}
+                      workerCardData={workerCardData}
+                      onRetry={() => { setInput("Generate another image"); requestAnimationFrame(() => handleSend()); }}
+                      onUseAs={(asset, role) => {
+                        setCanvasAssets(prev => prev.map(a => a === asset ? { ...a, useAs: role } : a));
+                      }}
+                      onIncludeInBuild={handleIncludeInBuild}
+                      onSaveToLibrary={handleSaveToLibrary}
+                      onDelete={handleDeleteAsset}
+                      currentWorkerId={worker?.id}
+                      includedAssetIds={includedAssetIds}
+                    />
+                  </div>
+                )}
               </div>
             )}
 
