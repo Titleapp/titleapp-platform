@@ -3022,6 +3022,7 @@ ${nameGuidance}${authGuidance}`;
 
             // Handle tool use (image generation in sandbox)
             let imageUrl = null;
+            let savedAssetId = null;
             let aiText = '';
             const hasToolUse = aiResp.content.some(b => b.type === 'tool_use');
 
@@ -3047,7 +3048,6 @@ ${nameGuidance}${authGuidance}`;
                 }
 
                 // Persist asset to creator's library
-                let savedAssetId = null;
                 if (imageUrl && authUser?.uid) {
                   try {
                     const { saveAsset } = require("./services/assets");
