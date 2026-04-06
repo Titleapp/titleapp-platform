@@ -280,11 +280,11 @@ function ProgressiveCard({ exchangeCount, progressiveFields, workerCardData }) {
       <style>{`@keyframes shimmer { 0% { background-position: 200% 0 } 100% { background-position: -200% 0 } }`}</style>
       <div style={{
         borderRadius: 16, overflow: "hidden",
-        border: "1px solid rgba(107,70,193,0.2)", boxShadow: "0 2px 12px rgba(107,70,193,0.08)",
+        border: "1px solid color-mix(in srgb, var(--accent, #6B46C1) 20%, transparent)", boxShadow: "0 2px 12px color-mix(in srgb, var(--accent, #6B46C1) 8%, transparent)",
       }}>
         {/* Header */}
         <div style={{
-          background: "linear-gradient(135deg, #6B46C1, #7c3aed)", padding: "16px 20px",
+          background: `linear-gradient(135deg, var(--accent, #6B46C1), color-mix(in srgb, var(--accent, #6B46C1) 85%, white))`, padding: "16px 20px",
           display: "flex", justifyContent: "space-between", alignItems: "center",
         }}>
           {name ? (
@@ -1605,8 +1605,8 @@ export default function DeveloperSandbox() {
     <div ref={rootRef} style={{
       ...S.root,
       ...(isMobile ? { flexDirection: "column" } : {}),
-      '--accent': workerCardData?.gameConfig?.isGame ? '#16A34A' : '#6B46C1',
-      '--accent-light': workerCardData?.gameConfig?.isGame ? '#DCFCE7' : 'rgba(107,70,193,0.08)',
+      '--accent': (workerCardData?.gameConfig?.isGame || (creatorPath && creatorPath.startsWith('game'))) ? '#16A34A' : '#6B46C1',
+      '--accent-light': (workerCardData?.gameConfig?.isGame || (creatorPath && creatorPath.startsWith('game'))) ? '#DCFCE7' : 'rgba(107,70,193,0.08)',
     }}>
       {/* Resume banner */}
       {resumeWorker && (
@@ -1783,8 +1783,8 @@ export default function DeveloperSandbox() {
             <div style={{ display: "flex", gap: 6, marginTop: 4, flexWrap: "wrap" }}>
               <button
                 style={{
-                  padding: "7px 14px", background: "rgba(107,70,193,0.08)", color: "#6B46C1",
-                  border: "1px solid rgba(107,70,193,0.15)", borderRadius: 20, fontSize: 13,
+                  padding: "7px 14px", background: "var(--accent-light, rgba(107,70,193,0.08))", color: "var(--accent, #6B46C1)",
+                  border: "1px solid color-mix(in srgb, var(--accent, #6B46C1) 15%, transparent)", borderRadius: 20, fontSize: 13,
                   fontWeight: 500, cursor: "pointer", transition: "background 0.15s",
                 }}
                 onClick={() => {
@@ -1798,8 +1798,8 @@ export default function DeveloperSandbox() {
               </button>
               <button
                 style={{
-                  padding: "7px 14px", background: "rgba(107,70,193,0.08)", color: "#6B46C1",
-                  border: "1px solid rgba(107,70,193,0.15)", borderRadius: 20, fontSize: 13,
+                  padding: "7px 14px", background: "var(--accent-light, rgba(107,70,193,0.08))", color: "var(--accent, #6B46C1)",
+                  border: "1px solid color-mix(in srgb, var(--accent, #6B46C1) 15%, transparent)", borderRadius: 20, fontSize: 13,
                   fontWeight: 500, cursor: "pointer", transition: "background 0.15s",
                 }}
                 onClick={() => {
@@ -1821,8 +1821,8 @@ export default function DeveloperSandbox() {
             <div style={{ display: "flex", gap: 6, marginTop: 4, flexWrap: "wrap" }}>
               <button
                 style={{
-                  padding: "7px 14px", background: "rgba(107,70,193,0.08)", color: "#6B46C1",
-                  border: "1px solid rgba(107,70,193,0.15)", borderRadius: 20, fontSize: 13,
+                  padding: "7px 14px", background: "var(--accent-light, rgba(107,70,193,0.08))", color: "var(--accent, #6B46C1)",
+                  border: "1px solid color-mix(in srgb, var(--accent, #6B46C1) 15%, transparent)", borderRadius: 20, fontSize: 13,
                   fontWeight: 500, cursor: "pointer", transition: "background 0.15s",
                 }}
                 onClick={() => {
@@ -1836,8 +1836,8 @@ export default function DeveloperSandbox() {
               </button>
               <button
                 style={{
-                  padding: "7px 14px", background: "rgba(107,70,193,0.08)", color: "#6B46C1",
-                  border: "1px solid rgba(107,70,193,0.15)", borderRadius: 20, fontSize: 13,
+                  padding: "7px 14px", background: "var(--accent-light, rgba(107,70,193,0.08))", color: "var(--accent, #6B46C1)",
+                  border: "1px solid color-mix(in srgb, var(--accent, #6B46C1) 15%, transparent)", borderRadius: 20, fontSize: 13,
                   fontWeight: 500, cursor: "pointer", transition: "background 0.15s",
                 }}
                 onClick={() => {

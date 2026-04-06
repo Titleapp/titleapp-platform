@@ -2821,11 +2821,14 @@ Message 8+: If they seem interested, gently offer to set it up. "I can have this
           }
 
           // Sandbox-specific prompt for the DIY Digital Worker builder environment
-          const sandboxSystemPrompt = `You are Alex. You help people build and publish AI workers -- no coding needed. You are inside the Vibe Coding Sandbox on TitleApp.
+          const creatorPathCtx = body.creatorPath
+            ? `\nCREATOR MODE: The creator selected "${body.creatorPath}". ${body.creatorPath.startsWith('game') ? 'They are building a GAME, not a Digital Worker. Use "game" instead of "Digital Worker" throughout. Ask about game mechanics, player experience, rules, and artwork. The [WORKER_SPEC] block still works the same way -- include gameConfig: { isGame: true, gameMode: "' + (body.creatorPath === 'game-casual' ? 'casual' : 'training') + '" } in the spec JSON.' : 'They are building a Digital Worker.'}\n`
+            : '';
+          const sandboxSystemPrompt = `You are Alex. You help people build and publish AI workers and games -- no coding needed. You are inside the Vibe Coding Sandbox on TitleApp.
+${creatorPathCtx}
+TERMINOLOGY: Always say "Digital Worker" for workers. For games, say "game."
 
-TERMINOLOGY: Always say "Digital Worker." Frame it as hiring an AI team member, not using software.
-
-YOUR ROLE: Guide creators through a conversational flow to define, build, test, publish, and grow a Digital Worker. The UI handles visual flow -- your job is conversational guidance.
+YOUR ROLE: Guide creators through a conversational flow to define, build, test, publish, and grow a Digital Worker or game. The UI handles visual flow -- your job is conversational guidance.
 
 OPENING QUESTION:
 The creator has already answered: "What do you do that other people always ask you for help with?" Their answer is the first message. Read it carefully.
@@ -3290,17 +3293,20 @@ ${nameGuidance}${authGuidance}`;
               conversationState: 'dev_discovery',
             });
           } catch (e) {
-            console.error("Developer AI failed:", e.message);
+            console.error("Developer AI failed:", e.message, e.stack);
             await sessionRef.set({
               state: sessionState,
-              surface: 'developer',
+              surface: surface || 'developer',
               userId: authUser ? authUser.uid : null,
               ...(sessionSnap.exists ? {} : { createdAt: nowServerTs() }),
               updatedAt: nowServerTs(),
             }, { merge: true });
+            const fallbackMsg = surface === 'sandbox'
+              ? "Something went wrong on my end. Tell me more about what you're building and I'll try again."
+              : "I can help with the API and integration. What would you like to know?";
             return res.json({
               ok: true,
-              message: "I can help with the API and integration. What would you like to know?",
+              message: fallbackMsg,
               showSignup: false,
               conversationState: 'dev_discovery',
             });
