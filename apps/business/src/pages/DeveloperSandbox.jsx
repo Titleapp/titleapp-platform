@@ -996,6 +996,28 @@ export default function DeveloperSandbox() {
     }
     addUserMessage(text);
 
+    // Path question short-answer detection — when path chips are shown,
+    // catch typed answers like "game", "a game", "worker", "digital worker".
+    const lowerTrim = text.trim().toLowerCase();
+    const PATH_KEYWORDS = ["game", "games", "a game", "the game", "worker", "workers", "digital worker", "a worker"];
+    const isPathAnswer = !creatorPath && PATH_KEYWORDS.includes(lowerTrim);
+    if (isPathAnswer) {
+      const wantsGame = lowerTrim.includes("game");
+      setCreatorPath(wantsGame ? "game-casual" : "worker");
+      setShowPathChips(false);
+      setShowGameTypeChips(false);
+      // Skip the rest of handleSend — fire the appropriate follow-up locally and bail.
+      if (wantsGame) {
+        setTimeout(() => {
+          addAssistantMessage("Is this a casual game (a pub quiz, a treasure hunt, a company trivia game) or a training and certification game (exam prep, compliance simulation)?");
+          setShowGameTypeChips(true);
+        }, 500);
+      } else {
+        setTimeout(() => addAssistantMessage("So \u2014 what do you want to build?"), 500);
+      }
+      return;
+    }
+
     // First user message advances flowStep 0 → 1
     if (flowStep === 0) {
       advanceToStep(1);
@@ -1003,8 +1025,14 @@ export default function DeveloperSandbox() {
       setProgressiveFields(prev => ({ ...prev, description: text.length > 30 ? text.substring(0, 120) + "..." : text }));
     }
 
-    // Capture name from first response if we don't have it
-    if (!creatorName && messages.length <= 4 && text.length < 40 && !text.includes("?")) {
+    // Capture name from first response if we don't have it.
+    // Skip path keywords and very short tokens — they're answers, not names.
+    const NAME_BLOCKLIST = ["game", "games", "worker", "workers", "yes", "no", "ok", "okay", "sure", "huh", "what"];
+    const looksLikeName = text.length >= 2
+      && text.length < 40
+      && !text.includes("?")
+      && !NAME_BLOCKLIST.includes(lowerTrim);
+    if (!creatorName && messages.length <= 4 && looksLikeName) {
       captureName(text);
     }
 
