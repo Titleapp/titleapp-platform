@@ -988,9 +988,21 @@ export default function DeveloperSandbox() {
       setProgressiveFields(prev => ({ ...prev, category: "Custom" }));
     }
 
+    // Auto-detect game intent from conversation if creatorPath is not yet set.
+    // Triggers when the user clearly references building a game without clicking the chip.
+    let effectiveCreatorPath = creatorPath;
+    if (!creatorPath && newExchangeCount <= 3) {
+      const lower = text.toLowerCase();
+      const gamePattern = /\b(build|make|create|design|develop|prototyp\w*)\w*\s+(a|an|my|the|some)?\s*(video.?)?game\b|\bgame\s+(idea|concept|design|prototype|for\s+\w+)\b|\bmultiplayer\b|\bgameplay\b|\bvideo.?game\b/i;
+      if (gamePattern.test(lower)) {
+        setCreatorPath('game-casual');
+        effectiveCreatorPath = 'game-casual';
+      }
+    }
+
     // extractSpec fallback — force card generation after 5+ exchanges with no card
     // Skip for game paths — games don't use WORKER_SPEC, they use a different build flow
-    const isGamePath = creatorPath && creatorPath.startsWith('game');
+    const isGamePath = effectiveCreatorPath && effectiveCreatorPath.startsWith('game');
     const shouldExtractSpec = flowStep <= 2 && newExchangeCount >= 5 && !workerCardData && !isGamePath;
 
     setSending(true);
@@ -1011,7 +1023,7 @@ export default function DeveloperSandbox() {
         method: "POST",
         headers,
         body: JSON.stringify({
-          sessionId, surface: "sandbox", userInput: text, flowStep: Math.max(flowStep, 1), vertical, creatorPath,
+          sessionId, surface: "sandbox", userInput: text, flowStep: Math.max(flowStep, 1), vertical, creatorPath: effectiveCreatorPath,
           ...(creatorName ? { creatorName } : {}),
           ...(shouldExtractSpec ? { extractSpec: true } : {}),
           ...(images.length > 0 ? { imageData: images.map(img => ({ base64: img.base64, mediaType: img.mediaType })) } : {}),
@@ -1021,6 +1033,11 @@ export default function DeveloperSandbox() {
       const reply = result.message || result.reply;
       if (result.ok && reply) {
         addAssistantMessage(reply);
+
+        // Sync creatorPath from backend (e.g. backend detected game intent we missed)
+        if (result.creatorPath && !creatorPath) {
+          setCreatorPath(result.creatorPath);
+        }
 
         // Handle worker creation from backend (chat-driven build via [WORKER_SPEC])
         if (result.buildAnimation && result.cards && result.cards.length > 0) {

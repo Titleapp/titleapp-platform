@@ -2471,6 +2471,17 @@ Message 8+: If they seem interested, gently offer to set it up. "I can have this
           if (!sessionState.creatorPath && sessionState.workerGameConfig?.isGame) {
             sessionState.creatorPath = 'game-casual';
           }
+          // Auto-detect game intent from user input on early exchanges
+          // (handles users who skip the Game chip and just type "build a game")
+          if (!sessionState.creatorPath && surface === 'sandbox' && userInput) {
+            const userMsgCount = (sessionState.devHistory || []).filter(h => h.role === 'user').length + 1;
+            if (userMsgCount <= 3) {
+              const gamePattern = /\b(build|make|create|design|develop|prototyp\w*)\w*\s+(a|an|my|the|some)?\s*(video.?)?game\b|\bgame\s+(idea|concept|design|prototype|for\s+\w+)\b|\bmultiplayer\b|\bgameplay\b|\bvideo.?game\b/i;
+              if (gamePattern.test(userInput)) {
+                sessionState.creatorPath = 'game-casual';
+              }
+            }
+          }
 
           // Seed devName from returning user's auth profile (sent by frontend)
           // Frontend sends creatorName (sandbox) or returnUserName (developer landing)
@@ -3318,6 +3329,7 @@ ${nameGuidance}${authGuidance}`;
               ...(workerCard ? { cards: [workerCard] } : {}),
               ...(imageUrl ? { imageUrl } : {}),
               ...(savedAssetId ? { assetId: savedAssetId } : {}),
+              ...(sessionState.creatorPath ? { creatorPath: sessionState.creatorPath } : {}),
               conversationState: 'dev_discovery',
             });
           } catch (e) {
