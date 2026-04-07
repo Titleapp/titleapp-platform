@@ -15,9 +15,14 @@ export default function GameBoardPanel({
   assets = [],
   includedAssetIds = [],
   workerCardData,
+  device = "mobile",
 }) {
   const [loadingTimedOut, setLoadingTimedOut] = useState(false);
   const [plays, setPlays] = useState(0);
+  // CODEX 47.1 Fix 5 — character select → playing flow.
+  // "select" shows the character grid + Start Game; "playing" shows the active board.
+  const [phase, setPhase] = useState("select");
+  const [selectedCharIdx, setSelectedCharIdx] = useState(0);
 
   // Build the asset payload — included assets first, fall back to all canvas assets
   const { backgrounds, characters, icons, displayed } = useMemo(() => {
@@ -73,6 +78,20 @@ export default function GameBoardPanel({
     );
   }
 
+  // Character noun — derived from game type so the label fits the game
+  const characterNoun = (() => {
+    const t = (workerCardData?.gameConfig?.characterNoun || workerCardData?.name || "").toLowerCase();
+    if (/shark/.test(t)) return "Shark";
+    if (/pilot|plane|jet/.test(t)) return "Pilot";
+    if (/robot/.test(t)) return "Robot";
+    if (/hero/.test(t)) return "Hero";
+    if (/animal|pet|creature/.test(t)) return "Creature";
+    return "Character";
+  })();
+
+  // Device-aware container — desktop wider, mobile narrower
+  const containerMaxWidth = device === "desktop" ? 900 : device === "tablet" ? 720 : 480;
+
   return (
     <div style={{
       position: "relative",
@@ -85,6 +104,8 @@ export default function GameBoardPanel({
       minHeight: 520,
       padding: 24,
       color: "#fff",
+      maxWidth: containerMaxWidth,
+      margin: "0 auto",
     }}>
       {/* Header bar */}
       <div style={{
@@ -93,7 +114,7 @@ export default function GameBoardPanel({
       }}>
         <div>
           <div style={{ fontSize: 11, fontWeight: 700, opacity: 0.7, letterSpacing: 1, textTransform: "uppercase" }}>
-            Game Board
+            {phase === "select" ? `Choose Your ${characterNoun}` : "Game Board"}
           </div>
           <div style={{ fontSize: 18, fontWeight: 800 }}>{gameName}</div>
         </div>
@@ -103,45 +124,88 @@ export default function GameBoardPanel({
           padding: "6px 14px", borderRadius: 20,
           fontSize: 12, fontWeight: 700,
         }}>
-          Plays: {plays}
+          {phase === "select" ? device.toUpperCase() : `Plays: ${plays}`}
         </div>
       </div>
 
-      {/* Character grid */}
-      {characters.length > 0 && (
+      {/* Character grid (select phase) */}
+      {phase === "select" && characters.length > 0 && (
         <div style={{
           display: "grid",
           gridTemplateColumns: `repeat(auto-fill, minmax(${characters.length === 1 ? 220 : 140}px, 1fr))`,
           gap: 14,
-          marginBottom: icons.length > 0 ? 20 : 0,
+          marginBottom: 20,
         }}>
-          {characters.map((c, i) => (
-            <div
-              key={c.id || c.assetId || i}
-              onClick={() => setPlays(p => p + 1)}
-              style={{
-                background: "rgba(255,255,255,0.95)",
-                borderRadius: 10,
-                padding: 8,
-                cursor: "pointer",
-                boxShadow: "0 4px 12px rgba(0,0,0,0.25)",
-                transition: "transform 0.15s ease",
-              }}
-              onMouseEnter={e => e.currentTarget.style.transform = "scale(1.04)"}
-              onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
-            >
-              <img
-                src={c.imageUrl}
-                alt={c.prompt || "Character"}
-                className={`ta-anim-${c.animationConfig?.defaultAnimation || "idle"}`}
+          {characters.map((c, i) => {
+            const isSel = selectedCharIdx === i;
+            return (
+              <div
+                key={c.id || c.assetId || i}
+                onClick={() => setSelectedCharIdx(i)}
                 style={{
-                  width: "100%", display: "block",
-                  borderRadius: 6, objectFit: "contain",
-                  maxHeight: 180,
+                  background: "rgba(255,255,255,0.95)",
+                  borderRadius: 10,
+                  padding: 8,
+                  cursor: "pointer",
+                  boxShadow: isSel ? "0 0 0 4px var(--accent, #16A34A), 0 4px 12px rgba(0,0,0,0.25)" : "0 4px 12px rgba(0,0,0,0.25)",
+                  transition: "all 0.15s ease",
                 }}
-              />
-            </div>
-          ))}
+              >
+                <img
+                  src={c.imageUrl}
+                  alt={c.prompt || "Character"}
+                  className={`ta-anim-${c.animationConfig?.defaultAnimation || "idle"}`}
+                  style={{
+                    width: "100%", display: "block",
+                    borderRadius: 6, objectFit: "contain",
+                    maxHeight: 180,
+                  }}
+                />
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Playing phase: selected character only, larger, with tap-to-play */}
+      {phase === "playing" && characters.length > 0 && (
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: 20 }}>
+          <div
+            onClick={() => setPlays(p => p + 1)}
+            style={{
+              background: "rgba(255,255,255,0.95)",
+              borderRadius: 12,
+              padding: 12,
+              cursor: "pointer",
+              boxShadow: "0 8px 24px rgba(0,0,0,0.35)",
+              maxWidth: 280,
+            }}
+          >
+            <img
+              src={(characters[selectedCharIdx] || characters[0]).imageUrl}
+              alt="Player character"
+              className={`ta-anim-${(characters[selectedCharIdx] || characters[0]).animationConfig?.defaultAnimation || "idle"}`}
+              style={{ width: "100%", display: "block", borderRadius: 8, objectFit: "contain", maxHeight: 240 }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Start Game button — select phase only */}
+      {phase === "select" && characters.length > 0 && (
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: 20 }}>
+          <button
+            onClick={() => setPhase("playing")}
+            style={{
+              padding: "12px 32px", fontSize: 15, fontWeight: 800,
+              background: "var(--accent, #16A34A)", color: "#fff",
+              border: "none", borderRadius: 10, cursor: "pointer",
+              boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
+              letterSpacing: 0.5, textTransform: "uppercase",
+            }}
+          >
+            Start Game
+          </button>
         </div>
       )}
 

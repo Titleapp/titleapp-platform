@@ -2850,9 +2850,45 @@ Message 8+: If they seem interested, gently offer to set it up. "I can have this
           const isGamePath = resolvedPath && resolvedPath.startsWith('game');
           const gameMode = resolvedPath === 'game-casual' ? 'casual' : 'training';
           const workerName = sessionState.devWorkerName || '';
+
+          // CODEX 47.1 Fix 4 — persist gameSessionPhase + game rules into session state
+          // so they survive across requests, then surface them in the prompt.
+          if (body.gameSessionPhase) {
+            sessionState.gameSessionPhase = body.gameSessionPhase;
+          }
+          if (body.workerCardData?.gameRules) {
+            sessionState.gameRulesAnswers = {
+              ...(sessionState.gameRulesAnswers || {}),
+              ...body.workerCardData.gameRules,
+            };
+          }
+          if (body.workerCardData?.gameConfig && !sessionState.workerGameConfig) {
+            sessionState.workerGameConfig = body.workerCardData.gameConfig;
+          }
+          if (body.workerCardData?.name && !sessionState.devWorkerName) {
+            sessionState.devWorkerName = body.workerCardData.name;
+          }
+
           let creatorPathCtx = '';
           if (isGamePath) {
             creatorPathCtx = `\nCRITICAL — GAME MODE: You are helping ${sessionState.devName || 'the creator'} build a GAME${workerName ? ' called "' + workerName + '"' : ''}. This is a game, not a Digital Worker. NEVER refer to it as a Digital Worker. NEVER suggest switching to the worker pipeline. Always say "game." Ask about game mechanics, player experience, rules, and artwork. The [WORKER_SPEC] block still works the same way -- include "gameConfig": { "isGame": true, "gameMode": "${gameMode}" } in the spec JSON.\n`;
+
+            // CODEX 47.1 Fix 4 — inject locked-in game rules so Alex never asks again.
+            const rules = sessionState.gameRulesAnswers || {};
+            const ruleParts = [];
+            if (rules.turnMechanic)       ruleParts.push(`Turn mechanic: ${rules.turnMechanic}`);
+            if (rules.winLoseConditions)  ruleParts.push(`Win/lose: ${rules.winLoseConditions}`);
+            if (rules.scoring)            ruleParts.push(`Scoring: ${rules.scoring}`);
+            if (rules.safetyCompliance)   ruleParts.push(`Safety/compliance: ${rules.safetyCompliance}`);
+            if (ruleParts.length > 0) {
+              creatorPathCtx += `\nLOCKED-IN GAME RULES (do not ask about these — they are already defined):\n- ${ruleParts.join('\n- ')}\n\nWhen the creator asks about scoring, prizes, win conditions, or any rule, REFERENCE the rules above. Never say "we haven't defined that yet" or ask the rules again.\n`;
+            }
+
+            // CODEX 47.1 Fix 3 — proactively lead with the asset list when artwork phase opens.
+            if (sessionState.gameSessionPhase === 'artwork') {
+              const gameTitle = workerName || 'this game';
+              creatorPathCtx += `\nARTWORK SESSION ACTIVE: The creator just entered the artwork phase for ${gameTitle}. Your VERY FIRST response in artwork mode must list the four asset types this game needs, derived from the locked-in rules above:\n1. Backgrounds / Settings — the world the game lives in\n2. Characters — playable and non-playable\n3. Icons / Items — power-ups, pickups, prizes\n4. Score display — how points appear on screen\n\nAfter listing, ask: "Want to start with backgrounds or characters?" Do NOT ask the creator what assets they need — you already know based on the rules. Lead with confidence.\n`;
+            }
           } else if (resolvedPath === 'worker') {
             creatorPathCtx = '\nCREATOR MODE: The creator is building a Digital Worker.\n';
           }

@@ -147,6 +147,58 @@ async function w1Api(endpoint, payload) {
   }
 }
 
+// CODEX 47.1 Fix 6 — One-tap device picker shown before game test mode launches.
+// Default to Mobile if creator skips. Selection persists in session state.
+function DeviceSelector({ onSelect }) {
+  const opts = [
+    { id: "mobile",  label: "Mobile",  desc: "Swipe controls, portrait" },
+    { id: "tablet",  label: "Tablet",  desc: "Touch, landscape or portrait" },
+    { id: "desktop", label: "Desktop", desc: "Keyboard / mouse, wider canvas" },
+  ];
+  return (
+    <div style={{
+      padding: "32px 24px", textAlign: "center",
+      background: "#0f172a", borderRadius: 12, color: "#fff",
+    }}>
+      <div style={{ fontSize: 11, fontWeight: 700, opacity: 0.6, letterSpacing: 1, textTransform: "uppercase", marginBottom: 4 }}>
+        Test Mode
+      </div>
+      <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 6 }}>How do you want to play?</div>
+      <div style={{ fontSize: 13, opacity: 0.7, marginBottom: 24 }}>
+        Pick a device — controls and layout will adapt.
+      </div>
+      <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap", marginBottom: 16 }}>
+        {opts.map(o => (
+          <button
+            key={o.id}
+            onClick={() => onSelect(o.id)}
+            style={{
+              flex: "1 1 140px", maxWidth: 180, padding: "20px 14px",
+              background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.2)",
+              borderRadius: 12, cursor: "pointer", color: "#fff",
+              transition: "all 0.15s ease",
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = "var(--accent, #16A34A)"; e.currentTarget.style.borderColor = "var(--accent, #16A34A)"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.2)"; }}
+          >
+            <div style={{ fontSize: 15, fontWeight: 800, marginBottom: 4 }}>{o.label}</div>
+            <div style={{ fontSize: 11, opacity: 0.8 }}>{o.desc}</div>
+          </button>
+        ))}
+      </div>
+      <button
+        onClick={() => onSelect("mobile")}
+        style={{
+          background: "transparent", color: "rgba(255,255,255,0.6)",
+          border: "none", fontSize: 12, cursor: "pointer", textDecoration: "underline",
+        }}
+      >
+        Skip — use Mobile
+      </button>
+    </div>
+  );
+}
+
 // BUG-001: Fallback when test panel can't load because worker.id is missing
 function TestPanelFallback({ worker, workerCardData, onReady, onBack }) {
   const [elapsed, setElapsed] = useState(0);
@@ -337,11 +389,15 @@ function ProgressiveCard({ exchangeCount, progressiveFields, workerCardData }) {
 
 // ── Lifecycle Reference Card (right panel — "How This Works") ──
 function LifecycleCard({ flowStep, isGame }) {
+  // CODEX 47.1 Fix 10 — add "Refine" as a 5th stage. For games it's the
+  // ongoing post-launch loop where the creator pushes new versions and
+  // responds to player feedback. Always available after Launch.
   const stages = isGame ? [
     { num: 1, title: "Build", desc: "Describe your game. I'll shape the rules, characters, and mechanics.", range: [0, 1, 2] },
     { num: 2, title: "Test", desc: "Play your own game. See it in action. Refine until it's fun.", range: [3, 4] },
     { num: 3, title: "Launch", desc: "Publish your game. Get it in front of players.", range: [5] },
-    { num: 4, title: "Grow", desc: "Track plays, collect feedback, push updates.", range: [6, 7] },
+    { num: 4, title: "Grow", desc: "Track plays, share, and grow your audience.", range: [6] },
+    { num: 5, title: "Refine", desc: "Update your game, respond to player feedback, push new versions. Always available after Launch — ongoing loop.", range: [7] },
   ] : [
     { num: 1, title: "Build", desc: "Tell me what you know. I'll shape it into a worker. Use your existing ChatGPT or Claude work if you have it.", range: [0, 1, 2] },
     { num: 2, title: "Test", desc: "Talk to your own worker. See it in action. Refine it until it's right.", range: [3, 4] },
@@ -662,6 +718,12 @@ export default function DeveloperSandbox() {
   // Fix 7 — Anonymous save banner: shown once per session after artwork phase has 1+ char + 1+ bg
   const [showAnonSaveBanner, setShowAnonSaveBanner] = useState(false);
   const anonSaveBannerShownRef = useRef(false);
+  // CODEX 47.1 Fix 2 — render the Define the Rules / Create the Artwork CTA buttons
+  // exactly once per session. Once tapped or rendered, never re-render.
+  const rulesButtonShownRef = useRef(false);
+  const artworkButtonShownRef = useRef(false);
+  // CODEX 47.1 Fix 6 — selected device for game test mode (mobile / tablet / desktop)
+  const [testDevice, setTestDevice] = useState(() => savedSession.current?.testDevice || null);
 
   // Exchange counter (steps 1-2) — used for extractSpec fallback + progressive card
   const [exchangeCount, setExchangeCount] = useState(0);
@@ -686,13 +748,13 @@ export default function DeveloperSandbox() {
         flowStep, maxFlowStep, exchangeCount, creatorPath,
         surveyStep, surveyAnswers, surveyComplete, testExchangeCount,
         gameSessionPhase, gameRulesAnswered,
-        canvasAssets, includedAssetIds, _v: 4,
+        canvasAssets, includedAssetIds, testDevice, _v: 4,
       }));
       if (workerCardData?.name) {
         sessionStorage.setItem("ta_sandbox_worker_name", workerCardData.name);
       }
     } catch {}
-  }, [workerCardData, worker, vertical, jurisdiction, workerIconUrl, flowStep, maxFlowStep, exchangeCount, creatorPath, surveyStep, surveyAnswers, surveyComplete, testExchangeCount, gameSessionPhase, gameRulesAnswered, canvasAssets, includedAssetIds]);
+  }, [workerCardData, worker, vertical, jurisdiction, workerIconUrl, flowStep, maxFlowStep, exchangeCount, creatorPath, surveyStep, surveyAnswers, surveyComplete, testExchangeCount, gameSessionPhase, gameRulesAnswered, canvasAssets, includedAssetIds, testDevice]);
 
   // Edit mode (post-publish)
   const [editMode, setEditMode] = useState(false);
@@ -777,8 +839,8 @@ export default function DeveloperSandbox() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canvasAssets, includedAssetIds, gameSessionPhase]);
 
-  // Fix 7 — Anonymous save banner: soft nudge to save work after the artwork phase
-  // has produced at least one character + one background. Anonymous-only, fires once.
+  // CODEX 47.1 Fix 9 — Soft auth nudge: fire after the FIRST character is saved
+  // (looser than 46.10's char + bg trigger). Anonymous-only, fires once.
   useEffect(() => {
     if (anonSaveBannerShownRef.current) return;
     if (firebaseAuth?.currentUser) return; // authed users skip this
@@ -786,8 +848,7 @@ export default function DeveloperSandbox() {
     if (!isGameLike) return;
     if (canvasAssets.length === 0) return;
     const hasChar = canvasAssets.some(a => a.useAs === "character");
-    const hasBg = canvasAssets.some(a => a.useAs === "background");
-    if (!(hasChar && hasBg)) return;
+    if (!hasChar) return;
     anonSaveBannerShownRef.current = true;
     setShowAnonSaveBanner(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1072,6 +1133,16 @@ export default function DeveloperSandbox() {
     if (gameSessionPhase === "rules") {
       const next = gameRulesAnswered + 1;
       setGameRulesAnswered(next);
+      // CODEX 47.1 Fix 4 — capture each rule answer onto workerCardData so the artwork
+      // session (and backend) has full rules context.
+      const RULE_KEYS = ["turnMechanic", "winLoseConditions", "scoring", "safetyCompliance"];
+      const ruleKey = RULE_KEYS[next - 1];
+      if (ruleKey) {
+        setWorkerCardData(prev => ({
+          ...(prev || {}),
+          gameRules: { ...(prev?.gameRules || {}), [ruleKey]: text },
+        }));
+      }
       // Queue follow-up rule question (or completion CTA) after Alex's reply lands
       const RULE_QUESTIONS = [
         "Got it. Next: Win/lose conditions — how does a player win or lose? What ends the game?",
@@ -1081,10 +1152,12 @@ export default function DeveloperSandbox() {
       if (next < 4) {
         setTimeout(() => addAssistantMessage(RULE_QUESTIONS[next - 1]), 900);
       } else {
-        // All four rules answered → advance phase + emit Artwork CTA
+        // All four rules answered → advance phase + emit Artwork CTA (CODEX 47.1 Fix 2: once)
         setTimeout(() => {
           addAssistantMessage("Rules locked in. Your game is ready for artwork.");
           setTimeout(() => {
+            if (artworkButtonShownRef.current) return;
+            artworkButtonShownRef.current = true;
             setMessages(prev => [...prev, { role: "cta", text: "Create the Artwork", action: "startGameArtwork" }]);
           }, 600);
         }, 900);
@@ -1142,6 +1215,14 @@ export default function DeveloperSandbox() {
           sessionId, surface: "sandbox", userInput: text, flowStep: Math.max(flowStep, 1), vertical, creatorPath: effectiveCreatorPath,
           ...(creatorName ? { creatorName } : {}),
           ...(shouldExtractSpec ? { extractSpec: true } : {}),
+          // CODEX 47.1 Fix 4 — pass game phase + card data so backend never loses rules context across stages
+          ...(gameSessionPhase ? { gameSessionPhase } : {}),
+          ...(workerCardData ? { workerCardData: {
+            name: workerCardData.name,
+            description: workerCardData.description,
+            gameConfig: workerCardData.gameConfig,
+            gameRules: workerCardData.gameRules,
+          } } : {}),
           ...(images.length > 0 ? { imageData: images.map(img => ({ base64: img.base64, mediaType: img.mediaType })) } : {}),
         }),
       });
@@ -1185,22 +1266,25 @@ export default function DeveloperSandbox() {
 
             if (flowStep < 2) advanceToStep(2);
 
-            // Roadmap message after 1.2s delay
+            // CODEX 47.1 Fix 1 — single compact confirmation. The LifecycleCard
+            // already shows the stages on the right; no need to duplicate in chat.
             setTimeout(() => {
-              const name = savedName || "Creator";
-              const roadmapText = isGame
-                ? `${name}, your game concept is saved. Here is what building it looks like:\n\nSession 1 (done) -- The Concept. You described your game idea. Your game card is saved.\nSession 2 -- The Rules. Define how your game plays: turn mechanic, win/lose, scoring, safety.\nSession 3 -- The Artwork. Create characters and a background — your game needs visuals.\nSession 4 -- The Test. Play your own game. Refine until it's fun.\n\nYou can finish all four sessions in one afternoon -- or take a few weeks. Your game lives in your Vault either way.`
-                : `${name}, your worker is saved. Here is what building it looks like:\n\nSession 1 (done) -- The Spark. You described what you know. Your draft card is saved.\nSession 2 -- The Rules. We spend 15 minutes on what your worker should and should not do.\nSession 3 -- The Test. You talk to your own worker. See it work. Refine it.\nSession 4 -- Publish. Set your price. Go live. Start earning.\n\nYou can finish all four sessions in one afternoon -- or take a few months. Your worker lives in your Vault either way.`;
-              setMessages(prev => [...prev, { role: "assistant", text: roadmapText }]);
-              // CTA button message — game flow has 3 sub-CTAs (rules → artwork → test)
+              const gameOrWorkerName = card.name || (isGame ? "your game" : "your worker");
+              const compactText = isGame
+                ? `Got it — ${gameOrWorkerName} is saved. Next up: let's define how the game plays. Tap Define the Rules when you're ready.`
+                : `Got it — ${gameOrWorkerName} is saved. Next up: let's define how it should and shouldn't behave. Tap Start Session 2 when you're ready.`;
+              setMessages(prev => [...prev, { role: "assistant", text: compactText }]);
+              // CODEX 47.1 Fix 2 — render CTA button once per session only.
               setTimeout(() => {
                 if (isGame) {
+                  if (rulesButtonShownRef.current) return;
+                  rulesButtonShownRef.current = true;
                   setMessages(prev => [...prev, { role: "cta", text: "Define the Rules", action: "startGameRules" }]);
                 } else {
                   setMessages(prev => [...prev, { role: "cta", text: "Start Session 2", action: "startSession2" }]);
                 }
               }, 600);
-            }, 1200);
+            }, 1000);
           }
         }
 
@@ -1424,10 +1508,15 @@ export default function DeveloperSandbox() {
 
   function handleStartGameArtwork() {
     setGameSessionPhase("artwork");
+    // CODEX 47.1 Fix 3 — Alex leads with the asset list. Names the game and the four asset types.
+    const gameTitle = workerCardData?.name || "Your game";
     addAssistantMessage(
-      "Rules locked in. Now your game needs visuals.\n\n" +
-      "Tell me what you want and I'll generate it: at least one character and one background. " +
-      "Try something like \"a friendly robot mascot\" or \"a neon arcade backdrop\". You can refine the style after the first image."
+      `${gameTitle} needs four types of assets to come to life:\n\n` +
+      "1. Backgrounds / Settings — the world the game lives in\n" +
+      "2. Characters — playable and non-playable\n" +
+      "3. Icons / Items — power-ups, pickups, prizes\n" +
+      "4. Score display — how points appear on screen\n\n" +
+      "Want to start with backgrounds or characters? Just tell me what you have in mind and I'll generate it."
     );
   }
 
@@ -2090,17 +2179,17 @@ export default function DeveloperSandbox() {
             </div>
           )}
 
-          {/* Anonymous save banner — soft nudge after artwork phase (Fix 7) */}
+          {/* Soft auth nudge — fires after first character saved (CODEX 47.1 Fix 9) */}
           {showAnonSaveBanner && !firebaseAuth?.currentUser && (
             <div style={{
-              alignSelf: "center", maxWidth: 420, width: "100%",
+              alignSelf: "center", maxWidth: 440, width: "100%",
               background: "var(--accent-light, rgba(22,163,74,0.08))",
               border: "1px solid var(--accent, #16A34A)",
               borderRadius: 12, padding: "12px 16px",
               display: "flex", alignItems: "center", gap: 12,
             }}>
               <div style={{ flex: 1, fontSize: 13, color: "#1a1a2e", lineHeight: 1.5 }}>
-                Nice work. Save your game so you can come back to it — takes 10 seconds.
+                Your game is looking great — create a free account to make sure you never lose it.
               </div>
               <button
                 onClick={() => { setShowAuthPrompt(true); setShowAnonSaveBanner(false); }}
@@ -2535,11 +2624,16 @@ export default function DeveloperSandbox() {
                 onRecover={() => { viewStep(3); }}
               >
                 {isGameMode ? (
-                  <GameBoardPanel
-                    assets={canvasAssets}
-                    includedAssetIds={includedAssetIds}
-                    workerCardData={workerCardData}
-                  />
+                  testDevice ? (
+                    <GameBoardPanel
+                      assets={canvasAssets}
+                      includedAssetIds={includedAssetIds}
+                      workerCardData={workerCardData}
+                      device={testDevice}
+                    />
+                  ) : (
+                    <DeviceSelector onSelect={(d) => setTestDevice(d)} />
+                  )
                 ) : workerCardData?.gameConfig?.gameMode === "canvas" && !canvasDismissed ? (
                   <CanvasComingSoon onContinue={() => setCanvasDismissed(true)} />
                 ) : worker?.id ? (
@@ -2574,7 +2668,7 @@ export default function DeveloperSandbox() {
             {/* Step 6 — Distribute */}
             {flowStep === 6 && (
               <>
-                <DistributionKit worker={worker} workerCardData={workerCardData} hasUpdatedSinceLaunch={hasUpdatedSinceLaunch} />
+                <DistributionKit worker={worker} workerCardData={workerCardData} hasUpdatedSinceLaunch={hasUpdatedSinceLaunch} canvasAssets={canvasAssets} />
                 <CreatorSpotlight worker={worker} workerCardData={workerCardData} />
                 <div style={{ marginTop: 20, textAlign: "center" }}>
                   <button style={S.btnPrimary} onClick={handleMoveToGrow}>
