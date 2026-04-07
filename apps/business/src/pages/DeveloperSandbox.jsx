@@ -4,6 +4,7 @@ import { auth as firebaseAuth } from "../firebase";
 import BuildProgress from "../components/BuildProgress";
 import TestWorkerPanel from "../components/TestWorkerPanel";
 import CanvasComingSoon from "../components/sandbox/CanvasComingSoon";
+import GameBoardPanel from "../components/sandbox/GameBoardPanel";
 import { getPostLaunchMessage } from "../components/studio/PostLaunchAlex";
 import CanvasImagePanel from "../components/canvas/CanvasImagePanel";
 import MyImagesPanel from "../components/MyImagesPanel";
@@ -653,11 +654,14 @@ export default function DeveloperSandbox() {
   const [testExchangeCount, setTestExchangeCount] = useState(() => savedSession.current?.testExchangeCount || 0);
   const [canvasDismissed, setCanvasDismissed] = useState(false);
   const [hasUpdatedSinceLaunch, setHasUpdatedSinceLaunch] = useState(false);
-  const [canvasAssets, setCanvasAssets] = useState([]);
+  const [canvasAssets, setCanvasAssets] = useState(() => savedSession.current?.canvasAssets || []);
   const [canvasStyle, setCanvasStyle] = useState(null);
   const [imageGenerating, setImageGenerating] = useState(false);
-  const [includedAssetIds, setIncludedAssetIds] = useState([]);
+  const [includedAssetIds, setIncludedAssetIds] = useState(() => savedSession.current?.includedAssetIds || []);
   const [showMyImages, setShowMyImages] = useState(false);
+  // Fix 7 — Anonymous save banner: shown once per session after artwork phase has 1+ char + 1+ bg
+  const [showAnonSaveBanner, setShowAnonSaveBanner] = useState(false);
+  const anonSaveBannerShownRef = useRef(false);
 
   // Exchange counter (steps 1-2) — used for extractSpec fallback + progressive card
   const [exchangeCount, setExchangeCount] = useState(0);
@@ -675,19 +679,20 @@ export default function DeveloperSandbox() {
 
   // Persist session state on key changes
   useEffect(() => {
-    if (!workerCardData && !worker && flowStep <= 0 && exchangeCount === 0) return;
+    if (!workerCardData && !worker && flowStep <= 0 && exchangeCount === 0 && canvasAssets.length === 0) return;
     try {
       localStorage.setItem("ta_sandbox_session", JSON.stringify({
         workerCardData, worker, vertical, jurisdiction, workerIconUrl,
         flowStep, maxFlowStep, exchangeCount, creatorPath,
         surveyStep, surveyAnswers, surveyComplete, testExchangeCount,
-        gameSessionPhase, gameRulesAnswered, _v: 4,
+        gameSessionPhase, gameRulesAnswered,
+        canvasAssets, includedAssetIds, _v: 4,
       }));
       if (workerCardData?.name) {
         sessionStorage.setItem("ta_sandbox_worker_name", workerCardData.name);
       }
     } catch {}
-  }, [workerCardData, worker, vertical, jurisdiction, workerIconUrl, flowStep, maxFlowStep, exchangeCount, creatorPath, surveyStep, surveyAnswers, surveyComplete, testExchangeCount, gameSessionPhase, gameRulesAnswered]);
+  }, [workerCardData, worker, vertical, jurisdiction, workerIconUrl, flowStep, maxFlowStep, exchangeCount, creatorPath, surveyStep, surveyAnswers, surveyComplete, testExchangeCount, gameSessionPhase, gameRulesAnswered, canvasAssets, includedAssetIds]);
 
   // Edit mode (post-publish)
   const [editMode, setEditMode] = useState(false);
@@ -747,23 +752,46 @@ export default function DeveloperSandbox() {
       || "";
   });
 
-  // Game artwork phase — emit "Test Your Game" CTA once we have at least 2 assets
-  // (intent: 1 character + 1 background — we use total >= 2 since asset typing is best-effort).
+  // Game artwork phase — emit "Test Your Game" CTA once at least 1 Character AND
+  // 1 Background are included in build (per CODEX 46.10 Fix 8).
   const gameTestCtaEmitted = useRef(false);
   useEffect(() => {
     if (gameSessionPhase !== "artwork") return;
     if (gameTestCtaEmitted.current) return;
-    if (canvasAssets.length < 2) return;
+    const includedSet = new Set(includedAssetIds);
+    const includedAssets = canvasAssets.filter(a => includedSet.has(a.assetId || a.id));
+    const hasChar = includedAssets.some(a => a.useAs === "character");
+    const hasBg = includedAssets.some(a => a.useAs === "background");
+    // Lenient fallback: if user generated assets but didn't tag/include them,
+    // accept 2+ raw canvas assets after rules are done (so the flow doesn't get stuck).
+    const lenientFallback = canvasAssets.length >= 4;
+    if (!(hasChar && hasBg) && !lenientFallback) return;
     gameTestCtaEmitted.current = true;
     setGameSessionPhase("ready");
     setTimeout(() => {
-      addAssistantMessage("Your game has rules and artwork. Time to test it.");
+      addAssistantMessage("Your game has rules and artwork. Time to test it. You can always add more visuals later — for now let's see how it plays.");
       setTimeout(() => {
         setMessages(prev => [...prev, { role: "cta", text: "Test Your Game", action: "startGameTest" }]);
       }, 600);
     }, 600);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canvasAssets.length, gameSessionPhase]);
+  }, [canvasAssets, includedAssetIds, gameSessionPhase]);
+
+  // Fix 7 — Anonymous save banner: soft nudge to save work after the artwork phase
+  // has produced at least one character + one background. Anonymous-only, fires once.
+  useEffect(() => {
+    if (anonSaveBannerShownRef.current) return;
+    if (firebaseAuth?.currentUser) return; // authed users skip this
+    const isGameLike = !!(workerCardData?.gameConfig?.isGame || (creatorPath && creatorPath.startsWith('game')));
+    if (!isGameLike) return;
+    if (canvasAssets.length === 0) return;
+    const hasChar = canvasAssets.some(a => a.useAs === "character");
+    const hasBg = canvasAssets.some(a => a.useAs === "background");
+    if (!(hasChar && hasBg)) return;
+    anonSaveBannerShownRef.current = true;
+    setShowAnonSaveBanner(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canvasAssets, workerCardData, creatorPath]);
 
   // Handle late auth resolution — capture name when onAuthStateChanged fires
   useEffect(() => {
@@ -1964,6 +1992,8 @@ export default function DeveloperSandbox() {
                 }}
                 onClick={() => {
                   setShowPathChips(false);
+                  // Apply green palette immediately — refine to regulated if user picks training
+                  setCreatorPath("game-casual");
                   addUserMessage("Game");
                   setTimeout(() => {
                     addAssistantMessage("Is this a casual game (a pub quiz, a treasure hunt, a company trivia game) or a training and certification game (exam prep, compliance simulation)?");
@@ -2056,6 +2086,41 @@ export default function DeveloperSandbox() {
                 }}
               >
                 {surveyComplete ? "Continue to Preflight \u2192" : "I'm done testing \u2014 Continue to Preflight \u2192"}
+              </button>
+            </div>
+          )}
+
+          {/* Anonymous save banner — soft nudge after artwork phase (Fix 7) */}
+          {showAnonSaveBanner && !firebaseAuth?.currentUser && (
+            <div style={{
+              alignSelf: "center", maxWidth: 420, width: "100%",
+              background: "var(--accent-light, rgba(22,163,74,0.08))",
+              border: "1px solid var(--accent, #16A34A)",
+              borderRadius: 12, padding: "12px 16px",
+              display: "flex", alignItems: "center", gap: 12,
+            }}>
+              <div style={{ flex: 1, fontSize: 13, color: "#1a1a2e", lineHeight: 1.5 }}>
+                Nice work. Save your game so you can come back to it — takes 10 seconds.
+              </div>
+              <button
+                onClick={() => { setShowAuthPrompt(true); setShowAnonSaveBanner(false); }}
+                style={{
+                  padding: "6px 14px", fontSize: 12, fontWeight: 700,
+                  background: "var(--accent, #16A34A)", color: "#fff",
+                  border: "none", borderRadius: 6, cursor: "pointer",
+                }}
+              >
+                Save
+              </button>
+              <button
+                onClick={() => setShowAnonSaveBanner(false)}
+                aria-label="Dismiss"
+                style={{
+                  padding: "4px 8px", fontSize: 16, color: "#64748b",
+                  background: "transparent", border: "none", cursor: "pointer",
+                }}
+              >
+                &times;
               </button>
             </div>
           )}
@@ -2376,7 +2441,7 @@ export default function DeveloperSandbox() {
           <div ref={rightPanelRef} style={S.tabContent}>
             {/* My Images panel — shown when toggled from nav */}
             {showMyImages && (
-              <MyImagesPanel onClose={() => setShowMyImages(false)} />
+              <MyImagesPanel onClose={() => setShowMyImages(false)} localAssets={canvasAssets} />
             )}
 
             {/* Steps 0-2 — Lifecycle card + Progressive card / Draft card */}
@@ -2469,7 +2534,13 @@ export default function DeveloperSandbox() {
                 recoverLabel="Back"
                 onRecover={() => { viewStep(3); }}
               >
-                {workerCardData?.gameConfig?.gameMode === "canvas" && !canvasDismissed ? (
+                {isGameMode ? (
+                  <GameBoardPanel
+                    assets={canvasAssets}
+                    includedAssetIds={includedAssetIds}
+                    workerCardData={workerCardData}
+                  />
+                ) : workerCardData?.gameConfig?.gameMode === "canvas" && !canvasDismissed ? (
                   <CanvasComingSoon onContinue={() => setCanvasDismissed(true)} />
                 ) : worker?.id ? (
                   <TestWorkerPanel

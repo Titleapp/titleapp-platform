@@ -32,8 +32,23 @@ export default function CanvasImagePanel({
   currentWorkerId,
   includedAssetIds = [],
 }) {
-  const displayAssets = assets.slice(-6);
+  // Show all assets up to MAX_DISPLAY in oldest-first order so the newest appears at the bottom.
+  // 50 max before paginating (per CODEX 46.10 Fix 5).
+  const MAX_DISPLAY = 50;
+  const displayAssets = assets.slice(-MAX_DISPLAY);
+  const hasOverflow = assets.length > MAX_DISPLAY;
   const autoStyle = selectedStyle || getDefaultStyle(workerCardData);
+
+  // Auto-scroll to newest image when assets length grows
+  const gridRef = React.useRef(null);
+  const prevLenRef = React.useRef(assets.length);
+  React.useEffect(() => {
+    if (assets.length > prevLenRef.current && gridRef.current) {
+      // Scroll to bottom of the canvas to reveal newest image
+      gridRef.current.scrollTop = gridRef.current.scrollHeight;
+    }
+    prevLenRef.current = assets.length;
+  }, [assets.length]);
 
   // Undo toast state
   const [undoToast, setUndoToast] = useState(null);
@@ -86,12 +101,20 @@ export default function CanvasImagePanel({
         </div>
       )}
 
-      {/* Image grid */}
-      <div style={{
+      {/* Image grid — scrollable canvas, all images persist */}
+      {hasOverflow && (
+        <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 8 }}>
+          Showing the most recent {MAX_DISPLAY} of {assets.length} images.
+        </div>
+      )}
+      <div ref={gridRef} style={{
         display: "grid",
         gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
         gap: 12,
         marginBottom: 16,
+        maxHeight: "70vh",
+        overflowY: "auto",
+        padding: 4,
       }}>
         {displayAssets.map((asset, i) => (
           <CanvasImageCard

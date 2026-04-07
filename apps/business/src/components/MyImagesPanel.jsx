@@ -10,7 +10,7 @@ const ASSET_TYPE_FILTERS = [
   { value: "icon", label: "Icon" },
 ];
 
-export default function MyImagesPanel({ onClose }) {
+export default function MyImagesPanel({ onClose, localAssets = [] }) {
   const [assets, setAssets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -23,7 +23,7 @@ export default function MyImagesPanel({ onClose }) {
 
   const fetchAssets = useCallback(async (opts = {}) => {
     const token = localStorage.getItem("ID_TOKEN");
-    if (!token) return;
+    if (!token) return { assets: [], nextCursor: null };
 
     const params = new URLSearchParams();
     if (opts.assetType) params.set("assetType", opts.assetType);
@@ -54,7 +54,28 @@ export default function MyImagesPanel({ onClose }) {
     const doFetch = async () => {
       const result = await fetchAssets({ assetType: typeFilter, search });
       if (cancelled) return;
-      setAssets(result.assets);
+      // Merge Firestore assets with local fallback (anonymous sessions, write failures)
+      const merged = [...result.assets];
+      const seen = new Set(merged.map(a => a.assetId || a.id));
+      for (const a of localAssets) {
+        const key = a.assetId || a.id;
+        if (key && seen.has(key)) continue;
+        // Apply current filters to local assets too
+        if (typeFilter && a.useAs !== typeFilter && a.assetType !== typeFilter) continue;
+        if (search && search.length >= 2) {
+          const p = (a.prompt || "").toLowerCase();
+          if (!p.includes(search.toLowerCase())) continue;
+        }
+        merged.push(a);
+        if (key) seen.add(key);
+      }
+      // Newest first
+      merged.sort((a, b) => {
+        const at = a.createdAt?._seconds || a.createdAt || 0;
+        const bt = b.createdAt?._seconds || b.createdAt || 0;
+        return bt - at;
+      });
+      setAssets(merged);
       setCursor(result.nextCursor);
       setHasMore(!!result.nextCursor);
       setLoading(false);
@@ -67,7 +88,7 @@ export default function MyImagesPanel({ onClose }) {
     }
 
     return () => { cancelled = true; };
-  }, [typeFilter, search, fetchAssets]);
+  }, [typeFilter, search, fetchAssets, localAssets]);
 
   const loadMore = async () => {
     if (!cursor || loadingMore) return;

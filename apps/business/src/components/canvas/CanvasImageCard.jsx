@@ -1,6 +1,23 @@
 import React, { useState } from "react";
 
-const ASSET_TYPE_OPTIONS = ["background", "character", "icon"];
+const ASSET_TYPE_OPTIONS = [
+  { value: "background", label: "Background" },
+  { value: "character", label: "Character" },
+  { value: "icon", label: "Icon/Item" },
+];
+
+// Inline trash can icon (Lucide-style)
+function TrashIcon({ size = 14 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 6h18" />
+      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+      <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+      <line x1="10" y1="11" x2="10" y2="17" />
+      <line x1="14" y1="11" x2="14" y2="17" />
+    </svg>
+  );
+}
 
 export default function CanvasImageCard({
   asset,
@@ -64,11 +81,12 @@ export default function CanvasImageCard({
         </div>
       )}
 
-      {/* Image */}
+      {/* Image — Character assets get idle float animation by default */}
       <div style={{ position: "relative", background: "#f8fafc", minHeight: 140 }}>
         <img
           src={asset.imageUrl}
           alt={asset.prompt || "Generated image"}
+          className={useAs === "character" ? `ta-anim-${asset.animationConfig?.defaultAnimation || "idle"}` : undefined}
           style={{
             width: "100%", display: "block",
             objectFit: "contain", maxHeight: 260, borderRadius: included ? "7px 7px 0 0" : "10px 10px 0 0",
@@ -95,21 +113,22 @@ export default function CanvasImageCard({
           </div>
         )}
 
-        {/* Asset type selector */}
-        <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+        {/* Asset type selector — mutually exclusive toggles */}
+        <div style={{ display: "flex", gap: 6, marginBottom: 8, flexWrap: "wrap" }}>
           {ASSET_TYPE_OPTIONS.map(opt => (
             <button
-              key={opt}
-              onClick={() => handleUseAs(opt)}
+              key={opt.value}
+              onClick={() => handleUseAs(opt.value)}
               style={{
-                flex: 1, padding: "5px 8px", fontSize: 11, fontWeight: 600,
-                textTransform: "capitalize", borderRadius: 6, cursor: "pointer",
-                background: useAs === opt ? "var(--accent-light, rgba(107,70,193,0.08))" : "#f8fafc",
-                border: `1px solid ${useAs === opt ? "var(--accent, #6B46C1)" : "#e2e8f0"}`,
-                color: useAs === opt ? "var(--accent, #6B46C1)" : "#64748b",
+                flex: "1 1 auto", minWidth: 0, padding: "6px 8px", fontSize: 11, fontWeight: 600,
+                borderRadius: 6, cursor: "pointer",
+                background: useAs === opt.value ? "var(--accent-light, rgba(107,70,193,0.08))" : "#f8fafc",
+                border: `1px solid ${useAs === opt.value ? "var(--accent, #6B46C1)" : "#e2e8f0"}`,
+                color: useAs === opt.value ? "var(--accent, #6B46C1)" : "#64748b",
+                whiteSpace: "nowrap",
               }}
             >
-              {opt === "background" ? "BG" : opt === "character" ? "Char" : "Icon"}
+              {opt.label}
             </button>
           ))}
         </div>
@@ -148,13 +167,16 @@ export default function CanvasImageCard({
           {onDelete && (
             <button
               onClick={() => onDelete(asset)}
+              title="Delete asset"
+              aria-label="Delete asset"
               style={{
-                padding: "5px 8px", fontSize: 11, fontWeight: 600,
+                padding: "6px 8px", fontSize: 11, fontWeight: 600,
                 borderRadius: 6, cursor: "pointer",
                 background: "#fff", border: "1px solid #fecaca", color: "#dc2626",
+                display: "inline-flex", alignItems: "center", justifyContent: "center",
               }}
             >
-              \u2715
+              <TrashIcon />
             </button>
           )}
           {showLedgerButton && (
@@ -172,6 +194,33 @@ export default function CanvasImageCard({
           )}
         </div>
       </div>
+
+      {/* Character animation keyframes — applied to character assets via .ta-anim-* class */}
+      <style>{`
+        @keyframes taAnimIdle {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-4px); }
+        }
+        @keyframes taAnimAction {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.06); }
+        }
+        @keyframes taAnimHit {
+          0%, 100% { transform: translateX(0); filter: none; }
+          25% { transform: translateX(-4px); filter: drop-shadow(0 0 6px #ef4444); }
+          75% { transform: translateX(4px); filter: drop-shadow(0 0 6px #ef4444); }
+        }
+        @keyframes taAnimCelebrate {
+          0% { transform: scale(1) rotate(0deg); }
+          50% { transform: scale(1.12) rotate(180deg); }
+          100% { transform: scale(1) rotate(360deg); }
+        }
+        .ta-anim-idle { animation: taAnimIdle 3s ease-in-out infinite; }
+        .ta-anim-action { animation: taAnimAction 0.6s ease-in-out infinite; }
+        .ta-anim-hit { animation: taAnimHit 0.4s ease-in-out 2; }
+        .ta-anim-celebrate { animation: taAnimCelebrate 1.2s ease-in-out 1; }
+        .ta-anim-none { animation: none; }
+      `}</style>
     </div>
   );
 }
