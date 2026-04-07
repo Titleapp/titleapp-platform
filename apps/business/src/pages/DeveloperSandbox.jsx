@@ -731,9 +731,11 @@ export default function DeveloperSandbox() {
 
   // Game session phase tracker — null | "rules" | "artwork" | "ready"
   // null = not yet started; "rules" = answering rules questions;
-  // "artwork" = generating images; "ready" = ready to test
+  // "artwork" = generating images; "interactions" = defining movement/collision; "ready" = ready to test
   const [gameSessionPhase, setGameSessionPhase] = useState(() => savedSession.current?.gameSessionPhase || null);
   const [gameRulesAnswered, setGameRulesAnswered] = useState(() => savedSession.current?.gameRulesAnswered || 0);
+  // CODEX 47.2 Fix 13 — interactions session answer counter
+  const [gameInteractionsAnswered, setGameInteractionsAnswered] = useState(() => savedSession.current?.gameInteractionsAnswered || 0);
 
   // Image attachments
   const [pendingImages, setPendingImages] = useState([]);
@@ -747,14 +749,14 @@ export default function DeveloperSandbox() {
         workerCardData, worker, vertical, jurisdiction, workerIconUrl,
         flowStep, maxFlowStep, exchangeCount, creatorPath,
         surveyStep, surveyAnswers, surveyComplete, testExchangeCount,
-        gameSessionPhase, gameRulesAnswered,
-        canvasAssets, includedAssetIds, testDevice, _v: 4,
+        gameSessionPhase, gameRulesAnswered, gameInteractionsAnswered,
+        canvasAssets, includedAssetIds, testDevice, _v: 5,
       }));
       if (workerCardData?.name) {
         sessionStorage.setItem("ta_sandbox_worker_name", workerCardData.name);
       }
     } catch {}
-  }, [workerCardData, worker, vertical, jurisdiction, workerIconUrl, flowStep, maxFlowStep, exchangeCount, creatorPath, surveyStep, surveyAnswers, surveyComplete, testExchangeCount, gameSessionPhase, gameRulesAnswered, canvasAssets, includedAssetIds, testDevice]);
+  }, [workerCardData, worker, vertical, jurisdiction, workerIconUrl, flowStep, maxFlowStep, exchangeCount, creatorPath, surveyStep, surveyAnswers, surveyComplete, testExchangeCount, gameSessionPhase, gameRulesAnswered, gameInteractionsAnswered, canvasAssets, includedAssetIds, testDevice]);
 
   // Edit mode (post-publish)
   const [editMode, setEditMode] = useState(false);
@@ -814,26 +816,26 @@ export default function DeveloperSandbox() {
       || "";
   });
 
-  // Game artwork phase — emit "Test Your Game" CTA once at least 1 Character AND
-  // 1 Background are included in build (per CODEX 46.10 Fix 8).
-  const gameTestCtaEmitted = useRef(false);
+  // CODEX 47.2 Fix 13 — After artwork has at least 1 character + 1 background,
+  // emit the "Define the Interactions" CTA. Test only opens after interactions lock.
+  const gameInteractionsCtaEmitted = useRef(false);
   useEffect(() => {
     if (gameSessionPhase !== "artwork") return;
-    if (gameTestCtaEmitted.current) return;
+    if (gameInteractionsCtaEmitted.current) return;
     const includedSet = new Set(includedAssetIds);
     const includedAssets = canvasAssets.filter(a => includedSet.has(a.assetId || a.id));
     const hasChar = includedAssets.some(a => a.useAs === "character");
     const hasBg = includedAssets.some(a => a.useAs === "background");
-    // Lenient fallback: if user generated assets but didn't tag/include them,
-    // accept 2+ raw canvas assets after rules are done (so the flow doesn't get stuck).
     const lenientFallback = canvasAssets.length >= 4;
     if (!(hasChar && hasBg) && !lenientFallback) return;
-    gameTestCtaEmitted.current = true;
-    setGameSessionPhase("ready");
+    gameInteractionsCtaEmitted.current = true;
     setTimeout(() => {
-      addAssistantMessage("Your game has rules and artwork. Time to test it. You can always add more visuals later — for now let's see how it plays.");
+      addAssistantMessage("Artwork is in. Last build session: how does the game play in your hands? Movement, speed, what happens when you touch things — that's all we need to nail down before we test.");
       setTimeout(() => {
-        setMessages(prev => [...prev, { role: "cta", text: "Test Your Game", action: "startGameTest" }]);
+        setMessages(prev => {
+          if (prev.some(m => m.role === "cta" && m.action === "startGameInteractions")) return prev;
+          return [...prev, { role: "cta", text: "Define the Interactions", action: "startGameInteractions" }];
+        });
       }, 600);
     }, 600);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1129,19 +1131,23 @@ export default function DeveloperSandbox() {
     const newExchangeCount = exchangeCount + 1;
     if (flowStep <= 2) setExchangeCount(newExchangeCount);
 
+    // CODEX 47.2 Fix 4 — compute the next card data INLINE (not from React state) so the
+    // fetch body below sees the freshly captured rule. setWorkerCardData is async — the
+    // closure value would otherwise be one rule behind.
+    let nextCardData = workerCardData;
+
     // Game rules phase — count answers and follow up with the next question
     if (gameSessionPhase === "rules") {
       const next = gameRulesAnswered + 1;
       setGameRulesAnswered(next);
-      // CODEX 47.1 Fix 4 — capture each rule answer onto workerCardData so the artwork
-      // session (and backend) has full rules context.
       const RULE_KEYS = ["turnMechanic", "winLoseConditions", "scoring", "safetyCompliance"];
       const ruleKey = RULE_KEYS[next - 1];
       if (ruleKey) {
-        setWorkerCardData(prev => ({
-          ...(prev || {}),
-          gameRules: { ...(prev?.gameRules || {}), [ruleKey]: text },
-        }));
+        nextCardData = {
+          ...(workerCardData || {}),
+          gameRules: { ...(workerCardData?.gameRules || {}), [ruleKey]: text },
+        };
+        setWorkerCardData(nextCardData);
       }
       // Queue follow-up rule question (or completion CTA) after Alex's reply lands
       const RULE_QUESTIONS = [
@@ -1152,13 +1158,54 @@ export default function DeveloperSandbox() {
       if (next < 4) {
         setTimeout(() => addAssistantMessage(RULE_QUESTIONS[next - 1]), 900);
       } else {
-        // All four rules answered → advance phase + emit Artwork CTA (CODEX 47.1 Fix 2: once)
+        // All four rules answered → advance phase + emit Artwork CTA (CODEX 47.2 Fix 2: bulletproof gate)
         setTimeout(() => {
           addAssistantMessage("Rules locked in. Your game is ready for artwork.");
           setTimeout(() => {
-            if (artworkButtonShownRef.current) return;
-            artworkButtonShownRef.current = true;
-            setMessages(prev => [...prev, { role: "cta", text: "Create the Artwork", action: "startGameArtwork" }]);
+            setMessages(prev => {
+              if (prev.some(m => m.role === "cta" && m.action === "startGameArtwork")) return prev;
+              artworkButtonShownRef.current = true;
+              return [...prev, { role: "cta", text: "Create the Artwork", action: "startGameArtwork" }];
+            });
+          }, 600);
+        }, 900);
+      }
+    }
+
+    // CODEX 47.2 Fix 13 — Interactions session: capture movement, speed, collision, sound
+    if (gameSessionPhase === "interactions") {
+      const next = gameInteractionsAnswered + 1;
+      setGameInteractionsAnswered(next);
+      const INTERACTION_KEYS = ["movement", "speed", "collisionRules", "soundCues"];
+      const interactionKey = INTERACTION_KEYS[next - 1];
+      if (interactionKey) {
+        nextCardData = {
+          ...(nextCardData || workerCardData || {}),
+          gameInteractions: {
+            ...((nextCardData || workerCardData)?.gameInteractions || {}),
+            [interactionKey]: text,
+          },
+        };
+        setWorkerCardData(nextCardData);
+      }
+      const INTERACTION_QUESTIONS = [
+        "Got it. Speed — fast and frantic, or slow and deliberate?",
+        "Good. Collision rules — what happens when you touch a teammate vs a hazard? (e.g. teammate = recruit, hazard = damage)",
+        "Last one: Sound cues — any sounds for points, damage, win, or lose? (Optional — say 'skip' if not yet.)",
+      ];
+      if (next < 4) {
+        setTimeout(() => addAssistantMessage(INTERACTION_QUESTIONS[next - 1]), 900);
+      } else {
+        // All four interactions answered → confirm + emit Test CTA
+        setTimeout(() => {
+          const gameTitle = (nextCardData?.name) || workerCardData?.name || "your game";
+          addAssistantMessage(`Here's how ${gameTitle} plays. Ready to test it?`);
+          setGameSessionPhase("ready");
+          setTimeout(() => {
+            setMessages(prev => {
+              if (prev.some(m => m.role === "cta" && m.action === "startGameTest")) return prev;
+              return [...prev, { role: "cta", text: "Test Your Game", action: "startGameTest" }];
+            });
           }, 600);
         }, 900);
       }
@@ -1215,13 +1262,15 @@ export default function DeveloperSandbox() {
           sessionId, surface: "sandbox", userInput: text, flowStep: Math.max(flowStep, 1), vertical, creatorPath: effectiveCreatorPath,
           ...(creatorName ? { creatorName } : {}),
           ...(shouldExtractSpec ? { extractSpec: true } : {}),
-          // CODEX 47.1 Fix 4 — pass game phase + card data so backend never loses rules context across stages
+          // CODEX 47.2 Fix 4 — pass game phase + FRESH card data so backend never loses rules context.
+          // nextCardData captures the just-typed rule answer; workerCardData state is one render behind.
           ...(gameSessionPhase ? { gameSessionPhase } : {}),
-          ...(workerCardData ? { workerCardData: {
-            name: workerCardData.name,
-            description: workerCardData.description,
-            gameConfig: workerCardData.gameConfig,
-            gameRules: workerCardData.gameRules,
+          ...(nextCardData ? { workerCardData: {
+            name: nextCardData.name,
+            description: nextCardData.description,
+            gameConfig: nextCardData.gameConfig,
+            gameRules: nextCardData.gameRules,
+            gameInteractions: nextCardData.gameInteractions,
           } } : {}),
           ...(images.length > 0 ? { imageData: images.map(img => ({ base64: img.base64, mediaType: img.mediaType })) } : {}),
         }),
@@ -1274,14 +1323,20 @@ export default function DeveloperSandbox() {
                 ? `Got it — ${gameOrWorkerName} is saved. Next up: let's define how the game plays. Tap Define the Rules when you're ready.`
                 : `Got it — ${gameOrWorkerName} is saved. Next up: let's define how it should and shouldn't behave. Tap Start Session 2 when you're ready.`;
               setMessages(prev => [...prev, { role: "assistant", text: compactText }]);
-              // CODEX 47.1 Fix 2 — render CTA button once per session only.
+              // CODEX 47.2 Fix 2 — render CTA button once per session. Gate by checking
+              // the actual messages array (refs reset on reload but messages persist).
               setTimeout(() => {
                 if (isGame) {
-                  if (rulesButtonShownRef.current) return;
-                  rulesButtonShownRef.current = true;
-                  setMessages(prev => [...prev, { role: "cta", text: "Define the Rules", action: "startGameRules" }]);
+                  setMessages(prev => {
+                    if (prev.some(m => m.role === "cta" && m.action === "startGameRules")) return prev;
+                    rulesButtonShownRef.current = true;
+                    return [...prev, { role: "cta", text: "Define the Rules", action: "startGameRules" }];
+                  });
                 } else {
-                  setMessages(prev => [...prev, { role: "cta", text: "Start Session 2", action: "startSession2" }]);
+                  setMessages(prev => {
+                    if (prev.some(m => m.role === "cta" && m.action === "startSession2")) return prev;
+                    return [...prev, { role: "cta", text: "Start Session 2", action: "startSession2" }];
+                  });
                 }
               }, 600);
             }, 1000);
@@ -1520,20 +1575,42 @@ export default function DeveloperSandbox() {
     );
   }
 
+  // CODEX 47.2 Fix 13 — Interactions session: defines movement, speed, collision rules.
+  function handleStartGameInteractions() {
+    setGameSessionPhase("interactions");
+    setGameInteractionsAnswered(0);
+    addAssistantMessage(
+      "How does the player move their character? Tap to move, swipe to steer, tilt, arrow keys, or auto-move?"
+    );
+  }
+
+  // CODEX 47.2 Fix 12 — Dedicated launcher for game test mode. Only this CTA
+  // (or the Test tab) advances the creator into the playable build.
+  function handleStartGameTest() {
+    advanceToStep(3);
+    addAssistantMessage("Building your game now. Packaging rules, interactions, and artwork...");
+    setTimeout(() => {
+      advanceToStep(4);
+      addAssistantMessage("Your game is ready to test. Try it out on the right.");
+    }, 2200);
+  }
+
   // ── Step 2 → Step 3: Worker Card approved ────────────────────
 
   async function handleWorkerCardApprove(cardData) {
     // Auth gate deferred to Launch step — Build and Test are always free
     const finalCard = cardData || workerCardData;
-    // Game routing gate — games skip the worker1:intake pipeline
+    // CODEX 47.2 Fix 12 — Continue Building on a game card returns to chat,
+    // it does NOT launch test mode. Test only opens via the "Test Your Game"
+    // CTA at the end of the Interactions session, or the Test tab in nav.
     if (finalCard?.gameConfig?.isGame) {
       setWorkerCardData(finalCard);
-      advanceToStep(3);
-      addAssistantMessage("Building your game now. Packaging game rules with your artwork...");
-      setTimeout(() => {
-        advanceToStep(4);
-        addAssistantMessage("Your game is ready to test. Try it out on the right.");
-      }, 3000);
+      // Scroll chat to the latest message and focus the input so the creator
+      // can keep building (define rules, add artwork, etc.).
+      requestAnimationFrame(() => {
+        try { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); } catch {}
+        try { chatInputRef.current?.focus(); } catch {}
+      });
       return;
     }
     await runBuildPipeline(finalCard);
@@ -1803,13 +1880,14 @@ export default function DeveloperSandbox() {
         addAssistantMessage("File too large. Max 10MB.");
         return;
       }
-      // PDFs and other documents — sandbox can't read them yet, ask creator to paste text
-      if (file.type === "application/pdf" || /\.(pdf|docx?|txt|rtf|md)$/i.test(file.name || "")) {
-        addAssistantMessage("I can't read files directly yet — but I can work with anything you paste. Copy the text from your document and paste it here, and I'll pick it up from there.");
+      // CODEX 47.2 Fix 14 — documents are not parsed yet. Tell the creator
+      // exactly what to do instead of failing silently.
+      if (file.type === "application/pdf" || /\.(pdf|docx?|txt|rtf|md|pages|key|ppt|pptx|xls|xlsx)$/i.test(file.name || "")) {
+        addAssistantMessage("Document upload isn't wired up yet — paste the text directly into chat and I'll pick it up from there.");
         return;
       }
       if (!allowedTypes.test(file.type)) {
-        addAssistantMessage("Unsupported file type. Use PNG, JPG, or HEIC for images, or paste text from documents.");
+        addAssistantMessage("Unsupported file. Use PNG, JPG, or HEIC for images. For documents, paste the text into chat.");
         return;
       }
       const reader = new FileReader();
@@ -1974,7 +2052,12 @@ export default function DeveloperSandbox() {
                   case "startGameArtwork":
                     handleStartGameArtwork();
                     break;
+                  case "startGameInteractions":
+                    handleStartGameInteractions();
+                    break;
                   case "startGameTest":
+                    handleStartGameTest();
+                    break;
                   case "startSession2":
                   default:
                     handleWorkerCardApprove(workerCardData);
@@ -2340,12 +2423,15 @@ export default function DeveloperSandbox() {
             >Generate artwork</button>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
+            {/* CODEX 47.2 Fix 14 — paperclip is image-only. Documents (PDF/DOCX/TXT)
+                are not parsed yet, so we removed them from the file picker. The
+                inline tip below tells creators to paste text directly. */}
             <button
               onClick={() => fileInputRef.current?.click()}
               style={{ padding: "8px 10px", background: "#F8F9FC", border: "1px solid #E2E8F0", borderRadius: 8, color: "#64748B", cursor: "pointer", fontSize: 16, flexShrink: 0, lineHeight: 1 }}
-              title="Attach screenshot"
+              title="Attach an image (PNG, JPG, HEIC). For documents, paste the text into chat."
             >&#128206;</button>
-            <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp,image/heic,image/heif,application/pdf" multiple style={{ display: "none" }} onChange={handleFileSelect} />
+            <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp,image/heic,image/heif" multiple style={{ display: "none" }} onChange={handleFileSelect} />
             <textarea
               ref={chatInputRef}
               style={{ ...S.chatInput, flex: 1, overflowY: "auto", minHeight: isMobile ? 52 : 44 }}

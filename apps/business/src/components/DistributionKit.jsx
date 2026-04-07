@@ -1,8 +1,10 @@
 import React, { useState, useRef, useEffect } from "react";
+import QRCode from "qrcode";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
-const QR_API_PNG = "https://api.qrserver.com/v1/create-qr-code/?size=600x600&format=png&data=";
-const QR_API_SVG = "https://api.qrserver.com/v1/create-qr-code/?size=600x600&format=svg&data=";
+// CODEX 47.2 Fix 8 — Generate QR codes inline with the qrcode library.
+// The previous api.qrserver.com host is unreachable from some networks and was
+// silently leaving the QR panel blank.
 
 export default function DistributionKit({ worker, workerCardData, hasUpdatedSinceLaunch, canvasAssets = [] }) {
   // CODEX 47.1 Fix 7 — game vs worker pitch deck routing
@@ -22,8 +24,21 @@ export default function DistributionKit({ worker, workerCardData, hasUpdatedSinc
   const slug = (worker?.slug || worker?.name || workerCardData?.name || "worker").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
   const workerUrl = `https://titleapp.ai/w/${slug}`;
   const embedCode = `<iframe src="${workerUrl}?embed=1" width="${embedWidth}" height="${embedHeight}" frameborder="0" style="border:none;border-radius:12px;"></iframe>`;
-  const qrPng = `${QR_API_PNG}${encodeURIComponent(workerUrl)}`;
-  const qrSvg = `${QR_API_SVG}${encodeURIComponent(workerUrl)}`;
+
+  // CODEX 47.2 Fix 8 — Generate QR PNG (data URL) and SVG (string) inline.
+  // We render the data URL directly so the QR appears even with no network.
+  const [qrPng, setQrPng] = useState("");
+  const [qrSvg, setQrSvg] = useState("");
+  useEffect(() => {
+    let cancelled = false;
+    QRCode.toDataURL(workerUrl, { width: 600, margin: 2, errorCorrectionLevel: "M" })
+      .then(url => { if (!cancelled) { setQrPng(url); setQrFailed(false); } })
+      .catch(() => { if (!cancelled) setQrFailed(true); });
+    QRCode.toString(workerUrl, { type: "svg", width: 600, margin: 2, errorCorrectionLevel: "M" })
+      .then(svg => { if (!cancelled) setQrSvg(svg); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [workerUrl, qrAttempt]);
 
   const workerName = workerCardData?.name || worker?.name || "Your Worker";
   const workerDesc = workerCardData?.description || worker?.description || "";
@@ -31,8 +46,22 @@ export default function DistributionKit({ worker, workerCardData, hasUpdatedSinc
   const vertical = workerCardData?.vertical || worker?.intake?.vertical || "";
   const tierPrice = workerCardData?.pricingTier === 3 ? 79 : workerCardData?.pricingTier === 1 ? 29 : 49;
 
-  // Pre-written social copy
-  const linkedinPost = `I just published "${workerName}" on TitleApp -- a Digital Worker that ${workerDesc.toLowerCase().replace(/\.$/, "")}.
+  // CODEX 47.2 Fix 15 — Distribution copy must reflect the product type. Games
+  // are NOT Digital Workers — they have no compliance engine, no industry rules,
+  // no audit trails. Use player-facing language for games.
+  const ageRange = workerCardData?.ageRange || "all ages";
+  const oneLine = workerDesc.replace(/\.$/, "");
+  const lowerName = workerName;
+
+  const linkedinPost = isGame
+    ? `Just launched "${lowerName}" — a new game I built on TitleApp.
+
+${oneLine ? `${oneLine}.` : ""} Built in a few hours, no code, just artwork and rules.
+
+Play it free: ${workerUrl}
+
+#TitleApp #IndieGame #BuildWithAI`
+    : `I just published "${workerName}" on TitleApp -- a Digital Worker that ${workerDesc.toLowerCase().replace(/\.$/, "")}.
 
 ${targetUser ? `Built for ${targetUser.toLowerCase()}.` : ""} Every output is validated by a compliance engine before delivery. No hallucinations. No guessing.
 
@@ -40,11 +69,29 @@ Try it: ${workerUrl}
 
 #DigitalWorkers #AI #TitleApp${vertical ? ` #${vertical.replace(/[^a-zA-Z]/g, "")}` : ""}`;
 
-  const tweet = `Just launched "${workerName}" on @TitleApp -- a Digital Worker with built-in compliance rules. ${workerUrl}`;
+  const tweet = isGame
+    ? `Just launched ${lowerName} on @TitleApp${oneLine ? ` — ${oneLine}` : ""}. Play free: ${workerUrl}`
+    : `Just launched "${workerName}" on @TitleApp -- a Digital Worker with built-in compliance rules. ${workerUrl}`;
 
-  const smsText = `Check out ${workerName} -- a Digital Worker I built on TitleApp. ${workerUrl}`;
+  const smsText = isGame
+    ? `Built a game called ${lowerName} — try it: ${workerUrl}`
+    : `Check out ${workerName} -- a Digital Worker I built on TitleApp. ${workerUrl}`;
 
-  const emailBlast = `Subject: ${workerName} is live on TitleApp
+  const emailBlast = isGame
+    ? `Subject: I made a game — ${lowerName}
+
+Hey,
+
+I just built a game called "${lowerName}" on TitleApp.
+
+${workerDesc}
+
+It's free to play, takes about a minute to learn, and works on phone or desktop. ${ageRange ? `Designed for ${ageRange}.` : ""}
+
+Play it here: ${workerUrl}
+
+Tell me what you think — and what I should add next.`
+    : `Subject: ${workerName} is live on TitleApp
 
 Hi,
 
@@ -60,7 +107,25 @@ Subscriptions start at $${tierPrice}/mo. You can test it before subscribing.
 
 Let me know what you think.`;
 
-  const outreachEmail = `Subject: ${workerName} — a Digital Worker for your team
+  const outreachEmail = isGame
+    ? `Subject: ${lowerName} — a game for your community
+
+Hi [Name],
+
+I built a game called "${lowerName}" on TitleApp and thought it might be a fit for your audience.
+
+${oneLine ? `${oneLine}.` : ""}
+
+A few things about it:
+- Free to play, no download
+- Works on phone, tablet, or desktop
+- ${ageRange ? `Built for ${ageRange}` : "Quick to learn, hard to master"}
+- Built end-to-end inside TitleApp — original artwork, original rules
+
+Have a play and let me know what you think: ${workerUrl}
+
+Best`
+    : `Subject: ${workerName} — a Digital Worker for your team
 
 Hi [Name],
 
@@ -103,6 +168,20 @@ Best regards`;
     }
   }
 
+  // CODEX 47.2 Fix 8 — qrSvg is now a raw SVG string, not a URL. Wrap in a Blob.
+  function downloadSvgString(svgString, filename) {
+    if (!svgString) return;
+    const blob = new Blob([svgString], { type: "image/svg+xml" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
   const deckSlides = [
     { title: workerName, body: `A Digital Worker for ${vertical || "your industry"}` },
     { title: "The Problem", body: workerCardData?.problemSolves || workerDesc },
@@ -116,36 +195,43 @@ Best regards`;
     { title: "Subscribe", body: `Try ${workerName} today\n${workerUrl}\n\nQuestions? Contact the creator directly through TitleApp.` },
   ];
 
-  // CODEX 47.1 Fix 7 — Game pitch deck template + assets
+  // CODEX 47.2 Fix 16 — Game Card replaces the business pitch deck for games.
+  // 6 player-facing sections: Cover / The Goal / Characters / How to Play /
+  // Scoring / Play Now. Hero art = first background asset. Character section
+  // pulls character images. NO pricing slide, NO investor slide, NO compliance
+  // slide — this is what players see, not what investors see.
   const gameRules = workerCardData?.gameRules || {};
+  const gameInteractions = workerCardData?.gameInteractions || {};
   const characterAssets = (canvasAssets || []).filter(a => a.useAs === "character");
   const backgroundAssets = (canvasAssets || []).filter(a => a.useAs === "background");
   const gameTagline = workerCardData?.tagline || workerCardData?.description || `A new game on TitleApp`;
-  const gameplayBody = [
-    gameRules.turnMechanic   ? `Turn mechanic: ${gameRules.turnMechanic}`     : null,
-    gameRules.winLoseConditions ? `Win/lose: ${gameRules.winLoseConditions}` : null,
-    gameRules.scoring        ? `Scoring: ${gameRules.scoring}`                 : null,
-  ].filter(Boolean).join("\n") || "Tap to play. Score points. Beat your high score.";
-  const safetyBody = [
-    gameRules.safetyCompliance ? gameRules.safetyCompliance : null,
-    workerCardData?.ageRange ? `Age range: ${workerCardData.ageRange}` : null,
-    "RAAS Tier 0 — platform safety always on",
-  ].filter(Boolean).join("\n");
-  const learningBody = workerCardData?.learningOutcome
-    || workerCardData?.purpose
-    || "Players learn through play. Every session reinforces the core mechanic and rewards skill over luck.";
 
+  const goalBody = gameRules.winLoseConditions
+    || workerCardData?.problemSolves
+    || `Score points. Beat your high score. Have fun.`;
+
+  const howToPlayLines = [
+    gameInteractions.movement   ? `Move: ${gameInteractions.movement}`            : null,
+    gameInteractions.speed      ? `Pace: ${gameInteractions.speed}`               : null,
+    gameRules.turnMechanic      ? `Turns: ${gameRules.turnMechanic}`              : null,
+    gameInteractions.collisionRules ? `Contact: ${gameInteractions.collisionRules}` : null,
+    gameInteractions.soundCues  ? `Sound: ${gameInteractions.soundCues}`          : null,
+  ].filter(Boolean);
+  const howToPlayBody = howToPlayLines.length
+    ? howToPlayLines.join("\n")
+    : "Tap or use arrow keys to move. Collect points. Avoid hazards.";
+
+  const scoringBody = gameRules.scoring
+    || "+10 for each point collected. -5 for each hazard hit. Highest score wins.";
+
+  // 6 sections — what a player sees on a single Game Card sheet.
   const gameDeckSlides = [
-    { title: workerName, body: gameTagline },
-    { title: "The Game", body: workerDesc || `${workerName} — fast, fun, and built to share.${targetUser ? `\n\nFor ${targetUser.toLowerCase()}.` : ""}` },
-    { title: "Gameplay", body: gameplayBody },
-    { title: "Characters & World", body: `Original artwork built right inside TitleApp.${characterAssets.length ? `\n\n${characterAssets.length} character${characterAssets.length === 1 ? "" : "s"} ready to play.` : ""}` },
-    { title: "Learning & Purpose", body: learningBody },
-    { title: "Safety & Compliance", body: safetyBody },
-    { title: "Pricing", body: `Starting at $${tierPrice}/mo\n14-day free trial included\nNo credit card required to start` },
-    { title: "About the Creator", body: "Built by a verified creator on the TitleApp platform.\nEvery game ships with safety rules baked in." },
-    { title: "Distribution", body: `Play here: ${workerUrl}\n\nScan the QR code or tap the link.` },
-    { title: "Play Now", body: `Try ${workerName} today\n${workerUrl}` },
+    { title: workerName,        body: gameTagline },
+    { title: "The Goal",        body: goalBody },
+    { title: "Characters",      body: characterAssets.length ? `Meet your characters.` : `Original artwork built inside TitleApp.` },
+    { title: "How to Play",     body: howToPlayBody },
+    { title: "Scoring",         body: scoringBody },
+    { title: "Play Now",        body: `${workerUrl}\n\nScan the QR code or tap the link.` },
   ];
 
   function generateClientDeck() {
@@ -224,99 +310,79 @@ Best regards`;
     URL.revokeObjectURL(url);
   }
 
-  // CODEX 47.1 Fix 7 — Game-specific client-side deck (10 slides, embeds canvas artwork)
+  // CODEX 47.2 Fix 16 — Game Card (replaces the pitch deck for games).
+  // 6 player-facing pages with the real artwork embedded.
   function generateGameClientDeck() {
-    const accent = "#16A34A"; // green for games
+    const accent = "#16A34A";
     const heroBg = backgroundAssets[0]?.imageUrl || null;
     const footer = `<div style="position:absolute;bottom:24px;left:40px;right:40px;display:flex;justify-content:space-between;font-size:10px;color:#94A3B8;font-family:Calibri,sans-serif">
-      <span>titleapp.ai</span><span>Game</span><span>alex@titleapp.ai</span></div>`;
+      <span>titleapp.ai</span><span>Game Card</span><span>${workerUrl}</span></div>`;
     const darkSlide = (content, bgUrl) => {
       const bg = bgUrl
-        ? `linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.7)), url('${bgUrl}') center/cover`
+        ? `linear-gradient(rgba(0,0,0,0.45), rgba(0,0,0,0.7)), url('${bgUrl}') center/cover`
         : "#0F172A";
       return `<div style="width:100vw;height:100vh;background:${bg};color:white;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:60px;box-sizing:border-box;page-break-after:always;position:relative;font-family:Calibri,sans-serif">${content}</div>`;
     };
     const lightSlide = (title, body) => `<div style="width:100vw;height:100vh;background:#F8FAFC;color:#0F172A;display:flex;flex-direction:column;justify-content:flex-start;padding:60px;box-sizing:border-box;page-break-after:always;position:relative;font-family:Calibri,sans-serif">
-      <div style="font-size:12px;font-weight:700;color:${accent};text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">TitleApp Game</div>
-      <h2 style="font-size:36px;font-weight:700;color:#0F172A;margin:0 0 24px 0;border-bottom:3px solid ${accent};padding-bottom:12px;display:inline-block">${title}</h2>
-      <div style="font-size:16px;line-height:1.8;color:#1E293B;max-width:800px;white-space:pre-wrap">${body}</div>${footer}</div>`;
+      <div style="font-size:12px;font-weight:700;color:${accent};text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Game Card</div>
+      <h2 style="font-size:42px;font-weight:800;color:#0F172A;margin:0 0 24px 0;border-bottom:3px solid ${accent};padding-bottom:12px;display:inline-block">${title}</h2>
+      <div style="font-size:20px;line-height:1.6;color:#1E293B;max-width:800px;white-space:pre-wrap">${body}</div>${footer}</div>`;
 
-    // Build the character/world image strip — up to 4 character thumbs
     const charStrip = characterAssets.slice(0, 4).map(a =>
-      `<div style="background:white;border-radius:12px;padding:8px;box-shadow:0 4px 16px rgba(0,0,0,0.15)">
-        <img src="${a.imageUrl}" style="width:160px;height:160px;object-fit:contain;display:block;border-radius:6px" />
+      `<div style="background:white;border-radius:12px;padding:10px;box-shadow:0 4px 16px rgba(0,0,0,0.15);text-align:center">
+        <img src="${a.imageUrl}" style="width:180px;height:180px;object-fit:contain;display:block;border-radius:6px" />
+        ${a.label ? `<div style="font-size:13px;font-weight:600;color:#0F172A;margin-top:8px">${a.label}</div>` : ""}
        </div>`
     ).join("");
-    const bgStrip = backgroundAssets.slice(0, 2).map(a =>
-      `<img src="${a.imageUrl}" style="width:280px;height:160px;object-fit:cover;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.15)" />`
-    ).join("");
+    const ageBadge = workerCardData?.ageRange
+      ? `<div style="display:inline-block;padding:6px 14px;background:rgba(255,255,255,0.18);border:1px solid rgba(255,255,255,0.35);color:white;border-radius:999px;font-size:13px;font-weight:600;margin-top:14px">Ages ${workerCardData.ageRange}</div>`
+      : "";
 
     const slides = [
-      // Slide 1 — Title (hero with background art if available)
+      // Page 1 — Cover
       darkSlide(`
-        <div style="font-size:12px;font-weight:600;color:${accent};text-transform:uppercase;letter-spacing:2px;margin-bottom:12px">TitleApp Game</div>
-        <h1 style="font-size:56px;font-weight:800;margin:0 0 16px 0;text-align:center;text-shadow:0 4px 16px rgba(0,0,0,0.5)">${workerName}</h1>
-        <p style="font-size:20px;color:rgba(255,255,255,0.85);margin:0;text-align:center;max-width:800px">${gameTagline}</p>
-        <div style="position:absolute;bottom:24px;left:40px;font-size:10px;color:rgba(255,255,255,0.6)">${vertical || "Game"}</div>
-        <div style="position:absolute;bottom:24px;right:40px;font-size:10px;color:rgba(255,255,255,0.6)">titleapp.ai</div>`, heroBg),
-      // Slide 2 — The Game
-      lightSlide("The Game", gameDeckSlides[1].body),
-      // Slide 3 — Gameplay
-      lightSlide("Gameplay", gameDeckSlides[2].body),
-      // Slide 4 — Characters & World (with art)
+        <div style="font-size:12px;font-weight:700;color:${accent};text-transform:uppercase;letter-spacing:3px;margin-bottom:14px">Game Card</div>
+        <h1 style="font-size:64px;font-weight:800;margin:0 0 16px 0;text-align:center;text-shadow:0 4px 16px rgba(0,0,0,0.55)">${workerName}</h1>
+        <p style="font-size:22px;color:rgba(255,255,255,0.92);margin:0;text-align:center;max-width:820px;text-shadow:0 2px 8px rgba(0,0,0,0.5)">${gameTagline}</p>
+        ${ageBadge}
+        <div style="position:absolute;bottom:24px;left:40px;font-size:11px;color:rgba(255,255,255,0.7)">Built on TitleApp</div>
+        <div style="position:absolute;bottom:24px;right:40px;font-size:11px;color:rgba(255,255,255,0.7)">${workerUrl}</div>`, heroBg),
+
+      // Page 2 — The Goal
+      lightSlide("The Goal", goalBody),
+
+      // Page 3 — Characters (with artwork)
       `<div style="width:100vw;height:100vh;background:#F8FAFC;color:#0F172A;display:flex;flex-direction:column;justify-content:flex-start;padding:60px;box-sizing:border-box;page-break-after:always;position:relative;font-family:Calibri,sans-serif">
-        <div style="font-size:12px;font-weight:700;color:${accent};text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">TitleApp Game</div>
-        <h2 style="font-size:36px;font-weight:700;color:#0F172A;margin:0 0 24px 0;border-bottom:3px solid ${accent};padding-bottom:12px;display:inline-block">Characters &amp; World</h2>
-        <div style="font-size:16px;line-height:1.8;color:#1E293B;max-width:800px;margin-bottom:24px">${gameDeckSlides[3].body}</div>
-        ${charStrip ? `<div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:20px">${charStrip}</div>` : ""}
-        ${bgStrip ? `<div style="display:flex;gap:16px;flex-wrap:wrap">${bgStrip}</div>` : ""}
+        <div style="font-size:12px;font-weight:700;color:${accent};text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Game Card</div>
+        <h2 style="font-size:42px;font-weight:800;color:#0F172A;margin:0 0 24px 0;border-bottom:3px solid ${accent};padding-bottom:12px;display:inline-block">Characters</h2>
+        ${charStrip
+          ? `<div style="display:flex;gap:18px;flex-wrap:wrap;margin-top:8px">${charStrip}</div>`
+          : `<div style="font-size:18px;color:#64748B">Original artwork built inside TitleApp.</div>`}
         ${footer}</div>`,
-      // Slide 5 — Learning & Purpose
-      lightSlide("Learning &amp; Purpose", gameDeckSlides[4].body),
-      // Slide 6 — Safety & Compliance
-      lightSlide("Safety &amp; Compliance", gameDeckSlides[5].body),
-      // Slide 7 — Pricing
-      lightSlide("Pricing", `<div style="display:flex;gap:16px;margin-top:12px">
-        ${[{p:"$29/mo",n:"Starter",cr:"500 credits"},{p:"$49/mo",n:"Professional",cr:"1,500 credits"},{p:"$79/mo",n:"Enterprise",cr:"3,000 credits"}]
-        .map(t => `<div style="flex:1;background:white;border:1px solid #E2E8F0;border-radius:12px;padding:20px;text-align:center">
-          <div style="font-size:28px;font-weight:700;color:${accent}">${t.p}</div>
-          <div style="font-size:14px;font-weight:600;color:#0F172A;margin-top:4px">${t.n}</div>
-          <div style="font-size:12px;color:#94A3B8;margin-top:4px">${t.cr}</div></div>`).join("")}</div>
-        <div style="margin-top:16px;font-size:14px;color:#94A3B8">14-day free trial included. No credit card required to start.</div>`),
-      // Slide 8 — Creator
-      lightSlide("About the Creator", gameDeckSlides[7].body),
-      // Slide 9 — Distribution (QR + link)
-      `<div style="width:100vw;height:100vh;background:#F8FAFC;color:#0F172A;display:flex;flex-direction:column;justify-content:flex-start;padding:60px;box-sizing:border-box;page-break-after:always;position:relative;font-family:Calibri,sans-serif">
-        <div style="font-size:12px;font-weight:700;color:${accent};text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">TitleApp Game</div>
-        <h2 style="font-size:36px;font-weight:700;color:#0F172A;margin:0 0 24px 0;border-bottom:3px solid ${accent};padding-bottom:12px;display:inline-block">Distribution</h2>
-        <div style="display:flex;gap:32px;align-items:center;margin-top:12px">
-          <img src="${qrPng}" style="width:200px;height:200px;border-radius:12px;border:1px solid #E2E8F0" />
-          <div>
-            <div style="font-size:14px;color:#64748B;margin-bottom:8px">Scan to play, or visit:</div>
-            <div style="font-size:18px;font-family:monospace;color:${accent};font-weight:600">${workerUrl}</div>
-            <div style="font-size:13px;color:#94A3B8;margin-top:16px;max-width:340px;line-height:1.5">Share via SMS, social, QR on a business card, or embed directly into your site.</div>
-          </div>
-        </div>${footer}</div>`,
-      // Slide 10 — CTA (dark, hero style)
-      darkSlide(`
-        <h1 style="font-size:48px;font-weight:800;margin:0 0 16px 0;text-align:center;text-shadow:0 4px 16px rgba(0,0,0,0.5)">Play ${workerName}</h1>
-        <div style="display:flex;gap:12px;margin-bottom:24px">
-          <div style="padding:8px 20px;background:${accent};color:white;border-radius:8px;font-size:14px;font-weight:600">14-Day Free Trial</div>
-          <div style="padding:8px 20px;background:rgba(255,255,255,0.1);color:white;border-radius:8px;font-size:14px;font-weight:600;border:1px solid rgba(255,255,255,0.2)">No download required</div>
-        </div>
-        <p style="font-size:18px;color:rgba(255,255,255,0.85);margin:0 0 8px 0">${workerUrl}</p>
-        <img src="${qrPng}" style="width:140px;height:140px;border-radius:8px;margin-top:12px" />
-        <div style="position:absolute;bottom:24px;left:40px;right:40px;display:flex;justify-content:space-between;font-size:10px;color:rgba(255,255,255,0.6)">
-          <span>alex@titleapp.ai</span><span>titleapp.ai</span></div>`, heroBg),
+
+      // Page 4 — How to Play
+      lightSlide("How to Play", howToPlayBody),
+
+      // Page 5 — Scoring
+      lightSlide("Scoring", scoringBody),
+
+      // Page 6 — Play Now (QR + link)
+      `<div style="width:100vw;height:100vh;background:#F8FAFC;color:#0F172A;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:60px;box-sizing:border-box;page-break-after:always;position:relative;font-family:Calibri,sans-serif">
+        <div style="font-size:12px;font-weight:700;color:${accent};text-transform:uppercase;letter-spacing:2px;margin-bottom:14px">Play Now</div>
+        <h1 style="font-size:54px;font-weight:800;margin:0 0 28px 0;text-align:center">${workerName}</h1>
+        ${qrPng ? `<img src="${qrPng}" style="width:240px;height:240px;border-radius:12px;border:1px solid #E2E8F0;background:white;padding:12px" />` : ""}
+        <div style="font-size:16px;color:#64748B;margin-top:18px">Scan with your phone — or visit</div>
+        <div style="font-size:22px;font-family:monospace;color:${accent};font-weight:700;margin-top:6px">${workerUrl}</div>
+        ${footer}</div>`,
     ];
 
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${workerName} - Game Pitch Deck</title>
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${workerName} — Game Card</title>
 <style>@page{size:landscape;margin:0}body{margin:0}*{box-sizing:border-box}</style></head><body>${slides.join("")}</body></html>`;
     const blob = new Blob([html], { type: "text/html" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${slug}-game-pitch-deck.html`;
+    a.download = `${slug}-game-card.html`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -447,14 +513,14 @@ Best regards`;
         </div>
       </div>
 
-      {/* Worker Icon */}
+      {/* Worker / Game Icon */}
       {workerCardData?.iconDataUrl && (
         <div style={sectionStyle}>
-          <span style={labelStyle}>Worker icon</span>
+          <span style={labelStyle}>{isGame ? "Game icon" : "Worker icon"}</span>
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-            <img src={workerCardData.iconDataUrl} alt="Worker icon" style={{ width: 80, height: 80, borderRadius: 16, objectFit: "cover", border: "1px solid #E2E8F0" }} />
+            <img src={workerCardData.iconDataUrl} alt={isGame ? "Game icon" : "Worker icon"} style={{ width: 80, height: 80, borderRadius: 16, objectFit: "cover", border: "1px solid #E2E8F0" }} />
             <div style={{ fontSize: 13, color: "#64748B", lineHeight: 1.5 }}>
-              Your worker icon appears in the marketplace, client deck, and share pages. You can change it anytime in the Build step.
+              Your {isGame ? "game" : "worker"} icon appears in the marketplace and share pages. You can change it anytime in the Build step.
             </div>
           </div>
         </div>
@@ -501,7 +567,7 @@ Best regards`;
               Download PNG (300 DPI)
             </button>
             <button
-              onClick={() => downloadFile(qrSvg, `${slug}-qr.svg`)}
+              onClick={() => downloadSvgString(qrSvg, `${slug}-qr.svg`)}
               style={{ padding: "8px 16px", background: "#F8F9FC", color: "#64748B", border: "1px solid #E2E8F0", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer", textAlign: "center" }}
             >
               Download SVG
@@ -555,22 +621,26 @@ Best regards`;
         </div>
       </div>
 
-      {/* Outreach email (institutional) */}
+      {/* Outreach email (institutional / community) */}
       <div style={sectionStyle}>
-        <span style={labelStyle}>Outreach email — for decision-makers</span>
-        <div style={{ fontSize: 12, color: "#64748B", marginBottom: 8 }}>Personalized for medical directors, program directors, and department heads. Replace [Name] and send.</div>
+        <span style={labelStyle}>{isGame ? "Outreach email — for community partners" : "Outreach email — for decision-makers"}</span>
+        <div style={{ fontSize: 12, color: "#64748B", marginBottom: 8 }}>
+          {isGame
+            ? "For teachers, club leaders, streamers, and community moderators. Replace [Name] and send."
+            : "Personalized for medical directors, program directors, and department heads. Replace [Name] and send."}
+        </div>
         <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
           <div style={{ flex: 1, padding: "12px 14px", background: "#F8F9FC", borderRadius: 6, border: "1px solid #E2E8F0", color: "#1a1a2e", fontSize: 13, lineHeight: 1.6, whiteSpace: "pre-wrap", fontFamily: "monospace" }}>{outreachEmail}</div>
           <button style={copyBtnStyle("outreach")} onClick={() => copyText("outreach", outreachEmail)}>{copied === "outreach" ? "Copied" : "Copy"}</button>
         </div>
       </div>
 
-      {/* 10-Slide Pitch Deck */}
+      {/* CODEX 47.2 Fix 16 — Game Card (games) / 10-Slide Pitch Deck (workers) */}
       <div style={sectionStyle}>
-        <span style={labelStyle}>10-slide pitch deck</span>
+        <span style={labelStyle}>{isGame ? "Game card" : "10-slide pitch deck"}</span>
         <div style={{ fontSize: 12, color: "#64748B", marginBottom: 12 }}>
           {isGame
-            ? "Auto-generated from your game. Gameplay, characters, safety, pricing, CTA — with your real artwork embedded."
+            ? "A player-facing quick-start. Cover, the goal, characters, how to play, scoring, and a QR to play. Your real artwork embedded."
             : "Auto-generated from your Worker Card. Problem, solution, compliance, pricing, CTA — all branded."}
         </div>
         <div style={{ display: "flex", gap: 8 }}>
@@ -579,14 +649,18 @@ Best regards`;
             onClick={() => generateDeck("pptx")}
             disabled={deckGenerating}
           >
-            {deckGenerating && deckFormat === "pptx" ? "Generating..." : "Download PPTX"}
+            {deckGenerating && deckFormat === "pptx"
+              ? "Generating..."
+              : isGame ? "Download Game Card (PPTX)" : "Download PPTX"}
           </button>
           <button
             style={{ padding: "10px 20px", background: "#FFFFFF", color: "#64748B", border: "1px solid #E2E8F0", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", opacity: deckGenerating ? 0.7 : 1 }}
             onClick={() => generateDeck("pdf")}
             disabled={deckGenerating}
           >
-            {deckGenerating && deckFormat === "pdf" ? "Generating..." : "Download PDF"}
+            {deckGenerating && deckFormat === "pdf"
+              ? "Generating..."
+              : isGame ? "Download Game Card (PDF)" : "Download PDF"}
           </button>
         </div>
         {deckError && (
@@ -594,7 +668,7 @@ Best regards`;
         )}
         <div style={{ marginTop: 10, fontSize: 11, color: "#94A3B8", lineHeight: 1.5 }}>
           {isGame
-            ? "10 slides: Title, The Game, Gameplay, Characters & World, Learning & Purpose, Safety & Compliance, Pricing, Creator, Distribution, Play Now"
+            ? "6 sections: Cover, The Goal, Characters, How to Play, Scoring, Play Now"
             : "10 slides: Title, Problem, Solution, How It Works, Audience, Compliance, Pricing, Market Context, Creator, CTA"}
         </div>
       </div>
@@ -620,7 +694,7 @@ Best regards`;
                 <span style={{ fontSize: 13, fontWeight: 600, color: "#6B46C1" }}>$79/mo</span>
               </div>
               <div style={{ fontSize: 13, color: "#64748B", lineHeight: 1.5 }}>
-                Your worker appears in the "Popular right now" section on titleapp.ai. Estimated reach: 5,000-15,000 monthly visitors.
+                Your {isGame ? "game" : "worker"} appears in the "Popular right now" section on titleapp.ai. Estimated reach: 5,000-15,000 monthly visitors.
               </div>
               <button disabled title="Coming soon — available at launch" style={{ marginTop: 10, padding: "8px 16px", background: "#F8F9FC", color: "#CBD5E1", border: "1px solid #E2E8F0", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "not-allowed" }}>
                 Coming soon
