@@ -5,6 +5,8 @@ import BuildProgress from "../components/BuildProgress";
 import TestWorkerPanel from "../components/TestWorkerPanel";
 import CanvasComingSoon from "../components/sandbox/CanvasComingSoon";
 import GameBoardPanel from "../components/sandbox/GameBoardPanel";
+import StepStatusBar from "../components/sandbox/StepStatusBar";
+import CollapsibleSection from "../components/sandbox/CollapsibleSection";
 import { getPostLaunchMessage } from "../components/studio/PostLaunchAlex";
 import CanvasImagePanel from "../components/canvas/CanvasImagePanel";
 import MyImagesPanel from "../components/MyImagesPanel";
@@ -722,6 +724,10 @@ export default function DeveloperSandbox() {
   // exactly once per session. Once tapped or rendered, never re-render.
   const rulesButtonShownRef = useRef(false);
   const artworkButtonShownRef = useRef(false);
+  // CODEX 47.3 Fix 2 — fire the post-save recap message + intro CTA exactly
+  // once per session. Backend re-sends [WORKER_SPEC] on follow-up turns; we
+  // must not repeat the "Saved to your Vault" recap or stack duplicate CTAs.
+  const sessionIntroSentRef = useRef(false);
   // CODEX 47.1 Fix 6 — selected device for game test mode (mobile / tablet / desktop)
   const [testDevice, setTestDevice] = useState(() => savedSession.current?.testDevice || null);
 
@@ -737,9 +743,8 @@ export default function DeveloperSandbox() {
   // CODEX 47.2 Fix 13 — interactions session answer counter
   const [gameInteractionsAnswered, setGameInteractionsAnswered] = useState(() => savedSession.current?.gameInteractionsAnswered || 0);
 
-  // Image attachments
-  const [pendingImages, setPendingImages] = useState([]);
-  const fileInputRef = useRef(null);
+  // CODEX 47.3 Fix 14 — image attachments removed; see comment above the
+  // (now deleted) processFiles helper for context.
 
   // Persist session state on key changes
   useEffect(() => {
@@ -816,30 +821,53 @@ export default function DeveloperSandbox() {
       || "";
   });
 
-  // CODEX 47.2 Fix 13 — After artwork has at least 1 character + 1 background,
-  // emit the "Define the Interactions" CTA. Test only opens after interactions lock.
+  // CODEX 47.3 Fix 17 — Artwork done gate. When the creator has the minimum
+  // assets (1 character + 1 background), Alex asks "ready to move on?" first.
+  // The Interactions CTA only emits after the creator confirms in chat.
+  // CODEX 47.2 Fix 13 — Interactions session is the bridge between Artwork
+  // and Test. We never auto-launch Test from artwork.
+  const artworkReadyPromptedRef = useRef(false);
   const gameInteractionsCtaEmitted = useRef(false);
   useEffect(() => {
     if (gameSessionPhase !== "artwork") return;
-    if (gameInteractionsCtaEmitted.current) return;
+    if (artworkReadyPromptedRef.current) return;
     const includedSet = new Set(includedAssetIds);
     const includedAssets = canvasAssets.filter(a => includedSet.has(a.assetId || a.id));
     const hasChar = includedAssets.some(a => a.useAs === "character");
     const hasBg = includedAssets.some(a => a.useAs === "background");
     const lenientFallback = canvasAssets.length >= 4;
     if (!(hasChar && hasBg) && !lenientFallback) return;
-    gameInteractionsCtaEmitted.current = true;
+    artworkReadyPromptedRef.current = true;
     setTimeout(() => {
-      addAssistantMessage("Artwork is in. Last build session: how does the game play in your hands? Movement, speed, what happens when you touch things — that's all we need to nail down before we test.");
-      setTimeout(() => {
-        setMessages(prev => {
-          if (prev.some(m => m.role === "cta" && m.action === "startGameInteractions")) return prev;
-          return [...prev, { role: "cta", text: "Define the Interactions", action: "startGameInteractions" }];
-        });
-      }, 600);
+      addAssistantMessage("Looking good. You've got a character and a background — enough to build a playable level. You can keep generating more art, or we can move on to the interactions (movement, speed, collisions). Ready to move on?");
     }, 600);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canvasAssets, includedAssetIds, gameSessionPhase]);
+
+  // CODEX 47.3 Fix 17 + 18 — Helpers for chat-driven affirmative detection.
+  // Fix 17: in artwork phase, "yes"/"done"/"ready"/"move on" → Interactions CTA.
+  // Fix 18: after interactions complete, "build it"/"let's test"/"i'm ready" → Test CTA.
+  function isAffirmative(text) {
+    const t = (text || "").trim().toLowerCase();
+    if (!t) return false;
+    return /\b(yes|yep|yeah|yup|sure|ok|okay|done|ready|move on|let'?s go|let'?s do it|next|continue|sounds good|good to go)\b/.test(t);
+  }
+  function isTestTrigger(text) {
+    const t = (text || "").trim().toLowerCase();
+    if (!t) return false;
+    return /\b(build it|let'?s test|test it|test the game|i'?m ready|play it|launch it|run it|fire it up|ready to test)\b/.test(t);
+  }
+  function emitInteractionsCta() {
+    if (gameInteractionsCtaEmitted.current) return;
+    gameInteractionsCtaEmitted.current = true;
+    addAssistantMessage("Artwork is in. Last build session: how does the game play in your hands? Movement, speed, what happens when you touch things — that's all we need to nail down before we test.");
+    setTimeout(() => {
+      setMessages(prev => {
+        if (prev.some(m => m.role === "cta" && m.action === "startGameInteractions")) return prev;
+        return [...prev, { role: "cta", text: "Define the Interactions", action: "startGameInteractions" }];
+      });
+    }, 600);
+  }
 
   // CODEX 47.1 Fix 9 — Soft auth nudge: fire after the FIRST character is saved
   // (looser than 46.10's char + bg trigger). Anonymous-only, fires once.
@@ -1077,7 +1105,7 @@ export default function DeveloperSandbox() {
   // ── Chat send ────────────────────────────────────────────────
   async function handleSend() {
     const text = input.trim();
-    if ((!text && pendingImages.length === 0) || sending) return;
+    if (!text || sending) return;
     setInput("");
     setShowPasteArea(false); // Hide paste link once user starts typing
     // Fade out welcome greeting on first user message
@@ -1086,6 +1114,49 @@ export default function DeveloperSandbox() {
       setTimeout(() => setWelcomeGreeting(null), 400);
     }
     addUserMessage(text);
+
+    // CODEX 47.3 Fix 17 — When in artwork phase and Alex has already asked
+    // "ready to move on?", a yes-style reply locally advances to the
+    // Interactions CTA without round-tripping through the backend.
+    if (
+      gameSessionPhase === "artwork" &&
+      artworkReadyPromptedRef.current &&
+      !gameInteractionsCtaEmitted.current &&
+      isAffirmative(text)
+    ) {
+      setSending(false);
+      setTimeout(() => emitInteractionsCta(), 300);
+      return;
+    }
+
+    // CODEX 47.3 Fix 18 — When in interactions phase and the spec is locked,
+    // a "build it"/"let's test"/"i'm ready" reply emits the Test Your Game CTA.
+    const gi = workerCardData?.gameInteractions;
+    const interactionsLocked = !!(
+      gi &&
+      gi.movement &&
+      gi.speed &&
+      gi.collisionRules &&
+      gi.soundCues
+    );
+    if (
+      (gameSessionPhase === "interactions" || gameSessionPhase === "ready") &&
+      interactionsLocked &&
+      isTestTrigger(text)
+    ) {
+      setSending(false);
+      setTimeout(() => {
+        setMessages(prev => {
+          if (prev.some(m => m.role === "cta" && m.action === "startGameTest")) return prev;
+          return [
+            ...prev,
+            { role: "assistant", text: "On it. Tap below to launch the playable build." },
+            { role: "cta", text: "Test Your Game", action: "startGameTest" },
+          ];
+        });
+      }, 300);
+      return;
+    }
 
     // Path question short-answer detection — when path chips are shown,
     // catch typed answers like "game", "a game", "worker", "digital worker".
@@ -1242,15 +1313,6 @@ export default function DeveloperSandbox() {
     const shouldExtractSpec = flowStep <= 2 && newExchangeCount >= 5 && !workerCardData && !isGamePath;
 
     setSending(true);
-    const images = [...pendingImages];
-    setPendingImages([]);
-    if (images.length > 0) {
-      setMessages(prev => {
-        const last = prev[prev.length - 1];
-        if (last && last.role === "user") return [...prev.slice(0, -1), { ...last, images }];
-        return prev;
-      });
-    }
     try {
       const token = localStorage.getItem("ID_TOKEN");
       const headers = { "Content-Type": "application/json" };
@@ -1272,7 +1334,6 @@ export default function DeveloperSandbox() {
             gameRules: nextCardData.gameRules,
             gameInteractions: nextCardData.gameInteractions,
           } } : {}),
-          ...(images.length > 0 ? { imageData: images.map(img => ({ base64: img.base64, mediaType: img.mediaType })) } : {}),
         }),
       });
       const result = await resp.json();
@@ -1309,37 +1370,57 @@ export default function DeveloperSandbox() {
             setJurisdiction(card.jurisdiction || "GLOBAL");
             setWorker({ id: card.workerId, name: card.name, buildPhase: "draft" });
 
-            // Card renders in right panel — show a brief note in chat
-            const savedName = creatorName ? creatorName.split(" ")[0] : "";
-            addAssistantMessage(savedName ? `Saved to your Vault, ${savedName}. Your worker card is on the right.` : "Your worker card is ready — see it on the right.");
+            // CODEX 47.3 Fix 2 — gate the recap + CTA emission to fire once.
+            // Backend re-sends [WORKER_SPEC] on every follow-up turn; without
+            // this guard the user sees "Saved to your Vault" repeatedly.
+            const alreadyIntroduced =
+              sessionIntroSentRef.current ||
+              messages.some(m =>
+                m.role === "assistant" &&
+                typeof m.text === "string" &&
+                m.text.startsWith("Saved to your Vault")
+              );
 
-            if (flowStep < 2) advanceToStep(2);
+            if (!alreadyIntroduced) {
+              sessionIntroSentRef.current = true;
 
-            // CODEX 47.1 Fix 1 — single compact confirmation. The LifecycleCard
-            // already shows the stages on the right; no need to duplicate in chat.
-            setTimeout(() => {
-              const gameOrWorkerName = card.name || (isGame ? "your game" : "your worker");
-              const compactText = isGame
-                ? `Got it — ${gameOrWorkerName} is saved. Next up: let's define how the game plays. Tap Define the Rules when you're ready.`
-                : `Got it — ${gameOrWorkerName} is saved. Next up: let's define how it should and shouldn't behave. Tap Start Session 2 when you're ready.`;
-              setMessages(prev => [...prev, { role: "assistant", text: compactText }]);
-              // CODEX 47.2 Fix 2 — render CTA button once per session. Gate by checking
-              // the actual messages array (refs reset on reload but messages persist).
+              // Card renders in right panel — show a brief note in chat
+              const savedName = creatorName ? creatorName.split(" ")[0] : "";
+              // CODEX 47.3 Fix 20 — game language. Never call a game build a "worker card".
+              const cardNoun = isGame ? "game card" : "worker card";
+              addAssistantMessage(savedName ? `Saved to your Vault, ${savedName}. Your ${cardNoun} is on the right.` : `Your ${cardNoun} is ready — see it on the right.`);
+
+              if (flowStep < 2) advanceToStep(2);
+
+              // CODEX 47.1 Fix 1 — single compact confirmation. The LifecycleCard
+              // already shows the stages on the right; no need to duplicate in chat.
               setTimeout(() => {
-                if (isGame) {
-                  setMessages(prev => {
-                    if (prev.some(m => m.role === "cta" && m.action === "startGameRules")) return prev;
-                    rulesButtonShownRef.current = true;
-                    return [...prev, { role: "cta", text: "Define the Rules", action: "startGameRules" }];
-                  });
-                } else {
-                  setMessages(prev => {
-                    if (prev.some(m => m.role === "cta" && m.action === "startSession2")) return prev;
-                    return [...prev, { role: "cta", text: "Start Session 2", action: "startSession2" }];
-                  });
-                }
-              }, 600);
-            }, 1000);
+                const gameOrWorkerName = card.name || (isGame ? "your game" : "your worker");
+                const compactText = isGame
+                  ? `Got it — ${gameOrWorkerName} is saved. Next up: let's define how the game plays. Tap Define the Rules when you're ready.`
+                  : `Got it — ${gameOrWorkerName} is saved. Next up: let's define how it should and shouldn't behave. Tap Start Session 2 when you're ready.`;
+                setMessages(prev => [...prev, { role: "assistant", text: compactText }]);
+                // CODEX 47.2 Fix 2 — render CTA button once per session. Gate by checking
+                // the actual messages array (refs reset on reload but messages persist).
+                setTimeout(() => {
+                  if (isGame) {
+                    setMessages(prev => {
+                      if (prev.some(m => m.role === "cta" && m.action === "startGameRules")) return prev;
+                      rulesButtonShownRef.current = true;
+                      return [...prev, { role: "cta", text: "Define the Rules", action: "startGameRules" }];
+                    });
+                  } else {
+                    setMessages(prev => {
+                      if (prev.some(m => m.role === "cta" && m.action === "startSession2")) return prev;
+                      return [...prev, { role: "cta", text: "Start Session 2", action: "startSession2" }];
+                    });
+                  }
+                }, 600);
+              }, 1000);
+            } else {
+              // Card already introduced — silently update the right panel only.
+              if (flowStep < 2) advanceToStep(2);
+            }
           }
         }
 
@@ -1428,8 +1509,14 @@ export default function DeveloperSandbox() {
               setVertical(card.category || "");
               setJurisdiction(card.jurisdiction || "GLOBAL");
               setWorker({ id: card.workerId, name: card.name, buildPhase: "draft" });
-              const savedName = creatorName ? creatorName.split(" ")[0] : "";
-              addAssistantMessage(savedName ? `Saved to your Vault, ${savedName}. Your worker card is on the right.` : "Your worker card is ready — see it on the right.");
+              // CODEX 47.3 Fix 2 — gate intro recap to once per session.
+              if (!sessionIntroSentRef.current) {
+                sessionIntroSentRef.current = true;
+                const savedName = creatorName ? creatorName.split(" ")[0] : "";
+                // CODEX 47.3 Fix 20 — game language.
+                const cardNoun = isGame2 ? "game card" : "worker card";
+                addAssistantMessage(savedName ? `Saved to your Vault, ${savedName}. Your ${cardNoun} is on the right.` : `Your ${cardNoun} is ready — see it on the right.`);
+              }
               if (flowStep < 2) advanceToStep(2);
             }
           }
@@ -1868,64 +1955,60 @@ export default function DeveloperSandbox() {
     addAssistantMessage(`What would you like to change about ${existingWorker.name || "your worker"}? Describe the change in the chat, or test it on the right and tell me what needs fixing.`);
   }
 
-  // ── Image attachment handler ───────────────────────────────
-
-  function processFiles(files) {
-    if (files.length === 0) return;
-    const maxFiles = 3 - pendingImages.length;
-    const toProcess = files.slice(0, maxFiles);
-    const allowedTypes = /^image\/(png|jpeg|webp|heic|heif)$/;
-    toProcess.forEach(file => {
-      if (file.size > 10 * 1024 * 1024) {
-        addAssistantMessage("File too large. Max 10MB.");
-        return;
-      }
-      // CODEX 47.2 Fix 14 — documents are not parsed yet. Tell the creator
-      // exactly what to do instead of failing silently.
-      if (file.type === "application/pdf" || /\.(pdf|docx?|txt|rtf|md|pages|key|ppt|pptx|xls|xlsx)$/i.test(file.name || "")) {
-        addAssistantMessage("Document upload isn't wired up yet — paste the text directly into chat and I'll pick it up from there.");
-        return;
-      }
-      if (!allowedTypes.test(file.type)) {
-        addAssistantMessage("Unsupported file. Use PNG, JPG, or HEIC for images. For documents, paste the text into chat.");
-        return;
-      }
-      const reader = new FileReader();
-      reader.onload = () => {
-        const base64 = reader.result.split(",")[1];
-        setPendingImages(prev => [...prev, {
-          base64,
-          mediaType: file.type === "application/pdf" ? "application/pdf" : file.type.replace("heic", "jpeg").replace("heif", "jpeg"),
-          name: file.name,
-          preview: file.type.startsWith("image/") ? reader.result : null,
-        }]);
-      };
-      reader.onerror = () => {
-        addAssistantMessage("Image upload failed. Try again.");
-      };
-      reader.readAsDataURL(file);
-    });
-  }
-
-  function handleFileSelect(e) {
-    processFiles(Array.from(e.target.files || []));
-    e.target.value = "";
-  }
-
-  function handleDrop(e) {
-    e.preventDefault();
-    e.stopPropagation();
-    processFiles(Array.from(e.dataTransfer.files || []));
-  }
-
-  function handleDragOver(e) {
-    e.preventDefault();
-    e.stopPropagation();
-  }
+  // CODEX 47.3 Fix 14 — File upload removed entirely. Three rounds of testing
+  // proved the picker was non-functional. A broken button is worse than no
+  // button. Creators paste text directly. Revisit when file parsing ships.
 
   // Game mode flag — single source of truth for all game-vs-worker UI branching
   const isGameMode = !!(workerCardData?.gameConfig?.isGame || (creatorPath && creatorPath.startsWith('game')));
   const workspaceLabel = isGameMode ? "Game Board" : "Your Workspace";
+
+  // CODEX 47.3-P Fix P1 — Game step status. Maps current state into the
+  // 8-step status bar (Concept → Rules → Artwork → Interactions → Test →
+  // Preflight → Distribute → Grow & Revise). Each step is cold/warm/hot.
+  const gameStepStates = (() => {
+    const conceptHot = !!workerCardData;
+    const gr = workerCardData?.gameRules || {};
+    const rulesHot = !!(gr.turnMechanic && gr.winLoseConditions && gr.scoring && gr.safetyCompliance);
+    const includedSet = new Set(includedAssetIds);
+    const includedNow = canvasAssets.filter(a => includedSet.has(a.assetId || a.id));
+    const artworkHot = includedNow.some(a => a.useAs === "character") &&
+                       includedNow.some(a => a.useAs === "background");
+    const gi = workerCardData?.gameInteractions || {};
+    const interactionsHot = !!(gi.movement && gi.speed && gi.collisionRules && gi.soundCues);
+    const testHot = flowStep > 4;
+    const preflightHot = flowStep > 5;
+    const distributeHot = flowStep > 6;
+
+    function stateOf(hot, warm) {
+      if (hot) return "hot";
+      if (warm) return "warm";
+      return "cold";
+    }
+
+    // Determine which step is the current "warm" cursor.
+    let activeId = "concept";
+    if (flowStep === 7) activeId = "grow";
+    else if (flowStep === 6) activeId = "distribute";
+    else if (flowStep === 5) activeId = "preflight";
+    else if (flowStep === 4 || gameSessionPhase === "ready") activeId = "test";
+    else if (gameSessionPhase === "interactions") activeId = "interactions";
+    else if (gameSessionPhase === "artwork") activeId = "artwork";
+    else if (gameSessionPhase === "rules") activeId = "rules";
+    else activeId = "concept";
+
+    const steps = [
+      { id: "concept",      label: "Concept",        state: stateOf(conceptHot, !conceptHot) },
+      { id: "rules",        label: "Rules",          state: stateOf(rulesHot, gameSessionPhase === "rules" || (conceptHot && !rulesHot && !artworkHot)) },
+      { id: "artwork",      label: "Artwork",        state: stateOf(artworkHot, gameSessionPhase === "artwork") },
+      { id: "interactions", label: "Interactions",   state: stateOf(interactionsHot, gameSessionPhase === "interactions") },
+      { id: "test",         label: "Test",           state: stateOf(testHot, flowStep === 4 || gameSessionPhase === "ready") },
+      { id: "preflight",    label: "Preflight",      state: stateOf(preflightHot, flowStep === 5) },
+      { id: "distribute",   label: "Distribute",     state: stateOf(distributeHot, flowStep === 6) },
+      { id: "grow",         label: "Grow & Revise",  state: stateOf(false, flowStep === 7) },
+    ];
+    return { steps, activeId };
+  })();
 
   // Chat input placeholder based on step
   const chatPlaceholder = flowStep <= 2
@@ -1999,10 +2082,8 @@ export default function DeveloperSandbox() {
         </>
       )}
 
-      {/* Column 2: Chat Panel */}
+      {/* Column 2: Chat Panel — CODEX 47.3 Fix 14: drop handlers removed */}
       <div
-        onDrop={handleDrop}
-        onDragOver={handleDragOver}
         style={{
           ...S.chatPanel,
           ...(isMobile
@@ -2399,39 +2480,16 @@ export default function DeveloperSandbox() {
             </div>
           )}
 
-          {pendingImages.length > 0 && (
-            <div style={{ display: "flex", gap: 6, marginBottom: 8, flexWrap: "wrap" }}>
-              {pendingImages.map((img, i) => (
-                <div key={i} style={{ position: "relative" }}>
-                  {img.preview ? (
-                    <img src={img.preview} alt="" style={{ width: 44, height: 44, borderRadius: 6, objectFit: "cover", border: "1px solid #E2E8F0" }} />
-                  ) : (
-                    <div style={{ width: 44, height: 44, borderRadius: 6, background: "#F8F9FC", border: "1px solid #E2E8F0", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: "#64748B", fontWeight: 600 }}>PDF</div>
-                  )}
-                  <button
-                    onClick={() => setPendingImages(prev => prev.filter((_, j) => j !== i))}
-                    style={{ position: "absolute", top: -6, right: -6, width: 18, height: 18, borderRadius: 9, background: "#dc2626", color: "white", border: "none", fontSize: 11, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1 }}
-                  >&times;</button>
-                </div>
-              ))}
-            </div>
-          )}
           <div style={{ display: "flex", gap: 6, marginBottom: 6, flexWrap: "wrap", overflowX: "auto" }}>
             <button
               onClick={() => { setInput("Create artwork for my project"); requestAnimationFrame(() => handleSend()); }}
               style={{ fontSize: 13, color: "#475569", background: "#F1F5F9", border: "1px solid #E2E8F0", borderRadius: 16, padding: "4px 12px", cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap", flexShrink: 0 }}
             >Generate artwork</button>
           </div>
+          {/* CODEX 47.3 Fix 14 — File upload removed entirely. A broken picker
+              is worse than no picker. Creators paste text directly until file
+              parsing ships. Do not re-add a paperclip or drop zone. */}
           <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
-            {/* CODEX 47.2 Fix 14 — paperclip is image-only. Documents (PDF/DOCX/TXT)
-                are not parsed yet, so we removed them from the file picker. The
-                inline tip below tells creators to paste text directly. */}
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              style={{ padding: "8px 10px", background: "#F8F9FC", border: "1px solid #E2E8F0", borderRadius: 8, color: "#64748B", cursor: "pointer", fontSize: 16, flexShrink: 0, lineHeight: 1 }}
-              title="Attach an image (PNG, JPG, HEIC). For documents, paste the text into chat."
-            >&#128206;</button>
-            <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp,image/heic,image/heif" multiple style={{ display: "none" }} onChange={handleFileSelect} />
             <textarea
               ref={chatInputRef}
               style={{ ...S.chatInput, flex: 1, overflowY: "auto", minHeight: isMobile ? 52 : 44 }}
@@ -2445,7 +2503,7 @@ export default function DeveloperSandbox() {
             />
             <button
               onClick={handleSend}
-              disabled={sending || (!input.trim() && pendingImages.length === 0)}
+              disabled={sending || !input.trim()}
               style={{
                 padding: "10px 16px", background: input.trim() ? "var(--accent, #6B46C1)" : "#E2E8F0",
                 color: input.trim() ? "white" : "#94A3B8", border: "none", borderRadius: 8,
@@ -2455,6 +2513,9 @@ export default function DeveloperSandbox() {
             >
               Send
             </button>
+          </div>
+          <div style={{ marginTop: 6, fontSize: 11, color: "#94A3B8", textAlign: "center" }}>
+            Paste text directly — file upload coming soon.
           </div>
         </div>
       </div>
@@ -2572,19 +2633,26 @@ export default function DeveloperSandbox() {
                 const stepNum = i + 3; // steps 3-7
                 const isActive = flowStep === stepNum;
                 const isComplete = maxFlowStep > stepNum;
-                const isReachable = stepNum <= maxFlowStep + 1;
+                // CODEX 47.3 Fix 19 — Progressive tab activation. A tab is only
+                // unlocked once the creator has actually reached it (maxFlowStep
+                // already advanced to or past it). Tabs ahead of progress are
+                // locked and show a tooltip naming the prior step.
+                const isUnlocked = stepNum <= maxFlowStep;
+                const prevStepLabel = FLOW_STEPS[stepNum - 1 - 1] || "the previous step";
+                const lockedTooltip = `Complete ${prevStepLabel} first.`;
                 return (
                   <div
                     key={step}
+                    title={isUnlocked ? "" : lockedTooltip}
                     style={{
                       padding: "12px 16px", fontSize: 13, fontWeight: 600,
-                      color: isActive ? "var(--accent, #6B46C1)" : isComplete ? "#10b981" : stepNum <= maxFlowStep ? "#1a1a2e" : "#94A3B8",
+                      color: isActive ? "var(--accent, #6B46C1)" : isComplete ? "#10b981" : isUnlocked ? "#1a1a2e" : "#94A3B8",
                       borderBottom: `2px solid ${isActive ? "var(--accent, #6B46C1)" : "transparent"}`,
                       display: "flex", alignItems: "center", gap: 6,
-                      cursor: isReachable && !isActive ? "pointer" : "default",
-                      opacity: stepNum > maxFlowStep + 1 ? 0.4 : 1,
+                      cursor: isUnlocked && !isActive ? "pointer" : "default",
+                      opacity: isUnlocked ? 1 : 0.4,
                     }}
-                    onClick={() => { if (isReachable && !isActive) { if (stepNum > maxFlowStep) advanceToStep(stepNum); else viewStep(stepNum); } }}
+                    onClick={() => { if (isUnlocked && !isActive) viewStep(stepNum); }}
                   >
                     <span style={{
                       width: 20, height: 20, borderRadius: 10, display: "inline-flex", alignItems: "center", justifyContent: "center",
@@ -2613,16 +2681,206 @@ export default function DeveloperSandbox() {
             </div>
           )}
 
+          {/* CODEX 47.3-P Fix P1 — Game step status bar. Always visible at top
+              of right panel for game builds. Shows the 8 game steps with state
+              and lets the creator jump back to any HOT/WARM step. */}
+          {isGameMode && (
+            <StepStatusBar
+              steps={gameStepStates.steps}
+              activeStep={gameStepStates.activeId}
+              accent="#16A34A"
+              onStepClick={(stepId) => {
+                // Map step id back to flowStep where applicable, otherwise scroll
+                // to the matching collapsible section in the canvas.
+                const stepMap = { test: 4, preflight: 5, distribute: 6, grow: 7 };
+                if (stepMap[stepId] && stepMap[stepId] <= maxFlowStep) {
+                  viewStep(stepMap[stepId]);
+                  return;
+                }
+                // For Concept/Rules/Artwork/Interactions: scroll to the section.
+                try {
+                  const el = document.getElementById(`game-section-${stepId}`);
+                  if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+                } catch {}
+              }}
+            />
+          )}
+
           <div ref={rightPanelRef} style={S.tabContent}>
             {/* My Images panel — shown when toggled from nav */}
             {showMyImages && (
               <MyImagesPanel onClose={() => setShowMyImages(false)} localAssets={canvasAssets} />
             )}
 
-            {/* Steps 0-2 — Lifecycle card + Progressive card / Draft card */}
-            {flowStep <= 2 && (
+            {/* CODEX 47.3-P Fix P2 — Game canvas: collapsible sections.
+                Each section gets a header that's always visible. The active
+                step's section is expanded by default; others are collapsed.
+                Worker sandbox keeps the original LifecycleCard layout for now. */}
+            {flowStep <= 2 && isGameMode && (
               <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-                <LifecycleCard flowStep={flowStep} isGame={!!(workerCardData?.gameConfig?.isGame || (creatorPath && creatorPath.startsWith('game')))} />
+                {/* Game Card section */}
+                <div id="game-section-concept">
+                  <CollapsibleSection
+                    title="Game Card"
+                    state={gameStepStates.steps[0].state}
+                    defaultExpanded={gameStepStates.activeId === "concept"}
+                    summary={workerCardData?.name ? `${workerCardData.name} · Draft` : "Awaiting concept"}
+                  >
+                    {workerCardData ? (
+                      <InlineDraftCard
+                        cardData={workerCardData}
+                        onContinue={() => handleWorkerCardApprove(workerCardData)}
+                        onDownload={handleDraftDownload}
+                        onShare={handleDraftShare}
+                        onEdit={handleDraftEdit}
+                      />
+                    ) : exchangeCount > 0 ? (
+                      <ProgressiveCard
+                        exchangeCount={exchangeCount}
+                        progressiveFields={progressiveFields}
+                        workerCardData={workerCardData}
+                      />
+                    ) : (
+                      <div style={{ fontSize: 13, color: "#94A3B8", padding: "8px 0" }}>
+                        Tell Alex about your game in the chat to start.
+                      </div>
+                    )}
+                  </CollapsibleSection>
+                </div>
+
+                {/* Rules section — placeholder until rules are saved */}
+                <div id="game-section-rules">
+                  <CollapsibleSection
+                    title="Rules"
+                    state={gameStepStates.steps[1].state}
+                    defaultExpanded={gameStepStates.activeId === "rules"}
+                    summary={
+                      gameStepStates.steps[1].state === "hot"
+                        ? "Turn, win/lose, scoring, safety locked"
+                        : gameStepStates.steps[1].state === "warm"
+                          ? "Defining rules in chat"
+                          : "Locked"
+                    }
+                  >
+                    {gameStepStates.steps[1].state === "cold" ? (
+                      <div style={{ fontSize: 13, color: "#94A3B8", padding: "8px 0" }}>
+                        Save your game card first, then tap Define the Rules in chat.
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: 13, color: "#475569", padding: "8px 0", lineHeight: 1.6 }}>
+                        {workerCardData?.gameRules?.turnMechanic && (<div><strong>Turn:</strong> {workerCardData.gameRules.turnMechanic}</div>)}
+                        {workerCardData?.gameRules?.winLoseConditions && (<div><strong>Win/Lose:</strong> {workerCardData.gameRules.winLoseConditions}</div>)}
+                        {workerCardData?.gameRules?.scoring && (<div><strong>Scoring:</strong> {workerCardData.gameRules.scoring}</div>)}
+                        {workerCardData?.gameRules?.safetyCompliance && (<div><strong>Safety:</strong> {workerCardData.gameRules.safetyCompliance}</div>)}
+                        {!workerCardData?.gameRules?.turnMechanic && (
+                          <div style={{ color: "#94A3B8" }}>Answering rules questions in chat...</div>
+                        )}
+                      </div>
+                    )}
+                  </CollapsibleSection>
+                </div>
+
+                {/* Canvas / Artwork section */}
+                <div id="game-section-artwork">
+                  <CollapsibleSection
+                    title="Canvas / Artwork"
+                    state={gameStepStates.steps[2].state}
+                    defaultExpanded={gameStepStates.activeId === "artwork"}
+                    summary={
+                      canvasAssets.length > 0
+                        ? `${canvasAssets.length} ${canvasAssets.length === 1 ? "asset" : "assets"} saved`
+                        : gameStepStates.steps[2].state === "cold" ? "Locked" : "Awaiting artwork"
+                    }
+                  >
+                    {gameStepStates.steps[2].state === "cold" ? (
+                      <div style={{ fontSize: 13, color: "#94A3B8", padding: "8px 0" }}>
+                        Lock in the rules first, then start generating artwork.
+                      </div>
+                    ) : (canvasAssets.length > 0 || imageGenerating) ? (
+                      <CanvasImagePanel
+                        assets={canvasAssets}
+                        isGenerating={imageGenerating}
+                        selectedStyle={canvasStyle}
+                        onStyleSelect={setCanvasStyle}
+                        workerCardData={workerCardData}
+                        onRetry={() => { setInput("Generate another image"); requestAnimationFrame(() => handleSend()); }}
+                        onUseAs={(asset, role) => {
+                          setCanvasAssets(prev => prev.map(a => a === asset ? { ...a, useAs: role } : a));
+                        }}
+                        onIncludeInBuild={handleIncludeInBuild}
+                        onSaveToLibrary={handleSaveToLibrary}
+                        onDelete={handleDeleteAsset}
+                        currentWorkerId={worker?.id}
+                        includedAssetIds={includedAssetIds}
+                      />
+                    ) : (
+                      <div style={{ fontSize: 13, color: "#94A3B8", padding: "8px 0" }}>
+                        Tap "Generate artwork" in chat to create your first asset.
+                      </div>
+                    )}
+                  </CollapsibleSection>
+                </div>
+
+                {/* Interactions section */}
+                <div id="game-section-interactions">
+                  <CollapsibleSection
+                    title="Interactions"
+                    state={gameStepStates.steps[3].state}
+                    defaultExpanded={gameStepStates.activeId === "interactions"}
+                    summary={
+                      gameStepStates.steps[3].state === "hot"
+                        ? "Movement, speed, collision, sound locked"
+                        : gameStepStates.steps[3].state === "warm"
+                          ? "Defining interactions in chat"
+                          : "Locked"
+                    }
+                  >
+                    {gameStepStates.steps[3].state === "cold" ? (
+                      <div style={{ fontSize: 13, color: "#94A3B8", padding: "8px 0" }}>
+                        Add at least one character + one background to unlock interactions.
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: 13, color: "#475569", padding: "8px 0", lineHeight: 1.6 }}>
+                        {workerCardData?.gameInteractions?.movement && (<div><strong>Movement:</strong> {workerCardData.gameInteractions.movement}</div>)}
+                        {workerCardData?.gameInteractions?.speed && (<div><strong>Speed:</strong> {workerCardData.gameInteractions.speed}</div>)}
+                        {workerCardData?.gameInteractions?.collisionRules && (<div><strong>Collision:</strong> {workerCardData.gameInteractions.collisionRules}</div>)}
+                        {workerCardData?.gameInteractions?.soundCues && (<div><strong>Sound:</strong> {workerCardData.gameInteractions.soundCues}</div>)}
+                        {!workerCardData?.gameInteractions?.movement && (
+                          <div style={{ color: "#94A3B8" }}>Answering interaction questions in chat...</div>
+                        )}
+                      </div>
+                    )}
+                  </CollapsibleSection>
+                </div>
+
+                {/* Test / Preflight / Distribute / Grow — locked previews */}
+                {["test", "preflight", "distribute", "grow"].map((id, idx) => {
+                  const stepIdx = idx + 4;
+                  const s = gameStepStates.steps[stepIdx];
+                  const labels = { test: "Test Board", preflight: "Preflight", distribute: "Distribution Kit", grow: "Grow & Revise" };
+                  const prev = gameStepStates.steps[stepIdx - 1];
+                  return (
+                    <div id={`game-section-${id}`} key={id}>
+                      <CollapsibleSection
+                        title={labels[id]}
+                        state={s.state}
+                        defaultExpanded={false}
+                        summary="Locked"
+                      >
+                        <div style={{ fontSize: 13, color: "#94A3B8", padding: "8px 0" }}>
+                          Complete {prev.label} first.
+                        </div>
+                      </CollapsibleSection>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Worker sandbox (or pre-game-detected) — original LifecycleCard layout */}
+            {flowStep <= 2 && !isGameMode && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+                <LifecycleCard flowStep={flowStep} isGame={false} />
                 {workerCardData ? (
                   <InlineDraftCard
                     cardData={workerCardData}
