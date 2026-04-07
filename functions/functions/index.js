@@ -2523,7 +2523,12 @@ Message 8+: If they seem interested, gently offer to set it up. "I can have this
           }
 
           // extractSpec fallback: frontend forces card generation after 5+ exchanges with no card
-          if (body.extractSpec && surface === 'sandbox') {
+          // Defensive guard: never inject WORKER_SPEC forcing prompt on game sessions —
+          // games don't use the worker spec pipeline and the AI will reject it ("I can't generate a [WORKER_SPEC] for a game")
+          const isGameSession = (sessionState.creatorPath && String(sessionState.creatorPath).startsWith('game'))
+            || (body.creatorPath && String(body.creatorPath).startsWith('game'))
+            || !!sessionState.workerGameConfig?.isGame;
+          if (body.extractSpec && surface === 'sandbox' && !isGameSession) {
             messages.push({
               role: 'user',
               content: 'Based on everything I have told you so far, please generate my Digital Worker now. Output the [WORKER_SPEC] block with your best interpretation of what I described.'

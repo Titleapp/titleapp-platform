@@ -989,7 +989,9 @@ export default function DeveloperSandbox() {
     }
 
     // extractSpec fallback — force card generation after 5+ exchanges with no card
-    const shouldExtractSpec = flowStep <= 2 && newExchangeCount >= 5 && !workerCardData;
+    // Skip for game paths — games don't use WORKER_SPEC, they use a different build flow
+    const isGamePath = creatorPath && creatorPath.startsWith('game');
+    const shouldExtractSpec = flowStep <= 2 && newExchangeCount >= 5 && !workerCardData && !isGamePath;
 
     setSending(true);
     const images = [...pendingImages];
