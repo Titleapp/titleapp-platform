@@ -385,7 +385,7 @@ function LifecycleCard({ flowStep, isGame }) {
 }
 
 // ── Creator Studio Nav (left nav — Column 1) ──
-function CreatorStudioNav({ flowStep, workerCardData, worker, isMobile, onClose, style, workspaces = [], onSwitchWorkspace, onViewStep, onShowMyImages, showMyImages }) {
+function CreatorStudioNav({ flowStep, workerCardData, worker, isMobile, onClose, style, workspaces = [], onSwitchWorkspace, onViewStep, onShowMyImages, showMyImages, isGameMode = false }) {
   const baseStyle = isMobile ? S.leftNavMobile : S.leftNav;
   const [wsDropOpen, setWsDropOpen] = React.useState(false);
   return (
@@ -439,14 +439,14 @@ function CreatorStudioNav({ flowStep, workerCardData, worker, isMobile, onClose,
 
       {/* Dashboard */}
       <div style={S.navSection}>
-        <div style={S.navSectionTitle}>Dashboard</div>
+        <div style={S.navSectionTitle}>{isGameMode ? "Game Dashboard" : "Dashboard"}</div>
         <div style={S.navStatGrid}>
-          <div style={S.navStatTile}><div style={S.navStatValue}>0</div><div style={S.navStatLabel}>Workers Live</div></div>
-          <div style={S.navStatTile}><div style={S.navStatValue}>0</div><div style={S.navStatLabel}>Subscribers</div></div>
+          <div style={S.navStatTile}><div style={S.navStatValue}>0</div><div style={S.navStatLabel}>{isGameMode ? "Plays Today" : "Workers Live"}</div></div>
+          <div style={S.navStatTile}><div style={S.navStatValue}>0</div><div style={S.navStatLabel}>{isGameMode ? "Active Players" : "Subscribers"}</div></div>
           <div style={S.navStatTile}><div style={S.navStatValue}>$0</div><div style={S.navStatLabel}>This Month</div></div>
-          <div style={S.navStatTile}><div style={S.navStatValue}>&mdash;</div><div style={S.navStatLabel}>Trend</div></div>
+          <div style={S.navStatTile}><div style={S.navStatValue}>&mdash;</div><div style={S.navStatLabel}>{isGameMode ? "Version" : "Trend"}</div></div>
         </div>
-        <div style={{ fontSize: 11, color: "rgba(226,232,240,0.45)", marginTop: 8, lineHeight: 1.5 }}>{workerCardData?.gameConfig?.isGame ? "Launch your first game to start earning." : "Launch your first worker to start earning."}</div>
+        <div style={{ fontSize: 11, color: "rgba(226,232,240,0.45)", marginTop: 8, lineHeight: 1.5 }}>{isGameMode ? "Launch your first game to start earning." : "Launch your first worker to start earning."}</div>
       </div>
 
       {/* My Workers */}
@@ -501,13 +501,15 @@ function CreatorStudioNav({ flowStep, workerCardData, worker, isMobile, onClose,
         )}
       </div>
 
-      {/* My Audience */}
+      {/* My Audience / Leaderboard */}
       <div style={S.navSection}>
-        <div style={S.navSectionTitle}>My Audience</div>
-        <div style={{ fontSize: 12, color: "rgba(226,232,240,0.45)", padding: "6px 0" }}>Your subscribers will appear here once you launch.</div>
+        <div style={S.navSectionTitle}>{isGameMode ? "Leaderboard" : "My Audience"}</div>
+        <div style={{ fontSize: 12, color: "rgba(226,232,240,0.45)", padding: "6px 0" }}>
+          {isGameMode ? "Top players will appear here once your game launches." : "Your subscribers will appear here once you launch."}
+        </div>
       </div>
 
-      {/* My Images */}
+      {/* My Images / Assets */}
       <div style={S.navSection}>
         <div
           onClick={() => onShowMyImages && onShowMyImages()}
@@ -517,7 +519,7 @@ function CreatorStudioNav({ flowStep, workerCardData, worker, isMobile, onClose,
             cursor: "pointer",
           }}
         >
-          My Images
+          {isGameMode ? "Assets" : "My Images"}
         </div>
       </div>
 
@@ -661,6 +663,12 @@ export default function DeveloperSandbox() {
   const [exchangeCount, setExchangeCount] = useState(0);
   const [progressiveFields, setProgressiveFields] = useState({ name: null, description: null, category: null });
 
+  // Game session phase tracker — null | "rules" | "artwork" | "ready"
+  // null = not yet started; "rules" = answering rules questions;
+  // "artwork" = generating images; "ready" = ready to test
+  const [gameSessionPhase, setGameSessionPhase] = useState(() => savedSession.current?.gameSessionPhase || null);
+  const [gameRulesAnswered, setGameRulesAnswered] = useState(() => savedSession.current?.gameRulesAnswered || 0);
+
   // Image attachments
   const [pendingImages, setPendingImages] = useState([]);
   const fileInputRef = useRef(null);
@@ -672,13 +680,14 @@ export default function DeveloperSandbox() {
       localStorage.setItem("ta_sandbox_session", JSON.stringify({
         workerCardData, worker, vertical, jurisdiction, workerIconUrl,
         flowStep, maxFlowStep, exchangeCount, creatorPath,
-        surveyStep, surveyAnswers, surveyComplete, testExchangeCount, _v: 4,
+        surveyStep, surveyAnswers, surveyComplete, testExchangeCount,
+        gameSessionPhase, gameRulesAnswered, _v: 4,
       }));
       if (workerCardData?.name) {
         sessionStorage.setItem("ta_sandbox_worker_name", workerCardData.name);
       }
     } catch {}
-  }, [workerCardData, worker, vertical, jurisdiction, workerIconUrl, flowStep, maxFlowStep, exchangeCount, creatorPath, surveyStep, surveyAnswers, surveyComplete, testExchangeCount]);
+  }, [workerCardData, worker, vertical, jurisdiction, workerIconUrl, flowStep, maxFlowStep, exchangeCount, creatorPath, surveyStep, surveyAnswers, surveyComplete, testExchangeCount, gameSessionPhase, gameRulesAnswered]);
 
   // Edit mode (post-publish)
   const [editMode, setEditMode] = useState(false);
@@ -737,6 +746,34 @@ export default function DeveloperSandbox() {
       || sessionStorage.getItem("ta_sandbox_name")
       || "";
   });
+
+  // Mobile UX: in game mode, auto-open the Game Board panel when entering Test step
+  // (game play is board-first; chat is the slide-down companion).
+  useEffect(() => {
+    if (!isMobile) return;
+    const isGameLike = !!(workerCardData?.gameConfig?.isGame || (creatorPath && creatorPath.startsWith('game')));
+    if (isGameLike && flowStep >= 4) {
+      setShowMobilePanel(true);
+    }
+  }, [isMobile, flowStep, workerCardData, creatorPath]);
+
+  // Game artwork phase — emit "Test Your Game" CTA once we have at least 2 assets
+  // (intent: 1 character + 1 background — we use total >= 2 since asset typing is best-effort).
+  const gameTestCtaEmitted = useRef(false);
+  useEffect(() => {
+    if (gameSessionPhase !== "artwork") return;
+    if (gameTestCtaEmitted.current) return;
+    if (canvasAssets.length < 2) return;
+    gameTestCtaEmitted.current = true;
+    setGameSessionPhase("ready");
+    setTimeout(() => {
+      addAssistantMessage("Your game has rules and artwork. Time to test it.");
+      setTimeout(() => {
+        setMessages(prev => [...prev, { role: "cta", text: "Test Your Game", action: "startGameTest" }]);
+      }, 600);
+    }, 600);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canvasAssets.length, gameSessionPhase]);
 
   // Handle late auth resolution — capture name when onAuthStateChanged fires
   useEffect(() => {
@@ -975,6 +1012,29 @@ export default function DeveloperSandbox() {
     const newExchangeCount = exchangeCount + 1;
     if (flowStep <= 2) setExchangeCount(newExchangeCount);
 
+    // Game rules phase — count answers and follow up with the next question
+    if (gameSessionPhase === "rules") {
+      const next = gameRulesAnswered + 1;
+      setGameRulesAnswered(next);
+      // Queue follow-up rule question (or completion CTA) after Alex's reply lands
+      const RULE_QUESTIONS = [
+        "Got it. Next: Win/lose conditions — how does a player win or lose? What ends the game?",
+        "Good. Next: Scoring — how do points work? Are there levels, badges, or just a single score?",
+        "Last one: Safety and compliance — anything players should NOT see or do? Age range, content limits, regulated topics?",
+      ];
+      if (next < 4) {
+        setTimeout(() => addAssistantMessage(RULE_QUESTIONS[next - 1]), 900);
+      } else {
+        // All four rules answered → advance phase + emit Artwork CTA
+        setTimeout(() => {
+          addAssistantMessage("Rules locked in. Your game is ready for artwork.");
+          setTimeout(() => {
+            setMessages(prev => [...prev, { role: "cta", text: "Create the Artwork", action: "startGameArtwork" }]);
+          }, 600);
+        }, 900);
+      }
+    }
+
     // Progressive card field extraction
     if (flowStep <= 2 && newExchangeCount === 2 && !progressiveFields.name) {
       // After name exchange, try to derive a tentative worker name from first answer
@@ -1072,13 +1132,17 @@ export default function DeveloperSandbox() {
             // Roadmap message after 1.2s delay
             setTimeout(() => {
               const name = savedName || "Creator";
-              setMessages(prev => [...prev, {
-                role: "assistant",
-                text: `${name}, your worker is saved. Here is what building it looks like:\n\nSession 1 (done) -- The Spark. You described what you know. Your draft card is saved.\nSession 2 -- The Rules. We spend 15 minutes on what your worker should and should not do.\nSession 3 -- The Test. You talk to your own worker. See it work. Refine it.\nSession 4 -- Publish. Set your price. Go live. Start earning.\n\nYou can finish all four sessions in one afternoon -- or take a few months. Your worker lives in your Vault either way.`
-              }]);
-              // CTA button message
+              const roadmapText = isGame
+                ? `${name}, your game concept is saved. Here is what building it looks like:\n\nSession 1 (done) -- The Concept. You described your game idea. Your game card is saved.\nSession 2 -- The Rules. Define how your game plays: turn mechanic, win/lose, scoring, safety.\nSession 3 -- The Artwork. Create characters and a background — your game needs visuals.\nSession 4 -- The Test. Play your own game. Refine until it's fun.\n\nYou can finish all four sessions in one afternoon -- or take a few weeks. Your game lives in your Vault either way.`
+                : `${name}, your worker is saved. Here is what building it looks like:\n\nSession 1 (done) -- The Spark. You described what you know. Your draft card is saved.\nSession 2 -- The Rules. We spend 15 minutes on what your worker should and should not do.\nSession 3 -- The Test. You talk to your own worker. See it work. Refine it.\nSession 4 -- Publish. Set your price. Go live. Start earning.\n\nYou can finish all four sessions in one afternoon -- or take a few months. Your worker lives in your Vault either way.`;
+              setMessages(prev => [...prev, { role: "assistant", text: roadmapText }]);
+              // CTA button message — game flow has 3 sub-CTAs (rules → artwork → test)
               setTimeout(() => {
-                setMessages(prev => [...prev, { role: "cta", text: "Start Session 2", action: "startSession2" }]);
+                if (isGame) {
+                  setMessages(prev => [...prev, { role: "cta", text: "Define the Rules", action: "startGameRules" }]);
+                } else {
+                  setMessages(prev => [...prev, { role: "cta", text: "Start Session 2", action: "startSession2" }]);
+                }
               }, 600);
             }, 1200);
           }
@@ -1290,6 +1354,27 @@ export default function DeveloperSandbox() {
     }
   }
 
+  // ── Game session phase handlers ──────────────────────────────
+
+  function handleStartGameRules() {
+    setGameSessionPhase("rules");
+    setGameRulesAnswered(0);
+    addAssistantMessage(
+      "Let's define the rules of your game. I need to understand four things to make this work:\n\n" +
+      "1. Turn mechanic — How do players take turns? (one at a time, simultaneous, real-time, no turns?)\n\n" +
+      "Answer this first, then we'll move through the rest."
+    );
+  }
+
+  function handleStartGameArtwork() {
+    setGameSessionPhase("artwork");
+    addAssistantMessage(
+      "Rules locked in. Now your game needs visuals.\n\n" +
+      "Tell me what you want and I'll generate it: at least one character and one background. " +
+      "Try something like \"a friendly robot mascot\" or \"a neon arcade backdrop\". You can refine the style after the first image."
+    );
+  }
+
   // ── Step 2 → Step 3: Worker Card approved ────────────────────
 
   async function handleWorkerCardApprove(cardData) {
@@ -1421,7 +1506,7 @@ export default function DeveloperSandbox() {
 
         setShowAuthPrompt(false);
         setShowSessionError(false);
-        addAssistantMessage(`Welcome, ${authName.split(" ")[0]}. Your workspace is ready. Before publishing, you will review and sign the Creator Agreement — no surprises. Now let me build that worker.`);
+        addAssistantMessage(`Welcome, ${authName.split(" ")[0]}. Your ${isGameMode ? "game board" : "workspace"} is ready. Before publishing, you will review and sign the Creator Agreement — no surprises. Now let me ${isGameMode ? "finish your game" : "build that worker"}.`);
 
         if (pendingCardData) {
           await runBuildPipeline(pendingCardData);
@@ -1567,14 +1652,19 @@ export default function DeveloperSandbox() {
     if (files.length === 0) return;
     const maxFiles = 3 - pendingImages.length;
     const toProcess = files.slice(0, maxFiles);
-    const allowedTypes = /^(image\/(png|jpeg|webp|heic|heif)|application\/pdf)$/;
+    const allowedTypes = /^image\/(png|jpeg|webp|heic|heif)$/;
     toProcess.forEach(file => {
       if (file.size > 10 * 1024 * 1024) {
         addAssistantMessage("File too large. Max 10MB.");
         return;
       }
+      // PDFs and other documents — sandbox can't read them yet, ask creator to paste text
+      if (file.type === "application/pdf" || /\.(pdf|docx?|txt|rtf|md)$/i.test(file.name || "")) {
+        addAssistantMessage("I can't read files directly yet — but I can work with anything you paste. Copy the text from your document and paste it here, and I'll pick it up from there.");
+        return;
+      }
       if (!allowedTypes.test(file.type)) {
-        addAssistantMessage("Unsupported file type. Use PNG, JPG, HEIC, or PDF.");
+        addAssistantMessage("Unsupported file type. Use PNG, JPG, or HEIC for images, or paste text from documents.");
         return;
       }
       const reader = new FileReader();
@@ -1610,11 +1700,15 @@ export default function DeveloperSandbox() {
     e.stopPropagation();
   }
 
+  // Game mode flag — single source of truth for all game-vs-worker UI branching
+  const isGameMode = !!(workerCardData?.gameConfig?.isGame || (creatorPath && creatorPath.startsWith('game')));
+  const workspaceLabel = isGameMode ? "Game Board" : "Your Workspace";
+
   // Chat input placeholder based on step
   const chatPlaceholder = flowStep <= 2
-    ? (exchangeCount === 0 ? "Describe your expertise..." : "Tell Alex about your expertise...")
+    ? (exchangeCount === 0 ? (isGameMode ? "Describe your game..." : "Describe your expertise...") : (isGameMode ? "Tell Alex about your game..." : "Tell Alex about your expertise..."))
     : flowStep === 3 ? "Ask Alex anything about the build..."
-    : flowStep === 4 ? "Test your worker — describe any problems..."
+    : flowStep === 4 ? (isGameMode ? "Test your game — describe any problems..." : "Test your worker — describe any problems...")
     : flowStep === 5 ? "Ask Alex about the preflight checklist..."
     : flowStep === 6 ? "Ask Alex for marketing help..."
     : "Talk to Alex...";
@@ -1664,7 +1758,7 @@ export default function DeveloperSandbox() {
       {/* Column 1: Creator Studio Nav (desktop) + divider */}
       {!isMobile && (
         <>
-          <CreatorStudioNav flowStep={flowStep} workerCardData={workerCardData} worker={worker} isMobile={false} style={{ width: navWidthPx }} workspaces={sandboxWorkspaces} onSwitchWorkspace={handleSandboxSwitchWorkspace} onViewStep={viewStep} onShowMyImages={() => setShowMyImages(prev => !prev)} showMyImages={showMyImages} />
+          <CreatorStudioNav flowStep={flowStep} workerCardData={workerCardData} worker={worker} isMobile={false} style={{ width: navWidthPx }} workspaces={sandboxWorkspaces} onSwitchWorkspace={handleSandboxSwitchWorkspace} onViewStep={viewStep} onShowMyImages={() => setShowMyImages(prev => !prev)} showMyImages={showMyImages} isGameMode={isGameMode} />
           <div
             style={{ ...S.divider, ...(isDragging === "nav" || dividerHover === "nav" ? S.dividerHover : {}) }}
             onMouseDown={() => setIsDragging("nav")}
@@ -1678,7 +1772,7 @@ export default function DeveloperSandbox() {
       {isMobile && showMobileNav && (
         <>
           <div onClick={() => setShowMobileNav(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.3)", zIndex: 250 }} />
-          <CreatorStudioNav flowStep={flowStep} workerCardData={workerCardData} worker={worker} isMobile={true} onClose={() => setShowMobileNav(false)} workspaces={sandboxWorkspaces} onSwitchWorkspace={handleSandboxSwitchWorkspace} onViewStep={viewStep} onShowMyImages={() => { setShowMyImages(prev => !prev); setShowMobileNav(false); }} showMyImages={showMyImages} />
+          <CreatorStudioNav flowStep={flowStep} workerCardData={workerCardData} worker={worker} isMobile={true} onClose={() => setShowMobileNav(false)} workspaces={sandboxWorkspaces} onSwitchWorkspace={handleSandboxSwitchWorkspace} onViewStep={viewStep} onShowMyImages={() => { setShowMyImages(prev => !prev); setShowMobileNav(false); }} showMyImages={showMyImages} isGameMode={isGameMode} />
         </>
       )}
 
@@ -1727,10 +1821,25 @@ export default function DeveloperSandbox() {
           {messages.map((msg, i) => {
             // CTA button in chat
             if (msg.role === "cta") {
+              const ctaClick = () => {
+                switch (msg.action) {
+                  case "startGameRules":
+                    handleStartGameRules();
+                    break;
+                  case "startGameArtwork":
+                    handleStartGameArtwork();
+                    break;
+                  case "startGameTest":
+                  case "startSession2":
+                  default:
+                    handleWorkerCardApprove(workerCardData);
+                    break;
+                }
+              };
               return (
                 <div key={i} style={{ display: "flex", justifyContent: "center", margin: "8px 0" }}>
                   <button
-                    onClick={() => handleWorkerCardApprove(workerCardData)}
+                    onClick={ctaClick}
                     style={{
                       padding: "12px 28px", background: "var(--accent, #6B46C1)", color: "white",
                       border: "none", borderRadius: 10, fontSize: 15, fontWeight: 600,
@@ -1929,9 +2038,9 @@ export default function DeveloperSandbox() {
               alignSelf: "center", background: "#FFFFFF", border: "2px solid var(--accent, #6B46C1)", borderRadius: 16,
               padding: "24px 20px", maxWidth: 360, width: "100%", boxShadow: "0 4px 24px color-mix(in srgb, var(--accent, #6B46C1) 12%, transparent)",
             }}>
-              <div style={{ fontSize: 16, fontWeight: 700, color: "#1a1a2e", marginBottom: 4 }}>Create your workspace</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: "#1a1a2e", marginBottom: 4 }}>{isGameMode ? "Create your game board" : "Create your workspace"}</div>
               <div style={{ fontSize: 13, color: "#64748B", lineHeight: 1.5, marginBottom: 16 }}>
-                Your worker needs a home. This creates your free creator account.
+                {isGameMode ? "Your game needs a home. This creates your free creator account." : "Your worker needs a home. This creates your free creator account."}
               </div>
               <form onSubmit={handleInlineSignup} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 <input
@@ -2103,7 +2212,7 @@ export default function DeveloperSandbox() {
         />
       )}
 
-      {/* Mobile: floating preview tab */}
+      {/* Mobile: floating preview tab — opens the right panel when closed */}
       {isMobile && !showMobilePanel && showRightPanel && (
         <button
           onClick={() => setShowMobilePanel(true)}
@@ -2115,20 +2224,37 @@ export default function DeveloperSandbox() {
             minHeight: 44, minWidth: 44,
           }}
         >
-          {flowStep <= 2 ? "How This Works" : "Preview your worker"}
+          {flowStep <= 2 ? "How This Works" : (isGameMode ? "Game Board" : "Preview your worker")}
         </button>
       )}
 
-      {/* Right: Workspace — step-specific content (steps 3+) */}
+      {/* Mobile game play mode: floating Chat button — slides the board down to reveal chat */}
+      {isMobile && showMobilePanel && showRightPanel && isGameMode && flowStep >= 4 && (
+        <button
+          onClick={() => setShowMobilePanel(false)}
+          style={{
+            position: "fixed", bottom: "calc(20px + env(safe-area-inset-bottom, 0px))", right: 16, zIndex: 250,
+            padding: "12px 20px", background: "#1a1a2e", color: "white",
+            border: "1px solid rgba(255,255,255,0.15)", borderRadius: 24, fontSize: 14, fontWeight: 600,
+            cursor: "pointer", boxShadow: "0 6px 20px rgba(0,0,0,0.35)",
+            minHeight: 48, display: "flex", alignItems: "center", gap: 6,
+          }}
+        >
+          <span>Chat</span>
+        </button>
+      )}
+
+      {/* Right: Workspace / Game Board — step-specific content (steps 3+) */}
       {showRightPanel && (
         <div style={{
           ...S.workPanel,
           ...(isMobile ? {
             position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 200,
-            height: showMobilePanel ? "85vh" : 0,
+            // Game play mode (game + flowStep >= 4): Game Board takes full screen
+            height: showMobilePanel ? (isGameMode && flowStep >= 4 ? "100vh" : "85vh") : 0,
             overflow: showMobilePanel ? "auto" : "hidden",
             transition: "height 0.3s ease",
-            borderRadius: showMobilePanel ? "16px 16px 0 0" : 0,
+            borderRadius: showMobilePanel && !(isGameMode && flowStep >= 4) ? "16px 16px 0 0" : 0,
             boxShadow: showMobilePanel ? "0 -4px 24px rgba(0,0,0,0.15)" : "none",
           } : {}),
         }}>
@@ -2145,8 +2271,8 @@ export default function DeveloperSandbox() {
           {flowStep <= 2 ? (
             <div style={{ textAlign: "center", padding: "14px 16px", borderBottom: "1px solid #E2E8F0", background: "#FFFFFF" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-                <div style={{ fontSize: 14, fontWeight: 600, color: "var(--accent, #6B46C1)" }}>Your Workspace</div>
-                {(creatorPath && creatorPath.startsWith('game')) || workerCardData?.gameConfig?.isGame ? (
+                <div style={{ fontSize: 14, fontWeight: 600, color: "var(--accent, #6B46C1)" }}>{workspaceLabel}</div>
+                {isGameMode ? (
                   <span style={{ fontSize: 10, fontWeight: 700, color: "#16A34A", background: "#DCFCE7", padding: "2px 8px", borderRadius: 10 }}>GAME</span>
                 ) : creatorPath === 'worker' || workerCardData ? (
                   <span style={{ fontSize: 10, fontWeight: 700, color: "var(--accent, #6B46C1)", background: "var(--accent-light, rgba(107,70,193,0.08))", padding: "2px 8px", borderRadius: 10 }}>WORKER</span>
