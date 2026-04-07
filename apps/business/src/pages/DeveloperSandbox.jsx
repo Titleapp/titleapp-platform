@@ -747,16 +747,6 @@ export default function DeveloperSandbox() {
       || "";
   });
 
-  // Mobile UX: in game mode, auto-open the Game Board panel when entering Test step
-  // (game play is board-first; chat is the slide-down companion).
-  useEffect(() => {
-    if (!isMobile) return;
-    const isGameLike = !!(workerCardData?.gameConfig?.isGame || (creatorPath && creatorPath.startsWith('game')));
-    if (isGameLike && flowStep >= 4) {
-      setShowMobilePanel(true);
-    }
-  }, [isMobile, flowStep, workerCardData, creatorPath]);
-
   // Game artwork phase — emit "Test Your Game" CTA once we have at least 2 assets
   // (intent: 1 character + 1 background — we use total >= 2 since asset typing is best-effort).
   const gameTestCtaEmitted = useRef(false);
@@ -802,6 +792,16 @@ export default function DeveloperSandbox() {
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
   const [showMobilePanel, setShowMobilePanel] = useState(false);
   const [showMobileNav, setShowMobileNav] = useState(false);
+
+  // Mobile UX: in game mode, auto-open the Game Board panel when entering Test step
+  // (game play is board-first; chat is the slide-down companion).
+  useEffect(() => {
+    if (!isMobile) return;
+    const isGameLike = !!(workerCardData?.gameConfig?.isGame || (creatorPath && creatorPath.startsWith('game')));
+    if (isGameLike && flowStep >= 4) {
+      setShowMobilePanel(true);
+    }
+  }, [isMobile, flowStep, workerCardData, creatorPath]);
 
   // Resizable panels — left nav width (px) + chat/right split (%)
   const [navWidthPx, setNavWidthPx] = useState(() => {
