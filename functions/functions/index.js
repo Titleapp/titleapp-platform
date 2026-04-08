@@ -1,3 +1,4 @@
+// Runtime: Node.js 22 (upgraded from Node 20 — 2026-04-08)
 const { onRequest } = require("firebase-functions/v2/https");
 const { setGlobalOptions } = require("firebase-functions/v2");
 
@@ -6466,6 +6467,142 @@ These should be 2-3 realistic test scenarios the creator should try, derived fro
       } catch (e) {
         console.error("sandbox:session:pdf failed:", e);
         return jsonError(res, 500, "PDF generation failed");
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    //  WORKER SANDBOX BUILD FLOW — CODEX 47.4 Phase A (T1)
+    // ═══════════════════════════════════════════════════════════════
+
+    // POST /v1/sandbox:worker:init — Initialize worker build flow on a
+    //   new or existing sandbox session.
+    if (route === "/sandbox:worker:init" && method === "POST") {
+      try {
+        const { handleWorkerInit } = require("./services/sandbox");
+        return await handleWorkerInit(req, res, auth.user);
+      } catch (e) {
+        console.error("sandbox:worker:init failed:", e);
+        return jsonError(res, 500, "Worker init failed");
+      }
+    }
+
+    // POST /v1/sandbox:worker:advance — Mark a step as start/complete and
+    //   advance the state machine. Body: { sessionId, stepId, action, data? }
+    if (route === "/sandbox:worker:advance" && method === "POST") {
+      try {
+        const { handleWorkerAdvance } = require("./services/sandbox");
+        return await handleWorkerAdvance(req, res, auth.user);
+      } catch (e) {
+        console.error("sandbox:worker:advance failed:", e);
+        return jsonError(res, 500, "Worker advance failed");
+      }
+    }
+
+    // GET /v1/sandbox:worker:state?sessionId=... — Read full flow state.
+    if (route === "/sandbox:worker:state" && method === "GET") {
+      try {
+        const { handleWorkerGetState } = require("./services/sandbox");
+        return await handleWorkerGetState(req, res, auth.user);
+      } catch (e) {
+        console.error("sandbox:worker:state failed:", e);
+        return jsonError(res, 500, "Worker state read failed");
+      }
+    }
+
+    // ── Studio Locker (Knowledge step) ─────────────────────────────────
+
+    // POST /v1/sandbox:worker:knowledge:ingest — Ingest a document into
+    //   the Studio Locker. Body: see studioLocker.handleIngest.
+    if (route === "/sandbox:worker:knowledge:ingest" && method === "POST") {
+      try {
+        const { handleKnowledgeIngest } = require("./services/sandbox");
+        return await handleKnowledgeIngest(req, res, auth.user);
+      } catch (e) {
+        console.error("sandbox:worker:knowledge:ingest failed:", e);
+        return jsonError(res, 500, "Knowledge ingest failed");
+      }
+    }
+
+    // GET /v1/sandbox:worker:knowledge:list?workerId=...
+    if (route === "/sandbox:worker:knowledge:list" && method === "GET") {
+      try {
+        const { handleKnowledgeList } = require("./services/sandbox");
+        return await handleKnowledgeList(req, res, auth.user);
+      } catch (e) {
+        console.error("sandbox:worker:knowledge:list failed:", e);
+        return jsonError(res, 500, "Knowledge list failed");
+      }
+    }
+
+    // POST /v1/sandbox:worker:knowledge:tier — Re-assign a document tier.
+    if (route === "/sandbox:worker:knowledge:tier" && method === "POST") {
+      try {
+        const { handleKnowledgeSetTier } = require("./services/sandbox");
+        return await handleKnowledgeSetTier(req, res, auth.user);
+      } catch (e) {
+        console.error("sandbox:worker:knowledge:tier failed:", e);
+        return jsonError(res, 500, "Knowledge tier set failed");
+      }
+    }
+
+    // DELETE /v1/sandbox:worker:knowledge:doc — Soft-delete a document.
+    if (route === "/sandbox:worker:knowledge:doc" && method === "DELETE") {
+      try {
+        const { handleKnowledgeDelete } = require("./services/sandbox");
+        return await handleKnowledgeDelete(req, res, auth.user);
+      } catch (e) {
+        console.error("sandbox:worker:knowledge:doc DELETE failed:", e);
+        return jsonError(res, 500, "Knowledge delete failed");
+      }
+    }
+
+    // ── Build Log ──────────────────────────────────────────────────────
+
+    // GET /v1/sandbox:worker:buildlog?sessionId=...
+    if (route === "/sandbox:worker:buildlog" && method === "GET") {
+      try {
+        const { handleGetBuildLog } = require("./services/sandbox");
+        return await handleGetBuildLog(req, res, auth.user);
+      } catch (e) {
+        console.error("sandbox:worker:buildlog GET failed:", e);
+        return jsonError(res, 500, "Build log read failed");
+      }
+    }
+
+    // POST /v1/sandbox:worker:buildlog:note — Append a creator note.
+    if (route === "/sandbox:worker:buildlog:note" && method === "POST") {
+      try {
+        const { handleAppendBuildLogNote } = require("./services/sandbox");
+        return await handleAppendBuildLogNote(req, res, auth.user);
+      } catch (e) {
+        console.error("sandbox:worker:buildlog:note failed:", e);
+        return jsonError(res, 500, "Build log note failed");
+      }
+    }
+
+    // ── Worker Test Protocol (the AHA moment) ──────────────────────────
+
+    // GET /v1/sandbox:worker:test:questions?sessionId=... — Returns the
+    //   5 mandatory red-team questions interpolated for this worker.
+    if (route === "/sandbox:worker:test:questions" && method === "GET") {
+      try {
+        const { handleTestQuestions } = require("./services/sandbox");
+        return await handleTestQuestions(req, res, auth.user);
+      } catch (e) {
+        console.error("sandbox:worker:test:questions failed:", e);
+        return jsonError(res, 500, "Test questions failed");
+      }
+    }
+
+    // POST /v1/sandbox:worker:test:run — Record a completed test run.
+    //   Body: { sessionId, responses: [...] }
+    if (route === "/sandbox:worker:test:run" && method === "POST") {
+      try {
+        const { handleTestRun } = require("./services/sandbox");
+        return await handleTestRun(req, res, auth.user);
+      } catch (e) {
+        console.error("sandbox:worker:test:run failed:", e);
+        return jsonError(res, 500, "Test run failed");
       }
     }
 
