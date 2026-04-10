@@ -3,7 +3,7 @@
 // Three states per step using traffic-light semantics: red (locked), yellow
 // (in progress, tappable), green (complete, tappable). Active step has a
 // stronger border. Swiss palette — flat colors, no decorative iconography.
-import React, { useState } from "react";
+import React, { useState, memo } from "react";
 
 const COLORS = {
   cold: { dot: "#DC2626", bg: "#FFFFFF", fg: "#64748B", border: "#E2E8F0", line: "#E2E8F0" }, // red
@@ -11,7 +11,8 @@ const COLORS = {
   hot:  { dot: "#16A34A", bg: "#FFFFFF", fg: "#1a1a2e", border: "#E2E8F0", line: "#16A34A" }, // green
 };
 
-export default function StepStatusBar({ steps = [], activeStep, onStepClick, accent = "#16A34A" }) {
+// 47.9 HOTFIX: React.memo prevents re-render when parent re-renders but steps haven't changed.
+export default memo(function StepStatusBar({ steps = [], activeStep, onStepClick, accent = "#16A34A" }) {
   const [hoverIdx, setHoverIdx] = useState(-1);
 
   if (!steps.length) return null;
@@ -114,4 +115,4 @@ export default function StepStatusBar({ steps = [], activeStep, onStepClick, acc
       })}
     </div>
   );
-}
+});

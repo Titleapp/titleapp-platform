@@ -67,7 +67,7 @@ export default function AlexWorkspace() {
     : "alex-all-verticals";
 
   return (
-    <div style={{ display: "flex", height: "100dvh", overflow: "hidden", background: "#fafbfc" }}>
+    <div style={{ display: "flex", height: "100vh", overflow: "hidden", background: "#fafbfc" }}>
       {/* Column 1: Vertical Switcher */}
       <AlexVerticalSwitcher
         verticals={verticals}

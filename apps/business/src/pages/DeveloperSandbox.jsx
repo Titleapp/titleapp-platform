@@ -62,7 +62,9 @@ class PanelErrorBoundary extends React.Component {
 
 // ── Styles ────────────────────────────────────────────────────
 const S = {
-  root: { display: "flex", height: "100dvh", overflow: "hidden", background: "#F8F9FC", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", color: "#1a1a2e" },
+  // 47.9 HOTFIX: 100dvh → 100vh. 100dvh triggers infinite resize loop on
+  // iOS Safari (address bar show/hide changes dvh → layout recalc → repeat).
+  root: { display: "flex", height: "100vh", overflow: "hidden", background: "#F8F9FC", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", color: "#1a1a2e" },
   // Left nav — creator studio (dark theme matching Sidebar)
   leftNav: { flexShrink: 0, background: "linear-gradient(180deg, #1A1A2E, #141425)", borderRight: "1px solid rgba(255,255,255,0.06)", overflowY: "auto", display: "flex", flexDirection: "column" },
   leftNavMobile: { position: "fixed", top: 0, left: 0, bottom: 0, width: 280, zIndex: 300, background: "linear-gradient(180deg, #1A1A2E, #141425)", borderRight: "1px solid rgba(255,255,255,0.06)", overflowY: "auto", boxShadow: "4px 0 24px rgba(0,0,0,0.4)" },
@@ -2173,7 +2175,7 @@ export default function DeveloperSandbox() {
         style={{
           ...S.chatPanel,
           ...(isMobile
-            ? { width: "100%", minWidth: 0, maxWidth: "none", borderRight: "none", flex: 1, height: "100dvh" }
+            ? { width: "100%", minWidth: 0, maxWidth: "none", borderRight: "none", flex: 1, height: "100vh" }
             : { flex: `0 0 ${chatWidthPercent}%`, minWidth: 400 }
           ),
         }}
@@ -2675,7 +2677,8 @@ export default function DeveloperSandbox() {
             // Game play mode (game + flowStep >= 4): Game Board takes full screen
             height: showMobilePanel ? (isGameMode && flowStep >= 4 ? "100vh" : "85vh") : 0,
             overflow: showMobilePanel ? "auto" : "hidden",
-            transition: "height 0.3s ease",
+            transition: "height 0.3s ease, box-shadow 0.3s ease",
+            willChange: "height",
             borderRadius: showMobilePanel && !(isGameMode && flowStep >= 4) ? "16px 16px 0 0" : 0,
             boxShadow: showMobilePanel ? "0 -4px 24px rgba(0,0,0,0.15)" : "none",
           } : {}),

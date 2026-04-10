@@ -1,8 +1,9 @@
 // CODEX 47.3-P Fix P2 — CollapsibleSection
 // Shared collapsible wrapper for canvas sections in game and worker sandboxes.
 // Header is always visible (title + state pill + chevron). Click header toggles.
-// Smooth 200ms expand/collapse.
-import React, { useState } from "react";
+// 47.9 HOTFIX: removed max-height transition (caused repaint storms on mobile),
+// removed setState-during-render pattern, added React.memo.
+import React, { useState, useEffect, memo } from "react";
 
 // Traffic-light status indicators. Swiss palette — flat dots, no badges.
 const STATE_COLORS = {
@@ -11,7 +12,7 @@ const STATE_COLORS = {
   hot:  { dot: "#16A34A", label: "Complete" },    // green
 };
 
-export default function CollapsibleSection({
+export default memo(function CollapsibleSection({
   title,
   state = "cold",
   defaultExpanded = false,
@@ -21,15 +22,15 @@ export default function CollapsibleSection({
   children,
 }) {
   const isControlled = typeof controlledExpanded === "boolean";
-  // Adjusting state on prop change — React-recommended derivation pattern.
-  // When defaultExpanded changes (active step switched in parent), reset the
-  // manual override so the new section auto-expands and others auto-collapse.
   const [manualOverride, setManualOverride] = useState(null);
-  const [prevDefault, setPrevDefault] = useState(defaultExpanded);
-  if (prevDefault !== defaultExpanded) {
-    setPrevDefault(defaultExpanded);
+
+  // 47.9 HOTFIX: reset manual override when defaultExpanded changes
+  // via useEffect instead of setState-during-render (which caused
+  // synchronous re-renders amplifying the parent re-render cascade).
+  useEffect(() => {
     setManualOverride(null);
-  }
+  }, [defaultExpanded]);
+
   const internalExpanded = manualOverride !== null ? manualOverride : defaultExpanded;
   const expanded = isControlled ? controlledExpanded : internalExpanded;
 
@@ -123,20 +124,14 @@ export default function CollapsibleSection({
           &rsaquo;
         </span>
       </button>
-      <div
-        style={{
-          maxHeight: expanded ? "100000px" : 0,
-          opacity: expanded ? 1 : 0,
-          overflow: "hidden",
-          transition: "max-height 0.2s ease, opacity 0.2s ease",
-        }}
-      >
-        {expanded && (
-          <div style={{ padding: "0 14px 14px 14px" }}>
-            {children}
-          </div>
-        )}
-      </div>
+      {/* 47.9 HOTFIX: replaced max-height:100000px transition with simple
+          show/hide. The 100K max-height caused mobile repaint storms with
+          9 instances each triggering layout recalc on every frame. */}
+      {expanded && (
+        <div style={{ padding: "0 14px 14px 14px" }}>
+          {children}
+        </div>
+      )}
     </div>
   );
-}
+});

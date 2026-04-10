@@ -11,13 +11,8 @@
     <meta property="og:description" content="Digital Workers handle the compliance-heavy work in your field. Trained on the rules. Audit trail on every output." />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://titleapp.ai" />
-    <script>
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then(function(r) {
-        r.forEach(function(reg) { reg.unregister(); });
-      });
-    }
-    </script>
+    <!-- 47.9 HOTFIX: removed SW unregister — it raced with main.jsx register,
+         causing unregister→register→activate→SW_UPDATED→reload infinite loop on mobile -->
   </head>
   <body>
     <div id="root"></div>

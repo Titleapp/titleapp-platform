@@ -3,16 +3,12 @@ import { createRoot } from "react-dom/client";
 import App from "./App.jsx";
 import "./index.css";
 
-// Register service worker for cache busting (44.5)
+// 47.9 HOTFIX: Service worker DISABLED. The register/unregister/reload cycle
+// was causing infinite page reload loops on mobile. Disabling entirely until
+// a proper update strategy is implemented. Also unregister any lingering SWs.
 if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.js").catch(() => {});
-  });
-  // Reload when new SW activates after deploy
-  navigator.serviceWorker.addEventListener("message", (e) => {
-    if (e.data?.type === "SW_UPDATED") {
-      window.location.reload();
-    }
+  navigator.serviceWorker.getRegistrations().then((regs) => {
+    regs.forEach((reg) => reg.unregister());
   });
 }
 
