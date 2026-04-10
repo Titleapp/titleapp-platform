@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { signInWithCustomToken } from "firebase/auth";
 import { auth as firebaseAuth } from "../firebase";
 import BuildProgress from "../components/BuildProgress";
@@ -107,14 +107,80 @@ const SURVEY_QUESTIONS = [
   { key: "readiness", question: "Is this worker ready for subscribers?", chips: ["Ship it", "Almost — minor tweaks", "Needs more work", "Start over"] },
 ];
 
-// Get fresh Firebase ID token (or fall back to localStorage)
+// CODEX 47.5 Fix 2 — robust Firebase ID token getter.
+//
+// Failure modes the previous implementation hid:
+//
+//   1. getIdToken(true) makes a network round-trip to Google's STS to force
+//      a refresh. If that round-trip fails (cold tab wake, transient network,
+//      Google STS hiccup) the empty `catch (_) {}` swallowed the error and
+//      fell through to localStorage.ID_TOKEN, which is the original sign-in
+//      token and may be > 1 hour old → expired → backend 401. This is the
+//      pattern reported in CODEX 47.5 ("Session 1 works, Session 2 fails"):
+//      Session 1 fires within seconds of token issue; Session 2 happens after
+//      the user reads the worker card, and by then the cached token is stale
+//      and the silent refresh failure produces a stale fallback token.
+//
+//   2. If currentUser was null (auth not yet hydrated from IndexedDB) the
+//      helper bailed straight to localStorage with no wait, producing the
+//      same stale-token outcome on first paint.
+//
+// New behavior:
+//   - waitForAuth() resolves on the first NON-NULL onAuthStateChanged
+//     callback. Firebase emits a synchronous null callback before reading
+//     the session, which the previous implementation never accounted for.
+//   - Prefer getIdToken(false) (cached if not expired). Only force-refresh
+//     if the cached token is gone or rejected. This is faster AND more
+//     reliable because we no longer depend on the STS round trip succeeding
+//     on every call.
+//   - Errors are logged, not swallowed.
+let _authReadyPromise = null;
+function waitForAuthInternal(timeoutMs = 5000) {
+  if (firebaseAuth?.currentUser) return Promise.resolve(firebaseAuth.currentUser);
+  if (_authReadyPromise) return _authReadyPromise;
+  _authReadyPromise = new Promise((resolve) => {
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      try { unsub(); } catch (_) {}
+      resolve(null);
+    }, timeoutMs);
+    const unsub = firebaseAuth.onAuthStateChanged((user) => {
+      if (settled || !user) return; // skip null callbacks
+      settled = true;
+      clearTimeout(timer);
+      try { unsub(); } catch (_) {}
+      resolve(user);
+    });
+  });
+  _authReadyPromise.finally(() => { _authReadyPromise = null; });
+  return _authReadyPromise;
+}
+
 async function getFreshToken() {
-  if (firebaseAuth?.currentUser) {
+  const user = await waitForAuthInternal();
+  if (user) {
     try {
-      const token = await firebaseAuth.currentUser.getIdToken(true);
-      localStorage.setItem("ID_TOKEN", token); // keep localStorage in sync
-      return token;
-    } catch (_) {}
+      // Cached path. Firebase only goes to the network if the cached token
+      // is within ~5 minutes of expiry, so this is fast and resilient.
+      const token = await user.getIdToken(false);
+      if (token) {
+        localStorage.setItem("ID_TOKEN", token);
+        return token;
+      }
+    } catch (e) {
+      console.warn("[getFreshToken] cached getIdToken failed, retrying with force refresh:", e?.message);
+    }
+    try {
+      const token = await user.getIdToken(true);
+      if (token) {
+        localStorage.setItem("ID_TOKEN", token);
+        return token;
+      }
+    } catch (e) {
+      console.error("[getFreshToken] forced getIdToken failed:", e?.message);
+    }
   }
   const stored = localStorage.getItem("ID_TOKEN");
   if (stored && stored !== "undefined" && stored !== "null") return stored;
@@ -1385,10 +1451,14 @@ export default function DeveloperSandbox() {
               sessionIntroSentRef.current = true;
 
               // Card renders in right panel — show a brief note in chat
-              const savedName = creatorName ? creatorName.split(" ")[0] : "";
+              // CODEX 47.5 Fix 5 — never render a bare initial. If the
+              // first name is shorter than 2 characters (or null) fall back
+              // to "there" so the message is still grammatical and friendly.
+              const rawFirstName = creatorName ? creatorName.split(" ")[0] : "";
+              const safeFirstName = (rawFirstName && rawFirstName.length >= 2) ? rawFirstName : "there";
               // CODEX 47.3 Fix 20 — game language. Never call a game build a "worker card".
               const cardNoun = isGame ? "game card" : "worker card";
-              addAssistantMessage(savedName ? `Saved to your Vault, ${savedName}. Your ${cardNoun} is on the right.` : `Your ${cardNoun} is ready — see it on the right.`);
+              addAssistantMessage(`Saved to your Vault, ${safeFirstName}. Your ${cardNoun} is on the right.`);
 
               if (flowStep < 2) advanceToStep(2);
 
@@ -1512,10 +1582,12 @@ export default function DeveloperSandbox() {
               // CODEX 47.3 Fix 2 — gate intro recap to once per session.
               if (!sessionIntroSentRef.current) {
                 sessionIntroSentRef.current = true;
-                const savedName = creatorName ? creatorName.split(" ")[0] : "";
+                // CODEX 47.5 Fix 5 — never render a bare initial.
+                const rawFirstName = creatorName ? creatorName.split(" ")[0] : "";
+                const safeFirstName = (rawFirstName && rawFirstName.length >= 2) ? rawFirstName : "there";
                 // CODEX 47.3 Fix 20 — game language.
                 const cardNoun = isGame2 ? "game card" : "worker card";
-                addAssistantMessage(savedName ? `Saved to your Vault, ${savedName}. Your ${cardNoun} is on the right.` : `Your ${cardNoun} is ready — see it on the right.`);
+                addAssistantMessage(`Saved to your Vault, ${safeFirstName}. Your ${cardNoun} is on the right.`);
               }
               if (flowStep < 2) advanceToStep(2);
             }
@@ -1966,7 +2038,8 @@ export default function DeveloperSandbox() {
   // CODEX 47.3-P Fix P1 — Game step status. Maps current state into the
   // 8-step status bar (Concept → Rules → Artwork → Interactions → Test →
   // Preflight → Distribute → Grow & Revise). Each step is cold/warm/hot.
-  const gameStepStates = (() => {
+  // 47.9 HOTFIX: wrapped in useMemo to prevent infinite re-render loop on mobile.
+  const gameStepStates = useMemo(() => {
     const conceptHot = !!workerCardData;
     const gr = workerCardData?.gameRules || {};
     const rulesHot = !!(gr.turnMechanic && gr.winLoseConditions && gr.scoring && gr.safetyCompliance);
@@ -2008,7 +2081,20 @@ export default function DeveloperSandbox() {
       { id: "grow",         label: "Grow & Revise",  state: stateOf(false, flowStep === 7) },
     ];
     return { steps, activeId };
-  })();
+  }, [workerCardData, canvasAssets, includedAssetIds, gameSessionPhase, flowStep]);
+
+  // 47.9 HOTFIX: memoized callback to prevent new function ref every render.
+  const handleGameStepClick = useCallback((stepId) => {
+    const stepMap = { test: 4, preflight: 5, distribute: 6, grow: 7 };
+    if (stepMap[stepId] && stepMap[stepId] <= maxFlowStep) {
+      viewStep(stepMap[stepId]);
+      return;
+    }
+    try {
+      const el = document.getElementById(`game-section-${stepId}`);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    } catch {}
+  }, [maxFlowStep]);
 
   // Chat input placeholder based on step
   const chatPlaceholder = flowStep <= 2
@@ -2229,10 +2315,17 @@ export default function DeveloperSandbox() {
                   fontWeight: 500, cursor: "pointer", transition: "background 0.15s",
                 }}
                 onClick={() => {
-                  setShowPathChips(false);
-                  setCreatorPath("worker");
-                  addUserMessage("Digital Worker");
-                  setTimeout(() => addAssistantMessage("So \u2014 what do you want to build?"), 500);
+                  // CODEX 47.5 Fix 4 — single canonical worker sandbox surface.
+                  // /sandbox is the game sandbox. /sandbox/worker is the worker
+                  // sandbox. The Digital Worker chip redirects rather than
+                  // entering an in-page worker mode. The worker-mode code paths
+                  // in this file (runBuildPipeline, w1Api worker1:* calls,
+                  // worker chat extraction, TestWorkerPanel for workers, etc.)
+                  // are dead code as of this redirect and should be removed in
+                  // a follow-up cleanup pass per CODEX 47.5 Locked Decisions.
+                  // TODO(47.5-cleanup): remove worker-mode code paths from
+                  // DeveloperSandbox.jsx now that they are unreachable.
+                  window.location.href = "/sandbox/worker";
                 }}
               >
                 Digital Worker
@@ -2689,20 +2782,7 @@ export default function DeveloperSandbox() {
               steps={gameStepStates.steps}
               activeStep={gameStepStates.activeId}
               accent="#16A34A"
-              onStepClick={(stepId) => {
-                // Map step id back to flowStep where applicable, otherwise scroll
-                // to the matching collapsible section in the canvas.
-                const stepMap = { test: 4, preflight: 5, distribute: 6, grow: 7 };
-                if (stepMap[stepId] && stepMap[stepId] <= maxFlowStep) {
-                  viewStep(stepMap[stepId]);
-                  return;
-                }
-                // For Concept/Rules/Artwork/Interactions: scroll to the section.
-                try {
-                  const el = document.getElementById(`game-section-${stepId}`);
-                  if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-                } catch {}
-              }}
+              onStepClick={handleGameStepClick}
             />
           )}
 
