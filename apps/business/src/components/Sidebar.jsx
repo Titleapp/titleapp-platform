@@ -1195,16 +1195,28 @@ export default function Sidebar({
   }, [workerList]);
 
 
-  // Build "My Work" nav items — universal + vertical + worker-triggered
+  // Build "My Work" nav items — vault-native for personal, universal for business.
+  // CODEX 48.2 Fix 3+8: gate base items on isPersonal. Personal vault gets
+  // Documents/Signatures/Activity/My Workers/My Games — never Deal Pipeline,
+  // Reports, or Clients & Contacts. Business workspaces are unchanged.
   const myWorkItems = useMemo(() => {
-    const items = [
-      { id: "dashboard", label: "Dashboard" },
-      { id: "deal-pipeline", label: "Deal Pipeline" },
-      { id: "vault-documents", label: "Documents" },
-      { id: "pending-signatures", label: "Signatures" },
-      { id: "reports", label: "Reports" },
-      { id: "clients-lps", label: "Clients & Contacts" },
-    ];
+    const items = isPersonal
+      ? [
+          { id: "dashboard",          label: "Dashboard" },
+          { id: "vault-documents",    label: "Documents" },
+          { id: "pending-signatures", label: "Signatures" },
+          { id: "my-logbook",         label: "Activity" },
+          { id: "my-workers",         label: "My Workers" },
+          { id: "my-games",           label: "My Games" },
+        ]
+      : [
+          { id: "dashboard",          label: "Dashboard" },
+          { id: "deal-pipeline",      label: "Deal Pipeline" },
+          { id: "vault-documents",    label: "Documents" },
+          { id: "pending-signatures", label: "Signatures" },
+          { id: "reports",            label: "Reports" },
+          { id: "clients-lps",        label: "Clients & Contacts" },
+        ];
 
     // Add vertical-specific items — only if user has matching workers
     const workerSlugs = activeWorkers.map(w => typeof w === "string" ? w : w?.slug || "");
@@ -1673,7 +1685,7 @@ export default function Sidebar({
         </nav>
       </div>
 
-      {/* Footer: Switch Workspace + Sign Out */}
+      {/* Footer: Switch Worker + Sign Out */}
       <div className="sidebarFooter">
         {onBackToHub && (
           <button
@@ -1687,7 +1699,7 @@ export default function Sidebar({
             onMouseEnter={e => { e.currentTarget.style.color = "rgba(255,255,255,0.8)"; }}
             onMouseLeave={e => { e.currentTarget.style.color = "rgba(255,255,255,0.5)"; }}
           >
-            Switch Workspace
+            Switch Worker
           </button>
         )}
         <button

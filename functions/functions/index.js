@@ -6583,6 +6583,36 @@ These should be 2-3 realistic test scenarios the creator should try, derived fro
       }
     }
 
+    // ── File Upload (CODEX 47.10) ──────────────────────────────────────
+
+    // POST /v1/sandbox:file:upload — Upload an image or video to Cloud Storage.
+    //   Body: { name, data (base64 data URI), type (MIME) }
+    if (route === "/sandbox:file:upload" && method === "POST") {
+      try {
+        const { name, data, type } = body || {};
+        if (!data) return jsonError(res, 400, "Missing file data");
+        const base64Data = (data || "").replace(/^data:[^;]+;base64,/, "");
+        const buffer = Buffer.from(base64Data, "base64");
+        if (buffer.length > 50 * 1024 * 1024) return jsonError(res, 413, "File too large (50 MB max)");
+        const safeName = (name || "file").replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 100);
+        const storagePath = `sandbox/${auth.user.uid}/${Date.now()}_${safeName}`;
+        const bucket = getBucket();
+        const fileRef = bucket.file(storagePath);
+        await fileRef.save(buffer, { contentType: type || "application/octet-stream" });
+        const [url] = await fileRef.getSignedUrl({ action: "read", expires: "2030-01-01" });
+        const docRef = await db.collection("users").doc(auth.user.uid)
+          .collection("uploads").add({
+            name: safeName, storagePath, contentType: type || "application/octet-stream",
+            sizeBytes: buffer.length, url, source: "sandbox",
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        return res.json({ ok: true, fileId: docRef.id, url, name: safeName });
+      } catch (e) {
+        console.error("sandbox:file:upload failed:", e);
+        return jsonError(res, 500, "File upload failed");
+      }
+    }
+
     // ── Build Log ──────────────────────────────────────────────────────
 
     // GET /v1/sandbox:worker:buildlog?sessionId=...

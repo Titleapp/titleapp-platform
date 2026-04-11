@@ -1,5 +1,31 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { getAuth } from 'firebase/auth';
+import { getAuth, onAuthStateChanged } from 'firebase/auth';
+
+// CODEX 48.2 Fix 7 — robust token getter for ChatPanel.
+// Previous patterns used either localStorage.ID_TOKEN (stale on expiry) or
+// currentUser.getIdToken(true) (force-refresh that fails silently on network
+// blips). This mirrors the 47.5 fix applied to DeveloperSandbox + TestWorkerPanel.
+let _chatAuthReady = null;
+function getChatToken() {
+  const auth = getAuth();
+  if (auth?.currentUser) {
+    return auth.currentUser.getIdToken(false).catch(() => auth.currentUser.getIdToken(true));
+  }
+  if (_chatAuthReady) return _chatAuthReady.then(u => u ? u.getIdToken(false) : null);
+  _chatAuthReady = new Promise((resolve) => {
+    let settled = false;
+    const timer = setTimeout(() => { if (!settled) { settled = true; try { unsub(); } catch {} resolve(null); } }, 5000);
+    const unsub = onAuthStateChanged(auth, (user) => {
+      if (settled || !user) return;
+      settled = true;
+      clearTimeout(timer);
+      try { unsub(); } catch {}
+      resolve(user);
+    });
+  });
+  _chatAuthReady.finally(() => { _chatAuthReady = null; });
+  return _chatAuthReady.then(u => u ? u.getIdToken(false) : null);
+}
 import { getFirestore, collection, query, where, orderBy, limit, getDocs, doc, getDoc } from 'firebase/firestore';
 import { fireMilestone } from '../utils/celebrations';
 import { WORKER_ROUTES } from '../pages/WorkerMarketplace';
@@ -975,7 +1001,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
   }
 
   async function executeAlexCommand(type, payload) {
-    const token = localStorage.getItem("ID_TOKEN");
+    const token = await getChatToken() || localStorage.getItem("ID_TOKEN");
     const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
     switch (type) {
       case 'CREATE_WORKSPACE':
@@ -1020,7 +1046,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
 
   // ── Subscribe to a worker via /worker:subscribe ───────────
   async function subscribeToWorker(worker) {
-    const token = localStorage.getItem("ID_TOKEN");
+    const token = await getChatToken() || localStorage.getItem("ID_TOKEN");
     const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
     try {
       const res = await fetch(`${apiBase}/api?path=/v1/worker:subscribe`, {
@@ -1142,7 +1168,8 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
     if (workerCtx?.startWorking) workerCtx.startWorking();
 
     try {
-      const token = await currentUser.getIdToken(true);
+      const token = await getChatToken();
+      if (!token) { setIsTyping(false); return; }
       const tenantId = localStorage.getItem('TENANT_ID') || localStorage.getItem('WORKSPACE_ID') || '';
       const vertical = localStorage.getItem('VERTICAL') || 'auto';
       const jurisdiction = localStorage.getItem('JURISDICTION') || '';

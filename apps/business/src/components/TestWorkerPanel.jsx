@@ -44,29 +44,73 @@ function inlineFormat(text) {
   return parts.length > 0 ? parts : text;
 }
 
-// Robust token getter — uses real Firebase auth instance
+// CODEX 47.5 Fix 2 — robust Firebase ID token getter for the test panel.
+//
+// Bugs in the previous implementation:
+//
+//   1. The onAuthStateChanged fallback rejected on the FIRST callback when
+//      user was null. Firebase emits a synchronous null callback before
+//      reading the persisted session, so this rejected immediately for
+//      legitimately authenticated users. The reject was then swallowed by
+//      the outer empty `catch (_) {}`, falling through to localStorage
+//      with a possibly-stale token.
+//
+//   2. getIdToken(true) was always force-refreshing. If the STS round-trip
+//      transiently failed (cold tab, WiFi blip, Google rate limit), the
+//      surrounding catch swallowed it and we again fell through to a
+//      stale localStorage token.
+//
+// New behavior mirrors DeveloperSandbox.jsx getFreshToken (CODEX 47.5):
+//   - waitForAuth resolves on the first NON-null user, ignoring synchronous
+//     null callbacks.
+//   - Cached getIdToken(false) preferred over force refresh.
+//   - Errors logged, not swallowed.
+
+let _authReadyPromise = null;
+function waitForAuth(timeoutMs = 5000) {
+  if (firebaseAuth?.currentUser) return Promise.resolve(firebaseAuth.currentUser);
+  if (_authReadyPromise) return _authReadyPromise;
+  _authReadyPromise = new Promise((resolve) => {
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      try { unsub(); } catch (_) {}
+      resolve(null);
+    }, timeoutMs);
+    const unsub = firebaseAuth.onAuthStateChanged((user) => {
+      if (settled || !user) return; // skip null callbacks
+      settled = true;
+      clearTimeout(timer);
+      try { unsub(); } catch (_) {}
+      resolve(user);
+    });
+  });
+  _authReadyPromise.finally(() => { _authReadyPromise = null; });
+  return _authReadyPromise;
+}
+
 async function getToken() {
-  if (firebaseAuth?.currentUser) {
+  const user = await waitForAuth();
+  if (user) {
     try {
-      const token = await firebaseAuth.currentUser.getIdToken(true);
-      localStorage.setItem("ID_TOKEN", token);
-      return token;
-    } catch (_) {}
-  }
-  if (firebaseAuth) {
+      const token = await user.getIdToken(false);
+      if (token) {
+        localStorage.setItem("ID_TOKEN", token);
+        return token;
+      }
+    } catch (e) {
+      console.warn("[TestWorkerPanel.getToken] cached getIdToken failed, retrying with force refresh:", e?.message);
+    }
     try {
-      return await new Promise((resolve, reject) => {
-        const unsub = firebaseAuth.onAuthStateChanged(user => {
-          unsub();
-          if (user) {
-            user.getIdToken(true).then(t => { localStorage.setItem("ID_TOKEN", t); resolve(t); }).catch(reject);
-          } else {
-            reject(new Error("Not authenticated"));
-          }
-        });
-        setTimeout(() => { unsub(); reject(new Error("Auth timeout")); }, 5000);
-      });
-    } catch (_) {}
+      const token = await user.getIdToken(true);
+      if (token) {
+        localStorage.setItem("ID_TOKEN", token);
+        return token;
+      }
+    } catch (e) {
+      console.error("[TestWorkerPanel.getToken] forced getIdToken failed:", e?.message);
+    }
   }
   const stored = localStorage.getItem("ID_TOKEN");
   if (stored && stored !== "undefined" && stored !== "null") return stored;

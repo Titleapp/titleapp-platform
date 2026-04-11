@@ -15,6 +15,8 @@ import CommsPreferences from "../components/CommsPreferences";
 import PublishPreflight from "../components/PublishPreflight";
 import CreatorSpotlight from "../components/CreatorSpotlight";
 import { fireConfetti } from "../utils/celebrations";
+import FileUploadBar, { classifyFile, validateFiles } from "../components/sandbox/FileUploadBar";
+import { ingestDocument, uploadFile } from "../api/sandboxWorkerApi";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
 
@@ -785,6 +787,9 @@ export default function DeveloperSandbox() {
   const [imageGenerating, setImageGenerating] = useState(false);
   const [includedAssetIds, setIncludedAssetIds] = useState(() => savedSession.current?.includedAssetIds || []);
   const [showMyImages, setShowMyImages] = useState(false);
+  // CODEX 47.10 — File upload state
+  const [pendingFiles, setPendingFiles] = useState([]);
+  const fileInputRef = useRef(null);
   // Fix 7 — Anonymous save banner: shown once per session after artwork phase has 1+ char + 1+ bg
   const [showAnonSaveBanner, setShowAnonSaveBanner] = useState(false);
   const anonSaveBannerShownRef = useRef(false);
@@ -1170,10 +1175,28 @@ export default function DeveloperSandbox() {
     localStorage.setItem("DISPLAY_NAME", name);
   }
 
+  // ── CODEX 47.10 — File upload helpers ────────────────────────
+  function handleFilesSelected(fileList) {
+    const { valid, rejected } = validateFiles(fileList);
+    if (rejected.length) {
+      const names = rejected.map(r => `${r.name} (${r.reason})`).join(", ");
+      addAssistantMessage(`Some files were skipped: ${names}`);
+    }
+    const newFiles = valid.map(f => ({
+      id: `file_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      file: f, name: f.name, size: f.size, type: classifyFile(f),
+      status: "pending", progress: 0, error: null,
+    }));
+    setPendingFiles(prev => [...prev, ...newFiles]);
+  }
+  function handleFileRemove(id) { setPendingFiles(prev => prev.filter(f => f.id !== id)); }
+  function handleFilesClear() { setPendingFiles([]); }
+
   // ── Chat send ────────────────────────────────────────────────
   async function handleSend() {
     const text = input.trim();
-    if (!text || sending) return;
+    if (!text && pendingFiles.length === 0) return;
+    if (sending) return;
     setInput("");
     setShowPasteArea(false); // Hide paste link once user starts typing
     // Fade out welcome greeting on first user message
@@ -1181,7 +1204,11 @@ export default function DeveloperSandbox() {
       setGreetingVisible(false);
       setTimeout(() => setWelcomeGreeting(null), 400);
     }
-    addUserMessage(text);
+    // Show file names in the user message bubble
+    const fileNote = pendingFiles.length > 0
+      ? `\n[Attached: ${pendingFiles.map(f => f.name).join(", ")}]`
+      : "";
+    addUserMessage(text ? text + fileNote : fileNote.trim());
 
     // CODEX 47.3 Fix 17 — When in artwork phase and Alex has already asked
     // "ready to move on?", a yes-style reply locally advances to the
@@ -1381,6 +1408,48 @@ export default function DeveloperSandbox() {
     const shouldExtractSpec = flowStep <= 2 && newExchangeCount >= 5 && !workerCardData && !isGamePath;
 
     setSending(true);
+
+    // CODEX 47.10 — Upload attached files before sending chat message
+    let uploadSummary = "";
+    const filesToUpload = [...pendingFiles];
+    if (filesToUpload.length > 0) {
+      setPendingFiles([]); // Clear immediately so UI resets
+      const uploaded = [];
+      const failed = [];
+      for (const pf of filesToUpload) {
+        try {
+          if (pf.type === "document") {
+            const ext = pf.name.toLowerCase().split(".").pop();
+            let sourceType = "auto";
+            if (ext === "pdf") sourceType = "pdf";
+            else if (ext === "docx") sourceType = "docx";
+            else if (["txt", "md", "csv"].includes(ext)) sourceType = "text";
+            const result = await ingestDocument({
+              workerId: workerCardData?.id || sessionId,
+              name: pf.name, sourceType, file: pf.file,
+            });
+            if (result.ok) uploaded.push(pf.name);
+            else failed.push(pf.name);
+          } else {
+            const result = await uploadFile(pf.file);
+            if (result.ok) uploaded.push(pf.name);
+            else failed.push(pf.name);
+          }
+        } catch (err) {
+          console.error("[sandbox] File upload failed:", pf.name, err);
+          failed.push(pf.name);
+        }
+      }
+      const parts = [];
+      if (uploaded.length) parts.push(`${uploaded.length} file${uploaded.length > 1 ? "s" : ""} uploaded`);
+      if (failed.length) parts.push(`${failed.length} failed`);
+      uploadSummary = parts.length ? `[${parts.join(", ")}]` : "";
+      if (failed.length) {
+        addAssistantMessage(`Some uploads failed: ${failed.join(", ")}. You can try again.`);
+      }
+    }
+    const userInputWithUploads = uploadSummary ? `${text}\n\n${uploadSummary}` : text;
+
     try {
       const token = localStorage.getItem("ID_TOKEN");
       const headers = { "Content-Type": "application/json" };
@@ -1389,7 +1458,7 @@ export default function DeveloperSandbox() {
         method: "POST",
         headers,
         body: JSON.stringify({
-          sessionId, surface: "sandbox", userInput: text, flowStep: Math.max(flowStep, 1), vertical, creatorPath: effectiveCreatorPath,
+          sessionId, surface: "sandbox", userInput: userInputWithUploads, flowStep: Math.max(flowStep, 1), vertical, creatorPath: effectiveCreatorPath,
           ...(creatorName ? { creatorName } : {}),
           ...(shouldExtractSpec ? { extractSpec: true } : {}),
           // CODEX 47.2 Fix 4 — pass game phase + FRESH card data so backend never loses rules context.
@@ -2581,10 +2650,36 @@ export default function DeveloperSandbox() {
               style={{ fontSize: 13, color: "#475569", background: "#F1F5F9", border: "1px solid #E2E8F0", borderRadius: 16, padding: "4px 12px", cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap", flexShrink: 0 }}
             >Generate artwork</button>
           </div>
-          {/* CODEX 47.3 Fix 14 — File upload removed entirely. A broken picker
-              is worse than no picker. Creators paste text directly until file
-              parsing ships. Do not re-add a paperclip or drop zone. */}
+          {/* CODEX 47.10 — File upload bar + paperclip */}
+          <FileUploadBar
+            files={pendingFiles}
+            onRemove={handleFileRemove}
+            onClear={handleFilesClear}
+            disabled={sending}
+          />
           <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={sending}
+              style={{
+                background: "none", border: "1px solid #E2E8F0", borderRadius: 8,
+                padding: "8px 10px", cursor: sending ? "default" : "pointer",
+                color: "#64748B", fontSize: 16, flexShrink: 0, lineHeight: 1,
+                minHeight: isMobile ? 52 : 44, display: "flex", alignItems: "center",
+              }}
+              title="Attach files (PDF, DOCX, images, video)"
+            >
+              +
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept=".pdf,.docx,.txt,.md,.csv,.png,.jpg,.jpeg,.gif,.webp,.svg,.mp4,.mov,.webm"
+              style={{ display: "none" }}
+              onChange={e => { handleFilesSelected(e.target.files); e.target.value = ""; }}
+            />
             <textarea
               ref={chatInputRef}
               style={{ ...S.chatInput, flex: 1, overflowY: "auto", minHeight: isMobile ? 52 : 44 }}
@@ -2598,19 +2693,19 @@ export default function DeveloperSandbox() {
             />
             <button
               onClick={handleSend}
-              disabled={sending || !input.trim()}
+              disabled={sending || (!input.trim() && pendingFiles.length === 0)}
               style={{
-                padding: "10px 16px", background: input.trim() ? "var(--accent, #6B46C1)" : "#E2E8F0",
-                color: input.trim() ? "white" : "#94A3B8", border: "none", borderRadius: 8,
-                fontSize: 14, fontWeight: 600, cursor: input.trim() ? "pointer" : "default",
+                padding: "10px 16px",
+                background: (input.trim() || pendingFiles.length > 0) ? "var(--accent, #6B46C1)" : "#E2E8F0",
+                color: (input.trim() || pendingFiles.length > 0) ? "white" : "#94A3B8",
+                border: "none", borderRadius: 8,
+                fontSize: 14, fontWeight: 600,
+                cursor: (input.trim() || pendingFiles.length > 0) ? "pointer" : "default",
                 flexShrink: 0, transition: "background 0.2s",
               }}
             >
               Send
             </button>
-          </div>
-          <div style={{ marginTop: 6, fontSize: 11, color: "#94A3B8", textAlign: "center" }}>
-            Paste text directly — file upload coming soon.
           </div>
         </div>
       </div>
