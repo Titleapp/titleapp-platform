@@ -1089,6 +1089,7 @@ export default function Sidebar({
   const [showSwitcher, setShowSwitcher] = useState(false);
   const [selectedWorker, setSelectedWorker] = useState(null);
   const [workersExpanded, setWorkersExpanded] = useState(false);
+  const [collapsedGroups, setCollapsedGroups] = useState({});
   const workerCtx = useWorkerState();
   const vertical = guestMode ? "" : (localStorage.getItem("VERTICAL") || "auto");
   const isPersonal = vertical === "consumer";
@@ -1118,8 +1119,22 @@ export default function Sidebar({
         workerType: worker.workerType || "worker",
       }
     }));
+    onNavigate("worker-home");
     if (onClose) onClose();
   }
+
+  // CODEX 48.3 Phase A — return to vault home (clears worker selection)
+  function handleWorkerDeselect() {
+    setSelectedWorker(null);
+    if (workerCtx?.selectWorker) workerCtx.selectWorker(null);
+    window.dispatchEvent(new CustomEvent("ta:select-worker", { detail: null }));
+    onNavigate("dashboard");
+  }
+
+  // Look up the selected worker's display name for the breadcrumb
+  const selectedWorkerName = selectedWorker
+    ? (workerList.find(w => w.slug === selectedWorker)?.name || selectedWorker)
+    : null;
 
   function handleSignOut() {
     const auth = getAuth();
@@ -1165,6 +1180,8 @@ export default function Sidebar({
           isChiefOfStaff: wId.isChiefOfStaff || false,
           active: true,
           vertical: normalizeVertical(slug),
+          workerType: wId.workerType || null,
+          businessBundle: wId.businessBundle || null,
         });
       }
     }
@@ -1195,36 +1212,48 @@ export default function Sidebar({
   }, [workerList]);
 
 
-  // Build "My Work" nav items — vault-native for personal, universal for business.
-  // CODEX 48.2 Fix 3+8: gate base items on isPersonal. Personal vault gets
-  // Documents/Signatures/Activity/My Workers/My Games — never Deal Pipeline,
-  // Reports, or Clients & Contacts. Business workspaces are unchanged.
+  // CODEX 48.3 Phase B — myWorkItems is now reactive to selectedWorker.
+  // When a worker is selected, show that worker's nav from WORKER_NAV_MAP.
+  // When no worker selected, show vault-native items (personal) or business items.
   const myWorkItems = useMemo(() => {
-    const items = isPersonal
-      ? [
-          { id: "dashboard",          label: "Dashboard" },
-          { id: "vault-documents",    label: "Documents" },
-          { id: "pending-signatures", label: "Signatures" },
-          { id: "my-logbook",         label: "Activity" },
-          { id: "my-workers",         label: "My Workers" },
-          { id: "my-games",           label: "My Games" },
-        ]
-      : [
-          { id: "dashboard",          label: "Dashboard" },
-          { id: "deal-pipeline",      label: "Deal Pipeline" },
-          { id: "vault-documents",    label: "Documents" },
-          { id: "pending-signatures", label: "Signatures" },
-          { id: "reports",            label: "Reports" },
-          { id: "clients-lps",        label: "Clients & Contacts" },
-        ];
+    // Worker is selected → show that worker's specific nav
+    if (selectedWorker) {
+      const workerNav = WORKER_NAV_MAP[selectedWorker] || [];
+      const items = workerNav.length > 0
+        ? [...workerNav]
+        : [{ id: "worker-home", label: "Worker Home" }];
+      // Always append billing to every worker's nav
+      if (!items.some(i => i.id === "billing")) {
+        items.push({ id: "billing", label: "Billing" });
+      }
+      return items;
+    }
 
-    // Add vertical-specific items — only if user has matching workers
+    // No worker selected — vault home or business workspace
+    if (isPersonal) {
+      return [
+        { id: "dashboard",          label: "Dashboard" },
+        { id: "vault-documents",    label: "Documents" },
+        { id: "pending-signatures", label: "Signatures" },
+        { id: "my-logbook",         label: "Activity" },
+        { id: "billing",            label: "Billing" },
+      ];
+    }
+
+    // Business workspace — unchanged from pre-48.3
+    const items = [
+      { id: "dashboard",          label: "Dashboard" },
+      { id: "deal-pipeline",      label: "Deal Pipeline" },
+      { id: "vault-documents",    label: "Documents" },
+      { id: "pending-signatures", label: "Signatures" },
+      { id: "reports",            label: "Reports" },
+      { id: "clients-lps",        label: "Clients & Contacts" },
+    ];
+
     const workerSlugs = activeWorkers.map(w => typeof w === "string" ? w : w?.slug || "");
     const hasAviation = workerSlugs.some(s => s.startsWith("av-"));
-    const hasAuto = workerSlugs.some(s => s.startsWith("ad-"));
     const existingIds = new Set(items.map(i => i.id));
 
-    // Gate vertical nav: only show if user has workers in that vertical
     if (vertical === "aviation" && hasAviation) {
       for (const vi of (WORKER_NAV_MAP["aviation"] || [])) {
         if (!existingIds.has(vi.id)) { items.push(vi); existingIds.add(vi.id); }
@@ -1236,19 +1265,15 @@ export default function Sidebar({
       }
     }
 
-    // Add worker-triggered items
     for (const slug of workerSlugs) {
       const workerItems = WORKER_NAV_MAP[slug] || [];
       for (const wi of workerItems) {
-        if (!existingIds.has(wi.id)) {
-          items.push(wi);
-          existingIds.add(wi.id);
-        }
+        if (!existingIds.has(wi.id)) { items.push(wi); existingIds.add(wi.id); }
       }
     }
 
     return items;
-  }, [vertical, activeWorkers]);
+  }, [selectedWorker, isPersonal, vertical, activeWorkers]);
 
   // Group workspaces for the switcher
   const ownWorkspaces = workspaces.filter(w => w.type !== "shared");
@@ -1441,6 +1466,28 @@ export default function Sidebar({
         )}
       </div>
 
+      {/* CODEX 48.3 Phase A — Return to Vault breadcrumb */}
+      {selectedWorker && (
+        <div
+          onClick={handleWorkerDeselect}
+          style={{
+            display: "flex", alignItems: "center", gap: 8,
+            padding: "10px 16px", cursor: "pointer",
+            borderBottom: "1px solid rgba(255,255,255,0.08)",
+            fontSize: 12, color: "rgba(255,255,255,0.6)",
+          }}
+          onMouseEnter={e => { e.currentTarget.style.color = "#c4b5fd"; }}
+          onMouseLeave={e => { e.currentTarget.style.color = "rgba(255,255,255,0.6)"; }}
+        >
+          <span style={{ fontSize: 14 }}>&larr;</span>
+          <span>My Vault</span>
+          <span style={{ color: "rgba(255,255,255,0.2)" }}>|</span>
+          <span style={{ color: "#c4b5fd", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {selectedWorkerName}
+          </span>
+        </div>
+      )}
+
       {/* ═══ PERSONAL VAULT (always pinned for business workspaces) ═══ */}
       {!isPersonal && (
         <>
@@ -1474,41 +1521,13 @@ export default function Sidebar({
       {/* Divider */}
       {!isPersonal && !guestMode && <div style={{ height: "1px", background: "rgba(255,255,255,0.08)", margin: "4px 16px" }} />}
 
-      {/* ═══ YOUR TEAMS ═══ */}
-      {!guestMode && workspaces.length > 1 && (
-        <div className="sidebarSection" style={{ paddingBottom: 0 }}>
-          <div className="sidebarLabel">Your Teams</div>
-          <nav className="nav">
-            {workspaces.slice(0, 10).map(ws => (
-              <div
-                key={ws.id}
-                className={`navItem${ws.id === currentWorkspaceId ? " active" : ""}`}
-                onClick={() => onSwitchWorkspace(ws)}
-                style={{ cursor: "pointer" }}
-              >
-                <span style={{
-                  width: 20, height: 20, borderRadius: 4, display: "inline-flex",
-                  alignItems: "center", justifyContent: "center",
-                  background: "rgba(124,58,237,0.25)", color: "#c4b5fd",
-                  fontSize: 10, fontWeight: 700, lineHeight: 1, flexShrink: 0,
-                }}>{(ws.name || ws.vertical || "W")[0].toUpperCase()}</span>
-                <span>{ws.name || ws.vertical}</span>
-              </div>
-            ))}
-            <div className="navItem" onClick={() => onNavigate("team-setup")} style={{ cursor: "pointer", color: "rgba(148,163,184,0.8)" }}>
-              <span>+</span>
-              <span>Add a Team</span>
-            </div>
-          </nav>
-        </div>
-      )}
+      {/* CODEX 48.3 Phase A — YOUR TEAMS removed. Workers are accessed via
+           MY WORKERS / MY GAMES below. Workspace switching remains available
+           via the Switch Worker button in the sidebar footer. */}
 
-      {/* Divider */}
-      {!guestMode && workspaces.length > 1 && <div style={{ height: "1px", background: "rgba(255,255,255,0.08)", margin: "4px 16px" }} />}
-
-      {/* ═══ SECTION 1: DIGITAL WORKERS (grouped by vertical) ═══ */}
+      {/* ═══ SECTION 1: MY WORKERS (grouped by vertical, games excluded) ═══ */}
       <div className="sidebarSection">
-        <div className="sidebarLabel" style={{ display: "flex", alignItems: "center" }}>Digital Workers<DataLinkStatus /></div>
+        <div className="sidebarLabel" style={{ display: "flex", alignItems: "center" }}>My Workers<DataLinkStatus /></div>
 
         <nav className="nav">
           {/* Chief of Staff — always first */}
@@ -1539,20 +1558,28 @@ export default function Sidebar({
             );
           })}
 
-          {/* Workers grouped by vertical */}
+          {/* Workers grouped by vertical (collapsible) */}
           {groupedWorkers.groups.map(([verticalName, workers], gi) => {
             const accent = getThemeAccent(verticalName, false);
+            const isCollapsed = collapsedGroups[verticalName];
             return (
             <div key={verticalName}>
               {gi > 0 && <div style={{ height: 1, background: accent, opacity: 0.3, margin: "4px 10px" }} />}
-              <div style={{
-                fontSize: 10, fontWeight: 600, color: accent,
-                textTransform: "uppercase", letterSpacing: "0.5px",
-                padding: "8px 10px 3px",
-              }}>
-                {verticalName}
-              </div>
-              {workers.map(worker => {
+              <button
+                onClick={() => setCollapsedGroups(prev => ({ ...prev, [verticalName]: !prev[verticalName] }))}
+                style={{
+                  width: "100%", textAlign: "left", cursor: "pointer",
+                  background: "none", border: "none",
+                  fontSize: 10, fontWeight: 600, color: accent,
+                  textTransform: "uppercase", letterSpacing: "0.5px",
+                  padding: "8px 10px 3px",
+                  display: "flex", alignItems: "center", justifyContent: "space-between",
+                }}
+              >
+                <span>{verticalName} ({workers.length})</span>
+                <span style={{ fontSize: 10, transition: "transform 0.2s", transform: isCollapsed ? "rotate(0deg)" : "rotate(90deg)" }}>&rsaquo;</span>
+              </button>
+              {!isCollapsed && workers.map(worker => {
                 const isSelected = selectedWorker === worker.slug;
                 return (
                   <div key={worker.slug}>
@@ -1641,6 +1668,32 @@ export default function Sidebar({
         </nav>
       </div>
 
+      {/* ═══ MY GAMES (only if user has games) ═══ */}
+      {(() => {
+        const myGames = workerList.filter(w => w.workerType === "game");
+        if (myGames.length === 0) return null;
+        return (
+          <div className="sidebarSection" style={{ paddingBottom: 0 }}>
+            <div className="sidebarLabel">My Games</div>
+            <nav className="nav">
+              {myGames.map(g => (
+                <button
+                  key={g.slug}
+                  className={`navItem ${selectedWorker === g.slug ? "navItemActive" : ""}`}
+                  onClick={() => handleWorkerClick(g)}
+                  style={{ width: "100%", textAlign: "left", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, padding: "7px 10px", fontSize: 13 }}
+                >
+                  <span style={{ width: 20, height: 20, borderRadius: 4, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "rgba(22,163,74,0.15)", color: "#22c55e", fontSize: 10, fontWeight: 700, flexShrink: 0 }}>
+                    {(g.name || "G")[0]}
+                  </span>
+                  <span style={{ flex: 1, color: "rgba(255,255,255,0.85)" }}>{g.name}</span>
+                </button>
+              ))}
+            </nav>
+          </div>
+        );
+      })()}
+
       {/* Divider */}
       <div style={{ height: "1px", background: "rgba(255,255,255,0.08)", margin: "4px 16px" }} />
 
@@ -1687,21 +1740,24 @@ export default function Sidebar({
 
       {/* Footer: Switch Worker + Sign Out */}
       <div className="sidebarFooter">
-        {onBackToHub && (
-          <button
-            onClick={onBackToHub}
-            className="iconBtn"
-            style={{
-              width: "100%", marginBottom: 4, fontSize: 12,
-              color: "rgba(255,255,255,0.5)", background: "none", border: "none",
-              cursor: "pointer", padding: "8px 0",
-            }}
-            onMouseEnter={e => { e.currentTarget.style.color = "rgba(255,255,255,0.8)"; }}
-            onMouseLeave={e => { e.currentTarget.style.color = "rgba(255,255,255,0.5)"; }}
-          >
-            Switch Worker
-          </button>
-        )}
+        <button
+          onClick={() => {
+            setSelectedWorker(null);
+            if (workerCtx?.selectWorker) workerCtx.selectWorker(null);
+            window.dispatchEvent(new CustomEvent("ta:select-worker", { detail: null }));
+            onNavigate("dashboard");
+          }}
+          className="iconBtn"
+          style={{
+            width: "100%", marginBottom: 4, fontSize: 12,
+            color: "rgba(255,255,255,0.5)", background: "none", border: "none",
+            cursor: "pointer", padding: "8px 0",
+          }}
+          onMouseEnter={e => { e.currentTarget.style.color = "rgba(255,255,255,0.8)"; }}
+          onMouseLeave={e => { e.currentTarget.style.color = "rgba(255,255,255,0.5)"; }}
+        >
+          Switch Worker
+        </button>
         <button
           onClick={handleSignOut}
           className="iconBtn"

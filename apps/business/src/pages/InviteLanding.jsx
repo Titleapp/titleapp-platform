@@ -60,7 +60,7 @@ export default function InviteLanding({ inviteCode }) {
   if (loading) return <div style={S.page}><div style={S.loading}>Loading invite...</div></div>;
   if (error) return (
     <div style={S.page}>
-      <nav style={S.nav}><a href="/" style={S.logo}>TitleApp</a><a href="/" style={S.signIn}>Sign In</a></nav>
+      <nav style={S.nav}><a href="/" style={S.logo}>TitleApp</a><a href="/meet-alex" style={S.signIn}>Sign In</a></nav>
       <div style={S.error}>{error}</div>
     </div>
   );
@@ -72,7 +72,7 @@ export default function InviteLanding({ inviteCode }) {
     <div style={S.page}>
       <nav style={S.nav}>
         <a href="/" style={S.logo}>TitleApp</a>
-        <a href="/" style={S.signIn}>Sign In</a>
+        <a href="/meet-alex" style={S.signIn}>Sign In</a>
       </nav>
 
       <div style={S.hero}>
