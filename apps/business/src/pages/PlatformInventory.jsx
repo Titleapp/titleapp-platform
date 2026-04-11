@@ -34,33 +34,19 @@ export default function PlatformInventory() {
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState("workers");
   const [expandedVertical, setExpandedVertical] = useState(null);
-  const [tokenInput, setTokenInput] = useState("");
-  const [needsToken, setNeedsToken] = useState(false);
 
-  const urlParams = new URLSearchParams(window.location.search);
-  const investorToken = urlParams.get("token");
-
-  async function fetchInventory(token) {
+  async function fetchInventory() {
     setLoading(true);
     setError(null);
     try {
-      const tokenParam = token ? `&token=${encodeURIComponent(token)}` : "";
       const headers = {};
       const idToken = localStorage.getItem("ID_TOKEN");
       if (idToken) headers.Authorization = `Bearer ${idToken}`;
 
-      const res = await fetch(`${API_BASE}/api?path=/v1/inventory:data${tokenParam}`, { headers });
+      const res = await fetch(`${API_BASE}/api?path=/v1/inventory:data`, { headers });
       const json = await res.json();
-      if (!json.ok) {
-        if (res.status === 401) {
-          setNeedsToken(true);
-          setLoading(false);
-          return;
-        }
-        throw new Error(json.error || "Failed to load");
-      }
+      if (!json.ok) throw new Error(json.error || "Failed to load");
       setData(json);
-      setNeedsToken(false);
     } catch (e) {
       setError(e.message);
     } finally {
@@ -69,27 +55,16 @@ export default function PlatformInventory() {
   }
 
   useEffect(() => {
-    fetchInventory(investorToken);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    fetchInventory();
   }, []);
 
-  function handleTokenSubmit(e) {
-    e.preventDefault();
-    if (!tokenInput.trim()) return;
-    const url = new URL(window.location.href);
-    url.searchParams.set("token", tokenInput.trim());
-    window.history.replaceState({}, "", url.toString());
-    fetchInventory(tokenInput.trim());
-  }
-
   async function handleExport() {
-    const tokenParam = investorToken ? `&token=${encodeURIComponent(investorToken)}` : "";
     const headers = {};
     const idToken = localStorage.getItem("ID_TOKEN");
     if (idToken) headers.Authorization = `Bearer ${idToken}`;
 
     try {
-      const res = await fetch(`${API_BASE}/api?path=/v1/inventory:snapshot${tokenParam}`, { headers });
+      const res = await fetch(`${API_BASE}/api?path=/v1/inventory:snapshot`, { headers });
       if (!res.ok) throw new Error("Export failed");
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
@@ -97,32 +72,6 @@ export default function PlatformInventory() {
     } catch (e) {
       alert("Failed to generate PDF: " + e.message);
     }
-  }
-
-  // Token input screen
-  if (needsToken) {
-    return (
-      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#0D1B2A", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" }}>
-        <div style={{ textAlign: "center", maxWidth: 400, padding: 32 }}>
-          <div style={{ fontSize: 20, fontWeight: 700, color: "#A78BFA", letterSpacing: 2, marginBottom: 24 }}>TITLEAPP</div>
-          <div style={{ fontSize: 16, color: "#E2E8F0", marginBottom: 24 }}>Platform Inventory</div>
-          <form onSubmit={handleTokenSubmit}>
-            <input
-              type="text"
-              value={tokenInput}
-              onChange={(e) => setTokenInput(e.target.value)}
-              placeholder="Enter access token"
-              autoFocus
-              style={{ width: "100%", padding: "12px 16px", borderRadius: 8, border: "1px solid #334155", background: "#1E293B", color: "#E2E8F0", fontSize: 14, outline: "none", boxSizing: "border-box", marginBottom: 12 }}
-            />
-            <button type="submit" style={{ width: "100%", padding: "12px 24px", background: "#6B46C1", color: "white", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
-              Access Inventory
-            </button>
-          </form>
-          <div style={{ fontSize: 12, color: "#64748B", marginTop: 16 }}>Authorized access only. Contact team@titleapp.ai for credentials.</div>
-        </div>
-      </div>
-    );
   }
 
   // Loading
@@ -144,7 +93,7 @@ export default function PlatformInventory() {
         <div style={{ textAlign: "center", maxWidth: 400 }}>
           <div style={{ fontSize: 20, fontWeight: 600, color: "#6B46C1", marginBottom: 12 }}>TitleApp</div>
           <div style={{ fontSize: 14, color: "#DC2626" }}>{error}</div>
-          <button onClick={() => fetchInventory(investorToken)} style={{ marginTop: 16, padding: "10px 24px", background: "#6B46C1", color: "white", border: "none", borderRadius: 8, cursor: "pointer" }}>Retry</button>
+          <button onClick={() => fetchInventory()} style={{ marginTop: 16, padding: "10px 24px", background: "#6B46C1", color: "white", border: "none", borderRadius: 8, cursor: "pointer" }}>Retry</button>
         </div>
       </div>
     );
@@ -153,10 +102,10 @@ export default function PlatformInventory() {
   if (!data) return null;
 
   const { summary, verticals, integrations, recentChanges } = data;
-  const isInvestor = data.accessSource === "investor";
-  const tabs = isInvestor
-    ? [{ id: "workers", label: "Workers" }, { id: "integrations", label: "Integrations" }]
-    : [{ id: "workers", label: "Workers" }, { id: "integrations", label: "Integrations" }, { id: "changes", label: "Recent Changes" }];
+  const isAdmin = data.accessSource === "admin";
+  const tabs = isAdmin
+    ? [{ id: "workers", label: "Workers" }, { id: "integrations", label: "Integrations" }, { id: "changes", label: "Recent Changes" }]
+    : [{ id: "workers", label: "Workers" }, { id: "integrations", label: "Integrations" }];
 
   return (
     <div style={{ minHeight: "100vh", background: "#F8F9FC", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", color: "#1a1a2e" }}>
@@ -178,8 +127,8 @@ export default function PlatformInventory() {
 
       {/* Summary Cards */}
       <div style={{ padding: "24px 32px 0", display: "flex", gap: 16, flexWrap: "wrap" }}>
-        <MetricCard label="Live Workers" value={summary.liveWorkers} sub={isInvestor ? undefined : `${summary.developmentWorkers} in development`} />
-        {!isInvestor && <MetricCard label="Total Workers" value={summary.totalWorkers} />}
+        <MetricCard label="Live Workers" value={summary.liveWorkers} sub={isAdmin ? `${summary.developmentWorkers} in development` : undefined} />
+        {isAdmin && <MetricCard label="Total Workers" value={summary.totalWorkers} />}
         <MetricCard label="Verticals" value={summary.totalVerticals} />
         <MetricCard label="API Integrations" value={summary.totalIntegrations} />
       </div>
@@ -218,7 +167,7 @@ export default function PlatformInventory() {
                 >
                   <div>
                     <span style={{ fontSize: 15, fontWeight: 600, color: "#1a1a2e" }}>{v.name}</span>
-                    <span style={{ fontSize: 13, color: "#64748B", marginLeft: 12 }}>{v.live} live{!isInvestor && v.total > v.live ? ` / ${v.total} total` : ""}</span>
+                    <span style={{ fontSize: 13, color: "#64748B", marginLeft: 12 }}>{v.live} live{isAdmin && v.total > v.live ? ` / ${v.total} total` : ""}</span>
                   </div>
                   <span style={{ fontSize: 14, color: "#94A3B8", transform: expandedVertical === v.key ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.2s" }}>&rsaquo;</span>
                 </button>

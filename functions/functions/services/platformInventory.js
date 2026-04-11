@@ -73,7 +73,8 @@ async function validateInventoryAccess(req) {
     }
     return { authorized: false, error: "Invalid token" };
   }
-  return { authorized: false, error: "No credentials provided" };
+  // Public access — inventory is visible to everyone
+  return { authorized: true, source: "public" };
 }
 
 // ── Data gathering (shared between JSON and PDF) ────────────────────────
@@ -185,8 +186,8 @@ async function getInventoryData(req, res) {
   try {
     const data = await gatherInventoryData();
 
-    // Investor view: strip individual worker names and development details
-    if (auth.source === "investor") {
+    // Non-admin view: strip individual worker names and development details
+    if (auth.source !== "admin") {
       for (const v of data.verticals) {
         delete v.workers;
         delete v.development;
