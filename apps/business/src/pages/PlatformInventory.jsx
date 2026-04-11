@@ -162,14 +162,14 @@ export default function PlatformInventory() {
             {verticals?.map((v) => (
               <div key={v.key} style={{ background: "#FFFFFF", borderRadius: 10, border: "1px solid #E2E8F0", marginBottom: 12, overflow: "hidden" }}>
                 <button
-                  onClick={() => setExpandedVertical(expandedVertical === v.key ? null : v.key)}
-                  style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 20px", background: "none", border: "none", cursor: "pointer", textAlign: "left" }}
+                  onClick={() => v.workers && setExpandedVertical(expandedVertical === v.key ? null : v.key)}
+                  style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 20px", background: "none", border: "none", cursor: v.workers ? "pointer" : "default", textAlign: "left" }}
                 >
                   <div>
                     <span style={{ fontSize: 15, fontWeight: 600, color: "#1a1a2e" }}>{v.name}</span>
                     <span style={{ fontSize: 13, color: "#64748B", marginLeft: 12 }}>{v.live} live{isAdmin && v.total > v.live ? ` / ${v.total} total` : ""}</span>
                   </div>
-                  <span style={{ fontSize: 14, color: "#94A3B8", transform: expandedVertical === v.key ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.2s" }}>&rsaquo;</span>
+                  {v.workers && <span style={{ fontSize: 14, color: "#94A3B8", transform: expandedVertical === v.key ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.2s" }}>&rsaquo;</span>}
                 </button>
                 {expandedVertical === v.key && v.workers && (
                   <div style={{ padding: "0 20px 14px" }}>
