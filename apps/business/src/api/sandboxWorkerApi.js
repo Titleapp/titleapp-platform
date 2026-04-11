@@ -240,6 +240,28 @@ export async function uploadFile(file) {
   });
 }
 
+/**
+ * Encode an array of File objects into the format expected by the chat handler.
+ * Returns [{ name, data (base64 URI), type }] ready to include in the request body.
+ */
+export async function encodeFilesForChat(files) {
+  const encoded = [];
+  for (const f of files) {
+    try {
+      const buffer = await f.arrayBuffer();
+      const base64 = arrayBufferToBase64(buffer);
+      encoded.push({
+        name: f.name,
+        data: `data:${f.type || "application/octet-stream"};base64,${base64}`,
+        type: f.type || "application/octet-stream",
+      });
+    } catch (e) {
+      console.error("[sandboxWorkerApi] encodeFilesForChat failed:", f.name, e);
+    }
+  }
+  return encoded;
+}
+
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 function arrayBufferToBase64(buffer) {

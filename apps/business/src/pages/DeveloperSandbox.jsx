@@ -15,8 +15,8 @@ import CommsPreferences from "../components/CommsPreferences";
 import PublishPreflight from "../components/PublishPreflight";
 import CreatorSpotlight from "../components/CreatorSpotlight";
 import { fireConfetti } from "../utils/celebrations";
-import FileUploadBar, { classifyFile, validateFiles } from "../components/sandbox/FileUploadBar";
-import { ingestDocument, uploadFile } from "../api/sandboxWorkerApi";
+import FileUploadBar, { classifyFile, validateFiles, ACCEPT_STRING } from "../components/sandbox/FileUploadBar";
+import { encodeFilesForChat } from "../api/sandboxWorkerApi";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
 
@@ -789,6 +789,7 @@ export default function DeveloperSandbox() {
   const [showMyImages, setShowMyImages] = useState(false);
   // CODEX 47.10 — File upload state
   const [pendingFiles, setPendingFiles] = useState([]);
+  const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef(null);
   // Fix 7 — Anonymous save banner: shown once per session after artwork phase has 1+ char + 1+ bg
   const [showAnonSaveBanner, setShowAnonSaveBanner] = useState(false);
@@ -901,18 +902,29 @@ export default function DeveloperSandbox() {
   // and Test. We never auto-launch Test from artwork.
   const artworkReadyPromptedRef = useRef(false);
   const gameInteractionsCtaEmitted = useRef(false);
+  // CODEX 48.4 Fix G — Artwork asks only when all four asset types exist:
+  // character + background + icon + score display (or lenient 8+ fallback for
+  // creators who haven't tagged useAs on every asset). "Ask, don't force": Alex
+  // prompts but does not advance — the user must confirm explicitly.
   useEffect(() => {
     if (gameSessionPhase !== "artwork") return;
     if (artworkReadyPromptedRef.current) return;
     const includedSet = new Set(includedAssetIds);
-    const includedAssets = canvasAssets.filter(a => includedSet.has(a.assetId || a.id));
-    const hasChar = includedAssets.some(a => a.useAs === "character");
-    const hasBg = includedAssets.some(a => a.useAs === "background");
-    const lenientFallback = canvasAssets.length >= 4;
-    if (!(hasChar && hasBg) && !lenientFallback) return;
+    const pool = canvasAssets.filter(a => includedSet.has(a.assetId || a.id));
+    const inspect = pool.length > 0 ? pool : canvasAssets;
+    const hasChar = inspect.some(a => a.useAs === "character");
+    const hasBg = inspect.some(a => a.useAs === "background");
+    const hasIcon = inspect.some(a => a.useAs === "icon");
+    const hasScore = inspect.some(a => a.useAs === "score" || a.useAs === "scoreDisplay" || a.useAs === "score_display");
+    const fourTypesTagged = hasChar && hasBg && hasIcon && hasScore;
+    const lenientFallback = canvasAssets.length >= 8;
+    if (!fourTypesTagged && !lenientFallback) return;
     artworkReadyPromptedRef.current = true;
     setTimeout(() => {
-      addAssistantMessage("Looking good. You've got a character and a background — enough to build a playable level. You can keep generating more art, or we can move on to the interactions (movement, speed, collisions). Ready to move on?");
+      addAssistantMessage(
+        "You've got a character, background, icons, and a score display — enough to build a full playable level. " +
+        "Want to keep generating more art, or are you ready to move on to interactions (movement, speed, collisions)? Just say ready when you're done."
+      );
     }, 600);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canvasAssets, includedAssetIds, gameSessionPhase]);
@@ -928,7 +940,21 @@ export default function DeveloperSandbox() {
   function isTestTrigger(text) {
     const t = (text || "").trim().toLowerCase();
     if (!t) return false;
-    return /\b(build it|let'?s test|test it|test the game|i'?m ready|play it|launch it|run it|fire it up|ready to test)\b/.test(t);
+    return /\b(build it|let'?s test|test it|test the game|i'?m ready|play it|launch it|run it|fire it up|ready to test|build (and|&) test|build the game)\b/.test(t);
+  }
+  // CODEX 48.4 Fix B — Detect when the creator's natural-language message
+  // signals a phase transition. Returns the target phase id or null. Called
+  // from handleSend so the state machine advances whether or not the user
+  // clicks the CTA button.
+  function detectPhaseIntent(text) {
+    const t = (text || "").trim().toLowerCase();
+    if (!t) return null;
+    // "proceed to interactions" / "let's do interactions" / "define interactions" / "move on to interactions"
+    if (/\b(interaction|interactions)\b/.test(t) && /\b(proceed|move|let'?s|define|do|start|next|go|ready|on to)\b/.test(t)) return "interactions";
+    if (/\b(artwork|assets?|art)\b/.test(t) && /\b(proceed|move|let'?s|start|next|on to|create|generate|make)\b/.test(t)) return "artwork";
+    if (/\b(rules?)\b/.test(t) && /\b(proceed|move|let'?s|define|start|next|on to)\b/.test(t)) return "rules";
+    // Build/test trigger handled separately by isTestTrigger
+    return null;
   }
   function emitInteractionsCta() {
     if (gameInteractionsCtaEmitted.current) return;
@@ -1246,11 +1272,46 @@ export default function DeveloperSandbox() {
           return [
             ...prev,
             { role: "assistant", text: "On it. Tap below to launch the playable build." },
-            { role: "cta", text: "Test Your Game", action: "startGameTest" },
+            { role: "cta", text: "Build & Test Your Game", action: "startGameTest" },
           ];
         });
       }, 300);
       return;
+    }
+
+    // CODEX 48.4 Fix B — Also honor test trigger whenever a game card exists,
+    // even if the user hasn't formally completed the interaction Q/A. This is
+    // the "I'm ready, skip the rest" escape hatch.
+    if (isGameMode && workerCardData && isTestTrigger(text)) {
+      setSending(false);
+      setTimeout(() => {
+        setMessages(prev => {
+          if (prev.some(m => m.role === "cta" && m.action === "startGameTest")) return prev;
+          return [
+            ...prev,
+            { role: "assistant", text: "On it. Tap below to build and launch your game." },
+            { role: "cta", text: "Build & Test Your Game", action: "startGameTest" },
+          ];
+        });
+      }, 300);
+      return;
+    }
+
+    // CODEX 48.4 Fix B — Natural-language phase transitions. If the creator
+    // says "let's move on to interactions" / "proceed to artwork" / etc., fire
+    // the corresponding phase handler instead of round-tripping through Alex.
+    // This unblocks the state machine when users skip the CTA buttons.
+    if (isGameMode && workerCardData) {
+      const intent = detectPhaseIntent(text);
+      if (intent && intent !== gameSessionPhase) {
+        setSending(false);
+        setTimeout(() => {
+          if (intent === "rules") handleStartGameRules();
+          else if (intent === "artwork") handleStartGameArtwork();
+          else if (intent === "interactions") handleStartGameInteractions();
+        }, 300);
+        return;
+      }
     }
 
     // Path question short-answer detection — when path chips are shown,
@@ -1409,46 +1470,18 @@ export default function DeveloperSandbox() {
 
     setSending(true);
 
-    // CODEX 47.10 — Upload attached files before sending chat message
-    let uploadSummary = "";
+    // CODEX 47.10 — Encode attached files for inline chat upload
+    let chatFiles = null;
     const filesToUpload = [...pendingFiles];
     if (filesToUpload.length > 0) {
       setPendingFiles([]); // Clear immediately so UI resets
-      const uploaded = [];
-      const failed = [];
-      for (const pf of filesToUpload) {
-        try {
-          if (pf.type === "document") {
-            const ext = pf.name.toLowerCase().split(".").pop();
-            let sourceType = "auto";
-            if (ext === "pdf") sourceType = "pdf";
-            else if (ext === "docx") sourceType = "docx";
-            else if (["txt", "md", "csv"].includes(ext)) sourceType = "text";
-            const result = await ingestDocument({
-              workerId: workerCardData?.id || sessionId,
-              name: pf.name, sourceType, file: pf.file,
-            });
-            if (result.ok) uploaded.push(pf.name);
-            else failed.push(pf.name);
-          } else {
-            const result = await uploadFile(pf.file);
-            if (result.ok) uploaded.push(pf.name);
-            else failed.push(pf.name);
-          }
-        } catch (err) {
-          console.error("[sandbox] File upload failed:", pf.name, err);
-          failed.push(pf.name);
-        }
-      }
-      const parts = [];
-      if (uploaded.length) parts.push(`${uploaded.length} file${uploaded.length > 1 ? "s" : ""} uploaded`);
-      if (failed.length) parts.push(`${failed.length} failed`);
-      uploadSummary = parts.length ? `[${parts.join(", ")}]` : "";
-      if (failed.length) {
-        addAssistantMessage(`Some uploads failed: ${failed.join(", ")}. You can try again.`);
+      try {
+        chatFiles = await encodeFilesForChat(filesToUpload.map(pf => pf.file));
+      } catch (err) {
+        console.error("[sandbox] File encoding failed:", err);
+        addAssistantMessage("Could not process attached files. Try again.");
       }
     }
-    const userInputWithUploads = uploadSummary ? `${text}\n\n${uploadSummary}` : text;
 
     try {
       const token = localStorage.getItem("ID_TOKEN");
@@ -1458,9 +1491,10 @@ export default function DeveloperSandbox() {
         method: "POST",
         headers,
         body: JSON.stringify({
-          sessionId, surface: "sandbox", userInput: userInputWithUploads, flowStep: Math.max(flowStep, 1), vertical, creatorPath: effectiveCreatorPath,
+          sessionId, surface: "sandbox", userInput: text, flowStep: Math.max(flowStep, 1), vertical, creatorPath: effectiveCreatorPath,
           ...(creatorName ? { creatorName } : {}),
           ...(shouldExtractSpec ? { extractSpec: true } : {}),
+          ...(chatFiles && chatFiles.length > 0 ? { files: chatFiles } : {}),
           // CODEX 47.2 Fix 4 — pass game phase + FRESH card data so backend never loses rules context.
           // nextCardData captures the just-typed rule answer; workerCardData state is one render behind.
           ...(gameSessionPhase ? { gameSessionPhase } : {}),
@@ -1816,13 +1850,92 @@ export default function DeveloperSandbox() {
 
   // CODEX 47.2 Fix 12 — Dedicated launcher for game test mode. Only this CTA
   // (or the Test tab) advances the creator into the playable build.
-  function handleStartGameTest() {
+  // CODEX 48.4 Fix 1 — Real game build pipeline. Packages rules, interactions,
+  // and included assets into a persistent worker doc via worker1:intake +
+  // worker1:rules:save, then advances to Test. No more fake delay.
+  async function handleStartGameTest() {
+    await runGameBuildPipeline(workerCardData);
+  }
+
+  async function runGameBuildPipeline(cardData) {
+    if (!cardData) {
+      addAssistantMessage("Can't build yet — your game card isn't ready. Complete the concept first.");
+      return;
+    }
     advanceToStep(3);
+    // Clear stale build errors
+    setMessages(prev => prev.filter(m =>
+      !m.text?.startsWith("Build intake failed") &&
+      !m.text?.startsWith("The build pipeline hit") &&
+      !m.text?.startsWith("Game build failed")
+    ));
     addAssistantMessage("Building your game now. Packaging rules, interactions, and artwork...");
-    setTimeout(() => {
+
+    try {
+      const workerId = worker?.id || ("gme_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8));
+      if (!worker?.id) {
+        setWorker(prev => ({ ...(prev || {}), id: workerId, name: cardData.name }));
+      }
+
+      // Serialize rules + interactions into tier slots so they survive as a spec
+      const gr = cardData.gameRules || {};
+      const gi = cardData.gameInteractions || {};
+      const rulesTier = [
+        gr.turnMechanic && `Turn mechanic: ${gr.turnMechanic}`,
+        gr.winLoseConditions && `Win/lose: ${gr.winLoseConditions}`,
+        gr.scoring && `Scoring: ${gr.scoring}`,
+        gr.safetyCompliance && `Safety: ${gr.safetyCompliance}`,
+      ].filter(Boolean);
+      const interactionsTier = [
+        gi.movement && `Movement: ${gi.movement}`,
+        gi.speed && `Speed: ${gi.speed}`,
+        gi.collisionRules && `Collisions: ${gi.collisionRules}`,
+        gi.soundCues && `Sound cues: ${gi.soundCues}`,
+      ].filter(Boolean);
+
+      // Step 1: Intake — persists gameConfig/gameRules/gameInteractions on the
+      // worker doc. Backend marks raasMode: "light" automatically for games.
+      const intakeRes = await w1Api("worker1:intake", {
+        workerId,
+        name: cardData.name,
+        vertical: "game",
+        jurisdiction: "GLOBAL",
+        description: cardData.description || "",
+        sops: [...rulesTier, ...interactionsTier],
+        worker_type: "game",
+        gameConfig: { ...(cardData.gameConfig || {}), isGame: true, raasMode: "light" },
+        gameRules: gr,
+        gameInteractions: gi,
+      });
+      if (!intakeRes.ok) {
+        console.error("[GameBuild] intake failed:", intakeRes);
+        addAssistantMessage(`Game build failed at intake: ${intakeRes.error || "unknown error"}. Try again.`);
+        return;
+      }
+      const confirmedWorkerId = intakeRes.workerId || workerId;
+      setWorker(prev => ({ ...(prev || {}), id: confirmedWorkerId, name: cardData.name, buildPhase: "intake", worker_type: "game" }));
+
+      // Step 2: Save rules directly to tier2/tier3. Games skip research —
+      // there's no regulatory brief to generate. rules:save will transition
+      // buildPhase to "test" automatically for worker_type === "game".
+      const saveRes = await w1Api("worker1:rules:save", {
+        workerId: confirmedWorkerId,
+        tier2: rulesTier,
+        tier3: interactionsTier,
+      });
+      if (!saveRes.ok) {
+        console.error("[GameBuild] rules:save failed:", saveRes);
+        addAssistantMessage(`Game build failed at rules save: ${saveRes.error || "unknown error"}. Try again.`);
+        return;
+      }
+
+      setWorker(prev => ({ ...(prev || {}), id: confirmedWorkerId, buildPhase: saveRes.buildPhase || "test" }));
       advanceToStep(4);
       addAssistantMessage("Your game is ready to test. Try it out on the right.");
-    }, 2200);
+    } catch (err) {
+      console.error("[GameBuild] Pipeline error:", err);
+      addAssistantMessage(`Game build failed: ${err.message || "unknown"}. Try again.`);
+    }
   }
 
   // ── Step 2 → Step 3: Worker Card approved ────────────────────
@@ -2120,6 +2233,9 @@ export default function DeveloperSandbox() {
                        includedNow.some(a => a.useAs === "background");
     const gi = workerCardData?.gameInteractions || {};
     const interactionsHot = !!(gi.movement && gi.speed && gi.collisionRules && gi.soundCues);
+    // CODEX 48.4 Fix B — Interactions warms as soon as *any* interaction field
+    // is captured OR the phase is active, not only after clicking the CTA.
+    const interactionsAnyField = !!(gi.movement || gi.speed || gi.collisionRules || gi.soundCues);
     const testHot = flowStep > 4;
     const preflightHot = flowStep > 5;
     const distributeHot = flowStep > 6;
@@ -2145,7 +2261,7 @@ export default function DeveloperSandbox() {
       { id: "concept",      label: "Concept",        state: stateOf(conceptHot, !conceptHot) },
       { id: "rules",        label: "Rules",          state: stateOf(rulesHot, gameSessionPhase === "rules" || (conceptHot && !rulesHot && !artworkHot)) },
       { id: "artwork",      label: "Artwork",        state: stateOf(artworkHot, gameSessionPhase === "artwork") },
-      { id: "interactions", label: "Interactions",   state: stateOf(interactionsHot, gameSessionPhase === "interactions") },
+      { id: "interactions", label: "Interactions",   state: stateOf(interactionsHot, gameSessionPhase === "interactions" || interactionsAnyField || (artworkHot && flowStep >= 2)) },
       { id: "test",         label: "Test",           state: stateOf(testHot, flowStep === 4 || gameSessionPhase === "ready") },
       { id: "preflight",    label: "Preflight",      state: stateOf(preflightHot, flowStep === 5) },
       { id: "distribute",   label: "Distribute",     state: stateOf(distributeHot, flowStep === 6) },
@@ -2239,16 +2355,35 @@ export default function DeveloperSandbox() {
         </>
       )}
 
-      {/* Column 2: Chat Panel — CODEX 47.3 Fix 14: drop handlers removed */}
+      {/* Column 2: Chat Panel — CODEX 47.10: drag-and-drop restored */}
       <div
+        onDragOver={e => { e.preventDefault(); e.stopPropagation(); setDragOver(true); }}
+        onDragLeave={e => { e.preventDefault(); e.stopPropagation(); setDragOver(false); }}
+        onDrop={e => { e.preventDefault(); e.stopPropagation(); setDragOver(false); if (e.dataTransfer?.files?.length) handleFilesSelected(e.dataTransfer.files); }}
         style={{
           ...S.chatPanel,
           ...(isMobile
             ? { width: "100%", minWidth: 0, maxWidth: "none", borderRight: "none", flex: 1, height: "100vh" }
             : { flex: `0 0 ${chatWidthPercent}%`, minWidth: 400 }
           ),
+          position: "relative",
         }}
       >
+        {/* Drop overlay */}
+        {dragOver && (
+          <div style={{
+            position: "absolute", inset: 0, zIndex: 20,
+            background: "rgba(107,70,193,0.08)",
+            border: "2px dashed var(--accent, #6B46C1)",
+            borderRadius: 8,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            pointerEvents: "none",
+          }}>
+            <div style={{ fontSize: 16, fontWeight: 600, color: "var(--accent, #6B46C1)" }}>
+              Drop files here
+            </div>
+          </div>
+        )}
         <div style={S.chatHeader}>
           {isMobile && (
             <button onClick={() => setShowMobileNav(true)} style={{ background: "none", border: "none", fontSize: 20, color: "#64748B", cursor: "pointer", padding: "4px 8px 4px 0", lineHeight: 1 }}>&#9776;</button>
@@ -2676,7 +2811,7 @@ export default function DeveloperSandbox() {
               ref={fileInputRef}
               type="file"
               multiple
-              accept=".pdf,.docx,.txt,.md,.csv,.png,.jpg,.jpeg,.gif,.webp,.svg,.mp4,.mov,.webm"
+              accept={ACCEPT_STRING}
               style={{ display: "none" }}
               onChange={e => { handleFilesSelected(e.target.files); e.target.value = ""; }}
             />
@@ -2934,7 +3069,7 @@ export default function DeveloperSandbox() {
                     defaultExpanded={gameStepStates.activeId === "rules"}
                     summary={
                       gameStepStates.steps[1].state === "hot"
-                        ? "Turn, win/lose, scoring, safety locked"
+                        ? "\u2713 Complete · Turn, win/lose, scoring, safety"
                         : gameStepStates.steps[1].state === "warm"
                           ? "Defining rules in chat"
                           : "Locked"
@@ -2965,9 +3100,11 @@ export default function DeveloperSandbox() {
                     state={gameStepStates.steps[2].state}
                     defaultExpanded={gameStepStates.activeId === "artwork"}
                     summary={
-                      canvasAssets.length > 0
-                        ? `${canvasAssets.length} ${canvasAssets.length === 1 ? "asset" : "assets"} saved`
-                        : gameStepStates.steps[2].state === "cold" ? "Locked" : "Awaiting artwork"
+                      gameStepStates.steps[2].state === "hot" && canvasAssets.length > 0
+                        ? `\u2713 Complete · ${canvasAssets.length} assets saved`
+                        : canvasAssets.length > 0
+                          ? `${canvasAssets.length} ${canvasAssets.length === 1 ? "asset" : "assets"} saved`
+                          : gameStepStates.steps[2].state === "cold" ? "Locked" : "Awaiting artwork"
                     }
                   >
                     {gameStepStates.steps[2].state === "cold" ? (
@@ -3007,7 +3144,7 @@ export default function DeveloperSandbox() {
                     defaultExpanded={gameStepStates.activeId === "interactions"}
                     summary={
                       gameStepStates.steps[3].state === "hot"
-                        ? "Movement, speed, collision, sound locked"
+                        ? "\u2713 Complete · Movement, speed, collision, sound"
                         : gameStepStates.steps[3].state === "warm"
                           ? "Defining interactions in chat"
                           : "Locked"
@@ -3015,7 +3152,7 @@ export default function DeveloperSandbox() {
                   >
                     {gameStepStates.steps[3].state === "cold" ? (
                       <div style={{ fontSize: 13, color: "#94A3B8", padding: "8px 0" }}>
-                        Add at least one character + one background to unlock interactions.
+                        Lock in rules and artwork first. Alex will walk you through interactions (movement, speed, collisions, sound) after that.
                       </div>
                     ) : (
                       <div style={{ fontSize: 13, color: "#475569", padding: "8px 0", lineHeight: 1.6 }}>

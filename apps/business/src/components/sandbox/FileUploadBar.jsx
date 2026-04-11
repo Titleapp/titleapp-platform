@@ -20,9 +20,21 @@ const STATUS_DOTS = {
   error: "#DC2626",     // red
 };
 
+// Accepted file extensions — keep in sync with the <input accept=""> attributes
+export const ACCEPTED_EXTENSIONS = [
+  // documents
+  "pdf", "docx", "doc", "txt", "md", "csv", "xlsx", "xls", "pptx", "ppt", "rtf",
+  // images
+  "png", "jpg", "jpeg", "gif", "webp", "svg",
+  // video
+  "mp4", "mov", "webm",
+];
+
+export const ACCEPT_STRING = ACCEPTED_EXTENSIONS.map(e => `.${e}`).join(",");
+
 export function classifyFile(file) {
   const ext = (file.name || "").toLowerCase().split(".").pop();
-  if (["pdf", "docx", "txt", "md", "csv"].includes(ext)) return "document";
+  if (["pdf", "docx", "doc", "txt", "md", "csv", "xlsx", "xls", "pptx", "ppt", "rtf"].includes(ext)) return "document";
   if (["png", "jpg", "jpeg", "gif", "webp", "svg"].includes(ext)) return "image";
   if (["mp4", "mov", "webm"].includes(ext)) return "video";
   return "unknown";

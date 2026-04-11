@@ -21,8 +21,13 @@ export default function TeamHome({ onSelectTeam, onAddTeam }) {
   const [loading, setLoading] = useState(true);
 
   const firstName = (() => {
-    const cn = localStorage.getItem("COMPANY_NAME") || localStorage.getItem("WORKSPACE_NAME") || "";
-    return cn.split(" ")[0] || "";
+    const raw =
+      localStorage.getItem("DISPLAY_NAME") ||
+      localStorage.getItem("USER_NAME") ||
+      (localStorage.getItem("USER_EMAIL") || "").split("@")[0] ||
+      "";
+    const first = raw.split(" ")[0];
+    return (first && first.length >= 2) ? first : "";
   })();
   const hour = new Date().getHours();
   const timeGreeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";

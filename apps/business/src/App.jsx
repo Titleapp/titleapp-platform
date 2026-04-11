@@ -11,6 +11,7 @@ import BuilderInterview from "./components/BuilderInterview";
 import Dashboard from "./sections/Dashboard";
 import WorkerHome from "./sections/WorkerHome";
 import VaultDashboard from "./sections/VaultDashboard";
+import BillingPage from "./sections/BillingPage";
 import Analyst from "./sections/Analyst";
 import RulesResources from "./sections/RulesResources";
 import Inventory from "./sections/Inventory";
@@ -4379,7 +4380,7 @@ function AdminShell({ onBackToHub, initialSection }) {
       sessionStorage.removeItem("ta_redirect_page");
       return redirectPage;
     }
-    return "team-home";
+    return "dashboard";
   });
   useEffect(() => {
     function handleNav(e) {
@@ -4452,6 +4453,10 @@ function AdminShell({ onBackToHub, initialSection }) {
         return <Rules />;
       case "settings":
         return <Settings />;
+      case "billing":
+        return <BillingPage />;
+      case "worker-home":
+        return <WorkerHome />;
       case "my-vehicles":
         return <MyVehicles />;
       case "my-properties":

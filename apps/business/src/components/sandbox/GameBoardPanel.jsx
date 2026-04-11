@@ -10,8 +10,71 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
  *  - 10-minute countdown timer
  *  - Game-over state
  *
- * Reads `gameInteractions` from workerCardData to configure controls + speed.
+ * CODEX 48.4 Fix 3 — Rules compilation. Engine parameters (pointsPerPickup,
+ * hazardPenalty, winScore, sessionDurationSec, loseOnHazard) are now derived
+ * from workerCardData.gameRules and .gameInteractions at mount, not hardcoded.
+ * Best-effort natural-language parsing with safe fallbacks.
  */
+function compileRulesToEngine(gameRules = {}, gameInteractions = {}) {
+  const scoring = String(gameRules.scoring || "").toLowerCase();
+  const winLose = String(gameRules.winLoseConditions || "").toLowerCase();
+  const collisions = String(gameInteractions.collisionRules || "").toLowerCase();
+  const speed = String(gameInteractions.speed || "").toLowerCase();
+
+  // Points per pickup — look for "N point" / "N pts" patterns, default 10
+  let pointsPerPickup = 10;
+  const ptsMatch = scoring.match(/(\d+)\s*(point|pts?|pt)\b/);
+  if (ptsMatch) pointsPerPickup = Math.max(1, Math.min(1000, Number(ptsMatch[1])));
+  else if (/\b(one|1)\b.*\b(each|per|every)\b/.test(scoring)) pointsPerPickup = 1;
+
+  // Hazard penalty — default -5, bumped if "instant"/"kill"/"game over"
+  let hazardPenalty = 5;
+  let loseOnHazard = false;
+  if (/\b(instant|one.?hit|kill|eliminat|game.?over|dead|lose)\b/.test(collisions)) {
+    loseOnHazard = true;
+  }
+  const penaltyMatch = scoring.match(/-\s*(\d+)\s*(point|pts?|pt)\b/);
+  if (penaltyMatch) hazardPenalty = Math.max(1, Math.min(1000, Number(penaltyMatch[1])));
+
+  // Win score — "reach 100 points", "get to 50", "first to 200"
+  let winScore = null;
+  const winScoreMatch = winLose.match(/(?:reach|get to|first to|score|hit)\s*(\d+)\s*(?:point|pts?|pt)?/);
+  if (winScoreMatch) winScore = Math.max(1, Number(winScoreMatch[1]));
+
+  // Win by clearing the board — "collect all" / "clear the board"
+  const winByClear = /\b(collect all|clear (the )?board|all items|every item)\b/.test(winLose);
+
+  // Session duration — "survive N seconds" / "N minute" / default 10 min
+  let sessionDurationSec = 10 * 60;
+  const secMatch = winLose.match(/(\d+)\s*(second|sec)\b/);
+  const minMatch = winLose.match(/(\d+)\s*(minute|min)\b/);
+  if (secMatch) sessionDurationSec = Math.max(10, Math.min(3600, Number(secMatch[1])));
+  else if (minMatch) sessionDurationSec = Math.max(10, Math.min(3600, Number(minMatch[1]) * 60));
+
+  // Base speed — interactions.speed keyword
+  let baseSpeed = 2.8;
+  if (/fast|frantic|quick|rapid/.test(speed)) baseSpeed = 4.2;
+  else if (/slow|deliberate|chill|relax/.test(speed)) baseSpeed = 1.8;
+
+  // Human-readable goal line for the HUD
+  let goalLabel = null;
+  if (winScore != null) goalLabel = `Goal: ${winScore} pts`;
+  else if (winByClear) goalLabel = "Goal: clear the board";
+  else if (secMatch || minMatch) goalLabel = `Goal: survive ${secMatch ? secMatch[1] + "s" : minMatch[1] + "m"}`;
+
+  return {
+    pointsPerPickup,
+    hazardPenalty,
+    loseOnHazard,
+    winScore,
+    winByClear,
+    sessionDurationSec,
+    baseSpeed,
+    goalLabel,
+  };
+}
+
+
 export default function GameBoardPanel({
   assets = [],
   includedAssetIds = [],
@@ -47,8 +110,16 @@ export default function GameBoardPanel({
 
   const bgUrl = backgrounds[0]?.imageUrl || null;
   const gameName = workerCardData?.name || "Your game";
-  const gameInteractions = workerCardData?.gameInteractions || {};
-  const gameRules = workerCardData?.gameRules || {};
+  const gameInteractions = workerCardData?.gameInteractions;
+  const gameRules = workerCardData?.gameRules;
+
+  // CODEX 48.4 Fix 3 — Compile creator-defined rules into engine parameters.
+  // Memoized so the engine sees stable values across ticks. Depend on the
+  // raw refs from workerCardData to avoid re-computing every render.
+  const engine = useMemo(
+    () => compileRulesToEngine(gameRules || {}, gameInteractions || {}),
+    [gameRules, gameInteractions]
+  );
 
   // Character noun for "Choose Your X" label
   const characterNoun = (() => {
@@ -68,7 +139,7 @@ export default function GameBoardPanel({
   const PLAY_H = device === "desktop" ? 480 : device === "tablet" ? 420 : 460;
 
   // ── Game engine state ──────────────────────────────────────────────────────
-  const SESSION_SECONDS = 10 * 60;
+  const SESSION_SECONDS = engine.sessionDurationSec;
   const [score, setScore] = useState(0);
   const [secondsLeft, setSecondsLeft] = useState(SESSION_SECONDS);
   const [playerPos, setPlayerPos] = useState({ x: PLAY_W / 2, y: PLAY_H / 2 });
@@ -80,13 +151,8 @@ export default function GameBoardPanel({
   const [entities, setEntities] = useState([]); // { id, type, x, y, asset }
   const [gameOverReason, setGameOverReason] = useState(null);
 
-  // Speed by interactions config
-  const baseSpeed = (() => {
-    const s = (gameInteractions.speed || "").toLowerCase();
-    if (/fast|frantic|quick/.test(s)) return 4.2;
-    if (/slow|deliberate|chill/.test(s)) return 1.8;
-    return 2.8; // default
-  })();
+  // Speed now comes from compiled engine (driven by gameInteractions.speed)
+  const baseSpeed = engine.baseSpeed;
 
   // Categorize icons into points/hazards by prompt keywords (best-effort, no extra config required)
   function classifyIcon(asset) {
@@ -171,7 +237,7 @@ export default function GameBoardPanel({
       playerPosRef.current = next;
       setPlayerPos(next);
 
-      // Collision detection
+      // Collision detection — driven by compiled rules
       setEntities(prev => {
         let changed = false;
         let scoreDelta = 0;
@@ -183,24 +249,42 @@ export default function GameBoardPanel({
           if (dist < 38) {
             changed = true;
             if (e.type === "point") {
-              scoreDelta += 10;
+              scoreDelta += engine.pointsPerPickup;
               return false;
             } else {
-              scoreDelta -= 5;
+              scoreDelta -= engine.hazardPenalty;
               hitHazard = true;
               return false;
             }
           }
           return true;
         });
-        if (scoreDelta !== 0) setScore(s => Math.max(0, s + scoreDelta));
-        if (hitHazard && score + scoreDelta <= -20) {
-          // Hard fail after sustained losses (rare)
-          setPhase("gameover");
-          setGameOverReason("Eliminated by hazard");
+        if (scoreDelta !== 0) setScore(s => {
+          const nextScore = Math.max(0, s + scoreDelta);
+          // Win by score — rule: "reach N points" / "first to N"
+          if (engine.winScore != null && nextScore >= engine.winScore) {
+            setPhase("gameover");
+            setGameOverReason(`You Win! Hit ${engine.winScore} points`);
+          }
+          return nextScore;
+        });
+        // Loss conditions — instant on hazard if rule says so, else sustained
+        if (hitHazard) {
+          if (engine.loseOnHazard) {
+            setPhase("gameover");
+            setGameOverReason("Eliminated by hazard");
+          } else if (score + scoreDelta <= -20) {
+            setPhase("gameover");
+            setGameOverReason("Eliminated by hazard");
+          }
         }
-        // Re-spawn if board is clear
+        // Re-spawn if board is clear — unless win-by-clear rule is set
         if (changed && remaining.length === 0) {
+          if (engine.winByClear) {
+            setPhase("gameover");
+            setGameOverReason("You Win! Board cleared");
+            return [];
+          }
           const pool = icons.length > 0 ? icons : characters.filter((_, i) => i !== selectedCharIdx);
           return pool.slice(0, 6).map((asset, i) => ({
             id: `r-${Date.now()}-${i}`,
@@ -220,7 +304,7 @@ export default function GameBoardPanel({
       stopped = true;
       if (tickRef.current) cancelAnimationFrame(tickRef.current);
     };
-  }, [phase, baseSpeed, PLAY_W, PLAY_H, icons, characters, selectedCharIdx, score]);
+  }, [phase, baseSpeed, PLAY_W, PLAY_H, icons, characters, selectedCharIdx, score, engine]);
 
   // Touch / mouse — tap-to-move (target seek)
   function handlePointerMove(clientX, clientY) {
@@ -312,6 +396,11 @@ export default function GameBoardPanel({
             {phase === "select" ? `Choose Your ${characterNoun}` : phase === "gameover" ? "Game Over" : "Playing"}
           </div>
           <div style={{ fontSize: 18, fontWeight: 800 }}>{gameName}</div>
+          {engine.goalLabel && phase !== "gameover" && (
+            <div style={{ fontSize: 11, fontWeight: 600, opacity: 0.85, marginTop: 2 }}>
+              {engine.goalLabel}
+            </div>
+          )}
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           {phase === "playing" && (

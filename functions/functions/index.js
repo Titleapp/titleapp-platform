@@ -1178,6 +1178,88 @@ exports.api = onRequest(
     if (route === "/chat:message" && method === "POST" && body.sessionId) {
       let { sessionId, userInput, action, actionData, fileData, fileName, surface, campaignSlug, utmSource, utmMedium, utmCampaign } = body;
 
+      // CODEX 47.10 — Process inline file uploads from sandbox chat.
+      // Files arrive as body.files = [{ name, data (base64 URI), type }].
+      // Extract text from supported formats and prepend to userInput so the
+      // AI can read the content. Also store files to Cloud Storage.
+      if (body.files && Array.isArray(body.files) && body.files.length > 0) {
+        console.log("[chatEngine] Processing", body.files.length, "inline file(s)");
+        const fileTexts = [];
+        for (const f of body.files) {
+          if (!f || !f.data || !f.name) { console.warn("[chatEngine] skipping file — missing data or name"); continue; }
+          try {
+            const base64Data = (f.data || "").replace(/^data:[^;]+;base64,/, "");
+            const buffer = Buffer.from(base64Data, "base64");
+            const lowerName = f.name.toLowerCase();
+            console.log("[chatEngine] file:", f.name, "size:", buffer.length, "bytes");
+
+            // Store to Cloud Storage
+            try {
+              const safeName = f.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 100);
+              const storagePath = `sandbox/uploads/${Date.now()}_${safeName}`;
+              const bucket = getBucket();
+              await bucket.file(storagePath).save(buffer, { contentType: f.type || "application/octet-stream" });
+              console.log("[chatEngine] stored:", storagePath);
+            } catch (storeErr) {
+              console.warn("[chatEngine] file storage failed:", f.name, storeErr.message);
+            }
+
+            // Extract text for AI context
+            let extractedText = "";
+            if (lowerName.endsWith(".pdf")) {
+              try {
+                const pdfParse = require("pdf-parse");
+                const pdfData = await pdfParse(buffer);
+                extractedText = (pdfData.text || "").trim();
+                console.log("[chatEngine] PDF extracted", extractedText.length, "chars from", f.name);
+                if (extractedText.length > 12000) extractedText = extractedText.substring(0, 12000) + "\n... [truncated]";
+              } catch (pe) {
+                console.error("[chatEngine] PDF parse error:", f.name, pe.message);
+                extractedText = "[PDF uploaded but text extraction failed: " + (pe.message || "unknown error") + "]";
+              }
+            } else if (lowerName.endsWith(".txt") || lowerName.endsWith(".md") || lowerName.endsWith(".csv") || lowerName.endsWith(".json") || lowerName.endsWith(".rtf")) {
+              extractedText = buffer.toString("utf-8").trim();
+              if (extractedText.length > 12000) extractedText = extractedText.substring(0, 12000) + "\n... [truncated]";
+            } else if (lowerName.endsWith(".docx") || lowerName.endsWith(".doc")) {
+              try {
+                const mammoth = require("mammoth");
+                const result = await mammoth.extractRawText({ buffer });
+                extractedText = (result.value || "").trim();
+                console.log("[chatEngine] DOCX extracted", extractedText.length, "chars from", f.name);
+                if (extractedText.length > 12000) extractedText = extractedText.substring(0, 12000) + "\n... [truncated]";
+              } catch (me) {
+                console.error("[chatEngine] DOCX parse error:", f.name, me.message);
+                extractedText = "[DOCX uploaded — text extraction failed]";
+              }
+            } else if (lowerName.endsWith(".xlsx") || lowerName.endsWith(".xls")) {
+              extractedText = `[Spreadsheet uploaded: ${f.name} — stored for reference]`;
+            } else if (lowerName.endsWith(".pptx") || lowerName.endsWith(".ppt")) {
+              extractedText = `[Presentation uploaded: ${f.name} — stored for reference]`;
+            } else if (/\.(png|jpg|jpeg|gif|webp|svg)$/.test(lowerName)) {
+              extractedText = `[Image uploaded: ${f.name} — stored in workspace]`;
+            } else if (/\.(mp4|mov|webm)$/.test(lowerName)) {
+              extractedText = `[Video uploaded: ${f.name} — stored in workspace]`;
+            } else {
+              extractedText = `[File uploaded: ${f.name}]`;
+            }
+
+            if (extractedText) {
+              fileTexts.push(`--- File: ${f.name} ---\n${extractedText}`);
+            }
+          } catch (fileErr) {
+            console.error("[chatEngine] file processing failed:", f.name, fileErr.message);
+            fileTexts.push(`[File: ${f.name} — processing failed]`);
+          }
+        }
+        if (fileTexts.length > 0) {
+          const fileContext = fileTexts.join("\n\n");
+          userInput = userInput
+            ? `${userInput}\n\n[Uploaded files content below]\n${fileContext}`
+            : `[Uploaded files content below]\n${fileContext}`;
+          console.log("[chatEngine] File context appended, total userInput length:", userInput.length);
+        }
+      }
+
       try {
         // Optional auth — verify token if present but don't reject if missing
         let authUser = null;
@@ -2489,6 +2571,13 @@ Message 8+: If they seem interested, gently offer to set it up. "I can have this
           if (!sessionState.devName && (body.returnUserName || body.creatorName)) {
             sessionState.devName = body.returnUserName || body.creatorName;
           }
+          // Fallback: pull name from Firebase Auth displayName if still unknown
+          if (!sessionState.devName && authUser) {
+            try {
+              const authRecord = await admin.auth().getUser(authUser.uid);
+              if (authRecord.displayName) sessionState.devName = authRecord.displayName;
+            } catch (_) {}
+          }
 
           // Extract name from short replies (with stop word filter — matches invest handler pattern)
           if (!sessionState.devName) {
@@ -2553,11 +2642,11 @@ Message 8+: If they seem interested, gently offer to set it up. "I can have this
           const userMsgCount = sessionState.devHistory.filter(h => h.role === 'user').length + 1;
           let nameGuidance;
           if (sessionState.devName) {
-            nameGuidance = `\nThe developer's name is ${sessionState.devName}. Use it naturally.`;
+            nameGuidance = `\nThe creator's name is ${sessionState.devName}. You ALREADY KNOW their name. Do NOT ask for it. Use it naturally.`;
           } else if (userMsgCount >= 3) {
-            nameGuidance = '\nIMPORTANT: You still do not know the developer\'s name after multiple messages. You MUST ask their name NOW before anything else. Work it in naturally: "By the way, I didn\'t catch your name -- what should I call you?"';
+            nameGuidance = '\nYou do not know the creator\'s name yet. Ask once naturally: "By the way, what should I call you?"';
           } else {
-            nameGuidance = '\nYou do not know their name yet. Ask naturally early on -- "What\'s your name?" or "Who am I talking to?"';
+            nameGuidance = '\nYou do not know their name yet. Ask naturally in your first response.';
           }
 
           // Auth trigger: if they want API key or sandbox
@@ -2893,84 +2982,69 @@ Message 8+: If they seem interested, gently offer to set it up. "I can have this
           } else if (resolvedPath === 'worker') {
             creatorPathCtx = '\nCREATOR MODE: The creator is building a Digital Worker.\n';
           }
-          const sandboxSystemPrompt = `You are Alex. You help people build and publish AI workers and games -- no coding needed. You are inside the Vibe Coding Sandbox on TitleApp.
+          const sandboxSystemPrompt = `You are Alex, Chief of Staff at TitleApp. You help people build and publish Digital Workers and games -- no coding needed. You are inside the Creator Sandbox.
 ${creatorPathCtx}
 TERMINOLOGY: Always say "Digital Worker" for workers. For games, say "game."
 
-YOUR ROLE: Guide creators through a conversational flow to define, build, test, publish, and grow a Digital Worker or game. The UI handles visual flow -- your job is conversational guidance.
+YOUR ROLE: Guide creators through a 9-step build flow. The right panel shows a canvas for each step. Your job is conversational guidance that matches the current step. You do NOT build everything at once -- each step produces a visible result before moving to the next.
 
-OPENING QUESTION:
-The creator has already answered: "What do you do that other people always ask you for help with?" Their answer is the first message. Read it carefully.
+THE 9 STEPS (in order):
+1. DEFINE — Get the idea. What is this worker? Who uses it? What does it do? This is a quick conversation (2-3 questions max). As soon as you understand the core idea, generate a [WORKER_SPEC] so the canvas fills in.
+2. DESIGN — The "aha moment." The creator sees their worker take shape visually. Generate a name, description, and branding. If they uploaded files or content, reference what you read. This step should feel instant and exciting.
+3. KNOWLEDGE — Content onboarding. The creator uploads documents, PDFs, SOPs, reference material. Help them understand what to upload. Acknowledge each file's content.
+4. RULES — Compliance rules, guardrails, what the worker must never get wrong. Ask about regulations, industry standards, SOPs.
+5. TOOLS — What capabilities does the worker need? Reports, dashboards, email, integrations, data lookups.
+6. TEST — The creator talks to their own worker. Suggest edge cases. Fix problems silently by updating the spec.
+7. PREFLIGHT — Automated deploy checklist. Explain any failures.
+8. DISTRIBUTE — Distribution kit (URL, embed, QR, social copy). Help customize.
+9. GROW & REVISE — Distribution coach mode. Revenue context: Creators earn 75% of subscription revenue plus 20% of inference margin. Workers priced at $29, $49, or $79/mo.
 
-CONVERSATION FLOW:
-1. Acknowledge their expertise in one sentence. Then ask: "That is really interesting. Before I ask more -- what is your name?"
-2. After they give their name, begin follow-up questions. Ask 3-5 follow-up questions, ONE AT A TIME, based on what is missing from their answer. Common gaps to probe:
-   - Who specifically uses this day to day -- you, your team, your customers, or all three? (if audience is unclear)
-   - What should this worker never get wrong? Think compliance, accuracy, anything that would cause real problems. (if stakes are unclear)
-   - Are there regulations, compliance rules, or SOPs it needs to follow? (if not mentioned)
-   - What should the output look like -- report, dashboard, email, chat? (if delivery format is unclear)
-   - What state or region does this apply to? (if jurisdiction matters for their domain)
-3. Do NOT ask questions whose answers are already obvious from what they told you.
-4. After 3-5 exchanges, when you have enough to build (name/purpose + audience + at least 2 compliance rules or domain constraints), generate the worker using the WORKER_SPEC protocol below.
+STEP BEHAVIOR:
+- Stay on the current step. Do not jump ahead.
+- When a step is complete, say so clearly: "Define is done. Ready for Design?" or similar.
+- DEFINE should be fast. 2-3 questions maximum. Get the idea, then generate [WORKER_SPEC].
+- DESIGN should feel immediate. The creator should see their worker right away.
+- Each step builds incrementally. The worker gets better at each step, not built all at once.
+
+OPENING BEHAVIOR:
+The creator's first message describes their idea. Read it carefully. If you already know their name (see below), greet them by name. Acknowledge their idea in one sentence, then ask ONE clarifying question to fill in a gap (audience, use case, or domain). Do NOT ask for their name if you already have it.
+
+FILE UPLOADS:
+When the creator attaches a file, the system extracts the text and includes it in their message. ALWAYS reference the content you received. Say what you found in the file. Never say you cannot read files -- the text is right there in the message. If a file contains a worker description or prompt from another tool, treat it as a fast track and move quickly through Define.
 
 FAST TRACK:
-If the creator pastes a long description (over 200 words), an existing prompt, or a structured workflow from ChatGPT, Claude, or Gemini, you may have enough after just 1-2 follow-up questions. Validate this: "Thinking it through in another tool first is a great way to come in with a clear idea."
-
-If the creator says no regulations or compliance rules, respond: "Got it -- I will apply standard compliance defaults for your industry." Then move on.
-
-NAME TIMING:
-Your FIRST response must ask for the creator's name. Do not wait until later. Ask it naturally after your opening acknowledgment: "That is really interesting. Before I ask more -- what is your name?"
+If the creator pastes a long description (over 200 words), an existing prompt, or a structured workflow from ChatGPT, Claude, or Gemini, you may have enough after just 1 follow-up question. Acknowledge: "Great foundation. Let me shape this into a Digital Worker."
 
 NAME HANDLING:
-Ask for the creator's name exactly once. If you already know their name (from context or session), never ask again. Use their name naturally but do not overuse it.
-
-LATER STEPS (the UI handles these after the worker is built):
-- Build -- The UI shows a build progress animation. You are not needed unless they ask questions.
-- Test -- The creator tests their worker. Suggest edge cases. If they report a problem, fix it silently.
-- Preflight -- Automated 16-item deploy gate checklist. If any gate fails, explain what needs fixing.
-- Distribute -- Distribution kit (URL, embed, QR, social copy). Help customize if asked.
-- Grow -- Distribution coach mode. Help with social posts, email templates, subscriber growth.
-
-GROW MODE:
-When a Digital Worker is published: switch into distribution coach mode. Revenue context: Creators earn 75% of subscription revenue plus 20% of TitleApp's margin on inference overage. Workers are priced at $29, $49, or $79 per month. At $49/mo that is $36.75/seat to the creator.
-
-ADAPT TO THE USER'S LEVEL:
-- Novice: Do most of the work. "Describe what you want, I will build it."
-- Expert: Assist when asked. Do not over-explain.
+If you know the creator's name, use it naturally. NEVER ask for their name if it is provided in the system context below. Only ask once, early, if their name is truly unknown.
 
 BREVITY RULES:
-- 2-3 sentences per response
-- ONE question per response
-- Match the user's energy
-- No emojis. No markdown formatting. Plain text only.
+- 2-3 sentences per response. ONE question per response.
+- Match the user's energy. No emojis. No markdown. Plain text only.
 
 DIGITAL WORKER BUILD PROTOCOL:
-CRITICAL: When you have enough information (name/purpose + audience + compliance rules or domain constraints), your response MUST end with a [WORKER_SPEC] block. Keep your conversational text to 2 sentences max so the spec fits within the response. The [WORKER_SPEC] block is how the system creates the worker -- without it, nothing happens.
+When you have enough from the Define step (name/purpose + audience), generate a [WORKER_SPEC] block. This creates the worker so the Design step can begin. Do not wait for perfection -- the spec improves at each step.
 
 Format:
 [WORKER_SPEC]{"name":"Digital Worker Name","description":"What it does","rules":["Rule 1","Rule 2"],"capabilities":[],"category":"category","targetUser":"who it is for","problemSolves":"what problem it solves","raasRules":"regulations and SOPs"}[/WORKER_SPEC]
 
-You MUST include both the opening [WORKER_SPEC] and closing [/WORKER_SPEC] tags. The JSON must be valid. Include this AFTER your conversational text.
-
-BUILD PIPELINE (the UI handles this visually):
-After [WORKER_SPEC], the UI runs the build pipeline automatically. Every stage requires completion before the next opens. Admin review is the final gate. Do not try to run the pipeline yourself.
+You MUST include both opening and closing tags. Valid JSON. Include AFTER your conversational text.
 
 IMAGE GENERATION:
-When the creator asks for an image, artwork, illustration, icon, logo, visual asset, or any graphic for their worker or game — call the generate_image tool with a descriptive prompt. Do not describe the image in text. Do not ask clarifying questions before generating. Generate immediately and let the creator react. Style defaults to 'cartoon' for games and 'minimal' for workers unless the creator specifies otherwise.
-
-When the creator sends a screenshot, describe what you see in 1-2 sentences before responding to their question.
+When the creator asks for an image, artwork, illustration, icon, logo, or any visual — call the generate_image tool immediately. Do not describe the image in text. Style defaults to 'cartoon' for games and 'minimal' for workers.
 
 AUTH HANDLING:
-You never handle authentication. Never ask for an email address to fix auth problems. Never promise sign-in links. If auth fails, the UI handles it silently. Stay focused on the worker.
+You never handle authentication. Never ask for an email. If auth fails, the UI handles it silently.
 
 NEVER:
 - Say "go to titleapp.ai" or "sign in somewhere else"
 - Output [Note: ...] or [System: ...] bracket text
 - Ask more than one question in a response
 - Write more than 3 sentences unless they asked for detail
+- Ask for the creator's name if you already know it
+- Jump ahead to a step the creator hasn't reached
+- Say "I have what I need to build this" and stop -- always generate [WORKER_SPEC] when ready
 - Deny TitleApp's blockchain heritage
-- Ask for an email to retry signup or fix auth
-- Promise a sign-in link
 ${nameGuidance}${authGuidance}`;
 
           const devSystemPrompt = `You are Alex, TitleApp's developer relations AI. You're a tour guide, not a consultant. Show people around. Don't interview them.
@@ -6801,7 +6875,7 @@ These should be 2-3 realistic test scenarios the creator should try, derived fro
 
     // POST /v1/worker1:intake — Save intake data for Worker #1 pipeline
     if (route === "/worker1:intake" && method === "POST") {
-      const { tenantId, workerId: rawWorkerId, vertical, jurisdiction, description, name, sops, existingDocs } = body;
+      const { tenantId, workerId: rawWorkerId, vertical, jurisdiction, description, name, sops, existingDocs, gameConfig, gameRules, gameInteractions, worker_type } = body;
       // Auto-generate workerId if not provided (Vibe path)
       const workerId = rawWorkerId || ("wkr_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8));
       if (!tenantId) return res.json({ ok: false, error: "Missing tenantId" });
@@ -6817,6 +6891,20 @@ These should be 2-3 realistic test scenarios the creator should try, derived fro
           existingDocs: Array.isArray(existingDocs) ? existingDocs.slice(0, 10) : [],
           submittedAt: nowServerTs(),
         };
+        // CODEX 48.4 — Game intake fields. When the caller is building a game,
+        // persist gameConfig/gameRules/gameInteractions on the worker doc so the
+        // research bypass (raasMode: "light") and downstream engine can read them.
+        const isGameIntake = !!(gameConfig && gameConfig.isGame) || worker_type === "game";
+        const gameFields = isGameIntake ? {
+          worker_type: "game",
+          gameConfig: {
+            ...(gameConfig || {}),
+            isGame: true,
+            raasMode: (gameConfig && gameConfig.raasMode) || "light",
+          },
+          ...(gameRules ? { gameRules } : {}),
+          ...(gameInteractions ? { gameInteractions } : {}),
+        } : {};
         if (!workerSnap.exists) {
           // Create new document (Vibe path — no prior chat-driven creation)
           await workerRef.set({
@@ -6826,6 +6914,7 @@ These should be 2-3 realistic test scenarios the creator should try, derived fro
             status: "building", buildPhase: "intake",
             intake: intakeData,
             raasLibrary: { tier0: TIER0_RULES, tier1: [], tier2: [], tier3: [] },
+            ...gameFields,
             createdAt: nowServerTs(), updatedAt: nowServerTs(),
           });
         } else {
@@ -6833,6 +6922,7 @@ These should be 2-3 realistic test scenarios the creator should try, derived fro
           await workerRef.update({
             buildPhase: "intake", intake: intakeData,
             raasLibrary: { tier0: TIER0_RULES, tier1: [], tier2: [], tier3: [] },
+            ...gameFields,
             updatedAt: nowServerTs(),
           });
         }

@@ -10,7 +10,7 @@ function PersonalSettings() {
   const fileInputRef = useRef(null);
 
   const [profile, setProfile] = useState({
-    name: user?.displayName || localStorage.getItem("COMPANY_NAME") || "",
+    name: user?.displayName || localStorage.getItem("DISPLAY_NAME") || localStorage.getItem("USER_NAME") || "",
     email: user?.email || "",
     phone: "",
   });

@@ -1090,6 +1090,8 @@ export default function Sidebar({
   const [selectedWorker, setSelectedWorker] = useState(null);
   const [workersExpanded, setWorkersExpanded] = useState(false);
   const [collapsedGroups, setCollapsedGroups] = useState({});
+  const [workersCollapsed, setWorkersCollapsed] = useState(false);
+  const [gamesCollapsed, setGamesCollapsed] = useState(false);
   const workerCtx = useWorkerState();
   const vertical = guestMode ? "" : (localStorage.getItem("VERTICAL") || "auto");
   const isPersonal = vertical === "consumer";
@@ -1098,10 +1100,25 @@ export default function Sidebar({
   const isRawId = /^ws_\d+_[a-z0-9]+$/i.test(rawWsName);
   const workspaceName = isRawId ? "" : rawWsName;
   const companyName = guestMode ? (tenantName || "TitleApp") : (workspaceName || tenantName || localStorage.getItem("COMPANY_NAME") || localStorage.getItem("TENANT_NAME") || "");
-  const firstName = companyName.split(" ")[0] || "";
-  const brandLabel = guestMode ? (tenantName || "TitleApp") : (isPersonal && firstName
-    ? `${firstName}'s Vault`
-    : (workspaceName || tenantName || (isPersonal ? "Personal Vault" : "Business")));
+
+  // User's actual first name (for personalized header)
+  const userFirstName = (() => {
+    if (guestMode) return "";
+    const raw = localStorage.getItem("DISPLAY_NAME") || localStorage.getItem("USER_NAME") || (localStorage.getItem("USER_EMAIL") || "").split("@")[0] || "";
+    const first = raw.split(" ")[0];
+    return (first && first.length >= 2) ? first : "";
+  })();
+
+  // Dynamic header: changes based on selected worker
+  const brandLabel = (() => {
+    if (guestMode) return tenantName || "TitleApp";
+    const name = userFirstName || companyName.split(" ")[0] || "";
+    if (selectedWorker && selectedWorkerName) {
+      return name ? `${name}'s ${selectedWorkerName}` : selectedWorkerName;
+    }
+    if (isPersonal) return name ? `${name}'s Vault` : "Personal Vault";
+    return workspaceName || tenantName || "Business";
+  })();
 
   function handleNavClick(sectionId) {
     onNavigate(sectionId);
@@ -1294,13 +1311,13 @@ export default function Sidebar({
             display: "flex", alignItems: "center", justifyContent: "center",
             color: "white", fontWeight: 700, fontSize: 14, flexShrink: 0,
           }}>
-            {(brandLabel || "T").charAt(0).toUpperCase()}
+            {(userFirstName || "T").charAt(0).toUpperCase()}
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div className="brandName" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {isPersonal ? brandLabel : (workspaceName || "TitleApp")}
+              {brandLabel}
             </div>
-            <div className="brandSub">{VERTICAL_LABELS[vertical] || "Personal"}</div>
+            <div className="brandSub">{selectedWorker ? (VERTICAL_LABELS[vertical] || "Worker") : (isPersonal ? "Personal Vault" : (VERTICAL_LABELS[vertical] || "Business"))}</div>
           </div>
           {workspaces.length > 1 && (
             <svg
@@ -1527,9 +1544,20 @@ export default function Sidebar({
 
       {/* ═══ SECTION 1: MY WORKERS (grouped by vertical, games excluded) ═══ */}
       <div className="sidebarSection">
-        <div className="sidebarLabel" style={{ display: "flex", alignItems: "center" }}>My Workers<DataLinkStatus /></div>
+        <button
+          className="sidebarLabel"
+          onClick={() => setWorkersCollapsed(!workersCollapsed)}
+          style={{
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+            width: "100%", background: "none", border: "none", cursor: "pointer",
+            padding: 0, margin: 0,
+          }}
+        >
+          <span style={{ display: "flex", alignItems: "center" }}>My Workers<DataLinkStatus /></span>
+          <span style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", transition: "transform 0.2s", transform: workersCollapsed ? "rotate(0deg)" : "rotate(90deg)" }}>&rsaquo;</span>
+        </button>
 
-        <nav className="nav">
+        {!workersCollapsed && <nav className="nav">
           {/* Chief of Staff — always first */}
           {groupedWorkers.cos.map(worker => {
             const isSelected = selectedWorker === worker.slug;
@@ -1665,31 +1693,47 @@ export default function Sidebar({
           >
             + Browse Marketplace
           </button>
-        </nav>
+        </nav>}
       </div>
 
-      {/* ═══ MY GAMES (only if user has games) ═══ */}
+      {/* ═══ MY GAMES (always visible) ═══ */}
       {(() => {
         const myGames = workerList.filter(w => w.workerType === "game");
-        if (myGames.length === 0) return null;
         return (
           <div className="sidebarSection" style={{ paddingBottom: 0 }}>
-            <div className="sidebarLabel">My Games</div>
-            <nav className="nav">
-              {myGames.map(g => (
-                <button
-                  key={g.slug}
-                  className={`navItem ${selectedWorker === g.slug ? "navItemActive" : ""}`}
-                  onClick={() => handleWorkerClick(g)}
-                  style={{ width: "100%", textAlign: "left", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, padding: "7px 10px", fontSize: 13 }}
-                >
-                  <span style={{ width: 20, height: 20, borderRadius: 4, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "rgba(22,163,74,0.15)", color: "#22c55e", fontSize: 10, fontWeight: 700, flexShrink: 0 }}>
-                    {(g.name || "G")[0]}
-                  </span>
-                  <span style={{ flex: 1, color: "rgba(255,255,255,0.85)" }}>{g.name}</span>
-                </button>
-              ))}
-            </nav>
+            <button
+              className="sidebarLabel"
+              onClick={() => setGamesCollapsed(!gamesCollapsed)}
+              style={{
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                width: "100%", background: "none", border: "none", cursor: "pointer",
+                padding: 0, margin: 0,
+              }}
+            >
+              <span>My Games</span>
+              <span style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", transition: "transform 0.2s", transform: gamesCollapsed ? "rotate(0deg)" : "rotate(90deg)" }}>&rsaquo;</span>
+            </button>
+            {!gamesCollapsed && (
+              <nav className="nav">
+                {myGames.length > 0 ? myGames.map(g => (
+                  <button
+                    key={g.slug}
+                    className={`navItem ${selectedWorker === g.slug ? "navItemActive" : ""}`}
+                    onClick={() => handleWorkerClick(g)}
+                    style={{ width: "100%", textAlign: "left", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, padding: "7px 10px", fontSize: 13 }}
+                  >
+                    <span style={{ width: 20, height: 20, borderRadius: 4, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "rgba(22,163,74,0.15)", color: "#22c55e", fontSize: 10, fontWeight: 700, flexShrink: 0 }}>
+                      {(g.name || "G")[0]}
+                    </span>
+                    <span style={{ flex: 1, color: "rgba(255,255,255,0.85)" }}>{g.name}</span>
+                  </button>
+                )) : (
+                  <div style={{ padding: "8px 10px", fontSize: 12, color: "rgba(255,255,255,0.3)", fontStyle: "italic" }}>
+                    Coming Soon
+                  </div>
+                )}
+              </nav>
+            )}
           </div>
         );
       })()}

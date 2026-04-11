@@ -19,14 +19,13 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { onAuthStateChanged, signInWithCustomToken } from "firebase/auth";
 import { auth as firebaseAuth } from "../firebase";
 import StepStatusBar from "../components/sandbox/StepStatusBar";
-import FileUploadBar, { classifyFile, validateFiles } from "../components/sandbox/FileUploadBar";
+import FileUploadBar, { classifyFile, validateFiles, ACCEPT_STRING } from "../components/sandbox/FileUploadBar";
 import {
   initWorkerFlow,
   advanceWorkerStep,
   getWorkerFlowState,
   waitForAuth,
-  ingestDocument,
-  uploadFile,
+  encodeFilesForChat,
 } from "../api/sandboxWorkerApi";
 import { WORKER_STEPS, STEP_BY_ID, buildBarSteps, PURPLE } from "../components/sandbox/worker/workerSteps";
 import { CANVAS_BY_STEP } from "../components/sandbox/worker/canvases";
@@ -39,6 +38,7 @@ const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.ti
 
 function AlexChat({ messages, completionContext, nextStepLabel, onContinueAfterCompletion, onDismissCompletion, onSend, sending, pendingFiles, onFilesSelected, onFileRemove, onFilesClear, fileInputRef }) {
   const [input, setInput] = React.useState("");
+  const [dragOver, setDragOver] = React.useState(false);
   const endRef = React.useRef(null);
   const hasFiles = pendingFiles && pendingFiles.length > 0;
 
@@ -54,11 +54,51 @@ function AlexChat({ messages, completionContext, nextStepLabel, onContinueAfterC
     if (onSend) onSend(text);
   }
 
+  function handleDragOver(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOver(true);
+  }
+  function handleDragLeave(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOver(false);
+  }
+  function handleDrop(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOver(false);
+    if (e.dataTransfer?.files?.length && onFilesSelected) {
+      onFilesSelected(e.dataTransfer.files);
+    }
+  }
+
   return (
-    <div style={{
-      display: "flex", flexDirection: "column", height: "100%",
-      background: "#FFFFFF", borderRight: "1px solid #E2E8F0",
-    }}>
+    <div
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      style={{
+        display: "flex", flexDirection: "column", height: "100%",
+        background: "#FFFFFF", borderRight: "1px solid #E2E8F0",
+        position: "relative",
+      }}
+    >
+      {/* Drop overlay */}
+      {dragOver && (
+        <div style={{
+          position: "absolute", inset: 0, zIndex: 20,
+          background: "rgba(107,70,193,0.08)",
+          border: "2px dashed #6B46C1",
+          borderRadius: 8,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          pointerEvents: "none",
+        }}>
+          <div style={{ fontSize: 16, fontWeight: 600, color: "#6B46C1" }}>
+            Drop files here
+          </div>
+        </div>
+      )}
       <div style={{
         padding: "16px 20px", borderBottom: "1px solid #E2E8F0",
         fontSize: 14, fontWeight: 700, color: "#1a1a2e",
@@ -122,7 +162,7 @@ function AlexChat({ messages, completionContext, nextStepLabel, onContinueAfterC
             ref={fileInputRef}
             type="file"
             multiple
-            accept=".pdf,.docx,.txt,.md,.csv,.png,.jpg,.jpeg,.gif,.webp,.svg,.mp4,.mov,.webm"
+            accept={ACCEPT_STRING}
             style={{ display: "none" }}
             onChange={e => { if (onFilesSelected) onFilesSelected(e.target.files); e.target.value = ""; }}
           />
@@ -551,46 +591,18 @@ export default function WorkerSandbox() {
     setMessages(prev => [...prev, { role: "user", text: text ? text + fileNote : fileNote.trim() }]);
     setChatSending(true);
 
-    // CODEX 47.10 — Upload attached files before sending chat message
-    let uploadSummary = "";
+    // CODEX 47.10 — Encode attached files for inline chat upload
+    let chatFiles = null;
     const filesToUpload = [...pendingFiles];
     if (filesToUpload.length > 0) {
       setPendingFiles([]);
-      const uploaded = [];
-      const failed = [];
-      for (const pf of filesToUpload) {
-        try {
-          if (pf.type === "document") {
-            const ext = pf.name.toLowerCase().split(".").pop();
-            let sourceType = "auto";
-            if (ext === "pdf") sourceType = "pdf";
-            else if (ext === "docx") sourceType = "docx";
-            else if (["txt", "md", "csv"].includes(ext)) sourceType = "text";
-            const result = await ingestDocument({
-              workerId: sessionId || "",
-              name: pf.name, sourceType, file: pf.file,
-            });
-            if (result.ok) uploaded.push(pf.name);
-            else failed.push(pf.name);
-          } else {
-            const result = await uploadFile(pf.file);
-            if (result.ok) uploaded.push(pf.name);
-            else failed.push(pf.name);
-          }
-        } catch (err) {
-          console.error("[WorkerSandbox] File upload failed:", pf.name, err);
-          failed.push(pf.name);
-        }
-      }
-      const parts = [];
-      if (uploaded.length) parts.push(`${uploaded.length} file${uploaded.length > 1 ? "s" : ""} uploaded`);
-      if (failed.length) parts.push(`${failed.length} failed`);
-      uploadSummary = parts.length ? `[${parts.join(", ")}]` : "";
-      if (failed.length) {
-        setMessages(prev => [...prev, { role: "alex", text: `Some uploads failed: ${failed.join(", ")}. You can try again.` }]);
+      try {
+        chatFiles = await encodeFilesForChat(filesToUpload.map(pf => pf.file));
+      } catch (err) {
+        console.error("[WorkerSandbox] File encoding failed:", err);
+        setMessages(prev => [...prev, { role: "alex", text: "Could not process attached files. Try again." }]);
       }
     }
-    const userInputWithUploads = uploadSummary ? `${text}\n\n${uploadSummary}` : text;
 
     try {
       const token = localStorage.getItem("ID_TOKEN");
@@ -602,9 +614,12 @@ export default function WorkerSandbox() {
         body: JSON.stringify({
           sessionId: sessionId || "",
           surface: "sandbox",
-          userInput: userInputWithUploads,
+          userInput: text,
           flowStep: 1,
           vertical: state?.spec?.vertical || "",
+          ...(chatFiles && chatFiles.length > 0 ? { files: chatFiles } : {}),
+          // Pass creator name so Alex doesn't keep asking
+          ...(authedUser?.displayName ? { creatorName: authedUser.displayName } : {}),
         }),
       });
       const result = await resp.json();
