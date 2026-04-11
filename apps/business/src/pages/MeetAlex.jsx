@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { signInAnonymously, GoogleAuthProvider, linkWithPopup, linkWithRedirect, signInWithCredential } from "firebase/auth";
+import { signInAnonymously, GoogleAuthProvider, linkWithPopup, linkWithRedirect, signInWithCredential, signInWithPopup, signInWithRedirect } from "firebase/auth";
 import { auth } from "../firebase";
 import { VERTICAL_MAP } from "../hooks/useVisitorContext";
 
@@ -29,8 +29,11 @@ export default function MeetAlex() {
   const [saveEmail, setSaveEmail] = useState("");
   const [saveError, setSaveError] = useState("");
   const [saveSending, setSaveSending] = useState(false);
-  const [saveStatus, setSaveStatus] = useState(""); // "" | "check-inbox"
+  const [saveStatus, setSaveStatus] = useState(""); // "" | "check-inbox" | "otp-sent"
   const [resendCountdown, setResendCountdown] = useState(0);
+  const [savePhone, setSavePhone] = useState("");
+  const [otpCode, setOtpCode] = useState("");
+  const [authTab, setAuthTab] = useState("email"); // "email" | "phone"
 
   // Worker preview lead capture
   const previewWorkerRef = useRef(null);       // { workerId, workerName, slug }
@@ -260,6 +263,24 @@ export default function MeetAlex() {
 
     try {
       const provider = new GoogleAuthProvider();
+
+      if (isSignIn) {
+        // Returning user: sign in directly (don't try to link anonymous account)
+        const result = await signInWithPopup(auth, provider);
+        const idToken = await result.user.getIdToken(true);
+        // Transfer any guest subscriptions to authenticated account
+        if (anonUid && anonUid !== result.user.uid) {
+          fetch(`${API_BASE}/api?path=/v1/subscription:transfer`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+            body: JSON.stringify({ fromUid: anonUid, toUid: result.user.uid }),
+          }).catch(() => {});
+        }
+        completeAuthUpgrade(idToken, result.user.uid);
+        return;
+      }
+
+      // New user: link anonymous account to Google
       const result = await linkWithPopup(auth.currentUser, provider);
       const idToken = await result.user.getIdToken(true);
       completeAuthUpgrade(idToken, result.user.uid);
@@ -267,27 +288,35 @@ export default function MeetAlex() {
       if (err?.code === "auth/popup-blocked") {
         // Mobile fallback — redirect-based flow
         try {
-          await linkWithRedirect(auth.currentUser, new GoogleAuthProvider());
+          if (isSignIn) {
+            await signInWithRedirect(auth, new GoogleAuthProvider());
+          } else {
+            await linkWithRedirect(auth.currentUser, new GoogleAuthProvider());
+          }
         } catch { /* redirect will navigate away */ }
         return;
       }
 
       if (err?.code === "auth/credential-already-in-use") {
-        // Google account already exists — sign in and transfer subscriptions
+        // Google account already exists — sign in directly and transfer subscriptions
         try {
           const credential = GoogleAuthProvider.credentialFromError(err);
-          const result = await signInWithCredential(auth, credential);
-          const idToken = await result.user.getIdToken(true);
-
-          // Transfer subscriptions from anonymous UID to real UID
-          if (anonUid && anonUid !== result.user.uid) {
-            fetch(`${API_BASE}/api?path=/v1/subscription:transfer`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
-              body: JSON.stringify({ fromUid: anonUid, toUid: result.user.uid }),
-            }).catch(() => {});
+          if (credential) {
+            const result = await signInWithCredential(auth, credential);
+            const idToken = await result.user.getIdToken(true);
+            if (anonUid && anonUid !== result.user.uid) {
+              fetch(`${API_BASE}/api?path=/v1/subscription:transfer`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+                body: JSON.stringify({ fromUid: anonUid, toUid: result.user.uid }),
+              }).catch(() => {});
+            }
+            completeAuthUpgrade(idToken, result.user.uid);
+            return;
           }
-
+          // credential was null — try signInWithPopup as fallback
+          const result = await signInWithPopup(auth, new GoogleAuthProvider());
+          const idToken = await result.user.getIdToken(true);
           completeAuthUpgrade(idToken, result.user.uid);
           return;
         } catch {
@@ -354,6 +383,61 @@ export default function MeetAlex() {
         }),
       });
     } catch { /* non-fatal */ }
+  }
+
+  // SMS OTP sign-in
+  async function handleSendOtp() {
+    const phone = savePhone.trim().replace(/[^+\d]/g, "");
+    if (phone.length < 10) { setSaveError("Enter a valid phone number."); return; }
+    setSaveSending(true);
+    setSaveError("");
+    try {
+      const res = await fetch(`${API_BASE}/api?path=/v1/auth:sendOtp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: phone.startsWith("+") ? phone : `+1${phone}` }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setSaveStatus("otp-sent");
+        setResendCountdown(60);
+      } else {
+        setSaveError(data.error || "Could not send code. Try again.");
+      }
+    } catch {
+      setSaveError("Something went wrong. Try again.");
+    }
+    setSaveSending(false);
+  }
+
+  async function handleVerifyOtp() {
+    if (otpCode.length < 6) { setSaveError("Enter the 6-digit code."); return; }
+    setSaveSending(true);
+    setSaveError("");
+    try {
+      const phone = savePhone.trim().replace(/[^+\d]/g, "");
+      const res = await fetch(`${API_BASE}/api?path=/v1/auth:verifyOtp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phone: phone.startsWith("+") ? phone : `+1${phone}`,
+          code: otpCode,
+          preAuthUid: auth.currentUser?.uid || null,
+        }),
+      });
+      const data = await res.json();
+      if (data.ok && data.customToken) {
+        const { signInWithCustomToken } = await import("firebase/auth");
+        const cred = await signInWithCustomToken(auth, data.customToken);
+        const idToken = await cred.user.getIdToken(true);
+        completeAuthUpgrade(idToken, cred.user.uid);
+      } else {
+        setSaveError(data.error || "Invalid code. Try again.");
+      }
+    } catch {
+      setSaveError("Verification failed. Try again.");
+    }
+    setSaveSending(false);
   }
 
   function handleSubmit(e) {
@@ -530,7 +614,7 @@ export default function MeetAlex() {
             <div style={{ maxWidth: "80%", padding: "12px 14px", borderRadius: 16, background: "#f3f0ff", border: "1px solid #e9d5ff", borderBottomLeftRadius: 4 }}>
               <div style={{ fontSize: 14, color: "#1e293b", marginBottom: 10 }}>{isSignIn ? "Sign in to your account." : "Save your stuff? Quick sign-in so you can come back anytime."}</div>
 
-              {saveStatus !== "check-inbox" ? (
+              {saveStatus === "" ? (
                 <>
                   {/* Primary: Google */}
                   <button onClick={handleGoogleSave} disabled={saveSending} style={{ width: "100%", padding: "10px", fontSize: 14, fontWeight: 600, color: "#1e293b", background: "#ffffff", border: "1px solid #d1d5db", borderRadius: 8, cursor: saveSending ? "wait" : "pointer", opacity: saveSending ? 0.7 : 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, fontFamily: "inherit", marginBottom: 10 }}>
@@ -545,13 +629,29 @@ export default function MeetAlex() {
                     <div style={{ flex: 1, height: 1, background: "#e5e7eb" }} />
                   </div>
 
-                  {/* Fallback: Magic link */}
-                  <input type="email" value={saveEmail} onChange={e => setSaveEmail(e.target.value)} placeholder="your@email.com" autoComplete="email" style={{ width: "100%", padding: "10px 12px", fontSize: 14, border: "1px solid #d1d5db", borderRadius: 8, outline: "none", boxSizing: "border-box", marginBottom: 8 }} />
-                  <button onClick={handleMagicLinkSave} disabled={saveSending} style={{ width: "100%", padding: "10px", fontSize: 14, fontWeight: 600, color: "#7c3aed", background: "transparent", border: "1px solid #e9d5ff", borderRadius: 8, cursor: saveSending ? "wait" : "pointer", opacity: saveSending ? 0.7 : 1, fontFamily: "inherit" }}>
-                    {saveSending ? "Sending..." : "Send me a sign-in link"}
-                  </button>
+                  {/* Email / Phone tabs */}
+                  <div style={{ display: "flex", gap: 0, marginBottom: 8, borderRadius: 8, overflow: "hidden", border: "1px solid #e5e7eb" }}>
+                    <button onClick={() => setAuthTab("email")} style={{ flex: 1, padding: "6px 0", fontSize: 12, fontWeight: 600, border: "none", cursor: "pointer", fontFamily: "inherit", background: authTab === "email" ? "#7c3aed" : "#f8fafc", color: authTab === "email" ? "#fff" : "#64748b" }}>Email</button>
+                    <button onClick={() => setAuthTab("phone")} style={{ flex: 1, padding: "6px 0", fontSize: 12, fontWeight: 600, border: "none", cursor: "pointer", fontFamily: "inherit", background: authTab === "phone" ? "#7c3aed" : "#f8fafc", color: authTab === "phone" ? "#fff" : "#64748b" }}>Phone</button>
+                  </div>
+
+                  {authTab === "email" ? (
+                    <>
+                      <input type="email" value={saveEmail} onChange={e => setSaveEmail(e.target.value)} placeholder="your@email.com" autoComplete="email" style={{ width: "100%", padding: "10px 12px", fontSize: 14, border: "1px solid #d1d5db", borderRadius: 8, outline: "none", boxSizing: "border-box", marginBottom: 8 }} />
+                      <button onClick={handleMagicLinkSave} disabled={saveSending} style={{ width: "100%", padding: "10px", fontSize: 14, fontWeight: 600, color: "#7c3aed", background: "transparent", border: "1px solid #e9d5ff", borderRadius: 8, cursor: saveSending ? "wait" : "pointer", opacity: saveSending ? 0.7 : 1, fontFamily: "inherit" }}>
+                        {saveSending ? "Sending..." : "Send me a sign-in link"}
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <input type="tel" value={savePhone} onChange={e => setSavePhone(e.target.value)} placeholder="(555) 123-4567" autoComplete="tel" style={{ width: "100%", padding: "10px 12px", fontSize: 14, border: "1px solid #d1d5db", borderRadius: 8, outline: "none", boxSizing: "border-box", marginBottom: 8 }} />
+                      <button onClick={handleSendOtp} disabled={saveSending} style={{ width: "100%", padding: "10px", fontSize: 14, fontWeight: 600, color: "#7c3aed", background: "transparent", border: "1px solid #e9d5ff", borderRadius: 8, cursor: saveSending ? "wait" : "pointer", opacity: saveSending ? 0.7 : 1, fontFamily: "inherit" }}>
+                        {saveSending ? "Sending..." : "Text me a code"}
+                      </button>
+                    </>
+                  )}
                 </>
-              ) : (
+              ) : saveStatus === "check-inbox" ? (
                 <>
                   <div style={{ fontSize: 14, color: "#10b981", fontWeight: 600 }}>Check your inbox</div>
                   <div style={{ fontSize: 13, color: "#6b7280", marginTop: 4, marginBottom: 8 }}>
@@ -565,7 +665,25 @@ export default function MeetAlex() {
                     {resendCountdown > 0 ? `Resend in ${resendCountdown}s` : "Resend link"}
                   </button>
                 </>
-              )}
+              ) : saveStatus === "otp-sent" ? (
+                <>
+                  <div style={{ fontSize: 14, color: "#10b981", fontWeight: 600 }}>Code sent</div>
+                  <div style={{ fontSize: 13, color: "#6b7280", marginTop: 4, marginBottom: 8 }}>
+                    Enter the 6-digit code we texted to {savePhone}.
+                  </div>
+                  <input type="text" inputMode="numeric" value={otpCode} onChange={e => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="000000" autoComplete="one-time-code" style={{ width: "100%", padding: "10px 12px", fontSize: 20, fontWeight: 600, letterSpacing: "0.3em", textAlign: "center", border: "1px solid #d1d5db", borderRadius: 8, outline: "none", boxSizing: "border-box", marginBottom: 8 }} />
+                  <button onClick={handleVerifyOtp} disabled={saveSending || otpCode.length < 6} style={{ width: "100%", padding: "10px", fontSize: 14, fontWeight: 600, color: "#fff", background: "#7c3aed", border: "none", borderRadius: 8, cursor: saveSending ? "wait" : "pointer", opacity: (saveSending || otpCode.length < 6) ? 0.7 : 1, fontFamily: "inherit", marginBottom: 4 }}>
+                    {saveSending ? "Verifying..." : "Verify"}
+                  </button>
+                  <button
+                    onClick={handleSendOtp}
+                    disabled={resendCountdown > 0}
+                    style={{ fontSize: 13, color: resendCountdown > 0 ? "#94a3b8" : "#7c3aed", background: "none", border: "none", cursor: resendCountdown > 0 ? "default" : "pointer", padding: 0, fontFamily: "inherit" }}
+                  >
+                    {resendCountdown > 0 ? `Resend in ${resendCountdown}s` : "Resend code"}
+                  </button>
+                </>
+              ) : null}
 
               {saveError && <div style={{ fontSize: 12, color: "#dc2626", marginTop: 6 }}>{saveError}</div>}
             </div>

@@ -5070,6 +5070,18 @@ export default function App() {
           }
           transitionTo("marketplace");
         } else {
+          // Promoted guest (from MeetAlex or magic link) — go straight to app
+          const promoParams2 = new URLSearchParams(window.location.search);
+          if (promoParams2.get("promoted") === "true" || sessionStorage.getItem("ta_guest_promoted")) {
+            const mems = data.memberships || [];
+            if (mems.length > 0) {
+              const tid = localStorage.getItem("TENANT_ID") || mems[0].tenantId;
+              localStorage.setItem("TENANT_ID", tid);
+            }
+            viewResolvedRef.current = true;
+            transitionTo("app");
+            return;
+          }
           // Check if we were in the middle of onboarding a new workspace
           const pendingOnboarding = localStorage.getItem("PENDING_ONBOARDING");
           if (pendingOnboarding) {
