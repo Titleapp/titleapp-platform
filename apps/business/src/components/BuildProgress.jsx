@@ -109,7 +109,10 @@ function cropToSquare(file, callback) {
 export default function BuildProgress({ worker, workerCardData, onWorkerUpdate, onTestReady, workerIconUrl, onIconChange }) {
   const [currentStage, setCurrentStage] = useState(0);
   const [buildComplete, setBuildComplete] = useState(false);
-  const [selectedTier, setSelectedTier] = useState(workerCardData?.pricingTier || 2);
+  // CODEX 48.4 Fix M — Games default to Free (tier 0). Workers keep $29 mid-tier default.
+  const isGame = !!(workerCardData?.gameConfig?.isGame || worker?.worker_type === "game");
+  const defaultTier = isGame ? 0 : 2;
+  const [selectedTier, setSelectedTier] = useState(workerCardData?.pricingTier ?? defaultTier);
   const [matrixLines, setMatrixLines] = useState([]);
   const [matrixDone, setMatrixDone] = useState(false);
 

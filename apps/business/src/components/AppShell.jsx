@@ -226,7 +226,24 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
   // Load worker data from current workspace
   const currentWs = workspaces.find(w => w.id === currentWorkspaceId) || {};
   const workerGroups = currentWs.workerGroups || [];
-  const activeWorkers = currentWs.activeWorkers || [];
+  const [guestWorkers, setGuestWorkers] = useState([]);
+
+  // Guest mode: track worker subscriptions locally for sidebar
+  useEffect(() => {
+    if (!guestMode) return;
+    function onWorkerSubscribed(e) {
+      const { workerId, name } = e.detail || {};
+      if (!workerId) return;
+      setGuestWorkers(prev => {
+        if (prev.some(w => w.slug === workerId)) return prev;
+        return [...prev, { slug: workerId, name: name || workerId }];
+      });
+    }
+    window.addEventListener("ta:worker-subscribed", onWorkerSubscribed);
+    return () => window.removeEventListener("ta:worker-subscribed", onWorkerSubscribed);
+  }, [guestMode]);
+
+  const activeWorkers = guestMode ? guestWorkers : (currentWs.activeWorkers || []);
   // Store active workers in localStorage so ChatPanel can pass them to Alex
   useEffect(() => {
     if (activeWorkers.length > 0) {

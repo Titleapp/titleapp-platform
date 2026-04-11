@@ -18,9 +18,13 @@ export default function MeetAlex() {
   const [sending, setSending] = useState(false);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
-  const [nameCollected, setNameCollected] = useState(false);
+  const [action] = useState(() =>
+    new URLSearchParams(window.location.search).get("action") || ""
+  );
+  const isSignIn = action === "signin";
+  const [nameCollected, setNameCollected] = useState(isSignIn);
   const userMsgCount = useRef(0);
-  const [showSave, setShowSave] = useState(false);
+  const [showSave, setShowSave] = useState(isSignIn);
   const [savedAccount, setSavedAccount] = useState(false);
   const [saveEmail, setSaveEmail] = useState("");
   const [saveError, setSaveError] = useState("");
@@ -87,6 +91,7 @@ export default function MeetAlex() {
           utmSource: "meet-alex",
           utmMedium: "guest-chat",
           selectedWorker: previewWorkerRef.current?.slug || previewWorkerRef.current?.workerId || null,
+          preferredLanguage: localStorage.getItem("PREFERRED_LANGUAGE") || "en",
         }),
       });
       const data = await res.json();
@@ -171,7 +176,7 @@ export default function MeetAlex() {
     return () => window.removeEventListener("ta:panel-worker-tapped", onWorkerTapped);
   }, []);
 
-  // Listen for subscribe completion — show Alex confirmation
+  // Listen for subscribe completion — show Alex confirmation + prompt account creation
   useEffect(() => {
     function onSubscribed(e) {
       const { name, price } = e.detail || {};
@@ -179,17 +184,30 @@ export default function MeetAlex() {
         ? `You're all set. Your 14-day trial of ${name || "your worker"} starts now. No charge today.`
         : `You're all set. ${name || "Your worker"} is on your team now.`;
       setMessages(prev => [...prev, { role: "assistant", text: msg }]);
+
+      // Prompt account creation for guests
+      if (!savedAccount && !showSave) {
+        setTimeout(() => {
+          setShowSave(true);
+          setMessages(prev => [...prev, {
+            role: "assistant",
+            text: "Create an account to keep your workers when you come back.",
+          }]);
+        }, 2000);
+      }
     }
     window.addEventListener("ta:worker-subscribed", onSubscribed);
     return () => window.removeEventListener("ta:worker-subscribed", onSubscribed);
-  }, []);
+  }, [savedAccount, showSave]);
 
   // Opening message — name-first, no API round-trip
   useEffect(() => {
     if (messages.length === 0) {
       setMessages([{
         role: "assistant",
-        text: "Hey \u2014 what's your name?",
+        text: isSignIn
+          ? "Welcome back. Sign in below to pick up where you left off."
+          : "Hey \u2014 what's your name?",
       }]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -510,7 +528,7 @@ export default function MeetAlex() {
               </svg>
             </div>
             <div style={{ maxWidth: "80%", padding: "12px 14px", borderRadius: 16, background: "#f3f0ff", border: "1px solid #e9d5ff", borderBottomLeftRadius: 4 }}>
-              <div style={{ fontSize: 14, color: "#1e293b", marginBottom: 10 }}>Save your stuff? Quick sign-in so you can come back anytime.</div>
+              <div style={{ fontSize: 14, color: "#1e293b", marginBottom: 10 }}>{isSignIn ? "Sign in to your account." : "Save your stuff? Quick sign-in so you can come back anytime."}</div>
 
               {saveStatus !== "check-inbox" ? (
                 <>

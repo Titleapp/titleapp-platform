@@ -29,10 +29,14 @@ const BUCKETS = [
 ];
 
 const LANGUAGES = [
-  "English", "Espanol", "Portugues", "Francais", "Deutsch", "Italiano",
-  "中文", "粤語", "日本語", "한국어", "हिन्दी", "العربية", "Українська",
-  "Tieng Viet", "ภาษาไทย", "Bahasa", "Filipino", "Русский", "Polski",
-  "Turkce", "Ελληνικά", "Nederlands", "Svenska",
+  { label: "English", code: "en" }, { label: "Espanol", code: "es" }, { label: "Portugues", code: "pt" },
+  { label: "Francais", code: "fr" }, { label: "Deutsch", code: "de" }, { label: "Italiano", code: "it" },
+  { label: "中文", code: "zh" }, { label: "粤語", code: "zh-HK" }, { label: "日本語", code: "ja" },
+  { label: "한국어", code: "ko" }, { label: "हिन्दी", code: "hi" }, { label: "العربية", code: "ar" },
+  { label: "Українська", code: "uk" }, { label: "Tieng Viet", code: "vi" }, { label: "ภาษาไทย", code: "th" },
+  { label: "Bahasa", code: "id" }, { label: "Filipino", code: "fil" }, { label: "Русский", code: "ru" },
+  { label: "Polski", code: "pl" }, { label: "Turkce", code: "tr" }, { label: "Ελληνικά", code: "el" },
+  { label: "Nederlands", code: "nl" }, { label: "Svenska", code: "sv" },
 ];
 
 const S = {
@@ -216,6 +220,14 @@ export default function GuestWorkspace({ vertical }) {
 }
 
 function StatsHeader() {
+  const [selectedLang, setSelectedLang] = useState(() => localStorage.getItem("PREFERRED_LANGUAGE") || "en");
+
+  function handleLangClick(lang) {
+    setSelectedLang(lang.code);
+    localStorage.setItem("PREFERRED_LANGUAGE", lang.code);
+    window.dispatchEvent(new CustomEvent("ta:language-changed", { detail: { code: lang.code, label: lang.label } }));
+  }
+
   return (
     <div style={S.statsBar}>
       <div style={S.statsRow}>
@@ -225,7 +237,13 @@ function StatsHeader() {
         <span style={S.statItem}><span style={S.statNum}>13</span> Industry Suites</span>
       </div>
       <div style={S.langRow}>
-        {LANGUAGES.map(l => <span key={l}>{l}</span>)}
+        {LANGUAGES.map(l => (
+          <span
+            key={l.code}
+            onClick={() => handleLangClick(l)}
+            style={{ cursor: "pointer", color: selectedLang === l.code ? "#7c3aed" : undefined, fontWeight: selectedLang === l.code ? 600 : undefined, transition: "color 0.15s" }}
+          >{l.label}</span>
+        ))}
       </div>
       <div style={S.langNote}>Every worker speaks your language.</div>
     </div>

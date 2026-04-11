@@ -1190,6 +1190,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
           subscribedWorkers: (() => { try { return JSON.parse(localStorage.getItem("ACTIVE_WORKERS") || "[]"); } catch { return []; } })(),
           ...(filePayload ? { file: filePayload } : {}),
           ...(filesPayload && filesPayload.length > 1 ? { files: filesPayload } : {}),
+          preferredLanguage: localStorage.getItem("PREFERRED_LANGUAGE") || "en",
           context: {
             source: 'business_portal',
             currentSection: currentSection || 'dashboard',

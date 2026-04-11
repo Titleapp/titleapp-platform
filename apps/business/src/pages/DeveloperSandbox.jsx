@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { signInWithCustomToken } from "firebase/auth";
+import { signInWithCustomToken, signInAnonymously } from "firebase/auth";
 import { auth as firebaseAuth } from "../firebase";
 import BuildProgress from "../components/BuildProgress";
 import TestWorkerPanel from "../components/TestWorkerPanel";
@@ -902,6 +902,10 @@ export default function DeveloperSandbox() {
   // and Test. We never auto-launch Test from artwork.
   const artworkReadyPromptedRef = useRef(false);
   const gameInteractionsCtaEmitted = useRef(false);
+  // CODEX 48.4 Fix K — Holds a recommended default that Alex has offered when
+  // a meta-question was detected. Next affirmative reply captures the default;
+  // any other reply captures itself normally. Shape: { phase, key, value }.
+  const pendingDefaultRef = useRef(null);
   // CODEX 48.4 Fix G — Artwork asks only when all four asset types exist:
   // character + background + icon + score display (or lenient 8+ fallback for
   // creators who haven't tagged useAs on every asset). "Ask, don't force": Alex
@@ -942,6 +946,38 @@ export default function DeveloperSandbox() {
     if (!t) return false;
     return /\b(build it|let'?s test|test it|test the game|i'?m ready|play it|launch it|run it|fire it up|ready to test|build (and|&) test|build the game)\b/.test(t);
   }
+  // CODEX 48.4 Fix K — Detect meta-questions that should NOT be captured as
+  // rule/interaction answers. Examples: "I don't know", "can you help?",
+  // "what do you recommend?", "I've never made a game", any text ending in "?"
+  // that doesn't also contain a real answer. When this fires, Alex offers a
+  // recommended default instead of blindly storing the meta-text.
+  function isMetaQuestion(text) {
+    const t = (text || "").trim().toLowerCase();
+    if (!t) return true;
+    if (t.length < 3) return true;
+    // Ends in "?" without a real answer
+    if (/\?\s*$/.test(t) && !/\b(yes|no|one|two|three|real.?time|simultaneous|turns?|score|time|reach|collect)\b/.test(t)) return true;
+    // "I don't know" / "I'm not sure" / "I'm new"
+    if (/\b(i don'?t know|i'?m not sure|not sure|no idea|i'?m new|i'?ve never|first time|never (made|built|done))\b/.test(t)) return true;
+    // "Can you help" / "what do you recommend" / "you decide" / "you choose"
+    if (/\b(can you help|help me|what do you (recommend|suggest|think)|you (decide|choose|pick)|whatever you|surprise me)\b/.test(t)) return true;
+    // Pure confusion
+    if (/\b(confused|don'?t understand|what does that mean|what'?s the difference|i don'?t get it)\b/.test(t)) return true;
+    return false;
+  }
+  // Recommended defaults — Alex offers these when a meta-question fires.
+  const GAME_RULE_DEFAULTS = {
+    turnMechanic: "real-time, no turns — everyone plays at once and reacts to the action",
+    winLoseConditions: "reach a score goal to win, or run out of time/lives to lose",
+    scoring: "points for objectives and bonuses for streaks — no negative scoring",
+    safetyCompliance: "kid-safe: no chat, no ads, no violence, no data collection beyond gameplay",
+  };
+  const GAME_INTERACTION_DEFAULTS = {
+    movement: "tap or swipe to move on mobile, arrow keys or WASD on desktop",
+    speed: "medium — fast enough to feel active but slow enough for younger players to track",
+    collisionRules: "friendly touch = bonus points, hazard touch = score penalty and brief stun",
+    soundCues: "point chime, hazard buzz, win fanfare, and a short lose tone",
+  };
   // CODEX 48.4 Fix B — Detect when the creator's natural-language message
   // signals a phase transition. Returns the target phase id or null. Called
   // from handleSend so the state machine advances whether or not the user
@@ -1363,78 +1399,128 @@ export default function DeveloperSandbox() {
     // closure value would otherwise be one rule behind.
     let nextCardData = workerCardData;
 
-    // Game rules phase — count answers and follow up with the next question
+    // Game rules phase — count answers and follow up with the next question.
+    // CODEX 48.4 Fix K — meta-question guard: if the user says "I don't know"
+    // or asks for a recommendation, offer a default rather than capturing the
+    // meta-text. The next message either accepts the default (affirmative) or
+    // gives a real answer; both advance the counter.
     if (gameSessionPhase === "rules") {
-      const next = gameRulesAnswered + 1;
-      setGameRulesAnswered(next);
       const RULE_KEYS = ["turnMechanic", "winLoseConditions", "scoring", "safetyCompliance"];
-      const ruleKey = RULE_KEYS[next - 1];
-      if (ruleKey) {
+      const RULE_QUESTIONS = [
+        "Turn mechanic — how do players take turns? (one at a time, simultaneous, real-time, no turns?)",
+        "Win/lose conditions — how does a player win or lose? What ends the game?",
+        "Scoring — how do points work? Are there levels, badges, or just a single score?",
+        "Safety and compliance — anything players should NOT see or do? Age range, content limits, regulated topics?",
+      ];
+      const currentIdx = gameRulesAnswered;
+      const ruleKey = RULE_KEYS[currentIdx];
+
+      // Resolve the value to capture: either the pending default (if Alex
+      // offered one and the user said yes) or the user's text.
+      let valueToCapture = null;
+      if (pendingDefaultRef.current && pendingDefaultRef.current.phase === "rules" && pendingDefaultRef.current.key === ruleKey) {
+        valueToCapture = isAffirmative(text) ? pendingDefaultRef.current.value : (isMetaQuestion(text) ? null : text);
+        if (valueToCapture !== null) pendingDefaultRef.current = null;
+      } else if (ruleKey && !isMetaQuestion(text)) {
+        valueToCapture = text;
+      }
+
+      if (valueToCapture !== null && ruleKey) {
+        const next = currentIdx + 1;
+        setGameRulesAnswered(next);
         nextCardData = {
           ...(workerCardData || {}),
-          gameRules: { ...(workerCardData?.gameRules || {}), [ruleKey]: text },
+          gameRules: { ...(workerCardData?.gameRules || {}), [ruleKey]: valueToCapture },
         };
         setWorkerCardData(nextCardData);
-      }
-      // Queue follow-up rule question (or completion CTA) after Alex's reply lands
-      const RULE_QUESTIONS = [
-        "Got it. Next: Win/lose conditions — how does a player win or lose? What ends the game?",
-        "Good. Next: Scoring — how do points work? Are there levels, badges, or just a single score?",
-        "Last one: Safety and compliance — anything players should NOT see or do? Age range, content limits, regulated topics?",
-      ];
-      if (next < 4) {
-        setTimeout(() => addAssistantMessage(RULE_QUESTIONS[next - 1]), 900);
-      } else {
-        // All four rules answered → advance phase + emit Artwork CTA (CODEX 47.2 Fix 2: bulletproof gate)
-        setTimeout(() => {
-          addAssistantMessage("Rules locked in. Your game is ready for artwork.");
+        if (next < 4) {
+          setTimeout(() => addAssistantMessage("Got it. Next: " + RULE_QUESTIONS[next]), 900);
+        } else {
           setTimeout(() => {
-            setMessages(prev => {
-              if (prev.some(m => m.role === "cta" && m.action === "startGameArtwork")) return prev;
-              artworkButtonShownRef.current = true;
-              return [...prev, { role: "cta", text: "Create the Artwork", action: "startGameArtwork" }];
-            });
-          }, 600);
+            addAssistantMessage("Rules locked in. Your game is ready for artwork.");
+            setTimeout(() => {
+              setMessages(prev => {
+                if (prev.some(m => m.role === "cta" && m.action === "startGameArtwork")) return prev;
+                artworkButtonShownRef.current = true;
+                return [...prev, { role: "cta", text: "Create the Artwork", action: "startGameArtwork" }];
+              });
+            }, 600);
+          }, 900);
+        }
+      } else if (ruleKey) {
+        // Meta-question: offer a default, re-ask, do not advance.
+        const def = GAME_RULE_DEFAULTS[ruleKey];
+        pendingDefaultRef.current = { phase: "rules", key: ruleKey, value: def };
+        setTimeout(() => {
+          addAssistantMessage(
+            `Good question. For a game like yours I'd recommend: ${def}. ` +
+            `Want to use that, or do you have something different in mind? ` +
+            `(Say "yes" to use my recommendation, or type your own answer.)`
+          );
         }, 900);
+        setSending(false);
+        return;
       }
     }
 
-    // CODEX 47.2 Fix 13 — Interactions session: capture movement, speed, collision, sound
+    // CODEX 47.2 Fix 13 + 48.4 Fix K — Interactions session with meta-guard
     if (gameSessionPhase === "interactions") {
-      const next = gameInteractionsAnswered + 1;
-      setGameInteractionsAnswered(next);
       const INTERACTION_KEYS = ["movement", "speed", "collisionRules", "soundCues"];
-      const interactionKey = INTERACTION_KEYS[next - 1];
-      if (interactionKey) {
+      const INTERACTION_QUESTIONS = [
+        "How does the player move their character? Tap to move, swipe to steer, tilt, arrow keys, or auto-move?",
+        "Speed — fast and frantic, or slow and deliberate?",
+        "Collision rules — what happens when you touch a teammate vs a hazard? (e.g. teammate = recruit, hazard = damage)",
+        "Sound cues — any sounds for points, damage, win, or lose? (Optional — say 'skip' if not yet.)",
+      ];
+      const currentIdx = gameInteractionsAnswered;
+      const interactionKey = INTERACTION_KEYS[currentIdx];
+
+      let valueToCapture = null;
+      if (pendingDefaultRef.current && pendingDefaultRef.current.phase === "interactions" && pendingDefaultRef.current.key === interactionKey) {
+        valueToCapture = isAffirmative(text) ? pendingDefaultRef.current.value : (isMetaQuestion(text) ? null : text);
+        if (valueToCapture !== null) pendingDefaultRef.current = null;
+      } else if (interactionKey && !isMetaQuestion(text)) {
+        valueToCapture = text;
+      }
+
+      if (valueToCapture !== null && interactionKey) {
+        const next = currentIdx + 1;
+        setGameInteractionsAnswered(next);
         nextCardData = {
           ...(nextCardData || workerCardData || {}),
           gameInteractions: {
             ...((nextCardData || workerCardData)?.gameInteractions || {}),
-            [interactionKey]: text,
+            [interactionKey]: valueToCapture,
           },
         };
         setWorkerCardData(nextCardData);
-      }
-      const INTERACTION_QUESTIONS = [
-        "Got it. Speed — fast and frantic, or slow and deliberate?",
-        "Good. Collision rules — what happens when you touch a teammate vs a hazard? (e.g. teammate = recruit, hazard = damage)",
-        "Last one: Sound cues — any sounds for points, damage, win, or lose? (Optional — say 'skip' if not yet.)",
-      ];
-      if (next < 4) {
-        setTimeout(() => addAssistantMessage(INTERACTION_QUESTIONS[next - 1]), 900);
-      } else {
-        // All four interactions answered → confirm + emit Test CTA
-        setTimeout(() => {
-          const gameTitle = (nextCardData?.name) || workerCardData?.name || "your game";
-          addAssistantMessage(`Here's how ${gameTitle} plays. Ready to test it?`);
-          setGameSessionPhase("ready");
+        if (next < 4) {
+          setTimeout(() => addAssistantMessage("Got it. Next: " + INTERACTION_QUESTIONS[next]), 900);
+        } else {
           setTimeout(() => {
-            setMessages(prev => {
-              if (prev.some(m => m.role === "cta" && m.action === "startGameTest")) return prev;
-              return [...prev, { role: "cta", text: "Test Your Game", action: "startGameTest" }];
-            });
-          }, 600);
+            const gameTitle = (nextCardData?.name) || workerCardData?.name || "your game";
+            addAssistantMessage(`Here's how ${gameTitle} plays. Ready to test it?`);
+            setGameSessionPhase("ready");
+            setTimeout(() => {
+              setMessages(prev => {
+                if (prev.some(m => m.role === "cta" && m.action === "startGameTest")) return prev;
+                return [...prev, { role: "cta", text: "Build & Test Your Game", action: "startGameTest" }];
+              });
+            }, 600);
+          }, 900);
+        }
+      } else if (interactionKey) {
+        const def = GAME_INTERACTION_DEFAULTS[interactionKey];
+        pendingDefaultRef.current = { phase: "interactions", key: interactionKey, value: def };
+        setTimeout(() => {
+          addAssistantMessage(
+            `Good question. For a game like yours I'd recommend: ${def}. ` +
+            `Want to use that, or do you have something different in mind? ` +
+            `(Say "yes" to use my recommendation, or type your own answer.)`
+          );
         }, 900);
+        setSending(false);
+        return;
       }
     }
 
@@ -1857,6 +1943,48 @@ export default function DeveloperSandbox() {
     await runGameBuildPipeline(workerCardData);
   }
 
+  // CODEX 48.4 Fix L — Before running the build, ensure Firebase auth + tenant
+  // exist. Guest/incognito creators get anonymous sign-in and a fresh tenant
+  // claimed under the hood. Existing signup modal at publish time still fires.
+  async function ensureAnonymousAuthForBuild() {
+    // Already have a real token + tenant
+    const existingToken = localStorage.getItem("ID_TOKEN");
+    const existingTenant = localStorage.getItem("TENANT_ID");
+    if (firebaseAuth?.currentUser && existingToken && existingTenant) {
+      return { ok: true };
+    }
+    try {
+      // Sign in anonymously if no Firebase user
+      if (!firebaseAuth?.currentUser) {
+        await signInAnonymously(firebaseAuth);
+      }
+      const user = firebaseAuth.currentUser;
+      if (!user) return { ok: false, error: "Anonymous sign-in returned no user" };
+      const idToken = await user.getIdToken();
+      localStorage.setItem("ID_TOKEN", idToken);
+      if (user.uid) localStorage.setItem("USER_ID", user.uid);
+
+      // Claim a tenant if we don't have one
+      if (!localStorage.getItem("TENANT_ID")) {
+        const claimRes = await fetch(`${API_BASE}/api?path=/v1/onboarding:claimTenant`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+          body: JSON.stringify({ name: "Guest Creator", surface: "sandbox" }),
+        });
+        const claimData = await claimRes.json().catch(() => ({}));
+        if (claimData.ok && claimData.tenantId) {
+          localStorage.setItem("TENANT_ID", claimData.tenantId);
+        } else {
+          return { ok: false, error: "Tenant claim failed: " + (claimData.error || "unknown") };
+        }
+      }
+      return { ok: true };
+    } catch (err) {
+      console.error("[ensureAnonymousAuthForBuild] failed:", err);
+      return { ok: false, error: err.message || "Auth bootstrap failed" };
+    }
+  }
+
   async function runGameBuildPipeline(cardData) {
     if (!cardData) {
       addAssistantMessage("Can't build yet — your game card isn't ready. Complete the concept first.");
@@ -1870,6 +1998,13 @@ export default function DeveloperSandbox() {
       !m.text?.startsWith("Game build failed")
     ));
     addAssistantMessage("Building your game now. Packaging rules, interactions, and artwork...");
+
+    // CODEX 48.4 Fix L — auth bootstrap so guests don't 401 on intake
+    const authRes = await ensureAnonymousAuthForBuild();
+    if (!authRes.ok) {
+      addAssistantMessage(`Game build failed: couldn't set up your workspace. ${authRes.error}. Try again.`);
+      return;
+    }
 
     try {
       const workerId = worker?.id || ("gme_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8));

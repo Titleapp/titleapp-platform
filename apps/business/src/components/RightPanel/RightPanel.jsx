@@ -524,13 +524,25 @@ function WorkerCanvas({ workerData, verticalLabel, onLeave }) {
 // ── Stats Header ────────────────────────────────────────────────
 
 const LANGUAGES = [
-  "English", "Espanol", "Portugues", "Francais", "Deutsch", "Italiano",
-  "\u4e2d\u6587", "\u7ca4\u8a9e", "\u65e5\u672c\u8a9e", "\ud55c\uad6d\uc5b4", "\u0939\u093f\u0928\u094d\u0926\u0940", "\u0627\u0644\u0639\u0631\u0628\u064a\u0629", "\u0423\u043a\u0440\u0430\u0457\u043d\u0441\u044c\u043a\u0430",
-  "Tieng Viet", "\u0e20\u0e32\u0e29\u0e32\u0e44\u0e17\u0e22", "Bahasa", "Filipino", "\u0420\u0443\u0441\u0441\u043a\u0438\u0439", "Polski",
-  "Turkce", "\u0395\u03bb\u03bb\u03b7\u03bd\u03b9\u03ba\u03ac", "Nederlands", "Svenska",
+  { label: "English", code: "en" }, { label: "Espanol", code: "es" }, { label: "Portugues", code: "pt" },
+  { label: "Francais", code: "fr" }, { label: "Deutsch", code: "de" }, { label: "Italiano", code: "it" },
+  { label: "\u4e2d\u6587", code: "zh" }, { label: "\u7ca4\u8a9e", code: "zh-HK" }, { label: "\u65e5\u672c\u8a9e", code: "ja" },
+  { label: "\ud55c\uad6d\uc5b4", code: "ko" }, { label: "\u0939\u093f\u0928\u094d\u0926\u0940", code: "hi" }, { label: "\u0627\u0644\u0639\u0631\u0628\u064a\u0629", code: "ar" },
+  { label: "\u0423\u043a\u0440\u0430\u0457\u043d\u0441\u044c\u043a\u0430", code: "uk" }, { label: "Tieng Viet", code: "vi" }, { label: "\u0e20\u0e32\u0e29\u0e32\u0e44\u0e17\u0e22", code: "th" },
+  { label: "Bahasa", code: "id" }, { label: "Filipino", code: "fil" }, { label: "\u0420\u0443\u0441\u0441\u043a\u0438\u0439", code: "ru" },
+  { label: "Polski", code: "pl" }, { label: "Turkce", code: "tr" }, { label: "\u0395\u03bb\u03bb\u03b7\u03bd\u03b9\u03ba\u03ac", code: "el" },
+  { label: "Nederlands", code: "nl" }, { label: "Svenska", code: "sv" },
 ];
 
 function StatsHeader() {
+  const [selectedLang, setSelectedLang] = useState(() => localStorage.getItem("PREFERRED_LANGUAGE") || "en");
+
+  function handleLangClick(lang) {
+    setSelectedLang(lang.code);
+    localStorage.setItem("PREFERRED_LANGUAGE", lang.code);
+    window.dispatchEvent(new CustomEvent("ta:language-changed", { detail: { code: lang.code, label: lang.label } }));
+  }
+
   return (
     <div style={S.statsBar}>
       <div style={S.statsRow}>
@@ -540,7 +552,13 @@ function StatsHeader() {
         <span style={S.statItem}><span style={S.statNum}>13</span> Industry Suites</span>
       </div>
       <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 10px", fontSize: 11, color: "#94a3b8", marginTop: 10 }}>
-        {LANGUAGES.map(l => <span key={l}>{l}</span>)}
+        {LANGUAGES.map(l => (
+          <span
+            key={l.code}
+            onClick={() => handleLangClick(l)}
+            style={{ cursor: "pointer", color: selectedLang === l.code ? "#7c3aed" : undefined, fontWeight: selectedLang === l.code ? 600 : undefined, transition: "color 0.15s" }}
+          >{l.label}</span>
+        ))}
       </div>
       <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 6, fontStyle: "italic" }}>Every worker speaks your language.</div>
     </div>

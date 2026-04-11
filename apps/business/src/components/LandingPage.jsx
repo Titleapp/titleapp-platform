@@ -198,7 +198,7 @@ export default function LandingPage() {
           <span style={S.logoText}>TitleApp</span>
         </div>
         <div style={S.headerRight}>
-          <a href={`${appBase}/meet-alex`} style={S.headerLink}>Sign In</a>
+          <a href={`${appBase}/meet-alex?action=signin`} style={S.headerLink}>Sign In</a>
           <a href={`${appBase}/sandbox`} style={S.headerLink}>Creators</a>
           <a href={`${appBase}/meet-alex`} style={S.headerCta}>Start Free</a>
         </div>

@@ -2961,7 +2961,31 @@ Message 8+: If they seem interested, gently offer to set it up. "I can have this
 
           let creatorPathCtx = '';
           if (isGamePath) {
-            creatorPathCtx = `\nCRITICAL — GAME MODE: You are helping ${sessionState.devName || 'the creator'} build a GAME${workerName ? ' called "' + workerName + '"' : ''}. This is a game, not a Digital Worker. NEVER refer to it as a Digital Worker. NEVER suggest switching to the worker pipeline. Always say "game." Ask about game mechanics, player experience, rules, and artwork. The [WORKER_SPEC] block still works the same way -- include "gameConfig": { "isGame": true, "gameMode": "${gameMode}" } in the spec JSON.\n`;
+            // CODEX 48.4 Fix J — Authoritative 8-step game pipeline. Overrides
+            // the 9-step worker pipeline defined later in this prompt. Alex
+            // MUST use these exact step names and numbers for games.
+            const currentGamePhase = sessionState.gameSessionPhase || 'concept';
+            const phaseIndex = { concept: 1, rules: 2, artwork: 3, interactions: 4, ready: 5, test: 5, preflight: 6, distribute: 7, grow: 8 }[currentGamePhase] || 1;
+            const phaseLabel = { concept: 'Concept', rules: 'Rules', artwork: 'Artwork', interactions: 'Interactions', ready: 'Test', test: 'Test', preflight: 'Preflight', distribute: 'Distribute', grow: 'Grow & Revise' }[currentGamePhase] || 'Concept';
+
+            creatorPathCtx = `\nCRITICAL — GAME MODE: You are helping ${sessionState.devName || 'the creator'} build a GAME${workerName ? ' called "' + workerName + '"' : ''}. This is a game, not a Digital Worker. NEVER refer to it as a Digital Worker. NEVER suggest switching to the worker pipeline. Always say "game." The [WORKER_SPEC] block still works the same way -- include "gameConfig": { "isGame": true, "gameMode": "${gameMode}" } in the spec JSON.
+
+THE 8-STEP GAME PIPELINE (this overrides any other step list — ignore "Design", "Knowledge", "Tools" for games):
+1. Concept — Get the idea and generate the game card.
+2. Rules — Turn mechanic, win/lose conditions, scoring, safety/compliance.
+3. Artwork — Backgrounds, characters, icons/items, score display.
+4. Interactions — Movement, speed, collision rules, sound cues.
+5. Test — Playable prototype on the canvas. Creator tests it themselves.
+6. Preflight — Automated deploy checklist.
+7. Distribute — Launch kit (URL, QR, embed, social copy).
+8. Grow & Revise — Distribution coach + iteration.
+
+CURRENT PHASE: Step ${phaseIndex} — ${phaseLabel}. The creator is here RIGHT NOW. Do not reference a different step. Do not say you are in "Design" or "Knowledge" or "Tools" — those phases do not exist for games. If the creator asks what step you are on, say "${phaseLabel} — step ${phaseIndex} of 8".
+
+FORBIDDEN WORDS FOR GAMES: "Design" (as a step name), "Knowledge" (as a step name), "Tools" (as a step name), "9 steps", "step 2 of 9", "step 3 of 9", or any similar phrasing. Games have 8 steps, not 9.
+
+CANVAS AWARENESS: You can see the creator's canvas on the right side of the screen. The step progress bar at the top updates live. Assets, rules, and interactions populate in real time as you lock them in. NEVER say "I can't see your screen" or "that's a UI issue on my end" or "I can't control what displays." If the creator reports a display glitch, acknowledge it briefly and keep building — do not apologize or speculate about UI sync.
+`;
 
             // CODEX 47.1 Fix 4 — inject locked-in game rules so Alex never asks again.
             const rules = sessionState.gameRulesAnswers || {};
@@ -2986,9 +3010,11 @@ Message 8+: If they seem interested, gently offer to set it up. "I can have this
 ${creatorPathCtx}
 TERMINOLOGY: Always say "Digital Worker" for workers. For games, say "game."
 
-YOUR ROLE: Guide creators through a 9-step build flow. The right panel shows a canvas for each step. Your job is conversational guidance that matches the current step. You do NOT build everything at once -- each step produces a visible result before moving to the next.
+YOUR ROLE: Guide creators through the build flow. The right panel shows a canvas for each step. Your job is conversational guidance that matches the current step. You do NOT build everything at once -- each step produces a visible result before moving to the next.
 
-THE 9 STEPS (in order):
+${isGamePath ? '(For games, use the 8-step GAME PIPELINE defined above. Ignore the 9 worker steps that follow — they are for Digital Workers only.)' : ''}
+
+THE 9 WORKER STEPS (Digital Workers only — NOT for games):
 1. DEFINE — Get the idea. What is this worker? Who uses it? What does it do? This is a quick conversation (2-3 questions max). As soon as you understand the core idea, generate a [WORKER_SPEC] so the canvas fills in.
 2. DESIGN — The "aha moment." The creator sees their worker take shape visually. Generate a name, description, and branding. If they uploaded files or content, reference what you read. This step should feel instant and exciting.
 3. KNOWLEDGE — Content onboarding. The creator uploads documents, PDFs, SOPs, reference material. Help them understand what to upload. Acknowledge each file's content.
