@@ -85,7 +85,7 @@ function investorStatus(investor) {
 //  HTML EMAIL TEMPLATE
 // ═══════════════════════════════════════════════════════════════
 
-function buildAdminHtml({ today, rev, analytics, activeDeals, totalPipeline, investors, campaigns, escalations, prevAnalytics, prevRev, priority }) {
+function buildAdminHtml({ today, rev, analytics, activeDeals, totalPipeline, investors, campaigns, escalations, prevAnalytics, prevRev, priority, contentSyncEvents, marketplaceStats }) {
   const dayOfMonth = new Date().getDate();
   const monthlyTarget = rev.monthlyTarget || 10000;
   const revStatus = revenueStatus(rev.mtd || 0, monthlyTarget, dayOfMonth);
@@ -130,6 +130,36 @@ function buildAdminHtml({ today, rev, analytics, activeDeals, totalPipeline, inv
       <p ${rowStyle}>Active Subscribers &nbsp; ${analytics.activeSubscribers || 0} &nbsp; ${trendArrow(analytics.activeSubscribers || 0, prevAnalytics.activeSubscribers || 0)}</p>
       <p ${rowStyle}>Active Campaigns &nbsp; ${campaigns.length} &nbsp; ${trendArrow(campaigns.length, 0)}</p>
     </div>`;
+
+  // Inventory section (only if contentSync events exist)
+  let inventorySection = "";
+  if (contentSyncEvents && contentSyncEvents.length > 0) {
+    const approved = contentSyncEvents.filter(e => e.event_type === "worker_approved");
+    const deprecated = contentSyncEvents.filter(e => e.event_type === "worker_deprecated");
+    const other = contentSyncEvents.filter(e => e.event_type !== "worker_approved" && e.event_type !== "worker_deprecated");
+    const liveWorkers = marketplaceStats.liveWorkers || analytics.workersPublished || 0;
+
+    let invRows = `<p ${rowStyle}>Total Live Workers &nbsp; ${liveWorkers}</p>`;
+    if (approved.length > 0) {
+      invRows += `<p ${rowStyle}>${statusDot("green")} ${approved.length} new worker${approved.length > 1 ? "s" : ""} approved</p>`;
+      for (const ev of approved.slice(0, 3)) {
+        const vLabel = ev.vertical ? ` (${ev.vertical})` : "";
+        invRows += `<p style="font-size:13px;line-height:1.6;margin:0;padding-left:20px;color:#6b7280">&rarr; ${ev.name || ev.worker_id}${vLabel}</p>`;
+      }
+    }
+    if (deprecated.length > 0) {
+      invRows += `<p ${rowStyle}>${statusDot("yellow")} ${deprecated.length} worker${deprecated.length > 1 ? "s" : ""} deprecated</p>`;
+    }
+    if (other.length > 0) {
+      invRows += `<p ${rowStyle}>${statusDot("gray")} ${other.length} other change${other.length > 1 ? "s" : ""}</p>`;
+    }
+
+    inventorySection = `
+    <div ${sectionStyle}>
+      <p ${headerStyle}>PLATFORM INVENTORY</p>
+      ${invRows}
+    </div>`;
+  }
 
   // Investors section
   const activeInvestors = investors.filter(i => !["PASSED", "CLOSED_LOST"].includes(i.stage));
@@ -205,6 +235,7 @@ function buildAdminHtml({ today, rev, analytics, activeDeals, totalPipeline, inv
   ${revenueSection}
   ${pipelineSection}
   ${platformSection}
+  ${inventorySection}
   ${investorSection}
   ${attentionSection}
   <div style="padding:16px 24px;background:#f9fafb;border-top:1px solid #e5e7eb">
@@ -253,7 +284,7 @@ function pickPriority(activeDeals, escalations, rev, dayOfMonth, monthlyTarget) 
 //  PLAIN TEXT BUILDER — for SMS fallback
 // ═══════════════════════════════════════════════════════════════
 
-function buildPlainText({ today, rev, analytics, activeDeals, totalPipeline, investors, escalations, priority }) {
+function buildPlainText({ today, rev, analytics, activeDeals, totalPipeline, investors, escalations, priority, contentSyncEvents, marketplaceStats }) {
   const lines = [];
   lines.push(`TitleApp Daily — ${today}\n`);
   lines.push(`PRIORITY: ${priority.text}`);
@@ -263,6 +294,10 @@ function buildPlainText({ today, rev, analytics, activeDeals, totalPipeline, inv
     lines.push(`  ${plainStatusDot(dealStatus(deal))} ${deal.company || deal.contactName}: ${deal.stage}`);
   }
   lines.push(`PLATFORM: ${analytics.signupsToday || 0} signups, ${analytics.workersPublished || 0} workers`);
+  if (contentSyncEvents && contentSyncEvents.length > 0) {
+    const liveWorkers = marketplaceStats?.liveWorkers || analytics.workersPublished || 0;
+    lines.push(`INVENTORY: ${contentSyncEvents.length} changes (${liveWorkers} live)`);
+  }
   const activeInvestors = investors.filter(i => !["PASSED", "CLOSED_LOST"].includes(i.stage));
   if (activeInvestors.length > 0) {
     lines.push(`INVESTORS: ${activeInvestors.length} active`);
@@ -285,6 +320,7 @@ async function generateDailyDigest() {
   const yesterday = new Date(now - 86400000).toISOString().slice(0, 10);
 
   // Gather data from all sources
+  const twentyFourHoursAgo = new Date(now - 86400000);
   const [
     accountingSnap,
     analyticsSnap,
@@ -293,6 +329,8 @@ async function generateDailyDigest() {
     investorsSnap,
     campaignsSnap,
     escalationsSnap,
+    contentSyncSnap,
+    marketplaceStatsSnap,
   ] = await Promise.all([
     db.collection("accounting").doc("summary").get(),
     db.collection("analytics").doc(`daily_${today}`).get(),
@@ -301,6 +339,12 @@ async function generateDailyDigest() {
     db.collection("pipeline").doc("investors").collection("deals").get(),
     db.collection("campaigns").where("status", "==", "active").get(),
     db.collection("escalations").where("resolved", "==", false).get(),
+    db.collection("platform").doc("contentSync").collection("events")
+      .where("timestamp", ">=", twentyFourHoursAgo)
+      .orderBy("timestamp", "desc")
+      .limit(20)
+      .get(),
+    db.collection("platform").doc("marketplaceStats").get(),
   ]);
 
   const accounting = accountingSnap.exists ? accountingSnap.data() : {};
@@ -310,6 +354,9 @@ async function generateDailyDigest() {
   const investors = investorsSnap.docs.map((d) => d.data());
   const campaigns = campaignsSnap.docs.map((d) => d.data());
   const escalations = escalationsSnap.docs.map((d) => d.data());
+
+  const contentSyncEvents = contentSyncSnap.docs.map((d) => d.data());
+  const marketplaceStats = marketplaceStatsSnap.exists ? marketplaceStatsSnap.data() : {};
 
   const rev = accounting.revenue || {};
   const prevRev = { mtd: prevAnalytics.revenueMtd || 0 };
@@ -324,12 +371,13 @@ async function generateDailyDigest() {
   const htmlBody = buildAdminHtml({
     today, rev, analytics, activeDeals, totalPipeline,
     investors, campaigns, escalations, prevAnalytics, prevRev, priority,
+    contentSyncEvents, marketplaceStats,
   });
 
   // Build plain text for SMS + email fallback
   const digestText = buildPlainText({
     today, rev, analytics, activeDeals, totalPipeline,
-    investors, escalations, priority,
+    investors, escalations, priority, contentSyncEvents, marketplaceStats,
   });
 
   // Store digest

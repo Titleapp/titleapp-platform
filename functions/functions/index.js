@@ -4634,6 +4634,33 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
     }
 
     // ═══════════════════════════════════════════════════════════════
+    //  PLATFORM INVENTORY — UNAUTHENTICATED (token-gated or admin bearer)
+    //  PearX S26 Doc 1.4
+    // ═══════════════════════════════════════════════════════════════
+
+    // GET /v1/inventory:data — Full platform inventory (admin or investor token)
+    if (route === "/inventory:data" && method === "GET") {
+      try {
+        const { getInventoryData } = require("./services/platformInventory");
+        return await getInventoryData(req, res);
+      } catch (e) {
+        console.error("inventory:data failed:", e);
+        return jsonError(res, 500, "Failed to load inventory");
+      }
+    }
+
+    // GET /v1/inventory:snapshot — PDF export (admin or investor token)
+    if (route === "/inventory:snapshot" && method === "GET") {
+      try {
+        const { getInventorySnapshot } = require("./services/platformInventory");
+        return await getInventorySnapshot(req, res);
+      } catch (e) {
+        console.error("inventory:snapshot failed:", e);
+        return jsonError(res, 500, "Failed to generate snapshot");
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
     //  SANDBOX PREVIEW — UNAUTHENTICATED (32.7-T2)
     // ═══════════════════════════════════════════════════════════════
 
@@ -8764,6 +8791,19 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
     }
 
     // ----------------------------
+    // ADMIN: PLATFORM INVENTORY — ROTATE TOKEN (PearX S26 Doc 1.4)
+    // ----------------------------
+    if (route === "/inventory:rotateToken" && method === "POST") {
+      try {
+        const { rotateInventoryToken } = require("./services/platformInventory");
+        return await rotateInventoryToken(req, res);
+      } catch (e) {
+        console.error("inventory:rotateToken failed:", e);
+        return jsonError(res, 500, "Failed to rotate token");
+      }
+    }
+
+    // ----------------------------
     // ADMIN: SALES — SEND INTRO TEXT (34.9-T2)
     // ----------------------------
     if (route === "/admin:sendIntroText" && method === "POST") {
@@ -10172,7 +10212,17 @@ Active: ${rc.active ? "Yes" : "No"}`;
 
             // Call Claude API
             const anthropic = getAnthropic();
-            const isPersonalVault = (ctx.vertical || "").toLowerCase() === "consumer" || (ctx.vertical || "").toUpperCase() === "GLOBAL";
+            // CODEX 48.2 Fix 2 — hardened vault detection. Previous check only
+            // matched vertical === "consumer" or "GLOBAL". If the workspace switch
+            // didn't propagate the vertical header correctly (localStorage race),
+            // Alex received the business prompt and hallucinated nav sections like
+            // "Analyst" that don't exist in the vault. Now also checks tenantId
+            // (which doubles as workspaceId — "vault" or "personal-vault").
+            const isPersonalVault =
+              (ctx.vertical || "").toLowerCase() === "consumer" ||
+              (ctx.vertical || "").toUpperCase() === "GLOBAL"  ||
+              (ctx.tenantId || "").toLowerCase() === "vault" ||
+              (ctx.tenantId || "").toLowerCase() === "personal-vault";
 
             // Check if Alex orchestration layer should be used
             let alexSystemPrompt = null;
@@ -10397,6 +10447,8 @@ Your role:
 You are not a chatbot. You are a trusted team member who acts on the user's behalf. When they tell you about something they own, you create the record. When they upload a file, you store it. When they need to attest ownership, you walk them through it. You never tell the user to "go to a section" or "use the left navigation." Everything happens here.
 
 In this context you help with personal records, documents, files, and logbooks. You do not run business analytics, team management, or inventory operations here -- those belong in a business workspace.
+
+The navigation in this workspace contains only: Dashboard, Documents, Signatures, Activity, My Workers, My Games. If the user asks about a feature not in this list, tell them it is available in a business workspace and offer to help them switch. Never reference sections like Analyst, Deal Pipeline, Reports, or Clients and Contacts -- those do not exist in this workspace.
 
 Formatting rules -- follow these strictly:
 - Never use emojis in your responses.

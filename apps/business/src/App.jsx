@@ -10,6 +10,7 @@ import WorkspaceHub from "./components/WorkspaceHub";
 import BuilderInterview from "./components/BuilderInterview";
 import Dashboard from "./sections/Dashboard";
 import WorkerHome from "./sections/WorkerHome";
+import VaultDashboard from "./sections/VaultDashboard";
 import Analyst from "./sections/Analyst";
 import RulesResources from "./sections/RulesResources";
 import Inventory from "./sections/Inventory";
@@ -57,6 +58,8 @@ import AlexPipelines from "./sections/AlexPipelines";
 import AlexTaskBoard from "./sections/AlexTaskBoard";
 import AlexWorkerStatus from "./sections/AlexWorkerStatus";
 import DeveloperSandbox from "./pages/DeveloperSandbox";
+import WorkerSandbox from "./pages/WorkerSandbox";
+import WorkerBuildLog from "./pages/WorkerBuildLog";
 import MarketplaceListing from "./pages/MarketplaceListing";
 import CreatorApplication from "./pages/CreatorApplication";
 import WorkerWaitlistPage from "./pages/WorkerWaitlistPage";
@@ -69,6 +72,7 @@ import PropertyMgmtLanding from "./pages/landing/PropertyMgmtLanding";
 import DeveloperLanding from "./pages/landing/DeveloperLanding";
 import PilotLanding from "./pages/landing/PilotLanding";
 import AlexWorkspace from "./pages/AlexWorkspace";
+import PlatformInventory from "./pages/PlatformInventory";
 import CampaignPage from "./pages/campaigns/CampaignPage";
 import InviteLanding from "./pages/InviteLanding";
 import MeetAlex from "./pages/MeetAlex";
@@ -4415,8 +4419,11 @@ function AdminShell({ onBackToHub, initialSection }) {
         const TeamSetup = React.lazy(() => import("./pages/TeamSetup"));
         return <React.Suspense fallback={<div />}><TeamSetup onComplete={() => window.location.reload()} /></React.Suspense>;
       }
-      case "dashboard":
-        return <WorkerHome />;
+      case "dashboard": {
+        // CODEX 48.2 Fix 4 — vault-native dashboard for personal mode.
+        const v = (localStorage.getItem("VERTICAL") || "").toLowerCase();
+        return v === "consumer" ? <VaultDashboard /> : <WorkerHome />;
+      }
       case "analyst":
         return <Analyst />;
       case "rules-resources":
@@ -4584,6 +4591,11 @@ export default function App() {
   // Standalone Vibe Coding Sandbox — split-pane layout with Alex chat + workspace
   const isSandbox = window.location.pathname === "/sandbox" || window.location.pathname === "/sandbox/" || /^\/developers\/?$/.test(window.location.pathname);
 
+  // ── /sandbox/worker route intercept (CODEX 47.4 Phase B) ───
+  // Reference Worker Sandbox — 9-step build flow against Phase A backend.
+  const isWorkerSandbox = /^\/sandbox\/worker\/?$/.test(window.location.pathname);
+  const isWorkerBuildLog = /^\/sandbox\/worker\/buildlog\/?$/.test(window.location.pathname);
+
   // ── /marketplace/:slug route intercept ─────────────────────
   // Public marketplace listing page — no auth required
   const marketplaceMatch = window.location.pathname.match(/^\/marketplace\/([a-z0-9-]+)\/?$/);
@@ -4636,6 +4648,9 @@ export default function App() {
   // ── /meet-alex route intercept ────────────────────────
   const isMeetAlex = /^\/meet-alex\/?$/.test(window.location.pathname);
   const [meetAlexLock, setMeetAlexLock] = useState(false);
+
+  // ── /platform route intercept (PearX S26 Doc 1.4) ────
+  const isPlatformInventory = window.location.pathname === "/platform" || window.location.pathname === "/platform/";
 
   const [sandboxReady, setSandboxReady] = useState(isSandbox ? false : null);
   const [authResolved, setAuthResolved] = useState(false); // true once onAuthStateChanged fires at least once
@@ -5233,6 +5248,23 @@ export default function App() {
       return null;
     }
     return <InvestorDataRoom />;
+  }
+
+  // ── Platform Inventory (PearX S26 Doc 1.4) ──────────────────
+  if (isPlatformInventory) {
+    return <PlatformInventory />;
+  }
+
+  // ── Worker Sandbox (CODEX 47.4 Phase B reference) ─────────────
+  if (isWorkerBuildLog) {
+    return <WorkerBuildLog />;
+  }
+  if (isWorkerSandbox) {
+    return (
+      <SandboxErrorBoundary>
+        <WorkerSandbox />
+      </SandboxErrorBoundary>
+    );
   }
 
   // ── Vibe Coding Sandbox: standalone experience ────────────────
