@@ -1,9 +1,20 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { WORKER_ROUTES } from "../pages/WorkerMarketplace";
 import { SUITE_COLORS } from "../utils/workerIcons";
 
 // Derive suite list from actual worker data
 const ALL_SUITES = ["All", ...Array.from(new Set(WORKER_ROUTES.filter(w => !w.internal_only).map(w => w.suite)))];
+
+const LANGUAGES = [
+  { label: "English", code: "en" }, { label: "Espanol", code: "es" }, { label: "Portugues", code: "pt" },
+  { label: "Francais", code: "fr" }, { label: "Deutsch", code: "de" }, { label: "Italiano", code: "it" },
+  { label: "中文", code: "zh" }, { label: "粤語", code: "zh-HK" }, { label: "日本語", code: "ja" },
+  { label: "한국어", code: "ko" }, { label: "हिन्दी", code: "hi" }, { label: "العربية", code: "ar" },
+  { label: "Українська", code: "uk" }, { label: "Tieng Viet", code: "vi" }, { label: "ภาษาไทย", code: "th" },
+  { label: "Bahasa", code: "id" }, { label: "Filipino", code: "fil" }, { label: "Русский", code: "ru" },
+  { label: "Polski", code: "pl" }, { label: "Turkce", code: "tr" }, { label: "Ελληνικά", code: "el" },
+  { label: "Nederlands", code: "nl" }, { label: "Svenska", code: "sv" },
+];
 
 function formatPrice(cents) {
   if (cents === 0) return "Free";
@@ -13,6 +24,13 @@ function formatPrice(cents) {
 export default function RAASStore() {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeSuite, setActiveSuite] = useState("All");
+  const [selectedLang, setSelectedLang] = useState(() => localStorage.getItem("PREFERRED_LANGUAGE") || "en");
+
+  function handleLangClick(lang) {
+    setSelectedLang(lang.code);
+    localStorage.setItem("PREFERRED_LANGUAGE", lang.code);
+    window.dispatchEvent(new CustomEvent("ta:language-changed", { detail: { code: lang.code, label: lang.label } }));
+  }
   const [expandedId, setExpandedId] = useState(null);
 
   const workers = WORKER_ROUTES.filter(w => !w.internal_only);
@@ -64,12 +82,32 @@ export default function RAASStore() {
     <div>
       {/* Header */}
       <div style={{ marginBottom: "28px" }}>
-        <h1 style={{ fontSize: "32px", fontWeight: 800, color: "#1e293b", margin: "0 0 6px 0" }}>
+        <h1 style={{ fontSize: 28, fontWeight: 700, color: "#1e293b", margin: "0 0 6px 0" }}>
           Marketplace
         </h1>
         <p style={{ fontSize: "15px", color: "#64748b", margin: 0, lineHeight: 1.5 }}>
           AI-powered apps built by domain experts — browse, subscribe, or build your own.
         </p>
+      </div>
+
+      {/* Stats + Language Bar */}
+      <div style={{ marginBottom: 20, padding: "14px 0", borderBottom: "1px solid #e5e7eb" }}>
+        <div style={{ display: "flex", gap: 16, flexWrap: "wrap", fontSize: 13, fontWeight: 600, color: "#64748b", marginBottom: 10 }}>
+          <span style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ color: "#111827", fontWeight: 700 }}>1,000+</span> Digital Workers</span>
+          <span style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ color: "#111827", fontWeight: 700 }}>54</span> Countries</span>
+          <span style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ color: "#111827", fontWeight: 700 }}>24/7</span></span>
+          <span style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ color: "#111827", fontWeight: 700 }}>13</span> Industry Suites</span>
+        </div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 10px", fontSize: 11, color: "#94a3b8" }}>
+          {LANGUAGES.map(l => (
+            <span
+              key={l.code}
+              onClick={() => handleLangClick(l)}
+              style={{ cursor: "pointer", color: selectedLang === l.code ? "#7c3aed" : undefined, fontWeight: selectedLang === l.code ? 600 : undefined, transition: "color 0.15s" }}
+            >{l.label}</span>
+          ))}
+        </div>
+        <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 6, fontStyle: "italic" }}>Every worker speaks your language.</div>
       </div>
 
       {/* Search */}

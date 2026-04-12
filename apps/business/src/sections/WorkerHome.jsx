@@ -128,7 +128,7 @@ export default function WorkerHome() {
     <div style={{ padding: "32px 40px", maxWidth: 960, overflowY: "auto", height: "100%" }}>
       {/* Greeting */}
       <div style={{ marginBottom: 32 }}>
-        <h1 style={{ fontSize: 24, fontWeight: 700, color: "#1e293b", margin: 0 }}>
+        <h1 style={{ fontSize: 28, fontWeight: 700, color: "#1e293b", margin: 0 }}>
           {greeting}{firstName ? `, ${firstName}` : ""}
         </h1>
         <p style={{ fontSize: 14, color: "#64748b", margin: "6px 0 0" }}>

@@ -4687,6 +4687,9 @@ export default function App() {
       if (result?.user) {
         result.user.getIdToken(true).then((idToken) => {
           localStorage.setItem("ID_TOKEN", idToken);
+          // Store display name + email so sidebar shows correct name immediately
+          if (result.user.displayName) localStorage.setItem("DISPLAY_NAME", result.user.displayName);
+          if (result.user.email) localStorage.setItem("USER_EMAIL", result.user.email);
           const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
           // Transfer subscriptions from anonymous session if applicable
           const storedAnonUid = sessionStorage.getItem("ta_pre_link_anon_uid");
@@ -4833,6 +4836,8 @@ export default function App() {
         try {
           const freshToken = await user.getIdToken(true);
           localStorage.setItem("ID_TOKEN", freshToken);
+          if (user.displayName) localStorage.setItem("DISPLAY_NAME", user.displayName);
+          if (user.email) localStorage.setItem("USER_EMAIL", user.email);
           setToken(freshToken);
           setUserName(user.displayName || user.email?.split("@")[0] || "");
         } catch (err) {
@@ -5388,6 +5393,15 @@ export default function App() {
     return <React.Suspense fallback={<div style={{ minHeight: "100vh" }} />}><SubscribeSuccess /></React.Suspense>;
   }
 
+  // ── Meet Alex: logged-in user clicking Sign In → redirect to dashboard ────
+  if (isMeetAlex && token && !meetAlexLock) {
+    const maParams = new URLSearchParams(window.location.search);
+    if (maParams.get("action") === "signin") {
+      window.history.replaceState({}, "", "/");
+    }
+    // Fall through to normal app rendering below
+  }
+
   // ── Meet Alex: guest shell — three-panel with guest mode ────
   // Show MeetAlex for unauthenticated users, or while auth+subscribe is in progress
   // (meetAlexLock). Once lock releases and token exists, fall through to workspace.
@@ -5476,6 +5490,7 @@ export default function App() {
         onBuilderStart={() => setCurrentView("builder-interview")}
         onAdminLaunch={() => setCurrentView("admin")}
         onAddWorker={() => setCurrentView("marketplace")}
+        onBack={() => transitionTo("app")}
       /></>
     );
   }

@@ -870,7 +870,7 @@ const WORKER_NAV_MAP = {
   "consumer": [
     { id: "vault-documents", label: "Documents" },
     { id: "pending-signatures", label: "Signatures" },
-    { id: "my-logbook", label: "Activity" },
+    { id: "my-logbook", label: "Logbooks" },
   ],
 };
 
@@ -1090,8 +1090,8 @@ export default function Sidebar({
   const [selectedWorker, setSelectedWorker] = useState(null);
   const [workersExpanded, setWorkersExpanded] = useState(false);
   const [collapsedGroups, setCollapsedGroups] = useState({});
-  const [workersCollapsed, setWorkersCollapsed] = useState(false);
-  const [gamesCollapsed, setGamesCollapsed] = useState(false);
+  const [workersCollapsed, setWorkersCollapsed] = useState(true);
+  const [gamesCollapsed, setGamesCollapsed] = useState(true);
   const workerCtx = useWorkerState();
   const vertical = guestMode ? "" : (localStorage.getItem("VERTICAL") || "auto");
   const isPersonal = vertical === "consumer";
@@ -1252,7 +1252,7 @@ export default function Sidebar({
         { id: "dashboard",          label: "Dashboard" },
         { id: "vault-documents",    label: "Documents" },
         { id: "pending-signatures", label: "Signatures" },
-        { id: "my-logbook",         label: "Activity" },
+        { id: "my-logbook",         label: "Logbooks" },
         { id: "billing",            label: "Billing" },
       ];
     }
@@ -1553,7 +1553,7 @@ export default function Sidebar({
             padding: 0, margin: 0,
           }}
         >
-          <span style={{ display: "flex", alignItems: "center" }}>My Workers<DataLinkStatus /></span>
+          <span style={{ display: "flex", alignItems: "center", color: "#a78bfa" }}>My Workers<DataLinkStatus /></span>
           <span style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", transition: "transform 0.2s", transform: workersCollapsed ? "rotate(0deg)" : "rotate(90deg)" }}>&rsaquo;</span>
         </button>
 
@@ -1710,7 +1710,7 @@ export default function Sidebar({
                 padding: 0, margin: 0,
               }}
             >
-              <span>My Games</span>
+              <span style={{ color: "#22c55e" }}>My Games</span>
               <span style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", transition: "transform 0.2s", transform: gamesCollapsed ? "rotate(0deg)" : "rotate(90deg)" }}>&rsaquo;</span>
             </button>
             {!gamesCollapsed && (
@@ -1789,13 +1789,14 @@ export default function Sidebar({
             setSelectedWorker(null);
             if (workerCtx?.selectWorker) workerCtx.selectWorker(null);
             window.dispatchEvent(new CustomEvent("ta:select-worker", { detail: null }));
-            onNavigate("dashboard");
+            setWorkersCollapsed(false);
+            onNavigate("worker-home");
           }}
           className="iconBtn"
           style={{
             width: "100%", marginBottom: 4, fontSize: 12,
             color: "rgba(255,255,255,0.5)", background: "none", border: "none",
-            cursor: "pointer", padding: "8px 0",
+            cursor: "pointer", padding: "8px 16px", textAlign: "left",
           }}
           onMouseEnter={e => { e.currentTarget.style.color = "rgba(255,255,255,0.8)"; }}
           onMouseLeave={e => { e.currentTarget.style.color = "rgba(255,255,255,0.5)"; }}
@@ -1808,7 +1809,7 @@ export default function Sidebar({
           style={{
             width: "100%", fontSize: 12,
             color: "rgba(255,255,255,0.4)", background: "none", border: "none",
-            cursor: "pointer", padding: "8px 0",
+            cursor: "pointer", padding: "8px 16px", textAlign: "left",
           }}
           onMouseEnter={e => { e.currentTarget.style.color = "rgba(255,255,255,0.7)"; }}
           onMouseLeave={e => { e.currentTarget.style.color = "rgba(255,255,255,0.4)"; }}

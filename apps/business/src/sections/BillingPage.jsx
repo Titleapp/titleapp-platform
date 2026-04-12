@@ -36,7 +36,7 @@ export default function BillingPage() {
 
   return (
     <div style={{ padding: "32px 28px", maxWidth: 700, fontFamily: "system-ui, -apple-system, sans-serif" }}>
-      <div style={{ fontSize: 26, fontWeight: 800, color: "#1a1a2e", marginBottom: 6 }}>Billing</div>
+      <div style={{ fontSize: 28, fontWeight: 700, color: "#1e293b", marginBottom: 6 }}>Billing</div>
       <div style={{ fontSize: 14, color: "#64748B", marginBottom: 28 }}>Manage your plan, credits, and payment methods.</div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 28 }}>

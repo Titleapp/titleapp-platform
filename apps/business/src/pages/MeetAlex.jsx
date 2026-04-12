@@ -220,6 +220,10 @@ export default function MeetAlex() {
   function completeAuthUpgrade(idToken, uid) {
     localStorage.setItem("ID_TOKEN", idToken);
     localStorage.setItem("DISCLAIMER_ACCEPTED", "true");
+    // Store display name so sidebar shows correct name immediately
+    const currentUser = auth.currentUser;
+    if (currentUser?.displayName) localStorage.setItem("DISPLAY_NAME", currentUser.displayName);
+    if (currentUser?.email) localStorage.setItem("USER_EMAIL", currentUser.email);
     setSavedAccount(true);
     setShowSave(false);
 

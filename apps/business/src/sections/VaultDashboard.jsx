@@ -67,7 +67,7 @@ export default function VaultDashboard() {
     <div style={{ padding: "32px 28px", maxWidth: 900, fontFamily: "system-ui, -apple-system, sans-serif" }}>
       {/* Greeting */}
       <div style={{ marginBottom: 28 }}>
-        <div style={{ fontSize: 26, fontWeight: 800, color: "#1a1a2e" }}>
+        <div style={{ fontSize: 28, fontWeight: 700, color: "#1e293b" }}>
           {greeting}{firstName ? `, ${firstName}` : ""}.
         </div>
         <div style={{ fontSize: 14, color: "#64748B", marginTop: 6 }}>

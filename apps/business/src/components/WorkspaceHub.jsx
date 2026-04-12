@@ -156,7 +156,7 @@ function BillingSummary({ workspaces }) {
   );
 }
 
-export default function WorkspaceHub({ userName, onLaunch, onBuilderStart, onAdminLaunch, onAddWorker }) {
+export default function WorkspaceHub({ userName, onLaunch, onBuilderStart, onAdminLaunch, onAddWorker, onBack }) {
   const [workspaces, setWorkspaces] = useState(null);
   const [error, setError] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -234,8 +234,22 @@ export default function WorkspaceHub({ userName, onLaunch, onBuilderStart, onAdm
         padding: 20,
       }}
     >
-      <div style={{ maxWidth: 720, width: '100%' }}>
+      <div style={{ maxWidth: 720, width: '100%', position: 'relative' }}>
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
+          {onBack && (
+            <button
+              onClick={onBack}
+              style={{
+                position: "absolute", top: 20, left: 20,
+                background: "none", border: "none", color: "#6b7280",
+                fontSize: 14, cursor: "pointer", padding: "8px 12px",
+              }}
+              onMouseEnter={e => { e.currentTarget.style.color = "#1e293b"; }}
+              onMouseLeave={e => { e.currentTarget.style.color = "#6b7280"; }}
+            >
+              &larr; Back
+            </button>
+          )}
           <div style={{ fontSize: 20, fontWeight: 700, color: '#7c3aed', marginBottom: 8 }}>
             TitleApp
           </div>
