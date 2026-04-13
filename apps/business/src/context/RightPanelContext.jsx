@@ -9,6 +9,7 @@ export function RightPanelProvider({ children, initialState, initialVertical, in
   const [workers, setWorkers] = useState([]);
   const [selectedWorker, setSelectedWorker] = useState(null);
   const [activeWorkerData, setActiveWorkerData] = useState(null);
+  const [relatedWorkers, setRelatedWorkers] = useState([]);
   const [canvasData, setCanvasData] = useState(null); // { resolved, context }
   const prevStateRef = useRef(null); // for canvas dismiss → return to previous
   const originRef = useRef(initialState || "STATE-1");
@@ -45,8 +46,9 @@ export function RightPanelProvider({ children, initialState, initialVertical, in
     setSelectedWorker(null);
   }, []);
 
-  const showWorkerHome = useCallback((workerData) => {
+  const showWorkerHome = useCallback((workerData, cousins) => {
     setActiveWorkerData(workerData);
+    if (cousins) setRelatedWorkers(cousins);
     setState("WORKSPACE_HOME");
   }, []);
 
@@ -59,6 +61,7 @@ export function RightPanelProvider({ children, initialState, initialVertical, in
 
   const leaveWorkspace = useCallback(() => {
     setActiveWorkerData(null);
+    setRelatedWorkers([]);
     setState(originRef.current);
   }, []);
 
@@ -76,7 +79,7 @@ export function RightPanelProvider({ children, initialState, initialVertical, in
 
   return (
     <RightPanelContext.Provider value={{
-      state, vertical, verticalLabel, workers, selectedWorker, activeWorkerData, canvasData,
+      state, vertical, verticalLabel, workers, selectedWorker, activeWorkerData, relatedWorkers, canvasData,
       showRecommendations, showWorkerDetail, showWorkerHome, goBack, dismiss, clearVerticalFilter, leaveWorkspace,
       showCanvas, dismissCanvas,
       setWorkers,

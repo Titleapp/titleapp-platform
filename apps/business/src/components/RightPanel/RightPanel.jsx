@@ -6,6 +6,7 @@ import { useWorkerState } from "../../context/WorkerStateContext";
 import WorkerIcon, { getThemeAccent, getVerticalIconSlug } from "../../utils/workerIcons";
 import SessionEndCTA from "../worker/SessionEndCTA";
 import CanvasPanel from "../canvas/CanvasPanel";
+import { WORKER_ROUTES } from "../../data/workerRoutes";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
 
@@ -83,7 +84,7 @@ function generateDefaultPrompts(capabilitySummary, workerName) {
 
 // ── 40.2-T1: Worker Canvas with Arrival Animation ──────────────────
 
-function WorkerCanvas({ workerData, verticalLabel, onLeave }) {
+function WorkerCanvas({ workerData, verticalLabel, relatedWorkers = [], onLeave }) {
   const ws = useWorkerState();
   const w = workerData;
   const prompts = w.quickStartPrompts || generateDefaultPrompts(w.capabilitySummary, w.name || w.display_name);
@@ -497,6 +498,57 @@ function WorkerCanvas({ workerData, verticalLabel, onLeave }) {
               </div>
 
               <TrialBanner worker={w} />
+
+              {/* Related Workers ("Cousins") — same suite */}
+              {relatedWorkers.length > 0 && (
+                <div style={{ marginTop: 32 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.4)", letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: 12 }}>
+                    More in {w.suite || vertical || "this category"}
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {relatedWorkers.map((rw) => {
+                      const rwSlug = rw.workerId || rw.slug;
+                      const rwName = rw.name || rw.display_name || rwSlug;
+                      const rwPrice = rw.price != null ? (rw.price === 0 ? "Free" : `$${rw.price / 100}/mo`) : "";
+                      return (
+                        <div
+                          key={rwSlug}
+                          onClick={() => {
+                            window.dispatchEvent(new CustomEvent("ta:select-worker", {
+                              detail: { slug: rwSlug, name: rwName },
+                            }));
+                          }}
+                          style={{
+                            display: "flex", justifyContent: "space-between", alignItems: "center",
+                            padding: "10px 14px", borderRadius: 10,
+                            background: "rgba(255,255,255,0.04)",
+                            border: "1px solid rgba(255,255,255,0.08)",
+                            cursor: "pointer", transition: "border-color 0.15s, background 0.15s",
+                          }}
+                          onMouseEnter={e => { e.currentTarget.style.borderColor = accent; e.currentTarget.style.background = "rgba(255,255,255,0.08)"; }}
+                          onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; e.currentTarget.style.background = "rgba(255,255,255,0.04)"; }}
+                        >
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: "#e5e7eb", marginBottom: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              {rwName}
+                            </div>
+                            {(rw.tagline || rw.description) && (
+                              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                {rw.tagline || rw.description}
+                              </div>
+                            )}
+                          </div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0, marginLeft: 10 }}>
+                            {rwPrice && <span style={{ fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.5)" }}>{rwPrice}</span>}
+                            <span style={{ fontSize: 11, fontWeight: 600, color: accent }}>Open</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               <SessionEndCTA style={{ marginTop: 24 }} />
             </>
           )}
@@ -951,7 +1003,7 @@ function TrialBanner({ worker }) {
 
 export default function RightPanel() {
   const panel = useRightPanel();
-  const { state, vertical, verticalLabel, workers, selectedWorker, showRecommendations, showWorkerDetail, goBack, dismiss, clearVerticalFilter, setWorkers, canvasData, dismissCanvas } = panel;
+  const { state, vertical, verticalLabel, workers, selectedWorker, showRecommendations, showWorkerDetail, goBack, dismiss, clearVerticalFilter, setWorkers, canvasData, dismissCanvas, relatedWorkers } = panel;
   const [loading, setLoading] = useState(false);
 
   // Load workers from leaderboard API on mount
@@ -1007,24 +1059,53 @@ export default function RightPanel() {
     setLoading(false);
   }
 
-  // Listen for worker selection — show workspace home
+  // Listen for worker selection — show workspace home with related workers
   useEffect(() => {
+    function findCousins(worker, allWorkers) {
+      const suite = worker.suite || "";
+      if (!suite) return [];
+      const wSlug = worker.workerId || worker.slug;
+      return allWorkers
+        .filter(w => w.suite === suite && (w.workerId || w.slug) !== wSlug && w.status === "live")
+        .slice(0, 6);
+    }
+
     function onSelectWorker(e) {
       const { slug } = e.detail || {};
       if (!slug) return;
-      // Check if worker is already in loaded workers list
+
+      // Try local WORKER_ROUTES first (always available, no network)
+      const localMatch = WORKER_ROUTES.find(w => w.slug === slug);
+
+      // Check if worker is already in loaded workers list (has richer data)
       const existing = workers.find(w => (w.workerId || w.slug) === slug);
       if (existing) {
-        panel.showWorkerHome(existing);
+        const cousins = findCousins(existing, workers.length > 10 ? workers : WORKER_ROUTES);
+        panel.showWorkerHome(existing, cousins);
         return;
       }
-      // Fetch from catalog
+
+      // Fetch from catalog for richer data, but use localMatch as immediate fallback
       fetch(`${API_BASE}/api?path=/v1/catalog:byVertical&vertical=all&limit=200`)
         .then(r => r.json())
         .then(data => {
-          const w = (data.workers || []).find(w => (w.workerId || w.slug) === slug);
-          if (w) panel.showWorkerHome(w);
-        }).catch(() => {});
+          const allCatalog = data.workers || [];
+          const w = allCatalog.find(w => (w.workerId || w.slug) === slug);
+          if (w) {
+            const cousins = findCousins(w, allCatalog);
+            panel.showWorkerHome(w, cousins);
+          } else if (localMatch) {
+            // Catalog didn't have it — use WORKER_ROUTES data
+            const cousins = findCousins(localMatch, WORKER_ROUTES);
+            panel.showWorkerHome(localMatch, cousins);
+          }
+        }).catch(() => {
+          // Network failed — use WORKER_ROUTES fallback
+          if (localMatch) {
+            const cousins = findCousins(localMatch, WORKER_ROUTES);
+            panel.showWorkerHome(localMatch, cousins);
+          }
+        });
     }
     window.addEventListener("ta:select-worker", onSelectWorker);
     return () => window.removeEventListener("ta:select-worker", onSelectWorker);
@@ -1048,6 +1129,7 @@ export default function RightPanel() {
       <WorkerCanvas
         workerData={panel.activeWorkerData}
         verticalLabel={panel.verticalLabel}
+        relatedWorkers={relatedWorkers || []}
         onLeave={() => panel.leaveWorkspace()}
       />
     );

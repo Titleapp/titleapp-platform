@@ -64,7 +64,8 @@ import WorkerBuildLog from "./pages/WorkerBuildLog";
 import MarketplaceListing from "./pages/MarketplaceListing";
 import CreatorApplication from "./pages/CreatorApplication";
 import WorkerWaitlistPage from "./pages/WorkerWaitlistPage";
-import WorkerMarketplace, { WORKER_ROUTES } from "./pages/WorkerMarketplace";
+import WorkerMarketplace from "./pages/WorkerMarketplace";
+import { WORKER_ROUTES } from "./data/workerRoutes";
 import WorkerDetailPage from "./pages/WorkerDetailPage";
 import LegalPage from "./pages/LegalPage";
 import AutoLanding from "./pages/landing/AutoLanding";
@@ -4387,8 +4388,16 @@ function AdminShell({ onBackToHub, initialSection }) {
       const section = e.detail?.section;
       if (section) setCurrentSection(section);
     }
+    function handleWorkerSelect(e) {
+      const slug = e.detail?.slug;
+      if (slug) setCurrentSection("worker-home");
+    }
     window.addEventListener("ta:navigate", handleNav);
-    return () => window.removeEventListener("ta:navigate", handleNav);
+    window.addEventListener("ta:select-worker", handleWorkerSelect);
+    return () => {
+      window.removeEventListener("ta:navigate", handleNav);
+      window.removeEventListener("ta:select-worker", handleWorkerSelect);
+    };
   }, []);
 
   function renderSection() {
@@ -4545,9 +4554,41 @@ function AdminShell({ onBackToHub, initialSection }) {
 
   return (
     <AppShell currentSection={currentSection} onNavigate={setCurrentSection} onBackToHub={onBackToHub}>
-      {renderSection()}
+      <AppErrorBoundary>
+        {renderSection()}
+      </AppErrorBoundary>
     </AppShell>
   );
+}
+
+// Error boundary for AdminShell — prevents blank page when a section component crashes
+class AppErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { hasError: false, error: null }; }
+  static getDerivedStateFromError(error) { return { hasError: true, error }; }
+  componentDidCatch(e, info) { console.error("[AppErrorBoundary]", e, info?.componentStack); }
+  render() {
+    if (this.state.hasError) {
+      const errMsg = this.state.error?.message || "Unknown error";
+      return (
+        <div style={{ padding: 40, maxWidth: 600, margin: "80px auto", textAlign: "center", fontFamily: "system-ui, -apple-system, sans-serif" }}>
+          <div style={{ fontSize: 18, fontWeight: 600, color: "#1e293b", marginBottom: 12 }}>Something went wrong</div>
+          <div style={{ fontSize: 13, color: "#64748b", marginBottom: 16 }}>An error occurred while loading this section.</div>
+          <div style={{ fontSize: 11, color: "#94a3b8", fontFamily: "monospace", marginBottom: 20, wordBreak: "break-word", background: "#f8fafc", padding: 12, borderRadius: 8, border: "1px solid #e2e8f0" }}>{errMsg}</div>
+          <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+            <button onClick={() => { this.setState({ hasError: false, error: null }); }}
+              style={{ padding: "10px 24px", background: "#7c3aed", color: "white", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+              Try Again
+            </button>
+            <button onClick={() => { this.setState({ hasError: false, error: null }); window.location.href = "/"; }}
+              style={{ padding: "10px 24px", background: "#f1f5f9", color: "#64748b", border: "1px solid #e2e8f0", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+              Go Home
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
 }
 
 // Top-level error boundary for Sandbox — catches render crashes before blank screen
@@ -5073,7 +5114,7 @@ export default function App() {
             transitionTo("app");
             return;
           }
-          transitionTo("marketplace");
+          transitionTo("app");
         } else {
           // Promoted guest (from MeetAlex or magic link) — go straight to app
           const promoParams2 = new URLSearchParams(window.location.search);
@@ -5323,8 +5364,14 @@ export default function App() {
     return <WorkerMarketplace />;
   }
 
-  // ── Workers: live worker detail page, no auth required ────
-  if (isLiveWorker) {
+  // ── Workers: live worker detail page ────
+  // Authenticated users: redirect into vault with worker auto-open (48.6)
+  if (isLiveWorker && token) {
+    sessionStorage.setItem("ta_auto_worker", workerSlug);
+    window.history.replaceState({}, "", "/");
+    // Fall through to normal authenticated app rendering — AppShell picks up ta_auto_worker
+  }
+  if (isLiveWorker && !token) {
     return (
       <WorkerDetailPage
         worker={workerRoute}
@@ -5478,8 +5525,10 @@ export default function App() {
     );
   }
 
+  // "marketplace" view now routes through the normal 3-panel AppShell
+  // with raas-store as the initial section (no old standalone view)
   if (currentView === "marketplace") {
-    return <>{transitionOverlay}<AdminShell onBackToHub={handleBackToHub} initialSection="raas-store" /></>;
+    return <>{transitionOverlay}<AppErrorBoundary><AdminShell onBackToHub={handleBackToHub} initialSection="raas-store" /></AppErrorBoundary></>;
   }
 
   if (currentView === "hub") {
@@ -5495,8 +5544,9 @@ export default function App() {
     );
   }
 
+  // Old admin view removed — always use 3-panel AppShell
   if (currentView === "admin") {
-    return <>{transitionOverlay}<AdminCommandCenter onBackToHub={handleBackToHub} /></>;
+    return <>{transitionOverlay}<AppErrorBoundary><AdminShell onBackToHub={handleBackToHub} /></AppErrorBoundary></>;
   }
 
   if (currentView === "builder-interview") {
@@ -5535,5 +5585,5 @@ export default function App() {
     );
   }
 
-  return <>{transitionOverlay}<AdminShell onBackToHub={handleBackToHub} /></>;
+  return <>{transitionOverlay}<AppErrorBoundary><AdminShell onBackToHub={handleBackToHub} /></AppErrorBoundary></>;
 }

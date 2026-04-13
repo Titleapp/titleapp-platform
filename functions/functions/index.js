@@ -1204,18 +1204,47 @@ exports.api = onRequest(
               console.warn("[chatEngine] file storage failed:", f.name, storeErr.message);
             }
 
-            // Extract text for AI context
+            // Extract text for AI context.
+            // CODEX 48.4 Fix DD / 48.5 hotfix — Always emit a clear file marker
+            // even when extraction returns empty (scanned/image PDFs). Use the
+            // internal pdf-parse entry point (pdf-parse/lib/pdf-parse.js) to
+            // sidestep the debug test-file lookup that throws at module load
+            // time in some deployed environments. Markers are plain English,
+            // NOT bracket-syntax, so the LLM doesn't mistake them for system
+            // stage-direction tokens.
             let extractedText = "";
             if (lowerName.endsWith(".pdf")) {
-              try {
-                const pdfParse = require("pdf-parse");
-                const pdfData = await pdfParse(buffer);
-                extractedText = (pdfData.text || "").trim();
-                console.log("[chatEngine] PDF extracted", extractedText.length, "chars from", f.name);
-                if (extractedText.length > 12000) extractedText = extractedText.substring(0, 12000) + "\n... [truncated]";
-              } catch (pe) {
-                console.error("[chatEngine] PDF parse error:", f.name, pe.message);
-                extractedText = "[PDF uploaded but text extraction failed: " + (pe.message || "unknown error") + "]";
+              // Size guard — Firebase Functions request bodies cap out near
+              // 10MB and Anthropic context gets unhappy well before that.
+              if (buffer.length > 5 * 1024 * 1024) {
+                extractedText = `(PDF upload skipped: ${f.name} is ${Math.round(buffer.length / 1024 / 1024)} MB — too large to read directly. Please acknowledge the upload by name, then ask the creator for a 2-3 sentence summary of what the file contains. Keep building from the summary.)`;
+              } else {
+                let pdfParse;
+                try {
+                  // Internal entry point — skips the debug flag that reads
+                  // a bundled test PDF on first require.
+                  pdfParse = require("pdf-parse/lib/pdf-parse.js");
+                } catch (reqErr) {
+                  console.error("[chatEngine] pdf-parse require failed:", reqErr.message);
+                  try { pdfParse = require("pdf-parse"); } catch (e2) { pdfParse = null; }
+                }
+                if (!pdfParse) {
+                  extractedText = `(PDF upload received: ${f.name}. The text parser isn't available right now, so please acknowledge the upload by name and ask the creator for a 2-3 sentence summary of what the file contains. Keep building from the summary.)`;
+                } else {
+                  try {
+                    const pdfData = await pdfParse(buffer);
+                    const rawText = (pdfData && pdfData.text ? pdfData.text : "").trim();
+                    console.log("[chatEngine] PDF extracted", rawText.length, "chars from", f.name);
+                    if (rawText.length === 0) {
+                      extractedText = `(PDF upload received: ${f.name}, ${Math.round(buffer.length / 1024)} KB, ${pdfData && pdfData.numpages ? pdfData.numpages + " pages" : "unknown pages"}. The text layer is empty — likely a scanned or image-based PDF. Acknowledge the upload by name, then ask the creator for a 2-3 sentence summary of what the file contains. Keep building from the summary. Do NOT apologize, do NOT mention extraction, do NOT ask them to refresh.)`;
+                    } else {
+                      extractedText = rawText.length > 12000 ? rawText.substring(0, 12000) + "\n... (truncated)" : rawText;
+                    }
+                  } catch (pe) {
+                    console.error("[chatEngine] PDF parse error:", f.name, pe.message, pe.stack);
+                    extractedText = `(PDF upload received: ${f.name}, ${Math.round(buffer.length / 1024)} KB. The parser hit an error reading the file. Acknowledge the upload by name, then ask the creator for a 2-3 sentence summary of what the file contains. Keep building from the summary. Do NOT apologize or ask them to retry.)`;
+                  }
+                }
               }
             } else if (lowerName.endsWith(".txt") || lowerName.endsWith(".md") || lowerName.endsWith(".csv") || lowerName.endsWith(".json") || lowerName.endsWith(".rtf")) {
               extractedText = buffer.toString("utf-8").trim();
@@ -2984,7 +3013,21 @@ CURRENT PHASE: Step ${phaseIndex} — ${phaseLabel}. The creator is here RIGHT N
 
 FORBIDDEN WORDS FOR GAMES: "Design" (as a step name), "Knowledge" (as a step name), "Tools" (as a step name), "9 steps", "step 2 of 9", "step 3 of 9", or any similar phrasing. Games have 8 steps, not 9.
 
-CANVAS AWARENESS: You can see the creator's canvas on the right side of the screen. The step progress bar at the top updates live. Assets, rules, and interactions populate in real time as you lock them in. NEVER say "I can't see your screen" or "that's a UI issue on my end" or "I can't control what displays." If the creator reports a display glitch, acknowledge it briefly and keep building — do not apologize or speculate about UI sync.
+CANVAS AWARENESS: You can see the creator's canvas on the right side of the screen. The step progress bar at the top updates live. Assets, rules, and interactions populate in real time as you lock them in. NEVER say "I can't see your screen" or "that's a UI issue on my end" or "I can't control what displays" or "refresh the page." If the creator reports a display glitch, acknowledge it briefly and keep building — do not apologize or speculate about UI sync.
+
+RULES PHASE RUBRIC (when the creator is in step 2, Rules): Ask EXACTLY these 4 questions, in this order, ONE AT A TIME. No bonus questions. No mid-rubric clarifications. No follow-ups. If you need clarification, add it BEFORE the next rubric question, not as a detour.
+  1. Turn mechanic — How do players take turns? (one at a time, simultaneous, real-time, no turns?)
+  2. Win/lose conditions — How does a player win or lose? What ends the game?
+  3. Scoring — How do points work? Levels, badges, single score?
+  4. Safety and compliance — Anything players should NOT see or do? Age range, content limits?
+After the 4th answer, say "Rules locked in" and stop asking rule questions.
+
+INTERACTIONS PHASE RUBRIC (when the creator is in step 4, Interactions): Ask EXACTLY these 4 questions, in this order, ONE AT A TIME. No bonus questions. No mid-rubric clarifications.
+  1. Movement — How does the player move? (tap, swipe, drag, keys, tilt, auto?)
+  2. Speed — Fast and frantic, or slow and deliberate?
+  3. Collision rules — What happens on friend touch vs hazard touch?
+  4. Sound cues — Sounds for points, damage, win, lose? (Optional — creator can say skip.)
+After the 4th answer, say "Interactions locked in" and stop.
 `;
 
             // CODEX 47.1 Fix 4 — inject locked-in game rules so Alex never asks again.
@@ -3071,6 +3114,8 @@ NEVER:
 - Jump ahead to a step the creator hasn't reached
 - Say "I have what I need to build this" and stop -- always generate [WORKER_SPEC] when ready
 - Deny TitleApp's blockchain heritage
+- Say "refresh the page", "try refreshing", "refresh your browser", "reload", "canvas sync issue", "UI sync issue", "display issue on my end", "I can't see your canvas", "I can't control what displays", or any variation. The canvas and chat are ONE surface you share with the creator. If the creator reports a display glitch, briefly ask them to describe what they see, then keep building. Never troubleshoot or apologize for the UI.
+- Say "it might be loading" or "give it a moment" about the canvas — if a build is running, say so affirmatively; otherwise keep moving the conversation forward.
 ${nameGuidance}${authGuidance}`;
 
           const devSystemPrompt = `You are Alex, TitleApp's developer relations AI. You're a tour guide, not a consultant. Show people around. Don't interview them.
@@ -3181,13 +3226,38 @@ ${nameGuidance}${authGuidance}`;
               },
             }] : null;
 
-            const aiResp = await anthropic.messages.create({
-              model: "claude-sonnet-4-5-20250929",
-              max_tokens: 2048,
-              system: surface === 'sandbox' ? sandboxSystemPrompt : devSystemPrompt,
-              messages,
-              ...(sandboxTools ? { tools: sandboxTools } : {}),
-            });
+            // CODEX 48.5 hotfix — Retry on Anthropic 529 "overloaded_error"
+            // with exponential backoff. Without this, transient capacity
+            // issues on Anthropic's side surface as "Something went wrong on
+            // my end" every few user turns.
+            async function callAnthropicWithRetry() {
+              const maxAttempts = 3;
+              const backoffsMs = [0, 600, 1800];
+              let lastErr;
+              for (let attempt = 0; attempt < maxAttempts; attempt++) {
+                if (backoffsMs[attempt] > 0) {
+                  await new Promise(r => setTimeout(r, backoffsMs[attempt]));
+                }
+                try {
+                  return await anthropic.messages.create({
+                    model: "claude-sonnet-4-5-20250929",
+                    max_tokens: 2048,
+                    system: surface === 'sandbox' ? sandboxSystemPrompt : devSystemPrompt,
+                    messages,
+                    ...(sandboxTools ? { tools: sandboxTools } : {}),
+                  });
+                } catch (err) {
+                  lastErr = err;
+                  const status = err.status || err.statusCode || (err.message && err.message.match(/^(\d+)/)?.[1]);
+                  const isOverloaded = status == 529 || (err.message || "").includes("overloaded_error") || (err.message || "").includes("Overloaded");
+                  const isRateLimit = status == 429;
+                  if (!isOverloaded && !isRateLimit) throw err; // non-retryable
+                  console.warn(`[sandbox AI] Anthropic ${status} — retry ${attempt + 1}/${maxAttempts}`);
+                }
+              }
+              throw lastErr;
+            }
+            const aiResp = await callAnthropicWithRetry();
 
             // Handle tool use (image generation in sandbox)
             let imageUrl = null;
@@ -3294,10 +3364,58 @@ ${nameGuidance}${authGuidance}`;
               }
             }
 
+            // CODEX 48.5 hotfix — ALWAYS strip WORKER_SPEC tokens from the
+            // displayed and persisted text, regardless of whether JSON parsing
+            // succeeds. Previously this only ran inside the parse try-block,
+            // so a malformed spec (e.g. one extra closing brace) left raw
+            // tokens in aiText → users saw the raw JSON in chat AND the
+            // polluted text got saved to devHistory, tripping subsequent
+            // turns when Anthropic re-ingested it.
+            const strippedAiText = aiText.replace(/\s*\[WORKER_SPEC\][\s\S]*?\[\/WORKER_SPEC\]\s*/g, '').trim();
+            // Also strip an unclosed opening tag case (truncation)
+            const strippedAiTextFinal = strippedAiText.replace(/\s*\[WORKER_SPEC\][\s\S]*$/g, '').trim();
+            aiText = strippedAiTextFinal || aiText;
+
             if (workerSpecMatch) {
               try {
-                const workerSpec = JSON.parse(workerSpecMatch[1].trim());
-                aiText = aiText.replace(/\s*\[WORKER_SPEC\][\s\S]*?\[\/WORKER_SPEC\]\s*/g, '').trim();
+                // CODEX 48.5 hotfix — aggressive JSON cleanup. AI sometimes
+                // emits stray trailing characters like an extra "}" or "," — try
+                // the raw parse first, then a series of cleanups before giving up.
+                let specJson = workerSpecMatch[1].trim();
+                let workerSpec;
+                try {
+                  workerSpec = JSON.parse(specJson);
+                } catch (firstErr) {
+                  // Attempt 1: strip trailing "}" beyond balance
+                  let openBraces = 0;
+                  let lastValidIdx = -1;
+                  for (let i = 0; i < specJson.length; i++) {
+                    const ch = specJson[i];
+                    if (ch === '{') openBraces++;
+                    else if (ch === '}') {
+                      openBraces--;
+                      if (openBraces === 0) { lastValidIdx = i; break; }
+                    }
+                  }
+                  if (lastValidIdx > -1) {
+                    const cleaned = specJson.substring(0, lastValidIdx + 1);
+                    try {
+                      workerSpec = JSON.parse(cleaned);
+                      console.log('[dev] WORKER_SPEC recovered via brace-balance cleanup');
+                    } catch (secondErr) {
+                      // Attempt 2: strip trailing commas before closing braces
+                      const noTrailingCommas = specJson.replace(/,(\s*[}\]])/g, '$1');
+                      try {
+                        workerSpec = JSON.parse(noTrailingCommas);
+                        console.log('[dev] WORKER_SPEC recovered via trailing-comma cleanup');
+                      } catch (thirdErr) {
+                        throw firstErr;
+                      }
+                    }
+                  } else {
+                    throw firstErr;
+                  }
+                }
 
                 // Determine tenant — user may or may not be signed up yet
                 let targetTenantId = null;
@@ -3470,7 +3588,19 @@ ${nameGuidance}${authGuidance}`;
               conversationState: 'dev_discovery',
             });
           } catch (e) {
-            console.error("Developer AI failed:", e.message, e.stack);
+            // CODEX 48.5 hotfix — Enhanced logging. The generic fallback was
+            // firing on PDF uploads and we had no signal as to why. Log the
+            // input length, file count, and full error detail so the next
+            // failure is traceable.
+            console.error("[sandbox AI] failed:", {
+              error: e.message,
+              code: e.status || e.code || null,
+              type: e.type || null,
+              userInputLength: (userInput || "").length,
+              fileCount: Array.isArray(body.files) ? body.files.length : 0,
+              fileNames: Array.isArray(body.files) ? body.files.map(f => f && f.name).filter(Boolean) : [],
+              stack: e.stack,
+            });
             await sessionRef.set({
               state: sessionState,
               surface: surface || 'developer',
@@ -3478,8 +3608,14 @@ ${nameGuidance}${authGuidance}`;
               ...(sessionSnap.exists ? {} : { createdAt: nowServerTs() }),
               updatedAt: nowServerTs(),
             }, { merge: true });
+            // CODEX 48.5 hotfix — Distinguish transient Anthropic capacity
+            // issues from real errors so the user knows to just retry.
+            const errStr = String(e.message || "");
+            const isOverloaded = e.status === 529 || errStr.includes("overloaded_error") || errStr.includes("Overloaded") || e.status === 429;
             const fallbackMsg = surface === 'sandbox'
-              ? "Something went wrong on my end. Tell me more about what you're building and I'll try again."
+              ? (isOverloaded
+                  ? "Claude is briefly overloaded — this usually clears in a few seconds. Hit send again on your last message and we'll pick right back up."
+                  : "I hit a glitch on my end. Type your last message again and we'll keep going.")
               : "I can help with the API and integration. What would you like to know?";
             return res.json({
               ok: true,
@@ -10076,7 +10212,7 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
 
     // POST /v1/chat:message
     if (route === "/chat:message" && method === "POST") {
-      const { message, context, preferredModel, fileIds, file, files } = body || {};
+      const { message, context, preferredModel, fileIds, file, files, preferredLanguage } = body || {};
       const validFileIds = Array.isArray(fileIds) ? fileIds.filter(id => typeof id === "string") : [];
       if (!message) return jsonError(res, 400, "Missing message");
 
@@ -10801,7 +10937,12 @@ After the markers, confirm to the user that their document is ready for download
 ${(context || {}).dealContext ? `\nThe user wants to discuss this deal analysis:\n${JSON.stringify(context.dealContext)}` : ""}${analystDealContext}`;
 
             // Select system prompt: Alex orchestration > personal vault > business legacy
-            const selectedSystemPrompt = alexSystemPrompt || (isPersonalVault ? personalSystemPrompt : businessSystemPrompt);
+            let selectedSystemPrompt = alexSystemPrompt || (isPersonalVault ? personalSystemPrompt : businessSystemPrompt);
+
+            // Inject preferred language instruction (48.6)
+            if (preferredLanguage && preferredLanguage !== "en") {
+              selectedSystemPrompt += `\n\nLANGUAGE: The user's preferred language is "${preferredLanguage}". Respond in this language. If the user writes in English, still respond in their preferred language unless they explicitly ask you to switch.`;
+            }
 
             // ══════════════════════════════════════════════════════════
             //  WORKER ZERO — RAAS INPUT + OUTPUT FILTER (37.5)

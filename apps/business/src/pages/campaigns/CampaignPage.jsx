@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from "react";
 import { db, auth } from "../../firebase";
 import { doc, setDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { GoogleAuthProvider, signInWithRedirect, getRedirectResult, signInWithEmailAndPassword } from "firebase/auth";
-import { WORKER_ROUTES } from "../WorkerMarketplace";
+import { WORKER_ROUTES } from "../../data/workerRoutes";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
 

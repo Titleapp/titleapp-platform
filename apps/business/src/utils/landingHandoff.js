@@ -5,6 +5,7 @@
  * ?prompt=[message] — Alias for ?q (used by /meet-alex SMS links)
  * ?search=[query]   — Pre-populate marketplace search
  * ?vertical=[name]  — Open marketplace filtered to vertical
+ * ?worker=[slug]    — Auto-open worker in canvas after auth
  *
  * Call once on app mount. Stores values in sessionStorage, clears URL params.
  */
@@ -23,8 +24,13 @@ export function processLandingHandoff() {
   const prompt = params.get("prompt");
   const search = params.get("search");
   const vertical = params.get("vertical");
+  const worker = params.get("worker");
 
-  if (q || prompt) {
+  if (worker) {
+    result.type = "worker";
+    result.value = worker;
+    sessionStorage.setItem("ta_auto_worker", worker);
+  } else if (q || prompt) {
     const chatMsg = q || prompt;
     result.type = "chat";
     result.value = chatMsg;
@@ -46,6 +52,7 @@ export function processLandingHandoff() {
     url.searchParams.delete("prompt");
     url.searchParams.delete("search");
     url.searchParams.delete("vertical");
+    url.searchParams.delete("worker");
     const cleanUrl = url.pathname + (url.search || "");
     window.history.replaceState({}, "", cleanUrl);
   }

@@ -28,7 +28,7 @@ function getChatToken() {
 }
 import { getFirestore, collection, query, where, orderBy, limit, getDocs, doc, getDoc } from 'firebase/firestore';
 import { fireMilestone } from '../utils/celebrations';
-import { WORKER_ROUTES } from '../pages/WorkerMarketplace';
+import { WORKER_ROUTES } from '../data/workerRoutes';
 import SessionEndCTA from './worker/SessionEndCTA';
 import { useWorkerState } from '../context/WorkerStateContext.jsx';
 import { useRightPanel } from '../context/RightPanelContext';
@@ -317,6 +317,20 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
     }
     window.addEventListener('ta:select-worker', handleWorkerSelect);
     return () => window.removeEventListener('ta:select-worker', handleWorkerSelect);
+  }, []);
+
+  // Language change notification — show brief system message when user switches language
+  const [langToast, setLangToast] = useState(null);
+  useEffect(() => {
+    function onLangChange(e) {
+      const { label } = e.detail || {};
+      if (label) {
+        setLangToast(`Alex will now respond in ${label}.`);
+        setTimeout(() => setLangToast(null), 4000);
+      }
+    }
+    window.addEventListener("ta:language-changed", onLangChange);
+    return () => window.removeEventListener("ta:language-changed", onLangChange);
   }, []);
 
   // Worker-specific opener — fires when workerReady becomes true from WorkerStateContext
@@ -1646,6 +1660,17 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
           } catch { return 'Alex, Chief of Staff'; }
         })()}</span>
       </div>
+
+      {/* Language change toast */}
+      {langToast && (
+        <div style={{
+          padding: "8px 14px", fontSize: 12, fontWeight: 500, color: "#7c3aed",
+          background: "#f3f0ff", borderBottom: "1px solid #e9d5ff", textAlign: "center",
+          transition: "opacity 0.3s", animation: "fadeIn 300ms ease-out",
+        }}>
+          {langToast}
+        </div>
+      )}
 
       {/* Worker search + filter pills */}
       <div className="chatWorkerSearch">

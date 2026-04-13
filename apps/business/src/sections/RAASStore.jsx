@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { WORKER_ROUTES } from "../pages/WorkerMarketplace";
+import { WORKER_ROUTES } from "../data/workerRoutes";
 import { SUITE_COLORS } from "../utils/workerIcons";
 
 // Derive suite list from actual worker data

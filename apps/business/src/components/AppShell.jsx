@@ -56,10 +56,12 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
     return () => window.removeEventListener("ta:workspace-changed", handleWorkspaceChange);
   }, []);
 
-  // Auto-open worker from URL param or sessionStorage after auth
+  // Auto-open worker from URL param or sessionStorage after auth (or guest mode)
   const autoWorkerHandled = useRef(false);
   useEffect(() => {
-    if (guestMode || workspaces.length === 0 || autoWorkerHandled.current) return;
+    if (autoWorkerHandled.current) return;
+    // For authenticated users, wait until workspaces are loaded
+    if (!guestMode && workspaces.length === 0) return;
     const params = new URLSearchParams(window.location.search);
     const workerSlug = params.get("worker") || sessionStorage.getItem("ta_auto_worker");
     if (!workerSlug) return;
