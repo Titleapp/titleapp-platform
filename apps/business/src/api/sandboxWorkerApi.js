@@ -243,11 +243,34 @@ export async function uploadFile(file) {
 /**
  * Encode an array of File objects into the format expected by the chat handler.
  * Returns [{ name, data (base64 URI), type }] ready to include in the request body.
+ *
+ * CODEX 48.5 hotfix — Skip files larger than 5 MB. Firebase Functions HTTP
+ * requests cap near 10 MB, and base64 adds ~33% overhead, so a 5 MB raw file
+ * becomes ~6.7 MB base64 which is within safe range. Larger files are
+ * replaced with a text marker so the chat still gets context and Alex knows
+ * to ask for a summary instead of silently failing.
  */
+const MAX_FILE_BYTES = 5 * 1024 * 1024;
+
 export async function encodeFilesForChat(files) {
   const encoded = [];
   for (const f of files) {
     try {
+      if (f.size > MAX_FILE_BYTES) {
+        console.warn("[sandboxWorkerApi] skipping oversized file:", f.name, f.size);
+        encoded.push({
+          name: f.name,
+          // Send a tiny placeholder so backend file loop runs and emits a
+          // marker. The "application/x-titleapp-placeholder" type skips
+          // extraction paths and falls through to the generic "file uploaded"
+          // branch which the LLM handles gracefully.
+          data: `data:text/plain;base64,${btoa("oversized")}`,
+          type: "application/x-titleapp-placeholder",
+          oversized: true,
+          sizeMb: Math.round(f.size / 1024 / 1024),
+        });
+        continue;
+      }
       const buffer = await f.arrayBuffer();
       const base64 = arrayBufferToBase64(buffer);
       encoded.push({

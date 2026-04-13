@@ -3,6 +3,8 @@
 // Source of truth lives in functions/services/sandbox/workerBuildFlow.js.
 // This file must stay in sync — when adding a step, update both.
 
+// CODEX 48.5 — Grow step renamed to "Grow & Update" per product direction.
+// Canonical user-facing labels for the 9-step worker pipeline.
 export const WORKER_STEPS = [
   { id: "define",     order: 1, label: "Define",        nobodyElse: false },
   { id: "design",     order: 2, label: "Design",        nobodyElse: false },
@@ -12,7 +14,7 @@ export const WORKER_STEPS = [
   { id: "test",       order: 6, label: "Test",          nobodyElse: true  },
   { id: "preflight",  order: 7, label: "Preflight",     nobodyElse: false },
   { id: "distribute", order: 8, label: "Distribute",    nobodyElse: false },
-  { id: "grow",       order: 9, label: "Grow & Revise", nobodyElse: true  },
+  { id: "grow",       order: 9, label: "Grow & Update", nobodyElse: true  },
 ];
 
 export const STEP_BY_ID = Object.fromEntries(WORKER_STEPS.map(s => [s.id, s]));
@@ -29,12 +31,22 @@ export function statusToBarState(status) {
 
 // Build the props array StepStatusBar expects, given the workerSteps map
 // returned by the backend.
+//
+// CODEX 48.5 — Ratchet state forward. Once Define is complete, every
+// downstream step that is still "cold" (not_started) becomes "idle" —
+// silver, clickable, peekable. This mirrors the game sandbox's post-concept
+// behavior and lets creators jump to Rules / Tools / Preflight etc. to see
+// what's there without being gated linearly.
 export function buildBarSteps(workerStepsMap = {}) {
-  return WORKER_STEPS.map(s => ({
-    id: s.id,
-    label: s.label,
-    state: statusToBarState(workerStepsMap[s.id]?.status),
-  }));
+  const defineDone = workerStepsMap.define?.status === "complete";
+  return WORKER_STEPS.map(s => {
+    const raw = statusToBarState(workerStepsMap[s.id]?.status);
+    // Define itself is never idle — it's the gate
+    if (s.id === "define") return { id: s.id, label: s.label, state: raw };
+    // After Define is complete, cold → idle
+    if (raw === "cold" && defineDone) return { id: s.id, label: s.label, state: "idle" };
+    return { id: s.id, label: s.label, state: raw };
+  });
 }
 
 // 10 UX types for the Design step (CODEX 47.4 Part 6).

@@ -80,6 +80,7 @@ export default function GameBoardPanel({
   includedAssetIds = [],
   workerCardData,
   device = "mobile",
+  onSwitchDevice,
 }) {
   const [loadingTimedOut, setLoadingTimedOut] = useState(false);
   const [phase, setPhase] = useState("select"); // select | playing | gameover
@@ -421,12 +422,26 @@ export default function GameBoardPanel({
             </>
           )}
           {phase === "select" && (
-            <div style={{
-              background: "rgba(255,255,255,0.12)", backdropFilter: "blur(8px)",
-              padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 700,
-            }}>
-              {device.toUpperCase()}
-            </div>
+            onSwitchDevice ? (
+              <button
+                onClick={onSwitchDevice}
+                title="Switch device"
+                style={{
+                  background: "rgba(255,255,255,0.12)", backdropFilter: "blur(8px)",
+                  padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 700,
+                  color: "#fff", border: "1px solid rgba(255,255,255,0.25)", cursor: "pointer",
+                }}
+              >
+                {device.toUpperCase()} &nbsp;&#x21bb;
+              </button>
+            ) : (
+              <div style={{
+                background: "rgba(255,255,255,0.12)", backdropFilter: "blur(8px)",
+                padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 700,
+              }}>
+                {device.toUpperCase()}
+              </div>
+            )
           )}
         </div>
       </div>

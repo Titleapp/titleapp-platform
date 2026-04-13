@@ -30,9 +30,37 @@ import {
 import { WORKER_STEPS, STEP_BY_ID, buildBarSteps, PURPLE } from "../components/sandbox/worker/workerSteps";
 import { CANVAS_BY_STEP } from "../components/sandbox/worker/canvases";
 import CompletionMoment from "../components/sandbox/worker/CompletionMoment";
+// CODEX 48.5 — Shared sandbox primitives (ported from DeveloperSandbox)
+import {
+  renderMarkdown,
+  isTestTrigger,
+  ensureAnonymousAuthForBuild,
+} from "../lib/sandboxHelpers";
+import CreatorStudioHeader from "../components/sandbox/CreatorStudioHeader";
 
 const SESSION_KEY = "ta_worker_sandbox_session";
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+
+// CODEX 48.5 — Natural-language phase transitions for the worker sandbox.
+// When the creator types "let's move on to rules" / "jump to test" / etc,
+// we short-circuit the chat round-trip and just setActiveStepId directly.
+// Mirrors detectPhaseIntent in the game sandbox.
+function detectWorkerPhaseIntent(text) {
+  const t = (text || "").trim().toLowerCase();
+  if (!t) return null;
+  const verbs = /\b(proceed|move|let'?s|define|do|start|next|go|ready|on to|skip to|jump to)\b/;
+  if (!verbs.test(t)) return null;
+  if (/\b(define|definition)\b/.test(t)) return "define";
+  if (/\b(design|visual|ux|layout|branding)\b/.test(t)) return "design";
+  if (/\b(knowledge|document|docs?|content|upload|sop|reference)\b/.test(t)) return "knowledge";
+  if (/\b(rule|rules|compliance|raas|guardrail)\b/.test(t)) return "rules";
+  if (/\b(tool|tools|capability|capabilities|integration)\b/.test(t)) return "tools";
+  if (/\b(test|try it|talk to it)\b/.test(t)) return "test";
+  if (/\b(preflight|pre.?flight|checklist|gate)\b/.test(t)) return "preflight";
+  if (/\b(distribute|distribution|launch|publish|kit|qr|embed)\b/.test(t)) return "distribute";
+  if (/\b(grow|update|revise|analytics|feedback)\b/.test(t)) return "grow";
+  return null;
+}
 
 // ─── Chat panel ─────────────────────────────────────────────────────────────
 
@@ -120,7 +148,10 @@ function AlexChat({ messages, completionContext, nextStepLabel, onContinueAfterC
             }}>
               {m.role === "user" ? "You" : "Alex"}
             </div>
-            <div style={{ whiteSpace: "pre-wrap" }}>{m.text}</div>
+            {/* CODEX 48.5 — markdown rendering for Alex; plain text for user */}
+            <div style={{ whiteSpace: "pre-wrap" }}>
+              {m.role === "user" ? m.text : renderMarkdown(m.text)}
+            </div>
           </div>
         ))}
 
@@ -445,12 +476,28 @@ export default function WorkerSandbox() {
     return () => unsub();
   }, []);
 
+  // CODEX 48.5 — Auto-anonymous bootstrap. When a guest lands at
+  // /sandbox/worker without a Firebase session, sign them in anonymously
+  // so they can build immediately (parity with the game sandbox). If the
+  // anonymous sign-in fails we fall back to InlineSignup below.
+  const [anonTried, setAnonTried] = useState(false);
+  useEffect(() => {
+    if (!authReady) return;
+    if (authedUser) return;
+    if (anonTried) return;
+    setAnonTried(true);
+    (async () => {
+      const r = await ensureAnonymousAuthForBuild();
+      if (r.ok && firebaseAuth.currentUser) {
+        setAuthedUser(firebaseAuth.currentUser);
+      }
+    })();
+  }, [authReady, authedUser, anonTried]);
+
   useEffect(() => {
     if (!authReady) return;
     if (!authedUser) {
-      // Anonymous user. The render path will show <InlineSignup /> below.
-      // Do NOT redirect — that previously dumped users at the marketing
-      // landing page, which is a UX dead end.
+      // Anonymous bootstrap failed — fall through to InlineSignup render path.
       return;
     }
 
@@ -589,6 +636,39 @@ export default function WorkerSandbox() {
       ? `\n[Attached: ${pendingFiles.map(f => f.name).join(", ")}]`
       : "";
     setMessages(prev => [...prev, { role: "user", text: text ? text + fileNote : fileNote.trim() }]);
+
+    // CODEX 48.5 — Natural-language phase transitions. Compute current bar
+    // steps from state so we can gate navigation on reachability (idle OK,
+    // cold not OK). Mirrors the game sandbox phase-intent dispatch.
+    const currentBarSteps = buildBarSteps(state?.workerSteps || {});
+    const intent = detectWorkerPhaseIntent(text);
+    if (intent && intent !== activeStepId) {
+      const target = currentBarSteps.find(s => s.id === intent);
+      if (target && target.state !== "cold") {
+        setActiveStepId(intent);
+        setCompletionContext(null);
+        setMessages(prev => [...prev, {
+          role: "alex",
+          text: `Moving you to **${STEP_BY_ID[intent]?.label || intent}** — step ${STEP_BY_ID[intent]?.order || "?"} of 9.`,
+        }]);
+        return;
+      }
+    }
+
+    // CODEX 48.5 — "build it" / "let's test" / "LFG" → jump to Test if reachable
+    if (isTestTrigger(text)) {
+      const testBar = currentBarSteps.find(s => s.id === "test");
+      if (testBar && testBar.state !== "cold") {
+        setActiveStepId("test");
+        setCompletionContext(null);
+        setMessages(prev => [...prev, {
+          role: "alex",
+          text: "Jumping to **Test** — step 6 of 9. Talk to your worker like a real subscriber would.",
+        }]);
+        return;
+      }
+    }
+
     setChatSending(true);
 
     // CODEX 47.10 — Encode attached files for inline chat upload
@@ -694,10 +774,9 @@ export default function WorkerSandbox() {
           display: "flex", flexDirection: "column", overflowY: "auto",
           borderRight: "1px solid rgba(255,255,255,0.06)",
         }}>
-          <div style={{ padding: "16px 16px 12px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: PURPLE }}>Creator Studio</div>
-            <div style={{ fontSize: 11, color: "rgba(226,232,240,0.55)", marginTop: 2 }}>TitleApp</div>
-          </div>
+          {/* CODEX 48.5 — shared header swaps to user name + initials when signed in */}
+          <CreatorStudioHeader accent={PURPLE} />
+
           <div style={{ padding: "12px 16px" }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(226,232,240,0.4)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>Dashboard</div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
@@ -770,8 +849,10 @@ export default function WorkerSandbox() {
             activeStep={activeStepId}
             accent={PURPLE}
             onStepClick={(id) => {
+              // CODEX 48.5 — idle steps are also clickable (peek ahead).
+              // Only "cold" (pre-Define) stays locked.
               const target = barSteps.find(s => s.id === id);
-              if (target && (target.state === "warm" || target.state === "hot")) {
+              if (target && target.state !== "cold") {
                 setActiveStepId(id);
                 setCompletionContext(null);
               }

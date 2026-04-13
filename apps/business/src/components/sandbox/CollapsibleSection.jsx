@@ -6,8 +6,12 @@
 import React, { useState, useEffect, memo } from "react";
 
 // Traffic-light status indicators. Swiss palette — flat dots, no badges.
+// CODEX 48.4 — "idle" is the post-concept silver state: clickable, expandable,
+// but no content yet. Replaces "cold/locked" for all downstream sections once
+// the concept is saved. Non-linear navigation — creators can peek ahead.
 const STATE_COLORS = {
-  cold: { dot: "#DC2626", label: "Locked" },      // red
+  cold: { dot: "#DC2626", label: "Locked" },      // red  — only before concept
+  idle: { dot: "#94A3B8", label: "Pending" },     // silver — after concept, empty
   warm: { dot: "#EAB308", label: "In Progress" }, // yellow
   hot:  { dot: "#16A34A", label: "Complete" },    // green
 };

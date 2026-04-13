@@ -301,9 +301,19 @@ export default function MeetAlex() {
         return;
       }
 
-      if (err?.code === "auth/credential-already-in-use") {
-        // Google account already exists — sign in directly and transfer subscriptions
-        try {
+      // Universal fallback: if linkWithPopup fails for any reason
+      // (credential-already-in-use, null user, expired token, etc.),
+      // fall back to signInWithPopup which always works
+      if (err?.code === "auth/cancelled-popup-request" || err?.code === "auth/popup-closed-by-user") {
+        setSaveSending(false);
+        window.dispatchEvent(new CustomEvent("ta:meet-alex-unlock"));
+        return;
+      }
+
+      console.warn("[MeetAlex] linkWithPopup failed:", err?.code, "— falling back to signInWithPopup");
+      try {
+        // Try credentialFromError first (works for credential-already-in-use)
+        if (err?.code === "auth/credential-already-in-use") {
           const credential = GoogleAuthProvider.credentialFromError(err);
           if (credential) {
             const result = await signInWithCredential(auth, credential);
@@ -318,19 +328,24 @@ export default function MeetAlex() {
             completeAuthUpgrade(idToken, result.user.uid);
             return;
           }
-          // credential was null — try signInWithPopup as fallback
-          const result = await signInWithPopup(auth, new GoogleAuthProvider());
-          const idToken = await result.user.getIdToken(true);
-          completeAuthUpgrade(idToken, result.user.uid);
-          return;
-        } catch {
-          setSaveError("Sign-in failed. Try again.");
         }
-      }
-
-      // Cancelled or other error
-      if (err?.code !== "auth/cancelled-popup-request" && err?.code !== "auth/popup-closed-by-user") {
-        setSaveError("Google sign-in failed. Try again.");
+        // signInWithPopup as universal fallback
+        const result = await signInWithPopup(auth, new GoogleAuthProvider());
+        const idToken = await result.user.getIdToken(true);
+        if (anonUid && anonUid !== result.user.uid) {
+          fetch(`${API_BASE}/api?path=/v1/subscription:transfer`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+            body: JSON.stringify({ fromUid: anonUid, toUid: result.user.uid }),
+          }).catch(() => {});
+        }
+        completeAuthUpgrade(idToken, result.user.uid);
+        return;
+      } catch (fallbackErr) {
+        console.error("[MeetAlex] signInWithPopup fallback also failed:", fallbackErr?.code);
+        if (fallbackErr?.code !== "auth/cancelled-popup-request" && fallbackErr?.code !== "auth/popup-closed-by-user") {
+          setSaveError("Google sign-in failed. Try again.");
+        }
       }
       setSaveSending(false);
       window.dispatchEvent(new CustomEvent("ta:meet-alex-unlock"));

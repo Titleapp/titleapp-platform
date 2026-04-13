@@ -5,8 +5,12 @@
 // stronger border. Swiss palette — flat colors, no decorative iconography.
 import React, { useState, memo } from "react";
 
+// CODEX 48.4 — "idle" is the post-concept/post-define silver state:
+// clickable, peekable, but empty. Non-linear navigation for creators who
+// want to see what's coming without being forced to complete in order.
 const COLORS = {
-  cold: { dot: "#DC2626", bg: "#FFFFFF", fg: "#64748B", border: "#E2E8F0", line: "#E2E8F0" }, // red
+  cold: { dot: "#DC2626", bg: "#FFFFFF", fg: "#64748B", border: "#E2E8F0", line: "#E2E8F0" }, // red — pre-concept only
+  idle: { dot: "#94A3B8", bg: "#FFFFFF", fg: "#475569", border: "#E2E8F0", line: "#E2E8F0" }, // silver — peekable
   warm: { dot: "#EAB308", bg: "#FFFFFF", fg: "#1a1a2e", border: "#E2E8F0", line: "#CBD5E1" }, // yellow
   hot:  { dot: "#16A34A", bg: "#FFFFFF", fg: "#1a1a2e", border: "#E2E8F0", line: "#16A34A" }, // green
 };
@@ -35,7 +39,8 @@ export default memo(function StepStatusBar({ steps = [], activeStep, onStepClick
         const state = step.state || "cold";
         const c = COLORS[state] || COLORS.cold;
         const isActive = step.id === activeStep;
-        const isTappable = state === "warm" || state === "hot";
+        // CODEX 48.5 — idle is also tappable. You can peek ahead at empty sections.
+        const isTappable = state === "warm" || state === "hot" || state === "idle";
         const showLockTooltip = state === "cold" && hoverIdx === i;
         const prevLabel = i > 0 ? steps[i - 1].label : "the previous step";
         const lockTooltip = `Complete ${prevLabel} first.`;
