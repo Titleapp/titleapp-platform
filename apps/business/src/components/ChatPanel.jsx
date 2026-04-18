@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
 
 // CODEX 48.2 Fix 7 — robust token getter for ChatPanel.
@@ -34,7 +34,8 @@ import { useWorkerState } from '../context/WorkerStateContext.jsx';
 import { useRightPanel } from '../context/RightPanelContext';
 import CanvasResolver from '../services/CanvasResolver';
 
-const WORKER_SUITES = ["All", ...Array.from(new Set(WORKER_ROUTES.filter(w => !w.internal_only).map(w => w.suite)))];
+// WORKER_SUITES computed lazily inside component (useMemo) to avoid TDZ crash
+// when bundler evaluates ChatPanel before workerRoutes.js finishes exporting.
 
 // ── Contextual Messages ─────────────────────────────────────────
 
@@ -194,6 +195,7 @@ const ID_VERIFY_MESSAGES = {
 // ── Component ───────────────────────────────────────────────────
 
 export default function ChatPanel({ currentSection, onboardingStep, disclaimerAccepted: propDisclaimerAccepted, alexContext }) {
+  const WORKER_SUITES = useMemo(() => ["All", ...Array.from(new Set(WORKER_ROUTES.filter(w => !w.internal_only).map(w => w.suite)))], []);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
