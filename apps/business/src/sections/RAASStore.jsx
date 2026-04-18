@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { WORKER_ROUTES } from "../data/workerRoutes";
 import { SUITE_COLORS } from "../utils/workerIcons";
 
-// Derive suite list from actual worker data
-const ALL_SUITES = ["All", ...Array.from(new Set(WORKER_ROUTES.filter(w => !w.internal_only).map(w => w.suite)))];
+// ALL_SUITES computed lazily inside component (useMemo) to avoid TDZ crash
 
 const LANGUAGES = [
   { label: "English", code: "en" }, { label: "Espanol", code: "es" }, { label: "Portugues", code: "pt" },
@@ -22,6 +21,7 @@ function formatPrice(cents) {
 }
 
 export default function RAASStore() {
+  const ALL_SUITES = useMemo(() => ["All", ...Array.from(new Set(WORKER_ROUTES.filter(w => !w.internal_only).map(w => w.suite)))], []);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeSuite, setActiveSuite] = useState("All");
   const [selectedLang, setSelectedLang] = useState(() => localStorage.getItem("PREFERRED_LANGUAGE") || "en");
