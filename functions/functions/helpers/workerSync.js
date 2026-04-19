@@ -264,6 +264,7 @@ const MARKETPLACE_SLUG_MAP = {
   "PLAT-002": "platform-hr",
   "PLAT-003": "platform-marketing",
   "PLAT-004": "platform-control-center-pro",
+  "PLAT-005": "hr-people",
 };
 
 // Ruleset ID mapping: marketplace slug → ruleset file name
@@ -438,6 +439,7 @@ const RULESET_MAP = {
   "platform-hr": null,
   "platform-marketing": null,
   "platform-control-center-pro": null,
+  "hr-people": null,
 };
 
 // Display name overrides (marketplace uses shorter names)

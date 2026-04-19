@@ -126,6 +126,27 @@
         "briefingContribution": "daily_ops"
       },
       "temporalType": "always_on"
+    },
+    {
+      "id": "PLAT-005",
+      "name": "HR & People Worker",
+      "slug": "hr-people",
+      "suite": "People",
+      "phase": 1,
+      "type": "platform",
+      "pricing": {
+        "monthly": 29
+      },
+      "status": "development",
+      "capabilitySummary": "Employee onboarding, scheduling, compliance reminders, and contractor management. Tracks I-9, W-4, certifications, and license expirations. Alex reminds you what needs attention. Does not run payroll. Applies to all verticals.",
+      "tags": ["hr", "people", "compliance", "scheduling", "onboarding"],
+      "valueBucket": ["stay_compliant", "save_money"],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "people_compliance"
+      },
+      "temporalType": "always_on"
     }
   ]
 }
