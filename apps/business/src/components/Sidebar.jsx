@@ -1148,11 +1148,6 @@ export default function Sidebar({
     onNavigate("dashboard");
   }
 
-  // Look up the selected worker's display name for the breadcrumb
-  const selectedWorkerName = selectedWorker
-    ? (workerList.find(w => w.slug === selectedWorker)?.name || selectedWorker)
-    : null;
-
   function handleSignOut() {
     const auth = getAuth();
     signOut(auth).then(() => {
@@ -1204,6 +1199,11 @@ export default function Sidebar({
     }
     return workers;
   }, [activeWorkers, chiefOfStaff]);
+
+  // Look up the selected worker's display name for the breadcrumb
+  const selectedWorkerName = selectedWorker
+    ? (workerList.find(w => w.slug === selectedWorker)?.name || selectedWorker)
+    : null;
 
   // Group workers by vertical for display
   const groupedWorkers = useMemo(() => {
