@@ -17,6 +17,9 @@ import EmailCampaignCard from "./EmailCampaignCard";
 import RevenueDashboardCard from "./RevenueDashboardCard";
 import AviationCurrencyCard from "./AviationCurrencyCard";
 import RealEstateClosingCard from "./RealEstateClosingCard";
+import ContactCard from "./ContactCard";
+import BusinessAssetCard from "./BusinessAssetCard";
+import TransactionCard from "./TransactionCard";
 
 const CANVAS_COMPONENT_MAP = {
   WorkerListCanvas,
@@ -31,6 +34,9 @@ const CANVAS_COMPONENT_MAP = {
   RevenueDashboardCard,
   AviationCurrencyCard,
   RealEstateClosingCard,
+  ContactCard,
+  BusinessAssetCard,
+  TransactionCard,
 };
 
 /**
