@@ -460,4 +460,157 @@ async function generateDailyDigest() {
   return { ok: true, date: today };
 }
 
-module.exports = { generateDailyDigest };
+// ═══════════════════════════════════════════════════════════════
+//  SPINE SUMMARY — workspace-scoped counts for per-user brief
+// ═══════════════════════════════════════════════════════════════
+
+async function gatherSpineSummary(workspaceId) {
+  const db = getDb();
+  const [contactsSnap, txSnap, employeesSnap, assetsSnap] = await Promise.all([
+    db.collection("contacts")
+      .where("tenantId", "==", workspaceId)
+      .where("schema_version", "==", "spine_v1")
+      .get(),
+    db.collection("transactions")
+      .where("tenantId", "==", workspaceId)
+      .get(),
+    db.collection("employees")
+      .where("tenantId", "==", workspaceId)
+      .get(),
+    db.collection("businessAssets")
+      .where("owner_workspace", "==", workspaceId)
+      .get(),
+  ]);
+
+  // Transaction summaries
+  let incomeMtd = 0;
+  let expenseMtd = 0;
+  let pendingCount = 0;
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  for (const doc of txSnap.docs) {
+    const tx = doc.data();
+    const txDate = tx.date?._seconds ? new Date(tx.date._seconds * 1000) : (tx.date ? new Date(tx.date) : null);
+    if (txDate && txDate >= monthStart) {
+      if (tx.direction === "income") incomeMtd += Number(tx.amount) || 0;
+      if (tx.direction === "expense") expenseMtd += Number(tx.amount) || 0;
+    }
+    if (tx.status === "pending") pendingCount++;
+  }
+
+  // Employee compliance flags
+  let complianceFlags = 0;
+  for (const doc of employeesSnap.docs) {
+    const emp = doc.data();
+    if (emp.compliance_flags && emp.compliance_flags.length > 0) {
+      complianceFlags += emp.compliance_flags.length;
+    }
+  }
+
+  return {
+    contacts: contactsSnap.size,
+    transactions: txSnap.size,
+    employees: employeesSnap.size,
+    assets: assetsSnap.size,
+    incomeMtd,
+    expenseMtd,
+    pendingTransactions: pendingCount,
+    complianceFlags,
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  PER-USER SUBSCRIBER BRIEF — extends admin brief to paid users
+// ═══════════════════════════════════════════════════════════════
+
+function buildSubscriberPlainText(userName, today, spine) {
+  const lines = [];
+  lines.push(`TitleApp Daily — ${today}\n`);
+  lines.push(`Good morning${userName ? " " + userName : ""}.`);
+  if (spine.contacts > 0 || spine.transactions > 0 || spine.employees > 0) {
+    lines.push(`\nYOUR WORKSPACE:`);
+    if (spine.contacts > 0) lines.push(`  Contacts: ${spine.contacts}`);
+    if (spine.transactions > 0) lines.push(`  Transactions: ${spine.transactions} (${spine.pendingTransactions} pending)`);
+    if (spine.incomeMtd > 0 || spine.expenseMtd > 0) {
+      lines.push(`  Income MTD: $${spine.incomeMtd.toLocaleString()} | Expenses MTD: $${spine.expenseMtd.toLocaleString()}`);
+    }
+    if (spine.employees > 0) lines.push(`  Employees: ${spine.employees}${spine.complianceFlags > 0 ? ` (${spine.complianceFlags} compliance items)` : ""}`);
+    if (spine.assets > 0) lines.push(`  Assets: ${spine.assets}`);
+  } else {
+    lines.push(`\nNo workspace data yet. Start by telling Alex about your contacts, transactions, or assets.`);
+  }
+  lines.push(`\n— Alex`);
+  return lines.join("\n");
+}
+
+async function generateSubscriberBriefs() {
+  const db = getDb();
+  const today = new Date().toISOString().slice(0, 10);
+  const paidTiers = ["tier1", "tier2", "tier3"];
+  let processed = 0;
+
+  for (const tier of paidTiers) {
+    const usersSnap = await db.collection("users").where("tier", "==", tier).get();
+    for (const userDoc of usersSnap.docs) {
+      try {
+        const userData = userDoc.data();
+        const userId = userDoc.id;
+
+        // Skip admin accounts (Sean's brief is handled by main generator)
+        if (userData.email === "seanlcombs@gmail.com" || userData.email === "sean@titleapp.ai") continue;
+
+        // Get user's primary workspace
+        const wsSnap = await db.collection("users").doc(userId).collection("workspaces").limit(1).get();
+        const workspaceId = wsSnap.empty ? "vault" : wsSnap.docs[0].id;
+
+        // Gather Spine summary
+        const spine = await gatherSpineSummary(workspaceId);
+
+        // Write to briefings/{uid} (frontend already reads this)
+        await db.collection("briefings").doc(userId).set({
+          date: today,
+          runType: "daily",
+          spine,
+          priority: spine.complianceFlags > 0
+            ? { level: "yellow", text: `${spine.complianceFlags} compliance items need attention` }
+            : { level: "green", text: "All systems green." },
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true });
+
+        // Send email if user has email and SendGrid is configured
+        const sendgridKey = process.env.SENDGRID_API_KEY;
+        if (sendgridKey && userData.email) {
+          const userName = userData.displayName || userData.name || "";
+          const briefText = buildSubscriberPlainText(userName, today, spine);
+          try {
+            await fetch("https://api.sendgrid.com/v3/mail/send", {
+              method: "POST",
+              headers: {
+                "Authorization": `Bearer ${sendgridKey}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                personalizations: [{ to: [{ email: userData.email }] }],
+                from: { email: "alex@titleapp.ai", name: "Alex — TitleApp" },
+                reply_to: { email: "alex@titleapp.ai", name: "Alex — TitleApp" },
+                subject: `Your TitleApp Briefing — ${today}`,
+                content: [{ type: "text/plain", value: briefText }],
+              }),
+            });
+          } catch (emailErr) {
+            console.error(`Failed to send subscriber brief to ${userData.email}:`, emailErr.message);
+          }
+        }
+
+        processed++;
+      } catch (userErr) {
+        console.error(`Failed to generate brief for user ${userDoc.id}:`, userErr.message);
+      }
+    }
+  }
+
+  return processed;
+}
+
+module.exports = { generateDailyDigest, gatherSpineSummary, generateSubscriberBriefs };

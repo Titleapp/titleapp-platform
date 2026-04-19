@@ -9073,6 +9073,33 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
     }
 
     // ----------------------------
+    // ADMIN: GENERATE USER BRIEF (49.1-D)
+    // ----------------------------
+    if (route === "/admin:generateBrief" && method === "POST") {
+      try {
+        const { gatherSpineSummary } = require("./admin/generateDailyDigest");
+        const targetUserId = body.userId || auth.user.uid;
+        const wsId = body.workspaceId || ctx.tenantId || "vault";
+        const today = new Date().toISOString().slice(0, 10);
+        const spine = await gatherSpineSummary(wsId);
+        const briefDoc = {
+          date: today,
+          runType: "manual",
+          spine,
+          priority: spine.complianceFlags > 0
+            ? { level: "yellow", text: `${spine.complianceFlags} compliance items need attention` }
+            : { level: "green", text: "All systems green." },
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        };
+        await db.collection("briefings").doc(targetUserId).set(briefDoc, { merge: true });
+        return res.json({ ok: true, userId: targetUserId, workspaceId: wsId, brief: briefDoc });
+      } catch (e) {
+        console.error("admin:generateBrief failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ----------------------------
     // ADMIN: PLATFORM INVENTORY — ROTATE TOKEN (PearX S26 Doc 1.4)
     // ----------------------------
     if (route === "/inventory:rotateToken" && method === "POST") {
@@ -10655,6 +10682,34 @@ RULES YOU MUST FOLLOW:
                 }
               } catch (alexErr) {
                 console.warn("Alex prompt build failed, falling back to legacy:", alexErr.message);
+              }
+            }
+
+            // ── Daily Brief Context: inject user's briefing into Alex prompt ──
+            if (alexSystemPrompt) {
+              try {
+                const briefSnap = await db.collection("briefings").doc(auth.user.uid).get();
+                if (briefSnap.exists) {
+                  const brief = briefSnap.data();
+                  const spine = brief.spine || {};
+                  const briefDate = brief.date || "unknown";
+                  const priority = brief.priority || {};
+
+                  let briefBlock = `\n\nDAILY BRIEF CONTEXT (${briefDate}):`;
+                  if (priority.text) briefBlock += `\nPriority: ${priority.text}`;
+                  if (spine.contacts != null) briefBlock += `\nContacts: ${spine.contacts}`;
+                  if (spine.transactions != null) briefBlock += `\nTransactions: ${spine.transactions} (${spine.pendingTransactions || 0} pending)`;
+                  if (spine.incomeMtd != null || spine.expenseMtd != null) {
+                    briefBlock += `\nIncome MTD: $${(spine.incomeMtd || 0).toLocaleString()} | Expenses MTD: $${(spine.expenseMtd || 0).toLocaleString()}`;
+                  }
+                  if (spine.employees != null) briefBlock += `\nEmployees: ${spine.employees}${spine.complianceFlags ? ` (${spine.complianceFlags} compliance items)` : ""}`;
+                  if (spine.assets != null) briefBlock += `\nAssets: ${spine.assets}`;
+                  briefBlock += `\n\nWhen the user asks about their day, status, or what needs attention, reference this data. Be specific with numbers.`;
+
+                  alexSystemPrompt += briefBlock;
+                }
+              } catch (briefErr) {
+                // Non-fatal — proceed without brief context
               }
             }
 
@@ -17445,11 +17500,15 @@ exports.messageQueueProcessor = onSchedule(
 // ----------------------------
 // ADMIN: DAILY DIGEST (Scheduled 4am HST / 6am PST / 2pm UTC)
 // ----------------------------
-const { generateDailyDigest: handleDailyDigest } = require("./admin/generateDailyDigest");
+const { generateDailyDigest: handleDailyDigest, generateSubscriberBriefs } = require("./admin/generateDailyDigest");
 
 exports.generateDailyDigest = onSchedule(
   { schedule: "0 14 * * *", timeZone: "UTC", region: "us-central1" },
-  async () => { await handleDailyDigest(); }
+  async () => {
+    await handleDailyDigest();
+    const count = await generateSubscriberBriefs();
+    console.log(`Subscriber briefs generated: ${count}`);
+  }
 );
 
 // ----------------------------
