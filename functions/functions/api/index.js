@@ -28,6 +28,8 @@ const inboundRouter = require("./routes/inbound");
 const webhooksRouter = require("./routes/webhooks");
 const titleRouter = require("./routes/title");
 const b2bRouter = require("./routes/b2b");
+const contactsRouter = require("./routes/contacts");
+const employeesRouter = require("./routes/employees");
 
 const app = express();
 
@@ -133,6 +135,11 @@ app.use("/v1/workspaces", generatedDocsRouter); // /:workspace_id/documents/gene
 
 // Phase 10 — B2B Distribution
 app.use("/v1/workspaces", b2bRouter);           // /:workspace_id/b2b/deploy, /deployments, /analytics, /accept
+
+// Phase 11 — Spine (CODEX 49.1)
+app.use("/v1/workspaces", contactsRouter);    // /:workspace_id/contacts
+app.use("/v1/workspaces", employeesRouter);   // /:workspace_id/employees
+// transactions + business-assets already mounted via existing routers
 
 // 404 fallback
 app.use((req, res) => {
