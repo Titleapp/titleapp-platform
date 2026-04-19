@@ -1189,6 +1189,60 @@ worker:
 
 ---
 
+### PLAT-005 HR & People Worker
+```yaml
+worker:
+  id: "PLAT-005"
+  name: "HR & People Worker"
+  slug: "hr-people"
+  phase: "Platform (Business in a Box)"
+  type: "horizontal"
+  pricing: { monthly: 29 }
+  status: "planned"
+
+  raas:
+    tier_0: "inherited"
+    tier_1:
+      - flsa_compliance: "FLSA wage and hour rules"
+      - fmla_eligibility: "FMLA eligibility rules"
+      - ada_accommodation: "ADA accommodation rules"
+      - i9_verification: "I-9 employment eligibility verification"
+      - w4_withholding: "W-4 withholding form requirements"
+    tier_2_schema:
+      - hr_policies: "Operator HR policies and employee handbook"
+      - onboarding_checklist: "Company-specific onboarding checklist"
+      - pto_policies: "PTO and leave policies"
+    tier_3_schema:
+      - schedule_preferences: "Employee personal schedule preferences"
+      - communication_preferences: "Communication preferences"
+
+  capabilities:
+    inputs: ["Employee records", "Compliance documents", "Schedule data"]
+    outputs: ["Compliance flag dashboard", "Onboarding checklists", "Document expiration alerts", "Schedule overview"]
+    documents: ["Employee Register (PDF)", "Compliance Status Report (XLSX)", "Onboarding Checklist (PDF)"]
+
+  vault:
+    reads_from: ["contacts"]
+    writes_to: ["employees", "compliance_flags"]
+
+  referrals:
+    receives_from:
+      - { source: "PLAT-001", trigger: "Payroll data → employee record" }
+    sends_to:
+      - { target: "PLAT-001", trigger: "Compensation changes → accounting" }
+
+  landing:
+    headline: "Every employee tracked, every deadline met"
+    subhead: "Onboarding, scheduling, compliance reminders, and contractor management. Alex reminds you what needs attention."
+    value_props:
+      - "Tracks onboarding checklists and missing documents"
+      - "Monitors compliance deadlines (I-9, certifications, licenses)"
+      - "Manages employee and contractor schedules"
+      - "Reminds about expiring agreements and renewals"
+```
+
+---
+
 **End of Part 2D — Complete Catalog**
 
 ## CATALOG SUMMARY

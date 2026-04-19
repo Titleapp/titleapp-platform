@@ -282,6 +282,120 @@
       "requiredRoles": ["owner_admin", "admin_ops"],
       "emitsEvent": true,
       "writesAudit": true
+    },
+
+    {
+      "id": "contacts.create_contact_v1",
+      "class": "contacts",
+      "summary": "Create a contact record in a workspace.",
+      "contexts": ["tenant", "civilian"],
+      "allowedCallers": ["human", "chat", "worker"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": true,
+      "writesAudit": true
+    },
+    {
+      "id": "contacts.update_contact_v1",
+      "class": "contacts",
+      "summary": "Update an existing contact record.",
+      "contexts": ["tenant", "civilian"],
+      "allowedCallers": ["human", "chat", "worker"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": true,
+      "writesAudit": true
+    },
+    {
+      "id": "contacts.delete_contact_v1",
+      "class": "contacts",
+      "summary": "Delete a contact record. Requires verified identity.",
+      "contexts": ["tenant", "civilian"],
+      "allowedCallers": ["human"],
+      "requiredKyc": "KYC-1",
+      "requiredRoles": [],
+      "emitsEvent": true,
+      "writesAudit": true
+    },
+    {
+      "id": "contacts.link_identity_v1",
+      "class": "contacts",
+      "summary": "Link a verified KYC identity to a contact record.",
+      "contexts": ["tenant", "civilian"],
+      "allowedCallers": ["human"],
+      "requiredKyc": "KYC-1",
+      "requiredRoles": [],
+      "emitsEvent": true,
+      "writesAudit": true
+    },
+
+    {
+      "id": "transactions.create_transaction_v1",
+      "class": "transactions",
+      "summary": "Create a financial transaction in a workspace ledger.",
+      "contexts": ["tenant", "civilian"],
+      "allowedCallers": ["human", "chat", "worker"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": true,
+      "writesAudit": true
+    },
+    {
+      "id": "transactions.import_statement_v1",
+      "class": "transactions",
+      "summary": "Import bank statement (PDF or CSV) and categorize transactions.",
+      "contexts": ["tenant", "civilian"],
+      "allowedCallers": ["human", "chat"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": true,
+      "writesAudit": true
+    },
+
+    {
+      "id": "assets.create_asset_v1",
+      "class": "assets",
+      "summary": "Create a business asset record in a workspace.",
+      "contexts": ["tenant", "civilian"],
+      "allowedCallers": ["human", "chat", "worker"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": true,
+      "writesAudit": true
+    },
+    {
+      "id": "assets.link_dtc_v1",
+      "class": "assets",
+      "summary": "Link a business asset to a DTC blockchain record.",
+      "contexts": ["tenant", "civilian"],
+      "allowedCallers": ["human"],
+      "requiredKyc": "KYC-1",
+      "requiredRoles": [],
+      "emitsEvent": true,
+      "writesAudit": true
+    },
+
+    {
+      "id": "employees.create_employee_v1",
+      "class": "employees",
+      "summary": "Create an employee record linked to a contact.",
+      "contexts": ["tenant"],
+      "allowedCallers": ["human", "chat"],
+      "requiredKyc": "KYC-1",
+      "requiredRoles": [],
+      "emitsEvent": true,
+      "writesAudit": true
+    },
+    {
+      "id": "employees.update_employee_v1",
+      "class": "employees",
+      "summary": "Update an existing employee record.",
+      "contexts": ["tenant"],
+      "allowedCallers": ["human", "chat"],
+      "requiredKyc": "KYC-1",
+      "requiredRoles": [],
+      "emitsEvent": true,
+      "writesAudit": true
     }
   ]
 }

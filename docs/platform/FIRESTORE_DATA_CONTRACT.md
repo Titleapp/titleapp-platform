@@ -183,4 +183,100 @@ Any new collection/field must:
 3) Be deployed
 4) Be tested via curl
 
+---
+
+## 6) Spine Collections (CODEX 49.1)
+
+### `workspaces/{workspaceId}/contacts/{contactId}`
+**Purpose:** Cross-vertical contact records. One record per person/org.
+
+**Fields:**
+- `id` (string) — system generated
+- `identity_id` (string, optional) — link to verified KYC record. Changes worker behavior — unverified contacts cannot sign documents, receive payments, or access KYC-1 capabilities
+- `name` (string, required) — free text
+- `type` (enum, required) — `customer | vendor | investor | tenant | employee | patient | student | contractor | personal`
+- `workspaces` (array, required) — which workspace(s) this contact belongs to
+- `added_by` (string, required) — userId of creator
+- `notes` (string, optional) — free text. Alex populates from conversation context
+- `created_at` (timestamp, required) — system generated
+
+**RAAS:** Contact with `identity_id` = verified = unlocks KYC-1 capabilities. Unverified contacts cannot sign documents or receive payments.
+
+---
+
+### `workspaces/{workspaceId}/transactions/{transactionId}`
+**Purpose:** Financial transactions per workspace ledger.
+
+**Fields:**
+- `id` (string) — system generated
+- `workspace` (string, required) — workspace ledger owner. One ledger per workspace — personal, business, property never bleed into each other
+- `amount` (number, required) — always positive
+- `direction` (enum, required) — `income | expense | transfer`
+- `category` (string, required) — Alex assigns from context. User can override. Plain English.
+- `description` (string, required) — free text
+- `date` (timestamp, required) — transaction date
+- `contact_id` (string, optional) — who this is with
+- `asset_id` (string, optional) — what asset this relates to
+- `document_id` (string, optional) — linked receipt, statement, or contract
+- `source` (enum, required) — `manual | stripe | gdrive_import | bank_statement`
+- `status` (enum, required) — `pending | cleared | reconciled`
+- `debit_account` (string, required) — system generated. GAAP double-entry. User never sees.
+- `credit_account` (string, required) — system generated. GAAP double-entry. User never sees.
+- `gaap_category` (enum, required) — `asset | liability | equity | revenue | expense`. Alex assigns.
+- `created_at` (timestamp, required) — system generated
+
+**RAAS:** All financial output includes disclaimer (Tier 0 enforced). Alex never gives tax advice.
+
+**GDrive input:** Bank statements (PDF or CSV) imported via existing `driveImport.js`. Alex reads, categorizes, flags unusual items, asks for confirmation on ambiguous ones.
+
+---
+
+### `workspaces/{workspaceId}/assets/{assetId}`
+**Purpose:** Business assets — things you own with value and obligations. Different from `dtcs/` (blockchain) and `users/{uid}/assets/` (images).
+
+**Fields:**
+- `id` (string) — system generated
+- `name` (string, required) — free text. "2022 RAV4", "123 Main St Unit 4", "Cessna 172 N12345"
+- `type` (enum, required) — `vehicle | property | aircraft | equipment | intellectual_property | other`
+- `owner_workspace` (string, required) — which workspace owns this asset
+- `current_value` (number, optional) — Alex can update from market data
+- `purchase_date` (timestamp, optional)
+- `purchase_price` (number, optional)
+- `linked_documents` (array, optional) — array of document IDs: title, insurance, maintenance records
+- `linked_transactions` (array, optional) — array of transaction IDs: costs, income generated
+- `linked_contacts` (array, optional) — array of contact IDs: tenants, vendors, insurers
+- `dtc_id` (string, optional) — link to DTC blockchain record in `dtcs/` collection
+- `logbook_id` (string, optional) — link to logbook. Logbook entries can be on-chain or Firebase per entry
+- `audit_trail_default` (enum, optional) — `on_chain | firebase`. Operator sets default. User overrides per entry within operator allowance.
+- `notes` (string, optional) — free text
+- `created_at` (timestamp, required) — system generated
+
+**DTC hierarchy:** Asset → DTC (blockchain anchor) → Logbook → Logbook Entry (on-chain OR Firebase)
+
+**RAAS:** Once minted on-chain, a logbook entry cannot be deleted or modified by anyone (Tier 0). Audit trail toggle is Tier 2 (operator-editable). User can override per entry within Tier 3.
+
+---
+
+### `workspaces/{workspaceId}/employees/{employeeId}`
+**Purpose:** HR records. Links to Contact. Compliance-focused, not payroll.
+
+**Fields:**
+- `id` (string) — system generated
+- `contact_id` (string, required) — links to Contact record. One person, multiple views.
+- `workspace` (string, required) — which workspace they work in
+- `role` (string, required) — free text
+- `employment_type` (enum, required) — `full_time | part_time | contractor | volunteer`
+- `start_date` (timestamp, required)
+- `end_date` (timestamp, optional) — if applicable
+- `status` (enum, required) — `active | onboarding | offboarding | inactive`
+- `compensation` (object, optional) — `{ amount, frequency, currency }`. KYC-1 required to access.
+- `documents` (array, optional) — offer letter, NDA, I-9, W-4 linked document IDs
+- `schedule` (object, optional) — `{ days: [], hours_per_day, timezone }`
+- `compliance_flags` (array, optional) — items needing attention. Alex populates.
+- `created_at` (timestamp, required) — system generated
+
+**Contact link:** Every Employee links to a Contact record. Same person, different view.
+
+**RAAS:** HR data is Tier 2 (employer-editable, workspace-specific). PII protected at Tier 0. Compensation data requires KYC-1 to access. Alex reminds about missing docs and expiring agreements — she does not run payroll.
+
 End.
