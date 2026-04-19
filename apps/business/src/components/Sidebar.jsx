@@ -1109,6 +1109,50 @@ export default function Sidebar({
     return (first && first.length >= 2) ? first : "";
   })();
 
+  // Build worker list for display
+  const workerList = useMemo(() => {
+    const workers = [];
+    // Chief of Staff first
+    if (chiefOfStaff?.enabled) {
+      workers.push({
+        slug: "chief-of-staff",
+        name: chiefOfStaff.name || "Alex",
+        isChiefOfStaff: true,
+        active: true,
+        vertical: "Platform",
+      });
+    }
+    // Active workers from workspace
+    for (const wId of activeWorkers) {
+      if (typeof wId === "string") {
+        workers.push({
+          slug: wId,
+          name: WORKER_DISPLAY_NAMES[wId] || wId.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase()),
+          isChiefOfStaff: false,
+          active: true,
+          vertical: normalizeVertical(wId),
+        });
+      } else if (wId && typeof wId === "object") {
+        const slug = wId.slug || wId.id || "unknown";
+        workers.push({
+          slug,
+          name: wId.displayName || wId.name || WORKER_DISPLAY_NAMES[slug] || "Worker",
+          isChiefOfStaff: wId.isChiefOfStaff || false,
+          active: true,
+          vertical: normalizeVertical(slug),
+          workerType: wId.workerType || null,
+          businessBundle: wId.businessBundle || null,
+        });
+      }
+    }
+    return workers;
+  }, [activeWorkers, chiefOfStaff]);
+
+  // Look up the selected worker's display name for the breadcrumb
+  const selectedWorkerName = selectedWorker
+    ? (workerList.find(w => w.slug === selectedWorker)?.name || selectedWorker)
+    : null;
+
   // Dynamic header: changes based on selected worker
   const brandLabel = (() => {
     if (guestMode) return tenantName || "TitleApp";
@@ -1160,50 +1204,6 @@ export default function Sidebar({
       window.location.reload();
     });
   }
-
-  // Build worker list for display
-  const workerList = useMemo(() => {
-    const workers = [];
-    // Chief of Staff first
-    if (chiefOfStaff?.enabled) {
-      workers.push({
-        slug: "chief-of-staff",
-        name: chiefOfStaff.name || "Alex",
-        isChiefOfStaff: true,
-        active: true,
-        vertical: "Platform",
-      });
-    }
-    // Active workers from workspace
-    for (const wId of activeWorkers) {
-      if (typeof wId === "string") {
-        workers.push({
-          slug: wId,
-          name: WORKER_DISPLAY_NAMES[wId] || wId.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase()),
-          isChiefOfStaff: false,
-          active: true,
-          vertical: normalizeVertical(wId),
-        });
-      } else if (wId && typeof wId === "object") {
-        const slug = wId.slug || wId.id || "unknown";
-        workers.push({
-          slug,
-          name: wId.displayName || wId.name || WORKER_DISPLAY_NAMES[slug] || "Worker",
-          isChiefOfStaff: wId.isChiefOfStaff || false,
-          active: true,
-          vertical: normalizeVertical(slug),
-          workerType: wId.workerType || null,
-          businessBundle: wId.businessBundle || null,
-        });
-      }
-    }
-    return workers;
-  }, [activeWorkers, chiefOfStaff]);
-
-  // Look up the selected worker's display name for the breadcrumb
-  const selectedWorkerName = selectedWorker
-    ? (workerList.find(w => w.slug === selectedWorker)?.name || selectedWorker)
-    : null;
 
   // Group workers by vertical for display
   const groupedWorkers = useMemo(() => {
