@@ -43,7 +43,7 @@ export default function DeveloperLanding() {
         <ul style={{ listStyle: "none", padding: 0 }}>
           {[
             ["SDK Documentation", "https://github.com/Titleapp/titleapp-platform/tree/main/packages/sdk"],
-            ["API Reference", "/api/v1/docs"],
+            ["API Reference", "https://api-feyfibglbq-uc.a.run.app/v1/docs"],
             ["Engineering Protocol", "https://github.com/Titleapp/titleapp-platform/blob/main/docs/ENGINEERING_PROTOCOL.md"],
             ["Contributor Onboarding", "https://github.com/Titleapp/titleapp-platform/blob/main/docs/CODEX-49.2-Contributor-Onboarding.md"],
           ].map(([label, href]) => (
