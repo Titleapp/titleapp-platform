@@ -23,6 +23,35 @@
   --col1-text:#F5F5F5;
   --chat-bubble-alex:#F3F0FF;
   --chat-bubble-user:#6B46C1;
+
+  /* ── Spine Design Tokens (CODEX 49.1 C0) ── */
+
+  /* Brand */
+  --color-workers: #6B46C1;
+  --color-games: #16A34A;
+
+  /* PFD Status layer */
+  --status-green: #16A34A;
+  --status-yellow: #EAB308;
+  --status-red: #DC2626;
+  --status-blue: #3B82F6;
+  --status-white: #F8FAFC;
+
+  /* Typography */
+  --text-primary: #111827;
+  --text-muted: #64748B;
+  --text-heading-size: 28px;
+  --text-heading-weight: 700;
+
+  /* Canvas */
+  --canvas-bg: #F8FAFC;
+  --canvas-dark-bg: #0f172a;
+  --canvas-border: #E2E8F0;
+  --canvas-card-padding: 16px;
+
+  /* Status indicator sizes */
+  --status-dot-size: 8px;
+  --status-arrow-size: 14px;
 }
 
 *{ box-sizing:border-box; }

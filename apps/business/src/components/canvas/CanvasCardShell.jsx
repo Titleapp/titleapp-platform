@@ -10,25 +10,25 @@ import React from "react";
 const S = {
   shell: {
     height: "100%", display: "flex", flexDirection: "column",
-    background: "#ffffff", color: "#1e293b", overflow: "hidden",
+    background: "var(--card)", color: "var(--text-primary)", overflow: "hidden",
   },
   header: {
     display: "flex", alignItems: "center", justifyContent: "space-between",
-    padding: "16px 20px", borderBottom: "1px solid #e5e7eb", flexShrink: 0,
+    padding: "var(--canvas-card-padding) 20px", borderBottom: "1px solid var(--canvas-border)", flexShrink: 0,
   },
-  title: { fontSize: 15, fontWeight: 700, color: "#111827" },
+  title: { fontSize: 15, fontWeight: "var(--text-heading-weight)", color: "var(--text-primary)" },
   dismissBtn: {
     background: "none", border: "none", cursor: "pointer", padding: 4,
-    color: "#9ca3af", display: "flex", alignItems: "center",
+    color: "var(--text-muted)", display: "flex", alignItems: "center",
   },
-  body: { flex: 1, padding: 16, overflowY: "auto" },
+  body: { flex: 1, padding: "var(--canvas-card-padding)", overflowY: "auto" },
   empty: {
     display: "flex", alignItems: "center", justifyContent: "center",
-    height: "100%", fontSize: 14, color: "#9ca3af", textAlign: "center",
+    height: "100%", fontSize: 14, color: "var(--text-muted)", textAlign: "center",
     padding: "0 24px", lineHeight: 1.6,
   },
   shimmerRow: {
-    height: 14, background: "linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%)",
+    height: 14, background: "linear-gradient(90deg, var(--canvas-bg) 25%, var(--canvas-border) 50%, var(--canvas-bg) 75%)",
     backgroundSize: "200% 100%", animation: "canvasShimmer 1.5s ease-in-out infinite",
     borderRadius: 6, marginBottom: 10,
   },
