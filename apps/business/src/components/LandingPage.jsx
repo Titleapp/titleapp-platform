@@ -196,6 +196,7 @@ export default function LandingPage() {
             </svg>
           </div>
           <span style={S.logoText}>TitleApp</span>
+          <span style={{ background: "#6B46C1", color: "white", fontSize: "10px", fontWeight: "700", padding: "2px 8px", borderRadius: "999px", letterSpacing: "0.08em", marginLeft: "8px", verticalAlign: "middle", textTransform: "uppercase" }}>BETA</span>
         </div>
         <div style={S.headerRight}>
           <a href={`${appBase}/meet-alex?action=signin`} style={S.headerLink}>Sign In</a>
@@ -207,6 +208,9 @@ export default function LandingPage() {
       {/* ── Hero ── */}
       <section style={S.hero}>
         <div style={S.heroInner}>
+          <div style={{ marginBottom: "12px" }}>
+            <span style={{ background: "#6B46C1", color: "white", fontSize: "11px", fontWeight: "700", padding: "3px 10px", borderRadius: "999px", letterSpacing: "0.08em", textTransform: "uppercase" }}>BETA</span>
+          </div>
           <div style={S.heroTag}>The Digital Worker Platform</div>
           <h1 style={S.heroH1}>Finally. AI that knows what it's talking about.</h1>
           <p style={S.heroSub}>Every Digital Worker is trained on your industry's rules and built by leading experts in your field.</p>
@@ -455,6 +459,28 @@ export default function LandingPage() {
         <h2 style={{ fontSize: 32, fontWeight: 800, color: "#111827", marginBottom: 8 }}>Meet your team at TitleApp.</h2>
         <p style={{ fontSize: 16, color: "#6b7280", marginBottom: 28 }}>Start free. No credit card. Workers ready in seconds.</p>
         <a href={`${appBase}/meet-alex`} style={{ ...S.btnPrimary, fontSize: 16, padding: "14px 36px" }}>Start Free</a>
+      </section>
+
+      {/* ── For Developers ── */}
+      <section style={{ background: "#0f172a", padding: "64px 24px", textAlign: "center" }}>
+        <div style={{ maxWidth: "640px", margin: "0 auto" }}>
+          <span style={{ background: "#6B46C1", color: "white", fontSize: "10px", fontWeight: "700", padding: "2px 8px", borderRadius: "999px", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "16px", display: "inline-block" }}>BETA</span>
+          <h2 style={{ color: "white", fontSize: "28px", fontWeight: "700", margin: "12px 0 8px" }}>For Developers</h2>
+          <p style={{ color: "#94a3b8", fontSize: "16px", marginBottom: "32px", lineHeight: "1.6" }}>
+            Build on TitleApp using our SDK and API. Install in 5 minutes and make your first API call.
+          </p>
+          <a href="/developers" style={{ display: "inline-block", background: "#6B46C1", color: "white", padding: "12px 28px", borderRadius: "8px", fontWeight: "600", fontSize: "15px", textDecoration: "none", marginBottom: "24px" }}>
+            Get Started with the SDK →
+          </a>
+          <div style={{ display: "flex", gap: "24px", justifyContent: "center", flexWrap: "wrap", marginTop: "16px" }}>
+            <a href="/developers" style={{ color: "#7c3aed", fontSize: "14px", textDecoration: "none" }}>SDK Documentation</a>
+            <a href="/developers" style={{ color: "#7c3aed", fontSize: "14px", textDecoration: "none" }}>API Reference</a>
+            <a href="/developers" style={{ color: "#7c3aed", fontSize: "14px", textDecoration: "none" }}>Contributor Guide</a>
+          </div>
+          <p style={{ color: "#475569", fontSize: "12px", marginTop: "24px" }}>
+            TitleApp is in BETA. APIs and features subject to change. Spine endpoints (contacts, transactions, assets) coming in v0.2.
+          </p>
+        </div>
       </section>
 
       {/* ── Footer ── */}

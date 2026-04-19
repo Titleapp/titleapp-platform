@@ -1,3 +1,12 @@
+# ENDPOINT_CATALOG.md
+
+> **NOTE (April 2026):** This file currently contains KYC SOP
+> content and is misnamed. The canonical endpoint reference is
+> `docs/platform/API_ARCHITECTURE.md` and `contracts/capabilities.json`.
+> This file will be corrected in CODEX 49.4.
+
+---
+
 # KYC_SOP.md (v1.0)
 
 ## 1. Purpose

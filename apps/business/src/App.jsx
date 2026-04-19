@@ -4635,7 +4635,7 @@ export default function App() {
 
   // ── /sandbox route intercept ──────────────────────────────
   // Standalone Vibe Coding Sandbox — split-pane layout with Alex chat + workspace
-  const isSandbox = window.location.pathname === "/sandbox" || window.location.pathname === "/sandbox/" || /^\/developers\/?$/.test(window.location.pathname);
+  const isSandbox = window.location.pathname === "/sandbox" || window.location.pathname === "/sandbox/";
 
   // ── /sandbox/worker route intercept (CODEX 47.4 Phase B) ───
   // Reference Worker Sandbox — 9-step build flow against Phase A backend.
@@ -4663,7 +4663,7 @@ export default function App() {
   const isAutoLanding = /^\/auto\/?$/.test(window.location.pathname);
   const isTitleEscrowLanding = /^\/title-escrow\/?$/.test(window.location.pathname);
   const isPropMgmtLanding = /^\/property-management\/?$/.test(window.location.pathname);
-  const isDevelopersLanding = false; // /developers now redirects to /sandbox below
+  const isDevelopersLanding = /^\/developers\/?$/.test(window.location.pathname);
   const isDevelopersRedirect = /^\/developers\/?$/.test(window.location.pathname);
   const isPilotLanding = /^\/pilot\/?$/.test(window.location.pathname);
 

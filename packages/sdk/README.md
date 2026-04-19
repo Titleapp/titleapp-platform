@@ -2,6 +2,14 @@
 
 JavaScript SDK for the TitleApp Digital Worker platform.
 
+## Current Version: v0.1.0 (BETA)
+
+Available client modules: workers, vault, marketplace.
+
+> **Coming in v0.2:** Spine endpoints — contacts, transactions,
+> assets, documents, employees. These correspond to the Spine
+> worker infrastructure being built in CODEX 49.1.
+
 ## Install
 
 ```bash
