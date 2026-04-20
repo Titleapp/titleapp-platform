@@ -57,6 +57,7 @@ import B2BAnalytics from "./sections/B2BAnalytics";
 import PendingSignatures from "./sections/PendingSignatures";
 import AlexPipelines from "./sections/AlexPipelines";
 import ControlCenter from "./sections/ControlCenter";
+import SpineSection from "./sections/SpineSection";
 import AlexTaskBoard from "./sections/AlexTaskBoard";
 import AlexWorkerStatus from "./sections/AlexWorkerStatus";
 import DeveloperSandbox from "./pages/DeveloperSandbox";
@@ -4547,6 +4548,31 @@ function AdminShell({ onBackToHub, initialSection }) {
       case "w3-community":
       case "w3-contracts":
         return <Dashboard />;
+      // ── Spine Worker Sub-Nav (CODEX 49.4) ──
+      case "employees":
+        return <SpineSection label="Employees" workerSlug="platform-hr" />;
+      case "scheduling":
+        return <SpineSection label="Scheduling" workerSlug="platform-hr" />;
+      case "hr-compliance":
+        return <SpineSection label="HR Compliance" workerSlug="platform-hr" />;
+      case "onboarding":
+        return <SpineSection label="Onboarding" workerSlug="platform-hr" />;
+      case "campaigns":
+        return <SpineSection label="Campaigns" workerSlug="platform-marketing" />;
+      case "content-calendar":
+        return <SpineSection label="Content Calendar" workerSlug="platform-marketing" />;
+      case "social-media":
+        return <SpineSection label="Social Media" workerSlug="platform-marketing" />;
+      case "financials":
+        return <SpineSection label="Financials" workerSlug="platform-accounting" />;
+      case "ap-ar":
+        return <SpineSection label="AP/AR" workerSlug="platform-accounting" />;
+      case "invoices":
+        return <SpineSection label="Invoices" workerSlug="platform-accounting" />;
+      case "chart-of-accounts":
+        return <SpineSection label="Chart of Accounts" workerSlug="platform-accounting" />;
+      case "kpi-builder":
+        return <SpineSection label="KPI Builder" workerSlug="platform-control-center-pro" />;
       default:
         if (currentSection.startsWith("worker-")) return <WorkerHome />;
         return <WorkerHome />;
@@ -4722,7 +4748,7 @@ export default function App() {
   function transitionTo(view) {
     setShowTransition(true);
     setCurrentView(view);
-    setTimeout(() => setShowTransition(false), 1100);
+    setTimeout(() => setShowTransition(false), 1500);
   }
 
   // Handle Google signInWithRedirect result on mount — must be in App.jsx (always mounted)

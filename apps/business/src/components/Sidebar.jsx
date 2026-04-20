@@ -873,6 +873,35 @@ const WORKER_NAV_MAP = {
     { id: "pending-signatures", label: "Signatures" },
     { id: "my-logbook", label: "Logbooks" },
   ],
+  // ── Platform Spine Workers ──
+  "platform-hr": [
+    { id: "employees", label: "Employees" },
+    { id: "scheduling", label: "Scheduling" },
+    { id: "hr-compliance", label: "Compliance" },
+    { id: "onboarding", label: "Onboarding" },
+  ],
+  "hr-people": [
+    { id: "employees", label: "Employees" },
+    { id: "scheduling", label: "Scheduling" },
+    { id: "hr-compliance", label: "Compliance" },
+    { id: "onboarding", label: "Onboarding" },
+  ],
+  "platform-marketing": [
+    { id: "campaigns", label: "Campaigns" },
+    { id: "content-calendar", label: "Content Calendar" },
+    { id: "social-media", label: "Social Media" },
+  ],
+  "platform-accounting": [
+    { id: "financials", label: "Financials" },
+    { id: "ap-ar", label: "AP/AR" },
+    { id: "invoices", label: "Invoices" },
+    { id: "chart-of-accounts", label: "Chart of Accounts" },
+  ],
+  "platform-control-center-pro": [
+    { id: "control-center", label: "Control Center" },
+    { id: "kpi-builder", label: "KPI Builder" },
+    { id: "alerts", label: "Alerts" },
+  ],
 };
 
 // Worker slug → display name

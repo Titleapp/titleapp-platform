@@ -557,9 +557,6 @@ async function generateSubscriberBriefs() {
         const userData = userDoc.data();
         const userId = userDoc.id;
 
-        // Skip admin accounts (Sean's brief is handled by main generator)
-        if (userData.email === "seanlcombs@gmail.com" || userData.email === "sean@titleapp.ai") continue;
-
         // Get user's primary workspace
         const wsSnap = await db.collection("users").doc(userId).collection("workspaces").limit(1).get();
         const workspaceId = wsSnap.empty ? "vault" : wsSnap.docs[0].id;
