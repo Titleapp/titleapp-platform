@@ -20,6 +20,7 @@ const WORKER_NAV_MAP = {
     { id: "reporting", label: "Reporting" },
   ],
   "chief-of-staff": [
+    { id: "control-center", label: "Control Center" },
     { id: "pipelines", label: "Pipelines" },
     { id: "task-board", label: "Task Board" },
     { id: "worker-status", label: "Worker Status" },

@@ -56,6 +56,7 @@ import VaultTools from "./sections/VaultTools";
 import B2BAnalytics from "./sections/B2BAnalytics";
 import PendingSignatures from "./sections/PendingSignatures";
 import AlexPipelines from "./sections/AlexPipelines";
+import ControlCenter from "./sections/ControlCenter";
 import AlexTaskBoard from "./sections/AlexTaskBoard";
 import AlexWorkerStatus from "./sections/AlexWorkerStatus";
 import DeveloperSandbox from "./pages/DeveloperSandbox";
@@ -4522,6 +4523,8 @@ function AdminShell({ onBackToHub, initialSection }) {
         return <VaultTools />;
       case "b2b-analytics":
         return <B2BAnalytics />;
+      case "control-center":
+        return <ControlCenter />;
       case "pipelines":
         return <AlexPipelines />;
       case "task-board":
