@@ -506,15 +506,9 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
         return;
       }
 
-      // Qualifying question for first Alex session
+      // Skip qualifying — natural conversation replaces onboarding bubbles
       if (!localStorage.getItem('ta_alex_qualified') && disclaimerAccepted) {
-        setMessages([{
-          role: 'assistant',
-          content: "What can I help you with today?",
-          isSystem: true,
-          suggestions: ["I'm a pilot", "I work in real estate", "I run a dealership", "Something else"],
-        }]);
-        return;
+        localStorage.setItem('ta_alex_qualified', 'true');
       }
 
       // Check if we should fire celebration (just completed onboarding)
@@ -1738,25 +1732,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
           </div>
         )}
 
-        {/* Qualifying onboarding — centered avatar */}
-        {qualifyingMode && messages.length <= 1 && (
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flex: 1, padding: 40, textAlign: "center" }}>
-            <div className="alex-avatar-pulse" style={{ width: 72, height: 72, borderRadius: 36, background: "linear-gradient(135deg, #7c3aed, #6366f1)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 24 }}>
-              <svg width="36" height="36" viewBox="0 0 24 24" fill="white"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-            </div>
-            <div style={{ fontSize: 16, fontWeight: 500, color: "#1e293b", lineHeight: 1.6, maxWidth: 380, marginBottom: 24 }}>
-              What can I help you with today?
-            </div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center" }}>
-              {["I'm a pilot", "I work in real estate", "I run a dealership", "Something else"].map(chip => (
-                <button key={chip} onClick={() => handleQualifyingAnswer(chip)} style={{ padding: "8px 16px", fontSize: 13, fontWeight: 500, background: "white", border: "1px solid #e2e8f0", borderRadius: 20, color: "#7c3aed", cursor: "pointer", transition: "all 0.2s" }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = "#7c3aed"; e.currentTarget.style.background = "#faf5ff"; }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = "#e2e8f0"; e.currentTarget.style.background = "white"; }}
-                >{chip}</button>
-              ))}
-            </div>
-          </div>
-        )}
+        {/* Qualifying onboarding removed — natural conversation replaces bubbles */}
 
         {/* Greeting — time-aware, context-aware, collapses after 5s or first message */}
         {messages.length === 0 && !isTyping && !showDisclaimer && !qualifyingMode && (() => {
