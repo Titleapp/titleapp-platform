@@ -18,6 +18,16 @@
       ]
     },
     {
+      "collectionGroup": "messageEvents",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "tenantId", "order": "ASCENDING" },
+        { "fieldPath": "sessionId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "inventory",
       "queryScope": "COLLECTION",
       "fields": [

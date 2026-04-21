@@ -287,7 +287,7 @@ function setCorsHeaders(req, res) {
     res.set('Access-Control-Allow-Origin', origin);
   }
   res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Tenant-Id, X-Vertical, X-Jurisdiction');
+  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Tenant-Id, X-Vertical, X-Jurisdiction, X-Session-Id');
   res.set('Access-Control-Max-Age', '3600');
 }
 
