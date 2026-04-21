@@ -5546,22 +5546,8 @@ export default function App() {
     );
   }
 
-  // Crossfade transition overlay — renders above content during view switches
-  const transitionOverlay = showTransition ? (
-    <div
-      onAnimationEnd={() => setShowTransition(false)}
-      style={{
-        position: "fixed", inset: 0,
-        background: "#0f172a",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        zIndex: 9999,
-        pointerEvents: "none",
-        animation: "taFadeOut 0.8s ease-in-out 0.3s forwards",
-      }}
-    >
-      <div style={{ fontSize: 28, fontWeight: 700, color: "white", letterSpacing: "-0.5px", animation: "taPulse 1.5s ease-in-out infinite" }}>TitleApp</div>
-    </div>
-  ) : null;
+  // Transition overlay disabled — caused grey flash on boot (49.5g)
+  const transitionOverlay = null;
 
   if (!token || currentView === "login") return <>{transitionOverlay}<LandingPage /></>;
 
