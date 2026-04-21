@@ -308,9 +308,13 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
       setActiveWorkerName(name);
       setActiveWorkerSlug(slug || null);
 
+      // Clear previous worker messages and reset opener guard
+      setMessages([]);
+      openerFiredRef.current = null;
+
       // Chief of Staff — immediate greeting, no context fetch needed
       if (slug === "chief-of-staff") {
-        setMessages(prev => [...prev, { role: 'assistant', content: `Switched to ${name}. I'm your Chief of Staff — I coordinate all your workers and track progress across your workspace.` }]);
+        setMessages([{ role: 'assistant', content: `Switched to ${name}. I'm your Chief of Staff — I coordinate all your workers and track progress across your workspace.` }]);
         setTimeout(() => {
           if (conversationRef.current) conversationRef.current.scrollTop = conversationRef.current.scrollHeight;
         }, 100);

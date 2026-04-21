@@ -4470,6 +4470,7 @@ function AdminShell({ onBackToHub, initialSection }) {
       case "billing":
         return <BillingPage />;
       case "worker-home": {
+        console.log("[renderSection] worker-home — activeWorkerData:", workerCtx?.activeWorkerData?.slug || null, "workerReady:", workerCtx?.workerReady);
         if (workerCtx?.activeWorkerData) {
           return (
             <WorkerCanvas
