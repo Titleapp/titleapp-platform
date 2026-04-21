@@ -140,6 +140,10 @@ export const WORKER_ROUTES = [
 
   // Platform
   { slug: "chief-of-staff", name: "Alex — Chief of Staff", description: "Your AI coordinator. Manages all your workers, plans pipelines, tracks progress. Free with 3+ worker subscriptions.", suite: "Platform", status: "live", price: 0 },
+  { slug: "platform-accounting", name: "Accounting", description: "Books that are always audit-ready. GAAP financials, job cost reporting, AP/AR, bank reconciliation, and investor packages.", suite: "Platform", status: "live", price: 0 },
+  { slug: "platform-hr", name: "HR & People", description: "Employee onboarding, scheduling, compliance reminders, and contractor management. Tracks I-9, W-4, certifications, and license expirations.", suite: "Platform", status: "live", price: 0 },
+  { slug: "platform-marketing", name: "Marketing & Content", description: "Campaign planning, content calendar, social media scheduling, and marketing analytics.", suite: "Platform", status: "live", price: 0 },
+  { slug: "platform-control-center-pro", name: "Control Center Pro", description: "Advanced KPI dashboard with custom metrics, alerts, and trend analysis.", suite: "Platform", status: "live", price: 0 },
 
   // Aviation — Operator Suite
   { slug: "av-cert-assistant", name: "Part 135 Certificate Assistant", description: "Guides operators through Part 135 certification and amendment process", suite: "Aviation", status: "planned", price: 7900, vertical: "aviation" },

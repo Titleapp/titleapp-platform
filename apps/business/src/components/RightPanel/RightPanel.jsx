@@ -1085,7 +1085,14 @@ export default function RightPanel() {
         return;
       }
 
-      // Fetch from catalog for richer data, but use localMatch as immediate fallback
+      // Show localMatch immediately if available (no network wait)
+      if (localMatch) {
+        const cousins = findCousins(localMatch, WORKER_ROUTES);
+        panel.showWorkerHome(localMatch, cousins);
+        return;
+      }
+
+      // Fetch from catalog for richer data
       fetch(`${API_BASE}/api?path=/v1/catalog:byVertical&vertical=all&limit=200`)
         .then(r => r.json())
         .then(data => {
@@ -1094,17 +1101,15 @@ export default function RightPanel() {
           if (w) {
             const cousins = findCousins(w, allCatalog);
             panel.showWorkerHome(w, cousins);
-          } else if (localMatch) {
-            // Catalog didn't have it — use WORKER_ROUTES data
-            const cousins = findCousins(localMatch, WORKER_ROUTES);
-            panel.showWorkerHome(localMatch, cousins);
+          } else {
+            // Worker not in catalog — construct minimal data from event
+            const fallback = { slug, name: e.detail?.name || slug.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase()), suite: "Platform", status: "live" };
+            panel.showWorkerHome(fallback, []);
           }
         }).catch(() => {
-          // Network failed — use WORKER_ROUTES fallback
-          if (localMatch) {
-            const cousins = findCousins(localMatch, WORKER_ROUTES);
-            panel.showWorkerHome(localMatch, cousins);
-          }
+          // Network failed — construct minimal fallback
+          const fallback = { slug, name: e.detail?.name || slug.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase()), suite: "Platform", status: "live" };
+          panel.showWorkerHome(fallback, []);
         });
     }
     window.addEventListener("ta:select-worker", onSelectWorker);
