@@ -4745,10 +4745,13 @@ export default function App() {
   const viewResolvedRef = useRef(false);
 
   // Smooth transition: show branded overlay then fade out
+  const transitionTimerRef = useRef(null);
   function transitionTo(view) {
+    if (currentView === view && showTransition) return; // Guard: prevent re-trigger during boot cascade
     setShowTransition(true);
     setCurrentView(view);
-    setTimeout(() => setShowTransition(false), 1500);
+    if (transitionTimerRef.current) clearTimeout(transitionTimerRef.current);
+    transitionTimerRef.current = setTimeout(() => setShowTransition(false), 1500);
   }
 
   // Handle Google signInWithRedirect result on mount — must be in App.jsx (always mounted)

@@ -1198,8 +1198,40 @@ export default function Sidebar({
     return workspaceName || tenantName || "Business";
   })();
 
+  // Spine nav → canvas signal map (CODEX 49.5 Fix 1)
+  const SPINE_NAV_CANVAS_MAP = {
+    "financials": "pl-summary",
+    "accounting": "pl-summary",
+    "ap-ar": "invoice-list",
+    "invoices": "invoice-list",
+    "chart-of-accounts": "chart-of-accounts",
+    "employees": "employee-register",
+    "hr-people": "employee-register",
+    "contacts-all": "contacts",
+    "contacts": "contacts",
+    "content-calendar": "content-calendar",
+    "campaigns": "content-calendar",
+    "social-media": "content-calendar",
+    "control-center": "control-center",
+    "scheduling": "employee-register",
+    "hr-compliance": "employee-register",
+    "onboarding": "employee-register",
+    "kpi-builder": "control-center",
+  };
+
   function handleNavClick(sectionId) {
     onNavigate(sectionId);
+    // Dispatch canvas signal for Spine nav items
+    const canvasCard = SPINE_NAV_CANVAS_MAP[sectionId];
+    if (canvasCard) {
+      window.dispatchEvent(new CustomEvent("ta:canvas-signal", {
+        detail: {
+          type: canvasCard,
+          source: "nav",
+          workspaceId: localStorage.getItem("WORKSPACE_ID") || "vault",
+        }
+      }));
+    }
     if (onClose) onClose();
   }
 
