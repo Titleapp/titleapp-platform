@@ -81,6 +81,8 @@ import CampaignPage from "./pages/campaigns/CampaignPage";
 import InviteLanding from "./pages/InviteLanding";
 import MeetAlex from "./pages/MeetAlex";
 import CoPilotEFB from "./sections/CoPilotEFB";
+import { useWorkerState } from "./context/WorkerStateContext";
+import WorkerCanvas from "./components/canvas/WorkerCanvas";
 import { auth } from "./firebase";
 import { signInWithCustomToken, getRedirectResult } from "firebase/auth";
 import { processLandingHandoff } from "./utils/landingHandoff";
@@ -4376,6 +4378,7 @@ import AdminCommandCenter from "./admin/AdminShell";
 import "./admin/admin.css";
 
 function AdminShell({ onBackToHub, initialSection }) {
+  const workerCtx = useWorkerState();
   const [currentSection, setCurrentSection] = useState(() => {
     if (initialSection) return initialSection;
     const redirectPage = sessionStorage.getItem("ta_redirect_page");
@@ -4466,8 +4469,22 @@ function AdminShell({ onBackToHub, initialSection }) {
         return <Settings />;
       case "billing":
         return <BillingPage />;
-      case "worker-home":
+      case "worker-home": {
+        if (workerCtx?.activeWorkerData) {
+          return (
+            <WorkerCanvas
+              workerData={workerCtx.activeWorkerData}
+              verticalLabel={workerCtx.activeWorkerData.vertical || workerCtx.activeWorkerData.suite}
+              relatedWorkers={[]}
+              onLeave={() => {
+                workerCtx.clearWorker();
+                setCurrentSection("dashboard");
+              }}
+            />
+          );
+        }
         return <WorkerHome />;
+      }
       case "my-vehicles":
         return <MyVehicles />;
       case "my-properties":

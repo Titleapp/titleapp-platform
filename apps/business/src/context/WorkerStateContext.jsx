@@ -25,11 +25,15 @@ export function WorkerStateProvider({ children }) {
     const wasPreviousWorker = prevWorkerIdRef.current && prevWorkerIdRef.current !== slug;
     if (wasPreviousWorker) setIsTransitioning(true);
 
-    setWorkerState("loading");
-    setActiveWorkerId(slug);
-    setWorkerReady(false);
-    setActiveWorkerData(null);
-    prevWorkerIdRef.current = slug;
+    // If optimistic data already set for this slug, skip the null reset
+    const hasOptimistic = prevWorkerIdRef.current === slug;
+    if (!hasOptimistic) {
+      setWorkerState("loading");
+      setActiveWorkerId(slug);
+      setWorkerReady(false);
+      setActiveWorkerData(null);
+      prevWorkerIdRef.current = slug;
+    }
 
     try {
       const resp = await fetch(`${API_BASE}/api?path=/v1/catalog:byVertical&vertical=all&limit=200`, {
@@ -60,6 +64,14 @@ export function WorkerStateProvider({ children }) {
   const completeWork = useCallback(() => setWorkerState("complete"), []);
   const resetState = useCallback(() => setWorkerState("idle"), []);
 
+  const setWorkerOptimistic = useCallback((workerData) => {
+    setActiveWorkerData(workerData);
+    setWorkerReady(true);
+    setWorkerState("arrival");
+    setActiveWorkerId(workerData.slug);
+    prevWorkerIdRef.current = workerData.slug;
+  }, []);
+
   const clearWorker = useCallback(() => {
     setWorkerState("idle");
     setActiveWorkerId(null);
@@ -81,6 +93,7 @@ export function WorkerStateProvider({ children }) {
         completeWork,
         resetState,
         clearWorker,
+        setWorkerOptimistic,
         setWorkerState,
         setWorkerReady,
       }}

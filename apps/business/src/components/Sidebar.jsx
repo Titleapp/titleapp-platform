@@ -1237,6 +1237,19 @@ export default function Sidebar({
 
   function handleWorkerClick(worker) {
     setSelectedWorker(worker.slug);
+    // Optimistic render — set local data immediately so canvas renders without waiting for fetch
+    const optimisticData = {
+      slug: worker.slug,
+      name: worker.name,
+      suite: worker.suite,
+      vertical: worker.suite,
+      description: worker.description || "",
+      status: worker.status,
+    };
+    if (workerCtx?.setWorkerOptimistic) {
+      workerCtx.setWorkerOptimistic(optimisticData);
+    }
+    // Enrich with full catalog data in the background
     if (workerCtx?.selectWorker) workerCtx.selectWorker(worker.slug);
     window.dispatchEvent(new CustomEvent("ta:select-worker", {
       detail: {
