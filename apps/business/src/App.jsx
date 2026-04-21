@@ -4377,8 +4377,27 @@ WORKER_DETAIL_CONTENT["srec-exchange-compliance"] = {
 import AdminCommandCenter from "./admin/AdminShell";
 import "./admin/admin.css";
 
-function AdminShell({ onBackToHub, initialSection }) {
+// Worker-home renderer — must be a component (not inline in renderSection)
+// so it renders INSIDE AppShell's WorkerStateProvider
+function WorkerHomeRenderer({ onBack }) {
   const workerCtx = useWorkerState();
+  if (workerCtx?.activeWorkerData) {
+    return (
+      <WorkerCanvas
+        workerData={workerCtx.activeWorkerData}
+        verticalLabel={workerCtx.activeWorkerData.vertical || workerCtx.activeWorkerData.suite}
+        relatedWorkers={[]}
+        onLeave={() => {
+          if (workerCtx.clearWorker) workerCtx.clearWorker();
+          onBack();
+        }}
+      />
+    );
+  }
+  return <WorkerHome />;
+}
+
+function AdminShell({ onBackToHub, initialSection }) {
   const [currentSection, setCurrentSection] = useState(() => {
     if (initialSection) return initialSection;
     const redirectPage = sessionStorage.getItem("ta_redirect_page");
@@ -4469,23 +4488,8 @@ function AdminShell({ onBackToHub, initialSection }) {
         return <Settings />;
       case "billing":
         return <BillingPage />;
-      case "worker-home": {
-        console.warn("[renderSection] worker-home — activeWorkerData:", workerCtx?.activeWorkerData?.slug || null, "workerReady:", workerCtx?.workerReady, "workerCtx exists:", !!workerCtx);
-        if (workerCtx?.activeWorkerData) {
-          return (
-            <WorkerCanvas
-              workerData={workerCtx.activeWorkerData}
-              verticalLabel={workerCtx.activeWorkerData.vertical || workerCtx.activeWorkerData.suite}
-              relatedWorkers={[]}
-              onLeave={() => {
-                workerCtx.clearWorker();
-                setCurrentSection("dashboard");
-              }}
-            />
-          );
-        }
-        return <WorkerHome />;
-      }
+      case "worker-home":
+        return <WorkerHomeRenderer onBack={() => setCurrentSection("dashboard")} />;
       case "my-vehicles":
         return <MyVehicles />;
       case "my-properties":
