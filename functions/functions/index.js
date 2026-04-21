@@ -497,6 +497,28 @@ async function signupInternal({ email, name, accountType, companyName, companyDe
       createdAt: nowServerTs(),
       createdVia: "chat",
     });
+
+    // Auto-grant default platform Spine workers
+    const DEFAULT_PLATFORM_WORKERS = [
+      { slug: "chief-of-staff", name: "Alex — Chief of Staff" },
+      { slug: "platform-accounting", name: "Alex Business Accounting" },
+      { slug: "platform-hr", name: "Alex HR & People" },
+      { slug: "platform-marketing", name: "Alex Marketing & Content" },
+      { slug: "platform-control-center-pro", name: "Control Center Pro" },
+    ];
+    const wpBatch = db.batch();
+    for (const w of DEFAULT_PLATFORM_WORKERS) {
+      wpBatch.set(db.collection("subscriptions").doc(), {
+        userId: userRecord.uid,
+        workerId: w.slug,
+        slug: w.slug,
+        workerName: w.name,
+        trialStatus: "subscribed",
+        createdAt: nowServerTs(),
+        source: "signup_default",
+      });
+    }
+    await wpBatch.commit();
   }
 
   const userData = userSnap.exists ? userSnap.data() : {};
@@ -1071,6 +1093,28 @@ exports.api = onRequest(
             source: "signup_bonus",
             version: "1.0",
           });
+
+          // Auto-grant default platform Spine workers to every new user
+          const DEFAULT_PLATFORM_WORKERS = [
+            { slug: "chief-of-staff", name: "Alex — Chief of Staff" },
+            { slug: "platform-accounting", name: "Alex Business Accounting" },
+            { slug: "platform-hr", name: "Alex HR & People" },
+            { slug: "platform-marketing", name: "Alex Marketing & Content" },
+            { slug: "platform-control-center-pro", name: "Control Center Pro" },
+          ];
+          const workerBatch = db.batch();
+          for (const w of DEFAULT_PLATFORM_WORKERS) {
+            workerBatch.set(db.collection("subscriptions").doc(), {
+              userId: userRecord.uid,
+              workerId: w.slug,
+              slug: w.slug,
+              workerName: w.name,
+              trialStatus: "subscribed",
+              createdAt: nowServerTs(),
+              source: "signup_default",
+            });
+          }
+          await workerBatch.commit();
         }
 
         const customToken = await admin.auth().createCustomToken(userRecord.uid);
