@@ -58,6 +58,9 @@ import PendingSignatures from "./sections/PendingSignatures";
 import AlexPipelines from "./sections/AlexPipelines";
 import ControlCenter from "./sections/ControlCenter";
 import SpineSection from "./sections/SpineSection";
+import MarketingDrafts from "./sections/MarketingDrafts";
+import ContentCalendar from "./sections/ContentCalendar";
+import SocialMedia from "./sections/SocialMedia";
 import AlexTaskBoard from "./sections/AlexTaskBoard";
 import AlexWorkerStatus from "./sections/AlexWorkerStatus";
 import DeveloperSandbox from "./pages/DeveloperSandbox";
@@ -4580,11 +4583,11 @@ function AdminShell({ onBackToHub, initialSection }) {
       case "onboarding":
         return <SpineSection label="Onboarding" workerSlug="platform-hr" />;
       case "campaigns":
-        return <SpineSection label="Campaigns" workerSlug="platform-marketing" />;
+        return <MarketingDrafts />;
       case "content-calendar":
-        return <SpineSection label="Content Calendar" workerSlug="platform-marketing" />;
+        return <ContentCalendar />;
       case "social-media":
-        return <SpineSection label="Social Media" workerSlug="platform-marketing" />;
+        return <SocialMedia />;
       case "financials":
         return <SpineSection label="Financials" workerSlug="platform-accounting" />;
       case "ap-ar":

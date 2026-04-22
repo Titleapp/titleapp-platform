@@ -59,6 +59,27 @@ function getMarketingService() {
   return _marketingService;
 }
 
+// Social Service (Unified.to posting, draft queue)
+let _socialService;
+function getSocialService() {
+  if (!_socialService) _socialService = require("./services/socialService");
+  return _socialService;
+}
+
+// Email Marketing Service (SendGrid Marketing API)
+let _emailMarketingService;
+function getEmailMarketingService() {
+  if (!_emailMarketingService) _emailMarketingService = require("./services/emailService/marketingCampaigns");
+  return _emailMarketingService;
+}
+
+// PR Distribution Service
+let _prService;
+function getPRService() {
+  if (!_prService) _prService = require("./services/prService");
+  return _prService;
+}
+
 // Chat Engine (conversational state machine)
 const { processMessage: chatEngineProcess, defaultState: chatEngineDefaultState } = require("./chatEngine");
 
@@ -17163,6 +17184,152 @@ Analyze now:`;
       } catch (e) {
         console.error("billing: failed:", e);
         return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    //  MARKETING & CONTENT (49.2)
+    // ═══════════════════════════════════════════════════════════════
+
+    // POST /v1/marketing:postSocial — Post content to social platforms via Unified.to
+    if (route === "/marketing:postSocial" && method === "POST") {
+      try {
+        const { content, platforms, title, scheduledAt } = body || {};
+        if (!content) return jsonError(res, 400, "Missing content");
+        if (!platforms || !Array.isArray(platforms) || platforms.length === 0) {
+          return jsonError(res, 400, "At least one platform is required");
+        }
+        const result = await getSocialService().postViaUnified(auth.user.uid, {
+          content, platforms, title, scheduledAt,
+        });
+        if (!result.ok) return jsonError(res, 500, result.error);
+        return res.json(result);
+      } catch (e) {
+        console.error("marketing:postSocial failed:", e);
+        return jsonError(res, 500, "Social posting failed");
+      }
+    }
+
+    // POST /v1/marketing:saveDraft — Save content draft
+    if (route === "/marketing:saveDraft" && method === "POST") {
+      try {
+        const { content, platforms, title } = body || {};
+        if (!content) return jsonError(res, 400, "Missing content");
+        const result = await getSocialService().saveDraft(auth.user.uid, {
+          content, platforms, title, tenantId: ctx.tenantId,
+        });
+        if (!result.ok) return jsonError(res, 500, result.error);
+        return res.json(result);
+      } catch (e) {
+        console.error("marketing:saveDraft failed:", e);
+        return jsonError(res, 500, "Failed to save draft");
+      }
+    }
+
+    // GET /v1/marketing:listDrafts — List drafts for current user
+    if (route === "/marketing:listDrafts" && method === "GET") {
+      try {
+        const status = (req.query || {}).status || null;
+        const limit = parseInt((req.query || {}).limit) || 50;
+        const result = await getSocialService().listDrafts(auth.user.uid, { status, limit });
+        if (!result.ok) return jsonError(res, 500, result.error);
+        return res.json(result);
+      } catch (e) {
+        console.error("marketing:listDrafts failed:", e);
+        return jsonError(res, 500, "Failed to list drafts");
+      }
+    }
+
+    // POST /v1/marketing:approveDraft — Approve draft and trigger social post
+    if (route === "/marketing:approveDraft" && method === "POST") {
+      try {
+        const { draftId } = body || {};
+        if (!draftId) return jsonError(res, 400, "Missing draftId");
+        const result = await getSocialService().approveDraft(auth.user.uid, draftId);
+        if (!result.ok) return jsonError(res, 500, result.error);
+        return res.json(result);
+      } catch (e) {
+        console.error("marketing:approveDraft failed:", e);
+        return jsonError(res, 500, "Failed to approve draft");
+      }
+    }
+
+    // POST /v1/marketing:rejectDraft — Reject draft with optional reason
+    if (route === "/marketing:rejectDraft" && method === "POST") {
+      try {
+        const { draftId, reason } = body || {};
+        if (!draftId) return jsonError(res, 400, "Missing draftId");
+        const result = await getSocialService().rejectDraft(auth.user.uid, draftId, reason);
+        if (!result.ok) return jsonError(res, 500, result.error);
+        return res.json(result);
+      } catch (e) {
+        console.error("marketing:rejectDraft failed:", e);
+        return jsonError(res, 500, "Failed to reject draft");
+      }
+    }
+
+    // POST /v1/marketing:createEmailCampaign — Create + send marketing email
+    if (route === "/marketing:createEmailCampaign" && method === "POST") {
+      try {
+        const { listId, subject, htmlContent, plainContent, fromName, fromEmail } = body || {};
+        if (!listId) return jsonError(res, 400, "Missing listId");
+        if (!subject) return jsonError(res, 400, "Missing subject");
+        if (!htmlContent) return jsonError(res, 400, "Missing htmlContent");
+        const result = await getEmailMarketingService().sendMarketingEmail(auth.user.uid, {
+          listId, subject, htmlContent, plainContent, fromName, fromEmail,
+        });
+        if (!result.ok) return jsonError(res, 500, result.error);
+        return res.json(result);
+      } catch (e) {
+        console.error("marketing:createEmailCampaign failed:", e);
+        return jsonError(res, 500, "Failed to create email campaign");
+      }
+    }
+
+    // POST /v1/marketing:importContacts — Import contacts to SendGrid list
+    if (route === "/marketing:importContacts" && method === "POST") {
+      try {
+        const { listId, contacts } = body || {};
+        if (!contacts || !Array.isArray(contacts) || contacts.length === 0) {
+          return jsonError(res, 400, "Missing or empty contacts array");
+        }
+        const result = await getEmailMarketingService().importContacts(auth.user.uid, {
+          listId, contacts,
+        });
+        if (!result.ok) return jsonError(res, 500, result.error);
+        return res.json(result);
+      } catch (e) {
+        console.error("marketing:importContacts failed:", e);
+        return jsonError(res, 500, "Failed to import contacts");
+      }
+    }
+
+    // GET /v1/marketing:campaignStats — Get campaign performance metrics
+    if (route === "/marketing:campaignStats" && method === "GET") {
+      try {
+        const campaignId = (req.query || {}).campaignId || (body || {}).campaignId;
+        if (!campaignId) return jsonError(res, 400, "Missing campaignId");
+        const result = await getEmailMarketingService().getCampaignStats(auth.user.uid, { campaignId });
+        if (!result.ok) return jsonError(res, 500, result.error);
+        return res.json(result);
+      } catch (e) {
+        console.error("marketing:campaignStats failed:", e);
+        return jsonError(res, 500, "Failed to get campaign stats");
+      }
+    }
+
+    // POST /v1/marketing:distributePR — Distribute press release via PRLog
+    if (route === "/marketing:distributePR" && method === "POST") {
+      try {
+        const { title, content, tier } = body || {};
+        if (!title) return jsonError(res, 400, "Missing title");
+        if (!content) return jsonError(res, 400, "Missing content");
+        const result = await getPRService().distributePR(auth.user.uid, { title, content, tier });
+        if (!result.ok) return jsonError(res, 500, result.error);
+        return res.json(result);
+      } catch (e) {
+        console.error("marketing:distributePR failed:", e);
+        return jsonError(res, 500, "Failed to distribute press release");
       }
     }
 

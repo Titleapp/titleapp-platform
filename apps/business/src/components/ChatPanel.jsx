@@ -1284,6 +1284,33 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
     setTimeout(() => sendMessage(null, suggestion), 100);
   }
 
+  // Save as Draft — for platform-marketing worker (49.2)
+  const [savingDraftIdx, setSavingDraftIdx] = useState(null);
+  const [draftToast, setDraftToast] = useState(null);
+
+  async function handleSaveDraft(content, idx) {
+    setSavingDraftIdx(idx);
+    try {
+      const token = localStorage.getItem("ID_TOKEN");
+      const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+      const res = await fetch(`${API_BASE}/api?path=${encodeURIComponent("/v1/marketing:saveDraft")}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ content, platforms: ["linkedin"] }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Failed to save draft");
+      setDraftToast("Draft saved -- view it in Campaigns");
+      setTimeout(() => setDraftToast(null), 3000);
+    } catch (e) {
+      console.error("Save draft failed:", e);
+      setDraftToast("Failed to save draft");
+      setTimeout(() => setDraftToast(null), 3000);
+    } finally {
+      setSavingDraftIdx(null);
+    }
+  }
+
   function handleKeyDown(e) {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -1809,6 +1836,24 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
               )}
             </div>
 
+            {/* Save as Draft — only for platform-marketing assistant messages (49.2) */}
+            {msg.role === "assistant" && !msg.isSystem && !msg.isError && activeWorkerSlug === "platform-marketing" && typeof displayContent === "string" && displayContent.length > 30 && (
+              <div style={{ marginTop: 6, marginBottom: 4 }}>
+                <button
+                  onClick={() => handleSaveDraft(typeof msg.content === "string" ? msg.content : displayContent, idx)}
+                  disabled={savingDraftIdx === idx}
+                  style={{
+                    padding: "6px 12px", fontSize: 11, fontWeight: 600,
+                    background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 6,
+                    color: "#6B46C1", cursor: savingDraftIdx === idx ? "default" : "pointer",
+                    opacity: savingDraftIdx === idx ? 0.6 : 1,
+                  }}
+                >
+                  {savingDraftIdx === idx ? "Saving..." : "Save as Draft"}
+                </button>
+              </div>
+            )}
+
             {/* Inline worker cards */}
             {msg.workerCards && msg.workerCards.length > 0 && (
               <div className="mobileWorkerCards" style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8, maxWidth: 420 }}>
@@ -2008,6 +2053,17 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
           </button>
         </div>
       </form>
+
+      {/* Draft save toast (49.2) */}
+      {draftToast && (
+        <div style={{
+          position: "fixed", bottom: 24, right: 24, padding: "12px 20px",
+          background: "#0f172a", color: "#fff", borderRadius: 8, fontSize: 13,
+          fontWeight: 500, zIndex: 9999, boxShadow: "0 4px 20px rgba(0,0,0,0.15)",
+        }}>
+          {draftToast}
+        </div>
+      )}
     </div>
   );
 }
