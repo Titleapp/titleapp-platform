@@ -86,12 +86,21 @@ async function apiFetch(path, method = "GET", body = null) {
   return data;
 }
 
+const DOC_TYPES = [
+  { id: "campaign-plan", label: "Campaign Plan", format: "pdf" },
+  { id: "social-strategy", label: "Social Media Strategy", format: "pdf" },
+  { id: "content-brief", label: "Content Brief", format: "docx" },
+  { id: "press-release", label: "Press Release", format: "docx" },
+];
+
 export default function MarketingDrafts() {
   const [drafts, setDrafts] = useState([]);
   const [filter, setFilter] = useState("all");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [actionLoading, setActionLoading] = useState(null);
+  const [generatedDocs, setGeneratedDocs] = useState([]);
+  const [isGeneratingDoc, setIsGeneratingDoc] = useState(null);
 
   const loadDrafts = useCallback(async () => {
     setLoading(true);
@@ -220,6 +229,78 @@ export default function MarketingDrafts() {
           );
         })
       )}
+
+      {/* Documents Section (49.3 Fix 4) */}
+      <div style={{ marginTop: 32 }}>
+        <div style={{ fontSize: 18, fontWeight: 700, color: "#0f172a", marginBottom: 4 }}>Documents</div>
+        <div style={{ fontSize: 13, color: "#64748b", marginBottom: 16 }}>Generate marketing documents from your drafts and campaigns</div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 10, marginBottom: 16 }}>
+          {DOC_TYPES.map(dt => (
+            <button
+              key={dt.id}
+              onClick={async () => {
+                setIsGeneratingDoc(dt.id);
+                try {
+                  const result = await apiFetch("/v1/documents:generate", "POST", {
+                    type: dt.id,
+                    format: dt.format,
+                    vertical: "platform",
+                    context: { workerSlug: "platform-marketing", drafts: drafts.slice(0, 5) },
+                  });
+                  if (result.ok && result.downloadUrl) {
+                    setGeneratedDocs(prev => [{ id: Date.now(), type: dt.id, label: dt.label, url: result.downloadUrl, createdAt: new Date().toISOString() }, ...prev]);
+                  }
+                } catch (e) {
+                  setError(`Document generation failed: ${e.message}`);
+                } finally {
+                  setIsGeneratingDoc(null);
+                }
+              }}
+              disabled={isGeneratingDoc === dt.id}
+              style={{
+                padding: "14px 16px", background: "#fff", border: "1px solid #e2e8f0",
+                borderRadius: 10, cursor: isGeneratingDoc === dt.id ? "default" : "pointer",
+                textAlign: "left", opacity: isGeneratingDoc === dt.id ? 0.6 : 1,
+              }}
+            >
+              <div style={{ fontSize: 13, fontWeight: 600, color: "#1e293b" }}>{dt.label}</div>
+              <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>
+                {isGeneratingDoc === dt.id ? "Generating..." : `.${dt.format.toUpperCase()}`}
+              </div>
+            </button>
+          ))}
+        </div>
+
+        {generatedDocs.length > 0 && (
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "#475569", marginBottom: 8 }}>Recent Documents</div>
+            {generatedDocs.map(doc => (
+              <div key={doc.id} style={{
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                padding: "10px 14px", background: "#f8fafc", borderRadius: 8, marginBottom: 6,
+                border: "1px solid #f1f5f9",
+              }}>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: "#1e293b" }}>{doc.label}</div>
+                  <div style={{ fontSize: 11, color: "#94a3b8" }}>{new Date(doc.createdAt).toLocaleString()}</div>
+                </div>
+                <a
+                  href={doc.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    padding: "6px 14px", fontSize: 11, fontWeight: 600, borderRadius: 6,
+                    background: "#6B46C1", color: "#fff", textDecoration: "none",
+                  }}
+                >
+                  Download
+                </a>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

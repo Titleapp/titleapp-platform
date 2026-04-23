@@ -4759,7 +4759,6 @@ export default function App() {
     typeof window !== "undefined" ? localStorage.getItem("ID_TOKEN") : null
   );
   const [currentView, setCurrentView] = useState("loading"); // loading | hub | app | onboarding | builder-interview
-  const [showTransition, setShowTransition] = useState(false);
   const [handoffInProgress, setHandoffInProgress] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     return !!params.get("token");
@@ -4769,14 +4768,10 @@ export default function App() {
   const [userName, setUserName] = useState("");
   const viewResolvedRef = useRef(false);
 
-  // Smooth transition: show branded overlay then fade out
-  const transitionTimerRef = useRef(null);
+  // View transition — instant switch, no overlay (49.3 architectural fix)
   function transitionTo(view) {
-    if (currentView === view && showTransition) return; // Guard: prevent re-trigger during boot cascade
-    setShowTransition(true);
+    if (currentView === view) return;
     setCurrentView(view);
-    if (transitionTimerRef.current) clearTimeout(transitionTimerRef.current);
-    transitionTimerRef.current = setTimeout(() => setShowTransition(false), 1500);
   }
 
   // Handle Google signInWithRedirect result on mount — must be in App.jsx (always mounted)
@@ -5549,10 +5544,9 @@ export default function App() {
     );
   }
 
-  // Transition overlay disabled — caused grey flash on boot (49.5g)
-  const transitionOverlay = null;
+  // Transition overlay removed — architectural fix (49.3)
 
-  if (!token || currentView === "login") return <>{transitionOverlay}<LandingPage /></>;
+  if (!token || currentView === "login") return <LandingPage />;
 
   if (currentView === "onboarding") {
     return (
@@ -5575,25 +5569,25 @@ export default function App() {
   // "marketplace" view now routes through the normal 3-panel AppShell
   // with raas-store as the initial section (no old standalone view)
   if (currentView === "marketplace") {
-    return <>{transitionOverlay}<AppErrorBoundary><AdminShell onBackToHub={handleBackToHub} initialSection="raas-store" /></AppErrorBoundary></>;
+    return <AppErrorBoundary><AdminShell onBackToHub={handleBackToHub} initialSection="raas-store" /></AppErrorBoundary>;
   }
 
   if (currentView === "hub") {
     return (
-      <>{transitionOverlay}<WorkspaceHub
+      <WorkspaceHub
         userName={userName}
         onLaunch={handleWorkspaceLaunch}
         onBuilderStart={() => setCurrentView("builder-interview")}
         onAdminLaunch={() => setCurrentView("admin")}
         onAddWorker={() => setCurrentView("marketplace")}
         onBack={() => transitionTo("app")}
-      /></>
+      />
     );
   }
 
   // Old admin view removed — always use 3-panel AppShell
   if (currentView === "admin") {
-    return <>{transitionOverlay}<AppErrorBoundary><AdminShell onBackToHub={handleBackToHub} /></AppErrorBoundary></>;
+    return <AppErrorBoundary><AdminShell onBackToHub={handleBackToHub} /></AppErrorBoundary>;
   }
 
   if (currentView === "builder-interview") {
@@ -5632,5 +5626,5 @@ export default function App() {
     );
   }
 
-  return <>{transitionOverlay}<AppErrorBoundary><AdminShell onBackToHub={handleBackToHub} /></AppErrorBoundary></>;
+  return <AppErrorBoundary><AdminShell onBackToHub={handleBackToHub} /></AppErrorBoundary>;
 }

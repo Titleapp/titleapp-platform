@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { getAuth, signOut } from "firebase/auth";
 import WorkerIcon, { getThemeAccent } from "../utils/workerIcons";
+import { getWorkerColor } from "../utils/workerColors";
 import { useWorkerState } from "../context/WorkerStateContext.jsx";
 import DataLinkStatus from "./studio/DataLinkStatus";
 
@@ -1640,6 +1641,7 @@ export default function Sidebar({
           {/* Chief of Staff — always first */}
           {groupedWorkers.cos.map(worker => {
             const isSelected = selectedWorker === worker.slug;
+            const wc = getWorkerColor(worker.slug);
             return (
               <button
                 key={worker.slug}
@@ -1650,17 +1652,17 @@ export default function Sidebar({
                   display: "flex", alignItems: "center", gap: 8,
                   padding: "7px 10px", fontSize: 13,
                   background: isSelected
-                    ? "rgba(124,58,237,0.16)"
-                    : "linear-gradient(135deg, rgba(124,58,237,0.08) 0%, rgba(99,102,241,0.08) 100%)",
+                    ? `${wc.primary}28`
+                    : `linear-gradient(135deg, ${wc.primary}14 0%, ${wc.primary}0a 100%)`,
                   borderRadius: 10, marginBottom: 2,
                 }}
               >
                 <span style={{ position: "relative", flexShrink: 0, width: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <WorkerIcon slug={worker.slug} size={16} color="#c4b5fd" />
+                  <WorkerIcon slug={worker.slug} size={16} color={wc.light} />
                   <span style={{ position: "absolute", bottom: -1, right: -1, width: 6, height: 6, borderRadius: "50%", background: "#22c55e", border: "1.5px solid #0b1020" }} />
                 </span>
-                <span style={{ flex: 1, color: "#c4b5fd", fontWeight: 600 }}>{worker.name}</span>
-                <span style={{ fontSize: 10, color: "#7c3aed", fontWeight: 600 }}>CoS</span>
+                <span style={{ flex: 1, color: wc.light, fontWeight: 600 }}>{worker.name}</span>
+                <span style={{ fontSize: 10, color: wc.accent, fontWeight: 600 }}>CoS</span>
               </button>
             );
           })}
@@ -1688,6 +1690,7 @@ export default function Sidebar({
               </button>
               {!isCollapsed && workers.map(worker => {
                 const isSelected = selectedWorker === worker.slug;
+                const wc = getWorkerColor(worker.slug, verticalName);
                 return (
                   <div key={worker.slug}>
                     <button
@@ -1697,13 +1700,14 @@ export default function Sidebar({
                         width: "100%", textAlign: "left", cursor: "pointer",
                         display: "flex", alignItems: "center", gap: 8,
                         padding: "7px 10px", fontSize: 13,
+                        ...(isSelected ? { background: `${wc.primary}20`, borderRadius: 8 } : {}),
                       }}
                     >
                       <span style={{ position: "relative", flexShrink: 0, width: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        <WorkerIcon slug={worker.slug} size={16} color={isSelected ? "#ddd6fe" : "rgba(255,255,255,0.55)"} />
+                        <WorkerIcon slug={worker.slug} size={16} color={isSelected ? wc.light : "rgba(255,255,255,0.55)"} />
                         <span style={{ position: "absolute", bottom: -1, right: -1, width: 6, height: 6, borderRadius: "50%", background: "#22c55e", border: "1.5px solid #0b1020" }} />
                       </span>
-                      <span style={{ flex: 1, color: "rgba(255,255,255,0.85)", fontWeight: 400 }}>
+                      <span style={{ flex: 1, color: isSelected ? wc.light : "rgba(255,255,255,0.85)", fontWeight: isSelected ? 600 : 400 }}>
                         {worker.name}
                       </span>
                     </button>

@@ -1555,6 +1555,19 @@ IDENTITY RULES:
                 }
               }
 
+              // Inject RAAS knowledge base for platform workers (49.3)
+              if (workerPrompt && workerSlug && workerSlug.startsWith("platform-")) {
+                try {
+                  const { loadWorkerKnowledge } = require("./services/knowledgeService");
+                  const knowledge = loadWorkerKnowledge(workerSlug);
+                  if (knowledge) {
+                    workerPrompt = `${knowledge}\n\n${workerPrompt}`;
+                  }
+                } catch (knowledgeErr) {
+                  console.warn("worker chat: knowledge load failed:", knowledgeErr.message);
+                }
+              }
+
               // Load conversation history
               if (!sessionState.salesHistory) sessionState.salesHistory = [];
               const messages = [

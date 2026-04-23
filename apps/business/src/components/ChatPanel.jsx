@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
+import { getWorkerColor } from '../utils/workerColors';
 
 // CODEX 48.2 Fix 7 — robust token getter for ChatPanel.
 // Previous patterns used either localStorage.ID_TOKEN (stale on expiry) or
@@ -1675,7 +1676,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
 
   return (
     <div className="chatPanelContainer">
-      <div className="chatPanelHeader">
+      <div className="chatPanelHeader" style={activeWorkerSlug ? { background: `linear-gradient(135deg, ${getWorkerColor(activeWorkerSlug).primary} 0%, ${getWorkerColor(activeWorkerSlug).primary}dd 100%)` } : undefined}>
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
         </svg>
