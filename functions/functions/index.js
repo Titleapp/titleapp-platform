@@ -80,6 +80,20 @@ function getPRService() {
   return _prService;
 }
 
+// Onboarding Service (business setup, contact import)
+let _onboardingService;
+function getOnboardingService() {
+  if (!_onboardingService) _onboardingService = require("./services/onboardingService");
+  return _onboardingService;
+}
+
+// Worker Recommendations Service
+let _workerRecommendations;
+function getWorkerRecommendations() {
+  if (!_workerRecommendations) _workerRecommendations = require("./services/workerRecommendations");
+  return _workerRecommendations;
+}
+
 // Chat Engine (conversational state machine)
 const { processMessage: chatEngineProcess, defaultState: chatEngineDefaultState } = require("./chatEngine");
 
@@ -17343,6 +17357,56 @@ Analyze now:`;
       } catch (e) {
         console.error("marketing:distributePR failed:", e);
         return jsonError(res, 500, "Failed to distribute press release");
+      }
+    }
+
+    // POST /v1/onboarding:setupBusiness — Set up business profile + activate essential workers
+    if (route === "/onboarding:setupBusiness" && method === "POST") {
+      try {
+        const result = await getOnboardingService().setupBusiness(auth.user.uid, body || {});
+        if (!result.ok) return jsonError(res, 400, result.error);
+        return res.json(result);
+      } catch (e) {
+        console.error("onboarding:setupBusiness failed:", e);
+        return jsonError(res, 500, "Failed to set up business");
+      }
+    }
+
+    // POST /v1/onboarding:importContacts — Import contacts from CSV data
+    if (route === "/onboarding:importContacts" && method === "POST") {
+      try {
+        const { contacts } = body || {};
+        const result = await getOnboardingService().importContacts(auth.user.uid, contacts);
+        if (!result.ok) return jsonError(res, 400, result.error);
+        return res.json(result);
+      } catch (e) {
+        console.error("onboarding:importContacts failed:", e);
+        return jsonError(res, 500, "Failed to import contacts");
+      }
+    }
+
+    // GET /v1/recommendations:industry — Get recommended workers for an industry
+    if (route === "/recommendations:industry" && method === "GET") {
+      try {
+        const industry = req.query.industry || "";
+        const limit = parseInt(req.query.limit) || 10;
+        const result = await getWorkerRecommendations().getIndustryWorkers(industry, { limit });
+        return res.json(result);
+      } catch (e) {
+        console.error("recommendations:industry failed:", e);
+        return jsonError(res, 500, "Failed to get recommendations");
+      }
+    }
+
+    // GET /v1/recommendations:featured — Get featured workers
+    if (route === "/recommendations:featured" && method === "GET") {
+      try {
+        const limit = parseInt(req.query.limit) || 10;
+        const result = await getWorkerRecommendations().getFeaturedWorkers({ limit });
+        return res.json(result);
+      } catch (e) {
+        console.error("recommendations:featured failed:", e);
+        return jsonError(res, 500, "Failed to get featured workers");
       }
     }
 

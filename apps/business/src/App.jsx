@@ -61,6 +61,8 @@ import SpineSection from "./sections/SpineSection";
 import MarketingDrafts from "./sections/MarketingDrafts";
 import ContentCalendar from "./sections/ContentCalendar";
 import SocialMedia from "./sections/SocialMedia";
+import BusinessSetup from "./components/BusinessSetup";
+import ContactImport from "./components/ContactImport";
 import AlexTaskBoard from "./sections/AlexTaskBoard";
 import AlexWorkerStatus from "./sections/AlexWorkerStatus";
 import DeveloperSandbox from "./pages/DeveloperSandbox";
@@ -4598,6 +4600,11 @@ function AdminShell({ onBackToHub, initialSection }) {
         return <SpineSection label="Chart of Accounts" workerSlug="platform-accounting" />;
       case "kpi-builder":
         return <SpineSection label="KPI Builder" workerSlug="platform-control-center-pro" />;
+      // ── Foundation Setup (CODEX 49.4) ──
+      case "business-setup":
+        return <BusinessSetup onComplete={() => setCurrentSection("dashboard")} />;
+      case "import-contacts":
+        return <ContactImport />;
       default:
         if (currentSection.startsWith("worker-")) return <WorkerHome />;
         return <WorkerHome />;
