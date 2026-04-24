@@ -94,6 +94,27 @@ function getWorkerRecommendations() {
   return _workerRecommendations;
 }
 
+// Storage Service (CODEX 49.5)
+let _storageService;
+function getStorageService() {
+  if (!_storageService) _storageService = require("./lib/storage");
+  return _storageService;
+}
+
+// Canvas Event Emitter (CODEX 49.5)
+let _canvasEmitter;
+function getCanvasEmitter() {
+  if (!_canvasEmitter) _canvasEmitter = require("./lib/canvas/emitter");
+  return _canvasEmitter;
+}
+
+// Document Pipeline (CODEX 49.5)
+let _docPipeline;
+function getDocPipeline() {
+  if (!_docPipeline) _docPipeline = require("./lib/documents/generate");
+  return _docPipeline;
+}
+
 // Chat Engine (conversational state machine)
 const { processMessage: chatEngineProcess, defaultState: chatEngineDefaultState } = require("./chatEngine");
 
@@ -17407,6 +17428,155 @@ Analyze now:`;
       } catch (e) {
         console.error("recommendations:featured failed:", e);
         return jsonError(res, 500, "Failed to get featured workers");
+      }
+    }
+
+    // ── Storage Service Routes (CODEX 49.5) ──
+
+    // POST /v1/storage:upload — Upload a file to vault
+    if (route === "/storage:upload" && method === "POST") {
+      try {
+        const { filename, content, mimeType, scope, orgId, subdir, workerSlug, projectId, tags } = body || {};
+        if (!filename) return jsonError(res, 400, "Missing filename");
+        if (!content) return jsonError(res, 400, "Missing content");
+        const buffer = Buffer.from(content, "base64");
+        const result = await getStorageService().upload({
+          uid: auth.user.uid, orgId, scope: scope || "personal", subdir: subdir || "documents",
+          filename, buffer, mimeType: mimeType || "application/octet-stream",
+          createdByWorker: workerSlug, parentProjectId: projectId, tags: tags || [],
+        });
+        if (!result.ok) return jsonError(res, 400, result.error);
+        return res.json(result);
+      } catch (e) {
+        console.error("storage:upload failed:", e);
+        return jsonError(res, 500, "Upload failed");
+      }
+    }
+
+    // GET /v1/storage:download — Get signed download URL
+    if (route === "/storage:download" && method === "GET") {
+      try {
+        const objectId = req.query.objectId;
+        if (!objectId) return jsonError(res, 400, "Missing objectId");
+        const result = await getStorageService().download(auth.user.uid, objectId);
+        if (!result.ok) return jsonError(res, result.error === "forbidden" ? 403 : 404, result.error);
+        return res.json(result);
+      } catch (e) {
+        console.error("storage:download failed:", e);
+        return jsonError(res, 500, "Download failed");
+      }
+    }
+
+    // DELETE /v1/storage:delete — Delete a stored object
+    if (route === "/storage:delete" && method === "POST") {
+      try {
+        const { objectId } = body || {};
+        if (!objectId) return jsonError(res, 400, "Missing objectId");
+        const result = await getStorageService().deleteObject(auth.user.uid, objectId);
+        if (!result.ok) return jsonError(res, result.error === "forbidden" ? 403 : 404, result.error);
+        return res.json(result);
+      } catch (e) {
+        console.error("storage:delete failed:", e);
+        return jsonError(res, 500, "Delete failed");
+      }
+    }
+
+    // GET /v1/storage:list — List stored objects
+    if (route === "/storage:list" && method === "GET") {
+      try {
+        const opts = {
+          scope: req.query.scope,
+          orgId: req.query.orgId,
+          parentProjectId: req.query.projectId,
+          limit: parseInt(req.query.limit) || 50,
+        };
+        const result = await getStorageService().list(auth.user.uid, opts);
+        return res.json(result);
+      } catch (e) {
+        console.error("storage:list failed:", e);
+        return jsonError(res, 500, "List failed");
+      }
+    }
+
+    // GET /v1/storage:metadata — Get object metadata
+    if (route === "/storage:metadata" && method === "GET") {
+      try {
+        const objectId = req.query.objectId;
+        if (!objectId) return jsonError(res, 400, "Missing objectId");
+        const result = await getStorageService().getMetadata(auth.user.uid, objectId);
+        if (!result.ok) return jsonError(res, result.error === "forbidden" ? 403 : 404, result.error);
+        return res.json(result);
+      } catch (e) {
+        console.error("storage:metadata failed:", e);
+        return jsonError(res, 500, "Metadata fetch failed");
+      }
+    }
+
+    // ── Document Pipeline Routes (CODEX 49.5) ──
+
+    // POST /v1/documents:pipeline — Generate, verify, store document
+    if (route === "/documents:pipeline" && method === "POST") {
+      try {
+        const { type, context, workerSlug, projectId } = body || {};
+        if (!type) return jsonError(res, 400, "Missing document type");
+        const result = await getDocPipeline().generateAndStore({
+          uid: auth.user.uid, type, context: context || {},
+          workerSlug, projectId,
+        });
+        if (!result.ok) return jsonError(res, 400, result.error);
+        return res.json(result);
+      } catch (e) {
+        console.error("documents:pipeline failed:", e);
+        return jsonError(res, 500, "Document generation failed");
+      }
+    }
+
+    // ── Project Routes (CODEX 49.5) ──
+
+    // POST /v1/projects:create — Create a project
+    if (route === "/projects:create" && method === "POST") {
+      try {
+        const { title, workerSlug, orgId } = body || {};
+        if (!title) return jsonError(res, 400, "Missing project title");
+        const emitter = getCanvasEmitter();
+        const result = await emitter.createProject({
+          uid: auth.user.uid, orgId, workerSlug, title,
+        });
+        return res.json(result);
+      } catch (e) {
+        console.error("projects:create failed:", e);
+        return jsonError(res, 500, "Project creation failed");
+      }
+    }
+
+    // GET /v1/projects:list — List user projects
+    if (route === "/projects:list" && method === "GET") {
+      try {
+        const emitter = getCanvasEmitter();
+        const result = await emitter.listProjects(auth.user.uid, {
+          workerSlug: req.query.workerSlug,
+          status: req.query.status || "active",
+          limit: parseInt(req.query.limit) || 20,
+        });
+        return res.json(result);
+      } catch (e) {
+        console.error("projects:list failed:", e);
+        return jsonError(res, 500, "Project list failed");
+      }
+    }
+
+    // POST /v1/projects:addMilestone — Add milestone to project
+    if (route === "/projects:addMilestone" && method === "POST") {
+      try {
+        const { projectId, label, documentId } = body || {};
+        if (!projectId || !label) return jsonError(res, 400, "Missing projectId or label");
+        const emitter = getCanvasEmitter();
+        const result = await emitter.addMilestone(auth.user.uid, projectId, { label, documentId });
+        if (!result.ok) return jsonError(res, result.error === "forbidden" ? 403 : 404, result.error);
+        return res.json(result);
+      } catch (e) {
+        console.error("projects:addMilestone failed:", e);
+        return jsonError(res, 500, "Add milestone failed");
       }
     }
 

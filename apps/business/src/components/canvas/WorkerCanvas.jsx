@@ -380,8 +380,8 @@ export default function WorkerCanvas({ workerData, verticalLabel, relatedWorkers
         height: "100%",
         display: "flex",
         flexDirection: "column",
-        background: "#0f1219",
-        color: "#e5e7eb",
+        background: "#FFFFFF",
+        color: "#1e293b",
         overflowY: "auto",
         position: "relative",
         opacity: isTransitioning ? 0.6 : 1,
@@ -427,13 +427,13 @@ export default function WorkerCanvas({ workerData, verticalLabel, relatedWorkers
           </div>
           <div style={{
             width: "100%", maxWidth: 280, height: 32, borderRadius: 8, marginBottom: 12,
-            background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent)",
+            background: "linear-gradient(90deg, transparent, rgba(0,0,0,0.03), transparent)",
             backgroundSize: "200% 100%",
             animation: "shimmer 1.5s linear infinite",
           }} />
           <div style={{
             width: "60%", maxWidth: 180, height: 20, borderRadius: 6, marginBottom: 16,
-            background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent)",
+            background: "linear-gradient(90deg, transparent, rgba(0,0,0,0.03), transparent)",
             backgroundSize: "200% 100%",
             animation: "shimmer 1.5s linear infinite",
           }} />
@@ -441,7 +441,7 @@ export default function WorkerCanvas({ workerData, verticalLabel, relatedWorkers
             {[1, 2, 3].map(i => (
               <div key={i} style={{
                 width: 80, height: 32, borderRadius: 16,
-                background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent)",
+                background: "linear-gradient(90deg, transparent, rgba(0,0,0,0.03), transparent)",
                 backgroundSize: "200% 100%",
                 animation: "shimmer 1.5s linear infinite",
               }} />
@@ -548,7 +548,7 @@ export default function WorkerCanvas({ workerData, verticalLabel, relatedWorkers
                 <div
                   className="arrival-capability"
                   style={{
-                    fontSize: 14, color: "rgba(255,255,255,0.6)", lineHeight: 1.6, marginBottom: 24,
+                    fontSize: 14, color: "rgba(0,0,0,0.5)", lineHeight: 1.6, marginBottom: 24,
                     opacity: showCapability ? 1 : 0,
                     transform: showCapability ? "translateY(0)" : "translateY(4px)",
                     animation: showCapability && arrivalPhase === "reveal" ? "fadeIn 250ms ease-out forwards" : "none",
@@ -570,7 +570,7 @@ export default function WorkerCanvas({ workerData, verticalLabel, relatedWorkers
                     }}
                     style={{
                       padding: "8px 14px", fontSize: 13, borderRadius: 20,
-                      background: "rgba(255,255,255,0.05)",
+                      background: "rgba(0,0,0,0.03)",
                       border: `1px solid var(--worker-accent)`,
                       color: "var(--worker-accent)", cursor: "pointer", fontWeight: 500,
                       fontFamily: "inherit", textAlign: "left", lineHeight: 1.4,
@@ -579,8 +579,8 @@ export default function WorkerCanvas({ workerData, verticalLabel, relatedWorkers
                       animation: showChips.includes(i) && arrivalPhase === "reveal" ? "fadeIn 200ms ease-out forwards" : "none",
                       transition: arrivalPhase === "done" ? "background 150ms" : "none",
                     }}
-                    onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.1)"; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; }}
+                    onMouseEnter={e => { e.currentTarget.style.background = "rgba(0,0,0,0.06)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = "rgba(0,0,0,0.03)"; }}
                   >
                     {p}
                   </button>
@@ -596,17 +596,17 @@ export default function WorkerCanvas({ workerData, verticalLabel, relatedWorkers
                   animation: showBadges && arrivalPhase === "reveal" ? "fadeIn 200ms ease-out forwards" : "none",
                 }}
               >
-                <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.4)", letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: 8 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(0,0,0,0.35)", letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: 8 }}>
                   Recent activity
                 </div>
-                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.3)", marginBottom: 24 }}>
+                <div style={{ fontSize: 13, color: "rgba(0,0,0,0.25)", marginBottom: 24 }}>
                   Your work with {w.name || "this worker"} will appear here
                 </div>
 
-                <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.4)", letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: 8 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(0,0,0,0.35)", letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: 8 }}>
                   Documents
                 </div>
-                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.3)" }}>
+                <div style={{ fontSize: 13, color: "rgba(0,0,0,0.25)" }}>
                   Upload documents to give {w.name || "this worker"} more context
                 </div>
               </div>
@@ -616,7 +616,7 @@ export default function WorkerCanvas({ workerData, verticalLabel, relatedWorkers
               {/* Related Workers ("Cousins") */}
               {relatedWorkers.length > 0 && (
                 <div style={{ marginTop: 32 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.4)", letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: 12 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(0,0,0,0.35)", letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: 12 }}>
                     More in {w.suite || vertical || "this category"}
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -635,25 +635,25 @@ export default function WorkerCanvas({ workerData, verticalLabel, relatedWorkers
                           style={{
                             display: "flex", justifyContent: "space-between", alignItems: "center",
                             padding: "10px 14px", borderRadius: 10,
-                            background: "rgba(255,255,255,0.04)",
-                            border: "1px solid rgba(255,255,255,0.08)",
+                            background: "rgba(0,0,0,0.02)",
+                            border: "1px solid rgba(0,0,0,0.08)",
                             cursor: "pointer", transition: "border-color 0.15s, background 0.15s",
                           }}
-                          onMouseEnter={e => { e.currentTarget.style.borderColor = accent; e.currentTarget.style.background = "rgba(255,255,255,0.08)"; }}
-                          onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; e.currentTarget.style.background = "rgba(255,255,255,0.04)"; }}
+                          onMouseEnter={e => { e.currentTarget.style.borderColor = accent; e.currentTarget.style.background = "rgba(0,0,0,0.08)"; }}
+                          onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(0,0,0,0.08)"; e.currentTarget.style.background = "rgba(0,0,0,0.02)"; }}
                         >
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: 13, fontWeight: 600, color: "#e5e7eb", marginBottom: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: "#1e293b", marginBottom: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                               {rwName}
                             </div>
                             {(rw.tagline || rw.description) && (
-                              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              <div style={{ fontSize: 11, color: "rgba(0,0,0,0.35)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                 {rw.tagline || rw.description}
                               </div>
                             )}
                           </div>
                           <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0, marginLeft: 10 }}>
-                            {rwPrice && <span style={{ fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.5)" }}>{rwPrice}</span>}
+                            {rwPrice && <span style={{ fontSize: 11, fontWeight: 600, color: "rgba(0,0,0,0.4)" }}>{rwPrice}</span>}
                             <span style={{ fontSize: 11, fontWeight: 600, color: accent }}>Open</span>
                           </div>
                         </div>

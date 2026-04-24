@@ -1,0 +1,62 @@
+{
+  "financial-model": {
+    "description": "Financial model with projections",
+    "format": "xlsx",
+    "minSizeBytes": 5000,
+    "requiredSections": ["assumptions", "revenue", "expense", "cashflow", "summary"]
+  },
+  "marketing-brief": {
+    "description": "Marketing campaign brief",
+    "format": "docx",
+    "minSizeBytes": 2000,
+    "requiredSections": ["objectives", "audience", "channels", "creative direction", "metrics"]
+  },
+  "press-release": {
+    "description": "Press release for distribution",
+    "format": "docx",
+    "minSizeBytes": 1500,
+    "requiredSections": ["headline", "dateline", "body", "boilerplate", "contact"]
+  },
+  "campaign-plan": {
+    "description": "Marketing campaign plan",
+    "format": "pdf",
+    "minSizeBytes": 2000,
+    "requiredSections": ["overview", "goals", "timeline", "budget"]
+  },
+  "social-strategy": {
+    "description": "Social media strategy document",
+    "format": "pdf",
+    "minSizeBytes": 2000,
+    "requiredSections": ["platform analysis", "content strategy", "posting schedule", "metrics"]
+  },
+  "content-brief": {
+    "description": "Content creation brief",
+    "format": "docx",
+    "minSizeBytes": 1000,
+    "requiredSections": ["topic", "audience", "key messages", "deliverables"]
+  },
+  "report-standard": {
+    "description": "Standard business report",
+    "format": "pdf",
+    "minSizeBytes": 2000,
+    "requiredSections": ["executive summary", "findings", "recommendations"]
+  },
+  "memo-executive": {
+    "description": "Executive memo",
+    "format": "pdf",
+    "minSizeBytes": 1000,
+    "requiredSections": ["subject", "summary", "action items"]
+  },
+  "model-cashflow": {
+    "description": "Cash flow model",
+    "format": "xlsx",
+    "minSizeBytes": 5000,
+    "requiredSections": ["assumptions", "revenue", "expenses", "cashflow"]
+  },
+  "model-proforma": {
+    "description": "Pro forma financial model",
+    "format": "xlsx",
+    "minSizeBytes": 5000,
+    "requiredSections": ["assumptions", "income", "balance sheet", "cashflow"]
+  }
+}

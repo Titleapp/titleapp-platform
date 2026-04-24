@@ -1,3 +1,9 @@
+:root {
+  --canvas-bg: #FFFFFF;
+  --canvas-surface: #F9FAFB;
+  --canvas-border: #E5E7EB;
+}
+
 body {
   margin: 0;
   min-width: 320px;
