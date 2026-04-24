@@ -14,8 +14,8 @@
     <!-- 47.9 HOTFIX: removed SW unregister — it raced with main.jsx register,
          causing unregister→register→activate→SW_UPDATED→reload infinite loop on mobile -->
   </head>
-  <body>
-    <div id="root"></div>
+  <body style="margin:0;background:#FFFFFF">
+    <div id="root" style="min-height:100vh;background:#FFFFFF"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

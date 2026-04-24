@@ -3,7 +3,7 @@ import { auth } from "../../firebase";
 import { GoogleAuthProvider, linkWithPopup, linkWithRedirect, signInWithCredential } from "firebase/auth";
 import { useWorkerState } from "../../context/WorkerStateContext";
 import WorkerIcon, { getThemeAccent, getVerticalIconSlug } from "../../utils/workerIcons";
-import SessionEndCTA from "../worker/SessionEndCTA";
+
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
 
@@ -288,20 +288,17 @@ function WorkerChecklist({ workerSlug, workerName }) {
   if (!checklist) {
     // Generic fallback for non-Spine workers
     return (
-      <>
-        <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(0,0,0,0.35)", letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: 8 }}>
-          Recent activity
+      <div style={{
+        padding: "16px 20px", borderRadius: 12,
+        background: "#f8fafc", border: "1px solid #e2e8f0",
+      }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 8 }}>
+          Get more from {workerName || "this worker"}
         </div>
-        <div style={{ fontSize: 13, color: "rgba(0,0,0,0.25)", marginBottom: 24 }}>
-          Your work with {workerName || "this worker"} will appear here
+        <div style={{ fontSize: 13, color: "#64748b", lineHeight: 1.5 }}>
+          Upload your documents in chat to unlock personalized insights. Just tell Alex what you'd like to work on.
         </div>
-        <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(0,0,0,0.35)", letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: 8 }}>
-          Documents
-        </div>
-        <div style={{ fontSize: 13, color: "rgba(0,0,0,0.25)" }}>
-          Upload documents to give {workerName || "this worker"} more context
-        </div>
-      </>
+      </div>
     );
   }
 
@@ -309,26 +306,55 @@ function WorkerChecklist({ workerSlug, workerName }) {
   const remaining = checklist.items.length - completed;
   const unlockMsg = checklist.unlockText.replace("{remaining}", String(remaining));
 
+  function handleItemClick(item) {
+    if (item.default) return;
+    const prompt = `Help me ${item.label.toLowerCase()} for ${workerName}`;
+    window.dispatchEvent(new CustomEvent("ta:panel-ask-alex", { detail: { text: prompt } }));
+  }
+
   return (
-    <div style={{ marginBottom: 8 }}>
-      <div style={{ fontSize: 14, fontWeight: 600, color: "#111827", marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
+    <div style={{
+      padding: "16px 20px", borderRadius: 12,
+      background: "#f8fafc", border: "1px solid #e2e8f0",
+    }}>
+      <div style={{ fontSize: 14, fontWeight: 600, color: "#111827", marginBottom: 14, display: "flex", alignItems: "center", gap: 8 }}>
         <span>{checklist.icon}</span>
         <span>{checklist.heading}</span>
       </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
         {checklist.items.map((item) => (
-          <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: item.default ? "#16a34a" : "#92400e" }}>
+          <div
+            key={item.id}
+            onClick={() => handleItemClick(item)}
+            style={{
+              display: "flex", alignItems: "center", gap: 8,
+              fontSize: 13, padding: "6px 8px", borderRadius: 8,
+              cursor: item.default ? "default" : "pointer",
+              transition: "background 150ms",
+            }}
+            onMouseEnter={e => { if (!item.default) e.currentTarget.style.background = "rgba(0,0,0,0.04)"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+          >
             <span style={{ fontSize: 14, lineHeight: 1, flexShrink: 0 }}>
               {item.default ? "\u2705" : "\u26A0\uFE0F"}
             </span>
-            <span style={{ color: item.default ? "#16a34a" : "#374151", fontWeight: item.default ? 500 : 400 }}>
+            <span style={{
+              color: item.default ? "#16a34a" : "#374151",
+              fontWeight: item.default ? 500 : 400,
+              flex: 1,
+            }}>
               {item.label}
             </span>
+            {!item.default && (
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
+            )}
           </div>
         ))}
       </div>
       {/* Progress bar */}
-      <div style={{ marginTop: 14 }}>
+      <div style={{ marginTop: 14, padding: "0 8px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
           <span style={{ fontSize: 11, color: "rgba(0,0,0,0.4)", fontWeight: 500 }}>{completed}/{checklist.items.length} complete</span>
         </div>
@@ -790,7 +816,6 @@ export default function WorkerCanvas({ workerData, verticalLabel, relatedWorkers
                 </div>
               )}
 
-              <SessionEndCTA style={{ marginTop: 24 }} />
             </>
           )}
 
