@@ -213,6 +213,142 @@ function TrialBanner({ worker }) {
   );
 }
 
+// ── 49.8: Contextual checklists per worker type ─────────────────────
+
+const WORKER_CHECKLISTS = {
+  "platform-control-center-pro": {
+    heading: "Make Control Center Pro more useful",
+    icon: "\uD83C\uDFAF",
+    unlockText: "Complete {remaining} more items to unlock advanced analytics",
+    items: [
+      { id: "biz-overview", label: "Business overview complete", default: true },
+      { id: "bank-connect", label: "Connect bank account for live financials" },
+      { id: "pnl-upload", label: "Upload recent P&L statements" },
+      { id: "team-contacts", label: "Add team member contacts" },
+      { id: "revenue-targets", label: "Set monthly revenue targets" },
+      { id: "marketing-accounts", label: "Connect marketing accounts (LinkedIn, email)" },
+    ],
+  },
+  "platform-accounting": {
+    heading: "Make Accounting more powerful",
+    icon: "\uD83D\uDCCA",
+    unlockText: "Complete {remaining} more items for automated bookkeeping",
+    items: [
+      { id: "basic-setup", label: "Basic setup complete", default: true },
+      { id: "bank-statements", label: "Upload last 3 months bank statements" },
+      { id: "accounting-software", label: "Connect QuickBooks/accounting software" },
+      { id: "tax-returns", label: "Upload recent tax returns" },
+      { id: "expense-rules", label: "Set expense categorization rules" },
+      { id: "vendor-lists", label: "Add vendor/customer lists" },
+    ],
+  },
+  "platform-marketing": {
+    heading: "Supercharge your marketing",
+    icon: "\uD83D\uDE80",
+    unlockText: "Complete {remaining} more items for automated campaigns",
+    items: [
+      { id: "campaign-tools", label: "Basic campaign tools ready", default: true },
+      { id: "brand-guidelines", label: "Upload brand guidelines/logos" },
+      { id: "social-accounts", label: "Connect social media accounts" },
+      { id: "contact-lists", label: "Import contact lists" },
+      { id: "competitor-docs", label: "Add competitor analysis docs" },
+      { id: "content-workflow", label: "Set content approval workflow" },
+    ],
+  },
+  "platform-hr": {
+    heading: "Upgrade HR capabilities",
+    icon: "\uD83D\uDC65",
+    unlockText: "Complete {remaining} more items for full HR automation",
+    items: [
+      { id: "employee-basics", label: "Employee basics ready", default: true },
+      { id: "handbook", label: "Upload employee handbook" },
+      { id: "org-chart", label: "Add org chart/team structure" },
+      { id: "payroll", label: "Connect payroll system" },
+      { id: "compliance-docs", label: "Upload compliance documents" },
+      { id: "perf-reviews", label: "Set performance review schedules" },
+    ],
+  },
+  "platform-contacts": {
+    heading: "Enhance contact management",
+    icon: "\uD83D\uDCF1",
+    unlockText: "Complete {remaining} more items for advanced relationship tracking",
+    items: [
+      { id: "contact-basics", label: "Contact basics ready", default: true },
+      { id: "import-contacts", label: "Import existing contact lists" },
+      { id: "crm-connect", label: "Connect CRM system" },
+      { id: "comm-history", label: "Add communication history" },
+      { id: "followup-auto", label: "Set follow-up automations" },
+      { id: "client-categories", label: "Upload client/vendor categories" },
+    ],
+  },
+};
+
+function WorkerChecklist({ workerSlug, workerName }) {
+  const checklist = WORKER_CHECKLISTS[workerSlug];
+  if (!checklist) {
+    // Generic fallback for non-Spine workers
+    return (
+      <>
+        <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(0,0,0,0.35)", letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: 8 }}>
+          Recent activity
+        </div>
+        <div style={{ fontSize: 13, color: "rgba(0,0,0,0.25)", marginBottom: 24 }}>
+          Your work with {workerName || "this worker"} will appear here
+        </div>
+        <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(0,0,0,0.35)", letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: 8 }}>
+          Documents
+        </div>
+        <div style={{ fontSize: 13, color: "rgba(0,0,0,0.25)" }}>
+          Upload documents to give {workerName || "this worker"} more context
+        </div>
+      </>
+    );
+  }
+
+  const completed = checklist.items.filter(i => i.default).length;
+  const remaining = checklist.items.length - completed;
+  const unlockMsg = checklist.unlockText.replace("{remaining}", String(remaining));
+
+  return (
+    <div style={{ marginBottom: 8 }}>
+      <div style={{ fontSize: 14, fontWeight: 600, color: "#111827", marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
+        <span>{checklist.icon}</span>
+        <span>{checklist.heading}</span>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        {checklist.items.map((item) => (
+          <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: item.default ? "#16a34a" : "#92400e" }}>
+            <span style={{ fontSize: 14, lineHeight: 1, flexShrink: 0 }}>
+              {item.default ? "\u2705" : "\u26A0\uFE0F"}
+            </span>
+            <span style={{ color: item.default ? "#16a34a" : "#374151", fontWeight: item.default ? 500 : 400 }}>
+              {item.label}
+            </span>
+          </div>
+        ))}
+      </div>
+      {/* Progress bar */}
+      <div style={{ marginTop: 14 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+          <span style={{ fontSize: 11, color: "rgba(0,0,0,0.4)", fontWeight: 500 }}>{completed}/{checklist.items.length} complete</span>
+        </div>
+        <div style={{ height: 4, background: "rgba(0,0,0,0.06)", borderRadius: 2, overflow: "hidden" }}>
+          <div style={{
+            height: "100%",
+            width: `${(completed / checklist.items.length) * 100}%`,
+            background: "#16a34a",
+            borderRadius: 2,
+            transition: "width 300ms ease",
+          }} />
+        </div>
+        <div style={{ fontSize: 12, color: "#92400e", fontWeight: 500, marginTop: 8 }}>
+          {unlockMsg}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── 40.2-T1: Worker Canvas with Arrival Animation ──────────────────
 
 export default function WorkerCanvas({ workerData, verticalLabel, relatedWorkers = [], onLeave }) {
@@ -234,7 +370,7 @@ export default function WorkerCanvas({ workerData, verticalLabel, relatedWorkers
       icon: "M9 12l2 2 4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0z",
     },
     advisory: {
-      label: "Based on general best practice \u2014 upload your documents to activate Pro Mode",
+      label: "General guidance mode \u2014 add your documents to unlock personalized insights",
       bg: "rgba(217, 119, 6, 0.1)",
       border: "rgba(217, 119, 6, 0.25)",
       color: "#d97706",
@@ -596,19 +732,10 @@ export default function WorkerCanvas({ workerData, verticalLabel, relatedWorkers
                   animation: showBadges && arrivalPhase === "reveal" ? "fadeIn 200ms ease-out forwards" : "none",
                 }}
               >
-                <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(0,0,0,0.35)", letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: 8 }}>
-                  Recent activity
-                </div>
-                <div style={{ fontSize: 13, color: "rgba(0,0,0,0.25)", marginBottom: 24 }}>
-                  Your work with {w.name || "this worker"} will appear here
-                </div>
-
-                <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(0,0,0,0.35)", letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: 8 }}>
-                  Documents
-                </div>
-                <div style={{ fontSize: 13, color: "rgba(0,0,0,0.25)" }}>
-                  Upload documents to give {w.name || "this worker"} more context
-                </div>
+                <WorkerChecklist
+                  workerSlug={w.workerId || w.slug}
+                  workerName={w.name || w.display_name || "this worker"}
+                />
               </div>
 
               <TrialBanner worker={w} />
