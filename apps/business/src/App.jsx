@@ -5254,14 +5254,14 @@ export default function App() {
       }
     }
 
-    // Overall safety net: if resolveView hasn't finished in 8 seconds, force into app
+    // Overall safety net: if resolveView hasn't finished in 4 seconds, force into app
     const safetyTimer = setTimeout(() => {
       if (!viewResolvedRef.current) {
-        console.warn("resolveView timed out after 8s — forcing app view");
+        console.warn("resolveView timed out after 4s — forcing app view");
         viewResolvedRef.current = true;
         transitionTo("app");
       }
-    }, 8000);
+    }, 4000);
 
     resolveView().finally(() => clearTimeout(safetyTimer));
   }, [token, handoffInProgress]);
@@ -5490,7 +5490,7 @@ export default function App() {
   // ── Auth magic link landing page ──────────────────────────
   if (isAuthMagic) {
     const AuthMagic = React.lazy(() => import("./pages/AuthMagic"));
-    return <React.Suspense fallback={<div style={{ minHeight: "100vh", background: "#0f172a" }} />}><AuthMagic /></React.Suspense>;
+    return <React.Suspense fallback={<div style={{ minHeight: "100vh", background: "#FFFFFF" }} />}><AuthMagic /></React.Suspense>;
   }
 
   // ── Subscribe success page ──────────────────────────────
@@ -5537,16 +5537,36 @@ export default function App() {
 
   if (handoffInProgress || currentView === "loading") {
     return (
-      <div
-        style={{
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: "#0f172a",
-        }}
-      >
-        <div style={{ fontSize: 28, fontWeight: 700, color: "white", letterSpacing: "-0.5px", animation: "taPulse 1.5s ease-in-out infinite" }}>TitleApp</div>
+      <div className="appShell" style={{ minHeight: "100vh" }}>
+        {/* Sidebar skeleton */}
+        <div style={{
+          width: 280, borderRight: "1px solid #e5e7eb", background: "#FFFFFF",
+          display: "flex", flexDirection: "column", padding: "20px 16px",
+          flexShrink: 0,
+        }}>
+          <div style={{ fontSize: 20, fontWeight: 700, color: "#111827", letterSpacing: "-0.5px", marginBottom: 32 }}>TitleApp</div>
+          {[1,2,3,4,5].map(i => (
+            <div key={i} style={{
+              height: 36, borderRadius: 8, marginBottom: 8,
+              background: "linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%)",
+              backgroundSize: "200% 100%",
+              animation: "shimmer 1.5s linear infinite",
+            }} />
+          ))}
+        </div>
+        {/* Canvas placeholder */}
+        <div style={{
+          flex: 1, display: "flex", flexDirection: "column",
+          alignItems: "center", justifyContent: "center",
+          background: "#FFFFFF", minWidth: 0,
+        }}>
+          <div style={{
+            fontSize: 13, color: "#94a3b8", fontWeight: 500,
+            animation: "taPulse 1.5s ease-in-out infinite",
+          }}>
+            {handoffInProgress ? "Signing in..." : "Loading workspace..."}
+          </div>
+        </div>
       </div>
     );
   }
