@@ -1,0 +1,95 @@
+{
+  "id": "platform_legal_v1",
+  "version": "v1",
+  "domain": "platform-legal",
+  "description": "RAAS enforcement for Platform Legal & Contract worker. Sourced from RESPA, TILA, UCC Article 2, state title regulations, W-045 rules.",
+  "required_inputs": [],
+  "hard_stops": [
+    {
+      "id": "W045-R01",
+      "label": "AI Disclosure Required",
+      "logic": "All outputs must include AI-generated disclosure"
+    },
+    {
+      "id": "W045-R02",
+      "label": "Statute of Frauds Enforcement",
+      "logic": "Verbal agreements for real property must be flagged as unenforceable"
+    },
+    {
+      "id": "W045-R04",
+      "label": "Securities Flag on Passive Investment",
+      "logic": "Passive investment structures must be flagged for Howey test securities analysis"
+    },
+    {
+      "id": "W045-R08",
+      "label": "Usury Limit Detection",
+      "logic": "Interest rates must be checked against state usury limits"
+    },
+    {
+      "id": "W045-R09",
+      "label": "No Cross-Tenant Data Leakage",
+      "logic": "Must never reference or expose data from other tenants"
+    },
+    {
+      "id": "W045-R11",
+      "label": "Draft Marking Requirement",
+      "logic": "All generated contract drafts must include DRAFT — SUBJECT TO LEGAL REVIEW marking"
+    },
+    {
+      "id": "W045-R14",
+      "label": "Explicit User Approval Before Committing",
+      "logic": "All contract actions require explicit user approval before commit"
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "W045-R05",
+      "label": "Insurance Requirement Flag",
+      "logic": "Flag contracts missing standard insurance requirements for review"
+    },
+    {
+      "id": "W045-R07",
+      "label": "Change Order Cumulative Threshold",
+      "logic": "Warn when cumulative change orders exceed threshold"
+    },
+    {
+      "id": "W045-R12",
+      "label": "Anti-Assignment Clause Flag",
+      "logic": "Flag anti-assignment clauses that may restrict transfer"
+    }
+  ],
+  "chat_rules": [
+    {
+      "id": "no_legal_advice",
+      "pattern": "\\b(you\\s+should\\s+(sue|file\\s+a\\s+lawsuit|take\\s+legal\\s+action|litigate)|as\\s+your\\s+(lawyer|attorney|legal\\s+counsel)|I\\s+advise\\s+you\\s+to\\s+(sue|litigate|file|settle)|my\\s+legal\\s+(advice|opinion|recommendation)\\s+is)\\b",
+      "flags": "i",
+      "message": "Response contains specific legal advice — legal workers provide document review, not legal strategy"
+    },
+    {
+      "id": "no_attorney_relationship",
+      "pattern": "\\b(attorney[- ]?client\\s+(relationship|privilege)|this\\s+(creates|establishes|forms)\\s+(an?\\s+)?attorney|I\\s+am\\s+(acting\\s+as\\s+)?your\\s+(attorney|lawyer|legal\\s+counsel)|privileged\\s+(communication|advice))\\b",
+      "flags": "i",
+      "message": "Response implies attorney-client relationship — no professional legal relationship exists"
+    },
+    {
+      "id": "no_enforceability_opinions",
+      "pattern": "\\b(this\\s+contract\\s+(is|isn't|would\\s+be)\\s+(enforceable|valid|binding|void|voidable)|I\\s+can\\s+confirm\\s+this\\s+(is|will\\s+be)\\s+(legally\\s+)?(enforceable|binding)|you\\s+will\\s+(win|lose|prevail)\\s+(in\\s+court|this\\s+case|this\\s+dispute))\\b",
+      "flags": "i",
+      "message": "Response provides enforceability opinions — consult licensed legal counsel"
+    },
+    {
+      "id": "no_legal_strategy",
+      "pattern": "\\b(your\\s+best\\s+(legal\\s+)?strategy\\s+is|I\\s+recommend\\s+(filing|suing|settling|litigating)|the\\s+(strongest|best|optimal)\\s+legal\\s+(approach|strategy|argument)\\s+is)\\b",
+      "flags": "i",
+      "message": "Response provides legal strategy advice"
+    },
+    {
+      "id": "no_jurisdictional_guarantees",
+      "pattern": "\\b(this\\s+(is|will\\s+be)\\s+(legal|illegal|lawful|unlawful)\\s+in\\s+(every|all)\\s+(state|jurisdiction)|guaranteed\\s+to\\s+(hold\\s+up|be\\s+enforced|be\\s+valid)\\s+in\\s+(court|every\\s+state))\\b",
+      "flags": "i",
+      "message": "Response makes jurisdictional guarantees — laws vary by state"
+    }
+  ],
+  "disclaimer": "This analysis is not a substitute for licensed legal counsel. All contract drafts, legal interpretations, and compliance assessments must be reviewed by a licensed attorney in the applicable jurisdiction.",
+  "outputs": ["contract_review", "risk_assessment", "contract_draft", "compliance_report"]
+}

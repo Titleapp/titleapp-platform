@@ -1,0 +1,85 @@
+{
+  "id": "platform_accounting_v1",
+  "version": "v1",
+  "domain": "platform-accounting",
+  "description": "RAAS enforcement for Platform Accounting Spine worker (PLAT-002). Sourced from GAAP/FASB standards, IRS regulations, W-039 rules.",
+  "required_inputs": [],
+  "hard_stops": [
+    {
+      "id": "W039-R01",
+      "label": "AI Disclosure Required",
+      "logic": "All outputs must include AI-generated disclosure"
+    },
+    {
+      "id": "W039-R02",
+      "label": "Revenue Recognition — ASC 606",
+      "logic": "Revenue recognition must follow ASC 606 percentage-of-completion method"
+    },
+    {
+      "id": "W039-R04",
+      "label": "Book-Tax Separation",
+      "logic": "Book basis and tax basis must be presented separately, never commingled"
+    },
+    {
+      "id": "W039-R12",
+      "label": "No Cross-Tenant Data Leakage",
+      "logic": "Must never reference or expose data from other tenants"
+    },
+    {
+      "id": "W039-R13",
+      "label": "Numeric Claims Require Source Citation",
+      "logic": "All numeric outputs must cite the source document or calculation"
+    },
+    {
+      "id": "W039-R14",
+      "label": "Approval Gate Before Committing",
+      "logic": "All financial entries require explicit user approval before commit"
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "W039-R09",
+      "label": "Bank Reconciliation Timeliness",
+      "logic": "Warn if generating financials from unreconciled bank data"
+    },
+    {
+      "id": "W039-R07",
+      "label": "Capitalization Threshold Check",
+      "logic": "Flag expenses near capitalization threshold for review"
+    }
+  ],
+  "chat_rules": [
+    {
+      "id": "no_audit_opinions",
+      "pattern": "\\b(clean\\s+opinion|unqualified\\s+opinion|qualified\\s+opinion|I('ve|\\s+have)\\s+audited|audit\\s+opinion|we\\s+have\\s+audited)\\b",
+      "flags": "i",
+      "message": "Response contains audit opinions — only licensed CPAs can issue audit opinions"
+    },
+    {
+      "id": "no_tax_guarantees",
+      "pattern": "\\b(you\\s+will\\s+(definitely|certainly|absolutely)\\s+(save|reduce|eliminate|avoid)\\s+tax|guaranteed?\\s+tax\\s+(savings?|deduction|refund|benefit)|tax[- ]?free\\s+guaranteed|I\\s+guarantee.*tax)\\b",
+      "flags": "i",
+      "message": "Response guarantees specific tax outcomes"
+    },
+    {
+      "id": "no_investment_advice",
+      "pattern": "\\b(you\\s+should\\s+(invest|buy|sell|hold)\\s+(in|this|these|those|the)|guaranteed?\\s+(return|profit|gain|yield)|risk[- ]?free\\s+(return|investment|income)|I\\s+recommend\\s+(buying|selling|investing))\\b",
+      "flags": "i",
+      "message": "Response contains investment advice — accounting workers do not provide investment recommendations"
+    },
+    {
+      "id": "no_specific_tax_filing",
+      "pattern": "\\b(file\\s+form\\s+\\d+|you\\s+must\\s+file|I('ll|\\s+will)\\s+file\\s+(your|this|the)\\s+(tax|return)|submit\\s+(your|this)\\s+return\\s+to\\s+the\\s+IRS)\\b",
+      "flags": "i",
+      "message": "Response gives specific tax filing instructions — consult a CPA or enrolled agent"
+    },
+    {
+      "id": "no_cpa_impersonation",
+      "pattern": "\\b(as\\s+(your|a)\\s+(CPA|accountant|tax\\s+advisor)|my\\s+professional\\s+opinion\\s+as|in\\s+my\\s+capacity\\s+as\\s+(a\\s+)?CPA)\\b",
+      "flags": "i",
+      "message": "Response implies CPA professional relationship"
+    }
+  ],
+  "disclaimer": "This analysis does not replace a licensed CPA, enrolled agent, or auditor. Consult qualified professionals for tax filing, audit, and financial compliance.",
+  "outputs": ["financial_statement", "tax_workpaper", "reconciliation_report", "journal_entry"]
+}

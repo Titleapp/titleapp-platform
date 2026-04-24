@@ -1620,6 +1620,33 @@ IDENTITY RULES:
 
               let aiText = aiResponse.content[0]?.text || `I'm ${workerName}. How can I help?`;
 
+              // ── Worker-specific RAAS enforcement (49.9) ──────────────────
+              let workerEnforcement = { checked: false };
+              try {
+                const { loadChatRules: loadWorkerChatRules, getWorkerDisclaimer } = require("./raas/raas.engine");
+                const workerChatRules = loadWorkerChatRules(workerSlug);
+                if (workerChatRules) {
+                  workerEnforcement = validateChatOutput(aiText, workerChatRules);
+                  if (!workerEnforcement.passed) {
+                    console.warn(`[enforcement] worker:${workerSlug} violation for user ${authUser?.uid}:`, workerEnforcement.violations);
+                    const disclaimer = getWorkerDisclaimer(workerSlug) || "This is informational guidance only and does not constitute professional advice. Consult qualified professionals for specific advice.";
+                    aiText += `\n\n*${disclaimer}*`;
+                    workerEnforcement.disclaimerAppended = true;
+                  }
+                  workerEnforcement.checked = true;
+                } else {
+                  // No dedicated ruleset — use default chat rules
+                  workerEnforcement = validateChatOutput(aiText);
+                  if (!workerEnforcement.passed) {
+                    console.warn(`[enforcement] worker:${workerSlug} default-rule violation:`, workerEnforcement.violations);
+                    aiText += "\n\n*This is informational guidance only and does not constitute financial, legal, or tax advice. Consult qualified professionals for specific advice.*";
+                    workerEnforcement.disclaimerAppended = true;
+                  }
+                }
+              } catch (enfErr) {
+                console.error(`[enforcement] worker:${workerSlug} enforcement error (continuing):`, enfErr.message);
+              }
+
               // Update conversation history
               sessionState.salesHistory.push({ role: 'user', content: userInput });
               sessionState.salesHistory.push({ role: 'assistant', content: aiText });
@@ -1637,7 +1664,7 @@ IDENTITY RULES:
                 updatedAt: nowServerTs(),
               }, { merge: true });
 
-              // Audit log
+              // Audit log (with enforcement metadata — 49.9)
               try {
                 await db.collection("messageEvents").add({
                   tenantId: "titleapp-worker",
@@ -1646,6 +1673,12 @@ IDENTITY RULES:
                   message: userInput,
                   response: aiText,
                   workerSlug,
+                  enforcement: {
+                    checked: workerEnforcement.checked || false,
+                    passed: workerEnforcement.passed != null ? workerEnforcement.passed : null,
+                    violations: workerEnforcement.violations || [],
+                    disclaimerAppended: workerEnforcement.disclaimerAppended || false,
+                  },
                   createdAt: nowServerTs(),
                 });
               } catch (auditErr) {

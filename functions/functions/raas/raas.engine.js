@@ -495,6 +495,64 @@ async function callAIWithEnforcement(opts) {
   };
 }
 
+// ─── Worker-specific chat rules loader ──────────────────────
+
+/**
+ * Map worker slugs to their RAAS ruleset IDs.
+ * Only workers with dedicated enforcement rulesets are listed here.
+ */
+const WORKER_RULESET_MAP = {
+  "platform-accounting": "platform_accounting_v1",
+  "platform-hr": "platform_hr_v1",
+  "platform-marketing": "platform_marketing_v1",
+  "platform-legal": "platform_legal_v1",
+  "platform-contacts": "platform_contacts_v1",
+};
+
+/** Cache compiled chat rules per ruleset */
+const _chatRulesCache = {};
+
+/**
+ * Load chat-specific enforcement rules for a worker.
+ * Reads the JSON ruleset, compiles regex pattern strings to RegExp objects,
+ * and merges with DEFAULT_CHAT_RULES (universal rules always apply).
+ *
+ * @param {string} workerSlug - Worker slug (e.g., "platform-accounting")
+ * @returns {Array|null} Compiled chat rules array, or null if no dedicated ruleset
+ */
+function loadChatRules(workerSlug) {
+  const rulesetId = WORKER_RULESET_MAP[workerSlug];
+  if (!rulesetId) return null;
+
+  if (_chatRulesCache[rulesetId]) return _chatRulesCache[rulesetId];
+
+  const ruleset = loadRuleset(rulesetId);
+  if (!ruleset || !ruleset.chat_rules || ruleset.chat_rules.length === 0) return null;
+
+  const compiled = ruleset.chat_rules.map((rule) => ({
+    id: rule.id,
+    pattern: new RegExp(rule.pattern, rule.flags || "i"),
+    message: rule.message,
+  }));
+
+  // Merge: worker-specific rules + universal DEFAULT_CHAT_RULES
+  const merged = [...compiled, ...DEFAULT_CHAT_RULES];
+  _chatRulesCache[rulesetId] = merged;
+  return merged;
+}
+
+/**
+ * Get the disclaimer text for a worker's ruleset, if any.
+ * @param {string} workerSlug
+ * @returns {string|null}
+ */
+function getWorkerDisclaimer(workerSlug) {
+  const rulesetId = WORKER_RULESET_MAP[workerSlug];
+  if (!rulesetId) return null;
+  const ruleset = loadRuleset(rulesetId);
+  return ruleset?.disclaimer || null;
+}
+
 module.exports = {
   loadRuleset,
   getNestedValue,
@@ -506,4 +564,7 @@ module.exports = {
   validateChatOutput,
   callAIWithEnforcement,
   DEFAULT_CHAT_RULES,
+  loadChatRules,
+  getWorkerDisclaimer,
+  WORKER_RULESET_MAP,
 };

@@ -1,0 +1,96 @@
+{
+  "id": "platform_hr_v1",
+  "version": "v1",
+  "domain": "platform-hr",
+  "description": "RAAS enforcement for Platform HR & People Spine worker (PLAT-004). Sourced from DOL/FLSA, EEOC, ADA, Title VII, FMLA federal standards.",
+  "required_inputs": [],
+  "hard_stops": [
+    {
+      "id": "HR-R01",
+      "label": "AI Disclosure Required",
+      "logic": "All HR outputs must include AI-generated disclosure"
+    },
+    {
+      "id": "HR-R02",
+      "label": "No Discriminatory Recommendations",
+      "logic": "Must never recommend hiring, firing, or compensation decisions based on protected characteristics"
+    },
+    {
+      "id": "HR-R03",
+      "label": "No Termination Without Attorney Review",
+      "logic": "All termination recommendations must include attorney review requirement"
+    },
+    {
+      "id": "HR-R04",
+      "label": "FLSA Classification Accuracy",
+      "logic": "Employee/contractor classification must follow DOL economic reality test and IRS 20-factor test"
+    },
+    {
+      "id": "HR-R05",
+      "label": "ADA Accommodation Standard",
+      "logic": "Must follow ADA interactive process for accommodation requests"
+    },
+    {
+      "id": "HR-R06",
+      "label": "No Cross-Tenant Data Leakage",
+      "logic": "Must never reference or expose employee data from other tenants"
+    },
+    {
+      "id": "HR-R07",
+      "label": "Approval Gate Before HR Actions",
+      "logic": "All personnel actions require explicit user approval before commit"
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "HR-R08",
+      "label": "State-Specific Variance Warning",
+      "logic": "Warn when federal guidance differs from state requirements"
+    },
+    {
+      "id": "HR-R09",
+      "label": "Policy Document Staleness",
+      "logic": "Warn if referencing employee handbook older than 12 months"
+    }
+  ],
+  "chat_rules": [
+    {
+      "id": "no_termination_advice",
+      "pattern": "\\b(you\\s+(can|should)\\s+(fire|terminate|dismiss|let\\s+go)\\s+(this|the|that|your)|go\\s+ahead\\s+and\\s+(fire|terminate)|terminate\\s+(them|him|her|this\\s+employee)\\s+(immediately|now|today|right\\s+away))\\b",
+      "flags": "i",
+      "message": "Response gives specific termination advice — requires attorney review"
+    },
+    {
+      "id": "no_discriminatory_guidance",
+      "pattern": "\\b(don't\\s+hire\\s+(women|men|older|younger|disabled|pregnant)|avoid\\s+hiring\\s+(people\\s+who|candidates\\s+that).{0,30}(age|gender|race|religion|disability|pregnancy|national\\s+origin)|prefer\\s+(male|female|younger|older)\\s+(candidates|applicants|workers))\\b",
+      "flags": "i",
+      "message": "Response contains discriminatory hiring/employment guidance — violates Title VII/ADA/ADEA"
+    },
+    {
+      "id": "no_employment_law_opinions",
+      "pattern": "\\b(this\\s+(is|isn't|would\\s+be)\\s+(a\\s+)?(clear(ly)?\\s+)?(wrongful\\s+termination|hostile\\s+work\\s+environment|retaliation|constructive\\s+dismissal)|you\\s+have\\s+(a\\s+)?(strong|clear|valid|good)\\s+(case|claim|lawsuit)\\s+(for|against))\\b",
+      "flags": "i",
+      "message": "Response provides specific employment law legal opinions — consult an employment attorney"
+    },
+    {
+      "id": "no_wage_guarantees",
+      "pattern": "\\b(you\\s+(are|aren't)\\s+(entitled|owed)\\s+to\\s+(overtime|back\\s+pay|damages)|you\\s+will\\s+(definitely|certainly)\\s+(win|recover|receive)\\s+(wages|damages|compensation|back\\s+pay))\\b",
+      "flags": "i",
+      "message": "Response guarantees wage dispute outcomes"
+    },
+    {
+      "id": "no_classification_guarantees",
+      "pattern": "\\b(this\\s+(person|worker|individual)\\s+(is\\s+(definitely|clearly|obviously)\\s+(an?\\s+)?(employee|contractor|exempt|non-exempt))|I\\s+can\\s+confirm\\s+(they\\s+are|this\\s+is)\\s+(an?\\s+)?(employee|contractor|exempt|non-exempt))\\b",
+      "flags": "i",
+      "message": "Response makes definitive employee classification — requires DOL/IRS analysis"
+    },
+    {
+      "id": "no_attorney_impersonation",
+      "pattern": "\\b(as\\s+(your|a)\\s+(HR\\s+)?attorney|my\\s+legal\\s+(opinion|advice|counsel)|in\\s+my\\s+(legal\\s+)?capacity)\\b",
+      "flags": "i",
+      "message": "Response implies attorney or legal professional relationship"
+    }
+  ],
+  "disclaimer": "This is not legal advice. Review all personnel actions, terminations, and compliance decisions with your employment attorney. Employment law varies by state and jurisdiction.",
+  "outputs": ["employee_handbook_section", "compliance_checklist", "policy_draft", "job_description"]
+}

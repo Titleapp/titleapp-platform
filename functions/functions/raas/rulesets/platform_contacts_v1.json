@@ -1,0 +1,85 @@
+{
+  "id": "platform_contacts_v1",
+  "version": "v1",
+  "domain": "platform-contacts",
+  "description": "RAAS enforcement for Platform Contacts Spine worker. Sourced from GDPR, CCPA (Cal. Civ. Code 1798.100), state privacy laws, FTC data security standards.",
+  "required_inputs": [],
+  "hard_stops": [
+    {
+      "id": "CTX-R01",
+      "label": "AI Disclosure Required",
+      "logic": "All outputs must include AI-generated disclosure"
+    },
+    {
+      "id": "CTX-R02",
+      "label": "No Raw PII Exposure",
+      "logic": "Must never output unmasked SSNs, full credit card numbers, or other sensitive PII in responses"
+    },
+    {
+      "id": "CTX-R03",
+      "label": "Consent Required for Data Sharing",
+      "logic": "Must require explicit consent before any contact data sharing or export"
+    },
+    {
+      "id": "CTX-R04",
+      "label": "Right to Deletion Compliance",
+      "logic": "Must honor deletion requests per GDPR Article 17 / CCPA Section 1798.105"
+    },
+    {
+      "id": "CTX-R05",
+      "label": "No Cross-Tenant Data Leakage",
+      "logic": "Must never reference or expose contact data from other tenants"
+    },
+    {
+      "id": "CTX-R06",
+      "label": "Approval Gate Before Bulk Operations",
+      "logic": "All bulk contact operations (export, delete, merge) require explicit user approval"
+    }
+  ],
+  "soft_flags": [
+    {
+      "id": "CTX-R07",
+      "label": "Data Retention Review",
+      "logic": "Flag contacts not accessed in 24+ months for retention review"
+    },
+    {
+      "id": "CTX-R08",
+      "label": "Duplicate Contact Warning",
+      "logic": "Warn when potential duplicate contacts are detected before merge"
+    }
+  ],
+  "chat_rules": [
+    {
+      "id": "no_pii_exposure",
+      "pattern": "\\b(\\d{3}[- ]?\\d{2}[- ]?\\d{4}|\\d{4}[- ]?\\d{4}[- ]?\\d{4}[- ]?\\d{4})\\b",
+      "flags": "",
+      "message": "Response may contain unmasked PII (SSN or credit card pattern) — must be masked"
+    },
+    {
+      "id": "no_data_sharing_without_consent",
+      "pattern": "\\b(share\\s+(all|their|this|these)\\s+(contacts?|data|information|details)\\s+with(out)?\\s+(consent|permission|asking)|send\\s+(all|their|the)\\s+(data|contacts?|info)\\s+to\\s+(everyone|all|third\\s+part))\\b",
+      "flags": "i",
+      "message": "Response suggests sharing contact data without consent — GDPR/CCPA violation"
+    },
+    {
+      "id": "no_opt_out_bypass",
+      "pattern": "\\b(ignore\\s+(their\\s+)?(opt[- ]?out|unsubscribe|do[- ]?not[- ]?contact|removal\\s+request)|override\\s+(their\\s+)?(consent|preference|opt[- ]?out)|contact\\s+them\\s+anyway|bypass\\s+(their\\s+)?(preference|consent|request))\\b",
+      "flags": "i",
+      "message": "Response suggests bypassing opt-out or consent preferences"
+    },
+    {
+      "id": "no_scraping_advice",
+      "pattern": "\\b(scrape\\s+(their|the|all)\\s+(emails?|contacts?|data|profiles?)|harvest\\s+(emails?|contacts?|data)|buy\\s+(an?\\s+)?(email|contact)\\s+list|purchase\\s+(a\\s+)?list\\s+of\\s+(emails?|contacts?))\\b",
+      "flags": "i",
+      "message": "Response suggests data scraping or purchasing contact lists — TCPA/CAN-SPAM compliance risk"
+    },
+    {
+      "id": "no_retention_bypass",
+      "pattern": "\\b(keep\\s+(their\\s+)?data\\s+(forever|indefinitely)|never\\s+delete\\s+(their\\s+)?(data|information|records)|ignore\\s+(deletion|erasure|removal)\\s+request)\\b",
+      "flags": "i",
+      "message": "Response suggests indefinite data retention or ignoring deletion requests — GDPR/CCPA violation"
+    }
+  ],
+  "disclaimer": "Contact data handling must comply with applicable privacy laws including GDPR, CCPA, and state-specific regulations. Review data sharing, retention, and deletion practices with your privacy counsel.",
+  "outputs": ["contact_list", "import_report", "deduplication_report", "export_manifest"]
+}
