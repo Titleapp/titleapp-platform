@@ -294,6 +294,210 @@ const WORKER_CHECKLISTS = {
   },
 };
 
+// ── 49.13: Worker Intelligence definitions ──────────────────────────
+const WORKER_INTELLIGENCE = {
+  "platform-accounting": {
+    kpis: [
+      { id: "revenue", label: "Revenue", value: "--", unit: "$", hint: "Connect accounting to populate" },
+      { id: "expenses", label: "Expenses", value: "--", unit: "$", hint: "Upload statements to populate" },
+      { id: "net-income", label: "Net Income", value: "--", unit: "$", hint: "Calculated from revenue - expenses" },
+      { id: "cash-flow", label: "Cash Flow", value: "--", unit: "$", hint: "Connect bank to populate" },
+    ],
+    quickActions: [
+      { label: "Generate P&L report", prompt: "Generate a profit and loss report for this month based on my financial data." },
+      { label: "Tax projections", prompt: "Help me project my tax liability for this quarter based on current revenue and expenses." },
+      { label: "Cash flow forecast", prompt: "Create a cash flow forecast for the next 90 days based on my current financial data." },
+    ],
+  },
+  "platform-marketing": {
+    kpis: [
+      { id: "campaign-roi", label: "Campaign ROI", value: "--", unit: "%", hint: "Run a campaign to populate" },
+      { id: "leads", label: "Leads", value: "--", unit: "", hint: "Import contacts to populate" },
+      { id: "email-open-rate", label: "Email Open Rate", value: "--", unit: "%", hint: "Send campaigns to populate" },
+      { id: "social-reach", label: "Social Reach", value: "--", unit: "", hint: "Connect accounts to populate" },
+    ],
+    quickActions: [
+      { label: "Draft campaign", prompt: "Help me draft a new marketing campaign. I want to define the target audience, message, and channels." },
+      { label: "Analyze performance", prompt: "Analyze my recent marketing performance across all channels and suggest improvements." },
+      { label: "Schedule content", prompt: "Help me schedule content for this week across my connected social media channels." },
+    ],
+  },
+  "platform-hr": {
+    kpis: [
+      { id: "team-size", label: "Team Size", value: "--", unit: "", hint: "Upload roster to populate" },
+      { id: "open-positions", label: "Open Positions", value: "--", unit: "", hint: "Add positions to populate" },
+      { id: "reviews-due", label: "Reviews Due", value: "--", unit: "", hint: "Set review schedules to populate" },
+      { id: "compliance-score", label: "Compliance Score", value: "--", unit: "%", hint: "Upload compliance docs to populate" },
+    ],
+    quickActions: [
+      { label: "Run payroll report", prompt: "Generate a payroll summary report for the current pay period." },
+      { label: "Schedule reviews", prompt: "Help me schedule performance reviews for my team this quarter." },
+      { label: "Team directory", prompt: "Show me my current team directory with roles and contact information." },
+    ],
+  },
+  "platform-control-center-pro": {
+    kpis: [
+      { id: "revenue", label: "Revenue", value: "--", unit: "$", hint: "Connect tracking to populate" },
+      { id: "active-workers", label: "Active Workers", value: "--", unit: "", hint: "Subscribe workers to populate" },
+      { id: "customer-growth", label: "Customer Growth", value: "--", unit: "%", hint: "Track acquisition to populate" },
+      { id: "tasks-due", label: "Tasks Due", value: "--", unit: "", hint: "Set goals to populate" },
+    ],
+    quickActions: [
+      { label: "Morning brief", prompt: "Give me my morning executive brief with key metrics, pending items, and priorities for today." },
+      { label: "Weekly digest", prompt: "Generate my weekly business digest with performance highlights and action items." },
+      { label: "Performance overview", prompt: "Show me a performance overview across all my active workers and business metrics." },
+    ],
+  },
+  "platform-contacts": {
+    kpis: [
+      { id: "total-contacts", label: "Total Contacts", value: "--", unit: "", hint: "Import contacts to populate" },
+      { id: "active-clients", label: "Active Clients", value: "--", unit: "", hint: "Categorize contacts to populate" },
+      { id: "followups-due", label: "Follow-ups Due", value: "--", unit: "", hint: "Set automations to populate" },
+      { id: "new-this-month", label: "New This Month", value: "--", unit: "", hint: "Add contacts to populate" },
+    ],
+    quickActions: [
+      { label: "Import contacts", prompt: "Help me import my existing contact lists. I want to organize them by type and set up tracking." },
+      { label: "Follow-up queue", prompt: "Show me my follow-up queue with contacts that need attention this week." },
+      { label: "Client report", prompt: "Generate a client activity report showing recent interactions and upcoming follow-ups." },
+    ],
+  },
+};
+
+function getChecklistCompletion(workerSlug) {
+  const checklist = WORKER_CHECKLISTS[workerSlug];
+  if (!checklist) return { completed: 0, total: 0, percent: 0 };
+  let completedItems;
+  try { completedItems = JSON.parse(localStorage.getItem(`ta_checklist_${workerSlug}`) || "{}"); }
+  catch { completedItems = {}; }
+  const total = checklist.items.length;
+  const completed = checklist.items.filter(item => item.default || !!completedItems[item.id]).length;
+  return { completed, total, percent: total > 0 ? Math.round((completed / total) * 100) : 0 };
+}
+
+function InsightPreview({ workerSlug, accent, stage }) {
+  const intel = WORKER_INTELLIGENCE[workerSlug];
+  if (!intel) return null;
+  const full = stage === 3;
+
+  return (
+    <div style={{ marginBottom: 20 }}>
+      <div style={{
+        fontSize: 11, fontWeight: 700, color: "rgba(0,0,0,0.35)",
+        letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: 12,
+      }}>
+        {full ? "Intelligence Dashboard" : "Insights Preview"}
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
+        {intel.kpis.map((kpi) => (
+          <div key={kpi.id} style={{
+            background: "#f8fafc", borderRadius: 10, padding: "14px 12px",
+            border: `1px solid ${full ? accent + "30" : "#f1f5f9"}`,
+          }}>
+            <div style={{ fontSize: 11, color: "#64748b", marginBottom: 4 }}>{kpi.label}</div>
+            <div style={{ fontSize: 20, fontWeight: 700, color: full ? accent : "#d1d5db" }}>--</div>
+            {!full && kpi.hint && (
+              <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 4, lineHeight: 1.3 }}>{kpi.hint}</div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <div style={{
+        fontSize: 11, fontWeight: 700, color: "rgba(0,0,0,0.35)",
+        letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: 8,
+      }}>
+        Quick Actions
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        {intel.quickActions.map((qa, i) => (
+          <button
+            key={i}
+            onClick={() => window.dispatchEvent(new CustomEvent("ta:panel-ask-alex", { detail: { text: qa.prompt } }))}
+            style={{
+              display: "flex", alignItems: "center", gap: 8,
+              padding: "8px 12px", fontSize: 13, fontWeight: 500,
+              background: "rgba(0,0,0,0.02)", border: "1px solid rgba(0,0,0,0.08)",
+              borderRadius: 8, cursor: "pointer", fontFamily: "inherit",
+              color: "#374151", textAlign: "left", transition: "border-color 150ms, background 150ms",
+            }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = accent; e.currentTarget.style.background = "rgba(0,0,0,0.04)"; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(0,0,0,0.08)"; e.currentTarget.style.background = "rgba(0,0,0,0.02)"; }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+            {qa.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function CollapsibleChecklist({ workerSlug, workerName, stage }) {
+  const [expanded, setExpanded] = useState(false);
+
+  if (stage === 3) {
+    return (
+      <div>
+        <div style={{
+          padding: "12px 16px", borderRadius: 10,
+          background: "rgba(22, 163, 74, 0.06)", border: "1px solid rgba(22, 163, 74, 0.15)",
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 12l2 2 4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" />
+            </svg>
+            <span style={{ fontSize: 13, fontWeight: 600, color: "#16a34a" }}>Setup complete</span>
+          </div>
+          <button
+            onClick={() => setExpanded(!expanded)}
+            style={{ background: "none", border: "none", fontSize: 12, color: "#64748b", cursor: "pointer", fontFamily: "inherit", padding: "2px 4px" }}
+          >
+            {expanded ? "Hide" : "Review"}
+          </button>
+        </div>
+        {expanded && (
+          <div style={{ marginTop: 8 }}>
+            <WorkerChecklist workerSlug={workerSlug} workerName={workerName} />
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Stage 2: collapsible, collapsed by default
+  return (
+    <div>
+      <button
+        onClick={() => setExpanded(!expanded)}
+        style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%",
+          padding: "10px 16px", borderRadius: expanded ? "10px 10px 0 0" : 10,
+          background: "#f8fafc", border: "1px solid #e2e8f0",
+          borderBottom: expanded ? "none" : "1px solid #e2e8f0",
+          cursor: "pointer", fontFamily: "inherit",
+        }}
+      >
+        <span style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>Setup checklist</span>
+        <svg
+          width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+          style={{ transform: expanded ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 200ms" }}
+        >
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </button>
+      {expanded && (
+        <div style={{ borderRadius: "0 0 10px 10px", border: "1px solid #e2e8f0", borderTop: "none", overflow: "hidden" }}>
+          <WorkerChecklist workerSlug={workerSlug} workerName={workerName} />
+        </div>
+      )}
+    </div>
+  );
+}
+
 function WorkerChecklist({ workerSlug, workerName }) {
   const checklist = WORKER_CHECKLISTS[workerSlug];
   const storageKey = `ta_checklist_${workerSlug}`;
@@ -502,6 +706,26 @@ export default function WorkerCanvas({ workerData, verticalLabel, relatedWorkers
   const workerSlug = w.workerId || w.slug;
   const accent = SPINE_CANVAS_ACCENT[workerSlug] || getThemeAccent(vertical, isGame);
   const iconSlug = getVerticalIconSlug(vertical);
+
+  // ── 49.13: Canvas intelligence stage ──
+  const [canvasStage, setCanvasStage] = useState(() => {
+    const { percent } = getChecklistCompletion(workerSlug);
+    if (percent >= 100) return 3;
+    if (percent >= 50) return 2;
+    return 1;
+  });
+  const hasIntelligence = !!WORKER_INTELLIGENCE[workerSlug];
+
+  useEffect(() => {
+    function recomputeStage() {
+      const { percent } = getChecklistCompletion(workerSlug);
+      const s = percent >= 100 ? 3 : percent >= 50 ? 2 : 1;
+      setCanvasStage(prev => prev !== s ? s : prev);
+    }
+    const interval = setInterval(recomputeStage, 2000);
+    window.addEventListener("storage", recomputeStage);
+    return () => { clearInterval(interval); window.removeEventListener("storage", recomputeStage); };
+  }, [workerSlug]);
 
   // Operating mode configuration
   const MODE_CONFIG = {
@@ -837,7 +1061,8 @@ export default function WorkerCanvas({ workerData, verticalLabel, relatedWorkers
                 </div>
               )}
 
-              {/* Quick start chips */}
+              {/* Quick start chips — hidden in stage 3 for intelligence workers */}
+              {!(hasIntelligence && canvasStage === 3) && (
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 24 }}>
                 {prompts.map((p, i) => (
                   <button
@@ -865,8 +1090,9 @@ export default function WorkerCanvas({ workerData, verticalLabel, relatedWorkers
                   </button>
                 ))}
               </div>
+              )}
 
-              {/* Substrate badges */}
+              {/* Substrate badges — stage-aware (49.13) */}
               <div
                 className="arrival-badges"
                 style={{
@@ -875,10 +1101,21 @@ export default function WorkerCanvas({ workerData, verticalLabel, relatedWorkers
                   animation: showBadges && arrivalPhase === "reveal" ? "fadeIn 200ms ease-out forwards" : "none",
                 }}
               >
-                <WorkerChecklist
-                  workerSlug={w.workerId || w.slug}
-                  workerName={w.name || w.display_name || "this worker"}
-                />
+                {hasIntelligence && canvasStage >= 2 && (
+                  <InsightPreview workerSlug={workerSlug} accent={accent} stage={canvasStage} />
+                )}
+                {hasIntelligence && canvasStage >= 2 ? (
+                  <CollapsibleChecklist
+                    workerSlug={workerSlug}
+                    workerName={w.name || w.display_name || "this worker"}
+                    stage={canvasStage}
+                  />
+                ) : (
+                  <WorkerChecklist
+                    workerSlug={workerSlug}
+                    workerName={w.name || w.display_name || "this worker"}
+                  />
+                )}
               </div>
 
               <TrialBanner worker={w} />
