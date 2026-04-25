@@ -222,11 +222,11 @@ const WORKER_CHECKLISTS = {
     unlockText: "Complete {remaining} more items to unlock advanced analytics",
     items: [
       { id: "biz-overview", label: "Business overview complete", default: true },
-      { id: "bank-connect", label: "Connect bank account for live financials" },
-      { id: "pnl-upload", label: "Upload recent P&L statements" },
-      { id: "team-contacts", label: "Add team member contacts" },
-      { id: "revenue-targets", label: "Set monthly revenue targets" },
-      { id: "marketing-accounts", label: "Connect marketing accounts (LinkedIn, email)" },
+      { id: "bank-connect", label: "Connect bank account for live financials", action: "chat", prompt: "Help me connect my bank account for live financial tracking in Control Center Pro. What information do I need to get started?" },
+      { id: "pnl-upload", label: "Upload recent P&L statements", action: "upload", accept: ".pdf,.csv,.xlsx,.xls" },
+      { id: "team-contacts", label: "Add team member contacts", action: "chat", prompt: "Help me add my team members to Control Center Pro. I need to set up their roles and contact information." },
+      { id: "revenue-targets", label: "Set monthly revenue targets", action: "chat", prompt: "Help me set up monthly revenue targets for my business. I want to track progress against goals." },
+      { id: "marketing-accounts", label: "Connect marketing accounts (LinkedIn, email)", action: "chat", prompt: "Help me connect my marketing accounts like LinkedIn and email to Control Center Pro for unified tracking." },
     ],
   },
   "platform-accounting": {
@@ -235,11 +235,11 @@ const WORKER_CHECKLISTS = {
     unlockText: "Complete {remaining} more items for automated bookkeeping",
     items: [
       { id: "basic-setup", label: "Basic setup complete", default: true },
-      { id: "bank-statements", label: "Upload last 3 months bank statements" },
-      { id: "accounting-software", label: "Connect QuickBooks/accounting software" },
-      { id: "tax-returns", label: "Upload recent tax returns" },
-      { id: "expense-rules", label: "Set expense categorization rules" },
-      { id: "vendor-lists", label: "Add vendor/customer lists" },
+      { id: "bank-statements", label: "Upload last 3 months bank statements", action: "upload", accept: ".pdf,.csv,.ofx,.qfx,.qbo" },
+      { id: "accounting-software", label: "Connect QuickBooks/accounting software", action: "chat", prompt: "Help me connect my QuickBooks or accounting software to sync my financial data automatically." },
+      { id: "tax-returns", label: "Upload recent tax returns", action: "upload", accept: ".pdf" },
+      { id: "expense-rules", label: "Set expense categorization rules", action: "chat", prompt: "Help me set up expense categorization rules for my accounting workflow. I need categories for business expenses, tax deductions, and financial reporting." },
+      { id: "vendor-lists", label: "Add vendor/customer lists", action: "chat", prompt: "Help me organize my vendor and customer lists. I need to set up categorization and payment tracking." },
     ],
   },
   "platform-marketing": {
@@ -248,11 +248,11 @@ const WORKER_CHECKLISTS = {
     unlockText: "Complete {remaining} more items for automated campaigns",
     items: [
       { id: "campaign-tools", label: "Basic campaign tools ready", default: true },
-      { id: "brand-guidelines", label: "Upload brand guidelines/logos" },
-      { id: "social-accounts", label: "Connect social media accounts" },
-      { id: "contact-lists", label: "Import contact lists" },
-      { id: "competitor-docs", label: "Add competitor analysis docs" },
-      { id: "content-workflow", label: "Set content approval workflow" },
+      { id: "brand-guidelines", label: "Upload brand guidelines/logos", action: "upload", accept: ".pdf,.png,.jpg,.jpeg,.svg,.ai" },
+      { id: "social-accounts", label: "Connect social media accounts", action: "chat", prompt: "Help me connect my social media accounts (LinkedIn, Facebook, Instagram) for unified campaign management." },
+      { id: "contact-lists", label: "Import contact lists", action: "upload", accept: ".csv,.xlsx,.xls,.vcf" },
+      { id: "competitor-docs", label: "Add competitor analysis docs", action: "chat", prompt: "Help me set up competitive analysis documentation. I need templates for tracking competitors, their positioning, and market gaps." },
+      { id: "content-workflow", label: "Set content approval workflow", action: "chat", prompt: "Help me design a content approval workflow for my marketing campaigns. I need a process for reviewing and approving content before publishing." },
     ],
   },
   "platform-hr": {
@@ -261,11 +261,12 @@ const WORKER_CHECKLISTS = {
     unlockText: "Complete {remaining} more items for full HR automation",
     items: [
       { id: "employee-basics", label: "Employee basics ready", default: true },
-      { id: "handbook", label: "Upload employee handbook" },
-      { id: "org-chart", label: "Add org chart/team structure" },
-      { id: "payroll", label: "Connect payroll system" },
-      { id: "compliance-docs", label: "Upload compliance documents" },
-      { id: "perf-reviews", label: "Set performance review schedules" },
+      { id: "roster", label: "Upload employee and contractor roster", action: "upload", accept: ".csv,.xlsx,.xls,.pdf" },
+      { id: "handbook", label: "Upload employee handbook", action: "upload", accept: ".pdf,.docx,.doc" },
+      { id: "org-chart", label: "Add org chart/team structure", action: "chat", prompt: "Help me set up my org chart and team structure. I need to define departments, reporting lines, and team roles." },
+      { id: "payroll", label: "Connect payroll system", action: "chat", prompt: "Help me connect my payroll system for automated payroll tracking and compliance monitoring." },
+      { id: "perf-reviews", label: "Set performance review schedules", action: "chat", prompt: "Help me create performance review schedules for my team. I need timing, evaluation criteria, and documentation templates." },
+      { id: "compliance-docs", label: "Upload compliance documents", action: "upload", accept: ".pdf,.docx,.doc" },
     ],
   },
   "platform-contacts": {
@@ -274,17 +275,34 @@ const WORKER_CHECKLISTS = {
     unlockText: "Complete {remaining} more items for advanced relationship tracking",
     items: [
       { id: "contact-basics", label: "Contact basics ready", default: true },
-      { id: "import-contacts", label: "Import existing contact lists" },
-      { id: "crm-connect", label: "Connect CRM system" },
-      { id: "comm-history", label: "Add communication history" },
-      { id: "followup-auto", label: "Set follow-up automations" },
-      { id: "client-categories", label: "Upload client/vendor categories" },
+      { id: "import-contacts", label: "Import existing contact lists", action: "upload", accept: ".csv,.xlsx,.xls,.vcf" },
+      { id: "crm-connect", label: "Connect CRM system", action: "chat", prompt: "Help me connect my CRM system to sync contacts and communication history automatically." },
+      { id: "comm-history", label: "Add communication history", action: "chat", prompt: "Help me import my communication history with key contacts. I want to track emails, calls, and meetings." },
+      { id: "followup-auto", label: "Set follow-up automations", action: "chat", prompt: "Help me set up automated follow-up reminders and sequences for my contacts. I need rules for when and how to follow up." },
+      { id: "client-categories", label: "Upload client/vendor categories", action: "upload", accept: ".csv,.xlsx,.xls" },
     ],
   },
 };
 
 function WorkerChecklist({ workerSlug, workerName }) {
   const checklist = WORKER_CHECKLISTS[workerSlug];
+  const storageKey = `ta_checklist_${workerSlug}`;
+
+  // localStorage-based completion tracking
+  const [completedItems, setCompletedItems] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem(storageKey) || "{}");
+    } catch { return {}; }
+  });
+
+  const markComplete = useCallback((itemId) => {
+    setCompletedItems(prev => {
+      const next = { ...prev, [itemId]: Date.now() };
+      localStorage.setItem(storageKey, JSON.stringify(next));
+      return next;
+    });
+  }, [storageKey]);
+
   if (!checklist) {
     // Generic fallback for non-Spine workers
     return (
@@ -302,15 +320,92 @@ function WorkerChecklist({ workerSlug, workerName }) {
     );
   }
 
-  const completed = checklist.items.filter(i => i.default).length;
+  const isItemComplete = (item) => item.default || !!completedItems[item.id];
+  const completed = checklist.items.filter(isItemComplete).length;
   const remaining = checklist.items.length - completed;
-  const unlockMsg = checklist.unlockText.replace("{remaining}", String(remaining));
+  const unlockMsg = remaining > 0
+    ? checklist.unlockText.replace("{remaining}", String(remaining))
+    : "All setup tasks complete";
 
   function handleItemClick(item) {
-    if (item.default) return;
-    const prompt = `Help me ${item.label.toLowerCase()} for ${workerName}`;
-    window.dispatchEvent(new CustomEvent("ta:panel-ask-alex", { detail: { text: prompt } }));
+    if (isItemComplete(item)) return;
+
+    switch (item.action) {
+      case "upload": {
+        const fileInput = document.createElement("input");
+        fileInput.type = "file";
+        fileInput.multiple = true;
+        if (item.accept) fileInput.accept = item.accept;
+        fileInput.onchange = (e) => {
+          const files = Array.from(e.target.files);
+          if (files.length === 0) return;
+          // Send files to chat for processing
+          const fileNames = files.map(f => f.name).join(", ");
+          window.dispatchEvent(new CustomEvent("ta:panel-ask-alex", {
+            detail: { text: `I'm uploading ${fileNames} for ${item.label.toLowerCase()}. Please help me process these documents.` },
+          }));
+          // Dispatch file upload event for ChatPanel to handle
+          window.dispatchEvent(new CustomEvent("ta:chat-upload-files", {
+            detail: { files, category: item.id, workerSlug },
+          }));
+          markComplete(item.id);
+        };
+        fileInput.click();
+        break;
+      }
+      case "chat": {
+        const prompt = item.prompt || `Help me ${item.label.toLowerCase()} for ${workerName}`;
+        window.dispatchEvent(new CustomEvent("ta:panel-ask-alex", { detail: { text: prompt } }));
+        markComplete(item.id);
+        break;
+      }
+      case "connect": {
+        const prompt = item.prompt || `Help me connect ${item.label.toLowerCase()}`;
+        window.dispatchEvent(new CustomEvent("ta:panel-ask-alex", { detail: { text: prompt } }));
+        markComplete(item.id);
+        break;
+      }
+      default: {
+        const prompt = item.prompt || `Help me ${item.label.toLowerCase()} for ${workerName}`;
+        window.dispatchEvent(new CustomEvent("ta:panel-ask-alex", { detail: { text: prompt } }));
+        markComplete(item.id);
+      }
+    }
   }
+
+  // Action hint text
+  const getActionHint = (item) => {
+    if (item.action === "upload") return "Upload";
+    if (item.action === "connect") return "Connect";
+    return "Ask Alex";
+  };
+
+  // Action hint icon
+  const ActionIcon = ({ action }) => {
+    if (action === "upload") {
+      return (
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+          <polyline points="17 8 12 3 7 8" />
+          <line x1="12" y1="3" x2="12" y2="15" />
+        </svg>
+      );
+    }
+    if (action === "connect") {
+      return (
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+          <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+          <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+        </svg>
+      );
+    }
+    // chat — chevron
+    return (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+        <polyline points="9 18 15 12 9 6" />
+      </svg>
+    );
+  };
 
   return (
     <div style={{
@@ -322,36 +417,41 @@ function WorkerChecklist({ workerSlug, workerName }) {
         <span>{checklist.heading}</span>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-        {checklist.items.map((item) => (
-          <div
-            key={item.id}
-            onClick={() => handleItemClick(item)}
-            style={{
-              display: "flex", alignItems: "center", gap: 8,
-              fontSize: 13, padding: "6px 8px", borderRadius: 8,
-              cursor: item.default ? "default" : "pointer",
-              transition: "background 150ms",
-            }}
-            onMouseEnter={e => { if (!item.default) e.currentTarget.style.background = "rgba(0,0,0,0.04)"; }}
-            onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
-          >
-            <span style={{ fontSize: 14, lineHeight: 1, flexShrink: 0 }}>
-              {item.default ? "\u2705" : "\u26A0\uFE0F"}
-            </span>
-            <span style={{
-              color: item.default ? "#16a34a" : "#374151",
-              fontWeight: item.default ? 500 : 400,
-              flex: 1,
-            }}>
-              {item.label}
-            </span>
-            {!item.default && (
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                <polyline points="9 18 15 12 9 6" />
-              </svg>
-            )}
-          </div>
-        ))}
+        {checklist.items.map((item) => {
+          const done = isItemComplete(item);
+          return (
+            <div
+              key={item.id}
+              onClick={() => handleItemClick(item)}
+              style={{
+                display: "flex", alignItems: "center", gap: 8,
+                fontSize: 13, padding: "6px 8px", borderRadius: 8,
+                cursor: done ? "default" : "pointer",
+                transition: "background 150ms",
+              }}
+              onMouseEnter={e => { if (!done) e.currentTarget.style.background = "rgba(0,0,0,0.04)"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+            >
+              <span style={{ fontSize: 14, lineHeight: 1, flexShrink: 0 }}>
+                {done ? "\u2705" : "\u26A0\uFE0F"}
+              </span>
+              <span style={{
+                color: done ? "#16a34a" : "#374151",
+                fontWeight: done ? 500 : 400,
+                textDecoration: done && !item.default ? "line-through" : "none",
+                flex: 1,
+              }}>
+                {item.label}
+              </span>
+              {!done && (
+                <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                  <span style={{ fontSize: 11, color: "#94a3b8", fontWeight: 500 }}>{getActionHint(item)}</span>
+                  <ActionIcon action={item.action} />
+                </span>
+              )}
+            </div>
+          );
+        })}
       </div>
       {/* Progress bar */}
       <div style={{ marginTop: 14, padding: "0 8px" }}>
@@ -362,14 +462,20 @@ function WorkerChecklist({ workerSlug, workerName }) {
           <div style={{
             height: "100%",
             width: `${(completed / checklist.items.length) * 100}%`,
-            background: "#16a34a",
+            background: remaining === 0 ? "#16a34a" : "#f59e0b",
             borderRadius: 2,
             transition: "width 300ms ease",
           }} />
         </div>
-        <div style={{ fontSize: 12, color: "#92400e", fontWeight: 500, marginTop: 8 }}>
-          {unlockMsg}
-        </div>
+        {remaining > 0 ? (
+          <div style={{ fontSize: 12, color: "#92400e", fontWeight: 500, marginTop: 8 }}>
+            {unlockMsg}
+          </div>
+        ) : (
+          <div style={{ fontSize: 12, color: "#16a34a", fontWeight: 500, marginTop: 8 }}>
+            {unlockMsg}
+          </div>
+        )}
       </div>
     </div>
   );
