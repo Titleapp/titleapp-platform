@@ -213,20 +213,30 @@ function TrialBanner({ worker }) {
   );
 }
 
+// ── 49.12: Worker-specific canvas accent overrides ──────────────────
+const SPINE_CANVAS_ACCENT = {
+  "platform-accounting": "#16a34a",          // green
+  "platform-marketing": "#ea580c",           // orange
+  "platform-hr": "#7c3aed",                  // purple
+  "platform-control-center-pro": "#7c3aed",  // purple
+  "platform-contacts": "#0284c7",            // blue
+};
+
 // ── 49.8: Contextual checklists per worker type ─────────────────────
 
 const WORKER_CHECKLISTS = {
   "platform-control-center-pro": {
-    heading: "Make Control Center Pro more useful",
+    heading: "Make Control Center more useful",
     icon: "\uD83C\uDFAF",
-    unlockText: "Complete {remaining} more items to unlock advanced analytics",
+    unlockText: "Complete {remaining} more items for full executive intelligence",
     items: [
-      { id: "biz-overview", label: "Business overview complete", default: true },
-      { id: "bank-connect", label: "Connect bank account for live financials", action: "chat", prompt: "Help me connect my bank account for live financial tracking in Control Center Pro. What information do I need to get started?" },
-      { id: "pnl-upload", label: "Upload recent P&L statements", action: "upload", accept: ".pdf,.csv,.xlsx,.xls" },
-      { id: "team-contacts", label: "Add team member contacts", action: "chat", prompt: "Help me add my team members to Control Center Pro. I need to set up their roles and contact information." },
-      { id: "revenue-targets", label: "Set monthly revenue targets", action: "chat", prompt: "Help me set up monthly revenue targets for my business. I want to track progress against goals." },
-      { id: "marketing-accounts", label: "Connect marketing accounts (LinkedIn, email)", action: "chat", prompt: "Help me connect my marketing accounts like LinkedIn and email to Control Center Pro for unified tracking." },
+      { id: "business-overview", label: "Business overview complete", default: true },
+      { id: "email-connection", label: "Connect primary email for daily/weekly reports", action: "chat", prompt: "Help me connect my primary email so I can receive executive reports and business updates on a schedule." },
+      { id: "communication-preferences", label: "Set communication preferences (daily/weekly/monthly)", action: "chat", prompt: "Help me set up my executive communication preferences. I want to configure how often I receive business updates (daily/weekly/monthly) and what channels to use (email/text)." },
+      { id: "key-metrics", label: "Add key business metrics to track", action: "chat", prompt: "Help me identify and set up the key business metrics I should track in my executive dashboard. I need metrics for revenue, customer acquisition, worker performance, and operational efficiency." },
+      { id: "revenue-tracking", label: "Connect revenue tracking (bank/accounting)", action: "chat", prompt: "Help me connect revenue tracking by linking my bank or accounting data for real-time financial visibility in Control Center." },
+      { id: "acquisition-goals", label: "Set customer acquisition goals", action: "chat", prompt: "Help me set customer acquisition goals and tracking systems. I need realistic targets based on my business model and current performance." },
+      { id: "external-feeds", label: "Add external data feeds (weather, market trends)", action: "chat", prompt: "Help me configure external data feeds for my executive dashboard. I want weather data, market trends, and other relevant external indicators that impact my business." },
     ],
   },
   "platform-accounting": {
@@ -489,7 +499,8 @@ export default function WorkerCanvas({ workerData, verticalLabel, relatedWorkers
   const prompts = w.quickStartPrompts || generateDefaultPrompts(w.capabilitySummary, w.name || w.display_name);
   const vertical = verticalLabel || w.vertical || w.suite || "Other";
   const isGame = !!w.gameConfig?.isGame;
-  const accent = getThemeAccent(vertical, isGame);
+  const workerSlug = w.workerId || w.slug;
+  const accent = SPINE_CANVAS_ACCENT[workerSlug] || getThemeAccent(vertical, isGame);
   const iconSlug = getVerticalIconSlug(vertical);
 
   // Operating mode configuration
@@ -671,22 +682,6 @@ export default function WorkerCanvas({ workerData, verticalLabel, relatedWorkers
         </button>
       </div>
 
-      {/* Operating mode band */}
-      <div style={{
-        display: "flex", alignItems: "center", gap: 8,
-        padding: "8px 24px",
-        background: modeInfo.bg,
-        borderBottom: `1px solid ${modeInfo.border}`,
-        flexShrink: 0,
-      }}>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={modeInfo.color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-          <path d={modeInfo.icon} />
-        </svg>
-        <span style={{ fontSize: 12, color: modeInfo.color, fontWeight: 500, lineHeight: 1.4 }}>
-          {modeInfo.label}
-        </span>
-      </div>
-
       {/* Skeleton loading state */}
       {!workerReady && showSkeleton && (
         <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 40 }}>
@@ -810,6 +805,22 @@ export default function WorkerCanvas({ workerData, verticalLabel, relatedWorkers
                   {w.tagline}
                 </div>
               )}
+
+              {/* Operating mode band — repositioned below title (49.12) */}
+              <div style={{
+                display: "flex", alignItems: "center", gap: 8,
+                padding: "8px 12px", borderRadius: 8,
+                background: modeInfo.bg,
+                border: `1px solid ${modeInfo.border}`,
+                marginBottom: 12,
+              }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={modeInfo.color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                  <path d={modeInfo.icon} />
+                </svg>
+                <span style={{ fontSize: 12, color: modeInfo.color, fontWeight: 500, lineHeight: 1.4 }}>
+                  {modeInfo.label}
+                </span>
+              </div>
 
               {/* Capability summary */}
               {w.capabilitySummary && (

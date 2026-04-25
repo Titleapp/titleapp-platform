@@ -903,6 +903,12 @@ const WORKER_NAV_MAP = {
     { id: "kpi-builder", label: "KPI Builder" },
     { id: "alerts", label: "Alerts" },
   ],
+  "platform-contacts": [
+    { id: "contacts-all", label: "All Contacts" },
+    { id: "client-list", label: "Clients" },
+    { id: "vendor-list", label: "Vendors" },
+    { id: "follow-ups", label: "Follow-ups" },
+  ],
 };
 
 // Worker slug → display name
@@ -953,6 +959,7 @@ const WORKER_DISPLAY_NAMES = {
   "platform-hr": "HR & People",
   "platform-marketing": "Marketing & Content",
   "platform-control-center-pro": "Control Center Pro",
+  "platform-contacts": "Contacts",
   "market-research": "Market Research",
   "architecture-review": "Architecture & Design Review",
   "engineering-review": "Engineering Review",
@@ -1210,6 +1217,9 @@ export default function Sidebar({
     "hr-people": "employee-register",
     "contacts-all": "contacts",
     "contacts": "contacts",
+    "client-list": "contacts",
+    "vendor-list": "contacts",
+    "follow-ups": "contacts",
     "content-calendar": "content-calendar",
     "campaigns": "content-calendar",
     "social-media": "content-calendar",
