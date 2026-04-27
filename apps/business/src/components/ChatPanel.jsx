@@ -1227,6 +1227,8 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
             ...(alexContext ? { alexContext } : {}),
             ...(() => { try { const cc = sessionStorage.getItem("ta_campaign_context"); if (cc) { sessionStorage.removeItem("ta_campaign_context"); return { campaignContext: JSON.parse(cc) }; } } catch {} return {}; })(),
             ...(() => { try { const u = JSON.parse(sessionStorage.getItem("ta_utm") || "{}"); return u.source ? { utmSource: u.source, utmMedium: u.medium || "", utmCampaign: u.campaign || "" } : {}; } catch {} return {}; })(),
+            // CODEX 49.21 — Canvas context for worker-aware AI responses
+            ...(() => { try { const slug = activeWorkerSlug; if (!slug) return {}; const cl = JSON.parse(localStorage.getItem(`ta_checklist_${slug}`) || "{}"); const completed = Object.keys(cl).filter(k => cl[k]); if (completed.length === 0) return {}; return { canvas: { workerSlug: slug, completedItems: completed, totalCompleted: completed.length } }; } catch { return {}; } })(),
           },
         }),
       });
@@ -1567,6 +1569,15 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
               Download
             </a>
           </div>
+        </div>
+      );
+    }
+
+    // CODEX 49.21 — Generated image display
+    if (data.imageUrl) {
+      return (
+        <div style={{ marginTop: 8, borderRadius: 12, overflow: "hidden", border: "1px solid #e2e8f0", maxWidth: 400 }}>
+          <img src={data.imageUrl} alt="Generated image" style={{ width: "100%", display: "block" }} />
         </div>
       );
     }

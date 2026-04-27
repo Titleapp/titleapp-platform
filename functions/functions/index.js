@@ -10924,6 +10924,17 @@ IDENTITY RULES:
               }
             }
 
+            // CODEX 49.21 — Inject canvas context so AI knows user's setup progress
+            if (alexSystemPrompt && (context || {}).canvas) {
+              const canvasCtx = context.canvas;
+              const completed = canvasCtx.completedItems || [];
+              if (completed.length > 0) {
+                alexSystemPrompt += `\n\nCANVAS SETUP PROGRESS (${canvasCtx.workerSlug || "worker"}):
+Completed items: ${completed.join(", ")} (${canvasCtx.totalCompleted || completed.length} done)
+When the user asks for help, acknowledge their progress and suggest relevant next steps based on what they have NOT completed yet.`;
+              }
+            }
+
             const personalSystemPrompt = `You are the user's personal Chief of Staff in their TitleApp Vault. You do everything for them directly in this chat. You create records, store files, manage logbooks, handle attestations, and organize their entire digital life. The dashboard is a read-only view into what you have already done -- the user never needs to leave this chat to accomplish anything.
 
 Your role:
@@ -11210,14 +11221,68 @@ ${(context || {}).dealContext ? `\nThe user wants to discuss this deal analysis:
 
             // ── LLM CALL (skip if handoff already handled) ──
             if (!raasInputResult?.handoffTrigger) {
+              // CODEX 49.21 — image generation tool for all business workers
+              const businessTools = [{
+                name: "generate_image",
+                description: "Generate an image, illustration, icon, logo, or visual asset when the user asks for artwork or creative visuals.",
+                input_schema: {
+                  type: "object",
+                  properties: {
+                    prompt: { type: "string", description: "Descriptive prompt for the image to generate" },
+                    aspect_ratio: { type: "string", enum: ["9:16", "1:1", "16:9"], description: "Aspect ratio. Default: 1:1" },
+                  },
+                  required: ["prompt"],
+                },
+              }];
+
               const response = await anthropic.messages.create({
                 model: "claude-sonnet-4-5-20250929",
                 max_tokens: 4096,
                 system: selectedSystemPrompt,
                 messages,
+                tools: businessTools,
               });
 
-              aiResponse = response.content[0]?.text || "I apologize, but I couldn't generate a response. Please try again.";
+              // Handle tool use (image generation)
+              const hasToolUse = response.content.some(b => b.type === "tool_use");
+              if (hasToolUse) {
+                const toolBlock = response.content.find(b => b.type === "tool_use");
+                let imageUrl = null;
+                if (toolBlock && toolBlock.name === "generate_image") {
+                  try {
+                    const { generateImage } = require("./services/image");
+                    const imgResult = await generateImage({
+                      prompt: toolBlock.input.prompt,
+                      style: toolBlock.input.aspect_ratio === "9:16" ? "portrait" : "minimal",
+                      size: toolBlock.input.aspect_ratio === "16:9" ? "landscape" : toolBlock.input.aspect_ratio === "9:16" ? "portrait" : "square",
+                      workerId: body.selectedWorker || "business-chat",
+                      creatorId: auth.user?.uid || "anonymous",
+                      vertical: ctx.vertical || "business",
+                    });
+                    imageUrl = imgResult.imageUrl || null;
+                    if (imgResult.error) console.warn("[chat] Image generation error:", imgResult.error);
+                  } catch (imgErr) {
+                    console.warn("[chat] Image generation failed:", imgErr.message);
+                  }
+
+                  // Continue conversation with tool result
+                  messages.push({ role: "assistant", content: response.content });
+                  messages.push({ role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: imageUrl ? `Image generated successfully: ${imageUrl}` : "Image generation failed. Tell the user you will try again." }] });
+                  const followUp = await anthropic.messages.create({
+                    model: "claude-sonnet-4-5-20250929",
+                    max_tokens: 1024,
+                    system: selectedSystemPrompt,
+                    messages,
+                    tools: businessTools,
+                  });
+                  aiResponse = followUp.content.find(b => b.type === "text")?.text || "Here you go.";
+                  if (imageUrl) {
+                    structuredData = { ...(structuredData || {}), imageUrl };
+                  }
+                }
+              } else {
+                aiResponse = response.content.find(b => b.type === "text")?.text || "I apologize, but I couldn't generate a response. Please try again.";
+              }
 
               // ── OUTPUT FILTER ──
               if (alexSystemPrompt && alexAuditData) {
