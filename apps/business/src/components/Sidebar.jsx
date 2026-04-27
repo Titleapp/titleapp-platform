@@ -1100,6 +1100,8 @@ const VERTICAL_LABELS = {
 // Determine vertical from worker slug prefix
 function normalizeVertical(slug) {
   if (!slug) return "Other";
+  // CODEX 49.16 — platform workers grouped under "Spine"
+  if (slug.startsWith("platform-")) return "Spine";
   if (slug.startsWith("av-")) return "Aviation";
   if (slug.startsWith("ad-")) return "Auto Dealer";
   if (slug.startsWith("w3-") || slug.startsWith("web3")) return "Web3";
@@ -1313,8 +1315,10 @@ export default function Sidebar({
     for (const v in groups) {
       groups[v].sort((a, b) => a.name.localeCompare(b.name));
     }
-    // Sort groups: alphabetical, "Other" last
+    // Sort groups: Spine first, "Other" last, rest alphabetical
     const sorted = Object.entries(groups).sort(([a], [b]) => {
+      if (a === "Spine") return -1;
+      if (b === "Spine") return 1;
       if (a === "Other") return 1;
       if (b === "Other") return -1;
       return a.localeCompare(b);

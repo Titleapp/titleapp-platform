@@ -1800,6 +1800,7 @@ export const VERTICAL_THEME_MAP = {
   "Web3": "finance",
   "Solar": "healthcare",
   "Government": "finance",
+  "Spine": "games",       // CODEX 49.16 — platform Spine workers get purple
   "Other": "games",
 };
 
@@ -1831,6 +1832,7 @@ export function getVerticalIconSlug(vertical) {
     "Web3": "engineering-review",
     "Solar": "engineering-review",
     "Government": "gov-jurisdiction-onboarding",
+    "Spine": "chief-of-staff",
   };
   return map[vertical] || "engineering-review";
 }

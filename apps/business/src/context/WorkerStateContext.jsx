@@ -46,7 +46,14 @@ export function WorkerStateProvider({ children }) {
         (w) => (w.workerId || w.slug) === slug || w.slug === slug
       );
       if (worker) {
-        setActiveWorkerData(worker);
+        // CODEX 49.16 — merge catalog data with optimistic data so the sidebar's
+        // display name isn't overwritten by a different catalog name.
+        setActiveWorkerData((prev) => {
+          if (prev && prev.slug === slug) {
+            return { ...worker, name: prev.name || worker.name };
+          }
+          return worker;
+        });
         setWorkerReady(true);
         setWorkerState("arrival");
         if (wasPreviousWorker) {

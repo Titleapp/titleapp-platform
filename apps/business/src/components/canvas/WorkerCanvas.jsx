@@ -222,6 +222,17 @@ const SPINE_CANVAS_ACCENT = {
   "platform-contacts": "#0284c7",            // blue
 };
 
+// CODEX 49.16 — canonical display names for platform workers.
+// Ensures canvas title matches sidebar regardless of catalog data.
+const PLATFORM_DISPLAY_NAMES = {
+  "chief-of-staff": "Alex — Chief of Staff",
+  "platform-accounting": "Accounting",
+  "platform-hr": "HR & People",
+  "platform-marketing": "Marketing & Content",
+  "platform-control-center-pro": "Control Center Pro",
+  "platform-contacts": "Contacts",
+};
+
 // ── 49.8: Contextual checklists per worker type ─────────────────────
 
 const WORKER_CHECKLISTS = {
@@ -1012,7 +1023,7 @@ export default function WorkerCanvas({ workerData, verticalLabel, relatedWorkers
                   animation: showName && arrivalPhase === "reveal" ? "fadeIn 300ms ease-out forwards" : "none",
                 }}
               >
-                {w.name || w.display_name}
+                {PLATFORM_DISPLAY_NAMES[workerSlug] || w.name || w.display_name}
               </div>
 
               {/* Tagline */}
