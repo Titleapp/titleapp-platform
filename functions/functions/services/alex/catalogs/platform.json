@@ -147,6 +147,27 @@
         "briefingContribution": "people_compliance"
       },
       "temporalType": "always_on"
+    },
+    {
+      "id": "PLAT-006",
+      "name": "Contacts",
+      "slug": "platform-contacts",
+      "suite": "Operations",
+      "phase": 3,
+      "type": "platform",
+      "pricing": {
+        "monthly": 0
+      },
+      "status": "live",
+      "capabilitySummary": "Client and contact management co-pilot. Import contacts from CSV, CRM, or conversation. Track communication history, set follow-up automations, and categorize clients and vendors. Alex reminds you when follow-ups are due.",
+      "tags": ["contacts", "crm", "clients", "follow-ups"],
+      "valueBucket": ["make_money", "save_money"],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "contact_intelligence"
+      },
+      "temporalType": "always_on"
     }
   ]
 }

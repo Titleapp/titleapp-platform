@@ -561,6 +561,7 @@ async function signupInternal({ email, name, accountType, companyName, companyDe
       { slug: "platform-hr", name: "Alex HR & People" },
       { slug: "platform-marketing", name: "Alex Marketing & Content" },
       { slug: "platform-control-center-pro", name: "Control Center Pro" },
+      { slug: "platform-contacts", name: "Contacts" },
     ];
     const wpBatch = db.batch();
     for (const w of DEFAULT_PLATFORM_WORKERS) {
@@ -1157,6 +1158,7 @@ exports.api = onRequest(
             { slug: "platform-hr", name: "Alex HR & People" },
             { slug: "platform-marketing", name: "Alex Marketing & Content" },
             { slug: "platform-control-center-pro", name: "Control Center Pro" },
+            { slug: "platform-contacts", name: "Contacts" },
           ];
           const workerBatch = db.batch();
           for (const w of DEFAULT_PLATFORM_WORKERS) {
@@ -9201,6 +9203,40 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
         return await runPricingAudit(req, res);
       } catch (e) {
         console.error("admin:pricingAudit failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ----------------------------
+    // ADMIN: BACKFILL CONTACTS WORKER (49.22)
+    // ----------------------------
+    if (route === "/admin:backfillContacts" && method === "POST") {
+      try {
+        const subsSnap = await db.collection("subscriptions").where("workerId", "==", "platform-contacts").get();
+        const existingUsers = new Set(subsSnap.docs.map(d => d.data().userId));
+
+        const usersSnap = await db.collection("users").get();
+        let updated = 0;
+        const batch = db.batch();
+        for (const userDoc of usersSnap.docs) {
+          if (existingUsers.has(userDoc.id)) continue;
+          batch.set(db.collection("subscriptions").doc(), {
+            userId: userDoc.id,
+            workerId: "platform-contacts",
+            slug: "platform-contacts",
+            name: "Contacts",
+            source: "platform_entitlement",
+            workerType: "platform",
+            status: "active",
+            createdAt: new Date(),
+          });
+          updated++;
+          if (updated % 400 === 0) { await batch.commit(); }
+        }
+        if (updated % 400 !== 0) await batch.commit();
+        return res.json({ ok: true, message: `Backfilled platform-contacts for ${updated} users`, skipped: existingUsers.size });
+      } catch (e) {
+        console.error("admin:backfillContacts failed:", e);
         return jsonError(res, 500, e.message);
       }
     }
