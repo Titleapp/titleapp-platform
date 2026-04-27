@@ -23,14 +23,26 @@ AI handles the boring stuff, humans make strategic decisions.
 - "RAAS" (Rules + AI-as-a-Service) is internal only -- never use in user-facing content
 
 ## Pricing (Canonical)
+
+### Individual Worker Pricing
 - Free: $0/month, 100 credits
 - Tier 1: $29/month, 500 credits
 - Tier 2: $49/month, 1,500 credits
 - Tier 3: $79/month, 3,000 credits
 - Enterprise: custom pricing
-- Only four price tiers exist: $0, $29, $49, $79
-- Never reference $9, $14, $99, $299, or any other price point
+- Only four individual worker price tiers exist: $0, $29, $49, $79
+- Never reference $9, $14, $299, or any non-canonical price for individual workers
 - "14-day free trial -- no credit card required" (always include "14-day")
+
+### Bundle Product Pricing
+- Business in a Box: $99/month -- includes 15-20 expert Digital Workers for your industry
+- Separate SKU, distinct from individual worker pricing
+- Alex CAN reference $99/mo when explicitly describing the Business in a Box bundle
+- Marketing materials may reference $99 BoB pricing
+
+### Pricing Rules
+- BLOCKED: $99 in individual worker context (no single worker is $99)
+- ALLOWED: $99 in Business in a Box bundle context
 
 ## Sender Identity
 - Email sender: "Alex -- TitleApp"

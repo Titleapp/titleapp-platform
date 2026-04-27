@@ -62,6 +62,8 @@ function checkLayer1(response, layer1) {
 
   for (const stop of layer1.hardStops) {
     if (stop.pattern && stop.pattern.test(response)) {
+      // CODEX 49.20 — context-aware: skip violation if contextAllow pattern also matches
+      if (stop.contextAllow && stop.contextAllow.test(response)) continue;
       violations.push({ ruleId: stop.id, layer: 1, message: stop.message });
     }
   }
