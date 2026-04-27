@@ -2,9 +2,14 @@ import React, { useState, useEffect } from "react";
 import { getAuth } from "firebase/auth";
 import WorkerIcon from "../utils/workerIcons";
 
-// Worker slug → display name (subset — matches Sidebar)
+// Worker slug → display name (matches Sidebar WORKER_DISPLAY_NAMES)
 const WORKER_NAMES = {
-  "chief-of-staff": "Alex",
+  "chief-of-staff": "Alex — Chief of Staff",
+  "platform-accounting": "Accounting",
+  "platform-hr": "HR & People",
+  "platform-marketing": "Marketing & Content",
+  "platform-control-center-pro": "Control Center Pro",
+  "platform-contacts": "Contacts",
   "cre-analyst": "CRE Analyst",
   "investor-relations": "IR Worker",
   "construction-manager": "Construction Manager",
@@ -16,8 +21,24 @@ const WORKER_NAMES = {
   "legal-contracts": "Legal Contracts",
 };
 
+// CODEX 49.16 — Alex variants that should not appear as duplicate cards
+const ALEX_SLUGS = new Set(["alex-platform", "alex"]);
+
+// Vertical category colors — matches sidebar theme system
+const VERTICAL_COLORS = {
+  "Spine":       { accent: "#7c3aed", gradient: "linear-gradient(135deg, #7c3aed 0%, #6366f1 100%)" },
+  "Aviation":    { accent: "#0284c7", gradient: "linear-gradient(135deg, #0284c7 0%, #0369a1 100%)" },
+  "Auto Dealer": { accent: "#0284c7", gradient: "linear-gradient(135deg, #0284c7 0%, #0369a1 100%)" },
+  "Real Estate": { accent: "#16a34a", gradient: "linear-gradient(135deg, #16a34a 0%, #15803d 100%)" },
+  "Web3":        { accent: "#16a34a", gradient: "linear-gradient(135deg, #16a34a 0%, #15803d 100%)" },
+  "Solar":       { accent: "#0891b2", gradient: "linear-gradient(135deg, #0891b2 0%, #0e7490 100%)" },
+  "Government":  { accent: "#16a34a", gradient: "linear-gradient(135deg, #16a34a 0%, #15803d 100%)" },
+  "Other":       { accent: "#7c3aed", gradient: "linear-gradient(135deg, #7c3aed 0%, #6366f1 100%)" },
+};
+
 function normalizeVertical(slug) {
   if (!slug) return "Other";
+  if (slug.startsWith("platform-") || slug === "chief-of-staff") return "Spine";
   if (slug.startsWith("av-")) return "Aviation";
   if (slug.startsWith("ad-")) return "Auto Dealer";
   if (slug.startsWith("w3-") || slug.startsWith("web3")) return "Web3";
@@ -41,6 +62,7 @@ export default function WorkerHome() {
   const [workers, setWorkers] = useState([]);
   const [catalogMap, setCatalogMap] = useState({});
   const [loading, setLoading] = useState(true);
+  const [collapsedGroups, setCollapsedGroups] = useState({});
 
   useEffect(() => {
     loadWorkers();
@@ -60,7 +82,9 @@ export default function WorkerHome() {
       if (wsData.ok && wsData.workspaces) {
         for (const ws of wsData.workspaces) {
           for (const w of (ws.activeWorkers || [])) {
-            allWorkerSlugs.add(typeof w === "string" ? w : w.slug || w.id);
+            const s = typeof w === "string" ? w : w.slug || w.id;
+            // Filter out Alex duplicates — chief-of-staff is added explicitly
+            if (!ALEX_SLUGS.has(s)) allWorkerSlugs.add(s);
           }
         }
       }
@@ -85,7 +109,7 @@ export default function WorkerHome() {
 
   function handleOpen(slug) {
     window.dispatchEvent(new CustomEvent("ta:select-worker", {
-      detail: { slug, name: catalogMap[slug]?.name || slugToName(slug) },
+      detail: { slug, name: WORKER_NAMES[slug] || catalogMap[slug]?.name || slugToName(slug) },
     }));
   }
 
@@ -97,12 +121,15 @@ export default function WorkerHome() {
     const cat = catalogMap[slug] || {};
     grouped[v].push({
       slug,
-      name: cat.name || slugToName(slug),
+      name: WORKER_NAMES[slug] || cat.name || slugToName(slug),
       tagline: cat.headline || cat.tagline || cat.capabilitySummary || "",
       price: cat.price || 0,
     });
   }
+  // Sort groups: Spine first, Other last, rest alphabetical
   const sortedGroups = Object.entries(grouped).sort(([a], [b]) => {
+    if (a === "Spine") return -1;
+    if (b === "Spine") return 1;
     if (a === "Other") return 1;
     if (b === "Other") return -1;
     return a.localeCompare(b);
@@ -138,76 +165,100 @@ export default function WorkerHome() {
         </p>
       </div>
 
-      {/* Workers grouped by vertical */}
-      {sortedGroups.map(([verticalName, vWorkers]) => (
-        <div key={verticalName} style={{ marginBottom: 28 }}>
-          <h2 style={{
-            fontSize: 13, fontWeight: 600, color: "#64748b",
-            textTransform: "uppercase", letterSpacing: "0.5px",
-            margin: "0 0 12px", padding: "0 0 6px",
-            borderBottom: "1px solid #e2e8f0",
-          }}>
-            {verticalName}
-          </h2>
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
-            gap: 12,
-          }}>
-            {vWorkers.map(w => (
-              <div
-                key={w.slug}
-                style={{
-                  display: "flex", alignItems: "center", gap: 14,
-                  padding: "14px 16px",
-                  background: "#fff",
-                  border: "1px solid #e2e8f0",
-                  borderRadius: 12,
-                  cursor: "pointer",
-                  transition: "border-color 150ms, box-shadow 150ms",
-                }}
-                onClick={() => handleOpen(w.slug)}
-                onMouseEnter={e => {
-                  e.currentTarget.style.borderColor = "#7c3aed";
-                  e.currentTarget.style.boxShadow = "0 2px 8px rgba(124,58,237,0.1)";
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.borderColor = "#e2e8f0";
-                  e.currentTarget.style.boxShadow = "none";
-                }}
-              >
-                <div style={{
-                  width: 40, height: 40, borderRadius: 10,
-                  background: "linear-gradient(135deg, #7c3aed 0%, #6366f1 100%)",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  flexShrink: 0,
-                }}>
-                  <WorkerIcon slug={w.slug} size={20} color="#fff" />
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: "#1e293b" }}>
-                    {w.name}
-                  </div>
-                  {w.tagline && (
-                    <div style={{
-                      fontSize: 12, color: "#64748b", marginTop: 2,
-                      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                    }}>
-                      {w.tagline}
+      {/* Workers grouped by vertical — collapsible */}
+      {sortedGroups.map(([verticalName, vWorkers]) => {
+        const colors = VERTICAL_COLORS[verticalName] || VERTICAL_COLORS["Other"];
+        const isCollapsed = collapsedGroups[verticalName] === true;
+        return (
+          <div key={verticalName} style={{ marginBottom: 28 }}>
+            <button
+              onClick={() => setCollapsedGroups(prev => ({ ...prev, [verticalName]: !prev[verticalName] }))}
+              style={{
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                width: "100%", background: "none", border: "none", cursor: "pointer",
+                padding: "0 0 6px", margin: "0 0 12px",
+                borderBottom: `2px solid ${colors.accent}20`,
+              }}
+            >
+              <span style={{
+                fontSize: 13, fontWeight: 600, color: colors.accent,
+                textTransform: "uppercase", letterSpacing: "0.5px",
+              }}>
+                {verticalName} ({vWorkers.length})
+              </span>
+              <span style={{
+                fontSize: 12, color: colors.accent, transition: "transform 0.2s",
+                transform: isCollapsed ? "rotate(0deg)" : "rotate(90deg)",
+              }}>
+                &#8250;
+              </span>
+            </button>
+
+            {!isCollapsed && (
+              <div style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+                gap: 12,
+              }}>
+                {vWorkers.map(w => {
+                  const colors = VERTICAL_COLORS[verticalName] || VERTICAL_COLORS["Other"];
+                  return (
+                    <div
+                      key={w.slug}
+                      style={{
+                        display: "flex", alignItems: "center", gap: 14,
+                        padding: "14px 16px",
+                        background: "#fff",
+                        border: "1px solid #e2e8f0",
+                        borderRadius: 12,
+                        cursor: "pointer",
+                        transition: "border-color 150ms, box-shadow 150ms",
+                      }}
+                      onClick={() => handleOpen(w.slug)}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.borderColor = colors.accent;
+                        e.currentTarget.style.boxShadow = `0 2px 8px ${colors.accent}1a`;
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.borderColor = "#e2e8f0";
+                        e.currentTarget.style.boxShadow = "none";
+                      }}
+                    >
+                      <div style={{
+                        width: 40, height: 40, borderRadius: 10,
+                        background: colors.gradient,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        flexShrink: 0,
+                      }}>
+                        <WorkerIcon slug={w.slug} size={20} color="#fff" />
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 14, fontWeight: 600, color: "#1e293b" }}>
+                          {w.name}
+                        </div>
+                        {w.tagline && (
+                          <div style={{
+                            fontSize: 12, color: "#64748b", marginTop: 2,
+                            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                          }}>
+                            {w.tagline}
+                          </div>
+                        )}
+                      </div>
+                      <div style={{
+                        fontSize: 12, fontWeight: 600, color: colors.accent,
+                        whiteSpace: "nowrap", flexShrink: 0,
+                      }}>
+                        Open &rarr;
+                      </div>
                     </div>
-                  )}
-                </div>
-                <div style={{
-                  fontSize: 12, fontWeight: 600, color: "#7c3aed",
-                  whiteSpace: "nowrap", flexShrink: 0,
-                }}>
-                  Open &rarr;
-                </div>
+                  );
+                })}
               </div>
-            ))}
+            )}
           </div>
-        </div>
-      ))}
+        );
+      })}
 
       {/* Empty state */}
       {workers.length === 0 && (

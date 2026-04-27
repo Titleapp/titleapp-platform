@@ -53,11 +53,22 @@ export default function VaultDashboard() {
   const greeting = getTimeGreeting();
   const workers = getActiveWorkers();
 
+  // CODEX 49.16 — filter Alex duplicates and games
+  const ALEX_SLUGS = new Set(["alex-platform", "alex", "chief-of-staff"]);
+  const DISPLAY_NAMES = {
+    "chief-of-staff": "Alex — Chief of Staff",
+    "platform-accounting": "Accounting",
+    "platform-hr": "HR & People",
+    "platform-marketing": "Marketing & Content",
+    "platform-control-center-pro": "Control Center Pro",
+    "platform-contacts": "Contacts",
+  };
   const myWorkers = workers.filter(w => {
     const slug = typeof w === "string" ? w : w?.slug || "";
-    // Games have a gameConfig flag or are in the game sandbox
     const isGame = typeof w === "object" && w?.workerType === "game";
-    return !isGame;
+    if (isGame) return false;
+    if (ALEX_SLUGS.has(slug)) return false;
+    return true;
   });
   const myGames = workers.filter(w => {
     return typeof w === "object" && w?.workerType === "game";
@@ -106,7 +117,7 @@ export default function VaultDashboard() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 10 }}>
             {myWorkers.map((w, i) => {
               const slug = typeof w === "string" ? w : w?.slug || w?.id || "";
-              const name = typeof w === "object" ? (w?.displayName || w?.name || slug) : slug.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+              const name = DISPLAY_NAMES[slug] || (typeof w === "object" ? (w?.displayName || w?.name || slug) : slug.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase()));
               return (
                 <Card key={i} style={{ cursor: "pointer", transition: "border-color 0.15s" }}
                   onMouseEnter={e => { e.currentTarget.style.borderColor = "#7c3aed"; }}
