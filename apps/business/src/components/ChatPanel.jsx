@@ -370,7 +370,10 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
     } else if (workerType === "game") {
       opener = `Ready to play? ${tagline}.${prompts[0] ? ` Tap '${prompts[0]}' to start.` : ""}`;
     } else {
-      opener = `Hey — I'm your ${tagline.charAt(0).toLowerCase() + tagline.slice(1)}.${whatYoullHave ? ` ${whatYoullHave}.` : ""} What do you want to tackle first?`;
+      // CODEX 49.15 Fix 2 — platform workers need "worker" after tagline for complete greeting
+      const tagText = tagline.charAt(0).toLowerCase() + tagline.slice(1);
+      const suffix = workerType === "platform" ? " worker" : "";
+      opener = `Hey — I'm your ${tagText}${suffix}.${whatYoullHave ? ` ${whatYoullHave}.` : ""} What do you want to tackle first?`;
     }
 
     setMessages(prev => [...prev, {
@@ -1105,7 +1108,11 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
       return;
     }
 
-    if (!currentUser) {
+    // CODEX 49.15 Fix 1 — check auth freshly instead of stale closure value.
+    // Canvas actions dispatch ta:chatPrompt which calls sendMessage from an
+    // event-listener closure that may have captured a null currentUser from mount.
+    const liveUser = getAuth().currentUser;
+    if (!liveUser) {
       setMessages(prev => [...prev, {
         role: 'assistant',
         content: 'Please sign in to continue.',

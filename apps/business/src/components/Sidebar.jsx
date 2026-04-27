@@ -1165,7 +1165,11 @@ export default function Sidebar({
       });
     }
     // Active workers from workspace
+    // CODEX 49.15 Fix 3 — filter out Alex variants that duplicate chief-of-staff
+    const ALEX_SLUGS = new Set(["chief-of-staff", "alex-platform", "alex"]);
     for (const wId of activeWorkers) {
+      const rawSlug = typeof wId === "string" ? wId : (wId?.slug || wId?.id || "");
+      if (ALEX_SLUGS.has(rawSlug)) continue;
       if (typeof wId === "string") {
         workers.push({
           slug: wId,
