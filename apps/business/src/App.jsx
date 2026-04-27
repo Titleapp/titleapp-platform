@@ -4854,11 +4854,12 @@ export default function App() {
     }
 
     // UTM capture — store immediately, attach on auth events
+    // CODEX 49.18 — first-touch attribution: only capture if no existing ta_utm
     const utmSource = urlParams.get("utm_source");
     const utmMedium = urlParams.get("utm_medium");
     const utmCampaign = urlParams.get("utm_campaign");
     const utmContent = urlParams.get("utm_content");
-    if (utmSource || utmMedium || utmCampaign) {
+    if ((utmSource || utmMedium || utmCampaign) && !sessionStorage.getItem("ta_utm")) {
       sessionStorage.setItem("ta_utm", JSON.stringify({
         source: utmSource || "",
         medium: utmMedium || "",

@@ -243,10 +243,13 @@ export default function MeetAlex() {
       }).catch(() => {});
     }
 
-    sessionStorage.setItem("ta_utm", JSON.stringify({
-      source: "meet-alex", medium: "guest-chat",
-      campaign: vertical || "direct", capturedAt: new Date().toISOString(),
-    }));
+    // CODEX 49.18 — Only write UTM if no existing attribution (preserve original campaign source)
+    if (!sessionStorage.getItem("ta_utm")) {
+      sessionStorage.setItem("ta_utm", JSON.stringify({
+        source: "meet-alex", medium: "guest-chat",
+        campaign: vertical || "direct", capturedAt: new Date().toISOString(),
+      }));
+    }
     sessionStorage.setItem("ta_guest_promoted", "true");
 
     setTimeout(() => {
