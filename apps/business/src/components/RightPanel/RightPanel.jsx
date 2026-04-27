@@ -423,7 +423,7 @@ export default function RightPanel() {
   }, [workers, panel]);
 
   function handleAskAlex(worker) {
-    window.dispatchEvent(new CustomEvent("ta:panel-ask-alex", { detail: { text: `Tell me about ${worker.name}` } }));
+    window.dispatchEvent(new CustomEvent("ta:chatPrompt", { detail: { message: `Tell me about ${worker.name}` } }));
   }
 
   const showStats = state === "STATE-1" || state === "STATE-2";

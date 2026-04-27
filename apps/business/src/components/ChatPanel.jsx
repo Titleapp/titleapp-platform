@@ -1325,6 +1325,17 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
     e.target.value = '';
   }
 
+  // ── 49.14: Drag-and-drop file upload ──
+  const [dragOver, setDragOver] = useState(false);
+  function handleDragOver(e) { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; setDragOver(true); }
+  function handleDragLeave(e) { e.preventDefault(); setDragOver(false); }
+  function handleDrop(e) {
+    e.preventDefault();
+    setDragOver(false);
+    const files = Array.from(e.dataTransfer.files || []);
+    if (files.length > 0) setAttachedFiles(prev => [...prev, ...files]);
+  }
+
   function startVoiceInput() {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) return;
@@ -1964,7 +1975,15 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
         )}
       </div>
 
-      <form className="chatPanelInput" onSubmit={sendMessage} ref={chatPanelRef}>
+      <form
+        className="chatPanelInput"
+        onSubmit={sendMessage}
+        ref={chatPanelRef}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        style={dragOver ? { outline: "2px dashed #7c3aed", outlineOffset: -2, borderRadius: 12, background: "rgba(124,58,237,0.04)" } : undefined}
+      >
         {attachedFiles.length > 0 && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '4px', width: '100%' }}>
             {attachedFiles.map((file, fi) => (

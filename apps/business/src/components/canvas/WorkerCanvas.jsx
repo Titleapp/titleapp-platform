@@ -75,8 +75,8 @@ function TrialBanner({ worker }) {
     window.dispatchEvent(new CustomEvent("ta:worker-subscribed", {
       detail: { workerId, name: workerName, price: worker.price || 0 },
     }));
-    window.dispatchEvent(new CustomEvent("ta:panel-ask-alex", {
-      detail: { text: `You're all set. Your 14-day trial of ${workerName} starts now. No charge today.`, fromSystem: true },
+    window.dispatchEvent(new CustomEvent("ta:chatPrompt", {
+      detail: { message: `You're all set. Your 14-day trial of ${workerName} starts now. No charge today.`, fromSystem: true },
     }));
   }
 
@@ -138,8 +138,8 @@ function TrialBanner({ worker }) {
       setCheckoutError("");
       setShowEmailFallback(false);
       setShowCheckout(false);
-      window.dispatchEvent(new CustomEvent("ta:panel-ask-alex", {
-        detail: { text: `Check your email for a sign-in link. Once you're in, your trial will start automatically.`, fromSystem: true },
+      window.dispatchEvent(new CustomEvent("ta:chatPrompt", {
+        detail: { message: `Check your email for a sign-in link. Once you're in, your trial will start automatically.` },
       }));
     } catch (err) {
       setCheckoutError(err.message || "Failed to send email.");
@@ -246,7 +246,7 @@ const WORKER_CHECKLISTS = {
     items: [
       { id: "basic-setup", label: "Basic setup complete", default: true },
       { id: "bank-statements", label: "Upload last 3 months bank statements", action: "upload", accept: ".pdf,.csv,.ofx,.qfx,.qbo" },
-      { id: "accounting-software", label: "Connect QuickBooks/accounting software", action: "chat", prompt: "Help me connect my QuickBooks or accounting software to sync my financial data automatically." },
+      { id: "accounting-software", label: "Connect or set up accounting system", action: "chat", prompt: "Help me connect my accounting software (like QuickBooks) or set up a basic accounting system to track my financial data." },
       { id: "tax-returns", label: "Upload recent tax returns", action: "upload", accept: ".pdf" },
       { id: "expense-rules", label: "Set expense categorization rules", action: "chat", prompt: "Help me set up expense categorization rules for my accounting workflow. I need categories for business expenses, tax deductions, and financial reporting." },
       { id: "vendor-lists", label: "Add vendor/customer lists", action: "chat", prompt: "Help me organize my vendor and customer lists. I need to set up categorization and payment tracking." },
@@ -259,7 +259,7 @@ const WORKER_CHECKLISTS = {
     items: [
       { id: "campaign-tools", label: "Basic campaign tools ready", default: true },
       { id: "brand-guidelines", label: "Upload brand guidelines/logos", action: "upload", accept: ".pdf,.png,.jpg,.jpeg,.svg,.ai" },
-      { id: "social-accounts", label: "Connect social media accounts", action: "chat", prompt: "Help me connect my social media accounts (LinkedIn, Facebook, Instagram) for unified campaign management." },
+      { id: "social-accounts", label: "Connect or set up social media accounts", action: "chat", prompt: "Help me connect my existing social media accounts or set up new ones (LinkedIn, Facebook, Instagram) for unified campaign management." },
       { id: "contact-lists", label: "Import contact lists", action: "upload", accept: ".csv,.xlsx,.xls,.vcf" },
       { id: "competitor-docs", label: "Add competitor analysis docs", action: "chat", prompt: "Help me set up competitive analysis documentation. I need templates for tracking competitors, their positioning, and market gaps." },
       { id: "content-workflow", label: "Set content approval workflow", action: "chat", prompt: "Help me design a content approval workflow for my marketing campaigns. I need a process for reviewing and approving content before publishing." },
@@ -274,7 +274,7 @@ const WORKER_CHECKLISTS = {
       { id: "roster", label: "Upload employee and contractor roster", action: "upload", accept: ".csv,.xlsx,.xls,.pdf" },
       { id: "handbook", label: "Upload employee handbook", action: "upload", accept: ".pdf,.docx,.doc" },
       { id: "org-chart", label: "Add org chart/team structure", action: "chat", prompt: "Help me set up my org chart and team structure. I need to define departments, reporting lines, and team roles." },
-      { id: "payroll", label: "Connect payroll system", action: "chat", prompt: "Help me connect my payroll system for automated payroll tracking and compliance monitoring." },
+      { id: "payroll", label: "Connect or set up payroll system", action: "chat", prompt: "Help me connect my existing payroll system or set up payroll tracking for automated compliance monitoring." },
       { id: "perf-reviews", label: "Set performance review schedules", action: "chat", prompt: "Help me create performance review schedules for my team. I need timing, evaluation criteria, and documentation templates." },
       { id: "compliance-docs", label: "Upload compliance documents", action: "upload", accept: ".pdf,.docx,.doc" },
     ],
@@ -413,7 +413,7 @@ function InsightPreview({ workerSlug, accent, stage }) {
         {intel.quickActions.map((qa, i) => (
           <button
             key={i}
-            onClick={() => window.dispatchEvent(new CustomEvent("ta:panel-ask-alex", { detail: { text: qa.prompt } }))}
+            onClick={() => window.dispatchEvent(new CustomEvent("ta:chatPrompt", { detail: { message: qa.prompt } }))}
             style={{
               display: "flex", alignItems: "center", gap: 8,
               padding: "8px 12px", fontSize: 13, fontWeight: 500,
@@ -555,8 +555,8 @@ function WorkerChecklist({ workerSlug, workerName }) {
           if (files.length === 0) return;
           // Send files to chat for processing
           const fileNames = files.map(f => f.name).join(", ");
-          window.dispatchEvent(new CustomEvent("ta:panel-ask-alex", {
-            detail: { text: `I'm uploading ${fileNames} for ${item.label.toLowerCase()}. Please help me process these documents.` },
+          window.dispatchEvent(new CustomEvent("ta:chatPrompt", {
+            detail: { message: `I'm uploading ${fileNames} for ${item.label.toLowerCase()}. Please help me process these documents.` },
           }));
           // Dispatch file upload event for ChatPanel to handle
           window.dispatchEvent(new CustomEvent("ta:chat-upload-files", {
@@ -569,19 +569,19 @@ function WorkerChecklist({ workerSlug, workerName }) {
       }
       case "chat": {
         const prompt = item.prompt || `Help me ${item.label.toLowerCase()} for ${workerName}`;
-        window.dispatchEvent(new CustomEvent("ta:panel-ask-alex", { detail: { text: prompt } }));
+        window.dispatchEvent(new CustomEvent("ta:chatPrompt", { detail: { message: prompt } }));
         markComplete(item.id);
         break;
       }
       case "connect": {
         const prompt = item.prompt || `Help me connect ${item.label.toLowerCase()}`;
-        window.dispatchEvent(new CustomEvent("ta:panel-ask-alex", { detail: { text: prompt } }));
+        window.dispatchEvent(new CustomEvent("ta:chatPrompt", { detail: { message: prompt } }));
         markComplete(item.id);
         break;
       }
       default: {
         const prompt = item.prompt || `Help me ${item.label.toLowerCase()} for ${workerName}`;
-        window.dispatchEvent(new CustomEvent("ta:panel-ask-alex", { detail: { text: prompt } }));
+        window.dispatchEvent(new CustomEvent("ta:chatPrompt", { detail: { message: prompt } }));
         markComplete(item.id);
       }
     }
@@ -1069,7 +1069,7 @@ export default function WorkerCanvas({ workerData, verticalLabel, relatedWorkers
                     key={i}
                     className="arrival-chips"
                     onClick={() => {
-                      window.dispatchEvent(new CustomEvent("ta:panel-ask-alex", { detail: { text: p } }));
+                      window.dispatchEvent(new CustomEvent("ta:chatPrompt", { detail: { message: p } }));
                       if (ws?.startWorking) ws.startWorking();
                     }}
                     style={{
