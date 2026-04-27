@@ -4943,10 +4943,19 @@ export default function App() {
           setUserName(user.displayName || user.email?.split("@")[0] || "");
         } catch (err) {
           console.error("Failed to refresh token:", err);
+          // CODEX 49.23 — preserve existing token on refresh failure (network/transient)
+          const existingToken = localStorage.getItem("ID_TOKEN");
+          if (existingToken) {
+            setToken(existingToken);
+            setUserName(user.displayName || user.email?.split("@")[0] || "");
+          }
         }
       } else if (!user) {
-        localStorage.removeItem("ID_TOKEN");
-        setToken(null);
+        // CODEX 49.23 — only clear token if no existing session (avoid wiping on transient null)
+        const existingToken = localStorage.getItem("ID_TOKEN");
+        if (!existingToken) {
+          setToken(null);
+        }
       }
       // Anonymous users: don't set token — guest stays on MeetAlex
       setAuthResolved(true);

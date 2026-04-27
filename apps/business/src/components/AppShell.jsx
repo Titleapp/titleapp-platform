@@ -7,6 +7,7 @@ import * as api from "../api/client";
 import { RightPanelProvider } from "../context/RightPanelContext";
 import { WorkerStateProvider } from "../context/WorkerStateContext.jsx";
 import { useVisitorContext } from "../hooks/useVisitorContext";
+import { auth } from "../firebase";
 
 const RightPanel = lazy(() => import("./RightPanel/RightPanel"));
 
@@ -95,11 +96,23 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
 
   async function loadWorkspaces() {
     try {
-      const token = localStorage.getItem("ID_TOKEN");
+      let token = localStorage.getItem("ID_TOKEN");
       const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
-      const resp = await fetch(`${apiBase}/api?path=/v1/workspaces`, {
+      let resp = await fetch(`${apiBase}/api?path=/v1/workspaces`, {
         headers: { Authorization: `Bearer ${token}` },
       });
+      // CODEX 49.23 — retry with fresh token on 401/403
+      if ((resp.status === 401 || resp.status === 403) && auth.currentUser) {
+        try {
+          token = await auth.currentUser.getIdToken(true);
+          localStorage.setItem("ID_TOKEN", token);
+          resp = await fetch(`${apiBase}/api?path=/v1/workspaces`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+        } catch (refreshErr) {
+          console.warn("Token refresh failed:", refreshErr.message);
+        }
+      }
       const data = await resp.json();
       if (data.ok && data.workspaces) {
         setWorkspaces(data.workspaces);
