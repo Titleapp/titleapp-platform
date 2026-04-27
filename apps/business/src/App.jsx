@@ -83,6 +83,7 @@ import PilotLanding from "./pages/landing/PilotLanding";
 import AlexWorkspace from "./pages/AlexWorkspace";
 import PlatformInventory from "./pages/PlatformInventory";
 import CampaignPage from "./pages/campaigns/CampaignPage";
+import StartPage from "./pages/StartPage";
 import InviteLanding from "./pages/InviteLanding";
 import MeetAlex from "./pages/MeetAlex";
 import CoPilotEFB from "./sections/CoPilotEFB";
@@ -4733,6 +4734,9 @@ export default function App() {
   const legalSlug = legalSlugMatch ? legalSlugMatch[1] : null;
   const isLegalPage = !!legalSlug;
 
+  // ── /start route intercept (CODEX 49.24) ────────────────
+  const isStartPage = /^\/start\/?$/.test(window.location.pathname);
+
   // ── /campaign/:slug route intercept ─────────────────────
   const campaignMatch = window.location.pathname.match(/^\/campaign\/([a-z0-9-]+)\/?$/);
   const campaignSlug = campaignMatch ? campaignMatch[1] : null;
@@ -4880,7 +4884,8 @@ export default function App() {
     const isMeetAlexPath = /^\/meet-alex\/?/.test(window.location.pathname);
     const isCampaignPath = /^\/campaign\//.test(window.location.pathname);
     const handoff = processLandingHandoff();
-    if (!isMeetAlexPath && !isCampaignPath) {
+    const isStartPath = /^\/start\/?/.test(window.location.pathname);
+    if (!isMeetAlexPath && !isCampaignPath && !isStartPath) {
       if (handoff.type === "search") {
         sessionStorage.setItem("ta_landing_search", handoff.value);
         if (window.location.pathname !== "/workers") {
@@ -5478,6 +5483,9 @@ export default function App() {
 
   // ── Legal pages: no auth required ────────────────────────────
   if (isLegalPage) return <LegalPage slug={legalSlug} />;
+
+  // ── /start landing page: no auth required (CODEX 49.24) ──────
+  if (isStartPage) return <StartPage />;
 
   // ── Campaign pages: no auth required ──────────────────────────
   if (isCampaignPage) {
