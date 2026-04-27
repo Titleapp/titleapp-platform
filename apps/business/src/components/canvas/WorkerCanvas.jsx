@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { auth } from "../../firebase";
+import { auth, db } from "../../firebase";
+import { doc, getDoc } from "firebase/firestore";
 import { GoogleAuthProvider, linkWithPopup, linkWithRedirect, signInWithCredential } from "firebase/auth";
 import { useWorkerState } from "../../context/WorkerStateContext";
 import WorkerIcon, { getThemeAccent, getVerticalIconSlug } from "../../utils/workerIcons";
@@ -374,6 +375,68 @@ const WORKER_INTELLIGENCE = {
   },
 };
 
+// ── 49.17: Map briefing spine data to KPI values ──────────────────
+const BRIEFING_KPI_MAP = {
+  "platform-accounting": {
+    "revenue": { field: "spine.incomeMtd", format: "currency" },
+    "expenses": { field: "spine.expenseMtd", format: "currency" },
+    "net-income": { compute: (b) => {
+      const inc = b?.spine?.incomeMtd; const exp = b?.spine?.expenseMtd;
+      return (inc != null && exp != null) ? inc - exp : null;
+    }, format: "currency" },
+    "cash-flow": null, // No direct briefing field yet
+  },
+  "platform-marketing": {
+    "campaign-roi": null, // No SendGrid data in briefings yet
+    "leads": { field: "spine.contacts", format: "number" },
+    "email-open-rate": null,
+    "social-reach": null,
+  },
+  "platform-hr": {
+    "team-size": { field: "spine.employees", format: "number" },
+    "open-positions": null,
+    "reviews-due": null,
+    "compliance-score": { field: "spine.complianceFlags", format: "number" },
+  },
+  "platform-control-center-pro": {
+    "revenue": { field: "spine.incomeMtd", format: "currency" },
+    "active-workers": null, // Count from workspace, not briefing
+    "customer-growth": null,
+    "tasks-due": { field: "spine.pendingTransactions", format: "number" },
+  },
+  "platform-contacts": {
+    "total-contacts": { field: "spine.contacts", format: "number" },
+    "active-clients": null,
+    "followups-due": null,
+    "new-this-month": null,
+  },
+};
+
+function resolveBriefingPath(obj, path) {
+  return path.split(".").reduce((o, k) => (o && o[k] != null ? o[k] : null), obj);
+}
+
+function formatKpiValue(val, unit) {
+  if (val == null) return null;
+  if (unit === "$") return "$" + Number(val).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  if (unit === "%") return Number(val).toLocaleString("en-US") + "%";
+  return Number(val).toLocaleString("en-US");
+}
+
+function resolveKpiValue(briefingData, workerSlug, kpiId, unit) {
+  if (!briefingData) return null;
+  const mapping = BRIEFING_KPI_MAP[workerSlug]?.[kpiId];
+  if (!mapping) return null;
+  let raw;
+  if (mapping.compute) {
+    raw = mapping.compute(briefingData);
+  } else if (mapping.field) {
+    raw = resolveBriefingPath(briefingData, mapping.field);
+  }
+  if (raw == null) return null;
+  return formatKpiValue(raw, unit);
+}
+
 function getChecklistCompletion(workerSlug) {
   const checklist = WORKER_CHECKLISTS[workerSlug];
   if (!checklist) return { completed: 0, total: 0, percent: 0 };
@@ -385,7 +448,7 @@ function getChecklistCompletion(workerSlug) {
   return { completed, total, percent: total > 0 ? Math.round((completed / total) * 100) : 0 };
 }
 
-function InsightPreview({ workerSlug, accent, stage }) {
+function InsightPreview({ workerSlug, accent, stage, briefingData }) {
   const intel = WORKER_INTELLIGENCE[workerSlug];
   if (!intel) return null;
   const full = stage === 3;
@@ -400,18 +463,23 @@ function InsightPreview({ workerSlug, accent, stage }) {
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
-        {intel.kpis.map((kpi) => (
-          <div key={kpi.id} style={{
-            background: "#f8fafc", borderRadius: 10, padding: "14px 12px",
-            border: `1px solid ${full ? accent + "30" : "#f1f5f9"}`,
-          }}>
-            <div style={{ fontSize: 11, color: "#64748b", marginBottom: 4 }}>{kpi.label}</div>
-            <div style={{ fontSize: 20, fontWeight: 700, color: full ? accent : "#d1d5db" }}>--</div>
-            {!full && kpi.hint && (
-              <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 4, lineHeight: 1.3 }}>{kpi.hint}</div>
-            )}
-          </div>
-        ))}
+        {intel.kpis.map((kpi) => {
+          const realValue = resolveKpiValue(briefingData, workerSlug, kpi.id, kpi.unit);
+          const displayValue = realValue || "--";
+          const hasData = realValue != null;
+          return (
+            <div key={kpi.id} style={{
+              background: "#f8fafc", borderRadius: 10, padding: "14px 12px",
+              border: `1px solid ${full ? accent + "30" : "#f1f5f9"}`,
+            }}>
+              <div style={{ fontSize: 11, color: "#64748b", marginBottom: 4 }}>{kpi.label}</div>
+              <div style={{ fontSize: 20, fontWeight: 700, color: hasData ? (full ? accent : "#1e293b") : (full ? accent : "#d1d5db") }}>{displayValue}</div>
+              {!full && !hasData && kpi.hint && (
+                <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 4, lineHeight: 1.3 }}>{kpi.hint}</div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       <div style={{
@@ -737,6 +805,27 @@ export default function WorkerCanvas({ workerData, verticalLabel, relatedWorkers
     window.addEventListener("storage", recomputeStage);
     return () => { clearInterval(interval); window.removeEventListener("storage", recomputeStage); };
   }, [workerSlug]);
+
+  // ── 49.17: Fetch briefings data for Canvas intelligence ──
+  const [briefingData, setBriefingData] = useState(null);
+  useEffect(() => {
+    if (!hasIntelligence) return;
+    let cancelled = false;
+    async function loadBriefing() {
+      try {
+        const uid = auth.currentUser?.uid;
+        if (!uid) return;
+        const snap = await getDoc(doc(db, "briefings", uid));
+        if (!cancelled && snap.exists()) {
+          setBriefingData(snap.data());
+        }
+      } catch (err) {
+        console.warn("WorkerCanvas: briefing load failed:", err.message);
+      }
+    }
+    loadBriefing();
+    return () => { cancelled = true; };
+  }, [workerSlug, hasIntelligence]);
 
   // Operating mode configuration
   const MODE_CONFIG = {
@@ -1113,7 +1202,7 @@ export default function WorkerCanvas({ workerData, verticalLabel, relatedWorkers
                 }}
               >
                 {hasIntelligence && canvasStage >= 2 && (
-                  <InsightPreview workerSlug={workerSlug} accent={accent} stage={canvasStage} />
+                  <InsightPreview workerSlug={workerSlug} accent={accent} stage={canvasStage} briefingData={briefingData} />
                 )}
                 {hasIntelligence && canvasStage >= 2 ? (
                   <CollapsibleChecklist
