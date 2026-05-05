@@ -1,10 +1,16 @@
 /**
  * sendgridWebhook.js — SendGrid delivery event webhook.
  * Events: delivered, opened, clicked, bounced, unsubscribed, spam_report
+ *
+ * 50.13 Layer E — every event resolves its tenant before any contact
+ * mutation. SendGrid batches events from multiple senders in a single POST,
+ * so resolution happens per-event. Untenanted events are logged to
+ * emailActivity for traceability but cannot mutate the contacts collection.
  */
 
 const admin = require("firebase-admin");
 const { logActivity } = require("../admin/logActivity");
+const { resolveInboundTenant } = require("./resolveInboundTenant");
 
 function getDb() { return admin.firestore(); }
 
@@ -14,6 +20,10 @@ async function sendgridWebhook(req, res) {
 
   for (const event of events) {
     if (!event || !event.event) continue;
+
+    const tenancy = await resolveInboundTenant("sendgrid_webhook", event);
+    const tenantId = tenancy.tenantId;
+    const tenantSkipReason = tenantId ? null : tenancy.reason;
 
     await db.collection("emailActivity").add({
       event: event.event,
@@ -25,14 +35,28 @@ async function sendgridWebhook(req, res) {
       category: event.category || [],
       url: event.url || null,
       reason: event.reason || null,
+      tenantId: tenantId || null,
+      tenantSkipReason: tenantSkipReason || null,
       rawEvent: event,
     });
 
-    // Handle actionable events
+    // Without a resolved tenant we cannot safely mutate contacts. Log + skip.
+    if (!tenantId) {
+      if (["bounce", "spamreport", "unsubscribe"].includes(event.event)) {
+        await logActivity(
+          "communication",
+          `Email ${event.event} skipped (no tenant): ${tenantSkipReason} — ${event.email}`,
+          "warning"
+        );
+      }
+      continue;
+    }
+
+    // Handle actionable events — all queries scoped to the resolved tenant.
     if (event.event === "bounce") {
-      // Mark contact email as invalid
       const contactSnap = await db
         .collection("contacts")
+        .where("tenantId", "==", tenantId)
         .where("email", "==", event.email)
         .limit(1)
         .get();
@@ -42,12 +66,13 @@ async function sendgridWebhook(req, res) {
           tags: admin.firestore.FieldValue.arrayUnion("bounced"),
         });
       }
-      await logActivity("communication", `Email bounced: ${event.email}`, "warning");
+      await logActivity("communication", `Email bounced: ${event.email} (tenant ${tenantId})`, "warning");
     }
 
     if (event.event === "spamreport") {
       const contactSnap = await db
         .collection("contacts")
+        .where("tenantId", "==", tenantId)
         .where("email", "==", event.email)
         .limit(1)
         .get();
@@ -57,12 +82,13 @@ async function sendgridWebhook(req, res) {
           tags: admin.firestore.FieldValue.arrayUnion("spam_report"),
         });
       }
-      await logActivity("communication", `Spam report from: ${event.email}`, "error");
+      await logActivity("communication", `Spam report from: ${event.email} (tenant ${tenantId})`, "error");
     }
 
     if (event.event === "unsubscribe") {
       const contactSnap = await db
         .collection("contacts")
+        .where("tenantId", "==", tenantId)
         .where("email", "==", event.email)
         .limit(1)
         .get();
@@ -72,7 +98,7 @@ async function sendgridWebhook(req, res) {
           tags: admin.firestore.FieldValue.arrayUnion("unsubscribed"),
         });
       }
-      await logActivity("communication", `Unsubscribed: ${event.email}`, "info");
+      await logActivity("communication", `Unsubscribed: ${event.email} (tenant ${tenantId})`, "info");
     }
   }
 

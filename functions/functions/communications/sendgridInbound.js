@@ -5,6 +5,7 @@
 
 const admin = require("firebase-admin");
 const { logActivity } = require("../admin/logActivity");
+const { resolveInboundTenant } = require("./resolveInboundTenant");
 
 function getDb() { return admin.firestore(); }
 
@@ -20,7 +21,13 @@ async function sendgridInbound(req, res) {
   const emailMatch = from.match(/<([^>]+)>/) || [null, from];
   const fromEmail = emailMatch[1] || from;
 
-  // Store raw inbound
+  // 50.13 Layer E — resolve workspace tenant for the inbound email channel.
+  // The To address (or alias) maps to a workspace via inboundChannelMap.
+  const tenancy = await resolveInboundTenant("sendgrid_inbound", req.body || {});
+  const tenantId = tenancy.tenantId;
+  const tenantSkipReason = tenantId ? null : tenancy.reason;
+
+  // Always log inbound (tenancy may be null — record it for traceability).
   const inboundRef = await db.collection("inboundMessages").add({
     channel: "email",
     from: fromEmail,
@@ -29,40 +36,53 @@ async function sendgridInbound(req, res) {
     subject: subject || "(no subject)",
     body: text || "",
     htmlBody: html || "",
+    tenantId: tenantId || null,
+    tenantSkipReason: tenantSkipReason || null,
     processedAt: null,
     timestamp: admin.firestore.FieldValue.serverTimestamp(),
   });
 
-  // Match to contact
-  const contactSnap = await db
-    .collection("contacts")
-    .where("email", "==", fromEmail)
-    .limit(1)
-    .get();
-
+  // Match contact only when tenant resolved (privacy gate per 50.13).
   let contactId = null;
-  if (!contactSnap.empty) {
-    contactId = contactSnap.docs[0].id;
-    await db.collection("contacts").doc(contactId).update({
-      lastMessageAt: admin.firestore.FieldValue.serverTimestamp(),
-      totalMessages: admin.firestore.FieldValue.increment(1),
-    });
-  }
+  if (tenantId) {
+    const contactSnap = await db
+      .collection("contacts")
+      .where("tenantId", "==", tenantId)
+      .where("email", "==", fromEmail)
+      .limit(1)
+      .get();
 
-  // Log to unified messages
-  await db.collection("messages").add({
-    channel: "email",
-    direction: "inbound",
-    from: fromEmail,
-    to: to || "",
-    subject: subject || "(no subject)",
-    body: text || "",
-    contactId,
-    timestamp: admin.firestore.FieldValue.serverTimestamp(),
-    alexAction: null,
-    sentiment: null,
-    intent: null,
-  });
+    if (!contactSnap.empty) {
+      contactId = contactSnap.docs[0].id;
+      await db.collection("contacts").doc(contactId).update({
+        lastMessageAt: admin.firestore.FieldValue.serverTimestamp(),
+        totalMessages: admin.firestore.FieldValue.increment(1),
+      });
+    }
+
+    // Log to unified messages (tenant-scoped).
+    await db.collection("messages").add({
+      channel: "email",
+      direction: "inbound",
+      from: fromEmail,
+      to: to || "",
+      subject: subject || "(no subject)",
+      body: text || "",
+      contactId,
+      tenantId,
+      timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      alexAction: null,
+      sentiment: null,
+      intent: null,
+    });
+  } else {
+    await logActivity(
+      "communication",
+      `Inbound email skipped (no tenant): ${tenantSkipReason} — from=${fromEmail} to=${to}`,
+      "warning",
+      { inboundId: inboundRef.id }
+    );
+  }
 
   // --- Sandbox reply detection (32.7-T2) ---
   try {

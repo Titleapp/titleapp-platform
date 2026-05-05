@@ -5,6 +5,7 @@
 
 const admin = require("firebase-admin");
 const { logActivity } = require("../admin/logActivity");
+const { resolveInboundTenant } = require("./resolveInboundTenant");
 
 function getDb() { return admin.firestore(); }
 
@@ -21,15 +22,28 @@ async function twilioInbound(req, res) {
 
   const bodyLower = (body || "").trim().toLowerCase();
 
+  // 50.13 Layer E — resolve which workspace the inbound message belongs to.
+  // Without this, contact mutations cross workspace boundaries (a STOP from
+  // workspace A could opt out a contact in workspace B if phone numbers match).
+  const tenancy = await resolveInboundTenant("twilio", req.body || {});
+  const tenantId = tenancy.tenantId;
+  const tenantSkipReason = tenantId ? null : tenancy.reason;
+
   // ── STOP / UNSUBSCRIBE ────────────────────────────────────────
   if (OPT_OUT_KEYWORDS.includes(bodyLower)) {
-    // Update contact
-    const contactSnap = await db.collection("contacts").where("phone", "==", from).limit(1).get();
-    if (!contactSnap.empty) {
-      await contactSnap.docs[0].ref.update({
-        smsOptOut: true,
-        smsOptOutAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
+    // Contact mutation is tenant-scoped. User-level opt-out below is global
+    // (the user's cross-tenant identity, not contact records).
+    if (tenantId) {
+      const contactSnap = await db.collection("contacts")
+        .where("tenantId", "==", tenantId)
+        .where("phone", "==", from)
+        .limit(1).get();
+      if (!contactSnap.empty) {
+        await contactSnap.docs[0].ref.update({
+          smsOptOut: true,
+          smsOptOutAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+      }
     }
     // Update user
     const userSnap = await db.collection("users").where("phone", "==", from).limit(1).get();
@@ -54,12 +68,17 @@ async function twilioInbound(req, res) {
 
   // ── START / OPT-IN ────────────────────────────────────────────
   if (OPT_IN_KEYWORDS.includes(bodyLower)) {
-    const contactSnap = await db.collection("contacts").where("phone", "==", from).limit(1).get();
-    if (!contactSnap.empty) {
-      await contactSnap.docs[0].ref.update({
-        smsOptOut: false,
-        smsOptInAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
+    if (tenantId) {
+      const contactSnap = await db.collection("contacts")
+        .where("tenantId", "==", tenantId)
+        .where("phone", "==", from)
+        .limit(1).get();
+      if (!contactSnap.empty) {
+        await contactSnap.docs[0].ref.update({
+          smsOptOut: false,
+          smsOptInAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+      }
     }
     const userSnap = await db.collection("users").where("phone", "==", from).limit(1).get();
     if (!userSnap.empty) {
@@ -98,19 +117,37 @@ async function twilioInbound(req, res) {
   }
 
   // ── DEFAULT: Store + Alex routing ─────────────────────────────
-  // Store raw inbound
+  // Always log inbound (tenancy may be null — record it for traceability).
   const inboundRef = await db.collection("inboundMessages").add({
     channel: "sms",
     from,
     to,
     body,
     twilioSid: sid || null,
+    tenantId: tenantId || null,
+    tenantSkipReason: tenantSkipReason || null,
     processedAt: null,
     timestamp: admin.firestore.FieldValue.serverTimestamp(),
   });
 
-  // Match sender to contact by phone
-  const contactSnap = await db.collection("contacts").where("phone", "==", from).limit(1).get();
+  // Without a resolved tenant, do not mutate contacts or route through Alex —
+  // we have no workspace to route the message to. Log + skip cleanly.
+  if (!tenantId) {
+    await logActivity(
+      "communication",
+      `Inbound SMS skipped (no tenant): ${tenantSkipReason} — from=${from} to=${to}`,
+      "warning",
+      { inboundId: inboundRef.id }
+    );
+    res.set("Content-Type", "text/xml");
+    return res.send("<Response></Response>");
+  }
+
+  // Match sender to contact by phone within the resolved tenant.
+  const contactSnap = await db.collection("contacts")
+    .where("tenantId", "==", tenantId)
+    .where("phone", "==", from)
+    .limit(1).get();
   let contactId = null;
   if (!contactSnap.empty) {
     contactId = contactSnap.docs[0].id;
@@ -128,6 +165,7 @@ async function twilioInbound(req, res) {
     to,
     body,
     contactId,
+    tenantId,
     twilioSid: sid || null,
     timestamp: admin.firestore.FieldValue.serverTimestamp(),
     alexAction: null,
