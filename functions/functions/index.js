@@ -13637,6 +13637,40 @@ Never attempt to output an entire multi-page document in a single response. For 
     }
 
     // ----------------------------
+    // CODEX 50.11 — IMPROVEMENT REQUESTS
+    // ----------------------------
+    if (route === "/improvementRequests:create" && method === "POST") {
+      try {
+        const { createRequest } = require("./services/improvementRequests");
+        req._user = auth.user;
+        return createRequest(req, res);
+      } catch (e) {
+        console.error("❌ improvementRequests:create failed:", e);
+        return jsonError(res, 500, "Failed to create improvement request");
+      }
+    }
+    if (route === "/improvementRequests:list" && method === "GET") {
+      try {
+        const { listRequests } = require("./services/improvementRequests");
+        req._user = auth.user;
+        return listRequests(req, res);
+      } catch (e) {
+        console.error("❌ improvementRequests:list failed:", e);
+        return jsonError(res, 500, "Failed to list improvement requests");
+      }
+    }
+    if (route === "/improvementRequests:transition" && method === "POST") {
+      try {
+        const { transitionStatus } = require("./services/improvementRequests");
+        req._user = auth.user;
+        return transitionStatus(req, res);
+      } catch (e) {
+        console.error("❌ improvementRequests:transition failed:", e);
+        return jsonError(res, 500, "Failed to transition improvement request");
+      }
+    }
+
+    // ----------------------------
     // BUSINESS APP: INVENTORY
     // ----------------------------
 

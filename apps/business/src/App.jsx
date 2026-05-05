@@ -4434,7 +4434,7 @@ function WorkerHomeRenderer({ onBack }) {
     return (
       <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
         {tabs.length > 0 && (
-          <CanvasTabBar tabs={tabs} activeSignal={activeSignal} onSelectTab={handleTabSelect} />
+          <CanvasTabBar tabs={tabs} activeSignal={activeSignal} onSelectTab={handleTabSelect} workerSlug={worker?.slug} />
         )}
         <div style={{ flex: 1, minHeight: 0, overflow: "auto" }}>
           <CanvasPanel canvasData={panel.canvasData} onDismiss={panel.dismissCanvas} />
@@ -4446,7 +4446,7 @@ function WorkerHomeRenderer({ onBack }) {
     return (
       <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
         {tabs.length > 0 && (
-          <CanvasTabBar tabs={tabs} activeSignal={null} onSelectTab={handleTabSelect} />
+          <CanvasTabBar tabs={tabs} activeSignal={null} onSelectTab={handleTabSelect} workerSlug={worker?.slug} />
         )}
         <div style={{ flex: 1, minHeight: 0, overflow: "auto" }}>
           <WorkerCanvas

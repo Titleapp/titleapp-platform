@@ -11,8 +11,9 @@
  */
 import React, { useEffect, useState } from "react";
 import { lookupSignal } from "../../config/canvasTypes";
+import SuggestImprovementButton from "../SuggestImprovementButton";
 
-export default function CanvasTabBar({ tabs, activeSignal, onSelectTab }) {
+export default function CanvasTabBar({ tabs, activeSignal, onSelectTab, workerSlug }) {
   const sorted = (tabs || []).slice().sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   const defaultTab = sorted.find(t => t.default) || sorted[0];
   const [activeId, setActiveId] = useState(defaultTab?.id || null);
@@ -37,37 +38,44 @@ export default function CanvasTabBar({ tabs, activeSignal, onSelectTab }) {
     <div
       style={{
         display: "flex",
+        alignItems: "center",
         borderBottom: "1px solid #e5e7eb",
         background: "#fff",
-        overflowX: "auto",
         flexShrink: 0,
       }}
     >
-      {sorted.map(t => {
-        const active = t.id === activeId;
-        return (
-          <button
-            key={t.id}
-            onClick={() => handleClick(t)}
-            style={{
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              padding: "12px 16px",
-              fontSize: 13,
-              fontWeight: active ? 600 : 500,
-              color: active ? "#111" : "#6b7280",
-              borderBottom: active ? "2px solid #7c3aed" : "2px solid transparent",
-              whiteSpace: "nowrap",
-              transition: "color 0.15s, border-color 0.15s",
-            }}
-            onMouseEnter={(e) => { if (!active) e.currentTarget.style.color = "#111"; }}
-            onMouseLeave={(e) => { if (!active) e.currentTarget.style.color = "#6b7280"; }}
-          >
-            {t.label}
-          </button>
-        );
-      })}
+      <div style={{ display: "flex", flex: 1, overflowX: "auto" }}>
+        {sorted.map(t => {
+          const active = t.id === activeId;
+          return (
+            <button
+              key={t.id}
+              onClick={() => handleClick(t)}
+              style={{
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                padding: "12px 16px",
+                fontSize: 13,
+                fontWeight: active ? 600 : 500,
+                color: active ? "#111" : "#6b7280",
+                borderBottom: active ? "2px solid #7c3aed" : "2px solid transparent",
+                whiteSpace: "nowrap",
+                transition: "color 0.15s, border-color 0.15s",
+              }}
+              onMouseEnter={(e) => { if (!active) e.currentTarget.style.color = "#111"; }}
+              onMouseLeave={(e) => { if (!active) e.currentTarget.style.color = "#6b7280"; }}
+            >
+              {t.label}
+            </button>
+          );
+        })}
+      </div>
+      {workerSlug && (
+        <div style={{ paddingRight: 12, flexShrink: 0 }}>
+          <SuggestImprovementButton workerSlug={workerSlug} />
+        </div>
+      )}
     </div>
   );
 }
