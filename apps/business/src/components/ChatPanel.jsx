@@ -38,8 +38,8 @@ import { WORKER_CHECKLISTS, WORKER_INTELLIGENCE } from './canvas/WorkerCanvas';
 import { lookupSignal } from '../config/canvasTypes';
 import { isDemoMode, getSampleKpiValue, hasSampleData, normalizeVerticalKey, VERTICAL_INTELLIGENCE } from './canvas/sampleData';
 
-// WORKER_SUITES computed lazily inside component (useMemo) to avoid TDZ crash
-// when bundler evaluates ChatPanel before workerRoutes.js finishes exporting.
+// WORKER_SUITES computed lazily inside component (useMemo) — workers come
+// from the Firestore-backed useWorkerCatalog hook now (CODEX 50.10 Phase 2).
 
 // ── Contextual Messages ─────────────────────────────────────────
 
