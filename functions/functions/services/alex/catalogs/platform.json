@@ -168,6 +168,27 @@
         "briefingContribution": "contact_intelligence"
       },
       "temporalType": "always_on"
+    },
+    {
+      "id": "PLAT-007",
+      "name": "Legal Companion",
+      "slug": "platform-legal",
+      "suite": "Legal",
+      "phase": 3,
+      "type": "platform",
+      "pricing": {
+        "monthly": 0
+      },
+      "status": "live",
+      "capabilitySummary": "Reviews contracts for W-045 enforcement (RESPA, TILA, UCC, state title regs); flags AI-disclosure, statute-of-frauds, securities, usury, draft markings; never provides legal advice.",
+      "tags": ["legal", "contracts", "compliance", "review"],
+      "valueBucket": ["stay_compliant"],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "legal_review"
+      },
+      "temporalType": "always_on"
     }
   ]
 }

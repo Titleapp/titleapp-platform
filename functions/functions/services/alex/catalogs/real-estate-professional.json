@@ -31,6 +31,10 @@
     {
       "id": "operations",
       "name": "Operations"
+    },
+    {
+      "id": "sales",
+      "name": "Sales"
     }
   ],
   "workers": [
@@ -331,6 +335,27 @@
         "priority": "critical",
         "acceptsTasks": true,
         "briefingContribution": "escrow_status"
+      },
+      "temporalType": "always_on"
+    },
+    {
+      "id": "RES-001",
+      "name": "Real Estate Salesperson",
+      "slug": "re-salesperson",
+      "suite": "Sales",
+      "phase": 3,
+      "type": "individual",
+      "pricing": {
+        "monthly": 79
+      },
+      "status": "live",
+      "capabilitySummary": "Manages buyer and listing pipelines end-to-end. Tracks DOM and recommends price moves; matches MLS to buyer criteria; drafts offers from CMA data; enforces contingency deadlines; runs the post-close cadence.",
+      "tags": ["sales", "buyer-pipeline", "listing-pipeline", "transaction-management"],
+      "valueBucket": ["make_money", "win_more_deals"],
+      "alexRegistration": {
+        "priority": "high",
+        "acceptsTasks": true,
+        "briefingContribution": "deal_pipeline"
       },
       "temporalType": "always_on"
     }
