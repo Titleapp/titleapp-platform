@@ -13671,6 +13671,20 @@ Never attempt to output an entire multi-page document in a single response. For 
     }
 
     // ----------------------------
+    // CODEX 50.11 — PER-MESSAGE FEEDBACK
+    // ----------------------------
+    if (route === "/chat:feedback" && method === "POST") {
+      try {
+        const { chatFeedback } = require("./services/chat/feedbackHandler");
+        req._user = auth.user;
+        return chatFeedback(req, res);
+      } catch (e) {
+        console.error("❌ chat:feedback failed:", e);
+        return jsonError(res, 500, "Failed to record feedback");
+      }
+    }
+
+    // ----------------------------
     // BUSINESS APP: INVENTORY
     // ----------------------------
 

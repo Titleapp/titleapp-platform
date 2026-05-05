@@ -31,6 +31,7 @@ import { getFirestore, collection, query, where, orderBy, limit, getDocs, doc, g
 import { fireMilestone } from '../utils/celebrations';
 import { useWorkerCatalog } from '../data/useWorkerCatalog';
 import SessionEndCTA from './worker/SessionEndCTA';
+import MessageFeedback from './MessageFeedback';
 import { useWorkerState } from '../context/WorkerStateContext.jsx';
 import { useRightPanel } from '../context/RightPanelContext';
 import CanvasResolver from '../services/CanvasResolver';
@@ -1731,6 +1732,14 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
                 </div>
               )}
             </div>
+
+            {/* CODEX 50.11 Layer B — per-message feedback. Renders only on
+                substantive AI replies (assistant role, not system/error,
+                non-trivial content length). Feedback events go to
+                workerFeedback/ via /v1/chat:feedback. */}
+            {msg.role === "assistant" && !msg.isSystem && !msg.isError && typeof displayContent === "string" && displayContent.length > 30 && (
+              <MessageFeedback messageIndex={idx} workerSlug={activeWorkerSlug || null} />
+            )}
 
             {/* Save as Draft — only for platform-marketing assistant messages (49.2) */}
             {msg.role === "assistant" && !msg.isSystem && !msg.isError && activeWorkerSlug === "platform-marketing" && typeof displayContent === "string" && displayContent.length > 30 && (
