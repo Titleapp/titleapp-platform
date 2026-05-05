@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from "react";
 import { db, auth } from "../../firebase";
 import { doc, setDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { GoogleAuthProvider, signInWithRedirect, getRedirectResult, signInWithEmailAndPassword } from "firebase/auth";
-import { WORKER_ROUTES } from "../../data/workerRoutes";
+import { useWorkerCatalog } from "../../data/useWorkerCatalog";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
 
@@ -211,6 +211,7 @@ const S = {
 
 export default function CampaignPage({ slug }) {
   const config = CAMPAIGNS[slug];
+  const workerCatalog = useWorkerCatalog();
   const [variant, setVariant] = useState(null);
   const logged = useRef(false);
 
@@ -282,7 +283,7 @@ export default function CampaignPage({ slug }) {
 
   const content = config.variants[variant];
   const featured = config.featuredSlugs
-    .map((s) => WORKER_ROUTES.find((w) => w.slug === s))
+    .map((s) => workerCatalog.find((w) => w.slug === s))
     .filter(Boolean);
 
   function handleChatSubmit(e) {

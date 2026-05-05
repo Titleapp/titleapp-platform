@@ -1,9 +1,6 @@
 import React, { useState } from "react";
 import WorkerIcon, { SUITE_COLORS } from "../utils/workerIcons";
-import { WORKER_ROUTES } from "../data/workerRoutes";
-
-// Re-export for backward compatibility
-export { WORKER_ROUTES };
+import { useWorkerCatalog } from "../data/useWorkerCatalog";
 
 
 const SUITES = ["All", "Real Estate", "Title & Escrow", "Construction", "Finance & Investment", "General Business", "Legal", "Automotive", "Aviation", "Solar Energy", "Government — DMV", "Government — Permitting", "Government — Inspector", "Government — Recorder", "Platform"];
@@ -65,7 +62,8 @@ export default function WorkerMarketplace({ authenticated, userName, onSubscribe
   });
   const [subscribing, setSubscribing] = useState(null);
 
-  const publicWorkers = WORKER_ROUTES.filter((w) => !w.internal_only);
+  const allWorkers = useWorkerCatalog();
+  const publicWorkers = allWorkers.filter((w) => !w.internal_only);
   const suiteFiltered = filter === "All" ? publicWorkers : publicWorkers.filter((w) => w.suite === filter);
   const filtered = searchQuery
     ? suiteFiltered.filter((w) => w.name.toLowerCase().includes(searchQuery.toLowerCase()) || (w.description || "").toLowerCase().includes(searchQuery.toLowerCase()))

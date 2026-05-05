@@ -29,7 +29,7 @@ function getChatToken() {
 }
 import { getFirestore, collection, query, where, orderBy, limit, getDocs, doc, getDoc } from 'firebase/firestore';
 import { fireMilestone } from '../utils/celebrations';
-import { WORKER_ROUTES } from '../data/workerRoutes';
+import { useWorkerCatalog } from '../data/useWorkerCatalog';
 import SessionEndCTA from './worker/SessionEndCTA';
 import { useWorkerState } from '../context/WorkerStateContext.jsx';
 import { useRightPanel } from '../context/RightPanelContext';
@@ -120,7 +120,9 @@ const VERTICAL_DISCLAIMERS = {
 // ── Component ───────────────────────────────────────────────────
 
 export default function ChatPanel({ currentSection, onboardingStep, disclaimerAccepted: propDisclaimerAccepted, alexContext }) {
-  const WORKER_SUITES = useMemo(() => ["All", ...Array.from(new Set(WORKER_ROUTES.filter(w => !w.internal_only).map(w => w.suite)))], []);
+  const allWorkers = useWorkerCatalog();
+  const visibleWorkers = useMemo(() => allWorkers.filter(w => !w.internal_only), [allWorkers]);
+  const WORKER_SUITES = useMemo(() => ["All", ...Array.from(new Set(visibleWorkers.map(w => w.suite)))], [visibleWorkers]);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -757,7 +759,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
 
   function matchWorkerQuery(message) {
     const lower = message.toLowerCase();
-    const workers = WORKER_ROUTES.filter(w => !w.internal_only);
+    const workers = visibleWorkers;
 
     // "show me X workers" / "X workers" / "workers for X" / "browse X" / "find X worker"
     const patterns = [
@@ -1540,7 +1542,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
     e?.preventDefault();
     if (!workerSearch.trim()) return;
     const term = workerSearch.toLowerCase();
-    let matched = WORKER_ROUTES.filter(w => !w.internal_only && (
+    let matched = visibleWorkers.filter(w => (
       w.name.toLowerCase().includes(term) ||
       w.description.toLowerCase().includes(term) ||
       w.suite.toLowerCase().includes(term) ||
@@ -1556,7 +1558,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
 
   function handleFilterClick(suite) {
     setWorkerFilter(suite);
-    const workers = WORKER_ROUTES.filter(w => !w.internal_only);
+    const workers = visibleWorkers;
     const matched = suite === "All" ? workers.filter(w => w.status === "live") : workers.filter(w => w.suite === suite);
     setMessages(prev => [...prev,
       { role: 'assistant', content: suite === "All" ? `Showing all ${matched.length} live workers:` : `Showing ${matched.length} ${suite} worker${matched.length !== 1 ? "s" : ""}:`, workerCards: matched.slice(0, 8), isSystem: true },

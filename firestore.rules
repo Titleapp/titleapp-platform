@@ -159,11 +159,13 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // Worker catalog — authenticated read so the dashboard can hydrate worker
-    // data (canvasTabs, headline, capabilitySummary) without round-tripping the
-    // catalog API. Server-only writes via the worker sync pipeline.
+    // Worker catalog — public read. The catalog is the public face of the
+    // platform (marketplace browse, /workers landing pages, campaign pages
+    // are all unauthenticated surfaces). Same data is already exposed via
+    // the public marketplace:search and catalog:byVertical API endpoints.
+    // Server-only writes via the worker sync pipeline.
     match /digitalWorkers/{slug} {
-      allow read: if request.auth != null;
+      allow read: if true;
       allow write: if false;
     }
 

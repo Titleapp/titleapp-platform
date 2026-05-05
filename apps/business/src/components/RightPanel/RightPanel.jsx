@@ -8,7 +8,7 @@ import SessionEndCTA from "../worker/SessionEndCTA";
 import CanvasPanel from "../canvas/CanvasPanel";
 import CanvasTabBar from "../canvas/CanvasTabBar";
 import WorkerCanvas from "../canvas/WorkerCanvas";
-import { WORKER_ROUTES } from "../../data/workerRoutes";
+import { useWorkerCatalog, getCachedWorkers } from "../../data/useWorkerCatalog";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
 
@@ -311,6 +311,7 @@ function ProductIntro() {
 export default function RightPanel() {
   const panel = useRightPanel();
   const workerState = useWorkerState();
+  const catalog = useWorkerCatalog();
   const { state, vertical, verticalLabel, workers, selectedWorker, showRecommendations, showWorkerDetail, goBack, dismiss, clearVerticalFilter, setWorkers, canvasData, dismissCanvas, relatedWorkers } = panel;
   const [loading, setLoading] = useState(false);
 
@@ -382,20 +383,21 @@ export default function RightPanel() {
       const { slug } = e.detail || {};
       if (!slug) return;
 
-      // Try local WORKER_ROUTES first (always available, no network)
-      const localMatch = WORKER_ROUTES.find(w => w.slug === slug);
+      // Try Firestore-backed catalog first (cached snapshot, no network)
+      const catalogList = catalog.length ? catalog : getCachedWorkers();
+      const localMatch = catalogList.find(w => w.slug === slug);
 
       // Check if worker is already in loaded workers list (has richer data)
       const existing = workers.find(w => (w.workerId || w.slug) === slug);
       if (existing) {
-        const cousins = findCousins(existing, workers.length > 10 ? workers : WORKER_ROUTES);
+        const cousins = findCousins(existing, workers.length > 10 ? workers : catalogList);
         panel.showWorkerHome(existing, cousins);
         return;
       }
 
       // Show localMatch immediately if available (no network wait)
       if (localMatch) {
-        const cousins = findCousins(localMatch, WORKER_ROUTES);
+        const cousins = findCousins(localMatch, catalogList);
         panel.showWorkerHome(localMatch, cousins);
         return;
       }

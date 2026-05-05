@@ -1,8 +1,11 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { WORKER_ROUTES } from "../data/workerRoutes";
+import { useWorkerCatalog } from "../data/useWorkerCatalog";
 import { SUITE_COLORS } from "../utils/workerIcons";
 
-// ALL_SUITES computed lazily inside component (useMemo) to avoid TDZ crash
+// 50.10 Phase 2 — RAASStore now reads from digitalWorkers/* (Firestore) via
+// the useWorkerCatalog hook. Replaces the static WORKER_ROUTES import that
+// had drifted out of sync with Firestore (90 phantom entries, 105 hidden
+// workers including the entire Government suite).
 
 const LANGUAGES = [
   { label: "English", code: "en" }, { label: "Espanol", code: "es" }, { label: "Portugues", code: "pt" },
@@ -21,7 +24,9 @@ function formatPrice(cents) {
 }
 
 export default function RAASStore() {
-  const ALL_SUITES = useMemo(() => ["All", ...Array.from(new Set(WORKER_ROUTES.filter(w => !w.internal_only).map(w => w.suite)))], []);
+  const allWorkers = useWorkerCatalog();
+  const workers = useMemo(() => allWorkers.filter(w => !w.internal_only), [allWorkers]);
+  const ALL_SUITES = useMemo(() => ["All", ...Array.from(new Set(workers.map(w => w.suite)))], [workers]);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeSuite, setActiveSuite] = useState("All");
   const [selectedLang, setSelectedLang] = useState(() => localStorage.getItem("PREFERRED_LANGUAGE") || "en");
@@ -32,8 +37,6 @@ export default function RAASStore() {
     window.dispatchEvent(new CustomEvent("ta:language-changed", { detail: { code: lang.code, label: lang.label } }));
   }
   const [expandedId, setExpandedId] = useState(null);
-
-  const workers = WORKER_ROUTES.filter(w => !w.internal_only);
 
   const filtered = workers.filter((w) => {
     const matchesSuite = activeSuite === "All" || w.suite === activeSuite;

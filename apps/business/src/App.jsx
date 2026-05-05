@@ -72,7 +72,7 @@ import MarketplaceListing from "./pages/MarketplaceListing";
 import CreatorApplication from "./pages/CreatorApplication";
 import WorkerWaitlistPage from "./pages/WorkerWaitlistPage";
 import WorkerMarketplace from "./pages/WorkerMarketplace";
-import { WORKER_ROUTES } from "./data/workerRoutes";
+import { useWorkerCatalog } from "./data/useWorkerCatalog";
 import WorkerDetailPage from "./pages/WorkerDetailPage";
 import LegalPage from "./pages/LegalPage";
 import AutoLanding from "./pages/landing/AutoLanding";
@@ -4748,6 +4748,7 @@ class SandboxErrorBoundary extends React.Component {
 }
 
 export default function App() {
+  const workerCatalog = useWorkerCatalog();
   // ── /alex route intercept ────────────────────────────────
   // Standalone Alex Chief of Staff workspace — 3-column layout
   const isAlexWorkspace = window.location.pathname === "/alex" || window.location.pathname === "/alex/";
@@ -4779,7 +4780,7 @@ export default function App() {
   const isWorkersIndex = /^\/workers\/?$/.test(window.location.pathname);
   const workersSlugMatch = window.location.pathname.match(/^\/workers\/([a-z0-9-]+)\/?$/);
   const workerSlug = workersSlugMatch ? workersSlugMatch[1] : null;
-  const workerRoute = workerSlug ? WORKER_ROUTES.find((w) => w.slug === workerSlug) : null;
+  const workerRoute = workerSlug ? workerCatalog.find((w) => w.slug === workerSlug) : null;
   const isLiveWorker = workerRoute && workerRoute.status === "live";
   const isPlannedWorker = workerRoute && workerRoute.status === "planned";
 
