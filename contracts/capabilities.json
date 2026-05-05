@@ -234,7 +234,21 @@
       "requiredKyc": "KYC-1",
       "requiredRoles": [],
       "emitsEvent": true,
-      "writesAudit": true
+      "writesAudit": true,
+      "status": "deprecated",
+      "replacedBy": "dtc.mint_dtc_polygon_crossmint_v1"
+    },
+    {
+      "id": "dtc.mint_dtc_polygon_crossmint_v1",
+      "class": "dtc",
+      "summary": "Asynchronous Polygon mainnet minting via Crossmint managed minting service (CODEX 50.14).",
+      "contexts": ["tenant", "civilian"],
+      "allowedCallers": ["worker", "system"],
+      "requiredKyc": "KYC-1",
+      "requiredRoles": [],
+      "emitsEvent": true,
+      "writesAudit": true,
+      "status": "active"
     },
 
     {

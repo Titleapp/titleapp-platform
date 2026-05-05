@@ -13385,6 +13385,14 @@ Never attempt to output an entire multi-page document in a single response. For 
         const createdAtTimestamp = admin.firestore.Timestamp.fromDate(createdAtDate);
         const createdAtIso = createdAtDate.toISOString();
 
+        // CODEX 50.14 Layer D — chain anchor for entitled users. Users
+        // with blockchainMintingEnabled=true get an additional Crossmint
+        // mint on Polygon. Hash anchor still runs for everyone (universal
+        // default). Async via the processChainMints scheduler.
+        const chainEnabled = userData.blockchainMintingEnabled === true;
+        const initialChainStatus = chainEnabled ? "chain_pending" : "hash_only";
+        const initialChain = chainEnabled ? "polygon-mainnet" : null;
+
         const dtcRecord = {
           userId: ctx.userId,
           tenantId: ctx.tenantId,
@@ -13396,8 +13404,8 @@ Never attempt to output an entire multi-page document in a single response. For 
           version: 1,
           parent_dtc_id: null,
           modification_authority: isPersonal ? "owner_only" : "workspace_role:admin",
-          chain_anchor_status: "hash_only",
-          chain: null,
+          chain_anchor_status: initialChainStatus,
+          chain: initialChain,
           credentialing_projection_schema: null,
           batchId: null,
           createdAt: createdAtTimestamp,
@@ -13409,7 +13417,12 @@ Never attempt to output an entire multi-page document in a single response. For 
 
         const ref = await db.collection("dtcs").add(dtcRecord);
 
-        return res.json({ ok: true, dtcId: ref.id, contentHash: dtcRecord.contentHash });
+        return res.json({
+          ok: true,
+          dtcId: ref.id,
+          contentHash: dtcRecord.contentHash,
+          chain_anchor_status: initialChainStatus,
+        });
       } catch (e) {
         console.error("❌ dtc:create failed:", e);
         return jsonError(res, 500, "Failed to create DTC");
@@ -19629,6 +19642,23 @@ exports.confirmOpentimestampsReceipts = onSchedule(
       console.log("[confirmOpentimestampsReceipts]", result);
     } catch (e) {
       console.error("[confirmOpentimestampsReceipts] failed:", e);
+    }
+  }
+);
+
+// CODEX 50.14 Layer D — process chain_pending DTCs every 2 minutes.
+// Submits new pending DTCs to Crossmint and polls in-flight mints.
+// Terminal states transition to chain_confirmed (with blockchainProof)
+// or chain_failed.
+const { processChainMints } = require("./services/minting/processChainMints");
+exports.processChainMints = onSchedule(
+  { schedule: "*/2 * * * *", timeZone: "UTC", region: "us-central1" },
+  async () => {
+    try {
+      const result = await processChainMints();
+      console.log("[processChainMints]", result.processed, "processed");
+    } catch (e) {
+      console.error("[processChainMints] failed:", e);
     }
   }
 );
