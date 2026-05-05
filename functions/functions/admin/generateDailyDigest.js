@@ -544,7 +544,13 @@ function buildSubscriberPlainText(userName, today, spine) {
   return lines.join("\n");
 }
 
-async function generateSubscriberBriefs() {
+/**
+ * Generate subscriber briefs for users on a given cadence.
+ * @param {"daily"|"weekly"|"monthly"} cadence — default "weekly"
+ *   Filters paid users by users/{uid}.digestCadence. Users without a digestCadence field
+ *   default to "weekly" — i.e. they only receive briefs when cadence === "weekly".
+ */
+async function generateSubscriberBriefs(cadence = "weekly") {
   const db = getDb();
   const today = new Date().toISOString().slice(0, 10);
   const paidTiers = ["tier1", "tier2", "tier3"];
@@ -556,6 +562,8 @@ async function generateSubscriberBriefs() {
       try {
         const userData = userDoc.data();
         const userId = userDoc.id;
+        const userCadence = userData.digestCadence || "weekly";
+        if (userCadence !== cadence) continue;
 
         // Get user's primary workspace
         const wsSnap = await db.collection("users").doc(userId).collection("workspaces").limit(1).get();
@@ -567,7 +575,7 @@ async function generateSubscriberBriefs() {
         // Write to briefings/{uid} (frontend already reads this)
         await db.collection("briefings").doc(userId).set({
           date: today,
-          runType: "daily",
+          runType: cadence,
           spine,
           priority: spine.complianceFlags > 0
             ? { level: "yellow", text: `${spine.complianceFlags} compliance items need attention` }
@@ -591,7 +599,7 @@ async function generateSubscriberBriefs() {
                 personalizations: [{ to: [{ email: userData.email }] }],
                 from: { email: "alex@titleapp.ai", name: "Alex — TitleApp" },
                 reply_to: { email: "alex@titleapp.ai", name: "Alex — TitleApp" },
-                subject: `Your TitleApp Briefing — ${today}`,
+                subject: `Your TitleApp ${cadence === "daily" ? "Daily" : cadence === "weekly" ? "Weekly" : "Monthly"} Briefing — ${today}`,
                 content: [{ type: "text/plain", value: briefText }],
               }),
             });
@@ -610,4 +618,54 @@ async function generateSubscriberBriefs() {
   return processed;
 }
 
-module.exports = { generateDailyDigest, gatherSpineSummary, generateSubscriberBriefs };
+// 49.32 — Generate a single user's brief on demand (for in-app preview / testing).
+// dryRun: true skips the email send and only writes/returns the brief.
+async function generateSubscriberBriefForUser(userId, cadence = "weekly", { dryRun = true } = {}) {
+  const db = getDb();
+  const today = new Date().toISOString().slice(0, 10);
+  const userSnap = await db.collection("users").doc(userId).get();
+  if (!userSnap.exists) throw new Error("user not found");
+  const userData = userSnap.data();
+
+  const wsSnap = await db.collection("users").doc(userId).collection("workspaces").limit(1).get();
+  const workspaceId = wsSnap.empty ? "vault" : wsSnap.docs[0].id;
+
+  const spine = await gatherSpineSummary(workspaceId);
+  const priority = spine.complianceFlags > 0
+    ? { level: "yellow", text: `${spine.complianceFlags} compliance items need attention` }
+    : { level: "green", text: "All systems green." };
+
+  const userName = userData.displayName || userData.name || "";
+  const plainText = buildSubscriberPlainText(userName, today, spine);
+
+  await db.collection("briefings").doc(userId).set({
+    date: today,
+    runType: cadence,
+    spine,
+    priority,
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    previewedAt: admin.firestore.FieldValue.serverTimestamp(),
+  }, { merge: true });
+
+  if (!dryRun && process.env.SENDGRID_API_KEY && userData.email) {
+    try {
+      await fetch("https://api.sendgrid.com/v3/mail/send", {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${process.env.SENDGRID_API_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          personalizations: [{ to: [{ email: userData.email }] }],
+          from: { email: "alex@titleapp.ai", name: "Alex — TitleApp" },
+          reply_to: { email: "alex@titleapp.ai", name: "Alex — TitleApp" },
+          subject: `Your TitleApp ${cadence === "daily" ? "Daily" : cadence === "weekly" ? "Weekly" : "Monthly"} Briefing — ${today}`,
+          content: [{ type: "text/plain", value: plainText }],
+        }),
+      });
+    } catch (emailErr) {
+      console.error(`previewDigest email failed for ${userData.email}:`, emailErr.message);
+    }
+  }
+
+  return { date: today, cadence, spine, priority, plainText };
+}
+
+module.exports = { generateDailyDigest, gatherSpineSummary, generateSubscriberBriefs, generateSubscriberBriefForUser };

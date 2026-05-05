@@ -26,7 +26,9 @@ function statusBadge(status) {
 }
 
 export default function AviationCurrencyCard({ resolved, context, onDismiss }) {
-  const items = context?.currencyItems || null;
+  // 49.31 — payload-first.
+  const payload = context?.payload;
+  const items = (payload && (Array.isArray(payload) ? payload : (payload.items || payload.currencyItems))) || context?.currencyItems || null;
 
   return (
     <CanvasCardShell

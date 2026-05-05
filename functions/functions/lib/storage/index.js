@@ -66,9 +66,10 @@ function buildStoragePath(uid, scope, orgId, subdir, filename) {
 async function upload({
   uid, orgId, scope = "personal", subdir = "documents",
   filename, buffer, mimeType, createdByWorker, parentProjectId, tags = [],
+  bypassMimeCheck = false,
 }) {
-  // Validate MIME type
-  if (!ALLOWED_MIME_TYPES.has(mimeType)) {
+  // Validate MIME type (chat uploads bypass — they're more permissive than vault uploads)
+  if (!bypassMimeCheck && !ALLOWED_MIME_TYPES.has(mimeType)) {
     return { ok: false, error: "file_type_not_allowed", message: `MIME type ${mimeType} is not allowed` };
   }
 
@@ -118,6 +119,7 @@ async function upload({
     parentProjectId: parentProjectId || null,
     tags: tags || [],
     accessList: [{ uid, permission: "admin" }],
+    status: "active",
     createdAt: now,
     updatedAt: now,
   });
@@ -201,19 +203,23 @@ async function deleteObject(uid, objectId) {
  */
 async function list(uid, { scope, orgId, parentProjectId, limit: lim = 50, offset = 0 } = {}) {
   const db = getDb();
+  // NOTE: do NOT use where("status", "!=", "deleted") — Firestore requires the
+  // first orderBy to match the inequality field, AND inequality filters exclude
+  // docs missing the field (legacy/migrated records). Filter deletion in JS.
   let q = db.collection("storageObjects")
     .where("ownerUid", "==", uid)
-    .where("status", "!=", "deleted")
     .orderBy("createdAt", "desc")
-    .limit(lim);
+    .limit(lim * 2);
 
   if (scope) q = q.where("scope", "==", scope);
   if (parentProjectId) q = q.where("parentProjectId", "==", parentProjectId);
 
   const snap = await q.get();
-  const objects = snap.docs.map(d => {
-    const data = d.data();
-    return {
+  const objects = snap.docs
+    .map(d => d.data())
+    .filter(data => data.status !== "deleted")
+    .slice(0, lim)
+    .map(data => ({
       objectId: data.objectId,
       filename: data.filename,
       mimeType: data.mimeType,
@@ -224,8 +230,7 @@ async function list(uid, { scope, orgId, parentProjectId, limit: lim = 50, offse
       parentProjectId: data.parentProjectId,
       tags: data.tags,
       createdAt: data.createdAt,
-    };
-  });
+    }));
 
   return { ok: true, objects, total: objects.length };
 }

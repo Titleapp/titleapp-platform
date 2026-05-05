@@ -256,6 +256,18 @@ export default function BuilderInterview({ onComplete, onCancel }) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          // CODEX 50.10-T2 Decision 2 — sessionId + userInput so this caller
+          // routes to the modern handler that emits usage events.
+          sessionId: (() => {
+            const KEY = "ta_chat_session_id";
+            let sid = localStorage.getItem(KEY);
+            if (!sid) {
+              sid = `cs_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+              localStorage.setItem(KEY, sid);
+            }
+            return sid;
+          })(),
+          userInput: messageToSend,
           message: messageToSend,
           context: {
             source: 'builder_interview',

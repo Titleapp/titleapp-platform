@@ -159,6 +159,20 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Worker catalog — authenticated read so the dashboard can hydrate worker
+    // data (canvasTabs, headline, capabilitySummary) without round-tripping the
+    // catalog API. Server-only writes via the worker sync pipeline.
+    match /digitalWorkers/{slug} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+
+    // Worker briefings — read own briefing only (doc id = user uid).
+    match /briefings/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if false;
+    }
+
     // Catch-all: deny everything else
     match /{document=**} {
       allow read, write: if false;

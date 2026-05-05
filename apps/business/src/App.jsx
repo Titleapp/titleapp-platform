@@ -85,9 +85,15 @@ import PlatformInventory from "./pages/PlatformInventory";
 import CampaignPage from "./pages/campaigns/CampaignPage";
 import StartPage from "./pages/StartPage";
 import InviteLanding from "./pages/InviteLanding";
+import JoinWorkspace from "./pages/JoinWorkspace";
 import MeetAlex from "./pages/MeetAlex";
 import CoPilotEFB from "./sections/CoPilotEFB";
 import { useWorkerState } from "./context/WorkerStateContext";
+import { useRightPanel } from "./context/RightPanelContext";
+import CanvasPanel from "./components/canvas/CanvasPanel";
+import CanvasTabBar from "./components/canvas/CanvasTabBar";
+import { getFixtureForTab, markWorkerVisitedAndCheck } from "./components/canvas/sampleData";
+import { lookupSignal } from "./config/canvasTypes";
 import WorkerCanvas from "./components/canvas/WorkerCanvas";
 import { auth } from "./firebase";
 import { signInWithCustomToken, getRedirectResult } from "firebase/auth";
@@ -4387,17 +4393,72 @@ import "./admin/admin.css";
 // so it renders INSIDE AppShell's WorkerStateProvider
 function WorkerHomeRenderer({ onBack }) {
   const workerCtx = useWorkerState();
+  const panel = useRightPanel();
+  // 50.10-T3 — tab bar from active worker's canvasTabs
+  const worker = workerCtx?.activeWorkerData || null;
+  const tabs = Array.isArray(worker?.canvasTabs) ? worker.canvasTabs : [];
+
+  // 50.10-T4 — fixture-aware tab click. When demo mode is on, derive the per-tab
+  // payload from sampleData (the canonical source) and pass it as context.payload
+  // so the card renders sample content with the SAMPLE chip in its header.
+  const handleTabSelect = React.useCallback((tab, resolved) => {
+    const payload = getFixtureForTab(worker, tab.id);
+    const ctx = payload ? { payload } : {};
+    if (panel?.showCanvas) panel.showCanvas(resolved, ctx);
+  }, [worker, panel]);
+
+  // 50.10-T4 — first-visit vs returning. First time a worker is opened, leave
+  // the landing page (KPI grid + quick actions) in place. On subsequent opens,
+  // auto-fire the default tab so users land directly on their preferred view.
+  // Chat-emitted signals always win — handled by the existing CANVAS state.
+  const autoFiredRef = React.useRef(null);
+  React.useEffect(() => {
+    if (!worker?.slug || tabs.length === 0) return;
+    if (panel?.state === "CANVAS") return; // a chat signal already drove us here
+    if (autoFiredRef.current === worker.slug) return;
+    autoFiredRef.current = worker.slug;
+    const wasSeen = markWorkerVisitedAndCheck(worker.slug);
+    if (!wasSeen) return; // first visit — keep landing
+    const def = tabs.find(t => t.default) || tabs[0];
+    if (!def) return;
+    const resolved = lookupSignal(def.signal);
+    if (!resolved) return;
+    const payload = getFixtureForTab(worker, def.id);
+    const ctx = payload ? { payload } : {};
+    if (panel?.showCanvas) panel.showCanvas(resolved, ctx);
+  }, [worker?.slug, tabs, panel]);
+
+  const activeSignal = panel?.canvasData?.resolved?._signal || null;
+  if (panel?.state === "CANVAS" && panel?.canvasData) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+        {tabs.length > 0 && (
+          <CanvasTabBar tabs={tabs} activeSignal={activeSignal} onSelectTab={handleTabSelect} />
+        )}
+        <div style={{ flex: 1, minHeight: 0, overflow: "auto" }}>
+          <CanvasPanel canvasData={panel.canvasData} onDismiss={panel.dismissCanvas} />
+        </div>
+      </div>
+    );
+  }
   if (workerCtx?.activeWorkerData) {
     return (
-      <WorkerCanvas
-        workerData={workerCtx.activeWorkerData}
-        verticalLabel={workerCtx.activeWorkerData.vertical || workerCtx.activeWorkerData.suite}
-        relatedWorkers={[]}
-        onLeave={() => {
-          if (workerCtx.clearWorker) workerCtx.clearWorker();
-          onBack();
-        }}
-      />
+      <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+        {tabs.length > 0 && (
+          <CanvasTabBar tabs={tabs} activeSignal={null} onSelectTab={handleTabSelect} />
+        )}
+        <div style={{ flex: 1, minHeight: 0, overflow: "auto" }}>
+          <WorkerCanvas
+            workerData={workerCtx.activeWorkerData}
+            verticalLabel={workerCtx.activeWorkerData.vertical || workerCtx.activeWorkerData.suite}
+            relatedWorkers={[]}
+            onLeave={() => {
+              if (workerCtx.clearWorker) workerCtx.clearWorker();
+              onBack();
+            }}
+          />
+        </div>
+      </div>
     );
   }
   return <WorkerHome />;
@@ -4612,7 +4673,8 @@ function AdminShell({ onBackToHub, initialSection }) {
     }
   }
 
-  const vertical = localStorage.getItem("VERTICAL") || "auto";
+  // 49.32 — Personal Vault is the launch baseline. No more auto-dealer-by-default.
+  const vertical = localStorage.getItem("VERTICAL") || "consumer";
 
   return (
     <AppShell currentSection={currentSection} onNavigate={setCurrentSection} onBackToHub={onBackToHub}>
@@ -4749,6 +4811,11 @@ export default function App() {
   const inviteMatch = window.location.pathname.match(/^\/invite\/([a-zA-Z0-9]+)\/?$/);
   const inviteCode = inviteMatch ? inviteMatch[1] : null;
   const isInvitePage = !!inviteCode;
+
+  // ── /join/:token route intercept (CODEX 50.10-T2 workspace invite) ──
+  const joinMatch = window.location.pathname.match(/^\/join\/([a-f0-9]{32})\/?$/);
+  const joinToken = joinMatch ? joinMatch[1] : null;
+  const isJoinPage = !!joinToken;
 
   // ── /auth/magic route intercept ─────────────────────
   const isAuthMagic = /^\/auth\/magic\/?$/.test(window.location.pathname);
@@ -5504,6 +5571,7 @@ export default function App() {
 
   // ── Invite landing pages: no auth required ────────────────────
   if (isInvitePage) return <InviteLanding inviteCode={inviteCode} />;
+  if (isJoinPage) return <JoinWorkspace token={joinToken} />;
 
   // ── Auth magic link landing page ──────────────────────────
   if (isAuthMagic) {

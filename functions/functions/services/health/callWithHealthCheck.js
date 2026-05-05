@@ -10,6 +10,9 @@
  */
 
 const admin = require("firebase-admin");
+const { USAGE_EVENTS_COLLECTION } = require("../../config/usageEvents");
+const { computeRevenueAttribution } = require("../../billing/recordUsageEvent");
+const pricing = require("../../config/pricing");
 
 function getDb() { return admin.firestore(); }
 
@@ -67,9 +70,63 @@ async function checkAndDeductCredits(userId, connectorId, creditCost, context = 
   if (!userId || !creditCost || creditCost <= 0) return { allowed: true };
 
   const db = getDb();
-  const userRef = db.doc(`users/${userId}`);
+
+  // 49.32 — when called from a tenant context, deduct from the tenant credit
+  // pool instead of the user's personal pool. The chat handler passes
+  // context.tenantId when the worker is being run inside a Business workspace.
+  const tenantId = context.tenantId && context.tenantId !== "vault" && context.tenantId !== "personal" && !String(context.tenantId).startsWith("guest-")
+    ? context.tenantId : null;
 
   try {
+    if (tenantId) {
+      const tenantRef = db.doc(`tenants/${tenantId}`);
+      const tSnap = await tenantRef.get();
+      const tData = tSnap.exists ? tSnap.data() : {};
+      const currentBalance = tData.prepaidCredits ?? 0;
+
+      if (currentBalance < creditCost) {
+        return {
+          allowed: false,
+          error: "INSUFFICIENT_CREDITS",
+          source: "tenant",
+          message: "This workspace is out of Data Credits. Ask the workspace admin to top up.",
+          creditsRequired: creditCost,
+          creditsAvailable: currentBalance,
+        };
+      }
+      await tenantRef.update({
+        prepaidCredits: admin.firestore.FieldValue.increment(-creditCost),
+        lastCreditDeductionAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      // CODEX 50.5 — merge revenue-attribution fields onto the telemetry event
+      // so cycle-close can compute Creator payouts from the same event stream.
+      const attributionTenant = await computeRevenueAttribution({
+        workerId: context.workerId || null,
+        userId,
+        tenantId,
+        revenueBasis: "credit_pack", // tenant-pool deductions burn purchased credits
+        revenueAmount: creditCost * (pricing.creditRate || 0),
+        timestamp: new Date(),
+        parentInteractionId: context.parentInteractionId || null,
+      }).catch(e => { console.warn("[50.5] attribution failed:", e.message); return {}; });
+      await db.collection(USAGE_EVENTS_COLLECTION).add({
+        userId,                  // who triggered the call
+        tenantId,                // who paid for it
+        ownerType: "tenant",
+        ownerId: tenantId,
+        workerId: context.workerId || null,
+        connectorId,
+        creditsUsed: creditCost,
+        event_type: "connector_call",
+        pass_through: true,
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        ...attributionTenant,
+      });
+      return { allowed: true, source: "tenant", creditsRemaining: currentBalance - creditCost };
+    }
+
+    // Personal Vault path — original user-pool flow.
+    const userRef = db.doc(`users/${userId}`);
     const userSnap = await userRef.get();
     const userData = userSnap.exists ? userSnap.data() : {};
     const currentBalance = userData.billing?.prepaidCredits ?? userData.prepaidCredits ?? 0;
@@ -78,29 +135,46 @@ async function checkAndDeductCredits(userId, connectorId, creditCost, context = 
       return {
         allowed: false,
         error: "INSUFFICIENT_CREDITS",
+        source: "user",
         message: "This action requires Data Credits. Top up your account to continue.",
         creditsRequired: creditCost,
         creditsAvailable: currentBalance,
       };
     }
 
-    // Deduct credits
+    // Deduct credits — write to both new (root prepaidCredits) and legacy
+    // (billing.prepaidCredits) fields so reads are consistent across surfaces.
     await userRef.update({
       "billing.prepaidCredits": admin.firestore.FieldValue.increment(-creditCost),
+      prepaidCredits: admin.firestore.FieldValue.increment(-creditCost),
     });
 
-    // Log usage event
-    await db.collection("usageEvents").add({
+    // CODEX 50.5 — merge revenue-attribution fields onto the telemetry event.
+    // For Personal Vault deductions, basis is "credit_pack" (purchased credits).
+    const attributionUser = await computeRevenueAttribution({
+      workerId: context.workerId || null,
       userId,
+      tenantId: null,
+      revenueBasis: "credit_pack",
+      revenueAmount: creditCost * (pricing.creditRate || 0),
+      timestamp: new Date(),
+      parentInteractionId: context.parentInteractionId || null,
+    }).catch(e => { console.warn("[50.5] attribution failed:", e.message); return {}; });
+
+    await db.collection(USAGE_EVENTS_COLLECTION).add({
+      userId,
+      ownerType: "user",
+      ownerId: userId,
       workerId: context.workerId || null,
       connectorId,
       creditsUsed: creditCost,
       event_type: "connector_call",
       pass_through: true,
       timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      ...attributionUser,
     });
 
-    return { allowed: true, creditsRemaining: currentBalance - creditCost };
+    return { allowed: true, source: "user", creditsRemaining: currentBalance - creditCost };
   } catch (e) {
     console.error(`[creditCheck] Failed for ${userId}/${connectorId}:`, e.message);
     // On error, allow the call — don't block on billing failures

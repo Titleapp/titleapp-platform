@@ -17,7 +17,9 @@ const S = {
 };
 
 export default function ChartOfAccountsCard({ resolved, context, onDismiss }) {
-  const accounts = context?.chartOfAccounts || null;
+  // 49.31 — payload-first. AI may emit { accounts: [...] } or just an array.
+  const payload = context?.payload;
+  const accounts = (payload && (Array.isArray(payload) ? payload : payload.accounts)) || context?.chartOfAccounts || null;
 
   // Group by account type
   const groups = {};

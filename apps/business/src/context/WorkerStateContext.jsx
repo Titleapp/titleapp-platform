@@ -1,8 +1,8 @@
 import { createContext, useContext, useState, useCallback, useRef } from "react";
+import { db } from "../firebase";
+import { doc, getDoc } from "firebase/firestore";
 
 const WorkerStateContext = createContext(null);
-
-const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
 
 /**
  * WorkerStateProvider — single source of truth for worker state.
@@ -36,18 +36,29 @@ export function WorkerStateProvider({ children }) {
     }
 
     try {
-      const resp = await fetch(`${API_BASE}/api?path=/v1/catalog:byVertical&vertical=all&limit=200`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("ID_TOKEN") || ""}`,
-        },
-      });
-      const data = await resp.json();
-      const worker = (data.workers || []).find(
-        (w) => (w.workerId || w.slug) === slug || w.slug === slug
-      );
-      if (worker) {
-        // CODEX 49.16 — merge catalog data with optimistic data so the sidebar's
-        // display name isn't overwritten by a different catalog name.
+      // CODEX 50.10-T3: Read worker doc from Firestore directly. This bypasses
+      // the catalog API proxy (whose query-string handling drops params on the
+      // current Cloudflare frontdoor) and gives us all fields including the
+      // canvasTabs array used by the right-panel tab bar.
+      const snap = await getDoc(doc(db, "digitalWorkers", slug));
+      if (snap.exists()) {
+        const d = snap.data();
+        const lp = d.workspaceLaunchPage || {};
+        const worker = {
+          workerId: snap.id,
+          slug: d.slug || snap.id,
+          name: d.display_name || d.name || "",
+          shortDescription: d.short_description || d.headline || d.description || "",
+          price: d.pricing_tier || d.pricing?.monthly || 0,
+          vertical: d.vertical || d.suite || "",
+          status: d.status || "live",
+          tagline: lp.tagline || "",
+          whatYoullHave: lp.whatYoullHave || "",
+          quickStartPrompts: Array.isArray(lp.quickStartPrompts) ? lp.quickStartPrompts : [],
+          activeSubstrateFeatures: Array.isArray(lp.activeSubstrateFeatures) ? lp.activeSubstrateFeatures : [],
+          workerType: d.worker_type || "worker",
+          canvasTabs: Array.isArray(d.canvasTabs) ? d.canvasTabs : [],
+        };
         setActiveWorkerData((prev) => {
           if (prev && prev.slug === slug) {
             return { ...worker, name: prev.name || worker.name };

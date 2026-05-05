@@ -14,6 +14,7 @@ const Stripe = require("stripe");
 const { logActivity } = require("../admin/logActivity");
 const pricing = require("../config/pricing");
 const { TRIAL_ACTIVE, CANCELLED } = require("../config/subscriptionStatus");
+const { USAGE_EVENTS_COLLECTION } = require("../config/usageEvents");
 
 function getDb() {
   return admin.firestore();
@@ -112,12 +113,17 @@ async function handleCycleClose(db, stripe, invoiceData) {
   const periodStart = invoiceData.period_start
     ? new Date(invoiceData.period_start * 1000)
     : new Date(periodEnd.getTime() - 30 * 24 * 60 * 60 * 1000);
+  // ISO YYYY-MM bucket — matches billing_period stamped by every emission
+  // point at write time (recordUsageEvent.billingPeriodFromTimestamp).
+  const billingPeriod = periodEnd.toISOString().slice(0, 7);
 
-  // Query all usage_events for this billing period
-  const eventsSnap = await db.collection("usage_events")
-    .where("user_id", "==", userId)
-    .where("_written_at", ">=", periodStart)
-    .where("_written_at", "<", periodEnd)
+  // Query all usage events for this billing period. The five emission points
+  // write { userId, billing_period }; this query matches that shape exactly.
+  // (Predecessor read user_id + _written_at, neither of which were written —
+  // events were never findable. Test 5d caught this.)
+  const eventsSnap = await db.collection(USAGE_EVENTS_COLLECTION)
+    .where("userId", "==", userId)
+    .where("billing_period", "==", billingPeriod)
     .get();
 
   if (eventsSnap.empty) {
@@ -178,12 +184,29 @@ async function handleCycleClose(db, stripe, invoiceData) {
     }
   }
 
-  // ── Creator payouts — sum creator_share_amount by creator ──
+  // CODEX 50.5 — Creator payouts. Sum two streams:
+  //   creator_share_amount → current owner of each worker
+  //   parent_share_amount  → immediate parent creator on forks of Creator-authored workers
+  // Events that pre-date 50.5 don't have these fields; treat missing as zero
+  // (they contribute nothing, which is correct — they had no Creator share by definition).
+  // Refunded events (refunded_at present) are skipped.
   const creatorShares = {};
+  const parentShares = {};
+  // Track event creator_status so we can short-circuit transfer attempts for
+  // deleted Creators without a fresh Firestore lookup per event.
+  const lastSeenStatus = {};
   events.forEach(e => {
-    const { creator_id, creator_share_amount } = e;
-    if (creator_id && creator_share_amount > 0) {
-      creatorShares[creator_id] = (creatorShares[creator_id] || 0) + creator_share_amount;
+    if (e.refunded_at) return;
+    const cId = e.creator_id;
+    const cAmt = Number(e.creator_share_amount || 0);
+    if (cId && cAmt > 0) {
+      creatorShares[cId] = (creatorShares[cId] || 0) + cAmt;
+      if (e.creator_status) lastSeenStatus[cId] = e.creator_status;
+    }
+    const pId = e.parent_creator_id;
+    const pAmt = Number(e.parent_share_amount || 0);
+    if (pId && pAmt > 0) {
+      parentShares[pId] = (parentShares[pId] || 0) + pAmt;
     }
   });
 
@@ -210,55 +233,133 @@ async function handleCycleClose(db, stripe, invoiceData) {
     console.error("Deferred payout aggregation failed:", e.message);
   }
 
-  for (const [creatorId, amount] of Object.entries(creatorShares)) {
-    if (amount < pricing.creatorMinPayoutThreshold) continue;
+  // CODEX 50.5 — single per-creator payout helper. Used for both
+  // creatorShares and parentShares streams. Handles:
+  //   - Below-threshold deferral (existing)
+  //   - No Connect account → defer (active) OR escheat (deleted/suspended)
+  //   - Pending clawbacks against this creator → reduce payout, record applied
+  //   - Transfer + record creatorPayouts row
+  async function payoutToCreator(creatorId, amount, role /* "creator"|"parent" */) {
+    if (amount < pricing.creatorMinPayoutThreshold) {
+      // Below threshold — defer to next cycle (matches existing semantics).
+      return;
+    }
+
+    // Apply any pending clawbacks against this creator's next payout.
+    let clawbackApplied = 0;
+    try {
+      const clawSnap = await db.collection("creatorClawbacks")
+        .where("creatorId", "==", creatorId)
+        .where("status", "==", "pending")
+        .limit(20)
+        .get();
+      for (const c of clawSnap.docs) {
+        const cAmt = Number(c.data().amount || 0);
+        const reduce = Math.min(cAmt, amount - clawbackApplied);
+        if (reduce > 0) {
+          clawbackApplied += reduce;
+          await c.ref.update({
+            status: reduce >= cAmt ? "applied" : "partial",
+            appliedAmount: admin.firestore.FieldValue.increment(reduce),
+            appliedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        }
+        if (clawbackApplied >= amount) break;
+      }
+    } catch (cErr) {
+      console.warn(`[cycle-close] clawback lookup failed for ${creatorId}:`, cErr.message);
+    }
+    const netAmount = amount - clawbackApplied;
+    if (netAmount <= 0) {
+      await logActivity("revenue", `Cycle close: ${creatorId} payout fully consumed by clawback ($${amount.toFixed(2)})`, "info");
+      return;
+    }
 
     try {
       const creatorSnap = await db.collection("users").doc(creatorId).get();
       const creatorData = creatorSnap.exists ? creatorSnap.data() : {};
       const connectAccountId = creatorData.stripeConnectAccountId;
+      const eventStatus = lastSeenStatus[creatorId];
+      const userDeleted = !!(creatorData.deleted_at || creatorData.deletedAt) || eventStatus === "deleted";
+      const userSuspended = creatorData.suspended === true || creatorData.status === "suspended" || eventStatus === "suspended";
+
+      // Escheat path — deleted/suspended Creator with no live Connect account.
+      // Per D6, money is recorded as platform-owned rather than lost.
+      if (!connectAccountId && (userDeleted || userSuspended)) {
+        await db.collection("platformEscheats").add({
+          creatorId,
+          role,
+          grossAmount: amount,
+          clawbackApplied,
+          netAmount,
+          reason: userDeleted ? "creator_deleted_no_connect" : "creator_suspended_no_connect",
+          billingPeriodEnd: periodEnd.toISOString(),
+          timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        await logActivity("revenue", `Escheat: $${netAmount.toFixed(2)} from ${creatorId} (${role}) — no Connect account, status ${eventStatus || "unknown"}`, "info");
+        return;
+      }
 
       if (!connectAccountId) {
-        console.warn(`Creator ${creatorId} has no Connect account — skipping $${amount.toFixed(2)} payout`);
+        console.warn(`Creator ${creatorId} (${role}) has no Connect account — deferring $${netAmount.toFixed(2)}`);
         await db.collection("creatorPayouts").add({
           creatorId,
-          amount,
+          role,
+          grossAmount: amount,
+          clawbackApplied,
+          amount: netAmount,
           status: "deferred",
           reason: "no_connect_account",
           billingPeriodEnd: periodEnd.toISOString(),
           timestamp: admin.firestore.FieldValue.serverTimestamp(),
         });
-        continue;
+        return;
       }
 
       await stripe.transfers.create({
-        amount: Math.round(amount * 100),
+        amount: Math.round(netAmount * 100),
         currency: "usd",
         destination: connectAccountId,
-        description: `TitleApp creator inference share — ${periodEnd.toISOString().slice(0, 10)}`,
+        description: role === "parent"
+          ? `TitleApp parent-creator share — ${periodEnd.toISOString().slice(0, 10)}`
+          : `TitleApp creator inference share — ${periodEnd.toISOString().slice(0, 10)}`,
       });
 
       await db.collection("creatorPayouts").add({
         creatorId,
-        amount,
+        role,
+        grossAmount: amount,
+        clawbackApplied,
+        amount: netAmount,
         status: "transferred",
         stripeConnectAccountId: connectAccountId,
         billingPeriodEnd: periodEnd.toISOString(),
         timestamp: admin.firestore.FieldValue.serverTimestamp(),
       });
 
-      await logActivity("revenue", `Creator payout: $${amount.toFixed(2)} to ${creatorId}`, "success");
+      await logActivity("revenue", `Creator payout (${role}): $${netAmount.toFixed(2)} to ${creatorId}${clawbackApplied ? ` (after $${clawbackApplied.toFixed(2)} clawback)` : ""}`, "success");
     } catch (err) {
-      console.error(`Creator payout failed for ${creatorId}:`, err.message);
+      console.error(`Creator payout failed for ${creatorId} (${role}):`, err.message);
       await db.collection("creatorPayouts").add({
         creatorId,
-        amount,
+        role,
+        amount: netAmount,
+        grossAmount: amount,
+        clawbackApplied,
         status: "failed",
         error: err.message,
         billingPeriodEnd: periodEnd.toISOString(),
         timestamp: admin.firestore.FieldValue.serverTimestamp(),
       });
     }
+  }
+
+  for (const [creatorId, amount] of Object.entries(creatorShares)) {
+    await payoutToCreator(creatorId, amount, "creator");
+  }
+  // CODEX 50.5 — pay parent creators on forks of Creator-authored workers.
+  for (const [parentId, amount] of Object.entries(parentShares)) {
+    await payoutToCreator(parentId, amount, "parent");
   }
 
   // ── Write cycle close summary to ledger ────────────────────
@@ -600,30 +701,49 @@ async function handleStripeWebhook(req, res) {
               read: false,
             });
 
-            // Store Stripe subscription ID on user doc
-            if (data.subscription) {
+            // 49.32 — tenant-aware. When this subscription is tenant-scoped,
+            // do NOT write to users/{userId} or allocate user credits;
+            // allocate to tenant pool instead. Credits remain 49 tier defaults.
+            const wsOwnerType = data.metadata?.ownerType || "user";
+            const wsOwnerId = data.metadata?.ownerId || userId;
+            const wsTenantId = wsOwnerType === "tenant" ? wsOwnerId : null;
+
+            if (wsOwnerType === "user" && data.subscription) {
               await db.collection("users").doc(userId).set({
                 stripeSubscriptionId: data.subscription,
                 stripeSubscriptionStatus: "trialing",
               }, { merge: true });
+            } else if (wsOwnerType === "tenant" && wsTenantId && data.subscription) {
+              await db.collection("tenants").doc(wsTenantId).set({
+                stripeSubscriptionIds: admin.firestore.FieldValue.arrayUnion(data.subscription),
+                lastSubscriptionUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+              }, { merge: true });
             }
 
-            // Initialize credit balance based on worker tier
+            // Initialize credit balance based on worker tier (route to right pool).
             try {
               const TIER_CREDITS = { 0: 100, 29: 500, 49: 1500, 79: 3000 };
               const dwSnap = await db.doc(`digitalWorkers/${wsWorkerId}`).get();
               const workerTier = dwSnap.exists ? (dwSnap.data().pricing_tier || dwSnap.data().price || 49) : 49;
               const creditAllocation = TIER_CREDITS[workerTier] || 500;
 
-              await db.doc(`users/${userId}`).set({
-                billing: {
+              if (wsOwnerType === "tenant" && wsTenantId) {
+                await db.doc(`tenants/${wsTenantId}`).set({
                   prepaidCredits: admin.firestore.FieldValue.increment(creditAllocation),
-                  tier: `$${workerTier}`,
                   lastCreditAllocationAt: admin.firestore.FieldValue.serverTimestamp(),
-                },
-              }, { merge: true });
-
-              console.log(`[stripeWebhook] Allocated ${creditAllocation} credits to ${userId} (tier: $${workerTier})`);
+                }, { merge: true });
+                console.log(`[stripeWebhook] Allocated ${creditAllocation} credits to tenant ${wsTenantId} (tier: $${workerTier})`);
+              } else {
+                await db.doc(`users/${userId}`).set({
+                  prepaidCredits: admin.firestore.FieldValue.increment(creditAllocation),
+                  billing: {
+                    prepaidCredits: admin.firestore.FieldValue.increment(creditAllocation),
+                    tier: `$${workerTier}`,
+                    lastCreditAllocationAt: admin.firestore.FieldValue.serverTimestamp(),
+                  },
+                }, { merge: true });
+                console.log(`[stripeWebhook] Allocated ${creditAllocation} credits to ${userId} (tier: $${workerTier})`);
+              }
             } catch (creditErr) {
               console.error(`[stripeWebhook] Credit allocation failed for ${userId}:`, creditErr.message);
             }
@@ -643,12 +763,26 @@ async function handleStripeWebhook(req, res) {
           break;
         }
 
-        // Credit pack purchase
+        // Credit pack purchase (49.32 — tenant-aware)
         const credits = parseInt(data.metadata?.credits || "0", 10);
-        if (credits > 0 && userId) {
+        const ckScope = data.metadata?.scope || (data.metadata?.tenantId ? "tenant" : "user");
+        const ckTenantId = data.metadata?.tenantId || null;
+        if (credits > 0 && ckScope === "tenant" && ckTenantId) {
+          await db.collection("tenants").doc(ckTenantId).set(
+            {
+              prepaidCredits: admin.firestore.FieldValue.increment(credits),
+              lastCreditTopupAt: admin.firestore.FieldValue.serverTimestamp(),
+            },
+            { merge: true }
+          );
+          await logActivity("revenue", `Credit pack purchased (tenant): ${credits} credits for tenant ${ckTenantId} (admin ${userId})`, "success");
+        } else if (credits > 0 && userId) {
+          // 49.32 — write to root prepaidCredits AND legacy billing.prepaidCredits
+          // so reads from either path see the increment until the cleanup CODEX.
           await db.collection("users").doc(userId).set(
             {
               prepaidCredits: admin.firestore.FieldValue.increment(credits),
+              billing: { prepaidCredits: admin.firestore.FieldValue.increment(credits) },
             },
             { merge: true }
           );

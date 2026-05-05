@@ -187,21 +187,38 @@ export default function LandingPage() {
         }} />
       )}
 
+      {/* Responsive header rules — keep nav single-line on small screens (49.32). */}
+      <style>{`
+        @media (max-width: 640px) {
+          .ta-landing-header { padding: 12px 16px !important; gap: 8px; }
+          .ta-landing-header .ta-logo-text { font-size: 17px !important; }
+          .ta-landing-header .ta-beta-badge { font-size: 9px !important; padding: 2px 6px !important; margin-left: 6px !important; }
+          .ta-landing-header .ta-header-right { gap: 10px !important; }
+          .ta-landing-header .ta-header-link { font-size: 13px !important; white-space: nowrap; }
+          .ta-landing-header .ta-creators-link { display: none; }
+          .ta-landing-header .ta-header-cta { font-size: 13px !important; padding: 7px 14px !important; white-space: nowrap; }
+        }
+        @media (max-width: 380px) {
+          .ta-landing-header .ta-beta-badge { display: none; }
+          .ta-landing-header .ta-header-link { font-size: 12px !important; }
+        }
+      `}</style>
+
       {/* ── Header ── */}
-      <header style={S.header}>
+      <header className="ta-landing-header" style={S.header}>
         <div style={S.logoWrap}>
           <div style={S.logoIcon}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" />
             </svg>
           </div>
-          <span style={S.logoText}>TitleApp</span>
-          <span style={{ background: "#6B46C1", color: "white", fontSize: "10px", fontWeight: "700", padding: "2px 8px", borderRadius: "999px", letterSpacing: "0.08em", marginLeft: "8px", verticalAlign: "middle", textTransform: "uppercase" }}>BETA</span>
+          <span className="ta-logo-text" style={S.logoText}>TitleApp</span>
+          <span className="ta-beta-badge" style={{ background: "#6B46C1", color: "white", fontSize: "10px", fontWeight: "700", padding: "2px 8px", borderRadius: "999px", letterSpacing: "0.08em", marginLeft: "8px", verticalAlign: "middle", textTransform: "uppercase" }}>BETA</span>
         </div>
-        <div style={S.headerRight}>
-          <a href={`${appBase}/meet-alex?action=signin`} style={S.headerLink}>Sign In</a>
-          <a href={`${appBase}/sandbox`} style={S.headerLink}>Creators</a>
-          <a href={`${appBase}/meet-alex`} style={S.headerCta}>Start Free</a>
+        <div className="ta-header-right" style={S.headerRight}>
+          <a href={`${appBase}/meet-alex?action=signin`} className="ta-header-link" style={S.headerLink}>Sign In</a>
+          <a href={`${appBase}/sandbox`} className="ta-header-link ta-creators-link" style={S.headerLink}>Creators</a>
+          <a href={`${appBase}/meet-alex`} className="ta-header-cta" style={S.headerCta}>Start Free</a>
         </div>
       </header>
 

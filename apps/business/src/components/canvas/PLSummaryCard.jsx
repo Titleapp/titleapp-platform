@@ -17,7 +17,8 @@ const S = {
 };
 
 export default function PLSummaryCard({ resolved, context, onDismiss }) {
-  const data = context?.plData || null;
+  // 49.31 — payload-first; AI emits the P&L shape directly inside payload.
+  const data = context?.payload?.plData || context?.payload || context?.plData || null;
 
   return (
     <CanvasCardShell

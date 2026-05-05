@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { getAuth } from "firebase/auth";
 import WorkerIcon from "../utils/workerIcons";
+import { useWorkerState } from "../context/WorkerStateContext";
 
 // Worker slug → display name (matches Sidebar WORKER_DISPLAY_NAMES)
 const WORKER_NAMES = {
@@ -59,6 +60,7 @@ function slugToName(slug) {
 
 export default function WorkerHome() {
   const auth = getAuth();
+  const workerCtx = useWorkerState();
   const [workers, setWorkers] = useState([]);
   const [catalogMap, setCatalogMap] = useState({});
   const [loading, setLoading] = useState(true);
@@ -108,8 +110,24 @@ export default function WorkerHome() {
   }
 
   function handleOpen(slug) {
+    const cat = catalogMap[slug] || {};
+    const name = WORKER_NAMES[slug] || cat.name || slugToName(slug);
+    // Mirror Sidebar.handleWorkerClick — without these, WorkerHomeRenderer's
+    // activeWorkerData is null and it falls through to the worker list,
+    // re-showing this same view instead of opening the worker (CODEX 50.10-T3 follow-up).
+    if (workerCtx?.setWorkerOptimistic) {
+      workerCtx.setWorkerOptimistic({
+        slug,
+        name,
+        suite: cat.suite || "",
+        vertical: cat.vertical || cat.suite || "",
+        description: cat.description || cat.headline || "",
+        status: cat.status || "live",
+      });
+    }
+    if (workerCtx?.selectWorker) workerCtx.selectWorker(slug);
     window.dispatchEvent(new CustomEvent("ta:select-worker", {
-      detail: { slug, name: WORKER_NAMES[slug] || catalogMap[slug]?.name || slugToName(slug) },
+      detail: { slug, name },
     }));
   }
 

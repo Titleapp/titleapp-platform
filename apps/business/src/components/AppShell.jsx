@@ -3,6 +3,7 @@ import Sidebar from "./Sidebar";
 import ChatPanel from "./ChatPanel";
 import QuickSwitcher from "./QuickSwitcher";
 import CartDrawer from "./CartDrawer";
+import InviteMemberModal from "./InviteMemberModal";
 import * as api from "../api/client";
 import { RightPanelProvider } from "../context/RightPanelContext";
 import { WorkerStateProvider } from "../context/WorkerStateContext.jsx";
@@ -30,6 +31,18 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
     const v = parseInt(localStorage.getItem("SIDEBAR_WIDTH"));
     return v >= 180 && v <= 320 ? v : 280;
   });
+
+  // CODEX 50.10-T2 — Invite member modal mount; Sidebar dispatches the open event.
+  const [inviteModal, setInviteModal] = useState(null);
+  useEffect(() => {
+    function onOpen(e) {
+      const { tenantId, workspaceName } = e.detail || {};
+      if (!tenantId) return;
+      setInviteModal({ tenantId, workspaceName });
+    }
+    window.addEventListener("ta:open-invite-modal", onOpen);
+    return () => window.removeEventListener("ta:open-invite-modal", onOpen);
+  }, []);
 
   // Alex review notification badge
   const [alexBadge, setAlexBadge] = useState(() => localStorage.getItem("ta_alex_pending_review") === "true");
@@ -272,6 +285,7 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
 
   return (
     <WorkerStateProvider>
+    <RightPanelProvider initialState={visitorCtx.state} initialVertical={visitorCtx.vertical} initialVerticalLabel={visitorCtx.verticalLabel}>
     <div className="appShell">
       {/* Mobile topbar */}
       <div className="topbar">
@@ -408,11 +422,9 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
         />
         <main className="main">
           {guestMode ? (
-            <RightPanelProvider initialState={visitorCtx.state} initialVertical={visitorCtx.vertical} initialVerticalLabel={visitorCtx.verticalLabel}>
-              <Suspense fallback={<div style={{ padding: 40, color: "#94a3b8" }}>Loading...</div>}>
-                <RightPanel />
-              </Suspense>
-            </RightPanelProvider>
+            <Suspense fallback={<div style={{ padding: 40, color: "#94a3b8" }}>Loading...</div>}>
+              <RightPanel />
+            </Suspense>
           ) : children}
         </main>
       </div>
@@ -486,7 +498,17 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
 
       {/* Cart Drawer */}
       <CartDrawer isOpen={cartOpen} onClose={() => setCartOpen(false)} />
+
+      {/* CODEX 50.10-T2 — Invite member modal */}
+      {inviteModal && (
+        <InviteMemberModal
+          tenantId={inviteModal.tenantId}
+          workspaceName={inviteModal.workspaceName}
+          onClose={() => setInviteModal(null)}
+        />
+      )}
     </div>
+    </RightPanelProvider>
     </WorkerStateProvider>
   );
 }

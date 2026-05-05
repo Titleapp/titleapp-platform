@@ -6,6 +6,7 @@ import { useWorkerState } from "../../context/WorkerStateContext";
 import WorkerIcon, { getThemeAccent, getVerticalIconSlug } from "../../utils/workerIcons";
 import SessionEndCTA from "../worker/SessionEndCTA";
 import CanvasPanel from "../canvas/CanvasPanel";
+import CanvasTabBar from "../canvas/CanvasTabBar";
 import WorkerCanvas from "../canvas/WorkerCanvas";
 import { WORKER_ROUTES } from "../../data/workerRoutes";
 
@@ -309,6 +310,7 @@ function ProductIntro() {
 
 export default function RightPanel() {
   const panel = useRightPanel();
+  const workerState = useWorkerState();
   const { state, vertical, verticalLabel, workers, selectedWorker, showRecommendations, showWorkerDetail, goBack, dismiss, clearVerticalFilter, setWorkers, canvasData, dismissCanvas, relatedWorkers } = panel;
   const [loading, setLoading] = useState(false);
 
@@ -428,21 +430,56 @@ export default function RightPanel() {
 
   const showStats = state === "STATE-1" || state === "STATE-2";
 
-  // ── CANVAS: Canvas Protocol card (44.9) ──────────────────────
+  // ── CANVAS: Canvas Protocol card (44.9) + tab bar (50.10-T3) ──
   if (state === "CANVAS" && canvasData) {
-    return <CanvasPanel canvasData={canvasData} onDismiss={dismissCanvas} />;
+    // canvasTabs may be on either context — RightPanel's activeWorkerData (set
+    // via showWorkerHome from minimal sidebar data) or WorkerState's (enriched
+    // from Firestore by selectWorker). Prefer the enriched copy.
+    const tabs = workerState?.activeWorkerData?.canvasTabs?.length
+      ? workerState.activeWorkerData.canvasTabs
+      : (panel.activeWorkerData?.canvasTabs || []);
+    const activeSignal = canvasData?.resolved?._signal;
+    return (
+      <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+        {tabs.length > 0 && (
+          <CanvasTabBar
+            tabs={tabs}
+            activeSignal={activeSignal}
+            onSelectTab={(_tab, resolved) => panel.showCanvas(resolved, {})}
+          />
+        )}
+        <div style={{ flex: 1, minHeight: 0, overflow: "auto" }}>
+          <CanvasPanel canvasData={canvasData} onDismiss={dismissCanvas} />
+        </div>
+      </div>
+    );
   }
 
   // ── WORKSPACE_HOME: Worker just opened — show capabilities + quick-start ──
   // 40.2-T1: Arrival animation system
+  // 50.10-T3: tab bar above the landing card so tabs are reachable pre-signal
   if (state === "WORKSPACE_HOME" && panel.activeWorkerData) {
+    const tabs = workerState?.activeWorkerData?.canvasTabs?.length
+      ? workerState.activeWorkerData.canvasTabs
+      : (panel.activeWorkerData?.canvasTabs || []);
     return (
-      <WorkerCanvas
-        workerData={panel.activeWorkerData}
-        verticalLabel={panel.verticalLabel}
-        relatedWorkers={relatedWorkers || []}
-        onLeave={() => panel.leaveWorkspace()}
-      />
+      <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+        {tabs.length > 0 && (
+          <CanvasTabBar
+            tabs={tabs}
+            activeSignal={null}
+            onSelectTab={(_tab, resolved) => panel.showCanvas(resolved, {})}
+          />
+        )}
+        <div style={{ flex: 1, minHeight: 0, overflow: "auto" }}>
+          <WorkerCanvas
+            workerData={panel.activeWorkerData}
+            verticalLabel={panel.verticalLabel}
+            relatedWorkers={relatedWorkers || []}
+            onLeave={() => panel.leaveWorkspace()}
+          />
+        </div>
+      </div>
     );
   }
 

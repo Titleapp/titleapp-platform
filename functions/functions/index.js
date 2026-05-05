@@ -682,6 +682,34 @@ async function executeChatSideEffects(sideEffects, userId, tenantId) {
         case 'createDtc': {
           if (!userId) break;
           const d = effect.data || {};
+          // DTCs reserved for provenance assets only (deeds, titles, certificates,
+          // contracts, financial statements). General uploads live in storageObjects.
+          const dtcAllow = new Set([
+            "deed", "title", "vehicle_title", "property_title",
+            "financial_statement", "tax_return",
+            "contract", "agreement", "lease", "promissory_note", "bond",
+            "certificate", "license", "permit",
+            "will", "trust", "power_of_attorney",
+            "insurance_policy", "patent", "trademark", "copyright",
+            "vehicle", "property", "aircraft", "vessel",
+          ]);
+          const reqType = (d.type || "").toLowerCase().trim();
+          if (!dtcAllow.has(reqType)) {
+            console.log(`[DTC gate] chatEngine createDtc skipped for non-provenance type: ${reqType || "(empty)"}`);
+            break;
+          }
+          // Entitlement gate — requires blockchain minting activation on user.
+          try {
+            const uDoc = await db.collection("users").doc(userId).get();
+            const enabled = !!(uDoc.exists && uDoc.data().blockchainMintingEnabled === true);
+            if (!enabled) {
+              console.log(`[DTC gate] chatEngine createDtc skipped — user ${userId} has not activated blockchain minting`);
+              break;
+            }
+          } catch (uErr) {
+            console.warn("[DTC gate] chatEngine user lookup failed:", uErr.message);
+            break;
+          }
           const files = d.files || [];
           const ref = await db.collection("dtcs").add({
             userId,
@@ -751,6 +779,81 @@ async function executeChatSideEffects(sideEffects, userId, tenantId) {
             },
           }, { merge: true });
           console.log("chatEngine side-effect: saveRaasConfig OK for tenant", configTenantId);
+          break;
+        }
+        // 49.32 — Marketing campaign execution side-effects.
+        // The Marketing & Content worker emits these when the user explicitly approves
+        // running a campaign. The worker prompt MUST gate these on user approval —
+        // never auto-fire on first canvas render.
+        case 'sendEmailCampaign': {
+          if (!userId) break;
+          const d = effect.data || {};
+          try {
+            const { sendMarketingEmail, createContactList } = require("./services/emailService/marketingCampaigns");
+            // Allow inline contact-list creation if model passed contacts but no listId.
+            let listId = d.listId;
+            if (!listId && Array.isArray(d.contacts) && d.contacts.length > 0) {
+              const created = await createContactList(userId, { name: d.listName || `${d.subject || 'Campaign'} list`, contacts: d.contacts });
+              listId = created && created.listId;
+            }
+            if (!listId) {
+              console.warn("[campaign sideEffect] sendEmailCampaign skipped — no listId");
+              break;
+            }
+            const result = await sendMarketingEmail(userId, {
+              listId,
+              subject: d.subject,
+              htmlContent: d.htmlContent || (d.body ? `<p>${d.body.replace(/\n/g, "<br/>")}</p>` : ""),
+              plainContent: d.plainContent || d.body || "",
+              fromName: d.fromName,
+              fromEmail: d.fromEmail,
+            });
+            console.log("chatEngine side-effect: sendEmailCampaign", result.ok ? "OK" : "FAIL", result.campaignId || result.error);
+          } catch (sendErr) {
+            console.warn("chatEngine side-effect sendEmailCampaign threw:", sendErr.message);
+          }
+          break;
+        }
+        case 'scheduleSocialPost': {
+          if (!userId) break;
+          const d = effect.data || {};
+          try {
+            const { postViaUnified, saveDraft } = require("./services/socialService");
+            // If model marks status=draft, save instead of posting live.
+            if (d.status === "draft" || d.dryRun) {
+              const r = await saveDraft(userId, { content: d.content, platforms: d.platforms || [], title: d.title, tenantId: tenantId || null });
+              console.log("chatEngine side-effect: scheduleSocialPost (draft)", r.ok ? "OK" : "FAIL");
+            } else {
+              const r = await postViaUnified(userId, { content: d.content, platforms: d.platforms || [], title: d.title, scheduledAt: d.scheduledAt });
+              console.log("chatEngine side-effect: scheduleSocialPost", r.ok ? "OK" : "FAIL", r.postId || r.error);
+            }
+          } catch (postErr) {
+            console.warn("chatEngine side-effect scheduleSocialPost threw:", postErr.message);
+          }
+          break;
+        }
+        case 'enqueueMessage': {
+          // Generic dispatch through the unified messageQueue (campaigns/messageProcessor).
+          if (!userId) break;
+          const d = effect.data || {};
+          try {
+            await db.collection("messageQueue").add({
+              userId,
+              tenantId: tenantId || null,
+              channel: d.channel || "email", // email | sms
+              to: d.to || null,
+              subject: d.subject || null,
+              body: d.body || "",
+              templateData: d.templateData || {},
+              status: "pending",
+              scheduledAt: d.scheduledAt ? new Date(d.scheduledAt) : new Date(),
+              createdAt: nowServerTs(),
+              source: d.source || "marketing-worker",
+            });
+            console.log("chatEngine side-effect: enqueueMessage OK", d.channel || "email", d.to);
+          } catch (qErr) {
+            console.warn("chatEngine side-effect enqueueMessage failed:", qErr.message);
+          }
           break;
         }
         default:
@@ -976,7 +1079,9 @@ async function validateAgainstRaas(tenantId, type, row) {
 exports.api = onRequest(
   // IMPORTANT: we need rawBody for Stripe webhook signature verification
   // Override global cpu: "gcf_gen1" — this function runs Claude/OpenAI calls and needs full CPU.
-  { region: "us-central1", cpu: 1, memory: "512MiB" },
+  // timeoutSeconds bumped from 60 default to 300 to accommodate multi-file uploads
+  // (each file: storage write + signed-url + Firestore record + pdf-parse).
+  { region: "us-central1", cpu: 1, memory: "1GiB", timeoutSeconds: 300 },
   async (req, res) => {
     console.log("✅ API_VERSION", "2026-03-01-document-engine");
 
@@ -1280,6 +1385,28 @@ exports.api = onRequest(
     if (route === "/chat:message" && method === "POST" && body.sessionId) {
       let { sessionId, userInput, action, actionData, fileData, fileName, surface, campaignSlug, utmSource, utmMedium, utmCampaign } = body;
 
+      // CODEX 50.5 — generate one parent_interaction_id at the top of every
+      // /chat:message turn. Threaded down through callWithHealthCheck context
+      // and merged onto every usage event produced during this turn (chat
+      // completion + connector calls + image generation + tool calls). This
+      // makes processRefund walkback atomic — refunding the user's interaction
+      // reverses every event in the chain.
+      const parentInteractionId = `pii_${require("crypto").randomBytes(12).toString("hex")}`;
+
+      // CODEX 49.27 fix — verify auth EARLY so file uploads can be associated
+      // with the user's vault (storageObjects). Auth remains optional — if no
+      // bearer or token invalid, files still flow through chat but are stored
+      // in a fallback bucket path with no vault metadata.
+      let chatAuthUser = null;
+      try {
+        const bearerToken = getAuthBearerToken(req);
+        if (bearerToken) {
+          chatAuthUser = await admin.auth().verifyIdToken(bearerToken);
+        }
+      } catch (e) {
+        console.warn("chatEngine: early auth check failed, continuing as unauthenticated:", e.message);
+      }
+
       // CODEX 47.10 — Process inline file uploads from sandbox chat.
       // Files arrive as body.files = [{ name, data (base64 URI), type }].
       // Extract text from supported formats and prepend to userInput so the
@@ -1295,15 +1422,39 @@ exports.api = onRequest(
             const lowerName = f.name.toLowerCase();
             console.log("[chatEngine] file:", f.name, "size:", buffer.length, "bytes");
 
-            // Store to Cloud Storage
-            try {
-              const safeName = f.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 100);
-              const storagePath = `sandbox/uploads/${Date.now()}_${safeName}`;
-              const bucket = getBucket();
-              await bucket.file(storagePath).save(buffer, { contentType: f.type || "application/octet-stream" });
-              console.log("[chatEngine] stored:", storagePath);
-            } catch (storeErr) {
-              console.warn("[chatEngine] file storage failed:", f.name, storeErr.message);
+            // Store to Cloud Storage — write to the canonical storageObjects
+            // collection so chat uploads surface in the Vault Documents page.
+            // Falls back to ephemeral sandbox path if user is unauthenticated.
+            if (chatAuthUser && chatAuthUser.uid) {
+              try {
+                const uploadResult = await getStorageService().upload({
+                  uid: chatAuthUser.uid,
+                  scope: "personal",
+                  subdir: "chat-uploads",
+                  filename: f.name,
+                  buffer,
+                  mimeType: f.type || "application/octet-stream",
+                  tags: ["source:chat"],
+                  bypassMimeCheck: true,
+                });
+                if (uploadResult.ok) {
+                  console.log("[chatEngine] stored to vault:", uploadResult.objectId, uploadResult.storagePath);
+                } else {
+                  console.warn("[chatEngine] vault upload rejected:", f.name, uploadResult.error);
+                }
+              } catch (storeErr) {
+                console.warn("[chatEngine] vault upload failed:", f.name, storeErr.message);
+              }
+            } else {
+              try {
+                const safeName = f.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 100);
+                const storagePath = `sandbox/uploads/${Date.now()}_${safeName}`;
+                const bucket = getBucket();
+                await bucket.file(storagePath).save(buffer, { contentType: f.type || "application/octet-stream" });
+                console.log("[chatEngine] stored to sandbox bucket (anon):", storagePath);
+              } catch (storeErr) {
+                console.warn("[chatEngine] sandbox storage failed:", f.name, storeErr.message);
+              }
             }
 
             // Extract text for AI context.
@@ -1492,18 +1643,60 @@ exports.api = onRequest(
               const dw = dwSnap.data();
               const workerName = dw.display_name || dw.name || workerSlug;
 
-              // ── Session credit deduction (44.1) — deduct on first message to this worker ──
+              // Tenant context for the worker chat — hoisted so it's also in
+              // scope for the 50.5 usage-event write below.
+              const reqTenantId =
+                (body && body.tenantId) ||
+                (body && body.context && body.context.tenantId) ||
+                (req.headers["x-tenant-id"] || null);
+
+              // ── Role gate (CODEX 50.10-T2 Decision 1) ──
+              // Viewers cannot send chat in a tenant context — they're read-only.
+              // Personal context (no tenantId, "vault", "personal", guest-*) is
+              // always allowed via enforceRoleGate's isPersonalContext short-circuit.
+              // Without this gate, a viewer with a valid bearer token could burn
+              // the tenant's credit pool — latent bug invisible until the new
+              // invite flow lets users be assigned the viewer role.
+              if (authUser && reqTenantId) {
+                try {
+                  const { enforceRoleGate } = require("./middleware/membershipCheck");
+                  const gate = await enforceRoleGate(authUser.uid, reqTenantId, "member");
+                  if (!gate.ok) {
+                    return res.json({
+                      ok: false,
+                      error: "INSUFFICIENT_ROLE",
+                      requiredRole: "member",
+                      currentRole: gate.role,
+                      message: gate.role === "viewer"
+                        ? "Viewer accounts cannot send chat messages in this workspace. Ask an admin for member access."
+                        : "You don't have permission to send messages in this workspace.",
+                    });
+                  }
+                } catch (gateErr) {
+                  console.warn(`[chat:role-gate] failed for ${reqTenantId}:`, gateErr.message);
+                  // Fail-open on transient lookup errors — auth is still validated
+                  // upstream; the gate is a defense-in-depth check, not the only
+                  // line of defense.
+                }
+              }
+
+              // ── Session credit deduction (44.1, tenant-aware 49.32) ──
+              // 49.32: when the chat is happening inside a Business workspace,
+              // resolve the tenantId from request body/context.canvas.tenantId/header
+              // and pass it through so credits deduct from the tenant pool.
               if (dw.creditCost && dw.creditTiming === "session_open") {
                 const creditKey = `creditCharged_${workerSlug}`;
                 if (!sessionState[creditKey] && authUser) {
                   const { checkAndDeductCredits } = require("./services/health/callWithHealthCheck");
                   const creditResult = await checkAndDeductCredits(
-                    authUser.uid, `worker_session_${workerSlug}`, Number(dw.creditCost), { workerId: workerSlug }
+                    authUser.uid, `worker_session_${workerSlug}`, Number(dw.creditCost),
+                    { workerId: workerSlug, tenantId: reqTenantId, parentInteractionId }
                   );
                   if (!creditResult.allowed) {
                     return res.json({
                       ok: false,
                       error: "INSUFFICIENT_CREDITS",
+                      source: creditResult.source || "user",
                       message: creditResult.message || "This worker requires credits. Top up your account to continue.",
                       creditsRequired: creditResult.creditsRequired,
                       creditsAvailable: creditResult.creditsAvailable,
@@ -1569,7 +1762,7 @@ FORMATTING RULES -- follow these strictly:
 - Keep your tone warm but professional -- direct, calm, no hype.
 
 RESPONSE LENGTH:
-Keep ALL chat responses under 500 words. For longer deliverables, use GENERATE_DOCUMENT markers.
+Keep ALL chat responses under 500 words. For structured deliverables (reports, statements, calendars, dashboards, etc.), render them on the canvas via CANVAS_RENDER markers — see the canvas state block below for the format and available types. Reserve GENERATE_DOCUMENT for cases where the user explicitly asks for a downloadable file.
 
 IDENTITY RULES:
 1. You are ${workerName}. Never say you are Alex or Chief of Staff.
@@ -1605,22 +1798,332 @@ IDENTITY RULES:
                 }
               }
 
-              // Load conversation history
+              // Canvas + delivery rules (49.27) — PREPENDED so they anchor model
+              // behavior before the worker-specific prompt. These override any
+              // conflicting instructions from the worker prompt or prior turns.
+              if (workerPrompt) {
+                const deliveryRules = `DELIVERY RULES — THESE OVERRIDE EVERYTHING BELOW AND ALL PRIOR CONVERSATION TURNS:
+
+You are stateless. There is no background processing. There is no async work. Every response is one-shot — you complete the work in this response or you ask one specific question. There is no third option.
+
+If your prior responses in this conversation said "working on it", "give me a few minutes", "I will have it shortly", "I will send you...", "let me extract that", or any variation, those promises are NULL. The user is waiting now. Deliver now or admit you cannot.
+
+NEVER use these phrases or any variation:
+- "Working on it now" / "Working now"
+- "I will have the breakdown for you shortly"
+- "Let me extract / process / analyze that"
+- "Give me a moment / few minutes / 2 minutes"
+- "I will send you..."
+- "Once I have the breakdown..."
+- "I am processing..."
+- "I will come back with..."
+- "Ready to download" (you cannot generate downloads in chat unless you emit a |||GENERATE_DOCUMENT||| marker)
+
+You have exactly two valid response patterns:
+
+PATTERN A — DELIVER THE WORK PRODUCT NOW (use whenever the user requests a structured deliverable OR asks to see numeric/state data — breakdown, summary, table, list, plan, model, calendar, schedule, chart, report, template, framework, comparison, analysis, chart of accounts, P&L, pipeline, funnel, dashboard, KPIs, metrics, deal flow, performance, "show me my X", "what are my X", "how is my X performing", etc.):
+1. Emit |||CANVAS_RENDER|||...|||END_CANVAS||| with the deliverable IN THIS RESPONSE
+2. If you have real data, populate it. If you do not, populate the canvas with a clearly-labeled template showing the structure with placeholder values like "[awaiting input]" or example numbers — the user can see the shape of the deliverable and what data you need.
+3. Chat reply: 1-2 sentences pointing to the canvas, e.g. "Draft category breakdown is on the right — placeholders show the structure. Upload your bank statements and I will populate it with real numbers."
+
+PATTERN B — ASK FOR ONE SPECIFIC INPUT (use only when even a templated canvas is impossible without input):
+1. Ask for the exact input needed in one short, specific question
+2. Do NOT promise to deliver later
+3. No canvas marker
+
+You may NOT mix patterns. You may NOT promise future work. If a request is ambiguous, default to Pattern A with a templated canvas.
+
+CANVAS RENDER MARKER FORMAT:
+
+|||CANVAS_RENDER|||
+{"type": "card:work-product", "payload": {"title": "...", "summary": "...", "fields": [{"label": "...", "value": "..."}], "sections": [{"heading": "...", "body": "..."}], "items": ["..."]}}
+|||END_CANVAS|||
+
+Available types: card:work-product (default fallback for any structured deliverable), card:chart-bar, card:chart-funnel, card:chart-heatmap (use these when the user says "graphical", "visual", "chart", "heat map", "funnel", "bar chart" — never produce ASCII or text-shaped charts), card:marketing-content-calendar, card:marketing-email, card:accounting-pl, card:accounting-invoice, card:accounting-coa, card:accounting-balance-sheet, card:accounting-cashflow, card:hr-employee-register, card:hr-performance, checklist:hr-onboarding, card:control-center-revenue, card:re-property-analysis, card:re-market-report, card:re-comp-analysis, card:auto-deal-analysis, card:auto-fi-compliance, card:auto-inventory, card:trade-summary, card:analyst-report, card:real-estate-closing, card:aviation-currency. Multiple markers per response are allowed. Never describe markers to the user. Never paste canvas content into chat.
+
+TYPE-SPECIFIC PAYLOAD SHAPES — use these exactly when emitting the corresponding type. Do NOT default to the generic work-product shape for these types or the card will render empty.
+
+card:marketing-content-calendar — payload MUST include "calendar" array:
+{"type":"card:marketing-content-calendar","payload":{"calendar":[{"date":"Mon May 4","posts":[{"platform":"linkedin","content":"Q2 trends post","time":"9:00 AM"},{"platform":"instagram","content":"Behind the scenes","time":"12:00 PM"}]},{"date":"Tue May 5","posts":[{"platform":"email","content":"Newsletter","time":"8:00 AM"}]}]}}
+Platform values are lowercase: instagram, twitter, linkedin, facebook, email.
+
+card:marketing-email — payload MUST include "campaigns" array:
+{"type":"card:marketing-email","payload":{"campaigns":[{"subject":"Welcome — Day 1","preview":"Quick intro","status":"draft","recipients":1240},{"subject":"Day 3 — Framework","preview":"Step by step","status":"scheduled","recipients":1240}]}}
+status: draft | scheduled | sent. openRate and clickRate (numbers 0-100) optional.
+
+card:real-estate-closing — payload MUST include "closingData" object:
+{"type":"card:real-estate-closing","payload":{"closingData":{"address":"123 Main St","price":485000,"closingDate":"2026-06-15","escrowAgent":"Jane Smith","titleCompany":"First American","milestones":[{"label":"Offer accepted","date":"2026-04-12","status":"done"},{"label":"Inspection","date":"2026-04-25","status":"done"},{"label":"Loan approval","date":"2026-05-20","status":"active"},{"label":"Closing","date":"2026-06-15","status":"pending"}]}}}
+milestone.status: done | active | pending.
+
+card:accounting-balance-sheet — payload MUST include "balanceSheet" object with currentAssets, nonCurrentAssets, currentLiabilities, longTermLiabilities, equity arrays of {label, amount} (positive amounts; renderer computes totals).
+
+card:accounting-cashflow — payload MUST include "cashFlow" object with period, beginningCash, operating, investing, financing arrays of {label, amount} (negative for outflows).
+
+card:chart-bar — horizontal bars. payload: {"title":"Revenue by Channel","subtitle":"Q2 — by source","chartType":"bar","data":[{"label":"Direct","value":18500},{"label":"Affiliate","value":11200,"color":"#10b981"},{"label":"Search","value":8400}]}
+Use when user asks for a "chart", "bar chart", or to compare values across categories. value is numeric. color is optional.
+
+card:chart-funnel — sales/pipeline funnel. payload: {"title":"CRE Sales Pipeline","subtitle":"8 deals · $4.2M","chartType":"funnel","data":[{"label":"Prospecting","count":2,"value":950000},{"label":"Qualification","count":2,"value":1100000},{"label":"Negotiation","count":3,"value":1650000},{"label":"Closing","count":1,"value":500000}]}
+Use when user asks for a "funnel", "pipeline visual", or wants stages with conversion. count optional.
+
+card:chart-heatmap — grid of intensities. payload: {"title":"Property Type × Stage","chartType":"heatmap","data":[{"row":"Office","column":"Prospecting","value":350},{"row":"Office","column":"Negotiation","value":750},{"row":"Retail","column":"Prospecting","value":600},{"row":"Industrial","column":"Qualification","value":600}]}
+Use when user asks for a "heat map" or wants to compare values across two dimensions.
+
+If you cannot decide which type to use or you don't have data to fill the type-specific fields, use card:work-product instead — never emit a typed card with the wrong shape. NEVER produce text-based, ASCII, or markdown-rendered charts in chat — always emit one of the chart card types instead.
+
+EXECUTION SIDE EFFECTS — for actions with real-world consequences (sending email, posting to social, queueing a message). Emit |||SIDE_EFFECT|||{...}|||END_SIDE_EFFECT||| markers ONLY when:
+1. The user has explicitly approved this specific action in the current turn ("yes send it", "run the campaign now", "post to LinkedIn", "schedule it"), AND
+2. You have all required fields (subject + body + recipients for email; content + platforms for social).
+
+If approval is missing, ASK FOR IT FIRST in plain text — do not emit the marker. Generating a draft canvas is fine without approval; sending is not.
+
+Allowed actions and shapes:
+- Send marketing email: |||SIDE_EFFECT|||{"action":"sendEmailCampaign","data":{"listId":"abc","subject":"Summer launch","body":"plain text body","htmlContent":"<p>html body</p>","fromName":"Sean — Acme","fromEmail":"sean@acme.com"}}|||END_SIDE_EFFECT||| — listId is preferred; if you have inline contacts pass them as data.contacts=[{email,firstName,lastName}] and a list will be created on the fly.
+- Schedule social post: |||SIDE_EFFECT|||{"action":"scheduleSocialPost","data":{"content":"post body","platforms":["linkedin","instagram"],"title":"Summer launch","scheduledAt":"2026-05-10T14:00:00Z","status":"draft"}}|||END_SIDE_EFFECT||| — set status:"draft" to save without posting; omit to post immediately.
+- Queue a single email/SMS: |||SIDE_EFFECT|||{"action":"enqueueMessage","data":{"channel":"email","to":"recipient@example.com","subject":"...","body":"...","scheduledAt":"2026-05-04T09:00:00Z"}}|||END_SIDE_EFFECT|||
+
+After emitting, your chat reply should confirm what was scheduled in plain language ("Sent your nurture sequence to 1,240 contacts. First touch is queued for tomorrow at 9 AM."). Never describe the marker to the user.
+
+END DELIVERY RULES.
+
+`;
+                workerPrompt = deliveryRules + workerPrompt;
+              }
+
+              // 49.32 — 5.2 cross-worker attribution: inject sibling Spine
+              // worker state so the model can cite numbers from Accounting,
+              // Marketing, HR, Contacts, Control Center Pro instead of saying
+              // "Switch to your X worker for that". Demo mode falls back to
+              // mirrored sample data; live mode reads from briefings/{uid}.
+              if (workerPrompt) {
+                try {
+                  const { buildSiblingStatePrompt } = require("./services/canvas/spineState");
+                  const siblingDemoMode = !!(body && body.context && body.context.canvas && body.context.canvas.demoMode);
+                  const siblingPrompt = await buildSiblingStatePrompt({
+                    db,
+                    uid: authUser ? authUser.uid : null,
+                    currentSlug: workerSlug,
+                    demoMode: siblingDemoMode,
+                  });
+                  if (siblingPrompt) workerPrompt = siblingPrompt + workerPrompt;
+                } catch (siblingErr) {
+                  console.warn("worker chat: sibling state inject failed:", siblingErr.message);
+                }
+              }
+
+              // Load conversation history — strip prior assistant turns that
+              // violate the delivery rules so they don't bias future responses.
               if (!sessionState.salesHistory) sessionState.salesHistory = [];
-              const messages = [
-                ...sessionState.salesHistory.map(h => ({ role: h.role, content: h.content })),
-                { role: 'user', content: userInput },
+              const FORBIDDEN_PATTERNS = /(working on it|working now|give me (a few |a couple |2 |3 |a )?(more )?(minute|moment)|i will (have|send|send you|come back|get back|process)|once i have|i am processing|processing now|extracting now|let me (extract|process|analyze)|ready to download|will be ready (in|shortly)|will follow up|in a (few |couple )?(minute|moment)|you will have|breakdown (in|shortly)|pulling every|loading sample data|loading \d+ vehicles|loading \d+ customer|loading \d+ open deals|loading sales pipeline|loading service schedule|loading f.?i products|scanning everything now)/i;
+
+              // 49.30 — When canvas demo mode is active, the user has no real data and is exploring.
+              // Prior assistant turns are likely from before canvas state was reliably injected and may
+              // contain hallucinations (auto-dealer language in a Marketing worker, etc). Skip them
+              // entirely so the model sees only the current user message + the system prompt with canvas state.
+              const canvasDemoActive = !!(body && body.context && body.context.canvas && body.context.canvas.demoMode);
+              const messages = canvasDemoActive ? [] : [
+                ...sessionState.salesHistory.map(h => {
+                  if (h.role === 'assistant' && typeof h.content === 'string' && FORBIDDEN_PATTERNS.test(h.content)) {
+                    return { role: 'assistant', content: '[Earlier reply was a deferred-work response. Ignored. Deliver now per Pattern A.]' };
+                  }
+                  return { role: h.role, content: h.content };
+                }),
               ];
+              if (canvasDemoActive) {
+                console.log(`[chatEngine] worker:${workerSlug} demo mode active — skipping prior history (${sessionState.salesHistory.length} turns) to prevent pollution`);
+              }
+
+              // userInput already has file content prepended by chatEngine file processor (line ~107).
+              // If user references files but none are in this turn AND no [Uploaded files] block exists,
+              // append a system note so the model doesn't pretend to extract from files it can't see.
+              let userContent = userInput;
+              const hasFileBlock = /\[Uploaded files content below\]/.test(userInput);
+              if (!hasFileBlock && /upload(ed)?|attach(ed)?|the file|the pdf|the statement|the document|those (files|pdfs|statements|documents)/i.test(userInput)) {
+                userContent += "\n\n[SYSTEM NOTE: No files are attached to THIS message and no extracted file content is in your context. If you need their content to answer, ask the user to re-attach them in this chat. Do NOT pretend to extract from files you cannot see — the data is genuinely not here.]";
+              }
+              messages.push({ role: 'user', content: userContent });
+
+              // 49.30 — Inject canvas state (sample KPIs, checklist, demo mode) into worker-direct prompt
+              // so the model can see what's on the user's right-side canvas. Without this the worker-direct
+              // path bypasses the canvas-awareness that the main chat handler gets at selectedSystemPrompt.
+              if (body && body.context && body.context.canvas && workerPrompt) {
+                try {
+                  const canvasCtx = body.context.canvas;
+                  const slug = canvasCtx.workerSlug || workerSlug || "worker";
+                  const totalItems = canvasCtx.totalItems || 0;
+                  const totalCompleted = canvasCtx.totalCompleted || 0;
+                  const completed = Array.isArray(canvasCtx.completedItems) ? canvasCtx.completedItems : [];
+                  const remaining = Array.isArray(canvasCtx.remainingItems) ? canvasCtx.remainingItems : [];
+                  const kpis = Array.isArray(canvasCtx.kpis) ? canvasCtx.kpis : [];
+                  const demoMode = !!canvasCtx.demoMode;
+
+                  const fmtItem = (it) => (it && typeof it === "object") ? (it.label || it.id) : String(it);
+                  const completedLines = completed.length > 0
+                    ? completed.map(it => `  - ${fmtItem(it)}`).join("\n")
+                    : "  (none yet — user is just getting started)";
+                  const remainingLines = remaining.length > 0
+                    ? remaining.map(it => `  - ${fmtItem(it)}`).join("\n")
+                    : "  (none — checklist complete)";
+                  const kpiLines = kpis.length > 0
+                    ? kpis.map(k => {
+                        const val = k.value ? `"${k.value}"` : "not populated yet";
+                        const sampleTag = k.isSample ? " [SAMPLE — demo data]" : "";
+                        const hint = (!k.value && k.hint) ? ` — ${k.hint}` : "";
+                        return `  - ${k.label}: ${val}${sampleTag}${hint}`;
+                      }).join("\n")
+                    : "  (no KPIs defined)";
+
+                  const demoBlock = demoMode
+                    ? `\n\nDEMO MODE IS ACTIVE on this worker's canvas. The KPI values tagged [SAMPLE] are illustrative demo data shown to the user right now on their right-side canvas, not the user's real numbers. They show what the dashboard will look like once real data populates. The user can see a "Demo Mode" banner above the KPIs with a "Clear" button.\n\nWhen the user asks about their KPIs ("what's my X?", "what are my numbers?", "show me KPIs"), ALWAYS state the displayed value AND that it is demo data. Example: "Your campaign ROI on the canvas is 142% — that's sample data; your real number will show once you import contact lists and connect social media." Do NOT say "I have no data" or "you have no campaign data on file" — the canvas shows demo values right now and you must reference them.
+
+CANVAS STATE OVERRIDES HISTORY: The KPI lines listed at the top of this prompt are the CURRENT TRUTH. If a prior turn in this conversation said a KPI was "not populated yet" but the same KPI now shows a [SAMPLE] value above, the user has just restored demo data — quote the sample value, do NOT repeat "not populated". Always answer from the current canvas state, never from your last reply.\n\nWhen the user asks how to remove, clear, hide, or reset the demo data, tell them clearly: tap the "Clear" button in the orange "Demo Mode" banner above the KPIs on the right-side canvas. Real data uploads also replace samples automatically. Do not pivot to other topics until you have answered the clear question.\n\nANTI-HALLUCINATION HARD RULES:\n- Never invent example data of your own. The canvas already has demo numbers; reference those.\n- Never describe loading or scanning fake data. Do NOT say "Loading sample data" or "Loading 24 vehicles" or "Loading customer records" or "I'm scanning everything now". The samples are already on the canvas; nothing is loading.\n- Never reference auto-dealer concepts (vehicles, F&I products, sales pipeline, service schedule, customer records, Toyota Camry, Honda CR-V) unless this worker is actually an auto-dealer worker. If the worker is Marketing, your domain is campaigns/leads/social/email — nothing else.\n- If prior turns in this conversation referenced concepts that don't match this worker's domain, those were hallucinations. Disregard them. Only the KPIs listed above and this user's current message define what's true.`
+                    : `\n\nDEMO MODE IS OFF on this worker's canvas. The user has either cleared the samples or never had any. KPIs listed as "not populated yet" are GENUINELY EMPTY right now — the canvas displays "--" for those values and the user can see that.\n\nCRITICAL: If a previous turn in this conversation quoted a specific dollar amount, percent, or count for a KPI that is now "not populated yet", that earlier answer referenced demo/sample data the user has SINCE CLEARED. Do NOT repeat those numbers. The canvas truth right now is "not populated yet" — say so plainly. Example: user asks "what's my pipeline value?" and the KPI shows "not populated yet" — answer: "Your pipeline value isn't populated yet. Add your first deal so I can calculate it." Do NOT answer "Your pipeline value is $4,200,000 (sample)" — that value is gone.\n\nThere is a small "Restore demo data" link in the canvas empty state if the user wants samples back. There is NO "Restore Demo button" anywhere else in the UI. Do not invent buttons or paths that do not exist.`;
+
+                  const canvasStateBlock = `\n\nCANVAS STATE (${slug}) — you can see the user's right-side canvas in real time.
+Setup progress: ${totalCompleted}/${totalItems} items complete${canvasCtx.hasProgress ? "" : " (fresh start)"}
+Completed:
+${completedLines}
+Remaining:
+${remainingLines}
+KPIs on the canvas right now:
+${kpiLines}${demoBlock}
+
+VALUE QUOTING RULE — CRITICAL: KPI values are wrapped in double quotes above (e.g., "$4,200,000", "67%", "142"). When you reference any KPI value in your reply, copy the contents of those quotes VERBATIM into your prose. The user reads "$4,200,000" on their canvas — you must write "$4,200,000" in chat. Do NOT rewrite "$4,200,000" as "4,200,000 dollars" or "4.2 million dollars" or "$4.2M". Do NOT rewrite "67%" as "67 percent". Do NOT strip the dollar sign, commas, or percent sign. The displayed canvas string and your chat string must match character-for-character.
+
+CROSS-WORKER ATTRIBUTION RULE — IMPORTANT: The KPIs listed above belong to THIS worker (${slug}). When you reference those values you do not need to cite a source — they're from the user's current canvas. For metrics that belong to a SIBLING worker (e.g. user is on Marketing and asks about revenue), use the SIBLING WORKER STATE block injected at the top of this prompt — it lists current numbers from Accounting, HR, Contacts, Control Center Pro, etc. Cite the sibling worker by name when you reference its number ("Your Accounting worker shows revenue of $47,500 this month"). Never invent numbers. If a sibling metric is not in the snapshot, say "Let me check with [Worker Name] — they own that one" rather than refusing or saying "Switch to that worker."
+
+GENERAL HELPFULNESS RULE — You are the user's Chief of Staff with a specialty in this worker's domain — not a domain-locked oracle. The user can ask you ANY question while sitting in this worker (general knowledge, life questions, random thoughts, ADHD-style tangents, weather, code help, cooking, anything). Answer those questions directly and warmly. You do not have to redirect the user to a "more appropriate" worker for non-KPI questions. The worker domain governs DATA (KPIs, checklists, suggested setup actions, sibling-worker attribution) — it does not gate conversation. If the user asks something off-topic, just answer it. If the user asks about KPIs or data outside this worker's canvas, then the cross-worker attribution rule above applies. The combination is: stay disciplined about WHOSE data you're quoting, but stay generous about what you'll talk about.
+
+When the user asks "what have I completed?", "what's next?", or about their progress, reference the items above by their human-readable name. When the user asks about KPIs or metrics, reference the KPIs above using their displayed values (verbatim, per the rule above). If a KPI is not populated AND not in demo mode, recommend the relevant remaining checklist item that would populate it. Never say "I don't have visibility into the canvas" or "I can't see what you're looking at" — you can see all of the above.`;
+
+                  workerPrompt = workerPrompt + canvasStateBlock;
+                } catch (canvasErr) {
+                  console.warn("[chatEngine] worker-direct canvas state injection failed:", canvasErr.message);
+                }
+              }
+
+              // 49.30 DIAG — when demo mode active, dump exactly what we send to Claude
+              // so we can find the source of cross-worker hallucinations.
+              if (canvasDemoActive) {
+                try {
+                  const promptStr = String(workerPrompt || "");
+                  const head = promptStr.slice(0, 800);
+                  const tail = promptStr.slice(-800);
+                  console.log(`[diag49.30] worker:${workerSlug} promptLen=${promptStr.length}`);
+                  console.log(`[diag49.30] worker:${workerSlug} promptHEAD>>>\n${head}\n<<<promptHEAD`);
+                  console.log(`[diag49.30] worker:${workerSlug} promptTAIL>>>\n${tail}\n<<<promptTAIL`);
+                  console.log(`[diag49.30] worker:${workerSlug} messagesCount=${messages.length}`);
+                  messages.forEach((m, i) => {
+                    const c = typeof m.content === "string" ? m.content : JSON.stringify(m.content);
+                    console.log(`[diag49.30] worker:${workerSlug} msg[${i}] role=${m.role} contentLen=${c.length} preview=${c.slice(0, 300).replace(/\n/g, " ")}`);
+                  });
+                  // Check if prompt mentions auto-dealer concepts (sniff for cross-contamination)
+                  const sniff = /vehicle|toyota|honda|camry|cr-?v|f.?i product|sales pipeline|service schedule|auto dealer|customer record/i;
+                  if (sniff.test(promptStr)) {
+                    console.warn(`[diag49.30] worker:${workerSlug} ALERT: prompt contains auto-dealer terminology`);
+                  }
+                } catch (diagErr) {
+                  console.warn("[diag49.30] logging failed:", diagErr.message);
+                }
+              }
 
               const anthropic = getAnthropic();
-              const aiResponse = await anthropic.messages.create({
+              // 49.32 — wire generate_image tool into worker-direct chat so any
+              // worker (Marketing, CRE, etc.) can render images on demand.
+              // Frontend ChatPanel renders structuredData.imageUrl inline.
+              const businessTools = [{
+                name: "generate_image",
+                description: "Generate an image, illustration, icon, logo, chart-art, or visual asset when the user asks for artwork or creative visuals. Do not call this for data charts — use card:chart-* canvas markers instead.",
+                input_schema: {
+                  type: "object",
+                  properties: {
+                    prompt: { type: "string", description: "Descriptive prompt for the image to generate" },
+                    aspect_ratio: { type: "string", enum: ["9:16", "1:1", "16:9"], description: "Aspect ratio. Default: 1:1" },
+                    style: { type: "string", enum: ["cartoon", "realistic", "diagram", "minimal"], description: "Visual style. Default: minimal" },
+                  },
+                  required: ["prompt"],
+                },
+              }];
+
+              let aiResponse = await anthropic.messages.create({
                 model: 'claude-sonnet-4-5-20250929',
                 max_tokens: 1024,
                 system: workerPrompt,
                 messages,
+                tools: businessTools,
               });
 
-              let aiText = aiResponse.content[0]?.text || `I'm ${workerName}. How can I help?`;
+              let aiText = aiResponse.content.find(b => b.type === 'text')?.text || "";
+              let workerImageUrl = null;
+              const toolBlock = aiResponse.content.find(b => b.type === 'tool_use');
+              if (toolBlock && toolBlock.name === 'generate_image') {
+                try {
+                  const ar = toolBlock.input.aspect_ratio || "1:1";
+                  const sizeForAr = ar === "16:9" ? "landscape_4_3" : ar === "9:16" ? "portrait_3_4" : "square";
+                  const { generateImage } = require("./services/image");
+                  const imgResult = await generateImage({
+                    prompt: toolBlock.input.prompt,
+                    style: toolBlock.input.style || "minimal",
+                    size: sizeForAr,
+                    workerId: workerSlug,
+                    creatorId: authUser ? authUser.uid : "anonymous",
+                    vertical: dw.vertical || "business",
+                    // CODEX 50.5 — group image-gen event under the chat turn's parent_interaction_id
+                    parentInteractionId,
+                    tenantId: reqTenantId || null,
+                  });
+                  workerImageUrl = imgResult.imageUrl || null;
+                  if (imgResult.error) console.warn(`[worker:${workerSlug}] image gen error:`, imgResult.error);
+                } catch (imgErr) {
+                  console.warn(`[worker:${workerSlug}] image gen failed:`, imgErr.message);
+                }
+
+                // Continue the turn so the model produces user-facing text alongside the image.
+                const followUpMessages = [
+                  ...messages,
+                  { role: "assistant", content: aiResponse.content },
+                  { role: "user", content: [{ type: "tool_result", tool_use_id: toolBlock.id, content: workerImageUrl ? `Image generated: ${workerImageUrl}` : "Image generation failed. Tell the user briefly." }] },
+                ];
+                const followUp = await anthropic.messages.create({
+                  model: 'claude-sonnet-4-5-20250929',
+                  max_tokens: 512,
+                  system: workerPrompt,
+                  messages: followUpMessages,
+                  tools: businessTools,
+                });
+                aiText = followUp.content.find(b => b.type === 'text')?.text || aiText || "Here you go.";
+              }
+              if (!aiText) aiText = `I'm ${workerName}. How can I help?`;
+
+              // 49.30 DIAG — also log raw model output before delivery filter
+              if (canvasDemoActive) {
+                console.log(`[diag49.30] worker:${workerSlug} rawModelOutputLen=${aiText.length} preview=${aiText.slice(0, 400).replace(/\n/g, " ")}`);
+              }
+
+              // ── Delivery Rules enforcement (49.27 escalation) ──
+              // If the model said "working on it" / "give me a moment" or skipped the
+              // canvas marker for a deliverable request, retry once with a stronger nudge.
+              try {
+                const { checkDeliveryRules } = require("./services/alex/deliveryRulesFilter");
+                const dr = checkDeliveryRules({ response: aiText, userInput });
+                if (!dr.ok) {
+                  console.warn(`[deliveryRules] worker:${workerSlug} violation:`, dr.violations);
+                  const retryMessages = [
+                    ...messages,
+                    { role: "assistant", content: aiText },
+                    { role: "user", content: `${dr.retryHint}\n\nRegenerate your response now, following the DELIVERY RULES.` },
+                  ];
+                  const retry = await anthropic.messages.create({
+                    model: 'claude-sonnet-4-5-20250929',
+                    max_tokens: 1500,
+                    system: workerPrompt,
+                    messages: retryMessages,
+                  });
+                  const retryText = retry.content[0]?.text;
+                  if (retryText && retryText.length > 0) aiText = retryText;
+                }
+              } catch (drErr) {
+                console.warn("[deliveryRules] worker check failed (continuing):", drErr.message);
+              }
 
               // ── Worker-specific RAAS enforcement (49.9) ──────────────────
               let workerEnforcement = { checked: false };
@@ -1703,12 +2206,130 @@ IDENTITY RULES:
                 console.warn("canvas signal extraction failed:", sigErr.message);
               }
 
+              // Canvas Render markers (49.27) — strip work products from chat, send to canvas
+              let workerCanvasRenders = [];
+              try {
+                const { extractCanvasRenders } = require("./services/alex/canvasMarkers");
+                const extracted = extractCanvasRenders(aiText);
+                aiText = extracted.cleanText;
+                workerCanvasRenders = extracted.canvasRenders;
+              } catch (canvasErr) {
+                console.warn("canvas render extraction failed:", canvasErr.message);
+              }
+
+              // 49.32 — Side-effect markers. When the user has approved an
+              // action with real-world consequences (run campaign, post social,
+              // send transactional email), the worker emits |||SIDE_EFFECT|||
+              // markers that we extract here and dispatch via executeChatSideEffects.
+              try {
+                const { extractSideEffects } = require("./services/alex/sideEffectMarkers");
+                const sideEffectExtract = extractSideEffects(aiText);
+                aiText = sideEffectExtract.cleanText;
+                if (sideEffectExtract.sideEffects.length > 0 && authUser) {
+                  console.log(`[worker:${workerSlug}] executing ${sideEffectExtract.sideEffects.length} side-effect(s):`, sideEffectExtract.sideEffects.map(s => s.action).join(","));
+                  // tenantId not in scope here — campaign actions don't require it,
+                  // and executeChatSideEffects falls back to membership lookup for the actions that do.
+                  await executeChatSideEffects(sideEffectExtract.sideEffects, authUser.uid, null);
+                } else if (sideEffectExtract.sideEffects.length > 0) {
+                  console.warn(`[worker:${workerSlug}] side-effects emitted but user is unauthenticated — skipping`);
+                }
+              } catch (seErr) {
+                console.warn("side-effect extraction/execution failed:", seErr.message);
+              }
+
+              // 49.32 diagnostic — log what the model produced so we can verify payload shape per type.
+              for (const r of workerCanvasRenders) {
+                const keys = r?.payload && typeof r.payload === "object" ? Object.keys(r.payload).slice(0, 10).join(",") : "(no payload)";
+                console.log(`[diag49.32] worker:${workerSlug} render type=${r?.type} payloadKeys=[${keys}]`);
+              }
+
+              // 49.31 — Auto-wrap fallback. If the model produced a structured deliverable
+              // in chat without a CANVAS_RENDER marker, synthesize one now so the work
+              // product still lands on the canvas.
+              if (workerCanvasRenders.length === 0) {
+                try {
+                  const { autoWrap } = require("./services/alex/canvasAutoWrap");
+                  const wrapped = autoWrap({
+                    aiText,
+                    userInput,
+                    defaultTitle: workerName ? `${workerName} Output` : "Work Product",
+                  });
+                  if (wrapped) {
+                    console.log(`[canvas auto-wrap] worker:${workerSlug} wrapped deliverable into card:work-product`);
+                    aiText = wrapped.aiText;
+                    workerCanvasRenders.push(wrapped.canvasRender);
+                  }
+                } catch (wrapErr) {
+                  console.warn("[canvas auto-wrap] failed:", wrapErr.message);
+                }
+              }
+
+              // 49.32 — Push generated image to canvas instead of inline chat.
+              if (workerImageUrl) {
+                workerCanvasRenders.push({
+                  type: "card:image",
+                  payload: {
+                    imageUrl: workerImageUrl,
+                    prompt: (toolBlock && toolBlock.input && toolBlock.input.prompt) || "",
+                    title: "Generated Image",
+                  },
+                });
+              }
+
+              // CODEX 50.5 — write a chat-completion usage event with revenue
+              // attribution. This is the single largest billable-event producer
+              // in the platform; cycle-close uses these to compute Creator
+              // payouts. Failure is non-fatal — log and proceed.
+              if (authUser) {
+                try {
+                  const { computeRevenueAttribution } = require("./billing/recordUsageEvent");
+                  const pricingCfg = require("./config/pricing");
+                  // Determine revenue basis. Worker has price → subscription_prorata
+                  // (covered by user's tier subscription). No price → free.
+                  const wPrice = Number(dw.price || dw.pricing_tier || 0);
+                  let revenueBasis = "free";
+                  let revenueAmount = 0;
+                  if (wPrice > 0) {
+                    revenueBasis = "subscription_prorata";
+                    // Per-call revenue for a subscribed worker = monthly fee
+                    // amortized across expected calls. With no historical
+                    // call-volume signal yet, attribute the credit-cost-equivalent
+                    // dollar slice. Conservative default: 1 credit ($0.02).
+                    const creditUnits = Number(dw.creditCost || 1);
+                    revenueAmount = creditUnits * (pricingCfg.creditRate || 0);
+                  }
+                  const attribution = await computeRevenueAttribution({
+                    workerId: workerSlug,
+                    userId: authUser.uid,
+                    tenantId: reqTenantId || null,
+                    revenueBasis,
+                    revenueAmount,
+                    creditCost: Number(dw.creditCost || 0),
+                    timestamp: new Date(),
+                    parentInteractionId,
+                  });
+                  await db.collection(require("./config/usageEvents").USAGE_EVENTS_COLLECTION).add({
+                    userId: authUser.uid,
+                    tenantId: reqTenantId || null,
+                    workerId: workerSlug,
+                    event_type: "chat_completion",
+                    pass_through: false,
+                    timestamp: admin.firestore.FieldValue.serverTimestamp(),
+                    ...attribution,
+                  });
+                } catch (revErr) {
+                  console.warn(`[50.5] chat-completion usage event failed for ${workerSlug}:`, revErr.message);
+                }
+              }
+
               // Clean response — no detectedVertical, no workerCards, no Alex markers
+              // 49.27 — return `response` (not `message`) so ChatPanel renders the text
               return res.json({
                 ok: true,
-                message: aiText,
+                response: aiText,
                 conversationState: 'worker_active',
                 canvasSignal,
+                canvasRenders: workerCanvasRenders,
               });
             }
           } catch (workerErr) {
@@ -1839,7 +2460,7 @@ FORMATTING RULES -- follow these strictly:
 - Keep your tone warm but professional -- direct, calm, no hype.
 
 RESPONSE LENGTH:
-Keep ALL chat responses under 500 words. For longer deliverables, use GENERATE_DOCUMENT markers.
+Keep ALL chat responses under 500 words. For structured deliverables (reports, statements, calendars, dashboards, etc.), render them on the canvas via CANVAS_RENDER markers — see the canvas state block below for the format and available types. Reserve GENERATE_DOCUMENT for cases where the user explicitly asks for a downloadable file.
 
 IDENTITY RULES:
 1. You are ${workerName}. Never say you are Alex or Chief of Staff.
@@ -4882,22 +5503,29 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
 
     // Map URL vertical → Firestore suite arrays + ID prefix for filtering
     // Suite values in digitalWorkers are generic (e.g. auto dealer workers have suite="General Business")
-    // so we use ID prefix as a reliable secondary filter
+    // so we use ID prefix as a reliable secondary filter. firestoreVertical is the
+    // canonical vertical field value on each digitalWorkers/* doc — preferred when
+    // present since suite values are inconsistent across verticals.
     function getVerticalConfig(v) {
       const map = {
-        'aviation':    { suites: ['Aviation'], prefix: 'av-' },
-        'pilot':       { suites: ['Aviation'], prefix: 'av-' },
-        'auto-dealer': { suites: ['General Business', 'Compliance'], prefix: 'ad-' },
-        'auto_dealer': { suites: ['General Business', 'Compliance'], prefix: 'ad-' },
-        'auto':        { suites: ['General Business', 'Compliance'], prefix: 'ad-' },
-        'web3':        { suites: ['Community', 'Compliance', 'Tokenomics', 'Launch', 'Communications', 'Platform'], prefix: 'w3-' },
-        'solar':       { suites: ['Finance', 'Legal', 'Compliance', 'Insurance', 'General Business', 'Operations'], prefix: 'solar-' },
-        'solar_vpp':   { suites: ['Finance', 'Legal', 'Compliance', 'Insurance', 'General Business', 'Operations'], prefix: 'solar-' },
-        'real-estate': { suites: ['Investment', 'Finance', 'Legal', 'Insurance', 'Construction', 'Design', 'Entitlement', 'Operations', 'Property Management', 'Permitting'], prefix: null },
-        'real_estate_development': { suites: ['Investment', 'Finance', 'Legal', 'Insurance', 'Construction', 'Design', 'Entitlement', 'Operations', 'Property Management', 'Permitting'], prefix: null },
-        're':          { suites: ['Investment', 'Finance', 'Legal', 'Insurance', 'Construction', 'Design', 'Entitlement', 'Operations', 'Property Management', 'Permitting'], prefix: null },
+        'aviation':    { suites: ['Aviation'], prefix: 'av-',     firestoreVertical: 'aviation' },
+        'pilot':       { suites: ['Aviation'], prefix: 'av-',     firestoreVertical: 'aviation' },
+        'auto-dealer': { suites: ['General Business', 'Compliance'], prefix: 'ad-', firestoreVertical: 'auto_dealer' },
+        'auto_dealer': { suites: ['General Business', 'Compliance'], prefix: 'ad-', firestoreVertical: 'auto_dealer' },
+        'auto':        { suites: ['General Business', 'Compliance'], prefix: 'ad-', firestoreVertical: 'auto_dealer' },
+        'web3':        { suites: ['Community', 'Compliance', 'Tokenomics', 'Launch', 'Communications', 'Platform'], prefix: 'w3-', firestoreVertical: 'web3' },
+        'solar':       { suites: ['Finance', 'Legal', 'Compliance', 'Insurance', 'General Business', 'Operations'], prefix: 'solar-', firestoreVertical: 'solar_vpp' },
+        'solar_vpp':   { suites: ['Finance', 'Legal', 'Compliance', 'Insurance', 'General Business', 'Operations'], prefix: 'solar-', firestoreVertical: 'solar_vpp' },
+        'real-estate': { suites: ['Investment', 'Finance', 'Legal', 'Insurance', 'Construction', 'Design', 'Entitlement', 'Operations', 'Property Management', 'Permitting'], prefix: null, firestoreVertical: 'real_estate_development' },
+        'real_estate_development': { suites: ['Investment', 'Finance', 'Legal', 'Insurance', 'Construction', 'Design', 'Entitlement', 'Operations', 'Property Management', 'Permitting'], prefix: null, firestoreVertical: 'real_estate_development' },
+        're':          { suites: ['Investment', 'Finance', 'Legal', 'Insurance', 'Construction', 'Design', 'Entitlement', 'Operations', 'Property Management', 'Permitting'], prefix: null, firestoreVertical: 'real_estate_development' },
+        're_professional': { suites: [], prefix: null, firestoreVertical: 're_professional' },
+        'government':  { suites: [], prefix: null, firestoreVertical: 'government' },
+        'platform':    { suites: [], prefix: null, firestoreVertical: 'platform' },
+        'marketing':   { suites: [], prefix: null, firestoreVertical: 'marketing' },
+        'all':         { suites: [], prefix: null, firestoreVertical: '*' },
       };
-      return map[v] || map[v?.toLowerCase()] || { suites: [v], prefix: null };
+      return map[v] || map[v?.toLowerCase()] || { suites: [v], prefix: null, firestoreVertical: v };
     }
 
     // GET /v1/catalog:byVertical — Public catalog query for guest shell (no auth, rate limited)
@@ -4907,13 +5535,28 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
         const limit = Math.min(parseInt(req.query.limit) || 24, 50);
         if (!vertical) return jsonError(res, 400, "vertical parameter required");
 
-        // Map URL vertical to suite array + optional ID prefix filter
+        // Map URL vertical to firestore vertical (preferred — direct match) or
+        // fall back to suite-based filter for backwards-compat.
         const vc = getVerticalConfig(vertical);
-        // Firestore 'in' supports up to 30 values
-        const q = db.collection("digitalWorkers")
-          .where("suite", "in", vc.suites)
-          .where("status", "in", ["live", "coming_soon"])
-          .limit(vc.prefix ? 100 : limit); // over-fetch if filtering by prefix
+        let q;
+        if (vc.firestoreVertical === '*') {
+          // vertical=all — return everything live, capped
+          q = db.collection("digitalWorkers")
+            .where("status", "in", ["live", "coming_soon"])
+            .limit(Math.min(limit * 4, 250)); // over-fetch for client-side slice
+        } else if (vc.firestoreVertical) {
+          q = db.collection("digitalWorkers")
+            .where("vertical", "==", vc.firestoreVertical)
+            .where("status", "in", ["live", "coming_soon"])
+            .limit(vc.prefix ? 100 : limit);
+        } else if (vc.suites && vc.suites.length > 0) {
+          q = db.collection("digitalWorkers")
+            .where("suite", "in", vc.suites)
+            .where("status", "in", ["live", "coming_soon"])
+            .limit(vc.prefix ? 100 : limit);
+        } else {
+          return jsonError(res, 400, `unknown vertical "${vertical}"`);
+        }
         const snap = await q.get();
 
         // Infer valueBucket from name/description when field is missing
@@ -4948,6 +5591,7 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
               quickStartPrompts: Array.isArray(lp.quickStartPrompts) ? lp.quickStartPrompts : [],
               activeSubstrateFeatures: Array.isArray(lp.activeSubstrateFeatures) ? lp.activeSubstrateFeatures : [],
               workerType: d.worker_type || "worker",
+              canvasTabs: Array.isArray(d.canvasTabs) ? d.canvasTabs : [],
             };
           });
 
@@ -5327,19 +5971,56 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
           return jsonError(res, 403, "Account required for paid workers");
         }
 
-        // Check if already subscribed
-        const existingSub = await db.collection("subscriptions")
-          .where("userId", "==", userId)
+        // 49.32 — Determine subscription ownership scope.
+        // Tenant-scoped subs are created when caller is in a Business workspace
+        // AND has admin role on that workspace. Otherwise default to user-scope.
+        const subTenantId = (body.tenantId && body.tenantId !== "vault" && body.tenantId !== "personal" && !String(body.tenantId).startsWith("guest-")) ? body.tenantId : null;
+        let ownerType = "user";
+        let ownerId = userId;
+        if (subTenantId) {
+          try {
+            const { enforceRoleGate } = require("./middleware/membershipCheck");
+            const gate = await enforceRoleGate(userId, subTenantId, "admin");
+            if (gate.ok) {
+              ownerType = "tenant";
+              ownerId = subTenantId;
+            } else {
+              console.log(`[worker:subscribe] tenantId=${subTenantId} ignored — caller lacks admin role (${gate.error})`);
+            }
+          } catch (gateErr) {
+            console.warn("[worker:subscribe] role gate failed, falling back to user-scope:", gateErr.message);
+          }
+        }
+
+        // Check if already subscribed (check both new and legacy shapes).
+        const existingNew = await db.collection("subscriptions")
+          .where("ownerType", "==", ownerType)
+          .where("ownerId", "==", ownerId)
           .where("workerId", "==", workerId || workerDoc.workerId)
           .where("trialStatus", "in", ACTIVE_STATUSES)
           .limit(1).get();
-        if (!existingSub.empty) {
-          return res.json({ ok: true, subscribed: true, message: "Already subscribed" });
+        if (!existingNew.empty) {
+          return res.json({ ok: true, subscribed: true, source: ownerType, message: "Already subscribed" });
+        }
+        // Legacy shape (no ownerType yet) — only check user-scope to avoid false-tenant matches.
+        if (ownerType === "user") {
+          const existingLegacy = await db.collection("subscriptions")
+            .where("userId", "==", userId)
+            .where("workerId", "==", workerId || workerDoc.workerId)
+            .where("trialStatus", "in", ACTIVE_STATUSES)
+            .limit(1).get();
+          if (!existingLegacy.empty) {
+            return res.json({ ok: true, subscribed: true, source: "legacy", message: "Already subscribed" });
+          }
         }
 
         // Create subscription record
         const isFreeWorker = !workerPrice || workerPrice === 0;
         const subRef = await db.collection("subscriptions").add({
+          // 49.32 — discriminator fields drive resolveSubscription.
+          ownerType,
+          ownerId,
+          // Legacy field — kept for backwards-compat and migration fallback.
           userId,
           workerId: workerId || workerDoc.workerId,
           slug: slug || workerDoc.slug,
@@ -5402,33 +6083,87 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
         const workerPrice = workerDoc.pricing_tier || workerDoc.price || 0;
         if (workerPrice === 0) return jsonError(res, 400, "Use worker:subscribe for free workers");
 
-        // Check already subscribed
-        const existingSub = await db.collection("subscriptions")
-          .where("userId", "==", userId)
+        // 49.32 — tenant-scope when caller is admin in a Business workspace.
+        // CODEX 49.32 Q1 decision: clean tenant separation — fresh Stripe
+        // customer per tenant, not reuse of the user's existing customer.
+        const ckTenantId = (body.tenantId && body.tenantId !== "vault" && body.tenantId !== "personal" && !String(body.tenantId).startsWith("guest-")) ? body.tenantId : null;
+        let ckOwnerType = "user";
+        let ckOwnerId = userId;
+        let ckTenantDoc = null;
+        if (ckTenantId) {
+          try {
+            const { enforceRoleGate } = require("./middleware/membershipCheck");
+            const gate = await enforceRoleGate(userId, ckTenantId, "admin");
+            if (gate.ok) {
+              ckOwnerType = "tenant";
+              ckOwnerId = ckTenantId;
+              const tSnap = await db.collection("tenants").doc(ckTenantId).get();
+              ckTenantDoc = tSnap.exists ? tSnap.data() : null;
+            } else {
+              console.log(`[worker:checkout] tenantId=${ckTenantId} ignored — caller lacks admin role (${gate.error})`);
+            }
+          } catch (gateErr) {
+            console.warn("[worker:checkout] role gate failed, falling back to user-scope:", gateErr.message);
+          }
+        }
+
+        // Check already subscribed (new + legacy shapes).
+        const existingSubNew = await db.collection("subscriptions")
+          .where("ownerType", "==", ckOwnerType)
+          .where("ownerId", "==", ckOwnerId)
           .where("workerId", "==", lookupId)
           .where("trialStatus", "in", ACTIVE_STATUSES)
           .limit(1).get();
-        if (!existingSub.empty) return res.json({ ok: true, subscribed: true, message: "Already subscribed" });
+        if (!existingSubNew.empty) return res.json({ ok: true, subscribed: true, source: ckOwnerType, message: "Already subscribed" });
+        if (ckOwnerType === "user") {
+          const existingSubLegacy = await db.collection("subscriptions")
+            .where("userId", "==", userId)
+            .where("workerId", "==", lookupId)
+            .where("trialStatus", "in", ACTIVE_STATUSES)
+            .limit(1).get();
+          if (!existingSubLegacy.empty) return res.json({ ok: true, subscribed: true, source: "legacy", message: "Already subscribed" });
+        }
 
-        // Get or create Stripe customer
+        // Get or create Stripe customer for the correct owner.
         const stripe = getStripe();
         let customerId = null;
-        if (!userId.startsWith("guest-")) {
-          const userSnap = await db.collection("users").doc(userId).get();
-          if (userSnap.exists) customerId = userSnap.data().stripeCustomerId || null;
-        }
-        if (!customerId) {
-          const customer = await stripe.customers.create({ email, metadata: { userId } });
-          customerId = customer.id;
-          await db.collection("users").doc(userId).set(
-            { email, stripeCustomerId: customerId, createdAt: nowServerTs() },
-            { merge: true }
-          );
+        if (ckOwnerType === "tenant") {
+          // Fresh tenant customer per Q1 decision. Don't reuse user's existing customer.
+          customerId = ckTenantDoc?.stripeCustomerId || null;
+          if (!customerId) {
+            const customer = await stripe.customers.create({
+              email,
+              name: ckTenantDoc?.name || `Workspace ${ckTenantId}`,
+              metadata: { tenantId: ckTenantId, billingAdminUid: userId },
+            });
+            customerId = customer.id;
+            await db.collection("tenants").doc(ckTenantId).set(
+              { stripeCustomerId: customerId, billingAdminUid: userId, billingEmail: email, billingUpdatedAt: nowServerTs() },
+              { merge: true }
+            );
+          }
+        } else {
+          if (!userId.startsWith("guest-")) {
+            const userSnap = await db.collection("users").doc(userId).get();
+            if (userSnap.exists) customerId = userSnap.data().stripeCustomerId || null;
+          }
+          if (!customerId) {
+            const customer = await stripe.customers.create({ email, metadata: { userId } });
+            customerId = customer.id;
+            await db.collection("users").doc(userId).set(
+              { email, stripeCustomerId: customerId, createdAt: nowServerTs() },
+              { merge: true }
+            );
+          }
         }
 
         // Create pending subscription
         const workerName = workerDoc.name || workerDoc.display_name || "Digital Worker";
         const subRef = await db.collection("subscriptions").add({
+          // 49.32 discriminator
+          ownerType: ckOwnerType,
+          ownerId: ckOwnerId,
+          // legacy field — kept for fallback
           userId,
           workerId: lookupId,
           slug: lookupId,
@@ -5456,7 +6191,13 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
           }],
           subscription_data: {
             trial_period_days: 14,
-            metadata: { userId, workerId: lookupId },
+            metadata: {
+              userId,
+              workerId: lookupId,
+              ownerType: ckOwnerType,
+              ownerId: ckOwnerId,
+              ...(ckTenantId ? { tenantId: ckTenantId } : {}),
+            },
           },
           metadata: {
             type: "worker_subscription",
@@ -5464,6 +6205,9 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
             workerId: lookupId,
             workerName,
             subscriptionId: subRef.id,
+            ownerType: ckOwnerType,
+            ownerId: ckOwnerId,
+            ...(ckTenantId ? { tenantId: ckTenantId } : {}),
           },
           success_url: `${origin}?worker_checkout=success&workerId=${encodeURIComponent(lookupId)}`,
           cancel_url: `${origin}?worker_checkout=cancelled&workerId=${encodeURIComponent(lookupId)}`,
@@ -5538,6 +6282,47 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       } catch (e) {
         console.error(`[oauth/callback] ${platformId} error:`, e.message);
         return res.redirect(`https://app.titleapp.ai/studio?oauth=${platformId}&status=error&message=${encodeURIComponent(e.message)}`);
+      }
+    }
+
+    // GET /v1/workspace:invite:details (CODEX 50.10-T2)
+    // Unauthenticated lookup so the /join/:token landing page can show inviter,
+    // workspace name, and role before the recipient signs in. Returns only the
+    // fields the landing page needs to display — never the recipient's email
+    // or the tenantId.
+    if (route === "/workspace:invite:details" && method === "GET") {
+      try {
+        const token = (req.query && req.query.token) || (body && body.token);
+        if (!token) return jsonError(res, 400, "MISSING_TOKEN");
+        if (!/^[a-f0-9]{32}$/.test(String(token))) {
+          return jsonError(res, 400, "INVALID_TOKEN_FORMAT");
+        }
+
+        const inviteRef = db.collection("workspaceInvites").doc(String(token));
+        const snap = await inviteRef.get();
+        if (!snap.exists) return jsonError(res, 404, "INVITE_NOT_FOUND");
+        const inv = snap.data();
+
+        if (inv.status === "revoked") return jsonError(res, 410, "INVITE_REVOKED");
+        if (inv.status === "redeemed") return jsonError(res, 410, "INVITE_ALREADY_REDEEMED");
+        if (inv.expiresAt && inv.expiresAt.toMillis() < Date.now()) {
+          if (inv.status === "pending") {
+            await inviteRef.update({ status: "expired" });
+          }
+          return jsonError(res, 410, "INVITE_EXPIRED");
+        }
+
+        return res.json({
+          ok: true,
+          workspaceName: inv.workspaceName || "Workspace",
+          inviterName: inv.invitedByName || "A teammate",
+          inviterEmail: inv.invitedByEmail || null,
+          role: inv.role,
+          expiresAt: inv.expiresAt ? inv.expiresAt.toDate().toISOString() : null,
+        });
+      } catch (e) {
+        console.error("workspace:invite:details failed:", e);
+        return jsonError(res, 500, e.message);
       }
     }
 
@@ -5873,6 +6658,241 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       }
     }
 
+    // POST /v1/workspace:invite (CODEX 50.10-T2)
+    // Admin invites a teammate to a workspace by email + role. Creates a token,
+    // persists workspaceInvites/{token}, sends a SendGrid email. The invite
+    // mechanic is deliberately separate from the worker-share invite above —
+    // different collection, different token namespace, no shared state.
+    if (route === "/workspace:invite" && method === "POST") {
+      try {
+        const { tenantId, email: rawEmail, role } = body || {};
+        if (!tenantId) return jsonError(res, 400, "MISSING_TENANT_ID");
+        if (!rawEmail) return jsonError(res, 400, "INVALID_EMAIL");
+        if (!["admin", "member", "viewer"].includes(role)) {
+          return jsonError(res, 400, "INVALID_ROLE");
+        }
+
+        const email = String(rawEmail).trim().toLowerCase();
+        if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+          return jsonError(res, 400, "INVALID_EMAIL");
+        }
+
+        // Self-invite guard
+        if (auth.user.email && auth.user.email.toLowerCase() === email) {
+          return jsonError(res, 400, "SELF_INVITE_REJECTED");
+        }
+
+        // Admin role gate
+        const { enforceRoleGate } = require("./middleware/membershipCheck");
+        const gate = await enforceRoleGate(auth.user.uid, tenantId, "admin");
+        if (!gate.ok) {
+          return res.status(403).json({
+            ok: false,
+            error: "NOT_ADMIN",
+            requiredRole: "admin",
+            currentRole: gate.role,
+          });
+        }
+
+        // Tenant exists
+        const tenantSnap = await db.collection("tenants").doc(tenantId).get();
+        if (!tenantSnap.exists) return jsonError(res, 404, "TENANT_NOT_FOUND");
+        const tenant = tenantSnap.data();
+
+        // Already-active-member guard (best-effort — if the email isn't a
+        // Firebase user yet, that's fine; the recipient signs up at redeem).
+        try {
+          const recipient = await admin.auth().getUserByEmail(email);
+          const memSnap = await db.collection("memberships")
+            .where("userId", "==", recipient.uid)
+            .where("tenantId", "==", tenantId)
+            .where("status", "==", "active")
+            .limit(1)
+            .get();
+          if (!memSnap.empty) return jsonError(res, 409, "ALREADY_MEMBER");
+        } catch (e) {
+          if (e.code !== "auth/user-not-found") {
+            console.warn("[workspace:invite] auth lookup failed:", e.message);
+          }
+        }
+
+        // Inviter snapshot — fall back through reasonable name sources.
+        const inviterSnap = await db.collection("users").doc(auth.user.uid).get();
+        const inviterData = inviterSnap.exists ? inviterSnap.data() : {};
+        const inviterName = inviterData.name
+          || inviterData.displayName
+          || auth.user.name
+          || auth.user.email
+          || "A teammate";
+
+        // Token + expiry
+        const token = require("crypto").randomBytes(16).toString("hex");
+        const expiresAt = admin.firestore.Timestamp.fromMillis(
+          Date.now() + 14 * 24 * 60 * 60 * 1000
+        );
+
+        await db.collection("workspaceInvites").doc(token).set({
+          tenantId,
+          email,
+          role,
+          invitedBy: auth.user.uid,
+          invitedByName: inviterName,
+          invitedByEmail: auth.user.email || null,
+          workspaceName: tenant.name || "Workspace",
+          status: "pending",
+          expiresAt,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          redeemedAt: null,
+          redeemedByUid: null,
+        });
+
+        // Send the email. If SendGrid fails, surface the URL so the admin
+        // can copy it manually.
+        try {
+          const { sendWorkspaceInviteEmail } = require("./services/workspaceInvite");
+          await sendWorkspaceInviteEmail({
+            to: email,
+            inviterName,
+            workspaceName: tenant.name || "Workspace",
+            role,
+            token,
+          });
+        } catch (emailErr) {
+          console.error("[workspace:invite] email send failed:", emailErr.message);
+          return res.status(500).json({
+            ok: false,
+            error: "EMAIL_SEND_FAILED",
+            message: "Invite created but email failed. Copy the link below and send it manually.",
+            token,
+            inviteUrl: `https://app.titleapp.ai/join/${token}`,
+            expiresAt: expiresAt.toDate().toISOString(),
+          });
+        }
+
+        return res.json({
+          ok: true,
+          token,
+          inviteUrl: `https://app.titleapp.ai/join/${token}`,
+          expiresAt: expiresAt.toDate().toISOString(),
+        });
+      } catch (e) {
+        console.error("workspace:invite failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // POST /v1/workspace:invite:redeem (CODEX 50.10-T2)
+    // Recipient accepts an invite. Validates email match, creates the
+    // memberships/{id} doc and the users/{uid}/workspaces/{tenantId} mirror
+    // in a single transaction, marks invite redeemed.
+    if (route === "/workspace:invite:redeem" && method === "POST") {
+      try {
+        const { token } = body || {};
+        if (!token) return jsonError(res, 400, "MISSING_TOKEN");
+        if (!/^[a-f0-9]{32}$/.test(String(token))) {
+          return jsonError(res, 400, "INVALID_TOKEN_FORMAT");
+        }
+
+        const userEmail = (auth.user.email || "").toLowerCase();
+        if (!userEmail) return jsonError(res, 403, "EMAIL_REQUIRED");
+
+        const inviteRef = db.collection("workspaceInvites").doc(String(token));
+
+        const result = await db.runTransaction(async (tx) => {
+          const inviteSnap = await tx.get(inviteRef);
+          if (!inviteSnap.exists) throw { _code: 404, _msg: "INVITE_NOT_FOUND" };
+          const inv = inviteSnap.data();
+
+          if (inv.status === "revoked") throw { _code: 410, _msg: "INVITE_REVOKED" };
+          if (inv.status === "redeemed") {
+            if (inv.redeemedByUid === auth.user.uid) {
+              return {
+                tenantId: inv.tenantId,
+                workspaceName: inv.workspaceName,
+                role: inv.role,
+                idempotent: true,
+              };
+            }
+            throw { _code: 410, _msg: "INVITE_ALREADY_REDEEMED" };
+          }
+          if (inv.expiresAt && inv.expiresAt.toMillis() < Date.now()) {
+            throw { _code: 410, _msg: "INVITE_EXPIRED" };
+          }
+          if (inv.email !== userEmail) {
+            throw { _code: 403, _msg: "EMAIL_MISMATCH" };
+          }
+
+          // Existing membership check (idempotent re-invite of existing member)
+          const memSnap = await tx.get(
+            db.collection("memberships")
+              .where("userId", "==", auth.user.uid)
+              .where("tenantId", "==", inv.tenantId)
+              .where("status", "==", "active")
+              .limit(1)
+          );
+
+          // Read tenant for mirror — must be read before any writes in tx.
+          const tenantSnap = await tx.get(db.collection("tenants").doc(inv.tenantId));
+          const tenant = tenantSnap.exists ? tenantSnap.data() : {};
+
+          if (memSnap.empty) {
+            const memRef = db.collection("memberships").doc();
+            tx.set(memRef, {
+              userId: auth.user.uid,
+              tenantId: inv.tenantId,
+              role: inv.role,
+              status: "active",
+              createdAt: admin.firestore.FieldValue.serverTimestamp(),
+              createdViaInvite: String(token),
+            });
+          }
+
+          // Mirror in user's workspaces subcollection — what the persona
+          // switcher reads. Without this write the workspace won't appear
+          // in the recipient's switcher even though the membership exists.
+          // Note: getUserWorkspaces filters mirrors by status === 'active'|'trial',
+          // so the status field is required — without it the workspace is hidden.
+          tx.set(
+            db.collection("users").doc(auth.user.uid)
+              .collection("workspaces").doc(inv.tenantId),
+            {
+              name: tenant.name || inv.workspaceName,
+              vertical: tenant.vertical || null,
+              jurisdiction: tenant.jurisdiction || null,
+              creatorEnabled: tenant.creatorEnabled || false,
+              role: inv.role,
+              status: "active",
+              type: tenant.tenantType === "creator" ? "creator" : "org",
+              plan: tenant.plan || "business",
+              createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            },
+            { merge: true }
+          );
+
+          tx.update(inviteRef, {
+            status: "redeemed",
+            redeemedAt: admin.firestore.FieldValue.serverTimestamp(),
+            redeemedByUid: auth.user.uid,
+          });
+
+          return {
+            tenantId: inv.tenantId,
+            workspaceName: tenant.name || inv.workspaceName,
+            role: inv.role,
+          };
+        }).catch((err) => {
+          if (err && err._code && err._msg) return { _error: err };
+          throw err;
+        });
+
+        if (result._error) return jsonError(res, result._error._code, result._error._msg);
+        return res.json({ ok: true, ...result });
+      } catch (e) {
+        console.error("workspace:invite:redeem failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
     // POST /v1/user:acceptTerms
     if (route === "/user:acceptTerms" && method === "POST") {
       try {
@@ -5884,6 +6904,51 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       } catch (e) {
         console.error("user:acceptTerms failed:", e);
         return jsonError(res, 500, "Failed to accept terms");
+      }
+    }
+
+    // POST /v1/user:setDigestCadence — set Control Center brief cadence
+    if (route === "/user:setDigestCadence" && method === "POST") {
+      try {
+        const cadence = String(body.cadence || "").toLowerCase();
+        if (!["daily", "weekly", "monthly"].includes(cadence)) {
+          return jsonError(res, 400, "cadence must be daily, weekly, or monthly");
+        }
+        await db.collection("users").doc(auth.user.uid).set(
+          { digestCadence: cadence, digestCadenceUpdatedAt: nowServerTs() },
+          { merge: true }
+        );
+        return res.json({ ok: true, cadence });
+      } catch (e) {
+        console.error("user:setDigestCadence failed:", e);
+        return jsonError(res, 500, "Failed to update cadence");
+      }
+    }
+
+    // GET /v1/user:getDigestCadence — read current cadence (defaults to weekly)
+    if (route === "/user:getDigestCadence" && method === "GET") {
+      try {
+        const userSnap = await db.collection("users").doc(auth.user.uid).get();
+        const cadence = (userSnap.exists && userSnap.data().digestCadence) || "weekly";
+        return res.json({ ok: true, cadence });
+      } catch (e) {
+        console.error("user:getDigestCadence failed:", e);
+        return jsonError(res, 500, "Failed to read cadence");
+      }
+    }
+
+    // POST /v1/user:previewDigest — generate the user's digest brief on demand for testing.
+    // Calls generateSubscriberBriefs scoped to just this user, returns the brief without sending email.
+    if (route === "/user:previewDigest" && method === "POST") {
+      try {
+        const { generateSubscriberBriefForUser } = require("./admin/generateDailyDigest");
+        const userSnap = await db.collection("users").doc(auth.user.uid).get();
+        const cadence = (body && body.cadence) || (userSnap.exists && userSnap.data().digestCadence) || "weekly";
+        const brief = await generateSubscriberBriefForUser(auth.user.uid, cadence, { dryRun: true });
+        return res.json({ ok: true, cadence, brief });
+      } catch (e) {
+        console.error("user:previewDigest failed:", e);
+        return jsonError(res, 500, e.message || "Failed to preview digest");
       }
     }
 
@@ -8337,6 +9402,14 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
     // GET /v1/workspaces
     if (route === "/workspaces" && method === "GET") {
       try {
+        // Idempotent first-touch provisioning for users that signed in via Firebase Auth
+        // directly (Google, Apple, SAML) and never hit /auth:signup. Safe to call every time.
+        try {
+          const { ensureUserProvisioned } = require("./helpers/userProvisioning");
+          await ensureUserProvisioned(auth.user.uid, auth.user);
+        } catch (provErr) {
+          console.warn("workspaces:list provisioning skipped:", provErr.message);
+        }
         const workspaces = await getUserWorkspaces(auth.user.uid);
         return res.json({ ok: true, workspaces });
       } catch (e) {
@@ -8883,9 +9956,16 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       }
     }
 
-    // For all other routes, enforce tenant membership
-    // Skip for chat:message — users can chat (via Alex) without a workspace membership
-    if (!(route === "/chat:message" && method === "POST")) {
+    // For all other routes, enforce tenant membership.
+    // Routes that are valid in Personal Vault context (no tenantId) bypass the gate;
+    // their handlers handle the tenant/user split internally.
+    const PERSONAL_VAULT_ROUTES = new Set([
+      "/chat:message",
+      "/credits:purchase",
+      "/billing:portal",
+    ]);
+    const isPersonalVaultRoute = PERSONAL_VAULT_ROUTES.has(route) && method === "POST";
+    if (!isPersonalVaultRoute) {
       const gate = await requireMembershipIfNeeded({ uid: auth.user.uid, tenantId: ctx.tenantId }, res);
       if (!gate.ok) return;
     }
@@ -10433,32 +11513,35 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
         allFiles.push(file);
       }
 
-      // Process each uploaded file: store to Cloud Storage + extract text content
+      // Process each uploaded file: store to vault (storageObjects) + extract text content
+      // 49.27 — chat uploads now write to the canonical storageObjects collection so they
+      // surface in the Vault UI. Tagged source:chat for traceability.
       const uploadedFileDescriptions = []; // { name, url, extractedText }
       for (const f of allFiles) {
         try {
           const base64Data = f.data.replace(/^data:[^;]+;base64,/, "");
           const buffer = Buffer.from(base64Data, "base64");
-          const storagePath = `uploads/${ctx.userId}/${Date.now()}_${f.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
-          const bucket = getBucket();
-          const fileRef = bucket.file(storagePath);
-          const dlToken2 = require("crypto").randomUUID();
-          await fileRef.save(buffer, { contentType: f.type || "application/octet-stream", metadata: { firebaseStorageDownloadTokens: dlToken2 } });
-          const url = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(storagePath)}?alt=media&token=${dlToken2}`;
 
-          // Create file record in Firestore
-          const fileDocRef = await db.collection("files").add({
-            tenantId: ctx.tenantId,
-            userId: ctx.userId,
-            name: f.name,
-            contentType: f.type || "application/octet-stream",
-            storagePath,
-            size: buffer.length,
-            status: "finalized",
-            createdAt: nowServerTs(),
+          const uploadResult = await getStorageService().upload({
+            uid: ctx.userId,
+            scope: "personal",
+            subdir: "chat-uploads",
+            filename: f.name,
+            buffer,
+            mimeType: f.type || "application/octet-stream",
+            tags: ["source:chat", `tenant:${ctx.tenantId || "default"}`],
+            bypassMimeCheck: true,
           });
-          validFileIds.push(fileDocRef.id);
-          console.log("File uploaded from chat:", storagePath, "fileId:", fileDocRef.id);
+
+          if (!uploadResult.ok) {
+            console.warn("Chat file upload rejected:", f.name, uploadResult.error, uploadResult.message);
+            continue;
+          }
+
+          const url = uploadResult.downloadUrl;
+          const storagePath = uploadResult.storagePath;
+          validFileIds.push(uploadResult.objectId);
+          console.log("File uploaded from chat:", storagePath, "objectId:", uploadResult.objectId);
 
           // Extract text content so the AI can read the file
           let extractedText = "";
@@ -10895,6 +11978,28 @@ RULES YOU MUST FOLLOW:
               }
             }
 
+            // 49.32 — 5.2 cross-worker attribution for Alex/COS path. Same
+            // sibling state injection used in the worker-direct handler so
+            // Alex on the vault home can answer "what's my revenue?" with
+            // "Your Accounting worker shows $47,500" instead of "I don't have
+            // access yet". Demo mode falls back to mirrored sample data;
+            // live mode reads from briefings/{uid}.
+            if (alexSystemPrompt) {
+              try {
+                const { buildSiblingStatePrompt } = require("./services/canvas/spineState");
+                const cosDemoMode = !!(body && body.context && body.context.canvas && body.context.canvas.demoMode);
+                const siblingPrompt = await buildSiblingStatePrompt({
+                  db,
+                  uid: auth.user.uid,
+                  currentSlug: body.selectedWorker || "chief-of-staff",
+                  demoMode: cosDemoMode,
+                });
+                if (siblingPrompt) alexSystemPrompt = siblingPrompt + alexSystemPrompt;
+              } catch (siblingErr) {
+                console.warn("Alex chat: sibling state inject failed:", siblingErr.message);
+              }
+            }
+
             // ── Worker-specific prompt: if a worker is selected, override Alex prompt ──
             if (alexSystemPrompt && body.selectedWorker && body.selectedWorker !== "chief-of-staff") {
               try {
@@ -10938,7 +12043,7 @@ FORMATTING RULES -- follow these strictly:
 - Keep your tone warm but professional -- direct, calm, no hype.
 
 RESPONSE LENGTH:
-Keep ALL chat responses under 500 words. For longer deliverables, use GENERATE_DOCUMENT markers.
+Keep ALL chat responses under 500 words. For structured deliverables (reports, statements, calendars, dashboards, etc.), render them on the canvas via CANVAS_RENDER markers — see the canvas state block below for the format and available types. Reserve GENERATE_DOCUMENT for cases where the user explicitly asks for a downloadable file.
 
 WORKSPACE CONTEXT:
 User name: ${userName2 || "unknown"}
@@ -10960,15 +12065,104 @@ IDENTITY RULES:
               }
             }
 
-            // CODEX 49.21 — Inject canvas context so AI knows user's setup progress
-            if (alexSystemPrompt && (context || {}).canvas) {
+            // CODEX 49.21 / 49.25 / 49.30 — Build canvas state block; appended to whichever prompt is selected below
+            let canvasStateBlock = "";
+            if ((context || {}).canvas) {
               const canvasCtx = context.canvas;
-              const completed = canvasCtx.completedItems || [];
-              if (completed.length > 0) {
-                alexSystemPrompt += `\n\nCANVAS SETUP PROGRESS (${canvasCtx.workerSlug || "worker"}):
-Completed items: ${completed.join(", ")} (${canvasCtx.totalCompleted || completed.length} done)
-When the user asks for help, acknowledge their progress and suggest relevant next steps based on what they have NOT completed yet.`;
-              }
+              const slug = canvasCtx.workerSlug || "worker";
+              const totalItems = canvasCtx.totalItems || 0;
+              const totalCompleted = canvasCtx.totalCompleted || 0;
+              const completed = Array.isArray(canvasCtx.completedItems) ? canvasCtx.completedItems : [];
+              const remaining = Array.isArray(canvasCtx.remainingItems) ? canvasCtx.remainingItems : [];
+              const kpis = Array.isArray(canvasCtx.kpis) ? canvasCtx.kpis : [];
+              const demoMode = !!canvasCtx.demoMode;
+
+              const fmtItem = (it) => (it && typeof it === "object") ? (it.label || it.id) : String(it);
+              const completedLines = completed.length > 0
+                ? completed.map(it => `  - ${fmtItem(it)}`).join("\n")
+                : "  (none yet — user is just getting started)";
+              const remainingLines = remaining.length > 0
+                ? remaining.map(it => `  - ${fmtItem(it)}`).join("\n")
+                : "  (none — checklist complete)";
+              const kpiLines = kpis.length > 0
+                ? kpis.map(k => {
+                    const val = k.value ? `"${k.value}"` : "not populated yet";
+                    const sampleTag = k.isSample ? " [SAMPLE — demo data]" : "";
+                    const hint = (!k.value && k.hint) ? ` — ${k.hint}` : "";
+                    return `  - ${k.label}: ${val}${sampleTag}${hint}`;
+                  }).join("\n")
+                : "  (no KPIs defined)";
+
+              const demoBlock = demoMode
+                ? `\n\nDEMO MODE IS ACTIVE on this worker's canvas. The KPI values tagged [SAMPLE] are illustrative demo data shown to the user right now on their right-side canvas, not the user's real numbers. They show what the dashboard will look like once real data populates. The user can see a "Demo Mode" banner above the KPIs with a "Clear" button.\n\nWhen the user asks about their KPIs ("what's my X?", "what are my numbers?", "show me KPIs"), ALWAYS state the displayed value AND that it is demo data. Example: "Your campaign ROI on the canvas is 142% — that's sample data; your real number will show once you import contact lists and connect social media." Do NOT say "I have no data" or "you have no campaign data on file" — the canvas shows demo values right now and you must reference them.
+
+CANVAS STATE OVERRIDES HISTORY: The KPI lines listed at the top of this prompt are the CURRENT TRUTH. If a prior turn in this conversation said a KPI was "not populated yet" but the same KPI now shows a [SAMPLE] value above, the user has just restored demo data — quote the sample value, do NOT repeat "not populated". Always answer from the current canvas state, never from your last reply.\n\nWhen the user asks how to remove, clear, hide, or reset the demo data, tell them clearly: tap the "Clear" button in the orange "Demo Mode" banner above the KPIs on the right-side canvas. Real data uploads also replace samples automatically. Do not pivot to other topics until you have answered the clear question.\n\nNever invent example data of your own when canvas samples are present — the canvas already has the demo numbers; reference those.`
+                : `\n\nDEMO MODE IS OFF on this worker's canvas. The user has either cleared the samples or never had any. KPIs listed as "not populated yet" are GENUINELY EMPTY right now — the canvas displays "--" for those values.\n\nCRITICAL: If a previous turn in this conversation quoted a specific dollar amount, percent, or count for a KPI that is now "not populated yet", that earlier answer referenced demo/sample data the user has SINCE CLEARED. Do NOT repeat those numbers. The canvas truth right now is "not populated yet" — say so plainly. Example: user asks "what's my pipeline value?" and the KPI shows "not populated yet" — answer: "Your pipeline value isn't populated yet. Add your first deal so I can calculate it." Do NOT answer "Your pipeline value is $4,200,000 (sample)" — that value is gone.\n\nThere is a small "Restore demo data" link in the canvas empty state if the user wants samples back. There is NO "Restore Demo button" anywhere else in the UI. Do not invent buttons or paths that do not exist.`;
+
+              canvasStateBlock = `\n\nCANVAS STATE (${slug}) — you can see the user's right-side canvas in real time.
+Setup progress: ${totalCompleted}/${totalItems} items complete${canvasCtx.hasProgress ? "" : " (fresh start)"}
+Completed:
+${completedLines}
+Remaining:
+${remainingLines}
+KPIs on the canvas right now:
+${kpiLines}${demoBlock}
+
+VALUE QUOTING RULE — CRITICAL: KPI values are wrapped in double quotes above (e.g., "$4,200,000", "67%", "142"). When you reference any KPI value in your reply, copy the contents of those quotes VERBATIM into your prose. The user reads "$4,200,000" on their canvas — you must write "$4,200,000" in chat. Do NOT rewrite "$4,200,000" as "4,200,000 dollars" or "4.2 million dollars" or "$4.2M". Do NOT rewrite "67%" as "67 percent". Do NOT strip the dollar sign, commas, or percent sign. The displayed canvas string and your chat string must match character-for-character.
+
+CROSS-WORKER ATTRIBUTION RULE — IMPORTANT: The KPIs listed above belong to THIS worker (${slug}). When you reference those values you do not need to cite a source — they're from the user's current canvas. For metrics that belong to a SIBLING worker (e.g. user is on Marketing and asks about revenue), use the SIBLING WORKER STATE block injected at the top of this prompt — it lists current numbers from Accounting, HR, Contacts, Control Center Pro, etc. Cite the sibling worker by name when you reference its number ("Your Accounting worker shows revenue of $47,500 this month"). Never invent numbers. If a sibling metric is not in the snapshot, say "Let me check with [Worker Name] — they own that one" rather than refusing or saying "Switch to that worker."
+
+GENERAL HELPFULNESS RULE — You are the user's Chief of Staff with a specialty in this worker's domain — not a domain-locked oracle. The user can ask you ANY question while sitting in this worker (general knowledge, life questions, random thoughts, ADHD-style tangents, weather, code help, cooking, anything). Answer those questions directly and warmly. You do not have to redirect the user to a "more appropriate" worker for non-KPI questions. The worker domain governs DATA (KPIs, checklists, suggested setup actions, sibling-worker attribution) — it does not gate conversation. If the user asks something off-topic, just answer it. If the user asks about KPIs or data outside this worker's canvas, then the cross-worker attribution rule above applies. The combination is: stay disciplined about WHOSE data you're quoting, but stay generous about what you'll talk about.
+
+When the user asks "what have I completed?", "what's next?", or about their progress, reference the items above by their human-readable name. When the user asks about KPIs or metrics, reference the KPIs above using their displayed values (verbatim, per the rule above). If a KPI is not populated AND not in demo mode, recommend the relevant remaining checklist item that would populate it. Never say "I don't have visibility into the canvas" or "I can't see what you're looking at" — you can see all of the above.
+
+DELIVERY RULES — CANVAS FIRST (overrides any earlier instruction in this prompt about GENERATE_DOCUMENT):
+
+HALLUCINATION HARD STOP — read this twice:
+You are NOT permitted to say "on the canvas", "on the right side", "on the right-side canvas", "showing on canvas", "rendered on the canvas", or any variant UNLESS you have ALSO emitted a |||CANVAS_RENDER|||...|||END_CANVAS||| marker in the SAME response. If you find yourself about to say "your X is on the canvas" — that is your trigger to STOP and emit the marker first. Saying it without emitting the marker means the user sees an empty canvas and you have lied. The marker is what makes the card appear; words alone do not. This is the single most-violated rule. Do not violate it.
+
+When the user asks for a structured deliverable (P&L, balance sheet, cash flow statement, content calendar, email campaign, schedule, dashboard, comp analysis, market report, property analysis, deal breakdown, F&I review, closing checklist, currency status, etc.), use Pattern A.
+
+PATTERN A — RENDER ON CANVAS (default for any structured deliverable):
+1. Emit ONE OR MORE |||CANVAS_RENDER|||...|||END_CANVAS||| markers IN THIS RESPONSE with the deliverable populated.
+2. Use real data when you have it. When you don't, populate the canvas with the same structure using clearly-labeled placeholder/sample values so the user can see the shape.
+3. Chat reply: 1-2 short sentences pointing to the canvas (e.g., "Your P&L is on the right — sample numbers showing the structure. Upload a bank statement to populate it."). Do NOT paste the deliverable's contents into chat.
+4. Multiple markers per response are allowed.
+
+PATTERN B — ASK FOR ONE INPUT (only when even a templated canvas is impossible without input):
+1. Ask one short specific question. No canvas marker.
+
+GENERATE_DOCUMENT — RESERVED FOR EXPLICIT EXPORTS ONLY:
+- Use GENERATE_DOCUMENT markers ONLY when the user explicitly asks to download, export, email, or print a file (e.g., "download this as a PDF", "export to Excel", "send me the PDF").
+- Do NOT use GENERATE_DOCUMENT as the default response to "build me X", "show me X", or "draft X" — those go on the canvas.
+- When you DO emit GENERATE_DOCUMENT, choose format by content: xlsx (default) for accounting statements, financial models, content calendars, email campaigns, schedules, KPI dashboards, comp tables; pdf for narrative reports/memos/letters; docx only when the user asks for an editable doc; pptx only for decks. Never default to pdf for spreadsheet-natural deliverables.
+
+CANVAS_RENDER MARKER FORMAT:
+
+|||CANVAS_RENDER|||
+{"type": "card:work-product", "payload": {"title": "...", "summary": "...", "fields": [{"label": "...", "value": "..."}], "sections": [{"heading": "...", "body": "..."}], "items": ["..."]}}
+|||END_CANVAS|||
+
+AVAILABLE CANVAS TYPES — pick the most specific one; default to card:work-product if unsure:
+- card:work-product — generic structured deliverable (any worker)
+- card:accounting-pl — P&L summary. Payload: { plData: { revenue: [{label, amount}], expenses: [{label, amount}], totalRevenue, totalExpenses, netIncome } }
+- card:accounting-balance-sheet — Balance Sheet. Payload: { balanceSheet: { asOf, currentAssets: [{label, amount}], nonCurrentAssets, currentLiabilities, longTermLiabilities, equity } } — use positive amounts; totals computed automatically
+- card:accounting-cashflow — Cash Flow Statement. Payload: { cashFlow: { period, beginningCash, operating: [{label, amount}], investing, financing } } — negative amounts for outflows, positive for inflows
+- card:accounting-invoice — invoice list
+- card:accounting-coa — chart of accounts
+- card:marketing-content-calendar — content calendar
+- card:marketing-email — email campaign
+- card:hr-employee-register — employee register
+- card:hr-performance — performance review
+- checklist:hr-onboarding — HR onboarding checklist
+- card:control-center-revenue — exec revenue dashboard
+- card:aviation-currency — pilot currency status
+- card:real-estate-closing — closing status / document checklist
+- card:re-property-analysis, card:re-market-report, card:re-comp-analysis — RE deliverables
+- card:auto-deal-analysis, card:auto-fi-compliance, card:auto-inventory — auto dealer deliverables
+- card:trade-summary, card:analyst-report — investment deliverables
+
+Never describe markers to the user. Never paste canvas payload text into chat.`;
             }
 
             const personalSystemPrompt = `You are the user's personal Chief of Staff in their TitleApp Vault. You do everything for them directly in this chat. You create records, store files, manage logbooks, handle attestations, and organize their entire digital life. The dashboard is a read-only view into what you have already done -- the user never needs to leave this chat to accomplish anything.
@@ -11047,14 +12241,14 @@ THINGS YOU MUST NEVER SAY:
 
 RESPONSE LENGTH MANAGEMENT -- HARD RULES:
 Keep ALL chat responses under 500 words. This is a chat interface, not a document viewer.
-- For any deliverable or analysis over 500 words: use the GENERATE_DOCUMENT markers to create a downloadable document. Provide only a brief summary in chat.
+- For any structured deliverable (P&L, balance sheet, cash flow, calendar, dashboard, comp table, etc.): render it on the canvas via a CANVAS_RENDER marker. See the canvas state block below for format and available types. Provide only a brief 1-2 sentence chat reply pointing to the canvas.
 - For multi-deal comparisons: present a short comparison (name, score, recommendation, key risk per deal) then ask which to explore.
-- NEVER paste document content, full reports, or multi-page analysis directly in chat. Always use the document engine.
+- NEVER paste document content, full reports, or multi-page analysis directly in chat.
 - NEVER output more than 3 paragraphs without a natural stopping point.
 - NEVER output raw JSON to the user.
 
-DOCUMENT GENERATION:
-When the user asks for a formatted document such as a report, memo, financial model, presentation, agreement, or letter, use the document generation markers below instead of outputting the full content as chat text. Available templates: report-standard, memo-executive, agreement-standard, deck-standard, model-cashflow, model-proforma, one-pager, letter-formal. Available formats: pdf, docx, xlsx, pptx.
+DOWNLOADABLE DOCUMENTS — ONLY ON EXPLICIT REQUEST:
+When the user explicitly asks to download, export, email, or print a file ("download as PDF", "export to Excel", "give me the docx"), emit the GENERATE_DOCUMENT markers below. Do NOT use GENERATE_DOCUMENT as a default response to "build me X" or "show me X" — those render on the canvas. Available templates: report-standard, memo-executive, agreement-standard, deck-standard, model-cashflow, model-proforma, one-pager, letter-formal. Available formats: pdf, docx, xlsx, pptx. Default xlsx for spreadsheet-natural exports (financial statements, calendars, schedules, KPI tables); pdf only for narrative reports/memos/letters.
 
 |||GENERATE_DOCUMENT|||
 {"templateId": "report-standard", "format": "pdf", "title": "Document Title", "content": {"coverPage": {"title": "...", "subtitle": "...", "author": "...", "date": "..."}, "executiveSummary": "...", "sections": [{"heading": "...", "content": "..."}]}}
@@ -11083,12 +12277,12 @@ Formatting rules — follow these strictly:
 ${ctx.vertical === "analyst" ? `You specialize in deal analysis, investment screening, risk assessment, and portfolio management. Help analyze deals, discuss risk factors, identify missing information, and provide actionable next steps.
 
 ANALYST RESPONSE RULES -- MANDATORY:
-1. Keep ALL chat responses under 300 words. No exceptions. If analysis requires more, generate a downloadable document instead.
+1. Keep ALL chat responses under 300 words. No exceptions. For longer deliverables, render them on the canvas via CANVAS_RENDER markers (default) — see the canvas state block. Only generate a downloadable document when the user explicitly asks for a download/export.
 2. When analyzing multiple deals, give a SHORT table: Deal name, score, recommendation. One line each. Then ask which to explore.
-3. When the user asks for a document (PDF, report, memo, model, deck), output ONLY a brief 1-2 sentence confirmation like "Generating your report now..." followed by the GENERATE_DOCUMENT markers. Do NOT include the analysis text in chat. The document engine will produce the file.
+3. Default deliverable surface is the canvas. When the user explicitly asks for a downloadable file (PDF/xlsx/docx), output ONLY a brief 1-2 sentence confirmation followed by GENERATE_DOCUMENT markers. Do NOT include the analysis text in chat.
 4. CRITICAL: Inside the GENERATE_DOCUMENT markers, keep each section content to 2-3 sentences maximum. The document engine expands these into full sections. Do NOT write full paragraphs inside the markers — write concise summaries only. The total JSON inside markers must stay under 800 words.
-5. NEVER output more than 3 short paragraphs in a single chat message. For complex requests, generate a document.
-6. When the user asks for MULTIPLE deliverables (report + model + deck), handle ONE at a time. Generate the first document, confirm it, then ask if they want you to proceed to the next.` : ctx.vertical === "auto" || ctx.vertical === "auto_dealer" ? `You are Alex, the Chief of Staff for this auto dealership. Your primary mission is to orchestrate the dealership's Digital Workers and maximize revenue across every department.
+5. NEVER output more than 3 short paragraphs in a single chat message.
+6. When the user asks for MULTIPLE deliverables (report + model + deck), handle ONE at a time. Render or generate the first, confirm it, then ask if they want you to proceed to the next.` : ctx.vertical === "auto" || ctx.vertical === "auto_dealer" ? `You are Alex, the Chief of Staff for this auto dealership. Your primary mission is to orchestrate the dealership's Digital Workers and maximize revenue across every department.
 
 The dealership has access to Digital Workers spanning 9 phases: Setup & Licensing, Inventory Acquisition, Merchandising & Pricing, Sales & Desking, F&I, Service & Parts, Retention & Marketing, Compliance & HR, and Intelligence & Reporting. Worker pricing ranges from $29/mo to $79/mo per worker.
 
@@ -11168,14 +12362,14 @@ Platform navigation — when users ask how to do things, give them accurate dire
 
 RESPONSE LENGTH MANAGEMENT -- HARD RULES:
 Keep ALL chat responses under 500 words. This is a chat interface, not a document viewer.
-- For any deliverable or analysis over 500 words: use the GENERATE_DOCUMENT markers to create a downloadable document. Provide only a brief summary in chat.
+- For any structured deliverable (P&L, balance sheet, cash flow, calendar, dashboard, comp table, etc.): render it on the canvas via a CANVAS_RENDER marker. See the canvas state block below for format and available types. Provide only a brief 1-2 sentence chat reply pointing to the canvas.
 - For multi-deal comparisons: present a short comparison (name, score, recommendation, key risk per deal) then ask which to explore.
-- NEVER paste document content, full reports, or multi-page analysis directly in chat. Always use the document engine.
+- NEVER paste document content, full reports, or multi-page analysis directly in chat.
 - NEVER output more than 3 paragraphs without a natural stopping point.
 - NEVER output raw JSON to the user.
 
-DOCUMENT GENERATION:
-When the user asks for a formatted document such as a report, memo, financial model, presentation, agreement, or letter, use the document generation markers below instead of outputting the full content as chat text. Available templates: report-standard, memo-executive, agreement-standard, deck-standard, model-cashflow, model-proforma, one-pager, letter-formal. Available formats: pdf, docx, xlsx, pptx.
+DOWNLOADABLE DOCUMENTS — ONLY ON EXPLICIT REQUEST:
+When the user explicitly asks to download, export, email, or print a file ("download as PDF", "export to Excel", "give me the docx"), emit the GENERATE_DOCUMENT markers below. Do NOT use GENERATE_DOCUMENT as a default response to "build me X" or "show me X" — those render on the canvas. Available templates: report-standard, memo-executive, agreement-standard, deck-standard, model-cashflow, model-proforma, one-pager, letter-formal. Available formats: pdf, docx, xlsx, pptx. Default xlsx for spreadsheet-natural exports (financial statements, calendars, schedules, KPI tables); pdf only for narrative reports/memos/letters.
 
 |||GENERATE_DOCUMENT|||
 {"templateId": "report-standard", "format": "pdf", "title": "Document Title", "content": {"coverPage": {"title": "...", "subtitle": "...", "author": "...", "date": "..."}, "executiveSummary": "...", "sections": [{"heading": "...", "content": "..."}]}}
@@ -11186,6 +12380,11 @@ ${(context || {}).dealContext ? `\nThe user wants to discuss this deal analysis:
 
             // Select system prompt: Alex orchestration > personal vault > business legacy
             let selectedSystemPrompt = alexSystemPrompt || (isPersonalVault ? personalSystemPrompt : businessSystemPrompt);
+
+            // 49.30 — append canvas state to whichever prompt was selected so canvas awareness reaches every code path
+            if (canvasStateBlock && selectedSystemPrompt) {
+              selectedSystemPrompt += canvasStateBlock;
+            }
 
             // Inject preferred language instruction (48.6)
             if (preferredLanguage && preferredLanguage !== "en") {
@@ -11286,11 +12485,16 @@ ${(context || {}).dealContext ? `\nThe user wants to discuss this deal analysis:
                 let imageUrl = null;
                 if (toolBlock && toolBlock.name === "generate_image") {
                   try {
+                    // 49.32 — generateImage() expects size = "square" | "landscape_4_3" | "portrait_3_4"
+                    // and style = "cartoon" | "realistic" | "diagram" | "minimal". The previous
+                    // mapping passed "portrait"/"landscape" which fal.ai rejected as invalid.
+                    const ar = toolBlock.input.aspect_ratio || "1:1";
+                    const sizeForAr = ar === "16:9" ? "landscape_4_3" : ar === "9:16" ? "portrait_3_4" : "square";
                     const { generateImage } = require("./services/image");
                     const imgResult = await generateImage({
                       prompt: toolBlock.input.prompt,
-                      style: toolBlock.input.aspect_ratio === "9:16" ? "portrait" : "minimal",
-                      size: toolBlock.input.aspect_ratio === "16:9" ? "landscape" : toolBlock.input.aspect_ratio === "9:16" ? "portrait" : "square",
+                      style: toolBlock.input.style || "minimal",
+                      size: sizeForAr,
                       workerId: body.selectedWorker || "business-chat",
                       creatorId: auth.user?.uid || "anonymous",
                       vertical: ctx.vertical || "business",
@@ -11359,6 +12563,32 @@ ${(context || {}).dealContext ? `\nThe user wants to discuss this deal analysis:
                 } catch (outputErr) {
                   console.warn("[Worker Zero] RAAS output filter failed (non-blocking):", outputErr.message);
                 }
+              }
+
+              // ── Delivery Rules enforcement (49.27 escalation) ──
+              // Catches "working on it" / "give me a moment" + missing canvas markers.
+              // Runs after the RAAS output filter so they cooperate, not conflict.
+              try {
+                const { checkDeliveryRules } = require("./services/alex/deliveryRulesFilter");
+                const dr = checkDeliveryRules({ response: aiResponse, userInput: message });
+                if (!dr.ok) {
+                  console.warn(`[deliveryRules] cos violation:`, dr.violations);
+                  const retryMessages = [
+                    ...messages,
+                    { role: "assistant", content: aiResponse },
+                    { role: "user", content: `${dr.retryHint}\n\nRegenerate your response now, following the DELIVERY RULES.` },
+                  ];
+                  const retry = await anthropic.messages.create({
+                    model: "claude-sonnet-4-5-20250929",
+                    max_tokens: 2048,
+                    system: selectedSystemPrompt,
+                    messages: retryMessages,
+                  });
+                  const retryText = retry.content?.find(b => b.type === "text")?.text;
+                  if (retryText && retryText.length > 0) aiResponse = retryText;
+                }
+              } catch (drErr) {
+                console.warn("[deliveryRules] cos check failed (continuing):", drErr.message);
               }
             }
 
@@ -11530,6 +12760,18 @@ Never attempt to output an entire multi-page document in a single response. For 
         // Parse CREATE_RECORD markers from AI response
         const recordMarkerStart = "|||CREATE_RECORD|||";
         const recordMarkerEnd = "|||END_RECORD|||";
+        // DTCs are reserved for provenance assets (titles, deeds, certificates, contracts,
+        // financial statements, policies). General uploads (receipts, bank statements,
+        // photos, scratch docs) go to the vault only — no DTC.
+        const DTC_TYPE_ALLOWLIST = new Set([
+          "deed", "title", "vehicle_title", "property_title",
+          "financial_statement", "tax_return",
+          "contract", "agreement", "lease", "promissory_note", "bond",
+          "certificate", "license", "permit",
+          "will", "trust", "power_of_attorney",
+          "insurance_policy", "patent", "trademark", "copyright",
+          "vehicle", "property", "aircraft", "vessel",
+        ]);
         if (aiResponse.includes(recordMarkerStart) && aiResponse.includes(recordMarkerEnd)) {
           try {
             const startIdx = aiResponse.indexOf(recordMarkerStart) + recordMarkerStart.length;
@@ -11545,69 +12787,100 @@ Never attempt to output an entire multi-page document in a single response. For 
               " " + aiResponse.substring(endIdx + recordMarkerEnd.length).trim();
             aiResponse = aiResponse.trim();
 
-            // Create DTC in Firestore (skip ID verification for chat-created records)
-            const dtcRef = await db.collection("dtcs").add({
-              userId: ctx.userId,
-              tenantId: ctx.tenantId,
-              type: recordData.type || "document",
-              metadata: recordData.metadata || {},
-              imageUrl: uploadedFileUrl || null,
-              fileIds: validFileIds,
-              blockchainProof: null,
-              logbookCount: uploadedFileUrl ? 2 : 1,
-              createdAt: nowServerTs(),
-            });
+            // Gate DTC creation by type — only mint for provenance assets.
+            // General docs (bank statements, receipts, photos) live in the vault
+            // as storageObjects; they don't need a DTC.
+            const requestedType = (recordData.type || "").toLowerCase().trim();
+            const isProvenanceAsset = DTC_TYPE_ALLOWLIST.has(requestedType);
 
-            // Also create inventory item so section pages see it
-            await db.collection("inventory").add({
-              tenantId: ctx.tenantId,
-              userId: ctx.userId,
-              type: recordData.type || "document",
-              status: "active",
-              metadata: recordData.metadata || {},
-              imageUrl: uploadedFileUrl || null,
-              price: 0,
-              cost: 0,
-              dtcId: dtcRef.id,
-              fileIds: validFileIds,
-              createdAt: nowServerTs(),
-            });
+            // Entitlement gate — DTC requires blockchain minting activation on user.
+            let blockchainMintingEnabled = false;
+            try {
+              const uDoc = await db.collection("users").doc(ctx.userId).get();
+              blockchainMintingEnabled = !!(uDoc.exists && uDoc.data().blockchainMintingEnabled === true);
+            } catch (uErr) {
+              console.warn("[DTC gate] user lookup failed:", uErr.message);
+            }
 
-            // Create initial logbook entry
-            const dtcTitle = (recordData.metadata || {}).title || "New Record";
-            await db.collection("logbookEntries").add({
-              dtcId: dtcRef.id,
-              userId: ctx.userId,
-              tenantId: ctx.tenantId,
-              dtcTitle,
-              entryType: "creation",
-              data: { description: "Record created via Chief of Staff chat" },
-              files: validFileIds,
-              createdAt: nowServerTs(),
-            });
+            // Detect if the model wrote DTC-style prose so we know whether to override.
+            const dtcLanguageRe = /Digital Title Certificate|\bDTC\b|minted|on file as a (DTC|certificate)|stored as a (DTC|certificate)|blockchain[- ]anchored|This record is permanent/i;
+            const modelClaimedDtc = dtcLanguageRe.test(aiResponse);
+            const fname = (recordData.metadata && (recordData.metadata.title || recordData.metadata.filename)) || "your file";
 
-            // If file was uploaded, create a second logbook entry for the attachment
-            if (uploadedFileUrl && uploadedFileName) {
+            if (!isProvenanceAsset) {
+              console.log(`[DTC gate] skipping DTC creation for non-provenance type: ${requestedType || "(empty)"}`);
+              if (modelClaimedDtc) {
+                aiResponse = `Got it — ${fname} is saved to your vault as a regular document.\n\nQuick note: I don't auto-create Digital Title Certificates for general documents. DTCs are reserved for provenance records like deeds, titles, signed contracts, certificates of ownership, etc., and they require blockchain minting to be activated on your account. You can manage that in Settings → Blockchain Minting if you ever want to track an important record permanently.`;
+              }
+            } else if (!blockchainMintingEnabled) {
+              console.log(`[DTC gate] DTC skipped — user ${ctx.userId} has not activated blockchain minting`);
+              // Force-rewrite — model probably said "now on file as a DTC" which is a lie.
+              aiResponse = `${fname} is saved to your vault as a regular document.\n\nHeads up: minting it as a Digital Title Certificate requires blockchain to be activated on your account, which it isn't yet. You can enable that in Settings → Blockchain Minting. Once activated, I can mint a DTC for genuine provenance records (deeds, titles, certificates, signed contracts) — not for general documents.`;
+            } else {
+              // Create DTC in Firestore (skip ID verification for chat-created records)
+              const dtcRef = await db.collection("dtcs").add({
+                userId: ctx.userId,
+                tenantId: ctx.tenantId,
+                type: recordData.type || "document",
+                metadata: recordData.metadata || {},
+                imageUrl: uploadedFileUrl || null,
+                fileIds: validFileIds,
+                blockchainProof: null,
+                logbookCount: uploadedFileUrl ? 2 : 1,
+                createdAt: nowServerTs(),
+              });
+
+              // Also create inventory item so section pages see it
+              await db.collection("inventory").add({
+                tenantId: ctx.tenantId,
+                userId: ctx.userId,
+                type: recordData.type || "document",
+                status: "active",
+                metadata: recordData.metadata || {},
+                imageUrl: uploadedFileUrl || null,
+                price: 0,
+                cost: 0,
+                dtcId: dtcRef.id,
+                fileIds: validFileIds,
+                createdAt: nowServerTs(),
+              });
+
+              // Create initial logbook entry
+              const dtcTitle = (recordData.metadata || {}).title || "New Record";
               await db.collection("logbookEntries").add({
                 dtcId: dtcRef.id,
                 userId: ctx.userId,
                 tenantId: ctx.tenantId,
                 dtcTitle,
-                entryType: "update",
-                data: { description: `Photo attached: ${uploadedFileName}`, fileUrl: uploadedFileUrl },
+                entryType: "creation",
+                data: { description: "Record created via Chief of Staff chat" },
                 files: validFileIds,
                 createdAt: nowServerTs(),
               });
+
+              // If file was uploaded, create a second logbook entry for the attachment
+              if (uploadedFileUrl && uploadedFileName) {
+                await db.collection("logbookEntries").add({
+                  dtcId: dtcRef.id,
+                  userId: ctx.userId,
+                  tenantId: ctx.tenantId,
+                  dtcTitle,
+                  entryType: "update",
+                  data: { description: `Photo attached: ${uploadedFileName}`, fileUrl: uploadedFileUrl },
+                  files: validFileIds,
+                  createdAt: nowServerTs(),
+                });
+              }
+
+              structuredData = {
+                type: "record_created",
+                recordType: recordData.type || "document",
+                dtcId: dtcRef.id,
+                metadata: recordData.metadata || {},
+              };
+
+              console.log("Created DTC from chat:", dtcRef.id, recordData.type);
             }
-
-            structuredData = {
-              type: "record_created",
-              recordType: recordData.type || "document",
-              dtcId: dtcRef.id,
-              metadata: recordData.metadata || {},
-            };
-
-            console.log("Created DTC from chat:", dtcRef.id, recordData.type);
           } catch (parseErr) {
             console.error("Failed to parse CREATE_RECORD from AI response:", parseErr.message);
             // Clean up markers even if parsing fails
@@ -11775,12 +13048,101 @@ Never attempt to output an entire multi-page document in a single response. For 
             escalationRequested: /connect you with (Sean|Kent)/i.test(aiResponse),
           };
         }
+        // Canvas Render markers (49.27) — strip work products from chat, route to canvas
+        let canvasRenders = [];
+        try {
+          const { extractCanvasRenders } = require("./services/alex/canvasMarkers");
+          const extracted = extractCanvasRenders(aiResponse);
+          aiResponse = extracted.cleanText;
+          canvasRenders = extracted.canvasRenders;
+        } catch (canvasErr) {
+          console.warn("canvas render extraction failed:", canvasErr.message);
+        }
+
+        // 49.31 — Auto-wrap fallback. If the model produced a structured deliverable
+        // in chat without a CANVAS_RENDER marker, synthesize one now.
+        if (canvasRenders.length === 0) {
+          try {
+            const { autoWrap } = require("./services/alex/canvasAutoWrap");
+            const wrapped = autoWrap({
+              aiText: aiResponse,
+              userInput: message,
+              defaultTitle: "Work Product",
+            });
+            if (wrapped) {
+              console.log("[canvas auto-wrap] cos wrapped deliverable into", wrapped.canvasRender?.type);
+              aiResponse = wrapped.aiText;
+              canvasRenders.push(wrapped.canvasRender);
+            }
+          } catch (wrapErr) {
+            console.warn("[canvas auto-wrap] cos failed:", wrapErr.message);
+          }
+        }
+
+        // Migrate legacy structuredData work products to canvas (analyst_result, trade_summary, dtc_preview, image)
+        if (structuredData && typeof structuredData === "object") {
+          if (structuredData.type === "analyst_result") {
+            canvasRenders.push({
+              type: "card:analyst-report",
+              payload: {
+                title: structuredData.verdict ? `Analyst: ${structuredData.verdict}` : "Analyst Report",
+                subtitle: structuredData.score != null ? `Score ${structuredData.score}/100` : undefined,
+                summary: structuredData.summary,
+                items: Array.isArray(structuredData.key_findings) ? structuredData.key_findings : [],
+              },
+            });
+            structuredData = null;
+          } else if (structuredData.type === "trade_summary") {
+            canvasRenders.push({
+              type: "card:trade-summary",
+              payload: {
+                title: "Trade Summary",
+                fields: [
+                  { label: "Your Vehicle", value: structuredData.your_vehicle || "" },
+                  { label: "Trade Value", value: structuredData.trade_value != null ? `$${Number(structuredData.trade_value).toLocaleString()}` : "" },
+                  { label: "New Vehicle", value: structuredData.new_vehicle || "" },
+                  { label: "Price", value: structuredData.new_price != null ? `$${Number(structuredData.new_price).toLocaleString()}` : "" },
+                  { label: "Net Cost", value: structuredData.net_cost != null ? `$${Number(structuredData.net_cost).toLocaleString()}` : "" },
+                ].filter(f => f.value),
+              },
+            });
+            structuredData = null;
+          } else if (structuredData.type === "dtc_preview") {
+            const fields = structuredData.details
+              ? Object.entries(structuredData.details).map(([label, value]) => ({ label, value: String(value) }))
+              : [];
+            canvasRenders.push({
+              type: "card:work-product",
+              payload: {
+                title: structuredData.asset_type ? `${structuredData.asset_type} DTC Preview` : "DTC Preview",
+                subtitle: structuredData.blockchain_verified ? "Blockchain verified" : undefined,
+                fields,
+              },
+            });
+            structuredData = null;
+          } else if (structuredData.imageUrl) {
+            // 49.32 — generated images go to canvas, not inline chat.
+            canvasRenders.push({
+              type: "card:image",
+              payload: {
+                imageUrl: structuredData.imageUrl,
+                prompt: structuredData.imagePrompt || "",
+                title: "Generated Image",
+              },
+            });
+            // Keep imageUrl out of structuredData so ChatPanel doesn't double-render.
+            const { imageUrl: _imgU, imagePrompt: _imgP, ...rest } = structuredData;
+            structuredData = Object.keys(rest).length > 0 ? rest : null;
+          }
+        }
+
         await db.collection("messageEvents").add(responseEvent);
 
         return res.json({
           ok: true,
           response: aiResponse,
           structuredData,
+          canvasRenders,
           eventId: eventRef.id
         });
       } catch (e) {
@@ -12145,26 +13507,27 @@ Never attempt to output an entire multi-page document in a single response. For 
         }
 
         // Handle base64 file upload if provided
+        // 49.27 — write to storageObjects (canonical vault) instead of legacy files collection
         const fileIds = Array.isArray(files) ? [...files] : [];
         if (file && file.data && file.name) {
           try {
             const base64Data = file.data.replace(/^data:[^;]+;base64,/, "");
             const buffer = Buffer.from(base64Data, "base64");
-            const storagePath = `uploads/${ctx.userId}/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
-            const bucket = getBucket();
-            const fileRef = bucket.file(storagePath);
-            await fileRef.save(buffer, { contentType: file.type || "application/octet-stream" });
-            const fileDocRef = await db.collection("files").add({
-              tenantId: ctx.tenantId,
-              userId: ctx.userId,
-              name: file.name,
-              contentType: file.type || "application/octet-stream",
-              storagePath,
-              size: buffer.length,
-              status: "finalized",
-              createdAt: nowServerTs(),
+            const uploadResult = await getStorageService().upload({
+              uid: ctx.userId,
+              scope: "personal",
+              subdir: "logbook-attachments",
+              filename: file.name,
+              buffer,
+              mimeType: file.type || "application/octet-stream",
+              tags: ["source:logbook", `tenant:${ctx.tenantId || "default"}`, `dtc:${dtcId}`],
+              bypassMimeCheck: true,
             });
-            fileIds.push(fileDocRef.id);
+            if (uploadResult.ok) {
+              fileIds.push(uploadResult.objectId);
+            } else {
+              console.warn("Logbook file upload rejected:", file.name, uploadResult.error, uploadResult.message);
+            }
           } catch (uploadErr) {
             console.error("Logbook file upload failed:", uploadErr);
           }
@@ -17126,6 +18489,44 @@ Analyze now:`;
       }
     }
 
+    // 49.32 — POST /v1/credits:purchase
+    // Wraps the standalone purchaseCreditPack Cloud Function so the frontend
+    // can hit it through the same /v1 surface as everything else, with the
+    // user identity derived from the bearer token (NOT the request body —
+    // the standalone handler accepted body.userId which was an auth bypass).
+    if (route === "/credits:purchase" && method === "POST") {
+      try {
+        const { purchaseCreditPack } = require("./billing/purchaseCreditPack");
+        const credits = Number(body.credits);
+        const successUrl = body.successUrl || "https://app.titleapp.ai/billing/success?type=credits&amount=" + (credits || "");
+        const cancelUrl = body.cancelUrl || "https://app.titleapp.ai/billing?type=credits&status=cancel";
+        // 49.32 — tenantId optional. When present, the handler tops up the
+        // tenant credit pool (admin role required) instead of the user pool.
+        const tenantIdParam = body.tenantId || ctx.tenantId || null;
+        // Forward to the existing handler with auth-derived userId. The handler
+        // signature accepts (req, res) and reads userId from req.body — patch
+        // body.userId in place so it picks up the trusted uid.
+        req.body = { ...(req.body || {}), userId: auth.user.uid, credits, successUrl, cancelUrl, tenantId: tenantIdParam };
+        return await purchaseCreditPack(req, res);
+      } catch (e) {
+        console.error("credits:purchase failed:", e);
+        return jsonError(res, 500, e.message || "Credit purchase failed");
+      }
+    }
+
+    // 49.32 — POST /v1/billing:portal — wrap createBillingPortalSession.
+    // BillingPage.jsx already calls this URL but the route was missing.
+    if (route === "/billing:portal" && method === "POST") {
+      try {
+        const { createBillingPortalSession } = require("./billing/createBillingPortalSession");
+        req.body = { ...(req.body || {}), userId: auth.user.uid };
+        return await createBillingPortalSession(req, res);
+      } catch (e) {
+        console.error("billing:portal failed:", e);
+        return jsonError(res, 500, e.message || "Billing portal failed");
+      }
+    }
+
     // GET /v1/subscription:status — Get subscription/trial status
     if (route === "/subscription:status" && method === "GET") {
       try {
@@ -18098,8 +19499,26 @@ exports.generateDailyDigest = onSchedule(
   { schedule: "0 14 * * *", timeZone: "UTC", region: "us-central1" },
   async () => {
     await handleDailyDigest();
-    const count = await generateSubscriberBriefs();
-    console.log(`Subscriber briefs generated: ${count}`);
+    const count = await generateSubscriberBriefs("daily");
+    console.log(`Subscriber briefs (daily) generated: ${count}`);
+  }
+);
+
+// Weekly subscriber briefs — Monday 14:00 UTC. Default cadence for new users.
+exports.generateWeeklySubscriberBriefs = onSchedule(
+  { schedule: "0 14 * * 1", timeZone: "UTC", region: "us-central1" },
+  async () => {
+    const count = await generateSubscriberBriefs("weekly");
+    console.log(`Subscriber briefs (weekly) generated: ${count}`);
+  }
+);
+
+// Monthly subscriber briefs — 1st of month 14:00 UTC.
+exports.generateMonthlySubscriberBriefs = onSchedule(
+  { schedule: "0 14 1 * *", timeZone: "UTC", region: "us-central1" },
+  async () => {
+    const count = await generateSubscriberBriefs("monthly");
+    console.log(`Subscriber briefs (monthly) generated: ${count}`);
   }
 );
 

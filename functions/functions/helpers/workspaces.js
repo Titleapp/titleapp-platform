@@ -273,7 +273,34 @@ async function removeWorkerFromWorkspace(userId, workspaceId, workerId) {
 }
 
 async function getWorkspace(userId, workspaceId) {
-  if (workspaceId === 'vault') return PERSONAL_VAULT;
+  if (workspaceId === 'vault') {
+    // 49.27 fix — merge entitlements + active subscriptions into Personal Vault
+    // so workers granted at onboarding (e.g. platform-accounting) are visible.
+    const vault = { ...PERSONAL_VAULT, activeWorkers: [...PERSONAL_VAULT.activeWorkers] };
+    try {
+      const [entSnap, subSnap] = await Promise.all([
+        getDb().collection('users').doc(userId).collection('entitlements').get(),
+        getDb().collection('subscriptions').where('userId', '==', userId).get(),
+      ]);
+      const entSlugs = entSnap.docs
+        .filter(d => (d.data().status || 'active') === 'active')
+        .map(d => d.id);
+      const subSlugs = subSnap.docs
+        .filter(d => {
+          const data = d.data();
+          return isActive(data.trialStatus || normalizeLegacyStatus(data.status));
+        })
+        .map(d => d.data().workerId || d.data().workerSlug || d.data().slug)
+        .filter(Boolean);
+      vault.activeWorkers = [...new Set([...entSlugs, ...subSlugs])];
+      if (vault.activeWorkers.length >= 3 && !vault.chiefOfStaff) {
+        vault.chiefOfStaff = { enabled: true, name: 'Alex', unlockedAt: new Date().toISOString() };
+      }
+    } catch (e) {
+      console.warn('getWorkspace(vault): entitlement merge failed:', e.message);
+    }
+    return vault;
+  }
   const doc = await getDb().collection('users').doc(userId)
     .collection('workspaces').doc(workspaceId).get();
   if (!doc.exists) return null;

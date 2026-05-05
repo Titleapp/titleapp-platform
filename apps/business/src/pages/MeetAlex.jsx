@@ -55,10 +55,16 @@ export default function MeetAlex() {
     new URLSearchParams(window.location.search).get("prompt") || ""
   );
 
-  // Anonymous auth on mount — gives the user a Firebase UID for subscriptions
+  // Anonymous auth on mount — gives the user a Firebase UID for subscriptions.
+  // If Anonymous auth is disabled in the Firebase Console, the page still works;
+  // the user just won't have a UID until they sign up via OTP / Google.
   useEffect(() => {
     if (!auth.currentUser) {
-      signInAnonymously(auth).catch(err => console.error("[MeetAlex] anon auth:", err));
+      signInAnonymously(auth).catch(err => {
+        if (err?.code !== "auth/admin-restricted-operation") {
+          console.error("[MeetAlex] anon auth:", err);
+        }
+      });
     }
   }, []);
 

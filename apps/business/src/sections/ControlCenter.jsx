@@ -11,6 +11,26 @@ import React, { useState, useEffect } from "react";
 import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 
+const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+
+async function callApi(method, path, body) {
+  try {
+    const auth = getAuth();
+    const token = auth.currentUser ? await auth.currentUser.getIdToken() : null;
+    if (!token) return { ok: false, error: "not authenticated" };
+    const url = `${API_BASE}/api?path=${encodeURIComponent(path)}`;
+    const res = await fetch(url, {
+      method,
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    if (!res.ok) return { ok: false, error: `status ${res.status}` };
+    return await res.json();
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+}
+
 // ═══════════════════════════════════════════════════════════════
 //  DEFAULT KPI SETS BY VERTICAL
 // ═══════════════════════════════════════════════════════════════
@@ -203,6 +223,11 @@ export default function ControlCenter() {
   const [loading, setLoading] = useState(true);
   const [hiddenKpis, setHiddenKpis] = useState({});
   const [configLoaded, setConfigLoaded] = useState(false);
+  const [cadence, setCadence] = useState("weekly");
+  const [cadenceSaving, setCadenceSaving] = useState(false);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewBrief, setPreviewBrief] = useState(null);
+  const [previewError, setPreviewError] = useState(null);
 
   const vertical = (localStorage.getItem("VERTICAL") || "").toLowerCase() || "business";
   const kpis = getDefaultKpis(vertical);
@@ -217,9 +242,10 @@ export default function ControlCenter() {
         if (!uid) { setLoading(false); return; }
         const db = getFirestore();
 
-        const [briefSnap, configSnap] = await Promise.all([
+        const [briefSnap, configSnap, userSnap] = await Promise.all([
           getDoc(doc(db, "briefings", uid)),
           getDoc(doc(db, "users", uid, "controlCenterConfig", "default")),
+          getDoc(doc(db, "users", uid)),
         ]);
 
         if (!cancelled) {
@@ -227,6 +253,12 @@ export default function ControlCenter() {
           if (configSnap.exists()) {
             const cfg = configSnap.data();
             setHiddenKpis(cfg.hiddenKpis || {});
+          }
+          if (userSnap.exists()) {
+            const uData = userSnap.data();
+            if (uData.digestCadence && ["daily", "weekly", "monthly"].includes(uData.digestCadence)) {
+              setCadence(uData.digestCadence);
+            }
           }
           setConfigLoaded(true);
         }
@@ -256,6 +288,30 @@ export default function ControlCenter() {
         }, { merge: true });
       }
     } catch (e) { /* non-fatal */ }
+  }
+
+  async function changeCadence(next) {
+    if (!["daily", "weekly", "monthly"].includes(next) || next === cadence) return;
+    setCadence(next);
+    setCadenceSaving(true);
+    const result = await callApi("POST", "/v1/user:setDigestCadence", { cadence: next });
+    setCadenceSaving(false);
+    if (!result.ok) {
+      console.warn("Failed to save cadence:", result.error);
+    }
+  }
+
+  async function previewDigest() {
+    setPreviewError(null);
+    setPreviewBrief(null);
+    setPreviewLoading(true);
+    const result = await callApi("POST", "/v1/user:previewDigest", { cadence });
+    setPreviewLoading(false);
+    if (result.ok) {
+      setPreviewBrief(result.brief);
+    } else {
+      setPreviewError(result.error || "Preview failed");
+    }
   }
 
   function resetConfig() {
@@ -359,6 +415,75 @@ export default function ControlCenter() {
         </div>
         {hiddenCount > 0 && (
           <button style={S.resetBtn} onClick={resetConfig}>Reset to defaults</button>
+        )}
+      </div>
+
+      <div style={{ marginTop: 12, padding: "12px 0 0 0", borderTop: "1px solid var(--canvas-border, #E2E8F0)" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+          <div style={{ fontSize: 12, color: "var(--text-muted, #64748B)" }}>
+            Briefing cadence{cadenceSaving ? " — saving…" : ""}
+          </div>
+          <div style={{ display: "inline-flex", border: "1px solid var(--canvas-border, #E2E8F0)", borderRadius: 6, overflow: "hidden" }}>
+            {["daily", "weekly", "monthly"].map((opt) => {
+              const active = cadence === opt;
+              return (
+                <button
+                  key={opt}
+                  onClick={() => changeCadence(opt)}
+                  disabled={cadenceSaving}
+                  style={{
+                    background: active ? "#7c3aed" : "transparent",
+                    color: active ? "#ffffff" : "var(--text-muted, #64748B)",
+                    border: "none",
+                    padding: "6px 14px",
+                    fontSize: 12,
+                    fontWeight: active ? 600 : 500,
+                    cursor: cadenceSaving ? "default" : "pointer",
+                    textTransform: "capitalize",
+                  }}
+                >
+                  {opt}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div style={{ marginTop: 10, display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+          <div style={{ fontSize: 12, color: "var(--text-muted, #64748B)" }}>
+            Preview the brief that will be emailed.
+          </div>
+          <button
+            onClick={previewDigest}
+            disabled={previewLoading}
+            style={{
+              background: previewLoading ? "#a78bfa" : "#7c3aed",
+              color: "#ffffff",
+              border: "none",
+              borderRadius: 6,
+              padding: "6px 14px",
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: previewLoading ? "default" : "pointer",
+            }}
+          >
+            {previewLoading ? "Generating…" : "Preview digest"}
+          </button>
+        </div>
+        {previewError && (
+          <div style={{ marginTop: 8, padding: 10, background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 6, fontSize: 12, color: "#b91c1c" }}>
+            {String(previewError)}
+          </div>
+        )}
+        {previewBrief && (
+          <div style={{ marginTop: 8, padding: 12, background: "#f8fafc", border: "1px solid var(--canvas-border, #E2E8F0)", borderRadius: 6 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: "#64748B", marginBottom: 6 }}>
+              {previewBrief.cadence} brief — {previewBrief.date}
+            </div>
+            <pre style={{ margin: 0, fontSize: 12, lineHeight: 1.5, whiteSpace: "pre-wrap", color: "#1e293b", fontFamily: "ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}>
+              {previewBrief.plainText || JSON.stringify(previewBrief.spine, null, 2)}
+            </pre>
+          </div>
         )}
       </div>
     </div>

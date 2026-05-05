@@ -12,6 +12,8 @@
 const admin = require("firebase-admin");
 const pricing = require("../config/pricing");
 const { logActivity } = require("../admin/logActivity");
+const { USAGE_EVENTS_COLLECTION } = require("../config/usageEvents");
+const { computeRevenueAttribution } = require("../billing/recordUsageEvent");
 
 function getDb() { return admin.firestore(); }
 
@@ -304,7 +306,7 @@ async function generateSubscriberDigest(userId) {
     const monthStart = new Date();
     monthStart.setDate(1);
     monthStart.setHours(0, 0, 0, 0);
-    const usageSnap = await db.collection("usageEvents").doc(userId)
+    const usageSnap = await db.collection(USAGE_EVENTS_COLLECTION).doc(userId)
       .collection("events")
       .where("createdAt", ">=", monthStart)
       .limit(500)
@@ -441,6 +443,35 @@ async function generateSubscriberDigest(userId) {
     } catch (err) {
       console.error(`subscriberDigest: email send failed for ${userId}:`, err.message);
     }
+  }
+
+  // CODEX 50.5 — log digest delivery as a usage event so it appears in the
+  // canonical event stream. Subscriber digests are bundled into the
+  // subscription with no incremental credit cost, so revenueBasis is
+  // "subscription_prorata" and the per-event revenue slice is 0 here. Cycle-
+  // close treats subscription_prorata events with revenue_amount=0 as
+  // attribution-only (no Creator share). The chat handler computes a real
+  // per-credit slice on billable chat calls.
+  try {
+    const db = getDb();
+    const attribution = await computeRevenueAttribution({
+      workerId: null, // platform service, not a worker
+      userId,
+      tenantId: null,
+      revenueBasis: "subscription_prorata",
+      revenueAmount: 0,
+      timestamp: new Date(),
+      parentInteractionId: null,
+    }).catch(() => ({}));
+    await db.collection(USAGE_EVENTS_COLLECTION).add({
+      userId,
+      event_type: "subscriber_digest",
+      pass_through: false,
+      timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      ...attribution,
+    });
+  } catch (e) {
+    console.warn("subscriberDigest: usage event write failed:", e.message);
   }
 
   return { ok: true, userId, date: today };

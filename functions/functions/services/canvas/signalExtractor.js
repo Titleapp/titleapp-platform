@@ -16,8 +16,11 @@
 
 const WORKER_SIGNALS = {
   // Platform — Accounting
+  // NOTE: more-specific rules listed first — first match wins.
   "platform-accounting": [
-    { keywords: ["p&l", "profit", "loss", "expenses", "revenue", "cash", "tax", "deduct"], signal: "card:accounting-pl" },
+    { keywords: ["balance sheet", "assets and liabilities", "net worth statement"], signal: "card:accounting-balance-sheet" },
+    { keywords: ["cash flow statement", "cashflow statement", "statement of cash flows", "cash flow report"], signal: "card:accounting-cashflow" },
+    { keywords: ["p&l", "profit and loss", "income statement", "profit", "loss", "expenses", "revenue", "tax", "deduct"], signal: "card:accounting-pl" },
     { keywords: ["invoice", "bill", "payment", "overdue"], signal: "card:accounting-invoice" },
     { keywords: ["chart of accounts", "categorize", "transactions"], signal: "card:accounting-coa" },
   ],

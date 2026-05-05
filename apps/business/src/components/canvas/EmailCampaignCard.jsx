@@ -6,6 +6,7 @@
 
 import React from "react";
 import CanvasCardShell from "./CanvasCardShell";
+import CanvasFallbackView from "./CanvasFallbackView";
 
 const S = {
   campaign: { padding: "12px 0", borderBottom: "1px solid #f1f5f9" },
@@ -28,7 +29,11 @@ function statusBadge(status) {
 }
 
 export default function EmailCampaignCard({ resolved, context, onDismiss }) {
-  const campaigns = context?.emailCampaigns || null;
+  // 49.31 — payload-first.
+  const payload = context?.payload;
+  const campaigns = (payload && (Array.isArray(payload) ? payload : (payload.campaigns || payload.emailCampaigns))) || context?.emailCampaigns || null;
+
+  const hasCampaigns = campaigns && campaigns.length > 0;
 
   return (
     <CanvasCardShell
@@ -36,18 +41,20 @@ export default function EmailCampaignCard({ resolved, context, onDismiss }) {
       emptyPrompt={resolved?.emptyPrompt || "Ask Alex about your email campaigns to see them here."}
       onDismiss={onDismiss}
     >
-      {campaigns && campaigns.length > 0 && campaigns.map((c, i) => (
-        <div key={i} style={S.campaign}>
-          <span style={{ ...S.badge, ...statusBadge(c.status) }}>{c.status || "draft"}</span>
-          <div style={S.subject}>{c.subject || `Campaign ${i + 1}`}</div>
-          {c.preview && <div style={S.preview}>{c.preview}</div>}
-          <div style={S.stats}>
-            {c.recipients != null && <div style={S.stat}><span style={S.statVal}>{c.recipients.toLocaleString()}</span><span style={S.statLabel}>Recipients</span></div>}
-            {c.openRate != null && <div style={S.stat}><span style={S.statVal}>{c.openRate}%</span><span style={S.statLabel}>Open rate</span></div>}
-            {c.clickRate != null && <div style={S.stat}><span style={S.statVal}>{c.clickRate}%</span><span style={S.statLabel}>Click rate</span></div>}
-          </div>
-        </div>
-      ))}
+      {hasCampaigns
+        ? campaigns.map((c, i) => (
+            <div key={i} style={S.campaign}>
+              <span style={{ ...S.badge, ...statusBadge(c.status) }}>{c.status || "draft"}</span>
+              <div style={S.subject}>{c.subject || `Campaign ${i + 1}`}</div>
+              {c.preview && <div style={S.preview}>{c.preview}</div>}
+              <div style={S.stats}>
+                {c.recipients != null && <div style={S.stat}><span style={S.statVal}>{Number(c.recipients).toLocaleString()}</span><span style={S.statLabel}>Recipients</span></div>}
+                {c.openRate != null && <div style={S.stat}><span style={S.statVal}>{c.openRate}%</span><span style={S.statLabel}>Open rate</span></div>}
+                {c.clickRate != null && <div style={S.stat}><span style={S.statVal}>{c.clickRate}%</span><span style={S.statLabel}>Click rate</span></div>}
+              </div>
+            </div>
+          ))
+        : <CanvasFallbackView payload={payload} />}
     </CanvasCardShell>
   );
 }

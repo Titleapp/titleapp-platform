@@ -1,55 +1,311 @@
 /**
- * recordUsageEvent.js — Write full v2.0 usage events
+ * recordUsageEvent.js — Revenue-attribution helper (CODEX 50.5).
  *
- * Every worker execution writes one usage_events document capturing
- * all three revenue lines:
- *   Line 1 — Inference credits
- *   Line 2 — Data pass-through fees
- *   Line 3 — Audit trail fees
+ * Reframed in CODEX 50.5 from a Firestore writer into a pure helper that
+ * returns the revenue-attribution fields for a single billable call. Callers
+ * (the four telemetry write paths + the chat handler in index.js) merge the
+ * helper output into the event document they were already writing.
  *
- * usage_events is append-only. No updates after creation.
- * Users can read their own aggregate summaries only (via Cloud Function).
+ *   Old shape: recordUsageEvent(params) writes to its own collection.
+ *   New shape: computeRevenueAttribution(context) returns mergeable fields.
+ *
+ * Why a helper, not a writer:
+ *   If this module wrote independently, every billable call would produce two
+ *   Firestore writes (the existing telemetry write plus this one). That
+ *   doubles cost and reintroduces the "one writes, the other doesn't" failure
+ *   mode CODEX 50.4 fixed. As a helper, it merges into a single event doc.
+ *
+ * Schema extension on the canonical telemetry collection (USAGE_EVENTS_COLLECTION):
+ *   creator_id          uid of worker's current owner (or null for system events)
+ *   creator_status      "active" | "deleted" | "suspended"
+ *   creator_share_amount cents — share for current owner. 0 for TitleApp originals.
+ *   forkedFrom          source worker doc id (snapshot at write time, D5)
+ *   forkedFromCollection source collection name (snapshot at write time)
+ *   parent_creator_id   uid of immediate parent Creator (forked-from-Creator-authored only)
+ *   parent_share_amount cents — 30% share for parent (forked-from-Creator-authored only)
+ *   revenue_basis       "credit_pack" | "subscription_prorata" | "free" | "system"
+ *   revenue_amount      cents — total revenue attributed to this call
+ *   parent_interaction_id  groups events in one user interaction (refund walkback)
+ *   billing_period      ISO month "2026-05" — pre-computed for cycle-close
  */
 
 "use strict";
 
 const admin = require("firebase-admin");
-const crypto = require("crypto");
 const pricing = require("../config/pricing");
 
 function getDb() { return admin.firestore(); }
 
+const TITLEAPP_PLATFORM_CREATOR = "titleapp-platform";
+
 /**
  * Determine how many credits come from the included subscription allowance
- * versus overage.
- *
- * @param {number} creditsConsumed — total credits for this execution
- * @param {string} tier — subscription tier key
- * @param {number} usedThisMonth — credits already consumed this billing period
- * @returns {{ creditsFromIncluded: number, creditsOverage: number }}
+ * versus overage. Used by callers that need to split included vs overage —
+ * unchanged from the pre-50.5 helper so existing callers keep working.
  */
 function splitCredits(creditsConsumed, tier, usedThisMonth) {
   const tierConfig = pricing.subscriptionTiers[tier] || pricing.subscriptionTiers.free;
   const included = tierConfig.creditsIncluded || 0;
   const remainingIncluded = Math.max(0, included - usedThisMonth);
-
   const fromIncluded = Math.min(creditsConsumed, remainingIncluded);
   const overage = Math.max(0, creditsConsumed - fromIncluded);
-
   return { creditsFromIncluded: fromIncluded, creditsOverage: overage };
 }
 
 /**
- * Calculate revenue splits for a single usage event.
+ * Per-credit revenue rate for a subscription tier. Used to compute
+ * revenue_amount at write time for subscription users — gives a constant
+ * per-credit dollar value rather than redistributing at cycle-close.
  *
- * @param {object} params
- * @param {number} params.creditsOverage
- * @param {number} params.dataFeeActual — sum of actual external API costs
- * @param {number} params.dataFeeCharged — sum of marked-up charges
- * @param {number} params.auditFee — audit trail fee charged
- * @param {number} params.gasCost — actual gas cost
- * @param {number} params.inferenceActualCost — actual Anthropic API cost
- * @returns {{ revenue_line_1, revenue_line_2, revenue_line_3, creator_share_amount }}
+ * Pro tier example: $29/month / 500 credits = $0.058 per credit.
+ * A 5-credit call = $0.29 revenue.
+ *
+ * Free tier returns 0 (no revenue). Enterprise returns null (custom contracts
+ * negotiate revenue separately; treat as 0 share for now).
+ */
+function revenuePerCreditForTier(tier) {
+  const cfg = pricing.subscriptionTiers[tier];
+  if (!cfg) return 0;
+  if (cfg.price == null || cfg.creditsIncluded == null) return 0;
+  if (cfg.creditsIncluded === 0) return 0;
+  return cfg.price / cfg.creditsIncluded;
+}
+
+/**
+ * Derive the ISO month bucket for a timestamp. Used for billing_period.
+ * @param {Date|number|null} ts
+ * @returns {string} e.g. "2026-05"
+ */
+function billingPeriodFromTimestamp(ts) {
+  const d = ts instanceof Date ? ts : (ts ? new Date(ts) : new Date());
+  return d.toISOString().slice(0, 7);
+}
+
+/**
+ * Look up a worker doc across the three known collections. Returns the first
+ * hit. Treats the worker doc as a snapshot — the caller does not get a
+ * Firestore reference, just the data.
+ */
+async function loadWorker(db, workerId) {
+  if (!workerId) return null;
+  for (const col of ["workers", "digitalWorkers", "raasCatalog"]) {
+    try {
+      const snap = await db.collection(col).doc(workerId).get();
+      if (snap.exists) return { id: snap.id, _collection: col, ...snap.data() };
+    } catch (_) { /* try next */ }
+  }
+  return null;
+}
+
+/**
+ * Look up the Creator's current account state for the creator_status snapshot.
+ */
+async function loadCreatorStatus(db, creatorUid) {
+  if (!creatorUid || creatorUid === TITLEAPP_PLATFORM_CREATOR) return "platform";
+  try {
+    const snap = await db.collection("users").doc(creatorUid).get();
+    if (!snap.exists) return "deleted";
+    const data = snap.data();
+    if (data.deleted_at || data.deletedAt) return "deleted";
+    if (data.suspended === true || data.status === "suspended") return "suspended";
+    return "active";
+  } catch (_) {
+    return "active"; // fail-open — don't block payouts on transient lookup errors
+  }
+}
+
+/**
+ * Round to 4 decimals for currency stability (matches the legacy revenue
+ * calculator in this file).
+ */
+function round4(n) { return +Number(n).toFixed(4); }
+
+/**
+ * Core helper. Builds the revenue-attribution merge object for a single
+ * billable call. Returns the fields ready to merge into the existing
+ * telemetry event doc.
+ *
+ * @param {object} context
+ * @param {string} context.workerId — worker whose call this is (required for billable events)
+ * @param {string} [context.userId] — calling user
+ * @param {string} [context.tenantId] — active tenant context
+ * @param {("credit_pack"|"subscription_prorata"|"free"|"system")} context.revenueBasis
+ * @param {number} [context.revenueAmount] — cents attributed to this call. Required for credit_pack/subscription_prorata.
+ * @param {string} [context.tier] — subscription tier when revenueBasis === "subscription_prorata"
+ * @param {number} [context.creditCost] — credits consumed (used to derive revenueAmount when not provided)
+ * @param {Date|number} [context.timestamp] — for billing_period derivation. Defaults to now.
+ * @param {string} [context.parentInteractionId] — group id for chained events
+ * @returns {Promise<object>} mergeable revenue-attribution fields
+ */
+async function computeRevenueAttribution(context) {
+  const {
+    workerId,
+    revenueBasis,
+    parentInteractionId,
+    timestamp,
+  } = context || {};
+
+  const billing_period = billingPeriodFromTimestamp(timestamp);
+
+  // Non-billable bases short-circuit — still record the basis for analytics.
+  if (revenueBasis === "free" || revenueBasis === "system") {
+    return {
+      creator_id: null,
+      creator_status: null,
+      creator_share_amount: 0,
+      forkedFrom: null,
+      forkedFromCollection: null,
+      parent_creator_id: null,
+      parent_share_amount: 0,
+      revenue_basis: revenueBasis,
+      revenue_amount: 0,
+      parent_interaction_id: parentInteractionId || null,
+      billing_period,
+    };
+  }
+
+  // Resolve revenue_amount from explicit value or per-credit derivation.
+  let revenue_amount = Number(context.revenueAmount || 0);
+  if (!revenue_amount && context.creditCost && context.tier && revenueBasis === "subscription_prorata") {
+    revenue_amount = revenuePerCreditForTier(context.tier) * Number(context.creditCost);
+  }
+  revenue_amount = round4(revenue_amount);
+
+  // No worker → can't attribute. Treat like a free event with the basis preserved.
+  if (!workerId) {
+    return {
+      creator_id: null,
+      creator_status: null,
+      creator_share_amount: 0,
+      forkedFrom: null,
+      forkedFromCollection: null,
+      parent_creator_id: null,
+      parent_share_amount: 0,
+      revenue_basis: revenueBasis || "system",
+      revenue_amount,
+      parent_interaction_id: parentInteractionId || null,
+      billing_period,
+    };
+  }
+
+  const db = getDb();
+  const worker = await loadWorker(db, workerId);
+
+  // Worker not found — treat as system event so the call still records.
+  if (!worker) {
+    return {
+      creator_id: null,
+      creator_status: null,
+      creator_share_amount: 0,
+      forkedFrom: null,
+      forkedFromCollection: null,
+      parent_creator_id: null,
+      parent_share_amount: 0,
+      revenue_basis: "system",
+      revenue_amount,
+      parent_interaction_id: parentInteractionId || null,
+      billing_period,
+    };
+  }
+
+  const creatorId = worker.creatorId || worker.createdBy || null;
+  const isTitleAppOriginal = !creatorId || creatorId === TITLEAPP_PLATFORM_CREATOR;
+  const sharePct = pricing.creatorRevenueSharePct ?? pricing.creatorInferenceSharePct ?? 0.20;
+  const parentForkPct = pricing.creatorParentForkSharePct ?? 0.30;
+
+  // TitleApp original: record creator_id (so platform totals are visible)
+  // but creator_share_amount = 0 — no royalty owed.
+  if (isTitleAppOriginal) {
+    return {
+      creator_id: TITLEAPP_PLATFORM_CREATOR,
+      creator_status: "platform",
+      creator_share_amount: 0,
+      forkedFrom: worker.forkedFrom || null,
+      forkedFromCollection: worker.forkedFromCollection || null,
+      parent_creator_id: null,
+      parent_share_amount: 0,
+      revenue_basis: revenueBasis,
+      revenue_amount,
+      parent_interaction_id: parentInteractionId || null,
+      billing_period,
+    };
+  }
+
+  // Creator-authored. Inspect lineage to decide split.
+  const forkedFrom = worker.forkedFrom || null;
+  const forkedFromCollection = worker.forkedFromCollection || null;
+  const creator_status = await loadCreatorStatus(db, creatorId);
+
+  // Not a fork — full share to current creator.
+  if (!forkedFrom) {
+    const creator_share_amount = round4(revenue_amount * sharePct);
+    return {
+      creator_id: creatorId,
+      creator_status,
+      creator_share_amount,
+      forkedFrom: null,
+      forkedFromCollection: null,
+      parent_creator_id: null,
+      parent_share_amount: 0,
+      revenue_basis: revenueBasis,
+      revenue_amount,
+      parent_interaction_id: parentInteractionId || null,
+      billing_period,
+    };
+  }
+
+  // Forked. Look up the source to determine if parent was Creator-authored.
+  const source = await loadWorker(db, forkedFrom);
+  const sourceCreatorId = source ? (source.creatorId || source.createdBy || null) : null;
+  const sourceIsTitleAppOriginal = !sourceCreatorId || sourceCreatorId === TITLEAPP_PLATFORM_CREATOR;
+
+  if (sourceIsTitleAppOriginal) {
+    // Forked from TitleApp original — full share to forker, no upstream payout.
+    const creator_share_amount = round4(revenue_amount * sharePct);
+    return {
+      creator_id: creatorId,
+      creator_status,
+      creator_share_amount,
+      forkedFrom,
+      forkedFromCollection,
+      parent_creator_id: null,
+      parent_share_amount: 0,
+      revenue_basis: revenueBasis,
+      revenue_amount,
+      parent_interaction_id: parentInteractionId || null,
+      billing_period,
+    };
+  }
+
+  // Forked from Creator-authored — 70/30 split.
+  // Forker (current creator) gets 70% of share; immediate parent gets 30%.
+  // Per spec D2: level-2+ forks attribute to level-1 forker as parent, NOT
+  // the original creator.
+  const totalShare = revenue_amount * sharePct;
+  const parent_share_amount = round4(totalShare * parentForkPct);
+  const creator_share_amount = round4(totalShare * (1 - parentForkPct));
+
+  return {
+    creator_id: creatorId,
+    creator_status,
+    creator_share_amount,
+    forkedFrom,
+    forkedFromCollection,
+    parent_creator_id: sourceCreatorId,
+    parent_share_amount,
+    revenue_basis: revenueBasis,
+    revenue_amount,
+    parent_interaction_id: parentInteractionId || null,
+    billing_period,
+  };
+}
+
+/**
+ * Legacy revenue calculator — kept for any caller still using it. CODEX 50.5
+ * supersedes this with computeRevenueAttribution. Both can coexist; the
+ * helper returns the canonical revenue-attribution fields, while this
+ * computes line-item revenue (line 1/2/3) for Stripe overage / data fee /
+ * audit fee accounting.
  */
 function calculateRevenue(params) {
   const {
@@ -61,129 +317,32 @@ function calculateRevenue(params) {
     inferenceActualCost = 0,
   } = params;
 
-  // Line 1: Overage revenue minus actual AI cost
-  const overageRevenue = creditsOverage * pricing.creditRate;
+  const overageRevenue = creditsOverage * (pricing.creditRate || 0);
   const revenueLine1 = overageRevenue - inferenceActualCost;
-
-  // Line 2: Markup revenue (charged - actual)
   const revenueLine2 = dataFeeCharged - dataFeeActual;
-
-  // Line 3: Audit trail fee minus gas
   const revenueLine3 = auditFee - gasCost;
 
-  // Creator share: 20% of TitleApp's inference margin on overage only
-  const creatorShareAmount = revenueLine1 > 0
-    ? +(revenueLine1 * pricing.creatorInferenceSharePct).toFixed(4)
-    : 0;
+  const sharePct = pricing.creatorRevenueSharePct ?? pricing.creatorInferenceSharePct ?? 0.20;
+  const creatorShareAmount = revenueLine1 > 0 ? round4(revenueLine1 * sharePct) : 0;
 
   return {
-    revenue_line_1: +revenueLine1.toFixed(4),
-    revenue_line_2: +revenueLine2.toFixed(4),
-    revenue_line_3: +revenueLine3.toFixed(4),
+    revenue_line_1: round4(revenueLine1),
+    revenue_line_2: round4(revenueLine2),
+    revenue_line_3: round4(revenueLine3),
     creator_share_amount: creatorShareAmount,
   };
 }
 
-/**
- * Write a complete v2.0 usage event to Firestore.
- *
- * @param {object} params
- * @param {string} params.worker_id
- * @param {string} params.creator_id
- * @param {string} params.user_id
- * @param {string|null} params.org_id
- * @param {string} params.execution_type — simple/standard/complex/external_api/esign/ocr
- * @param {string} params.subscription_tier — free/tier1/tier2/tier3/enterprise
- * @param {number} params.usedThisMonth — credits already used before this execution
- * @param {number} params.inference_cost_actual — actual Anthropic API cost in USD
- * @param {Array} params.data_api_calls — array of { provider, endpoint, actual_cost_usd, charged_to_user }
- * @param {object|null} params.audit — { txHash, gasCost, fee } from auditTrailService
- * @param {string|null} params.jurisdiction — "HI:QueensMedical" format
- * @param {string} params.raas_tier_applied — "0"/"1"/"2"/"3"
- * @param {boolean} params.disclaimer_active
- * @returns {FirebaseFirestore.DocumentReference} — the written event reference
- */
-async function recordUsageEvent(params) {
-  const db = getDb();
-  const eventId = crypto.randomUUID();
-
-  // Credits consumed based on execution type
-  const creditsConsumed = pricing.executionCredits[params.execution_type] || pricing.executionCredits.standard;
-
-  // Split included vs overage
-  const { creditsFromIncluded, creditsOverage } = splitCredits(
-    creditsConsumed,
-    params.subscription_tier || "free",
-    params.usedThisMonth || 0
-  );
-
-  // Sum data fees
-  const dataApiCalls = params.data_api_calls || [];
-  const dataFeeActual = dataApiCalls.reduce((sum, c) => sum + (c.actual_cost_usd || 0), 0);
-  const dataFeeCharged = dataApiCalls.reduce((sum, c) => sum + (c.charged_to_user || 0), 0);
-
-  // Audit trail
-  const audit = params.audit || null;
-  const auditRecordWritten = !!audit;
-  const auditFeeCharged = audit ? audit.fee : 0;
-  const gasCostActual = audit ? audit.gasCost : 0;
-
-  // Revenue calculations
-  const revenue = calculateRevenue({
-    creditsOverage,
-    dataFeeActual,
-    dataFeeCharged,
-    auditFee: auditFeeCharged,
-    gasCost: gasCostActual,
-    inferenceActualCost: params.inference_cost_actual || 0,
-  });
-
-  const event = {
-    // Identity
-    event_id: eventId,
-    timestamp: admin.firestore.FieldValue.serverTimestamp(),
-    worker_id: params.worker_id,
-    creator_id: params.creator_id || null,
-    user_id: params.user_id,
-    org_id: params.org_id || null,
-
-    // Line 1 — Inference
-    execution_type: params.execution_type,
-    credits_consumed: creditsConsumed,
-    inference_cost_actual: params.inference_cost_actual || 0,
-    subscription_tier: params.subscription_tier || "free",
-    credits_from_included: creditsFromIncluded,
-    credits_overage: creditsOverage,
-
-    // Line 2 — Data fees
-    data_api_calls: dataApiCalls,
-    data_fee_actual: +dataFeeActual.toFixed(4),
-    data_fee_charged: +dataFeeCharged.toFixed(4),
-
-    // Line 3 — Audit trail
-    audit_record_written: auditRecordWritten,
-    audit_fee_charged: auditFeeCharged,
-    blockchain_tx_hash: audit ? audit.txHash : null,
-    gas_cost_actual: gasCostActual,
-
-    // Compliance
-    jurisdiction: params.jurisdiction || null,
-    raas_tier_applied: params.raas_tier_applied || "0",
-    disclaimer_active: params.disclaimer_active !== false,
-
-    // Revenue summary
-    revenue_line_1: revenue.revenue_line_1,
-    revenue_line_2: revenue.revenue_line_2,
-    revenue_line_3: revenue.revenue_line_3,
-    creator_share_amount: revenue.creator_share_amount,
-
-    // Immutability
-    _written_at: admin.firestore.FieldValue.serverTimestamp(),
-    _version: "2.0",
-  };
-
-  const ref = await db.collection("usage_events").add(event);
-  return ref;
-}
-
-module.exports = { recordUsageEvent, splitCredits, calculateRevenue };
+module.exports = {
+  // CODEX 50.5 — primary export.
+  computeRevenueAttribution,
+  // Helpers.
+  splitCredits,
+  calculateRevenue,
+  revenuePerCreditForTier,
+  billingPeriodFromTimestamp,
+  loadWorker,
+  loadCreatorStatus,
+  // Constants.
+  TITLEAPP_PLATFORM_CREATOR,
+};

@@ -37,7 +37,9 @@ function statusStyle(status) {
 }
 
 export default function EmployeeRegisterCard({ resolved, context, onDismiss }) {
-  const employees = context?.employees || null;
+  // 49.31 — payload-first.
+  const payload = context?.payload;
+  const employees = (payload && (Array.isArray(payload) ? payload : payload.employees)) || context?.employees || null;
 
   return (
     <CanvasCardShell

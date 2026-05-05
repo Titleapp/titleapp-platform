@@ -9,6 +9,8 @@ import WorkerListCanvas from "./WorkerListCanvas";
 import PLSummaryCard from "./PLSummaryCard";
 import InvoiceListCard from "./InvoiceListCard";
 import ChartOfAccountsCard from "./ChartOfAccountsCard";
+import BalanceSheetCard from "./BalanceSheetCard";
+import CashFlowStatementCard from "./CashFlowStatementCard";
 import EmployeeRegisterCard from "./EmployeeRegisterCard";
 import ChecklistCard from "./ChecklistCard";
 import PerformanceCard from "./PerformanceCard";
@@ -20,12 +22,17 @@ import RealEstateClosingCard from "./RealEstateClosingCard";
 import ContactCard from "./ContactCard";
 import BusinessAssetCard from "./BusinessAssetCard";
 import TransactionCard from "./TransactionCard";
+import WorkProductCard from "./WorkProductCard";
+import ChartCard from "./ChartCard";
+import ImageCard from "./ImageCard";
 
 const CANVAS_COMPONENT_MAP = {
   WorkerListCanvas,
   PLSummaryCard,
   InvoiceListCard,
   ChartOfAccountsCard,
+  BalanceSheetCard,
+  CashFlowStatementCard,
   EmployeeRegisterCard,
   ChecklistCard,
   PerformanceCard,
@@ -37,6 +44,9 @@ const CANVAS_COMPONENT_MAP = {
   ContactCard,
   BusinessAssetCard,
   TransactionCard,
+  WorkProductCard,
+  ChartCard,
+  ImageCard,
 };
 
 /**

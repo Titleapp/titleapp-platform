@@ -6,6 +6,7 @@
 
 import React from "react";
 import CanvasCardShell from "./CanvasCardShell";
+import CanvasFallbackView from "./CanvasFallbackView";
 
 const S = {
   day: { marginBottom: 14 },
@@ -31,7 +32,11 @@ const PLATFORM_COLORS = {
 };
 
 export default function ContentCalendarCard({ resolved, context, onDismiss }) {
-  const calendar = context?.contentCalendar || null;
+  // 49.31 — payload-first.
+  const payload = context?.payload;
+  const calendar = (payload && (Array.isArray(payload) ? payload : (payload.calendar || payload.contentCalendar))) || context?.contentCalendar || null;
+
+  const hasCalendar = calendar && calendar.length > 0;
 
   return (
     <CanvasCardShell
@@ -39,21 +44,23 @@ export default function ContentCalendarCard({ resolved, context, onDismiss }) {
       emptyPrompt={resolved?.emptyPrompt || "Ask Alex to plan your content to see it here."}
       onDismiss={onDismiss}
     >
-      {calendar && calendar.length > 0 && calendar.map((day, i) => (
-        <div key={i} style={S.day}>
-          <div style={S.dayLabel}>{day.date || day.day}</div>
-          {(day.posts || []).map((post, j) => {
-            const pc = PLATFORM_COLORS[post.platform?.toLowerCase()] || PLATFORM_COLORS.linkedin;
-            return (
-              <div key={j} style={S.post}>
-                <span style={{ ...S.platform, background: pc.bg, color: pc.color }}>{post.platform || "Post"}</span>
-                <div style={S.postContent}>{post.content || post.title || ""}</div>
-                {post.time && <span style={S.time}>{post.time}</span>}
-              </div>
-            );
-          })}
-        </div>
-      ))}
+      {hasCalendar
+        ? calendar.map((day, i) => (
+            <div key={i} style={S.day}>
+              <div style={S.dayLabel}>{day.date || day.day}</div>
+              {(day.posts || []).map((post, j) => {
+                const pc = PLATFORM_COLORS[post.platform?.toLowerCase()] || PLATFORM_COLORS.linkedin;
+                return (
+                  <div key={j} style={S.post}>
+                    <span style={{ ...S.platform, background: pc.bg, color: pc.color }}>{post.platform || "Post"}</span>
+                    <div style={S.postContent}>{post.content || post.title || ""}</div>
+                    {post.time && <span style={S.time}>{post.time}</span>}
+                  </div>
+                );
+              })}
+            </div>
+          ))
+        : <CanvasFallbackView payload={payload} />}
     </CanvasCardShell>
   );
 }

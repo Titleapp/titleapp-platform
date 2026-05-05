@@ -3,7 +3,10 @@ import { auth, db } from "../../firebase";
 import { doc, getDoc } from "firebase/firestore";
 import { GoogleAuthProvider, linkWithPopup, linkWithRedirect, signInWithCredential } from "firebase/auth";
 import { useWorkerState } from "../../context/WorkerStateContext";
+import { useRightPanel } from "../../context/RightPanelContext";
 import WorkerIcon, { getThemeAccent, getVerticalIconSlug } from "../../utils/workerIcons";
+import { isDemoMode, clearDemoMode, restoreDemoMode, getSampleKpiValue, hasSampleData, normalizeVerticalKey, VERTICAL_INTELLIGENCE } from "./sampleData";
+import PreviewBriefPanel from "./PreviewBriefPanel";
 
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
@@ -236,7 +239,7 @@ const PLATFORM_DISPLAY_NAMES = {
 
 // ── 49.8: Contextual checklists per worker type ─────────────────────
 
-const WORKER_CHECKLISTS = {
+export const WORKER_CHECKLISTS = {
   "platform-control-center-pro": {
     heading: "Make Control Center more useful",
     icon: "\uD83C\uDFAF",
@@ -307,7 +310,7 @@ const WORKER_CHECKLISTS = {
 };
 
 // ── 49.13: Worker Intelligence definitions ──────────────────────────
-const WORKER_INTELLIGENCE = {
+export const WORKER_INTELLIGENCE = {
   "platform-accounting": {
     kpis: [
       { id: "revenue", label: "Revenue", value: "--", unit: "$", hint: "Connect accounting to populate" },
@@ -448,13 +451,96 @@ function getChecklistCompletion(workerSlug) {
   return { completed, total, percent: total > 0 ? Math.round((completed / total) * 100) : 0 };
 }
 
-function InsightPreview({ workerSlug, accent, stage, briefingData }) {
-  const intel = WORKER_INTELLIGENCE[workerSlug];
+function InsightPreview({ workerSlug, accent, stage, briefingData, verticalKey }) {
+  const intel = WORKER_INTELLIGENCE[workerSlug] || (verticalKey ? VERTICAL_INTELLIGENCE[verticalKey] : null);
+
+  // 49.30 — re-render on demo-mode toggle (localStorage flag)
+  const [, setDemoTick] = useState(0);
+  useEffect(() => {
+    function onChange() { setDemoTick(t => t + 1); }
+    window.addEventListener("ta:demo-mode-changed", onChange);
+    window.addEventListener("storage", onChange);
+    return () => {
+      window.removeEventListener("ta:demo-mode-changed", onChange);
+      window.removeEventListener("storage", onChange);
+    };
+  }, []);
+
   if (!intel) return null;
   const full = stage === 3;
 
+  // Compute KPI display values up front so we know whether any sample is shown
+  const demoActive = isDemoMode() && hasSampleData(workerSlug, verticalKey);
+  const renderedKpis = intel.kpis.map((kpi) => {
+    const realValue = resolveKpiValue(briefingData, workerSlug, kpi.id, kpi.unit);
+    let displayValue = realValue;
+    let isSample = false;
+    if (realValue == null && demoActive) {
+      const sampleRaw = getSampleKpiValue(workerSlug, kpi.id, verticalKey);
+      if (sampleRaw != null) {
+        displayValue = formatKpiValue(sampleRaw, kpi.unit);
+        isSample = true;
+      }
+    }
+    return { kpi, displayValue: displayValue || "--", hasReal: realValue != null, isSample };
+  });
+  const anySample = renderedKpis.some(r => r.isSample);
+  const samplesAvailable = hasSampleData(workerSlug, verticalKey);
+  const showRestoreLink = !anySample && !isDemoMode() && samplesAvailable;
+
   return (
     <div style={{ marginBottom: 20 }}>
+      {anySample && (
+        <div style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          padding: "8px 12px", marginBottom: 10,
+          background: `${accent}10`, border: `1px solid ${accent}30`, borderRadius: 8,
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{
+              fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 10,
+              background: accent, color: "#fff", textTransform: "uppercase", letterSpacing: 0.5,
+            }}>
+              Demo Mode
+            </span>
+            <span style={{ fontSize: 12, color: "#475569" }}>
+              Sample data shown until your real data populates.
+            </span>
+          </div>
+          <button
+            onClick={() => {
+              if (window.confirm("Clear demo data? Your canvas will be empty until real data populates.")) {
+                clearDemoMode();
+              }
+            }}
+            style={{
+              fontSize: 11, fontWeight: 600, padding: "4px 10px",
+              background: "#fff", border: `1px solid ${accent}40`, borderRadius: 6,
+              color: accent, cursor: "pointer", fontFamily: "inherit", flexShrink: 0,
+            }}
+          >
+            Clear
+          </button>
+        </div>
+      )}
+      {showRestoreLink && (
+        <div style={{
+          display: "flex", justifyContent: "flex-end", marginBottom: 6,
+        }}>
+          <button
+            onClick={() => restoreDemoMode()}
+            style={{
+              fontSize: 11, fontWeight: 500, padding: "2px 0",
+              background: "transparent", border: "none",
+              color: "rgba(0,0,0,0.45)", cursor: "pointer", fontFamily: "inherit",
+              textDecoration: "underline",
+            }}
+          >
+            Restore demo data
+          </button>
+        </div>
+      )}
+
       <div style={{
         fontSize: 11, fontWeight: 700, color: "rgba(0,0,0,0.35)",
         letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: 12,
@@ -463,17 +549,28 @@ function InsightPreview({ workerSlug, accent, stage, briefingData }) {
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
-        {intel.kpis.map((kpi) => {
-          const realValue = resolveKpiValue(briefingData, workerSlug, kpi.id, kpi.unit);
-          const displayValue = realValue || "--";
-          const hasData = realValue != null;
+        {renderedKpis.map(({ kpi, displayValue, hasReal, isSample }) => {
+          const hasData = hasReal || isSample;
           return (
             <div key={kpi.id} style={{
               background: "#f8fafc", borderRadius: 10, padding: "14px 12px",
               border: `1px solid ${full ? accent + "30" : "#f1f5f9"}`,
+              position: "relative",
             }}>
+              {isSample && (
+                <div style={{
+                  position: "absolute", top: 6, right: 6,
+                  fontSize: 9, fontWeight: 700, padding: "1px 6px", borderRadius: 8,
+                  background: `${accent}20`, color: accent, letterSpacing: 0.3,
+                }}>
+                  SAMPLE
+                </div>
+              )}
               <div style={{ fontSize: 11, color: "#64748b", marginBottom: 4 }}>{kpi.label}</div>
-              <div style={{ fontSize: 20, fontWeight: 700, color: hasData ? (full ? accent : "#1e293b") : (full ? accent : "#d1d5db") }}>{displayValue}</div>
+              <div style={{
+                fontSize: 20, fontWeight: 700,
+                color: hasReal ? (full ? accent : "#1e293b") : (isSample ? "#94a3b8" : (full ? accent : "#d1d5db")),
+              }}>{displayValue}</div>
               {!full && !hasData && kpi.hint && (
                 <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 4, lineHeight: 1.3 }}>{kpi.hint}</div>
               )}
@@ -778,7 +875,16 @@ function WorkerChecklist({ workerSlug, workerName }) {
 
 export default function WorkerCanvas({ workerData, verticalLabel, relatedWorkers = [], onLeave }) {
   const ws = useWorkerState();
+  const rightPanel = useRightPanel();
   const w = workerData;
+
+  // 49.31 — Reset stale canvasData when the active worker changes so a card
+  // emitted by Accounting doesn't bleed into HR or Marketing.
+  useEffect(() => {
+    if (typeof rightPanel?.resetCanvas === "function") {
+      rightPanel.resetCanvas();
+    }
+  }, [w.workerId || w.slug]); // eslint-disable-line react-hooks/exhaustive-deps
   const prompts = w.quickStartPrompts || generateDefaultPrompts(w.capabilitySummary, w.name || w.display_name);
   const vertical = verticalLabel || w.vertical || w.suite || "Other";
   const isGame = !!w.gameConfig?.isGame;
@@ -793,7 +899,8 @@ export default function WorkerCanvas({ workerData, verticalLabel, relatedWorkers
     if (percent >= 50) return 2;
     return 1;
   });
-  const hasIntelligence = !!WORKER_INTELLIGENCE[workerSlug];
+  const verticalKey = normalizeVerticalKey(vertical) || normalizeVerticalKey(w.vertical) || normalizeVerticalKey(w.suite) || normalizeVerticalKey(workerSlug);
+  const hasIntelligence = !!WORKER_INTELLIGENCE[workerSlug] || (!!verticalKey && !!VERTICAL_INTELLIGENCE[verticalKey]);
 
   useEffect(() => {
     function recomputeStage() {
@@ -1192,6 +1299,13 @@ export default function WorkerCanvas({ workerData, verticalLabel, relatedWorkers
               </div>
               )}
 
+              {/* Control Center Pro: surface Preview-Brief inline so the
+                  cadence picker + live preview are discoverable from the
+                  worker home (49.32 — fixes "navigation not at all intuitive"). */}
+              {workerSlug === "platform-control-center-pro" && (
+                <PreviewBriefPanel />
+              )}
+
               {/* Substrate badges — stage-aware (49.13) */}
               <div
                 className="arrival-badges"
@@ -1201,8 +1315,8 @@ export default function WorkerCanvas({ workerData, verticalLabel, relatedWorkers
                   animation: showBadges && arrivalPhase === "reveal" ? "fadeIn 200ms ease-out forwards" : "none",
                 }}
               >
-                {hasIntelligence && canvasStage >= 2 && (
-                  <InsightPreview workerSlug={workerSlug} accent={accent} stage={canvasStage} briefingData={briefingData} />
+                {hasIntelligence && (
+                  <InsightPreview workerSlug={workerSlug} accent={accent} stage={canvasStage} briefingData={briefingData} verticalKey={verticalKey} />
                 )}
                 {hasIntelligence && canvasStage >= 2 ? (
                   <CollapsibleChecklist

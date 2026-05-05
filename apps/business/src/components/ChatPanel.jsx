@@ -34,6 +34,9 @@ import SessionEndCTA from './worker/SessionEndCTA';
 import { useWorkerState } from '../context/WorkerStateContext.jsx';
 import { useRightPanel } from '../context/RightPanelContext';
 import CanvasResolver from '../services/CanvasResolver';
+import { WORKER_CHECKLISTS, WORKER_INTELLIGENCE } from './canvas/WorkerCanvas';
+import { lookupSignal } from '../config/canvasTypes';
+import { isDemoMode, getSampleKpiValue, hasSampleData, normalizeVerticalKey, VERTICAL_INTELLIGENCE } from './canvas/sampleData';
 
 // WORKER_SUITES computed lazily inside component (useMemo) to avoid TDZ crash
 // when bundler evaluates ChatPanel before workerRoutes.js finishes exporting.
@@ -83,81 +86,6 @@ const PERSONAL_CONTEXTUAL_MESSAGES = {
   settings: "Your Vault settings. You can update your profile, configure your Chief of Staff, and manage notification preferences.",
 };
 
-// ── Celebration Messages ────────────────────────────────────────
-
-const CELEBRATION_MESSAGES = {
-  analyst: {
-    celebration: "Your workspace is ready! I've already started working -- scanned your pipeline, checked your portfolio positions, and drafted an LP letter. Not bad for 60 seconds, right?",
-    followUp: "Here's what I'd suggest we do first:",
-    suggestions: [
-      "Show me around my workspace",
-      "How do you analyze deals?",
-      "Let me set my investment rules",
-      "Tell me about the risk alert",
-    ],
-  },
-  auto: {
-    celebration: "Your workspace is ready! I've already scanned your inventory, checked your pricing against market, and found a customer lead to follow up on. Your lot just got smarter.",
-    followUp: "What do you want to do first?",
-    suggestions: [
-      "Show me around my workspace",
-      "How do you price my inventory?",
-      "Let me set my dealership rules",
-      "Tell me about that lead",
-    ],
-  },
-  "real-estate": {
-    celebration: "Your workspace is ready! I've already matched a listing to buyers, flagged a DOM concern, and I'm tracking your closing deadlines. Your brokerage just got a 24/7 assistant.",
-    followUp: "Where do you want to start?",
-    suggestions: [
-      "Show me around my workspace",
-      "How do you match buyers to listings?",
-      "Let me set my brokerage rules",
-      "Tell me about that closing deadline",
-    ],
-  },
-  aviation: {
-    celebration: "Your workspace is ready! I've already found a charter opportunity, flagged an upcoming inspection, and I'm tracking your crew certifications. Your operation just leveled up.",
-    followUp: "What's first?",
-    suggestions: [
-      "Show me around my workspace",
-      "How do you track maintenance?",
-      "Let me set my ops rules",
-      "Tell me about that charter opportunity",
-    ],
-  },
-  investor: {
-    celebration: "Your investor data room is ready. I've loaded the current raise terms, available documents, and governance details.",
-    followUp: "What would you like to explore first?",
-    suggestions: [
-      "Show me around the data room",
-      "What are the terms of the raise?",
-      "Tell me about TitleApp",
-      "How do I invest?",
-    ],
-  },
-};
-
-// ── Tour Responses ──────────────────────────────────────────────
-
-const TOUR_RESPONSES = {
-  analyst: `Here's the quick tour:\n\n**Dashboard** -- Your command center. KPIs, alerts, and the Value Tracker showing your AI ROI.\n\n**Portfolio** -- Your positions, market movements, and price targets. I monitor these daily.\n\n**Research** -- Your active research pipeline. I track earnings, sector alerts, and flag models that need updating.\n\n**Clients & LPs** -- Your investor relationships, meeting notes, and communications. I can draft quarterly letters for you.\n\n**Deal Pipeline** -- Active deals I'm analyzing. This is where I flag opportunities and risks.\n\n**Rules** -- This is where the magic happens. You set the rules -- like "flag any deal over $5M in multifamily" or "alert me when a position drops more than 5%" -- and I follow them. The more rules you give me, the more I can do for you.\n\nWant to dive into any of these?`,
-  auto: `Here's the quick tour:\n\n**Dashboard** -- Your command center. KPIs, alerts, and daily action items.\n\n**Inventory** -- Your full lot view. I track aging, pricing, and market comps for every unit.\n\n**Customers** -- Your buyer and prospect database. I identify follow-up opportunities and draft outreach.\n\n**Sales Pipeline** -- Active deals from first contact to delivery. I prioritize your hottest leads.\n\n**F&I Products** -- Your product catalog. I match products to buyer profiles and calculate payment impacts.\n\n**Service** -- Your service schedule. I flag warranty expirations and upsell opportunities.\n\n**Rules** -- This is where the magic happens. You set the rules -- like "alert me when a unit hits 60 days" or "auto-draft follow-ups for stale leads" -- and I follow them.\n\nWant to dive into any of these?`,
-  "real-estate": `Here's the quick tour:\n\n**Dashboard** -- Your command center. KPIs, pipeline status, and daily priorities.\n\n**Listings** -- Your active and pending listings. I track DOM, price changes, and showings.\n\n**Buyers** -- Your buyer pipeline with saved searches and match criteria.\n\n**Transactions** -- Active deals from offer to close. I track deadlines and contingencies.\n\n**Properties** -- Your managed properties with units, leases, and financials.\n\n**Tenants** -- Tenant records, rent rolls, and payment history.\n\n**Rules** -- This is where the magic happens. You set the rules -- like "alert me at 45 DOM" or "flag any lease expiring in 90 days" -- and I follow them.\n\nWant to dive into any of these?`,
-  aviation: `Here's the quick tour:\n\n**Dashboard** -- Your ops center. Fleet status, upcoming flights, and maintenance alerts.\n\n**Inventory** -- Your aircraft fleet with airframe hours, engine time, and availability.\n\n**Staff** -- Pilots, crew, and maintenance personnel with certification tracking.\n\n**Appointments** -- Flight schedule, charter bookings, and maintenance windows.\n\n**Rules** -- This is where the magic happens. You set the rules -- like "alert 60 days before any medical expires" or "flag aircraft under 50 hours to next inspection" -- and I follow them.\n\nWant to dive into any of these?`,
-  investor: `Here's the quick tour of your data room:\n\n**Overview** -- The raise dashboard. Current funding progress, key terms at a glance, and quick actions.\n\n**Investor Docs** -- Pitch deck, executive summary, and business plan. Tier 1 docs are always available. Tier 2 requires verification.\n\n**Subscription Docs** -- The SAFE agreement terms, conversion scenarios, and the link to invest via Wefunder.\n\n**Governance & Voting** -- Cap table, share registry, and governance proposals once the raise closes.\n\n**ID Verification** -- One-time identity check and risk disclaimers. Unlocks full document access.\n\n**Wallet** -- Your investment position and ownership tokens after investing.\n\n**Profile** -- Your investor profile and account settings.\n\nWhat would you like to know more about?`,
-};
-
-// ── Rules Responses ─────────────────────────────────────────────
-
-const RULES_RESPONSES = {
-  analyst: `Great idea -- the rules are what make me work for YOU specifically, not just any analyst.\n\nHere's how it works: you tell me things like:\n- "Flag any multifamily deal over $5M in the Southwest"\n- "Alert me when a position drops more than 5% in a day"\n- "Auto-draft LP letters every quarter"\n- "Never recommend deals in the oil & gas sector"\n\nThe more specific you are, the better I get. You can set these in **Settings > Rules**, or just tell me right here in the chat and I'll remember.\n\nWant to set some rules now, or explore the workspace first?`,
-  auto: `Smart move -- the rules are what make me work for YOUR dealership specifically.\n\nHere's how it works: you tell me things like:\n- "Alert me when any unit hits 60 days on lot"\n- "Auto-draft follow-ups for leads that go cold for 5 days"\n- "Flag any vehicle priced more than 5% below market"\n- "Never discount vehicles in the first 30 days"\n\nThe more specific you are, the better I get. You can set these in **Settings > Rules**, or just tell me right here.\n\nWant to set some rules now?`,
-  "real-estate": `Good call -- the rules are what make me work for YOUR brokerage specifically.\n\nHere's how it works: you tell me things like:\n- "Alert me at 45 days on market"\n- "Flag any lease expiring in 90 days"\n- "Auto-match new listings to my buyer pipeline"\n- "Send me a daily summary of all pending deadlines"\n\nThe more specific you are, the better I get. You can set these in **Settings > Rules**, or just tell me right here.\n\nWant to set some rules now?`,
-  aviation: `Smart -- the rules are what make me work for YOUR operation specifically.\n\nHere's how it works: you tell me things like:\n- "Alert 60 days before any medical certificate expires"\n- "Flag aircraft under 50 hours to next inspection"\n- "Auto-notify dispatch when a charter request matches availability"\n- "Send weekly utilization reports every Monday"\n\nYou can set these in **Settings > Rules**, or just tell me right here.\n\nWant to set some rules now?`,
-  investor: `As an investor, you don't set rules in the traditional sense -- but here's what you can customize:\n\n- **Notification preferences** -- Choose how you want to receive company updates\n- **Communication preferences** -- Email frequency, update categories you care about\n- **Profile details** -- Company info, social links, and investment preferences\n\nYou can update these in your Profile section, or just tell me what you'd like to change.`,
-};
-
 // ── Vertical Disclaimers ────────────────────────────────────────
 
 const VERTICAL_DISCLAIMERS = {
@@ -183,15 +111,11 @@ const VERTICAL_DISCLAIMERS = {
   },
 };
 
-// ── ID Verify Messages ──────────────────────────────────────────
-
-const ID_VERIFY_MESSAGES = {
-  analyst: "One more thing -- since you'll be working with deal analysis and portfolio data, I recommend verifying your identity soon. It's a quick ID check ($2, takes 60 seconds) and it unlocks features like the data room, advanced reporting, and the ability to share analyses with LPs. Want to do it now or later?",
-  auto: "By the way -- at some point you'll want to verify your identity. It's a quick ID check ($2) that unlocks some features and keeps your account secure. No rush on that -- I'll remind you when it matters.",
-  "real-estate": "By the way -- at some point you'll want to verify your identity. It's a quick ID check ($2) that unlocks some features and keeps your account secure. No rush on that -- I'll remind you when it matters.",
-  aviation: "By the way -- at some point you'll want to verify your identity. It's a quick ID check ($2) that unlocks some features like crew management and compliance reporting. No rush -- I'll remind you when it matters.",
-  investor: "To access the full set of investor documents -- including the business plan and SAFE agreement -- you'll need to verify your identity. It's a one-time $2 check. You can do it from the ID Verification section in the sidebar.",
-};
+// 49.30 — Removed CELEBRATION_MESSAGES, TOUR_RESPONSES, RULES_RESPONSES, ID_VERIFY_MESSAGES,
+// and triggerSampleDataInChat. Those vertical-keyed canned responses defaulted to 'auto' and
+// produced cross-worker hallucinations (Toyota Camry, Sarah Chen, F&I products) for any user
+// whose VERTICAL localStorage key was missing or stale. The model handles these intents
+// directly now using the worker-specific system prompt + canvas state.
 
 // ── Component ───────────────────────────────────────────────────
 
@@ -605,17 +529,12 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
   }, [currentUser, authReady, disclaimerAccepted]);
 
   function fireCelebration() {
-    const v = localStorage.getItem('VERTICAL') || 'auto';
-    const config = CELEBRATION_MESSAGES[v] || CELEBRATION_MESSAGES.auto;
-
-    // Fire confetti
     fireMilestone('onboarding_complete');
 
     const celebrationMsgs = [
-      { role: 'assistant', content: config.celebration, isSystem: true, isCelebration: true },
+      { role: 'assistant', content: "Your workspace is ready. Your worker checklist is on the right — work through it at your own pace.", isSystem: true, isCelebration: true },
     ];
 
-    // If disclaimer not yet accepted, show disclaimer before suggestions
     if (!disclaimerAccepted) {
       celebrationMsgs.push({
         role: 'assistant',
@@ -626,9 +545,9 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
     } else {
       celebrationMsgs.push({
         role: 'assistant',
-        content: config.followUp,
+        content: "What would you like to do first?",
         isSystem: true,
-        suggestions: config.suggestions,
+        suggestions: ["Show me around", "What can you help me with?"],
       });
     }
 
@@ -652,12 +571,10 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
   }
 
   async function handleAcceptDisclaimer() {
-    const v = localStorage.getItem('VERTICAL') || 'auto';
     localStorage.setItem('DISCLAIMER_ACCEPTED', 'true');
     localStorage.setItem('DISCLAIMER_VERSION', '2026-02-24-v2');
     localStorage.setItem('DISCLAIMER_ACCEPTED_AT', new Date().toISOString());
 
-    // Write to Firestore FIRST, then unblock chat
     try {
       const token = await currentUser.getIdToken(true);
       const tenantId = localStorage.getItem('TENANT_ID') || '';
@@ -680,22 +597,13 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
       console.error('Failed to store disclaimer acceptance:', err);
     }
 
-    // Unblock chat only after Firestore write completes (localStorage is sync fallback)
     setDisclaimerAccepted(true);
     setShowDisclaimer(false);
 
-    // Show celebration suggestions + ID verify
-    const config = CELEBRATION_MESSAGES[v] || CELEBRATION_MESSAGES.auto;
     const followUpMsgs = [
-      { role: 'assistant', content: "You're all set. Now -- " + config.followUp, isSystem: true, suggestions: config.suggestions },
+      { role: 'assistant', content: "You're all set. What would you like to do first?", isSystem: true, suggestions: ["Show me around", "What can you help me with?"] },
     ];
-
-    // Add ID verify message after a delay
     setMessages(prev => [...prev.filter(m => !m.disclaimer), ...followUpMsgs]);
-    setTimeout(() => {
-      const idMsg = ID_VERIFY_MESSAGES[v] || ID_VERIFY_MESSAGES.auto;
-      setMessages(prev => [...prev, { role: 'assistant', content: idMsg, isSystem: true, suggestions: v === 'analyst' ? ["Verify now ($2)", "Remind me later"] : undefined }]);
-    }, 2000);
   }
 
   function buildLandingGreeting(ctx) {
@@ -884,120 +792,23 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
   }
 
   function getLocalResponse(message) {
-    const v = localStorage.getItem('VERTICAL') || 'auto';
     const lower = message.toLowerCase();
 
-    // Worker discovery queries
+    // Worker discovery queries (no vertical bias — searches the full worker registry)
     const workerResult = matchWorkerQuery(message);
     if (workerResult) return workerResult;
 
-    if (lower.includes('show me around') || lower.includes('tour') || lower.includes('walk me through')) {
-      return TOUR_RESPONSES[v] || TOUR_RESPONSES.auto;
+    // Demo Mode clear-intent: point at the orange Clear button on the canvas, no backend hop needed.
+    const mentionsSamples = lower.includes('sample data') || lower.includes('demo data') || (lower.includes('sample') && lower.includes('data'));
+    const clearIntent = /\b(clear|remove|hide|reset|stop|turn off|disable|get rid of|delete|dismiss|exit|leave|switch off)\b/.test(lower);
+    if (mentionsSamples && clearIntent) {
+      return "To clear the demo data, tap the **Clear** button in the orange Demo Mode banner on the right-side canvas (above the KPIs). The samples disappear immediately and your canvas returns to a clean empty state. Uploading real data also replaces samples automatically — no separate clear step needed.";
     }
-    if (lower.includes('set my') && lower.includes('rule') || lower.includes('set my dealership rule') || lower.includes('set my investment rule') || lower.includes('set my brokerage rule') || lower.includes('set my ops rule')) {
-      return RULES_RESPONSES[v] || RULES_RESPONSES.auto;
-    }
-    if (lower.includes('sample data') || lower.includes('use sample') || lower.includes('demo data') || lower.includes('load sample') || lower.includes('explore with sample')) {
-      // Trigger sample data loading inline in chat
-      triggerSampleDataInChat();
-      return '__SAMPLE_DATA_TRIGGERED__';
-    }
-    if (lower.includes('verify now')) {
-      return "Identity verification is coming soon. We'll notify you when it's ready. For now, you can explore everything else in your workspace.";
-    }
-    if (lower.includes('remind me later') && lower.includes('verify') || lower === 'remind me later') {
-      return "No problem -- I'll bring it up again when you need it. Let's explore your workspace.";
-    }
+
+    // 49.30 — All other intents (tour, set rules, verify, remind me later, load samples, etc.)
+    // now go to the model with the worker-correct system prompt + canvas state. The legacy
+    // canned responses defaulted to 'auto' on cache miss and produced cross-worker output.
     return null;
-  }
-
-  function triggerSampleDataInChat() {
-    const v = localStorage.getItem('VERTICAL') || 'auto';
-    const SAMPLE_STEPS = {
-      auto: [
-        "Loading 24 vehicles...",
-        "Loading 15 customer records...",
-        "Loading 12 open deals...",
-        "Loading service schedule...",
-        "Loading F&I products...",
-        "Loading sales pipeline...",
-      ],
-      "real-estate": [
-        "Loading 8 listings...",
-        "Loading 10 buyer profiles...",
-        "Loading 5 managed properties with 28 units...",
-        "Loading 24 tenant records...",
-        "Loading 7 maintenance requests...",
-        "Loading 3 active transactions...",
-      ],
-      analyst: [
-        "Loading portfolio (17 positions, $42.8M AUM)...",
-        "Loading 13 LP records...",
-        "Loading research pipeline...",
-        "Loading 4 sourced opportunities...",
-      ],
-      aviation: [
-        "Loading 4 aircraft...",
-        "Loading 12 pilots and crew...",
-        "Loading maintenance schedules...",
-        "Loading flight hour logs...",
-        "Loading certification records...",
-      ],
-    };
-    const steps = SAMPLE_STEPS[v] || SAMPLE_STEPS.auto;
-
-    setMessages(prev => [...prev, { role: 'assistant', content: "Loading sample data into your account...", isSystem: true }]);
-
-    steps.forEach((step, i) => {
-      setTimeout(() => {
-        setMessages(prev => {
-          const last = prev[prev.length - 1];
-          if (last?.isSystem && last.content.startsWith("Loading sample data")) {
-            const lines = (last._loadedLines || []).concat(step.replace("...", ""));
-            return [...prev.slice(0, -1), {
-              ...last,
-              _loadedLines: lines,
-              content: "Loading sample data into your account...\n\n" + lines.map(l => `${l}`).join("\n"),
-            }];
-          }
-          return prev;
-        });
-
-        // After last step, show completion
-        if (i === steps.length - 1) {
-          setTimeout(() => {
-            // Update onboarding state
-            try {
-              const obs = JSON.parse(localStorage.getItem('ONBOARDING_STATE') || '{}');
-              obs.dataSource = 'sample';
-              localStorage.setItem('ONBOARDING_STATE', JSON.stringify(obs));
-            } catch (e) { /* ignore */ }
-
-            setMessages(prev => [...prev, {
-              role: 'assistant',
-              content: "Sample data loaded. I'm scanning everything now -- give me a moment to find what matters.",
-              isSystem: true,
-            }]);
-
-            // After a beat, show the insights
-            setTimeout(() => {
-              const INSIGHTS = {
-                auto: "I found 3 things in your sample inventory:\n\n1. **Pricing Opportunity** -- 2024 Toyota Camry XSE is listed at $28,500 but market avg is $30,200. That's $1,700 you could be capturing.\n\n2. **Aging Alert** -- 2023 Honda CR-V has been on the lot 67 days (your target is 45). Consider a price adjustment.\n\n3. **Lead Follow-Up** -- Sarah Chen viewed the 2024 Highlander 3 times this week. Nobody has reached out yet.\n\nThis is what I do 24/7 when you connect your real inventory. Want me to show you around the dashboard?",
-                "real-estate": "I found 3 things in your sample brokerage data:\n\n1. **Buyer Match** -- 742 Oak Street ($425K, 3BR) matches criteria for the Martinez family and Johnson couple.\n\n2. **Days on Market** -- 1205 Elm Drive is at 52 days (area avg is 28). Consider a price reduction strategy.\n\n3. **Closing Deadline** -- 456 Pine Road closing has an inspection contingency expiring in 3 days.\n\nThis is what I do 24/7 when you connect your real listings. Want me to show you around the dashboard?",
-                analyst: "I found 3 things in your sample portfolio:\n\n1. **Deal Opportunity** -- Parkview Apartments (48 units, Phoenix) has a CMBS loan maturing Aug 2026. Matches your multifamily criteria at $8.2M.\n\n2. **Risk Alert** -- Sentinel Defense position is down 6.2% on a contract delay. Consider trimming exposure.\n\n3. **Action Item** -- Quarterly LP letter drafted and ready for your compliance review.\n\nThis is what I do 24/7 when you connect your real data. Want me to show you around the dashboard?",
-                aviation: "I found 3 things in your sample fleet data:\n\n1. **Charter Opportunity** -- PHX to SFO request for Mar 15 matches N456TA (Citation CJ3) availability. Estimated revenue: $8,200.\n\n2. **Maintenance Due** -- N789TB Phase 2 inspection due in 42 hours.\n\n3. **Certification Expiring** -- Captain Williams medical certificate expires in 21 days.\n\nThis is what I do 24/7 when you connect your real operations data. Want me to show you around the dashboard?",
-              };
-              setMessages(prev => [...prev, {
-                role: 'assistant',
-                content: INSIGHTS[v] || INSIGHTS.auto,
-                isSystem: true,
-                suggestions: ["Show me around", "Set my rules", "Go to dashboard"],
-              }]);
-            }, 2000);
-          }, 800);
-        }
-      }, (i + 1) * 400);
-    });
   }
 
   // ── Intercept |||COMMAND||| blocks from Alex responses ──────
@@ -1066,11 +877,19 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
   async function subscribeToWorker(worker) {
     const token = await getChatToken() || localStorage.getItem("ID_TOKEN");
     const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+    // 49.32 — pass current workspace tenantId so backend creates a tenant-scoped
+    // sub when caller is admin in a Business workspace. "vault"/null falls
+    // through to user-scope.
+    const subTenantId = localStorage.getItem("TENANT_ID") || null;
     try {
       const res = await fetch(`${apiBase}/api?path=/v1/worker:subscribe`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ workerId: worker.workerId || worker.slug, slug: worker.slug || worker.workerId }),
+        body: JSON.stringify({
+          workerId: worker.workerId || worker.slug,
+          slug: worker.slug || worker.workerId,
+          tenantId: subTenantId,
+        }),
       });
       const data = await res.json();
       if (data.ok) {
@@ -1131,19 +950,17 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
     setIsSending(true);
     setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
 
-    // Check for local response first (tour, rules, etc.)
+    // Check for local response first (worker discovery + demo-clear guidance only)
     const localResp = getLocalResponse(userMessage);
     if (localResp) {
       setIsSending(false);
-      if (localResp !== '__SAMPLE_DATA_TRIGGERED__') {
-        setTimeout(() => {
-          if (typeof localResp === 'object' && localResp.workerCards) {
-            setMessages(prev => [...prev, { role: 'assistant', content: localResp.content, workerCards: localResp.workerCards, isSystem: true }]);
-          } else {
-            setMessages(prev => [...prev, { role: 'assistant', content: localResp, isSystem: true }]);
-          }
-        }, 400);
-      }
+      setTimeout(() => {
+        if (typeof localResp === 'object' && localResp.workerCards) {
+          setMessages(prev => [...prev, { role: 'assistant', content: localResp.content, workerCards: localResp.workerCards, isSystem: true }]);
+        } else {
+          setMessages(prev => [...prev, { role: 'assistant', content: localResp, isSystem: true }]);
+        }
+      }, 400);
       return;
     }
 
@@ -1193,7 +1010,10 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
       const token = await getChatToken();
       if (!token) { setIsTyping(false); return; }
       const tenantId = localStorage.getItem('TENANT_ID') || localStorage.getItem('WORKSPACE_ID') || '';
-      const vertical = localStorage.getItem('VERTICAL') || 'auto';
+      // 49.32 — default vertical no longer auto-dealer. Personal Vault is
+      // the launch baseline; admins set per-workspace vertical when they create
+      // a Business workspace.
+      const vertical = localStorage.getItem('VERTICAL') || 'consumer';
       const jurisdiction = localStorage.getItem('JURISDICTION') || '';
 
       const apiBase = import.meta.env.VITE_API_BASE || 'https://titleapp-frontdoor.titleapp-core.workers.dev';
@@ -1208,6 +1028,16 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
         },
         body: JSON.stringify({
           message: userMessage,
+          userInput: userMessage,
+          sessionId: (() => {
+            const KEY = "ta_chat_session_id";
+            let sid = localStorage.getItem(KEY);
+            if (!sid) {
+              sid = `cs_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+              localStorage.setItem(KEY, sid);
+            }
+            return sid;
+          })(),
           selectedWorker: activeWorkerSlug || null,
           subscribedWorkers: (() => { try { return JSON.parse(localStorage.getItem("ACTIVE_WORKERS") || "[]"); } catch { return []; } })(),
           ...(filePayload ? { file: filePayload } : {}),
@@ -1227,8 +1057,63 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
             ...(alexContext ? { alexContext } : {}),
             ...(() => { try { const cc = sessionStorage.getItem("ta_campaign_context"); if (cc) { sessionStorage.removeItem("ta_campaign_context"); return { campaignContext: JSON.parse(cc) }; } } catch {} return {}; })(),
             ...(() => { try { const u = JSON.parse(sessionStorage.getItem("ta_utm") || "{}"); return u.source ? { utmSource: u.source, utmMedium: u.medium || "", utmCampaign: u.campaign || "" } : {}; } catch {} return {}; })(),
-            // CODEX 49.21 — Canvas context for worker-aware AI responses
-            ...(() => { try { const slug = activeWorkerSlug; if (!slug) return {}; const cl = JSON.parse(localStorage.getItem(`ta_checklist_${slug}`) || "{}"); const completed = Object.keys(cl).filter(k => cl[k]); if (completed.length === 0) return {}; return { canvas: { workerSlug: slug, completedItems: completed, totalCompleted: completed.length } }; } catch { return {}; } })(),
+            // CODEX 49.21 / 49.25 / 49.30 — Canvas context for worker-aware AI responses (incl. sample data)
+            ...(() => {
+              try {
+                const slug = activeWorkerSlug;
+                if (!slug) return {};
+                const checklist = WORKER_CHECKLISTS[slug];
+                const verticalKey = normalizeVerticalKey(slug);
+                const intelligence = WORKER_INTELLIGENCE[slug] || (verticalKey ? VERTICAL_INTELLIGENCE[verticalKey] : null);
+                let completedIds = [];
+                try {
+                  const cl = JSON.parse(localStorage.getItem(`ta_checklist_${slug}`) || "{}");
+                  completedIds = Object.keys(cl).filter(k => cl[k]);
+                } catch {}
+                if (checklist) {
+                  for (const item of checklist.items) {
+                    if (item.default && !completedIds.includes(item.id)) completedIds.push(item.id);
+                  }
+                }
+                const items = checklist?.items || [];
+                const labelFor = (id) => items.find(i => i.id === id)?.label || id;
+                const completedItems = completedIds.map(id => ({ id, label: labelFor(id) }));
+                const remainingItems = items
+                  .filter(i => !completedIds.includes(i.id))
+                  .map(i => ({ id: i.id, label: i.label }));
+                const demoActive = isDemoMode() && hasSampleData(slug, verticalKey);
+                const formatVal = (raw, unit) => {
+                  if (raw == null) return null;
+                  if (unit === "$") return "$" + Number(raw).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+                  if (unit === "%") return Number(raw).toLocaleString("en-US") + "%";
+                  return Number(raw).toLocaleString("en-US");
+                };
+                const kpis = (intelligence?.kpis || []).map(k => {
+                  const sampleRaw = demoActive ? getSampleKpiValue(slug, k.id, verticalKey) : null;
+                  const displayValue = sampleRaw != null ? formatVal(sampleRaw, k.unit) : (k.value && k.value !== "--" ? `${k.value}${k.unit || ""}` : null);
+                  return {
+                    id: k.id,
+                    label: k.label,
+                    value: displayValue,
+                    unit: k.unit || "",
+                    hint: k.hint || "",
+                    isSample: sampleRaw != null,
+                  };
+                });
+                return {
+                  canvas: {
+                    workerSlug: slug,
+                    hasProgress: completedItems.length > 0,
+                    totalCompleted: completedItems.length,
+                    totalItems: items.length,
+                    completedItems,
+                    remainingItems,
+                    kpis,
+                    demoMode: demoActive,
+                  },
+                };
+              } catch { return {}; }
+            })(),
           },
         }),
       });
@@ -1270,6 +1155,34 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
       // Canvas Protocol (44.9) — resolve canvas signal from API response
       if (data.canvasSignal && panel?.showCanvas) {
         CanvasResolver.resolve(data.canvasSignal, data.canvasContext || {}, panel.showCanvas);
+      }
+
+      // Canvas Render markers (49.27 / 49.31) — explicit work products from Alex go to canvas.
+      // Always attempt to render; log when panel is missing instead of silently dropping.
+      // Fall back to card:work-product when the AI emits an unmapped type.
+      if (Array.isArray(data.canvasRenders) && data.canvasRenders.length > 0) {
+        if (!panel?.showCanvas) {
+          console.warn('[canvas] showCanvas unavailable — dropping renders:', data.canvasRenders.map(r => r?.type));
+        } else {
+          if (typeof panel.openIfClosed === 'function') panel.openIfClosed();
+          for (const render of data.canvasRenders) {
+            if (!render || !render.type) continue;
+            let resolved = lookupSignal(render.type);
+            if (!resolved) {
+              console.warn('[canvas] unknown render type, using card:work-product fallback:', render.type);
+              resolved = lookupSignal('card:work-product');
+              if (!resolved) continue;
+            }
+            panel.showCanvas(resolved, { payload: render.payload || {} });
+          }
+        }
+        if (panel?.showCanvas && data.canvasRenders[0]?.payload?.title) {
+          setMessages(prev => [...prev, {
+            role: 'assistant',
+            isSystem: true,
+            content: `Updated canvas: ${data.canvasRenders.map(r => r.payload?.title || r.type).filter(Boolean).join(', ')}`,
+          }]);
+        }
       }
     } catch (error) {
       console.error('Send failed:', error);
@@ -1459,59 +1372,10 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
       );
     }
 
-    if (data.type === 'analyst_result') {
-      return (
-        <div className="structured-analyst-result">
-          <div className="analyst-header">
-            <span className="analyst-emoji">{data.verdict_emoji}</span>
-            <h4>{data.verdict}</h4>
-            <span className="analyst-score">{data.score}/100</span>
-          </div>
-          {data.summary && <p className="analyst-summary">{data.summary}</p>}
-          {data.key_findings && data.key_findings.length > 0 && (
-            <div className="analyst-findings">
-              <h5>Key Findings:</h5>
-              <ul>{data.key_findings.map((finding, i) => <li key={i}>{finding}</li>)}</ul>
-            </div>
-          )}
-        </div>
-      );
-    }
-
-    if (data.type === 'dtc_preview') {
-      return (
-        <div className="structured-dtc-preview">
-          <div className="dtc-header">
-            <h4>{data.asset_type} DTC Preview</h4>
-            {data.blockchain_verified && <span className="dtc-verified">Verified</span>}
-          </div>
-          {data.details && (
-            <div className="dtc-details">
-              {Object.entries(data.details).map(([key, value]) => (
-                <div key={key} className="dtc-field">
-                  <span className="dtc-label">{key}:</span>
-                  <span className="dtc-value">{String(value)}</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      );
-    }
-
-    if (data.type === 'trade_summary') {
-      return (
-        <div className="structured-trade-summary">
-          <h4>Trade Summary</h4>
-          <div className="trade-details">
-            <div className="trade-field"><strong>Your Vehicle:</strong> {data.your_vehicle}</div>
-            <div className="trade-field"><strong>Trade Value:</strong> ${data.trade_value?.toLocaleString()}</div>
-            <div className="trade-field"><strong>New Vehicle:</strong> {data.new_vehicle}</div>
-            <div className="trade-field"><strong>Price:</strong> ${data.new_price?.toLocaleString()}</div>
-            <div className="trade-field"><strong>Net Cost:</strong> ${data.net_cost?.toLocaleString()}</div>
-          </div>
-        </div>
-      );
+    // 49.27 — analyst_result, dtc_preview, trade_summary now route to canvas via canvasRenders.
+    // Inline rendering removed; if a legacy structuredData of these types arrives, ignore it.
+    if (data.type === 'analyst_result' || data.type === 'dtc_preview' || data.type === 'trade_summary') {
+      return null;
     }
 
     // Invite generator widget

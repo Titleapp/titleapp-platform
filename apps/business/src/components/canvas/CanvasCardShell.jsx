@@ -5,7 +5,12 @@
  * Every canvas card wraps its content in this shell.
  */
 
-import React from "react";
+import React, { createContext, useContext } from "react";
+
+// 50.10-T4 — shells auto-render a SAMPLE chip when wrapped in a CanvasDemoContext
+// with value true. CanvasPanel wraps every card with this provider so individual
+// card files don't need to thread the flag.
+export const CanvasDemoContext = createContext(false);
 
 const S = {
   shell: {
@@ -17,6 +22,13 @@ const S = {
     padding: "var(--canvas-card-padding) 20px", borderBottom: "1px solid var(--canvas-border)", flexShrink: 0,
   },
   title: { fontSize: 15, fontWeight: "var(--text-heading-weight)", color: "var(--text-primary)" },
+  // 50.10-T4 — header SAMPLE chip mirrors the existing "DEMO MODE — Sample data shown..."
+  // pill on the worker landing page so the canvas tells the same story.
+  titleRow: { display: "flex", alignItems: "center", gap: 10 },
+  demoChip: {
+    fontSize: 10, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase",
+    color: "#15803d", background: "#dcfce7", padding: "3px 8px", borderRadius: 999,
+  },
   dismissBtn: {
     background: "none", border: "none", cursor: "pointer", padding: 4,
     color: "var(--text-muted)", display: "flex", alignItems: "center",
@@ -47,13 +59,18 @@ function ShimmerBlock({ rows = 4 }) {
   );
 }
 
-export default function CanvasCardShell({ title, emptyPrompt, loading, onDismiss, children }) {
+export default function CanvasCardShell({ title, emptyPrompt, loading, onDismiss, isDemo, children }) {
+  const ctxDemo = useContext(CanvasDemoContext);
+  const showDemo = isDemo || ctxDemo;
   const hasContent = React.Children.count(children) > 0;
 
   return (
     <div style={S.shell}>
       <div style={S.header}>
-        <div style={S.title}>{title}</div>
+        <div style={S.titleRow}>
+          <div style={S.title}>{title}</div>
+          {showDemo && <span style={S.demoChip}>Sample</span>}
+        </div>
         {onDismiss && (
           <button style={S.dismissBtn} onClick={onDismiss} title="Dismiss">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">

@@ -8,6 +8,7 @@
 
 import React from "react";
 import { resolveComponent } from "./CanvasComponentMap";
+import { CanvasDemoContext } from "./CanvasCardShell";
 
 export default function CanvasPanel({ canvasData, onDismiss }) {
   if (!canvasData?.resolved) return null;
@@ -20,5 +21,14 @@ export default function CanvasPanel({ canvasData, onDismiss }) {
     return null;
   }
 
-  return <Component resolved={resolved} context={context || {}} onDismiss={onDismiss} />;
+  // 50.10-T4 — flag this canvas as demo when the payload was populated from
+  // the sampleData fixture pipeline. Cards' shells pick this up via context
+  // and render a SAMPLE chip in their headers.
+  const isDemo = !!(context?.payload?._demo);
+
+  return (
+    <CanvasDemoContext.Provider value={isDemo}>
+      <Component resolved={resolved} context={context || {}} onDismiss={onDismiss} />
+    </CanvasDemoContext.Provider>
+  );
 }

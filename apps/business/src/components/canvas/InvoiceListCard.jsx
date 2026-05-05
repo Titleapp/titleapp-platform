@@ -29,7 +29,9 @@ function statusStyle(status) {
 }
 
 export default function InvoiceListCard({ resolved, context, onDismiss }) {
-  const invoices = context?.invoices || null;
+  // 49.31 — payload-first.
+  const payload = context?.payload;
+  const invoices = (payload && (Array.isArray(payload) ? payload : payload.invoices)) || context?.invoices || null;
 
   return (
     <CanvasCardShell

@@ -192,6 +192,201 @@ const RULES_CONFIGS = {
       "Fair Housing Compliance", "Communication Templates", "Marketing Guidelines", "Other / General",
     ],
   },
+
+  // CODEX 49.32 — added so Settings/Worker Rules apply universally instead
+  // of falling back to auto-dealer defaults for every non-auto/non-analyst
+  // workspace.
+  aviation: {
+    defaults: {
+      globalLevel: 1,
+      operations: { logbookEntry: 1, currencyTracking: 1, scheduleTraining: 1, dispatchAdvisories: 1 },
+      training: { generateLessonPlans: 1, scoreManeuvers: 1, draftEndorsements: 1, examinerMode: 1 },
+      compliance: { trackPart91: 1, trackPart135: 1, flagDeficiencies: 1, prepIA: 1 },
+      communication: { sendEmails: true, emailLevel: 1, sendTexts: true, textLevel: 1, makePhoneCalls: false, dailyMessageLimit: 30, disclaimerText: "This message was sent by a Digital Worker on behalf of {operator name}", quietHoursStart: "21:00", quietHoursEnd: "08:00" },
+      marketing: { publishContent: 1, manageSocial: 1, maxCampaignBudget: 250 },
+    },
+    sections: [
+      {
+        key: "operations", title: "Flight Operations", accent: "#16a34a", defaultOpen: true,
+        rows: [
+          { key: "logbookEntry", label: "Auto-import logbook entries from ForeFlight / FltPlan" },
+          { key: "currencyTracking", label: "Track currency (PIC, IFR, night, takeoff/landing)" },
+          { key: "scheduleTraining", label: "Schedule recurrent training" },
+          { key: "dispatchAdvisories", label: "Issue dispatch advisories (weather, NOTAMs)" },
+        ],
+      },
+      {
+        key: "training", title: "Training & Proficiency", accent: "#2563eb",
+        rows: [
+          { key: "generateLessonPlans", label: "Generate lesson plans" },
+          { key: "scoreManeuvers", label: "Score maneuvers and stage checks" },
+          { key: "draftEndorsements", label: "Draft endorsements for CFI signature" },
+          { key: "examinerMode", label: "Allow examiner mode (135.293/.297 reviews)" },
+        ],
+      },
+      {
+        key: "compliance", title: "Regulatory Compliance", accent: "#dc2626",
+        rows: [
+          { key: "trackPart91", label: "Track Part 91 currency requirements" },
+          { key: "trackPart135", label: "Track Part 135 / charter compliance" },
+          { key: "flagDeficiencies", label: "Flag deficiencies before they expire" },
+          { key: "prepIA", label: "Prepare materials for IA / FSDO" },
+        ],
+      },
+      { key: "communication", title: "Communication Permissions", accent: "#d97706", type: "communication" },
+      {
+        key: "marketing", title: "Marketing Permissions", accent: "#ec4899",
+        rows: [
+          { key: "publishContent", label: "Publish thought leadership / safety content" },
+          { key: "manageSocial", label: "Manage social presence" },
+        ],
+        footer: { label: "Max campaign budget without approval", field: "maxCampaignBudget", prefix: "$" },
+      },
+    ],
+    playbookCategories: [
+      "Standard Operating Procedures", "Checklist Templates", "Training Syllabus",
+      "Currency Calculations", "Dispatch Policies", "Crew Scheduling Policies",
+      "Compliance Checklists", "Communication Templates", "Other / General",
+    ],
+  },
+
+  // Generic Personal Vault — single user, no team. Light-weight rules.
+  consumer: {
+    defaults: {
+      globalLevel: 1,
+      tasks: { draftReplies: 1, scheduleReminders: 1, fileDocuments: 1, summarizeIncoming: 1 },
+      communication: { sendEmails: true, emailLevel: 1, sendTexts: true, textLevel: 1, makePhoneCalls: false, dailyMessageLimit: 20, disclaimerText: "This message was sent by a Digital Worker on behalf of {your name}", quietHoursStart: "21:00", quietHoursEnd: "08:00" },
+      data: { autoImportEmails: 1, syncCalendars: 1, organizeFiles: 1 },
+    },
+    sections: [
+      {
+        key: "tasks", title: "Personal Tasks", accent: "#16a34a", defaultOpen: true,
+        rows: [
+          { key: "draftReplies", label: "Draft replies and follow-ups" },
+          { key: "scheduleReminders", label: "Schedule reminders and to-dos" },
+          { key: "fileDocuments", label: "File documents to your Vault" },
+          { key: "summarizeIncoming", label: "Summarize incoming email / messages" },
+        ],
+      },
+      { key: "communication", title: "Communication Permissions", accent: "#d97706", type: "communication" },
+      {
+        key: "data", title: "Data Access", accent: "#2563eb",
+        rows: [
+          { key: "autoImportEmails", label: "Auto-import email attachments to Vault" },
+          { key: "syncCalendars", label: "Sync calendars" },
+          { key: "organizeFiles", label: "Organize files automatically" },
+        ],
+      },
+    ],
+    playbookCategories: [
+      "Personal Workflows", "Templates", "Reminders", "Other / General",
+    ],
+  },
+
+  // Platform — Business in a Box (Accounting, HR, Marketing, Contacts, Control Center).
+  // The Spine. Rules cover what each Spine worker is allowed to do automatically.
+  platform: {
+    defaults: {
+      globalLevel: 1,
+      accounting: { categorizeTransactions: 1, generateReports: 1, reconcileAccounts: 1, flagAnomalies: 1, fileTaxes: 1, maxAutoApproveAmount: 500 },
+      marketing: { draftContent: 1, scheduleSocial: 1, sendEmailCampaigns: 1, manageContacts: 1, maxCampaignBudget: 250 },
+      hr: { onboardEmployees: 1, scheduleReviews: 1, trackTimeOff: 1, manageCompliance: 1 },
+      contacts: { importContacts: 1, scheduleFollowups: 1, draftCommunications: 1, scoreLeads: 1 },
+      controlCenter: { generateBriefs: 1, surfaceAlerts: 1, prioritizeWork: 1, crossWorkerHandoffs: 1 },
+      communication: { sendEmails: true, emailLevel: 1, sendTexts: true, textLevel: 1, makePhoneCalls: false, dailyMessageLimit: 100, disclaimerText: "This message was sent by a Digital Worker on behalf of {business name}", quietHoursStart: "21:00", quietHoursEnd: "08:00" },
+    },
+    sections: [
+      {
+        key: "accounting", title: "Accounting (Spine)", accent: "#16a34a", defaultOpen: true,
+        rows: [
+          { key: "categorizeTransactions", label: "Categorize bank/card transactions" },
+          { key: "generateReports", label: "Generate P&L, balance sheet, cash flow" },
+          { key: "reconcileAccounts", label: "Reconcile accounts" },
+          { key: "flagAnomalies", label: "Flag unusual or duplicate charges" },
+          { key: "fileTaxes", label: "Prepare tax filings (1099s, payroll)" },
+        ],
+        footer: { label: "Max auto-approve amount per transaction", field: "maxAutoApproveAmount", prefix: "$" },
+      },
+      {
+        key: "marketing", title: "Marketing & Content (Spine)", accent: "#ec4899",
+        rows: [
+          { key: "draftContent", label: "Draft social posts and emails" },
+          { key: "scheduleSocial", label: "Schedule social posts (LinkedIn, Instagram, etc.)" },
+          { key: "sendEmailCampaigns", label: "Send email campaigns via SendGrid" },
+          { key: "manageContacts", label: "Manage contact lists and segments" },
+        ],
+        footer: { label: "Max campaign budget without approval", field: "maxCampaignBudget", prefix: "$" },
+      },
+      {
+        key: "hr", title: "HR & People (Spine)", accent: "#7c3aed",
+        rows: [
+          { key: "onboardEmployees", label: "Run employee onboarding flows" },
+          { key: "scheduleReviews", label: "Schedule performance reviews" },
+          { key: "trackTimeOff", label: "Track time off and PTO accrual" },
+          { key: "manageCompliance", label: "Manage compliance acknowledgments" },
+        ],
+      },
+      {
+        key: "contacts", title: "Contacts (Spine)", accent: "#2563eb",
+        rows: [
+          { key: "importContacts", label: "Import contacts from CSV / vCard / Gmail" },
+          { key: "scheduleFollowups", label: "Schedule follow-up reminders" },
+          { key: "draftCommunications", label: "Draft outbound communications" },
+          { key: "scoreLeads", label: "Score and prioritize leads" },
+        ],
+      },
+      {
+        key: "controlCenter", title: "Control Center Pro (Spine)", accent: "#0891b2",
+        rows: [
+          { key: "generateBriefs", label: "Generate daily / weekly briefs" },
+          { key: "surfaceAlerts", label: "Surface priority alerts across workers" },
+          { key: "prioritizeWork", label: "Prioritize work across the day" },
+          { key: "crossWorkerHandoffs", label: "Coordinate handoffs between Spine workers" },
+        ],
+      },
+      { key: "communication", title: "Communication Permissions", accent: "#d97706", type: "communication" },
+    ],
+    playbookCategories: [
+      "Operating Cadence", "Brand Voice", "Communication Templates", "SOPs",
+      "Compliance Checklists", "Vendor & Supplier Process", "Other / General",
+    ],
+  },
+
+  // Generic fallback — used when the active vertical doesn't match a specific
+  // config. Provides Communication + Tasks + Data sections that apply to any
+  // worker. The previous behavior fell back to `auto` (auto-dealer rules)
+  // which caused user complaints across non-auto verticals.
+  default: {
+    defaults: {
+      globalLevel: 1,
+      tasks: { respondToInbound: 1, draftDeliverables: 1, scheduleFollowups: 1, fileDocuments: 1 },
+      communication: { sendEmails: true, emailLevel: 1, sendTexts: true, textLevel: 1, makePhoneCalls: false, dailyMessageLimit: 50, disclaimerText: "This message was sent by a Digital Worker on behalf of {organization}", quietHoursStart: "21:00", quietHoursEnd: "08:00" },
+      data: { autoImport: 1, organizeFiles: 1, summarizeIncoming: 1 },
+    },
+    sections: [
+      {
+        key: "tasks", title: "Day-to-day Tasks", accent: "#16a34a", defaultOpen: true,
+        rows: [
+          { key: "respondToInbound", label: "Respond to inbound messages and requests" },
+          { key: "draftDeliverables", label: "Draft deliverables for your review" },
+          { key: "scheduleFollowups", label: "Schedule follow-ups and reminders" },
+          { key: "fileDocuments", label: "File documents to the Vault" },
+        ],
+      },
+      { key: "communication", title: "Communication Permissions", accent: "#d97706", type: "communication" },
+      {
+        key: "data", title: "Data Access", accent: "#2563eb",
+        rows: [
+          { key: "autoImport", label: "Auto-import incoming attachments / data" },
+          { key: "organizeFiles", label: "Organize files automatically" },
+          { key: "summarizeIncoming", label: "Summarize incoming items" },
+        ],
+      },
+    ],
+    playbookCategories: [
+      "Standard Operating Procedures", "Communication Templates", "Workflow Checklists", "Other / General",
+    ],
+  },
 };
 
 // ── Shared UI Components ──
@@ -368,9 +563,14 @@ function PermissionSection({ section, rules, updateRules }) {
 }
 
 export default function Rules() {
-  const vertical = localStorage.getItem("VERTICAL") || "auto";
-  const jurisdiction = localStorage.getItem("JURISDICTION") || "FL";
-  const config = RULES_CONFIGS[vertical] || RULES_CONFIGS.auto;
+  // 49.32 — default vertical no longer auto-dealer. Falls back to "consumer"
+  // (Personal Vault) which uses the generic `default` rule set.
+  const vertical = localStorage.getItem("VERTICAL") || "consumer";
+  const jurisdiction = localStorage.getItem("JURISDICTION") || "";
+  // 49.32 — fall back to generic `default` config instead of auto-dealer rules
+  // so non-auto verticals (aviation, real-estate, platform/Spine, consumer,
+  // government, etc.) get sensible defaults. `auto` is no longer the catch-all.
+  const config = RULES_CONFIGS[vertical] || RULES_CONFIGS.default;
   const [rules, setRules] = useState(config.defaults);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);

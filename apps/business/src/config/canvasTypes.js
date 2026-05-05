@@ -53,6 +53,20 @@ export const CANVAS_TYPES = {
     mobileFallback: "inline-card",
     emptyPrompt: "Ask Alex to categorize your transactions to see your Chart of Accounts here.",
   },
+  "card:accounting-balance-sheet": {
+    component: "BalanceSheetCard",
+    dataSource: "conversation",
+    dismissible: true,
+    mobileFallback: "inline-card",
+    emptyPrompt: "Ask Alex to build a balance sheet to see it here.",
+  },
+  "card:accounting-cashflow": {
+    component: "CashFlowStatementCard",
+    dataSource: "conversation",
+    dismissible: true,
+    mobileFallback: "inline-card",
+    emptyPrompt: "Ask Alex for a cash flow statement to see it here.",
+  },
 
   // HR cards
   "card:hr-employee-register": {
@@ -118,6 +132,121 @@ export const CANVAS_TYPES = {
     dismissible: true,
     mobileFallback: "inline-card",
     emptyPrompt: "Ask about your closing to see details here.",
+  },
+  "card:re-property-analysis": {
+    component: "WorkProductCard",
+    dataSource: "conversation",
+    dismissible: true,
+    mobileFallback: "inline-card",
+    emptyPrompt: "Ask Alex to analyze a property to see the report here.",
+    _title: "Property Analysis",
+  },
+  "card:re-market-report": {
+    component: "WorkProductCard",
+    dataSource: "conversation",
+    dismissible: true,
+    mobileFallback: "inline-card",
+    emptyPrompt: "Ask Alex for a market report to see it here.",
+    _title: "Market Report",
+  },
+  "card:re-comp-analysis": {
+    component: "WorkProductCard",
+    dataSource: "conversation",
+    dismissible: true,
+    mobileFallback: "inline-card",
+    emptyPrompt: "Ask Alex to run comps to see the analysis here.",
+    _title: "Comparable Sales Analysis",
+  },
+
+  // Auto Dealer
+  "card:auto-deal-analysis": {
+    component: "WorkProductCard",
+    dataSource: "conversation",
+    dismissible: true,
+    mobileFallback: "inline-card",
+    emptyPrompt: "Ask Alex to analyze a deal to see it here.",
+    _title: "Deal Analysis",
+  },
+  "card:auto-fi-compliance": {
+    component: "WorkProductCard",
+    dataSource: "conversation",
+    dismissible: true,
+    mobileFallback: "inline-card",
+    emptyPrompt: "Ask Alex to review F&I compliance to see the report here.",
+    _title: "F&I Compliance Review",
+  },
+  "card:auto-inventory": {
+    component: "WorkProductCard",
+    dataSource: "conversation",
+    dismissible: true,
+    mobileFallback: "inline-card",
+    emptyPrompt: "Ask Alex about inventory to see the report here.",
+    _title: "Inventory Snapshot",
+  },
+
+  // Generic work product (any worker, fallback)
+  "card:work-product": {
+    component: "WorkProductCard",
+    dataSource: "conversation",
+    dismissible: true,
+    mobileFallback: "inline-card",
+    emptyPrompt: null,
+    _title: "Work Product",
+  },
+
+  // Trade summary + Analyst report (migrated from inline chat cards)
+  "card:trade-summary": {
+    component: "WorkProductCard",
+    dataSource: "conversation",
+    dismissible: true,
+    mobileFallback: "inline-card",
+    emptyPrompt: null,
+    _title: "Trade Summary",
+  },
+  "card:analyst-report": {
+    component: "WorkProductCard",
+    dataSource: "conversation",
+    dismissible: true,
+    mobileFallback: "inline-card",
+    emptyPrompt: null,
+    _title: "Analyst Report",
+  },
+
+  // Generic visual charts (49.32) — any worker, when user asks for a graphical view.
+  "card:chart-bar": {
+    component: "ChartCard",
+    dataSource: "conversation",
+    dismissible: true,
+    mobileFallback: "inline-card",
+    emptyPrompt: "Ask Alex to chart something for you to see it here.",
+    _title: "Chart",
+  },
+  "card:chart-funnel": {
+    component: "ChartCard",
+    dataSource: "conversation",
+    dismissible: true,
+    mobileFallback: "inline-card",
+    emptyPrompt: "Ask Alex about your pipeline to see a funnel here.",
+    _title: "Pipeline Funnel",
+  },
+  "card:chart-heatmap": {
+    component: "ChartCard",
+    dataSource: "conversation",
+    dismissible: true,
+    mobileFallback: "inline-card",
+    emptyPrompt: "Ask Alex to compare metrics to see a heatmap here.",
+    _title: "Heatmap",
+  },
+
+  // Generated images (49.32) — output of the generate_image tool.
+  // Lands on canvas instead of inline in chat.
+  "card:image": {
+    component: "ImageCard",
+    dataSource: "conversation",
+    dismissible: true,
+    mobileFallback: "inline-card",
+    emptyPrompt: "Ask any worker to generate an image to see it here.",
+    _title: "Generated Image",
   },
 };
 

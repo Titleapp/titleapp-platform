@@ -11,6 +11,9 @@
 
 const admin = require("firebase-admin");
 const crypto = require("crypto");
+const { USAGE_EVENTS_COLLECTION } = require("../config/usageEvents");
+const { computeRevenueAttribution } = require("../billing/recordUsageEvent");
+const pricing = require("../config/pricing");
 
 function getDb() { return admin.firestore(); }
 
@@ -180,11 +183,25 @@ function buildDocumentRecord(input) {
  * @param {string} uid — user who triggered the event
  * @param {number} [amount=1] — metering amount
  */
-async function logUsageEvent(operatorId, eventType, docId, uid, amount = 1) {
+async function logUsageEvent(operatorId, eventType, docId, uid, amount = 1, opts = {}) {
   const db = getDb();
   const eventId = `evt_${crypto.randomUUID().replace(/-/g, "")}`;
 
-  await db.collection("usageEvents").doc(operatorId)
+  // CODEX 50.5 — merge revenue-attribution fields. Document Control events
+  // bill at fixed rates from pricing.overageRates (signature_request,
+  // blockchain_record). Use those as the revenue basis when computing share.
+  const ratePerEvent = (pricing.overageRates && pricing.overageRates[eventType]) || 0;
+  const attribution = await computeRevenueAttribution({
+    workerId: opts.workerId || null,
+    userId: uid,
+    tenantId: operatorId,
+    revenueBasis: ratePerEvent > 0 ? "credit_pack" : "system",
+    revenueAmount: ratePerEvent * amount,
+    timestamp: new Date(),
+    parentInteractionId: opts.parentInteractionId || null,
+  }).catch(e => { console.warn("[50.5] doc-control attribution failed:", e.message); return {}; });
+
+  await db.collection(USAGE_EVENTS_COLLECTION).doc(operatorId)
     .collection("events").doc(eventId).set({
       eventId,
       operatorId,
@@ -195,6 +212,7 @@ async function logUsageEvent(operatorId, eventType, docId, uid, amount = 1) {
       amount,
       billed: false,
       billedAt: null,
+      ...attribution,
     });
 
   return eventId;

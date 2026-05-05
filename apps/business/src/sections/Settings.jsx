@@ -639,19 +639,31 @@ function BusinessSettings() {
   const [newCompanyData, setNewCompanyData] = useState({
     name: "",
     type: "business",
-    vertical: "auto",
-    jurisdiction: "IL",
+    // 49.32 — default vertical no longer auto-dealer. Personal Vault is the
+    // launch baseline; admins can override per workspace.
+    vertical: "consumer",
+    jurisdiction: "",
   });
 
-  const vertical = localStorage.getItem("VERTICAL") || "auto";
-  const jurisdiction = localStorage.getItem("JURISDICTION") || "IL";
+  const vertical = localStorage.getItem("VERTICAL") || "consumer";
+  const jurisdiction = localStorage.getItem("JURISDICTION") || "";
 
+  // 49.32 — expanded so every launch vertical has a label.
   const VERTICAL_LABELS = {
+    consumer: "Personal Vault",
+    platform: "Business in a Box",
     auto: "Auto Dealer",
     analyst: "Investment Analyst",
     "real-estate": "Real Estate Brokerage",
     "property-mgmt": "Property Management",
     aviation: "Aviation",
+    "title-escrow": "Title & Escrow",
+    construction: "Construction",
+    government: "Government",
+    healthcare: "Healthcare",
+    legal: "Legal",
+    solar: "Solar Energy",
+    web3: "Web3",
     marine: "Marine",
   };
 

@@ -6,6 +6,7 @@
 
 import React from "react";
 import CanvasCardShell from "./CanvasCardShell";
+import CanvasFallbackView from "./CanvasFallbackView";
 
 const S = {
   address: { fontSize: 15, fontWeight: 700, color: "#1e293b", marginBottom: 12 },
@@ -24,7 +25,10 @@ const S = {
 };
 
 export default function RealEstateClosingCard({ resolved, context, onDismiss }) {
-  const closing = context?.closingData || null;
+  // 49.31 — payload-first.
+  const payload = context?.payload;
+  const closing = payload?.closingData || (payload && (payload.address || payload.milestones || payload.price) ? payload : null) || context?.closingData || null;
+  const hasClosing = closing && (closing.address || closing.price || closing.closingDate || closing.escrowAgent || closing.titleCompany || (closing.milestones && closing.milestones.length));
 
   return (
     <CanvasCardShell
@@ -32,7 +36,7 @@ export default function RealEstateClosingCard({ resolved, context, onDismiss }) 
       emptyPrompt={resolved?.emptyPrompt || "Ask about your closing to see details here."}
       onDismiss={onDismiss}
     >
-      {closing && (
+      {hasClosing ? (
         <>
           {closing.address && <div style={S.address}>{closing.address}</div>}
           {closing.price && (
@@ -77,6 +81,8 @@ export default function RealEstateClosingCard({ resolved, context, onDismiss }) 
             </div>
           )}
         </>
+      ) : (
+        <CanvasFallbackView payload={payload} />
       )}
     </CanvasCardShell>
   );

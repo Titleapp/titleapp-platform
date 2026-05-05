@@ -15,6 +15,7 @@
 const admin = require("firebase-admin");
 const Stripe = require("stripe");
 const pricing = require("../config/pricing");
+const { USAGE_EVENTS_COLLECTION } = require("../config/usageEvents");
 
 function getDb() { return admin.firestore(); }
 function getStripe() {
@@ -44,7 +45,7 @@ async function processUsageEvents() {
 
     try {
       // Query unbilled events
-      const unbilledSnap = await db.collection("usageEvents").doc(operatorId)
+      const unbilledSnap = await db.collection(USAGE_EVENTS_COLLECTION).doc(operatorId)
         .collection("events")
         .where("billed", "==", false)
         .limit(500)
@@ -72,7 +73,7 @@ async function processUsageEvents() {
       // Get already-billed counts this month for this operator
       const now = new Date();
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-      const billedSnap = await db.collection("usageEvents").doc(operatorId)
+      const billedSnap = await db.collection(USAGE_EVENTS_COLLECTION).doc(operatorId)
         .collection("events")
         .where("billed", "==", true)
         .where("billedAt", ">=", admin.firestore.Timestamp.fromDate(monthStart))
@@ -324,7 +325,7 @@ async function handleGetBillingStatus(req, res, { userId }) {
   const usageCounts = { signature_request: 0, blockchain_record: 0, document_storage_gb: 0 };
 
   try {
-    const eventsSnap = await db.collection("usageEvents").doc(userId)
+    const eventsSnap = await db.collection(USAGE_EVENTS_COLLECTION).doc(userId)
       .collection("events")
       .where("timestamp", ">=", admin.firestore.Timestamp.fromDate(monthStart))
       .get();
@@ -432,7 +433,7 @@ async function handleGetUsageHistory(req, res, { userId }) {
   const now = new Date();
   const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, 1);
 
-  const eventsSnap = await db.collection("usageEvents").doc(userId)
+  const eventsSnap = await db.collection(USAGE_EVENTS_COLLECTION).doc(userId)
     .collection("events")
     .where("timestamp", ">=", admin.firestore.Timestamp.fromDate(threeMonthsAgo))
     .orderBy("timestamp", "desc")
@@ -597,7 +598,7 @@ async function handleGetKentFlags(req, res) {
 
   const operatorDocs = await db.collection("documentControl").listDocuments();
   for (const opDoc of operatorDocs.slice(0, 50)) { // limit for performance
-    const eventsSnap = await db.collection("usageEvents").doc(opDoc.id)
+    const eventsSnap = await db.collection(USAGE_EVENTS_COLLECTION).doc(opDoc.id)
       .collection("events")
       .where("timestamp", ">=", admin.firestore.Timestamp.fromDate(monthStart))
       .get();

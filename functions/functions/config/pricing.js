@@ -21,7 +21,13 @@ module.exports = {
     esign: 30,
     ocr: 50,
   },
-  creatorInferenceSharePct: 0.20,      // Creator gets 20% of TitleApp inference margin
+  // CODEX 50.5 D3 — name is misleading: actual basis is REVENUE COLLECTED for
+  // the call (credit cost for credit-pack users; per-credit subscription value
+  // for subscription users), not inference margin. Locked at 0.20. A future
+  // cleanup CODEX may rename this to creatorRevenueSharePct globally.
+  creatorInferenceSharePct: 0.20,      // Creator gets 20% of revenue collected for the call
+  creatorRevenueSharePct: 0.20,        // 50.5 alias — prefer this in new code
+  creatorParentForkSharePct: 0.30,     // 50.5 D2 — when a Creator-authored worker is forked, 30% of share goes to the immediate parent, 70% to current forker
 
   // ── Line 2 — Data Pass-Through Fee ───────────────────────────
   dataFeeMarkupMultiplier: 2.0,        // actual_cost * 2.0 = user charge

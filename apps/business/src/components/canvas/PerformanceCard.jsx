@@ -30,7 +30,9 @@ function RatingDots({ rating, max = 5 }) {
 }
 
 export default function PerformanceCard({ resolved, context, onDismiss }) {
-  const reviews = context?.performanceReviews || null;
+  // 49.31 — payload-first.
+  const payload = context?.payload;
+  const reviews = (payload && (Array.isArray(payload) ? payload : (payload.reviews || payload.performanceReviews))) || context?.performanceReviews || null;
 
   return (
     <CanvasCardShell

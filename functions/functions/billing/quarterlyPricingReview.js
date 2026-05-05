@@ -10,6 +10,7 @@
 
 const admin = require("firebase-admin");
 const pricing = require("../config/pricing");
+const { USAGE_EVENTS_COLLECTION } = require("../config/usageEvents");
 
 function getDb() { return admin.firestore(); }
 
@@ -69,10 +70,12 @@ async function runQuarterlyPricingReview() {
   const { start, end } = getQuarterRange(now);
   const quarterLabel = getQuarterLabel(start);
 
-  // Query all usage_events for the quarter
-  const eventsSnap = await db.collection("usage_events")
-    .where("_written_at", ">=", start)
-    .where("_written_at", "<", end)
+  // Query all usage events for the quarter. Emission points stamp `timestamp`
+  // (server timestamp on writes, plain Date in image generator). Predecessor
+  // queried `_written_at` which no write path produces — query was always empty.
+  const eventsSnap = await db.collection(USAGE_EVENTS_COLLECTION)
+    .where("timestamp", ">=", start)
+    .where("timestamp", "<", end)
     .get();
 
   const events = eventsSnap.docs.map(d => d.data());

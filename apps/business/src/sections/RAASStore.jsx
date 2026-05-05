@@ -60,10 +60,12 @@ export default function RAASStore() {
     const token = localStorage.getItem("ID_TOKEN");
     const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
     try {
+      // 49.32 — include tenantId so admin-in-workspace creates tenant-scoped sub.
+      const subTenantId = localStorage.getItem("TENANT_ID") || null;
       const res = await fetch(`${apiBase}/api?path=/v1/worker:subscribe`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ workerId: worker.slug, slug: worker.slug }),
+        body: JSON.stringify({ workerId: worker.slug, slug: worker.slug, tenantId: subTenantId }),
       });
       const data = await res.json();
       if (data.ok) {

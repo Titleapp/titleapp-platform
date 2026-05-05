@@ -18,6 +18,8 @@
 const admin = require("firebase-admin");
 const crypto = require("crypto");
 const { callWithHealthCheck, getErrorMessage } = require("../health");
+const { USAGE_EVENTS_COLLECTION } = require("../../config/usageEvents");
+const { computeRevenueAttribution } = require("../../billing/recordUsageEvent");
 
 function getDb() { return admin.firestore(); }
 
@@ -197,10 +199,22 @@ async function storeAsset({ workerId, creatorId, imageUrl, prompt, style, model,
 
 /**
  * Log image generation usage event.
+ * CODEX 50.5 — merges revenue-attribution fields so cycle-close picks up
+ * Creator share when the worker is Creator-authored.
  */
-async function logUsageEvent({ userId, workerId, model, cost }) {
+async function logUsageEvent({ userId, workerId, model, cost, parentInteractionId, tenantId }) {
   const db = getDb();
-  await db.collection("usageEvents").add({
+  const attribution = await computeRevenueAttribution({
+    workerId,
+    userId,
+    tenantId: tenantId || null,
+    revenueBasis: cost > 0 ? "credit_pack" : "system",
+    revenueAmount: Number(cost) || 0, // image cost is already in dollars
+    timestamp: new Date(),
+    parentInteractionId: parentInteractionId || null,
+  }).catch(e => { console.warn("[50.5] image attribution failed:", e.message); return {}; });
+
+  await db.collection(USAGE_EVENTS_COLLECTION).add({
     userId,
     workerId,
     event_type: "image_generate",
@@ -208,6 +222,7 @@ async function logUsageEvent({ userId, workerId, model, cost }) {
     pass_through: true,
     model,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    ...attribution,
   });
 }
 
@@ -223,7 +238,7 @@ async function logUsageEvent({ userId, workerId, model, cost }) {
  * @param {string} [opts.vertical] — worker vertical (triggers PHI scrub for health verticals)
  * @returns {Promise<object>}
  */
-async function generateImage({ prompt, style = "cartoon", size = "square", workerId, creatorId, vertical }) {
+async function generateImage({ prompt, style = "cartoon", size = "square", workerId, creatorId, vertical, parentInteractionId, tenantId }) {
   const db = getDb();
 
   // ── Rate limit: 50 images per worker ───────────────────────
@@ -308,7 +323,7 @@ async function generateImage({ prompt, style = "cartoon", size = "square", worke
 
   // ── Store asset + log usage ────────────────────────────────
   await storeAsset({ workerId, creatorId, imageUrl, prompt: finalPrompt, style, model: DEFAULT_MODEL, assetId });
-  await logUsageEvent({ userId: creatorId, workerId, model: DEFAULT_MODEL, cost: 0.008 });
+  await logUsageEvent({ userId: creatorId, workerId, model: DEFAULT_MODEL, cost: 0.008, parentInteractionId, tenantId });
 
   return { imageUrl, prompt: finalPrompt, model: DEFAULT_MODEL, assetId, phiScrubbed, aviationScrubbed };
 }

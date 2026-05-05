@@ -1,5 +1,6 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { getAuth, signOut } from "firebase/auth";
+import { collection, getDocs, getFirestore, query, where, limit } from "firebase/firestore";
 import WorkerIcon, { getThemeAccent } from "../utils/workerIcons";
 import { getWorkerColor } from "../utils/workerColors";
 import { useWorkerState } from "../context/WorkerStateContext.jsx";
@@ -1135,6 +1136,7 @@ export default function Sidebar({
   const [workersExpanded, setWorkersExpanded] = useState(false);
   const [collapsedGroups, setCollapsedGroups] = useState({});
   const [workersCollapsed, setWorkersCollapsed] = useState(true);
+  const [workspacesCollapsed, setWorkspacesCollapsed] = useState(false);
   const [gamesCollapsed, setGamesCollapsed] = useState(true);
   const workerCtx = useWorkerState();
   const vertical = guestMode ? "" : (localStorage.getItem("VERTICAL") || "auto");
@@ -1144,6 +1146,36 @@ export default function Sidebar({
   const isRawId = /^ws_\d+_[a-z0-9]+$/i.test(rawWsName);
   const workspaceName = isRawId ? "" : rawWsName;
   const companyName = guestMode ? (tenantName || "TitleApp") : (workspaceName || tenantName || localStorage.getItem("COMPANY_NAME") || localStorage.getItem("TENANT_NAME") || "");
+
+  // 49.32 — workspace role for badge display. Refreshed on workspace switch.
+  const [workspaceRole, setWorkspaceRole] = useState(null);
+  useEffect(() => {
+    if (guestMode || isPersonal) { setWorkspaceRole(null); return; }
+    const tid = localStorage.getItem("TENANT_ID");
+    if (!tid || tid === "vault" || tid === "personal") { setWorkspaceRole(null); return; }
+    let cancelled = false;
+    async function loadRole() {
+      try {
+        const u = getAuth().currentUser;
+        if (!u) return;
+        const q = query(
+          collection(getFirestore(), "memberships"),
+          where("userId", "==", u.uid),
+          where("tenantId", "==", tid),
+          where("status", "==", "active"),
+          limit(1)
+        );
+        const snap = await getDocs(q);
+        if (!cancelled) {
+          setWorkspaceRole(snap.empty ? null : (snap.docs[0].data().role || "member"));
+        }
+      } catch (_) { /* non-fatal */ }
+    }
+    loadRole();
+    function onChange() { loadRole(); }
+    window.addEventListener("ta:workspace-changed", onChange);
+    return () => { cancelled = true; window.removeEventListener("ta:workspace-changed", onChange); };
+  }, [guestMode, isPersonal]);
 
   // User's actual first name (for personalized header)
   const userFirstName = (() => {
@@ -1387,6 +1419,10 @@ export default function Sidebar({
       }
     }
 
+    if (!existingIds.has("billing")) {
+      items.push({ id: "billing", label: "Billing" });
+    }
+
     return items;
   }, [selectedWorker, isPersonal, vertical, activeWorkers]);
 
@@ -1415,7 +1451,19 @@ export default function Sidebar({
             <div className="brandName" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {brandLabel}
             </div>
-            <div className="brandSub">{selectedWorker ? (VERTICAL_LABELS[vertical] || "Worker") : (isPersonal ? "Personal Vault" : (VERTICAL_LABELS[vertical] || "Business"))}</div>
+            <div className="brandSub" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span>{selectedWorker ? (VERTICAL_LABELS[vertical] || "Worker") : (isPersonal ? "Personal Vault" : (VERTICAL_LABELS[vertical] || "Business"))}</span>
+              {!isPersonal && workspaceRole && (
+                <span style={{
+                  fontSize: 9, fontWeight: 700, padding: "1px 6px", borderRadius: 999,
+                  background: workspaceRole === "admin" ? "rgba(124,58,237,0.25)" : workspaceRole === "viewer" ? "rgba(99,102,241,0.18)" : "rgba(34,197,94,0.18)",
+                  color: workspaceRole === "admin" ? "#c4b5fd" : workspaceRole === "viewer" ? "#a5b4fc" : "#86efac",
+                  textTransform: "uppercase", letterSpacing: 0.4,
+                }}>
+                  {workspaceRole}
+                </span>
+              )}
+            </div>
           </div>
           {workspaces.length > 1 && (
             <svg
@@ -1473,40 +1521,87 @@ export default function Sidebar({
                 Your Workspaces
               </div>
             )}
-            {ownWorkspaces.map(ws => (
-              <div
-                key={ws.id}
-                onClick={() => { setShowSwitcher(false); if (ws.id !== currentWorkspaceId) onSwitchWorkspace(ws); }}
-                style={{
-                  display: "flex", alignItems: "center", gap: 10,
-                  padding: "8px 12px", cursor: "pointer",
-                  background: ws.id === currentWorkspaceId ? "rgba(124,58,237,0.15)" : "transparent",
-                  borderRadius: 8, margin: "2px 8px",
-                }}
-                onMouseEnter={e => { if (ws.id !== currentWorkspaceId) e.currentTarget.style.background = "rgba(255,255,255,0.05)"; }}
-                onMouseLeave={e => { if (ws.id !== currentWorkspaceId) e.currentTarget.style.background = "transparent"; }}
-              >
-                <div style={{
-                  width: 28, height: 28, borderRadius: 6,
-                  background: ws.id === currentWorkspaceId ? "#7c3aed" : "#1e293b",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  color: "white", fontWeight: 600, fontSize: 12, flexShrink: 0,
-                }}>
-                  {(ws.name || "?").charAt(0).toUpperCase()}
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: "#e2e8f0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {ws.name}
+            {ownWorkspaces.map(ws => {
+              const isCurrent = ws.id === currentWorkspaceId;
+              const isPersonalRow = ws.id === "vault" || ws.type === "personal" || ws.isDefault;
+              const canInvite = !isPersonalRow && ws.role === "admin";
+              return (
+                <div
+                  key={ws.id}
+                  onClick={() => { setShowSwitcher(false); if (!isCurrent) onSwitchWorkspace(ws); }}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 10,
+                    padding: "8px 12px", cursor: "pointer",
+                    background: isCurrent ? "rgba(124,58,237,0.15)" : "transparent",
+                    borderRadius: 8, margin: "2px 8px",
+                    position: "relative",
+                  }}
+                  onMouseEnter={e => {
+                    if (!isCurrent) e.currentTarget.style.background = "rgba(255,255,255,0.05)";
+                    const btn = e.currentTarget.querySelector('[data-invite-btn]');
+                    if (btn) btn.style.opacity = "1";
+                  }}
+                  onMouseLeave={e => {
+                    if (!isCurrent) e.currentTarget.style.background = "transparent";
+                    const btn = e.currentTarget.querySelector('[data-invite-btn]');
+                    if (btn) btn.style.opacity = "0";
+                  }}
+                >
+                  <div style={{
+                    width: 28, height: 28, borderRadius: 6,
+                    background: isCurrent ? "#7c3aed" : "#1e293b",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    color: "white", fontWeight: 600, fontSize: 12, flexShrink: 0,
+                  }}>
+                    {(ws.name || "?").charAt(0).toUpperCase()}
                   </div>
-                  <div style={{ fontSize: 11, color: "#64748b" }}>
-                    {VERTICAL_LABELS[ws.vertical] || ws.vertical}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "#e2e8f0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {ws.name}
+                    </div>
+                    <div style={{ fontSize: 11, color: "#64748b" }}>
+                      {VERTICAL_LABELS[ws.vertical] || ws.vertical}
+                    </div>
                   </div>
+                  {/* Per-row invite icon — admin only, visible on hover (CODEX 50.10-T2 Note 1) */}
+                  {canInvite && (
+                    <button
+                      data-invite-btn
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowSwitcher(false);
+                        window.dispatchEvent(new CustomEvent("ta:open-invite-modal", {
+                          detail: { tenantId: ws.id, workspaceName: ws.name },
+                        }));
+                      }}
+                      title={`Invite a member to ${ws.name}`}
+                      style={{
+                        flexShrink: 0,
+                        width: 24, height: 24, borderRadius: 6,
+                        background: "rgba(124,58,237,0.2)",
+                        border: "none",
+                        color: "#a78bfa",
+                        cursor: "pointer",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        opacity: isCurrent ? 1 : 0,
+                        transition: "opacity 120ms ease",
+                        marginRight: isCurrent ? 0 : 4,
+                      }}
+                    >
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                        <circle cx="8.5" cy="7" r="4" />
+                        <line x1="20" y1="8" x2="20" y2="14" />
+                        <line x1="23" y1="11" x2="17" y2="11" />
+                      </svg>
+                    </button>
+                  )}
+                  {isCurrent && !canInvite && (
+                    <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#22c55e", flexShrink: 0 }} />
+                  )}
                 </div>
-                {ws.id === currentWorkspaceId && (
-                  <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#22c55e", flexShrink: 0 }} />
-                )}
-              </div>
-            ))}
+              );
+            })}
 
             {sharedWorkspaces.length > 0 && (
               <>
@@ -1548,6 +1643,10 @@ export default function Sidebar({
             )}
 
             <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", margin: "4px 0" }} />
+
+            {/* Per-row invite icons replace the standalone "Invite a member"
+                button (CODEX 50.10-T2 Note 1). Hover any workspace row above
+                to reveal a + invite icon if you're admin of that workspace. */}
 
             {onBackToHub && (
               <div
@@ -1603,38 +1702,137 @@ export default function Sidebar({
         </div>
       )}
 
-      {/* ═══ PERSONAL VAULT (always pinned for business workspaces) ═══ */}
-      {!isPersonal && (
-        <>
-          <div className="sidebarSection">
-            <button
-              className={`navItem ${currentSection === "personal-vault" ? "navItemActive" : ""}`}
-              onClick={() => handleNavClick("personal-vault")}
-              style={{ width: "100%", textAlign: "left", cursor: "pointer", fontSize: 12, color: "rgba(255,255,255,0.6)", fontWeight: 500, padding: "7px 10px" }}
-            >
-              Personal Vault
-            </button>
-          </div>
-          <div style={{ height: "1px", background: "rgba(255,255,255,0.08)", margin: "4px 16px" }} />
-        </>
-      )}
-
-      {/* ═══ PERSONAL VAULT — always pinned ═══ */}
+      {/* ═══ PERSONAL VAULT — single quick-link, section-header style (CODEX 50.10-T2 Note 2) ═══
+           Personal Vault is also listed inside MY WORKSPACES below as a workspace
+           you can switch to. This top pin is a one-tap shortcut to vault documents
+           regardless of active context. Styled to match the section-header bar
+           visually so the sidebar reads as a consistent stack. */}
       {!isPersonal && !guestMode && (
-        <div className="sidebarSection" style={{ paddingBottom: 0 }}>
-          <div
-            className={`navItem${currentSection === "vault-documents" || currentSection === "vault-assets" ? " active" : ""}`}
-            onClick={() => onNavigate("vault-documents")}
-            style={{ cursor: "pointer" }}
+        <div className="sidebarSection">
+          <button
+            onClick={() => handleNavClick("vault-documents")}
+            className="sidebarLabel"
+            style={{
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              width: "100%", background: "none", border: "none", cursor: "pointer",
+              padding: 0, margin: 0,
+            }}
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
-            <span>Personal Vault</span>
-          </div>
+            <span style={{ color: "#94a3b8" }}>My Vault</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+              <path d="M9 18l6-6-6-6" />
+            </svg>
+          </button>
         </div>
       )}
 
       {/* Divider */}
       {!isPersonal && !guestMode && <div style={{ height: "1px", background: "rgba(255,255,255,0.08)", margin: "4px 16px" }} />}
+
+      {/* ═══ MY WORKSPACES (CODEX 50.10-T2 Note 2) ═══
+           Parallel to MY WORKERS / MY GAMES. Lists every workspace the user
+           has membership in. Per-row hover-revealed invite icon for admins. */}
+      {!guestMode && workspaces && workspaces.length > 1 && (
+        <div className="sidebarSection">
+          <button
+            className="sidebarLabel"
+            onClick={() => setWorkspacesCollapsed(!workspacesCollapsed)}
+            style={{
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              width: "100%", background: "none", border: "none", cursor: "pointer",
+              padding: 0, margin: 0,
+            }}
+          >
+            <span style={{ color: "#60a5fa" }}>My Workspaces</span>
+            <span style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", transition: "transform 0.2s", transform: workspacesCollapsed ? "rotate(0deg)" : "rotate(90deg)" }}>&rsaquo;</span>
+          </button>
+          {!workspacesCollapsed && (
+            <nav className="nav" style={{ marginTop: 4 }}>
+              {workspaces.filter(w => w.type !== "shared").map(ws => {
+                const isCurrent = ws.id === currentWorkspaceId;
+                const isPersonalRow = ws.id === "vault" || ws.type === "personal" || ws.isDefault;
+                const canInvite = !isPersonalRow && ws.role === "admin";
+                return (
+                  <div
+                    key={`mws-${ws.id}`}
+                    onClick={() => { if (!isCurrent) onSwitchWorkspace(ws); }}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 8,
+                      padding: "7px 10px", cursor: "pointer",
+                      borderRadius: 8, marginBottom: 2,
+                      background: isCurrent ? "rgba(124,58,237,0.18)" : "transparent",
+                      position: "relative",
+                    }}
+                    onMouseEnter={e => {
+                      if (!isCurrent) e.currentTarget.style.background = "rgba(255,255,255,0.04)";
+                      const btn = e.currentTarget.querySelector("[data-mws-invite]");
+                      if (btn) btn.style.opacity = "1";
+                    }}
+                    onMouseLeave={e => {
+                      if (!isCurrent) e.currentTarget.style.background = "transparent";
+                      const btn = e.currentTarget.querySelector("[data-mws-invite]");
+                      if (btn) btn.style.opacity = "0";
+                    }}
+                  >
+                    <div style={{
+                      width: 22, height: 22, borderRadius: 5,
+                      background: isCurrent ? "#7c3aed" : (isPersonalRow ? "#334155" : "#1e293b"),
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      color: "white", fontWeight: 600, fontSize: 11, flexShrink: 0,
+                    }}>
+                      {(ws.name || "?").charAt(0).toUpperCase()}
+                    </div>
+                    <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: isCurrent ? "#e2e8f0" : "rgba(255,255,255,0.85)", fontWeight: isCurrent ? 600 : 500, fontSize: 13 }}>
+                      {ws.name}
+                    </span>
+                    {ws.role && !isPersonalRow && (
+                      <span style={{
+                        fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 999,
+                        background: ws.role === "admin" ? "rgba(124,58,237,0.25)" : ws.role === "viewer" ? "rgba(99,102,241,0.18)" : "rgba(34,197,94,0.18)",
+                        color: ws.role === "admin" ? "#c4b5fd" : ws.role === "viewer" ? "#a5b4fc" : "#86efac",
+                        textTransform: "uppercase", letterSpacing: 0.4, flexShrink: 0,
+                      }}>
+                        {ws.role}
+                      </span>
+                    )}
+                    {canInvite && (
+                      <button
+                        data-mws-invite
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          window.dispatchEvent(new CustomEvent("ta:open-invite-modal", {
+                            detail: { tenantId: ws.id, workspaceName: ws.name },
+                          }));
+                        }}
+                        title={`Invite a member to ${ws.name}`}
+                        style={{
+                          flexShrink: 0,
+                          width: 22, height: 22, borderRadius: 5,
+                          background: "rgba(124,58,237,0.2)",
+                          border: "none",
+                          color: "#a78bfa",
+                          cursor: "pointer",
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          opacity: isCurrent ? 1 : 0,
+                          transition: "opacity 120ms ease",
+                        }}
+                      >
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <line x1="12" y1="5" x2="12" y2="19" />
+                          <line x1="5" y1="12" x2="19" y2="12" />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </nav>
+          )}
+        </div>
+      )}
+      {!guestMode && workspaces && workspaces.length > 1 && (
+        <div style={{ height: "1px", background: "rgba(255,255,255,0.08)", margin: "4px 16px" }} />
+      )}
 
       {/* CODEX 48.3 Phase A — YOUR TEAMS removed. Workers are accessed via
            MY WORKERS / MY GAMES below. Workspace switching remains available
@@ -1842,30 +2040,63 @@ export default function Sidebar({
       {/* Divider */}
       <div style={{ height: "1px", background: "rgba(255,255,255,0.08)", margin: "4px 16px" }} />
 
-      {/* ═══ SECTION 2: MY WORK ═══ */}
-      <div className="sidebarSection" style={{ flex: 1 }}>
-        <div className="sidebarLabel">My Work</div>
-        <nav className="nav">
-          {myWorkItems.map(item => (
-            <button
-              key={item.id}
-              className={`navItem ${currentSection === item.id ? "navItemActive" : ""}`}
-              onClick={() => handleNavClick(item.id)}
-              style={{ width: "100%", textAlign: "left", cursor: "pointer" }}
-            >
-              {item.label}
-            </button>
-          ))}
-        </nav>
-      </div>
+      {/* ═══ CONTEXTUAL NAV (CODEX 50.10-T2 Note 2)
+           Was "MY WORK" — but those items aren't user work, they're the active
+           context's nav. When a worker is selected, the section reflects that
+           worker's tabs and is labeled with the worker name. When no worker is
+           selected, it's the workspace's vertical default — labeled by vertical
+           or "Vault" for Personal context.
+           Phase 1 worker onboarding will move most of these items into proper
+           per-worker tabs; this section then collapses to a thin shell. ═══ */}
+      {(() => {
+        // Filter out account-level items so they live in their own ACCOUNT
+        // section at the bottom.
+        const ACCOUNT_IDS = new Set(["billing", "settings"]);
+        const contextualItems = myWorkItems.filter(i => !ACCOUNT_IDS.has(i.id));
+
+        // CODEX 50.10-T2 Note 2 — when no worker is selected, the sidebar
+        // should NOT advertise worker-internal capabilities at the top level.
+        // The right shape is MY WORKSPACES > MY WORKERS > worker tabs.
+        // Phase 1 worker onboarding moves contextual items into worker tabs.
+        if (!selectedWorker) return null;
+
+        if (contextualItems.length === 0) return null;
+        const sectionLabel = selectedWorkerName || "Worker";
+        return (
+          <div className="sidebarSection" style={{ flex: 1 }}>
+            <div className="sidebarLabel" style={{ color: "rgba(255,255,255,0.55)" }}>{sectionLabel}</div>
+            <nav className="nav">
+              {contextualItems.map(item => (
+                <button
+                  key={item.id}
+                  className={`navItem ${currentSection === item.id ? "navItemActive" : ""}`}
+                  onClick={() => handleNavClick(item.id)}
+                  style={{ width: "100%", textAlign: "left", cursor: "pointer" }}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </nav>
+          </div>
+        );
+      })()}
 
       {/* Divider */}
       <div style={{ height: "1px", background: "rgba(255,255,255,0.08)", margin: "4px 16px" }} />
 
-      {/* ═══ SECTION 3: SETTINGS ═══ */}
+      {/* ═══ ACCOUNT (CODEX 50.10-T2 Note 2)
+           True user/account-level navigation: settings, billing, worker rules.
+           Distinct from workspace/worker context items above. ═══ */}
       <div className="sidebarSection">
-        <div className="sidebarLabel">Settings</div>
+        <div className="sidebarLabel" style={{ color: "#f59e0b" }}>Account</div>
         <nav className="nav">
+          <button
+            className={`navItem ${currentSection === "billing" ? "navItemActive" : ""}`}
+            onClick={() => handleNavClick("billing")}
+            style={{ width: "100%", textAlign: "left", cursor: "pointer" }}
+          >
+            Billing
+          </button>
           <button
             className={`navItem ${currentSection === "settings" ? "navItemActive" : ""}`}
             onClick={() => handleNavClick("settings")}
@@ -1883,27 +2114,9 @@ export default function Sidebar({
         </nav>
       </div>
 
-      {/* Footer: Switch Worker + Sign Out */}
+      {/* Footer: Sign Out (Switch Worker removed in CODEX 50.10-T2 — redundant
+          with persona switcher and MY WORKERS list). */}
       <div className="sidebarFooter">
-        <button
-          onClick={() => {
-            setSelectedWorker(null);
-            if (workerCtx?.selectWorker) workerCtx.selectWorker(null);
-            window.dispatchEvent(new CustomEvent("ta:select-worker", { detail: null }));
-            setWorkersCollapsed(false);
-            onNavigate("worker-home");
-          }}
-          className="iconBtn"
-          style={{
-            width: "100%", marginBottom: 4, fontSize: 12,
-            color: "rgba(255,255,255,0.5)", background: "none", border: "none",
-            cursor: "pointer", padding: "8px 16px", textAlign: "left",
-          }}
-          onMouseEnter={e => { e.currentTarget.style.color = "rgba(255,255,255,0.8)"; }}
-          onMouseLeave={e => { e.currentTarget.style.color = "rgba(255,255,255,0.5)"; }}
-        >
-          Switch Worker
-        </button>
         <button
           onClick={handleSignOut}
           className="iconBtn"

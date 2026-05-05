@@ -77,11 +77,28 @@ export function RightPanelProvider({ children, initialState, initialVertical, in
     setState(prevStateRef.current || originRef.current);
   }, []);
 
+  // 49.31 — Force the canvas pane open without changing canvasData. Used when
+  // ChatPanel receives canvasRenders[] and needs the panel visible immediately.
+  // If canvas is already showing, this is a no-op.
+  const openIfClosed = useCallback(() => {
+    if (state !== "CANVAS") {
+      prevStateRef.current = state;
+      setState("CANVAS");
+    }
+  }, [state]);
+
+  // 49.31 — Reset canvas content AND exit CANVAS state (used on worker change so
+  // stale data from a previous worker doesn't bleed into the new worker's canvas).
+  const resetCanvas = useCallback(() => {
+    setCanvasData(null);
+    setState((prev) => (prev === "CANVAS" ? (prevStateRef.current || originRef.current) : prev));
+  }, []);
+
   return (
     <RightPanelContext.Provider value={{
       state, vertical, verticalLabel, workers, selectedWorker, activeWorkerData, relatedWorkers, canvasData,
       showRecommendations, showWorkerDetail, showWorkerHome, goBack, dismiss, clearVerticalFilter, leaveWorkspace,
-      showCanvas, dismissCanvas,
+      showCanvas, dismissCanvas, openIfClosed, resetCanvas,
       setWorkers,
     }}>
       {children}
