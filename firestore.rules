@@ -175,6 +175,17 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // CODEX 50.14 — DTC anchor batches are public-readable. The batch
+    // contains a Merkle root and ordered leaves so an external verifier
+    // can reconstruct the proof for any DTC in the batch. The leaves
+    // themselves are content hashes, not record content — they reveal
+    // nothing beyond the existence of N records on a given day. Server-
+    // only writes (the daily anchor scheduler).
+    match /dtcAnchorBatches/{batchId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
     // Catch-all: deny everything else
     match /{document=**} {
       allow read, write: if false;

@@ -6326,6 +6326,21 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       }
     }
 
+    // CODEX 50.14 — public DTC verification endpoint. No auth required:
+    // verifiability without TitleApp's cooperation is the architectural
+    // goal. The proof returned (Merkle proof + OpenTimestamps receipt)
+    // is self-contained and verifiable offline.
+    if (route.startsWith("/dtc/") && route.endsWith("/verify") && method === "GET") {
+      const dtcId = route.slice("/dtc/".length, -"/verify".length);
+      const { verifyDtc } = require("./services/anchor/verify");
+      try {
+        return verifyDtc({ params: { dtcId } }, res);
+      } catch (e) {
+        console.error("❌ dtc verify failed:", e);
+        return jsonError(res, 500, "Failed to verify DTC");
+      }
+    }
+
     // All other routes require Firebase auth
     const auth = await requireFirebaseUser(req, res);
     if (auth.handled) return;
@@ -13359,7 +13374,18 @@ Never attempt to output an entire multi-page document in a single response. For 
           return res.json({ ok: false, requiresIdVerification: true, error: "Identity verification required" });
         }
 
-        const ref = await db.collection("dtcs").add({
+        // CODEX 50.13 + 50.14 — populate the v2 schema fields at creation.
+        // modification_authority defaults: owner_only for personal,
+        // workspace_role:admin for tenant context. contentHash is computed
+        // over a canonicalized view (createdAt as ISO string) so verifiers
+        // can re-derive it from the stored doc by converting the Firestore
+        // Timestamp back to ISO.
+        const isPersonal = !ctx.tenantId || ctx.tenantId === ctx.userId;
+        const createdAtDate = new Date();
+        const createdAtTimestamp = admin.firestore.Timestamp.fromDate(createdAtDate);
+        const createdAtIso = createdAtDate.toISOString();
+
+        const dtcRecord = {
           userId: ctx.userId,
           tenantId: ctx.tenantId,
           type,
@@ -13367,15 +13393,29 @@ Never attempt to output an entire multi-page document in a single response. For 
           fileIds: fileIds || [],
           blockchainProof: blockchainProof || null,
           logbookCount: 0,
-          createdAt: nowServerTs(),
-        });
+          version: 1,
+          parent_dtc_id: null,
+          modification_authority: isPersonal ? "owner_only" : "workspace_role:admin",
+          chain_anchor_status: "hash_only",
+          chain: null,
+          credentialing_projection_schema: null,
+          batchId: null,
+          createdAt: createdAtTimestamp,
+        };
 
-        return res.json({ ok: true, dtcId: ref.id });
+        const { contentHash } = require("./services/anchor/hashAnchor");
+        // Hash over the canonical view (createdAt as ISO string).
+        dtcRecord.contentHash = contentHash({ ...dtcRecord, createdAt: createdAtIso });
+
+        const ref = await db.collection("dtcs").add(dtcRecord);
+
+        return res.json({ ok: true, dtcId: ref.id, contentHash: dtcRecord.contentHash });
       } catch (e) {
         console.error("❌ dtc:create failed:", e);
         return jsonError(res, 500, "Failed to create DTC");
       }
     }
+
 
     // POST /v1/dtc:refresh-value
     // Manual or voice-activated asset valuation update
@@ -19530,6 +19570,41 @@ const { processSubscriberDigests } = require("./campaigns/subscriberDigest");
 exports.subscriberDailyDigest = onSchedule(
   { schedule: "0 4 * * *", timeZone: "UTC", region: "us-central1" },
   async () => { await processSubscriberDigests(); }
+);
+
+// ----------------------------
+// CODEX 50.14 — DTC HASH ANCHOR DAILY BATCH (2am UTC)
+// Closes the previous day's batch, builds Merkle tree over contentHashes,
+// submits root to OpenTimestamps for Bitcoin anchoring.
+// ----------------------------
+const { runDailyBatch: runDtcAnchorBatch } = require("./services/anchor/dailyBatchAnchor");
+const { runConfirmReceipts } = require("./services/anchor/confirmReceipts");
+
+exports.dailyDtcAnchorBatch = onSchedule(
+  { schedule: "0 2 * * *", timeZone: "UTC", region: "us-central1" },
+  async () => {
+    try {
+      const result = await runDtcAnchorBatch();
+      console.log("[dailyDtcAnchorBatch]", result || "no batch this run");
+    } catch (e) {
+      console.error("[dailyDtcAnchorBatch] failed:", e);
+    }
+  }
+);
+
+// CODEX 50.14 — confirm OpenTimestamps receipts every 6 hours.
+// Bitcoin block attestation lands 1-6 hours after submit; this job
+// upgrades pending receipts when attestation is available.
+exports.confirmOpentimestampsReceipts = onSchedule(
+  { schedule: "0 */6 * * *", timeZone: "UTC", region: "us-central1" },
+  async () => {
+    try {
+      const result = await runConfirmReceipts();
+      console.log("[confirmOpentimestampsReceipts]", result);
+    } catch (e) {
+      console.error("[confirmOpentimestampsReceipts] failed:", e);
+    }
+  }
 );
 
 // ----------------------------
