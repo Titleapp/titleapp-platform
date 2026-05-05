@@ -35,6 +35,7 @@ const VERTICAL_LABELS = {
   government: "Government",
   solar_vpp: "Solar Energy",
   web3: "Web3",
+  investor: "Investor",
 };
 
 export default function RAASStore() {
