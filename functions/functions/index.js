@@ -19839,6 +19839,24 @@ exports.onContentSync = onDocumentCreated(
   async (event) => { await handleContentSync(event.data); }
 );
 
+// CODEX 50.11 Layer A — audit-layer version pinning. Snapshots
+// worker_version on every chatSessions and messageEvents doc at create
+// time. Idempotent: no-op when worker_version already present.
+const {
+  onChatSessionCreate,
+  onMessageEventCreate,
+} = require("./services/chat/versionPinning");
+
+exports.onChatSessionCreate = onDocumentCreated(
+  { document: "chatSessions/{sessionId}", region: "us-central1" },
+  onChatSessionCreate
+);
+
+exports.onMessageEventCreate = onDocumentCreated(
+  { document: "messageEvents/{eventId}", region: "us-central1" },
+  onMessageEventCreate
+);
+
 // ----------------------------
 const { seedAdmins } = require("./admin/seedAdminData");
 exports.seedAdminData = onRequest({ region: "us-central1" }, async (req, res) => {
