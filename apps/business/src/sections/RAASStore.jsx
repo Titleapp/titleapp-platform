@@ -23,13 +23,54 @@ function formatPrice(cents) {
   return `$${cents / 100}/mo`;
 }
 
+// Friendly labels for the vertical pill row. The keys are the Firestore
+// `vertical` values; "all" (Alex placeholder) is intentionally excluded.
+const VERTICAL_LABELS = {
+  real_estate_development: "Real Estate",
+  re_professional: "Title & Escrow",
+  auto_dealer: "Auto Dealer",
+  aviation: "Aviation",
+  marketing: "Marketing & Content",
+  platform: "Platform",
+  government: "Government",
+  solar_vpp: "Solar Energy",
+  web3: "Web3",
+};
+
 export default function RAASStore() {
   const allWorkers = useWorkerCatalog();
   const workers = useMemo(() => allWorkers.filter(w => !w.internal_only), [allWorkers]);
-  const ALL_SUITES = useMemo(() => ["All", ...Array.from(new Set(workers.map(w => w.suite)))], [workers]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [activeVertical, setActiveVertical] = useState("All");
   const [activeSuite, setActiveSuite] = useState("All");
   const [selectedLang, setSelectedLang] = useState(() => localStorage.getItem("PREFERRED_LANGUAGE") || "en");
+
+  // Vertical pills — only show verticals with at least one worker AND a
+  // friendly label. "All Industries" pin is always first.
+  const ALL_VERTICALS = useMemo(() => {
+    const seen = new Map();
+    for (const w of workers) {
+      if (!w.vertical || !VERTICAL_LABELS[w.vertical]) continue;
+      seen.set(w.vertical, VERTICAL_LABELS[w.vertical]);
+    }
+    const items = Array.from(seen.entries())
+      .map(([id, label]) => ({ id, label }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+    return [{ id: "All", label: "All Industries" }, ...items];
+  }, [workers]);
+
+  // Suite pills — case-insensitive dedup, alphabetical, scoped to the
+  // currently-selected vertical so the pill list stays tractable.
+  const ALL_SUITES = useMemo(() => {
+    const scope = activeVertical === "All" ? workers : workers.filter(w => w.vertical === activeVertical);
+    const dedup = new Map();
+    for (const w of scope) {
+      const key = (w.suite || "Other").toLowerCase();
+      if (!dedup.has(key)) dedup.set(key, w.suite || "Other");
+    }
+    const items = Array.from(dedup.values()).sort((a, b) => a.localeCompare(b));
+    return ["All", ...items];
+  }, [workers, activeVertical]);
 
   function handleLangClick(lang) {
     setSelectedLang(lang.code);
@@ -38,8 +79,17 @@ export default function RAASStore() {
   }
   const [expandedId, setExpandedId] = useState(null);
 
+  // Reset suite filter when vertical changes — picking "Government" should
+  // not strand the user on a "Compliance" suite that filters to zero.
+  useEffect(() => {
+    setActiveSuite("All");
+  }, [activeVertical]);
+
   const filtered = workers.filter((w) => {
-    const matchesSuite = activeSuite === "All" || w.suite === activeSuite;
+    const matchesVertical = activeVertical === "All" || w.vertical === activeVertical;
+    if (!matchesVertical) return false;
+    const wsuite = (w.suite || "").toLowerCase();
+    const matchesSuite = activeSuite === "All" || wsuite === activeSuite.toLowerCase();
     if (!matchesSuite) return false;
     if (!searchTerm.trim()) return true;
     const term = searchTerm.toLowerCase();
@@ -136,7 +186,33 @@ export default function RAASStore() {
         />
       </div>
 
-      {/* Suite filter pills */}
+      {/* Industry (vertical) filter pills — primary level */}
+      <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "12px" }}>
+        {ALL_VERTICALS.map((v) => {
+          const isActive = activeVertical === v.id;
+          return (
+            <button
+              key={v.id}
+              onClick={() => setActiveVertical(v.id)}
+              style={{
+                padding: "8px 18px",
+                fontSize: "13px",
+                fontWeight: 700,
+                borderRadius: "9999px",
+                border: isActive ? "1px solid #1e293b" : "1px solid #cbd5e1",
+                background: isActive ? "#1e293b" : "#fff",
+                color: isActive ? "#fff" : "#1e293b",
+                cursor: "pointer",
+                transition: "all 0.15s ease",
+              }}
+            >
+              {v.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Suite filter pills — scoped to the active industry */}
       <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "24px" }}>
         {ALL_SUITES.map((suite) => {
           const isActive = activeSuite === suite;
