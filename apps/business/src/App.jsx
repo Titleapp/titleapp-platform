@@ -37,6 +37,7 @@ import Research from "./sections/Research";
 import ClientsLPs from "./sections/ClientsLPs";
 import DealPipeline from "./sections/DealPipeline";
 import VaultDocuments from "./sections/VaultDocuments";
+import VaultDTCs from "./sections/VaultDTCs";
 import VaultAssets from "./sections/VaultAssets";
 import VaultDeadlines from "./sections/VaultDeadlines";
 import REListings from "./sections/REListings";
@@ -4579,6 +4580,8 @@ function AdminShell({ onBackToHub, initialSection }) {
         return <DealPipeline />;
       case "vault-documents":
         return <VaultDocuments />;
+      case "vault-dtcs":
+        return <VaultDTCs />;
       case "vault-assets":
         return <VaultAssets />;
       case "vault-deadlines":

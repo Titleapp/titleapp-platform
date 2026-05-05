@@ -199,17 +199,33 @@ async function deleteObject(uid, objectId) {
 }
 
 /**
- * List storage objects for a user.
+ * List storage objects scoped to the active context.
+ *
+ * CODEX 50.13 Layer B — workspace scoping. When the caller supplies an
+ * orgId that is not the user's own uid, the query filters by orgId
+ * (Business Drive, all members' uploads). Otherwise it falls back to
+ * the user's personal scope (ownerUid == uid AND orgId either missing
+ * or equal to uid). Switching workspaces in the UI changes orgId and
+ * therefore changes what documents are visible.
  */
 async function list(uid, { scope, orgId, parentProjectId, limit: lim = 50, offset = 0 } = {}) {
   const db = getDb();
   // NOTE: do NOT use where("status", "!=", "deleted") — Firestore requires the
   // first orderBy to match the inequality field, AND inequality filters exclude
   // docs missing the field (legacy/migrated records). Filter deletion in JS.
-  let q = db.collection("storageObjects")
-    .where("ownerUid", "==", uid)
-    .orderBy("createdAt", "desc")
-    .limit(lim * 2);
+  const isWorkspaceContext = orgId && orgId !== uid;
+  let q;
+  if (isWorkspaceContext) {
+    q = db.collection("storageObjects")
+      .where("orgId", "==", orgId)
+      .orderBy("createdAt", "desc")
+      .limit(lim * 2);
+  } else {
+    q = db.collection("storageObjects")
+      .where("ownerUid", "==", uid)
+      .orderBy("createdAt", "desc")
+      .limit(lim * 2);
+  }
 
   if (scope) q = q.where("scope", "==", scope);
   if (parentProjectId) q = q.where("parentProjectId", "==", parentProjectId);
@@ -218,6 +234,11 @@ async function list(uid, { scope, orgId, parentProjectId, limit: lim = 50, offse
   const objects = snap.docs
     .map(d => d.data())
     .filter(data => data.status !== "deleted")
+    // In personal context, drop files that belong to a workspace.
+    // (We queried by ownerUid; ownerUid stays the same when uploading
+    // to a workspace, so the personal-context query would otherwise
+    // bleed business-scope files into the personal Drive.)
+    .filter(data => isWorkspaceContext ? true : !data.orgId || data.orgId === uid)
     .slice(0, lim)
     .map(data => ({
       objectId: data.objectId,

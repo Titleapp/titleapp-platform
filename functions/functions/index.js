@@ -13540,10 +13540,36 @@ Never attempt to output an entire multi-page document in a single response. For 
           return jsonError(res, 400, "Missing dtcId, entryType, or data");
         }
 
-        // Verify DTC exists and user owns it
+        // CODEX 50.13 Layer D — modification authority gate.
+        // Personal-context DTCs (modification_authority: owner_only)
+        // accept appends only from the original creator. Tenant-context
+        // DTCs (modification_authority: workspace_role:admin or
+        // workspace_role:member) accept appends from any user with the
+        // required role in the DTC's tenant. Default deny on unknown
+        // values.
         const dtcDoc = await db.collection("dtcs").doc(dtcId).get();
-        if (!dtcDoc.exists || dtcDoc.data().userId !== ctx.userId) {
-          return jsonError(res, 403, "DTC not found or access denied");
+        if (!dtcDoc.exists) {
+          return jsonError(res, 404, "DTC not found");
+        }
+        const dtcData = dtcDoc.data();
+        const auth = dtcData.modification_authority || "owner_only";
+        let allowed = false;
+        if (auth === "owner_only") {
+          allowed = dtcData.userId === ctx.userId;
+        } else if (auth.startsWith("workspace_role:")) {
+          const role = auth.slice("workspace_role:".length);
+          if (!dtcData.tenantId) {
+            // Misconfigured: workspace_role on a personal DTC. Fall back
+            // to owner check so we never accidentally open up an asset.
+            allowed = dtcData.userId === ctx.userId;
+          } else {
+            const { enforceRoleGate } = require("./middleware/membershipCheck");
+            const gate = await enforceRoleGate(ctx.userId, dtcData.tenantId, role);
+            allowed = gate.ok;
+          }
+        }
+        if (!allowed) {
+          return jsonError(res, 403, "Insufficient permission to append to this DTC");
         }
 
         // Handle base64 file upload if provided

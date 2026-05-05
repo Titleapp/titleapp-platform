@@ -82,14 +82,21 @@ export default function useDocuments() {
   }, []);
 
   /**
-   * List documents.
+   * List documents — workspace-scoped per CODEX 50.13. Reads TENANT_ID
+   * from localStorage (the persona switcher's active workspace). When in
+   * a Business workspace, returns that workspace's files (any member's
+   * uploads). Otherwise returns the user's personal Drive (no orgId
+   * assigned). Switching workspaces re-runs the query with the new
+   * orgId via the React state change.
    */
-  const listDocuments = useCallback(async ({ scope, projectId, limit } = {}) => {
+  const listDocuments = useCallback(async ({ scope, projectId, limit, orgId: orgIdOverride } = {}) => {
     try {
+      const orgId = orgIdOverride || localStorage.getItem("TENANT_ID") || null;
       const params = new URLSearchParams();
       if (scope) params.set("scope", scope);
       if (projectId) params.set("projectId", projectId);
       if (limit) params.set("limit", String(limit));
+      if (orgId) params.set("orgId", orgId);
       const result = await apiFetch(`/v1/storage:list?${params.toString()}`);
       return result;
     } catch (e) {

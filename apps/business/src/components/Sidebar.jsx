@@ -1702,28 +1702,47 @@ export default function Sidebar({
         </div>
       )}
 
-      {/* ═══ PERSONAL VAULT — single quick-link, section-header style (CODEX 50.10-T2 Note 2) ═══
-           Personal Vault is also listed inside MY WORKSPACES below as a workspace
-           you can switch to. This top pin is a one-tap shortcut to vault documents
-           regardless of active context. Styled to match the section-header bar
-           visually so the sidebar reads as a consistent stack. */}
+      {/* ═══ MY DRIVE + MY VAULT — peer top-level destinations (CODEX 50.13 Layer B) ═══
+           Drive (storageObjects) and Vault (Digital Title Certificates) are
+           distinct stores. Before 50.13 they were rendered under the same
+           "Vault" label, which was actually a Drive — DTCs were invisible.
+           My Drive routes to the storageObjects surface; My Vault routes to
+           the new VaultDTCs surface backed by /v1/dtc:list. */}
       {!isPersonal && !guestMode && (
-        <div className="sidebarSection">
-          <button
-            onClick={() => handleNavClick("vault-documents")}
-            className="sidebarLabel"
-            style={{
-              display: "flex", alignItems: "center", justifyContent: "space-between",
-              width: "100%", background: "none", border: "none", cursor: "pointer",
-              padding: 0, margin: 0,
-            }}
-          >
-            <span style={{ color: "#94a3b8" }}>My Vault</span>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-              <path d="M9 18l6-6-6-6" />
-            </svg>
-          </button>
-        </div>
+        <>
+          <div className="sidebarSection">
+            <button
+              onClick={() => handleNavClick("vault-documents")}
+              className="sidebarLabel"
+              style={{
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                width: "100%", background: "none", border: "none", cursor: "pointer",
+                padding: 0, margin: 0,
+              }}
+            >
+              <span style={{ color: "#94a3b8" }}>My Drive</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                <path d="M9 18l6-6-6-6" />
+              </svg>
+            </button>
+          </div>
+          <div className="sidebarSection">
+            <button
+              onClick={() => handleNavClick("vault-dtcs")}
+              className="sidebarLabel"
+              style={{
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                width: "100%", background: "none", border: "none", cursor: "pointer",
+                padding: 0, margin: 0,
+              }}
+            >
+              <span style={{ color: "#94a3b8" }}>My Vault</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                <path d="M9 18l6-6-6-6" />
+              </svg>
+            </button>
+          </div>
+        </>
       )}
 
       {/* ═══ MARKETPLACE — primary nav pin (CODEX 50.10 Phase 2) ═══
