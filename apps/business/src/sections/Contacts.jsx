@@ -189,21 +189,83 @@ export default function Contacts() {
 
   const {
     listContacts, apolloPull, addContact, bulkImportContacts, bulkDeleteContacts,
+    proposeSegments, applySegment,
     loading,
   } = useContacts();
+
+  // Auto-organize state — the proposal payload from /contacts:proposeSegments
+  // and the per-bucket apply status so the UI can show progress.
+  const [proposal, setProposal] = useState(null);
+  const [proposing, setProposing] = useState(false);
+  const [applyingSlug, setApplyingSlug] = useState(null);
+
+  // Pagination state — driven by the server's nextCursor/hasMore.
+  const [nextCursor, setNextCursor] = useState(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   const refresh = useCallback(async () => {
     setLoadError(null);
     setSelected(new Set());
-    const result = await listContacts({ q: search });
+    const result = await listContacts({ q: search, limit: 200 });
     if (result?.ok) {
       setContacts(result.contacts || []);
-      setStats(result.stats || { total: 0, newThisMonth: 0, byWorker: {}, bySegment: {} });
+      setStats(result.stats || { total: 0, byWorker: {}, bySegment: {} });
+      setNextCursor(result.nextCursor || null);
+      setHasMore(!!result.hasMore);
     } else {
       setContacts([]);
       setLoadError(result?.error || "Failed to load contacts");
+      setNextCursor(null);
+      setHasMore(false);
     }
   }, [listContacts, search]);
+
+  const loadMore = useCallback(async () => {
+    if (!nextCursor || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const result = await listContacts({ q: search, limit: 200, cursor: nextCursor, stats: false });
+      if (result?.ok) {
+        setContacts(prev => [...prev, ...(result.contacts || [])]);
+        setNextCursor(result.nextCursor || null);
+        setHasMore(!!result.hasMore);
+      }
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [listContacts, search, nextCursor, loadingMore]);
+
+  // Run the server-side persona heuristics, render the result inline as
+  // a "proposal" panel. Replaces the prior "filter one-by-one" UX.
+  const runProposeSegments = useCallback(async () => {
+    setProposing(true);
+    try {
+      const r = await proposeSegments();
+      if (r?.ok) setProposal(r);
+    } finally {
+      setProposing(false);
+    }
+  }, [proposeSegments]);
+
+  // Apply one bucket's segment tag to all of its IDs in a single call.
+  // Marks the bucket "_applied" so the UI flips state, then refreshes
+  // the list so the new segment shows up in groupings.
+  const runApplySegment = useCallback(async (bucket) => {
+    setApplyingSlug(bucket.slug);
+    try {
+      const r = await applySegment({ segment: bucket.slug, ids: bucket.ids });
+      if (r?.ok) {
+        setProposal(p => p ? {
+          ...p,
+          breakdown: p.breakdown.map(b => b.slug === bucket.slug ? { ...b, _applied: r.updated } : b),
+        } : p);
+        refresh();
+      }
+    } finally {
+      setApplyingSlug(null);
+    }
+  }, [applySegment, refresh]);
 
   useEffect(() => { refresh(); }, [refresh]);
   useEffect(() => {
@@ -280,19 +342,32 @@ export default function Contacts() {
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           <button className="iconBtn" onClick={refresh} style={{ background: "white", color: "#1e293b", border: "1px solid #e2e8f0" }}>Refresh</button>
+          <button
+            className="iconBtn"
+            onClick={runProposeSegments}
+            disabled={proposing}
+            title="Scan this workspace's contacts and propose persona buckets you can apply in one click"
+            style={{ background: "white", color: "#7c3aed", border: "1px solid #c4b5fd" }}
+          >
+            {proposing ? "Scanning…" : "Auto-organize"}
+          </button>
           <button className="iconBtn" onClick={() => setShowAddIntent(true)} style={{ background: "linear-gradient(135deg, #7c3aed, #6d28d9)", color: "white", border: "none" }}>+ Add Contacts</button>
         </div>
       </div>
 
-      {/* KPI strip */}
+      {/* KPI strip — Total is the real workspace-wide count() aggregate.
+          Loaded is the size of the current paged view; Load More pulls the
+          next slice. Workers/Segments are derived from what's currently
+          loaded (per-page) which is fine for the strip — the AI segmentation
+          card gives the full tenant breakdown when you need it. */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 10, marginBottom: 16 }}>
         <div className="card" style={{ padding: "12px 14px" }}>
-          <div style={{ fontSize: 11, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4, fontWeight: 600 }}>Total</div>
-          <div style={{ fontSize: 22, fontWeight: 700, color: "#1e293b", marginTop: 2 }}>{stats.total}</div>
+          <div style={{ fontSize: 11, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4, fontWeight: 600 }}>Total in workspace</div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: "#1e293b", marginTop: 2 }}>{stats.total ?? "—"}</div>
         </div>
         <div className="card" style={{ padding: "12px 14px" }}>
-          <div style={{ fontSize: 11, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4, fontWeight: 600 }}>New this month</div>
-          <div style={{ fontSize: 22, fontWeight: 700, color: "#16a34a", marginTop: 2 }}>{stats.newThisMonth}</div>
+          <div style={{ fontSize: 11, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4, fontWeight: 600 }}>Loaded</div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: "#16a34a", marginTop: 2 }}>{contacts.length}{hasMore ? "+" : ""}</div>
         </div>
         <div className="card" style={{ padding: "12px 14px" }}>
           <div style={{ fontSize: 11, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4, fontWeight: 600 }}>Workers</div>
@@ -303,6 +378,52 @@ export default function Contacts() {
           <div style={{ fontSize: 22, fontWeight: 700, color: "#1e293b", marginTop: 2 }}>{Object.keys(stats.bySegment || {}).length}</div>
         </div>
       </div>
+
+      {/* Auto-organize proposal panel — appears after the user clicks
+          "Auto-organize" in the top bar. Shows the breakdown the server
+          inferred (investor candidates, B2B C-suite, accelerator programs,
+          media, etc.) with one-click Apply per bucket. */}
+      {proposal && (
+        <div className="card" style={{ padding: "16px 18px", marginBottom: 16, background: "linear-gradient(180deg, #faf5ff 0%, #ffffff 60%)", border: "1px solid #ddd6fe" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "#1e293b" }}>Proposed segments</div>
+              <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
+                Scanned {proposal.scanned?.toLocaleString?.() || proposal.scanned} contacts in this workspace. Click Apply on any bucket to tag those contacts with the segment slug.
+              </div>
+            </div>
+            <button onClick={() => setProposal(null)} style={{ background: "none", border: "none", color: "#64748b", fontSize: 18, cursor: "pointer" }}>×</button>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 10 }}>
+            {(proposal.breakdown || []).map(b => {
+              const applied = typeof b._applied === "number";
+              const busy = applyingSlug === b.slug;
+              return (
+                <div key={b.slug} style={{ padding: "10px 12px", background: "white", border: "1px solid #e9d5ff", borderRadius: 8 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                    <div style={{ fontWeight: 600, fontSize: 13, color: "#1e293b" }}>{b.label}</div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "#7c3aed", background: "#f3e8ff", padding: "2px 8px", borderRadius: 999 }}>{b.count.toLocaleString()}</div>
+                  </div>
+                  <div style={{ fontSize: 11, color: "#64748b", marginTop: 4, lineHeight: 1.4 }}>{b.description}</div>
+                  <div style={{ marginTop: 8 }}>
+                    {applied ? (
+                      <div style={{ fontSize: 11, color: "#16a34a", fontWeight: 600 }}>Applied · {b._applied} tagged</div>
+                    ) : (
+                      <button
+                        onClick={() => runApplySegment(b)}
+                        disabled={busy}
+                        style={{ fontSize: 11, fontWeight: 600, color: busy ? "#94a3b8" : "#7c3aed", background: busy ? "#e2e8f0" : "white", border: "1px solid #c4b5fd", padding: "4px 10px", borderRadius: 6, cursor: busy ? "default" : "pointer" }}
+                      >
+                        {busy ? "Applying…" : `Apply "${b.slug}"`}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Search */}
       <div style={{ marginBottom: 12 }}>
@@ -361,6 +482,27 @@ export default function Contacts() {
       )}
       {!loading && !loadError && contacts.length > 0 && tab === "segment" && (
         <GroupedView groups={segmentGroups} groupKey="segment" emptyLabel="No segmented contacts yet" selected={selected} toggleSelect={toggleSelect} />
+      )}
+
+      {/* Load More — only shows when the server has more pages. Pages append
+          to the current list so the user can keep scrolling toward the full
+          workspace total shown in the KPI strip. */}
+      {!loading && !loadError && hasMore && (
+        <div style={{ display: "flex", justifyContent: "center", marginTop: 16 }}>
+          <button
+            onClick={loadMore}
+            disabled={loadingMore}
+            style={{
+              padding: "10px 20px", fontSize: 13, fontWeight: 600,
+              background: loadingMore ? "#e2e8f0" : "white",
+              color: loadingMore ? "#94a3b8" : "#7c3aed",
+              border: "1px solid #c4b5fd", borderRadius: 8,
+              cursor: loadingMore ? "default" : "pointer",
+            }}
+          >
+            {loadingMore ? "Loading…" : `Load more (${(stats.total || 0) - contacts.length} remaining)`}
+          </button>
+        </div>
       )}
 
       {/* Modals */}

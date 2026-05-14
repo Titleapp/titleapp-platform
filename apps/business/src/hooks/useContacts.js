@@ -23,7 +23,7 @@ export default function useContacts() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const listContacts = useCallback(async ({ q, workerSlug, segment, limit } = {}) => {
+  const listContacts = useCallback(async ({ q, workerSlug, segment, limit, cursor, stats } = {}) => {
     setLoading(true);
     setError(null);
     try {
@@ -32,12 +32,16 @@ export default function useContacts() {
       if (workerSlug) params.set("workerSlug", workerSlug);
       if (segment) params.set("segment", segment);
       if (limit) params.set("limit", String(limit));
+      if (cursor) params.set("cursor", cursor);
+      // Pass stats=0 on Load-More follow-ups so we don't re-run the count()
+      // aggregate every page. Default is on (matches server default).
+      if (stats === false) params.set("stats", "0");
       const path = `/v1/contacts:list${params.toString() ? `?${params.toString()}` : ""}`;
       const result = await apiFetch(path);
       return result;
     } catch (e) {
       setError(e.message);
-      return { ok: false, contacts: [], stats: {} };
+      return { ok: false, contacts: [], stats: {}, hasMore: false, nextCursor: null };
     } finally {
       setLoading(false);
     }
@@ -128,9 +132,40 @@ export default function useContacts() {
     }
   }, []);
 
+  // Server-side persona heuristics propose segment buckets so the user
+  // doesn't have to filter one-by-one. Returns { ok, scanned, breakdown:
+  // [{ slug, label, description, count, ids[] }] }.
+  const proposeSegments = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      return await apiFetch("/v1/contacts:proposeSegments");
+    } catch (e) {
+      setError(e.message);
+      return { ok: false, breakdown: [] };
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Apply a segment tag to a list of contact IDs (idempotent on the server).
+  const applySegment = useCallback(async ({ segment, ids }) => {
+    setLoading(true);
+    setError(null);
+    try {
+      return await apiFetch("/v1/contacts:applySegment", "POST", { segment, ids, confirm: true });
+    } catch (e) {
+      setError(e.message);
+      return { ok: false, error: e.message };
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   return {
     listContacts, apolloPull,
     addContact, bulkImportContacts, bulkDeleteContacts, updateContact,
+    proposeSegments, applySegment,
     loading, error,
   };
 }

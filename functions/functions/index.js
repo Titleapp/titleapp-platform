@@ -10513,16 +10513,44 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
     if (route === "/contacts:list" && method === "GET") {
       try {
         const limit = Math.min(parseInt(req.query.limit) || 200, 500);
+        const cursor = (req.query.cursor || "").toString().trim();
         const q = (req.query.q || "").toString().trim().toLowerCase();
         const workerSlug = (req.query.workerSlug || "").toString().trim();
         const segment = (req.query.segment || "").toString().trim();
+        const wantStats = req.query.stats !== "0"; // default on, opt-out for paging requests
+
+        // Real tenant-wide totals via aggregate count(). The previous
+        // implementation reported stats.total = (scanned-array length), which
+        // capped at limit*2 and made the KPI lie when the tenant had > limit*2
+        // contacts. count() is cheap and gives the honest number regardless
+        // of page size.
+        let totalCount = null;
+        let totalAggregateOk = false;
+        if (wantStats) {
+          try {
+            const c = await db.collection("contacts").where("tenantId", "==", ctx.tenantId).count().get();
+            totalCount = c.data().count;
+            totalAggregateOk = true;
+          } catch (e) {
+            console.warn("[contacts:list] count() failed, falling back to scan:", e.message);
+          }
+        }
+
+        // Page query — orderBy doc id so startAfter cursor is stable and we
+        // don't need a composite index. (Recent-first ordering is applied
+        // client-side via the recent-tab in the UI.)
         let query = db.collection("contacts")
           .where("tenantId", "==", ctx.tenantId)
-          .limit(limit * 2);
+          .orderBy("__name__")
+          .limit(limit);
+        if (cursor) query = query.startAfter(cursor);
         const snap = await query.get();
         let contacts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const lastDocId = snap.docs.length ? snap.docs[snap.docs.length - 1].id : null;
+
         // Status filter — soft-deleted contacts have status === "deleted"
         contacts = contacts.filter(c => c.status !== "deleted");
+
         // Worker filter — match against workerSlug array OR personas[].source_sub
         if (workerSlug) {
           contacts = contacts.filter(c => {
@@ -10537,6 +10565,7 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
         if (segment) {
           contacts = contacts.filter(c => {
             if (Array.isArray(c.types_index) && c.types_index.includes(segment)) return true;
+            if (Array.isArray(c.segments) && c.segments.includes(segment)) return true;
             if (Array.isArray(c.personas)) {
               return c.personas.some(p => p.type === segment || p.segment_tag === segment);
             }
@@ -10547,7 +10576,7 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
         if (q) {
           contacts = contacts.filter(c => {
             const hay = [
-              c.first_name, c.last_name, c.name,
+              c.first_name, c.last_name, c.name, c.full_name,
               c.email, c.primary_email,
               c.company, c.organization,
               c.title, c.job_title,
@@ -10555,29 +10584,40 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
             return hay.includes(q);
           });
         }
-        // Recent-first sort
-        contacts.sort((a, b) => {
-          const at = a.created_at?._seconds || 0;
-          const bt = b.created_at?._seconds || 0;
-          return bt - at;
-        });
-        // Stats: total, new this month, segment + worker breakdown
-        const now = Date.now() / 1000;
-        const thirtyDaysAgo = now - 30 * 24 * 3600;
-        const stats = {
-          total: contacts.length,
-          newThisMonth: contacts.filter(c => (c.created_at?._seconds || 0) > thirtyDaysAgo).length,
+
+        // Stats: real tenant-wide total (from count()), this page's filtered
+        // size, and per-page breakdowns. byWorker/bySegment remain per-page
+        // until we have indexed denormalized counters — good enough for the
+        // KPI strip; the AI summarizer can compute richer breakdowns server-
+        // side via the propose-segments endpoint (P1d).
+        const stats = wantStats ? {
+          total: totalAggregateOk ? totalCount : contacts.length,
+          totalIsExact: totalAggregateOk,
+          pageSize: contacts.length,
           byWorker: {},
           bySegment: {},
-        };
-        contacts.forEach(c => {
-          (c.workerSlugs || []).forEach(s => { stats.byWorker[s] = (stats.byWorker[s] || 0) + 1; });
-          (Array.isArray(c.personas) ? c.personas : []).forEach(p => {
-            if (p.source_sub) stats.byWorker[p.source_sub] = (stats.byWorker[p.source_sub] || 0) + 1;
-            if (p.type) stats.bySegment[p.type] = (stats.bySegment[p.type] || 0) + 1;
+        } : null;
+        if (wantStats) {
+          contacts.forEach(c => {
+            (c.workerSlugs || []).forEach(s => { stats.byWorker[s] = (stats.byWorker[s] || 0) + 1; });
+            (Array.isArray(c.personas) ? c.personas : []).forEach(p => {
+              if (p.source_sub) stats.byWorker[p.source_sub] = (stats.byWorker[p.source_sub] || 0) + 1;
+              if (p.type) stats.bySegment[p.type] = (stats.bySegment[p.type] || 0) + 1;
+            });
           });
+        }
+
+        return res.json({
+          ok: true,
+          contacts,
+          stats,
+          // Pagination — nextCursor is the last doc's id, opaque to the
+          // client. hasMore is true if the page filled. (We can't tell the
+          // user the exact remaining-after-filter count without a more
+          // expensive scan, so the UI shows "X of total" honestly.)
+          nextCursor: snap.docs.length === limit ? lastDocId : null,
+          hasMore: snap.docs.length === limit,
         });
-        return res.json({ ok: true, contacts: contacts.slice(0, limit), stats });
       } catch (e) {
         console.error("[contacts:list] error:", e.message);
         return jsonError(res, 500, "Failed to list contacts");
@@ -10838,6 +10878,148 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       } catch (e) {
         console.error("[contacts:update] error:", e.message);
         return jsonError(res, 500, "Failed to update contact");
+      }
+    }
+
+    // GET /v1/contacts:proposeSegments — analyze the tenant's contacts and
+    // propose a segment breakdown the user can apply in bulk. Replaces the
+    // "filter one-by-one" UX. Returns:
+    //   { breakdown: [{ slug, label, description, count, sampleIds }], gaps:[] }
+    // Heuristics (deterministic, no LLM call): infer from personas[].type,
+    // tiers_index, types_index, source, and title/company keywords. Caller
+    // can then POST to /contacts:applySegment with the slug + selected IDs.
+    if (route === "/contacts:proposeSegments" && method === "GET") {
+      try {
+        const max = Math.min(parseInt(req.query.max) || 2000, 5000);
+        const snap = await db.collection("contacts")
+          .where("tenantId", "==", ctx.tenantId)
+          .limit(max)
+          .get();
+        const contacts = snap.docs
+          .map(d => ({ id: d.id, ...d.data() }))
+          .filter(c => c.status !== "deleted");
+
+        const investorTitle = /\b(partner|investor|managing director|gp|lp|principal|associate|venture|angel|fund|capital|accelerator|incubator)\b/i;
+        const mediaTitle = /\b(editor|reporter|journalist|producer|host|columnist|writer|correspondent)\b/i;
+        const csuiteTitle = /\b(ceo|cto|cfo|coo|cmo|chief|founder|co-founder|president|head of)\b/i;
+        const recruiterTitle = /\b(recruiter|talent acquisition|hr business partner|people ops)\b/i;
+        const lawyerTitle = /\b(counsel|attorney|partner.*law|associate.*law|legal)\b/i;
+        const acceleratorCompany = /\b(accelerator|incubator|y combinator|techstars|500 (global|startups)|seedcamp|founder|launchpad|mass challenge|massachallenge|plug and play|alchemist)\b/i;
+
+        const buckets = {
+          unsegmented: { label: "Unsegmented (needs review)", description: "No persona segment yet — review and tag.", ids: [] },
+          investor_candidate: { label: "Investor candidates", description: "Title or company suggests fund / VC / accelerator role.", ids: [] },
+          accelerator_program: { label: "Accelerator programs", description: "Company name matches a known accelerator.", ids: [] },
+          media_journalist: { label: "Media & journalists", description: "Title contains editor / reporter / producer.", ids: [] },
+          b2b_csuite: { label: "B2B prospects (C-suite)", description: "Founder / CEO / CTO / President — direct decision makers.", ids: [] },
+          b2b_other: { label: "B2B prospects (other)", description: "Has a company + title but doesn't fit the above.", ids: [] },
+          recruiter_hr: { label: "Recruiters & HR", description: "Recruiter, talent, or HR business partner.", ids: [] },
+          legal_counsel: { label: "Legal & counsel", description: "Attorney, counsel, legal contact.", ids: [] },
+          no_email: { label: "Missing email", description: "No primary email on file — Apollo enrichment recommended.", ids: [] },
+          stale: { label: "Stale (no activity 90+ days)", description: "No interaction in 90+ days; consider re-engaging or archiving.", ids: [] },
+        };
+
+        const ninetyDaysAgo = Date.now() - 90 * 24 * 3600 * 1000;
+
+        for (const c of contacts) {
+          // Derive title + company from common shapes (script-imported vs Apollo)
+          const title = (c.title || c.job_title || (c.personas?.[0]?.role_label) || "").toString();
+          const company = (c.company || c.organization || (c.personas?.[0]?.company) || "").toString();
+          const email = (c.email || c.primary_email || "").toString();
+          const lastInter = c.last_interaction_at?._seconds || c.personas?.[0]?.last_interaction_at?._seconds || 0;
+          const hasSegmentTag = Array.isArray(c.segments) && c.segments.some(s => !!s && s !== "_unassigned");
+
+          // Compute bucket — a contact can fall into multiple, that's fine.
+          let placed = false;
+          if (investorTitle.test(title) || acceleratorCompany.test(company)) {
+            buckets.investor_candidate.ids.push(c.id); placed = true;
+          }
+          if (acceleratorCompany.test(company)) buckets.accelerator_program.ids.push(c.id);
+          if (mediaTitle.test(title)) { buckets.media_journalist.ids.push(c.id); placed = true; }
+          if (csuiteTitle.test(title)) { buckets.b2b_csuite.ids.push(c.id); placed = true; }
+          else if (company && !investorTitle.test(title) && !mediaTitle.test(title)) {
+            buckets.b2b_other.ids.push(c.id); placed = true;
+          }
+          if (recruiterTitle.test(title)) buckets.recruiter_hr.ids.push(c.id);
+          if (lawyerTitle.test(title)) buckets.legal_counsel.ids.push(c.id);
+          if (!email) buckets.no_email.ids.push(c.id);
+          if (lastInter && lastInter * 1000 < ninetyDaysAgo) buckets.stale.ids.push(c.id);
+          if (!placed && !hasSegmentTag) buckets.unsegmented.ids.push(c.id);
+        }
+
+        const breakdown = Object.entries(buckets)
+          .map(([slug, b]) => ({
+            slug,
+            label: b.label,
+            description: b.description,
+            count: b.ids.length,
+            sampleIds: b.ids.slice(0, 5),
+            // We expose the full id list — small enough at 5K contacts
+            // (40 bytes each = 200KB max payload). The UI uses these for
+            // the bulk apply step. Trim if breakdown grows.
+            ids: b.ids,
+          }))
+          .filter(b => b.count > 0)
+          .sort((a, b) => b.count - a.count);
+
+        return res.json({ ok: true, scanned: contacts.length, breakdown });
+      } catch (e) {
+        console.error("[contacts:proposeSegments] error:", e.message);
+        return jsonError(res, 500, "Failed to propose segments");
+      }
+    }
+
+    // POST /v1/contacts:applySegment — apply a segment tag to a set of
+    // contact IDs in batches. Body: { segment, ids[], confirm: true }.
+    // Used by the "auto-organize" flow: user clicks a bucket, we batch-
+    // append the segment slug to contacts[].segments (idempotent — won't
+    // duplicate). Audit logged in contactSegmentApplications.
+    if (route === "/contacts:applySegment" && method === "POST") {
+      try {
+        const { segment, ids, confirm } = body || {};
+        if (!confirm) return jsonError(res, 400, "confirm:true is required to apply a segment in bulk");
+        if (!segment || typeof segment !== "string") return jsonError(res, 400, "segment is required");
+        if (!Array.isArray(ids) || ids.length === 0) return jsonError(res, 400, "ids[] is required and non-empty");
+        if (ids.length > 5000) return jsonError(res, 400, "ids[] too large; max 5000 per call");
+
+        const segTag = segment.toLowerCase().replace(/[^a-z0-9-]+/g, "-").slice(0, 60);
+        let updated = 0;
+        let skipped = 0;
+        for (let i = 0; i < ids.length; i += 450) {
+          const slice = ids.slice(i, i + 450);
+          const refs = slice.map(id => db.doc(`contacts/${id}`));
+          const snaps = await db.getAll(...refs);
+          const batch = db.batch();
+          for (const s of snaps) {
+            if (!s.exists) { skipped += 1; continue; }
+            const data = s.data();
+            if (data.tenantId !== ctx.tenantId) { skipped += 1; continue; }
+            const existing = Array.isArray(data.segments) ? data.segments : [];
+            if (existing.includes(segTag)) { skipped += 1; continue; }
+            batch.update(s.ref, {
+              segments: [...existing, segTag],
+              updated_at: admin.firestore.FieldValue.serverTimestamp(),
+            });
+            updated += 1;
+          }
+          await batch.commit();
+        }
+
+        // Audit row so we can see who applied which segment to how many.
+        await db.collection("contactSegmentApplications").add({
+          tenantId: ctx.tenantId,
+          userId: ctx.userId,
+          segment: segTag,
+          idsCount: ids.length,
+          updated,
+          skipped,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        return res.json({ ok: true, segment: segTag, updated, skipped });
+      } catch (e) {
+        console.error("[contacts:applySegment] error:", e.message);
+        return jsonError(res, 500, "Failed to apply segment");
       }
     }
 
@@ -13848,6 +14030,28 @@ RULES YOU MUST FOLLOW:
             if (alexSystemPrompt && body.selectedWorker && body.selectedWorker !== "chief-of-staff") {
               try {
                 const workerSlug = body.selectedWorker;
+
+                // Authoring layer first: workerSystemPrompts/{slug} is the
+                // place where we hand-tune behavior + safety rails for spine
+                // workers (platform-contacts, platform-accounting, etc.).
+                // If a curated prompt exists, use it verbatim instead of
+                // auto-assembling from digitalWorkers fields. Without this
+                // check the curated prompt sits in Firestore but never
+                // reaches the model — exactly the bug that let the contacts
+                // worker fabricate "1,597 may have been stale".
+                let usedCuratedPrompt = false;
+                try {
+                  const curatedSnap = await db.doc(`workerSystemPrompts/${workerSlug}`).get();
+                  if (curatedSnap.exists && curatedSnap.data().systemPrompt) {
+                    alexSystemPrompt = curatedSnap.data().systemPrompt;
+                    usedCuratedPrompt = true;
+                    console.log(`[chat:message] Using curated workerSystemPrompts/${workerSlug} (${alexSystemPrompt.length} chars)`);
+                  }
+                } catch (curatedErr) {
+                  console.warn(`[chat:message] curated prompt lookup failed for ${workerSlug}:`, curatedErr.message);
+                }
+
+                if (!usedCuratedPrompt) {
                 const dwSnap = await db.doc(`digitalWorkers/${workerSlug}`).get();
                 if (dwSnap.exists) {
                   const dw = dwSnap.data();
@@ -13913,6 +14117,7 @@ IDENTITY RULES:
                 } else {
                   console.warn(`[chat:message] selectedWorker "${workerSlug}" not found in digitalWorkers, using Alex prompt`);
                 }
+                } // end if (!usedCuratedPrompt)
               } catch (workerPromptErr) {
                 console.warn("[chat:message] Worker prompt build failed, using Alex:", workerPromptErr.message);
               }
