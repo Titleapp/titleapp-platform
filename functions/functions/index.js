@@ -10695,6 +10695,15 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
           created_at: admin.firestore.FieldValue.serverTimestamp(),
           updated_at: admin.firestore.FieldValue.serverTimestamp(),
           created_by: ctx.userId,
+          // Provenance — see docs/CODEX-50.23 contact ownership model.
+          // source_member_uid identifies WHO inside the workspace brought
+          // this contact in. imported_at fixes the time. enrichment_history
+          // is append-only — every paid Apollo (or other) enrichment adds a
+          // row, making the value-add chain auditable for the data-ownership
+          // policy (member-imported vs platform-enriched fields).
+          source_member_uid: ctx.userId,
+          imported_at: admin.firestore.FieldValue.serverTimestamp(),
+          enrichment_history: [],
         };
         const ref = await db.collection("contacts").add(doc);
         return res.json({ ok: true, id: ref.id, contact: { id: ref.id, ...doc, created_at: null, updated_at: null } });
@@ -10778,6 +10787,9 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
               created_at: admin.firestore.FieldValue.serverTimestamp(),
               updated_at: admin.firestore.FieldValue.serverTimestamp(),
               created_by: ctx.userId,
+              source_member_uid: ctx.userId,
+              imported_at: admin.firestore.FieldValue.serverTimestamp(),
+              enrichment_history: [],
             });
             written++;
           }
@@ -11074,14 +11086,28 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
             });
 
             const patch = {};
-            if (person?.email) patch.email = person.email;
-            if (person?.phone_numbers?.[0]?.sanitized_number) patch.phone = person.phone_numbers[0].sanitized_number;
-            if (person?.linkedin_url) patch.linkedin_url = person.linkedin_url;
-            if (person?.title) patch.title = person.title;
-            if (person?.organization?.name) patch.company = person.organization.name;
+            const fieldsAdded = [];
+            if (person?.email) { patch.email = person.email; fieldsAdded.push("email"); }
+            if (person?.phone_numbers?.[0]?.sanitized_number) { patch.phone = person.phone_numbers[0].sanitized_number; fieldsAdded.push("phone"); }
+            if (person?.linkedin_url) { patch.linkedin_url = person.linkedin_url; fieldsAdded.push("linkedin_url"); }
+            if (person?.title) { patch.title = person.title; fieldsAdded.push("title"); }
+            if (person?.organization?.name) { patch.company = person.organization.name; fieldsAdded.push("company"); }
             patch.updated_at = admin.firestore.FieldValue.serverTimestamp();
             patch.enriched_at = admin.firestore.FieldValue.serverTimestamp();
             patch.enrichment_source = "apollo";
+            // Append-only enrichment_history row. Captures the receipt for
+            // who paid (the tenant), what was added, when. This is the
+            // value-add audit trail the data-ownership policy keys off:
+            // member-imported fields stay with the member, platform-paid
+            // enrichments stay with the platform/workspace.
+            patch.enrichment_history = admin.firestore.FieldValue.arrayUnion({
+              run_id: `apollo_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+              source: "apollo",
+              paid_by_tenant_id: ctx.tenantId,
+              triggered_by_uid: ctx.userId,
+              fields_added: fieldsAdded,
+              at: new Date().toISOString(),
+            });
             await doc.ref.update(patch);
             enriched += 1;
           } catch (perErr) {
