@@ -1,14 +1,15 @@
 import React, { useState, useEffect, useCallback } from "react";
 import useDocuments from "../hooks/useDocuments";
 
+// CODEX 50.13 Day 2 Fix #3 — mime-class taxonomy (Google Drive style).
+// Drive holds raw files; classification is by file type, not asset class.
+// Asset-class taxonomy lives in the Vault (DTCs), where it belongs.
 const CATEGORIES = [
-  { id: "vehicles", label: "Vehicles", icon: "V", color: "#7c3aed" },
-  { id: "property", label: "Property", icon: "P", color: "#2563eb" },
-  { id: "financial", label: "Financial", icon: "F", color: "#16a34a" },
-  { id: "identity", label: "Identity", icon: "I", color: "#d97706" },
-  { id: "medical", label: "Medical", icon: "M", color: "#dc2626" },
-  { id: "education", label: "Education", icon: "E", color: "#06b6d4" },
-  { id: "other", label: "Other", icon: "O", color: "#64748b" },
+  { id: "documents",     label: "Documents",     icon: "D", color: "#2563eb" },
+  { id: "spreadsheets",  label: "Spreadsheets",  icon: "S", color: "#16a34a" },
+  { id: "images",        label: "Images",        icon: "I", color: "#7c3aed" },
+  { id: "presentations", label: "Presentations", icon: "P", color: "#d97706" },
+  { id: "other",         label: "Other",         icon: "O", color: "#64748b" },
 ];
 
 function formatSize(bytes) {
@@ -38,20 +39,50 @@ function fileIconLabel(mime, name) {
   return "FILE";
 }
 
-function categoryFromTags(tags) {
-  if (!Array.isArray(tags)) return "other";
-  const tag = tags.find(t => typeof t === "string" && t.startsWith("category:"));
-  if (!tag) return "other";
-  const id = tag.slice("category:".length);
-  return CATEGORIES.find(c => c.id === id) ? id : "other";
+// Mime-class classifier — mirrors fileIconLabel but at the category level.
+// PDF + Word + plain text → documents; Excel/CSV → spreadsheets; PNG/JPG/SVG →
+// images; PPT → presentations; everything else → other.
+function categoryFromMime(mime, name) {
+  const m = (mime || "").toLowerCase();
+  const n = (name || "").toLowerCase();
+  if (m.startsWith("image/") || /\.(png|jpe?g|gif|webp|svg|heic)$/.test(n)) return "images";
+  if (m.includes("sheet") || /\.(xlsx?|csv|numbers)$/.test(n)) return "spreadsheets";
+  if (m.includes("presentation") || /\.(pptx?|key)$/.test(n)) return "presentations";
+  if (
+    m === "application/pdf" || n.endsWith(".pdf") ||
+    m.includes("word") || /\.(docx?|rtf|odt|pages)$/.test(n) ||
+    m.startsWith("text/") || /\.(txt|md|json)$/.test(n)
+  ) return "documents";
+  return "other";
+}
+
+// Extract the worker slug from a file's tags array. Tags look like
+// "worker:platform-marketing" or "worker:av-pc12-ng". Returns null if the
+// file isn't worker-scoped (e.g. legacy uploads, account-level docs).
+function workerSlugFromTags(tags) {
+  if (!Array.isArray(tags)) return null;
+  const tag = tags.find(t => typeof t === "string" && t.startsWith("worker:"));
+  return tag ? tag.substring("worker:".length) : null;
 }
 
 export default function VaultDocuments() {
   const [filter, setFilter] = useState("all");
+  const [workerFilter, setWorkerFilter] = useState(null); // null = show worker folders
   const [docs, setDocs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
+  const [viewMode, setViewMode] = useState(() => localStorage.getItem("DRIVE_VIEW_MODE") || "list");
+  const [sortBy, setSortBy] = useState({ field: "createdAt", dir: "desc" });
   const { listDocuments, downloadFile, deleteDocument } = useDocuments();
+
+  function setView(mode) {
+    setViewMode(mode);
+    localStorage.setItem("DRIVE_VIEW_MODE", mode);
+  }
+
+  function toggleSort(field) {
+    setSortBy((s) => s.field === field ? { field, dir: s.dir === "asc" ? "desc" : "asc" } : { field, dir: "asc" });
+  }
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -74,12 +105,71 @@ export default function VaultDocuments() {
 
   useEffect(() => { refresh(); }, [refresh]);
 
-  const filtered = filter === "all"
+  // Refetch on persona switch — useDocuments reads TENANT_ID from
+  // localStorage at call time, so we re-run refresh() whenever the
+  // workspace switcher fires ta:workspace-changed.
+  useEffect(() => {
+    function onWorkspaceChange() { refresh(); }
+    window.addEventListener("ta:workspace-changed", onWorkspaceChange);
+    return () => window.removeEventListener("ta:workspace-changed", onWorkspaceChange);
+  }, [refresh]);
+
+  // Refetch when a chat-attached file lands in Drive (ChatPanel emits this
+  // after successful upload via /v1/files:sign + /v1/files:finalize).
+  useEffect(() => {
+    function onDriveUpdated() { refresh(); }
+    window.addEventListener("ta:drive-updated", onDriveUpdated);
+    return () => window.removeEventListener("ta:drive-updated", onDriveUpdated);
+  }, [refresh]);
+
+  // Sean's call 2026-05-13: Drive is most useful when scoped to a worker. The
+  // default view is folder-style — one folder per worker that has documents,
+  // plus an "Unassigned" folder for docs without a worker tag. Clicking a
+  // folder sets workerFilter; the flat-list view returns when filtered.
+  const docsByWorker = docs.reduce((acc, d) => {
+    const slug = workerSlugFromTags(d.tags);
+    const key = slug || "_unassigned";
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(d);
+    return acc;
+  }, {});
+
+  const workerFolders = Object.keys(docsByWorker)
+    .map(k => ({
+      slug: k === "_unassigned" ? null : k,
+      label: k === "_unassigned" ? "Unassigned" : k,
+      count: docsByWorker[k].length,
+    }))
+    .sort((a, b) => {
+      if (a.slug === null) return 1;
+      if (b.slug === null) return -1;
+      return a.label.localeCompare(b.label);
+    });
+
+  const scopedDocs = workerFilter === null
     ? docs
-    : docs.filter(d => categoryFromTags(d.tags) === filter);
+    : (docsByWorker[workerFilter === "_unassigned" ? "_unassigned" : workerFilter] || []);
+
+  const filteredUnsorted = filter === "all"
+    ? scopedDocs
+    : scopedDocs.filter(d => categoryFromMime(d.mimeType, d.filename) === filter);
+
+  const filtered = [...filteredUnsorted].sort((a, b) => {
+    const dir = sortBy.dir === "asc" ? 1 : -1;
+    if (sortBy.field === "filename") {
+      return (a.filename || "").localeCompare(b.filename || "") * dir;
+    }
+    if (sortBy.field === "sizeBytes") {
+      return ((a.sizeBytes || 0) - (b.sizeBytes || 0)) * dir;
+    }
+    // createdAt — handle Firestore timestamp shape
+    const at = a.createdAt?._seconds ?? (a.createdAt ? new Date(a.createdAt).getTime() / 1000 : 0);
+    const bt = b.createdAt?._seconds ?? (b.createdAt ? new Date(b.createdAt).getTime() / 1000 : 0);
+    return (at - bt) * dir;
+  });
 
   const counts = docs.reduce((acc, d) => {
-    const cat = categoryFromTags(d.tags);
+    const cat = categoryFromMime(d.mimeType, d.filename);
     acc[cat] = (acc[cat] || 0) + 1;
     return acc;
   }, {});
@@ -99,10 +189,61 @@ export default function VaultDocuments() {
     <div>
       <div className="pageHeader">
         <div>
-          <h1 className="h1">Documents</h1>
-          <p className="subtle">{docs.length} document{docs.length === 1 ? "" : "s"} in your vault</p>
+          <h1 className="h1">My Drive</h1>
+          <p className="subtle">
+            {workerFilter
+              ? <>
+                  <button
+                    onClick={() => setWorkerFilter(null)}
+                    style={{ background: "none", border: "none", color: "#7c3aed", cursor: "pointer", padding: 0, fontSize: "inherit", textDecoration: "underline" }}
+                  >All workers</button>
+                  {" / "}
+                  <strong>{workerFilter === "_unassigned" ? "Unassigned" : workerFilter}</strong>
+                  {" — "}{filtered.length} document{filtered.length === 1 ? "" : "s"}
+                </>
+              : `${docs.length} document${docs.length === 1 ? "" : "s"} across ${workerFolders.length} folder${workerFolders.length === 1 ? "" : "s"}`}
+          </p>
         </div>
-        <div style={{ display: "flex", gap: "8px" }}>
+        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+          {/* View toggle — list (default, GDrive style) vs grid (cards). Persisted to localStorage. */}
+          <div style={{ display: "inline-flex", border: "1px solid #e2e8f0", borderRadius: "8px", overflow: "hidden" }}>
+            <button
+              onClick={() => setView("list")}
+              title="List view"
+              style={{
+                padding: "8px 10px", border: "none", cursor: "pointer",
+                background: viewMode === "list" ? "#1e293b" : "white",
+                color: viewMode === "list" ? "white" : "#64748b",
+                display: "flex", alignItems: "center",
+              }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="8" y1="6" x2="21" y2="6"></line>
+                <line x1="8" y1="12" x2="21" y2="12"></line>
+                <line x1="8" y1="18" x2="21" y2="18"></line>
+                <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                <line x1="3" y1="18" x2="3.01" y2="18"></line>
+              </svg>
+            </button>
+            <button
+              onClick={() => setView("grid")}
+              title="Grid view"
+              style={{
+                padding: "8px 10px", border: "none", cursor: "pointer", borderLeft: "1px solid #e2e8f0",
+                background: viewMode === "grid" ? "#1e293b" : "white",
+                color: viewMode === "grid" ? "white" : "#64748b",
+                display: "flex", alignItems: "center",
+              }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="7" height="7"></rect>
+                <rect x="14" y="3" width="7" height="7"></rect>
+                <rect x="14" y="14" width="7" height="7"></rect>
+                <rect x="3" y="14" width="7" height="7"></rect>
+              </svg>
+            </button>
+          </div>
           <button
             className="iconBtn"
             onClick={refresh}
@@ -120,43 +261,61 @@ export default function VaultDocuments() {
         </div>
       </div>
 
-      {/* Category Cards */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: "10px", marginBottom: "20px" }}>
-        <div
-          onClick={() => setFilter("all")}
-          className="card"
-          style={{
-            padding: "16px", textAlign: "center", cursor: "pointer",
-            border: filter === "all" ? "2px solid #7c3aed" : undefined,
-            background: filter === "all" ? "#faf5ff" : undefined,
-          }}
-        >
-          <div style={{ fontSize: "20px", fontWeight: 800, color: "#7c3aed" }}>{docs.length}</div>
-          <div style={{ fontSize: "12px", color: "#64748b", marginTop: "4px" }}>All Categories</div>
-        </div>
-        {CATEGORIES.map(cat => (
-          <div
-            key={cat.id}
-            onClick={() => setFilter(cat.id)}
-            className="card"
-            style={{
-              padding: "16px", textAlign: "center", cursor: "pointer",
-              border: filter === cat.id ? `2px solid ${cat.color}` : undefined,
-              background: filter === cat.id ? `${cat.color}08` : undefined,
-            }}
-          >
-            <div style={{
-              width: "36px", height: "36px", borderRadius: "10px", margin: "0 auto 8px",
-              background: `${cat.color}15`, display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: "16px", fontWeight: 700, color: cat.color,
-            }}>
-              {cat.icon}
-            </div>
-            <div style={{ fontSize: "13px", fontWeight: 600, color: "#1e293b" }}>{cat.label}</div>
-            <div style={{ fontSize: "11px", color: "#94a3b8", marginTop: "2px" }}>{counts[cat.id] || 0}</div>
+      {/* Worker folders — top-level grouping. Drive is most useful scoped to
+          a worker (Sean 2026-05-13). Folders render when no worker is selected;
+          clicking enters that worker's documents. GDrive-style folder cards
+          with a proper folder SVG icon. */}
+      {!loading && !loadError && docs.length > 0 && workerFilter === null && workerFolders.length > 0 && (
+        <div style={{ marginBottom: "24px" }}>
+          <div style={{ fontSize: "12px", fontWeight: 700, color: "#64748b", letterSpacing: 0.5, textTransform: "uppercase", marginBottom: "10px" }}>Folders</div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "12px" }}>
+            {workerFolders.map(f => (
+              <div
+                key={f.slug || "_unassigned"}
+                onClick={() => setWorkerFilter(f.slug || "_unassigned")}
+                className="card"
+                style={{ padding: "16px", cursor: "pointer", display: "flex", alignItems: "center", gap: "14px", transition: "background 0.1s ease" }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = "#f8fafc"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = ""; }}
+              >
+                <svg width="40" height="40" viewBox="0 0 24 24" fill={f.slug ? "#7c3aed" : "#94a3b8"} style={{ flexShrink: 0 }}>
+                  <path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" />
+                </svg>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ fontSize: "14px", fontWeight: 600, color: "#1e293b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.label}</div>
+                  <div style={{ fontSize: "12px", color: "#94a3b8", marginTop: "3px" }}>{f.count} file{f.count === 1 ? "" : "s"}</div>
+                </div>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        </div>
+      )}
+
+      {/* Filter chips — compact filter row replaces the old big-tile category
+          cards. Reads more like GDrive's chip row above the file list. */}
+      {!loading && !loadError && docs.length > 0 && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "16px" }}>
+          {[
+            { id: "all", label: "All", color: "#7c3aed", count: docs.length },
+            ...CATEGORIES.map(cat => ({ id: cat.id, label: cat.label, color: cat.color, count: counts[cat.id] || 0 })),
+          ].filter(c => c.id === "all" || c.count > 0).map(c => (
+            <button
+              key={c.id}
+              onClick={() => setFilter(c.id)}
+              style={{
+                padding: "6px 12px", borderRadius: "999px", fontSize: "13px", fontWeight: 500,
+                border: filter === c.id ? `1px solid ${c.color}` : "1px solid #e2e8f0",
+                background: filter === c.id ? `${c.color}12` : "white",
+                color: filter === c.id ? c.color : "#475569",
+                cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "6px",
+              }}
+            >
+              {c.label}
+              <span style={{ fontSize: "11px", opacity: 0.7 }}>{c.count}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {loading && (
         <div className="card" style={{ padding: "32px", textAlign: "center", color: "#64748b" }}>
@@ -199,10 +358,94 @@ export default function VaultDocuments() {
         </div>
       )}
 
-      {!loading && !loadError && filtered.length > 0 && (
+      {/* List view — Google-Drive style table with sortable columns. */}
+      {!loading && !loadError && filtered.length > 0 && viewMode === "list" && (
+        <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "minmax(260px, 1fr) 140px 120px 80px",
+            padding: "10px 16px", borderBottom: "1px solid #e2e8f0",
+            background: "#f8fafc", fontSize: 12, fontWeight: 600, color: "#64748b",
+            textTransform: "uppercase", letterSpacing: 0.4,
+          }}>
+            <button onClick={() => toggleSort("filename")} style={{ background: "none", border: "none", padding: 0, textAlign: "left", cursor: "pointer", color: "inherit", fontSize: "inherit", fontWeight: "inherit", letterSpacing: "inherit", textTransform: "inherit", display: "flex", alignItems: "center", gap: 4 }}>
+              Name {sortBy.field === "filename" && (sortBy.dir === "asc" ? "↑" : "↓")}
+            </button>
+            <button onClick={() => toggleSort("createdAt")} style={{ background: "none", border: "none", padding: 0, textAlign: "left", cursor: "pointer", color: "inherit", fontSize: "inherit", fontWeight: "inherit", letterSpacing: "inherit", textTransform: "inherit", display: "flex", alignItems: "center", gap: 4 }}>
+              Date {sortBy.field === "createdAt" && (sortBy.dir === "asc" ? "↑" : "↓")}
+            </button>
+            <button onClick={() => toggleSort("sizeBytes")} style={{ background: "none", border: "none", padding: 0, textAlign: "left", cursor: "pointer", color: "inherit", fontSize: "inherit", fontWeight: "inherit", letterSpacing: "inherit", textTransform: "inherit", display: "flex", alignItems: "center", gap: 4 }}>
+              Size {sortBy.field === "sizeBytes" && (sortBy.dir === "asc" ? "↑" : "↓")}
+            </button>
+            <span style={{ textAlign: "right" }}>Actions</span>
+          </div>
+          {filtered.map(doc => {
+            const cat = categoryFromMime(doc.mimeType, doc.filename);
+            const catMeta = CATEGORIES.find(c => c.id === cat) || CATEGORIES[CATEGORIES.length - 1];
+            const fromGdrive = Array.isArray(doc.tags) && doc.tags.includes("source:google_drive");
+            const fromChat = Array.isArray(doc.tags) && doc.tags.includes("source:chat");
+            const fromLogbook = Array.isArray(doc.tags) && doc.tags.includes("source:logbook");
+            const sourceLabel = fromGdrive ? "Drive" : fromChat ? "Chat" : fromLogbook ? "Logbook" : doc.createdByWorker || null;
+            return (
+              <div
+                key={doc.objectId}
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "minmax(260px, 1fr) 140px 120px 80px",
+                  padding: "10px 16px", borderBottom: "1px solid #f1f5f9",
+                  alignItems: "center", fontSize: 13,
+                  cursor: "pointer", transition: "background 0.1s ease",
+                }}
+                onClick={() => handleDownload(doc.objectId)}
+                onMouseEnter={(e) => { e.currentTarget.style.background = "#f8fafc"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                  <div style={{
+                    width: 28, height: 28, borderRadius: 6, flexShrink: 0,
+                    background: `${catMeta.color}15`, color: catMeta.color,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 10, fontWeight: 700,
+                  }}>
+                    {fileIconLabel(doc.mimeType, doc.filename)}
+                  </div>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ fontWeight: 600, color: "#1e293b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={doc.filename}>
+                      {doc.filename}
+                    </div>
+                    {sourceLabel && (
+                      <div style={{ fontSize: 11, color: "#94a3b8" }}>{sourceLabel}</div>
+                    )}
+                  </div>
+                </div>
+                <div style={{ color: "#475569" }}>{formatDate(doc.createdAt)}</div>
+                <div style={{ color: "#475569" }}>{formatSize(doc.sizeBytes)}</div>
+                <div style={{ display: "flex", justifyContent: "flex-end", gap: 4 }} onClick={(e) => e.stopPropagation()}>
+                  <button
+                    onClick={() => handleDownload(doc.objectId)}
+                    title="Open"
+                    style={{ padding: "4px 8px", fontSize: 11, fontWeight: 600, background: "#f8fafc", color: "#1e293b", border: "1px solid #e2e8f0", borderRadius: 6, cursor: "pointer" }}
+                  >
+                    Open
+                  </button>
+                  <button
+                    onClick={() => handleDelete(doc.objectId, doc.filename)}
+                    title="Delete"
+                    style={{ padding: "4px 8px", fontSize: 11, fontWeight: 600, background: "white", color: "#dc2626", border: "1px solid #fecaca", borderRadius: 6, cursor: "pointer" }}
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {!loading && !loadError && filtered.length > 0 && viewMode === "grid" && (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "12px" }}>
           {filtered.map(doc => {
-            const cat = categoryFromTags(doc.tags);
+            const cat = categoryFromMime(doc.mimeType, doc.filename);
             const catMeta = CATEGORIES.find(c => c.id === cat) || CATEGORIES[CATEGORIES.length - 1];
             const fromGdrive = Array.isArray(doc.tags) && doc.tags.includes("source:google_drive");
             const fromChat = Array.isArray(doc.tags) && doc.tags.includes("source:chat");

@@ -38,13 +38,13 @@ export default function CanvasTabBar({ tabs, activeSignal, onSelectTab, workerSl
     <div
       style={{
         display: "flex",
-        alignItems: "center",
+        alignItems: "flex-start",
         borderBottom: "1px solid #e5e7eb",
         background: "#fff",
         flexShrink: 0,
       }}
     >
-      <div style={{ display: "flex", flex: 1, overflowX: "auto" }}>
+      <div style={{ display: "flex", flexWrap: "wrap", flex: 1, rowGap: 0 }}>
         {sorted.map(t => {
           const active = t.id === activeId;
           return (
@@ -55,7 +55,7 @@ export default function CanvasTabBar({ tabs, activeSignal, onSelectTab, workerSl
                 background: "none",
                 border: "none",
                 cursor: "pointer",
-                padding: "12px 16px",
+                padding: "10px 14px",
                 fontSize: 13,
                 fontWeight: active ? 600 : 500,
                 color: active ? "#111" : "#6b7280",
@@ -72,7 +72,7 @@ export default function CanvasTabBar({ tabs, activeSignal, onSelectTab, workerSl
         })}
       </div>
       {workerSlug && (
-        <div style={{ paddingRight: 12, flexShrink: 0 }}>
+        <div style={{ paddingRight: 12, paddingTop: 6, flexShrink: 0 }}>
           <SuggestImprovementButton workerSlug={workerSlug} />
         </div>
       )}

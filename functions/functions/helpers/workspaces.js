@@ -30,6 +30,11 @@ async function getUserWorkspaces(userId) {
   snap.forEach(doc => {
     const data = { id: doc.id, ...doc.data() };
     if (data.status === 'active' || data.status === 'trial') {
+      // Workspaces under users/{uid}/workspaces are the ones this user
+      // created — they are admin by definition. The Sidebar relies on
+      // ws.role === "admin" to surface the invite (+) button; without
+      // this field the button was hiding for the workspace's owner.
+      if (!data.role) data.role = 'admin';
       workspaces.push(data);
     }
   });

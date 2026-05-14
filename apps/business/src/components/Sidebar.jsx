@@ -1707,8 +1707,12 @@ export default function Sidebar({
            distinct stores. Before 50.13 they were rendered under the same
            "Vault" label, which was actually a Drive — DTCs were invisible.
            My Drive routes to the storageObjects surface; My Vault routes to
-           the new VaultDTCs surface backed by /v1/dtc:list. */}
-      {!isPersonal && !guestMode && (
+           the new VaultDTCs surface backed by /v1/dtc:list.
+
+           Visible on personal too — personal Vault holds the user's own
+           DTCs (car titles, IDs, credentials). The store is workspace-
+           scoped via TENANT_ID either way. */}
+      {!guestMode && (
         <>
           <div className="sidebarSection">
             <button

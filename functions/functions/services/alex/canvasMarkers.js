@@ -14,6 +14,14 @@
 
 const MARKER_RE = /\|\|\|CANVAS_RENDER\|\|\|\s*([\s\S]*?)\s*\|\|\|END_CANVAS\|\|\|/g;
 
+// Fallback: matches a CANVAS_RENDER block that opens but never closes — e.g.
+// because the model truncated mid-JSON. The leaked block would otherwise
+// render as raw marker text in chat (2026-05-12 bug — Sean caught the leak
+// in the Marketing worker). We strip the orphan from chat and best-effort
+// parse anything that looks like a complete JSON object inside it.
+const ORPHAN_OPEN_RE = /\|\|\|CANVAS_RENDER\|\|\|\s*([\s\S]*)$/;
+const ORPHAN_END_ONLY_RE = /\|\|\|END_CANVAS\|\|\|/g;
+
 const PLATFORM_TOKENS = ["instagram", "twitter", "linkedin", "facebook", "email", "tiktok", "youtube", "x"];
 
 /**
@@ -315,7 +323,66 @@ function extractCanvasRenders(text) {
     return "";
   });
 
+  // Fallback pass — handle unterminated markers (model truncated mid-JSON
+  // or omitted the END tag). Strip the opening marker + everything after
+  // it, and best-effort recover any complete JSON object inside.
+  const orphanMatch = cleanText.match(ORPHAN_OPEN_RE);
+  if (orphanMatch) {
+    const orphanBody = orphanMatch[1] || "";
+    // Try to extract the first balanced JSON object via brace-counting so
+    // partial JSON tails don't crash JSON.parse. Recovers payloads even
+    // from truncated responses when the JSON itself is intact.
+    const firstBrace = orphanBody.indexOf("{");
+    if (firstBrace >= 0) {
+      let depth = 0;
+      let endIdx = -1;
+      for (let i = firstBrace; i < orphanBody.length; i++) {
+        const ch = orphanBody[i];
+        if (ch === "{") depth++;
+        else if (ch === "}") {
+          depth--;
+          if (depth === 0) { endIdx = i; break; }
+        }
+      }
+      if (endIdx > firstBrace) {
+        try {
+          const obj = JSON.parse(orphanBody.slice(firstBrace, endIdx + 1));
+          if (obj && typeof obj === "object" && obj.type) {
+            const type = String(obj.type);
+            const coerced = coerceCanvasPayload(type, obj.payload || {});
+            renders.push({ type, payload: coerced });
+            console.log(`[canvasMarkers] recovered orphan CANVAS_RENDER type=${type}`);
+          }
+        } catch (_) {
+          console.warn("[canvasMarkers] orphan CANVAS_RENDER JSON unparseable; stripping anyway");
+        }
+      }
+    }
+    cleanText = cleanText.slice(0, orphanMatch.index);
+  }
+  // Belt-and-suspenders: strip any stray END markers and any literal
+  // "|||CANVAS_RENDER|||" tokens that might have leaked.
+  cleanText = cleanText.replace(ORPHAN_END_ONLY_RE, "").replace(/\|\|\|CANVAS_RENDER\|\|\|/g, "");
+
   cleanText = cleanText.replace(/\n{3,}/g, "\n\n").trim();
+
+  // If stripping markers left chat completely empty BUT we recovered at least
+  // one canvas render, synthesize a brief chat reply pointing at it. This
+  // prevents the "No response received." UI when the model put everything
+  // inside a marker (2026-05-12 — Sean caught this on the Marketing worker).
+  if (!cleanText && renders.length > 0) {
+    const titles = renders
+      .map(r => r.payload?.title || r.payload?.subject || r.payload?.heading)
+      .filter(Boolean);
+    if (titles.length === 1) {
+      cleanText = `Updated the canvas on the right with ${titles[0]}.`;
+    } else if (titles.length > 1) {
+      cleanText = `Updated the canvas on the right with ${titles.length} new cards: ${titles.join(", ")}.`;
+    } else {
+      cleanText = "Updated the canvas on the right.";
+    }
+  }
+
   return { cleanText, canvasRenders: renders };
 }
 

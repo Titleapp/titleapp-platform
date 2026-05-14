@@ -10,6 +10,7 @@
 
 import React from "react";
 import CanvasCardShell from "./CanvasCardShell";
+import OperatorUploadPrompt from "./OperatorUploadPrompt";
 
 const S = {
   subtitle: { fontSize: 12, color: "#64748b", marginTop: -4, marginBottom: 12 },
@@ -29,6 +30,27 @@ export default function WorkProductCard({ resolved, context, onDismiss }) {
   const cardTitle = title || resolved?._title || "Work Product";
 
   const hasContent = !!(summary || (fields && fields.length) || (sections && sections.length) || (items && items.length));
+
+  // When the registry marks this card as acceptsUpload (e.g. aviation Checklists,
+  // QRH, Performance, W&B, Aircraft profile), render an upload CTA in place of the
+  // passive "Ask Alex…" emptyPrompt. Operators always need their own document on
+  // file — the AFM baseline isn't sufficient.
+  const acceptsUpload = !!resolved?.acceptsUpload;
+  const workerSlug = context?.worker?.slug || context?.workerSlug || null;
+
+  if (!hasContent && acceptsUpload) {
+    return (
+      <CanvasCardShell title={cardTitle} onDismiss={onDismiss}>
+        <OperatorUploadPrompt
+          title={resolved?.uploadTitle || "No document uploaded yet."}
+          hint={resolved?.uploadHint || "Upload your operator's document so the worker grounds in your version."}
+          buttonLabel={resolved?.uploadButton || "Upload document"}
+          workerSlug={workerSlug}
+          uploadCategory={resolved?.uploadCategory || "operator"}
+        />
+      </CanvasCardShell>
+    );
+  }
 
   return (
     <CanvasCardShell
@@ -64,6 +86,16 @@ export default function WorkProductCard({ resolved, context, onDismiss }) {
             <div key={i} style={S.section}>
               {s.heading && <div style={S.sectionTitle}>{s.heading}</div>}
               {s.body && <div style={S.sectionBody}>{s.body}</div>}
+              {Array.isArray(s.fields) && s.fields.length > 0 && (
+                <div style={{ marginTop: s.body ? 8 : 0 }}>
+                  {s.fields.map((f, j) => (
+                    <div key={j} style={S.row}>
+                      <span style={S.label}>{f.label}</span>
+                      <span style={S.value}>{f.value}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           ))}
         </>

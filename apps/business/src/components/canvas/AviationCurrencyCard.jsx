@@ -26,13 +26,28 @@ function statusBadge(status) {
 }
 
 export default function AviationCurrencyCard({ resolved, context, onDismiss }) {
-  // 49.31 — payload-first.
+  // Payload-first. Fixture uses `fields: [{label, value}]`; chat may emit
+  // `items: [{name, status, expiry, detail}]`. Normalize both into the same
+  // rendering path so the demo content renders.
   const payload = context?.payload;
-  const items = (payload && (Array.isArray(payload) ? payload : (payload.items || payload.currencyItems))) || context?.currencyItems || null;
+  let items = null;
+  if (payload) {
+    if (Array.isArray(payload)) {
+      items = payload;
+    } else if (Array.isArray(payload.items)) {
+      items = payload.items;
+    } else if (Array.isArray(payload.currencyItems)) {
+      items = payload.currencyItems;
+    } else if (Array.isArray(payload.fields)) {
+      // Adapter: fields → items shape.
+      items = payload.fields.map(f => ({ name: f.label, expiry: f.value, status: "current" }));
+    }
+  }
+  if (!items) items = context?.currencyItems || null;
 
   return (
     <CanvasCardShell
-      title="Currency Status"
+      title={payload?.title || "Currency Status"}
       emptyPrompt={resolved?.emptyPrompt || "Ask about your currency status to see it here."}
       onDismiss={onDismiss}
     >
@@ -41,9 +56,11 @@ export default function AviationCurrencyCard({ resolved, context, onDismiss }) {
           <div style={S.row}>
             <div>
               <div style={S.label}>{item.name}</div>
-              <div style={S.expiry}>{item.expiry ? `Expires: ${item.expiry}` : ""}</div>
+              <div style={S.expiry}>{item.expiry ? `${item.expiry}` : ""}</div>
             </div>
-            <span style={{ ...S.badge, ...statusBadge(item.status || "current") }}>{item.status || "current"}</span>
+            {item.status && (
+              <span style={{ ...S.badge, ...statusBadge(item.status || "current") }}>{item.status}</span>
+            )}
           </div>
           {item.detail && <div style={S.detail}>{item.detail}</div>}
         </div>

@@ -130,7 +130,7 @@ unverified → self_attested → verified → expired → re_verification_requir
 
 | Condition | Target Worker |
 |---|---|
-| Deal requires detailed underwriting | W-002 CRE Deal Analyst |
+| Deal requires detailed underwriting | W-002 Real Estate Analyst + Investor |
 | Capital stack needs structuring | W-016 Capital Stack Optimizer |
 | Construction budget needed for development deal | W-021 Construction Manager |
 | Draw schedule needed for construction syndication | W-023 Construction Draw |

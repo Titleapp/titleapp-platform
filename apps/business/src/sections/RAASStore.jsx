@@ -36,6 +36,8 @@ const VERTICAL_LABELS = {
   solar_vpp: "Solar Energy",
   web3: "Web3",
   investor: "Investor",
+  "banking-finance": "Banking & Finance",
+  banking_finance: "Banking & Finance",
 };
 
 export default function RAASStore() {
@@ -86,20 +88,27 @@ export default function RAASStore() {
     setActiveSuite("All");
   }, [activeVertical]);
 
+  // When a search term is present, run search globally — ignore the vertical
+  // and suite filters. Sean's call: "the search bar should pick up any worker
+  // or kind of close worker" regardless of which industry pill is active.
+  // Without the term, the pill filters scope as before.
   const filtered = workers.filter((w) => {
+    const term = searchTerm.trim().toLowerCase();
+    if (term) {
+      return (
+        (w.name || "").toLowerCase().includes(term) ||
+        (w.description || "").toLowerCase().includes(term) ||
+        (w.suite || "").toLowerCase().includes(term) ||
+        (w.slug || "").toLowerCase().includes(term) ||
+        (w.headline || "").toLowerCase().includes(term) ||
+        (w.vertical || "").toLowerCase().includes(term)
+      );
+    }
     const matchesVertical = activeVertical === "All" || w.vertical === activeVertical;
     if (!matchesVertical) return false;
     const wsuite = (w.suite || "").toLowerCase();
     const matchesSuite = activeSuite === "All" || wsuite === activeSuite.toLowerCase();
-    if (!matchesSuite) return false;
-    if (!searchTerm.trim()) return true;
-    const term = searchTerm.toLowerCase();
-    return (
-      (w.name || "").toLowerCase().includes(term) ||
-      (w.description || "").toLowerCase().includes(term) ||
-      (w.suite || "").toLowerCase().includes(term) ||
-      (w.slug || "").toLowerCase().includes(term)
-    );
+    return matchesSuite;
   });
 
   const liveCount = workers.filter(w => w.status === "live").length;

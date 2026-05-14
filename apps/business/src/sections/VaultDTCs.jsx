@@ -1,5 +1,142 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useDtcCatalog, ASSET_CLASSES } from "../data/useDtcCatalog";
+
+const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+
+function formatTimestamp(ts) {
+  if (!ts) return "";
+  const ms = ts._seconds ? ts._seconds * 1000 : (ts.toMillis ? ts.toMillis() : new Date(ts).getTime());
+  if (!ms) return "";
+  return new Date(ms).toLocaleString(undefined, { year: "numeric", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+}
+
+// Per-DTC logbook viewer. Each DTC owns a logbook of immutable events
+// (registration, lien added/cleared, transfer, status change, etc.)
+// scoped via /v1/logbook:list?dtcId=xxx. Append form is v1.1.
+function LogbookModal({ dtc, onClose }) {
+  const [entries, setEntries] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      try {
+        const token = localStorage.getItem("ID_TOKEN");
+        const tenantId = localStorage.getItem("TENANT_ID") || null;
+        const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+        if (tenantId) headers["x-tenant-id"] = tenantId;
+        const res = await fetch(`${API_BASE}/api?path=${encodeURIComponent(`/v1/logbook:list?dtcId=${dtc.id}`)}`, { headers });
+        const data = await res.json();
+        if (cancelled) return;
+        if (data?.ok && Array.isArray(data.entries)) setEntries(data.entries);
+        else { setEntries([]); if (data?.error) setError(data.error); }
+      } catch (e) {
+        if (!cancelled) { setError(e.message || "Failed to load logbook"); setEntries([]); }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    load();
+    return () => { cancelled = true; };
+  }, [dtc.id]);
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: "fixed", inset: 0, background: "rgba(15,23,42,0.6)", zIndex: 1000,
+        display: "flex", alignItems: "center", justifyContent: "center", padding: 24,
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: "#fff", borderRadius: 16, width: "100%", maxWidth: 640,
+          maxHeight: "85vh", display: "flex", flexDirection: "column", overflow: "hidden",
+          boxShadow: "0 24px 48px rgba(0,0,0,0.2)",
+        }}
+      >
+        {/* Header */}
+        <div style={{ padding: "20px 24px", borderBottom: "1px solid #f1f5f9" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#7c3aed", letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 4 }}>
+                {dtc.assetClass} · Logbook
+              </div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: "#1e293b" }}>
+                {dtc.metadata?.title || dtc.metadata?.name || dtc.type || "Record"}
+              </div>
+              <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 4 }}>
+                <code style={{ fontSize: 11 }}>{dtc.id}</code>
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              style={{ background: "none", border: "none", fontSize: 24, color: "#64748b", cursor: "pointer", lineHeight: 1, padding: 4 }}
+              aria-label="Close"
+            >×</button>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px" }}>
+          {loading && (
+            <div style={{ padding: 40, textAlign: "center", color: "#64748b" }}>Loading…</div>
+          )}
+          {!loading && error && (
+            <div style={{ padding: 16, background: "#fee2e2", border: "1px solid #fecaca", borderRadius: 8, color: "#991b1b", fontSize: 13 }}>
+              {error}
+            </div>
+          )}
+          {!loading && !error && entries.length === 0 && (
+            <div style={{ padding: 40, textAlign: "center", color: "#64748b" }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: "#1e293b", marginBottom: 6 }}>No logbook entries yet</div>
+              <div style={{ fontSize: 13, lineHeight: 1.6 }}>
+                Events are appended here as workers act on this record — registrations, liens,
+                transfers, inspections, status changes.
+              </div>
+            </div>
+          )}
+          {!loading && !error && entries.length > 0 && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {entries.map((entry) => (
+                <div
+                  key={entry.id}
+                  style={{ borderLeft: "3px solid #7c3aed", paddingLeft: 14, paddingTop: 2, paddingBottom: 2 }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: "#1e293b", textTransform: "capitalize" }}>
+                      {(entry.entryType || "event").replace(/_/g, " ")}
+                    </span>
+                    <span style={{ fontSize: 11, color: "#94a3b8" }}>{formatTimestamp(entry.createdAt)}</span>
+                  </div>
+                  {entry.data && (
+                    <div style={{ fontSize: 12, color: "#475569", lineHeight: 1.5 }}>
+                      {Object.entries(entry.data).slice(0, 4).map(([k, v]) => (
+                        <div key={k}><span style={{ color: "#94a3b8" }}>{k}:</span> {typeof v === "object" ? JSON.stringify(v) : String(v)}</div>
+                      ))}
+                    </div>
+                  )}
+                  {entry.createdByWorker && (
+                    <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 4 }}>
+                      via {entry.createdByWorker}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Footer note — append form lands in v1.1 */}
+        <div style={{ padding: "12px 24px", borderTop: "1px solid #f1f5f9", fontSize: 11, color: "#94a3b8", textAlign: "center" }}>
+          Logbook is append-only — entries written by workers cannot be edited or deleted.
+        </div>
+      </div>
+    </div>
+  );
+}
 
 /**
  * VaultDTCs — CODEX 50.13 Layer C.
@@ -62,6 +199,7 @@ function metadataPreview(dtc) {
 export default function VaultDTCs() {
   const { dtcs, loading, error } = useDtcCatalog();
   const [activeClass, setActiveClass] = useState("All");
+  const [selectedDtc, setSelectedDtc] = useState(null);
 
   const counts = useMemo(() => {
     const c = { All: dtcs.length };
@@ -133,6 +271,8 @@ export default function VaultDTCs() {
         </div>
       )}
 
+      {selectedDtc && <LogbookModal dtc={selectedDtc} onClose={() => setSelectedDtc(null)} />}
+
       {!loading && !error && filtered.length > 0 && (
         <div style={{
           display: "grid",
@@ -144,12 +284,16 @@ export default function VaultDTCs() {
             return (
               <div
                 key={dtc.id}
+                onClick={() => setSelectedDtc(dtc)}
                 style={{
                   background: "#fff", borderRadius: 12,
                   border: "1px solid #f1f5f9",
                   boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
                   padding: 20, display: "flex", flexDirection: "column",
+                  cursor: "pointer", transition: "box-shadow 0.15s ease, transform 0.15s ease",
                 }}
+                onMouseEnter={(e) => { e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.08)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.04)"; e.currentTarget.style.transform = "translateY(0)"; }}
               >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
                   <div style={{ fontSize: 11, fontWeight: 700, color: "#7c3aed", letterSpacing: 0.5, textTransform: "uppercase" }}>

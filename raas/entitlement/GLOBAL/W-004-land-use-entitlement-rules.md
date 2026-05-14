@@ -115,7 +115,7 @@ Track all public comments received during the entitlement process — written co
 | Environmental review required by land use approval | W-007 Environmental Review | environmental_review_trigger, project_scope |
 | Entitlement approved — permitting can begin | W-012 Permit Submission & Tracking | entitlement_status, conditions_of_approval |
 | Conditions of approval require design modifications | W-005 Architecture / W-006 Engineering | condition_details, design_impact |
-| Entitlement timeline or risk impacts deal feasibility | W-002 CRE Deal Analyst | approval_timeline, risk_assessment |
+| Entitlement timeline or risk impacts deal feasibility | W-002 Real Estate Analyst + Investor | approval_timeline, risk_assessment |
 | Conditions require ongoing compliance tracking | W-047 Compliance Tracker | conditions_of_approval, compliance_deadlines |
 | Legal challenge to approval filed | W-045 Legal | challenge_details, approval_record |
 | Entitlement pathway requires traffic study | External referral — traffic engineer | project_scope, trip_generation_estimate |

@@ -256,6 +256,14 @@ async function requireMembershipIfNeeded({ uid, tenantId }, res) {
     return jsonError(res, 400, "Missing tenantId");
   }
 
+  // Personal Vault: tenantId in {"vault","personal"} is the user's own
+  // personal scope. There is no organization to enforce membership against;
+  // route handlers must filter by userId to enforce scope. Synthesize an
+  // implicit "owner" membership so downstream auth checks pass.
+  if (tenantId === "vault" || tenantId === "personal") {
+    return { ok: true, membership: { id: null, userId: uid, tenantId, role: "owner", status: "active" } };
+  }
+
   const snap = await db
     .collection("memberships")
     .where("userId", "==", uid)
@@ -788,6 +796,33 @@ async function executeChatSideEffects(sideEffects, userId, tenantId) {
         case 'sendEmailCampaign': {
           if (!userId) break;
           const d = effect.data || {};
+
+          // Phase C — Accounting Controller pre-commit hook.
+          // The controller estimates the spend, looks up the mapped CoA
+          // category, and blocks the send if it would push monthly spend
+          // past the cap. Fail-open on controller errors so a broken
+          // controller can't take down marketing ops; explicit overrides
+          // come in as data.controllerOverride === true.
+          let controllerCheck = null;
+          try {
+            const { preCommitCheck, recordApprovalRequest, recordAuditEvent } = require("./services/accounting/controller");
+            const recipientCount = (d.recipientCount != null)
+              ? Number(d.recipientCount)
+              : (Array.isArray(d.contacts) ? d.contacts.length : 0);
+            controllerCheck = await preCommitCheck({
+              tenantId, action: 'sendEmailCampaign',
+              data: { ...d, recipientCount },
+            });
+            if (controllerCheck && !controllerCheck.allowed && !d.controllerOverride) {
+              const approval = await recordApprovalRequest({ tenantId, userId, action: 'sendEmailCampaign', data: d, check: controllerCheck });
+              await recordAuditEvent({ tenantId, userId, action: 'sendEmailCampaign', decision: 'blocked', check: controllerCheck, approvalId: approval.id });
+              console.warn(`[controller] BLOCKED sendEmailCampaign — ${controllerCheck.reason}. Approval: ${approval.id}`);
+              break;
+            }
+          } catch (ctrlErr) {
+            console.warn('[controller] precheck failed (failing open):', ctrlErr.message);
+          }
+
           try {
             const { sendMarketingEmail, createContactList } = require("./services/emailService/marketingCampaigns");
             // Allow inline contact-list creation if model passed contacts but no listId.
@@ -809,6 +844,16 @@ async function executeChatSideEffects(sideEffects, userId, tenantId) {
               fromEmail: d.fromEmail,
             });
             console.log("chatEngine side-effect: sendEmailCampaign", result.ok ? "OK" : "FAIL", result.campaignId || result.error);
+            // Audit-log the successful execution with controller context.
+            try {
+              const { recordAuditEvent } = require("./services/accounting/controller");
+              await recordAuditEvent({
+                tenantId, userId,
+                action: 'sendEmailCampaign',
+                decision: d.controllerOverride ? 'approved_override' : 'executed',
+                check: controllerCheck,
+              });
+            } catch (_auditErr) { /* non-fatal */ }
           } catch (sendErr) {
             console.warn("chatEngine side-effect sendEmailCampaign threw:", sendErr.message);
           }
@@ -817,6 +862,24 @@ async function executeChatSideEffects(sideEffects, userId, tenantId) {
         case 'scheduleSocialPost': {
           if (!userId) break;
           const d = effect.data || {};
+
+          // Phase C — controller gate on paid boost spend. Organic posts
+          // (boostBudgetCents == 0) cost nothing and pass through; paid
+          // boosts get checked against the Marketing — Paid Ads cap.
+          let socialCheck = null;
+          try {
+            const { preCommitCheck, recordApprovalRequest, recordAuditEvent } = require("./services/accounting/controller");
+            socialCheck = await preCommitCheck({ tenantId, action: 'scheduleSocialPost', data: d });
+            if (socialCheck && !socialCheck.allowed && !d.controllerOverride) {
+              const approval = await recordApprovalRequest({ tenantId, userId, action: 'scheduleSocialPost', data: d, check: socialCheck });
+              await recordAuditEvent({ tenantId, userId, action: 'scheduleSocialPost', decision: 'blocked', check: socialCheck, approvalId: approval.id });
+              console.warn(`[controller] BLOCKED scheduleSocialPost — ${socialCheck.reason}. Approval: ${approval.id}`);
+              break;
+            }
+          } catch (ctrlErr) {
+            console.warn('[controller] scheduleSocialPost precheck failed (failing open):', ctrlErr.message);
+          }
+
           try {
             const { postViaUnified, saveDraft } = require("./services/socialService");
             // If model marks status=draft, save instead of posting live.
@@ -827,6 +890,15 @@ async function executeChatSideEffects(sideEffects, userId, tenantId) {
               const r = await postViaUnified(userId, { content: d.content, platforms: d.platforms || [], title: d.title, scheduledAt: d.scheduledAt });
               console.log("chatEngine side-effect: scheduleSocialPost", r.ok ? "OK" : "FAIL", r.postId || r.error);
             }
+            try {
+              const { recordAuditEvent } = require("./services/accounting/controller");
+              await recordAuditEvent({
+                tenantId, userId,
+                action: 'scheduleSocialPost',
+                decision: d.controllerOverride ? 'approved_override' : 'executed',
+                check: socialCheck,
+              });
+            } catch (_auditErr) { /* non-fatal */ }
           } catch (postErr) {
             console.warn("chatEngine side-effect scheduleSocialPost threw:", postErr.message);
           }
@@ -836,6 +908,24 @@ async function executeChatSideEffects(sideEffects, userId, tenantId) {
           // Generic dispatch through the unified messageQueue (campaigns/messageProcessor).
           if (!userId) break;
           const d = effect.data || {};
+
+          // Phase C — controller gate on SMS. Transactional email is treated
+          // as free in the cost estimator; SMS bills per segment and can
+          // spike fast, so we route the check through the Twilio CoA cap.
+          let queueCheck = null;
+          try {
+            const { preCommitCheck, recordApprovalRequest, recordAuditEvent } = require("./services/accounting/controller");
+            queueCheck = await preCommitCheck({ tenantId, action: 'enqueueMessage', data: d });
+            if (queueCheck && !queueCheck.allowed && !d.controllerOverride) {
+              const approval = await recordApprovalRequest({ tenantId, userId, action: 'enqueueMessage', data: d, check: queueCheck });
+              await recordAuditEvent({ tenantId, userId, action: 'enqueueMessage', decision: 'blocked', check: queueCheck, approvalId: approval.id });
+              console.warn(`[controller] BLOCKED enqueueMessage — ${queueCheck.reason}. Approval: ${approval.id}`);
+              break;
+            }
+          } catch (ctrlErr) {
+            console.warn('[controller] enqueueMessage precheck failed (failing open):', ctrlErr.message);
+          }
+
           try {
             await db.collection("messageQueue").add({
               userId,
@@ -851,6 +941,15 @@ async function executeChatSideEffects(sideEffects, userId, tenantId) {
               source: d.source || "marketing-worker",
             });
             console.log("chatEngine side-effect: enqueueMessage OK", d.channel || "email", d.to);
+            try {
+              const { recordAuditEvent } = require("./services/accounting/controller");
+              await recordAuditEvent({
+                tenantId, userId,
+                action: 'enqueueMessage',
+                decision: d.controllerOverride ? 'approved_override' : 'executed',
+                check: queueCheck,
+              });
+            } catch (_auditErr) { /* non-fatal */ }
           } catch (qErr) {
             console.warn("chatEngine side-effect enqueueMessage failed:", qErr.message);
           }
@@ -909,18 +1008,20 @@ async function handleAIChatFallthrough(message, userId, tenantId) {
     }
     messages.push({ role: "user", content: message });
 
+    // Use the master Alex core prompt — single source of truth for Alex's
+    // identity, the four platform pillars (Data Layer, RAAS Engine, Alex,
+    // Document Control), DRIVE vs VAULT vs LOGBOOK semantics, pricing,
+    // tone rules, etc. The prior inline mini-prompt drifted from this and
+    // produced generic "secure storage" answers instead of the actual
+    // tamper-evident-records architecture.
+    const { getCore } = require("./services/alex/prompts/core");
+    const systemPrompt = getCore();
+
     const anthropic = getAnthropic();
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-5-20250929",
       max_tokens: 2048,
-      system: `You are Alex from TitleApp, a platform that helps people keep track of important records (car titles, home documents, pet records, student transcripts, etc.). Be concise, professional, and focus on helping users understand how to organize and protect their important documents.
-
-Formatting rules — follow these strictly:
-- Never use emojis in your responses.
-- Never use markdown formatting such as asterisks, bold, italic, or headers.
-- Never use bullet points or numbered lists unless the user explicitly asks for a list.
-- Write in complete, clean sentences. Use plain text only.
-- Keep your tone warm but professional — direct, calm, no hype.`,
+      system: systemPrompt,
       messages,
     });
 
@@ -1081,7 +1182,7 @@ exports.api = onRequest(
   // Override global cpu: "gcf_gen1" — this function runs Claude/OpenAI calls and needs full CPU.
   // timeoutSeconds bumped from 60 default to 300 to accommodate multi-file uploads
   // (each file: storage write + signed-url + Firestore record + pdf-parse).
-  { region: "us-central1", cpu: 1, memory: "1GiB", timeoutSeconds: 300 },
+  { region: "us-central1", cpu: 1, memory: "1GiB", timeoutSeconds: 300, secrets: ["APOLLO_API_KEY"] },
   async (req, res) => {
     console.log("✅ API_VERSION", "2026-03-01-document-engine");
 
@@ -1385,6 +1486,19 @@ exports.api = onRequest(
     if (route === "/chat:message" && method === "POST" && body.sessionId) {
       let { sessionId, userInput, action, actionData, fileData, fileName, surface, campaignSlug, utmSource, utmMedium, utmCampaign } = body;
 
+      // Day 2 diagnostic — log entry into chatEngine path so we can trace where
+      // empty `response` field originates. Remove once root cause is found.
+      console.log("[chatEngine.entry]", {
+        sessionId: sessionId?.slice(0, 16),
+        hasUserInput: !!userInput,
+        userInputPreview: (userInput || "").slice(0, 80),
+        action: action || null,
+        surface: surface || null,
+        selectedWorker: body.selectedWorker || null,
+        vertical: req.headers["x-vertical"] || null,
+        tenantId: req.headers["x-tenant-id"] || null,
+      });
+
       // CODEX 50.5 — generate one parent_interaction_id at the top of every
       // /chat:message turn. Threaded down through callWithHealthCheck context
       // and merged onto every usage event produced during this turn (chat
@@ -1417,7 +1531,7 @@ exports.api = onRequest(
         for (const f of body.files) {
           if (!f || !f.data || !f.name) { console.warn("[chatEngine] skipping file — missing data or name"); continue; }
           try {
-            const base64Data = (f.data || "").replace(/^data:[^;]+;base64,/, "");
+            const base64Data = (f.data || "").replace(/^data:[^;]*;base64,/, "");
             const buffer = Buffer.from(base64Data, "base64");
             const lowerName = f.name.toLowerCase();
             console.log("[chatEngine] file:", f.name, "size:", buffer.length, "bytes");
@@ -1553,11 +1667,13 @@ exports.api = onRequest(
             console.warn("chatEngine: bearer token invalid, continuing as unauthenticated");
           }
         }
+        console.log("[chatEngine.tick.auth]", { authed: !!authUser, uid: authUser?.uid?.slice(0, 8) });
 
         // Look up or create conversation session in Firestore
         let effectiveSessionId = sessionId;
         let sessionRef = db.collection("chatSessions").doc(sessionId);
         let sessionSnap = await sessionRef.get();
+        console.log("[chatEngine.tick.session]", { sessionExists: sessionSnap.exists, sessionId: sessionId?.slice(0, 16) });
         let sessionState = sessionSnap.exists
           ? (sessionSnap.data().state || {})
           : {};
@@ -1693,11 +1809,14 @@ exports.api = onRequest(
                     { workerId: workerSlug, tenantId: reqTenantId, parentInteractionId }
                   );
                   if (!creditResult.allowed) {
+                    const shortage = creditResult.message || "This worker requires credits. Top up your account to continue.";
                     return res.json({
                       ok: false,
                       error: "INSUFFICIENT_CREDITS",
                       source: creditResult.source || "user",
-                      message: creditResult.message || "This worker requires credits. Top up your account to continue.",
+                      message: shortage,
+                      response: shortage,
+                      conversationState: "worker_blocked",
                       creditsRequired: creditResult.creditsRequired,
                       creditsAvailable: creditResult.creditsAvailable,
                     });
@@ -1752,6 +1871,15 @@ ${headline}
 WHAT YOU DO:
 ${capabilities}
 
+RESPONSE BEHAVIOR -- read this before anything else:
+1. Read what the user actually wrote before you respond. Detect the intent of the message, not the topic of the worker.
+2. Answer the question that was asked. Do NOT open with a status report, a logbook summary, a portfolio overview, a list of KPIs, or a generic intro sentence unless the user explicitly asked for one.
+3. If the user's first message is open-ended ("hi", "what can you do", "help"), give a short, specific orientation tied to your domain plus one concrete next step. Do not dump everything you can do.
+4. If the user's first message is task-oriented ("I'm planning X", "analyze this property", "draft a Y", "what's my Z"), answer that task directly. Pull canvas / KPI / status context ONLY when it is required to answer.
+5. Never lead with "Welcome back. Where did we leave off?" or any equivalent dead-end greeting. The platform handles the greeting; you handle the work.
+6. If you don't have enough information to answer, ask ONE specific question. Do not list five clarifying questions.
+7. If you catch yourself starting with status data or a canned intro, stop and rewrite the answer to address the user's actual message first.
+
 ${raasSections.length > 0 ? "BEHAVIORAL RULES (MANDATORY):\n" + raasSections.join("\n\n") : ""}
 
 FORMATTING RULES -- follow these strictly:
@@ -1795,6 +1923,63 @@ IDENTITY RULES:
                   }
                 } catch (knowledgeErr) {
                   console.warn("worker chat: knowledge load failed:", knowledgeErr.message);
+                }
+              }
+
+              // Sweep 2 — UI map injection for spine workers. Stops the model from
+              // inventing buttons / phantom banners / phantom tabs. The block tells
+              // it exactly what the user sees on the right-side section UI so it
+              // can direct the user to the right place instead of walking through
+              // work manually in chat.
+              if (workerPrompt && workerSlug) {
+                try {
+                  const { getSpineUiMap } = require("./services/canvas/spineUiMap");
+                  const uiMap = getSpineUiMap(workerSlug);
+                  if (uiMap) workerPrompt = `${uiMap}\n\n${workerPrompt}`;
+                } catch (uiMapErr) {
+                  console.warn("worker chat: UI map inject failed:", uiMapErr.message);
+                }
+              }
+
+              // CODEX 50.17 P0-5 — Inject constraint RAAS modules.
+              // Workers declare which compliance modules to load via
+              // `constraintRaasSources` on their digitalWorkers doc. The
+              // composer reads constraintRaasModules collection (P0-3) and
+              // returns the resolved prompt block.
+              let constraintModulesApplied = [];
+              if (workerPrompt && Array.isArray(dw.constraintRaasSources) && dw.constraintRaasSources.length > 0) {
+                try {
+                  const { composeWorkerPrompt } = require("./services/raas/workerPromptComposer");
+                  const composeCtx = {
+                    audience_tier: body?.context?.audience_tier || null,
+                    jurisdiction: body?.context?.jurisdiction || ctx.jurisdiction || null,
+                    document_type: body?.context?.document_type || null,
+                  };
+                  const composed = await composeWorkerPrompt({
+                    slug: workerSlug,
+                    baseSystemPrompt: workerPrompt,
+                    constraintRaasSources: dw.constraintRaasSources,
+                    context: composeCtx,
+                  });
+                  workerPrompt = composed.systemPrompt;
+                  constraintModulesApplied = composed.modulesApplied;
+                  if (composed.modulesApplied.length > 0) {
+                    console.log(`[constraints] worker:${workerSlug} loaded ${composed.modulesApplied.length} module(s):`,
+                      composed.modulesApplied.map(m => `${m.moduleId}@${m.version}`).join(", "));
+                  }
+                } catch (constraintErr) {
+                  console.error(`[constraints] FAILED for worker:${workerSlug}:`, constraintErr.message);
+                  // If a REQUIRED constraint module fails, refuse the chat — better
+                  // to fail closed than ship un-constrained content for a regulated
+                  // worker. Non-required failures are warned above and proceed.
+                  if (/required constraint module/.test(constraintErr.message)) {
+                    return res.json({
+                      ok: false,
+                      error: "REGULATORY_MODULE_UNAVAILABLE",
+                      message: "A required regulatory compliance module is unavailable. The worker cannot respond until this is restored. We have been notified.",
+                      details: constraintErr.message,
+                    });
+                  }
                 }
               }
 
@@ -1903,6 +2088,7 @@ END DELIVERY RULES.
                     uid: authUser ? authUser.uid : null,
                     currentSlug: workerSlug,
                     demoMode: siblingDemoMode,
+                    tenantId: reqTenantId || null,
                   });
                   if (siblingPrompt) workerPrompt = siblingPrompt + workerPrompt;
                 } catch (siblingErr) {
@@ -2152,6 +2338,36 @@ When the user asks "what have I completed?", "what's next?", or about their prog
                 console.error(`[enforcement] worker:${workerSlug} enforcement error (continuing):`, enfErr.message);
               }
 
+              // CODEX 50.17 P0-6 — Post-generation constraint check.
+              // Pattern-matching pass against known regulatory violation
+              // shapes (Reg D general solicitation, guaranteed returns,
+              // PHI proximity, etc.). Disposition drives whether to
+              // block/flag/allow the response. Patterns are filtered to
+              // only the constraint modules currently loaded for this
+              // worker (constraintModulesApplied from P0-5).
+              let constraintCheckResult = { disposition: "clean", violations: [] };
+              if (constraintModulesApplied && constraintModulesApplied.length > 0) {
+                try {
+                  const { checkContent, blockExplanation, flagBanner } = require("./services/raas/constraintCheck");
+                  const activeModuleIds = constraintModulesApplied.map(m => m.moduleId);
+                  constraintCheckResult = checkContent(aiText, { activeModules: activeModuleIds });
+
+                  if (constraintCheckResult.disposition === "block_with_explanation") {
+                    console.warn(`[constraintCheck] worker:${workerSlug} BLOCKED:`,
+                      constraintCheckResult.violations.map(v => v.ruleId).join(", "));
+                    aiText = blockExplanation(constraintCheckResult.violations);
+                  } else if (constraintCheckResult.disposition === "flag_for_review") {
+                    console.warn(`[constraintCheck] worker:${workerSlug} FLAGGED:`,
+                      constraintCheckResult.violations.map(v => v.ruleId).join(", "));
+                    aiText = `${flagBanner(constraintCheckResult.violations)}\n\n${aiText}`;
+                  } else if (constraintCheckResult.disposition === "allow_with_disclosure") {
+                    aiText += "\n\n*This communication has been logged for regulatory audit trail.*";
+                  }
+                } catch (ccErr) {
+                  console.error(`[constraintCheck] worker:${workerSlug} error (continuing):`, ccErr.message);
+                }
+              }
+
               // Update conversation history
               sessionState.salesHistory.push({ role: 'user', content: userInput });
               sessionState.salesHistory.push({ role: 'assistant', content: aiText });
@@ -2169,7 +2385,7 @@ When the user asks "what have I completed?", "what's next?", or about their prog
                 updatedAt: nowServerTs(),
               }, { merge: true });
 
-              // Audit log (with enforcement metadata — 49.9)
+              // Audit log (with enforcement metadata — 49.9, constraint metadata — CODEX 50.17 P0-7)
               try {
                 await db.collection("messageEvents").add({
                   tenantId: "titleapp-worker",
@@ -2183,6 +2399,23 @@ When the user asks "what have I completed?", "what's next?", or about their prog
                     passed: workerEnforcement.passed != null ? workerEnforcement.passed : null,
                     violations: workerEnforcement.violations || [],
                     disclaimerAppended: workerEnforcement.disclaimerAppended || false,
+                  },
+                  // CODEX 50.17 P0-7 — constraint RAAS audit fields.
+                  // Captures which modules were loaded, what the post-generation
+                  // pattern check found, and the resolved versions at generation
+                  // time (so historical generations can be re-audited against
+                  // the rules that applied at the time, not current rules).
+                  raas_sources_applied: constraintModulesApplied || [],
+                  constraint_check_results: {
+                    disposition: constraintCheckResult.disposition,
+                    violations: constraintCheckResult.violations || [],
+                    ranAt: constraintCheckResult.ranAt || null,
+                  },
+                  content_classification: {
+                    audience_tier: body?.context?.audience_tier || null,
+                    jurisdiction: body?.context?.jurisdiction || ctx.jurisdiction || null,
+                    document_type: body?.context?.document_type || null,
+                    compliance_domains: (constraintModulesApplied || []).map(m => m.moduleId),
                   },
                   createdAt: nowServerTs(),
                 });
@@ -2274,6 +2507,26 @@ When the user asks "what have I completed?", "what's next?", or about their prog
                     title: "Generated Image",
                   },
                 });
+              }
+
+              // Phase D-1 — mirror Accounting canvas reports (P&L, Balance
+              // Sheet, Cash Flow, Invoice, CoA) to Drive as markdown so the
+              // user has a durable artifact. No-op for non-accounting cards.
+              // Best-effort: failures are logged and don't break the chat.
+              if (workerSlug === "platform-accounting" && authUser && reqTenantId && reqTenantId !== "vault") {
+                try {
+                  const { archiveToCanvas } = require("./services/accounting/canvasArchive");
+                  const archiveResult = await archiveToCanvas({
+                    canvasRenders: workerCanvasRenders,
+                    tenantId: reqTenantId,
+                    userId: authUser.uid,
+                  });
+                  if (archiveResult.archived > 0) {
+                    console.log(`[canvasArchive] mirrored ${archiveResult.archived} accounting report(s) to Drive for ${reqTenantId}`);
+                  }
+                } catch (archiveErr) {
+                  console.warn("[canvasArchive] failed:", archiveErr.message);
+                }
               }
 
               // CODEX 50.5 — write a chat-completion usage event with revenue
@@ -4684,6 +4937,7 @@ ${messageGuidance}`;
         };
 
         // Process through chatEngine
+        console.log("[chatEngine.tick.preProcess]", { surface: surface || "landing", step: sessionState?.step || "(none)", hasInput: !!userInput });
         const engineResult = await chatEngineProcess({
           state: sessionState,
           userInput: userInput || "",
@@ -4693,6 +4947,12 @@ ${messageGuidance}`;
           fileName: fileName || null,
           surface: surface || "landing",
         }, services);
+        console.log("[chatEngine.tick.postProcess]", {
+          hasResponse: !!engineResult?.response,
+          responseLen: (engineResult?.response || "").length,
+          step: engineResult?.state?.step || "(none)",
+          sideEffects: (engineResult?.sideEffects || []).length,
+        });
 
         // If signup just happened, the engine state now has userId + authToken
         // Use it for subsequent side effects
@@ -5124,6 +5384,15 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
         // Determine final message — use empty string if cards are present (message is optional with cards)
         const hasCards = engineResult.cards && engineResult.cards.length > 0;
         const finalMessage = aiMessage || engineResult.message || (hasCards ? "" : "I'm here to help. What would you like to do?");
+        console.log("[chatEngine.tick.final]", {
+          aiMessageLen: (aiMessage || "").length,
+          engineMessageLen: (engineResult.message || "").length,
+          finalLen: (finalMessage || "").length,
+          hasCards,
+          useAIRequested: !!engineResult.useAI,
+          effectiveUserId: !!effectiveUserId,
+          effectiveTenantId: effectiveTenantId || "(none)",
+        });
 
         // Write updated state to Firestore
         await sessionRef.set({
@@ -5135,8 +5404,13 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
         }, { merge: true });
 
         // Return response
+        // FIELD-NAME COMPATIBILITY: legacy chat handler returned `response`,
+        // chatEngine path returned `message`. Frontend (ChatPanel.jsx)
+        // reads `data.response`. Mirror finalMessage onto both fields so
+        // existing frontend code works without a release-coupled change.
         return res.json({
           ok: true,
+          response: finalMessage,
           message: finalMessage,
           cards: engineResult.cards || [],
           promptChips: engineResult.promptChips || [],
@@ -5658,6 +5932,23 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       } catch (e) {
         console.error("marketplace:compare failed:", e);
         return jsonError(res, 500, "Failed to compare workers");
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    //  AVIATION REFERENCE DATA — UNAUTHENTICATED (FAA NFDC public data)
+    // ═══════════════════════════════════════════════════════════════
+
+    // GET /v1/aviation:preferredRoutes?dep=KSEA&arr=KPDX[&aircraftType=TURBOJET]
+    // FAA NFDC Preferred Routes Database lookup. v1 reads from bundled seed;
+    // v2 will read from Firestore faaPreferredRoutes/ populated by NASR cron.
+    if (route === "/aviation:preferredRoutes" && method === "GET") {
+      try {
+        const { handlePreferredRoutes } = require("./services/aviation/faaRoutes");
+        return await handlePreferredRoutes(req, res);
+      } catch (e) {
+        console.error("aviation:preferredRoutes failed:", e);
+        return jsonError(res, 500, "Preferred routes lookup failed");
       }
     }
 
@@ -8055,7 +8346,7 @@ These should be 2-3 realistic test scenarios the creator should try, derived fro
       try {
         const { name, data, type } = body || {};
         if (!data) return jsonError(res, 400, "Missing file data");
-        const base64Data = (data || "").replace(/^data:[^;]+;base64,/, "");
+        const base64Data = (data || "").replace(/^data:[^;]*;base64,/, "");
         const buffer = Buffer.from(base64Data, "base64");
         if (buffer.length > 50 * 1024 * 1024) return jsonError(res, 413, "File too large (50 MB max)");
         const safeName = (name || "file").replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 100);
@@ -9270,6 +9561,1248 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       }
     }
 
+    // POST /v1/admin:regulatory:ingest — CODEX 50.17 P0-1 manual trigger.
+    // Body: { sources?: ["sec-edgar", "federal-register", "cfpb"] } — defaults to all.
+    if (route === "/admin:regulatory:ingest" && method === "POST") {
+      try {
+        const { runIngest } = require("./services/compliance/regulatoryIngest");
+        const sources = Array.isArray(body.sources) ? body.sources : null;
+        const result = await runIngest({ sources, trigger: "manual" });
+        return res.json({ ok: true, ...result });
+      } catch (e) {
+        console.error("[admin:regulatory:ingest] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // ───────────────────────────────────────────────────────────
+    // CODEX 50.17 P0-3 — Constraint RAAS module admin endpoints
+    // ───────────────────────────────────────────────────────────
+
+    // POST /v1/admin:raas:module:create
+    // Body: { moduleId, name, description, domain, jurisdiction_scope?, disposition_default? }
+    if (route === "/admin:raas:module:create" && method === "POST") {
+      try {
+        const cm = require("./services/raas/constraintModules");
+        const result = await cm.createModule({ ...body, createdBy: ctx.userId });
+        return res.json({ ok: true, ...result });
+      } catch (e) {
+        console.error("[admin:raas:module:create] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // POST /v1/admin:raas:module:update
+    // Body: { moduleId, patch: {...} }
+    if (route === "/admin:raas:module:update" && method === "POST") {
+      try {
+        const cm = require("./services/raas/constraintModules");
+        const { moduleId, patch = {} } = body;
+        const result = await cm.updateModule(moduleId, patch, ctx.userId);
+        return res.json({ ok: true, ...result });
+      } catch (e) {
+        console.error("[admin:raas:module:update] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // POST /v1/admin:raas:module:transition
+    // Body: { moduleId, status: "draft"|"review"|"live"|"deprecated" }
+    if (route === "/admin:raas:module:transition" && method === "POST") {
+      try {
+        const cm = require("./services/raas/constraintModules");
+        const { moduleId, status } = body;
+        const result = await cm.transition(moduleId, status, { updatedBy: ctx.userId });
+        return res.json({ ok: true, ...result });
+      } catch (e) {
+        console.error("[admin:raas:module:transition] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // POST /v1/admin:raas:module:counsel
+    // Body: { moduleId, reviewer, approval_notes? }
+    if (route === "/admin:raas:module:counsel" && method === "POST") {
+      try {
+        const cm = require("./services/raas/constraintModules");
+        const { moduleId, reviewer, approval_notes } = body;
+        const result = await cm.markCounselReviewed(moduleId, { reviewer, approval_notes, reviewedBy: ctx.userId });
+        return res.json({ ok: true, ...result });
+      } catch (e) {
+        console.error("[admin:raas:module:counsel] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // POST /v1/admin:raas:module:section:add
+    // Body: { moduleId, sectionId, priority, section_type, title, body_markdown, applies_to?, source_refs?, disposition_override?, order? }
+    if (route === "/admin:raas:module:section:add" && method === "POST") {
+      try {
+        const cm = require("./services/raas/constraintModules");
+        const result = await cm.addSection(body);
+        return res.json({ ok: true, ...result });
+      } catch (e) {
+        console.error("[admin:raas:module:section:add] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // POST /v1/admin:raas:module:section:update
+    // Body: { moduleId, sectionId, patch: {...} }
+    if (route === "/admin:raas:module:section:update" && method === "POST") {
+      try {
+        const cm = require("./services/raas/constraintModules");
+        const { moduleId, sectionId, patch = {} } = body;
+        const result = await cm.updateSection(moduleId, sectionId, patch);
+        return res.json({ ok: true, ...result });
+      } catch (e) {
+        console.error("[admin:raas:module:section:update] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // POST /v1/admin:raas:module:section:remove
+    // Body: { moduleId, sectionId }
+    if (route === "/admin:raas:module:section:remove" && method === "POST") {
+      try {
+        const cm = require("./services/raas/constraintModules");
+        const { moduleId, sectionId } = body;
+        const result = await cm.removeSection(moduleId, sectionId);
+        return res.json({ ok: true, ...result });
+      } catch (e) {
+        console.error("[admin:raas:module:section:remove] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // GET /v1/admin:raas:module:list?status=live&domain=securities
+    if (route === "/admin:raas:module:list" && method === "GET") {
+      try {
+        const cm = require("./services/raas/constraintModules");
+        const status = req.query?.status?.toString() || null;
+        const domain = req.query?.domain?.toString() || null;
+        const modules = await cm.listModules({ status, domain });
+        return res.json({ ok: true, modules });
+      } catch (e) {
+        console.error("[admin:raas:module:list] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // GET /v1/admin:raas:module:get?moduleId=securities_compliance_v1&includeSections=1
+    if (route === "/admin:raas:module:get" && method === "GET") {
+      try {
+        const cm = require("./services/raas/constraintModules");
+        const moduleId = req.query?.moduleId?.toString();
+        const includeSections = req.query?.includeSections === "1" || req.query?.includeSections === "true";
+        if (!moduleId) return res.json({ ok: false, error: "moduleId required" });
+        const result = await cm.getModule(moduleId, { includeSections });
+        if (!result) return res.json({ ok: false, error: "not_found" });
+        return res.json({ ok: true, module: result });
+      } catch (e) {
+        console.error("[admin:raas:module:get] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // POST /v1/admin:raas:module:compose — preview composition without sending to a worker.
+    // Body: { moduleId, audience_tier?, jurisdiction?, document_type?, maxTokens? }
+    if (route === "/admin:raas:module:compose" && method === "POST") {
+      try {
+        const cm = require("./services/raas/constraintModules");
+        const { moduleId, ...opts } = body;
+        if (!moduleId) return res.json({ ok: false, error: "moduleId required" });
+        const result = await cm.composePromptText(moduleId, opts);
+        return res.json({ ok: true, ...result });
+      } catch (e) {
+        console.error("[admin:raas:module:compose] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // ───────────────────────────────────────────────────────────
+    // CODEX 50.17 P0-2 — OFAC admin endpoints
+    // ───────────────────────────────────────────────────────────
+
+    // POST /v1/admin:ofac:ingest — manual SDN ingestion trigger
+    if (route === "/admin:ofac:ingest" && method === "POST") {
+      try {
+        const { runOfacIngest: runIngest } = require("./services/compliance/ofac/ingest");
+        const result = await runIngest({ trigger: "manual" });
+        return res.json({ ok: true, ...result });
+      } catch (e) {
+        console.error("[admin:ofac:ingest] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // POST /v1/ofac:screen — name screening API.
+    // Body: { name, country?, dob?, passport_number?, entryType? }
+    // Authenticated; available to subscribers (not just admins) so workers
+    // can call it during KYC and constraint check flows.
+    // POST /v1/dataFee:quote — pre-call cost estimate + tier classification.
+    // Body: { source, units?, userBalanceCents? }
+    // Returns: { tier, costActualCents, costBilledCents, message, blocked, reason }
+    // Frontend should call this BEFORE making any data-source action and route
+    // through the appropriate UX (silent / inline-warn / modal-confirm).
+    // v1 — see services/billing/dataFee.js for v2 scope (worker session budgets,
+    // approval-token pattern, real-time balance check).
+    if (route === "/dataFee:quote" && method === "POST") {
+      try {
+        const { quoteDataFee } = require("./services/billing/dataFee");
+        const { source, units = 1, userBalanceCents = null } = body;
+        if (!source) return jsonError(res, 400, "Missing source");
+        const quote = await quoteDataFee({
+          source,
+          units,
+          userId: ctx.userId,
+          userBalanceCents,
+        });
+        return res.json({ ok: true, ...quote });
+      } catch (e) {
+        console.error("[dataFee:quote] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    if (route === "/ofac:screen" && method === "POST") {
+      try {
+        const { screen } = require("./services/compliance/ofac/screen");
+        const { recordDataFee } = require("./services/billing/dataFee");
+        const result = await screen(body);
+
+        const fee = await recordDataFee({
+          source: "ofac:screen",
+          userId: ctx.userId,
+          tenantId: ctx.tenantId,
+          units: 1,
+          requestedBy: "chat:ofac:screen",
+          metadata: { has_country: Boolean(body?.country), match_count: result?.matches?.length || 0 },
+        });
+
+        return res.json({ ok: true, ...result, dataFee: fee });
+      } catch (e) {
+        console.error("[ofac:screen] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // ───────────────────────────────────────────────────────────
+    // CODEX 50.15 P0-8 — Apollo lead-gen endpoints
+    // ───────────────────────────────────────────────────────────
+
+    // POST /v1/apollo:search — people search by ICP.
+    // Body: { criteria: { person_titles?, person_locations?, q_organization_industries?, ... }, write_to_contacts?: bool, contact_tier?, source_sub? }
+    //
+    // CODEX 50.18 update — when an existing contact is matched (dedupe by
+    // apollo_person_id), we ADD a "prospect" persona to its personas[] instead
+    // of silently skipping. This fixes a real-world bug where Apollo never
+    // enriched existing contacts.
+    if (route === "/apollo:search" && method === "POST") {
+      try {
+        const apollo = require("./services/marketingService/apollo");
+        const { recordDataFee } = require("./services/billing/dataFee");
+        const { addPersonaToExisting, derivePersonaIndex } = require("./api/routes/_contactsHelpers");
+        const usageCtx = { tenantId: ctx.tenantId, userId: ctx.userId, requestedBy: "chat:apollo:search" };
+        const { criteria = {}, write_to_contacts = false, contact_tier = "prospect", source_sub = null } = body;
+        const result = await apollo.searchPeople(criteria, usageCtx);
+
+        let written = 0;
+        let enrichedExisting = 0;
+        if (write_to_contacts && result.people && result.people.length > 0) {
+          let batch = db.batch();
+          let count = 0;
+          for (const person of result.people) {
+            if (!person.id) continue;
+            const contact = apollo.apolloPersonToContact(person, {
+              tenantId: ctx.tenantId,
+              source_sub,
+              contact_tier,
+              owner: ctx.userId,
+            });
+            // Dedupe by apollo_person_id within this tenant
+            const existing = await db.collection("contacts")
+              .where("tenantId", "==", ctx.tenantId)
+              .where("source.apollo_person_id", "==", person.id)
+              .limit(1)
+              .get();
+            if (existing.empty) {
+              const ref = db.collection("contacts").doc();
+              batch.set(ref, {
+                ...contact,
+                created_at: nowServerTs(),
+                updated_at: nowServerTs(),
+              });
+              written++;
+              if (++count >= 450) { await batch.commit(); batch = db.batch(); count = 0; }
+            } else {
+              // Existing contact — add a persona, refresh tiers/types index.
+              const existingDoc = existing.docs[0];
+              const existingData = existingDoc.data();
+              const newPersona = (contact.personas && contact.personas[0]) || null;
+              if (newPersona) {
+                const merged = addPersonaToExisting(existingData.personas || [], newPersona);
+                const tiers_index = derivePersonaIndex(merged.personas);
+                const types_index = Array.from(new Set(merged.personas.map(p => p.type).filter(Boolean)));
+                batch.update(existingDoc.ref, {
+                  personas: merged.personas,
+                  tiers_index,
+                  types_index,
+                  // Keep schema_version up to date if existing was older
+                  schema_version: "spine_v2.1",
+                  updated_at: nowServerTs(),
+                });
+                enrichedExisting++;
+                if (++count >= 450) { await batch.commit(); batch = db.batch(); count = 0; }
+              }
+            }
+          }
+          if (count > 0) await batch.commit();
+        }
+
+        const billable = Math.max(1, (result.people?.length) || 1);
+        const fee = await recordDataFee({
+          source: "apollo:search",
+          userId: ctx.userId,
+          tenantId: ctx.tenantId,
+          units: billable,
+          requestedBy: "chat:apollo:search",
+          metadata: { criteria_keys: Object.keys(criteria || {}), per_page: criteria?.per_page },
+        });
+
+        const burn = await apollo.getMonthlyBurnRate();
+        return res.json({ ok: true, ...result, written, enrichedExisting, burn, dataFee: fee });
+      } catch (e) {
+        console.error("[apollo:search] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // ───────────────────────────────────────────────────────────
+    // Command Center v2 — per-user roll-up brief (Sean spec 2026-05-13).
+    // ───────────────────────────────────────────────────────────
+
+    // GET /v1/commandCenter:previewBrief — see what your brief would say
+    // right now (dry-run; never sends email). Caller previews their own.
+    if (route === "/commandCenter:previewBrief" && method === "GET") {
+      try {
+        const { generateUserRollupBrief } = require("./services/commandCenter/userRollupBrief");
+        const r = await generateUserRollupBrief(auth.user.uid, { dryRun: true });
+        return res.json(r);
+      } catch (e) {
+        console.error("[commandCenter:previewBrief] error:", e.message);
+        return jsonError(res, 500, "Failed to generate preview");
+      }
+    }
+
+    // POST /v1/commandCenter:sendBrief — generate AND send. Use carefully —
+    // this delivers a real email to the caller's account.
+    if (route === "/commandCenter:sendBrief" && method === "POST") {
+      try {
+        const { generateUserRollupBrief } = require("./services/commandCenter/userRollupBrief");
+        const r = await generateUserRollupBrief(auth.user.uid, { dryRun: false });
+        return res.json(r);
+      } catch (e) {
+        console.error("[commandCenter:sendBrief] error:", e.message);
+        return jsonError(res, 500, "Failed to send brief");
+      }
+    }
+
+    // POST /v1/commandCenter:setWorkspaceMode — set tenants/{id}.mode
+    // (launch | operations | dormant). Only the workspace's billing admin
+    // or an existing admin member can flip the mode.
+    if (route === "/commandCenter:setWorkspaceMode" && method === "POST") {
+      try {
+        const { tenantId, mode } = body || {};
+        if (!tenantId) return jsonError(res, 400, "Missing tenantId");
+        if (!["launch", "operations", "dormant"].includes(mode)) return jsonError(res, 400, "Invalid mode");
+        // Confirm caller is an admin of this tenant
+        const m = await db.collection("memberships")
+          .where("userId", "==", auth.user.uid)
+          .where("tenantId", "==", tenantId)
+          .where("role", "==", "admin")
+          .where("status", "==", "active")
+          .limit(1).get();
+        if (m.empty) return jsonError(res, 403, "Not a workspace admin");
+        await db.collection("tenants").doc(tenantId).set({
+          mode,
+          modeUpdatedAt: nowServerTs(),
+          modeUpdatedBy: auth.user.uid,
+        }, { merge: true });
+        return res.json({ ok: true, tenantId, mode });
+      } catch (e) {
+        console.error("[commandCenter:setWorkspaceMode] error:", e.message);
+        return jsonError(res, 500, "Failed to set workspace mode");
+      }
+    }
+
+    // ───────────────────────────────────────────────────────────
+    // Accounting — setup state + connected accounts (minimal v1).
+    // Sean's design call 2026-05-13: accounting onboarding is async/resumable,
+    // so we persist setup-step completion per tenant and surface a checklist
+    // banner. Connected Accounts is the moat; manual entry ships first, Plaid
+    // OAuth follows later this week.
+    // ───────────────────────────────────────────────────────────
+
+    // GET /v1/accounting:setupState — read setup checklist progress.
+    // Manual clicks live in accountingSetup/{tenantId}.steps. We also AUTO-
+    // DETECT completion from actual Firestore state so the checklist stays
+    // truthful even if the user never clicks: connectedAccounts ≥ 1 →
+    // connect-bank, coaAccounts > 5 → pick-coa, transactions with
+    // coaAccountId ≥ 30 → categorize-30, etc. Auto wins over manual: a step
+    // can't go from "auto-checked" back to unchecked just because the user
+    // never explicitly clicked it.
+    if (route === "/accounting:setupState" && method === "GET") {
+      try {
+        const tenantId = ctx.tenantId;
+        const empty = { docs: [] };
+        const safe = (p) => p.catch(() => empty);
+        const [doc, conn, coa, txs, tenantSnap] = await Promise.all([
+          db.collection("accountingSetup").doc(tenantId).get(),
+          safe(db.collection("connectedAccounts").where("tenantId", "==", tenantId).get()),
+          safe(db.collection("coaAccounts").where("tenantId", "==", tenantId).get()),
+          safe(db.collection("transactions").where("tenantId", "==", tenantId).limit(2000).get()),
+          safe(db.collection("tenants").doc(tenantId).get()),
+        ]);
+        const manual = doc.exists ? (doc.data() || {}) : {};
+        const manualSteps = manual.steps || {};
+        const dismissed = !!manual.dismissed;
+
+        const activeConn   = conn.docs.map(d => d.data()).filter(a => a.status !== "deleted").length;
+        const activeCoa    = coa.docs.map(d => d.data()).filter(a => a.status !== "archived").length;
+        const allTxs       = txs.docs.map(d => d.data());
+        const categorized  = allTxs.filter(t => t.coaAccountId).length;
+        const recurringTxs = allTxs.filter(t => t.recurring === true).length;
+        // Distinct months by source file — proxy for "uploaded ≥ 6 months"
+        const months = new Set(allTxs.filter(t => t.sourceFileId && t.date).map(t => String(t.date).slice(0, 7)));
+        const fiscalSet    = !!(tenantSnap.exists && tenantSnap.data().fiscalYearStart);
+
+        const autoSteps = {
+          "connect-bank":    activeConn   >= 1,
+          "pick-coa":        activeCoa    >  5,
+          "categorize-30":   categorized  >= 30,
+          "fiscal-year":     fiscalSet,
+          "upload-history":  months.size  >= 5,
+          "first-recurring": recurringTxs >= 1,
+        };
+
+        // Auto wins. Manual click can mark a step done early but cannot unset.
+        const steps = {};
+        for (const k of Object.keys(autoSteps)) {
+          steps[k] = !!(autoSteps[k] || manualSteps[k]);
+        }
+        return res.json({ ok: true, steps, dismissed, auto: autoSteps, manual: manualSteps });
+      } catch (e) {
+        console.error("[accounting:setupState] error:", e.message);
+        return jsonError(res, 500, "Failed to read setup state");
+      }
+    }
+
+    // POST /v1/accounting:setupState — mark a step done/undone, or dismiss banner
+    if (route === "/accounting:setupState" && method === "POST") {
+      try {
+        const { stepId, done, dismissed } = body || {};
+        const ref = db.collection("accountingSetup").doc(ctx.tenantId);
+        const snap = await ref.get();
+        const cur = snap.exists ? snap.data() : { steps: {}, dismissed: false };
+        const next = { ...cur };
+        if (stepId) next.steps = { ...(cur.steps || {}), [stepId]: !!done };
+        if (typeof dismissed === "boolean") next.dismissed = dismissed;
+        next.updatedAt = nowServerTs();
+        next.updatedBy = auth.user.uid;
+        await ref.set(next, { merge: true });
+        return res.json({ ok: true, ...next });
+      } catch (e) {
+        console.error("[accounting:setupState POST] error:", e.message);
+        return jsonError(res, 500, "Failed to update setup state");
+      }
+    }
+
+    // GET /v1/accounting:fiscalYear — read fiscal year start (MM-DD string).
+    if (route === "/accounting:fiscalYear" && method === "GET") {
+      try {
+        const snap = await db.collection("tenants").doc(ctx.tenantId).get();
+        const data = snap.exists ? snap.data() : {};
+        return res.json({ ok: true, fiscalYearStart: data.fiscalYearStart || null });
+      } catch (e) {
+        console.error("[accounting:fiscalYear GET] error:", e.message);
+        return jsonError(res, 500, "Failed to read fiscal year");
+      }
+    }
+
+    // POST /v1/accounting:fiscalYear — set fiscal year start. Expects { month, day }
+    // where month is 1-12 and day is 1-31. Stored as zero-padded "MM-DD" string
+    // on the tenant doc so the setupState auto-detect can flag fiscal-year done.
+    if (route === "/accounting:fiscalYear" && method === "POST") {
+      try {
+        const month = parseInt(body?.month, 10);
+        const day = parseInt(body?.day, 10);
+        if (!month || month < 1 || month > 12) return jsonError(res, 400, "Invalid month");
+        if (!day || day < 1 || day > 31) return jsonError(res, 400, "Invalid day");
+        const fiscalYearStart = `${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+        await db.collection("tenants").doc(ctx.tenantId).set(
+          { fiscalYearStart, fiscalYearUpdatedAt: nowServerTs(), fiscalYearUpdatedBy: auth.user.uid },
+          { merge: true }
+        );
+        return res.json({ ok: true, fiscalYearStart });
+      } catch (e) {
+        console.error("[accounting:fiscalYear POST] error:", e.message);
+        return jsonError(res, 500, "Failed to set fiscal year");
+      }
+    }
+
+    // GET /v1/accounting:accounts:list — list connected accounts for tenant
+    if (route === "/accounting:accounts:list" && method === "GET") {
+      try {
+        const snap = await db.collection("connectedAccounts")
+          .where("tenantId", "==", ctx.tenantId)
+          .limit(200)
+          .get();
+        const accounts = snap.docs
+          .map(d => ({ id: d.id, ...d.data() }))
+          .filter(a => a.status !== "deleted")
+          .sort((a, b) => {
+            const at = a.createdAt?._seconds || 0;
+            const bt = b.createdAt?._seconds || 0;
+            return bt - at;
+          });
+        return res.json({ ok: true, accounts });
+      } catch (e) {
+        console.error("[accounting:accounts:list] error:", e.message);
+        return jsonError(res, 500, "Failed to list connected accounts");
+      }
+    }
+
+    // POST /v1/accounting:accounts:create — manually add a connected account
+    if (route === "/accounting:accounts:create" && method === "POST") {
+      try {
+        const { name, type, institution, last4, currency = "USD", balance, notes } = body || {};
+        if (!name) return jsonError(res, 400, "Missing name");
+        if (!type) return jsonError(res, 400, "Missing type");
+        const ref = db.collection("connectedAccounts").doc();
+        const data = {
+          tenantId: ctx.tenantId,
+          name,
+          type, // checking | savings | credit_card | merchant | payroll | other
+          institution: institution || null,
+          last4: last4 || null,
+          currency,
+          balance: typeof balance === "number" ? balance : null,
+          notes: notes || null,
+          source: "manual",
+          status: "active",
+          createdAt: nowServerTs(),
+          createdBy: auth.user.uid,
+        };
+        await ref.set(data);
+        return res.json({ ok: true, id: ref.id, ...data });
+      } catch (e) {
+        console.error("[accounting:accounts:create] error:", e.message);
+        return jsonError(res, 500, "Failed to add account");
+      }
+    }
+
+    // POST /v1/accounting:accounts:delete — soft delete
+    if (route === "/accounting:accounts:delete" && method === "POST") {
+      try {
+        const { id } = body || {};
+        if (!id) return jsonError(res, 400, "Missing id");
+        const ref = db.collection("connectedAccounts").doc(id);
+        const snap = await ref.get();
+        if (!snap.exists) return jsonError(res, 404, "Account not found");
+        if (snap.data().tenantId !== ctx.tenantId) return jsonError(res, 403, "Forbidden");
+        await ref.update({ status: "deleted", deletedAt: nowServerTs() });
+        return res.json({ ok: true });
+      } catch (e) {
+        console.error("[accounting:accounts:delete] error:", e.message);
+        return jsonError(res, 500, "Failed to delete account");
+      }
+    }
+
+    // ───────────────────────────────────────────────────────────
+    // Chart of Accounts (Phase A — CoA + monthly caps)
+    // Caps are how the Accounting worker enforces the Controller
+    // pattern: side-effects from other workers (Marketing sends,
+    // ads buys) get checked against monthlyCapCents per category.
+    // ───────────────────────────────────────────────────────────
+
+    // GET /v1/accounting:coa:templates — list available templates
+    if (route === "/accounting:coa:templates" && method === "GET") {
+      try {
+        const { listTemplates } = require("./services/accounting/coaTemplates");
+        return res.json({ ok: true, templates: listTemplates() });
+      } catch (e) {
+        console.error("[accounting:coa:templates] error:", e.message);
+        return jsonError(res, 500, "Failed to list templates");
+      }
+    }
+
+    // GET /v1/accounting:coa:list — list categories for tenant
+    if (route === "/accounting:coa:list" && method === "GET") {
+      try {
+        const snap = await db.collection("coaAccounts")
+          .where("tenantId", "==", ctx.tenantId)
+          .limit(500)
+          .get();
+        const accounts = snap.docs
+          .map(d => ({ id: d.id, ...d.data() }))
+          .filter(a => a.status !== "archived")
+          .sort((a, b) => {
+            const codeA = String(a.code || "9999");
+            const codeB = String(b.code || "9999");
+            return codeA.localeCompare(codeB);
+          });
+        return res.json({ ok: true, accounts });
+      } catch (e) {
+        console.error("[accounting:coa:list] error:", e.message);
+        return jsonError(res, 500, "Failed to list chart of accounts");
+      }
+    }
+
+    // POST /v1/accounting:coa:applyTemplate — seed CoA from a template
+    // Body: { templateId, replaceExisting? }
+    if (route === "/accounting:coa:applyTemplate" && method === "POST") {
+      try {
+        const { getTemplate } = require("./services/accounting/coaTemplates");
+        const { templateId, replaceExisting = false } = body || {};
+        const tpl = getTemplate(templateId);
+        if (!tpl) return jsonError(res, 400, "Unknown templateId");
+
+        if (replaceExisting) {
+          const existing = await db.collection("coaAccounts")
+            .where("tenantId", "==", ctx.tenantId)
+            .get();
+          const batch = db.batch();
+          existing.docs.forEach(d => batch.update(d.ref, { status: "archived", archivedAt: nowServerTs() }));
+          await batch.commit();
+        }
+
+        const writes = tpl.accounts.map(acct => {
+          const ref = db.collection("coaAccounts").doc();
+          const data = {
+            tenantId: ctx.tenantId,
+            code: acct.code || null,
+            name: acct.name,
+            type: acct.type, // revenue | expense | asset | liability | equity
+            monthlyCapCents: typeof acct.suggestedMonthlyCapCents === "number" ? acct.suggestedMonthlyCapCents : null,
+            source: `template:${tpl.id}`,
+            status: "active",
+            createdAt: nowServerTs(),
+            createdBy: auth.user.uid,
+          };
+          return { ref, data };
+        });
+        const batch = db.batch();
+        writes.forEach(w => batch.set(w.ref, w.data));
+        await batch.commit();
+
+        return res.json({ ok: true, templateId: tpl.id, created: writes.length });
+      } catch (e) {
+        console.error("[accounting:coa:applyTemplate] error:", e.message);
+        return jsonError(res, 500, "Failed to apply template");
+      }
+    }
+
+    // POST /v1/accounting:coa:create — add a single category manually
+    if (route === "/accounting:coa:create" && method === "POST") {
+      try {
+        const { code, name, type, monthlyCapCents } = body || {};
+        if (!name) return jsonError(res, 400, "Missing name");
+        if (!type) return jsonError(res, 400, "Missing type");
+        if (!["revenue", "expense", "asset", "liability", "equity"].includes(type)) {
+          return jsonError(res, 400, "Invalid type");
+        }
+        const ref = db.collection("coaAccounts").doc();
+        const data = {
+          tenantId: ctx.tenantId,
+          code: code || null,
+          name,
+          type,
+          monthlyCapCents: typeof monthlyCapCents === "number" ? monthlyCapCents : null,
+          source: "manual",
+          status: "active",
+          createdAt: nowServerTs(),
+          createdBy: auth.user.uid,
+        };
+        await ref.set(data);
+        return res.json({ ok: true, id: ref.id, ...data });
+      } catch (e) {
+        console.error("[accounting:coa:create] error:", e.message);
+        return jsonError(res, 500, "Failed to add category");
+      }
+    }
+
+    // POST /v1/accounting:coa:update — edit name, code, monthlyCapCents
+    if (route === "/accounting:coa:update" && method === "POST") {
+      try {
+        const { id, name, code, monthlyCapCents, type } = body || {};
+        if (!id) return jsonError(res, 400, "Missing id");
+        const ref = db.collection("coaAccounts").doc(id);
+        const snap = await ref.get();
+        if (!snap.exists) return jsonError(res, 404, "Category not found");
+        if (snap.data().tenantId !== ctx.tenantId) return jsonError(res, 403, "Forbidden");
+        const patch = { updatedAt: nowServerTs() };
+        if (typeof name === "string" && name.trim()) patch.name = name.trim();
+        if (typeof code === "string") patch.code = code.trim() || null;
+        if (monthlyCapCents === null || typeof monthlyCapCents === "number") patch.monthlyCapCents = monthlyCapCents;
+        if (type && ["revenue", "expense", "asset", "liability", "equity"].includes(type)) patch.type = type;
+        await ref.update(patch);
+        return res.json({ ok: true, id, ...patch });
+      } catch (e) {
+        console.error("[accounting:coa:update] error:", e.message);
+        return jsonError(res, 500, "Failed to update category");
+      }
+    }
+
+    // POST /v1/accounting:coa:delete — archive a category (soft delete)
+    if (route === "/accounting:coa:delete" && method === "POST") {
+      try {
+        const { id } = body || {};
+        if (!id) return jsonError(res, 400, "Missing id");
+        const ref = db.collection("coaAccounts").doc(id);
+        const snap = await ref.get();
+        if (!snap.exists) return jsonError(res, 404, "Category not found");
+        if (snap.data().tenantId !== ctx.tenantId) return jsonError(res, 403, "Forbidden");
+        await ref.update({ status: "archived", archivedAt: nowServerTs() });
+        return res.json({ ok: true });
+      } catch (e) {
+        console.error("[accounting:coa:delete] error:", e.message);
+        return jsonError(res, 500, "Failed to archive category");
+      }
+    }
+
+    // ───────────────────────────────────────────────────────────
+    // Statement ingestion (Phase B)
+    // Drop a PDF statement → Claude extracts transactions →
+    // categorize against the tenant's CoA → return for user review.
+    // ───────────────────────────────────────────────────────────
+
+    // POST /v1/accounting:statements:parse { fileId }
+    // Returns staged transactions (not yet written to /transactions).
+    if (route === "/accounting:statements:parse" && method === "POST") {
+      try {
+        const { fileId } = body || {};
+        if (!fileId) return jsonError(res, 400, "Missing fileId");
+        const { parseStatement } = require("./services/accounting/statementIngest");
+        const anthropic = getAnthropic();
+        const result = await parseStatement({ anthropic, fileId, tenantId: ctx.tenantId });
+        return res.json({ ok: true, ...result });
+      } catch (e) {
+        console.error("[accounting:statements:parse] error:", e.message);
+        return jsonError(res, 500, e.message || "Failed to parse statement");
+      }
+    }
+
+    // POST /v1/accounting:statements:commit { fileId, fileName, institution?, accountLast4?, transactions }
+    // Writes reviewed transactions to /transactions. Status: "review" — user can
+    // mark "committed" individually if needed; for V1 we leave them as review
+    // so they appear in the inbox before showing up in P&L.
+    if (route === "/accounting:statements:commit" && method === "POST") {
+      try {
+        const { fileId, fileName, institution, accountLast4, transactions } = body || {};
+        if (!fileId) return jsonError(res, 400, "Missing fileId");
+        if (!Array.isArray(transactions)) return jsonError(res, 400, "Missing transactions array");
+        const { commitTransactions } = require("./services/accounting/statementIngest");
+        const result = await commitTransactions({
+          tenantId: ctx.tenantId,
+          userId: auth.user.uid,
+          fileId,
+          fileName: fileName || null,
+          institution: institution || null,
+          accountLast4: accountLast4 || null,
+          transactions,
+        });
+        return res.json({ ok: true, ...result });
+      } catch (e) {
+        console.error("[accounting:statements:commit] error:", e.message);
+        return jsonError(res, 500, "Failed to commit transactions");
+      }
+    }
+
+    // ───────────────────────────────────────────────────────────
+    // Controller approvals inbox (Phase C — Sweep 4)
+    // Side-effects blocked by the Controller pre-commit hook write to
+    // controllerApprovals. These endpoints let the workspace admin view
+    // pending approvals and approve/reject. Approve re-fires the side-
+    // effect with controllerOverride=true; reject just marks it done.
+    // ───────────────────────────────────────────────────────────
+
+    // GET /v1/accounting:controller:approvals?status=pending|approved|rejected|all
+    if (route === "/accounting:controller:approvals" && method === "GET") {
+      try {
+        const status = (req.query.status || "pending").toString();
+        const limit = Math.min(parseInt(req.query.limit) || 100, 500);
+        const snap = await db.collection("controllerApprovals")
+          .where("tenantId", "==", ctx.tenantId)
+          .limit(limit * 2)
+          .get();
+        const approvals = snap.docs
+          .map(d => ({ id: d.id, ...d.data() }))
+          .filter(a => status === "all" ? true : a.status === status)
+          .sort((a, b) => {
+            const at = a.createdAt?._seconds || 0;
+            const bt = b.createdAt?._seconds || 0;
+            return bt - at;
+          })
+          .slice(0, limit);
+        return res.json({ ok: true, approvals });
+      } catch (e) {
+        console.error("[accounting:controller:approvals] error:", e.message);
+        return jsonError(res, 500, "Failed to list approvals");
+      }
+    }
+
+    // POST /v1/accounting:controller:decide { approvalId, decision: "approve"|"reject", reason? }
+    if (route === "/accounting:controller:decide" && method === "POST") {
+      try {
+        const { approvalId, decision, reason } = body || {};
+        if (!approvalId) return jsonError(res, 400, "Missing approvalId");
+        if (!["approve", "reject"].includes(decision)) return jsonError(res, 400, "decision must be approve or reject");
+
+        const ref = db.collection("controllerApprovals").doc(approvalId);
+        const snap = await ref.get();
+        if (!snap.exists) return jsonError(res, 404, "Approval not found");
+        const ap = snap.data();
+        if (ap.tenantId !== ctx.tenantId) return jsonError(res, 403, "Forbidden");
+        if (ap.status !== "pending") return jsonError(res, 400, `Approval already ${ap.status}`);
+
+        const now = nowServerTs();
+        if (decision === "reject") {
+          await ref.update({
+            status: "rejected",
+            decidedAt: now,
+            decidedBy: auth.user.uid,
+            decisionReason: reason || null,
+          });
+          try {
+            const { recordAuditEvent } = require("./services/accounting/controller");
+            await recordAuditEvent({
+              tenantId: ctx.tenantId, userId: auth.user.uid,
+              action: ap.action, decision: "rejected", check: ap.check, approvalId,
+            });
+          } catch (_) { /* non-fatal */ }
+          return res.json({ ok: true, status: "rejected" });
+        }
+
+        // Approve — re-fire the original action with controllerOverride=true.
+        // Each case mirrors the chat side-effect dispatcher so blocked work
+        // can resume from a single click in the Approvals tab.
+        const data = { ...(ap.data || {}), controllerOverride: true };
+        let executionResult = { ok: false, error: "unknown_action" };
+        try {
+          if (ap.action === "sendEmailCampaign") {
+            const { sendMarketingEmail, createContactList } = require("./services/emailService/marketingCampaigns");
+            let listId = data.listId;
+            if (!listId && Array.isArray(data.contacts) && data.contacts.length > 0) {
+              const created = await createContactList(auth.user.uid, { name: data.listName || `${data.subject || "Campaign"} list`, contacts: data.contacts });
+              listId = created && created.listId;
+            }
+            if (listId) {
+              executionResult = await sendMarketingEmail(auth.user.uid, {
+                listId,
+                subject: data.subject,
+                htmlContent: data.htmlContent || (data.body ? `<p>${data.body.replace(/\n/g, "<br/>")}</p>` : ""),
+                plainContent: data.plainContent || data.body || "",
+                fromName: data.fromName,
+                fromEmail: data.fromEmail,
+              });
+            } else {
+              executionResult = { ok: false, error: "Missing listId" };
+            }
+          } else if (ap.action === "scheduleSocialPost") {
+            const { postViaUnified, saveDraft } = require("./services/socialService");
+            if (data.status === "draft" || data.dryRun) {
+              executionResult = await saveDraft(auth.user.uid, { content: data.content, platforms: data.platforms || [], title: data.title, tenantId: ctx.tenantId });
+            } else {
+              executionResult = await postViaUnified(auth.user.uid, { content: data.content, platforms: data.platforms || [], title: data.title, scheduledAt: data.scheduledAt });
+            }
+          } else if (ap.action === "enqueueMessage") {
+            const queueRef = await db.collection("messageQueue").add({
+              userId: auth.user.uid,
+              tenantId: ctx.tenantId,
+              channel: data.channel || "email",
+              to: data.to || null,
+              subject: data.subject || null,
+              body: data.body || "",
+              templateData: data.templateData || {},
+              status: "pending",
+              scheduledAt: data.scheduledAt ? new Date(data.scheduledAt) : new Date(),
+              createdAt: now,
+              source: data.source || "controller-override",
+            });
+            executionResult = { ok: true, messageId: queueRef.id };
+          }
+        } catch (execErr) {
+          executionResult = { ok: false, error: execErr.message };
+        }
+
+        await ref.update({
+          status: executionResult.ok ? "approved" : "approve_failed",
+          decidedAt: now,
+          decidedBy: auth.user.uid,
+          decisionReason: reason || null,
+          executionResult,
+        });
+        try {
+          const { recordAuditEvent } = require("./services/accounting/controller");
+          await recordAuditEvent({
+            tenantId: ctx.tenantId, userId: auth.user.uid,
+            action: ap.action,
+            decision: executionResult.ok ? "approved_override" : "approve_failed",
+            check: ap.check, approvalId,
+          });
+        } catch (_) { /* non-fatal */ }
+        return res.json({ ok: true, status: executionResult.ok ? "approved" : "approve_failed", executionResult });
+      } catch (e) {
+        console.error("[accounting:controller:decide] error:", e.message);
+        return jsonError(res, 500, "Failed to decide approval");
+      }
+    }
+
+    // POST /v1/accounting:transactions:tag — flag a transaction as recurring,
+    // set expectedNextDate, or commit. The "Mark recurring" affordance on the
+    // Transactions tab calls here; recurringChargeDigest cron reads from this.
+    if (route === "/accounting:transactions:tag" && method === "POST") {
+      try {
+        const { id, recurring, expectedNextDate, cadence, status } = body || {};
+        if (!id) return jsonError(res, 400, "Missing id");
+        const ref = db.collection("transactions").doc(id);
+        const snap = await ref.get();
+        if (!snap.exists) return jsonError(res, 404, "Transaction not found");
+        if (snap.data().tenantId !== ctx.tenantId) return jsonError(res, 403, "Forbidden");
+        const patch = { updatedAt: nowServerTs() };
+        if (typeof recurring === "boolean") patch.recurring = recurring;
+        if (typeof expectedNextDate === "string") patch.expectedNextDate = expectedNextDate;
+        if (typeof cadence === "string") patch.cadence = cadence; // monthly | annual | quarterly | weekly
+        if (typeof status === "string" && ["review", "committed"].includes(status)) patch.status = status;
+        await ref.update(patch);
+        return res.json({ ok: true, id, ...patch });
+      } catch (e) {
+        console.error("[accounting:transactions:tag] error:", e.message);
+        return jsonError(res, 500, "Failed to tag transaction");
+      }
+    }
+
+    // GET /v1/accounting:transactions:list — list committed/review transactions
+    // Query: status (review|committed|all, default all), limit (default 200).
+    if (route === "/accounting:transactions:list" && method === "GET") {
+      try {
+        const limit = Math.min(parseInt(req.query.limit) || 200, 500);
+        const status = (req.query.status || "all").toString();
+        let query = db.collection("transactions")
+          .where("tenantId", "==", ctx.tenantId)
+          .limit(limit * 2);
+        const snap = await query.get();
+        const transactions = snap.docs
+          .map(d => ({ id: d.id, ...d.data() }))
+          .filter(t => status === "all" ? true : t.status === status)
+          .sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")))
+          .slice(0, limit);
+        return res.json({ ok: true, transactions });
+      } catch (e) {
+        console.error("[accounting:transactions:list] error:", e.message);
+        return jsonError(res, 500, "Failed to list transactions");
+      }
+    }
+
+    // GET /v1/contacts:list — in-app contacts list, scoped to ctx.tenantId.
+    // Query params: q (search), workerSlug, segment, limit (default 200).
+    // The public /api/v1/<workspace_id>/contacts route lives in api/routes/contacts.js
+    // and is intended for external API callers; this is the in-app surface used
+    // by apps/business/Contacts.jsx and analogous to /v1/storage:list.
+    if (route === "/contacts:list" && method === "GET") {
+      try {
+        const limit = Math.min(parseInt(req.query.limit) || 200, 500);
+        const q = (req.query.q || "").toString().trim().toLowerCase();
+        const workerSlug = (req.query.workerSlug || "").toString().trim();
+        const segment = (req.query.segment || "").toString().trim();
+        let query = db.collection("contacts")
+          .where("tenantId", "==", ctx.tenantId)
+          .limit(limit * 2);
+        const snap = await query.get();
+        let contacts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        // Status filter — soft-deleted contacts have status === "deleted"
+        contacts = contacts.filter(c => c.status !== "deleted");
+        // Worker filter — match against workerSlug array OR personas[].source_sub
+        if (workerSlug) {
+          contacts = contacts.filter(c => {
+            if (Array.isArray(c.workerSlugs) && c.workerSlugs.includes(workerSlug)) return true;
+            if (Array.isArray(c.personas)) {
+              return c.personas.some(p => p.source_sub === workerSlug || p.created_by_worker === workerSlug);
+            }
+            return false;
+          });
+        }
+        // Segment filter — match against personas[].type or persona[].segment_tag
+        if (segment) {
+          contacts = contacts.filter(c => {
+            if (Array.isArray(c.types_index) && c.types_index.includes(segment)) return true;
+            if (Array.isArray(c.personas)) {
+              return c.personas.some(p => p.type === segment || p.segment_tag === segment);
+            }
+            return false;
+          });
+        }
+        // Search filter — name, email, company, title
+        if (q) {
+          contacts = contacts.filter(c => {
+            const hay = [
+              c.first_name, c.last_name, c.name,
+              c.email, c.primary_email,
+              c.company, c.organization,
+              c.title, c.job_title,
+            ].filter(Boolean).join(" ").toLowerCase();
+            return hay.includes(q);
+          });
+        }
+        // Recent-first sort
+        contacts.sort((a, b) => {
+          const at = a.created_at?._seconds || 0;
+          const bt = b.created_at?._seconds || 0;
+          return bt - at;
+        });
+        // Stats: total, new this month, segment + worker breakdown
+        const now = Date.now() / 1000;
+        const thirtyDaysAgo = now - 30 * 24 * 3600;
+        const stats = {
+          total: contacts.length,
+          newThisMonth: contacts.filter(c => (c.created_at?._seconds || 0) > thirtyDaysAgo).length,
+          byWorker: {},
+          bySegment: {},
+        };
+        contacts.forEach(c => {
+          (c.workerSlugs || []).forEach(s => { stats.byWorker[s] = (stats.byWorker[s] || 0) + 1; });
+          (Array.isArray(c.personas) ? c.personas : []).forEach(p => {
+            if (p.source_sub) stats.byWorker[p.source_sub] = (stats.byWorker[p.source_sub] || 0) + 1;
+            if (p.type) stats.bySegment[p.type] = (stats.bySegment[p.type] || 0) + 1;
+          });
+        });
+        return res.json({ ok: true, contacts: contacts.slice(0, limit), stats });
+      } catch (e) {
+        console.error("[contacts:list] error:", e.message);
+        return jsonError(res, 500, "Failed to list contacts");
+      }
+    }
+
+    // POST /v1/apollo:enrich — enrich a single person by email or name+org.
+    if (route === "/apollo:enrich" && method === "POST") {
+      try {
+        const apollo = require("./services/marketingService/apollo");
+        const { recordDataFee } = require("./services/billing/dataFee");
+        const usageCtx = { tenantId: ctx.tenantId, userId: ctx.userId, requestedBy: "chat:apollo:enrich" };
+        const person = await apollo.enrichPerson(body, usageCtx);
+
+        const fee = await recordDataFee({
+          source: "apollo:enrich",
+          userId: ctx.userId,
+          tenantId: ctx.tenantId,
+          units: 1,
+          requestedBy: "chat:apollo:enrich",
+          metadata: { has_email: Boolean(body?.email), has_name: Boolean(body?.first_name || body?.last_name) },
+        });
+
+        const burn = await apollo.getMonthlyBurnRate();
+        return res.json({ ok: true, person, burn, dataFee: fee });
+      } catch (e) {
+        console.error("[apollo:enrich] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // GET /v1/apollo:burn — current monthly Apollo credit burn.
+    // Used by Marketing worker to surface the burn-rate tile, and by
+    // Alex's daily briefing to flag if usage exceeds 75% of budget.
+    if (route === "/apollo:burn" && method === "GET") {
+      try {
+        const apollo = require("./services/marketingService/apollo");
+        const burn = await apollo.getMonthlyBurnRate();
+        return res.json({ ok: true, ...burn });
+      } catch (e) {
+        console.error("[apollo:burn] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // ───────────────────────────────────────────────────────────
+    // CODEX 50.15 P0-13/14/15/16 — Fundraise endpoints
+    // ───────────────────────────────────────────────────────────
+
+    // POST /v1/fundraise:create
+    // Body: { name, target_raise?, lead_investor? }
+    if (route === "/fundraise:create" && method === "POST") {
+      try {
+        const dr = require("./services/fundraise/dataRoom");
+        const result = await dr.createFundraise({ ...body, tenantId: ctx.tenantId, createdBy: ctx.userId });
+        return res.json({ ok: true, ...result });
+      } catch (e) { return res.json({ ok: false, error: e.message }); }
+    }
+
+    // POST /v1/fundraise:update
+    // Body: { fundraiseId, patch: {...} }
+    if (route === "/fundraise:update" && method === "POST") {
+      try {
+        const dr = require("./services/fundraise/dataRoom");
+        const fr = await dr.getFundraise(body.fundraiseId, ctx.tenantId);
+        if (!fr) return jsonError(res, 404, "Fundraise not found");
+        const result = await dr.updateFundraise(body.fundraiseId, body.patch || {}, ctx.userId);
+        return res.json({ ok: true, ...result });
+      } catch (e) { return res.json({ ok: false, error: e.message }); }
+    }
+
+    // GET /v1/fundraise:list?stage=active
+    if (route === "/fundraise:list" && method === "GET") {
+      try {
+        const dr = require("./services/fundraise/dataRoom");
+        const fundraises = await dr.listFundraises(ctx.tenantId, { stage: req.query?.stage || null });
+        return res.json({ ok: true, fundraises });
+      } catch (e) { return res.json({ ok: false, error: e.message }); }
+    }
+
+    // GET /v1/fundraise:get?fundraiseId=fr_xxx
+    if (route === "/fundraise:get" && method === "GET") {
+      try {
+        const dr = require("./services/fundraise/dataRoom");
+        const fundraise = await dr.getFundraise(req.query.fundraiseId, ctx.tenantId);
+        if (!fundraise) return jsonError(res, 404, "Fundraise not found");
+        return res.json({ ok: true, fundraise });
+      } catch (e) { return res.json({ ok: false, error: e.message }); }
+    }
+
+    // P0-13 — POST /v1/fundraise:investor:add — manual add OR via Apollo prospecting
+    // Body: { fundraiseId, contactId?, email, name, commitment_amount? }
+    if (route === "/fundraise:investor:add" && method === "POST") {
+      try {
+        const dr = require("./services/fundraise/dataRoom");
+        const fr = await dr.getFundraise(body.fundraiseId, ctx.tenantId);
+        if (!fr) return jsonError(res, 404, "Fundraise not found");
+        const result = await dr.addInvestor(body.fundraiseId, body, ctx.userId);
+        return res.json({ ok: true, ...result });
+      } catch (e) { return res.json({ ok: false, error: e.message }); }
+    }
+
+    // GET /v1/fundraise:investor:list?fundraiseId=fr_xxx
+    if (route === "/fundraise:investor:list" && method === "GET") {
+      try {
+        const dr = require("./services/fundraise/dataRoom");
+        const fr = await dr.getFundraise(req.query.fundraiseId, ctx.tenantId);
+        if (!fr) return jsonError(res, 404, "Fundraise not found");
+        const investors = await dr.listInvestors(req.query.fundraiseId);
+        return res.json({ ok: true, investors });
+      } catch (e) { return res.json({ ok: false, error: e.message }); }
+    }
+
+    // P0-13 — Apollo prospecting with investor-ICP defaults
+    // Body: { fundraiseId, criteria: { ... }, write_to_investors?: bool }
+    if (route === "/fundraise:investor:prospect" && method === "POST") {
+      try {
+        const dr = require("./services/fundraise/dataRoom");
+        const apollo = require("./services/marketingService/apollo");
+        const fr = await dr.getFundraise(body.fundraiseId, ctx.tenantId);
+        if (!fr) return jsonError(res, 404, "Fundraise not found");
+
+        // Investor-ICP defaults overlaid on user criteria
+        const investorDefaults = {
+          person_seniorities: ["c_suite", "vp", "director", "partner"],
+          person_titles: ["Investor", "Partner", "Principal", "Managing Director", "Venture Partner", "Angel"],
+        };
+        const criteria = { ...investorDefaults, ...(body.criteria || {}) };
+
+        const usageCtx = { tenantId: ctx.tenantId, userId: ctx.userId, requestedBy: `fundraise:${body.fundraiseId}` };
+        const result = await apollo.searchPeople(criteria, usageCtx);
+
+        let added = 0;
+        if (body.write_to_investors && result.people && result.people.length > 0) {
+          for (const person of result.people) {
+            try {
+              await dr.addInvestor(body.fundraiseId, {
+                email: person.email,
+                name: [person.first_name, person.last_name].filter(Boolean).join(" "),
+                contactId: null,
+              }, ctx.userId);
+              added++;
+            } catch (_) { /* dedup or invalid — continue */ }
+          }
+        }
+
+        const burn = await apollo.getMonthlyBurnRate();
+        return res.json({ ok: true, ...result, added, burn });
+      } catch (e) { return res.json({ ok: false, error: e.message }); }
+    }
+
+    // P0-14 — POST /v1/fundraise:share:create — generate scoped share link
+    // Body: { fundraiseId, email, allowedFiles?: [], expiryDays? }
+    if (route === "/fundraise:share:create" && method === "POST") {
+      try {
+        const dr = require("./services/fundraise/dataRoom");
+        const fr = await dr.getFundraise(body.fundraiseId, ctx.tenantId);
+        if (!fr) return jsonError(res, 404, "Fundraise not found");
+        const result = await dr.createShare({ ...body, tenantId: ctx.tenantId, createdBy: ctx.userId });
+        return res.json({ ok: true, ...result });
+      } catch (e) { return res.json({ ok: false, error: e.message }); }
+    }
+
+    // P0-14 — Public investor-side data room access
+    // POST /v1/fundraise:share:access — verify email + return file list
+    // Body: { shareId, email }
+    // Note: this route is pre-membership-gate so investors don't need a tenant.
+    // Add to PERSONAL_VAULT_ROUTES set above.
+    if (route === "/fundraise:share:access" && method === "POST") {
+      try {
+        const dr = require("./services/fundraise/dataRoom");
+        const ipHeader = req.headers["x-forwarded-for"] || req.headers["x-real-ip"] || null;
+        const ip = ipHeader ? ipHeader.split(",")[0].trim() : null;
+        const result = await dr.listShareFiles(body.shareId, body.email);
+        return res.json({ ok: true, ...result });
+      } catch (e) {
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // P0-15 — Investor KYC submission
+    if (route === "/fundraise:kyc:submit" && method === "POST") {
+      try {
+        const kyc = require("./services/fundraise/investorKyc");
+        const result = await kyc.submitKyc(body);
+        return res.json({ ok: true, ...result });
+      } catch (e) { return res.json({ ok: false, error: e.message }); }
+    }
+
+    if (route === "/fundraise:kyc:approve" && method === "POST") {
+      try {
+        const kyc = require("./services/fundraise/investorKyc");
+        const result = await kyc.approveKyc({ ...body, reviewedBy: ctx.userId });
+        return res.json({ ok: true, ...result });
+      } catch (e) { return res.json({ ok: false, error: e.message }); }
+    }
+
+    if (route === "/fundraise:kyc:reject" && method === "POST") {
+      try {
+        const kyc = require("./services/fundraise/investorKyc");
+        const result = await kyc.rejectKyc({ ...body, reviewedBy: ctx.userId });
+        return res.json({ ok: true, ...result });
+      } catch (e) { return res.json({ ok: false, error: e.message }); }
+    }
+
+    // POST /v1/fundraise:kyc:accreditation
+    // Body: { fundraiseId, investorId, status, verificationMethod?, expiresAt? }
+    if (route === "/fundraise:kyc:accreditation" && method === "POST") {
+      try {
+        const kyc = require("./services/fundraise/investorKyc");
+        const result = await kyc.setAccreditationStatus(body);
+        return res.json({ ok: true, ...result });
+      } catch (e) { return res.json({ ok: false, error: e.message }); }
+    }
+
+    // POST /v1/fundraise:kyc:gate
+    // Body: { fundraiseId, investorId, offeringRegulation: "506b"|"506c"|"reg_cf"|"reg_a_tier1"|"reg_a_tier2" }
+    if (route === "/fundraise:kyc:gate" && method === "POST") {
+      try {
+        const kyc = require("./services/fundraise/investorKyc");
+        const result = await kyc.canFundInvestor(body.fundraiseId, body.investorId, { offeringRegulation: body.offeringRegulation });
+        return res.json({ ok: true, ...result });
+      } catch (e) { return res.json({ ok: false, error: e.message }); }
+    }
+
     // MARKETING: Admin — list leads
     if (route === "/admin:leads:list" && method === "POST") {
       try {
@@ -9978,9 +11511,14 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       "/chat:message",
       "/credits:purchase",
       "/billing:portal",
+      "/fundraise:share:access", // CODEX 50.15 P0-14 — investor-side access, no tenant
     ]);
+    // User-scoped connectors (calendar, drive auth) are owned by the user, not
+    // the workspace. Bypass the tenant gate — handlers authenticate via auth.user.uid.
+    // 2026-05-13 — Google Calendar connector parity with Drive auth lifecycle.
+    const isUserScopedConnector = route && (route.startsWith("/calendar:") || route.startsWith("/drive:"));
     const isPersonalVaultRoute = PERSONAL_VAULT_ROUTES.has(route) && method === "POST";
-    if (!isPersonalVaultRoute) {
+    if (!isPersonalVaultRoute && !isUserScopedConnector) {
       const gate = await requireMembershipIfNeeded({ uid: auth.user.uid, tenantId: ctx.tenantId }, res);
       if (!gate.ok) return;
     }
@@ -11402,14 +12940,48 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       const data = snap.data() || {};
       if (data.tenantId !== ctx.tenantId) return jsonError(res, 403, "Forbidden");
 
-      // FIX: Use update() for explicit field changes only
+      const finalPath = storagePath || getPathFromMeta(data) || data.storagePath || null;
+      const finalCt = contentType || data.contentType || null;
+      const finalSize = sizeBytes || data.sizeBytes || null;
+
       await ref.update({
         status: "ready",
         finalizedAt: nowServerTs(),
-        contentType: contentType || data.contentType || null,
-        sizeBytes: sizeBytes || data.sizeBytes || null,
-        storagePath: storagePath || getPathFromMeta(data) || data.storagePath || null,
+        contentType: finalCt,
+        sizeBytes: finalSize,
+        storagePath: finalPath,
       });
+
+      // Mirror into storageObjects/ so the Drive UI (which lists from that
+      // collection via /v1/storage:list) sees chat-attached files. Schema
+      // mirrors lib/storage/index.js upload().
+      try {
+        const uid = auth.user.uid;
+        const tenantId = ctx.tenantId;
+        const isWorkspace = tenantId && tenantId !== uid;
+        const workerSlug = data.related?.workerSlug || null;
+        await db.doc(`storageObjects/${fileId}`).set({
+          objectId: fileId,
+          ownerUid: uid,
+          orgId: isWorkspace ? tenantId : null,
+          scope: isWorkspace ? "business" : "personal",
+          storagePath: finalPath,
+          filename: data.originalFilename || data.filename || "untitled",
+          mimeType: finalCt || "application/octet-stream",
+          sizeBytes: finalSize || 0,
+          version: 1,
+          createdByWorker: workerSlug,
+          parentProjectId: null,
+          tags: Array.isArray(data.tags) ? data.tags : [],
+          accessList: [{ uid, permission: "admin" }],
+          status: "active",
+          source: "chat_attachment",
+          createdAt: nowServerTs(),
+          updatedAt: nowServerTs(),
+        }, { merge: true });
+      } catch (mirrorErr) {
+        console.warn("[files:finalize] storageObjects mirror failed:", mirrorErr.message);
+      }
 
       return res.json({ ok: true, fileId });
     }
@@ -11534,7 +13106,7 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       const uploadedFileDescriptions = []; // { name, url, extractedText }
       for (const f of allFiles) {
         try {
-          const base64Data = f.data.replace(/^data:[^;]+;base64,/, "");
+          const base64Data = f.data.replace(/^data:[^;]*;base64,/, "");
           const buffer = Buffer.from(base64Data, "base64");
 
           const uploadResult = await getStorageService().upload({
@@ -12048,6 +13620,15 @@ ${headline}
 WHAT YOU DO:
 ${capabilities}
 
+RESPONSE BEHAVIOR -- read this before anything else:
+1. Read what the user actually wrote before you respond. Detect the intent of the message, not the topic of the worker.
+2. Answer the question that was asked. Do NOT open with a status report, a logbook summary, a portfolio overview, a list of KPIs, or a generic intro sentence unless the user explicitly asked for one.
+3. If the user's first message is open-ended ("hi", "what can you do", "help"), give a short, specific orientation tied to your domain plus one concrete next step. Do not dump everything you can do.
+4. If the user's first message is task-oriented ("I'm planning X", "analyze this property", "draft a Y", "what's my Z"), answer that task directly. Pull canvas / KPI / status context ONLY when it is required to answer.
+5. Never lead with "Welcome back. Where did we leave off?" or any equivalent dead-end greeting. The platform handles the greeting; you handle the work.
+6. If you don't have enough information to answer, ask ONE specific question. Do not list five clarifying questions.
+7. If you catch yourself starting with status data or a canned intro, stop and rewrite the answer to address the user's actual message first.
+
 ${raasSections.length > 0 ? "BEHAVIORAL RULES (MANDATORY):\n" + raasSections.join("\n\n") : ""}
 
 FORMATTING RULES -- follow these strictly:
@@ -12172,12 +13753,23 @@ AVAILABLE CANVAS TYPES — pick the most specific one; default to card:work-prod
 - checklist:hr-onboarding — HR onboarding checklist
 - card:control-center-revenue — exec revenue dashboard
 - card:aviation-currency — pilot currency status
+- card:aviation-aircraft — aircraft profile. Payload: { title, subtitle, fields: [{label, value}], image: {url, alt, attribution} }
+- card:aviation-checklists, card:aviation-qrh, card:aviation-flight-planning, card:aviation-performance, card:aviation-weight-balance — CoPilot operational deliverables (use card:work-product payload shape: title, subtitle, fields, sections, items)
 - card:real-estate-closing — closing status / document checklist
 - card:re-property-analysis, card:re-market-report, card:re-comp-analysis — RE deliverables
+- card:re-map — interactive Google Map. Payload: { title, region, locations: [{address, label, lat?, lng?}] } — use this WHENEVER the user mentions a property address, a city, a region, an airport (ICAO/IATA), or any geographic place. Multi-location uses bounded search; single location pins + zooms. Use locations[].label for marker title (e.g., "Subject property", "Comp #1 — $675K"). Emit this card to update the user's right-side Map tab.
 - card:auto-deal-analysis, card:auto-fi-compliance, card:auto-inventory — auto dealer deliverables
 - card:trade-summary, card:analyst-report — investment deliverables
+- card:chart-bar, card:chart-funnel, card:chart-heatmap — visual charts. Payload: { title, subtitle, chartType, series: [{label, value}] }
+- card:image — generated image. Payload: { title, url, alt, caption }
 
-Never describe markers to the user. Never paste canvas payload text into chat.`;
+LOCATION INTENT (real estate, aviation, anything geographic):
+You DO have map capability via the card:re-map canvas type above. NEVER tell the user "I cannot generate maps" or "I do not have access to mapping tools" — that is FALSE. When a user mentions a property address, city, county, ZIP, airport code, or any place, you MUST emit a card:re-map marker so the Map tab updates. If the user only gave a partial address, infer the most likely location, populate region as the city/state, and put the partial address in locations[0].address. Then ask for clarification in the chat reply while the canvas already shows the approximate area.
+
+Never describe markers to the user. Never paste canvas payload text into chat.
+
+CRITICAL — UNTERMINATED MARKERS:
+If you cannot fit the ENTIRE marker (opening |||CANVAS_RENDER|||, full JSON payload, and closing |||END_CANVAS|||) within your response, do NOT emit any part of the marker. A truncated marker leaks as raw text into the user's chat and looks like a bug. Instead, write a short plain-text reply asking the user to confirm so you can deliver the structured deliverable in the next turn. Never emit "|||CANVAS_RENDER|||" without also emitting "|||END_CANVAS|||" in the same response.`;
             }
 
             const personalSystemPrompt = `You are the user's personal Chief of Staff in their TitleApp Vault. You do everything for them directly in this chat. You create records, store files, manage logbooks, handle attestations, and organize their entire digital life. The dashboard is a read-only view into what you have already done -- the user never needs to leave this chat to accomplish anything.
@@ -13234,17 +14826,33 @@ Never attempt to output an entire multi-page document in a single response. For 
     if (route === "/dtc:list" && method === "GET") {
       try {
         const type = req.query?.type?.toString() || null;
-        let q = db.collection("dtcs")
+        const base = db.collection("dtcs")
           .where("userId", "==", ctx.userId)
-          .where("tenantId", "==", ctx.tenantId)
-          .orderBy("createdAt", "desc")
-          .limit(50);
+          .where("tenantId", "==", ctx.tenantId);
+        const filtered = type ? base.where("type", "==", type) : base;
 
-        if (type) q = q.where("type", "==", type);
+        // Try indexed query first; fall back to client-side sort if the
+        // composite index hasn't deployed yet (FAILED_PRECONDITION on a
+        // brand-new collection should not surface as "Failed to load".)
+        let docs;
+        try {
+          const snap = await filtered.orderBy("createdAt", "desc").limit(50).get();
+          docs = snap.docs;
+        } catch (indexErr) {
+          if (indexErr?.code === 9 || /FAILED_PRECONDITION|requires an index/i.test(indexErr?.message || "")) {
+            console.warn("⚠️ dtc:list — composite index missing, falling back to JS sort");
+            const snap = await filtered.limit(200).get();
+            docs = snap.docs.sort((a, b) => {
+              const at = a.data().createdAt?.toMillis?.() || 0;
+              const bt = b.data().createdAt?.toMillis?.() || 0;
+              return bt - at;
+            }).slice(0, 50);
+          } else {
+            throw indexErr;
+          }
+        }
 
-        const snap = await q.get();
-        const dtcs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-
+        const dtcs = docs.map(d => ({ id: d.id, ...d.data() }));
         return res.json({ ok: true, dtcs });
       } catch (e) {
         console.error("❌ dtc:list failed:", e);
@@ -13590,7 +15198,7 @@ Never attempt to output an entire multi-page document in a single response. For 
         const fileIds = Array.isArray(files) ? [...files] : [];
         if (file && file.data && file.name) {
           try {
-            const base64Data = file.data.replace(/^data:[^;]+;base64,/, "");
+            const base64Data = file.data.replace(/^data:[^;]*;base64,/, "");
             const buffer = Buffer.from(base64Data, "base64");
             const uploadResult = await getStorageService().upload({
               uid: ctx.userId,
@@ -14629,7 +16237,7 @@ Return as JSON: { summary, risks: [], recommendations: [], confidence }`
       try {
         const { name, category, file, accessLevel } = body;
         if (!name || !file) return jsonError(res, 400, "Missing name or file");
-        const base64Data = file.data.replace(/^data:[^;]+;base64,/, "");
+        const base64Data = file.data.replace(/^data:[^;]*;base64,/, "");
         const buffer = Buffer.from(base64Data, "base64");
         const safeName = name.replace(/[^a-zA-Z0-9._-]/g, "_");
         const storagePath = `dataroom/${ctx.tenantId}/${Date.now()}_${safeName}`;
@@ -18753,6 +20361,60 @@ Analyze now:`;
     }
 
     // ----------------------------
+    // CONNECTOR: GOOGLE CALENDAR (50.21 — Sean 2026-05-13)
+    // Parallel to Drive. Calendar is a connector that touches every worker:
+    // Marketing reads webinar dates, Aviation reads pilot schedule, every
+    // worker can propose/create events tagged with worker:<slug>.
+    // ----------------------------
+    if (route && route.startsWith("/calendar:")) {
+      const calAction = route.replace("/calendar:", "");
+      try {
+        switch (calAction) {
+        case "authUrl": {
+          if (method !== "GET") return jsonError(res, 405, "GET required");
+          const auth_ = require("./services/calendar/googleCalendarAuth");
+          return await auth_.handleCalendarAuthUrl(req, res, { userId: auth.user.uid });
+        }
+        case "exchangeCode": {
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          const auth_ = require("./services/calendar/googleCalendarAuth");
+          return await auth_.handleCalendarExchangeCode(req, res, { userId: auth.user.uid });
+        }
+        case "disconnect": {
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          const auth_ = require("./services/calendar/googleCalendarAuth");
+          return await auth_.handleCalendarDisconnect(req, res, { userId: auth.user.uid });
+        }
+        case "status": {
+          if (method !== "GET") return jsonError(res, 405, "GET required");
+          const auth_ = require("./services/calendar/googleCalendarAuth");
+          return await auth_.handleCalendarStatus(req, res, { userId: auth.user.uid });
+        }
+        case "events": {
+          if (method !== "GET") return jsonError(res, 405, "GET required");
+          const svc = require("./services/calendar/googleCalendarService");
+          return await svc.handleListEvents(req, res, { userId: auth.user.uid });
+        }
+        case "events:create": {
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          const svc = require("./services/calendar/googleCalendarService");
+          return await svc.handleCreateEvent(req, res, { userId: auth.user.uid });
+        }
+        case "events:propose": {
+          if (method !== "POST") return jsonError(res, 405, "POST required");
+          const svc = require("./services/calendar/googleCalendarService");
+          return await svc.handleProposeEvent(req, res, { userId: auth.user.uid });
+        }
+        default:
+          return jsonError(res, 404, "Unknown calendar action: " + calAction);
+        }
+      } catch (e) {
+        console.error("calendar action failed:", e);
+        return jsonError(res, 500, e.message);
+      }
+    }
+
+    // ----------------------------
     // VAULT: GOOGLE DRIVE (34.7-T2)
     // ----------------------------
     if (route && route.startsWith("/drive:")) {
@@ -19535,6 +21197,58 @@ exports.aggregateAnalytics = onSchedule(
 );
 
 // ----------------------------
+// CODEX 50.17 P0-1: REGULATORY INGESTION (Scheduled daily 03:00 PST)
+// Pulls SEC EDGAR + Federal Register + CFPB into regulatoryDocuments.
+// Per-run report at regulatoryIngestRuns/{runId}.
+// ----------------------------
+const { runIngest: handleRunRegulatoryIngest } = require("./services/compliance/regulatoryIngest");
+
+exports.regulatoryIngestDaily = onSchedule(
+  {
+    schedule: "0 3 * * *",
+    timeZone: "America/Los_Angeles",
+    region: "us-central1",
+    timeoutSeconds: 540,
+    memory: "512MiB",
+  },
+  async () => {
+    try {
+      const result = await handleRunRegulatoryIngest({ trigger: "scheduled" });
+      console.log("[regulatoryIngest] daily run complete:", result.runId, JSON.stringify(result.totals));
+    } catch (e) {
+      console.error("[regulatoryIngest] daily run failed:", e.message);
+      throw e;
+    }
+  }
+);
+
+// ----------------------------
+// CODEX 50.17 P0-2: OFAC SDN INGEST (Scheduled daily 02:30 PST)
+// Treasury SDN.XML → ofacEntries collection. Used by ofacScreen() at
+// Fundraise KYC time and at content-generation constraint check time.
+// ----------------------------
+const { runOfacIngest } = require("./services/compliance/ofac/ingest");
+
+exports.ofacIngestDaily = onSchedule(
+  {
+    schedule: "30 2 * * *",
+    timeZone: "America/Los_Angeles",
+    region: "us-central1",
+    timeoutSeconds: 540,
+    memory: "1GiB",
+  },
+  async () => {
+    try {
+      const result = await runOfacIngest({ trigger: "scheduled" });
+      console.log("[ofac] daily run complete:", result.runId, JSON.stringify(result.totals));
+    } catch (e) {
+      console.error("[ofac] daily run failed:", e.message);
+      throw e;
+    }
+  }
+);
+
+// ----------------------------
 // COMMUNICATIONS: Twilio + SendGrid
 // ----------------------------
 const { sendSMS: handleSendSMS } = require("./communications/sendSMS");
@@ -19959,6 +21673,40 @@ exports.onChatSessionCreate = onDocumentCreated(
 exports.onMessageEventCreate = onDocumentCreated(
   { document: "messageEvents/{eventId}", region: "us-central1" },
   onMessageEventCreate
+);
+
+// Accounting Controller — notify the workspace owner the moment a side-effect
+// is blocked. Otherwise approvals quietly pile up and the user discovers them
+// only when they bother to look. Idempotent: notified=true on the doc gates
+// re-sends.
+exports.onControllerApprovalCreate = onDocumentCreated(
+  { document: "controllerApprovals/{approvalId}", region: "us-central1" },
+  async (event) => {
+    try {
+      const data = event.data?.data() || {};
+      data.id = event.params.approvalId;
+      const { notifyApprovalCreated } = require("./services/accounting/notifications");
+      const r = await notifyApprovalCreated(data);
+      console.log("[onControllerApprovalCreate]", data.action, data.tenantId, r);
+    } catch (e) {
+      console.warn("[onControllerApprovalCreate] failed:", e.message);
+    }
+  }
+);
+
+// Accounting — daily heads-up digest of recurring charges hitting in the next
+// 5 days. Schedules at 14:00 UTC = 9 AM ET so Sean gets it first thing.
+exports.recurringChargeDigest = onSchedule(
+  { schedule: "0 14 * * *", timeZone: "UTC", region: "us-central1" },
+  async () => {
+    try {
+      const { emitRecurringDigest } = require("./services/accounting/notifications");
+      const r = await emitRecurringDigest({ daysAhead: 5 });
+      console.log("[recurringChargeDigest]", r);
+    } catch (e) {
+      console.warn("[recurringChargeDigest] failed:", e.message);
+    }
+  }
 );
 
 // ----------------------------

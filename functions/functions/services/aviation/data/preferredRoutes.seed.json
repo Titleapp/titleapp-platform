@@ -1,0 +1,207 @@
+{
+  "source": "FAA NFDC Preferred Routes Database — manual curated seed",
+  "cycle": "2026-05-15",
+  "note": "v1 hand-curated subset. NASR PFR.txt full ingestion replaces this on cycle cron.",
+  "routes": [
+    {
+      "dep": "KSEA", "arr": "KPDX",
+      "route": "SEA4.OLM OLM.OLM5",
+      "altitudeMin": 240, "altitudeMax": 450,
+      "aircraftType": "TURBOJET",
+      "areaHigh": "ZSE",
+      "distanceNm": 129
+    },
+    {
+      "dep": "KSEA", "arr": "KSFO",
+      "route": "HAROB6 HAROB DSD DSD2",
+      "altitudeMin": 240, "altitudeMax": 450,
+      "aircraftType": "TURBOJET",
+      "areaHigh": "ZSE ZOA",
+      "distanceNm": 681
+    },
+    {
+      "dep": "KSEA", "arr": "KLAX",
+      "route": "HAROB6 HAROB ENI BSR FIM2",
+      "altitudeMin": 240, "altitudeMax": 450,
+      "aircraftType": "TURBOJET",
+      "areaHigh": "ZSE ZOA ZLA",
+      "distanceNm": 954
+    },
+    {
+      "dep": "KSFO", "arr": "KLAX",
+      "route": "OAKES5 FIM FIM2",
+      "altitudeMin": 240, "altitudeMax": 450,
+      "aircraftType": "TURBOJET",
+      "areaHigh": "ZOA ZLA",
+      "distanceNm": 293
+    },
+    {
+      "dep": "KSFO", "arr": "KSEA",
+      "route": "OAKES5 ENI YKM HAROB1",
+      "altitudeMin": 240, "altitudeMax": 450,
+      "aircraftType": "TURBOJET",
+      "areaHigh": "ZOA ZSE",
+      "distanceNm": 678
+    },
+    {
+      "dep": "KLAX", "arr": "KSFO",
+      "route": "VTU4 VTU AVE BSR OAKES1",
+      "altitudeMin": 240, "altitudeMax": 450,
+      "aircraftType": "TURBOJET",
+      "areaHigh": "ZLA ZOA",
+      "distanceNm": 296
+    },
+    {
+      "dep": "KLAX", "arr": "KLAS",
+      "route": "HOLTZ9 HEC J92 BLD",
+      "altitudeMin": 240, "altitudeMax": 450,
+      "aircraftType": "TURBOJET",
+      "areaHigh": "ZLA",
+      "distanceNm": 215
+    },
+    {
+      "dep": "KLAX", "arr": "KPHX",
+      "route": "HOLTZ9 HEC J169 PKE EAGUL5",
+      "altitudeMin": 240, "altitudeMax": 450,
+      "aircraftType": "TURBOJET",
+      "areaHigh": "ZLA ZAB",
+      "distanceNm": 326
+    },
+    {
+      "dep": "KPHX", "arr": "KDEN",
+      "route": "EAGUL6 PXR J96 RSK FQF SAYGE3",
+      "altitudeMin": 240, "altitudeMax": 450,
+      "aircraftType": "TURBOJET",
+      "areaHigh": "ZAB ZDV",
+      "distanceNm": 602
+    },
+    {
+      "dep": "KDEN", "arr": "KLAX",
+      "route": "FLATI3 BFF J52 LAA J60 PUEBLO J96 PKE HOLTZ9",
+      "altitudeMin": 240, "altitudeMax": 450,
+      "aircraftType": "TURBOJET",
+      "areaHigh": "ZDV ZAB ZLA",
+      "distanceNm": 862
+    },
+    {
+      "dep": "KDEN", "arr": "KORD",
+      "route": "FLATI3 OBH J148 IOW FYTTE4",
+      "altitudeMin": 240, "altitudeMax": 450,
+      "aircraftType": "TURBOJET",
+      "areaHigh": "ZDV ZMP ZAU",
+      "distanceNm": 891
+    },
+    {
+      "dep": "KORD", "arr": "KDEN",
+      "route": "BEARZ4 IOW J148 OBH ANCHR3",
+      "altitudeMin": 240, "altitudeMax": 450,
+      "aircraftType": "TURBOJET",
+      "areaHigh": "ZAU ZMP ZDV",
+      "distanceNm": 887
+    },
+    {
+      "dep": "KORD", "arr": "KLGA",
+      "route": "PMM7 PMM J89 ETG LVZ LENDY7",
+      "altitudeMin": 240, "altitudeMax": 450,
+      "aircraftType": "TURBOJET",
+      "areaHigh": "ZAU ZOB ZNY",
+      "distanceNm": 733
+    },
+    {
+      "dep": "KORD", "arr": "KJFK",
+      "route": "PMM7 PMM J89 ETG LVZ ROBER",
+      "altitudeMin": 240, "altitudeMax": 450,
+      "aircraftType": "TURBOJET",
+      "areaHigh": "ZAU ZOB ZNY",
+      "distanceNm": 741
+    },
+    {
+      "dep": "KJFK", "arr": "KMIA",
+      "route": "MERIT ROBER J121 ORF J121 CHS J121 ZQA",
+      "altitudeMin": 240, "altitudeMax": 450,
+      "aircraftType": "TURBOJET",
+      "areaHigh": "ZNY ZDC ZJX ZMA",
+      "distanceNm": 1090
+    },
+    {
+      "dep": "KMIA", "arr": "KJFK",
+      "route": "BNFSH3 LBV J121 CHS J121 ORF J121 SIE",
+      "altitudeMin": 240, "altitudeMax": 450,
+      "aircraftType": "TURBOJET",
+      "areaHigh": "ZMA ZJX ZDC ZNY",
+      "distanceNm": 1089
+    },
+    {
+      "dep": "KBOS", "arr": "KORD",
+      "route": "PUT GARDNER REVSS4 ALB J95 SYR DKK CRL HASTE3",
+      "altitudeMin": 240, "altitudeMax": 450,
+      "aircraftType": "TURBOJET",
+      "areaHigh": "ZBW ZNY ZOB ZAU",
+      "distanceNm": 864
+    },
+    {
+      "dep": "KBOS", "arr": "KLGA",
+      "route": "BAF V292 IGN HAAYS6",
+      "altitudeMin": 240, "altitudeMax": 450,
+      "aircraftType": "TURBOJET",
+      "areaHigh": "ZBW ZNY",
+      "distanceNm": 184
+    },
+    {
+      "dep": "KLGA", "arr": "KBOS",
+      "route": "MERIT PUT4",
+      "altitudeMin": 240, "altitudeMax": 450,
+      "aircraftType": "TURBOJET",
+      "areaHigh": "ZNY ZBW",
+      "distanceNm": 184
+    },
+    {
+      "dep": "KIAD", "arr": "KBOS",
+      "route": "JERES BUNZE V501 SAX J42 IGN HAAYS6",
+      "altitudeMin": 240, "altitudeMax": 450,
+      "aircraftType": "TURBOJET",
+      "areaHigh": "ZDC ZNY ZBW",
+      "distanceNm": 358
+    },
+    {
+      "dep": "KIAD", "arr": "KJFK",
+      "route": "JERES BUNZE V229 ROBER",
+      "altitudeMin": 240, "altitudeMax": 450,
+      "aircraftType": "TURBOJET",
+      "areaHigh": "ZDC ZNY",
+      "distanceNm": 211
+    },
+    {
+      "dep": "KDFW", "arr": "KORD",
+      "route": "FOOTT3 BYP J50 IRK J94 BDF BEARZ4",
+      "altitudeMin": 240, "altitudeMax": 450,
+      "aircraftType": "TURBOJET",
+      "areaHigh": "ZFW ZKC ZAU",
+      "distanceNm": 802
+    },
+    {
+      "dep": "KDFW", "arr": "KLAX",
+      "route": "AKUNA3 LBB DRK HOLTZ9",
+      "altitudeMin": 240, "altitudeMax": 450,
+      "aircraftType": "TURBOJET",
+      "areaHigh": "ZFW ZAB ZLA",
+      "distanceNm": 1117
+    },
+    {
+      "dep": "KATL", "arr": "KLGA",
+      "route": "DALAS2 ELW J85 PSK J48 SIE",
+      "altitudeMin": 240, "altitudeMax": 450,
+      "aircraftType": "TURBOJET",
+      "areaHigh": "ZTL ZDC ZNY",
+      "distanceNm": 762
+    },
+    {
+      "dep": "KATL", "arr": "KMIA",
+      "route": "PECHY6 PECHY MAUDE3",
+      "altitudeMin": 240, "altitudeMax": 450,
+      "aircraftType": "TURBOJET",
+      "areaHigh": "ZTL ZJX ZMA",
+      "distanceNm": 595
+    }
+  ]
+}

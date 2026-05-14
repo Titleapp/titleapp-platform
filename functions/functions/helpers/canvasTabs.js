@@ -13,10 +13,12 @@
  * --force is passed in the backfill script.
  */
 
-// Aviation gets a higher cap so its 7-tab CoPilot EFB structure mirrors 1:1
-// rather than truncating. Every other vertical caps at 6.
+// Aviation gets a higher cap because CoPilots need the full operational tab
+// set (checklists, QRH, flight plan, performance, W&B, aircraft, map) plus
+// reference tabs (logbook, currency, duty, training, documents). The frontend
+// CanvasTabBar wraps to a second row above 7 visible tabs.
 const TAB_CAP_DEFAULT = 6;
-const TAB_CAP_AVIATION = 7;
+const TAB_CAP_AVIATION = 12;
 const TAB_MIN = 2;
 
 const VALID_TAB_ID = /^[a-z0-9-]+$/;
@@ -83,17 +85,27 @@ const SPINE_TABS = {
   ],
 };
 
-// Aviation CoPilot EFB structure (per sections/CoPilotEFB.jsx). Mirrors
-// the dedicated EFB section so the right-panel canvas stays in sync.
-// Cap raised to 7 for aviation only.
+// Aviation CoPilot — pilot-operational tab order (Sean's call 2026-05-12).
+// Cockpit-first: map + checklists + QRH + flight planning + performance + W&B
+// + aircraft up front. Reference (logbook / currency / duty / training /
+// documents) follows. Tabs wrap to two rows in CanvasTabBar above ~7.
+// Sean's call 2026-05-13: aviation CoPilots open with Flight Planning by
+// default — that's where the flight starts. FlightPlanningCard embeds a
+// route map at the bottom, so users get planning + map in one canvas.
+// Map tab remains second for the full-canvas route view.
 const AVIATION_COPILOT_TABS = [
-  { id: "status",    label: "Status",    signal: "card:aviation-currency", default: true, order: 0 },
-  { id: "logbook",   label: "Logbook",   signal: "card:work-product",      order: 1 },
-  { id: "currency",  label: "Currency",  signal: "card:aviation-currency", order: 2 },
-  { id: "duty",      label: "Duty",      signal: "card:work-product",      order: 3 },
-  { id: "training",  label: "Training",  signal: "card:work-product",      order: 4 },
-  { id: "documents", label: "Documents", signal: "card:work-product",      order: 5 },
-  { id: "copilot",   label: "CoPilot",   signal: "card:work-product",      order: 6 },
+  { id: "flight-planning", label: "Flight Planning",   signal: "card:aviation-flight-planning",  default: true, order: 0 },
+  { id: "map",            label: "Map",                signal: "card:re-map",                    order: 1 },
+  { id: "checklists",     label: "Checklists",         signal: "card:aviation-checklists",       order: 2 },
+  { id: "qrh",            label: "QRH",                signal: "card:aviation-qrh",              order: 3 },
+  { id: "performance",    label: "Performance",        signal: "card:aviation-performance",      order: 4 },
+  { id: "weight-balance", label: "Weight & Balance",   signal: "card:aviation-weight-balance",   order: 5 },
+  { id: "aircraft",       label: "Aircraft",           signal: "card:aviation-aircraft",         order: 6 },
+  { id: "logbook",        label: "Logbook",            signal: "card:work-product",              order: 7 },
+  { id: "currency",       label: "Currency",           signal: "card:aviation-currency",         order: 8 },
+  { id: "duty",           label: "Duty",               signal: "card:work-product",              order: 9 },
+  { id: "training",       label: "Training",           signal: "card:work-product",              order: 10 },
+  { id: "documents",      label: "Documents",          signal: "card:work-product",              order: 11 },
 ];
 
 const RE_TABS = [
@@ -101,6 +113,31 @@ const RE_TABS = [
   { id: "listings", label: "Listings", signal: "card:work-product",         order: 1 },
   { id: "closings", label: "Closings", signal: "card:real-estate-closing",  order: 2 },
   { id: "contacts", label: "Contacts", signal: "card:work-product",         order: 3 },
+];
+
+// RES-001 Real Estate Salesperson — bespoke workflow tabs (CODEX 50.18
+// follow-up 2026-05-11). Replaces generic long-tail / RE_TABS for the
+// salesperson worker specifically. Buyer + listing dual pipeline +
+// active deals in escrow + schedule across showings/closings/follow-up
+// + saved CMAs for pricing intelligence.
+const RES_SALESPERSON_TABS = [
+  { id: "pipeline",  label: "Pipeline",     signal: "card:work-product",         default: true, order: 0 },
+  { id: "listings",  label: "Listings",     signal: "card:work-product",         order: 1 },
+  { id: "buyers",    label: "Buyers",       signal: "card:work-product",         order: 2 },
+  { id: "deals",     label: "Active Deals", signal: "card:real-estate-closing",  order: 3 },
+  { id: "schedule",  label: "Schedule",     signal: "card:work-product",         order: 4 },
+  { id: "cma",       label: "CMA Library",  signal: "card:re-property-analysis", order: 5 },
+];
+
+// GEN-001 Scheduling — cross-vertical scheduling worker (CODEX 50.18
+// follow-up 2026-05-11). Calendar coordination, multi-resource booking,
+// availability, conflicts, and follow-ups.
+const GEN_SCHEDULING_TABS = [
+  { id: "calendar",   label: "Calendar",     signal: "card:work-product", default: true, order: 0 },
+  { id: "events",     label: "Events",       signal: "card:work-product", order: 1 },
+  { id: "availability", label: "Availability", signal: "card:work-product", order: 2 },
+  { id: "conflicts",  label: "Conflicts",    signal: "card:work-product", order: 3 },
+  { id: "followups",  label: "Follow-ups",   signal: "card:work-product", order: 4 },
 ];
 
 const AUTO_TABS = [
@@ -141,7 +178,19 @@ function generateDefaultTabs(worker) {
     return AVIATION_COPILOT_TABS.map(t => ({ ...t }));
   }
 
-  // 3. Real Estate (development + professional)
+  // 3a. RES-001 Real Estate Salesperson — bespoke workflow tabs (CODEX
+  // 50.18 follow-up 2026-05-11). Distinct from the generic RE_TABS used
+  // by other re_professional + real_estate_development workers.
+  if (slug === "re-salesperson" || (worker.catalogId || "").toUpperCase() === "RES-001") {
+    return RES_SALESPERSON_TABS.map(t => ({ ...t }));
+  }
+
+  // 3b. GEN-001 Scheduling — cross-vertical scheduling worker.
+  if (slug === "scheduling" || (worker.catalogId || "").toUpperCase() === "GEN-001") {
+    return GEN_SCHEDULING_TABS.map(t => ({ ...t }));
+  }
+
+  // 3b. Real Estate (development + professional) generic
   if (vertical === "real_estate_development" || vertical === "re_professional") {
     return RE_TABS.map(t => ({ ...t }));
   }
@@ -167,6 +216,8 @@ module.exports = {
   SPINE_TABS,
   AVIATION_COPILOT_TABS,
   RE_TABS,
+  RES_SALESPERSON_TABS,
+  GEN_SCHEDULING_TABS,
   AUTO_TABS,
   longTailTabs,
 };

@@ -111,6 +111,19 @@ async function buildAlexPrompt(options = {}) {
     projects = workspace.projects;
   }
 
+  // Fetch upcoming Google Calendar events when the user has connected. Best
+  // effort — connector errors must never break the chat. Calendar is a
+  // connector that touches every worker (Sean 2026-05-13).
+  let calendarEvents = null;
+  if (userId) {
+    try {
+      const cal = require("../calendar/googleCalendarService");
+      calendarEvents = await cal.listUpcomingEvents(userId, { days: 7, maxResults: 20 });
+    } catch (e) {
+      // Not connected, or transient API error — drop silently.
+    }
+  }
+
   // Assemble the prompt
   return getPromptBuilder().assemblePrompt({
     surface,
@@ -125,6 +138,7 @@ async function buildAlexPrompt(options = {}) {
     alexVoice,
     surfaceContext,
     onboardingStatus,
+    calendarEvents,
   });
 }
 

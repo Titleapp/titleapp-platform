@@ -199,7 +199,7 @@ export default function CoPilotEFB() {
       <div style={{ background: C.panel, borderBottom: `1px solid ${C.border}`, padding: "12px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <span style={{ color: C.tealLight, fontWeight: 700, fontSize: 18 }}>PC12-47E CoPilot</span>
-          <span style={{ color: C.textDim, fontSize: 13 }}>LFN Medevac</span>
+          <span style={{ color: C.textDim, fontSize: 13 }}>Sample Part 135 operator</span>
           {activeMode === "direct" && (
             <button onClick={() => setShowModeInfo(!showModeInfo)} style={{
               background: "#7c3aed22", border: "1px solid #7c3aed", borderRadius: 4, padding: "2px 8px",
@@ -283,7 +283,7 @@ function StatusTab({ status, currency }) {
     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
       <Card title="Profile">
         <Row label="Aircraft" value={status.profile?.aircraftType || "PC-12/47E"} />
-        <Row label="Operator" value={status.profile?.operator || "LFN"} />
+        <Row label="Operator" value={status.profile?.operator || "Sample Part 135 operator"} />
         <Row label="Medical" value={`Class ${status.profile?.medicalClass || "?"}`} />
         <Row label="Medical Expiry" value={status.profile?.medicalExpiry || "Not set"} />
       </Card>

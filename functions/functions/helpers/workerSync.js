@@ -266,6 +266,13 @@ const MARKETPLACE_SLUG_MAP = {
   "PLAT-004": "platform-control-center-pro",
   "PLAT-005": "hr-people",
   "PLAT-006": "platform-contacts",
+  "PLAT-007": "platform-legal",
+
+  // Banking & Finance vertical — CODEX 50.15 P0-11/P0-12
+  "BANK-FUND-001": "fundraise",
+
+  // General — cross-vertical utility workers (CODEX 50.18 follow-up 2026-05-11)
+  "GEN-001": "scheduling",
 };
 
 // Ruleset ID mapping: marketplace slug → ruleset file name

@@ -9,9 +9,18 @@ const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.ti
 
 async function apiFetch(path, method = "GET", body = null) {
   const token = localStorage.getItem("ID_TOKEN");
-  const res = await fetch(`${API_BASE}/api?path=${encodeURIComponent(path)}`, {
+  const tenantId = localStorage.getItem("TENANT_ID") || localStorage.getItem("WORKSPACE_ID") || "vault";
+  // Call /v1/... directly when API_BASE is the Cloud Run URL — the
+  // /api?path=... wrapper is only safe through the Cloudflare frontdoor,
+  // which decodes path-with-querystring correctly. The direct backend sees
+  // the whole encoded blob as a single query param and 404s on GETs.
+  const res = await fetch(`${API_BASE}${path}`, {
     method,
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+      "x-tenant-id": tenantId,
+    },
     ...(body ? { body: JSON.stringify(body) } : {}),
   });
   const data = await res.json().catch(() => ({}));

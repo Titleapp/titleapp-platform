@@ -29,6 +29,7 @@ const webhooksRouter = require("./routes/webhooks");
 const titleRouter = require("./routes/title");
 const b2bRouter = require("./routes/b2b");
 const contactsRouter = require("./routes/contacts");
+const segmentsRouter = require("./routes/segments");
 const employeesRouter = require("./routes/employees");
 
 const app = express();
@@ -136,8 +137,9 @@ app.use("/v1/workspaces", generatedDocsRouter); // /:workspace_id/documents/gene
 // Phase 10 — B2B Distribution
 app.use("/v1/workspaces", b2bRouter);           // /:workspace_id/b2b/deploy, /deployments, /analytics, /accept
 
-// Phase 11 — Spine (CODEX 49.1)
-app.use("/v1/workspaces", contactsRouter);    // /:workspace_id/contacts
+// Phase 11 — Spine (CODEX 49.1) + CODEX 50.15 P0-1 (segments + spine_v2 contacts)
+app.use("/v1/workspaces", contactsRouter);    // /:workspace_id/contacts (+ /:contactId/engagement)
+app.use("/v1/workspaces", segmentsRouter);    // /:workspace_id/segments  (CODEX 50.15 P0-1)
 app.use("/v1/workspaces", employeesRouter);   // /:workspace_id/employees
 // transactions + business-assets already mounted via existing routers
 

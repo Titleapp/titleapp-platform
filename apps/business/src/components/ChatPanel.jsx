@@ -292,15 +292,19 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
     localStorage.setItem(sessionKey, "done");
 
     let opener;
-    if (isReturn) {
-      opener = `Welcome back. ${tagline}. Where did we leave off?`;
-    } else if (workerType === "game") {
+    if (workerType === "game") {
       opener = `Ready to play? ${tagline}.${prompts[0] ? ` Tap '${prompts[0]}' to start.` : ""}`;
     } else {
       // CODEX 49.15 Fix 2 — platform workers need "worker" after tagline for complete greeting
       const tagText = tagline.charAt(0).toLowerCase() + tagline.slice(1);
       const suffix = workerType === "platform" ? " worker" : "";
-      opener = `Hey — I'm your ${tagText}${suffix}.${whatYoullHave ? ` ${whatYoullHave}.` : ""} What do you want to tackle first?`;
+      // 2026-05-12: return-visit opener used to be "Welcome back. {tagline}.
+      // Where did we leave off?" — that was a dead-end. Replaced with the
+      // same actionable opener as first visit (slightly varied lead-in) so
+      // the user always sees what the worker actually does, not generic
+      // chit-chat. Quick-start prompts attach as suggestion chips.
+      const lead = isReturn ? "Back to it." : "Hey —";
+      opener = `${lead} I'm your ${tagText}${suffix}.${whatYoullHave ? ` ${whatYoullHave}.` : ""} What do you want to tackle?`;
     }
 
     setMessages(prev => [...prev, {
@@ -967,30 +971,136 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
       return;
     }
 
-    // Read files as base64 if attached
+    // Read files as base64 if attached. Plus: persist each file to Drive
+    // (Firebase Storage + files/ Firestore record), tagged with the active
+    // worker so MY DRIVE can group by worker. See CODEX 50.18 follow-up —
+    // fixes the "chat-attached files don't persist" P0 bug.
     let filePayload = null;
     let filesPayload = null;
     if (currentFiles.length > 0) {
       setFileUploading(true);
       setMessages(prev => [...prev, { role: 'assistant', content: `Uploading ${currentFiles.length} file${currentFiles.length > 1 ? 's' : ''}...`, isSystem: true }]);
       try {
+        // macOS doesn't always populate file.type for .md/.csv/.rtf/etc. Backend
+        // text extractor and signed-URL Content-Type expect a non-empty mime, so
+        // derive from the extension when the browser doesn't supply one.
+        const inferMime = (file) => {
+          if (file.type) return file.type;
+          const ext = (file.name.split(".").pop() || "").toLowerCase();
+          const m = {
+            md: "text/markdown",
+            txt: "text/plain",
+            csv: "text/csv",
+            json: "application/json",
+            rtf: "application/rtf",
+            html: "text/html",
+            htm: "text/html",
+            yaml: "text/yaml",
+            yml: "text/yaml",
+            xml: "application/xml",
+          };
+          return m[ext] || "application/octet-stream";
+        };
         const readFile = (file) => new Promise((resolve, reject) => {
           const reader = new FileReader();
-          reader.onload = () => resolve({ name: file.name, type: file.type, data: reader.result });
+          const mime = inferMime(file);
+          reader.onload = () => resolve({ name: file.name, type: mime, data: reader.result });
           reader.onerror = () => reject(new Error(`Failed to read ${file.name}`));
           reader.readAsDataURL(file);
         });
+
+        // Drive persistence helper — three-step signed-URL flow against the
+        // existing /v1/files:sign + /v1/files:finalize endpoints.
+        const uploadToDrive = async (file) => {
+          const idToken = localStorage.getItem('ID_TOKEN');
+          const tenantId = localStorage.getItem('TENANT_ID') || localStorage.getItem('WORKSPACE_ID') || 'vault';
+          const apiBase = import.meta.env.VITE_API_BASE || 'https://titleapp-frontdoor.titleapp-core.workers.dev';
+          const tags = activeWorkerSlug ? [`worker:${activeWorkerSlug}`, 'source:chat'] : ['source:chat'];
+          const mime = inferMime(file);
+          // Step 1: get signed upload URL + provisional Firestore record
+          const signRes = await fetch(`${apiBase}/api?path=/v1/files:sign`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${idToken}`,
+              'x-tenant-id': tenantId,
+            },
+            body: JSON.stringify({
+              filename: file.name,
+              contentType: mime,
+              sizeBytes: file.size,
+              purpose: 'drive',
+              tags,
+              related: {
+                workerSlug: activeWorkerSlug || null,
+                source: 'chat_attachment',
+              },
+            }),
+          });
+          const sign = await signRes.json();
+          if (!sign?.ok || !sign?.uploadUrl) throw new Error(sign?.error || 'sign failed');
+          // Step 2: PUT bytes to signed URL — Content-Type MUST match what we
+          // signed with or GCS rejects with 403. Use inferred mime, not file.type.
+          const putRes = await fetch(sign.uploadUrl, {
+            method: 'PUT',
+            headers: { 'Content-Type': mime },
+            body: file,
+          });
+          if (!putRes.ok) throw new Error(`storage PUT failed (${putRes.status})`);
+          // Step 3: finalize — marks file status: ready
+          const finRes = await fetch(`${apiBase}/api?path=/v1/files:finalize`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${idToken}`,
+              'x-tenant-id': tenantId,
+            },
+            body: JSON.stringify({
+              fileId: sign.fileId,
+              storagePath: sign.storagePath,
+              contentType: mime,
+              sizeBytes: file.size,
+            }),
+          });
+          const fin = await finRes.json();
+          if (!fin?.ok) throw new Error(fin?.error || 'finalize failed');
+          return { fileId: sign.fileId, name: file.name, size: file.size, workerSlug: activeWorkerSlug || null };
+        };
+
+        // Run both passes in parallel — base64 read for LLM context, AND
+        // signed-URL upload for Drive persistence. If Drive upload fails
+        // for any file, the chat still works (we surface a warning).
+        const driveUploadResults = await Promise.allSettled(currentFiles.map(uploadToDrive));
         const results = await Promise.all(currentFiles.map(readFile));
         filePayload = results[0];
         filesPayload = results;
+
+        const driveSucceeded = driveUploadResults.filter(r => r.status === 'fulfilled').length;
+        const driveFailed = driveUploadResults.filter(r => r.status === 'rejected');
+        if (driveFailed.length > 0) {
+          console.warn('[ChatPanel] Some files failed Drive upload:', driveFailed.map(r => r.reason?.message || r.reason));
+        }
+
         setMessages(prev => {
           const updated = [...prev];
           const uploadIdx = updated.findLastIndex(m => m.isSystem && m.content.startsWith('Uploading '));
           if (uploadIdx >= 0) {
-            updated[uploadIdx] = { ...updated[uploadIdx], content: `${results.length} file${results.length > 1 ? 's' : ''} ready: ${results.map(r => r.name).join(', ')}` };
+            const driveNote = driveSucceeded === results.length
+              ? ` — saved to Drive${activeWorkerSlug ? ` (${activeWorkerSlug} folder)` : ''}`
+              : driveSucceeded > 0
+                ? ` — ${driveSucceeded}/${results.length} saved to Drive`
+                : ' — Drive save failed; file usable in this chat only';
+            updated[uploadIdx] = { ...updated[uploadIdx], content: `${results.length} file${results.length > 1 ? 's' : ''} ready: ${results.map(r => r.name).join(', ')}${driveNote}` };
           }
           return updated;
         });
+
+        // Broadcast so MY DRIVE pane can refresh without a page reload
+        if (driveSucceeded > 0) {
+          window.dispatchEvent(new CustomEvent('ta:drive-updated', {
+            detail: { count: driveSucceeded, workerSlug: activeWorkerSlug || null }
+          }));
+        }
       } catch (err) {
         console.error('File read failed:', err);
         setMessages(prev => {
@@ -1044,7 +1154,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
           selectedWorker: activeWorkerSlug || null,
           subscribedWorkers: (() => { try { return JSON.parse(localStorage.getItem("ACTIVE_WORKERS") || "[]"); } catch { return []; } })(),
           ...(filePayload ? { file: filePayload } : {}),
-          ...(filesPayload && filesPayload.length > 1 ? { files: filesPayload } : {}),
+          ...(filesPayload && filesPayload.length > 0 ? { files: filesPayload } : {}),
           preferredLanguage: localStorage.getItem("PREFERRED_LANGUAGE") || "en",
           context: {
             source: 'business_portal',

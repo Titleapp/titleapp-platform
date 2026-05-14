@@ -62,6 +62,7 @@ async function assemblePrompt(options = {}) {
     alexVoice,
     surfaceContext = {},
     onboardingStatus,
+    calendarEvents,
   } = options;
 
   // Core prompt is prepended to ALL surfaces — single source of truth
@@ -164,6 +165,11 @@ async function assemblePrompt(options = {}) {
     sections.push(buildAlertsSection(alerts));
   }
 
+  // 14. Dynamic: Upcoming calendar events (when Google Calendar is connected)
+  if (Array.isArray(calendarEvents) && calendarEvents.length > 0) {
+    sections.push(buildCalendarSection(calendarEvents));
+  }
+
   // Token budget enforcement
   return enforceTokenBudget(sections);
 }
@@ -172,6 +178,26 @@ function buildCatalogSection(vertical, routingIndex) {
   return `WORKER CATALOG — ${vertical.replace(/-/g, " ").toUpperCase()}:
 Format: ID|slug|name|phase|type|price|status|capabilities
 ${routingIndex}`;
+}
+
+// Compact representation of the user's upcoming calendar events. Calendar is
+// a connector (Sean 2026-05-13), not a worker — every worker should be able
+// to reason about the user's schedule. This section gives Alex working memory
+// of the next ~7 days. Events tagged with worker:<slug> in their metadata
+// block carry that slug into the formatted line so cross-worker handoffs work.
+function buildCalendarSection(events) {
+  if (!Array.isArray(events) || events.length === 0) return "";
+  const lines = events.slice(0, 25).map(e => {
+    const when = e.start || "?";
+    const who = (e.attendees || []).slice(0, 3).map(a => a.email || a.displayName).filter(Boolean).join(", ");
+    const tag = e.workerSlug ? ` [worker:${e.workerSlug}]` : "";
+    const proj = e.projectId ? ` [project:${e.projectId}]` : "";
+    const w = who ? ` w/ ${who}` : "";
+    return `- ${when} — ${e.summary || "(no title)"}${w}${tag}${proj}`;
+  });
+  return `UPCOMING CALENDAR (Google Calendar — read-only context for planning):
+The user's next ${events.length} event${events.length === 1 ? "" : "s"}. When the user asks about scheduling, conflicts, or what they have coming up, reference these. When a worker proposes a meeting or deadline, surface a draft event the user can approve.
+${lines.join("\n")}`;
 }
 
 function buildUserProfileSection(profile) {

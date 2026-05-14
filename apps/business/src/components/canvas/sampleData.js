@@ -228,12 +228,27 @@ export function getSampleKpiValue(workerSlug, kpiId, verticalKey = null) {
 }
 
 /**
+ * Spine workers (platform-*) have custom section UIs that render real backend
+ * data — they don't surface the demo KPI tiles or the orange "demo banner".
+ * Suppressing sample-data injection for them stops the chat from quoting
+ * phantom numbers ($47,500 revenue etc.) that the visible UI never shows.
+ */
+const SUPPRESS_DEMO_SLUGS = new Set([
+  "platform-accounting",
+  "platform-marketing",
+  "platform-hr",
+  "platform-contacts",
+  "platform-control-center-pro",
+]);
+
+/**
  * Does this worker (or its vertical) have any sample KPI data defined?
  * @param {string} workerSlug
  * @param {string|null} [verticalKey]
  * @returns {boolean}
  */
 export function hasSampleData(workerSlug, verticalKey = null) {
+  if (SUPPRESS_DEMO_SLUGS.has(workerSlug)) return false;
   return !!WORKER_SAMPLES[workerSlug] || (!!verticalKey && !!VERTICAL_SAMPLES[verticalKey]);
 }
 
@@ -453,6 +468,135 @@ const SPINE_FIXTURES = {
 // Aviation CoPilot fixtures — shared content across the 11 CoPilots; aircraft
 // tail number is injected per worker if the worker has one.
 const AVIATION_COPILOT_FIXTURES = {
+  "map": {
+    title: "Recent route — KSEA → KPDX",
+    region: "Seattle, WA to Portland, OR",
+    locations: [
+      { address: "Seattle-Tacoma International Airport (KSEA), WA", label: "Departure" },
+      { address: "Portland International Airport (KPDX), OR",       label: "Arrival" },
+    ],
+  },
+  "aircraft": {
+    title: "Pilatus PC-12/47E NG",
+    subtitle: "Sample profile · Type Certificate Data Sheet A04CE · grounded from AFM",
+    sections: [
+      {
+        heading: "Category & Type",
+        fields: [
+          { label: "Category",       value: "Normal (FAR 23 commuter)" },
+          { label: "Type",           value: "Single-engine turboprop" },
+          { label: "Certification",  value: "FAA · Transport Canada · EASA" },
+          { label: "Crew",           value: "1 (single-pilot certified)" },
+          { label: "Seats",          value: "10 max (1 crew + 9 pax)" },
+        ],
+      },
+      {
+        heading: "Dimensions",
+        fields: [
+          { label: "Length",         value: "47 ft 3 in (14.40 m)" },
+          { label: "Wingspan",       value: "53 ft 4 in (16.28 m)" },
+          { label: "Height",         value: "14 ft (4.26 m)" },
+          { label: "Cabin length",   value: "16 ft 11 in" },
+          { label: "Cabin width",    value: "5 ft (60 in)" },
+          { label: "Cabin height",   value: "4 ft 10 in (58 in)" },
+        ],
+      },
+      {
+        heading: "Powerplant",
+        fields: [
+          { label: "Engine",         value: "Pratt & Whitney Canada PT6A-67P" },
+          { label: "Power rating",   value: "1,200 SHP (flat-rated)" },
+          { label: "Propeller",      value: "Hartzell 5-blade composite, 1,700 RPM max" },
+          { label: "ITT limits",     value: "850°C continuous · 900°C 20 sec transient" },
+          { label: "Torque max",     value: "100% continuous" },
+        ],
+      },
+      {
+        heading: "Electrical",
+        fields: [
+          { label: "Main bus",       value: "28 VDC" },
+          { label: "Generator",      value: "300A starter-generator + 100A standby" },
+          { label: "Battery",        value: "Ni-Cd 24V 43Ah" },
+          { label: "Inverter",       value: "115 VAC 400 Hz (avionics)" },
+          { label: "External power", value: "GPU required below -20°C" },
+        ],
+      },
+      {
+        heading: "Avionics",
+        fields: [
+          { label: "Suite",          value: "Honeywell Primus Apex / Advanced Cockpit (ACE)" },
+          { label: "Displays",       value: "4 × 10.4 in PFD/MFD" },
+          { label: "Autopilot",      value: "Dual-channel digital, autoland-capable" },
+          { label: "Nav",            value: "Dual FMS · Dual GPS WAAS · VOR/ILS · RNAV" },
+          { label: "Surveillance",   value: "TCAS II · TAWS-B · ADS-B Out + In · Mode S" },
+          { label: "Weather",        value: "Onboard radar · datalink WX (XM/SBS)" },
+        ],
+      },
+      {
+        heading: "Environmental",
+        fields: [
+          { label: "Pressurization", value: "Max differential 5.75 PSI" },
+          { label: "Cabin alt",      value: "8,000 ft @ FL300" },
+          { label: "Climate",        value: "Bleed-air heat · vapor-cycle A/C" },
+          { label: "Oxygen",         value: "Crew demand · pax constant-flow (required >FL250)" },
+          { label: "Ice protection", value: "Pneumatic boots (wings + tail), heated windshield, prop deice, inertial separator" },
+        ],
+      },
+      {
+        heading: "Flight Controls",
+        fields: [
+          { label: "Primary",        value: "Conventional cable-actuated ailerons, elevator, rudder" },
+          { label: "Trim",           value: "Electric pitch, manual rudder, aileron tab" },
+          { label: "High-lift",      value: "Single-slot Fowler flaps (0° / 15° / 30° / 40°)" },
+          { label: "Spoilers",       value: "Inboard roll spoilers" },
+          { label: "Stick pusher",   value: "Active near stall (alpha-vane driven)" },
+        ],
+      },
+      {
+        heading: "Landing Gear",
+        fields: [
+          { label: "Type",           value: "Tricycle, hydraulically retractable, trailing-link mains" },
+          { label: "Tires",          value: "Main 22×8.0-8 · Nose 16×4.4-7" },
+          { label: "Brakes",         value: "Hydraulic carbon discs, anti-skid" },
+          { label: "Steering",       value: "Direct nose-wheel · ±54° via rudder pedals" },
+        ],
+      },
+      {
+        heading: "Fuel & Oil",
+        fields: [
+          { label: "Fuel capacity",  value: "402 US gal (2,704 lbs · usable)" },
+          { label: "Fuel grade",     value: "Jet A / Jet A-1 / JP-8" },
+          { label: "Imbalance max",  value: "200 lbs L/R" },
+          { label: "Oil capacity",   value: "12 US qt PT6A engine oil" },
+          { label: "Oil consumption", value: "<0.4 qt/hr typical" },
+        ],
+      },
+      {
+        heading: "Basic Limitations",
+        fields: [
+          { label: "Vne",            value: "240 KIAS" },
+          { label: "Vno",            value: "185 KIAS" },
+          { label: "Va @ MTOW",      value: "152 KIAS" },
+          { label: "Vfe approach",   value: "180 KIAS" },
+          { label: "Vfe full flap",  value: "154 KIAS" },
+          { label: "Vs0 / Vs1",      value: "67 / 84 KIAS (MTOW)" },
+          { label: "Max op altitude", value: "FL300" },
+          { label: "Max op temp",    value: "ISA +35°C" },
+        ],
+      },
+      {
+        heading: "Weights",
+        fields: [
+          { label: "MTOW",           value: "10,450 lbs" },
+          { label: "Max ramp",       value: "10,495 lbs" },
+          { label: "Max landing",    value: "9,921 lbs" },
+          { label: "Max zero fuel",  value: "8,818 lbs" },
+          { label: "Empty (typical)", value: "6,460 lbs" },
+          { label: "Useful load",    value: "~3,990 lbs" },
+        ],
+      },
+    ],
+  },
   "status": {
     title: "Aircraft status",
     subtitle: "Sample preflight summary",
@@ -465,13 +609,35 @@ const AVIATION_COPILOT_FIXTURES = {
     ],
   },
   "logbook": {
-    title: "Logbook (last 5 entries)",
+    title: "Aircraft Logbook · N142TA",
+    subtitle: "Per-flight aircraft entries. Squawks here surface to the MX worker.",
     sections: [
-      { heading: "2026-04-29 · KSEA → KPDX", body: "Total · 1.2 · IFR · Day · Single Pilot" },
-      { heading: "2026-04-22 · KPDX → KSEA", body: "Total · 1.1 · VFR · Day · Single Pilot" },
-      { heading: "2026-04-18 · KSEA → KSFO", body: "Total · 2.0 · IFR · Night · Single Pilot · 1 ILS" },
-      { heading: "2026-04-15 · KSEA local",  body: "Total · 1.4 · VFR · Day · Pattern · 4 landings" },
-      { heading: "2026-04-08 · KSEA → KGEG", body: "Total · 0.9 · IFR · Day · Single Pilot · 1 RNAV" },
+      {
+        heading: "2026-04-29 · KSEA → KPDX",
+        body: "Hobbs 1,284.6 → 1,285.8 (1.2) · Tach 1,178.2 → 1,179.3 · Cycles +1\nFuel: 750 lbs out, 545 lbs in · Block 1.4\nSquawks: NONE\nPIC: S. Combs · ATP · Medical Class 1",
+      },
+      {
+        heading: "2026-04-22 · KPDX → KSEA",
+        body: "Hobbs 1,283.4 → 1,284.6 (1.2) · Tach 1,177.1 → 1,178.2 · Cycles +1\nFuel: 700 lbs out, 510 lbs in · Block 1.3\nSquawks: L pitot heat intermittent at takeoff — cycled OK, MEL-deferred · MX worker ticket #2026-0419",
+      },
+      {
+        heading: "2026-04-18 · KSEA → KSFO",
+        body: "Hobbs 1,281.4 → 1,283.4 (2.0) · Tach 1,175.1 → 1,177.1 · Cycles +1\nFuel: 1,200 lbs out, 720 lbs in · Block 2.3 · 1 ILS\nSquawks: NONE",
+      },
+      {
+        heading: "2026-04-15 · KSEA local pattern",
+        body: "Hobbs 1,280.0 → 1,281.4 (1.4) · Tach 1,173.7 → 1,175.1 · Cycles +4\n4 full-stop landings · Pattern · No issues",
+      },
+      {
+        heading: "2026-04-08 · KSEA → KGEG",
+        body: "Hobbs 1,279.1 → 1,280.0 (0.9) · Tach 1,172.8 → 1,173.7 · Cycles +1\nFuel: 480 lbs out, 290 lbs in · Block 1.1 · 1 RNAV\nSquawks: Cabin pressure fluctuation during climb (resolved at level-off) — MX trend log updated",
+      },
+    ],
+    items: [
+      "Open MX items: 1 (deferred — L pitot heat intermittent · MEL Section 30-31)",
+      "Next inspection: 100-hr (12 flight hrs away · ETD 2026-05-08)",
+      "AD compliance: current as of 2026-04-29",
+      "SB compliance: current · SB 12-2 outstanding (optional)",
     ],
   },
   "currency": {
@@ -486,42 +652,213 @@ const AVIATION_COPILOT_FIXTURES = {
     ],
   },
   "duty": {
-    title: "Duty / rest",
-    fields: [
-      { label: "Duty hours (today)",    value: "0" },
-      { label: "Duty hours (7d)",       value: "12.4" },
-      { label: "Rest required",         value: "10h" },
-      { label: "Last rest period",      value: "11h ago" },
+    title: "Duty & Risk Assessment",
+    subtitle: "Sample · FAR Part 135 single-pilot · operator rules apply",
+    sections: [
+      {
+        heading: "Duty time (FAR 135.267)",
+        fields: [
+          { label: "On duty",               value: "NO · ready to assume duty" },
+          { label: "Duty hours (24h max)",  value: "0 / 14 (single pilot)" },
+          { label: "Flight hours (24h)",    value: "0 / 8" },
+          { label: "Flight hours (7d)",     value: "5.7 / 34" },
+          { label: "Flight hours (30d)",    value: "28.4 / 120" },
+          { label: "Flight hours (365d)",   value: "412 / 1,200" },
+          { label: "Last rest period",      value: "11h ago · qualifying (≥10h continuous)" },
+        ],
+      },
+      {
+        heading: "FRAT — Flight Risk Assessment",
+        body: "Operator FRAT (Sample Part 135 operator) scores risk across pilot, aircraft, environment, and mission factors. Risk thresholds:\nGREEN < 20 · YELLOW 20–34 · RED ≥ 35 (DO not depart without operator approval)",
+        fields: [
+          { label: "Pilot (rest / currency)",   value: "3 pts · GREEN" },
+          { label: "Aircraft (squawks / MX)",   value: "5 pts · GREEN (1 MEL-deferred item)" },
+          { label: "Environment (WX / time)",   value: "9 pts · GREEN (night IMC departure adds 6)" },
+          { label: "Mission (medevac / pax)",   value: "4 pts · GREEN" },
+          { label: "TOTAL",                     value: "21 pts · YELLOW · Operator notification recommended" },
+        ],
+      },
+      {
+        heading: "Operating rules in force",
+        body: "Part 135 · Sample operator GOM · clinical ops policies · flight ops · dispatch procedures (operator-uploaded).\n\nFor reference: Part 91 baseline less restrictive; Part 121 more restrictive (8/13 limits, augmented crew). Use the toggle in Settings to switch rule context.",
+      },
     ],
   },
   "training": {
-    title: "Training & proficiency",
+    title: "Training & Proficiency",
+    subtitle: "Sample · PC-12/47E systems modules · daily flashcards",
     sections: [
-      { heading: "Recurrent training",  body: "Annual proficiency · due Aug 2026\nIPC · current\nEmergency procedures · current" },
-      { heading: "In-progress",         body: "Glass cockpit refresher · 60% complete\nNew avionics qualification · scheduled May 18" },
+      {
+        heading: "Systems courses",
+        body: "Powerplant (PT6A-67P) · 12 modules · 78% complete\nElectrical · 9 modules · 100% (recurrent due 2026-09)\nAvionics (Apex / ACE) · 14 modules · 45% complete\nPressurization & environmental · 6 modules · 100%\nIce protection · 4 modules · 100%\nLanding gear & hydraulics · 5 modules · 50% complete\nFlight controls & stall protection · 7 modules · 86%",
+      },
+      {
+        heading: "Recurrent (FAR 135.293/297/299)",
+        body: "Annual proficiency check · due Aug 2026\nIFR currency (135.297) · current\nLine check (135.299) · due Nov 2026\nEmergency procedures · current\nCRM · current",
+      },
+      {
+        heading: "Today's flashcards (3 due)",
+        body: "1. ITT redline values (continuous / transient)\n2. Emergency descent procedure — first 3 actions\n3. Stall recovery — initial nose-down + power application",
+      },
+      {
+        heading: "Daily reminder",
+        body: "Pre-flight habit — 2 skill-sharpeners before every flight:\n  • Review one QRH emergency procedure (aircraft-specific)\n  • Review one operator OpSpec or SOP\n\nPost-flight habit: log squawks + 1 thing that went well, 1 to improve.",
+      },
     ],
   },
   "documents": {
     title: "Documents",
-    items: [
-      "POH (PC12-NG, current rev) · uploaded",
-      "Insurance certificate · current",
-      "Annual inspection report · 2025-08",
-      "Avionics qualification cert · 2024-11",
-      "Currency endorsement (CFI) · 2026-04",
+    subtitle: "Operator documents available to the CoPilot",
+    sections: [
+      {
+        heading: "Aircraft documents",
+        body: "POH / AFM (PC-12/47E NG, current rev) · uploaded\nWeight & Balance template (N142TA-specific) · uploaded\nMEL / Operator MEL · uploaded\nInsurance certificate · current (expires 2026-09-30)\nAirworthiness certificate · current\nRegistration · current (expires 2027-04-30)\nAnnual inspection report · last 2025-08-12\n100-hr inspection · last 2026-03-04",
+      },
+      {
+        heading: "Pilot documents",
+        body: "ATP certificate · single-pilot PC-12 type rating · current\nMedical Class 1 · expires 2027-03-15\nBFR · last 2025-08-10 (due 2027-08)\nCFI ground / single-engine · current\nPassport · expires 2031-06\nLast 24 months of currency endorsements · in vault",
+      },
+      {
+        heading: "Operator documents",
+        body: "Operator GOM · upload to ground CoPilot\nClinical / medical ops policies · upload\nFlight ops policies · upload\nDispatch procedures · upload\nOpSpecs (A001 / A002 / B050) · upload\nFRAT form · operator-provided",
+      },
     ],
   },
   "copilot": {
     title: "CoPilot — recent",
     summary: "Ready to assist with preflight, currency review, weight & balance, and post-flight summaries. Ask any question to get started.",
   },
+  "checklists": {
+    title: "Standard Checklists",
+    subtitle: "PC12-NG · normal procedures",
+    sections: [
+      { heading: "Preflight",       body: "Exterior walk-around · panel check · fuel sample · oxygen · weather brief · NOTAMs" },
+      { heading: "Before start",    body: "Seats / belts · doors · circuit breakers · fuel selector · power · avionics · clearance" },
+      { heading: "Start",           body: "Beacon ON · prop area clear · starter engage · ITT monitor · oil pressure · generator on" },
+      { heading: "Taxi",            body: "Brakes check · flight controls free · flaps set · trim set · transponder STBY" },
+      { heading: "Before takeoff",  body: "Run-up complete · flight instruments · autopilot test · briefing complete · transponder ALT" },
+      { heading: "Cruise",          body: "Power set · mixture / prop · pressurization · fuel balance · oxygen check above FL250" },
+      { heading: "Descent / approach", body: "Descent brief · ATIS · approach setup · checklists · fuel · weight & balance verified" },
+      { heading: "After landing",   body: "Flaps up · transponder STBY · landing lights off · radar off · taxi checklist" },
+      { heading: "Shutdown",        body: "Parking brake · prop low pitch · cool down · ignition off · fuel selector · ext power" },
+    ],
+  },
+  "qrh": {
+    title: "QRH — Emergency / Abnormal",
+    subtitle: "PC12-NG · quick reference (always defer to current AFM)",
+    sections: [
+      { heading: "Engine failure in flight",     body: "1. Fly the aircraft · best glide 118 KIAS\n2. Identify nearest suitable airport\n3. Attempt restart per AFM\n4. Squawk 7700 · declare emergency\n5. Brief passengers · prepare for forced landing" },
+      { heading: "Engine fire in flight",        body: "1. Power lever IDLE · condition lever CUTOFF\n2. Fuel selector OFF · firewall shutoff PULL\n3. Best glide · divert immediately\n4. Smoke / fume checklist if cabin affected" },
+      { heading: "Smoke / fire / fumes",         body: "1. Oxygen mask 100% · smoke goggles\n2. Crew comm established\n3. Identify source · isolate electrical bus\n4. Land at nearest suitable airport" },
+      { heading: "Loss of pressurization",       body: "1. Don oxygen mask immediately\n2. Emergency descent · 240 KIAS or Vmo\n3. Level off at 10,000 ft or MEA\n4. Pressurization controller · check\n5. Land as soon as practical" },
+      { heading: "Electrical failure",           body: "1. Identify failed bus · load shed\n2. Battery / generator switches as required\n3. Standby instruments · emergency lighting\n4. Land at nearest suitable airport" },
+      { heading: "Landing gear unsafe",          body: "1. Recycle gear · verify hydraulic\n2. Emergency extension per AFM\n3. Visual confirmation if possible\n4. Brief passengers · land soft field" },
+    ],
+  },
+  "flight-planning": {
+    title: "Flight Planning",
+    subtitle: "Sample plan · KSEA → KPDX · PC-12/47E NG",
+    route: {
+      departure:   "KSEA",
+      destination: "KPDX",
+      alternate:   "KHIO",
+      routeString: "KSEA SEA4.OLM SEA OLM.OLM5 KPDX",
+      routeSource: "FAA NFDC Preferred Route · KSEA→KPDX · TURBOJET 240–FL450 · cycle 2026-05-15",
+      distanceNm:  129,
+      eteHm:       "0+38",
+      cruiseAlt:   "FL250",
+      blockFuel:   "210 lbs",
+      reserveFuel: "45 min IFR",
+    },
+    windsAloft: [
+      { altitude: "FL180", wind: "240° / 22 kt", temp: "-12°C" },
+      { altitude: "FL210", wind: "250° / 28 kt", temp: "-20°C" },
+      { altitude: "FL250", wind: "260° / 32 kt", temp: "-30°C" },
+      { altitude: "FL280", wind: "265° / 36 kt", temp: "-36°C" },
+    ],
+    weather: {
+      departure: {
+        station: "KSEA",
+        metar: "KSEA 130053Z 21008KT 10SM FEW040 12/06 A3008",
+        taf:   "TAF KSEA 130020Z 1301/1406 21010KT P6SM SCT040",
+      },
+      arrival: {
+        station: "KPDX",
+        metar: "KPDX 130053Z 22006KT 5SM BR BKN025 11/09 A3007",
+        taf:   "TAF KPDX 130020Z 1301/1406 22008KT 5SM BR BKN025",
+      },
+      alternate: {
+        station: "KHIO",
+        metar: "KHIO 130055Z AUTO 22005KT 6SM BKN030 11/08 A3007",
+      },
+    },
+    notams: [
+      "!KPDX 05/142 KPDX RWY 28R/10L PAPI OUT OF SERVICE 2605131000-2605151000",
+      "!ZSE 05/098 ZSE AIRSPACE PJE WI AN AREA DEFINED AS 5NM RADIUS OF KPLU SFC-12500FT 2605131400-2605132300",
+      "!FDC 5/3942 ZSE PART 95 STAR ATIS RNAV (RNP) BUKLE.BUKLE2 KPDX AMDT 2",
+    ],
+    briefing: "TFR check clear · NOTAMs reviewed · ATIS Romeo · expect RNAV (RNP) Z RWY 28R at KPDX · contingency to KHIO with adequate fuel · O2 check passenger seats 3-4 · brief sterile cockpit below 10,000.",
+    map: { from: "KSEA", to: "KPDX" },
+  },
+  "performance": {
+    title: "Performance",
+    subtitle: "Sample · KSEA · departure",
+    fields: [
+      { label: "OAT",            value: "12°C" },
+      { label: "Pressure alt",   value: "433 ft" },
+      { label: "Wind",           value: "210° / 8 kt" },
+      { label: "Runway",         value: "16L · 11,901 ft · dry" },
+      { label: "Takeoff weight", value: "9,820 lbs" },
+      { label: "V1",             value: "92 KIAS" },
+      { label: "Vr",             value: "98 KIAS" },
+      { label: "V2",             value: "104 KIAS" },
+      { label: "Takeoff distance", value: "2,140 ft (50 ft obstacle)" },
+      { label: "Climb rate (ISA)", value: "1,640 fpm" },
+      { label: "Landing distance", value: "1,810 ft (50 ft obstacle)" },
+    ],
+  },
+  "weight-balance": {
+    title: "Weight & Balance",
+    subtitle: "Sample · KSEA → KPDX",
+    fields: [
+      { label: "Empty weight",       value: "6,940 lbs @ 184.2 in" },
+      { label: "Pilot + crew",       value: "190 lbs @ 130.0 in" },
+      { label: "Pax (4)",            value: "720 lbs @ 192.0 in" },
+      { label: "Baggage (fwd)",      value: "60 lbs @ 95.0 in" },
+      { label: "Baggage (aft)",      value: "120 lbs @ 311.0 in" },
+      { label: "Fuel (block)",       value: "1,790 lbs @ 199.5 in" },
+      { label: "Takeoff weight",     value: "9,820 lbs · MTOW 10,450 lbs" },
+      { label: "CG",                 value: "186.4 in · WITHIN ENVELOPE" },
+      { label: "Landing weight",     value: "9,610 lbs · MLW 9,921 lbs" },
+      { label: "Landing CG",         value: "186.1 in · WITHIN ENVELOPE" },
+    ],
+  },
 };
 
 // Real Estate suite (development + professional) — shared fixture content.
 const RE_FIXTURES = {
+  "map": {
+    title: "Active property locations",
+    region: "Austin, TX",
+    locations: [
+      { address: "412 Cedar Lane, Austin, TX 78704",      label: "$675K · 14 DOM" },
+      { address: "880 Maple Ridge, Austin, TX 78745",     label: "$925K · 8 DOM" },
+      { address: "27 Lakeshore Dr, Austin, TX 78732",     label: "$485K · 32 DOM" },
+      { address: "1140 Pine Hollow, Austin, TX 78735",    label: "$1.45M · 6 DOM" },
+      { address: "65 Birch Court, Austin, TX 78759",      label: "$560K · 19 DOM" },
+    ],
+  },
   "overview": {
     title: "Portfolio overview",
-    subtitle: "Sample snapshot",
+    subtitle: "Sample snapshot · Downtown Austin metro",
+    region: "Austin, TX",
+    locations: [
+      { address: "412 Cedar Lane, Austin, TX 78704",   label: "$675K" },
+      { address: "880 Maple Ridge, Austin, TX 78745",  label: "$925K" },
+      { address: "27 Lakeshore Dr, Austin, TX 78732",  label: "$485K" },
+      { address: "1140 Pine Hollow, Austin, TX 78735", label: "$1.45M" },
+      { address: "65 Birch Court, Austin, TX 78759",   label: "$560K" },
+    ],
     fields: [
       { label: "Active deals",        value: "8" },
       { label: "Pipeline value",      value: "$4.2M" },
@@ -531,6 +868,14 @@ const RE_FIXTURES = {
   },
   "listings": {
     title: "Active listings",
+    region: "Austin, TX",
+    locations: [
+      { address: "412 Cedar Lane, Austin, TX 78704",   label: "3BR · $675K · 14 DOM" },
+      { address: "880 Maple Ridge, Austin, TX 78745",  label: "4BR · $925K · 8 DOM" },
+      { address: "27 Lakeshore Dr, Austin, TX 78732",  label: "2BR · $485K · 32 DOM" },
+      { address: "1140 Pine Hollow, Austin, TX 78735", label: "5BR · $1.45M · 6 DOM" },
+      { address: "65 Birch Court, Austin, TX 78759",   label: "3BR · $560K · 19 DOM" },
+    ],
     items: [
       "412 Cedar Lane · 3BR / 2BA · $675,000 · 14 DOM",
       "880 Maple Ridge · 4BR / 3BA · $925,000 · 8 DOM",
@@ -819,18 +1164,40 @@ function longTailTemplateKey(vertical) {
  * @returns {object|null} payload for context.payload
  */
 export function getFixtureForTab(worker, tabId) {
-  if (!isDemoMode() || !worker) return null;
+  if (!worker) return null;
   const slug = worker.slug || worker.workerId || "";
   const vertical = worker.vertical || worker.suite || "";
   const catalogId = String(worker.catalogId || "").toUpperCase();
 
+  // Aviation CoPilot baseline tabs ALWAYS load fixture content, regardless of
+  // demo mode. These tabs (Aircraft profile, Logbook, Currency, Duty, Training,
+  // Documents) represent the *baseline data layer* — AFM-derived aircraft data
+  // and operator-/pilot-scoped status. Without the baseline these tabs would be
+  // empty and useless. Real data plumbing replaces the baseline over time.
+  // 2026-05-13 (Sean).
+  const isAviationCopilot = /^AV-P\d/.test(catalogId);
+  if (isAviationCopilot && AVIATION_COPILOT_FIXTURES[tabId]) {
+    return { ...AVIATION_COPILOT_FIXTURES[tabId], ...DEMO };
+  }
+
+  // Map tabs ALWAYS load fixture content, regardless of demo mode. Sean's rule:
+  // every RE worker output leads with a map; aviation always shows the route.
+  // Without a fixture the map falls back to "San Francisco, CA" which is wrong
+  // for every vertical. Real chat-emitted CANVAS_RENDER markers override.
+  if (tabId === "map") {
+    if (SPINE_FIXTURES[slug] && SPINE_FIXTURES[slug].map) return { ...SPINE_FIXTURES[slug].map, ...DEMO };
+    if ((vertical === "real_estate_development" || vertical === "re_professional") && RE_FIXTURES.map) {
+      return { ...RE_FIXTURES.map, ...DEMO };
+    }
+    if (vertical === "auto_dealer" && AUTO_FIXTURES.map) return { ...AUTO_FIXTURES.map, ...DEMO };
+  }
+
+  // All other fixtures remain gated by demo mode.
+  if (!isDemoMode()) return null;
+
   // 1. Spine
   if (SPINE_FIXTURES[slug] && SPINE_FIXTURES[slug][tabId]) {
     return { ...SPINE_FIXTURES[slug][tabId], ...DEMO };
-  }
-  // 2. Aviation CoPilot
-  if (/^AV-P\d/.test(catalogId) && AVIATION_COPILOT_FIXTURES[tabId]) {
-    return { ...AVIATION_COPILOT_FIXTURES[tabId], ...DEMO };
   }
   // 3. Real estate suite
   if ((vertical === "real_estate_development" || vertical === "re_professional") && RE_FIXTURES[tabId]) {

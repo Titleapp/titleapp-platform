@@ -2,6 +2,63 @@ import React, { useState, useEffect, useRef } from "react";
 import { getAuth } from "firebase/auth";
 import FormModal from "../components/FormModal";
 import * as api from "../api/client";
+import { useCalendarStatus, connectCalendar, disconnectCalendar } from "../hooks/useCalendar";
+
+// Google Calendar connector status + connect/disconnect button.
+// Renders a single row inside the Integrations card.
+function GoogleCalendarRow() {
+  const { status, refresh } = useCalendarStatus();
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState(null);
+
+  async function handleConnect() {
+    setBusy(true); setErr(null);
+    try {
+      await connectCalendar();
+      await refresh();
+    } catch (e) {
+      setErr(e?.message || "Connection failed");
+    }
+    setBusy(false);
+  }
+
+  async function handleDisconnect() {
+    if (!window.confirm("Disconnect Google Calendar? Workers won't be able to read or create events until you reconnect.")) return;
+    setBusy(true); setErr(null);
+    try {
+      await disconnectCalendar();
+      await refresh();
+    } catch (e) {
+      setErr(e?.message || "Disconnect failed");
+    }
+    setBusy(false);
+  }
+
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontWeight: 600 }}>Google Calendar</div>
+        <div style={{ fontSize: "13px", color: "var(--textMuted)" }}>
+          {status.loading
+            ? "Checking…"
+            : status.connected
+              ? `Connected as ${status.email || "Google account"}. Workers can read your schedule and propose events.`
+              : "Connect so Alex and every worker can read your schedule and coordinate meetings, webinars, and deadlines."}
+        </div>
+        {err && <div style={{ fontSize: "12px", color: "#b91c1c", marginTop: 4 }}>{err}</div>}
+      </div>
+      {status.connected ? (
+        <button className="iconBtn" disabled={busy} onClick={handleDisconnect} style={{ whiteSpace: "nowrap", flexShrink: 0 }}>
+          {busy ? "…" : "Disconnect"}
+        </button>
+      ) : (
+        <button className="iconBtn" disabled={busy || status.loading} onClick={handleConnect} style={{ whiteSpace: "nowrap", flexShrink: 0 }}>
+          {busy ? "Connecting…" : "Connect"}
+        </button>
+      )}
+    </div>
+  );
+}
 
 // ── Personal Vault Settings ──────────────────────────────────────
 function PersonalSettings() {
@@ -638,12 +695,12 @@ function BusinessSettings() {
   const [showNewCompanyModal, setShowNewCompanyModal] = useState(false);
   const [newCompanyData, setNewCompanyData] = useState({
     name: "",
-    type: "business",
-    // 49.32 — default vertical no longer auto-dealer. Personal Vault is the
-    // launch baseline; admins can override per workspace.
+    type: "org",
     vertical: "consumer",
     jurisdiction: "",
   });
+  const [creatingCompany, setCreatingCompany] = useState(false);
+  const [newCompanyError, setNewCompanyError] = useState("");
 
   const vertical = localStorage.getItem("VERTICAL") || "consumer";
   const jurisdiction = localStorage.getItem("JURISDICTION") || "";
@@ -834,13 +891,46 @@ function BusinessSettings() {
   }
 
   async function handleCreateCompany(e) {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
+    const name = (newCompanyData.name || "").trim();
+    if (!name) {
+      setNewCompanyError("Company name is required.");
+      return;
+    }
+    setCreatingCompany(true);
+    setNewCompanyError("");
     try {
-      console.log("Creating new company:", newCompanyData);
+      const token = localStorage.getItem("ID_TOKEN");
+      const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+      const resp = await fetch(`${apiBase}/api?path=/v1/workspaces`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name,
+          vertical: newCompanyData.vertical || "consumer",
+          type: newCompanyData.type === "personal" ? "personal" : "org",
+          jurisdiction: (newCompanyData.jurisdiction || "").trim() || undefined,
+          onboardingComplete: true,
+        }),
+      });
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok || !data.ok) {
+        throw new Error(data.error || data.message || `HTTP ${resp.status}`);
+      }
+      const ws = data.workspace || {};
+      const wsId = ws.id || ws.tenantId;
+      if (!wsId) throw new Error("Workspace created but no id returned");
       setShowNewCompanyModal(false);
-      loadMyCompanies();
-    } catch (e) {
-      console.error("Failed to create company:", e);
+      setNewCompanyData({ name: "", type: "org", vertical: "consumer", jurisdiction: "" });
+      switchTenant({ id: wsId, name, vertical: ws.vertical || newCompanyData.vertical });
+    } catch (err) {
+      console.error("Failed to create company:", err);
+      setNewCompanyError(err.message || "Failed to create company.");
+    } finally {
+      setCreatingCompany(false);
     }
   }
 
@@ -970,6 +1060,7 @@ function BusinessSettings() {
           </div>
         </div>
         <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "12px" }}>
+          <GoogleCalendarRow />
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div><div style={{ fontWeight: 600 }}>Salesforce CRM</div><div style={{ fontSize: "13px", color: "var(--textMuted)" }}>Sync customer data with Salesforce</div></div>
             <button className="iconBtn">Connect</button>
@@ -1383,6 +1474,74 @@ function BusinessSettings() {
             ))}
           </div>
         )}
+      </FormModal>
+
+      {/* New Company Modal */}
+      <FormModal
+        isOpen={showNewCompanyModal}
+        onClose={() => {
+          if (creatingCompany) return;
+          setShowNewCompanyModal(false);
+          setNewCompanyError("");
+        }}
+        title="New Company"
+        onSubmit={handleCreateCompany}
+        submitLabel={creatingCompany ? "Creating…" : "Create Company"}
+      >
+        <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+          <div>
+            <label style={{ display: "block", marginBottom: "6px", fontWeight: 600 }}>Company Name</label>
+            <input
+              type="text"
+              autoFocus
+              value={newCompanyData.name}
+              onChange={(e) => setNewCompanyData({ ...newCompanyData, name: e.target.value })}
+              placeholder="e.g. TitleApp AI"
+              style={{ width: "100%", padding: "10px", borderRadius: "12px", border: "1px solid var(--line)" }}
+            />
+          </div>
+          <div>
+            <label style={{ display: "block", marginBottom: "6px", fontWeight: 600 }}>Industry</label>
+            <select
+              value={newCompanyData.vertical}
+              onChange={(e) => setNewCompanyData({ ...newCompanyData, vertical: e.target.value })}
+              style={{ width: "100%", padding: "10px", borderRadius: "12px", border: "1px solid var(--line)", background: "white" }}
+            >
+              {Object.entries(VERTICAL_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label style={{ display: "block", marginBottom: "6px", fontWeight: 600 }}>Workspace Type</label>
+            <select
+              value={newCompanyData.type}
+              onChange={(e) => setNewCompanyData({ ...newCompanyData, type: e.target.value })}
+              style={{ width: "100%", padding: "10px", borderRadius: "12px", border: "1px solid var(--line)", background: "white" }}
+            >
+              <option value="org">Organization (invite teammates)</option>
+              <option value="personal">Personal</option>
+            </select>
+          </div>
+          <div>
+            <label style={{ display: "block", marginBottom: "6px", fontWeight: 600 }}>Jurisdiction (optional)</label>
+            <input
+              type="text"
+              value={newCompanyData.jurisdiction}
+              onChange={(e) => setNewCompanyData({ ...newCompanyData, jurisdiction: e.target.value.toUpperCase().slice(0, 10) })}
+              placeholder="e.g. CA, IL, US"
+              style={{ width: "100%", padding: "10px", borderRadius: "12px", border: "1px solid var(--line)" }}
+            />
+          </div>
+          {newCompanyError && (
+            <div style={{ background: "#fee2e2", color: "#991b1b", padding: "10px 12px", borderRadius: "10px", fontSize: "13px" }}>
+              {newCompanyError}
+            </div>
+          )}
+          <div style={{ fontSize: "12px", color: "var(--textMuted)" }}>
+            Switching workspaces will reload the app. Your current workspace stays intact.
+          </div>
+        </div>
       </FormModal>
     </div>
   );

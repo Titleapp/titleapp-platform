@@ -3,6 +3,7 @@
     "public": "apps/business/dist",
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
     "rewrites": [
+      { "source": "/auth/google-drive-callback", "destination": "/auth/google-drive-callback.html" },
       { "source": "**", "destination": "/index.html" }
     ],
     "headers": [

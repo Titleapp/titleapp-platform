@@ -143,7 +143,7 @@
     },
     {
       "id": "W-002",
-      "name": "CRE Deal Analyst",
+      "name": "Real Estate Analyst + Investor",
       "slug": "cre-deal-analyst",
       "suite": "Investment",
       "phase": 0,
@@ -152,7 +152,7 @@
         "monthly": 79
       },
       "status": "live",
-      "capabilitySummary": "Deal score (0-100) BUY/HOLD/PASS, strengths/risks, side-by-side comparison, key metrics",
+      "capabilitySummary": "Real estate investment analyst — deal score (0-100) with BUY/HOLD/PASS recommendation, strengths/risks, side-by-side comparison, investor-side analysis, key metrics across CRE / multifamily / mixed-use deals.",
       "temporalType": "always_on",
       "mandatoryWhen": [],
       "vault": {

@@ -19,9 +19,12 @@ function loadWorkerKnowledge(workerSlug) {
   // All workers get brand guidelines and feature boundaries
   const files = ["brand-guidelines.md", "feature-boundaries.md"];
 
-  // Marketing workers also get compliance tiers
+  // Marketing workers also get compliance tiers + CODEX 50.15 P0-2 brand voice
+  // + May 2026 launch context (canonical positioning, Gate Analogy, bios, webinar URLs)
   if (workerSlug === "platform-marketing" || workerSlug === "marketing-content") {
     files.push("compliance-tiers.md");
+    files.push("brand-voice-marketing.md");
+    files.push("titleapp-launch-may-2026.md");
   }
 
   for (const file of files) {

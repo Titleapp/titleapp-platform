@@ -37,6 +37,9 @@ import Research from "./sections/Research";
 import ClientsLPs from "./sections/ClientsLPs";
 import DealPipeline from "./sections/DealPipeline";
 import VaultDocuments from "./sections/VaultDocuments";
+import Contacts from "./sections/Contacts";
+import Accounting from "./sections/Accounting";
+import CommandCenter from "./sections/CommandCenter";
 import VaultDTCs from "./sections/VaultDTCs";
 import VaultAssets from "./sections/VaultAssets";
 import VaultDeadlines from "./sections/VaultDeadlines";
@@ -4399,12 +4402,28 @@ function WorkerHomeRenderer({ onBack }) {
   const worker = workerCtx?.activeWorkerData || null;
   const tabs = Array.isArray(worker?.canvasTabs) ? worker.canvasTabs : [];
 
+  // Spine-worker overrides — for workers with first-class UI sections, render
+  // those instead of the generic canvas-tab home. Contacts has its own list
+  // view with workspace pill, search, tabs, KPIs, and Apollo pull. Accounting
+  // has 7 tabs + a persistent setup checklist (Sean 2026-05-13 design call).
+  if (worker?.slug === "platform-contacts") {
+    return <Contacts />;
+  }
+  if (worker?.slug === "platform-accounting") {
+    return <Accounting />;
+  }
+  if (worker?.slug === "platform-control-center-pro") {
+    return <CommandCenter />;
+  }
+
   // 50.10-T4 — fixture-aware tab click. When demo mode is on, derive the per-tab
   // payload from sampleData (the canonical source) and pass it as context.payload
   // so the card renders sample content with the SAMPLE chip in its header.
   const handleTabSelect = React.useCallback((tab, resolved) => {
     const payload = getFixtureForTab(worker, tab.id);
-    const ctx = payload ? { payload } : {};
+    // Always include worker in context so cards can render worker-scoped UI
+    // (e.g., OperatorUploadPrompt needs workerSlug to tag uploaded files).
+    const ctx = { worker, ...(payload ? { payload } : {}) };
     if (panel?.showCanvas) panel.showCanvas(resolved, ctx);
   }, [worker, panel]);
 
@@ -4425,7 +4444,7 @@ function WorkerHomeRenderer({ onBack }) {
     const resolved = lookupSignal(def.signal);
     if (!resolved) return;
     const payload = getFixtureForTab(worker, def.id);
-    const ctx = payload ? { payload } : {};
+    const ctx = { worker, ...(payload ? { payload } : {}) };
     if (panel?.showCanvas) panel.showCanvas(resolved, ctx);
   }, [worker?.slug, tabs, panel]);
 
@@ -4580,6 +4599,20 @@ function AdminShell({ onBackToHub, initialSection }) {
         return <DealPipeline />;
       case "vault-documents":
         return <VaultDocuments />;
+      case "contacts-all":
+      case "client-list":
+      case "vendor-list":
+      case "follow-ups":
+        return <Contacts />;
+      case "financials":
+      case "ap-ar":
+      case "invoices":
+      case "chart-of-accounts":
+        return <Accounting />;
+      case "control-center":
+      case "kpi-builder":
+      case "alerts":
+        return <CommandCenter />;
       case "vault-dtcs":
         return <VaultDTCs />;
       case "vault-assets":

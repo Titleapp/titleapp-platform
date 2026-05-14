@@ -58,6 +58,12 @@ export function WorkerStateProvider({ children }) {
           activeSubstrateFeatures: Array.isArray(lp.activeSubstrateFeatures) ? lp.activeSubstrateFeatures : [],
           workerType: d.worker_type || "worker",
           canvasTabs: Array.isArray(d.canvasTabs) ? d.canvasTabs : [],
+          // catalogId is required by sampleData.getFixtureForTab to detect
+          // aviation CoPilots (AV-P##) and load baseline fixtures regardless
+          // of demo-mode. Without it, the regex check fails and aviation
+          // map/aircraft/logbook/etc. tabs fall through to a SF default.
+          catalogId: d.catalogId || d.catalog_id || "",
+          suite: d.suite || "",
         };
         setActiveWorkerData((prev) => {
           if (prev && prev.slug === slug) {
