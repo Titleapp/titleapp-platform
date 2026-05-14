@@ -10539,10 +10539,19 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
         // Page query — orderBy doc id so startAfter cursor is stable and we
         // don't need a composite index. (Recent-first ordering is applied
         // client-side via the recent-tab in the UI.)
+        //
+        // When q OR segment is provided, we widen the scan window so the
+        // filter runs across the whole tenant instead of just the first
+        // page. Otherwise typing "HOM DAO" would only find matches in the
+        // 200 docs the cursor happens to be on. Cap at 5000 to keep the
+        // read cost bounded — at typical tenant sizes (3-5k contacts) this
+        // is one full pass.
+        const isFilterQuery = !!(q || segment || workerSlug);
+        const fetchLimit = isFilterQuery ? 5000 : limit;
         let query = db.collection("contacts")
           .where("tenantId", "==", ctx.tenantId)
           .orderBy("__name__")
-          .limit(limit);
+          .limit(fetchLimit);
         if (cursor) query = query.startAfter(cursor);
         const snap = await query.get();
         let contacts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -10572,16 +10581,34 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
             return false;
           });
         }
-        // Search filter — name, email, company, title
+        // Search filter — name, email, company, title, PLUS segments and
+        // persona tags. Typing "HOM DAO" should find contacts tagged
+        // hom_dao_token_holders; "Y Combinator" should find contacts in
+        // accelerator-program companies; "investor" should find anyone
+        // tagged investor_candidate. We normalize both sides by stripping
+        // dashes/underscores so "HOM DAO" matches "hom_dao_token_holders".
         if (q) {
+          const normalize = (s) => String(s || "").toLowerCase().replace(/[_\-\s]+/g, " ").trim();
+          const qNorm = normalize(q);
           contacts = contacts.filter(c => {
-            const hay = [
+            const directHay = [
               c.first_name, c.last_name, c.name, c.full_name,
               c.email, c.primary_email,
               c.company, c.organization,
               c.title, c.job_title,
             ].filter(Boolean).join(" ").toLowerCase();
-            return hay.includes(q);
+            if (directHay.includes(q)) return true;
+
+            const segHay = (Array.isArray(c.segments) ? c.segments : []).map(normalize).join(" ");
+            if (segHay.includes(qNorm)) return true;
+
+            const personaTags = (Array.isArray(c.personas) ? c.personas : [])
+              .flatMap(p => Array.isArray(p.tags) ? p.tags : [])
+              .map(normalize)
+              .join(" ");
+            if (personaTags.includes(qNorm)) return true;
+
+            return false;
           });
         }
 
@@ -10890,6 +10917,39 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       } catch (e) {
         console.error("[contacts:update] error:", e.message);
         return jsonError(res, 500, "Failed to update contact");
+      }
+    }
+
+    // GET /v1/contacts:segmentSummary — tenant-wide segment census.
+    // Returns { segments: [{ slug, count }] } aggregated across ALL contacts
+    // in the workspace (not just the current page). Powers the "Your
+    // segments" panel in the Contacts UI so the user can see real groups
+    // and click to filter, instead of computing from the paginated view.
+    if (route === "/contacts:segmentSummary" && method === "GET") {
+      try {
+        const snap = await db.collection("contacts")
+          .where("tenantId", "==", ctx.tenantId)
+          .select("segments", "status")
+          .get();
+        const counts = {};
+        let total = 0;
+        snap.forEach(d => {
+          const data = d.data();
+          if (data.status === "deleted") return;
+          total += 1;
+          const segs = Array.isArray(data.segments) ? data.segments : [];
+          for (const s of segs) {
+            if (!s) continue;
+            counts[s] = (counts[s] || 0) + 1;
+          }
+        });
+        const segments = Object.entries(counts)
+          .map(([slug, count]) => ({ slug, count }))
+          .sort((a, b) => b.count - a.count);
+        return res.json({ ok: true, total, segments });
+      } catch (e) {
+        console.error("[contacts:segmentSummary] error:", e.message);
+        return jsonError(res, 500, "Failed to summarize segments");
       }
     }
 

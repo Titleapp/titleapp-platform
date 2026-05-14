@@ -190,9 +190,15 @@ export default function Contacts() {
 
   const {
     listContacts, apolloPull, addContact, bulkImportContacts, bulkDeleteContacts,
-    proposeSegments, applySegment, enrichContacts,
+    proposeSegments, applySegment, enrichContacts, segmentSummary,
     loading,
   } = useContacts();
+
+  // Tenant-wide segment census — actual tagged segments + counts. Loaded
+  // once on mount + after each apply/import so the user always sees the
+  // real state, not the paginated view.
+  const [allSegments, setAllSegments] = useState([]);
+  const [activeSegment, setActiveSegment] = useState(null);
 
   // Auto-organize state — the proposal payload from /contacts:proposeSegments
   // and the per-bucket apply status so the UI can show progress.
@@ -212,7 +218,10 @@ export default function Contacts() {
   const refresh = useCallback(async () => {
     setLoadError(null);
     setSelected(new Set());
-    const result = await listContacts({ q: search, limit: 200 });
+    const [result, summary] = await Promise.all([
+      listContacts({ q: search, limit: 200, segment: activeSegment }),
+      segmentSummary(),
+    ]);
     if (result?.ok) {
       setContacts(result.contacts || []);
       setStats(result.stats || { total: 0, byWorker: {}, bySegment: {} });
@@ -224,7 +233,8 @@ export default function Contacts() {
       setNextCursor(null);
       setHasMore(false);
     }
-  }, [listContacts, search]);
+    if (summary?.ok) setAllSegments(summary.segments || []);
+  }, [listContacts, search, segmentSummary, activeSegment]);
 
   const loadMore = useCallback(async () => {
     if (!nextCursor || loadingMore) return;
@@ -410,6 +420,73 @@ export default function Contacts() {
           <div style={{ fontSize: 22, fontWeight: 700, color: "#1e293b", marginTop: 2 }}>{Object.keys(stats.bySegment || {}).length}</div>
         </div>
       </div>
+
+      {/* Your segments — actual tagged segments across the whole tenant
+          (not just the page). Each pill is clickable to filter the contact
+          list. Top-level groups (hom_dao_*, network_*, titleapp_ai_*,
+          sales_prospects, sales_<vertical>) get visual emphasis; the long
+          tail of inferred sub-tags collapses below. */}
+      {allSegments.length > 0 && (
+        <div className="card" style={{ padding: "14px 16px", marginBottom: 16 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "#1e293b" }}>Your segments</div>
+              <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
+                Click a pill to filter the contact list. {activeSegment ? `Filtering by: ${activeSegment}` : "Showing all contacts."}
+              </div>
+            </div>
+            {activeSegment && (
+              <button onClick={() => setActiveSegment(null)} style={{ fontSize: 12, color: "#7c3aed", background: "white", border: "1px solid #c4b5fd", padding: "6px 12px", borderRadius: 6, cursor: "pointer", fontWeight: 600 }}>
+                Clear filter
+              </button>
+            )}
+          </div>
+          {/* Group segments by prefix for readability: top-level groups first,
+              then sales sub-tags, then everything else. */}
+          {(() => {
+            const groupRank = (slug) => {
+              if (slug === "titleapp_ai_investors") return 0;
+              if (slug === "hom_dao_token_holders" || slug === "hom_dao_contributors") return 1;
+              if (slug === "network_sean" || slug === "network_kent") return 2;
+              if (slug === "sales_prospects") return 3;
+              if (slug.startsWith("sales_")) return 4;
+              if (slug.startsWith("linkedin-network")) return 5;
+              return 6;
+            };
+            const sorted = [...allSegments].sort((a, b) => {
+              const ra = groupRank(a.slug); const rb = groupRank(b.slug);
+              if (ra !== rb) return ra - rb;
+              return b.count - a.count;
+            });
+            return (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {sorted.map(s => {
+                  const isActive = activeSegment === s.slug;
+                  const isPrimary = groupRank(s.slug) <= 3;
+                  return (
+                    <button
+                      key={s.slug}
+                      onClick={() => setActiveSegment(isActive ? null : s.slug)}
+                      style={{
+                        fontSize: 12,
+                        fontWeight: 600,
+                        padding: "5px 10px",
+                        borderRadius: 999,
+                        cursor: "pointer",
+                        border: `1px solid ${isActive ? "#7c3aed" : isPrimary ? "#c4b5fd" : "#e2e8f0"}`,
+                        background: isActive ? "#7c3aed" : isPrimary ? "#f5f3ff" : "white",
+                        color: isActive ? "white" : isPrimary ? "#6d28d9" : "#475569",
+                      }}
+                    >
+                      {s.slug} <span style={{ opacity: 0.7, marginLeft: 4 }}>{s.count.toLocaleString()}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            );
+          })()}
+        </div>
+      )}
 
       {/* Auto-organize proposal panel — appears after the user clicks
           "Auto-organize" in the top bar. Shows the breakdown the server

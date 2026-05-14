@@ -132,6 +132,19 @@ export default function useContacts() {
     }
   }, []);
 
+  // Tenant-wide segment census. Returns the real segments tagged on
+  // contacts (hom_dao_token_holders, network_sean, sales_real_estate,
+  // etc.) with their counts, so the UI can show actual groups instead
+  // of just heuristic proposals.
+  const segmentSummary = useCallback(async () => {
+    try {
+      return await apiFetch("/v1/contacts:segmentSummary");
+    } catch (e) {
+      setError(e.message);
+      return { ok: false, segments: [], total: 0 };
+    }
+  }, []);
+
   // Server-side persona heuristics propose segment buckets so the user
   // doesn't have to filter one-by-one. Returns { ok, scanned, breakdown:
   // [{ slug, label, description, count, ids[] }] }.
@@ -181,7 +194,7 @@ export default function useContacts() {
   return {
     listContacts, apolloPull,
     addContact, bulkImportContacts, bulkDeleteContacts, updateContact,
-    proposeSegments, applySegment, enrichContacts,
+    proposeSegments, applySegment, enrichContacts, segmentSummary,
     loading, error,
   };
 }
