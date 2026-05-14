@@ -506,7 +506,9 @@ function AccountsPane({ accounts, loading, onAdd, onDelete }) {
 // "where do my Cash Flow / P&L / Balance Sheet artifacts live" surface the
 // chat keeps referring to.
 function ReportsPane({ fiscalYear = "all" }) {
-  const { listDocuments, downloadFile } = useDocuments();
+  const { listDocuments, downloadFile, deleteDocument } = useDocuments();
+  const [deletingId, setDeletingId] = useState(null);
+  const [confirmDelete, setConfirmDelete] = useState(null);
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [openId, setOpenId] = useState(null);
@@ -667,6 +669,13 @@ function ReportsPane({ fiscalYear = "all" }) {
                     <button onClick={() => openReport(r)} style={{ fontSize: 12, color: "#7c3aed", background: "none", border: "1px solid #c4b5fd", padding: "4px 10px", borderRadius: 6, cursor: "pointer", fontWeight: 600 }}>
                       {isOpen ? "Hide" : "Open"}
                     </button>
+                    <button
+                      onClick={() => setConfirmDelete(r)}
+                      title="Delete this report"
+                      style={{ fontSize: 12, color: "#dc2626", background: "none", border: "1px solid #fecaca", padding: "4px 10px", borderRadius: 6, cursor: "pointer", fontWeight: 600 }}
+                    >
+                      Delete
+                    </button>
                   </div>
                 </div>
                 {isOpen && (
@@ -701,6 +710,45 @@ function ReportsPane({ fiscalYear = "all" }) {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Delete confirmation — soft-deletes the storage object so the row
+          drops out of the list immediately. Storage.deleteObject handles the
+          GCS hard-delete; Firestore row is marked status:"deleted" which the
+          list filter already drops. */}
+      {confirmDelete && (
+        <div onClick={() => setConfirmDelete(null)} style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
+          <div onClick={e => e.stopPropagation()} className="card" style={{ width: 440, padding: 20 }}>
+            <div style={{ fontSize: 16, fontWeight: 700, color: "#1e293b" }}>Delete this report?</div>
+            <div style={{ fontSize: 13, color: "#475569", marginTop: 8, lineHeight: 1.5 }}>
+              <strong>{confirmDelete.displayTitle || confirmDelete.filename}</strong>
+              <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>This removes the file from Drive. You can always re-generate it by asking Accounting chat.</div>
+            </div>
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>
+              <button onClick={() => setConfirmDelete(null)} style={{ padding: "8px 14px", fontSize: 13, fontWeight: 600, background: "white", color: "#1e293b", border: "1px solid #e2e8f0", borderRadius: 8, cursor: "pointer" }}>Cancel</button>
+              <button
+                onClick={async () => {
+                  const id = confirmDelete.objectId || confirmDelete.id;
+                  setDeletingId(id);
+                  try {
+                    const r = await deleteDocument(id);
+                    if (r?.ok) {
+                      setReports(prev => prev.filter(x => (x.objectId || x.id) !== id));
+                      if (openId === id) { setOpenId(null); setOpenContent(""); setOpenUrl(""); setOpenFormat(""); }
+                    }
+                  } finally {
+                    setDeletingId(null);
+                    setConfirmDelete(null);
+                  }
+                }}
+                disabled={deletingId === (confirmDelete.objectId || confirmDelete.id)}
+                style={{ padding: "8px 14px", fontSize: 13, fontWeight: 600, background: "#dc2626", color: "white", border: "none", borderRadius: 8, cursor: "pointer" }}
+              >
+                {deletingId === (confirmDelete.objectId || confirmDelete.id) ? "Deleting…" : "Delete"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

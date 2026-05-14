@@ -408,15 +408,31 @@ async function archiveToCanvas({ canvasRenders, tenantId, userId }) {
       const shortType = r.type.replace(/^card:accounting-/, "");
       const today = new Date().toISOString().slice(0, 10);
       const p = r.payload || {};
-      const periodStr = String(p.period || p.profitLoss?.period || p.cashFlow?.period || p.balanceSheet?.asOf || p.asOf || "").trim();
+      const rawPeriod = String(p.period || p.profitLoss?.period || p.cashFlow?.period || p.balanceSheet?.asOf || p.asOf || "").trim();
+      // Normalize placeholder-y period strings the model sometimes emits
+      // ("TBD", "Unknown", "N/A", "—") to empty so the display falls
+      // through to the undated branch. Prevents the user from seeing
+      // "Cash Flow · TBD" rows in the Reports tab.
+      const placeholderRe = /^(tbd|unknown|n\/?a|none|—|-+|null|undefined)$/i;
+      const periodStr = placeholderRe.test(rawPeriod) ? "" : rawPeriod;
       const summaryStr = String(p.summary || p.profitLoss?.summary || p.cashFlow?.summary || p.balanceSheet?.summary || "");
       const yearMatch = periodStr.match(/\b(20\d{2})\b/);
       const periodYear = yearMatch ? yearMatch[1] : null;
       const variant = inferVariant(periodStr, summaryStr);
       const typeLabel = TYPE_LABELS[shortType] || shortType;
-      const periodDisplay = periodStr || (periodYear ? `FY ${periodYear}` : "");
-      const variantSuffix = variant === "actual" ? "" : ` · ${variant}`;
-      const displayTitle = periodDisplay ? `${typeLabel} · ${periodDisplay}${variantSuffix}` : typeLabel;
+      // Display title preference: real period > FY-only > clearly-marked
+      // undated. The undated branch surfaces today's date so the user can
+      // still distinguish two undated cash flow drafts from each other
+      // (a common case while building out a baseline).
+      let displayTitle;
+      if (periodStr) {
+        const variantSuffix = variant === "actual" ? "" : ` · ${variant}`;
+        displayTitle = `${typeLabel} · ${periodStr}${variantSuffix}`;
+      } else if (periodYear) {
+        displayTitle = `${typeLabel} · FY ${periodYear}`;
+      } else {
+        displayTitle = `${typeLabel} · undated draft · ${today}`;
+      }
       const periodSlug = slugifyPeriod(periodStr, periodYear || today.slice(0, 4));
       const filename = `${shortType}-${periodSlug}-${variant}-${today}.${ext}`;
 

@@ -2098,7 +2098,7 @@ export default function Sidebar({
       {(() => {
         // Filter out account-level items so they live in their own ACCOUNT
         // section at the bottom.
-        const ACCOUNT_IDS = new Set(["billing", "settings"]);
+        const ACCOUNT_IDS = new Set(["billing", "settings", "suggestions"]);
         const contextualItems = myWorkItems.filter(i => !ACCOUNT_IDS.has(i.id));
 
         // CODEX 50.10-T2 Note 2 — when no worker is selected, the sidebar
@@ -2150,6 +2150,13 @@ export default function Sidebar({
             style={{ width: "100%", textAlign: "left", cursor: "pointer" }}
           >
             Settings
+          </button>
+          <button
+            className={`navItem ${currentSection === "suggestions" ? "navItemActive" : ""}`}
+            onClick={() => handleNavClick("suggestions")}
+            style={{ width: "100%", textAlign: "left", cursor: "pointer" }}
+          >
+            Suggestions
           </button>
           <button
             className={`navItem ${currentSection === "rules" ? "navItemActive" : ""}`}

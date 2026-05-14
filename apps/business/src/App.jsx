@@ -22,6 +22,7 @@ import Staff from "./sections/Staff";
 import Reports from "./sections/Reports";
 import DataAPIs from "./sections/DataAPIs";
 import Settings from "./sections/Settings";
+import SuggestionsAdmin from "./sections/SuggestionsAdmin";
 import FIProducts from "./sections/FIProducts";
 import AutoService from "./sections/AutoService";
 import SalesPipeline from "./sections/SalesPipeline";
@@ -4573,6 +4574,8 @@ function AdminShell({ onBackToHub, initialSection }) {
         return <Rules />;
       case "settings":
         return <Settings />;
+      case "suggestions":
+        return <SuggestionsAdmin />;
       case "billing":
         return <BillingPage />;
       case "worker-home":

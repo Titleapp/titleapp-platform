@@ -15851,6 +15851,31 @@ Never attempt to output an entire multi-page document in a single response. For 
         return jsonError(res, 500, "Failed to transition improvement request");
       }
     }
+    // GET /v1/improvementRequests:adminList — platform-wide list, gated
+    // on admins/{uid} doc existence. The user-scoped :list endpoint
+    // requires workerOwnerId or submitterId, which doesn't let Sean (or
+    // any platform admin) see suggestions submitted by other users across
+    // workers Sean doesn't own. This unscoped variant fills that gap so
+    // suggestions actually become reviewable instead of stuck in Firestore.
+    if (route === "/improvementRequests:adminList" && method === "GET") {
+      try {
+        const adminSnap = await db.doc(`admins/${auth.user.uid}`).get();
+        if (!adminSnap.exists) {
+          return jsonError(res, 403, "admin role required");
+        }
+        const status = (req.query.status || "").toString().trim();
+        const limitN = Math.min(parseInt(req.query.limit) || 100, 500);
+        let q = db.collection("improvementRequests");
+        if (status) q = q.where("status", "==", status);
+        q = q.orderBy("createdAt", "desc").limit(limitN);
+        const snap = await q.get();
+        const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        return res.json({ ok: true, items, total: items.length });
+      } catch (e) {
+        console.error("❌ improvementRequests:adminList failed:", e);
+        return jsonError(res, 500, "Failed to list improvement requests");
+      }
+    }
 
     // ----------------------------
     // CODEX 50.11 — PER-MESSAGE FEEDBACK
