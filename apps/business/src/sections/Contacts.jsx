@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import useContacts from "../hooks/useContacts";
+import SuggestImprovementButton from "../components/SuggestImprovementButton";
 
 const TABS = [
   { id: "all", label: "All" },
@@ -365,7 +366,8 @@ export default function Contacts() {
             {workspaceLabel()}
           </span>
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <SuggestImprovementButton workerSlug="platform-contacts" />
           <button className="iconBtn" onClick={refresh} style={{ background: "white", color: "#1e293b", border: "1px solid #e2e8f0" }}>Refresh</button>
           <button
             className="iconBtn"

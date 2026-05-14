@@ -10,6 +10,7 @@
 import React, { useState, useEffect } from "react";
 import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
+import SuggestImprovementButton from "../components/SuggestImprovementButton";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
 
@@ -360,7 +361,10 @@ export default function ControlCenter() {
     <div style={S.container}>
       <div style={S.header}>
         <div style={S.title}>Control Center</div>
-        <div style={S.date}>{briefing.date || ""}</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <SuggestImprovementButton workerSlug="platform-control-center-pro" />
+          <div style={S.date}>{briefing.date || ""}</div>
+        </div>
       </div>
 
       <div style={{ ...S.priority, ...priorityStyle }}>
