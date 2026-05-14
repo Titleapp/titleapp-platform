@@ -251,6 +251,15 @@ async function list(uid, { scope, orgId, parentProjectId, limit: lim = 50, offse
       parentProjectId: data.parentProjectId,
       tags: data.tags,
       createdAt: data.createdAt,
+      // Report metadata — set by canvasArchive on Firestore after upload.
+      // Surfaced here so Accounting's Reports tab can label rows and filter
+      // by fiscal year without having to do a second per-object lookup.
+      status: data.status || "active",
+      displayTitle: data.displayTitle || null,
+      reportType: data.reportType || null,
+      reportPeriod: data.reportPeriod || null,
+      reportPeriodYear: data.reportPeriodYear || null,
+      reportVariant: data.reportVariant || null,
     }));
 
   return { ok: true, objects, total: objects.length };

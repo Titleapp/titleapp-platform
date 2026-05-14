@@ -215,6 +215,13 @@ function coerceCashFlow(payload) {
 function coercePL(payload) {
   if (!payload || typeof payload !== "object") return payload;
   if (payload.plData && typeof payload.plData === "object") return payload;
+  // Model frequently emits the data under `profitLoss` (its own naming choice).
+  // Lift those fields to top-level so renderers see them, and also keep a
+  // `plData` mirror for the legacy path.
+  if (payload.profitLoss && typeof payload.profitLoss === "object") {
+    const lifted = { ...payload, ...payload.profitLoss };
+    return { ...lifted, plData: payload.profitLoss };
+  }
   const pl = {};
   for (const k of ["period", "revenue", "expenses", "netIncome", "grossProfit", "operatingIncome", "categories"]) {
     if (payload[k] != null) pl[k] = payload[k];

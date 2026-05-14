@@ -12,16 +12,41 @@
 const SCHEMA_VERSION_V2 = "spine_v2";
 const SCHEMA_VERSION_V2_1 = "spine_v2.1";
 
-const VALID_TYPES = ["customer", "vendor", "investor", "tenant", "employee", "patient", "student", "contractor", "personal"];
+// Persona TYPE — what kind of relationship this contact represents. A single
+// contact can carry multiple personas (e.g. a person who is both an investor
+// candidate AND a B2B prospect). Compliance-bearing types (investor) require
+// the persona.compliance block to be populated before any active-offering
+// segment can be applied.
+const VALID_TYPES = [
+  // Original v2.1 types
+  "customer", "vendor", "investor", "tenant", "employee", "patient", "student", "contractor", "personal",
+  // S50.21 startup-ecosystem additions
+  "creator",              // Digital Worker authors on the TitleApp platform
+  "advisor",              // formal advisors, cap-table observers
+  "partner",              // integration partners, channel partners
+  "journalist",           // press contacts, editors, reporters
+  "regulator",            // SEC, state regulators, OFAC liaison contacts
+  "professional_services",// law firms, accounting firms, consultancies retained by TitleApp
+];
+
 const VALID_TIERS = ["personal", "professional", "confidential", "investor", "customer", "prospect", "partner", "vendor"];
 const VALID_LIFECYCLE = ["cold", "warm", "engaged", "converted", "churned", "lost"];
+
+// Investor-persona compliance gates. Required when an investor contact is
+// promoted to an active offering segment. Mirrored at the top level for
+// quick filter queries.
+const VALID_ACCREDITATION_STATUS = ["none", "self_certified", "verified", "expired", "exempt"];
+const VALID_ACCREDITATION_METHOD = ["income", "net_worth", "professional_cert", "entity_status"];
+const VALID_OFAC_STATUS = ["not_screened", "clear", "match", "review"];
+const VALID_KYC_STATUS = ["none", "pending", "verified", "failed"];
 
 function defaultTierFromType(type) {
   if (type === "investor") return "investor";
   if (type === "customer") return "customer";
-  if (type === "vendor") return "vendor";
+  if (type === "vendor" || type === "professional_services") return "vendor";
   if (type === "tenant" || type === "patient" || type === "student") return "customer";
   if (type === "personal") return "personal";
+  if (type === "partner" || type === "advisor") return "partner";
   return "professional";
 }
 
@@ -254,6 +279,10 @@ module.exports = {
   VALID_TYPES,
   VALID_TIERS,
   VALID_LIFECYCLE,
+  VALID_ACCREDITATION_STATUS,
+  VALID_ACCREDITATION_METHOD,
+  VALID_OFAC_STATUS,
+  VALID_KYC_STATUS,
   // Helpers
   defaultTierFromType,
   nextPersonaId,

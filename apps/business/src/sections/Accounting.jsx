@@ -66,6 +66,11 @@ function formatCurrency(n, ccy = "USD") {
 
 export default function Accounting() {
   const [tab, setTab] = useState("dashboard");
+  // Fiscal year filter — defaults to current calendar year. "all" shows
+  // everything. Wired to ReportsPane today; other panes pick it up next pass.
+  // Named selectedYear to avoid colliding with useAccounting().setFiscalYear
+  // which is the setup-step endpoint setter.
+  const [selectedYear, setSelectedYear] = useState(String(new Date().getFullYear()));
   const [setupState, setSetupState] = useState({ steps: {}, dismissed: false });
   const [accounts, setAccounts] = useState([]);
   const [coa, setCoa] = useState([]);
@@ -247,14 +252,19 @@ export default function Accounting() {
         </div>
       )}
 
-      {/* Tabs */}
-      <div style={{ display: "flex", gap: 4, borderBottom: "1px solid #e2e8f0", marginBottom: 16, overflowX: "auto" }}>
+      {/* Fiscal year selector — last 3 fiscal years + All time. Auto-computed
+          from the current year; will respect fiscalYearStart once tied in. */}
+      <FiscalYearBar value={selectedYear} onChange={setSelectedYear} />
+
+      {/* Tabs — wrap to second row instead of horizontal scroll. Sean called
+          out the scrollbar as suboptimal 2026-05-14. */}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 4, borderBottom: "1px solid #e2e8f0", marginBottom: 16 }}>
         {TABS.map(t => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
             style={{
-              padding: "10px 16px", fontSize: 13, fontWeight: 600, whiteSpace: "nowrap",
+              padding: "10px 14px", fontSize: 13, fontWeight: 600, whiteSpace: "nowrap",
               background: "none", border: "none", borderBottom: tab === t.id ? "2px solid #7c3aed" : "2px solid transparent",
               color: tab === t.id ? "#7c3aed" : "#64748b", cursor: "pointer", marginBottom: -1,
             }}
@@ -298,7 +308,7 @@ export default function Accounting() {
         />
       )}
       {tab === "invoices" && <ComingSoonPane title="Invoices & Bills" body="Two-pane view: invoices you've issued (AR) on one side, bills you owe (AP) on the other. Coming after Transactions." />}
-      {tab === "reports" && <ReportsPane />}
+      {tab === "reports" && <ReportsPane fiscalYear={selectedYear} />}
       {tab === "tax" && <ComingSoonPane title="Tax & Filing" body="1099 prep, quarterly estimates, accountant handoff packet. Ships once categorized transactions exist." />}
 
       {showAddAccount && (
@@ -491,12 +501,14 @@ function AccountsPane({ accounts, loading, onAdd, onDelete }) {
 // under accounting/reports/ on the workspace's storageObjects). This is the
 // "where do my Cash Flow / P&L / Balance Sheet artifacts live" surface the
 // chat keeps referring to.
-function ReportsPane() {
+function ReportsPane({ fiscalYear = "all" }) {
   const { listDocuments, downloadFile } = useDocuments();
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [openId, setOpenId] = useState(null);
   const [openContent, setOpenContent] = useState("");
+  const [openUrl, setOpenUrl] = useState("");
+  const [openFormat, setOpenFormat] = useState("");
   const [openLoading, setOpenLoading] = useState(false);
 
   const refresh = useCallback(async () => {
@@ -510,15 +522,28 @@ function ReportsPane() {
     // service tags every file with ["accounting", "report", shortType] AND
     // names them <shortType>-<YYYY-MM-DD>.md. Also catch generic markdown
     // since other workers may save reports here too.
-    const filtered = all.filter(o => {
+    let filtered = all.filter(o => {
+      // Suppress superseded reports (dedup pattern in canvasArchive).
+      if (o.status && o.status !== "active") return false;
       const name = (o.filename || "").toLowerCase();
       const mime = (o.mimeType || "").toLowerCase();
       const tags = Array.isArray(o.tags) ? o.tags.map(t => String(t).toLowerCase()) : [];
       if (tags.includes("accounting")) return true;
       if (tags.includes("report") && mime.includes("markdown")) return true;
-      if (/^(pl|balance-sheet|cashflow|invoice|coa)-\d{4}-\d{2}-\d{2}/.test(name)) return true;
+      if (/^(pl|balance-sheet|cashflow|invoice|coa)-/.test(name)) return true;
       return false;
     });
+    // Fiscal year filter — prefer the structured reportPeriodYear field set by
+    // canvasArchive. Fall back to filename year parsing for legacy reports
+    // that pre-date the metadata patch.
+    if (fiscalYear && fiscalYear !== "all") {
+      filtered = filtered.filter(o => {
+        if (o.reportPeriodYear) return String(o.reportPeriodYear) === String(fiscalYear);
+        const m = (o.filename || "").match(/-(\d{4})-\d{2}-\d{2}/);
+        if (!m) return true;
+        return m[1] === String(fiscalYear);
+      });
+    }
     // Map storage's objectId → id so the rest of the component can use a
     // consistent field name.
     const normalized = filtered.map(o => ({ ...o, id: o.objectId || o.id }));
@@ -527,10 +552,10 @@ function ReportsPane() {
       const bt = b.createdAt?._seconds || b.createdAt?.seconds || 0;
       return bt - at;
     });
-    console.log("[ReportsPane] storage:list returned", all.length, "objects;", filtered.length, "matched accounting filter");
+    console.log("[ReportsPane] storage:list returned", all.length, "objects;", filtered.length, "matched accounting filter (fiscalYear=" + fiscalYear + ")");
     setReports(normalized);
     setLoading(false);
-  }, [listDocuments]);
+  }, [listDocuments, fiscalYear]);
 
   useEffect(() => {
     refresh();
@@ -539,14 +564,23 @@ function ReportsPane() {
     return () => window.removeEventListener("ta:accounting-changed", onChanged);
   }, [refresh]);
 
+  // Detect the file's display format. Prefer the structured reportFormat
+  // metadata canvasArchive writes; fall back to the filename extension so
+  // legacy .md reports still preview correctly.
+  const formatOf = (obj = {}) => {
+    if (obj.reportFormat) return String(obj.reportFormat).toLowerCase();
+    const m = String(obj.filename || "").toLowerCase().match(/\.([a-z0-9]+)$/);
+    return m ? m[1] : "";
+  };
+
   const openReport = async (obj) => {
-    if (openId === obj.id) { setOpenId(null); setOpenContent(""); return; }
+    if (openId === obj.id) { setOpenId(null); setOpenContent(""); setOpenUrl(""); setOpenFormat(""); return; }
+    const fmt = formatOf(obj);
     setOpenId(obj.id);
     setOpenContent("");
+    setOpenUrl("");
+    setOpenFormat(fmt);
     setOpenLoading(true);
-    // downloadFile() opens the signed URL in a new tab; we also need the
-    // content inline. Fetch the signed URL directly — GCS signed URLs are
-    // public per-token so this works from the browser.
     try {
       const token = localStorage.getItem("ID_TOKEN");
       const tenantId = localStorage.getItem("TENANT_ID") || localStorage.getItem("WORKSPACE_ID") || "vault";
@@ -554,11 +588,17 @@ function ReportsPane() {
       const meta = await fetch(`${apiBase}/v1/storage:download?objectId=${obj.id}`, {
         headers: { Authorization: `Bearer ${token}`, "x-tenant-id": tenantId },
       }).then(r => r.json());
-      if (meta?.ok && meta?.downloadUrl) {
+      if (!meta?.ok || !meta?.downloadUrl) {
+        setOpenContent(meta?.error || "Could not load report.");
+        return;
+      }
+      setOpenUrl(meta.downloadUrl);
+      // .md preview keeps the inline markdown renderer for legacy reports.
+      // .pdf renders inline via <iframe>. .xlsx can't preview in-browser —
+      // we surface a Download button only.
+      if (fmt === "md") {
         const txt = await fetch(meta.downloadUrl).then(r => r.text());
         setOpenContent(txt);
-      } else {
-        setOpenContent(meta?.error || "Could not load report content.");
       }
     } catch (e) {
       setOpenContent(`Error: ${e.message}`);
@@ -607,13 +647,21 @@ function ReportsPane() {
             const isOpen = openId === r.id;
             return (
               <div key={r.id} style={{ borderTop: i > 0 ? "1px solid #f1f5f9" : "none" }}>
-                <div style={{ display: "grid", gridTemplateColumns: "160px 1fr 110px 110px", padding: "12px 16px", alignItems: "center", fontSize: 13, gap: 12 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "150px 1fr 60px 110px 110px", padding: "12px 16px", alignItems: "center", fontSize: 13, gap: 12 }}>
                   <div style={{ fontWeight: 600, color: "#7c3aed" }}>{reportTypeLabel(r.filename || r.name)}</div>
-                  <div style={{ color: "#1e293b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.filename || r.name || "—"}</div>
+                  <div style={{ color: "#1e293b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {/* Prefer the structured displayTitle set by canvasArchive
+                        ("P&L · Q1 2026 · projection"). Fall back to filename
+                        for legacy reports archived before the metadata patch. */}
+                    {r.displayTitle || r.filename || r.name || "—"}
+                  </div>
+                  <div style={{ color: "#94a3b8", fontSize: 11, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                    {(formatOf(r) || "—").toUpperCase()}
+                  </div>
                   <div style={{ color: "#64748b" }}>{dateStr}</div>
-                  <div style={{ textAlign: "right" }}>
+                  <div style={{ textAlign: "right", display: "flex", gap: 6, justifyContent: "flex-end" }}>
                     <button onClick={() => openReport(r)} style={{ fontSize: 12, color: "#7c3aed", background: "none", border: "1px solid #c4b5fd", padding: "4px 10px", borderRadius: 6, cursor: "pointer", fontWeight: 600 }}>
-                      {isOpen ? "Hide" : "View"}
+                      {isOpen ? "Hide" : "Open"}
                     </button>
                   </div>
                 </div>
@@ -624,11 +672,26 @@ function ReportsPane() {
                         onClick={() => downloadFile(r.objectId || r.id)}
                         style={{ fontSize: 12, color: "white", background: "#7c3aed", border: "none", padding: "6px 14px", borderRadius: 6, cursor: "pointer", fontWeight: 600 }}
                       >
-                        Download .md
+                        Download {openFormat ? `.${openFormat}` : ""}
                       </button>
                     </div>
                     {openLoading && <div style={{ fontSize: 13, color: "#64748b" }}>Loading…</div>}
-                    {!openLoading && <RenderedMarkdown source={openContent} />}
+                    {!openLoading && openFormat === "md" && <RenderedMarkdown source={openContent} />}
+                    {!openLoading && openFormat === "pdf" && openUrl && (
+                      <iframe
+                        title={r.displayTitle || r.filename || "report"}
+                        src={openUrl}
+                        style={{ width: "100%", height: 640, border: "1px solid #e2e8f0", borderRadius: 6, background: "white" }}
+                      />
+                    )}
+                    {!openLoading && openFormat === "xlsx" && (
+                      <div style={{ fontSize: 13, color: "#475569", padding: "8px 0" }}>
+                        Spreadsheet reports open in Excel, Numbers, or Google Sheets. Use the Download button above to save a copy.
+                      </div>
+                    )}
+                    {!openLoading && openContent && openFormat !== "md" && (
+                      <div style={{ fontSize: 12, color: "#dc2626", marginTop: 8 }}>{openContent}</div>
+                    )}
                   </div>
                 )}
               </div>
@@ -730,6 +793,36 @@ function RenderedMarkdown({ source = "" }) {
         }
         return <p key={idx} style={{ margin: "8px 0" }} dangerouslySetInnerHTML={{ __html: inline(b.text) }} />;
       })}
+    </div>
+  );
+}
+
+// FiscalYearBar — pill-row selector for the last 3 fiscal years + "All time".
+// Computed from current calendar year (will read tenants.fiscalYearStart in a
+// later pass to handle non-Jan-1 fiscal years).
+function FiscalYearBar({ value, onChange }) {
+  const thisYear = new Date().getFullYear();
+  const years = [String(thisYear), String(thisYear - 1), String(thisYear - 2)];
+  const opts = [...years, "all"];
+  const label = (y) => y === "all" ? "All time" : `FY ${y}`;
+  return (
+    <div style={{ display: "flex", gap: 6, marginBottom: 12, alignItems: "center", flexWrap: "wrap" }}>
+      <span style={{ fontSize: 11, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4, fontWeight: 600, marginRight: 4 }}>Fiscal year</span>
+      {opts.map(y => (
+        <button
+          key={y}
+          onClick={() => onChange(y)}
+          style={{
+            padding: "5px 12px", fontSize: 12, fontWeight: 600, borderRadius: 999,
+            border: value === y ? "1px solid #7c3aed" : "1px solid #e2e8f0",
+            background: value === y ? "#ede9fe" : "white",
+            color: value === y ? "#6d28d9" : "#475569",
+            cursor: "pointer",
+          }}
+        >
+          {label(y)}
+        </button>
+      ))}
     </div>
   );
 }

@@ -62,5 +62,75 @@ export default function useContacts() {
     }
   }, []);
 
-  return { listContacts, apolloPull, loading, error };
+  // Single manual add. Intent shapes the default persona (sales_lead, investor,
+  // media, creator, vendor, partner, advisor, regulator, professional_services,
+  // employee, manual). UI passes whatever the user picked from the intent
+  // selector; backend fills sensible persona/tier/segment defaults.
+  const addContact = useCallback(async (fields) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await apiFetch("/v1/contacts:add", "POST", fields);
+      return result;
+    } catch (e) {
+      setError(e.message);
+      return { ok: false, error: e.message };
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Bulk CSV import. rows = [{ first_name, last_name, email, company, title,
+  // linkedin_url, phone }]. intent + segment come from the upload modal.
+  const bulkImportContacts = useCallback(async ({ rows, intent, segment, source }) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await apiFetch("/v1/contacts:bulkImport", "POST", { rows, intent, segment, source });
+      return result;
+    } catch (e) {
+      setError(e.message);
+      return { ok: false, error: e.message };
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Soft-delete one or more contacts. Caller must pass confirm:true; we
+  // mirror that on the body so the user sees the same gate everywhere.
+  const bulkDeleteContacts = useCallback(async ({ ids, segment, source, dryRun = false }) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await apiFetch("/v1/contacts:bulkDelete", "POST", { ids, segment, source, confirm: true, dryRun });
+      return result;
+    } catch (e) {
+      setError(e.message);
+      return { ok: false, error: e.message };
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Patch a single contact. fields supports name/email/phone/company/title/
+  // notes/tags/segments/source plus a personas_patch array.
+  const updateContact = useCallback(async ({ id, fields }) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await apiFetch("/v1/contacts:update", "POST", { id, fields });
+      return result;
+    } catch (e) {
+      setError(e.message);
+      return { ok: false, error: e.message };
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  return {
+    listContacts, apolloPull,
+    addContact, bulkImportContacts, bulkDeleteContacts, updateContact,
+    loading, error,
+  };
 }

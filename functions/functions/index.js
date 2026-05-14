@@ -10584,6 +10584,263 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       }
     }
 
+    // POST /v1/contacts:add — manually add one contact, in-app.
+    // Body: { first_name, last_name, email, company, title, phone, persona_type,
+    //         persona_tier, segments, tags, notes, source, linkedin_url, intent }
+    // The intent field is a top-level UX hint (sales_lead | investor | media |
+    // creator | vendor | partner | manual) so we can route the persona
+    // construction off the user's stated reason rather than guess.
+    if (route === "/contacts:add" && method === "POST") {
+      try {
+        const {
+          synthesizePersonaFromSingular, derivePersonaIndex, derivePrimaryMirrors,
+          VALID_TYPES, VALID_TIERS,
+        } = require("./api/routes/_contactsHelpers");
+        const b = body || {};
+        const fullName = b.name || [b.first_name, b.last_name].filter(Boolean).join(" ").trim();
+        if (!fullName) return jsonError(res, 400, "name or first_name+last_name required");
+
+        // Intent → persona defaults
+        const intent = (b.intent || "manual").toLowerCase();
+        const INTENT_MAP = {
+          sales_lead:  { type: "customer", tier: "prospect",      segments: ["sales-leads"] },
+          investor:    { type: "investor", tier: "investor",      segments: ["investor-pipeline"] },
+          accredited_investor: { type: "investor", tier: "investor", segments: ["investor-pipeline", "accredited-candidates"] },
+          media:       { type: "journalist", tier: "professional", segments: ["media-list"] },
+          creator:     { type: "creator", tier: "professional",    segments: ["creator-candidates"] },
+          vendor:      { type: "vendor", tier: "vendor",           segments: ["vendors"] },
+          partner:     { type: "partner", tier: "partner",         segments: ["partners"] },
+          advisor:     { type: "advisor", tier: "partner",         segments: ["advisors"] },
+          regulator:   { type: "regulator", tier: "professional",  segments: ["regulators"] },
+          professional_services: { type: "professional_services", tier: "vendor", segments: ["professional-services"] },
+          employee:    { type: "employee", tier: "professional",   segments: ["team"] },
+          manual:      { type: "customer", tier: "professional",   segments: [] },
+        };
+        const dflt = INTENT_MAP[intent] || INTENT_MAP.manual;
+        const personaType = VALID_TYPES.includes(b.persona_type) ? b.persona_type : dflt.type;
+        const personaTier = VALID_TIERS.includes(b.persona_tier) ? b.persona_tier : dflt.tier;
+        const segments = Array.isArray(b.segments) && b.segments.length
+          ? Array.from(new Set([...b.segments, ...dflt.segments]))
+          : dflt.segments;
+
+        const persona = synthesizePersonaFromSingular({
+          type: personaType,
+          tier: personaTier,
+          lifecycle_stage: "cold",
+          lead_score: 0,
+          role_label: b.title || personaType,
+          tags: Array.isArray(b.tags) ? b.tags : [],
+          notes: b.notes || null,
+          owner: ctx.userId,
+        });
+
+        const doc = {
+          tenantId: ctx.tenantId,
+          schema_version: "spine_v2.1",
+          name: fullName,
+          first_name: b.first_name || null,
+          last_name: b.last_name || null,
+          email: b.email ? b.email.toLowerCase() : null,
+          phone: b.phone || null,
+          company: b.company || null,
+          title: b.title || null,
+          source: b.source || `manual-add-${intent}`,
+          enrichment: b.linkedin_url ? { linkedin_url: b.linkedin_url } : null,
+          segments,
+          primary_persona_id: persona.id,
+          personas: [persona],
+          tiers_index: derivePersonaIndex([persona]),
+          types_index: [persona.type],
+          ...derivePrimaryMirrors([persona]),
+          created_at: admin.firestore.FieldValue.serverTimestamp(),
+          updated_at: admin.firestore.FieldValue.serverTimestamp(),
+          created_by: ctx.userId,
+        };
+        const ref = await db.collection("contacts").add(doc);
+        return res.json({ ok: true, id: ref.id, contact: { id: ref.id, ...doc, created_at: null, updated_at: null } });
+      } catch (e) {
+        console.error("[contacts:add] error:", e.message);
+        return jsonError(res, 500, "Failed to add contact");
+      }
+    }
+
+    // POST /v1/contacts:bulkImport — bulk-insert from a parsed CSV. Body:
+    //   { rows: [{ first_name, last_name, email, company, title, linkedin_url }, ...],
+    //     intent: "sales_lead"|"investor"|"media"|...,
+    //     segment: "optional-extra-segment-tag",
+    //     source: "csv-import-2026-05-14" }
+    // Returns { ok, written, skipped, errors[] }.
+    if (route === "/contacts:bulkImport" && method === "POST") {
+      try {
+        const {
+          synthesizePersonaFromSingular, derivePersonaIndex, derivePrimaryMirrors,
+          VALID_TYPES, VALID_TIERS,
+        } = require("./api/routes/_contactsHelpers");
+        const rows = Array.isArray(body?.rows) ? body.rows : null;
+        if (!rows || !rows.length) return jsonError(res, 400, "rows array required");
+        if (rows.length > 5000) return jsonError(res, 400, "rows must be <= 5000 per call");
+
+        const intent = (body.intent || "manual").toLowerCase();
+        const extraSegment = (body.segment || "").toString().trim();
+        const source = body.source || `csv-import-${new Date().toISOString().slice(0,10)}`;
+
+        // Intent defaults — same map as contacts:add
+        const INTENT_MAP = {
+          sales_lead:  { type: "customer", tier: "prospect", segments: ["sales-leads"] },
+          investor:    { type: "investor", tier: "investor", segments: ["investor-pipeline"] },
+          media:       { type: "journalist", tier: "professional", segments: ["media-list"] },
+          creator:     { type: "creator", tier: "professional", segments: ["creator-candidates"] },
+          vendor:      { type: "vendor", tier: "vendor", segments: ["vendors"] },
+          partner:     { type: "partner", tier: "partner", segments: ["partners"] },
+          manual:      { type: "customer", tier: "professional", segments: [] },
+        };
+        const dflt = INTENT_MAP[intent] || INTENT_MAP.manual;
+
+        let written = 0, skipped = 0;
+        const errors = [];
+        // Firestore batch limit is 500 writes — chunk at 450.
+        for (let i = 0; i < rows.length; i += 450) {
+          const slice = rows.slice(i, i + 450);
+          const batch = db.batch();
+          for (const r of slice) {
+            const fullName = (r.name || [r.first_name, r.last_name].filter(Boolean).join(" ")).trim();
+            if (!fullName) { skipped++; continue; }
+            const persona = synthesizePersonaFromSingular({
+              type: dflt.type,
+              tier: dflt.tier,
+              lifecycle_stage: "cold",
+              lead_score: 0,
+              role_label: r.title || dflt.type,
+              tags: ["source-csv-import", `intent-${intent}`],
+              notes: null,
+              owner: ctx.userId,
+            });
+            const segments = Array.from(new Set([...dflt.segments, ...(extraSegment ? [extraSegment] : [])]));
+            const ref = db.collection("contacts").doc();
+            batch.set(ref, {
+              tenantId: ctx.tenantId,
+              schema_version: "spine_v2.1",
+              name: fullName,
+              first_name: r.first_name || null,
+              last_name: r.last_name || null,
+              email: r.email ? String(r.email).toLowerCase() : null,
+              phone: r.phone || null,
+              company: r.company || null,
+              title: r.title || null,
+              source,
+              enrichment: r.linkedin_url ? { linkedin_url: r.linkedin_url } : null,
+              segments,
+              primary_persona_id: persona.id,
+              personas: [persona],
+              tiers_index: derivePersonaIndex([persona]),
+              types_index: [persona.type],
+              ...derivePrimaryMirrors([persona]),
+              created_at: admin.firestore.FieldValue.serverTimestamp(),
+              updated_at: admin.firestore.FieldValue.serverTimestamp(),
+              created_by: ctx.userId,
+            });
+            written++;
+          }
+          await batch.commit();
+        }
+        return res.json({ ok: true, written, skipped, errors });
+      } catch (e) {
+        console.error("[contacts:bulkImport] error:", e.message);
+        return jsonError(res, 500, "Failed to bulk import contacts");
+      }
+    }
+
+    // POST /v1/contacts:bulkDelete — soft-delete contacts matching a filter.
+    // Body: { ids?: [], segment?: "string", source?: "string", confirm: true }
+    // The `confirm: true` flag is required — prevents accidental deletes.
+    // Returns { ok, deleted, dryRun }.
+    if (route === "/contacts:bulkDelete" && method === "POST") {
+      try {
+        const ids = Array.isArray(body?.ids) ? body.ids : null;
+        const segment = (body?.segment || "").toString().trim();
+        const source = (body?.source || "").toString().trim();
+        const confirm = body?.confirm === true;
+        const dryRun = body?.dryRun === true;
+        if (!ids && !segment && !source) return jsonError(res, 400, "must provide ids, segment, or source");
+        if (!confirm && !dryRun) return jsonError(res, 400, "confirm:true required (or dryRun:true to preview)");
+
+        // Fetch candidates — never operate cross-tenant
+        let candidates = [];
+        if (ids && ids.length) {
+          const reads = await Promise.all(ids.map(id => db.collection("contacts").doc(id).get()));
+          candidates = reads
+            .filter(d => d.exists && d.data().tenantId === ctx.tenantId && d.data().status !== "deleted")
+            .map(d => ({ id: d.id, ...d.data() }));
+        } else {
+          const snap = await db.collection("contacts").where("tenantId", "==", ctx.tenantId).get();
+          candidates = snap.docs
+            .map(d => ({ id: d.id, ...d.data() }))
+            .filter(c => c.status !== "deleted")
+            .filter(c => {
+              if (segment && !(Array.isArray(c.segments) && c.segments.includes(segment))) return false;
+              if (source && c.source !== source) return false;
+              return true;
+            });
+        }
+
+        if (dryRun) return res.json({ ok: true, dryRun: true, wouldDelete: candidates.length, sample: candidates.slice(0,5).map(c => ({ id: c.id, name: c.name, segments: c.segments })) });
+
+        // Soft delete in chunks
+        let deleted = 0;
+        for (let i = 0; i < candidates.length; i += 450) {
+          const slice = candidates.slice(i, i + 450);
+          const batch = db.batch();
+          for (const c of slice) {
+            batch.update(db.collection("contacts").doc(c.id), {
+              status: "deleted",
+              deleted_at: admin.firestore.FieldValue.serverTimestamp(),
+              deleted_by: ctx.userId,
+              updated_at: admin.firestore.FieldValue.serverTimestamp(),
+            });
+            deleted++;
+          }
+          await batch.commit();
+        }
+        return res.json({ ok: true, deleted });
+      } catch (e) {
+        console.error("[contacts:bulkDelete] error:", e.message);
+        return jsonError(res, 500, "Failed to bulk delete contacts");
+      }
+    }
+
+    // POST /v1/contacts:update — patch a single contact. Body: { id, fields }
+    // where fields can include name, email, phone, company, title, notes,
+    // tags, segments, or a `personas` array of patches handled by
+    // mergePersonaPatch.
+    if (route === "/contacts:update" && method === "POST") {
+      try {
+        const { mergePersonaPatch, derivePersonaIndex, derivePrimaryMirrors } = require("./api/routes/_contactsHelpers");
+        const id = body?.id;
+        const fields = body?.fields || {};
+        if (!id) return jsonError(res, 400, "id required");
+        const ref = db.collection("contacts").doc(id);
+        const doc = await ref.get();
+        if (!doc.exists || doc.data().tenantId !== ctx.tenantId) return jsonError(res, 404, "contact not found");
+
+        const patch = { updated_at: admin.firestore.FieldValue.serverTimestamp() };
+        const passthrough = ["name", "first_name", "last_name", "email", "phone", "company", "title", "notes", "tags", "segments", "source"];
+        for (const k of passthrough) if (k in fields) patch[k] = fields[k];
+        if (Array.isArray(fields.personas_patch)) {
+          const merge = mergePersonaPatch(doc.data().personas || [], fields.personas_patch, ctx.userId);
+          if (!merge.ok) return jsonError(res, 400, merge.reason);
+          patch.personas = merge.personas;
+          patch.tiers_index = derivePersonaIndex(merge.personas);
+          patch.types_index = merge.personas.map(p => p.type);
+          Object.assign(patch, derivePrimaryMirrors(merge.personas));
+        }
+        await ref.update(patch);
+        return res.json({ ok: true, id });
+      } catch (e) {
+        console.error("[contacts:update] error:", e.message);
+        return jsonError(res, 500, "Failed to update contact");
+      }
+    }
+
     // POST /v1/apollo:enrich — enrich a single person by email or name+org.
     if (route === "/apollo:enrich" && method === "POST") {
       try {
