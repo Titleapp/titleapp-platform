@@ -69,6 +69,188 @@ const DEMO_WORKER_SAMPLES = {
 };
 
 /**
+ * Build a live snapshot from a tenant's actual Firestore state. Reads coaAccounts,
+ * transactions, contacts, connectedAccounts, marketingDrafts, socialPosts,
+ * emailCampaigns, employees — the same data the section UIs show.
+ * Returns null when there's no tenant context. This is the path used by Business
+ * workspaces; Personal Vault falls through to the briefings path below.
+ */
+async function buildTenantLiveSnapshot(db, tenantId, uid) {
+  if (!tenantId || tenantId === "vault") return null;
+
+  // Window for "recent" activity — last 30 days. Used for sends-30d,
+  // drafts-7d, etc. Keep the window short so the snapshot reflects what's
+  // happening NOW, not historical state.
+  const now = new Date();
+  const since30d = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const since7d = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const monthStart = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}-01`;
+
+  // Defensive — every query has its own catch so one missing collection or
+  // missing index doesn't kill the whole snapshot. The empty fallback is an
+  // empty `docs` array so .map() / .filter() still work downstream.
+  const empty = { docs: [] };
+  const safe = (p) => p.catch(err => { console.warn("[spineState] query failed:", err.message); return empty; });
+
+  try {
+    const [
+      coaSnap, txSnap, connSnap,
+      contactsSnap,
+      draftsSnap, socialSnap, msgQSnap, campaignsSnap, listsSnap,
+      employeesSnap,
+      tenantSnap, subsSnap,
+    ] = await Promise.all([
+      safe(db.collection("coaAccounts").where("tenantId", "==", tenantId).get()),
+      safe(db.collection("transactions").where("tenantId", "==", tenantId).limit(2000).get()),
+      safe(db.collection("connectedAccounts").where("tenantId", "==", tenantId).get()),
+
+      safe(db.collection("contacts").where("tenantId", "==", tenantId).limit(2000).get()),
+
+      safe(db.collection("marketingDrafts").where("tenantId", "==", tenantId).limit(500).get()),
+      safe(db.collection("socialPosts").where("tenantId", "==", tenantId).limit(500).get()),
+      safe(db.collection("messageQueue").where("tenantId", "==", tenantId).limit(500).get()),
+      // emailCampaigns + emailLists are userId-scoped today, not tenant-scoped.
+      // Fall back to userId when present; otherwise skip.
+      uid ? safe(db.collection("emailCampaigns").where("userId", "==", uid).limit(200).get()) : Promise.resolve(empty),
+      uid ? safe(db.collection("emailLists").where("userId", "==", uid).limit(200).get()) : Promise.resolve(empty),
+
+      safe(db.collection("employees").where("tenantId", "==", tenantId).limit(500).get()),
+
+      safe(db.collection("tenants").doc(tenantId).get()),
+      safe(db.collection("subscriptions").where("tenantId", "==", tenantId).where("status", "==", "active").get()),
+    ]);
+
+    const live = {};
+
+    // ── Accounting ──
+    const coa = coaSnap.docs.map(d => d.data()).filter(a => a.status !== "archived");
+    const txs = txSnap.docs.map(d => d.data());
+    const conns = connSnap.docs.map(d => d.data()).filter(a => a.status !== "deleted");
+    const mtdTxs = txs.filter(t => t.date && t.date >= monthStart);
+    const revenueMtd = mtdTxs.filter(t => t.direction === "credit").reduce((s, t) => s + (t.amountCents || 0), 0) / 100;
+    const expensesMtd = mtdTxs.filter(t => t.direction === "debit").reduce((s, t) => s + (t.amountCents || 0), 0) / 100;
+    // Forward expense projection from CoA monthly caps — gives the chat
+    // enough context to answer "estimate next month's burn" without needing
+    // to walk every transaction. Categories with no cap fall through.
+    const expenseCaps = coa
+      .filter(a => (a.type || "").toLowerCase() === "expense" && Number.isFinite(Number(a.monthlyCapCents)))
+      .map(a => ({ name: a.name, monthlyCap: Number(a.monthlyCapCents) / 100 }));
+    const projectedMonthlyExpense = expenseCaps.reduce((s, c) => s + c.monthlyCap, 0);
+    const topCaps = expenseCaps
+      .sort((a, b) => b.monthlyCap - a.monthlyCap)
+      .slice(0, 8)
+      .map(c => `${c.name} $${c.monthlyCap.toLocaleString()}`)
+      .join(", ");
+    live["platform-accounting"] = {
+      label: "Accounting",
+      kpis: {
+        "CoA categories":      coa.length || 0,
+        "Connected accounts":  conns.length || 0,
+        "Transactions on file": txs.length || 0,
+        "Revenue (MTD)":  txs.length ? `$${revenueMtd.toLocaleString()}` : "no data yet",
+        "Expenses (MTD)": txs.length ? `$${expensesMtd.toLocaleString()}` : "no data yet",
+        "Net (MTD)":      txs.length ? `$${(revenueMtd - expensesMtd).toLocaleString()}` : "no data yet",
+        "Projected monthly expense (from CoA caps)": expenseCaps.length ? `$${projectedMonthlyExpense.toLocaleString()}` : "no caps set",
+        "Top expense caps": topCaps || "none",
+        "Invoices (AR)": "none on file — invoice module not yet populated",
+        "Bills (AP)": "none on file — bills module not yet populated",
+      },
+    };
+
+    // ── Contacts ──
+    const contacts = contactsSnap.docs.map(d => d.data());
+    if (contacts.length > 0) {
+      const customers = contacts.filter(c => (c.lifecycleStage || "").toLowerCase() === "customer").length;
+      const newThisMonth = contacts.filter(c => {
+        const ms = c.createdAt?._seconds ? c.createdAt._seconds * 1000 : c.createdAt?.toMillis?.();
+        return ms && ms >= new Date(monthStart).getTime();
+      }).length;
+      live["platform-contacts"] = {
+        label: "Contacts",
+        kpis: {
+          "Total Contacts": contacts.length,
+          "Customers":      customers || 0,
+          "New This Month": newThisMonth || 0,
+        },
+      };
+    } else {
+      live["platform-contacts"] = {
+        label: "Contacts",
+        kpis: { "Total Contacts": 0, "Note": "no contacts imported yet" },
+      };
+    }
+
+    // ── Marketing ──
+    const drafts = draftsSnap.docs.map(d => d.data());
+    const drafts7d = drafts.filter(d => {
+      const ms = d.createdAt?._seconds ? d.createdAt._seconds * 1000 : d.createdAt?.toMillis?.();
+      return ms && ms >= since7d.getTime();
+    }).length;
+    const socialPosts = socialSnap.docs.map(d => d.data());
+    const social7d = socialPosts.filter(p => {
+      const ms = p.createdAt?._seconds ? p.createdAt._seconds * 1000 : p.createdAt?.toMillis?.();
+      return ms && ms >= since7d.getTime();
+    }).length;
+    const campaigns = campaignsSnap.docs.map(d => d.data());
+    const sent30d = campaigns.filter(c => {
+      const ms = c.createdAt?._seconds ? c.createdAt._seconds * 1000 : c.createdAt?.toMillis?.();
+      return ms && ms >= since30d.getTime() && c.status === "sent";
+    }).length;
+    const queued = msgQSnap.docs.map(d => d.data()).filter(m => m.status === "pending").length;
+    const lists = listsSnap.docs.length;
+    const hasAnyMarketing = drafts.length || socialPosts.length || campaigns.length || queued || lists;
+    live["platform-marketing"] = {
+      label: "Marketing & Content",
+      kpis: hasAnyMarketing ? {
+        "Drafts (last 7d)":     drafts7d,
+        "Social posts (7d)":    social7d,
+        "Email campaigns sent (30d)": sent30d,
+        "Contact lists":        lists,
+        "Queued messages":      queued,
+      } : { "Note": "no campaigns, drafts, or contact lists yet" },
+    };
+
+    // ── HR & People ──
+    const employees = employeesSnap.docs.map(d => d.data());
+    if (employees.length > 0) {
+      const active = employees.filter(e => (e.status || "active") === "active").length;
+      const openings = employees.filter(e => (e.role || "").toLowerCase().includes("open")).length;
+      live["platform-hr"] = {
+        label: "HR & People",
+        kpis: {
+          "Team size":         active,
+          "Open positions":    openings || 0,
+          "Total on roster":   employees.length,
+        },
+      };
+    } else {
+      live["platform-hr"] = {
+        label: "HR & People",
+        kpis: { "Team size": 0, "Note": "no employees on file yet" },
+      };
+    }
+
+    // ── Control Center Pro ── rollup. Reads workspace mode + active subs.
+    const tenantData = tenantSnap.exists ? tenantSnap.data() : {};
+    const activeSubs = (subsSnap.docs || []).length;
+    live["platform-control-center-pro"] = {
+      label: "Control Center Pro",
+      kpis: {
+        "Workspace mode":       tenantData.mode || "operations",
+        "Workspace name":       tenantData.name || tenantId,
+        "Active subscriptions": activeSubs,
+        "Spine workers configured": Object.keys(live).length, // updated below after all sections added
+      },
+    };
+
+    return Object.keys(live).length ? live : null;
+  } catch (err) {
+    console.warn("[spineState] tenant live snapshot failed:", err.message);
+    return null;
+  }
+}
+
+/**
  * Build the live snapshot from briefings/{uid}.
  * Returns null if briefings doesn't exist or is too sparse to be useful.
  */
@@ -167,14 +349,26 @@ function renderSnapshot(snapshot, currentSlug) {
  * @param {string} args.currentSlug - the active worker (excluded from the snapshot)
  * @param {boolean} args.demoMode - whether canvas demo mode is on
  */
-async function buildSiblingStatePrompt({ db, uid, currentSlug, demoMode }) {
+async function buildSiblingStatePrompt({ db, uid, currentSlug, demoMode, tenantId }) {
   let snapshot = null;
   let label = "DEMO";
   if (!demoMode) {
-    snapshot = await buildLiveSnapshot(db, uid);
+    // Prefer tenant-scoped live read when we're in a real workspace; fall back
+    // to the per-user briefings doc for Personal Vault. NEVER fall back to demo
+    // when demoMode is off — that's how phantom numbers leaked into chat.
+    snapshot = await buildTenantLiveSnapshot(db, tenantId, uid);
+    if (!snapshot) snapshot = await buildLiveSnapshot(db, uid);
     if (snapshot) label = "LIVE";
   }
-  if (!snapshot) snapshot = DEMO_WORKER_SAMPLES;
+  if (!snapshot && demoMode) snapshot = DEMO_WORKER_SAMPLES;
+  if (!snapshot) {
+    // No tenant data yet, no briefings, not in demo mode — say so plainly.
+    // The worker should ask the user instead of inventing numbers.
+    return `SIBLING WORKER STATE: empty — no cross-worker data on file for this workspace yet.
+Do not quote numbers for sibling workers. If the user asks about Accounting, Marketing, HR, Contacts, or Control Center metrics, say you don't have a current reading and ask them what they want to look at first.
+
+`;
+  }
 
   const body = renderSnapshot(snapshot, currentSlug);
   if (!body) return "";
