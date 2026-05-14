@@ -1,0 +1,48 @@
+{
+  "vertical": "general",
+  "name": "General — Cross-Vertical Utility Workers",
+  "version": "1.0.0",
+  "lifecycle": [
+    {
+      "phase": 0,
+      "name": "Scheduling & Coordination",
+      "description": "Calendar, scheduling, and coordination workers usable across every vertical"
+    }
+  ],
+  "suites": [
+    {
+      "id": "scheduling",
+      "name": "Scheduling"
+    },
+    {
+      "id": "coordination",
+      "name": "Coordination"
+    }
+  ],
+  "workers": [
+    {
+      "id": "GEN-001",
+      "name": "Scheduling",
+      "slug": "scheduling",
+      "suite": "Scheduling",
+      "phase": 0,
+      "type": "platform",
+      "pricing": {
+        "monthly": 29
+      },
+      "status": "live",
+      "capabilitySummary": "Cross-vertical scheduling worker. Coordinates calendars, events, and appointments via Google Calendar (Workspace Integration Layer). Domain-specific behavior layers in per use case — RE adds buyer driving-time optimization, Aviation adds duty-time and currency integration, Healthcare adds patient-visit and intake routing, Legal adds consultation booking. Same worker substrate, different RAAS modules per vertical.",
+      "tags": ["scheduling", "calendar", "coordination", "appointments", "google-calendar", "cross-vertical"],
+      "valueBucket": ["save_time", "win_more_deals", "communicate_clearly"],
+      "alexRegistration": {
+        "priority": "normal",
+        "acceptsTasks": true,
+        "briefingContribution": "schedule_summary"
+      },
+      "temporalType": "always_on",
+      "constraintRaasSources": [],
+      "_notes": "CODEX 50.18 follow-up 2026-05-11. Sean's call: standalone generic scheduler usable beyond RE. Future GEN-* workers will join this catalog (Reminders, Notes, Tasks, Whiteboard, etc.)."
+    }
+  ],
+  "bundles": []
+}

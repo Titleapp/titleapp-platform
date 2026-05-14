@@ -1,0 +1,66 @@
+import { useState, useCallback } from "react";
+
+const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+
+async function apiFetch(path, method = "GET", body = null) {
+  const token = localStorage.getItem("ID_TOKEN");
+  const tenantId = localStorage.getItem("TENANT_ID") || localStorage.getItem("WORKSPACE_ID") || "vault";
+  const res = await fetch(`${API_BASE}${path}`, {
+    method,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+      "x-tenant-id": tenantId,
+    },
+    ...(body ? { body: JSON.stringify(body) } : {}),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+  return data;
+}
+
+export default function useContacts() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const listContacts = useCallback(async ({ q, workerSlug, segment, limit } = {}) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const params = new URLSearchParams();
+      if (q) params.set("q", q);
+      if (workerSlug) params.set("workerSlug", workerSlug);
+      if (segment) params.set("segment", segment);
+      if (limit) params.set("limit", String(limit));
+      const path = `/v1/contacts:list${params.toString() ? `?${params.toString()}` : ""}`;
+      const result = await apiFetch(path);
+      return result;
+    } catch (e) {
+      setError(e.message);
+      return { ok: false, contacts: [], stats: {} };
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const apolloPull = useCallback(async ({ criteria, contact_tier = "prospect", source_sub = null } = {}) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await apiFetch("/v1/apollo:search", "POST", {
+        criteria,
+        write_to_contacts: true,
+        contact_tier,
+        source_sub,
+      });
+      return result;
+    } catch (e) {
+      setError(e.message);
+      return { ok: false, error: e.message };
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  return { listContacts, apolloPull, loading, error };
+}

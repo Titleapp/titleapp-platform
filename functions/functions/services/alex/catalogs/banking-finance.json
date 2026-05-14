@@ -1,0 +1,47 @@
+{
+  "vertical": "banking-finance",
+  "name": "Banking & Finance",
+  "version": "1.0.0",
+  "lifecycle": [
+    { "phase": 0, "name": "Capital Formation", "description": "Founder-side and operator-side fundraising — equity, debt, PE, fund formation" }
+  ],
+  "suites": [
+    { "id": "capital-formation", "name": "Capital Formation" }
+  ],
+  "workers": [
+    {
+      "id": "BANK-FUND-001",
+      "name": "Fundraise",
+      "slug": "fundraise",
+      "suite": "Capital Formation",
+      "phase": 0,
+      "type": "composite",
+      "pricing": { "monthly": 79 },
+      "status": "live",
+      "capabilitySummary": "Founder-side fundraising co-pilot. Equity (KISS, SAFE, convertible, seed), debt placements, PE placements, fund formation. Investor prospecting via Apollo. Data room with scoped sharing and KYC. Cap table integration. Communications via Marketing worker.",
+      "tags": ["fundraise", "investor-relations", "founder", "capital-formation", "kyc"],
+      "valueBucket": ["raise_capital", "communicate_clearly"],
+      "alexRegistration": {
+        "priority": "high",
+        "acceptsTasks": true,
+        "briefingContribution": "fundraise_status"
+      },
+      "temporalType": "always_on",
+      "constraintRaasSources": [
+        { "moduleId": "securities_compliance_v1", "required": true, "load_when": "always" }
+      ],
+      "_status_note": "Flipped to live 2026-05-09 per user-counsel attestation pattern (project_user_counsel_attestation_pattern.md). The user's counsel attests at worker activation; TitleApp AI is not the legal-review authority. End-to-end dogfood test passed 2026-05-09."
+    }
+  ],
+  "bundles": [
+    {
+      "id": "titleapp-founder",
+      "name": "TitleApp Founder",
+      "description": "Spine + Fundraise bundle for early-stage founders running a fundraise alongside the company.",
+      "persona": "founder",
+      "workerIds": ["PLAT-001", "PLAT-003", "PLAT-006", "PLAT-004", "BANK-FUND-001"],
+      "monthlyPrice": 79,
+      "replaces": "$10K+/mo in solo-founder ops + investor relations support"
+    }
+  ]
+}
