@@ -11023,6 +11023,86 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       }
     }
 
+    // POST /v1/contacts:enrich — bulk enrich contacts via Apollo. Body:
+    //   { ids: string[], confirm: true, maxPerCall = 100 }
+    // For each contact id we look up the contact, build a name+company hint,
+    // call apollo.enrichPerson, and patch the result back onto the contact
+    // (email, phone, linkedin, current_role, current_company). Each call
+    // records a data fee. Hard cap of 100 per HTTP request so users see
+    // cost in chunks instead of a 1,500-contact runaway burn. UI shows a
+    // confirmation dialog with the estimated cost before firing.
+    if (route === "/contacts:enrich" && method === "POST") {
+      try {
+        const { ids, confirm } = body || {};
+        if (!confirm) return jsonError(res, 400, "confirm:true is required to run paid enrichment");
+        if (!Array.isArray(ids) || !ids.length) return jsonError(res, 400, "ids[] is required and non-empty");
+        const maxPerCall = Math.min(parseInt(body.maxPerCall) || 100, 100);
+        const slice = ids.slice(0, maxPerCall);
+
+        const apollo = require("./services/marketingService/apollo");
+        const { recordDataFee } = require("./services/billing/dataFee");
+
+        let enriched = 0;
+        let skipped = 0;
+        const failures = [];
+        for (const id of slice) {
+          try {
+            const doc = await db.doc(`contacts/${id}`).get();
+            if (!doc.exists) { skipped += 1; continue; }
+            const c = doc.data();
+            if (c.tenantId !== ctx.tenantId) { skipped += 1; continue; }
+            if (c.status === "deleted") { skipped += 1; continue; }
+            // Skip if we already have an email — nothing to enrich.
+            if (c.email || c.primary_email) { skipped += 1; continue; }
+
+            const firstName = c.first_name || c.firstName || (c.full_name || c.fullName || "").split(" ")[0];
+            const lastName  = c.last_name  || c.lastName  || (c.full_name || c.fullName || "").split(" ").slice(1).join(" ");
+            const company   = c.company || c.organization || (c.personas?.[0]?.company) || null;
+            if (!firstName || !lastName || !company) { skipped += 1; continue; }
+
+            const person = await apollo.enrichPerson(
+              { first_name: firstName, last_name: lastName, organization_name: company },
+              { tenantId: ctx.tenantId, userId: ctx.userId, requestedBy: "contacts:enrich" }
+            );
+            await recordDataFee({
+              source: "apollo:enrich",
+              userId: ctx.userId,
+              tenantId: ctx.tenantId,
+              units: 1,
+              requestedBy: "contacts:enrich",
+              metadata: { contactId: id },
+            });
+
+            const patch = {};
+            if (person?.email) patch.email = person.email;
+            if (person?.phone_numbers?.[0]?.sanitized_number) patch.phone = person.phone_numbers[0].sanitized_number;
+            if (person?.linkedin_url) patch.linkedin_url = person.linkedin_url;
+            if (person?.title) patch.title = person.title;
+            if (person?.organization?.name) patch.company = person.organization.name;
+            patch.updated_at = admin.firestore.FieldValue.serverTimestamp();
+            patch.enriched_at = admin.firestore.FieldValue.serverTimestamp();
+            patch.enrichment_source = "apollo";
+            await doc.ref.update(patch);
+            enriched += 1;
+          } catch (perErr) {
+            failures.push({ id, error: perErr.message });
+          }
+        }
+
+        return res.json({
+          ok: true,
+          enriched,
+          skipped,
+          attempted: slice.length,
+          remaining: Math.max(0, ids.length - slice.length),
+          failures: failures.slice(0, 10),
+        });
+      } catch (e) {
+        console.error("[contacts:enrich] error:", e.message);
+        return jsonError(res, 500, "Failed to enrich contacts");
+      }
+    }
+
     // POST /v1/apollo:enrich — enrich a single person by email or name+org.
     if (route === "/apollo:enrich" && method === "POST") {
       try {
@@ -14019,6 +14099,12 @@ RULES YOU MUST FOLLOW:
                   uid: auth.user.uid,
                   currentSlug: body.selectedWorker || "chief-of-staff",
                   demoMode: cosDemoMode,
+                  // tenantId is critical here — without it the snapshot
+                  // builder falls back to per-user briefings/{uid}, which
+                  // doesn't reflect workspace contacts. Result: chat sees
+                  // 3 personal contacts and tells the user "you have 3"
+                  // while the workspace UI correctly shows 1,597.
+                  tenantId: ctx.tenantId || null,
                 });
                 if (siblingPrompt) alexSystemPrompt = siblingPrompt + alexSystemPrompt;
               } catch (siblingErr) {

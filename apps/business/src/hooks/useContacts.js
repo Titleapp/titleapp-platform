@@ -148,6 +148,22 @@ export default function useContacts() {
     }
   }, []);
 
+  // Bulk Apollo enrichment for a set of contact ids. Backend hard-caps
+  // each call at 100 ids; UI loops if the user wants more. Each enriched
+  // contact records a paid data fee.
+  const enrichContacts = useCallback(async ({ ids, maxPerCall = 100 }) => {
+    setLoading(true);
+    setError(null);
+    try {
+      return await apiFetch("/v1/contacts:enrich", "POST", { ids, maxPerCall, confirm: true });
+    } catch (e) {
+      setError(e.message);
+      return { ok: false, error: e.message };
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   // Apply a segment tag to a list of contact IDs (idempotent on the server).
   const applySegment = useCallback(async ({ segment, ids }) => {
     setLoading(true);
@@ -165,7 +181,7 @@ export default function useContacts() {
   return {
     listContacts, apolloPull,
     addContact, bulkImportContacts, bulkDeleteContacts, updateContact,
-    proposeSegments, applySegment,
+    proposeSegments, applySegment, enrichContacts,
     loading, error,
   };
 }

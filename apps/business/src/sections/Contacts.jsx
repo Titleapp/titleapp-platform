@@ -189,7 +189,7 @@ export default function Contacts() {
 
   const {
     listContacts, apolloPull, addContact, bulkImportContacts, bulkDeleteContacts,
-    proposeSegments, applySegment,
+    proposeSegments, applySegment, enrichContacts,
     loading,
   } = useContacts();
 
@@ -198,6 +198,10 @@ export default function Contacts() {
   const [proposal, setProposal] = useState(null);
   const [proposing, setProposing] = useState(false);
   const [applyingSlug, setApplyingSlug] = useState(null);
+  // Apollo enrichment state — confirm dialog payload + active run progress.
+  const [enrichConfirm, setEnrichConfirm] = useState(null);
+  const [enriching, setEnriching] = useState(false);
+  const [enrichResult, setEnrichResult] = useState(null);
 
   // Pagination state — driven by the server's nextCursor/hasMore.
   const [nextCursor, setNextCursor] = useState(null);
@@ -266,6 +270,27 @@ export default function Contacts() {
       setApplyingSlug(null);
     }
   }, [applySegment, refresh]);
+
+  // Confirm step before kicking off Apollo enrichment so the user sees the
+  // cost preview. Each enrichment is ~1 data credit (~$1.00 at user-facing
+  // rate, varies by tier). Backend caps at 100 per call so the run is
+  // chunked — UI re-prompts for the next chunk after each batch.
+  const requestEnrich = useCallback((bucket) => {
+    setEnrichResult(null);
+    setEnrichConfirm({ slug: bucket.slug, label: bucket.label, ids: bucket.ids });
+  }, []);
+
+  const runEnrich = useCallback(async () => {
+    if (!enrichConfirm) return;
+    setEnriching(true);
+    try {
+      const r = await enrichContacts({ ids: enrichConfirm.ids, maxPerCall: 100 });
+      setEnrichResult(r);
+      if (r?.ok) refresh();
+    } finally {
+      setEnriching(false);
+    }
+  }, [enrichConfirm, enrichContacts, refresh]);
 
   useEffect(() => { refresh(); }, [refresh]);
   useEffect(() => {
@@ -362,12 +387,13 @@ export default function Contacts() {
           card gives the full tenant breakdown when you need it. */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 10, marginBottom: 16 }}>
         <div className="card" style={{ padding: "12px 14px" }}>
-          <div style={{ fontSize: 11, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4, fontWeight: 600 }}>Total in workspace</div>
-          <div style={{ fontSize: 22, fontWeight: 700, color: "#1e293b", marginTop: 2 }}>{stats.total ?? "—"}</div>
+          <div style={{ fontSize: 11, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4, fontWeight: 600 }}>Total contacts</div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: "#1e293b", marginTop: 2 }}>{(stats.total ?? "—").toLocaleString?.() || stats.total}</div>
         </div>
         <div className="card" style={{ padding: "12px 14px" }}>
-          <div style={{ fontSize: 11, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4, fontWeight: 600 }}>Loaded</div>
-          <div style={{ fontSize: 22, fontWeight: 700, color: "#16a34a", marginTop: 2 }}>{contacts.length}{hasMore ? "+" : ""}</div>
+          <div style={{ fontSize: 11, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4, fontWeight: 600 }}>Showing on page</div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: "#16a34a", marginTop: 2 }}>{contacts.length.toLocaleString()}</div>
+          {hasMore && <div style={{ fontSize: 10, color: "#64748b", marginTop: 2 }}>scroll down for Load More</div>}
         </div>
         <div className="card" style={{ padding: "12px 14px" }}>
           <div style={{ fontSize: 11, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4, fontWeight: 600 }}>Workers</div>
@@ -405,7 +431,7 @@ export default function Contacts() {
                     <div style={{ fontSize: 12, fontWeight: 700, color: "#7c3aed", background: "#f3e8ff", padding: "2px 8px", borderRadius: 999 }}>{b.count.toLocaleString()}</div>
                   </div>
                   <div style={{ fontSize: 11, color: "#64748b", marginTop: 4, lineHeight: 1.4 }}>{b.description}</div>
-                  <div style={{ marginTop: 8 }}>
+                  <div style={{ marginTop: 8, display: "flex", gap: 6, flexWrap: "wrap" }}>
                     {applied ? (
                       <div style={{ fontSize: 11, color: "#16a34a", fontWeight: 600 }}>Applied · {b._applied} tagged</div>
                     ) : (
@@ -415,6 +441,22 @@ export default function Contacts() {
                         style={{ fontSize: 11, fontWeight: 600, color: busy ? "#94a3b8" : "#7c3aed", background: busy ? "#e2e8f0" : "white", border: "1px solid #c4b5fd", padding: "4px 10px", borderRadius: 6, cursor: busy ? "default" : "pointer" }}
                       >
                         {busy ? "Applying…" : `Apply "${b.slug}"`}
+                      </button>
+                    )}
+                    {/* Show "Clean up with Apollo" CTA on buckets where
+                        Apollo enrichment makes sense — missing email is the
+                        obvious one; investor + B2B prospects benefit too
+                        because they often need fresh contact info. Hidden
+                        on buckets where enrichment isn't useful (recruiter,
+                        legal, accelerator-program — those are organizations
+                        not individuals). */}
+                    {["no_email", "investor_candidate", "b2b_csuite", "b2b_other"].includes(b.slug) && (
+                      <button
+                        onClick={() => requestEnrich(b)}
+                        title="Use Apollo to fill missing emails, phones, titles. Charges ~1 data credit per contact."
+                        style={{ fontSize: 11, fontWeight: 600, color: "#0369a1", background: "#e0f2fe", border: "1px solid #7dd3fc", padding: "4px 10px", borderRadius: 6, cursor: "pointer" }}
+                      >
+                        Clean up with Apollo
                       </button>
                     )}
                   </div>
@@ -549,7 +591,77 @@ export default function Contacts() {
       {bulkConfirm && (
         <BulkDeleteConfirm count={bulkConfirm.count} onCancel={() => setBulkConfirm(null)} onConfirm={handleBulkDelete} />
       )}
+      {enrichConfirm && (
+        <EnrichConfirm
+          bucket={enrichConfirm}
+          enriching={enriching}
+          result={enrichResult}
+          onCancel={() => { setEnrichConfirm(null); setEnrichResult(null); }}
+          onConfirm={runEnrich}
+        />
+      )}
     </div>
+  );
+}
+
+// Apollo enrichment confirmation modal. Shows the bucket label + count,
+// a cost preview (Apollo charges ~1 credit per enrichment, marked up
+// to data-fee tier on the platform), and a clear "Run enrichment" CTA.
+// After a run, displays the result + a "Continue" button if more remain.
+function EnrichConfirm({ bucket, enriching, result, onCancel, onConfirm }) {
+  const remaining = result?.remaining ?? bucket.ids.length;
+  const willRun = Math.min(bucket.ids.length, 100);
+  return (
+    <ModalShell onClose={onCancel} title="Clean up with Apollo" subtitle={`Bucket: ${bucket.label} — ${bucket.ids.length.toLocaleString()} contacts`}>
+      {!result && (
+        <>
+          <div style={{ padding: "12px 0", fontSize: 13, color: "#475569", lineHeight: 1.6 }}>
+            Apollo will look up each contact by name + company and fill in any missing
+            email, phone, LinkedIn, and current role.
+          </div>
+          <div className="card" style={{ padding: "12px 14px", background: "#f8fafc", border: "1px solid #e2e8f0", marginTop: 8 }}>
+            <div style={{ fontSize: 12, color: "#64748b", marginBottom: 6 }}>This run</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "#1e293b" }}>{willRun.toLocaleString()} contacts</div>
+            <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>
+              {bucket.ids.length > 100 ? `${(bucket.ids.length - 100).toLocaleString()} more after this batch — you'll be prompted to continue.` : "All of this bucket in one batch."}
+            </div>
+            <div style={{ fontSize: 11, color: "#64748b", marginTop: 8 }}>
+              Charges <strong>1 data credit per enrichment</strong> on your account. Contacts
+              that already have an email or are missing name+company are skipped automatically (no charge).
+            </div>
+          </div>
+        </>
+      )}
+      {result && (
+        <div className="card" style={{ padding: "12px 14px", background: "#f0fdf4", border: "1px solid #bbf7d0", marginTop: 8 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "#16a34a" }}>Run complete</div>
+          <div style={{ fontSize: 12, color: "#475569", marginTop: 6 }}>
+            Enriched: <strong>{result.enriched}</strong> · Skipped: <strong>{result.skipped}</strong> · Attempted: {result.attempted}
+          </div>
+          {result.failures?.length > 0 && (
+            <div style={{ fontSize: 11, color: "#dc2626", marginTop: 6 }}>
+              {result.failures.length} failure(s) — most common: rate limit or no Apollo match.
+            </div>
+          )}
+          {remaining > 0 && (
+            <div style={{ fontSize: 12, color: "#475569", marginTop: 6 }}>
+              <strong>{remaining.toLocaleString()}</strong> contacts remaining in this bucket. Click Continue to run the next batch of up to 100.
+            </div>
+          )}
+        </div>
+      )}
+      <ModalFooter onClose={onCancel}>
+        {(!result || remaining > 0) && (
+          <button
+            onClick={onConfirm}
+            disabled={enriching}
+            style={{ padding: "8px 16px", fontSize: 13, fontWeight: 600, background: enriching ? "#cbd5e1" : "#0284c7", color: "white", border: "none", borderRadius: 8, cursor: enriching ? "default" : "pointer" }}
+          >
+            {enriching ? "Enriching…" : (result ? "Continue with next 100" : `Enrich ${willRun} contacts`)}
+          </button>
+        )}
+      </ModalFooter>
+    </ModalShell>
   );
 }
 
