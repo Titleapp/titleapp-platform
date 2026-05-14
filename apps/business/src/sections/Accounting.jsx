@@ -160,7 +160,7 @@ export default function Accounting() {
             {workspaceLabel()}
           </span>
         </div>
-        <div style={{ display: "flex", alignItems: "center" }}>
+        <div style={{ display: "flex", alignItems: "center", flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end", gap: 8 }}>
           <SuggestImprovementButton workerSlug="platform-accounting" />
         </div>
       </div>

@@ -366,8 +366,7 @@ export default function Contacts() {
             {workspaceLabel()}
           </span>
         </div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <SuggestImprovementButton workerSlug="platform-contacts" />
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>
           <button className="iconBtn" onClick={refresh} style={{ background: "white", color: "#1e293b", border: "1px solid #e2e8f0" }}>Refresh</button>
           <button
             className="iconBtn"
@@ -379,6 +378,11 @@ export default function Contacts() {
             {proposing ? "Scanning…" : "Auto-organize"}
           </button>
           <button className="iconBtn" onClick={() => setShowAddIntent(true)} style={{ background: "linear-gradient(135deg, #7c3aed, #6d28d9)", color: "white", border: "none" }}>+ Add Contacts</button>
+          {/* Suggest improvement sits inside the action row but renders as a
+              text link, not a button, so it never competes with the primary
+              CTAs. flexWrap on the row keeps it from overlapping the title
+              when the viewport is narrow. */}
+          <SuggestImprovementButton workerSlug="platform-contacts" />
         </div>
       </div>
 

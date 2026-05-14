@@ -361,7 +361,7 @@ export default function ControlCenter() {
     <div style={S.container}>
       <div style={S.header}>
         <div style={S.title}>Control Center</div>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>
           <SuggestImprovementButton workerSlug="platform-control-center-pro" />
           <div style={S.date}>{briefing.date || ""}</div>
         </div>
