@@ -524,18 +524,21 @@ function ReportsPane({ fiscalYear = "all" }) {
     // from the workspace-wide result.
     const r = await listDocuments({ limit: 200 });
     const all = Array.isArray(r?.objects) ? r.objects : [];
-    // Match anything that's a Markdown report archived by canvasArchive — the
-    // service tags every file with ["accounting", "report", shortType] AND
-    // names them <shortType>-<YYYY-MM-DD>.md. Also catch generic markdown
-    // since other workers may save reports here too.
+    // Accounting reports are now written as .xlsx (P&L, Cash Flow, Balance
+    // Sheet, CoA) or .pdf (invoices) by canvasArchive. Legacy .md files
+    // from before that migration are filtered OUT here — they were plain
+    // text snapshots with no formulas and are functionally orphaned in the
+    // new flow. Users only see downloadable Excel + PDF artifacts.
     let filtered = all.filter(o => {
       // Suppress superseded reports (dedup pattern in canvasArchive).
       if (o.status && o.status !== "active") return false;
       const name = (o.filename || "").toLowerCase();
       const mime = (o.mimeType || "").toLowerCase();
       const tags = Array.isArray(o.tags) ? o.tags.map(t => String(t).toLowerCase()) : [];
+      // Hide legacy markdown reports — they predate the .xlsx/.pdf rewrite
+      // and provide no actionable artifact to the user.
+      if (name.endsWith(".md") || mime.includes("markdown")) return false;
       if (tags.includes("accounting")) return true;
-      if (tags.includes("report") && mime.includes("markdown")) return true;
       if (/^(pl|balance-sheet|cashflow|invoice|coa)-/.test(name)) return true;
       return false;
     });

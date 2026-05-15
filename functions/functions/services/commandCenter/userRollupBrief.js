@@ -39,6 +39,13 @@ async function launchAdapter(tenantId) {
     socialPostsSnap,
     digitalWorkersSnap,
     sandboxSessionsSnap,
+    holdingsSnap,
+    kycSnap,
+    investorContactsSnap,
+    messageEvents24hSnap,
+    improvementOpenSnap,
+    contactsSnap,
+    accountsSnap,
   ] = await Promise.all([
     db().collection("tenants").doc(tenantId).get(),
     db().collection("subscriptions").where("tenantId", "==", tenantId).where("status", "==", "active").get().catch(() => ({ size: 0, docs: [] })),
@@ -47,7 +54,27 @@ async function launchAdapter(tenantId) {
     db().collection("socialPosts").where("tenantId", "==", tenantId).where("createdAt", ">=", since7d).get().catch(() => ({ size: 0, docs: [] })),
     db().collection("digitalWorkers").limit(500).get().catch(() => ({ size: 0, docs: [] })),
     db().collection("sandboxSessions").where("createdAt", ">=", since7d).get().catch(() => ({ size: 0, docs: [] })),
+    // 50.27 — Investor Outreach inputs. holdings + kycRecords + contacts
+    // segmented as investors. All best-effort — failures yield empty docs
+    // and the launch card surfaces "—" without breaking the brief.
+    db().collection("holdings").where("tenantId", "==", tenantId).get().catch(() => ({ size: 0, docs: [] })),
+    db().collection("kycRecords").where("tenantId", "==", tenantId).where("createdAt", ">=", since7d).get().catch(() => ({ size: 0, docs: [] })),
+    db().collection("contacts").where("tenantId", "==", tenantId).where("segments", "array-contains", "titleapp_ai_investors").get().catch(() => ({ size: 0, docs: [] })),
+    // 50.27 — Worker Health inputs. messageEvents are tenant-scoped so we
+    // can compute per-workspace session traffic. improvementRequests don't
+    // carry tenantId today so the open count is global — still meaningful
+    // for the platform-owner workspace; defer scoping until the schema is
+    // extended.
+    db().collection("messageEvents").where("tenantId", "==", tenantId).where("createdAt", ">=", since24h).get().catch(() => ({ size: 0, docs: [] })),
+    db().collection("improvementRequests").where("status", "==", "open").get().catch(() => ({ size: 0, docs: [] })),
+    // 50.27 — Setup Progress inputs: surface contacts and connected-accounts
+    // counts on the launch-mode response too so the Setup Progress card can
+    // render without a second roundtrip.
+    db().collection("contacts").where("tenantId", "==", tenantId).get().catch(() => ({ size: 0, docs: [] })),
+    db().collection("connectedAccounts").where("tenantId", "==", tenantId).get().catch(() => ({ size: 0, docs: [] })),
   ]);
+  const contactsCount = contactsSnap.size;
+  const accountsCount = accountsSnap.docs.filter(d => d.data().status !== "deleted").length;
 
   // Marketing pulse — count 24h and 7d sends/drafts
   let sends24h = 0, sends7d = 0;
@@ -72,12 +99,25 @@ async function launchAdapter(tenantId) {
   } catch (e) { /* best-effort */ }
 
   // Worker traction — global counters used as launch-product signal
+  // 50.27 — also bucket by vertical so the Status by Category card has the
+  // per-vertical breakdown the operator needs to prioritize.
   let totalWorkers = 0, liveWorkers = 0;
+  const byVertical = {}; // vertical -> { total, live, waitlist, planned }
   for (const d of digitalWorkersSnap.docs) {
     const x = d.data();
     totalWorkers++;
     if (x.status === "live") liveWorkers++;
+    const v = (x.vertical || x.industry || "uncategorized").toString().toLowerCase();
+    if (!byVertical[v]) byVertical[v] = { total: 0, live: 0, waitlist: 0, planned: 0, draft: 0 };
+    byVertical[v].total += 1;
+    if (x.status === "live") byVertical[v].live += 1;
+    else if (x.status === "waitlist") byVertical[v].waitlist += 1;
+    else if (x.status === "planned") byVertical[v].planned += 1;
+    else byVertical[v].draft += 1;
   }
+  const statusByCategory = Object.entries(byVertical)
+    .map(([vertical, c]) => ({ vertical, ...c, livePct: c.total > 0 ? Math.round((c.live / c.total) * 100) : 0 }))
+    .sort((a, b) => b.live - a.live);
 
   // Sandbox health — sessions in the last 7 days, by status
   let sandbox7d = 0, sandboxShipped7d = 0, sandboxInProgress = 0;
@@ -88,15 +128,120 @@ async function launchAdapter(tenantId) {
     if (x.status === "worker_build_in_progress") sandboxInProgress++;
   }
 
+  // 50.27 — Investor Outreach metrics.
+  // Investors on cap table = distinct holders. Holdings docs carry holder
+  // identity in one of (holderContactId | holderName | holderEmail).
+  const holderKeys = new Set();
+  let softCommitsUsd = 0;
+  for (const d of holdingsSnap.docs) {
+    const x = d.data();
+    if (x.status === "deleted" || x.status === "void") continue;
+    const key = x.holderContactId || x.holderEmail || x.holderName;
+    if (key) holderKeys.add(String(key).toLowerCase());
+    if (typeof x.softCommitUsd === "number") softCommitsUsd += x.softCommitUsd;
+  }
+  const investorsOnCapTable = holderKeys.size;
+  const kycStarts7d = kycSnap.size;
+  const investorContacts = investorContactsSnap.size;
+  // Apollo outreach queue: a contact "queued" is in the investor segment but
+  // has no engagement yet. Cheap proxy: investorContacts minus those marked
+  // contacted. Doc-level engagement flag may not exist on all rows; treat
+  // missing as queued.
+  let apolloQueued = 0;
+  for (const d of investorContactsSnap.docs) {
+    const x = d.data();
+    const hasEngagement = Array.isArray(x.engagement) ? x.engagement.length > 0 : !!x.last_contacted_at;
+    if (!hasEngagement) apolloQueued++;
+  }
+
+  // 50.27 — Campaign Detail. The operator wants to see per-campaign AI activity,
+  // not just total drafts. We map each marketingDraft to its lifecycle markers:
+  // (1) AI issued creative (the draft itself); (2) AI sent to channel
+  // (matching messageQueue row with same campaignId); (3) AI monitored response
+  // (replies seen on the draft); (4) AI made a recommendation
+  // (recommendationNotes field set).
+  const campaigns = [];
+  for (const d of marketingDraftsSnap.docs) {
+    const x = d.data();
+    campaigns.push({
+      id: d.id,
+      name: x.name || x.title || x.subject || `Draft ${d.id.slice(0, 6)}`,
+      channel: x.channel || "email",
+      status: x.status || "draft",
+      createdAt: x.createdAt?.toMillis?.() || null,
+      aiCreativeIssued: !!(x.body || x.copy || x.html || x.subject),
+      sendsCount: typeof x.sendsCount === "number" ? x.sendsCount : null,
+      repliesCount: typeof x.repliesCount === "number" ? x.repliesCount : null,
+      aiMonitoring: !!x.monitoringEnabled || (Array.isArray(x.events) && x.events.length > 0),
+      aiRecommendation: x.recommendationNotes || x.aiRecommendation || null,
+      audienceCount: typeof x.audienceCount === "number" ? x.audienceCount : null,
+    });
+  }
+  campaigns.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+
+  // 50.27 — Launch Milestones. Status pulled from the tenant document's
+  // `launchMilestones` map (admin-editable). Default to pending so the UI
+  // still shows the checklist even before any milestone is recorded.
+  // Each milestone has a default owner (the "QB"). Admin can override via
+  // tenants/{id}.launchMilestones.{id}.owner.
+  const tenantData = tenantSnap.exists ? (tenantSnap.data() || {}) : {};
+  const milestoneState = tenantData.launchMilestones || {};
+  const launchMilestones = [
+    { id: "books_reconciled",      target: "2026-06-01", label: "Books reconciled",                              defaultOwner: "Kent (CFO)" },
+    { id: "tax_1065_filed",        target: "2026-06-15", label: "2024 + 2025 Form 1065s filed",                  defaultOwner: "Kent (CFO)" },
+    { id: "ccorp_conversion_underway", target: "2026-06-01", label: "Delaware C-corp conversion underway",       defaultOwner: "Kent (CFO)" },
+    { id: "hom_dao_snapshot_vote", target: "2026-06-01", label: "HOM DAO Snapshot vote scheduled",               defaultOwner: "Sean (founder)" },
+    { id: "provisional_patents",   target: "2026-06-01", label: "Provisional patents filed",                     defaultOwner: "Sean (founder)" },
+    { id: "reg_d_ppm_drafted",     target: "2026-06-01", label: "Reg D 506(c) PPM drafted",                      defaultOwner: "Kent (CFO) + counsel" },
+    { id: "conversion_counsel",    target: "2026-07-01", label: "Outside conversion counsel engaged",            defaultOwner: "Kent (CFO)" },
+    { id: "ccorp_conversion_done", target: "2026-07-01", label: "Conversion to C-corp complete",                 defaultOwner: "Kent (CFO)" },
+    { id: "storyhouse_concluded",  target: "2026-07-01", label: "Storyhouse meeting concluded",                  defaultOwner: "Sean (founder)" },
+    { id: "warm_conversations_10", target: "2026-07-01", label: "5–10 warm investor conversations completed",    defaultOwner: "Kent (CFO)" },
+    { id: "soft_commits_250k",     target: "2026-08-01", label: "$250K of soft commitments documented",          defaultOwner: "Kent (CFO)" },
+    { id: "first_wire",            target: "2026-09-01", label: "First wire received",                           defaultOwner: "Kent (CFO)" },
+    { id: "raise_target_500k",     target: "2026-10-01", label: "$250K cleared + $500K soft-committed",          defaultOwner: "Sean + Kent" },
+  ].map(m => ({
+    ...m,
+    owner: milestoneState[m.id]?.owner || m.defaultOwner,
+    status: milestoneState[m.id]?.status || "pending", // pending | in_progress | done
+    completedAt: milestoneState[m.id]?.completedAt || null,
+    note: milestoneState[m.id]?.note || null,
+  }));
+
+  // 50.27 — Development Milestones. Same shape as launch milestones but
+  // tracks product/build roadmap rather than fundraise. Editable per
+  // tenant via tenants/{id}.developmentMilestones.{id}.status. Defaults
+  // are a sane starter set for the TitleApp AI workspace; other workspaces
+  // get an empty list (no opinion) until the admin authors them.
+  const devMilestoneState = tenantData.developmentMilestones || {};
+  const defaultDevMilestones = tenantId === "ws_1778652045795_vk4sz1" ? [
+    { id: "week_may_18_sandbox",   target: "2026-05-18", label: "Sandbox polish — workflow + grading",        defaultOwner: "Sean" },
+    { id: "week_may_18_control",   target: "2026-05-18", label: "Control Center v2 — accountability layer",   defaultOwner: "Sean" },
+    { id: "week_may_25_re_av",     target: "2026-05-25", label: "Real Estate + Aviation worker polish",       defaultOwner: "Sean" },
+    { id: "week_may_25_marketing", target: "2026-05-25", label: "Marketing worker — AI lifecycle wiring",     defaultOwner: "Sean" },
+    { id: "week_jun_01_spine",     target: "2026-06-01", label: "Spine workers audit + bug bash",             defaultOwner: "Sean" },
+    { id: "week_jun_08_demo_pol",  target: "2026-06-08", label: "Investor demo polish",                       defaultOwner: "Sean" },
+    { id: "week_jun_15_ga_polish", target: "2026-06-15", label: "GA-quality polish on top 25 workers",        defaultOwner: "Sean" },
+  ] : Object.keys(devMilestoneState).map(id => ({ id, target: null, label: id, defaultOwner: null }));
+
+  const developmentMilestones = defaultDevMilestones.map(m => ({
+    ...m,
+    owner: devMilestoneState[m.id]?.owner || m.defaultOwner,
+    status: devMilestoneState[m.id]?.status || "pending",
+    completedAt: devMilestoneState[m.id]?.completedAt || null,
+    note: devMilestoneState[m.id]?.note || null,
+  }));
+
   // "Alex noticed" — template-based v1. Pick the first signal that fires.
   const noticed = [];
   if (sends24h === 0 && sends7d === 0 && drafts7d === 0) noticed.push("No marketing activity in 7 days. Launch is stalled — the campaign brief is in Drive.");
   if (sandboxInProgress >= 5 && sandboxShipped7d === 0) noticed.push(`${sandboxInProgress} sandbox sessions stuck in 'in progress' — none shipped this week. Worth a triage.`);
   if (platformSubs > 0 && totalWorkers > 0 && liveWorkers / totalWorkers < 0.5) noticed.push(`Only ${liveWorkers}/${totalWorkers} workers are live. Backfill catalog status before paid traffic lights up.`);
+  if (apolloQueued >= 50 && sends7d === 0) noticed.push(`${apolloQueued} investor contacts queued but no outreach sends in 7 days. Light the cold-email worker.`);
   const alexNoticed = noticed[0] || null;
 
   // Signal check — does this workspace have any real launch signal worth reporting?
-  const hasSignal = sends7d > 0 || drafts7d > 0 || socialPosts7d > 0 || sandbox7d > 0 || platformSubs > 0 || totalWorkers > 0;
+  const hasSignal = sends7d > 0 || drafts7d > 0 || socialPosts7d > 0 || sandbox7d > 0 || platformSubs > 0 || totalWorkers > 0 || investorsOnCapTable > 0;
 
   return {
     mode: "launch",
@@ -105,6 +250,23 @@ async function launchAdapter(tenantId) {
     workerTraction: { totalWorkers, liveWorkers },
     sandbox: { sessions7d: sandbox7d, shipped7d: sandboxShipped7d, inProgress: sandboxInProgress },
     customers: { activeSubs: platformSubs },
+    investorOutreach: {
+      investorsOnCapTable,
+      kycStarts7d,
+      investorContacts,
+      apolloQueued,
+      softCommitsUsd,
+    },
+    statusByCategory,
+    campaigns,
+    launchMilestones,
+    developmentMilestones,
+    setupState: {
+      contactsCount,
+      accountsCount,
+      milestonesFlipped: launchMilestones.filter(m => m.status !== "pending").length,
+      hasOpenAlexNoticed: !!alexNoticed,
+    },
     alexNoticed,
     workspaceName: tenantSnap.exists ? (tenantSnap.data().name || tenantId) : tenantId,
   };
@@ -161,7 +323,20 @@ async function gatherUserSections(userId) {
     if (!tenantId) continue;
     const tenantSnap = await db().collection("tenants").doc(tenantId).get();
     const mode = tenantSnap.exists ? (tenantSnap.data().mode || "operations") : "operations";
-    if (mode === "dormant") continue;
+
+    // 50.27 — hidden workspaces still appear in `sections` so they show up
+    // in the mode-controls panel (otherwise the user has no way to un-hide
+    // them from the UI). They just don't get a launch/operations brief.
+    if (mode === "dormant") {
+      const t = tenantSnap.exists ? tenantSnap.data() : {};
+      sections.push({
+        tenantId,
+        workspaceName: t.name || tenantId,
+        mode: "dormant",
+        hasSignal: false,
+      });
+      continue;
+    }
 
     let section;
     if (mode === "launch") section = await launchAdapter(tenantId);

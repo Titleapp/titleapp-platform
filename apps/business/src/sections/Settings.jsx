@@ -692,6 +692,10 @@ function BusinessSettings() {
   const [currentTenantId, setCurrentTenantId] = useState(
     localStorage.getItem("CURRENT_TENANT_ID") || null
   );
+  const [workspaceMembers, setWorkspaceMembers] = useState([]);
+  const [membersLoading, setMembersLoading] = useState(false);
+  const [membersError, setMembersError] = useState(null);
+  const [viewerRole, setViewerRole] = useState(null);
   const [showNewCompanyModal, setShowNewCompanyModal] = useState(false);
   const [newCompanyData, setNewCompanyData] = useState({
     name: "",
@@ -822,7 +826,35 @@ function BusinessSettings() {
 
   useEffect(() => {
     loadMyCompanies();
+    loadWorkspaceMembers();
   }, []);
+
+  async function loadWorkspaceMembers() {
+    const wsId = localStorage.getItem("TENANT_ID") || localStorage.getItem("WORKSPACE_ID");
+    if (!wsId || wsId === "vault" || wsId === "personal") {
+      setWorkspaceMembers([]);
+      return;
+    }
+    setMembersLoading(true);
+    setMembersError(null);
+    try {
+      const token = localStorage.getItem("ID_TOKEN");
+      const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+      const res = await fetch(`${apiBase}/api?path=/v1/workspace:members&tenantId=${encodeURIComponent(wsId)}`, {
+        headers: { Authorization: `Bearer ${token}`, "x-tenant-id": wsId },
+      });
+      const data = await res.json();
+      if (data && data.ok) {
+        setWorkspaceMembers(Array.isArray(data.members) ? data.members : []);
+        setViewerRole(data.viewerRole || null);
+      } else {
+        setMembersError(data?.message || data?.error || "Failed to load members.");
+      }
+    } catch (e) {
+      setMembersError(e?.message || "Failed to load members.");
+    }
+    setMembersLoading(false);
+  }
 
   async function loadMyCompanies() {
     const companies = [];
@@ -1007,6 +1039,72 @@ function BusinessSettings() {
               {currentTenantId !== company.id && (
                 <button className="iconBtn" onClick={() => switchTenant(company)}>Switch</button>
               )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Workspace Members (50.27) */}
+      <div className="card" style={{ marginBottom: "16px" }}>
+        <div className="cardHeader">
+          <div>
+            <div className="cardTitle">Workspace Members</div>
+            <div className="cardSub">
+              {viewerRole === "admin"
+                ? "Everyone with access to this workspace. Use this to debug invited-member access issues."
+                : "Everyone with access to this workspace."}
+            </div>
+          </div>
+          <button className="iconBtn" onClick={loadWorkspaceMembers} disabled={membersLoading}>
+            {membersLoading ? "Loading…" : "Refresh"}
+          </button>
+        </div>
+        <div style={{ padding: "16px" }}>
+          {membersError && (
+            <div style={{ fontSize: "13px", color: "#b91c1c", marginBottom: "8px" }}>{membersError}</div>
+          )}
+          {!membersError && workspaceMembers.length === 0 && !membersLoading && (
+            <div style={{ fontSize: "13px", color: "var(--textMuted)" }}>No members loaded yet.</div>
+          )}
+          {workspaceMembers.map((m) => (
+            <div
+              key={m.id}
+              style={{
+                padding: "10px 12px",
+                marginBottom: "6px",
+                border: "1px solid var(--line)",
+                borderRadius: "8px",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ fontWeight: 600 }}>{m.email || m.displayName || m.userId}</div>
+                <div style={{ fontSize: "12px", color: "var(--textMuted)" }}>
+                  {m.displayName && m.email ? `${m.displayName} · ` : ""}
+                  <code style={{ fontSize: "11px" }}>{m.userId}</code>
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                <span style={{
+                  fontSize: "10px",
+                  fontWeight: 600,
+                  padding: "2px 8px",
+                  borderRadius: "9999px",
+                  textTransform: "uppercase",
+                  background: m.role === "admin" ? "#ede9fe" : m.role === "viewer" ? "#fef3c7" : "#dcfce7",
+                  color: m.role === "admin" ? "#6d28d9" : m.role === "viewer" ? "#b45309" : "#15803d",
+                }}>{m.role}</span>
+                <span style={{
+                  fontSize: "10px",
+                  fontWeight: 600,
+                  padding: "2px 8px",
+                  borderRadius: "9999px",
+                  background: m.status === "active" ? "#dcfce7" : "#fef2f2",
+                  color: m.status === "active" ? "#15803d" : "#b91c1c",
+                }}>{m.status}</span>
+              </div>
             </div>
           ))}
         </div>

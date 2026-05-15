@@ -61,7 +61,6 @@ import VaultTools from "./sections/VaultTools";
 import B2BAnalytics from "./sections/B2BAnalytics";
 import PendingSignatures from "./sections/PendingSignatures";
 import AlexPipelines from "./sections/AlexPipelines";
-import ControlCenter from "./sections/ControlCenter";
 import SpineSection from "./sections/SpineSection";
 import MarketingDrafts from "./sections/MarketingDrafts";
 import ContentCalendar from "./sections/ContentCalendar";
@@ -4652,8 +4651,6 @@ function AdminShell({ onBackToHub, initialSection }) {
         return <VaultTools />;
       case "b2b-analytics":
         return <B2BAnalytics />;
-      case "control-center":
-        return <ControlCenter />;
       case "pipelines":
         return <AlexPipelines />;
       case "task-board":
@@ -5346,10 +5343,34 @@ export default function App() {
             // Returning user with existing workspace — go straight to app
             viewResolvedRef.current = true;
             transitionTo("app");
-          } else if (data.memberships && data.memberships.length === 1) {
-            // Single membership — auto-select and go to app
-            const mem = data.memberships[0];
-            const tenant = (data.tenants || {})[mem.tenantId] || {};
+          } else if (data.memberships && data.memberships.length >= 1) {
+            // 50.27 — auto-select the best tenant for invited members.
+            // Previously only single-membership users were auto-routed; users
+            // with 2+ memberships (e.g., personal scratch + invited workspace)
+            // landed in the hub. Worse, when they did land in a workspace, the
+            // selector picked mems[0] which was often the wrong (empty)
+            // tenant. New ordering: real workspaces (ws_* prefix) over personal,
+            // newest createdAt first.
+            const mems = data.memberships.slice();
+            const tenants = data.tenants || {};
+            const scoreMembership = (m) => {
+              const t = tenants[m.tenantId] || {};
+              let score = 0;
+              if (String(m.tenantId).startsWith("ws_")) score += 100;
+              if (t.companyName || t.name) score += 20;
+              if (m.role === "admin") score += 10; // owner-likely beats invited tie
+              return score;
+            };
+            mems.sort((a, b) => {
+              const diff = scoreMembership(b) - scoreMembership(a);
+              if (diff !== 0) return diff;
+              // tie-breaker: newest createdAt first
+              const aT = a.createdAt?._seconds || a.createdAt?.seconds || 0;
+              const bT = b.createdAt?._seconds || b.createdAt?.seconds || 0;
+              return bT - aT;
+            });
+            const mem = mems[0];
+            const tenant = tenants[mem.tenantId] || {};
             localStorage.setItem("TENANT_ID", mem.tenantId);
             if (tenant.vertical && tenant.vertical !== "GLOBAL") {
               localStorage.setItem("VERTICAL", tenant.vertical.toLowerCase());

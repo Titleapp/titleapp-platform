@@ -2,56 +2,74 @@
 /**
  * Storage Access Control — CODEX 49.5 Phase A
  * Permission checks for storage objects.
+ *
+ * 50.27 — workspace-aware: when an object carries an orgId (== tenantId),
+ * any active member of that workspace can read it. Without this, invited
+ * members hit FORBIDDEN on Accounting reports / canvasArchive output even
+ * though the Drive list shows the files.
  */
+
+const admin = require("firebase-admin");
+
+async function isWorkspaceMember(uid, tenantId) {
+  if (!uid || !tenantId) return false;
+  try {
+    const snap = await admin.firestore().collection("memberships")
+      .where("userId", "==", uid)
+      .where("tenantId", "==", tenantId)
+      .where("status", "==", "active")
+      .limit(1)
+      .get();
+    return !snap.empty;
+  } catch (e) {
+    console.warn("[storage/access] membership lookup failed:", e.message);
+    return false;
+  }
+}
 
 /**
  * Check if a user can read an object.
+ * Async now — performs a memberships lookup when the object is workspace-scoped.
  * @param {string} requestUid — who is requesting
  * @param {string} ownerUid — who owns the object
- * @param {string} scope — personal | business | shared
- * @param {string|null} orgId
+ * @param {string} scope — personal | business | org | shared
+ * @param {string|null} orgId — tenant/workspace ID
  * @param {Array} accessList — [{uid, permission}]
- * @returns {{ ok: boolean, error?: string }}
+ * @returns {Promise<{ ok: boolean, error?: string, message?: string }>}
  */
-function canRead(requestUid, ownerUid, scope, orgId, accessList = []) {
+async function canRead(requestUid, ownerUid, scope, orgId, accessList = []) {
   // Owner can always read
   if (requestUid === ownerUid) return { ok: true };
 
-  // Business scope — org members can read
-  if (scope === "business" && orgId) {
-    // In production, check org membership. For now, check accessList.
-    const entry = accessList.find(a => a.uid === requestUid);
-    if (entry) return { ok: true };
+  // Explicit access list (any scope) — covers shared docs + targeted grants
+  const grant = (accessList || []).find(a => a.uid === requestUid);
+  if (grant && ["read", "write", "admin"].includes(grant.permission)) {
+    return { ok: true };
   }
 
-  // Shared scope — check explicit access list
-  if (scope === "shared") {
-    const entry = accessList.find(a => a.uid === requestUid);
-    if (entry && (entry.permission === "read" || entry.permission === "write" || entry.permission === "admin")) {
-      return { ok: true };
-    }
+  // Workspace-scoped object — any scope that carries an orgId is treated as
+  // a workspace doc (business / org / shared-in-workspace). Active members
+  // of that workspace can read.
+  if (orgId && requestUid !== orgId) {
+    const isMember = await isWorkspaceMember(requestUid, orgId);
+    if (isMember) return { ok: true };
   }
 
-  // Personal scope — owner only
   return { ok: false, error: "forbidden", message: "You do not have access to this object" };
 }
 
 /**
  * Check if a user can write/upload to a scope.
- * @param {string} requestUid
- * @param {string} ownerUid
- * @param {string} scope
- * @param {string|null} orgId
- * @returns {{ ok: boolean, error?: string }}
+ * Async — checks workspace membership for org/business writes.
  */
-function canWrite(requestUid, ownerUid, scope, orgId) {
+async function canWrite(requestUid, ownerUid, scope, orgId) {
   // Owner can always write to their own scope
   if (requestUid === ownerUid) return { ok: true };
 
-  // Business scope — admin or creator can write
-  if (scope === "business" && orgId) {
-    // TODO: check org admin role from memberships collection
-    return { ok: false, error: "forbidden", message: "Only org admins can upload to business scope" };
+  // Workspace member can write to the workspace's shared scope
+  if (orgId) {
+    const isMember = await isWorkspaceMember(requestUid, orgId);
+    if (isMember) return { ok: true };
   }
 
   return { ok: false, error: "forbidden", message: "Cannot write to this scope" };
@@ -63,16 +81,13 @@ function canWrite(requestUid, ownerUid, scope, orgId) {
 function enforceAccessList(accessList, targetUid, permission) {
   const existing = accessList.findIndex(a => a.uid === targetUid);
   if (permission === null || permission === "revoke") {
-    // Remove
     if (existing >= 0) accessList.splice(existing, 1);
   } else if (existing >= 0) {
-    // Update
     accessList[existing].permission = permission;
   } else {
-    // Add
     accessList.push({ uid: targetUid, permission });
   }
   return accessList;
 }
 
-module.exports = { canRead, canWrite, enforceAccessList };
+module.exports = { canRead, canWrite, enforceAccessList, isWorkspaceMember };

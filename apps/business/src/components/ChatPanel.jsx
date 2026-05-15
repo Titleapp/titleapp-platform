@@ -1234,6 +1234,27 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Request failed');
 
+      // 50.27 — surface structured failures (INSUFFICIENT_ROLE,
+      // INSUFFICIENT_CREDITS, etc.) that come back as HTTP 200 with
+      // {ok:false}. Without this branch users see 'No response received'
+      // and have no idea their role or workspace balance is the problem.
+      if (data.ok === false && (data.error || data.message)) {
+        setIsTyping(false);
+        if (workerCtx?.resetState) workerCtx.resetState();
+        const friendly = data.message
+          || (data.error === 'INSUFFICIENT_ROLE' ? "You don't have permission to send messages in this workspace. Ask the admin to upgrade your role."
+              : data.error === 'INSUFFICIENT_CREDITS' ? (data.source === 'tenant'
+                  ? 'This workspace is out of Data Credits. Ask the workspace admin to top up.'
+                  : 'You are out of Data Credits. Top up your account to continue.')
+              : `Could not send: ${data.error}`);
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: friendly,
+          isError: true,
+        }]);
+        return;
+      }
+
       setIsTyping(false);
       setDealContext(null);
       if (workerCtx?.completeWork) workerCtx.completeWork();

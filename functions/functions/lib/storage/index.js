@@ -83,7 +83,7 @@ async function upload({
   if (!quotaCheck.ok) return quotaCheck;
 
   // Check write permission
-  const accessCheck = canWrite(uid, uid, scope, orgId);
+  const accessCheck = await canWrite(uid, uid, scope, orgId);
   if (!accessCheck.ok) return accessCheck;
 
   const db = getDb();
@@ -145,7 +145,7 @@ async function download(uid, objectId) {
   if (!doc.exists) return { ok: false, error: "not_found" };
 
   const data = doc.data();
-  const accessCheck = canRead(uid, data.ownerUid, data.scope, data.orgId, data.accessList);
+  const accessCheck = await canRead(uid, data.ownerUid, data.scope, data.orgId, data.accessList);
   if (!accessCheck.ok) return accessCheck;
 
   const bucket = getBucket();
@@ -274,7 +274,7 @@ async function getMetadata(uid, objectId) {
   if (!doc.exists) return { ok: false, error: "not_found" };
 
   const data = doc.data();
-  const accessCheck = canRead(uid, data.ownerUid, data.scope, data.orgId, data.accessList);
+  const accessCheck = await canRead(uid, data.ownerUid, data.scope, data.orgId, data.accessList);
   if (!accessCheck.ok) return accessCheck;
 
   return { ok: true, ...data };

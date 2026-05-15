@@ -2510,8 +2510,9 @@ When the user asks "what have I completed?", "what's next?", or about their prog
               }
 
               // Phase D-1 — mirror Accounting canvas reports (P&L, Balance
-              // Sheet, Cash Flow, Invoice, CoA) to Drive as markdown so the
-              // user has a durable artifact. No-op for non-accounting cards.
+              // Sheet, Cash Flow, CoA as .xlsx; Invoice as .pdf) to Drive so
+              // the user has a durable artifact in a format they can open in
+              // Excel/Numbers/Sheets. No-op for non-accounting cards.
               // Best-effort: failures are logged and don't break the chat.
               if (workerSlug === "platform-accounting" && authUser && reqTenantId && reqTenantId !== "vault") {
                 try {
@@ -7087,6 +7088,66 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       }
     }
 
+    // GET /v1/workspace:members (50.27)
+    // Returns active memberships for a tenant, enriched with email + display
+    // name from Firebase Auth. Admin-only — used by the Settings → Members
+    // panel so workspace owners can debug invited-member problems (role
+    // misconfig, missing membership, wrong email) without engineering help.
+    if (route === "/workspace:members" && method === "GET") {
+      try {
+        const tenantId = (req.query.tenantId || ctx.tenantId || "").toString();
+        if (!tenantId) return jsonError(res, 400, "MISSING_TENANT_ID");
+
+        const { enforceRoleGate } = require("./middleware/membershipCheck");
+        const gate = await enforceRoleGate(auth.user.uid, tenantId, "member");
+        if (!gate.ok) {
+          return res.status(403).json({ ok: false, error: "FORBIDDEN", message: "You are not a member of this workspace." });
+        }
+
+        const memSnap = await db.collection("memberships")
+          .where("tenantId", "==", tenantId)
+          .where("status", "==", "active")
+          .get();
+
+        const members = [];
+        for (const d of memSnap.docs) {
+          const m = d.data();
+          let email = null;
+          let displayName = null;
+          try {
+            const u = await admin.auth().getUser(m.userId);
+            email = u.email || null;
+            displayName = u.displayName || null;
+          } catch (e) {
+            // Stale userId — surface it anyway so the admin can spot it.
+          }
+          members.push({
+            id: d.id,
+            userId: m.userId,
+            email,
+            displayName,
+            role: m.role || "member",
+            status: m.status || "active",
+            createdAt: m.createdAt?.toMillis?.() || null,
+            createdViaInvite: m.createdViaInvite || null,
+          });
+        }
+
+        // Stable ordering: admins first, then by createdAt desc.
+        const roleRank = { admin: 0, member: 1, viewer: 2 };
+        members.sort((a, b) => {
+          const r = (roleRank[a.role] ?? 9) - (roleRank[b.role] ?? 9);
+          if (r !== 0) return r;
+          return (b.createdAt || 0) - (a.createdAt || 0);
+        });
+
+        return res.json({ ok: true, tenantId, members, total: members.length, viewerRole: gate.role });
+      } catch (e) {
+        console.error("workspace:members failed:", e);
+        return jsonError(res, 500, e.message || "Failed to list members");
+      }
+    }
+
     // POST /v1/workspace:invite:redeem (CODEX 50.10-T2)
     // Recipient accepts an invite. Validates email match, creates the
     // memberships/{id} doc and the users/{uid}/workspaces/{tenantId} mirror
@@ -9933,6 +9994,109 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       } catch (e) {
         console.error("[commandCenter:setWorkspaceMode] error:", e.message);
         return jsonError(res, 500, "Failed to set workspace mode");
+      }
+    }
+
+    // ───────────────────────────────────────────────────────────
+    // Concerns (Accountability Layer) — 50.27
+    // Owner raises a concern, names a responsible party. Responsible
+    // party submits a response. System cross-checks claims against
+    // ground-truth Firestore data. Control Center renders verification
+    // status + BS score. Workspace-scoped.
+    // ───────────────────────────────────────────────────────────
+
+    if (route === "/concerns:create" && method === "POST") {
+      try {
+        if (!ctx.tenantId) return jsonError(res, 400, "Missing tenantId");
+        const { createConcern } = require("./services/concerns");
+        const userRec = await admin.auth().getUser(auth.user.uid).catch(() => null);
+        const result = await createConcern({
+          tenantId: ctx.tenantId,
+          ownerUid: auth.user.uid,
+          ownerName: userRec?.displayName || userRec?.email || null,
+          payload: body || {},
+        });
+        return res.json(result);
+      } catch (e) {
+        console.error("[concerns:create] error:", e.message);
+        return jsonError(res, 400, e.message || "Failed to create concern");
+      }
+    }
+
+    if (route === "/concerns:list" && method === "GET") {
+      try {
+        if (!ctx.tenantId) return jsonError(res, 400, "Missing tenantId");
+        const { listConcerns } = require("./services/concerns");
+        const r = await listConcerns({ tenantId: ctx.tenantId });
+        return res.json(r);
+      } catch (e) {
+        console.error("[concerns:list] error:", e.message);
+        return jsonError(res, 500, "Failed to list concerns");
+      }
+    }
+
+    if (route === "/concerns:respond" && method === "POST") {
+      try {
+        if (!ctx.tenantId) return jsonError(res, 400, "Missing tenantId");
+        const { concernId, answers } = body || {};
+        if (!concernId) return jsonError(res, 400, "Missing concernId");
+        const { respondToConcern } = require("./services/concerns");
+        const userRec = await admin.auth().getUser(auth.user.uid).catch(() => null);
+        const result = await respondToConcern({
+          tenantId: ctx.tenantId,
+          concernId,
+          respondedBy: auth.user.uid,
+          respondedByName: userRec?.displayName || userRec?.email || null,
+          answers,
+        });
+        return res.json(result);
+      } catch (e) {
+        console.error("[concerns:respond] error:", e.message);
+        return jsonError(res, 400, e.message || "Failed to record response");
+      }
+    }
+
+    if (route === "/concerns:resolve" && method === "POST") {
+      try {
+        if (!ctx.tenantId) return jsonError(res, 400, "Missing tenantId");
+        const { concernId } = body || {};
+        if (!concernId) return jsonError(res, 400, "Missing concernId");
+        const { resolveConcern } = require("./services/concerns");
+        const result = await resolveConcern({ tenantId: ctx.tenantId, concernId });
+        return res.json(result);
+      } catch (e) {
+        console.error("[concerns:resolve] error:", e.message);
+        return jsonError(res, 400, e.message || "Failed to resolve concern");
+      }
+    }
+
+    if (route === "/concerns:delete" && method === "POST") {
+      try {
+        if (!ctx.tenantId) return jsonError(res, 400, "Missing tenantId");
+        const { concernId } = body || {};
+        if (!concernId) return jsonError(res, 400, "Missing concernId");
+        const { deleteConcern } = require("./services/concerns");
+        const result = await deleteConcern({ tenantId: ctx.tenantId, concernId });
+        return res.json(result);
+      } catch (e) {
+        console.error("[concerns:delete] error:", e.message);
+        return jsonError(res, 400, e.message || "Failed to delete concern");
+      }
+    }
+
+    if (route === "/concerns:types" && method === "GET") {
+      try {
+        const { CONCERN_TYPES } = require("./services/concerns");
+        const types = Object.entries(CONCERN_TYPES).map(([key, spec]) => ({
+          key,
+          label: spec.label,
+          defaultQuestions: spec.defaultQuestions,
+          metrics: spec.metrics,
+        }));
+        return res.json({ ok: true, types });
+      } catch (e) {
+        console.error("[concerns:types] error:", e.message);
+        return jsonError(res, 500, "Failed to list concern types");
       }
     }
 
