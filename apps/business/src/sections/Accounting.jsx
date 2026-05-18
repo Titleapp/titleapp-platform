@@ -669,26 +669,9 @@ function AccountsPane({ accounts, loading, onAdd, onDelete, onConnectBank, onSyn
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, gap: 8, flexWrap: "wrap" }}>
         <div style={{ fontSize: 14, color: "#64748b" }}>
-          {accounts.length} connected account{accounts.length === 1 ? "" : "s"}. Use "Connect bank" for auto-sync via Stripe, or add manually for accounts Stripe doesn't cover.
+          {accounts.length} connected account{accounts.length === 1 ? "" : "s"}. Add manually for now — auto-sync via Stripe ships after the entity migration.
         </div>
         <div style={{ display: "flex", gap: 8 }}>
-          {accounts.some(a => a.source === "stripe_fc") && (
-            <button
-              onClick={onSync}
-              disabled={syncing}
-              style={{ padding: "8px 14px", background: "white", color: "#475569", border: "1px solid #e2e8f0", borderRadius: 8, cursor: syncing ? "wait" : "pointer", fontWeight: 600, fontSize: 13 }}
-            >
-              {syncing ? "Syncing…" : "Sync transactions"}
-            </button>
-          )}
-          <button
-            onClick={onConnectBank}
-            disabled={connecting}
-            style={{ padding: "8px 14px", background: "linear-gradient(135deg, #635bff, #5851ec)", color: "white", border: "none", borderRadius: 8, cursor: connecting ? "wait" : "pointer", fontWeight: 600, fontSize: 13 }}
-            title="Connect a bank or credit card via Stripe Financial Connections"
-          >
-            {connecting ? "Opening…" : "Connect bank (Stripe)"}
-          </button>
           <button
             onClick={onAdd}
             className="iconBtn"
@@ -698,16 +681,7 @@ function AccountsPane({ accounts, loading, onAdd, onDelete, onConnectBank, onSyn
           </button>
         </div>
       </div>
-      {fcMessage && (
-        <div style={{
-          padding: "8px 12px", borderRadius: 6, marginBottom: 12, fontSize: 13,
-          background: fcMessage.kind === "error" ? "#fef2f2" : fcMessage.kind === "ok" ? "#f0fdf4" : "#f8fafc",
-          color: fcMessage.kind === "error" ? "#b91c1c" : fcMessage.kind === "ok" ? "#15803d" : "#475569",
-          border: `1px solid ${fcMessage.kind === "error" ? "#fecaca" : fcMessage.kind === "ok" ? "#bbf7d0" : "#e2e8f0"}`,
-        }}>
-          {fcMessage.text}
-        </div>
-      )}
+      {/* fcMessage temporarily hidden while Stripe FC is paused pre-entity-migration */}
       {loading && <div className="card" style={{ padding: 32, textAlign: "center", color: "#64748b" }}>Loading…</div>}
       {!loading && accounts.length === 0 && (
         <div className="card" style={{ padding: "48px 24px", textAlign: "center" }}>
