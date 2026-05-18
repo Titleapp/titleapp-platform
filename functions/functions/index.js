@@ -10687,6 +10687,32 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       }
     }
 
+    // POST /v1/accounting:prebuilt:commit { fileId, fileName, plan, sheetActions? }
+    // CODEX 51.1 Phase 2 — commit pre-built financials (xlsx) to Firestore.
+    // Writes three append-only artifacts: transactions (source=import_prebuilt),
+    // balanceSnapshots (one doc), forwardBudgets (one doc per budget sheet).
+    // Idempotent: re-uploading same fileId returns { skipped: true }.
+    if (route === "/accounting:prebuilt:commit" && method === "POST") {
+      try {
+        const { fileId, fileName, plan, sheetActions } = body || {};
+        if (!fileId) return jsonError(res, 400, "Missing fileId");
+        if (!plan || !Array.isArray(plan.sheets)) return jsonError(res, 400, "Missing parse plan");
+        const { commitPrebuiltFinancials } = require("./services/accounting/prebuiltFinancialsParser");
+        const result = await commitPrebuiltFinancials({
+          tenantId: ctx.tenantId,
+          userId: auth.user.uid,
+          fileId,
+          fileName: fileName || null,
+          plan,
+          sheetActions: sheetActions || null,
+        });
+        return res.json({ ok: true, ...result });
+      } catch (e) {
+        console.error("[accounting:prebuilt:commit] error:", e.message);
+        return jsonError(res, 500, e.message || "Failed to commit pre-built financials");
+      }
+    }
+
     // ───────────────────────────────────────────────────────────
     // Controller approvals inbox (Phase C — Sweep 4)
     // Side-effects blocked by the Controller pre-commit hook write to

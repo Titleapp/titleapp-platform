@@ -140,6 +140,14 @@ export default function useAccounting() {
     finally { setLoading(false); }
   }, []);
 
+  // CODEX 51.1 Phase 2 — commit pre-built financials xlsx to Firestore.
+  const commitPrebuilt = useCallback(async (payload) => {
+    setLoading(true);
+    try { return await apiFetch("/v1/accounting:prebuilt:commit", "POST", payload); }
+    catch (e) { setError(e.message); return { ok: false, error: e.message }; }
+    finally { setLoading(false); }
+  }, []);
+
   const listTransactions = useCallback(async ({ status = "all", limit = 200 } = {}) => {
     try { return await apiFetch(`/v1/accounting:transactions:list?status=${status}&limit=${limit}`); }
     catch (e) { setError(e.message); return { ok: false, transactions: [] }; }
@@ -165,7 +173,7 @@ export default function useAccounting() {
     getFiscalYear, setFiscalYear,
     listAccounts, createAccount, deleteAccount,
     listCoaTemplates, listCoa, applyCoaTemplate, createCoa, updateCoa, deleteCoa,
-    parseStatement, commitStatement, listTransactions, tagTransaction,
+    parseStatement, commitStatement, commitPrebuilt, listTransactions, tagTransaction,
     listApprovals, decideApproval,
     loading, error,
   };

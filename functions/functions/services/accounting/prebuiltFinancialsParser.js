@@ -10,9 +10,12 @@
 // $35,615 — off by 7× — because LLM text-reading on structured spreadsheet
 // data is unreliable. ExcelJS reads cells by address, no inference involved.
 
+const admin = require("firebase-admin");
 const ExcelJS = require("exceljs");
 
 const XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+
+function getDb() { return admin.firestore(); }
 
 // ---------- Sheet-intent inference ----------
 //
@@ -472,8 +475,213 @@ async function parsePrebuiltFinancials({ buffer, filename, contentType }) {
   };
 }
 
+// ---------- Commit functions (Phase 2) ----------
+//
+// Three append-only writes per import:
+//   1. transactions   — P&L line items, source="import_prebuilt"
+//   2. balanceSnapshots — one doc per upload, captures all asset/liability/equity rows
+//   3. forwardBudgets  — one doc per budget sheet, captures lineItems + totals
+//
+// Idempotency: prior imports with the same sourceFileId are checked first.
+// If found, return { skipped: true, reason: "already_imported" } so the
+// user can't accidentally double-import the same xlsx.
+
+async function alreadyImported({ tenantId, sourceFileId }) {
+  if (!sourceFileId) return false;
+  const db = getDb();
+  // Check the balanceSnapshots collection first — fastest signal because
+  // only prebuilt imports write there.
+  const bsSnap = await db.collection("balanceSnapshots")
+    .where("tenantId", "==", tenantId)
+    .where("sourceFileId", "==", sourceFileId)
+    .limit(1)
+    .get();
+  if (!bsSnap.empty) return true;
+  // Fallback: check transactions for source=import_prebuilt + this fileId.
+  const txSnap = await db.collection("transactions")
+    .where("tenantId", "==", tenantId)
+    .where("sourceFileId", "==", sourceFileId)
+    .where("source", "==", "import_prebuilt")
+    .limit(1)
+    .get();
+  return !txSnap.empty;
+}
+
+function dateToMonthlyTotals(transactions) {
+  // Helper used for category sanity-checks in commit.
+  // Bucketed by YYYY-MM. Useful for the Dashboard rollup downstream.
+  const out = {};
+  transactions.forEach(t => {
+    if (!t.date) return;
+    const m = t.date.match(/^(\d{4})-(\d{2})|^(\d{1,2})\/\d{1,2}\/(\d{4})/);
+    if (!m) return;
+    const ym = m[1] ? `${m[1]}-${m[2]}` : `${m[4]}-${String(m[3]).padStart(2, "0")}`;
+    out[ym] = (out[ym] || 0) + (t.amountCents || 0);
+  });
+  return out;
+}
+
+function normalizeDateForFirestore(raw) {
+  if (!raw) return null;
+  const s = String(raw).trim();
+  // V11 P&L uses M/D/YYYY in the Date column
+  let m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (m) return `${m[3]}-${String(m[1]).padStart(2, "0")}-${String(m[2]).padStart(2, "0")}`;
+  // ISO already
+  m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+  return null;
+}
+
+async function commitPrebuiltFinancials({
+  tenantId, userId, fileId, fileName, plan, sheetActions,
+}) {
+  if (!tenantId) throw new Error("Missing tenantId");
+  if (!plan || !Array.isArray(plan.sheets)) throw new Error("Missing parse plan");
+  // sheetActions: { [sheetName]: boolean } — user's per-sheet include/exclude.
+  // Missing or true → import per the plan's default action. false → skip.
+
+  const dup = await alreadyImported({ tenantId, sourceFileId: fileId });
+  if (dup) {
+    return { skipped: true, reason: "already_imported",
+             message: "This file was already imported. Discard and start fresh if you want to re-import." };
+  }
+
+  const db = getDb();
+  const written = {
+    transactions: 0,
+    balanceSnapshots: 0,
+    forwardBudgets: 0,
+    skipped: [],
+  };
+  const eventTime = admin.firestore.FieldValue.serverTimestamp();
+
+  for (const sheet of plan.sheets) {
+    const userIncluded = sheetActions ? sheetActions[sheet.name] !== false : true;
+    if (!userIncluded || sheet.action === "skip") {
+      written.skipped.push(sheet.name);
+      continue;
+    }
+
+    if (sheet.action === "import-transactions" && sheet.data) {
+      const txns = sheet.data.transactions || [];
+      // Batch in chunks of 400 (Firestore limit 500/batch, leave headroom).
+      for (let i = 0; i < txns.length; i += 400) {
+        const slice = txns.slice(i, i + 400);
+        const batch = db.batch();
+        slice.forEach(t => {
+          const ref = db.collection("transactions").doc();
+          batch.set(ref, {
+            tenantId,
+            date: normalizeDateForFirestore(t.date),
+            description: (t.description || "").slice(0, 500) || null,
+            merchant: (t.merchant || "").slice(0, 500) || null,
+            amountCents: typeof t.amountCents === "number" ? t.amountCents : 0,
+            direction: "debit", // P&L imports are expense outflows
+            classification: "expense",
+            // category field from V11 sheet banners is preserved as a hint
+            // — CoA mapping happens via the categoryHint field for future
+            // backfills if/when the user maps these categories to CoA ids.
+            categoryHint: t.category || null,
+            coaAccountId: null,
+            coaConfidence: null,
+            reviewNote: "Imported from pre-built xlsx — category preserved as hint",
+            source: "import_prebuilt",
+            sourceFileId: fileId,
+            sourceFileName: fileName || null,
+            status: "committed", // already categorized in the source file
+            year: t.year || null,
+            createdAt: eventTime,
+            createdBy: userId,
+          });
+        });
+        await batch.commit();
+        written.transactions += slice.length;
+      }
+    }
+
+    if (sheet.action === "import-balance" && sheet.data) {
+      const lines = sheet.data.lines || [];
+      const sections = sheet.data.sections || {};
+      const ref = db.collection("balanceSnapshots").doc();
+      await ref.set({
+        tenantId,
+        snapshotDate: new Date().toISOString().slice(0, 10),
+        source: "import_prebuilt",
+        sourceFileId: fileId,
+        sourceFileName: fileName || null,
+        sheetName: sheet.name,
+        lineItems: lines.map(l => ({
+          section: l.section || null,
+          name: (l.name || "").slice(0, 500),
+          valueCents: typeof l.valueNumeric === "number" ? Math.round(l.valueNumeric * 100) : null,
+          valueRaw: (l.valueRaw || "").slice(0, 200),
+          note: (l.note || "").slice(0, 1000),
+          isTotal: !!l.isTotal,
+        })),
+        sectionTotals: Object.entries(sections).reduce((acc, [k, v]) => {
+          acc[k] = {
+            knownTotalCents: Math.round((v.knownTotal || 0) * 100),
+            itemCount: v.items.length,
+            hasTBD: !!v.hasTBD,
+          };
+          return acc;
+        }, {}),
+        createdAt: eventTime,
+        createdBy: userId,
+      });
+      written.balanceSnapshots += 1;
+    }
+
+    if (sheet.action === "import-budget" && sheet.data) {
+      const ref = db.collection("forwardBudgets").doc();
+      const data = sheet.data;
+      await ref.set({
+        tenantId,
+        year: data.year || sheet.year || null,
+        source: "import_prebuilt",
+        sourceFileId: fileId,
+        sourceFileName: fileName || null,
+        sheetName: sheet.name,
+        lineItems: (data.lineItems || []).map(l => ({
+          section: l.section || null,
+          name: (l.name || "").slice(0, 500),
+          monthlyCents: l.monthlyCents,
+          months: l.months,
+          periodTotalCents: l.periodTotalCents,
+          annualTotalCents: l.annualTotalCents,
+        })),
+        sectionTotals: data.sectionTotals || {},
+        grandPeriodTotalCents: Math.round((data.grandPeriodTotal || 0) * 100),
+        grandAnnualTotalCents: Math.round((data.grandAnnualTotal || 0) * 100),
+        monthlyRunRateCents: data.grandAnnualTotal
+          ? Math.round((data.grandAnnualTotal / 12) * 100) : null,
+        createdAt: eventTime,
+        createdBy: userId,
+      });
+      written.forwardBudgets += 1;
+    }
+  }
+
+  // Audit row so the user has a record of every import event.
+  await db.collection("importEvents").add({
+    tenantId,
+    userId,
+    type: "prebuilt_financials",
+    sourceFileId: fileId,
+    sourceFileName: fileName || null,
+    sheetCount: plan.sheets.length,
+    written,
+    createdAt: eventTime,
+  });
+
+  return { ok: true, written };
+}
+
 module.exports = {
   parsePrebuiltFinancials,
+  commitPrebuiltFinancials,
+  alreadyImported,
   classifySheet,
   XLSX_MIME,
 };

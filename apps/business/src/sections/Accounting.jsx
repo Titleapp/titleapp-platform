@@ -905,7 +905,7 @@ function TransactionsPane({ coa }) {
   const [error, setError] = useState(null);
   const [progress, setProgress] = useState(null);
   const fileInputRef = useRef(null);
-  const { parseStatement, commitStatement, listTransactions, tagTransaction } = useAccounting();
+  const { parseStatement, commitStatement, commitPrebuilt, listTransactions, tagTransaction } = useAccounting();
   const { uploadFile } = useDocuments();
 
   const refreshTransactions = useCallback(async () => {
@@ -1016,11 +1016,45 @@ function TransactionsPane({ coa }) {
     }
   };
 
-  // Pre-built financials review — no Firestore commit in V1, this is the
-  // announce-and-confirm surface so the user can verify the parse before
-  // we wire commit paths for balance snapshots + forward budgets.
+  // Toggle a sheet's include/exclude in the prebuilt parse plan.
+  const togglePrebuiltSheet = (sheetName, defaultIncluded) => {
+    setPrebuiltStaged(s => {
+      const current = s.sheetActions || {};
+      // If the user hasn't touched this sheet yet, its default is the
+      // action's polarity. First click flips that.
+      const wasIncluded = current[sheetName] != null ? current[sheetName] : defaultIncluded;
+      return { ...s, sheetActions: { ...current, [sheetName]: !wasIncluded } };
+    });
+  };
+
+  const confirmPrebuiltImport = async () => {
+    if (!prebuiltStaged) return;
+    setPrebuiltStaged(s => ({ ...s, committing: true, commitError: null }));
+    const plan = { sheets: prebuiltStaged.sheets, rollup: prebuiltStaged.rollup };
+    const r = await commitPrebuilt({
+      fileId: prebuiltStaged.fileId,
+      fileName: prebuiltStaged.fileName,
+      plan,
+      sheetActions: prebuiltStaged.sheetActions || {},
+    });
+    if (!r?.ok) {
+      setPrebuiltStaged(s => ({ ...s, committing: false, commitError: r?.error || "Commit failed" }));
+      return;
+    }
+    if (r.skipped) {
+      setPrebuiltStaged(s => ({ ...s, committing: false, commitError: r.message || "This file was already imported." }));
+      return;
+    }
+    setPrebuiltStaged(s => ({ ...s, committing: false, commitResult: r.written || {} }));
+    refreshTransactions();
+    window.dispatchEvent(new Event("ta:accounting-changed"));
+  };
+
+  // Pre-built financials review — announce-and-confirm surface. Per-sheet
+  // toggles let the user override the auto-classification; Confirm import
+  // writes to Firestore (transactions, balanceSnapshots, forwardBudgets).
   if (prebuiltStaged) {
-    const { sheets, rollup, fileName } = prebuiltStaged;
+    const { sheets, rollup, fileName, sheetActions = {}, committing, commitResult, commitError } = prebuiltStaged;
     const usd = (n) => (typeof n === "number" ? `$${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : String(n ?? ""));
     const actionLabel = (a) => ({
       "import-transactions": "Import as P&L line items",
@@ -1040,8 +1074,8 @@ function TransactionsPane({ coa }) {
           <button onClick={() => setPrebuiltStaged(null)} className="iconBtn" style={{ background: "white", color: "#1e293b", border: "1px solid #e2e8f0" }}>Discard</button>
         </div>
 
-        <div style={{ background: "#fef3c7", border: "1px solid #f59e0b", borderRadius: 8, padding: 12, marginBottom: 16, fontSize: 13 }}>
-          <strong>Phase 1 of CODEX 51.1.</strong> Parsing is deterministic — numbers below are read cell-by-cell from your file, not interpreted by an LLM. Commit-to-Firestore for balance sheets and forward budgets is a follow-up (Phase 2).
+        <div style={{ background: "#ecfdf5", border: "1px solid #34d399", borderRadius: 8, padding: 12, marginBottom: 16, fontSize: 13, color: "#065f46" }}>
+          <strong>Deterministic parse.</strong> Numbers below are read cell-by-cell from your file. Review the per-sheet plan, then click <strong>Confirm import</strong> to write transactions, the balance-sheet snapshot, and forward budgets to your books. Append-only — same file can't be imported twice.
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 12, marginBottom: 16 }}>
@@ -1086,27 +1120,45 @@ function TransactionsPane({ coa }) {
         </div>
 
         <div style={{ background: "white", border: "1px solid #e2e8f0", borderRadius: 8, overflow: "hidden" }}>
-          <div style={{ padding: "10px 14px", fontSize: 13, fontWeight: 600, color: "#1e293b", background: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>Sheet-by-sheet plan</div>
+          <div style={{ padding: "10px 14px", fontSize: 13, fontWeight: 600, color: "#1e293b", background: "#f8fafc", borderBottom: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span>Sheet-by-sheet plan</span>
+            <span style={{ fontSize: 11, color: "#64748b", fontWeight: 400 }}>Uncheck any sheet to exclude it from the import</span>
+          </div>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ background: "#f8fafc", fontSize: 12, color: "#64748b" }}>
+                <th style={{ textAlign: "center", padding: "8px 14px", fontWeight: 500, width: 44 }}>Import</th>
                 <th style={{ textAlign: "left", padding: "8px 14px", fontWeight: 500 }}>Sheet</th>
-                <th style={{ textAlign: "left", padding: "8px 14px", fontWeight: 500 }}>Intent</th>
                 <th style={{ textAlign: "left", padding: "8px 14px", fontWeight: 500 }}>Action</th>
                 <th style={{ textAlign: "right", padding: "8px 14px", fontWeight: 500 }}>Detail</th>
               </tr>
             </thead>
             <tbody>
               {sheets.map(s => {
+                const defaultIncluded = s.action !== "skip";
+                const userOverride = sheetActions[s.name];
+                const included = userOverride != null ? userOverride : defaultIncluded;
                 const detail =
                   s.action === "import-transactions" ? `${s.data?.transactionCount ?? 0} txns · ${usd(s.data?.grandTotal)}` :
                   s.action === "import-balance" ? `${(s.data?.lines || []).length} line items` :
                   s.action === "import-budget" ? `${(s.data?.lineItems || []).length} line items` :
                   s.reason || "—";
+                const rowStyle = included
+                  ? { borderTop: "1px solid #f1f5f9", fontSize: 13 }
+                  : { borderTop: "1px solid #f1f5f9", fontSize: 13, opacity: 0.5, background: "#fafafa" };
                 return (
-                  <tr key={s.name} style={{ borderTop: "1px solid #f1f5f9", fontSize: 13 }}>
+                  <tr key={s.name} style={rowStyle}>
+                    <td style={{ padding: "10px 14px", textAlign: "center" }}>
+                      <input
+                        type="checkbox"
+                        checked={included}
+                        onChange={() => togglePrebuiltSheet(s.name, defaultIncluded)}
+                        disabled={s.action === "skip" || committing}
+                        style={{ cursor: s.action === "skip" ? "not-allowed" : "pointer" }}
+                        title={s.action === "skip" ? "Always skipped — informational sheet" : "Toggle import"}
+                      />
+                    </td>
                     <td style={{ padding: "10px 14px", color: "#1e293b", fontWeight: 500 }}>{s.name}</td>
-                    <td style={{ padding: "10px 14px", color: "#475569" }}>{s.intent}</td>
                     <td style={{ padding: "10px 14px", color: actionColor(s.action), fontWeight: 500 }}>{actionLabel(s.action)}</td>
                     <td style={{ padding: "10px 14px", color: "#475569", textAlign: "right" }}>{detail}</td>
                   </tr>
@@ -1116,9 +1168,35 @@ function TransactionsPane({ coa }) {
           </table>
         </div>
 
-        <div style={{ marginTop: 16, fontSize: 12, color: "#64748b" }}>
-          Phase 2 of CODEX 51.1 wires commit paths for balance sheets + forward budgets. Until then, this view is review-only.
-        </div>
+        {commitError && (
+          <div style={{ marginTop: 16, padding: 12, background: "#fee2e2", border: "1px solid #fecaca", borderRadius: 6, color: "#991b1b", fontSize: 13 }}>
+            {commitError}
+          </div>
+        )}
+
+        {commitResult ? (
+          <div style={{ marginTop: 16, padding: 14, background: "#dcfce7", border: "1px solid #bbf7d0", borderRadius: 6, color: "#166534" }}>
+            <div style={{ fontWeight: 600, marginBottom: 6 }}>Import committed.</div>
+            <div style={{ fontSize: 13 }}>
+              {commitResult.transactions || 0} transactions · {commitResult.balanceSnapshots || 0} balance snapshot · {commitResult.forwardBudgets || 0} forward budget
+              {commitResult.skipped?.length ? ` · ${commitResult.skipped.length} sheet${commitResult.skipped.length === 1 ? "" : "s"} skipped` : ""}
+            </div>
+            <button onClick={() => setPrebuiltStaged(null)} style={{ marginTop: 10, padding: "6px 12px", background: "#16a34a", color: "white", border: "none", borderRadius: 4, fontSize: 13, cursor: "pointer" }}>Done</button>
+          </div>
+        ) : (
+          <div style={{ marginTop: 16, display: "flex", gap: 12, alignItems: "center" }}>
+            <button
+              onClick={confirmPrebuiltImport}
+              disabled={committing}
+              style={{ padding: "10px 18px", background: committing ? "#a78bfa" : "linear-gradient(135deg, #7c3aed, #6d28d9)", color: "white", border: "none", borderRadius: 6, fontSize: 14, fontWeight: 600, cursor: committing ? "wait" : "pointer" }}
+            >
+              {committing ? "Writing to Firestore…" : "Confirm import"}
+            </button>
+            <span style={{ fontSize: 12, color: "#64748b" }}>
+              Append-only. Re-uploading the same file will be detected and refused.
+            </span>
+          </div>
+        )}
       </div>
     );
   }

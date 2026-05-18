@@ -93,6 +93,10 @@ async function getMonthToDateSpendCents({ tenantId, coaAccountId }) {
     const t = d.data();
     if (!t.date || t.date < monthStart) return;
     if (t.direction !== "debit") return; // refunds reduce spend
+    // Historical imports (pre-built financials, backfill scripts) must not
+    // count toward current MTD spend — they'd trip false "over cap" blocks
+    // on legitimate current-month outbound actions.
+    if (t.source === "import_prebuilt" || t.source === "backfill") return;
     total += Math.abs(t.amountCents || 0);
   });
   return total;
