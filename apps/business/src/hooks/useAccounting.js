@@ -163,6 +163,17 @@ export default function useAccounting() {
     catch (e) { setError(e.message); return { ok: false, error: e.message }; }
   }, []);
 
+  // CODEX 51.1 Phase 2d — Deadline-tracking obligations.
+  const listObligations = useCallback(async () => {
+    try { return await apiFetch("/v1/accounting:obligations"); }
+    catch (e) { setError(e.message); return { ok: false, obligations: [], counts: {} }; }
+  }, []);
+
+  const markObligationComplete = useCallback(async ({ obligationKey, evidenceFileId = null, note = null }) => {
+    try { return await apiFetch("/v1/accounting:obligations:markComplete", "POST", { obligationKey, evidenceFileId, note }); }
+    catch (e) { setError(e.message); return { ok: false, error: e.message }; }
+  }, []);
+
   const listTransactions = useCallback(async ({ status = "all", limit = 200 } = {}) => {
     try { return await apiFetch(`/v1/accounting:transactions:list?status=${status}&limit=${limit}`); }
     catch (e) { setError(e.message); return { ok: false, transactions: [] }; }
@@ -189,6 +200,7 @@ export default function useAccounting() {
     listAccounts, createAccount, deleteAccount,
     listCoaTemplates, listCoa, applyCoaTemplate, createCoa, updateCoa, deleteCoa,
     parseStatement, commitStatement, commitPrebuilt, resetPrebuilt, getDashboardSummary, listTransactions, tagTransaction,
+    listObligations, markObligationComplete,
     listApprovals, decideApproval,
     loading, error,
   };

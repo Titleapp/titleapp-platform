@@ -86,6 +86,7 @@ export default function Accounting() {
     listCoaTemplates, listCoa, applyCoaTemplate, createCoa, updateCoa, deleteCoa,
     listTransactions: listTransactionsTop,
     getDashboardSummary,
+    listObligations, markObligationComplete,
     loading,
   } = useAccounting();
 
@@ -280,7 +281,7 @@ export default function Accounting() {
       </div>
 
       {/* Body */}
-      {tab === "dashboard" && <DashboardPane accounts={accounts} transactions={allTransactions} getDashboardSummary={getDashboardSummary} />}
+      {tab === "dashboard" && <DashboardPane accounts={accounts} transactions={allTransactions} getDashboardSummary={getDashboardSummary} listObligations={listObligations} markObligationComplete={markObligationComplete} />}
       {tab === "accounts" && (
         <AccountsPane
           accounts={accounts}
@@ -410,16 +411,21 @@ function FiscalYearModal({ getFiscalYear, onClose, onSubmit }) {
   );
 }
 
-function DashboardPane({ accounts, getDashboardSummary }) {
+function DashboardPane({ accounts, getDashboardSummary, listObligations, markObligationComplete }) {
   const [summary, setSummary] = useState(null);
   const [loadingSummary, setLoadingSummary] = useState(true);
+  const [obligations, setObligations] = useState({ list: [], counts: {} });
 
   const load = useCallback(async () => {
     setLoadingSummary(true);
-    const r = await getDashboardSummary?.();
+    const [r, ob] = await Promise.all([
+      getDashboardSummary?.(),
+      listObligations?.(),
+    ]);
     if (r?.ok) setSummary(r);
+    if (ob?.ok) setObligations({ list: ob.obligations || [], counts: ob.counts || {} });
     setLoadingSummary(false);
-  }, [getDashboardSummary]);
+  }, [getDashboardSummary, listObligations]);
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => {
@@ -427,6 +433,15 @@ function DashboardPane({ accounts, getDashboardSummary }) {
     window.addEventListener("ta:accounting-changed", refresh);
     return () => window.removeEventListener("ta:accounting-changed", refresh);
   }, [load]);
+
+  const handleMarkDone = useCallback(async (obligationKey) => {
+    if (!markObligationComplete) return;
+    const r = await markObligationComplete({ obligationKey });
+    if (r?.ok) {
+      load();
+      window.dispatchEvent(new Event("ta:accounting-changed"));
+    }
+  }, [markObligationComplete, load]);
 
   const fromCents = (c) => typeof c === "number" ? formatCurrency(c / 100) : "—";
   const cashCents = summary?.cashOnHand?.cents;
@@ -478,15 +493,85 @@ function DashboardPane({ accounts, getDashboardSummary }) {
     : "No balance sheet on file";
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
-      <KPI label="Cash on hand" value={loadingSummary ? "…" : fromCents(cashCents)} hint={cashHint} />
-      <KPI label="Budget vs Actual (MTD)" value={loadingSummary ? "…" : bvaValue} hint={bvaHint} />
-      <KPI label={avgBurnLabel} value={loadingSummary ? "…" : fromCents(summary?.avgMonthlyBurn?.cents)} hint={avgBurnHint} />
-      <KPI label="Forward run rate" value={loadingSummary ? "…" : forwardRateValue} hint={forwardRateHint} />
-      <KPI label="Runway" value={loadingSummary ? "…" : runwayValue} hint={runwayHint} />
-      <KPI label="Total liabilities" value={loadingSummary ? "…" : liabilitiesValue} hint={liabilitiesHint} />
-      <KPI label="MRR" value="—" hint="Connect Stripe to populate" />
-      <KPI label="Unpaid invoices" value="—" hint="No invoices feature yet" />
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <ObligationsBanner obligations={obligations.list} counts={obligations.counts} onMarkDone={handleMarkDone} />
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
+        <KPI label="Cash on hand" value={loadingSummary ? "…" : fromCents(cashCents)} hint={cashHint} />
+        <KPI label="Budget vs Actual (MTD)" value={loadingSummary ? "…" : bvaValue} hint={bvaHint} />
+        <KPI label={avgBurnLabel} value={loadingSummary ? "…" : fromCents(summary?.avgMonthlyBurn?.cents)} hint={avgBurnHint} />
+        <KPI label="Forward run rate" value={loadingSummary ? "…" : forwardRateValue} hint={forwardRateHint} />
+        <KPI label="Runway" value={loadingSummary ? "…" : runwayValue} hint={runwayHint} />
+        <KPI label="Total liabilities" value={loadingSummary ? "…" : liabilitiesValue} hint={liabilitiesHint} />
+        <KPI label="MRR" value="—" hint="Connect Stripe to populate" />
+        <KPI label="Unpaid invoices" value="—" hint="No invoices feature yet" />
+      </div>
+    </div>
+  );
+}
+
+function ObligationsBanner({ obligations, counts, onMarkDone }) {
+  const [expanded, setExpanded] = useState(false);
+  if (!obligations || obligations.length === 0) return null;
+  const red = counts.red || 0;
+  const amber = counts.amber || 0;
+  const hasRed = red > 0;
+  const stripeBg = hasRed ? "#fef2f2" : "#fffbeb";
+  const stripeBorder = hasRed ? "#fecaca" : "#fde68a";
+  const accent = hasRed ? "#dc2626" : "#d97706";
+  const summary = [
+    red > 0 ? `${red} overdue` : null,
+    amber > 0 ? `${amber} approaching` : null,
+  ].filter(Boolean).join(" · ");
+
+  return (
+    <div style={{ background: stripeBg, border: `1px solid ${stripeBorder}`, borderRadius: 8, padding: "12px 14px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: accent }}>
+            Actions you must take · {summary}
+          </div>
+          <div style={{ fontSize: 12, color: "#475569", marginTop: 2 }}>
+            Missing a filing or statement upload can cost real money. Stay ahead.
+          </div>
+        </div>
+        <button
+          onClick={() => setExpanded(v => !v)}
+          style={{ padding: "6px 12px", background: "white", border: `1px solid ${stripeBorder}`, borderRadius: 6, cursor: "pointer", fontWeight: 600, color: accent, fontSize: 12 }}
+        >
+          {expanded ? "Hide" : "Show"} ({obligations.length})
+        </button>
+      </div>
+      {expanded && (
+        <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
+          {obligations.map(o => (
+            <ObligationRow key={o.id} obligation={o} onMarkDone={onMarkDone} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ObligationRow({ obligation, onMarkDone }) {
+  const dot = obligation.severity === "red" ? "#dc2626" : "#d97706";
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "white", border: "1px solid #e2e8f0", borderRadius: 6, padding: "8px 12px", gap: 12 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+        <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 4, background: dot, flexShrink: 0 }} />
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: "#1e293b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {obligation.label}
+          </div>
+          <div style={{ fontSize: 11, color: "#64748b" }}>{obligation.detail}</div>
+        </div>
+      </div>
+      <button
+        onClick={() => onMarkDone(obligation.obligationKey)}
+        style={{ padding: "5px 10px", background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 4, cursor: "pointer", fontWeight: 600, color: "#475569", fontSize: 11, whiteSpace: "nowrap" }}
+        title="Mark this obligation complete"
+      >
+        Mark done
+      </button>
     </div>
   );
 }

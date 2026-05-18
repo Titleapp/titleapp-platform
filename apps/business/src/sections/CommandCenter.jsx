@@ -16,6 +16,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import useCommandCenter from "../hooks/useCommandCenter";
+import useAccounting from "../hooks/useAccounting";
 import SuggestImprovementButton from "../components/SuggestImprovementButton";
 import ConcernsCard from "../components/ConcernsCard";
 
@@ -410,6 +411,7 @@ function LaunchSections({ s, onMilestoneChange }) {
         <MarketingPressCard s={s} />
         <CreatorSignupsCard s={s} />
         <RunwaySpendCard s={s} />
+        <ComplianceFilingsCard />
         <WorkerHealthCard s={s} />
       </div>
       <StatusByCategoryCard s={s} />
@@ -593,6 +595,88 @@ function RunwaySpendCard({ s }) {
         { label: "Runway · 100d", value: "—", muted: true, stub: "burn × cash" },
         { label: "Recurring vendors flagged", value: "—", muted: true, stub: "controller:caps" },
       ]} />
+    </SectionShell>
+  );
+}
+
+function ComplianceFilingsCard() {
+  // Surfaces the same obligations the Accounting Dashboard tracks.
+  // Born from the $20K-DE-penalty rule: every deadline-driven worker
+  // must show required actions persistently, and Control Center is
+  // the cross-worker rollup.
+  const { listObligations, markObligationComplete } = useAccounting();
+  const [items, setItems] = useState([]);
+  const [counts, setCounts] = useState({});
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const r = await listObligations();
+    if (r?.ok) {
+      setItems(r.obligations || []);
+      setCounts(r.counts || {});
+    }
+    setLoading(false);
+  }, [listObligations]);
+
+  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    const refresh = () => load();
+    window.addEventListener("ta:accounting-changed", refresh);
+    return () => window.removeEventListener("ta:accounting-changed", refresh);
+  }, [load]);
+
+  const onMarkDone = async (obligationKey) => {
+    const r = await markObligationComplete({ obligationKey });
+    if (r?.ok) {
+      load();
+      window.dispatchEvent(new Event("ta:accounting-changed"));
+    }
+  };
+
+  const red = counts.red || 0;
+  const amber = counts.amber || 0;
+  const accent = red > 0 ? "#dc2626" : amber > 0 ? "#d97706" : "#16a34a";
+
+  return (
+    <SectionShell title="Compliance & Filings" accent={accent}>
+      <MetricGrid items={[
+        { label: "Overdue", value: red, hint: red > 0 ? "needs immediate action" : "all clear" },
+        { label: "Approaching", value: amber, hint: amber > 0 ? "due within 30 days" : "" },
+        { label: "Total open", value: (counts.total || 0) },
+      ]} />
+      {loading && <div style={{ marginTop: 10, fontSize: 12, color: "#94a3b8" }}>Loading…</div>}
+      {!loading && items.length === 0 && (
+        <div style={{ marginTop: 10, fontSize: 12, color: "#16a34a", fontWeight: 600 }}>
+          ✓ Nothing past due. Keep statement uploads current.
+        </div>
+      )}
+      {!loading && items.length > 0 && (
+        <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
+          {items.slice(0, 5).map(o => (
+            <div key={o.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 6, padding: "6px 10px", gap: 10 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                <span style={{ display: "inline-block", width: 7, height: 7, borderRadius: 4, background: o.severity === "red" ? "#dc2626" : "#d97706", flexShrink: 0 }} />
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: "#1e293b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{o.label}</div>
+                  <div style={{ fontSize: 10, color: "#64748b" }}>{o.detail}</div>
+                </div>
+              </div>
+              <button
+                onClick={() => onMarkDone(o.obligationKey)}
+                style={{ padding: "3px 8px", background: "white", border: "1px solid #e2e8f0", borderRadius: 4, cursor: "pointer", fontWeight: 600, color: "#475569", fontSize: 10, whiteSpace: "nowrap" }}
+              >
+                Done
+              </button>
+            </div>
+          ))}
+          {items.length > 5 && (
+            <div style={{ fontSize: 11, color: "#64748b", textAlign: "center", marginTop: 4 }}>
+              +{items.length - 5} more in Accounting → Dashboard
+            </div>
+          )}
+        </div>
+      )}
     </SectionShell>
   );
 }

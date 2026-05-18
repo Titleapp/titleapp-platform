@@ -10747,6 +10747,45 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       }
     }
 
+    // GET /v1/accounting:obligations
+    // CODEX 51.1 Phase 2d — Deadline-tracking surface. Workers must
+    // prevent missed filings (Sean's $20K-DE-penalty rule). Returns
+    // statement-upload SLAs + statutory tax deadlines with red/amber
+    // severity. Powers the Actions banner on Accounting Dashboard.
+    if (route === "/accounting:obligations" && method === "GET") {
+      try {
+        const { listObligations } = require("./services/accounting/obligations");
+        const result = await listObligations({ tenantId: ctx.tenantId });
+        return res.json(result);
+      } catch (e) {
+        console.error("[accounting:obligations] error:", e.message);
+        return jsonError(res, 500, e.message || "Failed to list obligations");
+      }
+    }
+
+    // POST /v1/accounting:obligations:markComplete
+    // Body: { obligationKey, evidenceFileId?, note? }
+    // Appends a completion record. Same period of the same obligation
+    // will drop off the next list call until the period rolls forward.
+    if (route === "/accounting:obligations:markComplete" && method === "POST") {
+      try {
+        const { obligationKey, evidenceFileId, note } = body || {};
+        if (!obligationKey) return jsonError(res, 400, "Missing obligationKey");
+        const { markComplete } = require("./services/accounting/obligations");
+        const result = await markComplete({
+          tenantId: ctx.tenantId,
+          userId: auth.user.uid,
+          obligationKey,
+          evidenceFileId: evidenceFileId || null,
+          note: note || null,
+        });
+        return res.json(result);
+      } catch (e) {
+        console.error("[accounting:obligations:markComplete] error:", e.message);
+        return jsonError(res, 500, e.message || "Failed to mark obligation complete");
+      }
+    }
+
     // ───────────────────────────────────────────────────────────
     // Controller approvals inbox (Phase C — Sweep 4)
     // Side-effects blocked by the Controller pre-commit hook write to
