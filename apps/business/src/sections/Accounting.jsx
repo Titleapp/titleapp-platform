@@ -85,6 +85,7 @@ export default function Accounting() {
     listAccounts, createAccount, deleteAccount,
     listCoaTemplates, listCoa, applyCoaTemplate, createCoa, updateCoa, deleteCoa,
     listTransactions: listTransactionsTop,
+    getDashboardSummary,
     loading,
   } = useAccounting();
 
