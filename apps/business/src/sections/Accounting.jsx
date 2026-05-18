@@ -899,6 +899,7 @@ function ComingSoonPane({ title, body }) {
 
 function TransactionsPane({ coa }) {
   const [staged, setStaged] = useState(null); // { fileId, fileName, institution, accountLast4, transactions: [...] }
+  const [prebuiltStaged, setPrebuiltStaged] = useState(null); // { fileId, fileName, sheets, rollup }
   const [committed, setCommitted] = useState([]);
   const [parsing, setParsing] = useState(false);
   const [error, setError] = useState(null);
@@ -919,11 +920,16 @@ function TransactionsPane({ coa }) {
   const handleFile = async (file) => {
     setError(null);
     if (!file) return;
-    if (!file.type.includes("pdf")) {
-      setError("Only PDF statements are supported in this version.");
+    const isPdf = file.type.includes("pdf") || (file.name || "").toLowerCase().endsWith(".pdf");
+    const isXlsx = file.type.includes("spreadsheet") || (file.name || "").toLowerCase().endsWith(".xlsx");
+    if (!isPdf && !isXlsx) {
+      setError("Supported formats: PDF bank statements, XLSX pre-built financials.");
       return;
     }
-    if (coa.length === 0) {
+    // CoA is required for PDF statement categorization. XLSX pre-built
+    // financials carry their own categorization in the sheet structure
+    // and don't need the tenant CoA to be populated first.
+    if (isPdf && coa.length === 0) {
       setError("Add a Chart of Accounts first — the parser categorizes transactions against your categories.");
       return;
     }
@@ -939,9 +945,24 @@ function TransactionsPane({ coa }) {
         tags: ["statement"],
       });
       if (!uploadResult?.ok) throw new Error(uploadResult?.error || "Upload failed");
-      setProgress("Reading statement with Claude (this can take 30–60 seconds for multi-page PDFs)…");
+      setProgress(isXlsx
+        ? "Reading workbook sheet by sheet…"
+        : "Reading statement with Claude (this can take 30–60 seconds for multi-page PDFs)…");
       const parsed = await parseStatement(uploadResult.objectId);
       if (!parsed?.ok) throw new Error(parsed?.error || "Parse failed");
+
+      // Pre-built financials xlsx: render the parse plan, not the PDF
+      // transaction-review table.
+      if (parsed.kind === "prebuilt") {
+        setPrebuiltStaged({
+          fileId: uploadResult.objectId,
+          fileName: file.name,
+          sheets: parsed.sheets || [],
+          rollup: parsed.rollup || {},
+        });
+        return;
+      }
+
       setStaged({
         fileId: uploadResult.objectId,
         fileName: file.name,
@@ -994,6 +1015,113 @@ function TransactionsPane({ coa }) {
       setParsing(false);
     }
   };
+
+  // Pre-built financials review — no Firestore commit in V1, this is the
+  // announce-and-confirm surface so the user can verify the parse before
+  // we wire commit paths for balance snapshots + forward budgets.
+  if (prebuiltStaged) {
+    const { sheets, rollup, fileName } = prebuiltStaged;
+    const usd = (n) => (typeof n === "number" ? `$${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : String(n ?? ""));
+    const actionLabel = (a) => ({
+      "import-transactions": "Import as P&L line items",
+      "import-balance": "Import as balance-sheet snapshot",
+      "import-budget": "Import as forward budget",
+      "skip": "Skip — not imported",
+    }[a] || a);
+    const actionColor = (a) => a === "skip" ? "#94a3b8" : "#7c3aed";
+
+    return (
+      <div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, flexWrap: "wrap", gap: 12 }}>
+          <div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: "#1e293b" }}>Pre-built financials — parse review</div>
+            <div style={{ fontSize: 13, color: "#64748b" }}>{fileName} · {sheets.length} sheet{sheets.length === 1 ? "" : "s"}</div>
+          </div>
+          <button onClick={() => setPrebuiltStaged(null)} className="iconBtn" style={{ background: "white", color: "#1e293b", border: "1px solid #e2e8f0" }}>Discard</button>
+        </div>
+
+        <div style={{ background: "#fef3c7", border: "1px solid #f59e0b", borderRadius: 8, padding: 12, marginBottom: 16, fontSize: 13 }}>
+          <strong>Phase 1 of CODEX 51.1.</strong> Parsing is deterministic — numbers below are read cell-by-cell from your file, not interpreted by an LLM. Commit-to-Firestore for balance sheets and forward budgets is a follow-up (Phase 2).
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 12, marginBottom: 16 }}>
+          {rollup.totalBusinessOpex != null && (
+            <div style={{ background: "white", border: "1px solid #e2e8f0", borderRadius: 8, padding: 14 }}>
+              <div style={{ fontSize: 12, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5 }}>Business OPEX (multi-year)</div>
+              <div style={{ fontSize: 24, fontWeight: 700, color: "#1e293b", marginTop: 6 }}>{usd(rollup.totalBusinessOpex)}</div>
+              <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>{rollup.totalTransactions} transactions across {Object.keys(rollup.opexByYear || {}).length} year{Object.keys(rollup.opexByYear || {}).length === 1 ? "" : "s"}</div>
+              <div style={{ marginTop: 8, fontSize: 13, color: "#475569" }}>
+                {Object.entries(rollup.opexByYear || {}).sort().map(([yr, amt]) => (
+                  <div key={yr}>{yr}: {usd(amt)}</div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {rollup.balanceSummary && (
+            <div style={{ background: "white", border: "1px solid #e2e8f0", borderRadius: 8, padding: 14 }}>
+              <div style={{ fontSize: 12, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5 }}>Balance sheet</div>
+              {["assets", "liabilities", "equity"].map(k => {
+                const s = rollup.balanceSummary[k];
+                if (!s) return null;
+                return (
+                  <div key={k} style={{ marginTop: 8 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "#1e293b", textTransform: "capitalize" }}>{k}</div>
+                    <div style={{ fontSize: 14, color: "#1e293b" }}>{usd(s.knownTotal)} <span style={{ color: "#64748b", fontSize: 12 }}>{s.hasTBD ? "(+ TBD items)" : ""}</span></div>
+                    <div style={{ fontSize: 12, color: "#64748b" }}>{s.items.length} line item{s.items.length === 1 ? "" : "s"}</div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {rollup.budgetSummary && (
+            <div style={{ background: "white", border: "1px solid #e2e8f0", borderRadius: 8, padding: 14 }}>
+              <div style={{ fontSize: 12, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5 }}>{rollup.budgetSummary.year || ""} Budget</div>
+              <div style={{ fontSize: 24, fontWeight: 700, color: "#1e293b", marginTop: 6 }}>{usd(rollup.budgetSummary.monthlyRunRate)}<span style={{ fontSize: 14, color: "#64748b", fontWeight: 500 }}>/mo</span></div>
+              <div style={{ fontSize: 13, color: "#475569", marginTop: 6 }}>Period total: {usd(rollup.budgetSummary.periodTotal)}</div>
+              <div style={{ fontSize: 13, color: "#475569" }}>Annualized: {usd(rollup.budgetSummary.annualTotal)}</div>
+            </div>
+          )}
+        </div>
+
+        <div style={{ background: "white", border: "1px solid #e2e8f0", borderRadius: 8, overflow: "hidden" }}>
+          <div style={{ padding: "10px 14px", fontSize: 13, fontWeight: 600, color: "#1e293b", background: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>Sheet-by-sheet plan</div>
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr style={{ background: "#f8fafc", fontSize: 12, color: "#64748b" }}>
+                <th style={{ textAlign: "left", padding: "8px 14px", fontWeight: 500 }}>Sheet</th>
+                <th style={{ textAlign: "left", padding: "8px 14px", fontWeight: 500 }}>Intent</th>
+                <th style={{ textAlign: "left", padding: "8px 14px", fontWeight: 500 }}>Action</th>
+                <th style={{ textAlign: "right", padding: "8px 14px", fontWeight: 500 }}>Detail</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sheets.map(s => {
+                const detail =
+                  s.action === "import-transactions" ? `${s.data?.transactionCount ?? 0} txns · ${usd(s.data?.grandTotal)}` :
+                  s.action === "import-balance" ? `${(s.data?.lines || []).length} line items` :
+                  s.action === "import-budget" ? `${(s.data?.lineItems || []).length} line items` :
+                  s.reason || "—";
+                return (
+                  <tr key={s.name} style={{ borderTop: "1px solid #f1f5f9", fontSize: 13 }}>
+                    <td style={{ padding: "10px 14px", color: "#1e293b", fontWeight: 500 }}>{s.name}</td>
+                    <td style={{ padding: "10px 14px", color: "#475569" }}>{s.intent}</td>
+                    <td style={{ padding: "10px 14px", color: actionColor(s.action), fontWeight: 500 }}>{actionLabel(s.action)}</td>
+                    <td style={{ padding: "10px 14px", color: "#475569", textAlign: "right" }}>{detail}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        <div style={{ marginTop: 16, fontSize: 12, color: "#64748b" }}>
+          Phase 2 of CODEX 51.1 wires commit paths for balance sheets + forward budgets. Until then, this view is review-only.
+        </div>
+      </div>
+    );
+  }
 
   // Staged review state
   if (staged) {
@@ -1164,7 +1292,7 @@ function TransactionsPane({ coa }) {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
         <div style={{ fontSize: 14, color: "#64748b" }}>
           {committed.length} transaction{committed.length === 1 ? "" : "s"} on file. Drop a credit-card, PayPal, or bank PDF statement —
-          the worker reads it and categorizes against your Chart of Accounts.
+          or an XLSX with pre-built financials — and the worker reads it deterministically.
         </div>
         <button
           onClick={() => fileInputRef.current?.click()}
@@ -1172,9 +1300,9 @@ function TransactionsPane({ coa }) {
           className="iconBtn"
           style={{ background: "linear-gradient(135deg, #7c3aed, #6d28d9)", color: "white", border: "none", opacity: parsing ? 0.6 : 1 }}
         >
-          {parsing ? "Processing…" : "Upload statement (PDF)"}
+          {parsing ? "Processing…" : "Upload statement (PDF or XLSX)"}
         </button>
-        <input ref={fileInputRef} type="file" accept="application/pdf" style={{ display: "none" }}
+        <input ref={fileInputRef} type="file" accept="application/pdf,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style={{ display: "none" }}
           onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ""; }} />
       </div>
       {progress && (

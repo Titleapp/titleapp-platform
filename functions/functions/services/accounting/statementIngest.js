@@ -76,9 +76,13 @@ async function loadFileBytes({ fileId, tenantId }) {
 
 async function extractTransactions({ anthropic, buffer, contentType, name }) {
   const base64 = buffer.toString("base64");
-  const isPdf = (contentType || "").toLowerCase().includes("pdf");
+  const lc = (contentType || "").toLowerCase();
+  const isPdf = lc.includes("pdf");
   if (!isPdf) {
-    throw new Error("Only PDF statements are supported in this version. CSV ingestion ships later.");
+    // xlsx/csv routing happens upstream in parseStatement — by the time we
+    // reach this function we should already be PDF-only. If we got here with
+    // a non-PDF, it's a routing bug.
+    throw new Error("extractTransactions called with non-PDF file — upstream routing bug.");
   }
   // Tool-use mode + high max_tokens because real PayPal/AmEx statements can run
   // hundreds of transactions. The SDK enforces JSON validity for tool inputs,
@@ -272,6 +276,25 @@ async function parseStatement({ anthropic, fileId, tenantId }) {
   console.log(`[statementIngest] parseStatement start: fileId=${fileId} tenant=${tenantId}`);
   const { buffer, contentType, name } = await loadFileBytes({ fileId, tenantId });
   console.log(`[statementIngest] file loaded: ${name} (${buffer.length} bytes, ${contentType}) in ${Date.now() - tStart}ms`);
+
+  // XLSX/CSV routing: pre-built financials don't go through LLM extraction.
+  // Returning a structurally distinct shape (kind: "prebuilt") so the caller
+  // can render an announce-style review UI rather than a transaction inbox.
+  const lc = (contentType || "").toLowerCase();
+  const isXlsx = lc.includes("spreadsheet") ||
+                 (name || "").toLowerCase().endsWith(".xlsx");
+  if (isXlsx) {
+    const { parsePrebuiltFinancials } = require("./prebuiltFinancialsParser");
+    const plan = await parsePrebuiltFinancials({ buffer, filename: name, contentType });
+    console.log(`[statementIngest] prebuilt parse done in ${Date.now() - tStart}ms · sheets=${plan.sheetCount}`);
+    return {
+      kind: "prebuilt",
+      fileId,
+      fileName: name,
+      ...plan,
+    };
+  }
+
   const extracted = await extractTransactions({ anthropic, buffer, contentType, name });
   console.log(`[statementIngest] extracted ${extracted.transactions.length} transactions`);
   const coa = await loadCoa(tenantId);
@@ -279,6 +302,7 @@ async function parseStatement({ anthropic, fileId, tenantId }) {
   const categorized = await categorize({ anthropic, transactions: extracted.transactions, coa, tenantId });
   console.log(`[statementIngest] categorize done in ${Date.now() - tCat}ms · total parse ${Date.now() - tStart}ms`);
   return {
+    kind: "statement",
     fileId,
     fileName: name,
     institution: extracted.institution || null,
