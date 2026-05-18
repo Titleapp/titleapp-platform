@@ -1337,7 +1337,7 @@ exports.api = onRequest(
   // Override global cpu: "gcf_gen1" — this function runs Claude/OpenAI calls and needs full CPU.
   // timeoutSeconds bumped from 60 default to 300 to accommodate multi-file uploads
   // (each file: storage write + signed-url + Firestore record + pdf-parse).
-  { region: "us-central1", cpu: 1, memory: "1GiB", timeoutSeconds: 300, secrets: ["APOLLO_API_KEY"] },
+  { region: "us-central1", cpu: 1, memory: "1GiB", timeoutSeconds: 300, secrets: ["APOLLO_API_KEY", "STRIPE_SECRET_KEY", "STRIPE_PUBLISHABLE_KEY", "STRIPE_WEBHOOK_SECRET"] },
   async (req, res) => {
     console.log("✅ API_VERSION", "2026-03-01-document-engine");
 
