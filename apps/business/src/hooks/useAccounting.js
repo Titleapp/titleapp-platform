@@ -224,6 +224,7 @@ export default function useAccounting() {
     listCoaTemplates, listCoa, applyCoaTemplate, createCoa, updateCoa, deleteCoa,
     parseStatement, commitStatement, commitPrebuilt, resetPrebuilt, getDashboardSummary, listTransactions, tagTransaction,
     listObligations, markObligationComplete,
+    createFCSession, saveFCAccount, syncFC, disconnectFC,
     listApprovals, decideApproval,
     loading, error,
   };
