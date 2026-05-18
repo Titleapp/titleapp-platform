@@ -129,16 +129,21 @@ async function launchAdapter(tenantId) {
   }
 
   // 50.27 — Investor Outreach metrics.
-  // Investors on cap table = distinct holders. Holdings docs carry holder
-  // identity in one of (holderContactId | holderName | holderEmail).
+  // Investors on cap table = distinct holders. Holdings docs (per the
+  // pushHomDaoToContacts schema) use `contactId` as the holder reference.
+  // Earlier draft looked for holderContactId / holderEmail / holderName
+  // which don't exist in our data, so the Set stayed empty and the metric
+  // read 0 even though 720 holdings rows existed.
   const holderKeys = new Set();
   let softCommitsUsd = 0;
+  let totalPctEquity = 0;
   for (const d of holdingsSnap.docs) {
     const x = d.data();
     if (x.status === "deleted" || x.status === "void") continue;
-    const key = x.holderContactId || x.holderEmail || x.holderName;
+    const key = x.contactId || x.holderContactId || x.holderEmail || x.holderName;
     if (key) holderKeys.add(String(key).toLowerCase());
     if (typeof x.softCommitUsd === "number") softCommitsUsd += x.softCommitUsd;
+    if (typeof x.pct_equity === "number") totalPctEquity += x.pct_equity;
   }
   const investorsOnCapTable = holderKeys.size;
   const kycStarts7d = kycSnap.size;

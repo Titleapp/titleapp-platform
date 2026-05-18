@@ -25,10 +25,22 @@ const MODE_BADGES = {
   dormant:    { label: "Hidden",     fg: "#94a3b8", bg: "#f1f5f9" },
 };
 
+// Briefcase icon — used in workspace headers. Active state gets the brand
+// purple fill so the active section is unambiguous at a glance.
+function WorkspaceIcon({ isActive }) {
+  const color = isActive ? "#7c3aed" : "#94a3b8";
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="2" y="7" width="20" height="14" rx="2" />
+      <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+    </svg>
+  );
+}
+
 export default function CommandCenter() {
   const [brief, setBrief] = useState(null);
   const [sendStatus, setSendStatus] = useState(null);
-  const { previewBrief, sendBrief, setWorkspaceMode, loading, error } = useCommandCenter();
+  const { previewBrief, sendBrief, setWorkspaceMode, setMilestoneStatus, loading, error } = useCommandCenter();
 
   const refresh = useCallback(async () => {
     const r = await previewBrief();
@@ -48,6 +60,11 @@ export default function CommandCenter() {
     if (r?.ok && r.emailed) setSendStatus({ state: "sent" });
     else if (r?.skipped) setSendStatus({ state: "skipped", reason: r.reason });
     else setSendStatus({ state: "error", message: r?.error || "Send failed" });
+  };
+
+  const onMilestoneChange = async ({ milestoneId, status, kind }) => {
+    await setMilestoneStatus({ milestoneId, status, kind });
+    refresh();
   };
 
   const onModeChange = async (tenantId, newMode) => {
@@ -123,12 +140,32 @@ export default function CommandCenter() {
         </div>
       )}
 
-      {!loading && brief?.sections && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 16, marginTop: 16 }}>
-          <WorkspacesModePanel sections={brief.sections} onChange={onModeChange} />
-          {brief.sections.filter(s => s.hasSignal || s.mode === "launch").map(s => <WorkspaceSection key={s.tenantId} s={s} />)}
-        </div>
-      )}
+      {!loading && brief?.sections && (() => {
+        // 50.27 — Active workspace surfaces first. Without this the sections
+        // render in membership-creation order, which doesn't match the
+        // workspace the user is "in" (per their sidebar persona switcher).
+        // That mismatch produced "I'm stuck in the wrong workspace" reports
+        // even though the right section was scrolled below.
+        const activeTenantId = (typeof window !== "undefined" && (localStorage.getItem("TENANT_ID") || localStorage.getItem("WORKSPACE_ID"))) || null;
+        const sorted = [...brief.sections].sort((a, b) => {
+          // Active workspace first
+          if (a.tenantId === activeTenantId && b.tenantId !== activeTenantId) return -1;
+          if (b.tenantId === activeTenantId && a.tenantId !== activeTenantId) return 1;
+          // Then launch-mode (most actionable)
+          if (a.mode === "launch" && b.mode !== "launch") return -1;
+          if (b.mode === "launch" && a.mode !== "launch") return 1;
+          // Then workspaces with signal
+          if (a.hasSignal && !b.hasSignal) return -1;
+          if (b.hasSignal && !a.hasSignal) return 1;
+          return 0;
+        });
+        return (
+          <div style={{ display: "flex", flexDirection: "column", gap: 16, marginTop: 16 }}>
+            <WorkspacesModePanel sections={sorted} onChange={onModeChange} activeTenantId={activeTenantId} />
+            {sorted.filter(s => s.hasSignal || s.mode === "launch").map(s => <WorkspaceSection key={s.tenantId} s={s} isActive={s.tenantId === activeTenantId} onMilestoneChange={onMilestoneChange} />)}
+          </div>
+        );
+      })()}
     </div>
   );
 }
@@ -137,18 +174,38 @@ export default function CommandCenter() {
 //  WORKSPACE MODE PANEL — toggle each workspace's mode
 // ═══════════════════════════════════════════════════════════════
 
-function WorkspacesModePanel({ sections, onChange }) {
+function WorkspacesModePanel({ sections, onChange, activeTenantId }) {
   return (
     <div className="card" style={{ padding: 16 }}>
       <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 10 }}>
         Your workspaces · mode controls
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        {sections.map(s => (
-          <div key={s.tenantId} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 12px", border: "1px solid #f1f5f9", borderRadius: 8 }}>
-            <div>
-              <div style={{ fontWeight: 600, color: "#0f172a", fontSize: 14 }}>{s.workspaceName}</div>
-              <div style={{ fontSize: 11, color: "#94a3b8" }}>{s.tenantId}</div>
+        {sections.map(s => {
+          const isActive = s.tenantId === activeTenantId;
+          return (
+          <div key={s.tenantId} style={{
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+            padding: "8px 12px",
+            border: isActive ? "1px solid #7c3aed" : "1px solid #f1f5f9",
+            borderRadius: 8,
+            background: isActive ? "rgba(124,58,237,0.04)" : "transparent",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+              <WorkspaceIcon isActive={isActive} />
+              <div style={{ minWidth: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <div style={{ fontWeight: isActive ? 700 : 600, color: "#0f172a", fontSize: 14 }}>{s.workspaceName}</div>
+                  {isActive && (
+                    <span style={{
+                      fontSize: 9, fontWeight: 700, padding: "1px 6px", borderRadius: 4,
+                      background: "#7c3aed", color: "white",
+                      letterSpacing: 0.4, textTransform: "uppercase",
+                    }}>You are here</span>
+                  )}
+                </div>
+                <div style={{ fontSize: 11, color: "#94a3b8" }}>{s.tenantId}</div>
+              </div>
             </div>
             <div style={{ display: "flex", gap: 4 }}>
               {Object.keys(MODE_BADGES).map(m => {
@@ -171,7 +228,8 @@ function WorkspacesModePanel({ sections, onChange }) {
               })}
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
@@ -181,16 +239,34 @@ function WorkspacesModePanel({ sections, onChange }) {
 //  WORKSPACE SECTION — dispatches launch / operations layouts
 // ═══════════════════════════════════════════════════════════════
 
-function WorkspaceSection({ s }) {
+function WorkspaceSection({ s, isActive, onMilestoneChange }) {
   const badge = MODE_BADGES[s.mode] || MODE_BADGES.operations;
+  // Active workspace gets a thick purple accent rail on the left and a stronger
+  // header treatment. Non-active workspaces get a muted gray rail so it's
+  // immediately obvious which section is "yours" vs "other workspaces I'm in."
+  const accentColor = isActive ? "#7c3aed" : "#cbd5e1";
+  const accentBg = isActive ? "rgba(124,58,237,0.06)" : "transparent";
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <div className="card" style={{ padding: "16px 20px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+    <div style={{
+      display: "flex", flexDirection: "column", gap: 12,
+      borderLeft: `5px solid ${accentColor}`,
+      paddingLeft: 12,
+      background: accentBg,
+      borderRadius: 8,
+    }}>
+      <div className="card" style={{ padding: "16px 20px", borderTop: isActive ? `3px solid #7c3aed` : undefined }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <WorkspaceIcon isActive={isActive} />
           <div style={{ fontSize: 17, fontWeight: 700, color: "#0f172a" }}>{s.workspaceName}</div>
           <span style={{ padding: "2px 10px", borderRadius: 999, fontSize: 11, fontWeight: 600, background: badge.bg, color: badge.fg }}>
             {badge.label}
           </span>
+          {isActive && (
+            <span style={{
+              padding: "2px 10px", borderRadius: 999, fontSize: 11, fontWeight: 700,
+              background: "#7c3aed", color: "white", letterSpacing: 0.4, textTransform: "uppercase",
+            }}>You are here</span>
+          )}
         </div>
         {s.alexNoticed && (
           <div style={{ padding: 10, background: "#fef3c7", border: "1px solid #fde68a", borderRadius: 8, marginTop: 10 }}>
@@ -201,7 +277,7 @@ function WorkspaceSection({ s }) {
       </div>
 
       <SetupProgressCard s={s} />
-      {s.mode === "launch" ? <LaunchSections s={s} /> : <OperationsRows s={s} />}
+      {s.mode === "launch" ? <LaunchSections s={s} onMilestoneChange={onMilestoneChange} /> : <OperationsRows s={s} />}
     </div>
   );
 }
@@ -235,32 +311,42 @@ function SetupProgressCard({ s }) {
       id: "milestone",
       label: "Mark your first launch milestone in progress",
       done: (setup.milestonesFlipped || 0) > 0,
-      hint: "Find a milestone below — flip its status to in_progress or done as you make progress",
+      hint: "Click any status pill in the Launch Milestones card below to advance it",
     },
   ];
+  // Checkboxes are display-only — they auto-check based on workspace state.
+  // The "hint" line tells the user where to take the action that flips them.
 
   const completed = steps.filter(st => st.done).length;
   const total = steps.length;
-  // Hide the card entirely when fully set up — no reason to clutter.
-  if (completed === total) return null;
+  const isComplete = completed === total;
   const pct = Math.round((completed / total) * 100);
+
+  // Color theme flips green when complete so the card reads as a confirmation
+  // rather than an outstanding to-do. The card stays visible at 100% (didn't
+  // hide silently) because vanishing looks like "broke" instead of "done."
+  const theme = isComplete
+    ? { bg: "linear-gradient(135deg, #ecfdf5 0%, #ffffff 100%)", border: "#86efac", titleFg: "#15803d", bodyFg: "#15803d" }
+    : { bg: "linear-gradient(135deg, #fefce8 0%, #ffffff 100%)", border: "#fde68a", titleFg: "#92400e", bodyFg: "#78350f" };
 
   return (
     <div className="card" style={{
       padding: 16,
       marginBottom: 12,
-      background: "linear-gradient(135deg, #fefce8 0%, #ffffff 100%)",
-      border: "1px solid #fde68a",
+      background: theme.bg,
+      border: `1px solid ${theme.border}`,
     }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
         <div>
-          <div style={{ fontSize: 12, fontWeight: 700, color: "#92400e", letterSpacing: 1.5, textTransform: "uppercase" }}>
-            Setup Progress
+          <div style={{ fontSize: 12, fontWeight: 700, color: theme.titleFg, letterSpacing: 1.5, textTransform: "uppercase" }}>
+            {isComplete ? "Setup Complete · Ready to operate" : "Setup Progress"}
           </div>
-          <div style={{ fontSize: 13, color: "#78350f", marginTop: 2 }}>
-            {completed === 0
-              ? "Your workspace is fresh. Knock these out to start seeing real data here."
-              : `${completed} of ${total} steps complete (${pct}%). Keep going — each step lights up a section below.`}
+          <div style={{ fontSize: 13, color: theme.bodyFg, marginTop: 2 }}>
+            {isComplete
+              ? "All setup steps are done. Sections below are reflecting real workspace data. Use the launch milestones to track your fundraise progress."
+              : completed === 0
+                ? "Your workspace is fresh. Knock these out to start seeing real data here."
+                : `${completed} of ${total} steps complete (${pct}%). Keep going — each step lights up a section below.`}
           </div>
         </div>
         <div style={{
@@ -313,11 +399,11 @@ function SetupProgressCard({ s }) {
 //  LAUNCH MODE — 5 sections
 // ═══════════════════════════════════════════════════════════════
 
-function LaunchSections({ s }) {
+function LaunchSections({ s, onMilestoneChange }) {
   return (
     <>
-      <LaunchMilestonesCard s={s} />
-      <DevelopmentMilestonesCard s={s} />
+      <LaunchMilestonesCard s={s} onChange={onMilestoneChange} />
+      <DevelopmentMilestonesCard s={s} onChange={onMilestoneChange} />
       <ConcernsCard />
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))", gap: 12 }}>
         <InvestorOutreachCard s={s} />
@@ -532,9 +618,15 @@ function WorkerHealthCard({ s }) {
 //  LAUNCH MILESTONES — pre-fundraise checklist (Oct 1 deadline)
 // ═══════════════════════════════════════════════════════════════
 
-function LaunchMilestonesCard({ s }) {
+function LaunchMilestonesCard({ s, onChange }) {
   const milestones = Array.isArray(s.launchMilestones) ? s.launchMilestones : [];
   if (milestones.length === 0) return null;
+  const handleClick = (m) => {
+    if (!onChange) return;
+    // Cycle: pending → in_progress → done → pending
+    const next = m.status === "pending" ? "in_progress" : m.status === "in_progress" ? "done" : "pending";
+    onChange({ milestoneId: m.id, status: next, kind: "launch" });
+  };
 
   // Group by target date so the operator sees the deadline structure (June 1,
   // July 1, etc.) rather than a flat list.
@@ -580,16 +672,20 @@ function LaunchMilestonesCard({ s }) {
                 const st = statusStyle(m.status);
                 return (
                   <div key={m.id} style={{ display: "flex", alignItems: "flex-start", gap: 6 }}>
-                    <span style={{
-                      flexShrink: 0,
-                      fontSize: 9, fontWeight: 700,
-                      padding: "1px 5px", borderRadius: 4,
-                      background: st.bg, color: st.fg, border: `1px solid ${st.border}`,
-                      letterSpacing: 0.3, textTransform: "uppercase",
-                      marginTop: 1,
-                    }}>
+                    <button
+                      onClick={() => handleClick(m)}
+                      title="Click to advance status (pending → in progress → done)"
+                      style={{
+                        flexShrink: 0,
+                        fontSize: 9, fontWeight: 700,
+                        padding: "1px 5px", borderRadius: 4,
+                        background: st.bg, color: st.fg, border: `1px solid ${st.border}`,
+                        letterSpacing: 0.3, textTransform: "uppercase",
+                        marginTop: 1, cursor: "pointer",
+                      }}
+                    >
                       {st.label}
-                    </span>
+                    </button>
                     <div style={{ fontSize: 12, color: "#334155", lineHeight: 1.3 }}>
                       {m.label}
                       {m.owner && (
@@ -607,7 +703,7 @@ function LaunchMilestonesCard({ s }) {
         ))}
       </div>
       <div style={{ marginTop: 8, fontSize: 11, color: "#94a3b8" }}>
-        Milestone status is edited in <code>tenants/{"{tenantId}"}.launchMilestones.{"{id}"}.status</code> — flip to <code>done</code> or <code>in_progress</code> as each one closes.
+        Click any status pill to advance it (pending → in progress → done → back to pending).
       </div>
     </div>
   );
@@ -624,9 +720,14 @@ function fmtDate(iso) {
 //  DEVELOPMENT MILESTONES — product/build roadmap (separate from fundraise)
 // ═══════════════════════════════════════════════════════════════
 
-function DevelopmentMilestonesCard({ s }) {
+function DevelopmentMilestonesCard({ s, onChange }) {
   const milestones = Array.isArray(s.developmentMilestones) ? s.developmentMilestones : [];
   if (milestones.length === 0) return null;
+  const handleClick = (m) => {
+    if (!onChange) return;
+    const next = m.status === "pending" ? "in_progress" : m.status === "in_progress" ? "done" : "pending";
+    onChange({ milestoneId: m.id, status: next, kind: "development" });
+  };
 
   const groups = {};
   for (const m of milestones) {
@@ -676,14 +777,18 @@ function DevelopmentMilestonesCard({ s }) {
                 const st = statusStyle(m.status);
                 return (
                   <div key={m.id} style={{ display: "flex", alignItems: "flex-start", gap: 6 }}>
-                    <span style={{
-                      flexShrink: 0,
-                      fontSize: 9, fontWeight: 700,
-                      padding: "1px 5px", borderRadius: 4,
-                      background: st.bg, color: st.fg, border: `1px solid ${st.border}`,
-                      letterSpacing: 0.3, textTransform: "uppercase",
-                      marginTop: 1,
-                    }}>{st.label}</span>
+                    <button
+                      onClick={() => handleClick(m)}
+                      title="Click to advance status (pending → in progress → done)"
+                      style={{
+                        flexShrink: 0,
+                        fontSize: 9, fontWeight: 700,
+                        padding: "1px 5px", borderRadius: 4,
+                        background: st.bg, color: st.fg, border: `1px solid ${st.border}`,
+                        letterSpacing: 0.3, textTransform: "uppercase",
+                        marginTop: 1, cursor: "pointer",
+                      }}
+                    >{st.label}</button>
                     <div style={{ fontSize: 12, color: "#334155", lineHeight: 1.3 }}>
                       {m.label}
                       {m.owner && (
@@ -701,7 +806,7 @@ function DevelopmentMilestonesCard({ s }) {
         ))}
       </div>
       <div style={{ marginTop: 8, fontSize: 11, color: "#94a3b8" }}>
-        Status edited at <code>tenants/{"{tenantId}"}.developmentMilestones.{"{id}"}.status</code>. Set <code>in_progress</code> when work starts, <code>done</code> when shipped.
+        Click any status pill to advance it (pending → in progress → done → back to pending).
       </div>
     </div>
   );

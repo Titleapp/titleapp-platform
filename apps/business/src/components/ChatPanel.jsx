@@ -139,6 +139,9 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
   const [isRecording, setIsRecording] = useState(false);
   const fileInputRef = useRef(null);
   const recognitionRef = useRef(null);
+  // True for one turn after a voice transcript is captured; cleared by any
+  // manual keystroke. Used to flip the backend response mode to voice-friendly.
+  const voiceInputRef = useRef(false);
   const [fileUploading, setFileUploading] = useState(false);
   const [pendingActions, setPendingActions] = useState([]);
   const [showMobileExtras, setShowMobileExtras] = useState(false);
@@ -235,6 +238,16 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
       if (!name) return;
       setActiveWorkerName(name);
       setActiveWorkerSlug(slug || null);
+
+      // 50.27 — Rotate chat sessionId when worker changes. Without this the
+      // chat backend keeps loading prior worker's history (per-tenant per-
+      // user per-session) and the old worker's system prompt context bleeds
+      // into the new worker's response. Bug Sean hit: switched from Contacts
+      // to Control Center Pro; chat still answered as Contacts.
+      try {
+        const newSid = `cs_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+        localStorage.setItem("ta_chat_session_id", newSid);
+      } catch {}
 
       // Clear previous worker messages and reset opener guard
       setMessages([]);
@@ -1151,8 +1164,17 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
             }
             return sid;
           })(),
-          selectedWorker: activeWorkerSlug || null,
+          // 50.27 — Use workerCtx (canonical) over local state. Local
+          // activeWorkerSlug can stay stale across rapid navigation events;
+          // workerCtx is the single source of truth maintained by
+          // WorkerStateProvider. Falling back to the local mirror handles the
+          // null-during-init case.
+          selectedWorker: (workerCtx?.activeWorkerData?.workerId || workerCtx?.activeWorkerData?.slug || activeWorkerSlug) || null,
           subscribedWorkers: (() => { try { return JSON.parse(localStorage.getItem("ACTIVE_WORKERS") || "[]"); } catch { return []; } })(),
+          // 50.27 — Voice mode hint. Backend appends a voice-friendly
+          // response style directive to the system prompt: 2-3 sentences,
+          // no markdown, conversational tone for hands-free listening.
+          responseMode: voiceInputRef.current ? "voice" : "default",
           ...(filePayload ? { file: filePayload } : {}),
           ...(filesPayload && filesPayload.length > 0 ? { files: filesPayload } : {}),
           preferredLanguage: localStorage.getItem("PREFERRED_LANGUAGE") || "en",
@@ -1170,6 +1192,37 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
             ...(alexContext ? { alexContext } : {}),
             ...(() => { try { const cc = sessionStorage.getItem("ta_campaign_context"); if (cc) { sessionStorage.removeItem("ta_campaign_context"); return { campaignContext: JSON.parse(cc) }; } } catch {} return {}; })(),
             ...(() => { try { const u = JSON.parse(sessionStorage.getItem("ta_utm") || "{}"); return u.source ? { utmSource: u.source, utmMedium: u.medium || "", utmCampaign: u.campaign || "" } : {}; } catch {} return {}; })(),
+            // 50.27 — Live canvas snapshot. Whatever card is currently
+            // rendered in the right panel (Map + flight plan, social post
+            // draft, illustration, accounting report, etc.) gets summarized
+            // and shipped to the chat handler so Alex can see what the
+            // operator is looking at in real time. This is what makes chat
+            // hyper-aware of canvas state across every worker.
+            ...(() => {
+              try {
+                const cd = panel?.canvasData;
+                if (!cd || !cd.resolved) return {};
+                const r = cd.resolved;
+                const ctx = cd.context || {};
+                const payload = ctx.payload || {};
+                // Trim payload to a 1KB-ish summary to avoid context blowup.
+                // Stringified payload truncated to 800 chars covers most
+                // single-card snapshots without flooding the prompt.
+                let payloadSummary = null;
+                try {
+                  const s = JSON.stringify(payload);
+                  payloadSummary = s.length > 800 ? s.slice(0, 800) + "…[truncated]" : s;
+                } catch { payloadSummary = "(unserializable payload)"; }
+                return {
+                  canvasSnapshot: {
+                    cardType: r.type || r.key || null,
+                    cardTitle: payload?.title || r.title || null,
+                    isSample: !!ctx.demoMode || !!payload?.sample,
+                    payloadSummary,
+                  },
+                };
+              } catch { return {}; }
+            })(),
             // CODEX 49.21 / 49.25 / 49.30 — Canvas context for worker-aware AI responses (incl. sample data)
             ...(() => {
               try {
@@ -1259,8 +1312,21 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
       setDealContext(null);
       if (workerCtx?.completeWork) workerCtx.completeWork();
       // Intercept |||COMMAND||| blocks before storing in state
-      const { clean: cleanResponse, commands } = interceptAlexCommands(data.response || '');
+      const { clean: cleanedAlex, commands } = interceptAlexCommands(data.response || '');
       for (const cmd of commands) executeAlexCommand(cmd.type, cmd.payload);
+
+      // 50.28 — [[SWITCH_WORKER:<slug>]] action emit. When the LLM commits to
+      // a cross-worker handoff (RAAS isolation rule), it appends this marker
+      // and we actually execute the switch instead of just narrating it.
+      let cleanResponse = cleanedAlex;
+      let pendingSwitchSlug = null;
+      try {
+        const m = cleanResponse.match(/\[\[SWITCH_WORKER:([a-zA-Z0-9_-]+)\]\]/);
+        if (m) {
+          pendingSwitchSlug = m[1];
+          cleanResponse = cleanResponse.replace(m[0], '').replace(/\n{3,}/g, '\n\n').trim();
+        }
+      } catch {}
 
       // Signal extractor — update canvas when user mentions a vertical
       if (!activeWorkerSlug) {
@@ -1285,6 +1351,25 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
         recommendationCard: data.recommendationCard || null,
         workerCards: data.workerCards || null,
       }]);
+
+      // 50.28 — execute pending cross-worker switch. Look up the catalog
+      // entry for the target slug (need both slug + name to fire the
+      // existing ta:select-worker handler), then dispatch.
+      if (pendingSwitchSlug) {
+        const target = allWorkers.find(w =>
+          w.slug === pendingSwitchSlug ||
+          w.workerId === pendingSwitchSlug
+        );
+        if (target) {
+          setTimeout(() => {
+            window.dispatchEvent(new CustomEvent('ta:select-worker', {
+              detail: { slug: target.slug || target.workerId, name: target.name || target.title || target.slug }
+            }));
+          }, 400);
+        } else {
+          console.warn('[chat] SWITCH_WORKER marker but unknown slug:', pendingSwitchSlug);
+        }
+      }
 
       // Canvas Protocol (44.9) — resolve canvas signal from API response
       if (data.canvasSignal && panel?.showCanvas) {
@@ -1401,8 +1486,16 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
     recognition.lang = 'en-US';
     recognition.onresult = (event) => {
       const transcript = event.results[0][0].transcript;
-      setInput(prev => prev ? prev + ' ' + transcript : transcript);
+      const combined = input ? (input + ' ' + transcript) : transcript;
+      setInput(combined);
+      // 50.27 — mark this turn as voice so backend can switch to a voice-
+      // friendly response mode (2-3 sentences, no markdown, conversational).
+      // Cleared on next manual keystroke (handled in onChange below).
+      voiceInputRef.current = true;
       setIsRecording(false);
+      // 50.28 — hands-free auto-send. Sean's ask: voice mode should not
+      // require a button click. Fire send immediately after transcription.
+      setTimeout(() => sendMessage(null, combined), 50);
     };
     recognition.onerror = () => setIsRecording(false);
     recognition.onend = () => setIsRecording(false);
@@ -2078,7 +2171,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
           )}
           <textarea
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={(e) => { voiceInputRef.current = false; setInput(e.target.value); }}
             onKeyDown={handleKeyDown}
             placeholder={disclaimerAccepted ? "Type or speak..." : "Please accept the terms above to continue"}
             rows={2}

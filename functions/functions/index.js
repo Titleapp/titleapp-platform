@@ -118,6 +118,161 @@ function getDocPipeline() {
 // Chat Engine (conversational state machine)
 const { processMessage: chatEngineProcess, defaultState: chatEngineDefaultState } = require("./chatEngine");
 
+// 50.27 — Voice-mode + canvas-snapshot + RAAS-isolation prompt augmentation.
+// Used by both worker-direct chat path and Alex chat path. Keeps both code
+// paths consistent on how a voice-input turn, a live-canvas snapshot, and
+// the active worker's RAAS rules influence the response style.
+//
+// Architectural invariant (Sean, 50.27): switch worker = switch RAAS.
+// Every chat turn runs strictly under the active worker's RAAS tier 0–3
+// constraints. No carry-over from previously selected workers. This
+// directive is appended to every prompt so the LLM enforces the rule
+// even if the upstream prompt assembly missed a check.
+// 50.28 — deterministic cross-worker router. Returns {targetSlug, targetName}
+// when the user's message clearly belongs to a different worker's domain than
+// the active one. Prompt-level rules alone proved unreliable (Sean's tests:
+// Accounting kept offering to draft LinkedIn posts). Code-side intercept is
+// enforceable. Chief-of-Staff workers (Alex) are exempt — they can delegate.
+function detectCrossWorkerIntent(message, activeWorkerSlug) {
+  if (!message || typeof message !== "string") return null;
+  if (!activeWorkerSlug) return null;
+  if (/chief-of-staff|^alex$|w-048/i.test(activeWorkerSlug)) return null;
+
+  const lc = message.toLowerCase();
+  const rules = [
+    {
+      slug: "platform-marketing-content",
+      name: "Marketing & Content",
+      triggers: [
+        /\blinkedin\b/, /\btwitter\b/, /\bx\.com\b/,
+        /\b(blog\s+post|blog\s+entry)\b/,
+        /\b(social\s+media|social\s+post)\b/,
+        /\b(email\s+campaign|email\s+blast|newsletter)\b/,
+        /\b(press\s+release|pr\s+release)\b/,
+        /\b(ad\s+copy|landing\s+page\s+copy|brand\s+voice)\b/,
+        /\b(draft|write|create|generate|compose)\s+(an?\s+|the\s+)?(post|tweet|blog|email|newsletter)\b/,
+      ],
+    },
+    {
+      slug: "platform-accounting",
+      name: "Accounting",
+      triggers: [
+        /\b(burn\s+rate|p&l|profit\s+and\s+loss|runway|chart\s+of\s+accounts|reconcile|reconciliation)\b/,
+        /\b(unpaid\s+)?(invoice|invoices|bill\s+pay|accounts\s+payable|ap\s+aging)\b/,
+        /\b(cash\s+on\s+hand|expense\s+report|categorize\s+(my\s+)?transactions)\b/,
+      ],
+    },
+    {
+      slug: "platform-contacts",
+      name: "Contacts",
+      triggers: [
+        /\b(contact\s+list|lead\s+list|prospect\s+list|apollo\s+search)\b/,
+        /\b(import\s+(my\s+)?(contacts|leads))\b/,
+        /\b(crm|address\s+book)\b/,
+      ],
+    },
+    {
+      slug: "platform-hr",
+      name: "HR & People",
+      triggers: [
+        /\b(hire|hiring|recruit\s+a)\b/,
+        /\b(payroll|onboard\s+(an?\s+)?employee)\b/,
+        /\b(time\s+off|pto|vacation\s+request)\b/,
+        /\b(staff\s+schedule|coverage\s+roster|shift\s+schedule)\b/,
+      ],
+    },
+    {
+      slug: "platform-control-center-pro",
+      name: "Control Center Pro",
+      triggers: [
+        /\b(daily\s+brief|morning\s+brief|workspace\s+status)\b/,
+        /\b(launch\s+milestones?|setup\s+progress|fundraise\s+progress)\b/,
+        /\b(cap\s+table|investor\s+roll[\-\s]up)\b/,
+      ],
+    },
+  ];
+
+  for (const rule of rules) {
+    if (activeWorkerSlug === rule.slug) continue;
+    for (const re of rule.triggers) {
+      if (re.test(lc)) return { targetSlug: rule.slug, targetName: rule.name };
+    }
+  }
+  return null;
+}
+
+function augmentPromptWithChatContext(prompt, body) {
+  if (!prompt || typeof prompt !== "string") return prompt;
+  let augmented = prompt;
+
+  // RAAS isolation — load-bearing invariant. The active worker's ruleset
+  // is the only ruleset in scope for this turn. Switching workers (a new
+  // selectedWorker on the next request, or a fresh sessionId) means
+  // switching rules. This block is appended unconditionally because the
+  // platform's defensive IP is the rules engine, and chat is the conduit.
+  const activeWorker = body?.selectedWorker || "(no specific worker selected)";
+  augmented += `
+
+RAAS ISOLATION (PLATFORM INVARIANT) — You are operating strictly inside the RAAS (Rules + AI-as-a-Service) context of: ${activeWorker}. The system-prompt content above this block IS this worker's RAAS tier 0–3 constraint set. Do not invoke capabilities, field names, workflows, or compliance rules from other workers, even if the user mentions them.
+
+CROSS-WORKER ROUTING (HARD RULE) — If the user asks for an output that belongs to a different worker's domain, refuse to draft, write, or produce that output yourself. Instead, say one sentence: "That belongs to <correct worker> — want me to switch you over?" and STOP. Do not ask clarifying questions about the cross-domain task. Do not begin drafting. The routing map:
+  • LinkedIn posts, X/Twitter posts, blog posts, social posts, email campaigns, press releases, newsletters, landing copy, ad copy, brand voice, content drafts → Marketing & Content worker — slug: platform-marketing-content
+  • Burn rate, P&L, runway, transactions, expenses, invoices, bills, chart of accounts, reconciliation, tax → Accounting worker — slug: platform-accounting
+  • Contacts, leads, prospects, segments, contact import, Apollo, CRM list → Contacts worker — slug: platform-contacts
+  • Hiring, payroll, scheduling, time off, employee records, roster, coverage → HR & People worker — slug: platform-hr
+  • Workspace status, milestones, brief, runway/spend roll-up, accountability concerns, cap table, fundraise progress → Control Center Pro — slug: platform-control-center-pro
+
+EXECUTING THE SWITCH (HARD RULE) — When the user agrees to switch ("yes", "switch me", "go ahead", "do it", "ok", "yep", "sure", "please"), you MUST emit the marker [[SWITCH_WORKER:<slug>]] on its own line in your response, using the exact slug from the routing map above. The frontend detects this marker and performs the actual UI switch. Do not describe the switch ("Switching you now…", "In a live deployment this would…"). Do not write a paragraph. Your full response in this case is one short sentence plus the marker, e.g.:
+"Switching you to Marketing & Content now.
+[[SWITCH_WORKER:platform-marketing-content]]"
+After emitting the marker, STOP. Do not continue drafting the cross-worker output.
+
+The ONLY exception to refusing cross-worker work: if the active worker is a Chief-of-Staff worker (Alex, slug contains "chief-of-staff" or equals "alex"), you MAY delegate by emitting the same SWITCH_WORKER marker, but you still do not produce the cross-domain output yourself.
+
+OPERATOR POSTURE (PLATFORM INVARIANT) — You are the operator, not an advisor. These rules apply to EVERY response — including clarification requests, refusals, and follow-ups:
+  1. NEVER use markdown bullet lists (lines starting with "-" or "*") or numbered lists in chat responses. If you have multiple possibilities, write them inline in a single sentence separated by " or ".
+  2. NEVER respond with a markdown decision tree (e.g. "**File X if:** ... **Skip X if:** ... **For your case:** ..."). That is advisor mode and is forbidden.
+  3. When the user names a task or expresses an intent ("I should X", "should I X?", "we need to X", "I want to X"), interpret it as a request for ACTION and respond with an OFFER, not a checklist of considerations.
+  4. Maximum 2 sentences of context before the offer. The offer format is: "Want me to <specific action> now?" — not "You should <action>."
+  5. Never end with a list of TODOs for the user. End with one concrete offer or one specific question.
+  6. If you need clarification, ask ONE specific question — not a menu of possibilities.
+  7. NEVER invent records, IDs, file names, contact details, amounts, dates, statuses, or facts. If a fact is not in this prompt, in the LIVE CANVAS block below, or supplied by the user in this thread, say "I don't have that yet — want me to look it up?" Hallucinated specifics are worse than admitting a gap.`;
+
+  // Voice mode — when the user spoke this message, switch to a hands-free
+  // friendly response style: short, conversational, no markdown.
+  if (body?.responseMode === "voice") {
+    augmented += `
+
+VOICE MODE — THIS MESSAGE CAME FROM SPEECH. The user is hands-free (driving, walking, mid-flight prep). Respond in 2–3 sentences. NO markdown. NO bullet lists. NO headers. NO code blocks. Conversational tone. If you need clarification, ask ONE specific question — not a list of options. If the user asked for an action, confirm it in one sentence and ask if they want you to proceed.`;
+  }
+
+  // Canvas snapshot — what's actually rendered on the user's screen right
+  // now. Chat is the conduit to the platform; it must be aware of the live
+  // canvas state in real time.
+  const snap = body?.context?.canvasSnapshot;
+  if (snap && (snap.cardType || snap.cardTitle)) {
+    const sampleNote = snap.isSample ? " (SAMPLE DATA — not real workspace data)" : "";
+    augmented += `
+
+LIVE CANVAS — what the user is looking at right now:
+  Card type: ${snap.cardType || "(unknown)"}${sampleNote}
+  Card title: ${snap.cardTitle || "(untitled)"}
+  Payload summary: ${snap.payloadSummary || "(none)"}
+
+When the user asks "what is this" / "explain this" / "what should I do with this," answer about THIS specific canvas card. Don't generalize to the worker's capabilities — speak to what's on screen.`;
+  } else {
+    // 50.28 — explicit "no canvas" notice. Sean caught the LLM hallucinating
+    // ("I've drafted it on the canvas to your right") when there was nothing
+    // on canvas. Tell the model the canvas is empty so it cannot bluff.
+    augmented += `
+
+CANVAS STATE — There is NO canvas card currently rendered. The right-hand panel may show the worker's home page or be empty, but there is no document, draft, PDF, table, or artifact on the canvas right now. DO NOT claim anything is "ready on the canvas," "drafted on the canvas," or "to your right." If the user asks you to produce a document, either render it in chat as text, OR emit the appropriate canvas marker capability documented in this worker's RAAS prompt. If you don't have a wired capability to produce the artifact (e.g. PDF, formal patent application, signed contract), say so directly: "I can draft the text here in chat, but I can't produce the filed PDF from this surface yet." Do not pretend the work is done.`;
+  }
+
+  return augmented;
+}
+
+
 // Company knowledge for investor system prompt (loaded once at cold start)
 const fs = require("fs");
 const path = require("path");
@@ -1499,6 +1654,26 @@ exports.api = onRequest(
         tenantId: req.headers["x-tenant-id"] || null,
       });
 
+      // 50.28 — deterministic cross-worker routing (chatEngine path). This is
+      // the path the frontend ChatPanel hits (it always sends body.sessionId).
+      // Earlier we added this to the second /chat:message handler but that
+      // path never fires when sessionId is present. Sean's "draft a LinkedIn
+      // post" in Accounting kept going to the LLM because of this.
+      try {
+        if (userInput && !action) {
+          const intent = detectCrossWorkerIntent(userInput, body.selectedWorker);
+          if (intent) {
+            console.log(`[chat:routing] ${body.selectedWorker || "(none)"} -> ${intent.targetSlug} (matched: "${userInput.slice(0, 80)}")`);
+            return res.json({
+              ok: true,
+              response: `That belongs to ${intent.targetName} — switching you over now.\n\n[[SWITCH_WORKER:${intent.targetSlug}]]`,
+            });
+          }
+        }
+      } catch (e) {
+        console.warn("[chat:routing] detector error:", e.message);
+      }
+
       // CODEX 50.5 — generate one parent_interaction_id at the top of every
       // /chat:message turn. Threaded down through callWithHealthCheck context
       // and merged onto every usage event produced during this turn (chat
@@ -2230,6 +2405,7 @@ When the user asks "what have I completed?", "what's next?", or about their prog
                 },
               }];
 
+              workerPrompt = augmentPromptWithChatContext(workerPrompt, body);
               let aiResponse = await anthropic.messages.create({
                 model: 'claude-sonnet-4-5-20250929',
                 max_tokens: 1024,
@@ -10005,6 +10181,34 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
     // status + BS score. Workspace-scoped.
     // ───────────────────────────────────────────────────────────
 
+    // POST /v1/commandCenter:setMilestoneStatus
+    // Flip a launch or development milestone's status (pending|in_progress|done).
+    // Persists at tenants/{tenantId}.{kind}Milestones.{milestoneId}.{status,completedAt,note}.
+    if (route === "/commandCenter:setMilestoneStatus" && method === "POST") {
+      try {
+        if (!ctx.tenantId) return jsonError(res, 400, "Missing tenantId");
+        const { milestoneId, status, note, kind } = body || {};
+        if (!milestoneId) return jsonError(res, 400, "MISSING_MILESTONE_ID");
+        const validStatus = ["pending", "in_progress", "done"];
+        if (!validStatus.includes(status)) return jsonError(res, 400, "INVALID_STATUS");
+        const validKind = ["launch", "development"];
+        const kindKey = validKind.includes(kind) ? kind : "launch";
+        const field = `${kindKey}Milestones.${milestoneId}`;
+        const update = {
+          [`${field}.status`]: status,
+          [`${field}.updatedAt`]: nowServerTs(),
+          [`${field}.updatedBy`]: auth.user.uid,
+        };
+        if (status === "done") update[`${field}.completedAt`] = nowServerTs();
+        if (note != null) update[`${field}.note`] = String(note);
+        await db.collection("tenants").doc(ctx.tenantId).update(update);
+        return res.json({ ok: true, milestoneId, status, kind: kindKey });
+      } catch (e) {
+        console.error("[commandCenter:setMilestoneStatus] error:", e.message);
+        return jsonError(res, 500, e.message || "Failed to set milestone status");
+      }
+    }
+
     if (route === "/concerns:create" && method === "POST") {
       try {
         if (!ctx.tenantId) return jsonError(res, 400, "Missing tenantId");
@@ -13861,6 +14065,25 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       const validFileIds = Array.isArray(fileIds) ? fileIds.filter(id => typeof id === "string") : [];
       if (!message) return jsonError(res, 400, "Missing message");
 
+      // 50.28 — deterministic cross-worker routing. If the user asks for an
+      // output that clearly belongs to a different worker's domain, short-
+      // circuit before any LLM call and emit the [[SWITCH_WORKER]] marker so
+      // the frontend executes a real worker switch. Sean's test repeatedly
+      // showed that prompt-level rules were defeated by the worker's own
+      // system prompt. Code-side intercept is the only reliable enforcement.
+      try {
+        const intent = detectCrossWorkerIntent(message, body?.selectedWorker);
+        if (intent) {
+          console.log(`[chat:routing] ${body.selectedWorker || "(none)"} -> ${intent.targetSlug} (matched: "${message.slice(0, 80)}")`);
+          return res.json({
+            ok: true,
+            response: `That belongs to ${intent.targetName} — switching you over now.\n\n[[SWITCH_WORKER:${intent.targetSlug}]]`,
+          });
+        }
+      } catch (e) {
+        console.warn("[chat:routing] detector error:", e.message);
+      }
+
       // Collect all files from both `file` (single) and `files` (multi-upload array)
       const allFiles = [];
       if (files && Array.isArray(files)) {
@@ -14875,6 +15098,7 @@ ${(context || {}).dealContext ? `\nThe user wants to discuss this deal analysis:
                 },
               }];
 
+              selectedSystemPrompt = augmentPromptWithChatContext(selectedSystemPrompt, body);
               const response = await anthropic.messages.create({
                 model: "claude-sonnet-4-5-20250929",
                 max_tokens: 4096,

@@ -47,5 +47,10 @@ export default function useCommandCenter() {
     finally { setLoading(false); }
   }, []);
 
-  return { previewBrief, sendBrief, setWorkspaceMode, loading, error };
+  const setMilestoneStatus = useCallback(async ({ milestoneId, status, kind, note }) => {
+    try { return await apiFetch("/v1/commandCenter:setMilestoneStatus", "POST", { milestoneId, status, kind, note }); }
+    catch (e) { setError(e.message); return { ok: false, error: e.message }; }
+  }, []);
+
+  return { previewBrief, sendBrief, setWorkspaceMode, setMilestoneStatus, loading, error };
 }
