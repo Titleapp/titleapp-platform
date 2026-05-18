@@ -87,8 +87,13 @@ export default function Accounting() {
     listTransactions: listTransactionsTop,
     getDashboardSummary,
     listObligations, markObligationComplete,
+    createFCSession, saveFCAccount, syncFC,
     loading,
   } = useAccounting();
+
+  const [connectingBank, setConnectingBank] = useState(false);
+  const [syncingFC, setSyncingFC] = useState(false);
+  const [fcMessage, setFcMessage] = useState(null);
 
   const refreshSetup = useCallback(async () => {
     const r = await getSetupState();
@@ -291,6 +296,55 @@ export default function Accounting() {
             await deleteAccount(id);
             refreshAccounts();
             window.dispatchEvent(new Event("ta:accounting-changed"));
+          }}
+          connecting={connectingBank}
+          syncing={syncingFC}
+          fcMessage={fcMessage}
+          onConnectBank={async () => {
+            setConnectingBank(true);
+            setFcMessage(null);
+            try {
+              const r = await createFCSession();
+              if (!r?.ok) throw new Error(r?.error || "Could not start Stripe session");
+              const { clientSecret, sessionId, publishableKey } = r;
+              if (!publishableKey) throw new Error("Missing publishable key — set STRIPE_PUBLISHABLE_KEY in Firebase secrets");
+              const stripe = await ensureStripeJs(publishableKey);
+              const result = await stripe.collectFinancialConnectionsAccounts({ clientSecret });
+              if (result.error) throw new Error(result.error.message || "Stripe modal closed with error");
+              const attached = (result.financialConnectionsSession?.accounts || []).length;
+              if (attached === 0) {
+                setFcMessage({ kind: "info", text: "No accounts selected. Try again to pick one." });
+              } else {
+                const save = await saveFCAccount({ sessionId });
+                if (!save?.ok) throw new Error(save?.error || "Saved session but could not write accounts");
+                setFcMessage({ kind: "ok", text: `Connected ${save.saved} account${save.saved === 1 ? "" : "s"}. Pulling transactions…` });
+                refreshAccounts();
+                setSyncingFC(true);
+                const sync = await syncFC();
+                setSyncingFC(false);
+                setFcMessage({ kind: "ok", text: `${save.saved} account${save.saved === 1 ? "" : "s"} connected · ${sync?.transactions || 0} transactions synced.` });
+                window.dispatchEvent(new Event("ta:accounting-changed"));
+              }
+            } catch (e) {
+              setFcMessage({ kind: "error", text: e.message || "Bank connection failed" });
+            } finally {
+              setConnectingBank(false);
+            }
+          }}
+          onSync={async () => {
+            setSyncingFC(true);
+            setFcMessage(null);
+            try {
+              const r = await syncFC();
+              if (!r?.ok) throw new Error(r?.error || "Sync failed");
+              setFcMessage({ kind: "ok", text: `Synced ${r.transactions || 0} transaction${r.transactions === 1 ? "" : "s"} across ${r.accounts || 0} account${r.accounts === 1 ? "" : "s"}.` });
+              refreshAccounts();
+              window.dispatchEvent(new Event("ta:accounting-changed"));
+            } catch (e) {
+              setFcMessage({ kind: "error", text: e.message || "Sync failed" });
+            } finally {
+              setSyncingFC(false);
+            }
           }}
         />
       )}
@@ -586,21 +640,74 @@ function KPI({ label, value, hint }) {
   );
 }
 
-function AccountsPane({ accounts, loading, onAdd, onDelete }) {
+// Dynamically loads Stripe.js once and instantiates with the publishable
+// key. Resolves to a Stripe instance ready for FC modal.
+async function ensureStripeJs(publishableKey) {
+  if (typeof window === "undefined") throw new Error("Stripe.js requires a browser");
+  if (!window.Stripe) {
+    await new Promise((resolve, reject) => {
+      const existing = document.querySelector('script[src*="js.stripe.com/v3"]');
+      if (existing) {
+        existing.addEventListener("load", resolve);
+        existing.addEventListener("error", () => reject(new Error("Failed to load Stripe.js")));
+        return;
+      }
+      const script = document.createElement("script");
+      script.src = "https://js.stripe.com/v3/";
+      script.async = true;
+      script.onload = resolve;
+      script.onerror = () => reject(new Error("Failed to load Stripe.js"));
+      document.head.appendChild(script);
+    });
+  }
+  if (!window.Stripe) throw new Error("Stripe.js failed to initialize");
+  return window.Stripe(publishableKey);
+}
+
+function AccountsPane({ accounts, loading, onAdd, onDelete, onConnectBank, onSync, connecting, syncing, fcMessage }) {
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, gap: 8, flexWrap: "wrap" }}>
         <div style={{ fontSize: 14, color: "#64748b" }}>
-          {accounts.length} connected account{accounts.length === 1 ? "" : "s"}. Plaid auto-sync ships this week — for now, add accounts manually so other tabs can see them.
+          {accounts.length} connected account{accounts.length === 1 ? "" : "s"}. Use "Connect bank" for auto-sync via Stripe, or add manually for accounts Stripe doesn't cover.
         </div>
-        <button
-          onClick={onAdd}
-          className="iconBtn"
-          style={{ background: "linear-gradient(135deg, #7c3aed, #6d28d9)", color: "white", border: "none" }}
-        >
-          + Add Account
-        </button>
+        <div style={{ display: "flex", gap: 8 }}>
+          {accounts.some(a => a.source === "stripe_fc") && (
+            <button
+              onClick={onSync}
+              disabled={syncing}
+              style={{ padding: "8px 14px", background: "white", color: "#475569", border: "1px solid #e2e8f0", borderRadius: 8, cursor: syncing ? "wait" : "pointer", fontWeight: 600, fontSize: 13 }}
+            >
+              {syncing ? "Syncing…" : "Sync transactions"}
+            </button>
+          )}
+          <button
+            onClick={onConnectBank}
+            disabled={connecting}
+            style={{ padding: "8px 14px", background: "linear-gradient(135deg, #635bff, #5851ec)", color: "white", border: "none", borderRadius: 8, cursor: connecting ? "wait" : "pointer", fontWeight: 600, fontSize: 13 }}
+            title="Connect a bank or credit card via Stripe Financial Connections"
+          >
+            {connecting ? "Opening…" : "Connect bank (Stripe)"}
+          </button>
+          <button
+            onClick={onAdd}
+            className="iconBtn"
+            style={{ background: "linear-gradient(135deg, #7c3aed, #6d28d9)", color: "white", border: "none" }}
+          >
+            + Add manually
+          </button>
+        </div>
       </div>
+      {fcMessage && (
+        <div style={{
+          padding: "8px 12px", borderRadius: 6, marginBottom: 12, fontSize: 13,
+          background: fcMessage.kind === "error" ? "#fef2f2" : fcMessage.kind === "ok" ? "#f0fdf4" : "#f8fafc",
+          color: fcMessage.kind === "error" ? "#b91c1c" : fcMessage.kind === "ok" ? "#15803d" : "#475569",
+          border: `1px solid ${fcMessage.kind === "error" ? "#fecaca" : fcMessage.kind === "ok" ? "#bbf7d0" : "#e2e8f0"}`,
+        }}>
+          {fcMessage.text}
+        </div>
+      )}
       {loading && <div className="card" style={{ padding: 32, textAlign: "center", color: "#64748b" }}>Loading…</div>}
       {!loading && accounts.length === 0 && (
         <div className="card" style={{ padding: "48px 24px", textAlign: "center" }}>

@@ -10763,6 +10763,74 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       }
     }
 
+    // ────────────────────────────────────────────────────────────
+    // Stripe Financial Connections — bank/card auto-connect, no Plaid
+    // ────────────────────────────────────────────────────────────
+
+    // POST /v1/accounting:fc:createSession
+    // Returns { clientSecret, sessionId } for the client's FC modal.
+    if (route === "/accounting:fc:createSession" && method === "POST") {
+      try {
+        const { createSession } = require("./services/accounting/stripeFinancialConnections");
+        const result = await createSession({
+          tenantId: ctx.tenantId,
+          userEmail: auth.user.email || null,
+        });
+        return res.json(result);
+      } catch (e) {
+        console.error("[accounting:fc:createSession] error:", e.message);
+        return jsonError(res, 500, e.message || "Failed to create FC session");
+      }
+    }
+
+    // POST /v1/accounting:fc:saveAccount
+    // After the client modal closes, send the sessionId here so the
+    // server can fetch attached accounts from Stripe and persist them.
+    if (route === "/accounting:fc:saveAccount" && method === "POST") {
+      try {
+        const { sessionId } = body || {};
+        if (!sessionId) return jsonError(res, 400, "Missing sessionId");
+        const { saveAccountsFromSession } = require("./services/accounting/stripeFinancialConnections");
+        const result = await saveAccountsFromSession({
+          tenantId: ctx.tenantId,
+          userId: auth.user.uid,
+          sessionId,
+        });
+        return res.json(result);
+      } catch (e) {
+        console.error("[accounting:fc:saveAccount] error:", e.message);
+        return jsonError(res, 500, e.message || "Failed to save FC accounts");
+      }
+    }
+
+    // POST /v1/accounting:fc:sync — pull recent transactions for all
+    // FC-source accounts in the tenant. Idempotent (Stripe txn id is
+    // the Firestore doc id).
+    if (route === "/accounting:fc:sync" && method === "POST") {
+      try {
+        const { syncTransactions } = require("./services/accounting/stripeFinancialConnections");
+        const result = await syncTransactions({ tenantId: ctx.tenantId });
+        return res.json(result);
+      } catch (e) {
+        console.error("[accounting:fc:sync] error:", e.message);
+        return jsonError(res, 500, e.message || "Failed to sync FC transactions");
+      }
+    }
+
+    // POST /v1/accounting:fc:disconnect — body: { accountId }
+    if (route === "/accounting:fc:disconnect" && method === "POST") {
+      try {
+        const { accountId } = body || {};
+        if (!accountId) return jsonError(res, 400, "Missing accountId");
+        const { disconnectAccount } = require("./services/accounting/stripeFinancialConnections");
+        const result = await disconnectAccount({ tenantId: ctx.tenantId, accountId });
+        return res.json(result);
+      } catch (e) {
+        console.error("[accounting:fc:disconnect] error:", e.message);
+        return jsonError(res, 500, e.message || "Failed to disconnect");
+      }
+    }
+
     // POST /v1/accounting:obligations:markComplete
     // Body: { obligationKey, evidenceFileId?, note? }
     // Appends a completion record. Same period of the same obligation

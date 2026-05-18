@@ -174,6 +174,29 @@ export default function useAccounting() {
     catch (e) { setError(e.message); return { ok: false, error: e.message }; }
   }, []);
 
+  // Stripe Financial Connections — bank/card auto-connect.
+  const createFCSession = useCallback(async () => {
+    try { return await apiFetch("/v1/accounting:fc:createSession", "POST", {}); }
+    catch (e) { setError(e.message); return { ok: false, error: e.message }; }
+  }, []);
+
+  const saveFCAccount = useCallback(async ({ sessionId }) => {
+    try { return await apiFetch("/v1/accounting:fc:saveAccount", "POST", { sessionId }); }
+    catch (e) { setError(e.message); return { ok: false, error: e.message }; }
+  }, []);
+
+  const syncFC = useCallback(async () => {
+    setLoading(true);
+    try { return await apiFetch("/v1/accounting:fc:sync", "POST", {}); }
+    catch (e) { setError(e.message); return { ok: false, error: e.message }; }
+    finally { setLoading(false); }
+  }, []);
+
+  const disconnectFC = useCallback(async ({ accountId }) => {
+    try { return await apiFetch("/v1/accounting:fc:disconnect", "POST", { accountId }); }
+    catch (e) { setError(e.message); return { ok: false, error: e.message }; }
+  }, []);
+
   const listTransactions = useCallback(async ({ status = "all", limit = 200 } = {}) => {
     try { return await apiFetch(`/v1/accounting:transactions:list?status=${status}&limit=${limit}`); }
     catch (e) { setError(e.message); return { ok: false, transactions: [] }; }
