@@ -148,6 +148,21 @@ export default function useAccounting() {
     finally { setLoading(false); }
   }, []);
 
+  // CODEX 51.1 Phase 2b — wipe pre-built imports (transactions, balance
+  // snapshots, forward budgets where source="import_prebuilt").
+  const resetPrebuilt = useCallback(async () => {
+    setLoading(true);
+    try { return await apiFetch("/v1/accounting:prebuilt:reset", "POST", {}); }
+    catch (e) { setError(e.message); return { ok: false, error: e.message }; }
+    finally { setLoading(false); }
+  }, []);
+
+  // Dashboard KPI rollup — cash, burn, runway, liabilities.
+  const getDashboardSummary = useCallback(async () => {
+    try { return await apiFetch("/v1/accounting:dashboard:summary"); }
+    catch (e) { setError(e.message); return { ok: false, error: e.message }; }
+  }, []);
+
   const listTransactions = useCallback(async ({ status = "all", limit = 200 } = {}) => {
     try { return await apiFetch(`/v1/accounting:transactions:list?status=${status}&limit=${limit}`); }
     catch (e) { setError(e.message); return { ok: false, transactions: [] }; }
@@ -173,7 +188,7 @@ export default function useAccounting() {
     getFiscalYear, setFiscalYear,
     listAccounts, createAccount, deleteAccount,
     listCoaTemplates, listCoa, applyCoaTemplate, createCoa, updateCoa, deleteCoa,
-    parseStatement, commitStatement, commitPrebuilt, listTransactions, tagTransaction,
+    parseStatement, commitStatement, commitPrebuilt, resetPrebuilt, getDashboardSummary, listTransactions, tagTransaction,
     listApprovals, decideApproval,
     loading, error,
   };

@@ -10691,7 +10691,7 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
     // CODEX 51.1 Phase 2 — commit pre-built financials (xlsx) to Firestore.
     // Writes three append-only artifacts: transactions (source=import_prebuilt),
     // balanceSnapshots (one doc), forwardBudgets (one doc per budget sheet).
-    // Idempotent: re-uploading same fileId returns { skipped: true }.
+    // Idempotent: re-uploading same file content (hash match) returns { skipped: true }.
     if (route === "/accounting:prebuilt:commit" && method === "POST") {
       try {
         const { fileId, fileName, plan, sheetActions } = body || {};
@@ -10710,6 +10710,40 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       } catch (e) {
         console.error("[accounting:prebuilt:commit] error:", e.message);
         return jsonError(res, 500, e.message || "Failed to commit pre-built financials");
+      }
+    }
+
+    // POST /v1/accounting:prebuilt:reset
+    // Deletes all source="import_prebuilt" rows from transactions,
+    // balanceSnapshots, and forwardBudgets for the tenant. Audited.
+    // Used to clean up duplicate imports or reset state before re-importing
+    // corrected data.
+    if (route === "/accounting:prebuilt:reset" && method === "POST") {
+      try {
+        const { resetPrebuiltImports } = require("./services/accounting/prebuiltFinancialsParser");
+        const result = await resetPrebuiltImports({
+          tenantId: ctx.tenantId,
+          userId: auth.user.uid,
+        });
+        return res.json({ ok: true, ...result });
+      } catch (e) {
+        console.error("[accounting:prebuilt:reset] error:", e.message);
+        return jsonError(res, 500, e.message || "Failed to reset pre-built imports");
+      }
+    }
+
+    // GET /v1/accounting:dashboard:summary
+    // Returns the KPI rollup for the Dashboard tab: Cash on Hand, Burn (30D),
+    // Avg monthly burn, Forward run rate, Runway, Liabilities. Powers the
+    // tiles that were previously hard-coded "—".
+    if (route === "/accounting:dashboard:summary" && method === "GET") {
+      try {
+        const { computeSummary } = require("./services/accounting/dashboardSummary");
+        const summary = await computeSummary({ tenantId: ctx.tenantId });
+        return res.json({ ok: true, ...summary });
+      } catch (e) {
+        console.error("[accounting:dashboard:summary] error:", e.message);
+        return jsonError(res, 500, e.message || "Failed to compute dashboard summary");
       }
     }
 

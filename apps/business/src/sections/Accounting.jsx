@@ -279,7 +279,7 @@ export default function Accounting() {
       </div>
 
       {/* Body */}
-      {tab === "dashboard" && <DashboardPane accounts={accounts} transactions={allTransactions} />}
+      {tab === "dashboard" && <DashboardPane accounts={accounts} transactions={allTransactions} getDashboardSummary={getDashboardSummary} />}
       {tab === "accounts" && (
         <AccountsPane
           accounts={accounts}
@@ -409,17 +409,72 @@ function FiscalYearModal({ getFiscalYear, onClose, onSubmit }) {
   );
 }
 
-function DashboardPane({ accounts }) {
-  const activeAccounts = accounts.filter(a => a.status !== "deleted");
-  const totalBalance = activeAccounts.reduce((sum, a) => sum + (typeof a.balance === "number" ? a.balance : 0), 0);
+function DashboardPane({ accounts, getDashboardSummary }) {
+  const [summary, setSummary] = useState(null);
+  const [loadingSummary, setLoadingSummary] = useState(true);
+
+  const load = useCallback(async () => {
+    setLoadingSummary(true);
+    const r = await getDashboardSummary?.();
+    if (r?.ok) setSummary(r);
+    setLoadingSummary(false);
+  }, [getDashboardSummary]);
+
+  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    const refresh = () => load();
+    window.addEventListener("ta:accounting-changed", refresh);
+    return () => window.removeEventListener("ta:accounting-changed", refresh);
+  }, [load]);
+
+  const fromCents = (c) => typeof c === "number" ? formatCurrency(c / 100) : "—";
+  const cashCents = summary?.cashOnHand?.cents;
+  const cashHint = summary?.cashOnHand?.source === "balanceSnapshot"
+    ? "From imported balance sheet"
+    : summary?.cashOnHand?.source === "connectedAccounts"
+    ? "Sum across connected accounts"
+    : "No connected accounts or balance sheet yet";
+
+  const burn30Hint = summary?.burn30d?.transactionCount
+    ? `${summary.burn30d.transactionCount} transactions in last 30 days`
+    : "No transactions in last 30 days";
+
+  const avgBurnLabel = summary?.avgMonthlyBurn?.cents ? "Avg monthly burn" : "Avg monthly burn";
+  const avgBurnHint = summary?.avgMonthlyBurn?.cents
+    ? `${summary.avgMonthlyBurn.monthsObserved}-month rolling average`
+    : "Need 12 months of categorized data";
+
+  const runwayValue = summary?.runway?.months != null
+    ? (summary.runway.months >= 1
+        ? `${summary.runway.months.toFixed(1)} mo`
+        : `${Math.round(summary.runway.months * 30)} days`)
+    : "—";
+  const runwayHint = summary?.runway?.hint || "Cash ÷ burn — needs both inputs";
+
+  const forwardRateValue = summary?.forwardRunRate?.cents
+    ? fromCents(summary.forwardRunRate.cents) + "/mo"
+    : "—";
+  const forwardRateHint = summary?.forwardRunRate?.cents
+    ? `From ${summary.forwardRunRate.year || "imported"} forward budget`
+    : "Import a forward budget";
+
+  const liabilitiesValue = summary?.totalLiabilities?.cents != null
+    ? fromCents(summary.totalLiabilities.cents)
+    : "—";
+  const liabilitiesHint = summary?.totalLiabilities?.cents != null
+    ? "From imported balance sheet"
+    : "No balance sheet on file";
+
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
-      <KPI label="Cash on hand" value={formatCurrency(totalBalance)} hint="Sum across connected accounts" />
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
+      <KPI label="Cash on hand" value={loadingSummary ? "…" : fromCents(cashCents)} hint={cashHint} />
+      <KPI label="Burn (30d)" value={loadingSummary ? "…" : fromCents(summary?.burn30d?.cents)} hint={burn30Hint} />
+      <KPI label={avgBurnLabel} value={loadingSummary ? "…" : fromCents(summary?.avgMonthlyBurn?.cents)} hint={avgBurnHint} />
+      <KPI label="Forward run rate" value={loadingSummary ? "…" : forwardRateValue} hint={forwardRateHint} />
+      <KPI label="Runway" value={loadingSummary ? "…" : runwayValue} hint={runwayHint} />
+      <KPI label="Total liabilities" value={loadingSummary ? "…" : liabilitiesValue} hint={liabilitiesHint} />
       <KPI label="MRR" value="—" hint="Connect Stripe to populate" />
-      <KPI label="Burn (30d)" value="—" hint="Categorize transactions first" />
-      <KPI label="Runway" value="—" hint="Calculated from cash ÷ burn" />
-      <KPI label="Unpaid invoices" value="—" hint="No invoices on file" />
-      <KPI label="Open expenses" value="—" hint="No expenses on file" />
+      <KPI label="Unpaid invoices" value="—" hint="No invoices feature yet" />
     </div>
   );
 }
@@ -905,7 +960,7 @@ function TransactionsPane({ coa }) {
   const [error, setError] = useState(null);
   const [progress, setProgress] = useState(null);
   const fileInputRef = useRef(null);
-  const { parseStatement, commitStatement, commitPrebuilt, listTransactions, tagTransaction } = useAccounting();
+  const { parseStatement, commitStatement, commitPrebuilt, resetPrebuilt, getDashboardSummary, listTransactions, tagTransaction } = useAccounting();
   const { uploadFile } = useDocuments();
 
   const refreshTransactions = useCallback(async () => {
@@ -1365,21 +1420,49 @@ function TransactionsPane({ coa }) {
   }
 
   // Empty / list state
+  const doResetPrebuilt = async () => {
+    const ok = window.confirm(
+      "Delete ALL pre-built financial imports?\n\n" +
+      "This removes every transaction, balance snapshot, and forward budget where source=import_prebuilt.\n\n" +
+      "PDF-imported transactions are NOT affected. This action is logged in importEvents."
+    );
+    if (!ok) return;
+    const r = await resetPrebuilt();
+    if (!r?.ok) {
+      setError(r?.error || "Reset failed");
+      return;
+    }
+    refreshTransactions();
+    window.dispatchEvent(new Event("ta:accounting-changed"));
+    setError(null);
+    window.alert(`Reset complete. Removed ${r.deleted?.transactions || 0} transactions, ${r.deleted?.balanceSnapshots || 0} balance snapshots, ${r.deleted?.forwardBudgets || 0} forward budgets.`);
+  };
+
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-        <div style={{ fontSize: 14, color: "#64748b" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, gap: 12, flexWrap: "wrap" }}>
+        <div style={{ fontSize: 14, color: "#64748b", flex: 1, minWidth: 240 }}>
           {committed.length} transaction{committed.length === 1 ? "" : "s"} on file. Drop a credit-card, PayPal, or bank PDF statement —
           or an XLSX with pre-built financials — and the worker reads it deterministically.
         </div>
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          disabled={parsing}
-          className="iconBtn"
-          style={{ background: "linear-gradient(135deg, #7c3aed, #6d28d9)", color: "white", border: "none", opacity: parsing ? 0.6 : 1 }}
-        >
-          {parsing ? "Processing…" : "Upload statement (PDF or XLSX)"}
-        </button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button
+            onClick={doResetPrebuilt}
+            className="iconBtn"
+            title="Delete all pre-built financial imports (transactions, balance snapshots, forward budgets where source=import_prebuilt). PDF-imported data is not touched."
+            style={{ background: "white", color: "#991b1b", border: "1px solid #fecaca", fontSize: 13 }}
+          >
+            Reset pre-built imports
+          </button>
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={parsing}
+            className="iconBtn"
+            style={{ background: "linear-gradient(135deg, #7c3aed, #6d28d9)", color: "white", border: "none", opacity: parsing ? 0.6 : 1 }}
+          >
+            {parsing ? "Processing…" : "Upload statement (PDF or XLSX)"}
+          </button>
+        </div>
         <input ref={fileInputRef} type="file" accept="application/pdf,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style={{ display: "none" }}
           onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ""; }} />
       </div>

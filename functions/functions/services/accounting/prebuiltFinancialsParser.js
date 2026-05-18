@@ -11,11 +11,16 @@
 // data is unreliable. ExcelJS reads cells by address, no inference involved.
 
 const admin = require("firebase-admin");
+const crypto = require("crypto");
 const ExcelJS = require("exceljs");
 
 const XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
 function getDb() { return admin.firestore(); }
+
+function sha256(buffer) {
+  return crypto.createHash("sha256").update(buffer).digest("hex");
+}
 
 // ---------- Sheet-intent inference ----------
 //
@@ -398,6 +403,11 @@ async function parsePrebuiltFinancials({ buffer, filename, contentType }) {
     throw new Error("parsePrebuiltFinancials requires an .xlsx file");
   }
 
+  // Content-hash for idempotency. Re-uploading the same file produces a new
+  // Drive object (new fileId) but identical bytes, so fileId alone fails the
+  // duplicate check. Hash the bytes so identical content is reliably caught.
+  const fileHash = sha256(buffer);
+
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.load(buffer);
 
@@ -463,6 +473,7 @@ async function parsePrebuiltFinancials({ buffer, filename, contentType }) {
 
   return {
     filename,
+    fileHash,
     sheetCount: sheets.length,
     sheets,
     rollup: {
@@ -486,25 +497,42 @@ async function parsePrebuiltFinancials({ buffer, filename, contentType }) {
 // If found, return { skipped: true, reason: "already_imported" } so the
 // user can't accidentally double-import the same xlsx.
 
-async function alreadyImported({ tenantId, sourceFileId }) {
-  if (!sourceFileId) return false;
+async function alreadyImported({ tenantId, sourceFileId, fileHash }) {
   const db = getDb();
-  // Check the balanceSnapshots collection first — fastest signal because
-  // only prebuilt imports write there.
-  const bsSnap = await db.collection("balanceSnapshots")
-    .where("tenantId", "==", tenantId)
-    .where("sourceFileId", "==", sourceFileId)
-    .limit(1)
-    .get();
-  if (!bsSnap.empty) return true;
-  // Fallback: check transactions for source=import_prebuilt + this fileId.
-  const txSnap = await db.collection("transactions")
-    .where("tenantId", "==", tenantId)
-    .where("sourceFileId", "==", sourceFileId)
-    .where("source", "==", "import_prebuilt")
-    .limit(1)
-    .get();
-  return !txSnap.empty;
+  // Primary: content hash. Catches re-uploads of identical files even when
+  // Drive assigns a fresh objectId per upload.
+  if (fileHash) {
+    const hashSnap = await db.collection("balanceSnapshots")
+      .where("tenantId", "==", tenantId)
+      .where("fileHash", "==", fileHash)
+      .limit(1)
+      .get();
+    if (!hashSnap.empty) return true;
+    const hashTxSnap = await db.collection("transactions")
+      .where("tenantId", "==", tenantId)
+      .where("fileHash", "==", fileHash)
+      .where("source", "==", "import_prebuilt")
+      .limit(1)
+      .get();
+    if (!hashTxSnap.empty) return true;
+  }
+  // Fallback: fileId match (legacy — rows written before fileHash existed).
+  if (sourceFileId) {
+    const bsSnap = await db.collection("balanceSnapshots")
+      .where("tenantId", "==", tenantId)
+      .where("sourceFileId", "==", sourceFileId)
+      .limit(1)
+      .get();
+    if (!bsSnap.empty) return true;
+    const txSnap = await db.collection("transactions")
+      .where("tenantId", "==", tenantId)
+      .where("sourceFileId", "==", sourceFileId)
+      .where("source", "==", "import_prebuilt")
+      .limit(1)
+      .get();
+    if (!txSnap.empty) return true;
+  }
+  return false;
 }
 
 function dateToMonthlyTotals(transactions) {
@@ -541,7 +569,8 @@ async function commitPrebuiltFinancials({
   // sheetActions: { [sheetName]: boolean } — user's per-sheet include/exclude.
   // Missing or true → import per the plan's default action. false → skip.
 
-  const dup = await alreadyImported({ tenantId, sourceFileId: fileId });
+  const fileHash = plan.fileHash || null;
+  const dup = await alreadyImported({ tenantId, sourceFileId: fileId, fileHash });
   if (dup) {
     return { skipped: true, reason: "already_imported",
              message: "This file was already imported. Discard and start fresh if you want to re-import." };
@@ -589,6 +618,7 @@ async function commitPrebuiltFinancials({
             source: "import_prebuilt",
             sourceFileId: fileId,
             sourceFileName: fileName || null,
+            fileHash: fileHash || null,
             status: "committed", // already categorized in the source file
             year: t.year || null,
             createdAt: eventTime,
@@ -610,6 +640,7 @@ async function commitPrebuiltFinancials({
         source: "import_prebuilt",
         sourceFileId: fileId,
         sourceFileName: fileName || null,
+        fileHash: fileHash || null,
         sheetName: sheet.name,
         lineItems: lines.map(l => ({
           section: l.section || null,
@@ -642,6 +673,7 @@ async function commitPrebuiltFinancials({
         source: "import_prebuilt",
         sourceFileId: fileId,
         sourceFileName: fileName || null,
+        fileHash: fileHash || null,
         sheetName: sheet.name,
         lineItems: (data.lineItems || []).map(l => ({
           section: l.section || null,
@@ -670,6 +702,7 @@ async function commitPrebuiltFinancials({
     type: "prebuilt_financials",
     sourceFileId: fileId,
     sourceFileName: fileName || null,
+    fileHash: fileHash || null,
     sheetCount: plan.sheets.length,
     written,
     createdAt: eventTime,
@@ -678,9 +711,55 @@ async function commitPrebuiltFinancials({
   return { ok: true, written };
 }
 
+// CODEX 51.1 Phase 2b — Reset / cleanup tool.
+// Deletes ALL pre-built import artifacts for a tenant: transactions where
+// source="import_prebuilt", balanceSnapshots where source="import_prebuilt",
+// forwardBudgets where source="import_prebuilt". Audits the action in
+// importEvents. Used when the user wants to re-import after fixing source
+// data or to clean up accidental duplicates.
+async function resetPrebuiltImports({ tenantId, userId }) {
+  if (!tenantId) throw new Error("Missing tenantId");
+  const db = getDb();
+  const eventTime = admin.firestore.FieldValue.serverTimestamp();
+  const deleted = { transactions: 0, balanceSnapshots: 0, forwardBudgets: 0 };
+
+  async function deleteCollection(name, extraWhere) {
+    let q = db.collection(name).where("tenantId", "==", tenantId);
+    if (extraWhere) {
+      extraWhere.forEach(([f, op, v]) => { q = q.where(f, op, v); });
+    }
+    q = q.limit(400);
+    let batchCount;
+    do {
+      const snap = await q.get();
+      if (snap.empty) { batchCount = 0; break; }
+      const batch = db.batch();
+      snap.docs.forEach(d => batch.delete(d.ref));
+      await batch.commit();
+      batchCount = snap.size;
+      deleted[name] += batchCount;
+    } while (batchCount === 400);
+  }
+
+  await deleteCollection("transactions", [["source", "==", "import_prebuilt"]]);
+  await deleteCollection("balanceSnapshots", [["source", "==", "import_prebuilt"]]);
+  await deleteCollection("forwardBudgets", [["source", "==", "import_prebuilt"]]);
+
+  await db.collection("importEvents").add({
+    tenantId,
+    userId: userId || null,
+    type: "prebuilt_reset",
+    deleted,
+    createdAt: eventTime,
+  });
+
+  return { ok: true, deleted };
+}
+
 module.exports = {
   parsePrebuiltFinancials,
   commitPrebuiltFinancials,
+  resetPrebuiltImports,
   alreadyImported,
   classifySheet,
   XLSX_MIME,
