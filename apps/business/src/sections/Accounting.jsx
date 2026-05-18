@@ -436,9 +436,20 @@ function DashboardPane({ accounts, getDashboardSummary }) {
     ? "Sum across connected accounts"
     : "No connected accounts or balance sheet yet";
 
-  const burn30Hint = summary?.burn30d?.transactionCount
-    ? `${summary.burn30d.transactionCount} transactions in last 30 days`
-    : "No transactions in last 30 days";
+  const bva = summary?.budgetVsActual;
+  const bvaValue = bva
+    ? `${fromCents(bva.actualCents)} / ${fromCents(bva.proratedBudgetCents)}`
+    : "—";
+  let bvaHint;
+  if (!bva) {
+    bvaHint = "Import a forward budget to track variance";
+  } else if (bva.varianceCents > 0) {
+    bvaHint = `${fromCents(bva.varianceCents)} over pace · day ${bva.daysElapsed}/${bva.daysInMonth}`;
+  } else if (bva.varianceCents < 0) {
+    bvaHint = `${fromCents(Math.abs(bva.varianceCents))} under pace · day ${bva.daysElapsed}/${bva.daysInMonth}`;
+  } else {
+    bvaHint = `On pace · day ${bva.daysElapsed}/${bva.daysInMonth}`;
+  }
 
   const avgBurnLabel = summary?.avgMonthlyBurn?.cents ? "Avg monthly burn" : "Avg monthly burn";
   const avgBurnHint = summary?.avgMonthlyBurn?.cents
@@ -469,7 +480,7 @@ function DashboardPane({ accounts, getDashboardSummary }) {
   return (
     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
       <KPI label="Cash on hand" value={loadingSummary ? "…" : fromCents(cashCents)} hint={cashHint} />
-      <KPI label="Burn (30d)" value={loadingSummary ? "…" : fromCents(summary?.burn30d?.cents)} hint={burn30Hint} />
+      <KPI label="Budget vs Actual (MTD)" value={loadingSummary ? "…" : bvaValue} hint={bvaHint} />
       <KPI label={avgBurnLabel} value={loadingSummary ? "…" : fromCents(summary?.avgMonthlyBurn?.cents)} hint={avgBurnHint} />
       <KPI label="Forward run rate" value={loadingSummary ? "…" : forwardRateValue} hint={forwardRateHint} />
       <KPI label="Runway" value={loadingSummary ? "…" : runwayValue} hint={runwayHint} />

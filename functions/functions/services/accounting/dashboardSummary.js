@@ -25,6 +25,16 @@ function monthsAgo(n) {
   return d.toISOString().slice(0, 10);
 }
 
+function currentMonthBounds() {
+  const d = new Date();
+  const y = d.getUTCFullYear();
+  const m = d.getUTCMonth();
+  const firstOfMonth = new Date(Date.UTC(y, m, 1)).toISOString().slice(0, 10);
+  const daysInMonth = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+  const daysElapsed = d.getUTCDate();
+  return { firstOfMonth, daysInMonth, daysElapsed };
+}
+
 // Look up the most recent balanceSnapshot for the tenant — if any.
 // Returns the snapshot data + a heuristic "cash" line-item lookup so we
 // can populate Cash on Hand from the imported balance sheet when the
@@ -134,12 +144,14 @@ async function sumDebitsSince(tenantId, fromDate) {
 async function computeSummary({ tenantId }) {
   if (!tenantId) throw new Error("Missing tenantId");
 
-  const [snapshot, budget, connectedTotal, burn30, burn12mo] = await Promise.all([
+  const { firstOfMonth, daysInMonth, daysElapsed } = currentMonthBounds();
+  const [snapshot, budget, connectedTotal, burn30, burn12mo, mtd] = await Promise.all([
     getLatestBalanceSnapshot(tenantId),
     getLatestForwardBudget(tenantId),
     getConnectedAccountsTotalCents(tenantId),
     sumDebitsSince(tenantId, daysAgo(30)),
     sumDebitsSince(tenantId, monthsAgo(12)),
+    sumDebitsSince(tenantId, firstOfMonth),
   ]);
 
   // --- Cash on Hand ---
@@ -185,6 +197,26 @@ async function computeSummary({ tenantId }) {
     runwayHint = "$0 cash on file — runway is 0 at current state";
   }
 
+  // --- Budget vs Actual (MTD) ---
+  // More useful than rolling 30D burn: are we tracking against the forward
+  // budget THIS month? Pro-rate the monthly run rate by days elapsed and
+  // compare to actual spend since the 1st.
+  let budgetVsActual = null;
+  if (forwardRunRateCents > 0) {
+    const proratedBudgetCents = Math.round(forwardRunRateCents * (daysElapsed / daysInMonth));
+    const actualMtdCents = mtd.totalCents;
+    const varianceCents = actualMtdCents - proratedBudgetCents;
+    budgetVsActual = {
+      actualCents: actualMtdCents,
+      proratedBudgetCents,
+      monthlyBudgetCents: forwardRunRateCents,
+      varianceCents,
+      daysElapsed,
+      daysInMonth,
+      transactionCount: mtd.count,
+    };
+  }
+
   // --- Liabilities (bonus context, even though no tile exists yet) ---
   const totalLiabilitiesCents = findLiabilitiesTotalCents(snapshot);
 
@@ -193,6 +225,7 @@ async function computeSummary({ tenantId }) {
     mrr: { cents: null, source: "stripe_not_connected" },
     burn30d: { cents: burn30dCents, transactionCount: burn30.count },
     avgMonthlyBurn: { cents: avgMonthlyBurnCents, monthsObserved: 12 },
+    budgetVsActual,
     forwardRunRate: forwardRunRateCents > 0
       ? { cents: forwardRunRateCents, source: "import_prebuilt", year: budget?.year || null }
       : null,
