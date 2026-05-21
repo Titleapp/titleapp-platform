@@ -11,15 +11,15 @@
   "workers": [
     {
       "id": "BANK-FUND-001",
-      "name": "Fundraise",
+      "name": "Investor Relations",
       "slug": "fundraise",
       "suite": "Capital Formation",
       "phase": 0,
       "type": "composite",
       "pricing": { "monthly": 79 },
       "status": "live",
-      "capabilitySummary": "Founder-side fundraising co-pilot. Equity (KISS, SAFE, convertible, seed), debt placements, PE placements, fund formation. Investor prospecting via Apollo. Data room with scoped sharing and KYC. Cap table integration. Communications via Marketing worker.",
-      "tags": ["fundraise", "investor-relations", "founder", "capital-formation", "kyc"],
+      "capabilitySummary": "Founder-side investor relations + capital formation co-pilot. Investor pipeline CRM (Approached → 1st mtg → 2nd mtg → diligence → term sheet → close). Apollo prospecting. Data room with scoped sharing and KYC. Cap table integration. Reg D / 506(b)/(c) compliance guardrails. Equity (KISS, SAFE, convertible, seed), debt placements, PE placements, fund formation. Communications via Marketing worker.",
+      "tags": ["investor-relations", "fundraise", "ir", "founder", "capital-formation", "kyc", "reg-d", "data-room"],
       "valueBucket": ["raise_capital", "communicate_clearly"],
       "alexRegistration": {
         "priority": "high",

@@ -141,6 +141,19 @@ async function buildTenantLiveSnapshot(db, tenantId, uid) {
       .slice(0, 8)
       .map(c => `${c.name} $${c.monthlyCap.toLocaleString()}`)
       .join(", ");
+    // 51.1 Phase 2i — surface recent transactions so chat can answer specific
+    // questions ("did I pay X?", "what was the largest expense in May?") without
+    // hallucinating. Capped at 40 to keep prompt cost bounded.
+    const recentTxs = [...txs]
+      .filter(t => t.date)
+      .sort((a, b) => (b.date || "").localeCompare(a.date || ""))
+      .slice(0, 40)
+      .map(t => {
+        const amt = `$${((t.amountCents || 0) / 100).toLocaleString()}`;
+        const desc = (t.description || "").slice(0, 60);
+        const cat = t.classification?.category || t.categoryHint || "uncategorized";
+        return `${t.date} | ${t.direction === "debit" ? "−" : "+"}${amt} | ${cat} | ${desc}`;
+      });
     live["platform-accounting"] = {
       label: "Accounting",
       kpis: {
@@ -155,6 +168,7 @@ async function buildTenantLiveSnapshot(db, tenantId, uid) {
         "Invoices (AR)": "none on file — invoice module not yet populated",
         "Bills (AP)": "none on file — bills module not yet populated",
       },
+      recentTransactions: recentTxs,
     };
 
     // ── Contacts ──
@@ -341,6 +355,28 @@ function renderSnapshot(snapshot, currentSlug) {
 }
 
 /**
+ * 51.1 Phase 2i — Build "YOUR OWN LIVE DATA" block for the active worker.
+ * Sibling state excludes the current slug, which means the Accounting worker
+ * never sees its own transactions/CoA in chat context. This function returns
+ * the active worker's own snapshot (KPIs + recentTransactions when available)
+ * so the chat can answer detail questions ground-truthed against real data.
+ */
+function renderOwnState(snapshot, currentSlug) {
+  if (!snapshot || !snapshot[currentSlug]) return "";
+  const w = snapshot[currentSlug];
+  const lines = [`YOUR OWN LIVE DATA (${w.label}):`];
+  const kpiPairs = Object.entries(w.kpis || {})
+    .filter(([_, v]) => v != null && v !== "")
+    .map(([k, v]) => `${k}: ${v}`);
+  if (kpiPairs.length) lines.push(kpiPairs.map(p => `- ${p}`).join("\n"));
+  if (Array.isArray(w.recentTransactions) && w.recentTransactions.length) {
+    lines.push(`\nRECENT TRANSACTIONS (most recent 40, date | direction+amount | category | description):`);
+    lines.push(w.recentTransactions.join("\n"));
+  }
+  return lines.join("\n") + "\n";
+}
+
+/**
  * Build the SIBLING WORKER STATE prompt block. Returns "" if no usable state.
  *
  * @param {Object} args
@@ -371,9 +407,12 @@ Do not quote numbers for sibling workers. If the user asks about Accounting, Mar
   }
 
   const body = renderSnapshot(snapshot, currentSlug);
-  if (!body) return "";
+  const ownState = renderOwnState(snapshot, currentSlug);
+  if (!body && !ownState) return "";
 
-  return `SIBLING WORKER STATE (${label} — refresh on next session):
+  const ownBlock = ownState ? `${ownState}\n` : "";
+  const siblingBlock = body
+    ? `SIBLING WORKER STATE (${label} — refresh on next session):
 ${body}
 
 Cross-worker attribution rules:
@@ -382,7 +421,10 @@ Cross-worker attribution rules:
 - Treat these as fresh from the sibling worker — you do not need to ask the user for them.
 - When you reference these in a CANVAS_RENDER, set the source field on the payload to the sibling worker name so the user knows where the number came from.
 
-`;
+`
+    : "";
+
+  return ownBlock + siblingBlock;
 }
 
 module.exports = { buildSiblingStatePrompt, DEMO_WORKER_SAMPLES };

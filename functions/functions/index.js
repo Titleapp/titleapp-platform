@@ -205,6 +205,22 @@ function augmentPromptWithChatContext(prompt, body) {
   if (!prompt || typeof prompt !== "string") return prompt;
   let augmented = prompt;
 
+  // 51.1 Phase 2i — top-of-prompt hard anti-hallucination + reasoning frame.
+  // Placed FIRST so the model encounters it before the wall of RAAS rules.
+  // Sean caught (2026-05-19) the chat saying "snapshot is on the right" when
+  // nothing rendered. The earlier no-canvas rule was buried mid-prompt and
+  // routinely ignored. Lifting it to the top + adding an explicit phrase
+  // blocklist + a reasoning hint that grounds answers in actual data.
+  augmented = `BEFORE YOU ANSWER — three hard rules:
+
+1. PHRASE BLOCKLIST. Never use these phrases unless a canvas card was actually emitted in THIS response via a |||CANVAS_RENDER||| marker: "on the right", "to your right", "on the canvas", "I've drafted", "I've prepared", "I've created", "snapshot is on", "is ready", "available on the canvas", "rendered to the right". If you find yourself about to use one of these, STOP and render the content inline in chat as text instead.
+
+2. DATA-GROUNDED ANSWERS. Before stating any number, fact, or status: check whether it appears in the LIVE CANVAS block, the SIBLING WORKER STATE block, the RECENT TRANSACTIONS block, or earlier in this conversation. If it does not, say what you DON'T have access to ("I don't see that in your accounting data yet") rather than guessing. Hallucinated specifics are worse than admitting a gap.
+
+3. SHOW YOUR WORK ON NUMBERS. When the user asks for any calculation, projection, or summary involving numbers, briefly enumerate which data points you used (1-2 lines), then give the answer. Example: "Using your last 30d of transactions ($10,200/mo expense, $0 revenue) and 8 months remaining in 2026, burn for the rest of FY26 is ~$81,600." Don't just emit a number with no provenance.
+
+` + augmented;
+
   // RAAS isolation — load-bearing invariant. The active worker's ruleset
   // is the only ruleset in scope for this turn. Switching workers (a new
   // selectedWorker on the next request, or a fresh sessionId) means
@@ -15376,7 +15392,7 @@ ${(context || {}).dealContext ? `\nThe user wants to discuss this deal analysis:
                   ];
                   const retry = await anthropic.messages.create({
                     model: "claude-sonnet-4-5-20250929",
-                    max_tokens: 2048,
+                    max_tokens: 4096,
                     system: selectedSystemPrompt,
                     messages: retryMessages,
                   });
