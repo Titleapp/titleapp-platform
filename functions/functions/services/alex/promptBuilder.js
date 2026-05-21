@@ -86,8 +86,10 @@ async function assemblePrompt(options = {}) {
   // 1. Static: Platform rules (identity is in core)
   sections.push(getRulesModule().getRules());
 
-  // 3. Static: Communication mode
-  sections.push(getCommunicationModule().getCommunicationInstructions(communicationMode));
+  // Communication mode (concise/detailed/executive_summary) was previously stacked
+  // into the prompt here. Removed 2026-05-21 — was a pure tone layer making chat
+  // feel stilted vs vanilla Claude. Tone preference now belongs at response-format
+  // time (user setting), not in the system prompt. See feedback_chat_tone_no_marketing_stack.
 
   // 4. Static: Routing instructions (with active worker list)
   sections.push(getRoutingModule().getRoutingInstructions(activeWorkerSlugs));
