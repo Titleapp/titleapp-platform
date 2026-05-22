@@ -1,259 +1,216 @@
-# Title App – Backend Architecture (Canonical)
+# SOCIII Platform
 
-_Last updated: 2026-02-12_
+**Collaborative Intelligence · Participation**
 
-This document describes the **current, working backend architecture** for Title App.
-It is the single source of truth to prevent routing, auth, infrastructure, and architectural drift.
+SOCIII is a platform where people create, share, and earn from AI workers — software agents governed by structured rule sets, with every action auditable on an immutable blockchain-anchored record.
 
----
+This repository contains the SOCIII platform implementation: web application, backend services, smart contracts, SDK, and supporting documentation.
 
-## ✅ MVP Status (LOCKED)
-
-As of 2026-02-12, the following is **verified working end-to-end**:
-
-**Admin UI → Cloudflare Frontdoor → Firebase Functions (Cloud Run) → Admin UI**
-
-### Verified workflow call (Admin UI “Load workflows”)
-- Frontdoor request:
-  - `POST https://titleapp-frontdoor.titleapp-core.workers.dev/api?path=/v1/raas:workflows`
-- Response:
-  - `200 OK` JSON
-
-**Important note:**
-- Backend routing supports Frontdoor’s generic passthrough format:
-  - `/api?path=/v1/...`
-- Backend strips `/v1` internally and routes by path.
+> Note: This repository was previously known as `titleapp-platform`. Active development continues under SOCIII Inc., the Delaware C-corporation that succeeded TitleApp LLC in May 2026. Portions of the codebase still reference the legacy brand during the cutover.
 
 ---
 
-## 🧠 High-level Overview
+## Architecture
 
-Title App uses a **three-layer architecture**:
+```
+[Web App (apps/business/) — React 19 + Vite]
+        │
+        ▼
+[Cloudflare Worker — Frontdoor / Edge Router]
+        │
+        ▼
+[Firebase Cloud Functions — single onRequest handler → Cloud Run]
+        │
+        ▼
+[Firestore — append-only event store]
+        │
+        ▼
+[Public Blockchain Audit Anchor (Base / Ethereum / Polygon / Solana — chain-agnostic)]
+```
 
-1. **Frontend (Admin / Title Vault UI)**
-2. **Edge Router (Cloudflare Worker – “Frontdoor”)**
-3. **Backend API (Firebase Functions → Cloud Run)**
-
-Authentication is handled via **Firebase ID Tokens**, verified at the backend.
+The architecture is intentionally simple and replaceable at every layer except the canonical record model and the rule engine.
 
 ---
 
-## 🧩 Components
+## Core Architectural Invariants (Non-Negotiable)
 
-### 1. Frontend (Admin UI / Title Vault)
+SOCIII is not a traditional SaaS application. It is an event-sourced governance system operated by AI agents under rule constraints. These invariants define the platform and are not violated under any deployment.
 
-- Location: `apps/admin`
-- Runs locally via Vite (`localhost:5173`)
-- Uses Firebase Auth (email/password)
-- Retrieves a **Firebase ID Token** via:
+### 1. Append-Only Record Model
 
-```ts
-auth.currentUser.getIdToken()
-Sends requests to Cloudflare with:
+Canonical records (Digital Title Certificates, logbook entries, transfers, escrow completions, governance events) are **never overwritten**. All state changes append new events. "Current state" is a computed projection of event history. Historical state remains recoverable in full. No direct mutation of canonical ownership or history is permitted.
 
-makefile
-Copy code
-Authorization: Bearer <FIREBASE_ID_TOKEN>
-2. Cloudflare Worker (Frontdoor)
-Base URL
+### 2. Blockchain as Notary Layer (Optional but Foundational)
 
-arduino
-Copy code
-https://titleapp-frontdoor.titleapp-core.workers.dev
-Purpose
+Blockchain is used to anchor cryptographic hashes of events, not to replace the operational database. On-chain records provide tamper-evidence; the full event payload is retained off-chain for confidentiality and audit. Firestore behaves as the append-only event store even when blockchain minting is disabled. Blockchain enhances verifiability without replacing operational logic.
 
-Public entry point
+### 3. AI Agents Are Stateless Executors
 
-CORS enforcement
+AI agents (Digital Workers) never directly mutate canonical state. Workers propose actions; the RAAS rule engine validates; events append. Agents are **model-agnostic** — OpenAI, Anthropic, Google Gemini, and other providers are interchangeable through a worker abstraction layer. AI is an operator, not a source of truth.
 
-Routing normalization
+### 4. RAAS Is the Constraint Engine
 
-Token passthrough
+Business logic lives in versioned, composable rule definitions, not in prompts. Rules layer additively across five tiers — platform safety, platform operations, vertical baselines, workspace overlays, per-transaction rules — with conflict resolution prioritizing the most-restrictive rule. The composed rule-set version is pinned at every governance event. Transfers, escrow execution, content publication, and attestations are rule-validated before persistence. Rules govern agents, not the other way around.
 
-Proxies requests to backend
+### 5. User Data Portability
 
-Supported routes
+Users can export their DTCs, logbooks, attestations, and transaction history. Tenant membership does not override user ownership of records. Records remain portable across tenants and across future systems. SOCIII is not a data silo.
 
-/workflows
+---
 
-/chat
+## Repository Layout
 
-/reportStatus
+| Path | Contents |
+|------|----------|
+| `apps/business/` | React 19 + Vite web application (the user-facing platform) |
+| `apps/admin/` | Admin console (separate Vite app) |
+| `functions/functions/` | Firebase Cloud Functions — all backend API routes in `index.js` |
+| `contracts/` | Capability contract registry (`capabilities.json` — source of truth for executable actions) |
+| `packages/sdk/` | Public SDK (`@titleapp/sdk`, ESM + CJS + TypeScript) |
+| `raas/` | RAAS rule definitions by vertical and jurisdiction |
+| `docs/specs/` | Architecture specs, CODEX records, shipped-state documentation |
+| `docs/patents/` | Patent filing drafts and IP family overview |
+| `marketing/` | Marketing campaign materials |
 
-/api?path=... (generic passthrough)
+---
 
-Important:
+## Backend API
 
-/api REQUIRES a path query param
+Single Firebase Function `exports.api` in `functions/functions/index.js`, deployed as a Cloud Run service. All routing handled manually inside that handler via `getRoute(req)`, which normalizes both direct calls (`/v1/...`) and Cloudflare Frontdoor passthrough (`/api?path=/v1/...`).
 
-Example:
+**Service URL:** `https://api-feyfibglbq-uc.a.run.app`
+**Frontdoor URL:** `https://titleapp-frontdoor.titleapp-core.workers.dev` (to be migrated to a SOCIII-branded Worker)
 
-bash
-Copy code
-/api?path=/v1/health
-What it does:
+Authentication is handled via Firebase ID Tokens, verified server-side using `admin.auth().verifyIdToken()`. Bearer tokens are passed unmodified through the Frontdoor.
 
-Accepts frontend request
+---
 
-Forwards request to backend with:
+## RAAS Architecture
 
-Authorization header preserved
+RAAS (Rules and AI-as-a-Service) is the internal architecture name. User-facing language is **Digital Workers**.
 
-X-Vertical / X-Jurisdiction forwarded
+Rule composition operates across five tiers:
 
-Does NOT terminate auth (except /chat)
+- **Tier 0 — Platform Safety:** Immutable invariants (no professional impersonation, append-only audit trail, no PII exposure, AI-generation disclosure)
+- **Tier 1 — Platform Operations:** Subscription enforcement, role-based access, capability gating, usage limits
+- **Tier 2 — Vertical Baselines:** Per-industry rule sets (real estate by jurisdiction, securities, healthcare, aviation, automotive, etc.)
+- **Tier 3 — Workspace Overlays:** Per-tenant customizations
+- **Tier 4 — Per-Transaction Rules:** Transaction-specific rules layered onto the above
 
-3. Backend API (Firebase Functions / Cloud Run)
-Canonical project
+Conflict resolution prioritizes the most-restrictive rule. The composed rule-set version is pinned at every governance event for retrospective audit.
 
-Firebase / GCP Project: title-app-alpha
+Detailed architecture is documented in `docs/patents/2026-05-24/Filing-C-RAAS-Multi-Tier-Composable-Rules-Provisional.md`.
 
-Runtime
+---
 
-Firebase Functions v2
+## Current Verticals
 
-Deployed as Cloud Run service
+The platform ships catalog workers across multiple verticals (counts as of 2026-05):
 
-Primary service URL
+- Real Estate (Development + Operations + Title & Escrow): ~80 workers
+- Aviation (Part 91 / 135 + Pilot Suite): 56 workers including 11 live CoPilots, PC12-NG reference implementation
+- Auto Dealer: 29 workers
+- Health and EMS: 42 workers (in development)
+- Web3 Projects: 13 workers
+- Government: 40 workers
+- Real Estate Professional (Title & Escrow): 12 workers
+- Platform (Business in a Box): 5 spine workers — Accounting, HR, Contacts, Marketing & Content, Control Center Pro
+- Plus solar, education, and additional verticals in development
 
-arduino
-Copy code
-https://api-feyfibglbq-uc.a.run.app
-Single entrypoint
+Total: 1,000+ workers across the catalog (creator-published workers added daily).
 
-ini
-Copy code
-exports.api = onRequest(...)
-🔐 Authentication (CRITICAL)
-All protected endpoints require:
+---
 
-makefile
-Copy code
-Authorization: Bearer <Firebase ID Token>
-Token is verified server-side using:
+## Quick Start
 
-scss
-Copy code
-admin.auth().verifyIdToken(token)
-Expected token claims:
+**Web App:**
+```bash
+cd apps/business
+npm install
+npm run dev   # localhost:5173
+```
 
-iss = https://securetoken.google.com/title-app-alpha
+**Admin App:**
+```bash
+cd apps/admin
+npm install
+npm run dev   # localhost:5174
+```
 
-aud = title-app-alpha
+**Firebase Functions (local emulator):**
+```bash
+cd functions
+firebase emulators:start
+```
 
-If these do not match:
+**Firebase Functions (deploy):**
+```bash
+firebase deploy --only functions
+```
 
-Copy code
-401 Unauthorized
-🔁 Request Flow (Example: Workflows)
-Admin UI
-↓
-Cloudflare Worker
-↓
-Firebase Functions (Cloud Run)
-↓
-Firestore / Logic
+**Frontend deploy (Firebase Hosting):**
+```bash
+cd apps/business && npm run build
+firebase deploy --only hosting
+```
 
-Concrete example:
+Each sub-project is managed independently. There is no root-level build orchestration.
 
-bash
-Copy code
-POST /workflows
-↓
-Cloudflare → /v1/raas:workflows
-↓
-Backend handler
-(Alternate currently used by Admin UI in MVP):
+---
 
-bash
-Copy code
-POST /api?path=/v1/raas:workflows
-🧱 Core Architecture & Record Principles (Non-Negotiable)
-Title App is not a traditional SaaS system.
-It is an event-sourced ownership ledger operated by AI agents under rule constraints.
+## Tech Stack
 
-These invariants define the platform and must not be violated.
+- **Frontend:** React 19, Vite, Firebase SDK 12, Tailwind utilities, custom design system
+- **Backend:** Firebase Functions v2, Node.js 20, Firebase Admin SDK, Anthropic + OpenAI SDKs, Stripe SDK
+- **Database:** Firestore (append-only event store)
+- **Storage:** Firebase Cloud Storage
+- **Auth:** Firebase Authentication + Stripe Identity (KYC/AML)
+- **Edge:** Cloudflare Workers
+- **Blockchain:** Chain-agnostic; preferred embodiment Base (formerly Crossmint integration)
+- **Node version:** 20 (enforced via `.nvmrc`)
 
-1️⃣ Append-Only Record Model
-Canonical records (DTCs, Logbook entries, Transfers, Escrow completions) are never overwritten.
+---
 
-All state changes append new events.
+## IP and Licensing
 
-“Current state” is a computed projection of event history.
+The SOCIII platform implements patent-pending architecture in several areas. Foundational components were disclosed in:
 
-Historical state must always remain recoverable.
+- **U.S. Patent Application No. 18/398,973** (Combs, December 2023; abandoned in prosecution; published as prior art June 2025) — parent-child Digital Title Certificate architecture, multi-signature escrow
+- **December 2024 Blockchain Logbook System filing** (Combs) — parent-child architecture extended to dynamic logbook records
 
-No direct mutation of canonical ownership or history is permitted.
+Three new provisional patent applications targeted for filing May 2026 cover system-level composition of those foundations with AI-governed workers, multi-tier composable rule architecture, real-time underwriting, and hash-anchored audit chains. See `docs/patents/2026-05-24/` for the filing drafts.
 
-2️⃣ Blockchain as Notary Layer (Optional but Foundational)
-Blockchain is used to anchor events, not replace the operational database.
+**Licensing strategy:** SOCIII's worker runtime and SDK are anticipated to ship under an open-source license (Apache 2.0 with conditional patent grant under evaluation). The hosted trust layer — identity verification, rule registry, pre-publish constraint check, audit chain anchor, regulatory ingestion — remains a hosted service. This combination provides the adoption flywheel of open source with the moat of proprietary trust infrastructure. License selection and OSS release timing are determined by SOCIII Inc. leadership; no public license is committed in this repository at this time.
 
-On-chain records provide immutability guarantees.
+---
 
-Firestore must behave as an append-only event store even when minting is disabled.
+## Documentation
 
-Blockchain enhances verifiability but does not replace operational logic.
+| Document | Purpose |
+|----------|---------|
+| `CLAUDE.md` | Architecture conventions for AI-assisted contributors |
+| `CONTRIBUTING.md` | Contribution guidelines |
+| `LAUNCH_STATUS.md` | Current launch readiness |
+| `DEPLOYMENT_CHECKLIST.md` | Pre-deploy verification |
+| `docs/specs/` | CODEX records — shipped state and design decisions |
+| `docs/patents/2026-05-24/` | Patent filings and IP family overview |
+| `docs/specs/CODEX-51.3-SOCIII-Inc-Setup-and-Status.md` | SOCIII Inc. formation and corporate setup state |
+| `docs/specs/CODEX-51.4-Knowledge-Capture-Pipeline-Spec.md` | Knowledge capture architecture |
 
-3️⃣ AI Agents Are Stateless Executors
-AI agents never directly mutate canonical state.
+---
 
-Agents propose actions.
+## Project Status
 
-RAAS validates actions.
+**Active development.** Pre-launch. Sole-founder development (Sean Lee Combs).
 
-Validated actions append new events.
+**Soft launch target:** Wed 2026-05-27 (investor + warm-network tease).
+**Public launch target:** Thu 2026-05-28 (consumer/creator audience).
 
-Agents remain model-agnostic and replaceable (OpenAI, Claude, Gemini, etc.).
+**Active entity:** SOCIII Inc., a Delaware C-corporation formed May 2026.
+**Legacy entity:** TitleApp LLC (in wind-down).
 
-AI is an operator, not a source of truth.
+**Founder and Inventor:** Sean Lee Combs.
 
-4️⃣ RAAS Is the Constraint Engine
-Rules are structured and deterministic.
+---
 
-Business logic must not live solely in prompts.
-
-Transfers, escrow, valuation updates, and attestations are rule-validated before persistence.
-
-Rule definitions are portable and tenant-configurable.
-
-Rules govern agents — not the other way around.
-
-5️⃣ User Data Portability
-Users can export their DTCs, logbooks, attestations, and transaction history.
-
-Tenant membership does not override user ownership of records.
-
-Records must remain portable across tenants and future systems.
-
-Title App must not become a data silo.
-
-Strategic Direction
-Title App is evolving toward:
-
-AI-native execution
-
-RAAS-based governance
-
-Multi-tenant distribution (B2C, B2B, B2G)
-
-Optional blockchain notarization
-
-Event-sourced truth
-
-The defensible IP of the platform is:
-
-The append-only record model
-
-The rule engine (RAAS)
-
-The ownership and transfer semantics
-
-The tenant isolation model
-
-Not the UI.
-Not the model provider.
-Not the cloud vendor.
-
-These principles ensure long-term durability beyond SaaS-era constraints.
-
-END OF CANONICAL BACKEND ARCHITECTURE
+*SOCIII is the successor to TitleApp. The brand cutover from "TitleApp" to "SOCIII" is in progress; portions of the codebase, Firestore collection names, and API endpoint paths intentionally retain the legacy `titleapp` and `raas` identifiers to avoid breaking existing data and integrations.*
