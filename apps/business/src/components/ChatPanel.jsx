@@ -1380,6 +1380,9 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
       // Always attempt to render; log when panel is missing instead of silently dropping.
       // Fall back to card:work-product when the AI emits an unmapped type.
       if (Array.isArray(data.canvasRenders) && data.canvasRenders.length > 0) {
+        // 2026-05-22 diagnostic: trace #219 (Accounting canvas not rendering)
+        console.log('[canvas:diag] received canvasRenders count=' + data.canvasRenders.length,
+          data.canvasRenders.map(r => ({ type: r?.type, payloadKeys: r?.payload ? Object.keys(r.payload).slice(0, 8) : [] })));
         if (!panel?.showCanvas) {
           console.warn('[canvas] showCanvas unavailable — dropping renders:', data.canvasRenders.map(r => r?.type));
         } else {
@@ -1392,6 +1395,7 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
               resolved = lookupSignal('card:work-product');
               if (!resolved) continue;
             }
+            console.log('[canvas:diag] showCanvas type=' + render.type + ' component=' + resolved.component);
             panel.showCanvas(resolved, { payload: render.payload || {} });
           }
         }

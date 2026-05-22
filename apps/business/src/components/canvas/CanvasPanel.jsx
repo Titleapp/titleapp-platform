@@ -11,10 +11,17 @@ import { resolveComponent } from "./CanvasComponentMap";
 import { CanvasDemoContext } from "./CanvasCardShell";
 
 export default function CanvasPanel({ canvasData, onDismiss }) {
-  if (!canvasData?.resolved) return null;
+  if (!canvasData?.resolved) {
+    console.log('[canvas:diag] CanvasPanel — no canvasData.resolved, returning null');
+    return null;
+  }
 
   const { resolved, context } = canvasData;
   const Component = resolveComponent(resolved.component);
+
+  // 2026-05-22 diagnostic: trace #219 (Accounting canvas not rendering)
+  console.log('[canvas:diag] CanvasPanel render signal=' + resolved._signal + ' component=' + resolved.component +
+    ' payloadKeys=' + (context?.payload ? Object.keys(context.payload).slice(0, 8).join(',') : '(no payload)'));
 
   if (!Component) {
     console.warn("CanvasPanel: no component found for", resolved.component);

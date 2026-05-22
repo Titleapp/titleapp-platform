@@ -1334,55 +1334,11 @@ export default function WorkerCanvas({ workerData, verticalLabel, relatedWorkers
 
               <TrialBanner worker={w} />
 
-              {/* Related Workers ("Cousins") */}
-              {relatedWorkers.length > 0 && (
-                <div style={{ marginTop: 32 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(0,0,0,0.35)", letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: 12 }}>
-                    More in {w.suite || vertical || "this category"}
-                  </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    {relatedWorkers.map((rw) => {
-                      const rwSlug = rw.workerId || rw.slug;
-                      const rwName = rw.name || rw.display_name || rwSlug;
-                      const rwPrice = rw.price != null ? (rw.price === 0 ? "Free" : `$${rw.price / 100}/mo`) : "";
-                      return (
-                        <div
-                          key={rwSlug}
-                          onClick={() => {
-                            window.dispatchEvent(new CustomEvent("ta:select-worker", {
-                              detail: { slug: rwSlug, name: rwName },
-                            }));
-                          }}
-                          style={{
-                            display: "flex", justifyContent: "space-between", alignItems: "center",
-                            padding: "10px 14px", borderRadius: 10,
-                            background: "rgba(0,0,0,0.02)",
-                            border: "1px solid rgba(0,0,0,0.08)",
-                            cursor: "pointer", transition: "border-color 0.15s, background 0.15s",
-                          }}
-                          onMouseEnter={e => { e.currentTarget.style.borderColor = accent; e.currentTarget.style.background = "rgba(0,0,0,0.08)"; }}
-                          onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(0,0,0,0.08)"; e.currentTarget.style.background = "rgba(0,0,0,0.02)"; }}
-                        >
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: 13, fontWeight: 600, color: "#1e293b", marginBottom: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                              {rwName}
-                            </div>
-                            {(rw.tagline || rw.description) && (
-                              <div style={{ fontSize: 11, color: "rgba(0,0,0,0.35)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                {rw.tagline || rw.description}
-                              </div>
-                            )}
-                          </div>
-                          <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0, marginLeft: 10 }}>
-                            {rwPrice && <span style={{ fontSize: 11, fontWeight: 600, color: "rgba(0,0,0,0.4)" }}>{rwPrice}</span>}
-                            <span style={{ fontSize: 11, fontWeight: 600, color: accent }}>Open</span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
+              {/* Related Workers section removed 2026-05-22 (#179) — a list of
+                  other workers under the active worker's landing read as
+                  "canvas hallucination" to first-time viewers, competing with
+                  the worker's primary content. Cross-sell now happens via the
+                  marketplace and Alex's recommendations. */}
 
             </>
           )}
