@@ -390,7 +390,56 @@ function extractCanvasRenders(text) {
     }
   }
 
+  // 2026-05-22 — Belt-and-suspenders enforcement of the canvas-claim phrase
+  // blocklist. The prompt-level guardrail in augmentPromptWithChatContext
+  // tells the model NEVER to say "on the right" / "on the canvas" / similar
+  // unless a CANVAS_RENDER marker was actually emitted. Models break this
+  // rule reliably enough that Sean caught a live instance during testing
+  // (the "P&L structure is on the right" hallucination, Accounting worker,
+  // 2026-05-22). This post-process strips those phrases server-side when
+  // no markers were extracted in the turn, guaranteeing the chat text
+  // cannot lie about what's rendered. Only strips the high-specificity
+  // phrases where false-positive risk is near-zero — "on the canvas",
+  // "to your right", etc. are unambiguous canvas claims; phrases like
+  // "I've drafted" are too generic to safely strip.
+  if (renders.length === 0 && cleanText) {
+    cleanText = stripCanvasClaimPhrases(cleanText);
+  }
+
   return { cleanText, canvasRenders: renders };
 }
 
-module.exports = { extractCanvasRenders, coerceCanvasPayload };
+// Rewrites high-specificity canvas-claim phrases to neutral text. Called only
+// when no CANVAS_RENDER marker was emitted in the current turn. Each phrase
+// is matched case-insensitively. Rewrites preserve sentence flow rather than
+// strip wholesale (a sentence with a dangling reference reads worse than a
+// rewritten one).
+function stripCanvasClaimPhrases(text) {
+  if (!text) return text;
+  let out = text;
+  // Order matters: most-specific patterns first; the catch-all comes last.
+  // Each pattern consumes the FULL canvas-position phrase including trailing
+  // qualifiers (e.g. "side of your screen") to avoid leaving dangling text.
+  const rewrites = [
+    // Compound trailing phrases — consume the whole position descriptor.
+    { re: /\b(?:on|to) (?:the |your )?right(?:[-\s]?hand)?(?:\s+side)?(?:\s+(?:of|in)\s+(?:your |the )?(?:screen|page|app|chat|workspace))?\b/gi, sub: "in the workspace" },
+    { re: /\b(?:rendered|drafted|prepared|created) (?:on|to) (?:the |your )?(?:right(?:[-\s]?hand)?(?:\s+side)?|canvas)\b/gi, sub: "saved" },
+    { re: /\bsnapshot (?:is|appears) (?:on|to) (?:the |your )?(?:right|canvas)\b/gi, sub: "is saved" },
+    { re: /\b(?:is|appears) on the right\b/gi, sub: "is ready" },
+    { re: /\bin (?:the |your )?canvas\b/gi, sub: "in the workspace" },
+    { re: /\bon (?:the |your )?canvas\b/gi, sub: "in the workspace" },
+    { re: /\bavailable on the canvas\b/gi, sub: "available now" },
+    { re: /\bI('ve| have) (?:drafted|prepared|created) (?:it |the )?(?:for you )?on the canvas\b/gi, sub: "I have it ready" },
+  ];
+  for (const r of rewrites) {
+    out = out.replace(r.re, r.sub);
+  }
+  // Collapse any awkward repetition introduced by rewrites.
+  out = out.replace(/\b(ready|saved|available|workspace)\s+\1\b/gi, "$1");
+  // "in the workspace in the workspace" → "in the workspace"
+  out = out.replace(/\b(in the workspace)\s+\1\b/gi, "$1");
+  out = out.replace(/\s{2,}/g, " ").replace(/\s+([,.;:])/g, "$1");
+  return out;
+}
+
+module.exports = { extractCanvasRenders, coerceCanvasPayload, stripCanvasClaimPhrases };
