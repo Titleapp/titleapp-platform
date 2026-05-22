@@ -4,6 +4,8 @@
  */
 
 import React, { useState, useEffect, useCallback } from "react";
+import { useRightPanel } from "../context/RightPanelContext";
+import CanvasPanel from "../components/canvas/CanvasPanel";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
 
@@ -94,6 +96,7 @@ const DOC_TYPES = [
 ];
 
 export default function MarketingDrafts() {
+  const panel = useRightPanel();
   const [drafts, setDrafts] = useState([]);
   const [filter, setFilter] = useState("all");
   const [loading, setLoading] = useState(true);
@@ -142,6 +145,15 @@ export default function MarketingDrafts() {
     } finally {
       setActionLoading(null);
     }
+  }
+
+  // 2026-05-22 (#219) — Surface chat-dispatched canvas card when state=CANVAS.
+  if (panel?.state === "CANVAS" && panel?.canvasData) {
+    return (
+      <div style={{ height: "100%", overflow: "auto" }}>
+        <CanvasPanel canvasData={panel.canvasData} onDismiss={panel.dismissCanvas} />
+      </div>
+    );
   }
 
   return (

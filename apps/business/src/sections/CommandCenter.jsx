@@ -19,6 +19,8 @@ import useCommandCenter from "../hooks/useCommandCenter";
 import useAccounting from "../hooks/useAccounting";
 import SuggestImprovementButton from "../components/SuggestImprovementButton";
 import ConcernsCard from "../components/ConcernsCard";
+import { useRightPanel } from "../context/RightPanelContext";
+import CanvasPanel from "../components/canvas/CanvasPanel";
 
 const MODE_BADGES = {
   launch:     { label: "Launch",     fg: "#7c3aed", bg: "#ede9fe" },
@@ -39,6 +41,7 @@ function WorkspaceIcon({ isActive }) {
 }
 
 export default function CommandCenter() {
+  const panel = useRightPanel();
   const [brief, setBrief] = useState(null);
   const [sendStatus, setSendStatus] = useState(null);
   const { previewBrief, sendBrief, setWorkspaceMode, setMilestoneStatus, loading, error } = useCommandCenter();
@@ -83,6 +86,15 @@ export default function CommandCenter() {
     await setWorkspaceMode({ tenantId, mode: newMode });
     refresh();
   };
+
+  // 2026-05-22 (#219) — Surface chat-dispatched canvas card when state=CANVAS.
+  if (panel?.state === "CANVAS" && panel?.canvasData) {
+    return (
+      <div style={{ height: "100%", overflow: "auto" }}>
+        <CanvasPanel canvasData={panel.canvasData} onDismiss={panel.dismissCanvas} />
+      </div>
+    );
+  }
 
   return (
     <div>

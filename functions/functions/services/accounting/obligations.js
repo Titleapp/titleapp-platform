@@ -122,6 +122,32 @@ async function getCompletions(tenantId) {
   return byKey;
 }
 
+// Tenant formation date — used to skip tax obligations for years before the
+// entity existed. Derived from the earliest membership createdAt for the
+// tenant (same-batch write as workspace creation, so it's effectively the
+// formation date for SOCIII-style new tenants). Older tenants that migrated
+// in can override by setting an explicit incorporationDate on the workspace
+// doc (post-launch enhancement). Returns null if not determinable, in which
+// case the caller keeps the legacy [y-1, y, y+1] behavior.
+async function getTenantFormationDate(tenantId) {
+  if (!tenantId || tenantId === "vault" || tenantId === "personal") return null;
+  try {
+    const snap = await getDb().collection("memberships")
+      .where("tenantId", "==", tenantId)
+      .limit(20)
+      .get();
+    let earliest = null;
+    for (const d of snap.docs) {
+      const at = tsToDate(d.data()?.createdAt);
+      if (at && (!earliest || at < earliest)) earliest = at;
+    }
+    return earliest;
+  } catch (e) {
+    console.warn("[obligations] getTenantFormationDate failed:", e.message);
+    return null;
+  }
+}
+
 function statementObligationFor(account, lastImportAt, mostRecentAny) {
   // Plaid-source accounts auto-sync, so they don't get a manual SLA.
   if (account.source === "plaid") return null;
@@ -185,10 +211,11 @@ function taxObligation({ obligationKey, label, detail, dueDate, action, complete
 async function listObligations({ tenantId }) {
   if (!tenantId) throw new Error("Missing tenantId");
 
-  const [accounts, imports, completedKeys] = await Promise.all([
+  const [accounts, imports, completedKeys, formationDate] = await Promise.all([
     getActiveConnectedAccounts(tenantId),
     getLatestImportPerAccount(tenantId),
     getCompletions(tenantId),
+    getTenantFormationDate(tenantId),
   ]);
 
   const out = [];
@@ -209,8 +236,22 @@ async function listObligations({ tenantId }) {
   const y = today().getUTCFullYear();
   // Also check prior year for items still open (e.g. Jan 15 Q4 falls in next calendar year).
   const yearsToCheck = [y - 1, y, y + 1];
+  // 2026-05-22 (#237 follow-up) — Skip tax obligations for years before the
+  // tenant's formation date. SOCIII was formed 2026-05; surfacing 2025 Q1-Q4
+  // estimated tax and 2025 Delaware franchise to a freshly-incorporated tenant
+  // is a hard miss (a tenant cannot owe taxes for a period when it did not
+  // exist). Within the formation year, also skip obligations whose due date
+  // already passed before the tenant was created.
+  const formationYear = formationDate ? formationDate.getUTCFullYear() : null;
+  function tenantExistedAt(dueDateIso) {
+    if (!formationDate) return true; // unknown formation → preserve legacy behavior
+    return new Date(dueDateIso + "T23:59:59Z") >= formationDate;
+  }
   for (const yy of yearsToCheck) {
+    // Skip entire tax year if it ended before the tenant existed.
+    if (formationYear != null && yy < formationYear) continue;
     for (const q of quarterlyTaxDates(yy)) {
+      if (!tenantExistedAt(q.date)) continue;
       const o = taxObligation({
         obligationKey: `tax_estimated:${q.year}:${q.quarter}`,
         label: `Federal estimated tax — ${q.quarter} ${q.year}`,
@@ -222,26 +263,30 @@ async function listObligations({ tenantId }) {
       if (o) out.push(o);
     }
     const ann = federalAnnualReturn(yy);
-    const annO = taxObligation({
-      obligationKey: `tax_federal_return:${ann.year}`,
-      label: `Federal tax return — ${ann.year}`,
-      detail: `IRS Form 1120/1065/1040 for ${ann.year}. Due ${ann.date}.`,
-      dueDate: ann.date,
-      action: { kind: "mark_complete" },
-      completedKeys,
-    });
-    if (annO) out.push(annO);
+    if (tenantExistedAt(ann.date)) {
+      const annO = taxObligation({
+        obligationKey: `tax_federal_return:${ann.year}`,
+        label: `Federal tax return — ${ann.year}`,
+        detail: `IRS Form 1120/1065/1040 for ${ann.year}. Due ${ann.date}.`,
+        dueDate: ann.date,
+        action: { kind: "mark_complete" },
+        completedKeys,
+      });
+      if (annO) out.push(annO);
+    }
 
     const de = delawareCorpAnnual(yy);
-    const deO = taxObligation({
-      obligationKey: `de_corp_annual:${de.year}`,
-      label: `Delaware annual report + franchise tax — ${de.year}`,
-      detail: `Delaware C-corp annual report + franchise tax for ${de.year}. Due March 1 — missing this is the $20K penalty trap. If you don't have a DE entity, mark complete to dismiss.`,
-      dueDate: de.date,
-      action: { kind: "mark_complete" },
-      completedKeys,
-    });
-    if (deO) out.push(deO);
+    if (tenantExistedAt(de.date)) {
+      const deO = taxObligation({
+        obligationKey: `de_corp_annual:${de.year}`,
+        label: `Delaware annual report + franchise tax — ${de.year}`,
+        detail: `Delaware C-corp annual report + franchise tax for ${de.year}. Due March 1 — missing this is the $20K penalty trap. If you don't have a DE entity, mark complete to dismiss.`,
+        dueDate: de.date,
+        action: { kind: "mark_complete" },
+        completedKeys,
+      });
+      if (deO) out.push(deO);
+    }
   }
 
   // Sort: red first, then amber; within each, by daysUntilDue ascending.

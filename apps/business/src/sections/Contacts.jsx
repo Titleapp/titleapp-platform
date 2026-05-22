@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import useContacts from "../hooks/useContacts";
 import SuggestImprovementButton from "../components/SuggestImprovementButton";
+import { useRightPanel } from "../context/RightPanelContext";
+import CanvasPanel from "../components/canvas/CanvasPanel";
 
 const TABS = [
   { id: "all", label: "All" },
@@ -174,6 +176,7 @@ function csvToContactRows(text) {
 }
 
 export default function Contacts() {
+  const panel = useRightPanel();
   const [tab, setTab] = useState("all");
   const [search, setSearch] = useState("");
   const [contacts, setContacts] = useState([]);
@@ -364,6 +367,15 @@ export default function Contacts() {
       refresh();
     }
   };
+
+  // 2026-05-22 (#219) — Surface chat-dispatched canvas card when state=CANVAS.
+  if (panel?.state === "CANVAS" && panel?.canvasData) {
+    return (
+      <div style={{ height: "100%", overflow: "auto" }}>
+        <CanvasPanel canvasData={panel.canvasData} onDismiss={panel.dismissCanvas} />
+      </div>
+    );
+  }
 
   return (
     <div>

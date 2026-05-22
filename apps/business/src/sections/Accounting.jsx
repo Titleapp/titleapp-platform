@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import useAccounting from "../hooks/useAccounting";
 import useDocuments from "../hooks/useDocuments";
 import SuggestImprovementButton from "../components/SuggestImprovementButton";
+import { useRightPanel } from "../context/RightPanelContext";
+import CanvasPanel from "../components/canvas/CanvasPanel";
 
 const TABS = [
   { id: "dashboard",   label: "Dashboard" },
@@ -66,6 +68,7 @@ function formatCurrency(n, ccy = "USD") {
 }
 
 export default function Accounting() {
+  const panel = useRightPanel();
   const [tab, setTab] = useState("dashboard");
   // Fiscal year filter — defaults to current calendar year. "all" shows
   // everything. Wired to ReportsPane today; other panes pick it up next pass.
@@ -149,6 +152,20 @@ export default function Accounting() {
     setSetupState(prev => ({ ...prev, dismissed: true }));
     await updateSetupStep({ dismissed: true });
   };
+
+  // 2026-05-22 (#219) — When chat dispatches a canvas card (P&L, Balance Sheet,
+  // Cash Flow, CoA, Invoice list, etc.), the panel state machine sets
+  // state=CANVAS and stores the resolved component + payload on canvasData.
+  // The section was rendering its dashboard regardless, so CanvasPanel never
+  // mounted. Short-circuit here to surface the canvas card; dismiss returns
+  // the user to the section dashboard.
+  if (panel?.state === "CANVAS" && panel?.canvasData) {
+    return (
+      <div style={{ height: "100%", overflow: "auto" }}>
+        <CanvasPanel canvasData={panel.canvasData} onDismiss={panel.dismissCanvas} />
+      </div>
+    );
+  }
 
   return (
     <div>
