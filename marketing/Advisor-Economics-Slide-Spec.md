@@ -33,7 +33,9 @@ For each worker priced at $79/mo (the most common pricing tier for vertical work
 On top of subscription revenue, every worker session consumes inference credits. Advisors earn **20% of the platform's margin on inference overage** — usage beyond the included monthly credit allotment. This compounds with worker depth: heavily-used workers (real-time pilot decision support, complex F&I calculations, multi-jurisdiction title analysis) produce ongoing inference revenue that flows back to the advisor.
 
 ### Layer 3 — Equity Warrants · 0.5% per Worker, Capped at 2.5%
-For each Digital Worker activated under the advisor's name, the advisor receives **0.5% equity in SOCIII Inc.** as a warrant grant. Capped at five workers per advisor (2.5% maximum per individual). Standard four-year vesting with one-year cliff. Maximum advisor count: seven, total advisor pool: 17.5% reserved.
+For each Digital Worker activated under the advisor's name, the advisor receives **0.5% equity in SOCIII Inc.** as a warrant grant. Capped at five workers per advisor (2.5% maximum per individual). Standard four-year vesting with one-year cliff. **Warrants are exercisable for five years from grant date.** Maximum advisor count: seven, total advisor pool: 17.5% reserved.
+
+**For existing TitleApp LLC advisors:** these SOCIII Inc. warrants replace and supersede any equity, advisor share, or compensatory position held under TitleApp LLC. Acceptance of the SOCIII Inc. advisor warrant package constitutes mutual release of the prior TitleApp LLC obligation. Sean's prior commitments to TitleApp LLC advisors (notably Scott Eschelman's Commercial RE Development worker bundle and any other documented advisor positions) carry forward into the SOCIII Inc. structure at equivalent or improved terms under the new framework.
 
 ---
 
