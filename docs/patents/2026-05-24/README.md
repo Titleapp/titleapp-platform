@@ -1,59 +1,61 @@
 # SOCIII Patent Filing Cycle — Sun 2026-05-24
 
-Three provisional patent applications targeting USPTO filing on Sunday, May 24, 2026 via EFS-Web. Total filing fee at small entity status: **$360** ($120 × 3).
+**Pivot 2026-05-22 (Friday):** Sean reprioritized the filing slate based on fundraise relevance. The two filings with direct investor-pitch impact (Audit Trail + Knowledge Capture Pipeline) move to this weekend. The three application-specific filings (AI Escrow Locker + Title and Property Assurance + RAAS Multi-Tier) move to June alongside Build-Without-Code.
+
+Two provisional patent applications targeting USPTO filing on Sunday, May 24, 2026 via EFS-Web. Total filing fee at small entity status: **$240** ($120 × 2).
 
 ---
 
-## The Three Filings
+## The Two Filings (This Weekend)
 
-### Filing A — AI Escrow Locker
-**Title:** AI-Integrated Blockchain Escrow Locker System with Composed Worker Governance, Multi-Tier Compliance Enforcement, and Identity-Anchored Audit Chain
-**Base:** Refile of Feb 2025 provisional draft (lapsed without conversion) with 2026 platform deltas
-**Scope:** Multi-signature smart contract escrow composed with AI Workers (identity verification, document analysis, contract review, fraud detection, notarization, dispute resolution) operating under multi-tier composable rule sets, hash-anchored audit chain, and pre-publish constraint enforcement. Cross-industry: real estate, securities, automotive, IP, government contracts, healthcare, supply chain.
+### Filing 1 — Identity-Anchored Hash-Chain Audit Trail
+**Title:** Identity-Anchored Hash-Chain Audit Trail System with Version-Pinned Rule-Set Provenance, Confidential Off-Chain Payload Retention, and Chain-Agnostic Anchoring for AI-Powered Governance Decisions
+**Base:** Net-new draft (audit-trail architecture extracted from the broader system into a standalone filing)
+**Why this weekend:** The audit-trail architecture is the verifiable-governance moat institutional investors care about. Without it, AI-driven compliance is "vibes-based" and regulated buyers cannot rely on it. With it, SOCIII has IP protection on the specific architecture making AI-mediated decisions auditable in regulated industries.
+**Scope:** Hash-on-chain + payload-off-chain split, version-pinning of rule sets, identity anchoring, chain-agnostic operation (Base, Ethereum, Polygon, Solana, Avalanche, permissioned), authorized hash-keyed audit retrieval, defensive longevity beyond platform lifecycle. Cross-industry: healthcare, financial services, real estate, aviation, government contracting, education.
 
-### Filing B — Title and Property Assurance
-**Title:** Blockchain-Based Title and Property Assurance System with AI-Governed Worker Composition, Multi-Tier Compliance Rules, and Real-Time Risk Underwriting Through Composed Parent-Child Digital Title Certificate Architecture
-**Base:** Refile of Feb 2025 provisional draft (lapsed without conversion) with 2026 platform deltas
-**Scope:** Continuous-monitoring title assurance + property insurance through parent-child DTC architecture, AI Workers for title examination and risk underwriting, multi-tier rule composition per jurisdiction and asset class, real-time dynamic underwriting departing from snapshot-only traditional title insurance. Cross-asset-class: real estate, vehicles, aircraft, IP, professional credentials, livestock, collectibles.
-
-### Filing C — RAAS Multi-Tier Composable Rule System
-**Title:** Multi-Tier Composable Rule-Based Governance System for AI-Powered Digital Workers with Version-Pinned Audit Trail, Pre-Publish Constraint Enforcement, Regulatory Ingestion, and Identity-Anchored Hash Chain
-**Base:** Net-new draft (not derivative of any prior Sean filing)
-**Scope:** The structural moat patent. Five-tier rule architecture (platform safety, platform operations, vertical baselines, workspace overlays, per-transaction rules) with deterministic composition, conflict resolution by most-restrictive prioritization, version-pinning, pre-publish constraint check, automated regulatory ingestion, hash-anchored audit chain, identity anchoring, and AI-Worker output validation. Cross-vertical: serves real estate, securities, healthcare, aviation, automotive, government contracting, and any other rule-governed industry.
+### Filing 2 — Knowledge Capture Pipeline
+**Title:** Knowledge Capture Pipeline for Converting Human Expert Conversations into Governed AI-Powered Digital Workers with Structured Rule Extraction, Worker Fixture Generation, and Terminal Worker Safety Architecture
+**Base:** Net-new draft based on the architecture previously disclosed as CODEX 51.4 (~2026-05-19) — grace period under 35 USC 102(b)(1) remains open
+**Why this weekend:** The compounding-data-moat patent. Institutional investors look for "what gets harder for a competitor over time" — the accumulated rule registry and worker fixture library this pipeline produces is that moat. Without this filing, the moat is undefended IP; with it, the moat has structural protection.
+**Scope:** Three ingestion jobs (Codex Ingestion, Rule Extraction, Worker Fixture Capture) + Terminal Worker safety architecture (talk-to-AI / cannot-harm-code / policy-gated approval) + compounding-effects pattern. Reference embodiment: the Patent Worker (helps users identify patentable inventions, draft applications, manage families — itself produced by capturing Sean's expertise during this filing cycle).
 
 ---
 
-## Prior Art Strategy
+## Deferred to June (Four Filings, Additional $480 fees)
 
-All three filings cite the same prior art:
+Located in `docs/patents/2026-06-deferred/`. Drafts already complete from the Thursday/Friday session, ready for filing as soon as the next funding tranche arrives.
 
-- **U.S. Patent Application No. 18/398,973** (Combs, filed Dec 28, 2023; abandoned in prosecution; published as prior art ~June 28, 2025) — foundational parent-child DTC + multi-sig escrow architecture
-- **December 2024 Blockchain Logbook System filing** (Combs) — parent-child architecture extended to dynamically-updatable logbook records with package-transfer semantics
+- **Filing A** — AI Escrow Locker (refile of Feb 2025 draft with 2026 platform deltas)
+- **Filing B** — Title and Property Assurance (refile of Feb 2025 draft with 2026 deltas)
+- **Filing C** — RAAS Multi-Tier Composable Rule System (net-new, structural moat for the rule architecture)
+- **Filing D** — Build-Without-Code Worker Authoring (accessibility moat — not yet drafted)
 
-The prior art is treated as **public foundation**, not as something to revive or lean on. The new filings claim **system-level composition** that extends these primitives with novel platform layers (AI worker governance, rule composition, real-time underwriting, regulatory ingestion, identity rails). The prior 2023 disclosure is now public domain — anyone can use the parent-child DTC architecture in isolation; the new filings protect the composed systems built on top.
-
-**Grace period:** The 12-month grace period under 35 U.S.C. § 102(b)(1) for the inventor's own prior disclosures closes approximately **June 28, 2026**. Filing by May 24, 2026 keeps these new claims well within the grace period.
+Why these are deferred: they protect specific applications and architectural patterns that build on top of the Audit Trail + Knowledge Capture foundations. The two foundational patents must land first; the application patents follow naturally. Investors evaluating SOCIII this week will care about Audit Trail (governance) and Knowledge Capture (data moat); the application patents matter at later due-diligence stages.
 
 ---
 
-## Continuous Invention Thread (Background paragraph used in all three)
+## Prior Art Strategy (Unchanged)
 
-Each filing includes a canonical "history of invention" paragraph in the Background section:
+All filings — both this weekend's and the deferred June batch — cite the same prior art using the canonical "continuous invention thread" Background paragraph:
 
-> *"This invention extends a continuous body of work in blockchain-anchored title assurance and parent-child digital identity architecture, including U.S. Patent Application No. 18/398,973 (Combs, filed December 28, 2023; abandoned in prosecution and published as prior art approximately June 28, 2025) which disclosed foundational parent-child Digital Title Certificate (DTC) architecture, and the December 2024 Blockchain Logbook System filing (Combs) which extended that architecture to dynamically-updatable logbook records. The present invention composes these foundational architectures with [filing-specific novel layers]."*
+- **U.S. Patent Application No. 18/398,973** (Combs, Dec 2023; abandoned; published as prior art ~June 2025) — foundational parent-child DTC architecture, multi-sig escrow
+- **December 2024 Blockchain Logbook System filing** (Combs) — parent-child architecture extended to dynamically-updatable logbook records
 
-This paragraph establishes Sean as the inventor on the architectural thread since 2023 and frames each new filing as additive over public prior art rather than re-claiming it. Use this paragraph (verbatim or lightly tailored) in every SOCIII patent filing going forward — the family-narrative effect compounds across filings.
+The new filings claim **system-level composition** that extends rather than reclaims those primitives. The prior art is now public domain; anyone can use the parent-child DTC architecture in isolation. The new filings protect the composed systems built on top.
+
+**Grace period:** Closes approximately 2026-06-28. Filing May 24, 2026 keeps these new claims well within the grace period.
 
 ---
 
 ## Filing Mechanics
 
 **Applicant:** SOCIII Inc., a Delaware C-corporation.
-**Named Inventor:** Sean Lee Combs, sole inventor on all three filings.
+**Named Inventor:** Sean Lee Combs (sole inventor on all filings).
 **Inventor address:** [SOCIII business address; same as on SS-4 / Atlas formation docs]
-**Small entity status:** Yes (sole-founder corporation, under SBA small business size standards).
+**Small entity status:** Yes.
 **Filing fee per provisional:** $120 (small entity).
-**Total fees:** $360.
+**Total fees this weekend:** $240.
 
 **Submission method:** USPTO EFS-Web (electronic filing system). Sean's USPTO.gov account.
 
@@ -71,29 +73,17 @@ This paragraph establishes Sean as the inventor on the architectural thread sinc
 ## Calendar Alerts (Required)
 
 - **2026-05-24:** Filing day. Block 4-6 hours for final review, PDF conversion, drawing finalization, and submission.
-- **2027-04-24:** **Conversion prep window opens** (60 days before conversion deadline). Begin drafting full nonprovisional applications.
-- **2027-05-24:** **12-month conversion deadline.** Provisional applications must be converted to nonprovisional applications OR PCT applications by this date. **Failure to convert by this date causes the provisionals to lapse with no recovery.**
-- **2026-06-28:** Grace period closes on prior 2023 disclosures. Filings already submitted by this date — no further action required, but worth confirming filing receipts on file by this date.
+- **2026-06-28:** Grace period closes on prior 2023 disclosures. Both new filings already submitted by this date — no further action required, but worth confirming filing receipts on file.
+- **2027-04-24:** Conversion prep window opens (60 days before conversion deadline). Begin drafting full nonprovisional applications for Filings 1 and 2.
+- **2027-05-24:** **12-month conversion deadline.** Provisional applications must be converted to nonprovisional applications OR PCT applications by this date. **Failure to convert causes lapse with no recovery.**
 
 Set Google Calendar alerts for all four dates with 30-day, 14-day, and 3-day reminders.
 
----
-
-## Next Patents (Deferred to ~Early June)
-
-Three additional provisionals planned for the next check cycle, ~early June 2026:
-
-1. **Audit Trail with Identity-Anchored Hash Chain** — extracts the audit-chain architecture as a standalone patent (currently included as a component in Filings A, B, C; standalone filing strengthens the IP across all three).
-
-2. **Knowledge Capture Pipeline** — the codex ingestion → rule extraction → worker fixture capture pipeline that converts conversational human expertise into governed worker capabilities. Already disclosed publicly via CODEX 51.4 (in docs/specs/); grace period clock started ~May 2026.
-
-3. **Build-Without-Code Worker Authoring** — the architecture allowing domain experts (nurses, mechanics, brokers, pilots, instructors) to author Digital Workers through conversational description rather than coding. The accessibility moat.
-
-Total deferred fees: $360 (3 × $120).
+For the deferred June batch, set conversion alerts ~12 months after the June filing date.
 
 ---
 
-## Review Checklist (Pre-Filing)
+## Pre-Filing Review Checklist
 
 For each filing, Sean should verify:
 
@@ -108,17 +98,30 @@ For each filing, Sean should verify:
 - [ ] No PII or confidential business info accidentally included
 - [ ] IP Assignment from Sean → SOCIII Inc. is in place
 
+For Filing 2 specifically:
+- [ ] Confirm CODEX 51.4 publication date for accurate grace-period reference
+- [ ] Confirm Patent Worker reference embodiment is accurate to current plans (per Sean's directive 2026-05-22, this worker will be built post-launch)
+
 ---
 
 ## File Manifest
 
 ```
-docs/patents/2026-05-24/
+docs/patents/2026-05-24/  (filing this weekend)
 ├── README.md (this file)
-├── Filing-A-AI-Escrow-Locker-Provisional.md (~3500 words)
-├── Filing-B-Title-and-Property-Assurance-Provisional.md (~3500 words)
-├── Filing-C-RAAS-Multi-Tier-Composable-Rules-Provisional.md (~3800 words)
-└── receipts/ (created after filing — store USPTO filing receipts here)
+├── Filing-1-Audit-Trail-Provisional.md (~3500 words)
+└── Filing-2-Knowledge-Capture-Pipeline-Provisional.md (~3500 words)
+
+docs/patents/2026-06-deferred/  (deferred June batch)
+├── Filing-A-AI-Escrow-Locker-Provisional.md (~3500 words, ready)
+├── Filing-B-Title-and-Property-Assurance-Provisional.md (~3500 words, ready)
+└── Filing-C-RAAS-Multi-Tier-Composable-Rules-Provisional.md (~3800 words, ready)
+
+(Filing D — Build-Without-Code — to be drafted before June filing)
 ```
 
-Drafts produced 2026-05-22 by Claude based on Feb 2025 source drafts (Filings A, B) and net-new architecture (Filing C). Sean to review and refine before USPTO submission.
+Five drafts total ready. Two filing Sunday, three already-drafted and waiting on the June check, fourth to be drafted before June filing day.
+
+---
+
+*This README reflects the 2026-05-22 (Friday) pivot. See `docs/specs/CODEX-51.10-Day-Snapshot-2026-05-21-22.md` for the day-level shipping context.*
