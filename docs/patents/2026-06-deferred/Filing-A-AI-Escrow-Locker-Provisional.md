@@ -33,6 +33,16 @@ This invention extends a continuous body of work in blockchain-anchored title as
 
 The present invention composes these foundational architectures with a new system layer comprising AI-powered Digital Workers operating under governed rule sets, multi-tier compliance composition, hash-anchored audit chains, and hosted identity-verification rails to enable end-to-end automated, auditable, and jurisdictionally-compliant asset transactions in a manner not enabled by the prior art alone.
 
+### Cross-Filing Relationship to Co-Pending Applications
+
+This application USES, but does not separately claim, several architectural components that are the subject of co-pending provisional patent applications filed by the same inventor and applicant on May 25, 2026 (collectively the "May 25 Family"):
+
+- The **identity-anchored hash-chain audit trail architecture** (hash-on-chain + payload-off-chain split, version-pinned rule-set provenance, chain-agnostic anchoring) is the subject of co-pending U.S. Provisional Patent Application No. [TO BE INSERTED — Filing 1 of May 25 cycle, "Identity-Anchored Hash-Chain Audit Trail System"];
+- The **multi-tier composable rule architecture and Knowledge Capture Pipeline** (Tier 0 platform safety + Tier 1 platform operations + Tier 2 vertical baselines + Tier 3 workspace overlays + Tier 4 per-transaction rules; rule registry; rule extraction from conversations; worker fixture capture; Terminal Worker safety architecture) is the subject of co-pending U.S. Provisional Patent Application No. [TO BE INSERTED — Filing 2 of May 25 cycle, "Knowledge Capture Pipeline"];
+- The **build-without-code worker authoring user-experience pattern** (conversational AI-mediated specification generation by non-engineer domain experts, with three structural safety properties and a multi-stage governance pipeline) is the subject of co-pending U.S. Provisional Patent Application No. [TO BE INSERTED — Filing D of May 25 cycle, "Build-Without-Code Worker Authoring System"].
+
+The present invention USES these architectures as building blocks. The novel composition of the present invention is the **AI-Integrated Blockchain Escrow Locker System** — specifically, the application of AI-powered Digital Workers and multi-tier compliance to the escrow lifecycle (initiation, identity verification, document analysis, contract review, notarization, fraud detection, smart-contract execution, dispute resolution). Claim differentiation across the patent family will be coordinated at nonprovisional conversion time.
+
 ### Problems in Existing Systems
 
 Conventional escrow systems suffer from several persistent failure modes:

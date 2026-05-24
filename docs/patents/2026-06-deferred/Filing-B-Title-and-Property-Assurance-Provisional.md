@@ -33,6 +33,16 @@ This invention extends a continuous body of work in blockchain-anchored title as
 
 The present invention composes these foundational architectures with new system layers comprising AI-powered Digital Workers for title examination, multi-tier composable rule sets governing title and insurance compliance per jurisdiction, real-time risk underwriting using historical and live data, and hash-anchored audit chains tying every title event to immutable cryptographic proof — enabling a level of automation, transparency, and continuous-coverage assurance not enabled by the prior art alone.
 
+### Cross-Filing Relationship to Co-Pending Applications
+
+This application USES, but does not separately claim, several architectural components that are the subject of co-pending provisional patent applications filed by the same inventor and applicant on May 25, 2026 (collectively the "May 25 Family"):
+
+- The **identity-anchored hash-chain audit trail architecture** (hash-on-chain + payload-off-chain split, version-pinned rule-set provenance, chain-agnostic anchoring, authorized hash-keyed retrieval) is the subject of co-pending U.S. Provisional Patent Application No. [TO BE INSERTED — Filing 1 of May 25 cycle, "Identity-Anchored Hash-Chain Audit Trail System"];
+- The **multi-tier composable rule architecture and Knowledge Capture Pipeline** (the five-tier rule composition with platform/vertical/workspace/transaction layers, rule registry, Terminal Worker safety architecture) is the subject of co-pending U.S. Provisional Patent Application No. [TO BE INSERTED — Filing 2 of May 25 cycle, "Knowledge Capture Pipeline"];
+- The **build-without-code worker authoring pattern** (conversational specification generation by non-engineer domain experts) is the subject of co-pending U.S. Provisional Patent Application No. [TO BE INSERTED — Filing D of May 25 cycle, "Build-Without-Code Worker Authoring System"].
+
+The present invention USES these architectures as building blocks. The novel composition of the present invention is the **Title and Property Assurance System** — specifically, the application of AI-governed worker layers to continuous-monitoring title underwriting, real-time risk assessment, and insurer integration across multiple asset classes (real estate, vehicles, aircraft, intellectual property, professional credentials, livestock, high-value collectibles). The claim scope here is the assurance system itself; the underlying governance, audit, and authoring infrastructure are separately claimed in the May 25 Family. Claim differentiation across the patent family will be coordinated at nonprovisional conversion time.
+
 ### Background — Traditional Title Insurance and Property Records
 
 Title insurance has historically protected property owners and lenders from defects in title, including:

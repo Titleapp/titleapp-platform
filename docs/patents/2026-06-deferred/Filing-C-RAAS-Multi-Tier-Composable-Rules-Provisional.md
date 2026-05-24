@@ -33,6 +33,18 @@ This invention extends a continuous body of work in blockchain-anchored governan
 
 The present invention is a net-new architectural contribution that builds on those foundational primitives. Where the prior art establishes the record-keeping substrate (parent-child DTCs with cryptographic anchoring), the present invention provides the *governance layer* that determines what AI-powered actions are permitted to write to that substrate, under what rules, with what audit and accountability, and how those rules compose across multiple authority levels.
 
+### Cross-Filing Relationship to Co-Pending Applications
+
+This application has a significant relationship to co-pending provisional patent applications filed by the same inventor and applicant on May 25, 2026 (collectively the "May 25 Family"). Specifically:
+
+- The **Knowledge Capture Pipeline** (co-pending U.S. Provisional Patent Application No. [TO BE INSERTED — Filing 2 of May 25 cycle]) discloses three ingestion jobs (Codex Ingestion, Rule Extraction, Worker Fixture Capture) and a Terminal Worker safety architecture that together compose a SYSTEM for converting expert conversations into governed worker capabilities. That filing claims the pipeline as a composed system. The present application claims the **rule composition engine** as a STANDALONE system — the deterministic conflict resolution algorithm, the five-tier architecture, the content-hashing of rule definitions, the version-pinning mechanism, the pre-publish constraint check service, and the regulatory ingestion service — independent of whether those rules came from human conversation, codex documents, or any other source. The two filings are intentionally complementary: Filing 2 protects the pipeline that PRODUCES rules and fixtures; the present filing protects the engine that COMPOSES and ENFORCES rules.
+
+- The **Identity-Anchored Hash-Chain Audit Trail** (co-pending U.S. Provisional Patent Application No. [TO BE INSERTED — Filing 1 of May 25 cycle]) discloses the audit chain architecture. The present application USES that audit chain to anchor each rule composition event and each rule-set version, but does not separately claim the audit chain architecture itself.
+
+- The **Build-Without-Code Worker Authoring System** (co-pending U.S. Provisional Patent Application No. [TO BE INSERTED — Filing D of May 25 cycle]) discloses the conversational worker authoring UX pattern. The present application is USED by Build-Without-Code workers (the rule composition engine evaluates each authored worker's rule set), but does not separately claim the authoring UX.
+
+The cross-family claim differentiation will be coordinated at nonprovisional conversion time. The present filing's principal claim scope is the **rule composition engine as a standalone system** — usable independently of any specific ingestion pipeline, authoring surface, or audit trail anchoring scheme, and applicable across any rule-governed industry.
+
 ### Background — The Governance Gap in AI Agent Systems
 
 The rapid proliferation of large language model (LLM) based AI agents (e.g., LangChain, AutoGen, OpenAI Assistants, Anthropic Claude, OpenAI GPT, Google Gemini-based agents) has created a substantial governance gap:
