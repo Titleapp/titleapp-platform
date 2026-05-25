@@ -321,8 +321,8 @@ async function handleCycleClose(db, stripe, invoiceData) {
         currency: "usd",
         destination: connectAccountId,
         description: role === "parent"
-          ? `TitleApp parent-creator share — ${periodEnd.toISOString().slice(0, 10)}`
-          : `TitleApp creator inference share — ${periodEnd.toISOString().slice(0, 10)}`,
+          ? `SOCIII parent-creator share — ${periodEnd.toISOString().slice(0, 10)}`
+          : `SOCIII creator inference share — ${periodEnd.toISOString().slice(0, 10)}`,
       });
 
       await db.collection("creatorPayouts").add({
@@ -819,6 +819,29 @@ async function handleStripeWebhook(req, res) {
           } catch (e) {
             console.error("Lead conversion tracking failed:", e);
           }
+        }
+        break;
+      }
+
+      // ---- STRIPE IDENTITY (IR investor flow) ----
+      case "identity.verification_session.verified":
+      case "identity.verification_session.requires_input":
+      case "identity.verification_session.processing":
+      case "identity.verification_session.canceled":
+      case "identity.verification_session.created": {
+        try {
+          const stripeIdentity = require("../services/identity/stripeIdentity");
+          const result = await stripeIdentity.handleIdentityWebhookEvent(event);
+          if (result?.action === "approved") {
+            await logActivity(
+              "system",
+              `IR investor identity verified: ${result.fundraiseId}/${result.investorId}`,
+              "success"
+            );
+          }
+        } catch (e) {
+          console.error("Stripe Identity webhook handler failed:", e.message);
+          await logActivity("error", `Stripe Identity webhook failed: ${e.message}`, "error");
         }
         break;
       }

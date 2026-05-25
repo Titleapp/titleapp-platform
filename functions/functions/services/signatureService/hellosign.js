@@ -102,9 +102,110 @@ async function cancelRequest(signatureRequestId) {
   return { ok: true };
 }
 
+/**
+ * Download the final signed PDF for a completed signature request.
+ * Returns a Buffer or null if keys missing / request not ready.
+ *
+ * Uses /signature_request/files/{id}?file_type=pdf which returns the PDF
+ * bytes directly when the request is completed.
+ */
+async function getSignedFile(signatureRequestId) {
+  const keys = getKeys();
+  if (!keys) return null;
+
+  const resp = await fetch(
+    `${HELLOSIGN_BASE}/signature_request/files/${signatureRequestId}?file_type=pdf`,
+    { headers: { "Authorization": getAuthHeader(keys.apiKey) } }
+  );
+  if (!resp.ok) {
+    const text = await resp.text().catch(() => "");
+    throw new Error(`HelloSign getSignedFile ${resp.status}: ${text.slice(0, 200)}`);
+  }
+  const buf = Buffer.from(await resp.arrayBuffer());
+  return { buffer: buf, contentType: "application/pdf" };
+}
+
+/**
+ * Send a signature request using a pre-uploaded template.
+ *
+ * @param {object} input
+ * @param {string} input.templateId       — Dropbox Sign template ID (required)
+ * @param {string} input.title
+ * @param {string} input.subject
+ * @param {string} input.message
+ * @param {Array<{role,email,name}>} input.signers
+ * @param {object} input.customFields     — merge field name → value map
+ * @param {object} input.metadata
+ * @param {boolean} input.testMode
+ *
+ * Returns { signatureRequestId, signatures, signUrls } or throws.
+ * Returns null only if API keys are missing (caller may fall back).
+ */
+async function sendWithTemplate({
+  templateId,
+  title,
+  subject,
+  message,
+  signers,
+  customFields,
+  metadata,
+  testMode,
+}) {
+  const keys = getKeys();
+  if (!keys) return null;
+  if (!templateId) throw new Error("sendWithTemplate: templateId required");
+
+  // Dropbox Sign expects signers keyed by role name.
+  const signersPayload = (signers || []).map((s) => ({
+    role: s.role,
+    email_address: s.email,
+    name: s.name,
+  }));
+
+  // Custom fields use array form: [{ name, value, editor?, required? }]
+  const customFieldsPayload = Object.entries(customFields || {}).map(([name, value]) => ({
+    name,
+    value: value == null ? "" : String(value),
+  }));
+
+  const response = await fetch(`${HELLOSIGN_BASE}/signature_request/send_with_template`, {
+    method: "POST",
+    headers: {
+      "Authorization": getAuthHeader(keys.apiKey),
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      template_ids: [templateId],
+      title,
+      subject,
+      message,
+      signers: signersPayload,
+      custom_fields: customFieldsPayload,
+      metadata: metadata || {},
+      test_mode: testMode ? 1 : 0,
+    }),
+  });
+
+  const result = await response.json();
+  if (!result.signature_request) {
+    throw new Error(result.error?.error_msg || `HelloSign template send failed (${response.status})`);
+  }
+  const sigReq = result.signature_request;
+
+  // Email-only flow — no embedded sign URLs. Returning an empty signUrls map
+  // keeps the caller surface identical to createEmbeddedRequest().
+  return {
+    signatureRequestId: sigReq.signature_request_id,
+    signatures: sigReq.signatures || [],
+    signUrls: {},
+  };
+}
+
 module.exports = {
   getKeys,
   createEmbeddedRequest,
   getEmbedSignUrl,
   cancelRequest,
+  getSignedFile,
+  sendWithTemplate,
 };

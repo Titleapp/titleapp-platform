@@ -67,7 +67,7 @@ async function submitKyc(input) {
 }
 
 /**
- * Admin (TitleApp staff or fundraise owner) approves the KYC submission.
+ * Admin (SOCIII staff or fundraise owner) approves the KYC submission.
  * Mints a DTC for the KYC artifact (audit trail per CODEX 50.17).
  */
 async function approveKyc(input) {

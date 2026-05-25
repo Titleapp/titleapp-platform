@@ -19,11 +19,11 @@ const CAMPAIGN_DEFINITIONS = [
     channels: ["email"],
     template: {
       email: {
-        subject: "Welcome to TitleApp, {{firstName}}",
+        subject: "Welcome to SOCIII, {{firstName}}",
         htmlBody: `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-  <div style="margin-bottom: 32px;"><span style="font-size: 20px; font-weight: 700; color: #7c3aed;">TitleApp</span></div>
+  <div style="margin-bottom: 32px;"><span style="font-size: 20px; font-weight: 700; color: #7c3aed;">SOCIII</span></div>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">Hi {{firstName}},</p>
-  <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">Welcome to TitleApp. Your account is ready.</p>
+  <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">Welcome to SOCIII. Your account is ready.</p>
   <ul style="font-size: 16px; color: #1a202c; line-height: 1.8; padding-left: 20px;">
     <li>Start free — no credit card required</li>
     <li>60-day money-back guarantee</li>
@@ -31,7 +31,7 @@ const CAMPAIGN_DEFINITIONS = [
   </ul>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;"><a href="{{platformUrl}}" style="display: inline-block; background: #7c3aed; color: #fff; padding: 12px 28px; border-radius: 6px; text-decoration: none; font-weight: 600;">Go to Dashboard</a></p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">— Alex</p>
-  <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;"><p style="font-size: 13px; color: #94a3b8;">TitleApp LLC | Start Free. 60-Day Money Back. Your Data Is Always Yours.</p></div>
+  <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;"><p style="font-size: 13px; color: #94a3b8;">SOCIII, Inc. | Start Free. 60-Day Money Back. Your Data Is Always Yours.</p></div>
 </div>`,
       },
     },
@@ -49,7 +49,7 @@ const CAMPAIGN_DEFINITIONS = [
     trigger: { event: "user_signup" },
     channels: ["sms"],
     template: {
-      sms: { body: "Welcome to TitleApp, {{firstName}}! Your account is ready. Get started: {{platformUrl}}" },
+      sms: { body: "Welcome to SOCIII, {{firstName}}! Your account is ready. Get started: {{platformUrl}}" },
     },
     delayMinutes: 5,
     variables: ["firstName", "platformUrl"],
@@ -66,9 +66,9 @@ const CAMPAIGN_DEFINITIONS = [
     channels: ["email"],
     template: {
       email: {
-        subject: "3 ways to get the most from TitleApp",
+        subject: "3 ways to get the most from SOCIII",
         htmlBody: `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-  <div style="margin-bottom: 32px;"><span style="font-size: 20px; font-weight: 700; color: #7c3aed;">TitleApp</span></div>
+  <div style="margin-bottom: 32px;"><span style="font-size: 20px; font-weight: 700; color: #7c3aed;">SOCIII</span></div>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">Hi {{firstName}},</p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">Here are three things that help our users get value fast:</p>
   <ol style="font-size: 16px; color: #1a202c; line-height: 1.8; padding-left: 20px;">
@@ -77,7 +77,7 @@ const CAMPAIGN_DEFINITIONS = [
     <li>Try the Sandbox — build your own Digital Worker in minutes</li>
   </ol>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">— Alex</p>
-  <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;"><p style="font-size: 13px; color: #94a3b8;">TitleApp LLC</p></div>
+  <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;"><p style="font-size: 13px; color: #94a3b8;">SOCIII, Inc.</p></div>
 </div>`,
       },
     },
@@ -98,12 +98,12 @@ const CAMPAIGN_DEFINITIONS = [
       email: {
         subject: "Have you found your first Digital Worker?",
         htmlBody: `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-  <div style="margin-bottom: 32px;"><span style="font-size: 20px; font-weight: 700; color: #7c3aed;">TitleApp</span></div>
+  <div style="margin-bottom: 32px;"><span style="font-size: 20px; font-weight: 700; color: #7c3aed;">SOCIII</span></div>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">Hi {{firstName}},</p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">Most users find their first Digital Worker within the first week. Browse by industry and see what fits your workflow.</p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;"><a href="{{platformUrl}}" style="color: #7c3aed; text-decoration: none; font-weight: 600;">Browse Workers</a></p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">— Alex</p>
-  <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;"><p style="font-size: 13px; color: #94a3b8;">TitleApp LLC</p></div>
+  <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;"><p style="font-size: 13px; color: #94a3b8;">SOCIII, Inc.</p></div>
 </div>`,
       },
     },
@@ -122,14 +122,14 @@ const CAMPAIGN_DEFINITIONS = [
     channels: ["email"],
     template: {
       email: {
-        subject: "Complete your TitleApp profile",
+        subject: "Complete your SOCIII profile",
         htmlBody: `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-  <div style="margin-bottom: 32px;"><span style="font-size: 20px; font-weight: 700; color: #7c3aed;">TitleApp</span></div>
+  <div style="margin-bottom: 32px;"><span style="font-size: 20px; font-weight: 700; color: #7c3aed;">SOCIII</span></div>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">Hi {{firstName}},</p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">Adding your company and industry helps us recommend the right Digital Workers for you.</p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;"><a href="{{platformUrl}}/settings" style="color: #7c3aed; text-decoration: none; font-weight: 600;">Complete Profile</a></p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">— Alex</p>
-  <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;"><p style="font-size: 13px; color: #94a3b8;">TitleApp LLC</p></div>
+  <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;"><p style="font-size: 13px; color: #94a3b8;">SOCIII, Inc.</p></div>
 </div>`,
       },
     },
@@ -150,12 +150,12 @@ const CAMPAIGN_DEFINITIONS = [
       email: {
         subject: "Digital Workers built for {{vertical}}",
         htmlBody: `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-  <div style="margin-bottom: 32px;"><span style="font-size: 20px; font-weight: 700; color: #7c3aed;">TitleApp</span></div>
+  <div style="margin-bottom: 32px;"><span style="font-size: 20px; font-weight: 700; color: #7c3aed;">SOCIII</span></div>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">Hi {{firstName}},</p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">We have Digital Workers built specifically for {{vertical}}. Each one follows industry rules and compliance requirements out of the box.</p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;"><a href="{{platformUrl}}" style="color: #7c3aed; text-decoration: none; font-weight: 600;">Explore {{vertical}} Workers</a></p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">— Alex</p>
-  <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;"><p style="font-size: 13px; color: #94a3b8;">TitleApp LLC</p></div>
+  <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;"><p style="font-size: 13px; color: #94a3b8;">SOCIII, Inc.</p></div>
 </div>`,
       },
     },
@@ -178,15 +178,15 @@ const CAMPAIGN_DEFINITIONS = [
       email: {
         subject: "{{workerName}} is live on the marketplace",
         htmlBody: `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-  <div style="margin-bottom: 32px;"><span style="font-size: 20px; font-weight: 700; color: #7c3aed;">TitleApp</span></div>
+  <div style="margin-bottom: 32px;"><span style="font-size: 20px; font-weight: 700; color: #7c3aed;">SOCIII</span></div>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">Hi {{firstName}},</p>
-  <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">Your Digital Worker — <strong>{{workerName}}</strong> — is now live on the TitleApp marketplace. Users can find and subscribe to it immediately.</p>
+  <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">Your Digital Worker — <strong>{{workerName}}</strong> — is now live on the SOCIII marketplace. Users can find and subscribe to it immediately.</p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">You earn 75% of every subscription. Payouts are weekly (every Monday).</p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">— Alex</p>
-  <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;"><p style="font-size: 13px; color: #94a3b8;">TitleApp LLC</p></div>
+  <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;"><p style="font-size: 13px; color: #94a3b8;">SOCIII, Inc.</p></div>
 </div>`,
       },
-      sms: { body: "Your Digital Worker \"{{workerName}}\" is now live on TitleApp! You earn 75% of every subscription." },
+      sms: { body: "Your Digital Worker \"{{workerName}}\" is now live on SOCIII! You earn 75% of every subscription." },
     },
     delayMinutes: 0,
     variables: ["firstName", "workerName"],
@@ -205,11 +205,11 @@ const CAMPAIGN_DEFINITIONS = [
       email: {
         subject: "You got your first subscriber",
         htmlBody: `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-  <div style="margin-bottom: 32px;"><span style="font-size: 20px; font-weight: 700; color: #7c3aed;">TitleApp</span></div>
+  <div style="margin-bottom: 32px;"><span style="font-size: 20px; font-weight: 700; color: #7c3aed;">SOCIII</span></div>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">Hi {{firstName}},</p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">Someone just subscribed to <strong>{{workerName}}</strong>. Your first subscriber is a milestone — this is real revenue.</p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">— Alex</p>
-  <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;"><p style="font-size: 13px; color: #94a3b8;">TitleApp LLC</p></div>
+  <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;"><p style="font-size: 13px; color: #94a3b8;">SOCIII, Inc.</p></div>
 </div>`,
       },
       sms: { body: "You just got your first subscriber on \"{{workerName}}\"! Check your dashboard: {{platformUrl}}" },
@@ -229,14 +229,14 @@ const CAMPAIGN_DEFINITIONS = [
     channels: ["email"],
     template: {
       email: {
-        subject: "Your TitleApp week in review",
+        subject: "Your SOCIII week in review",
         htmlBody: `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-  <div style="margin-bottom: 32px;"><span style="font-size: 20px; font-weight: 700; color: #7c3aed;">TitleApp</span></div>
+  <div style="margin-bottom: 32px;"><span style="font-size: 20px; font-weight: 700; color: #7c3aed;">SOCIII</span></div>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">Hi {{firstName}},</p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">Here is your weekly summary. You are on the {{tierName}} plan with {{creditsRemaining}} credits remaining this month.</p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;"><a href="{{platformUrl}}" style="color: #7c3aed; text-decoration: none; font-weight: 600;">View Dashboard</a></p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">— Alex</p>
-  <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;"><p style="font-size: 13px; color: #94a3b8;">TitleApp LLC</p></div>
+  <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;"><p style="font-size: 13px; color: #94a3b8;">SOCIII, Inc.</p></div>
 </div>`,
       },
     },
@@ -255,14 +255,14 @@ const CAMPAIGN_DEFINITIONS = [
     channels: ["email"],
     template: {
       email: {
-        subject: "New on TitleApp: {{featureName}}",
+        subject: "New on SOCIII: {{featureName}}",
         htmlBody: `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-  <div style="margin-bottom: 32px;"><span style="font-size: 20px; font-weight: 700; color: #7c3aed;">TitleApp</span></div>
+  <div style="margin-bottom: 32px;"><span style="font-size: 20px; font-weight: 700; color: #7c3aed;">SOCIII</span></div>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">Hi {{firstName}},</p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">We just launched <strong>{{featureName}}</strong>. {{featureDescription}}</p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;"><a href="{{platformUrl}}" style="color: #7c3aed; text-decoration: none; font-weight: 600;">Try It Now</a></p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">— Alex</p>
-  <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;"><p style="font-size: 13px; color: #94a3b8;">TitleApp LLC</p></div>
+  <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;"><p style="font-size: 13px; color: #94a3b8;">SOCIII, Inc.</p></div>
 </div>`,
       },
     },
@@ -281,13 +281,13 @@ const CAMPAIGN_DEFINITIONS = [
     channels: ["email"],
     template: {
       email: {
-        subject: "You hit a milestone on TitleApp",
+        subject: "You hit a milestone on SOCIII",
         htmlBody: `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-  <div style="margin-bottom: 32px;"><span style="font-size: 20px; font-weight: 700; color: #7c3aed;">TitleApp</span></div>
+  <div style="margin-bottom: 32px;"><span style="font-size: 20px; font-weight: 700; color: #7c3aed;">SOCIII</span></div>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">Hi {{firstName}},</p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">{{milestoneMessage}}</p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">— Alex</p>
-  <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;"><p style="font-size: 13px; color: #94a3b8;">TitleApp LLC</p></div>
+  <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;"><p style="font-size: 13px; color: #94a3b8;">SOCIII, Inc.</p></div>
 </div>`,
       },
     },
@@ -310,12 +310,12 @@ const CAMPAIGN_DEFINITIONS = [
       email: {
         subject: "Your Digital Worker draft is waiting",
         htmlBody: `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-  <div style="margin-bottom: 32px;"><span style="font-size: 20px; font-weight: 700; color: #7c3aed;">TitleApp</span></div>
+  <div style="margin-bottom: 32px;"><span style="font-size: 20px; font-weight: 700; color: #7c3aed;">SOCIII</span></div>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">Hi {{firstName}},</p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">You started building <strong>{{workerName}}</strong> but did not finish. Your progress is saved.</p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;"><a href="{{sandboxUrl}}" style="color: #7c3aed; text-decoration: none; font-weight: 600;">Continue Building</a></p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">— Alex</p>
-  <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;"><p style="font-size: 13px; color: #94a3b8;">TitleApp LLC</p></div>
+  <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;"><p style="font-size: 13px; color: #94a3b8;">SOCIII, Inc.</p></div>
 </div>`,
       },
     },
@@ -336,12 +336,12 @@ const CAMPAIGN_DEFINITIONS = [
       email: {
         subject: "Creators who publish in week one see 3x more subscribers",
         htmlBody: `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-  <div style="margin-bottom: 32px;"><span style="font-size: 20px; font-weight: 700; color: #7c3aed;">TitleApp</span></div>
+  <div style="margin-bottom: 32px;"><span style="font-size: 20px; font-weight: 700; color: #7c3aed;">SOCIII</span></div>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">Hi {{firstName}},</p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">Your draft for <strong>{{workerName}}</strong> is still saved. Creators who publish in the first week tend to see 3x more early subscribers.</p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;"><a href="{{sandboxUrl}}" style="color: #7c3aed; text-decoration: none; font-weight: 600;">Pick Up Where You Left Off</a></p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">— Alex</p>
-  <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;"><p style="font-size: 13px; color: #94a3b8;">TitleApp LLC</p></div>
+  <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;"><p style="font-size: 13px; color: #94a3b8;">SOCIII, Inc.</p></div>
 </div>`,
       },
     },
@@ -362,12 +362,12 @@ const CAMPAIGN_DEFINITIONS = [
       email: {
         subject: "Other creators published new workers this week",
         htmlBody: `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-  <div style="margin-bottom: 32px;"><span style="font-size: 20px; font-weight: 700; color: #7c3aed;">TitleApp</span></div>
+  <div style="margin-bottom: 32px;"><span style="font-size: 20px; font-weight: 700; color: #7c3aed;">SOCIII</span></div>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">Hi {{firstName}},</p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">The marketplace is growing. Your <strong>{{workerName}}</strong> could be next. Early movers in your category have less competition.</p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;"><a href="{{sandboxUrl}}" style="color: #7c3aed; text-decoration: none; font-weight: 600;">Finish and Publish</a></p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">— Alex</p>
-  <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;"><p style="font-size: 13px; color: #94a3b8;">TitleApp LLC</p></div>
+  <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;"><p style="font-size: 13px; color: #94a3b8;">SOCIII, Inc.</p></div>
 </div>`,
       },
     },
@@ -386,14 +386,14 @@ const CAMPAIGN_DEFINITIONS = [
     channels: ["email"],
     template: {
       email: {
-        subject: "We miss you on TitleApp",
+        subject: "We miss you on SOCIII",
         htmlBody: `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-  <div style="margin-bottom: 32px;"><span style="font-size: 20px; font-weight: 700; color: #7c3aed;">TitleApp</span></div>
+  <div style="margin-bottom: 32px;"><span style="font-size: 20px; font-weight: 700; color: #7c3aed;">SOCIII</span></div>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">Hi {{firstName}},</p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">It has been a while since you logged in. Your account and credits are still here.</p>
-  <p style="font-size: 16px; color: #1a202c; line-height: 1.6;"><a href="{{platformUrl}}" style="color: #7c3aed; text-decoration: none; font-weight: 600;">Return to TitleApp</a></p>
+  <p style="font-size: 16px; color: #1a202c; line-height: 1.6;"><a href="{{platformUrl}}" style="color: #7c3aed; text-decoration: none; font-weight: 600;">Return to SOCIII</a></p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">— Alex</p>
-  <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;"><p style="font-size: 13px; color: #94a3b8;">TitleApp LLC</p></div>
+  <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;"><p style="font-size: 13px; color: #94a3b8;">SOCIII, Inc.</p></div>
 </div>`,
       },
     },
@@ -412,17 +412,17 @@ const CAMPAIGN_DEFINITIONS = [
     channels: ["email", "sms"],
     template: {
       email: {
-        subject: "Your TitleApp account is still here",
+        subject: "Your SOCIII account is still here",
         htmlBody: `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-  <div style="margin-bottom: 32px;"><span style="font-size: 20px; font-weight: 700; color: #7c3aed;">TitleApp</span></div>
+  <div style="margin-bottom: 32px;"><span style="font-size: 20px; font-weight: 700; color: #7c3aed;">SOCIII</span></div>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">Hi {{firstName}},</p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">We saved everything for you. If you have questions or want a walkthrough, reply to this email — it goes to a real person.</p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;"><a href="{{platformUrl}}" style="color: #7c3aed; text-decoration: none; font-weight: 600;">Come Back</a></p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">— Alex</p>
-  <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;"><p style="font-size: 13px; color: #94a3b8;">TitleApp LLC</p></div>
+  <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;"><p style="font-size: 13px; color: #94a3b8;">SOCIII, Inc.</p></div>
 </div>`,
       },
-      sms: { body: "Hi {{firstName}}, your TitleApp account is still here. Reply to this text or visit {{platformUrl}}" },
+      sms: { body: "Hi {{firstName}}, your SOCIII account is still here. Reply to this text or visit {{platformUrl}}" },
     },
     delayMinutes: 0,
     variables: ["firstName", "platformUrl"],
@@ -443,11 +443,11 @@ const CAMPAIGN_DEFINITIONS = [
       email: {
         subject: "Your {{tierName}} subscription is active",
         htmlBody: `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-  <div style="margin-bottom: 32px;"><span style="font-size: 20px; font-weight: 700; color: #7c3aed;">TitleApp</span></div>
+  <div style="margin-bottom: 32px;"><span style="font-size: 20px; font-weight: 700; color: #7c3aed;">SOCIII</span></div>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">Hi {{firstName}},</p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">Your {{tierName}} subscription is now active. You have {{creditsRemaining}} credits this month.</p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">— Alex</p>
-  <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;"><p style="font-size: 13px; color: #94a3b8;">TitleApp LLC</p></div>
+  <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;"><p style="font-size: 13px; color: #94a3b8;">SOCIII, Inc.</p></div>
 </div>`,
       },
     },
@@ -466,14 +466,14 @@ const CAMPAIGN_DEFINITIONS = [
     channels: ["email"],
     template: {
       email: {
-        subject: "Your TitleApp subscription has been cancelled",
+        subject: "Your SOCIII subscription has been cancelled",
         htmlBody: `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-  <div style="margin-bottom: 32px;"><span style="font-size: 20px; font-weight: 700; color: #7c3aed;">TitleApp</span></div>
+  <div style="margin-bottom: 32px;"><span style="font-size: 20px; font-weight: 700; color: #7c3aed;">SOCIII</span></div>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">Hi {{firstName}},</p>
-  <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">Your subscription has been cancelled. You can still access TitleApp on the free tier with 100 credits per month.</p>
+  <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">Your subscription has been cancelled. You can still access SOCIII on the free tier with 100 credits per month.</p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">If you change your mind, you can resubscribe anytime from your dashboard.</p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">— Alex</p>
-  <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;"><p style="font-size: 13px; color: #94a3b8;">TitleApp LLC</p></div>
+  <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;"><p style="font-size: 13px; color: #94a3b8;">SOCIII, Inc.</p></div>
 </div>`,
       },
     },
@@ -494,12 +494,12 @@ const CAMPAIGN_DEFINITIONS = [
       email: {
         subject: "Your 14-day free trial of {{workerName}} has started",
         htmlBody: `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-  <div style="margin-bottom: 32px;"><span style="font-size: 20px; font-weight: 700; color: #7c3aed;">TitleApp</span></div>
+  <div style="margin-bottom: 32px;"><span style="font-size: 20px; font-weight: 700; color: #7c3aed;">SOCIII</span></div>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">Hi {{firstName}},</p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">Your 14-day free trial of <strong>{{workerName}}</strong> is now active. No credit card needed during the trial.</p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;"><a href="{{platformUrl}}" style="color: #7c3aed; text-decoration: none; font-weight: 600;">Start Using {{workerName}}</a></p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">— Alex</p>
-  <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;"><p style="font-size: 13px; color: #94a3b8;">TitleApp LLC</p></div>
+  <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;"><p style="font-size: 13px; color: #94a3b8;">SOCIII, Inc.</p></div>
 </div>`,
       },
       sms: { body: "Your 14-day free trial of {{workerName}} has started. Try it out: {{platformUrl}}" },
@@ -521,12 +521,12 @@ const CAMPAIGN_DEFINITIONS = [
       email: {
         subject: "Your {{workerName}} trial ends in 2 days",
         htmlBody: `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-  <div style="margin-bottom: 32px;"><span style="font-size: 20px; font-weight: 700; color: #7c3aed;">TitleApp</span></div>
+  <div style="margin-bottom: 32px;"><span style="font-size: 20px; font-weight: 700; color: #7c3aed;">SOCIII</span></div>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">Hi {{firstName}},</p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">Your 14-day free trial of <strong>{{workerName}}</strong> ends in 2 days. Subscribe to keep access — 60-day money-back guarantee if it is not for you.</p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;"><a href="{{platformUrl}}" style="display: inline-block; background: #7c3aed; color: #fff; padding: 12px 28px; border-radius: 6px; text-decoration: none; font-weight: 600;">Subscribe Now</a></p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">— Alex</p>
-  <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;"><p style="font-size: 13px; color: #94a3b8;">TitleApp LLC</p></div>
+  <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;"><p style="font-size: 13px; color: #94a3b8;">SOCIII, Inc.</p></div>
 </div>`,
       },
     },
@@ -547,15 +547,15 @@ const CAMPAIGN_DEFINITIONS = [
       email: {
         subject: "Action required: payment failed",
         htmlBody: `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-  <div style="margin-bottom: 32px;"><span style="font-size: 20px; font-weight: 700; color: #7c3aed;">TitleApp</span></div>
+  <div style="margin-bottom: 32px;"><span style="font-size: 20px; font-weight: 700; color: #7c3aed;">SOCIII</span></div>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">Hi {{firstName}},</p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">We were unable to process your subscription payment. Please update your payment method to avoid service interruption.</p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;"><a href="{{platformUrl}}/settings/billing" style="display: inline-block; background: #7c3aed; color: #fff; padding: 12px 28px; border-radius: 6px; text-decoration: none; font-weight: 600;">Update Payment</a></p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">— Alex</p>
-  <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;"><p style="font-size: 13px; color: #94a3b8;">TitleApp LLC</p></div>
+  <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;"><p style="font-size: 13px; color: #94a3b8;">SOCIII, Inc.</p></div>
 </div>`,
       },
-      sms: { body: "TitleApp: Your payment failed. Update your payment method to avoid service interruption: {{platformUrl}}/settings/billing" },
+      sms: { body: "SOCIII: Your payment failed. Update your payment method to avoid service interruption: {{platformUrl}}/settings/billing" },
     },
     delayMinutes: 0,
     variables: ["firstName", "platformUrl"],
@@ -574,9 +574,9 @@ const CAMPAIGN_DEFINITIONS = [
     channels: ["email"],
     template: {
       email: {
-        subject: "Welcome to the TitleApp Creator Program",
+        subject: "Welcome to the SOCIII Creator Program",
         htmlBody: `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-  <div style="margin-bottom: 32px;"><span style="font-size: 20px; font-weight: 700; color: #7c3aed;">TitleApp</span></div>
+  <div style="margin-bottom: 32px;"><span style="font-size: 20px; font-weight: 700; color: #7c3aed;">SOCIII</span></div>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">Hi {{firstName}},</p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">Welcome to the Creator Program. Here is how it works:</p>
   <ul style="font-size: 16px; color: #1a202c; line-height: 1.8; padding-left: 20px;">
@@ -587,7 +587,7 @@ const CAMPAIGN_DEFINITIONS = [
   </ul>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;"><a href="{{sandboxUrl}}" style="display: inline-block; background: #7c3aed; color: #fff; padding: 12px 28px; border-radius: 6px; text-decoration: none; font-weight: 600;">Start Building</a></p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">— Alex</p>
-  <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;"><p style="font-size: 13px; color: #94a3b8;">TitleApp LLC</p></div>
+  <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;"><p style="font-size: 13px; color: #94a3b8;">SOCIII, Inc.</p></div>
 </div>`,
       },
     },
@@ -608,12 +608,12 @@ const CAMPAIGN_DEFINITIONS = [
       email: {
         subject: "Your Digital Worker spec is ready",
         htmlBody: `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-  <div style="margin-bottom: 32px;"><span style="font-size: 20px; font-weight: 700; color: #7c3aed;">TitleApp</span></div>
+  <div style="margin-bottom: 32px;"><span style="font-size: 20px; font-weight: 700; color: #7c3aed;">SOCIII</span></div>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">Hi {{firstName}},</p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">Your spec for <strong>{{workerName}}</strong> is ready. Review it, share the preview link, and submit for review when you are ready.</p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;"><a href="{{sandboxUrl}}" style="color: #7c3aed; text-decoration: none; font-weight: 600;">View Your Spec</a></p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">— Alex</p>
-  <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;"><p style="font-size: 13px; color: #94a3b8;">TitleApp LLC</p></div>
+  <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;"><p style="font-size: 13px; color: #94a3b8;">SOCIII, Inc.</p></div>
 </div>`,
       },
     },
@@ -634,14 +634,14 @@ const CAMPAIGN_DEFINITIONS = [
       email: {
         subject: "Your payout is ready",
         htmlBody: `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-  <div style="margin-bottom: 32px;"><span style="font-size: 20px; font-weight: 700; color: #7c3aed;">TitleApp</span></div>
+  <div style="margin-bottom: 32px;"><span style="font-size: 20px; font-weight: 700; color: #7c3aed;">SOCIII</span></div>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">Hi {{firstName}},</p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">Your creator earnings have reached the $50 payout threshold. Your payout will be processed on Monday.</p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">— Alex</p>
-  <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;"><p style="font-size: 13px; color: #94a3b8;">TitleApp LLC</p></div>
+  <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;"><p style="font-size: 13px; color: #94a3b8;">SOCIII, Inc.</p></div>
 </div>`,
       },
-      sms: { body: "TitleApp: Your creator payout has reached $50 and will be processed Monday." },
+      sms: { body: "SOCIII: Your creator payout has reached $50 and will be processed Monday." },
     },
     delayMinutes: 0,
     variables: ["firstName"],
@@ -660,15 +660,15 @@ const CAMPAIGN_DEFINITIONS = [
       email: {
         subject: "{{workerName}} has been approved",
         htmlBody: `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-  <div style="margin-bottom: 32px;"><span style="font-size: 20px; font-weight: 700; color: #7c3aed;">TitleApp</span></div>
+  <div style="margin-bottom: 32px;"><span style="font-size: 20px; font-weight: 700; color: #7c3aed;">SOCIII</span></div>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">Hi {{firstName}},</p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">Great news — <strong>{{workerName}}</strong> has been reviewed and approved. It is now live on the marketplace.</p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">Set up your payout account to start receiving earnings.</p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">— Alex</p>
-  <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;"><p style="font-size: 13px; color: #94a3b8;">TitleApp LLC</p></div>
+  <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;"><p style="font-size: 13px; color: #94a3b8;">SOCIII, Inc.</p></div>
 </div>`,
       },
-      sms: { body: "Your Digital Worker \"{{workerName}}\" has been approved and is live on TitleApp!" },
+      sms: { body: "Your Digital Worker \"{{workerName}}\" has been approved and is live on SOCIII!" },
     },
     delayMinutes: 0,
     variables: ["firstName", "workerName"],
@@ -687,12 +687,12 @@ const CAMPAIGN_DEFINITIONS = [
       email: {
         subject: "Your creator report for this month",
         htmlBody: `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-  <div style="margin-bottom: 32px;"><span style="font-size: 20px; font-weight: 700; color: #7c3aed;">TitleApp</span></div>
+  <div style="margin-bottom: 32px;"><span style="font-size: 20px; font-weight: 700; color: #7c3aed;">SOCIII</span></div>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">Hi {{firstName}},</p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">Here is your monthly creator summary. Check your dashboard for detailed analytics.</p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;"><a href="{{platformUrl}}" style="color: #7c3aed; text-decoration: none; font-weight: 600;">View Analytics</a></p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">— Alex</p>
-  <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;"><p style="font-size: 13px; color: #94a3b8;">TitleApp LLC</p></div>
+  <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;"><p style="font-size: 13px; color: #94a3b8;">SOCIII, Inc.</p></div>
 </div>`,
       },
     },
@@ -713,13 +713,13 @@ const CAMPAIGN_DEFINITIONS = [
       email: {
         subject: "{{workerName}} just got better",
         htmlBody: `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-  <div style="margin-bottom: 32px;"><span style="font-size: 20px; font-weight: 700; color: #7c3aed;">TitleApp</span></div>
+  <div style="margin-bottom: 32px;"><span style="font-size: 20px; font-weight: 700; color: #7c3aed;">SOCIII</span></div>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">Hi {{firstName}},</p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;"><strong>{{workerName}}</strong> has been updated with meaningful improvements:</p>
   <p style="font-size: 16px; color: #4b5563; line-height: 1.6; padding: 16px; background: #f9fafb; border-radius: 8px;">{{changeNote}}</p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;"><a href="{{platformUrl}}" style="display: inline-block; background: #7c3aed; color: #fff; padding: 12px 28px; border-radius: 6px; text-decoration: none; font-weight: 600;">Try the Update</a></p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">— Alex</p>
-  <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;"><p style="font-size: 13px; color: #94a3b8;">TitleApp LLC | You're receiving this because you follow this Digital Worker.</p></div>
+  <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;"><p style="font-size: 13px; color: #94a3b8;">SOCIII, Inc. | You're receiving this because you follow this Digital Worker.</p></div>
 </div>`,
       },
     },

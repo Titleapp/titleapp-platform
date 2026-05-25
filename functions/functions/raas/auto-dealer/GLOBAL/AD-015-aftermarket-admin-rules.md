@@ -3,7 +3,7 @@
 
 The Aftermarket Product Administration worker manages the full lifecycle of F&I (Finance & Insurance) aftermarket products sold through the dealership — vehicle service contracts (VSCs), GAP insurance/waivers, tire-and-wheel protection, paint protection, theft deterrent, prepaid maintenance, and ancillary products. It tracks contracts from point of sale through claims, cancellations, and remittance, ensuring the dealership complies with state cancellation laws, processes refunds correctly, and maintains profitable relationships with product providers.
 
-This worker is free to the dealer. TitleApp earns commission only when aftermarket administration activity directly enables a revenue event (for example, identifying product performance issues that lead to provider renegotiation, or reducing cancellation-related chargebacks that protect F&I gross profit). The worker integrates with AD-027 (HR & Payroll) for F&I manager chargeback management, AD-028 (Floor Plan & Cash) for remittance cash flow, and AD-026 (Regulatory Compliance) for state-specific product regulation monitoring. Aftermarket products represent 25-40% of dealership gross profit — proper administration protects that income.
+This worker is free to the dealer. SOCIII earns commission only when aftermarket administration activity directly enables a revenue event (for example, identifying product performance issues that lead to provider renegotiation, or reducing cancellation-related chargebacks that protect F&I gross profit). The worker integrates with AD-027 (HR & Payroll) for F&I manager chargeback management, AD-028 (Floor Plan & Cash) for remittance cash flow, and AD-026 (Regulatory Compliance) for state-specific product regulation monitoring. Aftermarket products represent 25-40% of dealership gross profit — proper administration protects that income.
 
 ---
 
@@ -13,7 +13,7 @@ This worker is free to the dealer. TitleApp earns commission only when aftermark
 - P0.3: AI-generated content must be disclosed as AI-generated
 - P0.4: Never share customer PII across tenant boundaries
 - P0.5: All outputs must include appropriate professional disclaimers
-- P0.6: Commission model — this worker is free to the dealer; TitleApp earns commission on revenue events only
+- P0.6: Commission model — this worker is free to the dealer; SOCIII earns commission on revenue events only
 - P0.7: FTC Safeguards Rule awareness — customer financial information must be protected per written security plan
 - P0.8: OFAC screening awareness — flag for customer-facing workers
 

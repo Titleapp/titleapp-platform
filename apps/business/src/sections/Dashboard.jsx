@@ -243,7 +243,7 @@ function ConsumerDashboard() {
           <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "10px 12px", background: "#f8fafc", borderRadius: "10px", border: "1px solid #f1f5f9", marginBottom: "10px" }}>
             <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: localStorage.getItem("VAULT_BLOCKCHAIN_ENABLED") === "true" ? "#16a34a" : "#94a3b8" }} />
             <div style={{ fontSize: "13px", color: "#334155" }}>
-              {localStorage.getItem("VAULT_BLOCKCHAIN_ENABLED") === "true" ? "TitleApp Wallet -- Connected" : "No wallets connected"}
+              {localStorage.getItem("VAULT_BLOCKCHAIN_ENABLED") === "true" ? "SOCIII Wallet -- Connected" : "No wallets connected"}
             </div>
           </div>
           <div style={{ fontSize: "12px", color: "#94a3b8", marginBottom: "12px" }}>0 on-chain assets</div>

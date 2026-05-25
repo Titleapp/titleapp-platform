@@ -22,7 +22,7 @@ const GATE_CONFIG = {
   },
   jurisdiction: {
     title: "Jurisdiction Acknowledgment",
-    text: "This worker uses TitleApp platform-default content. It is educational reference material only until you or the worker creator uploads jurisdiction-specific protocols, scope of practice rules, and employer policies. Do you understand?",
+    text: "This worker uses SOCIII platform-default content. It is educational reference material only until you or the worker creator uploads jurisdiction-specific protocols, scope of practice rules, and employer policies. Do you understand?",
     badgeColor: "#dc2626",
     badgeBg: "#fee2e2",
     ackField: "chartItJurisdictionAck",

@@ -47,7 +47,7 @@ const DEFAULT_CONFIG = {
     method: "sms",
     phone: "+14152360013",
     email: "seanlcombs@gmail.com",
-    alsoNotify: ["sean@titleapp.ai", "kent@titleapp.ai"],
+    alsoNotify: ["sean@sociii.ai", "kent@sociii.ai"],
     urgentSMS: true,
     quietHours: { start: "22:00", end: "07:00", timezone: "America/Los_Angeles" },
     quietHoursOverrideFor: ["security_concern", "data_loss", "payment_failure_over_500"],

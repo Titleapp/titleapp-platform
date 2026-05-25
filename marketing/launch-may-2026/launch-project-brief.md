@@ -1,6 +1,6 @@
-# TitleApp AI — Launch Campaign Project Brief
-**Project:** TitleApp Launch May 2026
-**Owner:** Sean Combs (seanlcombs@gmail.com, sean@titleapp.ai)
+# SOCIII — Launch Campaign Project Brief
+**Project:** SOCIII Launch May 2026
+**Owner:** Sean Combs (seanlcombs@gmail.com, sean@sociii.ai)
 **Worker:** Marketing & Content (`platform-marketing`)
 **Drafted:** 2026-05-13
 **Window:** May 13 → June 30, 2026
@@ -10,7 +10,7 @@
 
 ## 1. Why this project exists
 
-We are launching TitleApp AI publicly into a market that already has:
+We are launching SOCIII publicly into a market that already has:
 - 1,000+ AI assistant products (most are wrappers, not workers)
 - Dominant horizontal players (ChatGPT, Claude, Copilot, Gemini) that try to be everything
 - Vertical incumbents in every industry we touch (Auto, RE, Aviation, Title/Escrow, Government, Healthcare)
@@ -55,17 +55,17 @@ These numbers are deliberately small. We are not chasing reach; we are chasing *
 ## 4. Channels — what is built, what is in flight, what is missing
 
 ### 4.1 Cold email (database marketing)
-- **Sender:** sean@titleapp.ai
+- **Sender:** sean@sociii.ai
 - **Volume target:** 1,000 sent in first 14 days. ≤200/day to protect deliverability.
 - **Tooling shipped:** Apollo API integrated (4,020 credits/month, master key). Cold-email drafts authored: `auto-cold-email.md`, `re-cold-email.md`. SendGrid Marketing API wired for list + campaign sends. 26-campaign engine exists.
 - **What's missing:**
-  - Domain warming for sean@titleapp.ai (SPF/DKIM/DMARC verified? warming schedule?)
+  - Domain warming for sean@sociii.ai (SPF/DKIM/DMARC verified? warming schedule?)
   - Auto C-suite list pulled from Apollo (target: 500 names with verified email)
   - A/B subject lines locked (Sean: short tease vs concrete promise)
   - Personalization fields tested end-to-end (`{{firstName}} {{company}} {{recent_trigger}}`)
   - 4-touch cadence: Day 0 cold, Day 4 nudge, Day 11 deck, Day 21 break-up
 - **[ ] Tasks**
-  - [ ] [USER] Confirm DKIM/SPF/DMARC on sean@titleapp.ai inbox
+  - [ ] [USER] Confirm DKIM/SPF/DMARC on sean@sociii.ai inbox
   - [ ] [AUTO] Pull 500 auto-dealer GM/Principal contacts from Apollo (filter: state, dealership count 1–5, no enterprise)
   - [ ] [APPROVAL] Generate Day 0 + Day 4 + Day 11 cold-email variants from authored .md sources, render via personalization engine
   - [ ] [APPROVAL] Lock 3 subject-line variants per touch for A/B
@@ -95,13 +95,13 @@ These numbers are deliberately small. We are not chasing reach; we are chasing *
   - [ ] [APPROVAL] Draft sponsored InMail variants for auto-dealer + RE titles (when ready to fund)
 
 ### 4.4 Google Search / SEO / docs site
-- **What's built:** GSC verified on titleapp.ai + titleapp.io. titleapp.ai/docs MVP shipped (SEO traction asset). GA4 G-F6EDHCVXWX + GTM GTM-TGWB73MV live.
+- **What's built:** GSC verified on sociii.ai + sociii.ai. sociii.ai/docs MVP shipped (SEO traction asset). GA4 G-F6EDHCVXWX + GTM GTM-TGWB73MV live.
 - **Missing:** Pillar pages (Gate Analogy, "What is a Digital Worker", SaaS Consolidation thesis as a public essay), category pages per vertical, comparison pages.
 - **[ ] Tasks**
   - [ ] [AUTO] Audit current crawl coverage in GSC, list top 25 indexed pages
   - [ ] [APPROVAL] Draft pillar page: "The Gate Analogy — why digital workers replace SaaS, not augment it"
   - [ ] [APPROVAL] Draft pillar page: "Vertical-specific digital workers for Auto Dealers" + 1 each for RE, Aviation, Government, Title/Escrow
-  - [ ] [APPROVAL] Draft comparison pages: "TitleApp vs ChatGPT", "TitleApp vs Salesforce + ChatGPT stack", "TitleApp vs Comply365" (aviation)
+  - [ ] [APPROVAL] Draft comparison pages: "SOCIII vs ChatGPT", "SOCIII vs Salesforce + ChatGPT stack", "SOCIII vs Comply365" (aviation)
   - [ ] [AUTO] Submit XML sitemap, monitor index status weekly
   - [ ] [APPROVAL] 4 long-tail blog posts per vertical hitting purchase-intent keywords
 
@@ -122,7 +122,7 @@ These numbers are deliberately small. We are not chasing reach; we are chasing *
   - [ ] [USER] Schedule Product Hunt launch — date locked before paid ads to maximize same-day liftoff
   - [ ] [APPROVAL] Draft Product Hunt copy: tagline, gallery captions, founder comment, first-day FAQ replies
   - [ ] [APPROVAL] Build aiworkers.reviews shell — at minimum, a roundup of major AI worker platforms (us + competitors) with honest scoring; first 3 review essays drafted
-  - [ ] [APPROVAL] Build comparedigitalworkers.com landing — straight comparison grid, side-by-side, anchored to TitleApp's strengths
+  - [ ] [APPROVAL] Build comparedigitalworkers.com landing — straight comparison grid, side-by-side, anchored to SOCIII's strengths
 
 ### 4.7 Press / PR
 - **What's built:** PRLog integration stub exists in `prService/`. No releases distributed yet.
@@ -137,9 +137,9 @@ These numbers are deliberately small. We are not chasing reach; we are chasing *
 - **Risk:** Reddit hates obvious marketing. Tone must be founder-to-community, not announcement.
 - **[ ] Tasks**
   - [ ] [USER] Decide founder handle for Reddit (Sean's existing reddit alt or new)
-  - [ ] [APPROVAL] Lurk-then-post plan — 5 substantive comments in r/Entrepreneur, r/RealEstate, r/AskAutoSales, r/flying before any TitleApp mention
+  - [ ] [APPROVAL] Lurk-then-post plan — 5 substantive comments in r/Entrepreneur, r/RealEstate, r/AskAutoSales, r/flying before any SOCIII mention
   - [ ] [APPROVAL] Draft 2 "I built this because…" posts (one for r/SaaS, one for r/SideProject) — founder voice, no marketing speak
-  - [ ] [APPROVAL] Hacker News post draft for the day of Product Hunt launch — "Show HN: TitleApp AI — governed vertical digital workers"
+  - [ ] [APPROVAL] Hacker News post draft for the day of Product Hunt launch — "Show HN: SOCIII — governed vertical digital workers"
 
 ### 4.9 Demo assets / video / loom
 - **What's built:** Nothing public. Some internal screenshots only.
@@ -212,7 +212,7 @@ If the worker can do steps 1–6, the architecture is real and we have a worker-
 1. What's the weekly review cadence — Monday standup? Friday digest only? Both?
 2. What's the hard spend ceiling for Google Ads + LinkedIn Ads combined for the first 30 days?
 3. Press: PRLog (free, weak reach) or paid wire (~$500, real reach)?
-4. Should I (the worker) draft outreach in Sean's voice + sign with his name, or in TitleApp's voice + sign as Alex?
+4. Should I (the worker) draft outreach in Sean's voice + sign with his name, or in SOCIII's voice + sign as Alex?
 5. For Reddit / community work — autonomous post drafts, or hands-off until Sean is in the seat?
 
 ---

@@ -176,7 +176,7 @@ const WORKER_DETAIL_CONTENT = {
     faq: [
       { q: "Does this work with my lender's specific draw format?", a: "We generate standard AIA G702/G703 by default, which is accepted by most construction lenders. You can also configure lender-specific requirements in your company settings." },
       { q: "How does the lien waiver tracking work?", a: "We maintain a matrix for every subcontractor across every draw. Conditional waivers are required before billing is included. Unconditional waivers are tracked for the prior draw. Missing waivers are flagged automatically and can block billing." },
-      { q: "Can the investor see draw status?", a: "Yes — if the investor is on TitleApp with the Construction Lending worker (W-015), draw data flows through the shared Vault. The GC submits, the investor reviews. Same numbers, same platform." },
+      { q: "Can the investor see draw status?", a: "Yes — if the investor is on SOCIII with the Construction Lending worker (W-015), draw data flows through the shared Vault. The GC submits, the investor reviews. Same numbers, same platform." },
     ],
   },
   "capital-stack-optimizer": {
@@ -953,7 +953,7 @@ const WORKER_DETAIL_CONTENT = {
       { label: "Automatic DTC transfer trigger on confirmation", description: "Recording confirmation triggers the Vault-to-Vault DTC transfer automatically — the actual ownership transfer executes on confirmed recording." },
     ],
     faq: [
-      { q: "What is a DTC transfer?", a: "Digital Title Certificate — the blockchain-anchored ownership record in TitleApp. Recording confirmation triggers the transfer from seller Vault to buyer Vault." },
+      { q: "What is a DTC transfer?", a: "Digital Title Certificate — the blockchain-anchored ownership record in SOCIII. Recording confirmation triggers the transfer from seller Vault to buyer Vault." },
       { q: "What about counties without eRecording?", a: "Physical recording tracked manually. Confirmation number entered when received. Same hard stop applies." },
     ],
   },
@@ -976,7 +976,7 @@ const WORKER_DETAIL_CONTENT = {
       { label: "Free with three or more ESC subscriptions", description: "Alex Chief of Staff for Title & Escrow unlocks automatically with three or more paid ESC worker subscriptions." },
     ],
     faq: [
-      { q: "Is Alex always free?", a: "Free with 3+ paid ESC worker subscriptions — same model as every Alex Chief of Staff across TitleApp." },
+      { q: "Is Alex always free?", a: "Free with 3+ paid ESC worker subscriptions — same model as every Alex Chief of Staff across SOCIII." },
       { q: "Can Alex take action?", a: "Alex surfaces and routes. Humans decide. No autonomous actions on financial transactions — ever." },
     ],
   },
@@ -1955,7 +1955,7 @@ const WORKER_DETAIL_CONTENT = {
     ],
     faq: [
       { q: "Will this replace my DMS F&I menu?", a: "It works alongside your DMS. The worker handles menu configuration, compliance documentation, and performance analytics. Deal data syncs through the Vault so your DMS of record stays current." },
-      { q: "How does the commission model work?", a: "Free to use. TitleApp earns a commission on F&I product placements facilitated through the platform. Your product pricing and provider relationships remain yours." },
+      { q: "How does the commission model work?", a: "Free to use. SOCIII earns a commission on F&I product placements facilitated through the platform. Your product pricing and provider relationships remain yours." },
       { q: "Is my customer data secure?", a: "All customer and deal data is encrypted at rest and in transit. Data stays in your Vault and is never shared with other dealers or third parties. You own your data." },
     ],
   },
@@ -1982,7 +1982,7 @@ const WORKER_DETAIL_CONTENT = {
     ],
     faq: [
       { q: "Will this replace my compliance officer?", a: "No. This worker automates documentation and monitoring. A qualified compliance officer or attorney reviews flagged exceptions and sets policy. The worker ensures nothing falls through the cracks." },
-      { q: "How does the commission model work?", a: "Free to use. TitleApp earns a commission on compliant F&I transactions facilitated through the platform. No subscription fee, no per-deal fee to the dealer." },
+      { q: "How does the commission model work?", a: "Free to use. SOCIII earns a commission on compliant F&I transactions facilitated through the platform. No subscription fee, no per-deal fee to the dealer." },
       { q: "Is my deal data secure?", a: "All deal data is encrypted at rest and in transit. Compliance records are stored in your Vault with tamper-evident audit trails. Data is never shared with other dealers." },
     ],
   },
@@ -2009,8 +2009,8 @@ const WORKER_DETAIL_CONTENT = {
     ],
     faq: [
       { q: "Will this replace my DMS lender routing?", a: "It works alongside your DMS. The worker adds intelligent lender matching, stip tracking, and funding analytics that most DMS platforms do not provide natively." },
-      { q: "How does the commission model work?", a: "Free to use. TitleApp earns a commission on funded deals facilitated through the platform. Your lender relationships and reserve structures remain yours." },
-      { q: "Is my customer credit data secure?", a: "All credit and deal data is encrypted at rest and in transit. Data stays in your Vault. TitleApp does not access, sell, or share customer credit information." },
+      { q: "How does the commission model work?", a: "Free to use. SOCIII earns a commission on funded deals facilitated through the platform. Your lender relationships and reserve structures remain yours." },
+      { q: "Is my customer credit data secure?", a: "All credit and deal data is encrypted at rest and in transit. Data stays in your Vault. SOCIII does not access, sell, or share customer credit information." },
     ],
   },
   "ad-aftermarket-admin": {
@@ -2036,7 +2036,7 @@ const WORKER_DETAIL_CONTENT = {
     ],
     faq: [
       { q: "Will this replace my provider portal?", a: "It consolidates information across all your providers into one view. You may still use individual provider portals for specific transactions, but the worker gives you portfolio-wide visibility and reconciliation." },
-      { q: "How does the commission model work?", a: "Free to use. TitleApp earns a commission on aftermarket products administered through the platform. Your provider relationships and pricing remain yours." },
+      { q: "How does the commission model work?", a: "Free to use. SOCIII earns a commission on aftermarket products administered through the platform. Your provider relationships and pricing remain yours." },
       { q: "Is my contract data secure?", a: "All contract and customer data is encrypted at rest and in transit. Data stays in your Vault and is never shared with providers beyond what is required for claims processing." },
     ],
   },
@@ -2063,7 +2063,7 @@ const WORKER_DETAIL_CONTENT = {
     ],
     faq: [
       { q: "Will this replace my DMS service scheduler?", a: "It works alongside your DMS. The worker adds capacity-aware scheduling, real-time shop loading, and throughput analytics that enhance your existing appointment process." },
-      { q: "How does the commission model work?", a: "Free to use. TitleApp earns a commission on service revenue facilitated through the platform. No subscription fee, no per-RO fee to the dealer." },
+      { q: "How does the commission model work?", a: "Free to use. SOCIII earns a commission on service revenue facilitated through the platform. No subscription fee, no per-RO fee to the dealer." },
       { q: "Is my customer and vehicle data secure?", a: "All customer and vehicle data is encrypted at rest and in transit. Data stays in your Vault and is never shared with other service providers or competitors." },
     ],
   },
@@ -2090,7 +2090,7 @@ const WORKER_DETAIL_CONTENT = {
     ],
     faq: [
       { q: "Will this replace our current MPI process?", a: "It digitizes and enhances your MPI process. Technicians complete inspections on a tablet instead of paper. Photos and findings flow to advisors instantly. Nothing lost between the shop and the drive." },
-      { q: "How does the commission model work?", a: "Free to use. TitleApp earns a commission on service revenue facilitated through upsell recommendations and declined service recovery. No subscription fee." },
+      { q: "How does the commission model work?", a: "Free to use. SOCIII earns a commission on service revenue facilitated through upsell recommendations and declined service recovery. No subscription fee." },
       { q: "Is my service data secure?", a: "All vehicle and customer service data is encrypted at rest and in transit. Data stays in your Vault and is never shared with competitors or third-party service providers." },
     ],
   },
@@ -2117,7 +2117,7 @@ const WORKER_DETAIL_CONTENT = {
     ],
     faq: [
       { q: "Will this replace my DMS parts module?", a: "It works alongside your DMS. The worker adds demand-driven stocking, fill rate analytics, and obsolescence management that enhance your existing parts ordering process." },
-      { q: "How does the commission model work?", a: "Free to use. TitleApp earns a commission on parts revenue facilitated through the platform. Your parts pricing and vendor relationships remain yours." },
+      { q: "How does the commission model work?", a: "Free to use. SOCIII earns a commission on parts revenue facilitated through the platform. Your parts pricing and vendor relationships remain yours." },
       { q: "Is my parts and pricing data secure?", a: "All inventory and pricing data is encrypted at rest and in transit. Data stays in your Vault and is never shared with other dealers or parts vendors." },
     ],
   },
@@ -2144,7 +2144,7 @@ const WORKER_DETAIL_CONTENT = {
     ],
     faq: [
       { q: "Will this replace my warranty clerk?", a: "It augments them. The worker handles claim review, op code validation, and documentation organization. Your warranty clerk handles manufacturer relationships, audit responses, and exception processing." },
-      { q: "How does the commission model work?", a: "Free to use. TitleApp earns a commission on warranty reimbursements facilitated through the platform. Cleaner claims and fewer rejections benefit both of us." },
+      { q: "How does the commission model work?", a: "Free to use. SOCIII earns a commission on warranty reimbursements facilitated through the platform. Cleaner claims and fewer rejections benefit both of us." },
       { q: "Is my warranty data secure?", a: "All warranty claim data is encrypted at rest and in transit. Data stays in your Vault and is never shared with other dealers or third parties." },
     ],
   },
@@ -2171,7 +2171,7 @@ const WORKER_DETAIL_CONTENT = {
     ],
     faq: [
       { q: "Will this replace our estimating system?", a: "No. This worker adds supplement tracking, DRP compliance monitoring, and cycle time analytics on top of your existing estimating platform (CCC, Mitchell, Audatex)." },
-      { q: "How does the commission model work?", a: "Free to use. TitleApp earns a commission on body shop revenue facilitated through the platform. Your insurer relationships and DRP agreements remain yours." },
+      { q: "How does the commission model work?", a: "Free to use. SOCIII earns a commission on body shop revenue facilitated through the platform. Your insurer relationships and DRP agreements remain yours." },
       { q: "Is my insurance and customer data secure?", a: "All collision repair data is encrypted at rest and in transit. Data stays in your Vault and is never shared with other body shops or third parties." },
     ],
   },
@@ -2198,7 +2198,7 @@ const WORKER_DETAIL_CONTENT = {
     ],
     faq: [
       { q: "Will this replace our CRM?", a: "It works alongside your CRM. The worker adds equity mining, lifecycle analytics, and cross-department retention intelligence that connect the sales floor, service drive, and marketing — which standalone CRMs typically do not." },
-      { q: "How does the commission model work?", a: "Free to use. TitleApp earns a commission on vehicle sales and service revenue generated through retention campaigns. Your customer relationships remain yours." },
+      { q: "How does the commission model work?", a: "Free to use. SOCIII earns a commission on vehicle sales and service revenue generated through retention campaigns. Your customer relationships remain yours." },
       { q: "Is my customer data secure?", a: "All customer data is encrypted at rest and in transit. Data stays in your Vault and is never shared with competing dealers, third-party lead aggregators, or data brokers." },
     ],
   },
@@ -2225,7 +2225,7 @@ const WORKER_DETAIL_CONTENT = {
     ],
     faq: [
       { q: "Will this replace our existing reputation tool?", a: "It can work alongside or replace your current tool. The worker adds cross-department sentiment analysis, competitive benchmarking, and revenue correlation that standalone tools typically do not provide." },
-      { q: "How does the commission model work?", a: "Free to use. TitleApp earns a commission on revenue attributed to reputation-driven customer acquisition. No subscription fee." },
+      { q: "How does the commission model work?", a: "Free to use. SOCIII earns a commission on revenue attributed to reputation-driven customer acquisition. No subscription fee." },
       { q: "Is my review data secure?", a: "Review data aggregated from public sources. Customer contact information used for solicitation is encrypted and stored in your Vault. Data is never shared with competitors." },
     ],
   },
@@ -2252,7 +2252,7 @@ const WORKER_DETAIL_CONTENT = {
     ],
     faq: [
       { q: "Will this replace our ad agency?", a: "No. This worker tracks performance and attribution across all channels including what your agency manages. It gives you the data to hold every vendor accountable for results." },
-      { q: "How does the commission model work?", a: "Free to use. TitleApp earns a commission on advertising-attributed vehicle sales facilitated through the platform. No subscription fee, no percentage of ad spend." },
+      { q: "How does the commission model work?", a: "Free to use. SOCIII earns a commission on advertising-attributed vehicle sales facilitated through the platform. No subscription fee, no percentage of ad spend." },
       { q: "Is my advertising data secure?", a: "All advertising spend and performance data is encrypted at rest and in transit. Data stays in your Vault and is never shared with advertising vendors or competitors." },
     ],
   },
@@ -2279,7 +2279,7 @@ const WORKER_DETAIL_CONTENT = {
     ],
     faq: [
       { q: "Will this replace our title clerk?", a: "No. This worker handles tracking, compliance, and documentation assembly. Your title clerk handles DMV relationships, exception processing, and state-specific nuances that require human judgment." },
-      { q: "How does the commission model work?", a: "Free to use. TitleApp earns a commission on deals where title processing is facilitated through the platform. No per-title fee to the dealer." },
+      { q: "How does the commission model work?", a: "Free to use. SOCIII earns a commission on deals where title processing is facilitated through the platform. No per-title fee to the dealer." },
       { q: "Is my customer and title data secure?", a: "All title and customer data is encrypted at rest and in transit. Data stays in your Vault. Title documents are never shared with other dealers or third parties." },
     ],
   },
@@ -2306,7 +2306,7 @@ const WORKER_DETAIL_CONTENT = {
     ],
     faq: [
       { q: "Will this replace my DMS accounting module?", a: "It works alongside your DMS. The worker adds deal posting automation, commission calculation, and receivables analytics that enhance your existing accounting workflow." },
-      { q: "How does the commission model work?", a: "Free to use. TitleApp earns a commission on financial transactions facilitated through the platform. No subscription fee, no per-deal posting fee." },
+      { q: "How does the commission model work?", a: "Free to use. SOCIII earns a commission on financial transactions facilitated through the platform. No subscription fee, no per-deal posting fee." },
       { q: "Is my financial data secure?", a: "All financial and deal data is encrypted at rest and in transit. Data stays in your Vault. Financial records are never shared with other dealers or third parties." },
     ],
   },
@@ -2333,7 +2333,7 @@ const WORKER_DETAIL_CONTENT = {
     ],
     faq: [
       { q: "Will this replace our compliance consultant?", a: "It augments your consultant. The worker handles ongoing monitoring, documentation, and pattern analysis. Your compliance consultant provides strategic guidance, training, and audit response leadership." },
-      { q: "How does the commission model work?", a: "Free to use. TitleApp earns a commission on compliance-related services facilitated through the platform. Avoiding a single regulatory penalty pays for itself many times over." },
+      { q: "How does the commission model work?", a: "Free to use. SOCIII earns a commission on compliance-related services facilitated through the platform. Avoiding a single regulatory penalty pays for itself many times over." },
       { q: "Is my compliance data secure?", a: "All compliance documentation is encrypted at rest and in transit. Data stays in your Vault. Compliance records are never shared with regulators or third parties without your explicit authorization." },
     ],
   },
@@ -2360,7 +2360,7 @@ const WORKER_DETAIL_CONTENT = {
     ],
     faq: [
       { q: "Will this replace our payroll provider?", a: "No. This worker handles pay plan configuration, compliance verification, and commission calculation. Your payroll provider (ADP, Paylocity, etc.) processes the actual payroll. The worker feeds accurate data to your provider." },
-      { q: "How does the commission model work?", a: "Free to use. TitleApp earns a commission on payroll compliance services facilitated through the platform. No subscription fee." },
+      { q: "How does the commission model work?", a: "Free to use. SOCIII earns a commission on payroll compliance services facilitated through the platform. No subscription fee." },
       { q: "Is my employee data secure?", a: "All employee and compensation data is encrypted at rest and in transit. Data stays in your Vault. Employee records are never shared with other dealers or third parties." },
     ],
   },
@@ -2387,7 +2387,7 @@ const WORKER_DETAIL_CONTENT = {
     ],
     faq: [
       { q: "Will this replace our DMS accounting?", a: "It works alongside your DMS. The worker adds cash flow forecasting, floor plan analytics, and financial statement automation that enhance your existing accounting system." },
-      { q: "How does the commission model work?", a: "Free to use. TitleApp earns a commission on financial management services facilitated through the platform. No subscription fee." },
+      { q: "How does the commission model work?", a: "Free to use. SOCIII earns a commission on financial management services facilitated through the platform. No subscription fee." },
       { q: "Is my financial data secure?", a: "All financial data is encrypted at rest and in transit. Data stays in your Vault. Financial statements and cash position data are never shared with lenders, manufacturers, or third parties without your authorization." },
     ],
   },
@@ -2414,7 +2414,7 @@ const WORKER_DETAIL_CONTENT = {
     ],
     faq: [
       { q: "Will this replace our IT department?", a: "It augments your IT support. The worker handles monitoring, auditing, and contract tracking. Your IT team or managed service provider handles implementation, troubleshooting, and vendor management." },
-      { q: "How does the commission model work?", a: "Free to use. TitleApp earns a commission on technology optimization savings facilitated through the platform. No subscription fee." },
+      { q: "How does the commission model work?", a: "Free to use. SOCIII earns a commission on technology optimization savings facilitated through the platform. No subscription fee." },
       { q: "Is my system data secure?", a: "All system configuration and vendor data is encrypted at rest and in transit. Data stays in your Vault. System inventories and access audits are never shared with technology vendors or competitors." },
     ],
   },
@@ -4352,7 +4352,7 @@ WORKER_DETAIL_CONTENT["solar-credit-ledger"] = {
     { title: "Retire credits", description: "Mark DTCs as retired with reason (compliance, voluntary, export). Retirement certificate appended to logbook. Retired credits cannot be transferred — enforced at contract level." },
     { title: "Track your portfolio", description: "All SRECs across all systems — total MWh, current value, pending transfers, retirement history. Oracle pricing updated daily from SRECTrade and state program feeds." },
   ],
-  bridge: { title: "The Infrastructure Layer", text: "SOL-008 is the issuance and settlement layer. The SREC Exchange Compliance Worker (SOL-009) handles KYC/AML and trade verification. Together they provide the compliance infrastructure for any white-label exchange — TitleApp verifies authenticity and eligibility, the exchange handles order matching. Same architecture extends to carbon credits, wind RECs, and any tokenized environmental commodity." },
+  bridge: { title: "The Infrastructure Layer", text: "SOL-008 is the issuance and settlement layer. The SREC Exchange Compliance Worker (SOL-009) handles KYC/AML and trade verification. Together they provide the compliance infrastructure for any white-label exchange — SOCIII verifies authenticity and eligibility, the exchange handles order matching. Same architecture extends to carbon credits, wind RECs, and any tokenized environmental commodity." },
   valueProps: [
     { label: "DTC on blockchain", description: "Every credit has an immutable audit trail — issuance, transfers, and retirement recorded permanently. No double-counting, no forgery." },
     { label: "Escrow Locker settlement", description: "Atomic swap — buyer locks funds, DTC transfers, funds release. Same mechanism that handles real estate title transfers." },
@@ -4361,7 +4361,7 @@ WORKER_DETAIL_CONTENT["solar-credit-ledger"] = {
   ],
   faq: [
     { q: "Are SREC prices guaranteed?", a: "No. SREC markets are volatile and illiquid. The worker tracks current market prices but never guarantees values. All pricing includes appropriate disclaimers." },
-    { q: "Is this a securities offering?", a: "TitleApp issues DTCs as compliance records, not securities. The worker does not provide securities law advice. Operators should consult securities counsel regarding tokenization implications in their jurisdiction." },
+    { q: "Is this a securities offering?", a: "SOCIII issues DTCs as compliance records, not securities. The worker does not provide securities law advice. Operators should consult securities counsel regarding tokenization implications in their jurisdiction." },
     { q: "Can retired credits be traded?", a: "No. Once a credit is retired, the DTC is permanently marked as retired with the reason recorded. This is enforced at the contract level — retired DTCs cannot be transferred." },
   ],
 };
@@ -4371,11 +4371,11 @@ WORKER_DETAIL_CONTENT["srec-exchange-compliance"] = {
   subheadline: "KYC/AML onboarding, buyer and seller eligibility verification, wallet verification, trade compliance checks, and 1099-B tax reporting — all via API.",
   steps: [
     { title: "Onboard participants", description: "Stripe Identity for ID verification, AML screening via existing pipeline. One verification used across Escrow Locker and SREC exchange. Gate to join the exchange." },
-    { title: "Verify trade eligibility", description: "Before any trade executes, the exchange calls POST /v1/solar/credit/verifyTrade. TitleApp confirms DTC authenticity, buyer/seller eligibility, and program compliance." },
+    { title: "Verify trade eligibility", description: "Before any trade executes, the exchange calls POST /v1/solar/credit/verifyTrade. SOCIII confirms DTC authenticity, buyer/seller eligibility, and program compliance." },
     { title: "Monitor compliance", description: "State RPS program changes, FERC rulings, and EPA guidance monitored. Subscribers alerted when rules affecting their credits change." },
     { title: "Generate tax documentation", description: "1099-B equivalent documentation for all trades above IRS reporting thresholds. Formatted for seller reporting at year end." },
   ],
-  bridge: { title: "Exchange Integration", text: "SOL-009 is the API integration point between TitleApp and any white-label exchange (tZERO, Openfinance, or equivalent). The exchange handles order matching and execution. TitleApp handles compliance — KYC/AML, DTC authenticity, program eligibility, and settlement via SOL-008. Every trade verification is a billable API call." },
+  bridge: { title: "Exchange Integration", text: "SOL-009 is the API integration point between SOCIII and any white-label exchange (tZERO, Openfinance, or equivalent). The exchange handles order matching and execution. SOCIII handles compliance — KYC/AML, DTC authenticity, program eligibility, and settlement via SOL-008. Every trade verification is a billable API call." },
   valueProps: [
     { label: "Trade verification API", description: "POST /v1/solar/credit/verifyTrade — exchange calls before every trade. Returns eligibility, DTC authenticity, and audit trail URL." },
     { label: "Program eligibility", description: "Not every buyer can purchase every credit. State RPS program rules restrict by utility, load, and compliance obligation type. Worker verifies per-trade." },
@@ -4383,8 +4383,8 @@ WORKER_DETAIL_CONTENT["srec-exchange-compliance"] = {
     { label: "1099-B generation", description: "Year-end tax documentation for all trades above IRS reporting thresholds. Formatted for seller reporting." },
   ],
   faq: [
-    { q: "How does the exchange integrate?", a: "The exchange calls POST /v1/solar/credit/verifyTrade before executing any trade. TitleApp returns eligibility, DTC authenticity, buyer/seller verification, and audit trail URL. Rate-limited, API key authenticated." },
-    { q: "What exchanges are supported?", a: "Any white-label exchange can integrate via the verifyTrade API. TitleApp is exchange-agnostic — the compliance layer works with any order matching platform." },
+    { q: "How does the exchange integrate?", a: "The exchange calls POST /v1/solar/credit/verifyTrade before executing any trade. SOCIII returns eligibility, DTC authenticity, buyer/seller verification, and audit trail URL. Rate-limited, API key authenticated." },
+    { q: "What exchanges are supported?", a: "Any white-label exchange can integrate via the verifyTrade API. SOCIII is exchange-agnostic — the compliance layer works with any order matching platform." },
     { q: "Is KYC required for every trade?", a: "KYC is required once at onboarding. Subsequent trades verify the participant's wallet is linked to a verified KYC identity. No anonymous trading is permitted — hard stop." },
   ],
 };
@@ -4762,7 +4762,7 @@ class SandboxErrorBoundary extends React.Component {
       return (
         <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F8F9FC" }}>
           <div style={{ textAlign: "center", maxWidth: 480 }}>
-            <div style={{ fontSize: 20, fontWeight: 600, color: "#6B46C1", marginBottom: 12 }}>TitleApp</div>
+            <div style={{ fontSize: 20, fontWeight: 600, color: "#6B46C1", marginBottom: 12 }}>SOCIII</div>
             <div style={{ fontSize: 15, color: "#1a1a2e", marginBottom: 8 }}>Something went wrong loading the sandbox.</div>
             <div style={{ fontSize: 12, color: "#94A3B8", marginBottom: 16, fontFamily: "monospace", wordBreak: "break-word" }}>{errMsg}</div>
             <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
@@ -5482,7 +5482,7 @@ export default function App() {
       return (
         <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#fafbfc" }}>
           <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: 20, fontWeight: 600, color: "#7c3aed", marginBottom: 16 }}>TitleApp</div>
+            <div style={{ fontSize: 20, fontWeight: 600, color: "#7c3aed", marginBottom: 16 }}>SOCIII</div>
             <div style={{ fontSize: 16, color: "#6b7280" }}>Loading Alex...</div>
           </div>
         </div>
@@ -5501,7 +5501,7 @@ export default function App() {
       return (
         <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#f6f7fb" }}>
           <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: 20, fontWeight: 600, color: "#7c3aed", marginBottom: 16 }}>TitleApp</div>
+            <div style={{ fontSize: 20, fontWeight: 600, color: "#7c3aed", marginBottom: 16 }}>SOCIII</div>
             <div style={{ fontSize: 16, color: "#6b7280" }}>Loading data room...</div>
           </div>
         </div>
@@ -5538,7 +5538,7 @@ export default function App() {
       return (
         <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F8F9FC" }}>
           <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: 20, fontWeight: 600, color: "#6B46C1", marginBottom: 16 }}>TitleApp</div>
+            <div style={{ fontSize: 20, fontWeight: 600, color: "#6B46C1", marginBottom: 16 }}>SOCIII</div>
             <div style={{ fontSize: 16, color: "#64748B" }}>Loading sandbox...</div>
           </div>
         </div>
@@ -5602,7 +5602,7 @@ export default function App() {
   if (workerSlug && !workerRoute) {
     return (
       <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#f8fafc", flexDirection: "column", gap: 16 }}>
-        <div style={{ fontSize: 20, fontWeight: 600, color: "#7c3aed" }}>TitleApp</div>
+        <div style={{ fontSize: 20, fontWeight: 600, color: "#7c3aed" }}>SOCIII</div>
         <div style={{ fontSize: 16, color: "#6b7280" }}>This Digital Worker was not found.</div>
         <a href="/workers" style={{ color: "#7c3aed", fontSize: 14 }}>Browse all workers</a>
       </div>
@@ -5691,7 +5691,7 @@ export default function App() {
           display: "flex", flexDirection: "column", padding: "20px 16px",
           flexShrink: 0,
         }}>
-          <div style={{ fontSize: 20, fontWeight: 700, color: "#111827", letterSpacing: "-0.5px", marginBottom: 32 }}>TitleApp</div>
+          <div style={{ fontSize: 20, fontWeight: 700, color: "#111827", letterSpacing: "-0.5px", marginBottom: 32 }}>SOCIII</div>
           {[1,2,3,4,5].map(i => (
             <div key={i} style={{
               height: 36, borderRadius: 8, marginBottom: 8,

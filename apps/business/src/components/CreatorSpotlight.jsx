@@ -25,7 +25,7 @@ export default function CreatorSpotlight({ worker, workerCardData }) {
   const fileRef = useRef(null);
 
   const workerName = workerCardData?.name || worker?.name || "Your Worker";
-  const workerUrl = `https://titleapp.ai/w/${(worker?.slug || workerName).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`;
+  const workerUrl = `https://sociii.ai/w/${(worker?.slug || workerName).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`;
   const email = localStorage.getItem("USER_EMAIL") || "";
 
   // Auto-populate worker description on mount
@@ -162,7 +162,7 @@ export default function CreatorSpotlight({ worker, workerCardData }) {
             {[
               "AI-generated animated avatar from your photo",
               "Shareable video asset delivered to you",
-              "Posted to TitleApp TikTok, LinkedIn + your worker listing",
+              "Posted to SOCIII TikTok, LinkedIn + your worker listing",
             ].map((item, i) => (
               <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
                 <span style={{ color: TEAL, fontSize: 13, fontWeight: 700, marginTop: 1, flexShrink: 0 }}>{"\u2713"}</span>
@@ -317,10 +317,10 @@ export default function CreatorSpotlight({ worker, workerCardData }) {
             <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a2e", marginBottom: 10 }}>Creator Avatar Release</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
               {[
-                "You grant TitleApp a limited license to animate your likeness to promote your worker listing only.",
+                "You grant SOCIII a limited license to animate your likeness to promote your worker listing only.",
                 "You keep full rights to your own image.",
                 "You'll receive a copy of the finished video.",
-                "You can revoke this at any time by removing your worker or contacting legal@titleapp.ai.",
+                "You can revoke this at any time by removing your worker or contacting legal@sociii.ai.",
               ].map((item, i) => (
                 <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
                   <span style={{ color: "#94A3B8", fontSize: 13, marginTop: 1, flexShrink: 0 }}>{"\u2022"}</span>

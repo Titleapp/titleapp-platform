@@ -296,7 +296,7 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
         >
           ☰
         </button>
-        <div className="topbarTitle">TitleApp</div>
+        <div className="topbarTitle">SOCIII</div>
         {tenantInfo && (
           <div style={{
             marginLeft: "auto",
@@ -380,7 +380,7 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
           currentSection={currentSection}
           onNavigate={guestMode ? () => {} : onNavigate}
           onClose={() => setSidebarOpen(false)}
-          tenantName={guestMode ? ({ solar: "Solar Energy", solar_vpp: "Solar Energy", "auto-dealer": "Auto Dealer", auto_dealer: "Auto Dealer", "real-estate": "Real Estate", real_estate_development: "Real Estate", aviation: "Aviation", creator: "Creator Studio", creators: "Creator Studio" }[guestVertical] || "TitleApp") : tenantInfo?.name}
+          tenantName={guestMode ? ({ solar: "Solar Energy", solar_vpp: "Solar Energy", "auto-dealer": "Auto Dealer", auto_dealer: "Auto Dealer", "real-estate": "Real Estate", real_estate_development: "Real Estate", aviation: "Aviation", creator: "Creator Studio", creators: "Creator Studio" }[guestVertical] || "SOCIII") : tenantInfo?.name}
           onBackToHub={onBackToHub}
           workspaces={workspaces}
           currentWorkspaceId={currentWorkspaceId}

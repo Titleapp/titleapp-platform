@@ -580,7 +580,7 @@
         "monthly": 49
       },
       "status": "live",
-      "capabilitySummary": "KYC/AML onboarding for SREC exchange participants. Verifies buyer and seller eligibility by state program rules. Manages wallet verification and trade compliance. Generates 1099-B equivalent documentation for tax reporting. Connects TitleApp compliance layer to white-label exchange infrastructure",
+      "capabilitySummary": "KYC/AML onboarding for SREC exchange participants. Verifies buyer and seller eligibility by state program rules. Manages wallet verification and trade compliance. Generates 1099-B equivalent documentation for tax reporting. Connects SOCIII compliance layer to white-label exchange infrastructure",
       "tags": [
         "KYC",
         "AML",

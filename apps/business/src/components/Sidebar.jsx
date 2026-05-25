@@ -1145,7 +1145,7 @@ export default function Sidebar({
   const rawWsName = guestMode ? "" : (localStorage.getItem("WORKSPACE_NAME") || "");
   const isRawId = /^ws_\d+_[a-z0-9]+$/i.test(rawWsName);
   const workspaceName = isRawId ? "" : rawWsName;
-  const companyName = guestMode ? (tenantName || "TitleApp") : (workspaceName || tenantName || localStorage.getItem("COMPANY_NAME") || localStorage.getItem("TENANT_NAME") || "");
+  const companyName = guestMode ? (tenantName || "SOCIII") : (workspaceName || tenantName || localStorage.getItem("COMPANY_NAME") || localStorage.getItem("TENANT_NAME") || "");
 
   // 49.32 — workspace role for badge display. Refreshed on workspace switch.
   const [workspaceRole, setWorkspaceRole] = useState(null);
@@ -1235,7 +1235,7 @@ export default function Sidebar({
 
   // Dynamic header: changes based on selected worker
   const brandLabel = (() => {
-    if (guestMode) return tenantName || "TitleApp";
+    if (guestMode) return tenantName || "SOCIII";
     const name = userFirstName || companyName.split(" ")[0] || "";
     if (selectedWorker && selectedWorkerName) {
       return name ? `${name}'s ${selectedWorkerName}` : selectedWorkerName;

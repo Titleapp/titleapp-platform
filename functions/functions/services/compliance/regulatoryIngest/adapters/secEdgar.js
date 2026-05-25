@@ -20,7 +20,7 @@
 const crypto = require("crypto");
 const { ingestDocument } = require("../pipeline");
 
-const SEC_USER_AGENT = "TitleApp Regulatory Compliance Service contact@titleapp.ai";
+const SEC_USER_AGENT = "SOCIII Regulatory Compliance Service contact@sociii.ai";
 const SEC_RECENT_FEED = "https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent&type=8-K&company=&dateb=&owner=include&count=40&output=atom";
 
 /**

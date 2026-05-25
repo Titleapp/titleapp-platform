@@ -63,7 +63,7 @@ export default function MarketplaceListing({ slug }) {
     return (
       <div style={S.loading}>
         <div style={{ textAlign: "center" }}>
-          <div style={{ fontSize: 20, fontWeight: 600, color: "#7c3aed", marginBottom: 16 }}>TitleApp</div>
+          <div style={{ fontSize: 20, fontWeight: 600, color: "#7c3aed", marginBottom: 16 }}>SOCIII</div>
           <div style={{ fontSize: 16, color: "#6b7280" }}>Loading...</div>
         </div>
       </div>
@@ -73,9 +73,9 @@ export default function MarketplaceListing({ slug }) {
   if (error || !listing) {
     return (
       <div style={S.error}>
-        <div style={{ fontSize: 20, fontWeight: 600, color: "#7c3aed" }}>TitleApp Marketplace</div>
+        <div style={{ fontSize: 20, fontWeight: 600, color: "#7c3aed" }}>SOCIII Marketplace</div>
         <div style={{ fontSize: 16, color: "#6b7280" }}>{error || "This Digital Worker was not found."}</div>
-        <a href="/" style={{ color: "#7c3aed", fontSize: 14 }}>Back to TitleApp</a>
+        <a href="/" style={{ color: "#7c3aed", fontSize: 14 }}>Back to SOCIII</a>
       </div>
     );
   }
@@ -91,7 +91,7 @@ export default function MarketplaceListing({ slug }) {
           <div><span style={{ fontWeight: 700 }}>{listing.rulesCount || rules.length}</span> <span style={{ color: "#6b7280" }}>rules</span></div>
           <div><span style={{ fontWeight: 700 }}>{listing.category || "custom"}</span></div>
         </div>
-        <a href={window.location.href.replace("?embed=1", "")} target="_blank" rel="noopener noreferrer" style={{ display: "inline-block", padding: "10px 24px", background: "#7c3aed", color: "white", borderRadius: 8, fontSize: 14, fontWeight: 600, textDecoration: "none" }}>View on TitleApp</a>
+        <a href={window.location.href.replace("?embed=1", "")} target="_blank" rel="noopener noreferrer" style={{ display: "inline-block", padding: "10px 24px", background: "#7c3aed", color: "white", borderRadius: 8, fontSize: 14, fontWeight: 600, textDecoration: "none" }}>View on SOCIII</a>
       </div>
     );
   }
@@ -100,7 +100,7 @@ export default function MarketplaceListing({ slug }) {
     <div style={S.page}>
       {/* Nav */}
       <div style={S.nav}>
-        <a style={S.logo} onClick={() => window.location.href = "/"}>TitleApp</a>
+        <a style={S.logo} onClick={() => window.location.href = "/"}>SOCIII</a>
         <a style={S.navLink} onClick={() => window.location.href = "/developers"}>Build your own</a>
       </div>
 
@@ -134,7 +134,7 @@ export default function MarketplaceListing({ slug }) {
           <div style={S.sectionTitle}>How It Works</div>
           <div style={S.card}>
             <div style={{ fontSize: 14, color: "#374151", lineHeight: 1.7 }}>
-              This Digital Worker uses TitleApp's enforcement engine to validate every AI output against {listing.rulesCount || rules.length} rules before delivery. You define your inputs, the AI processes them, and the enforcement engine ensures compliance. Full audit trail on every transaction.
+              This Digital Worker uses SOCIII's enforcement engine to validate every AI output against {listing.rulesCount || rules.length} rules before delivery. You define your inputs, the AI processes them, and the enforcement engine ensures compliance. Full audit trail on every transaction.
             </div>
           </div>
         </div>
@@ -174,7 +174,7 @@ export default function MarketplaceListing({ slug }) {
 
       {/* Footer */}
       <div style={S.footer}>
-        TitleApp — The Digital Worker Platform
+        SOCIII — The Digital Worker Platform
       </div>
     </div>
   );

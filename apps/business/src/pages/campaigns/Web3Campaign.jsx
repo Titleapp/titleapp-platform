@@ -59,15 +59,15 @@ export default function Web3Campaign() {
   return (
     <div style={S.page}>
       <nav style={S.nav}>
-        <a href="/" style={S.logo}>TitleApp</a>
-        <a href="https://app.titleapp.ai/meet-alex?vertical=web3" style={S.navCta}>Talk to Alex</a>
+        <a href="/" style={S.logo}>SOCIII</a>
+        <a href="https://app.sociii.ai/meet-alex?vertical=web3" style={S.navCta}>Talk to Alex</a>
       </nav>
 
       <section style={S.hero}>
         <h1 style={S.h1}>Your Web3 Project. Verified. Compliant. Unstoppable.</h1>
-        <p style={S.subhead}>TitleApp gives Web3 teams the compliance infrastructure, community operations, and technical tools to build with credibility. All receipts. All the time.</p>
+        <p style={S.subhead}>SOCIII gives Web3 teams the compliance infrastructure, community operations, and technical tools to build with credibility. All receipts. All the time.</p>
         <div style={S.ctaRow}>
-          <a href="https://app.titleapp.ai/meet-alex?vertical=web3" style={S.primaryBtn}>Talk to Alex</a>
+          <a href="https://app.sociii.ai/meet-alex?vertical=web3" style={S.primaryBtn}>Talk to Alex</a>
           <a href="#workers" style={S.secondaryLink}>See the workers &rarr;</a>
         </div>
       </section>
@@ -78,7 +78,7 @@ export default function Web3Campaign() {
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 12 15 22 5"/></svg>
           </div>
           <div style={S.valueTitle}>Verified Team</div>
-          <div style={S.valueDesc}>Every team member identity-verified. Anonymous teams cannot use TitleApp Web3 Suite. Your community deserves to know who is building for them.</div>
+          <div style={S.valueDesc}>Every team member identity-verified. Anonymous teams cannot use SOCIII Web3 Suite. Your community deserves to know who is building for them.</div>
         </div>
         <div style={S.valueProp}>
           <div style={S.valueIcon}>
@@ -114,14 +114,14 @@ export default function Web3Campaign() {
         </div>
       </section>
 
-      <div style={S.socialProof}>Web3 projects using TitleApp operate with verified teams, transparent treasuries, and compliant communications.</div>
+      <div style={S.socialProof}>Web3 projects using SOCIII operate with verified teams, transparent treasuries, and compliant communications.</div>
 
       <section style={S.bottomCta}>
-        <div style={S.bottomHeadline}>Your community deserves receipts. Build with TitleApp.</div>
-        <a href="https://app.titleapp.ai/meet-alex?vertical=web3" style={S.primaryBtn}>Start with Alex</a>
+        <div style={S.bottomHeadline}>Your community deserves receipts. Build with SOCIII.</div>
+        <a href="https://app.sociii.ai/meet-alex?vertical=web3" style={S.primaryBtn}>Start with Alex</a>
       </section>
 
-      <footer style={S.footer}>&copy; {new Date().getFullYear()} TitleApp. All rights reserved.</footer>
+      <footer style={S.footer}>&copy; {new Date().getFullYear()} SOCIII. All rights reserved.</footer>
     </div>
   );
 }

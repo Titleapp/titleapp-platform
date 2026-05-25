@@ -127,7 +127,7 @@ export default function MyLogbook() {
           How Logbooks Work
         </div>
         <div style={{ fontSize: "14px", color: "#64748b", lineHeight: "1.7" }}>
-          Every important item in your Vault gets its own logbook -- a permanent timeline of everything that happens to it. When you add a vehicle, property, or valuable item, TitleApp automatically starts tracking it. Every update, verification, and change is recorded with a timestamp so you always have proof of what happened and when.
+          Every important item in your Vault gets its own logbook -- a permanent timeline of everything that happens to it. When you add a vehicle, property, or valuable item, SOCIII automatically starts tracking it. Every update, verification, and change is recorded with a timestamp so you always have proof of what happened and when.
         </div>
       </div>
 

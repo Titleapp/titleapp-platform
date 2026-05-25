@@ -47,9 +47,9 @@ async function buildPersonalizationContext(userId, extraContext = {}) {
       : tierConfig.creditsIncluded || 100,
     companyName: userData.companyName || "",
     vertical: userData.vertical || "",
-    platformUrl: "https://app.titleapp.ai",
-    sandboxUrl: "https://app.titleapp.ai/sandbox",
-    supportEmail: "support@titleapp.ai",
+    platformUrl: "https://app.sociii.ai",
+    sandboxUrl: "https://app.sociii.ai/sandbox",
+    supportEmail: "support@sociii.ai",
     ...extraContext,
   };
 }

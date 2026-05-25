@@ -127,9 +127,9 @@ export default function Login() {
     <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#f8fafc", fontFamily: "-apple-system, BlinkMacSystemFont, sans-serif" }}>
       <div style={{ width: "100%", maxWidth: "420px", padding: "32px", background: "white", borderRadius: "16px", border: "1px solid #e5e7eb" }}>
         <div style={{ textAlign: "center", marginBottom: "24px" }}>
-          <img src="/logo.png" alt="TitleApp" style={{ width: "48px", height: "48px", borderRadius: "12px", marginBottom: "16px" }} />
+          <img src="/logo.png" alt="SOCIII" style={{ width: "48px", height: "48px", borderRadius: "12px", marginBottom: "16px" }} />
           <h1 style={{ margin: 0, fontSize: "24px", fontWeight: 700 }}>
-            {mode === "signin" ? "Sign in to TitleApp" : "Create your account"}
+            {mode === "signin" ? "Sign in to SOCIII" : "Create your account"}
           </h1>
         </div>
 

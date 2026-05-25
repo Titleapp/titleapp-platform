@@ -1,6 +1,6 @@
 // CODEX 48.4 Fix HH / 48.5 Pass 5 — Shared Creator Studio nav header.
 //
-// Renders "Creator Studio / TitleApp" for anonymous users. When a real
+// Renders "Creator Studio / SOCIII" for anonymous users. When a real
 // (non-anonymous) Firebase user signs in, swaps to a 32px avatar circle
 // with their initials plus their display name. Used by both DeveloperSandbox
 // and WorkerSandbox so the two surfaces stay visually consistent.
@@ -47,7 +47,7 @@ export default function CreatorStudioHeader({ isMobile, onClose, accent = "#7c3a
       ) : (
         <div>
           <div style={{ fontSize: 14, fontWeight: 700, color: accent }}>Creator Studio</div>
-          <div style={{ fontSize: 11, color: "rgba(226,232,240,0.55)", marginTop: 2 }}>TitleApp</div>
+          <div style={{ fontSize: 11, color: "rgba(226,232,240,0.55)", marginTop: 2 }}>SOCIII</div>
         </div>
       )}
       {isMobile && (

@@ -166,7 +166,7 @@ async function getRecommendation({ userId, vertical, persona, activeWorkerSlugs 
       reason = `Now that you're settled in, ${primary.name} pairs well with your current workers.`;
       break;
     case "portfolio_review":
-      reason = `You've been using TitleApp for a while. Here are workers that could round out your setup.`;
+      reason = `You've been using SOCIII for a while. Here are workers that could round out your setup.`;
       break;
     default:
       reason = `${primary.name} could help with your ${vertical ? vertical.replace(/_/g, " ") : ""} workflow.`;

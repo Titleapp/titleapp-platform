@@ -286,7 +286,7 @@ export default function FloatingChat({ demoMode = false }) {
         <div className="chat-panel-conversation" ref={conversationRef}>
           {messages.length === 0 && !isTyping && (
             <div className="chat-welcome">
-              <p>Hi. I'm Alex, your Chief of Staff at TitleApp.</p>
+              <p>Hi. I'm Alex, your Chief of Staff at SOCIII.</p>
               {currentUser ? (
                 <p>Ask me anything about your records, documents, customers, inventory, or business operations.</p>
               ) : (

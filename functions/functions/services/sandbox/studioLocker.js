@@ -34,7 +34,7 @@ const MAX_STORED_TEXT_CHARS = 200 * 1024;
 
 // Tier definitions per CODEX 47.4 Part 5
 const TIERS = {
-  1: { id: 1, label: "Platform",          description: "TitleApp platform-level reference" },
+  1: { id: 1, label: "Platform",          description: "SOCIII platform-level reference" },
   2: { id: 2, label: "Professional Library", description: "Vertical or organization library" },
   3: { id: 3, label: "Worker-Specific",   description: "Knowledge unique to this worker" },
 };
@@ -171,7 +171,7 @@ async function parseUrl(url) {
 
   const response = await fetch(url, {
     method: "GET",
-    headers: { "User-Agent": "TitleApp-StudioLocker/1.0" },
+    headers: { "User-Agent": "SOCIII-StudioLocker/1.0" },
     redirect: "follow",
   });
 

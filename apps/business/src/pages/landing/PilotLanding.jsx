@@ -51,10 +51,10 @@ const CONTENT = {
     { name: "Tier 2", price: "$49", period: "/mo", features: ["Everything in Tier 1", "Flight planner", "Weight and balance", "Multi-aircraft tracking", "Training syllabus integration"], cta: "Subscribe", highlighted: false }
   ],
   faq: [
-    { question: "Can I import my existing logbook?", answer: "Yes. TitleApp supports direct import from ForeFlight, LogTen Pro, and CSV/Excel exports from most digital logbook applications. For paper logbooks, you can enter totals by category and add entries going forward." },
+    { question: "Can I import my existing logbook?", answer: "Yes. SOCIII supports direct import from ForeFlight, LogTen Pro, and CSV/Excel exports from most digital logbook applications. For paper logbooks, you can enter totals by category and add entries going forward." },
     { question: "What does blockchain verification mean?", answer: "Each logbook entry gets a cryptographic hash stored on-chain. This creates a tamper-evident record that proves when an entry was made and that it hasn't been altered since. Useful for airline interviews, insurance audits, and PRIA requests." },
     { question: "Is the FAA library really free?", answer: "Yes. The full FAA library \u2014 FAR/AIM, PHAK, Instrument Flying Handbook, Aviation Weather, Chart Supplements, and 200+ other publications \u2014 is free and always current. AI-indexed so you can ask questions in plain English and get answers with regulation cites." },
-    { question: "How does currency tracking work?", answer: "TitleApp reads your logbook entries and calculates currency status for every certificate, rating, and endorsement you hold. It accounts for BFRs, instrument proficiency checks, night currency, tailwheel currency, type ratings, and medical certificates. You get alerts before anything expires." },
+    { question: "How does currency tracking work?", answer: "SOCIII reads your logbook entries and calculates currency status for every certificate, rating, and endorsement you hold. It accounts for BFRs, instrument proficiency checks, night currency, tailwheel currency, type ratings, and medical certificates. You get alerts before anything expires." },
     { question: "What if I don't like it?", answer: "The free tier has no credit card requirement and no time limit. If you upgrade to Pro and aren't satisfied, get a full refund within 60 days. Cancel anytime with one click." }
   ],
   promoCode: "PILOT3FREE"

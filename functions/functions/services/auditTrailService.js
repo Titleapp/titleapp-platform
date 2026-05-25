@@ -31,7 +31,7 @@ async function sendAlert(to, subject, body) {
     },
     body: JSON.stringify({
       personalizations: [{ to: [{ email: to }] }],
-      from: { email: "alerts@titleapp.ai", name: "TitleApp Alerts" },
+      from: { email: "alerts@sociii.ai", name: "SOCIII Alerts" },
       subject,
       content: [{ type: "text/plain", value: body }],
     }),
@@ -83,8 +83,8 @@ async function writeAuditRecord(executionData) {
   // ── Alert if gas cost is approaching the fee threshold ───────
   if (gasCost >= auditTrailGasCostAlert) {
     await sendAlert(
-      "kent@titleapp.ai",
-      `[TitleApp] Gas cost alert: $${gasCost} per record`,
+      "kent@sociii.ai",
+      `[SOCIII] Gas cost alert: $${gasCost} per record`,
       `Gas cost $${gasCost} has reached the alert threshold of $${auditTrailGasCostAlert}.\n\nCurrent audit trail fee: $${auditTrailFeePerRecord}/record.\nNet margin: $${(auditTrailFeePerRecord - gasCost).toFixed(4)}/record.\n\nReview audit trail pricing in config/pricing.js.`
     );
   }

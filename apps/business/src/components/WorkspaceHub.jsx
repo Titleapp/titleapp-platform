@@ -251,7 +251,7 @@ export default function WorkspaceHub({ userName, onLaunch, onBuilderStart, onAdm
             </button>
           )}
           <div style={{ fontSize: 20, fontWeight: 700, color: '#7c3aed', marginBottom: 8 }}>
-            TitleApp
+            SOCIII
           </div>
           <div style={{ fontSize: 18, fontWeight: 600, color: '#1e293b' }}>
             {userName ? `Welcome back, ${userName}` : 'Welcome back'}

@@ -118,25 +118,25 @@ function buildWorkerEmailHtml(stage, firstName, workerName, currentStepLabel, pe
     1: `<p>Hi ${name},</p>
 <p><strong>${wName}</strong> is waiting. You left off at <strong>${stepLabel}</strong> — you're ${pct}% of the way there.</p>
 <p>Want to pick up where we left off?</p>
-<p><a href="https://app.titleapp.ai/sandbox" style="color: #6B46C1; text-decoration: none; font-weight: 600;">Continue building ${wName}</a></p>
+<p><a href="https://app.sociii.ai/sandbox" style="color: #6B46C1; text-decoration: none; font-weight: 600;">Continue building ${wName}</a></p>
 <p>— Alex</p>`,
 
     2: `<p>Hi ${name},</p>
 <p><strong>${wName}</strong> is ${pct}% complete. Here's what's left to finish: ${stepLabel} and the steps after it.</p>
 <p>The hardest part is behind you. The work you've already done doesn't go anywhere — it's saved in your Vault.</p>
-<p><a href="https://app.titleapp.ai/sandbox" style="color: #6B46C1; text-decoration: none; font-weight: 600;">Pick up where you left off</a></p>
+<p><a href="https://app.sociii.ai/sandbox" style="color: #6B46C1; text-decoration: none; font-weight: 600;">Pick up where you left off</a></p>
 <p>— Alex</p>`,
 
     3: `<p>Hi ${name},</p>
 <p>Creators who finish their first worker in the first week earn 3x more in their first month. You've already done the hard work — ${pct}% of the build is done.</p>
 <p><strong>${wName}</strong> is almost ready to earn for you.</p>
-<p><a href="https://app.titleapp.ai/sandbox" style="color: #6B46C1; text-decoration: none; font-weight: 600;">Finish ${wName}</a></p>
+<p><a href="https://app.sociii.ai/sandbox" style="color: #6B46C1; text-decoration: none; font-weight: 600;">Finish ${wName}</a></p>
 <p>— Alex</p>`,
 
     4: `<p>Hi ${name},</p>
 <p>This is the last time I'll nudge you on <strong>${wName}</strong>. It will be here whenever you're ready — your work is saved and nothing is lost.</p>
 <p>When you come back, we'll pick up exactly where you left off.</p>
-<p><a href="https://app.titleapp.ai/sandbox" style="color: #6B46C1; text-decoration: none; font-weight: 600;">Return to your sandbox</a></p>
+<p><a href="https://app.sociii.ai/sandbox" style="color: #6B46C1; text-decoration: none; font-weight: 600;">Return to your sandbox</a></p>
 <p>— Alex</p>`,
   };
 
@@ -144,13 +144,13 @@ function buildWorkerEmailHtml(stage, firstName, workerName, currentStepLabel, pe
 
   return `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
   <div style="margin-bottom: 32px;">
-    <span style="font-size: 20px; font-weight: 700; color: #6B46C1;">TitleApp</span>
+    <span style="font-size: 20px; font-weight: 700; color: #6B46C1;">SOCIII</span>
   </div>
   <div style="font-size: 16px; color: #1a202c; line-height: 1.6;">
     ${bodyContent}
   </div>
   <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
-    <p style="font-size: 13px; color: #94a3b8;">TitleApp LLC | Start Free. 60-Day Money Back. Your Data Is Always Yours.</p>
+    <p style="font-size: 13px; color: #94a3b8;">SOCIII, Inc. | Start Free. 60-Day Money Back. Your Data Is Always Yours.</p>
   </div>
 </div>`;
 }
@@ -166,7 +166,7 @@ function buildEmailHtml(stage, firstName, workerName) {
     1: `<p>Hi ${name},</p>
 <p>Your draft spec for <strong>${wName}</strong> is ready. You described something worth building.</p>
 <p>Share it with potential users and gather interest before you publish:</p>
-<p><a href="https://app.titleapp.ai/sandbox" style="color: #7c3aed; text-decoration: none; font-weight: 600;">Return to your sandbox</a></p>
+<p><a href="https://app.sociii.ai/sandbox" style="color: #7c3aed; text-decoration: none; font-weight: 600;">Return to your sandbox</a></p>
 <p>Reply to this email if you have questions — it goes to a real person.</p>
 <p>— Alex</p>`,
 
@@ -177,24 +177,24 @@ function buildEmailHtml(stage, firstName, workerName) {
 <li>Write sample interactions that show exactly what a conversation looks like.</li>
 <li>Pick the right pricing tier — match the complexity of the problem you solve.</li>
 </ol>
-<p><a href="https://app.titleapp.ai/sandbox" style="color: #7c3aed; text-decoration: none; font-weight: 600;">Apply these to ${wName}</a></p>
+<p><a href="https://app.sociii.ai/sandbox" style="color: #7c3aed; text-decoration: none; font-weight: 600;">Apply these to ${wName}</a></p>
 <p>— Alex</p>`,
 
     3: `<p>Hi ${name},</p>
 <p>Your draft for <strong>${wName}</strong> is still saved. Creators who publish in the first week tend to see 3x more early subscribers.</p>
-<p><a href="https://app.titleapp.ai/sandbox" style="color: #7c3aed; text-decoration: none; font-weight: 600;">Pick up where you left off</a></p>
+<p><a href="https://app.sociii.ai/sandbox" style="color: #7c3aed; text-decoration: none; font-weight: 600;">Pick up where you left off</a></p>
 <p>— Alex</p>`,
 
     4: `<p>Hi ${name},</p>
 <p>Other creators published new Digital Workers this week. Your <strong>${wName}</strong> could be next.</p>
 <p>The marketplace is growing and early movers in your category have less competition.</p>
-<p><a href="https://app.titleapp.ai/sandbox" style="color: #7c3aed; text-decoration: none; font-weight: 600;">Finish and publish ${wName}</a></p>
+<p><a href="https://app.sociii.ai/sandbox" style="color: #7c3aed; text-decoration: none; font-weight: 600;">Finish and publish ${wName}</a></p>
 <p>— Alex</p>`,
 
     5: `<p>Hi ${name},</p>
 <p>We saved your draft for <strong>${wName}</strong>. It is still here whenever you are ready.</p>
 <p>If you have questions about building or publishing, reply to this email — it goes to a real person.</p>
-<p><a href="https://app.titleapp.ai/sandbox" style="color: #7c3aed; text-decoration: none; font-weight: 600;">Return to your sandbox</a></p>
+<p><a href="https://app.sociii.ai/sandbox" style="color: #7c3aed; text-decoration: none; font-weight: 600;">Return to your sandbox</a></p>
 <p>— Alex</p>`,
   };
 
@@ -202,13 +202,13 @@ function buildEmailHtml(stage, firstName, workerName) {
 
   return `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
   <div style="margin-bottom: 32px;">
-    <span style="font-size: 20px; font-weight: 700; color: #7c3aed;">TitleApp</span>
+    <span style="font-size: 20px; font-weight: 700; color: #7c3aed;">SOCIII</span>
   </div>
   <div style="font-size: 16px; color: #1a202c; line-height: 1.6;">
     ${bodyContent}
   </div>
   <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
-    <p style="font-size: 13px; color: #94a3b8;">TitleApp LLC | Start Free. 60-Day Money Back. Your Data Is Always Yours.</p>
+    <p style="font-size: 13px; color: #94a3b8;">SOCIII, Inc. | Start Free. 60-Day Money Back. Your Data Is Always Yours.</p>
   </div>
 </div>`;
 }

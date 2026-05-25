@@ -217,7 +217,7 @@ export default function WorkerDetailPage({ worker, content, onBack, onSubscribe 
   return (
     <div style={S.page}>
       <nav style={S.nav}>
-        <a href="/" style={S.logo}>TitleApp</a>
+        <a href="/" style={S.logo}>SOCIII</a>
         <button onClick={onBack || (() => { window.location.href = "/workers"; })} style={S.back}>&larr; All Workers</button>
       </nav>
 
@@ -441,7 +441,7 @@ export default function WorkerDetailPage({ worker, content, onBack, onSubscribe 
         )}
       </div>
 
-      <footer style={S.footer}>TitleApp -- Digital Workers for every industry</footer>
+      <footer style={S.footer}>SOCIII -- Digital Workers for every industry</footer>
     </div>
   );
 }

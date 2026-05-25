@@ -13,7 +13,7 @@
  *   twilio              — channelId = the To number that received the SMS.
  *                         Each Twilio number is provisioned to a workspace.
  *   sendgrid_inbound    — channelId = the inbound email address (e.g. an
- *                         alias like incoming-acme@incoming.titleapp.ai).
+ *                         alias like incoming-acme@incoming.sociii.ai).
  *   sendgrid_webhook    — primary path: payload.category contains a
  *                         'tenant:<id>' tag injected per-send. Fallback:
  *                         cross-reference sg_message_id against messages/.

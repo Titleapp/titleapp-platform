@@ -35,7 +35,7 @@ async function summarizeGuestSession(guestId) {
     `${h.role === "user" ? "Prospect" : "Alex"}: ${h.content}`
   ).join("\n");
 
-  const summaryPrompt = `You are Alex, Chief of Staff at TitleApp. Summarize this conversation for the prospect.
+  const summaryPrompt = `You are Alex, Chief of Staff at SOCIII. Summarize this conversation for the prospect.
 
 Format: "Here's what we covered..." — first person, Alex voice, warm and professional.
 Include: vertical discussed, workers mentioned, pain points, and next steps.
@@ -66,18 +66,18 @@ Vertical: ${sessionState.campaignSlug || "general"}`;
   // Deliver via contact method
   const name = contact.name || sessionState.prospectName || "there";
   const vertical = sessionState.campaignSlug || "";
-  const returnLink = `https://app.titleapp.ai/meet-alex?vertical=${encodeURIComponent(vertical)}&returning=true`;
+  const returnLink = `https://app.sociii.ai/meet-alex?vertical=${encodeURIComponent(vertical)}&returning=true`;
 
   if (contact.email) {
     try {
       const { sendViaSendGrid } = require("../../communications/emailNotify");
       await sendViaSendGrid({
         to: contact.email,
-        subject: `Here's your TitleApp recap, ${name}`,
+        subject: `Here's your SOCIII recap, ${name}`,
         html: `<div style="font-family: -apple-system, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px;">
           <div style="font-size: 14px; color: #1e293b; line-height: 1.6; white-space: pre-wrap;">${summary}</div>
           <div style="margin-top: 24px;"><a href="${returnLink}" style="display: inline-block; padding: 12px 24px; background: #7c3aed; color: white; border-radius: 8px; text-decoration: none; font-weight: 600;">Continue with Alex</a></div>
-          <div style="margin-top: 16px; font-size: 12px; color: #94a3b8;">— Alex, Chief of Staff at TitleApp</div>
+          <div style="margin-top: 16px; font-size: 12px; color: #94a3b8;">— Alex, Chief of Staff at SOCIII</div>
         </div>`,
       });
     } catch (emailErr) {

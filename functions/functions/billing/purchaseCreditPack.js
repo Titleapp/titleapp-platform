@@ -95,8 +95,8 @@ async function purchaseCreditPack(req, res) {
       mode: "payment",
       line_items: [{ price: priceId, quantity: 1 }],
       metadata: { userId, tenantId: tenantCtx, credits: String(credits), type: "credit_pack", scope: "tenant" },
-      success_url: successUrl || "https://titleapp.ai?credits=success",
-      cancel_url: cancelUrl || "https://titleapp.ai?credits=cancel",
+      success_url: successUrl || "https://sociii.ai?credits=success",
+      cancel_url: cancelUrl || "https://sociii.ai?credits=cancel",
     });
     return res.json({ ok: true, checkoutUrl: session.url, sessionId: session.id, scope: "tenant" });
   }
@@ -144,8 +144,8 @@ async function purchaseCreditPack(req, res) {
     mode: "payment",
     line_items: [{ price: priceId, quantity: 1 }],
     metadata: { userId, credits: String(credits), type: "credit_pack", scope: "user" },
-    success_url: successUrl || "https://titleapp.ai?credits=success",
-    cancel_url: cancelUrl || "https://titleapp.ai?credits=cancel",
+    success_url: successUrl || "https://sociii.ai?credits=success",
+    cancel_url: cancelUrl || "https://sociii.ai?credits=cancel",
   });
 
   return res.json({ ok: true, checkoutUrl: session.url, sessionId: session.id, scope: "user" });

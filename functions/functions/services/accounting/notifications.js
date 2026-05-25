@@ -27,10 +27,10 @@ async function sendEmail({ to, subject, htmlBody, plainBody, from }) {
     console.warn("[accounting/notifications] SENDGRID_API_KEY not set — skipping email send");
     return { ok: false, reason: "no_api_key" };
   }
-  const fromAddr = from || "alex@titleapp.ai";
+  const fromAddr = from || "alex@sociii.ai";
   const sgPayload = {
     personalizations: [{ to: [{ email: to }] }],
-    from: { email: fromAddr, name: "Alex — TitleApp" },
+    from: { email: fromAddr, name: "Alex — SOCIII" },
     subject,
     content: [],
   };

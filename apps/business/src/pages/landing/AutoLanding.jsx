@@ -10,10 +10,10 @@ const CONTENT = {
     },
     {
       headline: "15 Trade-In Opportunities Walk Out Your Service Door Every Day.",
-      subhead: "TitleApp catches every one — automatically. No extra work for your advisors."
+      subhead: "SOCIII catches every one — automatically. No extra work for your advisors."
     },
     {
-      headline: "Dealers Using TitleApp Recover $180K\u2013$420K Per Rooftop.",
+      headline: "Dealers Using SOCIII Recover $180K\u2013$420K Per Rooftop.",
       subhead: "Service-to-sales. Declined service follow-up. Every dollar accounted for."
     },
     {
@@ -51,11 +51,11 @@ const CONTENT = {
     { name: "Enterprise", price: "$149", period: "/mo per worker", features: ["Everything in Pro", "Dedicated account manager", "Custom integrations", "SLA guarantee", "Multi-rooftop dashboard"], cta: "Contact Sales", highlighted: false }
   ],
   faq: [
-    { question: "How does TitleApp connect to my DMS?", answer: "TitleApp works alongside Reynolds, CDK, Dealertrack, and all major DMS platforms. No rip-and-replace. Your service advisors don't even need to log into TitleApp — opportunities surface in their existing workflow." },
-    { question: "Do my advisors need training?", answer: "No. TitleApp works in the background. Your advisors and F&I team get actionable alerts and recommendations without changing their daily routine." },
+    { question: "How does SOCIII connect to my DMS?", answer: "SOCIII works alongside Reynolds, CDK, Dealertrack, and all major DMS platforms. No rip-and-replace. Your service advisors don't even need to log into SOCIII — opportunities surface in their existing workflow." },
+    { question: "Do my advisors need training?", answer: "No. SOCIII works in the background. Your advisors and F&I team get actionable alerts and recommendations without changing their daily routine." },
     { question: "What if I don't like it?", answer: "Start free — no credit card required. If you upgrade and aren't satisfied, get a full refund within 60 days. No questions, no forms, no retention calls. Cancel anytime." },
-    { question: "How is this different from my CRM?", answer: "Your CRM tracks customer interactions. TitleApp watches every repair order, every MPI, every vehicle in your service lane and identifies revenue opportunities your CRM can't see — trade-ins, declined service follow-ups, F&I gaps." },
-    { question: "What does 'commission-based' mean?", answer: "All auto dealer workers are free. TitleApp earns a small commission only when you close revenue that our workers helped identify. If we don't generate value, you don't pay." }
+    { question: "How is this different from my CRM?", answer: "Your CRM tracks customer interactions. SOCIII watches every repair order, every MPI, every vehicle in your service lane and identifies revenue opportunities your CRM can't see — trade-ins, declined service follow-ups, F&I gaps." },
+    { question: "What does 'commission-based' mean?", answer: "All auto dealer workers are free. SOCIII earns a small commission only when you close revenue that our workers helped identify. If we don't generate value, you don't pay." }
   ],
   promoCode: "AUTOLAUNCH"
 };

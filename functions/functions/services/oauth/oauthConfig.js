@@ -17,7 +17,7 @@ const OAUTH_PLATFORMS = {
     scopes: ["pages_manage_posts", "instagram_content_publish", "pages_read_engagement", "ads_management"],
     clientIdEnv: "META_APP_ID",
     clientSecretEnv: "META_APP_SECRET",
-    redirectUri: "https://app.titleapp.ai/auth/meta/callback",
+    redirectUri: "https://app.sociii.ai/auth/meta/callback",
     connectorId: "meta_posting",
   },
 
@@ -29,7 +29,7 @@ const OAUTH_PLATFORMS = {
     scopes: ["user.info.basic", "video.publish", "video.upload"],
     clientIdEnv: "TIKTOK_CLIENT_KEY",
     clientSecretEnv: "TIKTOK_CLIENT_SECRET",
-    redirectUri: "https://app.titleapp.ai/auth/tiktok/callback",
+    redirectUri: "https://app.sociii.ai/auth/tiktok/callback",
     connectorId: "tiktok_posting",
   },
 
@@ -41,7 +41,7 @@ const OAUTH_PLATFORMS = {
     scopes: [],
     clientIdEnv: "UNIFIED_API_KEY",
     clientSecretEnv: "UNIFIED_WORKSPACE_SECRET",
-    redirectUri: "https://app.titleapp.ai/auth/unified/callback",
+    redirectUri: "https://app.sociii.ai/auth/unified/callback",
     connectorId: "unified",
     extraParams: { workspace_id_env: "UNIFIED_WORKSPACE_ID" },
   },
@@ -54,7 +54,7 @@ const OAUTH_PLATFORMS = {
     scopes: ["https://www.googleapis.com/auth/business.manage"],
     clientIdEnv: "GOOGLE_OAUTH_CLIENT_ID",
     clientSecretEnv: "GOOGLE_OAUTH_CLIENT_SECRET",
-    redirectUri: "https://app.titleapp.ai/auth/google-business/callback",
+    redirectUri: "https://app.sociii.ai/auth/google-business/callback",
     connectorId: "google_business_posting",
   },
 
@@ -66,7 +66,7 @@ const OAUTH_PLATFORMS = {
     scopes: ["com.intuit.quickbooks.accounting"],
     clientIdEnv: "QB_CLIENT_ID",
     clientSecretEnv: "QB_CLIENT_SECRET",
-    redirectUri: "https://app.titleapp.ai/auth/quickbooks/callback",
+    redirectUri: "https://app.sociii.ai/auth/quickbooks/callback",
     connectorId: "quickbooks",
   },
 
@@ -78,7 +78,7 @@ const OAUTH_PLATFORMS = {
     scopes: ["w_member_social", "r_liteprofile"],
     clientIdEnv: "LINKEDIN_CLIENT_ID",
     clientSecretEnv: "LINKEDIN_CLIENT_SECRET",
-    redirectUri: "https://app.titleapp.ai/auth/linkedin/callback",
+    redirectUri: "https://app.sociii.ai/auth/linkedin/callback",
     connectorId: "linkedin_posting",
   },
 

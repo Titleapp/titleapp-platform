@@ -79,7 +79,7 @@ export default function PlatformInventory() {
     return (
       <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F8F9FC" }}>
         <div style={{ textAlign: "center" }}>
-          <div style={{ fontSize: 20, fontWeight: 600, color: "#6B46C1", marginBottom: 16 }}>TitleApp</div>
+          <div style={{ fontSize: 20, fontWeight: 600, color: "#6B46C1", marginBottom: 16 }}>SOCIII</div>
           <div style={{ fontSize: 16, color: "#64748B" }}>Loading inventory...</div>
         </div>
       </div>
@@ -91,7 +91,7 @@ export default function PlatformInventory() {
     return (
       <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F8F9FC" }}>
         <div style={{ textAlign: "center", maxWidth: 400 }}>
-          <div style={{ fontSize: 20, fontWeight: 600, color: "#6B46C1", marginBottom: 12 }}>TitleApp</div>
+          <div style={{ fontSize: 20, fontWeight: 600, color: "#6B46C1", marginBottom: 12 }}>SOCIII</div>
           <div style={{ fontSize: 14, color: "#DC2626" }}>{error}</div>
           <button onClick={() => fetchInventory()} style={{ marginTop: 16, padding: "10px 24px", background: "#6B46C1", color: "white", border: "none", borderRadius: 8, cursor: "pointer" }}>Retry</button>
         </div>

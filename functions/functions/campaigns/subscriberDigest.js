@@ -198,7 +198,7 @@ function buildSubscriberHtml({ today, userName, priority, workers, docs, usageDa
   ${attentionSection}
   <div style="padding:16px 24px;background:#f9fafb;border-top:1px solid #e5e7eb">
     <p style="font-size:13px;color:#6b7280;margin:0">Reply to this email to talk to me.</p>
-    <p style="font-size:13px;color:#6b7280;margin:4px 0 0">app.titleapp.ai/vault</p>
+    <p style="font-size:13px;color:#6b7280;margin:4px 0 0">app.sociii.ai/vault</p>
   </div>
 </div>
 </body></html>`;
@@ -367,7 +367,7 @@ async function generateSubscriberDigest(userId) {
   let htmlBody, plainText;
   if (!hasContent) {
     // Quiet day — build minimal meaningful email
-    let forwardNote = "Your workers are standing by. Open TitleApp when you're ready.";
+    let forwardNote = "Your workers are standing by. Open SOCIII when you're ready.";
     // Check for nearest expiring document
     const expiringDoc = docs.find(d => docStatus(d) === "yellow");
     if (expiringDoc) {
@@ -396,12 +396,12 @@ async function generateSubscriberDigest(userId) {
   </div>
   <div style="padding:16px 24px;background:#f9fafb;border-top:1px solid #e5e7eb">
     <p style="font-size:13px;color:#6b7280;margin:0">Reply to this email to talk to me.</p>
-    <p style="font-size:13px;color:#6b7280;margin:4px 0 0">app.titleapp.ai/vault</p>
+    <p style="font-size:13px;color:#6b7280;margin:4px 0 0">app.sociii.ai/vault</p>
   </div>
 </div>
 </body></html>`;
 
-    plainText = `TitleApp Briefing — ${today}\nQuiet day — no significant changes since yesterday.\n${forwardNote}`;
+    plainText = `SOCIII Briefing — ${today}\nQuiet day — no significant changes since yesterday.\n${forwardNote}`;
   } else {
     // 9. Build full HTML email
     htmlBody = buildSubscriberHtml({
@@ -410,7 +410,7 @@ async function generateSubscriberDigest(userId) {
 
     // 10. Build plain text fallback
     const plainLines = [];
-    plainLines.push(`TitleApp Briefing — ${today}`);
+    plainLines.push(`SOCIII Briefing — ${today}`);
     plainLines.push(`Priority: ${priority.text}`);
     if (workerData.length > 0) {
       plainLines.push(`Workers: ${workerData.length} active`);
@@ -431,9 +431,9 @@ async function generateSubscriberDigest(userId) {
         },
         body: JSON.stringify({
           personalizations: [{ to: [{ email }] }],
-          from: { email: "alex@titleapp.ai", name: "Alex — TitleApp" },
-          reply_to: { email: "alex@titleapp.ai", name: "Alex — TitleApp" },
-          subject: `Your TitleApp briefing — ${today}`,
+          from: { email: "alex@sociii.ai", name: "Alex — SOCIII" },
+          reply_to: { email: "alex@sociii.ai", name: "Alex — SOCIII" },
+          subject: `Your SOCIII briefing — ${today}`,
           content: [
             { type: "text/plain", value: plainText },
             { type: "text/html", value: htmlBody },

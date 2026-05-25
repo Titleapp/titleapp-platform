@@ -159,7 +159,7 @@ export default function StartPage() {
     <div style={S.page}>
       {/* Nav */}
       <nav style={S.nav}>
-        <a href="/" style={S.logo}>TitleApp</a>
+        <a href="/" style={S.logo}>SOCIII</a>
         <button onClick={handleCta} style={S.navCta}>Get Started Free</button>
       </nav>
 
@@ -248,7 +248,7 @@ export default function StartPage() {
 
       {/* Footer */}
       <footer style={S.footer}>
-        &copy; {new Date().getFullYear()} TitleApp. All rights reserved.
+        &copy; {new Date().getFullYear()} SOCIII. All rights reserved.
       </footer>
     </div>
   );

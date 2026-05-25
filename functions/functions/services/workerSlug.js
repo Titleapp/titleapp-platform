@@ -5,8 +5,8 @@
  * Enforces uniqueness across all workers.
  * Allows one-time edit by the creator.
  *
- * Slug format: titleapp.ai/w/[slug]
- * Suite slug format: titleapp.ai/s/[suite-slug]
+ * Slug format: sociii.ai/w/[slug]
+ * Suite slug format: sociii.ai/s/[suite-slug]
  */
 
 "use strict";

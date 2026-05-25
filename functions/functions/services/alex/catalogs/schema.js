@@ -3,7 +3,7 @@
 /**
  * Universal Worker Catalog Schema
  *
- * Every TitleApp vertical follows this same structure.
+ * Every SOCIII vertical follows this same structure.
  * New verticals (aviation, healthcare, legal, etc.) are added as JSON files
  * that conform to this schema — no code changes to Alex.
  */

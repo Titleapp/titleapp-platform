@@ -83,7 +83,7 @@ function findCashLineItemCents(snapshot) {
     return name.startsWith("cash") || name.includes("bank account");
   });
   if (!cashLine) return null;
-  // valueCents can legitimately be 0 (e.g. Sean's TitleApp LLC has $0 cash).
+  // valueCents can legitimately be 0 (e.g. Sean's SOCIII, Inc. has $0 cash).
   return typeof cashLine.valueCents === "number" ? cashLine.valueCents : null;
 }
 
@@ -172,7 +172,7 @@ async function computeSummary({ tenantId }) {
   const burn30dCents = burn30.totalCents;
 
   // --- Avg monthly burn (last 12 months observed) ---
-  // Useful for tenants like TitleApp LLC whose 30D might be light but
+  // Useful for tenants like SOCIII, Inc. whose 30D might be light but
   // 12mo gives a realistic operating-burn picture.
   const avgMonthlyBurnCents = burn12mo.totalCents > 0
     ? Math.round(burn12mo.totalCents / 12) : 0;

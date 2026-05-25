@@ -24,7 +24,7 @@ const BRANDS = {
     // brand board, JPG references in apps/business/src/assets/sociii-brand/raw/).
     name: "SOCIII",
     domain: "sociii.ai",
-    legalEntity: "SOCIII Inc.",
+    legalEntity: "SOCIII, Inc.",
     tagline: "Collaborative Intelligence · Participation",
     strapline: "SOCIII is a platform where people create, share, and earn from AI workers.",
     supportEmail: "support@sociii.ai",
@@ -48,7 +48,7 @@ const BRANDS = {
   },
 };
 
-export const ACTIVE_BRAND = "titleapp";
+export const ACTIVE_BRAND = "sociii";
 
 export const brand = BRANDS[ACTIVE_BRAND];
 

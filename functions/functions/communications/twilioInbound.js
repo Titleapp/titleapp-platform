@@ -63,7 +63,7 @@ async function twilioInbound(req, res) {
 
     await logActivity("communication", `SMS opt-out from ${from}`, "info");
     res.set("Content-Type", "text/xml");
-    return res.send("<Response><Message>You have been unsubscribed from TitleApp SMS. Reply START to re-subscribe.</Message></Response>");
+    return res.send("<Response><Message>You have been unsubscribed from SOCIII SMS. Reply START to re-subscribe.</Message></Response>");
   }
 
   // ── START / OPT-IN ────────────────────────────────────────────
@@ -87,7 +87,7 @@ async function twilioInbound(req, res) {
 
     await logActivity("communication", `SMS opt-in from ${from}`, "info");
     res.set("Content-Type", "text/xml");
-    return res.send("<Response><Message>You have been re-subscribed to TitleApp SMS. Reply STOP to unsubscribe.</Message></Response>");
+    return res.send("<Response><Message>You have been re-subscribed to SOCIII SMS. Reply STOP to unsubscribe.</Message></Response>");
   }
 
   // ── SANDBOX REPLY ROUTING ─────────────────────────────────────

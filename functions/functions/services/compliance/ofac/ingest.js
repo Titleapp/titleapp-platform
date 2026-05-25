@@ -35,7 +35,7 @@ const ts = () => admin.firestore.FieldValue.serverTimestamp();
 // sanctionslistservice.ofac.treas.gov endpoint. The old URL now 302s
 // to here; we hit the new endpoint directly to avoid redirect issues.
 const SDN_XML_URL = "https://sanctionslistservice.ofac.treas.gov/api/publicationpreview/exports/sdn.xml";
-const USER_AGENT = "TitleApp Regulatory Compliance Service contact@titleapp.ai";
+const USER_AGENT = "SOCIII Regulatory Compliance Service contact@sociii.ai";
 
 // ═══════════════════════════════════════════════════════════════
 //  NORMALIZATION (shared with screen.js)

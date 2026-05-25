@@ -9,7 +9,7 @@ export default function SessionEndCTA({ style }) {
       ...style,
     }}>
       <div style={{ fontSize: 15, fontWeight: 700, color: "#1e293b", marginBottom: 4 }}>
-        Built on TitleApp
+        Built on SOCIII
       </div>
       <div style={{ fontSize: 13, color: "#64748b", marginBottom: 14 }}>
         Alex built this. You can build one too.

@@ -176,7 +176,7 @@ export default function Inventory() {
       rating: null,
       reviewCount: 0,
       creatorId: "titleapp-internal",
-      creatorName: "TitleApp",
+      creatorName: "SOCIII",
       cloneOf: null,
       raasConfigId: null,
       marketing: { landingPageCopy: null, linkedInPost: null, tiktokScript: null, googleAdsKeywords: null, emailSequence: null, generatedAt: null },

@@ -1,19 +1,19 @@
-# TitleApp — Company Knowledge Base
+# SOCIII — Company Knowledge Base
 ## For Alex (Investor Relations AI)
 
 ---
 
-## What TitleApp Is
+## What SOCIII Is
 
-TitleApp is a RAAS (Rules + AI-as-a-Service) marketplace for AI-powered Digital Workers serving regulated industries -- real estate, aviation, property management, government, financial services, health/EMS education, mortgage lending, and auto dealer. Every worker passes through a 4-tier rules stack (platform safety → industry regulations → company policies → subscriber preferences) before any output reaches a user. The result is compliance-native AI that regulated industries can actually deploy.
+SOCIII is a RAAS (Rules + AI-as-a-Service) marketplace for AI-powered Digital Workers serving regulated industries -- real estate, aviation, property management, government, financial services, health/EMS education, mortgage lending, and auto dealer. Every worker passes through a 4-tier rules stack (platform safety → industry regulations → company policies → subscriber preferences) before any output reaches a user. The result is compliance-native AI that regulated industries can actually deploy.
 
-TitleApp's Vault architecture -- where data transfer between Vaults is the transaction -- positions the platform as the infrastructure layer for the next generation of regulated AI. This includes serving as the intelligence backbone for emerging wearable + AI markets, where real-time compliance, audit trails, and rules-governed outputs are not optional.
+SOCIII's Vault architecture -- where data transfer between Vaults is the transaction -- positions the platform as the infrastructure layer for the next generation of regulated AI. This includes serving as the intelligence backbone for emerging wearable + AI markets, where real-time compliance, audit trails, and rules-governed outputs are not optional.
 
 ---
 
 ## The Origin Story
 
-TitleApp started as a blockchain-based land title verification system -- the idea that property ownership records should be immutable, portable, and verifiable. That led to Digital Title Certificates (DTCs) for vehicles, then aviation maintenance records, then professional credentials.
+SOCIII started as a blockchain-based land title verification system -- the idea that property ownership records should be immutable, portable, and verifiable. That led to Digital Title Certificates (DTCs) for vehicles, then aviation maintenance records, then professional credentials.
 
 The Custom GPT wave revealed the governance gap. Everyone could build AI tools, but nobody could constrain them. A real estate GPT could hallucinate property values. A medical GPT could give dangerous advice. There was no rules layer.
 
@@ -25,7 +25,7 @@ The pivot from "title verification" to "Digital Worker platform" happened when t
 
 ## Platform Architecture
 
-TitleApp has four pillars and three layers:
+SOCIII has four pillars and three layers:
 
 1. Door 1 (Dashboard): A React admin interface for visibility. Read-only view into what the AI has already done. This is not the primary interface -- it is the audit window.
 
@@ -50,7 +50,7 @@ Supporting infrastructure:
 
 The marketplace play: domain experts (not developers) build Digital Workers -- AI agents with custom rule packages. A real estate compliance expert builds a Digital Worker that enforces fair housing rules on every listing. A dealership F&I manager builds a Digital Worker that matches customers to financing products based on credit profiles.
 
-Creators set their price. TitleApp takes a 25% platform fee (75/25 split to creators). Every Digital Worker inherits the RAAS enforcement layer -- provenance, audit trail, compliance. This is the network effect: more creators mean more verticals mean more subscribers.
+Creators set their price. SOCIII takes a 25% platform fee (75/25 split to creators). Every Digital Worker inherits the RAAS enforcement layer -- provenance, audit trail, compliance. This is the network effect: more creators mean more verticals mean more subscribers.
 
 ---
 
@@ -58,7 +58,7 @@ Creators set their price. TitleApp takes a 25% platform fee (75/25 split to crea
 
 ## Current Scale
 
-TitleApp has 1,000+ Digital Workers across 12 industry suites. Vibe Coding Sandbox live at app.titleapp.ai/sandbox -- non-technical creators can build and publish a compliant Digital Worker in under one hour.
+SOCIII has 1,000+ Digital Workers across 12 industry suites. Vibe Coding Sandbox live at app.sociii.ai/sandbox -- non-technical creators can build and publish a compliant Digital Worker in under one hour.
 
 ## Current Verticals
 
@@ -72,7 +72,7 @@ Active verticals: Real Estate, Aviation, Government, Finance & Accounting, Healt
 
 4. Investment Analysis: Deal screening, risk assessment, portfolio monitoring, LP communications, and compliance-first analysis with evidence requirements.
 
-5. Investor Relations: Fundraise management, cap table, data room, investor pipeline, compliance tracking. This is the vertical powering TitleApp's own raise -- dogfooding the product.
+5. Investor Relations: Fundraise management, cap table, data room, investor pipeline, compliance tracking. This is the vertical powering SOCIII's own raise -- dogfooding the product.
 
 6. Property Management: Tenant management, lease administration, maintenance, rent collection, compliance, and financial reporting.
 
@@ -90,7 +90,7 @@ Sean Lee Combs (CEO): Product vision, platform architecture, go-to-market strate
 
 Kent Redwine (CFO): Finance, operations, fundraise execution. Over $20B in M&A experience. 19 years in Climate Tech. Kent manages the company's financial model, runway planning, and investor relations.
 
-Kim Ellen Bennett (GovTech & Real Estate Lead): Public sector strategy, government technology partnerships, and real estate vertical development. Kim leads TitleApp's approach to state DMV integrations, municipal record systems, and regulatory compliance in government contexts.
+Kim Ellen Bennett (GovTech & Real Estate Lead): Public sector strategy, government technology partnerships, and real estate vertical development. Kim leads SOCIII's approach to state DMV integrations, municipal record systems, and regulatory compliance in government contexts.
 
 Vishal Kumar (Frontend Engineer): 8 years experience. React architecture, UI/UX implementation, component library development. Built the admin dashboard, onboarding wizard, and chat interface.
 
@@ -106,15 +106,15 @@ Advisors:
 
 ## Competitive Landscape
 
-TitleApp sits at the intersection of several categories. The key framing: TitleApp is complementary to the large AI model providers, not competitive with them.
+SOCIII sits at the intersection of several categories. The key framing: SOCIII is complementary to the large AI model providers, not competitive with them.
 
-- Large AI model providers (Anthropic, OpenAI, Google): TitleApp sits on top of these models as the governance layer. They build intelligence. TitleApp builds the trust infrastructure that makes that intelligence safe to deploy in regulated environments. Model-agnostic by design.
-- Enterprise AI platforms (Palantir AIP, ServiceNow): Similar governance goals, but enterprise-only pricing and heavy integration requirements. TitleApp offers accessible pricing and self-serve onboarding.
+- Large AI model providers (Anthropic, OpenAI, Google): SOCIII sits on top of these models as the governance layer. They build intelligence. SOCIII builds the trust infrastructure that makes that intelligence safe to deploy in regulated environments. Model-agnostic by design.
+- Enterprise AI platforms (Palantir AIP, ServiceNow): Similar governance goals, but enterprise-only pricing and heavy integration requirements. SOCIII offers accessible pricing and self-serve onboarding.
 - Vertical SaaS (DealerSocket, Yardi, etc.): Domain-specific but not AI-native. Adding AI features as bolt-ons without governance.
-- AI agent frameworks (CrewAI, AutoGen): Developer tools for building agents. No governance, no compliance, no audit trail. TitleApp provides the compliance layer that makes agents safe to deploy.
+- AI agent frameworks (CrewAI, AutoGen): Developer tools for building agents. No governance, no compliance, no audit trail. SOCIII provides the compliance layer that makes agents safe to deploy.
 - Horizontal AI assistants (Microsoft Copilot, Glean): Broad capabilities but no deterministic rule enforcement or immutable audit trail.
 
-TitleApp's differentiation: cross-model enforcement (works with any AI model) + immutable audit trail + DIY builder for domain experts + accessible pricing + marketplace network effects + Document Control (version control, distribution, acknowledgment tracking connected directly to the AI governance layer -- replaces Content Locker, Comply365, and LMS acknowledgment tools as a platform-included capability, not a bolt-on).
+SOCIII's differentiation: cross-model enforcement (works with any AI model) + immutable audit trail + DIY builder for domain experts + accessible pricing + marketplace network effects + Document Control (version control, distribution, acknowledgment tracking connected directly to the AI governance layer -- replaces Content Locker, Comply365, and LMS acknowledgment tools as a platform-included capability, not a bolt-on).
 
 ---
 
@@ -138,13 +138,13 @@ Bottom-up math across 8 segments:
 
 ## Revenue Model
 
-TitleApp generates revenue through four streams:
+SOCIII generates revenue through four streams:
 
 1. Worker Subscriptions: Individual Digital Workers priced at Free, $29/mo, $49/mo, or $79/mo. Volume discounts at 3+ workers (10% off), 5-10 workers (20% off), 10+ workers (30% off). Annual pricing includes 2 months free. Alex Chief of Staff is free with 3 or more active subscriptions.
 
 2. Tech Fees (vertical-specific): Auto dealers pay $250/transaction or 2% of deal value. Real estate sales pay $500/transaction or 1%. Property management pays $250/transaction or 1%. Mortgage and lending verticals are subscription-only with no tech fee.
 
-3. Digital Worker Marketplace: Creators build and sell Digital Workers (rule packages + workflows) on the TitleApp marketplace. TitleApp takes a 25% platform fee (75/25 split to creators). Creator License is $49/year (free until July 1, 2026 with code DEV100). $2 Identity Check always required. This is the network effect -- more creators mean more verticals mean more subscribers.
+3. Digital Worker Marketplace: Creators build and sell Digital Workers (rule packages + workflows) on the SOCIII marketplace. SOCIII takes a 25% platform fee (75/25 split to creators). Creator License is $49/year (free until July 1, 2026 with code DEV100). $2 Identity Check always required. This is the network effect -- more creators mean more verticals mean more subscribers.
 
 4. AI Usage Fees: Heavy AI usage (large document analysis, complex multi-step workflows, high-volume automation) incurs usage-based fees on top of the base subscription.
 
@@ -164,16 +164,16 @@ $2.5M raise, Post-Money SAFE, $15M valuation cap, 20% discount. Private placemen
 
 Monthly burn: $38,000. Runway at zero revenue: 60 months. Cash flow positive target: Q3 2027 (base) / Q1 2027 (best) / Q4 2026 (stretch).
 
-Investor inquiries: sean@titleapp.ai.
+Investor inquiries: sean@sociii.ai.
 
 ---
 
 ## Investor Documents
 
 Three documents are available in the data room:
-1. TitleApp Executive Summary (PDF) -- public access, available to all visitors
-2. TitleApp Pitch Deck (PPTX) -- available to prospects who have shared their contact info
-3. TitleApp Business Plan, February 2026 (DOCX) -- available to verified investors
+1. SOCIII Executive Summary (PDF) -- public access, available to all visitors
+2. SOCIII Pitch Deck (PPTX) -- available to prospects who have shared their contact info
+3. SOCIII Business Plan, February 2026 (DOCX) -- available to verified investors
 
 Alex can reference these documents and offer to share them when relevant. The executive summary can be shared freely. The pitch deck and business plan require the investor to create an account first.
 
@@ -185,7 +185,7 @@ Document Engine: Any Digital Worker can generate PDF, DOCX, XLSX, and PPTX docum
 
 Public API v1: Comprehensive REST API covering all verticals, webhooks, and universal inbound. Authentication via API key (X-API-Key header). Rate limiting at 100 requests/hour on free tier. Health check and documentation endpoints available without auth.
 
-Worker #1 Governance Pipeline: Every new Digital Worker passes through a 7-stage pipeline (intake interview, regulatory research, compliance brief, rules library editor, pre-publish check, publish flow, admin review) before going live. No exceptions. This is the trust infrastructure that differentiates TitleApp from other AI agent platforms.
+Worker #1 Governance Pipeline: Every new Digital Worker passes through a 7-stage pipeline (intake interview, regulatory research, compliance brief, rules library editor, pre-publish check, publish flow, admin review) before going live. No exceptions. This is the trust infrastructure that differentiates SOCIII from other AI agent platforms.
 
 Student Pilot Program: Free Pilot Pro ($29/mo value) for enrolled student pilots. Annual re-verification with student ID upload. Graduates transition to paid plans with a 3-month courtesy period.
 

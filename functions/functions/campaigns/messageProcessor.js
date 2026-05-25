@@ -54,7 +54,7 @@ async function processMessageQueue() {
         const { sendViaSendGrid } = require("../services/marketingService/emailNotify");
         await sendViaSendGrid({
           to: msg.to,
-          subject: msg.subject || "TitleApp",
+          subject: msg.subject || "SOCIII",
           htmlBody: msg.body || undefined,
           textBody: msg.textBody || undefined,
         });

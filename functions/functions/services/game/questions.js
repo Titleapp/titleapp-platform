@@ -71,7 +71,7 @@ async function generateQuestions({ gameConfig, rulePackContent }) {
   const numQuestions = Math.min(typeof gameConfig.rounds === "number" ? gameConfig.rounds : 10, 100);
   const content = rulePackContent || loadRulePack(vertical);
 
-  const systemPrompt = `You are TitleApp's question generator for regulated game workers. Generate exactly ${numQuestions} multiple-choice questions for the "${examScope}" exam scope in the "${vertical}" vertical.
+  const systemPrompt = `You are SOCIII's question generator for regulated game workers. Generate exactly ${numQuestions} multiple-choice questions for the "${examScope}" exam scope in the "${vertical}" vertical.
 
 Each question must:
 - Be derived from the rule pack content provided, not from general knowledge

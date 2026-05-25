@@ -136,7 +136,7 @@ async function createShare(input) {
     ok: true,
     shareId,
     expiresAt: expiresAt.toISOString(),
-    accessUrl: `https://app.titleapp.ai/fundraise/${shareId}`,
+    accessUrl: `https://app.sociii.ai/fundraise/${shareId}`,
   };
 }
 

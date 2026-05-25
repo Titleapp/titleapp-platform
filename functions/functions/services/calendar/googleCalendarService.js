@@ -4,9 +4,9 @@
  * googleCalendarService.js — Calendar read/write operations
  *
  * Higher-level helpers on top of getAuthenticatedCalendarClient. Every event
- * created via TitleApp embeds a metadata block in the event description:
+ * created via SOCIII embeds a metadata block in the event description:
  *
- *   --- TitleApp metadata ---
+ *   --- SOCIII metadata ---
  *   worker: <slug>
  *   project: <projectId>
  *   source: <chat|worker-auto|user>
@@ -23,7 +23,7 @@
 
 const { getAuthenticatedCalendarClient } = require("./googleCalendarAuth");
 
-const METADATA_START = "--- TitleApp metadata ---";
+const METADATA_START = "--- SOCIII metadata ---";
 const METADATA_END = "---";
 
 function buildMetadataBlock({ workerSlug, projectId, source }) {

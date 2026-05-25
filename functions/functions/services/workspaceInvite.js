@@ -14,7 +14,7 @@
 
 const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY || "";
 
-const APP_BASE_URL = "https://app.titleapp.ai";
+const APP_BASE_URL = "https://app.sociii.ai";
 
 function escapeHtml(s) {
   return String(s || "")
@@ -41,7 +41,7 @@ function buildHtml({ inviterName, workspaceName, role, token }) {
 <html>
   <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color:#111827; max-width:560px; margin:0 auto; padding:24px;">
     <p>Hi,</p>
-    <p><strong>${i}</strong> has invited you to join <strong>${w}</strong> on TitleApp as a <strong>${r}</strong>.</p>
+    <p><strong>${i}</strong> has invited you to join <strong>${w}</strong> on SOCIII as a <strong>${r}</strong>.</p>
     <p style="margin: 24px 0;">
       <a href="${url}"
          style="display:inline-block; padding:12px 24px; background:#7c3aed; color:#ffffff; text-decoration:none; border-radius:8px; font-weight:600; font-size:15px;">
@@ -52,7 +52,7 @@ function buildHtml({ inviterName, workspaceName, role, token }) {
       <a href="${url}" style="color:#7c3aed;">${url}</a>
     </p>
     <p style="color:#6b7280; font-size:14px;">This invitation expires in 14 days.</p>
-    <p style="margin-top: 32px; color:#6b7280; font-size:14px;">— Alex<br/>TitleApp</p>
+    <p style="margin-top: 32px; color:#6b7280; font-size:14px;">— Alex<br/>SOCIII</p>
   </body>
 </html>`;
 }
@@ -85,8 +85,8 @@ async function sendWorkspaceInviteEmail({ to, inviterName, workspaceName, role, 
     },
     body: JSON.stringify({
       personalizations: [{ to: [{ email: to }] }],
-      from: { email: "alex@titleapp.ai", name: "Alex — TitleApp" },
-      reply_to: { email: "support@titleapp.ai", name: "TitleApp Support" },
+      from: { email: "alex@sociii.ai", name: "Alex — SOCIII" },
+      reply_to: { email: "support@sociii.ai", name: "SOCIII Support" },
       subject,
       content: [{ type: "text/html", value: htmlBody }],
     }),

@@ -67,7 +67,7 @@
       "temporalType": "phase_bound",
       "valueBucket": ["make_money"],
       "tier1Compliance": [
-        "All team member identities must be verified through TitleApp before any Web3 worker publishes content.",
+        "All team member identities must be verified through SOCIII before any Web3 worker publishes content.",
         "Never use 'investment', 'securities', 'returns', 'profit', or 'yield' when describing NFTs or tokens. Use 'digital collectible', 'trading card', 'utility token', or 'membership pass' exclusively.",
         "Securities disclaimer required on every output: This worker does not provide investment advice. Tokens and NFTs are utility items, not securities.",
         "Never guarantee token value appreciation, floor price maintenance, or any financial outcome.",
@@ -105,7 +105,7 @@
       "temporalType": "phase_bound",
       "valueBucket": ["make_money"],
       "tier1Compliance": [
-        "All team member identities must be verified through TitleApp before any Web3 worker publishes content.",
+        "All team member identities must be verified through SOCIII before any Web3 worker publishes content.",
         "Never use 'investment', 'securities', 'returns', 'profit', or 'yield' when describing NFTs or tokens. Use 'digital collectible', 'trading card', 'utility token', or 'membership pass' exclusively.",
         "Securities disclaimer required on every output: This worker does not provide investment advice. Tokens and NFTs are utility items, not securities.",
         "Never guarantee token value appreciation, floor price maintenance, or any financial outcome.",
@@ -144,7 +144,7 @@
       "temporalType": "always_on",
       "valueBucket": ["stay_compliant"],
       "tier1Compliance": [
-        "All team member identities must be verified through TitleApp before any Web3 worker publishes content.",
+        "All team member identities must be verified through SOCIII before any Web3 worker publishes content.",
         "Never use 'investment', 'securities', 'returns', 'profit', or 'yield' when describing NFTs or tokens. Use 'digital collectible', 'trading card', 'utility token', or 'membership pass' exclusively.",
         "Securities disclaimer required on every output: This worker does not provide investment advice. Tokens and NFTs are utility items, not securities.",
         "Never guarantee token value appreciation, floor price maintenance, or any financial outcome.",
@@ -184,7 +184,7 @@
       "temporalType": "phase_bound",
       "valueBucket": ["stay_compliant"],
       "tier1Compliance": [
-        "All team member identities must be verified through TitleApp before any Web3 worker publishes content.",
+        "All team member identities must be verified through SOCIII before any Web3 worker publishes content.",
         "Never use 'investment', 'securities', 'returns', 'profit', or 'yield' when describing NFTs or tokens. Use 'digital collectible', 'trading card', 'utility token', or 'membership pass' exclusively.",
         "Securities disclaimer required on every output: This worker does not provide investment advice. Tokens and NFTs are utility items, not securities.",
         "Never guarantee token value appreciation, floor price maintenance, or any financial outcome.",
@@ -224,7 +224,7 @@
       "temporalType": "always_on",
       "valueBucket": ["stay_compliant"],
       "tier1Compliance": [
-        "All team member identities must be verified through TitleApp before any Web3 worker publishes content.",
+        "All team member identities must be verified through SOCIII before any Web3 worker publishes content.",
         "Never use 'investment', 'securities', 'returns', 'profit', or 'yield' when describing NFTs or tokens. Use 'digital collectible', 'trading card', 'utility token', or 'membership pass' exclusively.",
         "Securities disclaimer required on every output: This worker does not provide investment advice. Tokens and NFTs are utility items, not securities.",
         "Never guarantee token value appreciation, floor price maintenance, or any financial outcome.",
@@ -262,7 +262,7 @@
       "temporalType": "always_on",
       "valueBucket": ["stay_compliant"],
       "tier1Compliance": [
-        "All team member identities must be verified through TitleApp before any Web3 worker publishes content.",
+        "All team member identities must be verified through SOCIII before any Web3 worker publishes content.",
         "Never use 'investment', 'securities', 'returns', 'profit', or 'yield' when describing NFTs or tokens. Use 'digital collectible', 'trading card', 'utility token', or 'membership pass' exclusively.",
         "Securities disclaimer required on every output: This worker does not provide investment advice. Tokens and NFTs are utility items, not securities.",
         "Never guarantee token value appreciation, floor price maintenance, or any financial outcome.",
@@ -300,7 +300,7 @@
       "temporalType": "always_on",
       "valueBucket": ["save_money"],
       "tier1Compliance": [
-        "All team member identities must be verified through TitleApp before any Web3 worker publishes content.",
+        "All team member identities must be verified through SOCIII before any Web3 worker publishes content.",
         "Never use 'investment', 'securities', 'returns', 'profit', or 'yield' when describing NFTs or tokens. Use 'digital collectible', 'trading card', 'utility token', or 'membership pass' exclusively.",
         "Securities disclaimer required on every output: This worker does not provide investment advice. Tokens and NFTs are utility items, not securities.",
         "Never guarantee token value appreciation, floor price maintenance, or any financial outcome.",
@@ -341,7 +341,7 @@
       "temporalType": "always_on",
       "valueBucket": ["save_money"],
       "tier1Compliance": [
-        "All team member identities must be verified through TitleApp before any Web3 worker publishes content.",
+        "All team member identities must be verified through SOCIII before any Web3 worker publishes content.",
         "Never use 'investment', 'securities', 'returns', 'profit', or 'yield' when describing NFTs or tokens. Use 'digital collectible', 'trading card', 'utility token', or 'membership pass' exclusively.",
         "Securities disclaimer required on every output: This worker does not provide investment advice. Tokens and NFTs are utility items, not securities.",
         "Never guarantee token value appreciation, floor price maintenance, or any financial outcome.",
@@ -383,7 +383,7 @@
       "temporalType": "always_on",
       "valueBucket": ["save_money"],
       "tier1Compliance": [
-        "All team member identities must be verified through TitleApp before any Web3 worker publishes content.",
+        "All team member identities must be verified through SOCIII before any Web3 worker publishes content.",
         "Never use 'investment', 'securities', 'returns', 'profit', or 'yield' when describing NFTs or tokens. Use 'digital collectible', 'trading card', 'utility token', or 'membership pass' exclusively.",
         "Securities disclaimer required on every output: This worker does not provide investment advice. Tokens and NFTs are utility items, not securities.",
         "Never guarantee token value appreciation, floor price maintenance, or any financial outcome.",
@@ -422,7 +422,7 @@
       "temporalType": "always_on",
       "valueBucket": ["make_money"],
       "tier1Compliance": [
-        "All team member identities must be verified through TitleApp before any Web3 worker publishes content.",
+        "All team member identities must be verified through SOCIII before any Web3 worker publishes content.",
         "Never use 'investment', 'securities', 'returns', 'profit', or 'yield' when describing NFTs or tokens. Use 'digital collectible', 'trading card', 'utility token', or 'membership pass' exclusively.",
         "Securities disclaimer required on every output: This worker does not provide investment advice. Tokens and NFTs are utility items, not securities.",
         "Never guarantee token value appreciation, floor price maintenance, or any financial outcome.",
@@ -460,7 +460,7 @@
       "temporalType": "always_on",
       "valueBucket": ["stay_compliant"],
       "tier1Compliance": [
-        "All team member identities must be verified through TitleApp before any Web3 worker publishes content.",
+        "All team member identities must be verified through SOCIII before any Web3 worker publishes content.",
         "Never use 'investment', 'securities', 'returns', 'profit', or 'yield' when describing NFTs or tokens. Use 'digital collectible', 'trading card', 'utility token', or 'membership pass' exclusively.",
         "Securities disclaimer required on every output: This worker does not provide investment advice. Tokens and NFTs are utility items, not securities.",
         "Never guarantee token value appreciation, floor price maintenance, or any financial outcome.",
@@ -490,12 +490,12 @@
       "type": "standalone",
       "pricing": { "monthly": 49 },
       "status": "live",
-      "capabilitySummary": "Generates production-ready token contract code for Solana SPL (Anchor + Metaplex) and EVM ERC-20 (OpenZeppelin v5). Takes operator parameters — name, symbol, supply, decimals, mint/freeze authority, burn mechanism, vesting schedule, metadata URI, chain — and outputs deployment-ready code with scripts, parameter documentation, and pre-deployment checklist. Recommended mint platforms referenced in output. TitleApp generates the code — operator deploys elsewhere.",
+      "capabilitySummary": "Generates production-ready token contract code for Solana SPL (Anchor + Metaplex) and EVM ERC-20 (OpenZeppelin v5). Takes operator parameters — name, symbol, supply, decimals, mint/freeze authority, burn mechanism, vesting schedule, metadata URI, chain — and outputs deployment-ready code with scripts, parameter documentation, and pre-deployment checklist. Recommended mint platforms referenced in output. SOCIII generates the code — operator deploys elsewhere.",
       "tags": ["token", "smart-contract", "solana", "erc-20", "code-generation", "deployment"],
       "temporalType": "phase_bound",
       "valueBucket": ["make_money"],
       "tier1Compliance": [
-        "All team member identities must be verified through TitleApp before any Web3 worker publishes content.",
+        "All team member identities must be verified through SOCIII before any Web3 worker publishes content.",
         "Never use 'investment', 'securities', 'returns', 'profit', or 'yield' when describing NFTs or tokens. Use 'digital collectible', 'trading card', 'utility token', or 'membership pass' exclusively.",
         "Securities disclaimer required on every output: This worker does not provide investment advice. Tokens and NFTs are utility items, not securities.",
         "Never guarantee token value appreciation, floor price maintenance, or any financial outcome.",
@@ -506,7 +506,7 @@
         "REFUSE to generate tax or fee mechanisms above 10% on any transfer — honeypot indicator.",
         "REFUSE to generate pause functions controlled by a single key with no timelock or multisig.",
         "REFUSE to generate any code that would misrepresent the token's properties to buyers.",
-        "ALWAYS include standard security disclaimer: code is provided for review, not guaranteed secure, review by qualified developer required before deployment, TitleApp is not responsible for deployed contracts.",
+        "ALWAYS include standard security disclaimer: code is provided for review, not guaranteed secure, review by qualified developer required before deployment, SOCIII is not responsible for deployed contracts.",
         "ALWAYS recommend running W3-013 Token Contract Auditor before deploying.",
         "ALWAYS recommend using W3-003 Regulatory Framing Worker before public launch."
       ],
@@ -538,7 +538,7 @@
       "temporalType": "always_on",
       "valueBucket": ["stay_compliant"],
       "tier1Compliance": [
-        "All team member identities must be verified through TitleApp before any Web3 worker publishes content.",
+        "All team member identities must be verified through SOCIII before any Web3 worker publishes content.",
         "Never use 'investment', 'securities', 'returns', 'profit', or 'yield' when describing NFTs or tokens. Use 'digital collectible', 'trading card', 'utility token', or 'membership pass' exclusively.",
         "Securities disclaimer required on every output: This worker does not provide investment advice. Tokens and NFTs are utility items, not securities.",
         "Never guarantee token value appreciation, floor price maintenance, or any financial outcome.",

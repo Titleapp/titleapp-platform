@@ -47,17 +47,17 @@ async function sendInviteEmail({ to, projectName, inviteUrl }) {
   const htmlBody = `
 <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 560px; margin: 0 auto; padding: 32px 24px;">
   <div style="background: #1e1b4b; padding: 20px 24px; border-radius: 8px 8px 0 0;">
-    <span style="color: #ffffff; font-size: 18px; font-weight: 600;">TitleApp</span>
+    <span style="color: #ffffff; font-size: 18px; font-weight: 600;">SOCIII</span>
   </div>
   <div style="background: #ffffff; padding: 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
-    <p style="margin: 0 0 16px; color: #1f2937; font-size: 15px;">You have been invited to join the team for <strong>${projectName}</strong> on TitleApp.</p>
+    <p style="margin: 0 0 16px; color: #1f2937; font-size: 15px;">You have been invited to join the team for <strong>${projectName}</strong> on SOCIII.</p>
     <p style="margin: 0 0 16px; color: #1f2937; font-size: 15px;">As part of the Web3 Suite onboarding, all team members must complete identity verification.</p>
     <div style="text-align: center; margin: 24px 0;">
       <a href="${inviteUrl}" style="background: #4f46e5; color: #ffffff; padding: 12px 28px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 15px;">Accept Invitation</a>
     </div>
     <p style="margin: 0; color: #6b7280; font-size: 13px;">This link expires in 7 days.</p>
   </div>
-  <p style="text-align: center; color: #9ca3af; font-size: 12px; margin-top: 16px;">TitleApp — Digital Workers for Web3</p>
+  <p style="text-align: center; color: #9ca3af; font-size: 12px; margin-top: 16px;">SOCIII — Digital Workers for Web3</p>
 </div>`.trim();
 
   const res = await fetch("https://api.sendgrid.com/v3/mail/send", {
@@ -68,9 +68,9 @@ async function sendInviteEmail({ to, projectName, inviteUrl }) {
     },
     body: JSON.stringify({
       personalizations: [{ to: [{ email: to }] }],
-      from: { email: "alex@titleapp.ai", name: "Alex — TitleApp" },
-      reply_to: { email: "support@titleapp.ai", name: "TitleApp Support" },
-      subject: `You're invited to ${projectName} on TitleApp`,
+      from: { email: "alex@sociii.ai", name: "Alex — SOCIII" },
+      reply_to: { email: "support@sociii.ai", name: "SOCIII Support" },
+      subject: `You're invited to ${projectName} on SOCIII`,
       content: [{ type: "text/html", value: htmlBody }],
     }),
   });
@@ -121,7 +121,7 @@ async function handleStartAttestation(req, res, { body, jsonError }) {
   return res.json({
     ok: true,
     projectId,
-    attestationUrl: `https://titleapp.ai/web3/attest/${projectId}`,
+    attestationUrl: `https://sociii.ai/web3/attest/${projectId}`,
   });
 }
 
@@ -257,7 +257,7 @@ async function handleInviteTeamMember(req, res, { body, user, jsonError }) {
   }, { merge: true });
 
   // Send invite email
-  const inviteUrl = `https://titleapp.ai/web3/join/${projectId}?invite=${inviteId}`;
+  const inviteUrl = `https://sociii.ai/web3/join/${projectId}?invite=${inviteId}`;
   await sendInviteEmail({
     to: normalizedEmail,
     projectName: project.projectName,

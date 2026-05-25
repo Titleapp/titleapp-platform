@@ -1,6 +1,6 @@
 /**
  * sendgridInbound.js — Inbound Parse webhook from SendGrid.
- * Handles incoming emails to @incoming.titleapp.ai
+ * Handles incoming emails to @incoming.sociii.ai
  */
 
 const admin = require("firebase-admin");

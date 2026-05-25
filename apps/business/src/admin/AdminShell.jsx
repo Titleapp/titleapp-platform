@@ -282,7 +282,7 @@ export default function AdminCommandCenter({ onBackToHub }) {
             <path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
           </svg>
         </button>
-        <span className="ac-topbar-title">TitleApp Admin</span>
+        <span className="ac-topbar-title">SOCIII Admin</span>
       </div>
 
       {/* Backdrop */}
@@ -297,9 +297,9 @@ export default function AdminCommandCenter({ onBackToHub }) {
       <aside className={`ac-sidebar ${sidebarOpen ? "ac-sidebar-open" : ""}`} style={{ width: acSidebarWidth + "px", minWidth: acSidebarWidth + "px" }}>
         <div className="ac-sidebar-header">
           <div className="ac-brand">
-            <div className="ac-brand-mark">T</div>
+            <div className="ac-brand-mark">S</div>
             <div>
-              <div className="ac-brand-name">TitleApp</div>
+              <div className="ac-brand-name">SOCIII</div>
               <div className="ac-brand-sub">Command Center</div>
             </div>
           </div>

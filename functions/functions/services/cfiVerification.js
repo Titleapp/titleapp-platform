@@ -47,8 +47,8 @@ async function sendEmail({ to, subject, htmlBody, textBody }) {
     },
     body: JSON.stringify({
       personalizations: [{ to: [{ email: to }] }],
-      from: { email: "alex@titleapp.ai", name: "Alex — TitleApp" },
-      reply_to: { email: "sean@titleapp.ai", name: "Sean Combs" },
+      from: { email: "alex@sociii.ai", name: "Alex — SOCIII" },
+      reply_to: { email: "sean@sociii.ai", name: "Sean Combs" },
       subject,
       content: [
         ...(textBody ? [{ type: "text/plain", value: textBody }] : []),
@@ -66,13 +66,13 @@ function emailTemplate(firstName, bodyHtml) {
   return `
 <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
   <div style="margin-bottom: 32px;">
-    <span style="font-size: 20px; font-weight: 700; color: #7c3aed;">TitleApp</span>
+    <span style="font-size: 20px; font-weight: 700; color: #7c3aed;">SOCIII</span>
   </div>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">Hi ${firstName},</p>
   ${bodyHtml}
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">— Alex</p>
   <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
-    <p style="font-size: 13px; color: #94a3b8;">TitleApp LLC | Start Free. 60-Day Money Back. Your Data Is Always Yours.</p>
+    <p style="font-size: 13px; color: #94a3b8;">SOCIII, Inc. | Start Free. 60-Day Money Back. Your Data Is Always Yours.</p>
   </div>
 </div>`;
 }
@@ -96,7 +96,7 @@ async function checkFaaCert(certNumber) {
     fn: async () => {
       const r = await fetch(url, {
         method: "GET",
-        headers: { "User-Agent": "TitleApp-Verification/1.0" },
+        headers: { "User-Agent": "SOCIII-Verification/1.0" },
       });
       if (!r.ok) throw new Error(`FAA lookup returned ${r.status}`);
       return r.text();

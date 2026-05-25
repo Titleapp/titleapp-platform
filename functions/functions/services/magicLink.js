@@ -41,8 +41,8 @@ async function sendEmail({ to, subject, htmlBody }) {
     },
     body: JSON.stringify({
       personalizations: [{ to: [{ email: to }] }],
-      from: { email: "alex@titleapp.ai", name: "TitleApp" },
-      reply_to: { email: "support@titleapp.ai", name: "TitleApp Support" },
+      from: { email: "alex@sociii.ai", name: "SOCIII" },
+      reply_to: { email: "support@sociii.ai", name: "SOCIII Support" },
       subject,
       content: [{ type: "text/html", value: htmlBody }],
     }),
@@ -114,7 +114,7 @@ async function sendMagicLink(req, res) {
   });
 
   // Build magic link URL
-  const baseUrl = "https://app.titleapp.ai";
+  const baseUrl = "https://app.sociii.ai";
   const magicUrl = `${baseUrl}/auth/magic?token=${token}&worker=${workerSlug || workerId}`;
 
   // Send email
@@ -125,7 +125,7 @@ async function sendMagicLink(req, res) {
     htmlBody: `
 <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
   <div style="margin-bottom: 32px;">
-    <span style="font-size: 20px; font-weight: 700; color: #7c3aed;">TitleApp</span>
+    <span style="font-size: 20px; font-weight: 700; color: #7c3aed;">SOCIII</span>
   </div>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">
     Tap the button below to access <strong>${displayName}</strong>${creatorName ? ` from ${creatorName}` : ""}.
@@ -142,7 +142,7 @@ async function sendMagicLink(req, res) {
     If you didn't request this, you can safely ignore this email.
   </p>
   <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
-    <p style="font-size: 13px; color: #94a3b8;">TitleApp LLC | Your Data Is Always Yours.</p>
+    <p style="font-size: 13px; color: #94a3b8;">SOCIII, Inc. | Your Data Is Always Yours.</p>
   </div>
 </div>`,
   });
@@ -268,9 +268,28 @@ async function verifyMagicLink(req, res) {
     }
   }
 
-  // Start trial on the worker
-  const { startTrial } = require("./workerTrial");
-  const trialResult = await startTrial(uid, linkData.workerId);
+  // Start trial on the worker (skip for role-scoped magic links — e.g. IR investor
+  // invites carry role + fundraiseId but no workerId).
+  let trialResult = null;
+  if (linkData.workerId) {
+    const { startTrial } = require("./workerTrial");
+    trialResult = await startTrial(uid, linkData.workerId);
+  }
+
+  // IR investor magic link: stamp the Firebase Auth uid onto the investor record
+  // so downstream /v1/ir:investor:step calls can authenticate via Stripe Identity.
+  if (linkData.role === "investor" && linkData.fundraiseId && linkData.investorId) {
+    try {
+      await db.collection("fundraises").doc(linkData.fundraiseId)
+        .collection("investors").doc(linkData.investorId).set({
+          uid,
+          magicLinkVerifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+          updated_at: admin.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true });
+    } catch (e) {
+      console.error("[magic-link:verify] failed to stamp uid on investor record:", e.message);
+    }
+  }
 
   // Transfer guest subscriptions to real UID
   const guestId = req.body.guestId;

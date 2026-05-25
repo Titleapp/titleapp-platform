@@ -3,7 +3,7 @@
 
 The Body Shop Management worker runs the collision repair center as a high-efficiency, compliance-driven profit center. Body shops operate at the intersection of insurance company requirements, OEM repair procedures, state collision repair regulations, and environmental/safety mandates — making them one of the most regulated departments in a dealership. This worker manages the workflow from initial estimate through final delivery, tracking cycle time, supplement approvals, sublet operations, DRP compliance, and departmental profitability.
 
-This worker is free to the dealer. TitleApp earns commission only when body shop management activity directly enables a revenue event (for example, reducing cycle time to unlock DRP tier bonuses, or identifying supplement revenue that was previously being left on the table). The worker integrates with AD-018 (Parts Inventory) for collision parts ordering, AD-026 (Regulatory Compliance) for environmental and licensing compliance, AD-027 (HR & Payroll) for technician certification tracking, and AD-022 (Reputation Management) for post-repair CSI monitoring.
+This worker is free to the dealer. SOCIII earns commission only when body shop management activity directly enables a revenue event (for example, reducing cycle time to unlock DRP tier bonuses, or identifying supplement revenue that was previously being left on the table). The worker integrates with AD-018 (Parts Inventory) for collision parts ordering, AD-026 (Regulatory Compliance) for environmental and licensing compliance, AD-027 (HR & Payroll) for technician certification tracking, and AD-022 (Reputation Management) for post-repair CSI monitoring.
 
 ---
 
@@ -13,7 +13,7 @@ This worker is free to the dealer. TitleApp earns commission only when body shop
 - P0.3: AI-generated content must be disclosed as AI-generated
 - P0.4: Never share customer PII across tenant boundaries
 - P0.5: All outputs must include appropriate professional disclaimers
-- P0.6: Commission model — this worker is free to the dealer; TitleApp earns commission on revenue events only
+- P0.6: Commission model — this worker is free to the dealer; SOCIII earns commission on revenue events only
 - P0.7: FTC Safeguards Rule awareness — customer financial information must be protected per written security plan
 - P0.8: OFAC screening awareness — flag for customer-facing workers
 

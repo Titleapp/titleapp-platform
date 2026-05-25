@@ -37,9 +37,9 @@ function generateSpecPdf(spec, creatorName) {
     // --- Header bar ---
     doc.rect(0, 0, pageW, 48).fill(COLORS.purple);
     doc.font("Helvetica-Bold").fontSize(16).fillColor(COLORS.white)
-      .text("TitleApp", marginL, 14, { width: contentW / 2 });
+      .text("SOCIII", marginL, 14, { width: contentW / 2 });
     doc.font("Helvetica").fontSize(9).fillColor(COLORS.white)
-      .text("titleapp.ai", marginL + contentW / 2, 18, { width: contentW / 2, align: "right" });
+      .text("sociii.ai", marginL + contentW / 2, 18, { width: contentW / 2, align: "right" });
 
     let y = 68;
 
@@ -145,11 +145,11 @@ function generateSpecPdf(spec, creatorName) {
     // --- Footer ---
     doc.font("Helvetica").fontSize(7).fillColor(COLORS.mutedGray)
       .text(
-        "AI-generated spec — human review recommended. This document was produced by TitleApp and may contain inaccuracies.",
+        "AI-generated spec — human review recommended. This document was produced by SOCIII and may contain inaccuracies.",
         marginL, 752, { width: contentW, align: "center" }
       );
     if (creatorName) {
-      doc.text(`Created by ${creatorName} on titleapp.ai`, marginL, 762, { width: contentW, align: "center" });
+      doc.text(`Created by ${creatorName} on sociii.ai`, marginL, 762, { width: contentW, align: "center" });
     }
 
     doc.end();

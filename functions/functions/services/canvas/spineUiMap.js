@@ -22,7 +22,7 @@
 const UI_MAPS = {
   "platform-accounting": `WORKER UI MAP — Accounting section (what the user can actually see on the right):
 
-Top: workspace pill ("TitleApp AI") + a persistent "Setup · N of 6 complete" checklist banner with these steps (each opens a tab):
+Top: workspace pill ("SOCIII AI") + a persistent "Setup · N of 6 complete" checklist banner with these steps (each opens a tab):
   1. Connect at least one bank account → Connected Accounts tab
   2. Pick a Chart of Accounts template → Chart of Accounts tab
   3. Categorize your first 30 transactions → Transactions tab
@@ -59,7 +59,7 @@ There is NO orange demo banner on this worker. Do not reference one.`,
 
   "platform-contacts": `WORKER UI MAP — Contacts section (custom UI):
 
-Top: workspace pill ("TitleApp AI"). Workspace contacts are isolated from personal contacts.
+Top: workspace pill ("SOCIII AI"). Workspace contacts are isolated from personal contacts.
 
 Search bar + four tabs: All | By Worker | Segments | Recent.
 

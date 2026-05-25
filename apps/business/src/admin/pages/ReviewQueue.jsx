@@ -236,7 +236,7 @@ export default function ReviewQueue() {
                   </div>
                 ))}
                 <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 8 }}>
-                  Per Section 9: TitleApp will not build workers that directly compete with creator-built workers in the same vertical and use case.
+                  Per Section 9: SOCIII will not build workers that directly compete with creator-built workers in the same vertical and use case.
                 </div>
               </div>
             )}

@@ -530,6 +530,26 @@ async function handleWebhookEvent({ event }) {
         action: "all_signed",
         details: { finalHash, signerCount: signHashes.length },
       });
+
+      // Role-based post-processing. The IR flow stamps role=investor in the
+      // signature request metadata when sendSignaturePacket is used; route the
+      // executed PDF to the investor pipeline (Vault write, status update,
+      // confirmation email).
+      try {
+        const role = refreshed.metadata?.role || null;
+        if (role === "investor") {
+          const investorFlow = require("../ir/investorFlow");
+          await investorFlow.onSignaturePacketSigned({
+            requestId,
+            hellosignRequestId: refreshed.hellosignRequestId,
+            metadata: refreshed.metadata || {},
+            finalHash,
+          });
+        }
+      } catch (postErr) {
+        console.error("[signatureService] role post-processing failed:", postErr);
+        // Do not throw — the signature itself succeeded; downstream retry can pick this up.
+      }
       break;
     }
 
@@ -580,6 +600,188 @@ async function handleWebhookEvent({ event }) {
   }
 }
 
+/**
+ * sendSignaturePacket — role-based template signing for SOCIII workflows.
+ *
+ * Looks up the template ID from a role-keyed env var, calls Dropbox Sign's
+ * send_with_template endpoint, then persists a signatureRequest record so
+ * the existing /signatures:webhook handler can resolve the signed PDF and
+ * fire downstream side effects (Vault write, etc.).
+ *
+ * @param {object} input
+ * @param {"investor"|"advisor"|"creator"} input.role
+ * @param {string} input.recipientEmail
+ * @param {string} input.recipientName
+ * @param {object} input.vars             — template merge values (see TEMPLATES.md)
+ * @param {string} [input.tenantId]       — defaults to SOCIII platform
+ * @param {string} [input.userId]
+ * @param {object} [input.metadata]
+ *
+ * @returns {Promise<{ok, requestId?, hellosignRequestId?, error?, instructions?}>}
+ */
+const ROLE_TEMPLATE_ENV = {
+  investor: { envKey: "DROPBOX_SIGN_TEMPLATE_INVESTOR_SAFE", signerRole: "Investor", docType: "safe_agreement", title: "SOCIII SAFE Agreement" },
+  advisor:  { envKey: "DROPBOX_SIGN_TEMPLATE_ADVISOR_WARRANT", signerRole: "Advisor", docType: "advisor_warrant", title: "SOCIII Advisor Warrant Agreement" },
+  creator:  { envKey: "DROPBOX_SIGN_TEMPLATE_CREATOR_AGREEMENT", signerRole: "Creator", docType: "creator_agreement", title: "SOCIII Creator Platform Agreement" },
+};
+
+function _buildCustomFields(role, recipient, vars) {
+  const v = vars || {};
+  if (role === "investor") {
+    return {
+      investor_name: recipient.name,
+      investor_email: recipient.email,
+      investment_amount: v.investmentAmount != null ? String(v.investmentAmount) : "",
+      valuation_cap: v.valuationCap != null ? String(v.valuationCap) : "10000000",
+      shares_issued: v.sharesIssued != null ? String(v.sharesIssued) : "",
+      agreement_date: v.agreementDate || new Date().toISOString().slice(0, 10),
+      company_name: v.companyName || "SOCIII, Inc.",
+      company_state: v.companyState || "Delaware",
+    };
+  }
+  if (role === "advisor") {
+    return {
+      advisor_name: recipient.name,
+      advisor_email: recipient.email,
+      warrant_shares: v.warrantShares != null ? String(v.warrantShares) : "",
+      strike_price: v.strikePrice != null ? String(v.strikePrice) : "0.001",
+      vesting_months: v.vestingMonths != null ? String(v.vestingMonths) : "24",
+      cliff_months: v.cliffMonths != null ? String(v.cliffMonths) : "6",
+      agreement_date: v.agreementDate || new Date().toISOString().slice(0, 10),
+    };
+  }
+  if (role === "creator") {
+    return {
+      creator_name: recipient.name,
+      creator_email: recipient.email,
+      revenue_share: v.revenueShare || "75%",
+      agreement_date: v.agreementDate || new Date().toISOString().slice(0, 10),
+    };
+  }
+  return {};
+}
+
+async function sendSignaturePacket({
+  role,
+  recipientEmail,
+  recipientName,
+  vars,
+  tenantId = "sociii-platform",
+  userId = null,
+  metadata = {},
+}) {
+  const cfg = ROLE_TEMPLATE_ENV[role];
+  if (!cfg) {
+    return { ok: false, error: `Unknown signature packet role: ${role}` };
+  }
+  if (!recipientEmail || !recipientName) {
+    return { ok: false, error: "recipientEmail and recipientName required" };
+  }
+
+  const templateId = process.env[cfg.envKey] || null;
+  if (!templateId) {
+    return {
+      ok: false,
+      error: `Signature template not configured for role "${role}".`,
+      instructions: `Upload the ${role} template to Dropbox Sign and set env var ${cfg.envKey} to the template ID. See services/signatureService/TEMPLATES.md for required merge fields.`,
+      missingEnv: cfg.envKey,
+    };
+  }
+
+  const hellosign = getHelloSign();
+  const blockchain = getBlockchain();
+  const storage = getStorage();
+
+  const requestId = "sig_" + crypto.randomUUID().replace(/-/g, "");
+  const createdAt = new Date().toISOString();
+
+  // Combined metadata so the webhook can route the executed PDF back to the
+  // right downstream pipeline (e.g. IR investor flow, advisor flow).
+  const combinedMetadata = {
+    ...(metadata || {}),
+    role,
+    signatureServiceRequestId: requestId,
+  };
+
+  let hsResult;
+  try {
+    hsResult = await hellosign.sendWithTemplate({
+      templateId,
+      title: cfg.title,
+      subject: cfg.title,
+      message: `Please review and sign your ${cfg.title}.`,
+      signers: [{ role: cfg.signerRole, email: recipientEmail, name: recipientName }],
+      customFields: _buildCustomFields(role, { email: recipientEmail, name: recipientName }, vars),
+      metadata: combinedMetadata,
+      testMode: process.env.HELLOSIGN_TEST_MODE !== "0",
+    });
+  } catch (e) {
+    console.error("[sendSignaturePacket] HelloSign send_with_template failed:", e);
+    return { ok: false, error: e.message || "Failed to send signature request" };
+  }
+
+  if (!hsResult) {
+    return {
+      ok: false,
+      error: "Dropbox Sign API keys not configured. Set HELLOSIGN_API_KEY and HELLOSIGN_CLIENT_ID.",
+    };
+  }
+
+  const signers = [{
+    email: recipientEmail,
+    name: recipientName,
+    userId: userId || null,
+    role: cfg.signerRole,
+    order: 0,
+    status: "pending",
+    hellosignSignatureId: (hsResult.signatures && hsResult.signatures[0]?.signature_id) || null,
+    signedAt: null,
+    signHash: null,
+  }];
+
+  const preSignHash = blockchain.computePreSignHash({
+    documentRef: { templateId, role },
+    signers: [{ email: recipientEmail }],
+    createdAt,
+    metadata: combinedMetadata,
+  });
+
+  await storage.createSignatureRequest({
+    requestId,
+    tenantId,
+    userId,
+    title: cfg.title,
+    subject: cfg.title,
+    message: `Please review and sign your ${cfg.title}.`,
+    signers,
+    documentType: cfg.docType,
+    vertical: "ir",
+    metadata: combinedMetadata,
+    documentRef: { templateId, role },
+    method: "hellosign_template",
+    hellosignRequestId: hsResult.signatureRequestId,
+    preSignHash,
+    status: "pending",
+    expiresAt: null,
+  });
+
+  await storage.logAudit({
+    requestId,
+    tenantId,
+    userId,
+    action: "packet_sent",
+    details: { role, recipientEmail, templateId, hellosignRequestId: hsResult.signatureRequestId },
+  });
+
+  return {
+    ok: true,
+    requestId,
+    hellosignRequestId: hsResult.signatureRequestId,
+    role,
+    method: "hellosign_template",
+  };
+}
+
 module.exports = {
   createRequest,
   getStatus,
@@ -590,4 +792,5 @@ module.exports = {
   revoke,
   getAudit,
   handleWebhookEvent,
+  sendSignaturePacket,
 };

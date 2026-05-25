@@ -156,7 +156,7 @@ async function searchOrganizations(criteria, ctx = {}) {
 }
 
 /**
- * Convert an Apollo person record to a TitleApp contacts/{id} document
+ * Convert an Apollo person record to a SOCIII contacts/{id} document
  * payload. As of CODEX 50.18, output is spine_v2.1 with personas[] populated
  * with a single "prospect" persona. Top-level singular fields mirror the
  * primary persona for read back-compat.

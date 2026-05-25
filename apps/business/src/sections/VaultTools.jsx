@@ -4,7 +4,7 @@ const BUILT_IN_TOOLS = [
   {
     id: "cap-table",
     name: "Cap Table Viewer",
-    description: "See your ownership stakes across any company using TitleApp",
+    description: "See your ownership stakes across any company using SOCIII",
     icon: (
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
@@ -42,7 +42,7 @@ const BUILT_IN_TOOLS = [
   {
     id: "identity",
     name: "My Identity (KYC)",
-    description: "Verified identity status, reusable across TitleApp",
+    description: "Verified identity status, reusable across SOCIII",
     icon: (
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
@@ -64,7 +64,7 @@ const BUILT_IN_TOOLS = [
   {
     id: "investments",
     name: "My Investments",
-    description: "Portfolio of investments made through TitleApp",
+    description: "Portfolio of investments made through SOCIII",
     icon: (
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>

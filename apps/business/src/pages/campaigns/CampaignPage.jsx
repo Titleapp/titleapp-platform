@@ -14,22 +14,22 @@ const CAMPAIGNS = {
     variants: {
       A: {
         headline: "Your best salesperson. On every floor. Every shift.",
-        subhead: "TitleApp clones your top performer across every department — service, sales, F&I, compliance. Free to start. You only pay when we lift your revenue.",
+        subhead: "SOCIII clones your top performer across every department — service, sales, F&I, compliance. Free to start. You only pay when we lift your revenue.",
       },
       B: {
         headline: "Free to start. You only pay when we grow your revenue.",
-        subhead: "TitleApp puts a Digital Worker in every department — service drive to F&I close. No monthly fee until it performs. Zero risk to find out if it works.",
+        subhead: "SOCIII puts a Digital Worker in every department — service drive to F&I close. No monthly fee until it performs. Zero risk to find out if it works.",
       },
     },
     primaryCta: "Start Free — No Credit Card",
     secondaryCta: "See how dealers use it",
     secondaryLink: "/workers/auto",
     valueProps: [
-      { icon: "dollar", title: "Performance-based pricing", desc: "Free entry point, you only pay when TitleApp lifts your numbers." },
+      { icon: "dollar", title: "Performance-based pricing", desc: "Free entry point, you only pay when SOCIII lifts your numbers." },
       { icon: "arrows", title: "Service to sales", desc: "Follow every customer from first visit through trade-in and upgrade." },
       { icon: "grid", title: "Every department covered", desc: "Licensing, compliance, F&I, floor training, all connected." },
     ],
-    socialProof: "Dealers using TitleApp see measurable lift within the first 30 days.",
+    socialProof: "Dealers using SOCIII see measurable lift within the first 30 days.",
     featuredSlugs: ["dealer-licensing-compliance", "service-scheduling-workflow", "fi-compliance", "lead-management-bdc"],
   },
   "aviation": {
@@ -37,11 +37,11 @@ const CAMPAIGNS = {
     variants: {
       A: {
         headline: "The AI that actually knows the FARs.",
-        subhead: "Every other AI guesses. TitleApp Aviation is built on the actual rules — Part 135, Part 91, ICAO, type-specific procedures. Your CoPilot doesn't improvise.",
+        subhead: "Every other AI guesses. SOCIII Aviation is built on the actual rules — Part 135, Part 91, ICAO, type-specific procedures. Your CoPilot doesn't improvise.",
       },
       B: {
         headline: "Built for pilots who can't afford a wrong answer.",
-        subhead: "TitleApp Aviation gives you a Digital CoPilot for your aircraft type, your training records, and your career. Every answer sourced. Every rule enforced. Nothing made up.",
+        subhead: "SOCIII Aviation gives you a Digital CoPilot for your aircraft type, your training records, and your career. Every answer sourced. Every rule enforced. Nothing made up.",
       },
     },
     primaryCta: "Meet Your CoPilot",
@@ -52,19 +52,19 @@ const CAMPAIGNS = {
       { icon: "folder", title: "Your documents, version controlled, connected to your CoPilot", desc: "SOPs, manuals, training records — Document Control tracks revisions and acknowledgments. Your CoPilot always cites the current approved version." },
       { icon: "plane", title: "Type-specific CoPilots", desc: "PC12, King Air, C90, Caravan, and more. Your aircraft, your procedures, your operator baselines." },
     ],
-    socialProof: "Pilots use TitleApp to stay current, stay legal, and prep for checkrides with confidence.",
+    socialProof: "Pilots use SOCIII to stay current, stay legal, and prep for checkrides with confidence.",
     featuredSlugs: ["digital-aircraft-log", "pilot-training-records-worker", "pre-flight-risk-analysis", "copilot-pc12-ng"],
   },
   "real-estate-developer": {
     persona: "developer",
     variants: {
       A: {
-        headline: "One missed permit costs more than a year of TitleApp.",
-        subhead: "Real estate developers: TitleApp enforces every compliance rule on every project — permits, draws, inspections, title, escrow. The mistakes that cost $10K\u2013$100K don't happen when your AI knows the rules.",
+        headline: "One missed permit costs more than a year of SOCIII.",
+        subhead: "Real estate developers: SOCIII enforces every compliance rule on every project — permits, draws, inspections, title, escrow. The mistakes that cost $10K\u2013$100K don't happen when your AI knows the rules.",
       },
       B: {
         headline: "Your entire project team. For less than a single hire.",
-        subhead: "Construction manager, permit tracker, title and escrow specialist, compliance officer — TitleApp puts a full A-team on every deal. Massive cost savings. Zero errors on the rules.",
+        subhead: "Construction manager, permit tracker, title and escrow specialist, compliance officer — SOCIII puts a full A-team on every deal. Massive cost savings. Zero errors on the rules.",
       },
     },
     primaryCta: "Walk Through a Deal",
@@ -75,7 +75,7 @@ const CAMPAIGNS = {
       { icon: "folder", title: "Every plan revision, every permit acknowledgment, tracked", desc: "Document Control handles version control, distribution, and acknowledgment tracking across your entire project team." },
       { icon: "scale", title: "Scale without headcount", desc: "Manage 10 projects with the same overhead as 1." },
     ],
-    socialProof: "Developers using TitleApp report fewer missed deadlines and faster draw approvals.",
+    socialProof: "Developers using SOCIII report fewer missed deadlines and faster draw approvals.",
     featuredSlugs: ["construction-manager", "permit-tracker", "cre-deal-analyst", "the-escrow-locker"],
   },
   "real-estate-operations": {
@@ -83,11 +83,11 @@ const CAMPAIGNS = {
     variants: {
       A: {
         headline: "Clone your best property manager 500 times.",
-        subhead: "Your top manager knows every tenant, every maintenance issue, every lease clause. TitleApp puts that expertise to work across your entire portfolio — simultaneously. Higher revenue, lower overhead, no extra headcount.",
+        subhead: "Your top manager knows every tenant, every maintenance issue, every lease clause. SOCIII puts that expertise to work across your entire portfolio — simultaneously. Higher revenue, lower overhead, no extra headcount.",
       },
       B: {
         headline: "Scale your portfolio without scaling your payroll.",
-        subhead: "TitleApp gives property managers and leasing teams a Digital Worker for every function — tenant comms, maintenance coordination, lease compliance, and revenue optimization. One platform, every property.",
+        subhead: "SOCIII gives property managers and leasing teams a Digital Worker for every function — tenant comms, maintenance coordination, lease compliance, and revenue optimization. One platform, every property.",
       },
     },
     primaryCta: "See It In Action",
@@ -98,7 +98,7 @@ const CAMPAIGNS = {
       { icon: "trending", title: "Revenue optimization built in", desc: "Lease renewal timing, market rate alerts, vacancy reduction workflows." },
       { icon: "wrench", title: "Maintenance that actually closes", desc: "Work order tracking, vendor coordination, resident follow-up, all handled." },
     ],
-    socialProof: "Property managers using TitleApp handle more units with less overhead.",
+    socialProof: "Property managers using SOCIII handle more units with less overhead.",
     featuredSlugs: ["property-management", "rent-roll-revenue", "tenant-screening", "maintenance-work-order"],
   },
   "creators": {
@@ -106,11 +106,11 @@ const CAMPAIGNS = {
     variants: {
       A: {
         headline: "Your expertise plus the rules. Packaged and on call forever.",
-        subhead: "You know your field better than anyone. TitleApp adds the compliance layer — the rules, the procedures, the edge cases — and packages it into a Digital Worker your audience can subscribe to. You earn 75% of every subscription, every month.",
+        subhead: "You know your field better than anyone. SOCIII adds the compliance layer — the rules, the procedures, the edge cases — and packages it into a Digital Worker your audience can subscribe to. You earn 75% of every subscription, every month.",
       },
       B: {
         headline: "Your followers can hire you. Forever.",
-        subhead: "Stop giving away your expertise for free. Build a Digital Worker in under 10 minutes — no code, no app store, no platform taking 30%. Your knowledge, your rules, your price. TitleApp handles the rest.",
+        subhead: "Stop giving away your expertise for free. Build a Digital Worker in under 10 minutes — no code, no app store, no platform taking 30%. Your knowledge, your rules, your price. SOCIII handles the rest.",
       },
     },
     primaryCta: "Build Your First Worker",
@@ -121,7 +121,7 @@ const CAMPAIGNS = {
       { icon: "dollar", title: "75% revenue share, every month", desc: "Set your price, publish your worker, earn recurring income." },
       { icon: "paste", title: "Already mapped it out elsewhere?", desc: "Paste from ChatGPT, Claude, or Gemini and skip the questions." },
     ],
-    socialProof: "Creators on TitleApp are earning recurring revenue from expertise they used to give away.",
+    socialProof: "Creators on SOCIII are earning recurring revenue from expertise they used to give away.",
     featuredSlugs: [],
   },
 };
@@ -273,7 +273,7 @@ export default function CampaignPage({ slug }) {
     return (
       <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
         <div style={{ textAlign: "center" }}>
-          <div style={{ fontSize: 20, fontWeight: 600, color: "#7c3aed", marginBottom: 16 }}>TitleApp</div>
+          <div style={{ fontSize: 20, fontWeight: 600, color: "#7c3aed", marginBottom: 16 }}>SOCIII</div>
           <div style={{ fontSize: 16, color: "#6b7280" }}>{config ? "Loading..." : "Campaign not found."}</div>
           {!config && <a href="/" style={{ color: "#7c3aed", fontSize: 14, marginTop: 12, display: "inline-block" }}>Go home</a>}
         </div>
@@ -349,7 +349,7 @@ export default function CampaignPage({ slug }) {
     <div style={S.page}>
       {/* Nav */}
       <nav style={S.nav}>
-        <a href="/" style={S.logo}>TitleApp</a>
+        <a href="/" style={S.logo}>SOCIII</a>
         <div style={S.navLinks}>
           <a href="/workers" style={S.navLink}>Workers</a>
           <a href="/sandbox" style={S.navLink}>Creators</a>
@@ -404,7 +404,7 @@ export default function CampaignPage({ slug }) {
 
       {/* Footer */}
       <footer style={S.footer}>
-        &copy; {new Date().getFullYear()} TitleApp. All rights reserved.
+        &copy; {new Date().getFullYear()} SOCIII. All rights reserved.
       </footer>
 
       {/* Floating Chat Bar */}

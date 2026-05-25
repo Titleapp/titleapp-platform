@@ -270,7 +270,7 @@ export default function BusinessSetup({ onComplete }) {
             onClick={handleFinish}
             disabled={saving}
           >
-            {saving ? "Setting up..." : "Start Using TitleApp"}
+            {saving ? "Setting up..." : "Start Using SOCIII"}
           </button>
         )}
       </div>

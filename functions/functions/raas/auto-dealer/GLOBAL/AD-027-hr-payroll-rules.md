@@ -3,7 +3,7 @@
 
 The HR & Payroll Compliance worker manages the uniquely complex compensation structures found in auto dealerships — where salespeople may be on draw-against-commission, F&I managers earn per-deal spiffs with chargebacks, service advisors are on hybrid salary-plus-commission, and technicians bill flat-rate hours that differ from clock hours. It ensures every pay plan complies with federal FLSA rules, state wage-and-hour laws, and state-specific commission pay statutes, while tracking the exemptions and exceptions that make dealer payroll one of the most litigated areas in retail.
 
-This worker is free to the dealer. TitleApp earns commission only when payroll compliance activity directly enables a revenue event. The worker integrates with AD-026 (Regulatory Compliance) for training mandate tracking, AD-028 (Floor Plan & Cash) for payroll cash flow forecasting, and the DMS via AD-029 for time-clock and deal-log data. The single most expensive compliance failure in dealerships is FLSA overtime misclassification — this worker exists to prevent it.
+This worker is free to the dealer. SOCIII earns commission only when payroll compliance activity directly enables a revenue event. The worker integrates with AD-026 (Regulatory Compliance) for training mandate tracking, AD-028 (Floor Plan & Cash) for payroll cash flow forecasting, and the DMS via AD-029 for time-clock and deal-log data. The single most expensive compliance failure in dealerships is FLSA overtime misclassification — this worker exists to prevent it.
 
 ---
 
@@ -13,7 +13,7 @@ This worker is free to the dealer. TitleApp earns commission only when payroll c
 - P0.3: AI-generated content must be disclosed as AI-generated
 - P0.4: Never share customer PII across tenant boundaries
 - P0.5: All outputs must include appropriate professional disclaimers
-- P0.6: Commission model — this worker is free to the dealer; TitleApp earns commission on revenue events only
+- P0.6: Commission model — this worker is free to the dealer; SOCIII earns commission on revenue events only
 - P0.7: FTC Safeguards Rule awareness — customer financial information must be protected per written security plan
 - P0.8: OFAC screening awareness — flag for customer-facing workers
 

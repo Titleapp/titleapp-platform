@@ -72,7 +72,7 @@ export async function connectCalendar() {
   if (!res.ok || !res.authUrl) throw new Error(res.error || "Failed to start Google Calendar connection");
 
   const popup = window.open(res.authUrl, "google-calendar-auth", "width=600,height=700");
-  if (!popup) throw new Error("Popup blocked. Allow popups for app.titleapp.ai and try again.");
+  if (!popup) throw new Error("Popup blocked. Allow popups for app.sociii.ai and try again.");
 
   return new Promise((resolve, reject) => {
     let resolved = false;

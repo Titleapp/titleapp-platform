@@ -43,8 +43,8 @@ async function sendEmail({ to, subject, htmlBody, textBody }) {
     },
     body: JSON.stringify({
       personalizations: [{ to: [{ email: to }] }],
-      from: { email: "alex@titleapp.ai", name: "Alex — TitleApp" },
-      reply_to: { email: "sean@titleapp.ai", name: "Sean Combs" },
+      from: { email: "alex@sociii.ai", name: "Alex — SOCIII" },
+      reply_to: { email: "sean@sociii.ai", name: "Sean Combs" },
       subject,
       content: [
         ...(textBody ? [{ type: "text/plain", value: textBody }] : []),
@@ -62,13 +62,13 @@ function emailTemplate(firstName, bodyHtml) {
   return `
 <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
   <div style="margin-bottom: 32px;">
-    <span style="font-size: 20px; font-weight: 700; color: #7c3aed;">TitleApp</span>
+    <span style="font-size: 20px; font-weight: 700; color: #7c3aed;">SOCIII</span>
   </div>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">Hi ${firstName},</p>
   ${bodyHtml}
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">— Alex</p>
   <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
-    <p style="font-size: 13px; color: #94a3b8;">TitleApp LLC | Start Free. 60-Day Money Back. Your Data Is Always Yours.</p>
+    <p style="font-size: 13px; color: #94a3b8;">SOCIII, Inc. | Start Free. 60-Day Money Back. Your Data Is Always Yours.</p>
   </div>
 </div>`;
 }
@@ -175,7 +175,7 @@ async function submitIdVerification(req, res) {
 
   // Notify admins
   await sendEmail({
-    to: "sean@titleapp.ai",
+    to: "sean@sociii.ai",
     subject: `New ID verification: ${userData.displayName || userData.name || userData.email || uid}`,
     htmlBody: `<p>A creator has submitted their photo ID for verification.</p>
 <p><strong>Name:</strong> ${userData.displayName || userData.name || "Unknown"}</p>
@@ -245,8 +245,8 @@ async function approveIdVerification(req, res) {
     to: userData.email,
     subject: "You're verified. Time to publish.",
     htmlBody: emailTemplate(firstName, `
-  <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">Your identity has been verified. You can now publish workers on the TitleApp marketplace.</p>
-  <p style="font-size: 16px; color: #1a202c; line-height: 1.6;"><a href="https://app.titleapp.ai" style="color: #7c3aed; font-weight: 600;">Go to your Vault</a> to publish your first worker.</p>`),
+  <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">Your identity has been verified. You can now publish workers on the SOCIII marketplace.</p>
+  <p style="font-size: 16px; color: #1a202c; line-height: 1.6;"><a href="https://app.sociii.ai" style="color: #7c3aed; font-weight: 600;">Go to your Vault</a> to publish your first worker.</p>`),
   });
 
   // SMS if phone on file
@@ -266,7 +266,7 @@ async function approveIdVerification(req, res) {
           body: new URLSearchParams({
             From: twilioFrom,
             To: userData.phone,
-            Body: "You're verified on TitleApp. Publish your worker now: https://app.titleapp.ai",
+            Body: "You're verified on SOCIII. Publish your worker now: https://app.sociii.ai",
           }).toString(),
         });
       }
@@ -349,7 +349,7 @@ async function rejectIdVerification(req, res) {
     htmlBody: emailTemplate(firstName, `
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">We couldn't verify your identity. Reason: ${reason}</p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">Please resubmit a clear photo of your government-issued ID.</p>
-  <p style="font-size: 16px; color: #1a202c; line-height: 1.6;"><a href="https://app.titleapp.ai" style="color: #7c3aed; font-weight: 600;">Resubmit now</a></p>`),
+  <p style="font-size: 16px; color: #1a202c; line-height: 1.6;"><a href="https://app.sociii.ai" style="color: #7c3aed; font-weight: 600;">Resubmit now</a></p>`),
   });
 
   return res.json({ ok: true, status: "rejected" });
@@ -449,7 +449,7 @@ async function checkIdVerificationNudge() {
     const data = doc.data();
     try {
       await sendEmail({
-        to: "sean@titleapp.ai",
+        to: "sean@sociii.ai",
         subject: `ID verification pending 4+ hours: ${data.name || data.email || data.userId}`,
         htmlBody: `<p>A creator ID verification request has been pending for over 4 hours.</p>
 <p><strong>Creator:</strong> ${data.name || "Unknown"}</p>

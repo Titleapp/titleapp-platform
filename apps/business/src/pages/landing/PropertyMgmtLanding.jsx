@@ -14,7 +14,7 @@ const CONTENT = {
     },
     {
       headline: "The Average PM Company Loses 12% of Revenue to Missed Renewals and Late Fees.",
-      subhead: "TitleApp tracks every lease, every renewal, every deadline \u2014 automatically."
+      subhead: "SOCIII tracks every lease, every renewal, every deadline \u2014 automatically."
     },
     {
       headline: "Your Owners Want Reports. Your Tenants Want Answers. You Want Your Weekends Back.",
@@ -51,7 +51,7 @@ const CONTENT = {
     { name: "Enterprise", price: "$149", period: "/mo per worker", features: ["Everything in Pro", "Dedicated account manager", "Custom integrations", "SLA guarantee", "Multi-portfolio dashboard"], cta: "Contact Sales", highlighted: false }
   ],
   faq: [
-    { question: "Does TitleApp replace my property management software?", answer: "No. TitleApp works alongside AppFolio, Buildium, Rent Manager, Yardi, or whatever you use today. It's the AI layer that handles the repetitive work your software can't do on its own." },
+    { question: "Does SOCIII replace my property management software?", answer: "No. SOCIII works alongside AppFolio, Buildium, Rent Manager, Yardi, or whatever you use today. It's the AI layer that handles the repetitive work your software can't do on its own." },
     { question: "How does the Maintenance Coordinator work?", answer: "Tenants submit requests through your existing channels. The Maintenance Coordinator triages by urgency, assigns the right vendor based on skill and availability, sends work order details, and follows up until the job is confirmed complete with photo verification." },
     { question: "How many units can I manage?", answer: "Free tier supports up to 50 units with one worker. Professional and Enterprise tiers have no unit limits. Whether you manage 50 doors or 5,000, the workers scale with you." },
     { question: "What reports do owners get?", answer: "Monthly income and expense statements, maintenance summaries, occupancy reports, and year-end tax packages. Every report is customizable per owner and delivered automatically on your schedule." },

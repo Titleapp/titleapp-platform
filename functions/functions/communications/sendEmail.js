@@ -19,11 +19,11 @@ async function sendEmail(req, res) {
     return res.status(500).json({ ok: false, error: "SendGrid not configured" });
   }
 
-  const fromAddr = from || "alex@titleapp.ai";
+  const fromAddr = from || "alex@sociii.ai";
 
   const sgPayload = {
     personalizations: [{ to: [{ email: to }] }],
-    from: { email: fromAddr, name: fromAddr === "alex@titleapp.ai" ? "Alex — TitleApp" : "TitleApp" },
+    from: { email: fromAddr, name: fromAddr === "alex@sociii.ai" ? "Alex — SOCIII" : "SOCIII" },
     subject,
     content: [],
   };

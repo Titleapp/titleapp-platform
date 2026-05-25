@@ -87,7 +87,7 @@ export default function CreatorApplication() {
     return (
       <div style={S.page}>
         <div style={S.card}>
-          <div style={S.logo} onClick={() => window.location.href = "/"}>TitleApp</div>
+          <div style={S.logo} onClick={() => window.location.href = "/"}>SOCIII</div>
           <div style={S.success}>
             <div style={S.successTitle}>Application received</div>
             <div style={S.successText}>
@@ -115,8 +115,8 @@ export default function CreatorApplication() {
   return (
     <div style={S.page}>
       <div style={S.card}>
-        <div style={S.logo} onClick={() => window.location.href = "/"}>TitleApp</div>
-        <div style={S.title}>Apply to Publish on TitleApp</div>
+        <div style={S.logo} onClick={() => window.location.href = "/"}>SOCIII</div>
+        <div style={S.title}>Apply to Publish on SOCIII</div>
         <div style={S.subtitle}>Share your expertise with the world. Earn 75% of every subscription.</div>
         <form onSubmit={handleSubmit}>
           <div style={S.field}>

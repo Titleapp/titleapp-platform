@@ -18,10 +18,10 @@ async function generateInventorySnapshot(inventoryData) {
       margins: MARGINS.standard,
       bufferPages: true,
       info: {
-        Title: "TitleApp Platform Inventory",
-        Author: "TitleApp",
-        Creator: "TitleApp Platform Inventory Worker",
-        Producer: "TitleApp.ai",
+        Title: "SOCIII Platform Inventory",
+        Author: "SOCIII",
+        Creator: "SOCIII Platform Inventory Worker",
+        Producer: "SOCIII.ai",
       },
     });
 
@@ -179,7 +179,7 @@ function renderFooter(doc) {
 
   doc.fontSize(8).font("Helvetica").fillColor(COLORS.textMuted)
     .text(
-      `TitleApp.ai  \u00B7  Live data as of ${dateStr}  \u00B7  Confidential`,
+      `SOCIII.ai  \u00B7  Live data as of ${dateStr}  \u00B7  Confidential`,
       MARGINS.standard.left, y,
       { width: cw, align: "center", lineBreak: false }
     );

@@ -56,7 +56,7 @@
   "required_outputs": [
     {
       "id": "security_disclaimer",
-      "content": "This code is provided for review and educational purposes. It is not guaranteed to be secure. Review by a qualified developer is required before deployment. TitleApp is not responsible for deployed contracts.",
+      "content": "This code is provided for review and educational purposes. It is not guaranteed to be secure. Review by a qualified developer is required before deployment. SOCIII is not responsible for deployed contracts.",
       "placement": "every_output"
     },
     {

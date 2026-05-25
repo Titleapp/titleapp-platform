@@ -93,7 +93,7 @@ export default function WorkerMarketplace({ authenticated, userName, onSubscribe
   return (
     <div style={S.page}>
       <nav style={S.nav}>
-        <a href="/" style={S.logo}>TitleApp</a>
+        <a href="/" style={S.logo}>SOCIII</a>
         {authenticated ? (
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
             <span style={{ fontSize: 13, color: "#6b7280" }}>{userName || "Welcome"}</span>
@@ -190,7 +190,7 @@ export default function WorkerMarketplace({ authenticated, userName, onSubscribe
         </div>
       </div>
 
-      <footer style={S.footer}>TitleApp — Digital Workers for every industry</footer>
+      <footer style={S.footer}>SOCIII — Digital Workers for every industry</footer>
     </div>
   );
 }

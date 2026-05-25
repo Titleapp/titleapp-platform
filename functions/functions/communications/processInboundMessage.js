@@ -130,12 +130,12 @@ async function processInboundMessage(messageId) {
 
 function generateDraft(intent, msg) {
   const templates = {
-    schedule_demo: "Thanks for your interest! I'd love to show you how TitleApp can help. Would any of these times work for a quick 15-minute demo?",
-    pricing_question: "Great question! TitleApp Digital Workers start free with 100 credits per month. Plans are $29, $49, or $79 per month depending on complexity — each with a 14-day free trial, no credit card required. Happy to walk you through the details.",
+    schedule_demo: "Thanks for your interest! I'd love to show you how SOCIII can help. Would any of these times work for a quick 15-minute demo?",
+    pricing_question: "Great question! SOCIII Digital Workers start free with 100 credits per month. Plans are $29, $49, or $79 per month depending on complexity — each with a 14-day free trial, no credit card required. Happy to walk you through the details.",
     support_request: "I'm sorry you're running into an issue. I'm looking into this right now and will get back to you shortly with a solution.",
-    interested: "Thank you for reaching out! I'd be happy to tell you more about how TitleApp can help. What's your primary use case?",
+    interested: "Thank you for reaching out! I'd be happy to tell you more about how SOCIII can help. What's your primary use case?",
     not_interested: "Understood, thank you for letting me know. If anything changes, don't hesitate to reach out.",
-    investor_inquiry: "Thank you for your interest in TitleApp. I'll have our team send over our investor materials. Would you prefer a deck or a quick call?",
+    investor_inquiry: "Thank you for your interest in SOCIII. I'll have our team send over our investor materials. Would you prefer a deck or a quick call?",
   };
   return templates[intent] || "Thank you for your message. I'll get back to you shortly.";
 }

@@ -5,7 +5,7 @@
  * calculates the markup charge, and records it to the usage event.
  *
  * Rule: If a provider is NOT in data_fee_registry, the call is BLOCKED,
- * an error is logged, and sean@titleapp.ai is alerted. Never let an
+ * an error is logged, and sean@sociii.ai is alerted. Never let an
  * unregistered API call through — it's an untracked cost.
  */
 
@@ -31,7 +31,7 @@ async function sendAlert(to, subject, body) {
     },
     body: JSON.stringify({
       personalizations: [{ to: [{ email: to }] }],
-      from: { email: "alerts@titleapp.ai", name: "TitleApp Alerts" },
+      from: { email: "alerts@sociii.ai", name: "SOCIII Alerts" },
       subject,
       content: [{ type: "text/plain", value: body }],
     }),
@@ -79,8 +79,8 @@ async function dataFeeMiddleware(provider, callFn, endpoint) {
     });
 
     await sendAlert(
-      "sean@titleapp.ai",
-      `[TitleApp] Blocked unregistered data provider: ${provider}`,
+      "sean@sociii.ai",
+      `[SOCIII] Blocked unregistered data provider: ${provider}`,
       `An external API call to provider "${provider}" was blocked because it is not registered in data_fee_registry.\n\nEndpoint: ${endpoint || "(unknown)"}\n\nAction required: Add this provider to data_fee_registry or remove the call.`
     );
 

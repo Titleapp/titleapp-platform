@@ -85,7 +85,7 @@ export default function TeamVerification() {
   return (
     <div style={S.page}>
       <div style={S.title}>Web3 Suite — Team Verification</div>
-      <div style={S.subtitle}>TitleApp requires identity verification for all Web3 project teams. Complete each step to activate your workers.</div>
+      <div style={S.subtitle}>SOCIII requires identity verification for all Web3 project teams. Complete each step to activate your workers.</div>
 
       {/* Step 1: Attestation */}
       <div style={{ ...S.card, opacity: step >= 1 ? 1 : 0.5 }}>
@@ -94,7 +94,7 @@ export default function TeamVerification() {
         {[
           "This project does not promise financial returns to holders",
           "Tokens and NFTs are collectibles/utility items, not investment contracts",
-          "I have reviewed TitleApp Web3 Terms with qualified legal counsel",
+          "I have reviewed SOCIII Web3 Terms with qualified legal counsel",
         ].map((text, i) => (
           <div key={i} style={S.checkRow}>
             <input type="checkbox" checked={checks[i]} onChange={() => { const c = [...checks]; c[i] = !c[i]; setChecks(c); }} style={{ marginTop: 2, accentColor: "#7c3aed" }} disabled={step !== 1} />

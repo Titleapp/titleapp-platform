@@ -86,7 +86,7 @@ async function resolveDocuments(userId, workerId, db) {
     console.error("documentResolver: vaultDocs query failed:", err.message);
   }
 
-  // 2. TitleApp baseline reference — always available
+  // 2. SOCIII baseline reference — always available
   sources.push({
     type: "titleapp_baseline",
     label: "Generic reference document — not serial-number specific",

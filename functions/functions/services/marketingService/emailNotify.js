@@ -15,8 +15,8 @@ async function sendViaSendGrid({ to, subject, htmlBody, textBody }) {
     },
     body: JSON.stringify({
       personalizations: [{ to: [{ email: to }] }],
-      from: { email: "alex@titleapp.ai", name: "Alex — TitleApp" },
-      reply_to: { email: "sean@titleapp.ai", name: "Sean Combs" },
+      from: { email: "alex@sociii.ai", name: "Alex — SOCIII" },
+      reply_to: { email: "sean@sociii.ai", name: "Sean Combs" },
       subject,
       content: [
         ...(textBody ? [{ type: "text/plain", value: textBody }] : []),
@@ -41,10 +41,10 @@ async function notifySean({ name, email, company, vertical, score, leadId }) {
     `  Score: ${score}/100`,
     `  Lead ID: ${leadId}`,
     ``,
-    `View in Command Center: https://app.titleapp.ai/admin`,
+    `View in Command Center: https://app.sociii.ai/admin`,
   ].join("\n");
 
-  await sendViaSendGrid({ to: "sean@titleapp.ai", subject, textBody });
+  await sendViaSendGrid({ to: "sean@sociii.ai", subject, textBody });
 }
 
 async function sendWelcomeEmail({ name, email, vertical }) {
@@ -57,14 +57,14 @@ async function sendWelcomeEmail({ name, email, vertical }) {
     pilot: "aviation",
   }[vertical] || "";
 
-  const subject = "Welcome to TitleApp";
+  const subject = "Welcome to SOCIII";
   const htmlBody = `
 <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
   <div style="margin-bottom: 32px;">
-    <span style="font-size: 20px; font-weight: 700; color: #7c3aed;">TitleApp</span>
+    <span style="font-size: 20px; font-weight: 700; color: #7c3aed;">SOCIII</span>
   </div>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">Hi ${firstName},</p>
-  <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">Thanks for your interest in TitleApp${verticalName ? " for " + verticalName : ""}. I'm Alex, and I'll be your point of contact.</p>
+  <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">Thanks for your interest in SOCIII${verticalName ? " for " + verticalName : ""}. I'm Alex, and I'll be your point of contact.</p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">Here's what you should know upfront:</p>
   <ul style="font-size: 16px; color: #1a202c; line-height: 1.8; padding-left: 20px;">
     <li>Start free — no credit card required</li>
@@ -75,7 +75,7 @@ async function sendWelcomeEmail({ name, email, vertical }) {
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">I'll follow up in a day or two to see how I can help. In the meantime, feel free to reply to this email — it goes straight to a real person.</p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">— Alex</p>
   <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
-    <p style="font-size: 13px; color: #94a3b8;">TitleApp LLC | Start Free. 60-Day Money Back. Your Data Is Always Yours.</p>
+    <p style="font-size: 13px; color: #94a3b8;">SOCIII, Inc. | Start Free. 60-Day Money Back. Your Data Is Always Yours.</p>
   </div>
 </div>`;
 
@@ -88,14 +88,14 @@ async function sendConnectOnboardingEmail({ email, name, onboardingUrl, workerNa
   const htmlBody = `
 <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
   <div style="margin-bottom: 32px;">
-    <span style="font-size: 20px; font-weight: 700; color: #7c3aed;">TitleApp</span>
+    <span style="font-size: 20px; font-weight: 700; color: #7c3aed;">SOCIII</span>
   </div>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">Hi ${firstName},</p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">Your Digital Worker${workerName ? " — " + workerName + " —" : ""} has been approved and is live on the marketplace.</p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">To start receiving payouts, set up your payment account. Here is how it works:</p>
   <ul style="font-size: 16px; color: #1a202c; line-height: 1.8; padding-left: 20px;">
     <li>You receive 75% of every subscription</li>
-    <li>TitleApp receives 25% as a platform fee</li>
+    <li>SOCIII receives 25% as a platform fee</li>
     <li>Payouts are weekly (every Monday), minimum $50</li>
     <li>Stripe handles tax forms and compliance</li>
   </ul>
@@ -105,7 +105,7 @@ async function sendConnectOnboardingEmail({ email, name, onboardingUrl, workerNa
   <p style="font-size: 14px; color: #64748b; line-height: 1.6;">Your worker is already live — any earnings before you complete setup will be held and paid out once your account is ready.</p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">— Alex</p>
   <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
-    <p style="font-size: 13px; color: #94a3b8;">TitleApp LLC | Start Free. 60-Day Money Back. Your Data Is Always Yours.</p>
+    <p style="font-size: 13px; color: #94a3b8;">SOCIII, Inc. | Start Free. 60-Day Money Back. Your Data Is Always Yours.</p>
   </div>
 </div>`;
 

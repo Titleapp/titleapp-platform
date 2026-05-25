@@ -216,7 +216,7 @@ async function getInventorySnapshot(req, res) {
     const buffer = await generateInventorySnapshot(data);
     const today = new Date().toISOString().slice(0, 10);
     res.set("Content-Type", "application/pdf");
-    res.set("Content-Disposition", `inline; filename="TitleApp_Platform_Inventory_${today}.pdf"`);
+    res.set("Content-Disposition", `inline; filename="SOCIII_Platform_Inventory_${today}.pdf"`);
     return res.send(buffer);
   } catch (e) {
     console.error("[platformInventory] getInventorySnapshot failed:", e);

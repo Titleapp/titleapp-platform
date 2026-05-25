@@ -20,7 +20,7 @@ export default function CommsPreferences({ worker, workerCardData, onComplete })
   const [error, setError] = useState(null);
 
   const slug = (worker?.name || workerCardData?.name || "worker").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-  const workerUrl = `https://titleapp.ai/workers/${slug}`;
+  const workerUrl = `https://sociii.ai/workers/${slug}`;
   const workerName = workerCardData?.name || worker?.name || "Your Worker";
 
   async function handleSaveAndSendWelcome() {
@@ -59,7 +59,7 @@ export default function CommsPreferences({ worker, workerCardData, onComplete })
           method: "POST", headers,
           body: JSON.stringify({
             tenantId, to: phone,
-            message: `Your worker "${workerName}" is live on TitleApp. Here is your link: ${workerUrl}. Alex will check in with you weekly. Reply anytime to ask questions.`,
+            message: `Your worker "${workerName}" is live on SOCIII. Here is your link: ${workerUrl}. Alex will check in with you weekly. Reply anytime to ask questions.`,
           }),
         });
       }
@@ -70,7 +70,7 @@ export default function CommsPreferences({ worker, workerCardData, onComplete })
           method: "POST", headers,
           body: JSON.stringify({
             tenantId, to: email,
-            subject: `${workerName} is live on TitleApp`,
+            subject: `${workerName} is live on SOCIII`,
             template: "creator_welcome",
             data: { workerName, workerUrl, workerDesc: workerCardData?.description || "" },
           }),
@@ -104,7 +104,7 @@ export default function CommsPreferences({ worker, workerCardData, onComplete })
           <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a2e", marginBottom: 12 }}>What Alex sends you weekly</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {[
-              "Earnings summary — subscription share (75%) and overage share (20% of TitleApp inference margin)",
+              "Earnings summary — subscription share (75%) and overage share (20% of SOCIII inference margin)",
               "Usage insights in plain English — not charts, sentences",
               "Jurisdiction alerts — if rules that affect your worker change",
               "Competitive intel — new workers published in your vertical",

@@ -236,7 +236,7 @@ export default function WorkerCard({ data, comparables, onApprove, onEdit, isPub
                     >&#9432;</span>
                   </div>
                   <div style={{ fontSize: 12, color: "#64748B", lineHeight: 1.5, marginTop: 4 }}>
-                    When subscribers use more than their plan includes, TitleApp charges overage fees. You earn 20% of TitleApp's margin on those fees — typically $2–$8 per heavy user per month.
+                    When subscribers use more than their plan includes, SOCIII charges overage fees. You earn 20% of SOCIII's margin on those fees — typically $2–$8 per heavy user per month.
                   </div>
                   {showOverageTip && (
                     <div style={{
@@ -244,7 +244,7 @@ export default function WorkerCard({ data, comparables, onApprove, onEdit, isPub
                       marginTop: 4, padding: "12px 14px", background: "#1a1a2e", color: "#E2E8F0",
                       borderRadius: 8, fontSize: 12, lineHeight: 1.6, boxShadow: "0 4px 16px rgba(0,0,0,0.2)",
                     }}>
-                      Example: A subscriber on the ${tier.price}/mo plan uses 2,000 credits (500 over their limit). TitleApp charges $10 in overage. TitleApp's margin is ~85%, so you earn 20% of $8.50 = $1.70 from that one subscriber that month.
+                      Example: A subscriber on the ${tier.price}/mo plan uses 2,000 credits (500 over their limit). SOCIII charges $10 in overage. SOCIII's margin is ~85%, so you earn 20% of $8.50 = $1.70 from that one subscriber that month.
                       <div onClick={() => setShowOverageTip(false)} style={{ marginTop: 6, fontSize: 11, color: "#94A3B8", cursor: "pointer" }}>Dismiss</div>
                     </div>
                   )}

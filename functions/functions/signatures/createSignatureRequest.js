@@ -31,8 +31,8 @@ async function createSignatureRequest(req, res) {
         body: JSON.stringify({
           client_id: hellosignClientId,
           title: `SAFE Agreement — ${investorName || investorEmail}`,
-          subject: `TitleApp SAFE Agreement — $${Number(amount).toLocaleString()}`,
-          message: `Please review and sign the SAFE agreement for your $${Number(amount).toLocaleString()} investment in TitleApp.`,
+          subject: `SOCIII SAFE Agreement — $${Number(amount).toLocaleString()}`,
+          message: `Please review and sign the SAFE agreement for your $${Number(amount).toLocaleString()} investment in SOCIII.`,
           signers: [
             {
               email_address: investorEmail,

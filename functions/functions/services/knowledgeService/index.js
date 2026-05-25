@@ -6,7 +6,7 @@ const path = require("path");
 let _cache = {};
 
 /**
- * Load TitleApp knowledge base documents for a worker's system prompt.
+ * Load SOCIII knowledge base documents for a worker's system prompt.
  * @param {string} workerSlug
  * @returns {string} Combined knowledge context
  */

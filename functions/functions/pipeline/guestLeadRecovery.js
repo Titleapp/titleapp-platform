@@ -53,7 +53,7 @@ async function guestLeadRecovery() {
       .replace(/-/g, " ")
       .replace(/\b\w/g, c => c.toUpperCase()) || "your Digital Worker";
 
-    const recoveryUrl = `https://app.titleapp.ai/meet-alex?vertical=${encodeURIComponent(vertical)}&worker=${encodeURIComponent(workerSlug)}&utm_source=recovery&utm_medium=email`;
+    const recoveryUrl = `https://app.sociii.ai/meet-alex?vertical=${encodeURIComponent(vertical)}&worker=${encodeURIComponent(workerSlug)}&utm_source=recovery&utm_medium=email`;
 
     try {
       await sendViaSendGrid({
@@ -62,10 +62,10 @@ async function guestLeadRecovery() {
         htmlBody: `
 <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
   <div style="margin-bottom: 32px;">
-    <span style="font-size: 20px; font-weight: 700; color: #7c3aed;">TitleApp</span>
+    <span style="font-size: 20px; font-weight: 700; color: #7c3aed;">SOCIII</span>
   </div>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">
-    You tried <strong>${workerName}</strong> on TitleApp yesterday.
+    You tried <strong>${workerName}</strong> on SOCIII yesterday.
   </p>
   <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">
     Your session is still saved. Start your 14-day free trial and pick up right where you left off.
@@ -79,7 +79,7 @@ async function guestLeadRecovery() {
     </a>
   </div>
   <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
-    <p style="font-size: 13px; color: #94a3b8;">TitleApp LLC | Your Data Is Always Yours.</p>
+    <p style="font-size: 13px; color: #94a3b8;">SOCIII, Inc. | Your Data Is Always Yours.</p>
   </div>
 </div>`,
       });

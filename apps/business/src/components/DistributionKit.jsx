@@ -22,7 +22,7 @@ export default function DistributionKit({ worker, workerCardData, hasUpdatedSinc
   const [qrAttempt, setQrAttempt] = useState(0);
 
   const slug = (worker?.slug || worker?.name || workerCardData?.name || "worker").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-  const workerUrl = `https://titleapp.ai/w/${slug}`;
+  const workerUrl = `https://sociii.ai/w/${slug}`;
   const embedCode = `<iframe src="${workerUrl}?embed=1" width="${embedWidth}" height="${embedHeight}" frameborder="0" style="border:none;border-radius:12px;"></iframe>`;
 
   // CODEX 47.2 Fix 8 — Generate QR PNG (data URL) and SVG (string) inline.
@@ -54,35 +54,35 @@ export default function DistributionKit({ worker, workerCardData, hasUpdatedSinc
   const lowerName = workerName;
 
   const linkedinPost = isGame
-    ? `Just launched "${lowerName}" — a new game I built on TitleApp.
+    ? `Just launched "${lowerName}" — a new game I built on SOCIII.
 
 ${oneLine ? `${oneLine}.` : ""} Built in a few hours, no code, just artwork and rules.
 
 Play it free: ${workerUrl}
 
-#TitleApp #IndieGame #BuildWithAI`
-    : `I just published "${workerName}" on TitleApp -- a Digital Worker that ${workerDesc.toLowerCase().replace(/\.$/, "")}.
+#SOCIII #IndieGame #BuildWithAI`
+    : `I just published "${workerName}" on SOCIII -- a Digital Worker that ${workerDesc.toLowerCase().replace(/\.$/, "")}.
 
 ${targetUser ? `Built for ${targetUser.toLowerCase()}.` : ""} Every output is validated by a compliance engine before delivery. No hallucinations. No guessing.
 
 Try it: ${workerUrl}
 
-#DigitalWorkers #AI #TitleApp${vertical ? ` #${vertical.replace(/[^a-zA-Z]/g, "")}` : ""}`;
+#DigitalWorkers #AI #SOCIII${vertical ? ` #${vertical.replace(/[^a-zA-Z]/g, "")}` : ""}`;
 
   const tweet = isGame
-    ? `Just launched ${lowerName} on @TitleApp${oneLine ? ` — ${oneLine}` : ""}. Play free: ${workerUrl}`
-    : `Just launched "${workerName}" on @TitleApp -- a Digital Worker with built-in compliance rules. ${workerUrl}`;
+    ? `Just launched ${lowerName} on @SOCIII${oneLine ? ` — ${oneLine}` : ""}. Play free: ${workerUrl}`
+    : `Just launched "${workerName}" on @SOCIII -- a Digital Worker with built-in compliance rules. ${workerUrl}`;
 
   const smsText = isGame
     ? `Built a game called ${lowerName} — try it: ${workerUrl}`
-    : `Check out ${workerName} -- a Digital Worker I built on TitleApp. ${workerUrl}`;
+    : `Check out ${workerName} -- a Digital Worker I built on SOCIII. ${workerUrl}`;
 
   const emailBlast = isGame
     ? `Subject: I made a game — ${lowerName}
 
 Hey,
 
-I just built a game called "${lowerName}" on TitleApp.
+I just built a game called "${lowerName}" on SOCIII.
 
 ${workerDesc}
 
@@ -91,11 +91,11 @@ It's free to play, takes about a minute to learn, and works on phone or desktop.
 Play it here: ${workerUrl}
 
 Tell me what you think — and what I should add next.`
-    : `Subject: ${workerName} is live on TitleApp
+    : `Subject: ${workerName} is live on SOCIII
 
 Hi,
 
-I built a Digital Worker called "${workerName}" on TitleApp.
+I built a Digital Worker called "${workerName}" on SOCIII.
 
 ${workerDesc}
 
@@ -112,7 +112,7 @@ Let me know what you think.`;
 
 Hi [Name],
 
-I built a game called "${lowerName}" on TitleApp and thought it might be a fit for your audience.
+I built a game called "${lowerName}" on SOCIII and thought it might be a fit for your audience.
 
 ${oneLine ? `${oneLine}.` : ""}
 
@@ -120,7 +120,7 @@ A few things about it:
 - Free to play, no download
 - Works on phone, tablet, or desktop
 - ${ageRange ? `Built for ${ageRange}` : "Quick to learn, hard to master"}
-- Built end-to-end inside TitleApp — original artwork, original rules
+- Built end-to-end inside SOCIII — original artwork, original rules
 
 Have a play and let me know what you think: ${workerUrl}
 
@@ -131,7 +131,7 @@ Hi [Name],
 
 I wanted to share something I built that might be useful for your ${targetUser ? targetUser.toLowerCase() : "team"}.
 
-"${workerName}" is a Digital Worker on TitleApp that ${workerDesc.toLowerCase().replace(/\.$/, "")}. It runs on a compliance engine that validates every output against ${vertical ? vertical + " " : ""}regulatory rules before delivery.
+"${workerName}" is a Digital Worker on SOCIII that ${workerDesc.toLowerCase().replace(/\.$/, "")}. It runs on a compliance engine that validates every output against ${vertical ? vertical + " " : ""}regulatory rules before delivery.
 
 ${workerCardData?.mdGateRequired ? "It has been co-signed by a Medical Director for clinical accuracy." : ""}
 
@@ -191,8 +191,8 @@ Best regards`;
     { title: "Compliance Built In", body: workerCardData?.complianceRules || "Standard platform compliance (Tier 0 + Tier 1)" },
     { title: "Pricing", body: `Starting at $${tierPrice}/mo\n14-day free trial included\nNo credit card required to start` },
     { title: "Market Context", body: `${vertical || "Industry"} professionals are spending hours on manual processes that ${workerName} handles in seconds.` },
-    { title: "About the Creator", body: "Built by a verified creator on the TitleApp platform.\nEvery worker is reviewed before going live." },
-    { title: "Subscribe", body: `Try ${workerName} today\n${workerUrl}\n\nQuestions? Contact the creator directly through TitleApp.` },
+    { title: "About the Creator", body: "Built by a verified creator on the SOCIII platform.\nEvery worker is reviewed before going live." },
+    { title: "Subscribe", body: `Try ${workerName} today\n${workerUrl}\n\nQuestions? Contact the creator directly through SOCIII.` },
   ];
 
   // CODEX 47.2 Fix 16 — Game Card replaces the business pitch deck for games.
@@ -204,7 +204,7 @@ Best regards`;
   const gameInteractions = workerCardData?.gameInteractions || {};
   const characterAssets = (canvasAssets || []).filter(a => a.useAs === "character");
   const backgroundAssets = (canvasAssets || []).filter(a => a.useAs === "background");
-  const gameTagline = workerCardData?.tagline || workerCardData?.description || `A new game on TitleApp`;
+  const gameTagline = workerCardData?.tagline || workerCardData?.description || `A new game on SOCIII`;
 
   const goalBody = gameRules.winLoseConditions
     || workerCardData?.problemSolves
@@ -228,7 +228,7 @@ Best regards`;
   const gameDeckSlides = [
     { title: workerName,        body: gameTagline },
     { title: "The Goal",        body: goalBody },
-    { title: "Characters",      body: characterAssets.length ? `Meet your characters.` : `Original artwork built inside TitleApp.` },
+    { title: "Characters",      body: characterAssets.length ? `Meet your characters.` : `Original artwork built inside SOCIII.` },
     { title: "How to Play",     body: howToPlayBody },
     { title: "Scoring",         body: scoringBody },
     { title: "Play Now",        body: `${workerUrl}\n\nScan the QR code or tap the link.` },
@@ -242,10 +242,10 @@ Best regards`;
     }
     const iconImg = workerCardData?.iconDataUrl ? `<img src="${workerCardData.iconDataUrl}" style="width:80px;height:80px;border-radius:16px;margin-bottom:24px" />` : "";
     const footer = `<div style="position:absolute;bottom:24px;left:40px;right:40px;display:flex;justify-content:space-between;font-size:10px;color:#94A3B8;font-family:Calibri,sans-serif">
-      <span>titleapp.ai</span><span>${vertical || "Digital Workers"}</span><span>alex@titleapp.ai</span></div>`;
+      <span>sociii.ai</span><span>${vertical || "Digital Workers"}</span><span>alex@sociii.ai</span></div>`;
     const darkSlide = (content) => `<div style="width:100vw;height:100vh;background:#1E1E2E;color:white;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:60px;box-sizing:border-box;page-break-after:always;position:relative;font-family:Calibri,sans-serif">${content}</div>`;
     const lightSlide = (title, body) => `<div style="width:100vw;height:100vh;background:#F8F8F8;color:#1E1E2E;display:flex;flex-direction:column;justify-content:flex-start;padding:60px;box-sizing:border-box;page-break-after:always;position:relative;font-family:Calibri,sans-serif">
-      <div style="font-size:12px;font-weight:700;color:#6B46C1;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">TitleApp</div>
+      <div style="font-size:12px;font-weight:700;color:#6B46C1;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">SOCIII</div>
       <h2 style="font-size:36px;font-weight:700;color:#1E1E2E;margin:0 0 24px 0;border-bottom:3px solid #6B46C1;padding-bottom:12px;display:inline-block">${title}</h2>
       <div style="font-size:16px;line-height:1.8;color:#333;max-width:800px;white-space:pre-wrap">${body}</div>${footer}</div>`;
     const complianceRules = (workerCardData?.complianceRules || "Standard platform compliance").split(/[.;]/).filter(s => s.trim().length > 5).slice(0, 4);
@@ -253,11 +253,11 @@ Best regards`;
     const slides = [
       // Slide 1 — Title (dark)
       darkSlide(`${iconImg}
-        <div style="font-size:12px;font-weight:600;color:#6B46C1;text-transform:uppercase;letter-spacing:2px;margin-bottom:12px">TitleApp Digital Worker</div>
+        <div style="font-size:12px;font-weight:600;color:#6B46C1;text-transform:uppercase;letter-spacing:2px;margin-bottom:12px">SOCIII Digital Worker</div>
         <h1 style="font-size:48px;font-weight:700;margin:0 0 12px 0;text-align:center">${workerName}</h1>
         <p style="font-size:20px;color:rgba(255,255,255,0.6);margin:0;text-align:center">A Digital Worker for ${vertical || "your industry"}</p>
         <div style="position:absolute;bottom:24px;left:40px;font-size:10px;color:#94A3B8">${vertical || ""} ${workerCardData?.jurisdiction || ""}</div>
-        <div style="position:absolute;bottom:24px;right:40px;font-size:10px;color:#94A3B8">titleapp.ai</div>`),
+        <div style="position:absolute;bottom:24px;right:40px;font-size:10px;color:#94A3B8">sociii.ai</div>`),
       // Slide 2 — Problem
       lightSlide("The Problem", deckSlides[1].body),
       // Slide 3 — Solution
@@ -294,7 +294,7 @@ Best regards`;
         <p style="font-size:18px;color:rgba(255,255,255,0.7);margin:0 0 8px 0">${workerUrl}</p>
         <img src="${qrPng}" style="width:120px;height:120px;border-radius:8px;margin-top:12px" />
         <div style="position:absolute;bottom:24px;left:40px;right:40px;display:flex;justify-content:space-between;font-size:10px;color:#94A3B8">
-          <span>alex@titleapp.ai</span><span>titleapp.ai</span></div>`),
+          <span>alex@sociii.ai</span><span>sociii.ai</span></div>`),
     ];
 
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${workerName} - Pitch Deck</title>
@@ -316,7 +316,7 @@ Best regards`;
     const accent = "#16A34A";
     const heroBg = backgroundAssets[0]?.imageUrl || null;
     const footer = `<div style="position:absolute;bottom:24px;left:40px;right:40px;display:flex;justify-content:space-between;font-size:10px;color:#94A3B8;font-family:Calibri,sans-serif">
-      <span>titleapp.ai</span><span>Game Card</span><span>${workerUrl}</span></div>`;
+      <span>sociii.ai</span><span>Game Card</span><span>${workerUrl}</span></div>`;
     const darkSlide = (content, bgUrl) => {
       const bg = bgUrl
         ? `linear-gradient(rgba(0,0,0,0.45), rgba(0,0,0,0.7)), url('${bgUrl}') center/cover`
@@ -345,7 +345,7 @@ Best regards`;
         <h1 style="font-size:64px;font-weight:800;margin:0 0 16px 0;text-align:center;text-shadow:0 4px 16px rgba(0,0,0,0.55)">${workerName}</h1>
         <p style="font-size:22px;color:rgba(255,255,255,0.92);margin:0;text-align:center;max-width:820px;text-shadow:0 2px 8px rgba(0,0,0,0.5)">${gameTagline}</p>
         ${ageBadge}
-        <div style="position:absolute;bottom:24px;left:40px;font-size:11px;color:rgba(255,255,255,0.7)">Built on TitleApp</div>
+        <div style="position:absolute;bottom:24px;left:40px;font-size:11px;color:rgba(255,255,255,0.7)">Built on SOCIII</div>
         <div style="position:absolute;bottom:24px;right:40px;font-size:11px;color:rgba(255,255,255,0.7)">${workerUrl}</div>`, heroBg),
 
       // Page 2 — The Goal
@@ -357,7 +357,7 @@ Best regards`;
         <h2 style="font-size:42px;font-weight:800;color:#0F172A;margin:0 0 24px 0;border-bottom:3px solid ${accent};padding-bottom:12px;display:inline-block">Characters</h2>
         ${charStrip
           ? `<div style="display:flex;gap:18px;flex-wrap:wrap;margin-top:8px">${charStrip}</div>`
-          : `<div style="font-size:18px;color:#64748B">Original artwork built inside TitleApp.</div>`}
+          : `<div style="font-size:18px;color:#64748B">Original artwork built inside SOCIII.</div>`}
         ${footer}</div>`,
 
       // Page 4 — How to Play
@@ -694,7 +694,7 @@ Best regards`;
                 <span style={{ fontSize: 13, fontWeight: 600, color: "#6B46C1" }}>$79/mo</span>
               </div>
               <div style={{ fontSize: 13, color: "#64748B", lineHeight: 1.5 }}>
-                Your {isGame ? "game" : "worker"} appears in the "Popular right now" section on titleapp.ai. Estimated reach: 5,000-15,000 monthly visitors.
+                Your {isGame ? "game" : "worker"} appears in the "Popular right now" section on sociii.ai. Estimated reach: 5,000-15,000 monthly visitors.
               </div>
               <button disabled title="Coming soon — available at launch" style={{ marginTop: 10, padding: "8px 16px", background: "#F8F9FC", color: "#CBD5E1", border: "1px solid #E2E8F0", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "not-allowed" }}>
                 Coming soon
@@ -722,7 +722,7 @@ Best regards`;
               <div style={{ fontSize: 13, color: "#64748B", lineHeight: 1.5 }}>
                 Joint marketing campaigns with hospitals, EMS agencies, and education programs in your vertical.
               </div>
-              <a href="mailto:sales@titleapp.ai?subject=Co-marketing%20inquiry%20—%20Digital%20Worker" style={{ display: "inline-block", marginTop: 10, padding: "8px 16px", background: "#FFFFFF", color: "#6B46C1", border: "1px solid #E2E8F0", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer", textDecoration: "none" }}>
+              <a href="mailto:sales@sociii.ai?subject=Co-marketing%20inquiry%20—%20Digital%20Worker" style={{ display: "inline-block", marginTop: 10, padding: "8px 16px", background: "#FFFFFF", color: "#6B46C1", border: "1px solid #E2E8F0", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer", textDecoration: "none" }}>
                 Contact sales
               </a>
             </div>

@@ -329,7 +329,7 @@ export default function InvestorDataRoom() {
           }}>T</div>
           {!sidebarCollapsed && (
             <div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "white", letterSpacing: "-0.02em" }}>TitleApp</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "white", letterSpacing: "-0.02em" }}>SOCIII</div>
               <div style={{ fontSize: 10, color: "#94a3b8", letterSpacing: "0.05em", textTransform: "uppercase" }}>Data Room</div>
             </div>
           )}
@@ -1071,7 +1071,7 @@ function SubscriptionDocsSection({ docs, raiseConfig, tier2Unlocked, onDocClick,
           background: "white", borderRadius: 16, padding: 24,
           boxShadow: "0 1px 3px rgba(0,0,0,0.06)", marginBottom: 20,
         }}>
-          <h3 style={{ fontSize: 15, fontWeight: 700, color: "#0f172a", marginBottom: 4 }}>Invest in TitleApp</h3>
+          <h3 style={{ fontSize: 15, fontWeight: 700, color: "#0f172a", marginBottom: 4 }}>Invest in SOCIII</h3>
           <p style={{ fontSize: 13, color: "#64748b", marginBottom: 20 }}>
             Submit your investment intent and sign the SAFE agreement.
           </p>
@@ -1282,7 +1282,7 @@ function GovernanceSection({ capTable, proposals, raiseConfig }) {
           </>
         ) : (
           <p style={{ fontSize: 13, color: "#94a3b8" }}>
-            No investors yet. Be the first to invest in TitleApp.
+            No investors yet. Be the first to invest in SOCIII.
           </p>
         )}
       </div>
@@ -1381,7 +1381,7 @@ function IDCheckSection({ gates, isVerified, hasDisclaimer, disclaimers, disclai
         ) : (
           <>
             <p style={{ fontSize: 13, color: "#64748b", lineHeight: 1.6, marginBottom: 14 }}>
-              A one-time $2 identity check via Stripe Identity. This verifies your identity and sets up your TitleApp Vault for secure document access.
+              A one-time $2 identity check via Stripe Identity. This verifies your identity and sets up your SOCIII Vault for secure document access.
             </p>
             <button
               onClick={onStartVerify}
@@ -1826,7 +1826,7 @@ function GateModal({ type, disclaimers, disclaimerChecks, setDisclaimerChecks, a
             <h2 style={{ fontSize: 18, fontWeight: 700, color: "#0f172a", marginBottom: 12 }}>Identity Verification</h2>
             <p style={{ fontSize: 14, color: "#64748b", marginBottom: 16, lineHeight: 1.5 }}>
               Before accessing restricted investor materials, we need to verify your identity.
-              This is a one-time $2 check that also sets up your TitleApp Vault.
+              This is a one-time $2 check that also sets up your SOCIII Vault.
             </p>
             <button
               onClick={onStartVerify}

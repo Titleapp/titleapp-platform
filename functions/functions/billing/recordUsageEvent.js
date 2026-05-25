@@ -18,7 +18,7 @@
  * Schema extension on the canonical telemetry collection (USAGE_EVENTS_COLLECTION):
  *   creator_id          uid of worker's current owner (or null for system events)
  *   creator_status      "active" | "deleted" | "suspended"
- *   creator_share_amount cents — share for current owner. 0 for TitleApp originals.
+ *   creator_share_amount cents — share for current owner. 0 for SOCIII originals.
  *   forkedFrom          source worker doc id (snapshot at write time, D5)
  *   forkedFromCollection source collection name (snapshot at write time)
  *   parent_creator_id   uid of immediate parent Creator (forked-from-Creator-authored only)
@@ -209,13 +209,13 @@ async function computeRevenueAttribution(context) {
   }
 
   const creatorId = worker.creatorId || worker.createdBy || null;
-  const isTitleAppOriginal = !creatorId || creatorId === TITLEAPP_PLATFORM_CREATOR;
+  const isSOCIIIOriginal = !creatorId || creatorId === TITLEAPP_PLATFORM_CREATOR;
   const sharePct = pricing.creatorRevenueSharePct ?? pricing.creatorInferenceSharePct ?? 0.20;
   const parentForkPct = pricing.creatorParentForkSharePct ?? 0.30;
 
-  // TitleApp original: record creator_id (so platform totals are visible)
+  // SOCIII original: record creator_id (so platform totals are visible)
   // but creator_share_amount = 0 — no royalty owed.
-  if (isTitleAppOriginal) {
+  if (isSOCIIIOriginal) {
     return {
       creator_id: TITLEAPP_PLATFORM_CREATOR,
       creator_status: "platform",
@@ -257,10 +257,10 @@ async function computeRevenueAttribution(context) {
   // Forked. Look up the source to determine if parent was Creator-authored.
   const source = await loadWorker(db, forkedFrom);
   const sourceCreatorId = source ? (source.creatorId || source.createdBy || null) : null;
-  const sourceIsTitleAppOriginal = !sourceCreatorId || sourceCreatorId === TITLEAPP_PLATFORM_CREATOR;
+  const sourceIsSOCIIIOriginal = !sourceCreatorId || sourceCreatorId === TITLEAPP_PLATFORM_CREATOR;
 
-  if (sourceIsTitleAppOriginal) {
-    // Forked from TitleApp original — full share to forker, no upstream payout.
+  if (sourceIsSOCIIIOriginal) {
+    // Forked from SOCIII original — full share to forker, no upstream payout.
     const creator_share_amount = round4(revenue_amount * sharePct);
     return {
       creator_id: creatorId,

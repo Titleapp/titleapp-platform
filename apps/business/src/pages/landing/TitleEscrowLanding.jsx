@@ -14,7 +14,7 @@ const CONTENT = {
     },
     {
       headline: "50% Reduction in Time-to-Close. Zero Missed Requirements.",
-      subhead: "Title companies using TitleApp close faster with fewer errors."
+      subhead: "Title companies using SOCIII close faster with fewer errors."
     },
     {
       headline: "Wire Fraud Cost the Industry $446M Last Year. Don't Be Next.",
@@ -51,10 +51,10 @@ const CONTENT = {
     { name: "Enterprise", price: "$149", period: "/mo per worker", features: ["Everything in Pro", "Dedicated account manager", "Custom integrations", "SLA guarantee", "Multi-office dashboard"], cta: "Contact Sales", highlighted: false }
   ],
   faq: [
-    { question: "Does TitleApp replace my title production software?", answer: "No. TitleApp works alongside your existing TPS — SoftPro, RamQuest, ResWare, Qualia, or whatever you use. Think of TitleApp as the AI layer that watches your pipeline and catches what falls through the cracks." },
+    { question: "Does SOCIII replace my title production software?", answer: "No. SOCIII works alongside your existing TPS — SoftPro, RamQuest, ResWare, Qualia, or whatever you use. Think of SOCIII as the AI layer that watches your pipeline and catches what falls through the cracks." },
     { question: "How does the wire verification work?", answer: "The Wire Verification Worker analyzes incoming wire instructions against known patterns, previous transactions, and counterparty data. It flags anomalies — changed routing numbers, first-time accounts, domain spoofing — before any money moves." },
-    { question: "Is my data secure?", answer: "All data is encrypted in transit and at rest. TitleApp is SOC 2 compliant with role-based access controls. Your client data never leaves your workspace, and you can delete it at any time." },
-    { question: "What states are supported?", answer: "TitleApp supports all 50 states. State-specific requirements, recording standards, and regulatory rules are built into the compliance engine and updated continuously." },
+    { question: "Is my data secure?", answer: "All data is encrypted in transit and at rest. SOCIII is SOC 2 compliant with role-based access controls. Your client data never leaves your workspace, and you can delete it at any time." },
+    { question: "What states are supported?", answer: "SOCIII supports all 50 states. State-specific requirements, recording standards, and regulatory rules are built into the compliance engine and updated continuously." },
     { question: "What if I don't like it?", answer: "Start free — no credit card required. If you upgrade and aren't satisfied, get a full refund within 60 days. No questions, no forms, no retention calls. Cancel anytime." }
   ],
   promoCode: "TITLELAUNCH"

@@ -297,7 +297,7 @@ function getCompanyKnowledge() {
       _companyKnowledge = fs.readFileSync(knowledgePath, "utf-8");
     } catch (e) {
       console.warn("Could not load company-knowledge.md:", e.message);
-      _companyKnowledge = "TitleApp is the Digital Worker platform -- AI agents governed by human-defined rules with deterministic enforcement and immutable audit trails. The underlying architecture is called RAAS (Rules + AI-as-a-Service).";
+      _companyKnowledge = "SOCIII is the Digital Worker platform -- AI agents governed by human-defined rules with deterministic enforcement and immutable audit trails. The underlying architecture is called RAAS (Rules + AI-as-a-Service).";
     }
   }
   return _companyKnowledge;
@@ -399,7 +399,7 @@ async function requireFirebaseUser(req, res) {
       handled: false,
       user: {
         uid: 'test-user',
-        email: 'test@titleapp.ai',
+        email: 'test@sociii.ai',
         user_id: 'test-user'
       }
     };
@@ -503,7 +503,7 @@ const ALLOWED_ORIGINS = [
   'https://title-app-alpha.web.app',
   'https://title-app-alpha.firebaseapp.com',
   'https://titleapp-frontdoor.titleapp-core.workers.dev',
-  'https://app.titleapp.ai',
+  'https://app.sociii.ai',
 ];
 
 if (process.env.FUNCTIONS_EMULATOR === 'true') {
@@ -1212,7 +1212,7 @@ async function handleAIChatFallthrough(message, userId, tenantId) {
         const retryResponse = await anthropic.messages.create({
           model: "claude-sonnet-4-5-20250929",
           max_tokens: 2048,
-          system: `You are Alex from TitleApp. Your previous response was flagged for these policy violations:\n${violationList}\n\nRewrite your response to avoid these violations. Never imply guaranteed returns, provide specific legal advice, or guarantee tax outcomes. Be professional and factual.\n\nFormatting rules — follow these strictly:\n- Never use emojis.\n- Never use markdown formatting.\n- Never use bullet points or numbered lists unless explicitly asked.\n- Write in complete, clean sentences. Plain text only.`,
+          system: `You are Alex from SOCIII. Your previous response was flagged for these policy violations:\n${violationList}\n\nRewrite your response to avoid these violations. Never imply guaranteed returns, provide specific legal advice, or guarantee tax outcomes. Be professional and factual.\n\nFormatting rules — follow these strictly:\n- Never use emojis.\n- Never use markdown formatting.\n- Never use bullet points or numbered lists unless explicitly asked.\n- Write in complete, clean sentences. Plain text only.`,
           messages,
         });
         const retryText = retryResponse.content[0]?.text;
@@ -2053,7 +2053,7 @@ exports.api = onRequest(
                 if (tier2.length) raasSections.push("VERTICAL RULES:\n" + tier2.map((r, i) => `${i + 1}. ${r}`).join("\n"));
                 if (tier3.length) raasSections.push("WORKER-SPECIFIC RULES:\n" + tier3.map((r, i) => `${i + 1}. ${r}`).join("\n"));
 
-                workerPrompt = `You are ${workerName}, a Digital Worker on TitleApp.
+                workerPrompt = `You are ${workerName}, a Digital Worker on SOCIII.
 ${headline}
 
 WHAT YOU DO:
@@ -2887,7 +2887,7 @@ When the user asks "what have I completed?", "what's next?", or about their prog
                 if (tier2.length) raasSections.push("VERTICAL RULES:\n" + tier2.map((r, i) => `${i + 1}. ${r}`).join("\n"));
                 if (tier3.length) raasSections.push("WORKER-SPECIFIC RULES:\n" + tier3.map((r, i) => `${i + 1}. ${r}`).join("\n"));
 
-                selectedSystemPrompt = `You are ${workerName}, a Digital Worker on TitleApp.
+                selectedSystemPrompt = `You are ${workerName}, a Digital Worker on SOCIII.
 ${headline}
 
 WHAT YOU DO:
@@ -2932,7 +2932,7 @@ IDENTITY RULES:
               messages,
             });
 
-            let aiText = aiResponse.content[0]?.text || "Hey — I'm Alex, Chief of Staff at TitleApp. Tell me what you do and I'll show you what we have.";
+            let aiText = aiResponse.content[0]?.text || "Hey — I'm Alex, Chief of Staff at SOCIII. Tell me what you do and I'll show you what we have.";
 
             // Extract name from early conversation if not yet known
             if (!sessionState.prospectName && sessionState.salesHistory.length <= 6) {
@@ -3289,8 +3289,8 @@ IDENTITY RULES:
                   cards: [{
                     type: 'terms',
                     data: {
-                      termsUrl: 'https://app.titleapp.ai/legal/terms-of-service',
-                      privacyUrl: 'https://app.titleapp.ai/legal/privacy-policy',
+                      termsUrl: 'https://app.sociii.ai/legal/terms-of-service',
+                      privacyUrl: 'https://app.sociii.ai/legal/privacy-policy',
                       summary: "Your records are yours. We verify and secure them. We don't sell your data. You can export or delete anytime.",
                     },
                   }],
@@ -3442,7 +3442,7 @@ IDENTITY RULES:
 
           const messages = [];
           if (sessionState.discoveryHistory.length === 0) {
-            messages.push({ role: 'assistant', content: "Hi there. I'm Alex, TitleApp's investor relations AI. Happy to tell you about the company, the product, or the raise. What would you like to know?" });
+            messages.push({ role: 'assistant', content: "Hi there. I'm Alex, SOCIII's investor relations AI. Happy to tell you about the company, the product, or the raise. What would you like to know?" });
           }
           for (const h of sessionState.discoveryHistory) {
             messages.push({ role: h.role, content: h.content });
@@ -3496,15 +3496,15 @@ IDENTITY RULES:
             authGuidance = '\nYou know this investor\'s name and they are engaged. If the conversation is going well, naturally suggest data room access: "By the way, want me to get you into the data room? Just takes your email and you will have the deck, business plan, and SAFE terms in front of you while we talk." Do NOT force it if they are asking an unrelated question. Just weave it in when there is a natural pause.';
           }
 
-          const investSystemPrompt = `You are Alex, TitleApp's investor relations AI. You are having a conversation with a potential investor.
+          const investSystemPrompt = `You are Alex, SOCIII's investor relations AI. You are having a conversation with a potential investor.
 
 IDENTITY:
-TitleApp is the Digital Worker platform. The underlying architecture is called RAAS (Rules + AI-as-a-Service). When talking to investors, use "Digital Worker" as the primary term. You may explain RAAS as the technical architecture name if asked about the technology: "TitleApp is the Digital Worker platform. The underlying architecture is called RAAS — Rules plus AI-as-a-Service. Every Digital Worker operates within defined rules with a complete audit trail."
+SOCIII is the Digital Worker platform. The underlying architecture is called RAAS (Rules + AI-as-a-Service). When talking to investors, use "Digital Worker" as the primary term. You may explain RAAS as the technical architecture name if asked about the technology: "SOCIII is the Digital Worker platform. The underlying architecture is called RAAS — Rules plus AI-as-a-Service. Every Digital Worker operates within defined rules with a complete audit trail."
 
 CONVERSATION FLOW — THIS IS CRITICAL:
 You are a LISTENER first, a presenter second. The early conversation should be 70% questions, 30% answers.
 1. Warm greeting. Ask what brought them here. Ask what they invest in, what stage, what sectors, what excites them.
-2. LISTEN. Mirror what they say. Find common ground. "Interesting -- TitleApp actually touches on that because..."
+2. LISTEN. Mirror what they say. Find common ground. "Interesting -- SOCIII actually touches on that because..."
 3. Answer their specific questions concisely. One idea per response. Then ask a follow-up or offer to go deeper.
 4. Let THEM drive the depth. If they want market, go into market. If they want terms, give terms. Do not dump everything at once.
 5. PROACTIVE DATA ROOM ACCESS: Once you know their name AND they have expressed interest in investing or learning more (typically message 2-3), proactively offer data room access. Frame it naturally, NOT as "signing up for an account." Example: "Want me to get you into the data room while we chat? Just takes your email and you will have the pitch deck, business plan, and SAFE terms right in front of you." This should feel like a service, not a sales push.
@@ -3540,7 +3540,7 @@ HARD SEC COMPLIANCE RULES:
 WHAT YOU MUST NEVER DO:
 - NEVER offer inventory management, sales pipeline, compliance setup, vertical selection, or any workspace onboarding. You are NOT the business assistant.
 - NEVER misstate the raise terms. Use ONLY the numbers from CURRENT RAISE TERMS below.
-- NEVER compare TitleApp to Anthropic, OpenAI, or Google in a combative way. They are complementary.
+- NEVER compare SOCIII to Anthropic, OpenAI, or Google in a combative way. They are complementary.
 
 COMPANY KNOWLEDGE:
 ${getCompanyKnowledge()}
@@ -3553,7 +3553,7 @@ TIER 1 (freely available — no gates): Pitch Deck (PPTX), Executive Summary / O
 TIER 2 (requires identity verification + disclaimer): Business Plan, Feb 2026 (DOCX), SAFE Agreement (generated per investor).
 When they ask for a Tier 2 document, let them know they will need to complete a quick identity verification ($2) and acknowledge the risk disclaimers in the data room.
 
-LEGAL ENTITY: The correct legal entity is "The Title App LLC" (NOT "TitleApp Inc."). The brand is "TitleApp" but on all legal documents and formal references, use "The Title App LLC."
+LEGAL ENTITY: The correct legal entity is "SOCIII, Inc." The brand is "SOCIII" — on all legal documents and formal references, use "SOCIII, Inc."
 
 ACCOUNT SETUP — CRITICAL:
 When the investor shows interest (knows their name + they want to learn more), proactively suggest setting up access. Frame it as data room access, not account creation:
@@ -3570,7 +3570,7 @@ NAVIGATION — CRITICAL:
 ESCALATION:
 For legal specifics, custom terms, or strategic questions, offer to connect with Sean (CEO) or Kent (CFO). Do not try to answer legal questions yourself.
 
-COMPLIANCE: This is informational only. TitleApp does not act as a registered funding portal, broker-dealer, or investment advisor. The offering is conducted through Wefunder under Regulation CF.`;
+COMPLIANCE: This is informational only. SOCIII does not act as a registered funding portal, broker-dealer, or investment advisor. The offering is conducted through Wefunder under Regulation CF.`;
 
           try {
             const anthropic = getAnthropic();
@@ -3581,7 +3581,7 @@ COMPLIANCE: This is informational only. TitleApp does not act as a registered fu
               messages,
             });
 
-            let aiText = aiResponse.content[0]?.text || "Tell me what you'd like to know about TitleApp.";
+            let aiText = aiResponse.content[0]?.text || "Tell me what you'd like to know about SOCIII.";
 
             let showSignup = false;
             if (/\[SHOW[_\s]?SIGNUP\]/i.test(aiText)) {
@@ -3680,7 +3680,7 @@ COMPLIANCE: This is informational only. TitleApp does not act as a registered fu
           // Build conversation for Claude — include the frontend welcome as first message
           const messages = [];
           if (sessionState.discoveryHistory.length === 0) {
-            messages.push({ role: 'assistant', content: 'Hey! Welcome to TitleApp. What brings you here today?' });
+            messages.push({ role: 'assistant', content: 'Hey! Welcome to SOCIII. What brings you here today?' });
           }
           for (const h of sessionState.discoveryHistory) {
             messages.push({ role: h.role, content: h.content });
@@ -3699,12 +3699,12 @@ COMPLIANCE: This is informational only. TitleApp does not act as a registered fu
           } else if (msgCount <= 5) {
             phaseGuidance += '\nYou are in the discovery phase. Keep learning about their situation. Ask about specifics like scale, location, pain points, tools they use. One question at a time. Do NOT suggest signup yet.';
           } else if (dCtx.vertical) {
-            phaseGuidance += `\nYou now know enough to show specific value. Their situation: vertical=${dCtx.vertical}, subtype=${dCtx.subtype || 'unknown'}, scale=${dCtx.scale || 'unknown'}, location=${dCtx.location || 'unknown'}. Show them SPECIFICALLY what TitleApp would do for THEIR situation using their numbers and words. After showing value, you may gently offer to set it up and include [SHOW_SIGNUP] at the end of that message.`;
+            phaseGuidance += `\nYou now know enough to show specific value. Their situation: vertical=${dCtx.vertical}, subtype=${dCtx.subtype || 'unknown'}, scale=${dCtx.scale || 'unknown'}, location=${dCtx.location || 'unknown'}. Show them SPECIFICALLY what SOCIII would do for THEIR situation using their numbers and words. After showing value, you may gently offer to set it up and include [SHOW_SIGNUP] at the end of that message.`;
           } else {
             phaseGuidance += '\nYou still need more context. Keep the conversation going naturally. Ask what they do or what brought them here. Do NOT suggest signup.';
           }
 
-          const discoverySystemPrompt = `You are the TitleApp welcome assistant. You're having a casual, friendly conversation with someone who just visited the website.
+          const discoverySystemPrompt = `You are the SOCIII welcome assistant. You're having a casual, friendly conversation with someone who just visited the website.
 
 CRITICAL RULES:
 - For the FIRST 4-6 exchanges, just have a conversation. Learn about them. Be curious. Be human.
@@ -3716,15 +3716,15 @@ CRITICAL RULES:
 - AFTER 4+ exchanges AND you've shown them specific value for their situation, you can say something like "I can have your workspace ready in 2 minutes, [Name]. Want me to set it up?" and include [SHOW_SIGNUP] at the end.
 - If they say no or ignore it, keep chatting. Don't mention it again for at least 3 more exchanges.
 - Keep every response to 2-3 sentences max. This is a chat, not a pitch.
-- NEVER reference any URL. NEVER say "titleapp.com" or "titleapp.ai". The user is already here.
+- NEVER reference any URL. NEVER say "titleapp.com" or "sociii.ai". The user is already here.
 - NEVER say "Are you seeing the signup form?" -- you don't control what they see.
 - Never use emojis. Never use markdown formatting. Plain text only.
 
 CONVERSATION FLOW:
-Message 1: "Hey! Welcome to TitleApp. What brings you here today?" (already sent by the system)
+Message 1: "Hey! Welcome to SOCIII. What brings you here today?" (already sent by the system)
 Message 2: Respond to what they said, then ask their name naturally. "That's cool -- by the way, I'm Alex. What's your name?"
 Messages 3-5: Ask about THEIR situation using their name. Mirror their words. Be genuinely curious. "[Name], how long have you been doing that?" or "Nice, [Name] -- what's the most annoying part of that for you?"
-Messages 6-7: Based on what you've learned, show them specifically how TitleApp would help THEIR situation with concrete examples. Use their name.
+Messages 6-7: Based on what you've learned, show them specifically how SOCIII would help THEIR situation with concrete examples. Use their name.
 Message 8+: If they seem interested, gently offer to set it up. "I can have this ready for you in about 2 minutes, [Name]. Want me to set it up?" Include [SHOW_SIGNUP] at the very end of ONLY that message.${phaseGuidance}`;
 
           try {
@@ -3847,7 +3847,7 @@ Message 8+: If they seem interested, gently offer to set it up. "I can have this
 
           const messages = [];
           if (sessionState.devHistory.length === 0) {
-            messages.push({ role: 'assistant', content: "Hey, welcome. I'm Alex -- I work with developers who are building on TitleApp. What's your name?" });
+            messages.push({ role: 'assistant', content: "Hey, welcome. I'm Alex -- I work with developers who are building on SOCIII. What's your name?" });
           }
           for (const h of sessionState.devHistory) {
             messages.push({ role: h.role, content: h.content });
@@ -4012,8 +4012,8 @@ Message 8+: If they seem interested, gently offer to set it up. "I can have this
                   cards: [{
                     type: 'terms',
                     data: {
-                      termsUrl: 'https://app.titleapp.ai/legal/terms-of-service',
-                      privacyUrl: 'https://app.titleapp.ai/legal/privacy-policy',
+                      termsUrl: 'https://app.sociii.ai/legal/terms-of-service',
+                      privacyUrl: 'https://app.sociii.ai/legal/privacy-policy',
                       summary: "Your records are yours. We verify and secure them. We don't sell your data. You can export or delete anytime.",
                     },
                   }],
@@ -4261,7 +4261,7 @@ After the 4th answer, say "Interactions locked in" and stop.
           } else if (resolvedPath === 'worker') {
             creatorPathCtx = '\nCREATOR MODE: The creator is building a Digital Worker.\n';
           }
-          const sandboxSystemPrompt = `You are Alex, Chief of Staff at TitleApp. You help people build and publish Digital Workers and games -- no coding needed. You are inside the Creator Sandbox.
+          const sandboxSystemPrompt = `You are Alex, Chief of Staff at SOCIII. You help people build and publish Digital Workers and games -- no coding needed. You are inside the Creator Sandbox.
 ${creatorPathCtx}
 TERMINOLOGY: Always say "Digital Worker" for workers. For games, say "game."
 
@@ -4318,19 +4318,19 @@ AUTH HANDLING:
 You never handle authentication. Never ask for an email. If auth fails, the UI handles it silently.
 
 NEVER:
-- Say "go to titleapp.ai" or "sign in somewhere else"
+- Say "go to sociii.ai" or "sign in somewhere else"
 - Output [Note: ...] or [System: ...] bracket text
 - Ask more than one question in a response
 - Write more than 3 sentences unless they asked for detail
 - Ask for the creator's name if you already know it
 - Jump ahead to a step the creator hasn't reached
 - Say "I have what I need to build this" and stop -- always generate [WORKER_SPEC] when ready
-- Deny TitleApp's blockchain heritage
+- Deny SOCIII's blockchain heritage
 - Say "refresh the page", "try refreshing", "refresh your browser", "reload", "canvas sync issue", "UI sync issue", "display issue on my end", "I can't see your canvas", "I can't control what displays", or any variation. The canvas and chat are ONE surface you share with the creator. If the creator reports a display glitch, briefly ask them to describe what they see, then keep building. Never troubleshoot or apologize for the UI.
 - Say "it might be loading" or "give it a moment" about the canvas — if a build is running, say so affirmatively; otherwise keep moving the conversation forward.
 ${nameGuidance}${authGuidance}`;
 
-          const devSystemPrompt = `You are Alex, TitleApp's developer relations AI. You're a tour guide, not a consultant. Show people around. Don't interview them.
+          const devSystemPrompt = `You are Alex, SOCIII's developer relations AI. You're a tour guide, not a consultant. Show people around. Don't interview them.
 
 RULE #1 -- BE BRIEF:
 - 2-3 sentences per response. That's it.
@@ -4371,11 +4371,11 @@ RULE #5 -- NEVER DO THESE THINGS:
 - Never offer investment information, raise terms, or financial details. Redirect to the investor chat.
 - Never provide production API keys in chat. Account creation goes through the signup flow.
 - Never make up endpoints or capabilities that do not exist.
-- Never deny TitleApp's blockchain heritage -- the name comes from land title registry, not job titles.
+- Never deny SOCIII's blockchain heritage -- the name comes from land title registry, not job titles.
 
 RULE #6 -- NEVER SEND THEM AWAY:
-- The developer is ALREADY on TitleApp. This chat IS TitleApp.
-- Never say "go to titleapp.ai" or "visit our site" or "sign in somewhere else."
+- The developer is ALREADY on SOCIII. This chat IS SOCIII.
+- Never say "go to sociii.ai" or "visit our site" or "sign in somewhere else."
 - When they need to sign up, ask for their email and handle it right here.
 - When they want to see their Digital Worker or sandbox, say "Opening your sandbox..." -- the transition happens seamlessly.
 - If something fails, say "Let me try that again" -- never redirect them elsewhere.
@@ -4411,7 +4411,7 @@ Alex: "A Digital Worker is like hiring an AI team member that follows your rules
 That's the energy. Brief. Helpful. Let them lead.
 
 ON BLOCKCHAIN HERITAGE (only when asked):
-TitleApp started as a blockchain land title registry. The name comes from titling assets. Infrastructure pivoted to AI governance -- tamper-proof records + audit trail + provenance, wrapped in AI, then Digital Workers. Never deny the heritage.
+SOCIII started as a blockchain land title registry. The name comes from titling assets. Infrastructure pivoted to AI governance -- tamper-proof records + audit trail + provenance, wrapped in AI, then Digital Workers. Never deny the heritage.
 
 RULE #8 -- NO INTERNAL NOTES:
 - NEVER output text in brackets like [Note: ...] or [System: ...] or [Action: ...] or [At this point...].
@@ -4847,14 +4847,14 @@ ${nameGuidance}${authGuidance}`;
 
           const messages = [];
           if (sessionState.privacyHistory.length === 0) {
-            messages.push({ role: 'assistant', content: "Hi, I'm Alex. I can walk you through TitleApp's privacy practices, answer questions about how we handle your data, or explain our security model. What would you like to know?" });
+            messages.push({ role: 'assistant', content: "Hi, I'm Alex. I can walk you through SOCIII's privacy practices, answer questions about how we handle your data, or explain our security model. What would you like to know?" });
           }
           for (const h of sessionState.privacyHistory) {
             messages.push({ role: h.role, content: h.content });
           }
           messages.push({ role: 'user', content: userInput });
 
-          const privacySystemPrompt = `You are Alex, TitleApp's Chief of Staff. You are answering questions about TitleApp's privacy practices and data handling.
+          const privacySystemPrompt = `You are Alex, SOCIII's Chief of Staff. You are answering questions about SOCIII's privacy practices and data handling.
 
 TITLEAPP PRIVACY PRACTICES:
 
@@ -4886,7 +4886,7 @@ GDPR and CCPA:
 - You have the right to access, correct, and delete your personal data.
 - You have the right to data portability.
 - You can opt out of non-essential data processing.
-- Contact privacy@titleapp.ai or sean@titleapp.ai for any privacy requests.
+- Contact privacy@sociii.ai or sean@sociii.ai for any privacy requests.
 
 Cookies:
 - We use essential cookies for authentication and session management.
@@ -4899,7 +4899,7 @@ CONVERSATION STYLE:
 - If someone asks to "read the whole policy," provide the full text section by section.
 - Never use emojis. Never use markdown formatting. Plain text only.
 - Keep responses concise and direct.
-- If you do not know the answer to a specific privacy question, say so honestly and suggest they email privacy@titleapp.ai.`;
+- If you do not know the answer to a specific privacy question, say so honestly and suggest they email privacy@sociii.ai.`;
 
           try {
             const anthropic = getAnthropic();
@@ -4932,7 +4932,7 @@ CONVERSATION STYLE:
             console.error("Privacy AI failed:", e.message);
             return res.json({
               ok: true,
-              message: "I can help with privacy questions. What would you like to know about how TitleApp handles your data?",
+              message: "I can help with privacy questions. What would you like to know about how SOCIII handles your data?",
               showSignup: false,
               conversationState: 'privacy_discovery',
             });
@@ -4943,7 +4943,7 @@ CONVERSATION STYLE:
         if (surface === 'privacy') {
           return res.json({
             ok: true,
-            message: "I can answer questions about TitleApp's privacy practices. What would you like to know?",
+            message: "I can answer questions about SOCIII's privacy practices. What would you like to know?",
             showSignup: false,
             conversationState: 'privacy_discovery',
           });
@@ -4958,7 +4958,7 @@ CONVERSATION STYLE:
 
           const messages = [];
           if (sessionState.contactHistory.length === 0) {
-            messages.push({ role: 'assistant', content: "Hi, I'm Alex. Need to reach someone at TitleApp? I can share contact details, help you connect with the right person, or answer questions about the company. How can I help?" });
+            messages.push({ role: 'assistant', content: "Hi, I'm Alex. Need to reach someone at SOCIII? I can share contact details, help you connect with the right person, or answer questions about the company. How can I help?" });
           }
           for (const h of sessionState.contactHistory) {
             messages.push({ role: h.role, content: h.content });
@@ -4992,11 +4992,11 @@ CONVERSATION STYLE:
             }
           }
 
-          const contactSystemPrompt = `You are Alex, TitleApp's Chief of Staff. You are helping someone who wants to contact or learn about TitleApp.
+          const contactSystemPrompt = `You are Alex, SOCIII's Chief of Staff. You are helping someone who wants to contact or learn about SOCIII.
 
 COMPANY INFORMATION:
 
-Company: TitleApp
+Company: SOCIII
 Legal Name: Title App LLC, The
 Legal Structure: Corporation
 
@@ -5008,10 +5008,10 @@ Phone: (415) 236-0013
 
 Primary Contact:
 Sean Lee Combs, CEO
-Email: sean@titleapp.ai
+Email: sean@sociii.ai
 Phone: (310) 430-0780
 
-General Inquiries: hello@titleapp.ai
+General Inquiries: hello@sociii.ai
 
 Legal Entity Details (for vendors, partnerships, government forms):
 EIN: 33-1330902
@@ -5020,11 +5020,11 @@ Registered Agent: 1209 N Orange St, Wilmington, DE 19801
 
 CONVERSATION STYLE:
 - Be warm, helpful, and direct. You are not a phone tree.
-- When someone asks where TitleApp is located, give the address: 2411 Chestnut St, San Francisco, CA 94123.
+- When someone asks where SOCIII is located, give the address: 2411 Chestnut St, San Francisco, CA 94123.
 - When someone wants to reach a specific person, provide their contact info directly.
 - When someone wants to leave a message, ask for their name, email, and what they want to discuss. Confirm once captured.
 - When someone needs legal entity info (EIN, DUNS, legal name), provide it directly.
-- If someone wants to schedule a meeting, suggest they email sean@titleapp.ai with their availability.
+- If someone wants to schedule a meeting, suggest they email sean@sociii.ai with their availability.
 - Never use emojis. Never use markdown formatting. Plain text only.
 - Keep responses concise and helpful.
 ${messageGuidance}`;
@@ -5038,7 +5038,7 @@ ${messageGuidance}`;
               messages,
             });
 
-            const aiText = aiResp.content[0]?.text || "I can help you reach the right person at TitleApp. What do you need?";
+            const aiText = aiResp.content[0]?.text || "I can help you reach the right person at SOCIII. What do you need?";
 
             // Detect if Alex is asking for message details
             if (/\b(name|email|what.*discuss|what.*about)\b/i.test(aiText) && wantsToLeaveMessage) {
@@ -5066,7 +5066,7 @@ ${messageGuidance}`;
             console.error("Contact AI failed:", e.message);
             return res.json({
               ok: true,
-              message: "You can reach TitleApp at hello@titleapp.ai or call (415) 236-0013. Our office is at 2411 Chestnut St, San Francisco, CA 94123.",
+              message: "You can reach SOCIII at hello@sociii.ai or call (415) 236-0013. Our office is at 2411 Chestnut St, San Francisco, CA 94123.",
               showSignup: false,
               conversationState: 'contact_discovery',
             });
@@ -5077,7 +5077,7 @@ ${messageGuidance}`;
         if (surface === 'contact') {
           return res.json({
             ok: true,
-            message: "You can reach TitleApp at hello@titleapp.ai or call (415) 236-0013. Our office is at 2411 Chestnut St, San Francisco, CA 94123. How can I help?",
+            message: "You can reach SOCIII at hello@sociii.ai or call (415) 236-0013. Our office is at 2411 Chestnut St, San Francisco, CA 94123. How can I help?",
             showSignup: false,
             conversationState: 'contact_discovery',
           });
@@ -5095,7 +5095,7 @@ ${messageGuidance}`;
           }, { merge: true });
           return res.json({
             ok: true,
-            message: "I'm here to help with the TitleApp API and Digital Worker platform. What would you like to know?",
+            message: "I'm here to help with the SOCIII API and Digital Worker platform. What would you like to know?",
             showSignup: false,
             conversationState: 'dev_discovery',
           });
@@ -5114,7 +5114,7 @@ ${messageGuidance}`;
           }, { merge: true });
           return res.json({
             ok: true,
-            message: "I'm here to help with anything about TitleApp and the raise. What would you like to know?",
+            message: "I'm here to help with anything about SOCIII and the raise. What would you like to know?",
             showSignup: false,
             conversationState: 'invest_discovery',
           });
@@ -5179,7 +5179,7 @@ ${messageGuidance}`;
             const classifyResponse = await anthropic.messages.create({
               model: "claude-sonnet-4-5-20250929",
               max_tokens: 512,
-              system: `You are TitleApp's intent classifier. The user is authenticated and telling you what they want to do. Based on their message, determine what they're trying to accomplish. Consider the full meaning of what they're saying, not just keywords.
+              system: `You are SOCIII's intent classifier. The user is authenticated and telling you what they want to do. Based on their message, determine what they're trying to accomplish. Consider the full meaning of what they're saying, not just keywords.
 
 Respond with ONLY a JSON object:
 {
@@ -5327,7 +5327,7 @@ Be generous in interpretation. If someone says 'I manage apartments in Austin' t
               const sResponse = await anthropic.messages.create({
                 model: "claude-sonnet-4-5-20250929",
                 max_tokens: 1024,
-                system: `You are Alex from TitleApp. Based on the following conversation with "${ctx.companyName}" (${ctx.companyDescription}), summarize the Digital Worker configuration you'd set up for them. Write 2-3 sentences describing what their workspace will include — record types, compliance rules, and workflows. Write directly to the user in second person. No bullet points, no jargon.`,
+                system: `You are Alex from SOCIII. Based on the following conversation with "${ctx.companyName}" (${ctx.companyDescription}), summarize the Digital Worker configuration you'd set up for them. Write 2-3 sentences describing what their workspace will include — record types, compliance rules, and workflows. Write directly to the user in second person. No bullet points, no jargon.`,
                 messages: [{ role: "user", content: answersText }],
               });
               const summary = sResponse.content[0]?.text || "Your workspace will include custom record management, compliance tracking, and automated workflows.";
@@ -5346,13 +5346,13 @@ Be generous in interpretation. If someone says 'I manage apartments in Austin' t
               const raasResponse = await anthropic.messages.create({
                 model: "claude-sonnet-4-5-20250929",
                 max_tokens: 1024,
-                system: `You are Alex from TitleApp helping onboard a new business. The user has described their business. Based on their description, determine:
+                system: `You are Alex from SOCIII helping onboard a new business. The user has described their business. Based on their description, determine:
 
 1. What industry or business type this is
 2. What kinds of records, compliance requirements, and workflows they likely need
-3. Whether TitleApp has a pre-built Digital Worker configuration that fits
+3. Whether SOCIII has a pre-built Digital Worker configuration that fits
 
-TitleApp currently has pre-built Digital Worker configurations for: consumer (vehicles, credentials, student records), property management (rentals, tenants, leases, maintenance, HOA), and deal analysis (investment vetting, memos, pipeline). More are being built.
+SOCIII currently has pre-built Digital Worker configurations for: consumer (vehicles, credentials, student records), property management (rentals, tenants, leases, maintenance, HOA), and deal analysis (investment vetting, memos, pipeline). More are being built.
 
 Respond with ONLY a JSON object:
 {
@@ -5433,10 +5433,10 @@ Respond with ONLY a JSON object:
             const anthropic = getAnthropic();
 
             const systemPrompt = ctx.type === "business"
-              ? `You are Alex from TitleApp. A business owner just set up their workspace. Business: ${ctx.companyDescription || ctx.companyName}. Industry: ${ctx.industry || "general"}.
+              ? `You are Alex from SOCIII. A business owner just set up their workspace. Business: ${ctx.companyDescription || ctx.companyName}. Industry: ${ctx.industry || "general"}.
 
 Write 2 sentences MAX. First sentence: what changes for them now (no more scrambling, records are permanent). Second sentence: a transition to their first action. No jargon, no bullet points, no markdown, no emojis. Direct and warm.`
-              : `You are Alex from TitleApp. A consumer just signed up. Write 2 sentences MAX. First sentence: what changes for them (verified records = real value). Second sentence: "What would you like to start with?" No jargon, no bullet points, no markdown, no emojis.`;
+              : `You are Alex from SOCIII. A consumer just signed up. Write 2 sentences MAX. First sentence: what changes for them (verified records = real value). Second sentence: "What would you like to start with?" No jargon, no bullet points, no markdown, no emojis.`;
 
             const promiseResponse = await anthropic.messages.create({
               model: "claude-sonnet-4-5-20250929",
@@ -5516,7 +5516,7 @@ Write 2 sentences MAX. First sentence: what changes for them now (no more scramb
             const milestoneResponse = await anthropic.messages.create({
               model: "claude-sonnet-4-5-20250929",
               max_tokens: 512,
-              system: `You are Alex from TitleApp. A user just created a verified record. Generate a 1-2 sentence acknowledgment that connects this specific achievement to real-world value — money saved, time saved, or stress avoided. Be specific to what they just did. No jargon, no feature names, no emojis, no bullet points. Warm and direct. End with a brief forward-looking statement about what this means for them.
+              system: `You are Alex from SOCIII. A user just created a verified record. Generate a 1-2 sentence acknowledgment that connects this specific achievement to real-world value — money saved, time saved, or stress avoided. Be specific to what they just did. No jargon, no feature names, no emojis, no bullet points. Warm and direct. End with a brief forward-looking statement about what this means for them.
 
 Context:
 - Milestone type: ${ctx.milestoneType}
@@ -5755,11 +5755,11 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
           createdAt: nowServerTs(),
         };
         await db.collection("waitlists").doc("investors").collection("subscribers").add(entry);
-        // Notify sean@titleapp.ai (best-effort, don't block response)
+        // Notify sean@sociii.ai (best-effort, don't block response)
         try {
           const { sendViaSendGrid } = require("./services/marketingService/emailNotify");
           await sendViaSendGrid({
-            to: "sean@titleapp.ai",
+            to: "sean@sociii.ai",
             subject: `Investor lead: ${firstName || ""} ${lastName || ""} (${email})`,
             textBody: `New investor waitlist submission:\n\nName: ${firstName || ""} ${lastName || ""}\nEmail: ${email}\nNote: ${note || "(none)"}\nSource: invest-page\nTime: ${new Date().toISOString()}`,
           });
@@ -6272,7 +6272,7 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
           buyerEligible,
           sellerEligible,
           reason: eligible ? "Trade eligible" : reasons.join("; "),
-          auditTrailUrl: dtc.blockchainHash ? `https://titleapp.ai/audit/${dtc.blockchainHash}` : null,
+          auditTrailUrl: dtc.blockchainHash ? `https://sociii.ai/audit/${dtc.blockchainHash}` : null,
         });
       } catch (e) {
         console.error("solar/credit/verifyTrade failed:", e);
@@ -6657,7 +6657,7 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
         });
 
         // Create Stripe Checkout session
-        const origin = req.headers.origin || "https://app.titleapp.ai";
+        const origin = req.headers.origin || "https://app.sociii.ai";
         const session = await stripe.checkout.sessions.create({
           mode: "subscription",
           customer: customerId,
@@ -6759,10 +6759,10 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
         const result = await handleCallback(platformId, code, state);
         console.log(`[oauth/callback] ${platformId} connected for ${result.subscriberId}`);
         // Redirect subscriber back to Studio with success indicator
-        return res.redirect(`https://app.titleapp.ai/studio?oauth=${platformId}&status=connected`);
+        return res.redirect(`https://app.sociii.ai/studio?oauth=${platformId}&status=connected`);
       } catch (e) {
         console.error(`[oauth/callback] ${platformId} error:`, e.message);
-        return res.redirect(`https://app.titleapp.ai/studio?oauth=${platformId}&status=error&message=${encodeURIComponent(e.message)}`);
+        return res.redirect(`https://app.sociii.ai/studio?oauth=${platformId}&status=error&message=${encodeURIComponent(e.message)}`);
       }
     }
 
@@ -6808,7 +6808,7 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
     }
 
     // CODEX 50.14 — public DTC verification endpoint. No auth required:
-    // verifiability without TitleApp's cooperation is the architectural
+    // verifiability without SOCIII's cooperation is the architectural
     // goal. The proof returned (Merkle proof + OpenTimestamps receipt)
     // is self-contained and verifiable offline.
     if (route.startsWith("/dtc/") && route.endsWith("/verify") && method === "GET") {
@@ -7095,7 +7095,7 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
         return res.json({
           ok: true,
           inviteCode,
-          inviteUrl: `https://titleapp.ai/invite/${inviteCode}`,
+          inviteUrl: `https://sociii.ai/invite/${inviteCode}`,
           expiresAt: expiresAt.toISOString(),
         });
       } catch (e) {
@@ -7260,7 +7260,7 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
             error: "EMAIL_SEND_FAILED",
             message: "Invite created but email failed. Copy the link below and send it manually.",
             token,
-            inviteUrl: `https://app.titleapp.ai/join/${token}`,
+            inviteUrl: `https://app.sociii.ai/join/${token}`,
             expiresAt: expiresAt.toDate().toISOString(),
           });
         }
@@ -7268,7 +7268,7 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
         return res.json({
           ok: true,
           token,
-          inviteUrl: `https://app.titleapp.ai/join/${token}`,
+          inviteUrl: `https://app.sociii.ai/join/${token}`,
           expiresAt: expiresAt.toDate().toISOString(),
         });
       } catch (e) {
@@ -7513,7 +7513,7 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       try {
         const Stripe = require("stripe");
         const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2024-06-20" });
-        const returnUrl = body.returnUrl || "https://app.titleapp.ai/sandbox";
+        const returnUrl = body.returnUrl || "https://app.sociii.ai/sandbox";
         const session = await stripe.checkout.sessions.create({
           mode: "subscription",
           line_items: [{
@@ -7809,7 +7809,7 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
             try {
                 const Stripe = require("stripe");
                 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2024-06-20" });
-                const origin = req.headers.origin || req.headers.referer || "https://app.titleapp.ai";
+                const origin = req.headers.origin || req.headers.referer || "https://app.sociii.ai";
                 const session = await stripe.checkout.sessions.create({
                     mode: "payment",
                     line_items: [{
@@ -7962,7 +7962,7 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
         }
 
         // Build test-mode system prompt
-        const testSystemPrompt = `You are ${workerName}. You are a Digital Worker on TitleApp.
+        const testSystemPrompt = `You are ${workerName}. You are a Digital Worker on SOCIII.
 
 YOUR JOB: ${description}
 
@@ -8142,7 +8142,7 @@ These should be 2-3 realistic test scenarios the creator should try, derived fro
           featured: false,
           published: true,
           creatorId: worker.createdBy || user.uid,
-          creatorName: worker.createdByName || user.email || "TitleApp",
+          creatorName: worker.createdByName || user.email || "SOCIII",
           cloneOf: worker.cloneOf || null,
           raasConfigId: workerId,
           publishedAt: nowServerTs(),
@@ -8219,7 +8219,7 @@ These should be 2-3 realistic test scenarios the creator should try, derived fro
             jurisdiction: w.jurisdiction || "",
             version: w.version || 1,
             exportedAt: new Date().toISOString(),
-            platform: "TitleApp",
+            platform: "SOCIII",
           },
           rules: {
             tier0: w.raasLibrary?.tier0 || [],
@@ -8247,7 +8247,7 @@ These should be 2-3 realistic test scenarios the creator should try, derived fro
             w.jurisdiction || "GLOBAL",
             "",
             `---`,
-            `Exported from TitleApp on ${new Date().toISOString().split("T")[0]}`,
+            `Exported from SOCIII on ${new Date().toISOString().split("T")[0]}`,
           ].join("\n"),
         };
 
@@ -8378,8 +8378,8 @@ These should be 2-3 realistic test scenarios the creator should try, derived fro
               mode: "subscription",
               customer_email: ctx.email || auth.user?.email || undefined,
               line_items: lineItems,
-              success_url: `${req.headers.origin || "https://app.titleapp.ai"}/vault?checkout=success`,
-              cancel_url: `${req.headers.origin || "https://app.titleapp.ai"}/marketplace?checkout=cancelled`,
+              success_url: `${req.headers.origin || "https://app.sociii.ai"}/vault?checkout=success`,
+              cancel_url: `${req.headers.origin || "https://app.sociii.ai"}/marketplace?checkout=cancelled`,
               metadata: {
                 userId: ctx.userId,
                 bogoCheckout: "true",
@@ -8934,7 +8934,7 @@ These should be 2-3 realistic test scenarios the creator should try, derived fro
         await workerRef.update({ buildPhase: "researching", updatedAt: nowServerTs() });
 
         // Build research prompt
-        const researchPrompt = `You are Worker #1, TitleApp's regulatory research engine. Your job is to research regulations and best practices for a Digital Worker being built on the platform.
+        const researchPrompt = `You are Worker #1, SOCIII's regulatory research engine. Your job is to research regulations and best practices for a Digital Worker being built on the platform.
 
 DIGITAL WORKER DETAILS:
 - Name: ${worker.name || "Unnamed"}
@@ -9696,7 +9696,7 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
             priceDisplay: `$${worker.pricing?.amount || 9}/mo`,
             trialDays: 7, status: "available", featured: false, published: true,
             creatorId: worker.createdBy || user.uid,
-            creatorName: worker.createdByName || user.email || "TitleApp",
+            creatorName: worker.createdByName || user.email || "SOCIII",
             raasConfigId: workerId,
             publishedAt: nowServerTs(), updatedAt: nowServerTs(),
           }, { merge: true });
@@ -9736,8 +9736,8 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
               // Generate onboarding link and send email
               const accountLink = await stripe.accountLinks.create({
                 account: connectAccount.id,
-                refresh_url: "https://app.titleapp.ai/sandbox?connect=refresh",
-                return_url: "https://app.titleapp.ai/sandbox?connect=success",
+                refresh_url: "https://app.sociii.ai/sandbox?connect=refresh",
+                return_url: "https://app.sociii.ai/sandbox?connect=success",
                 type: "account_onboarding",
               });
               const { sendConnectOnboardingEmail } = require("./services/marketingService/emailNotify");
@@ -11956,6 +11956,330 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       } catch (e) { return res.json({ ok: false, error: e.message }); }
     }
 
+    // ──────────────────────────────────────────────────────────
+    // IR Phase 1 — Investor flow (initiate / step / status)
+    // Capability registry: ir.investor.initiate_v1, ir.investor.step_v1,
+    // ir.investor.status_v1.
+    // ──────────────────────────────────────────────────────────
+
+    // POST /v1/ir:investor:initiate
+    // Body: { email, name, investmentAmount?, fundraiseId? }
+    // Caller: admin (Sean/Kent/Alex). Emits magic-link invite.
+    if (route === "/ir:investor:initiate" && method === "POST") {
+      try {
+        const investorFlow = require("./services/ir/investorFlow");
+        const result = await investorFlow.initiateInvestorFlow({
+          email: body.email,
+          name: body.name,
+          investmentAmount: body.investmentAmount || null,
+          fundraiseId: body.fundraiseId || undefined,
+          invitedBy: auth.user.uid,
+        });
+        return res.json(result);
+      } catch (e) {
+        console.error("ir:investor:initiate failed:", e);
+        return jsonError(res, 500, e.message || "Failed to initiate investor flow");
+      }
+    }
+
+    // POST /v1/ir:investor:step
+    // Body: { investorId, fundraiseId?, action, ...args }
+    // action ∈ { "magic_link_clicked", "start_identity", "start_signature" }
+    // Caller: self (investor) — uses auth.user.uid for Stripe Identity session.
+    if (route === "/ir:investor:step" && method === "POST") {
+      try {
+        const investorFlow = require("./services/ir/investorFlow");
+        const action = body.action;
+        const fundraiseId = body.fundraiseId || investorFlow.DEFAULT_FUNDRAISE_ID;
+        const investorId = body.investorId;
+        if (!investorId) return jsonError(res, 400, "investorId required");
+
+        if (action === "magic_link_clicked") {
+          const result = await investorFlow.onMagicLinkClick({ fundraiseId, investorId });
+          return res.json(result);
+        }
+        if (action === "start_identity") {
+          const result = await investorFlow.startIdentityVerification({
+            fundraiseId,
+            investorId,
+            uid: auth.user.uid,
+            returnUrl: body.returnUrl || null,
+          });
+          return res.json(result);
+        }
+        if (action === "start_signature") {
+          const result = await investorFlow.startSafeSigning({
+            fundraiseId,
+            investorId,
+            investmentAmount: body.investmentAmount,
+            uid: auth.user.uid,
+          });
+          return res.json(result);
+        }
+        return jsonError(res, 400, `Unknown action: ${action}`);
+      } catch (e) {
+        console.error("ir:investor:step failed:", e);
+        return jsonError(res, 500, e.message || "Investor step failed");
+      }
+    }
+
+    // GET /v1/ir:investor:status?investorId=...&fundraiseId=...
+    // Caller: self or admin.
+    if (route === "/ir:investor:status" && method === "GET") {
+      try {
+        const investorFlow = require("./services/ir/investorFlow");
+        const investorId = req.query?.investorId;
+        const fundraiseId = req.query?.fundraiseId || investorFlow.DEFAULT_FUNDRAISE_ID;
+        if (!investorId) return jsonError(res, 400, "investorId required");
+        const result = await investorFlow.getStatus({ fundraiseId, investorId });
+        return res.json(result);
+      } catch (e) {
+        console.error("ir:investor:status failed:", e);
+        return jsonError(res, 500, e.message || "Status read failed");
+      }
+    }
+
+    // ──────────────────────────────────────────────────────────
+    // CREATIVE-001 — Long-Form Author worker
+    // (Book / Script / Play). Capability registry:
+    //   creative.create_project_v1, creative.outline_draft_v1,
+    //   creative.character_bible_v1, creative.voice_register_check_v1,
+    //   creative.theme_invariants_v1, creative.draft_chapter_v1,
+    //   creative.revision_pass_v1, creative.continuity_check_v1,
+    //   creative.adapt_to_screenplay_v1, creative.adapt_to_stageplay_v1,
+    //   creative.format_for_kdp_v1, creative.publish_kdp_v1,
+    //   creative.register_copyright_v1, creative.create_launch_campaign_v1,
+    //   creative.build_press_list_v1, creative.generate_social_assets_v1.
+    // ──────────────────────────────────────────────────────────
+
+    // POST /v1/creative:project:create
+    if (route === "/creative:project:create" && method === "POST") {
+      try {
+        const creative = require("./services/creative");
+        const result = await creative.projects.createProject({
+          ...body, tenantId: ctx.tenantId, createdBy: ctx.userId,
+        });
+        return res.json(result);
+      } catch (e) {
+        console.error("creative:project:create failed:", e);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // GET /v1/creative:project:get?projectId=cp_xxx
+    if (route === "/creative:project:get" && method === "GET") {
+      try {
+        const creative = require("./services/creative");
+        const project = await creative.projects.getProject(req.query.projectId, ctx.tenantId);
+        if (!project) return jsonError(res, 404, "project not found");
+        return res.json({ ok: true, project });
+      } catch (e) { return res.json({ ok: false, error: e.message }); }
+    }
+
+    // GET /v1/creative:project:list?stage=drafting
+    if (route === "/creative:project:list" && method === "GET") {
+      try {
+        const creative = require("./services/creative");
+        const projects = await creative.projects.listProjects(ctx.tenantId, {
+          stage: req.query?.stage || null,
+        });
+        return res.json({ ok: true, projects });
+      } catch (e) { return res.json({ ok: false, error: e.message }); }
+    }
+
+    // POST /v1/creative:outline:set
+    // Body: { projectId, outlineDoc }
+    if (route === "/creative:outline:set" && method === "POST") {
+      try {
+        const creative = require("./services/creative");
+        const result = await creative.outline.setOutline(body.projectId, body.outlineDoc, {
+          tenantId: ctx.tenantId, actor: ctx.userId,
+        });
+        return res.json(result);
+      } catch (e) { return res.json({ ok: false, error: e.message }); }
+    }
+
+    // GET /v1/creative:chapter:get?projectId=cp_xxx&chapterId=ch_xxx
+    if (route === "/creative:chapter:get" && method === "GET") {
+      try {
+        const creative = require("./services/creative");
+        const chapter = await creative.outline.getChapter(req.query.projectId, req.query.chapterId);
+        if (!chapter) return jsonError(res, 404, "chapter not found");
+        return res.json({ ok: true, chapter });
+      } catch (e) { return res.json({ ok: false, error: e.message }); }
+    }
+
+    // POST /v1/creative:character:upsert
+    if (route === "/creative:character:upsert" && method === "POST") {
+      try {
+        const creative = require("./services/creative");
+        const result = await creative.characterBible.upsertCharacter({
+          ...body, actor: ctx.userId,
+        });
+        return res.json(result);
+      } catch (e) { return res.json({ ok: false, error: e.message }); }
+    }
+
+    // POST /v1/creative:voiceRegister:declare
+    if (route === "/creative:voiceRegister:declare" && method === "POST") {
+      try {
+        const creative = require("./services/creative");
+        const result = await creative.voiceRegister.declareVoiceRegister({
+          ...body, actor: ctx.userId,
+        });
+        return res.json(result);
+      } catch (e) { return res.json({ ok: false, error: e.message }); }
+    }
+
+    // POST /v1/creative:voiceRegister:check
+    if (route === "/creative:voiceRegister:check" && method === "POST") {
+      try {
+        const creative = require("./services/creative");
+        const result = await creative.voiceRegister.checkDraftAgainstRegister(body);
+        return res.json(result);
+      } catch (e) { return res.json({ ok: false, error: e.message }); }
+    }
+
+    // POST /v1/creative:invariant:declare
+    // Body: { projectId, invariants: [...] }
+    if (route === "/creative:invariant:declare" && method === "POST") {
+      try {
+        const creative = require("./services/creative");
+        const result = await creative.themeInvariants.declareInvariants(
+          body.projectId, body.invariants, ctx.userId
+        );
+        return res.json(result);
+      } catch (e) { return res.json({ ok: false, error: e.message }); }
+    }
+
+    // POST /v1/creative:invariant:check
+    if (route === "/creative:invariant:check" && method === "POST") {
+      try {
+        const creative = require("./services/creative");
+        const result = await creative.themeInvariants.checkInvariant(body);
+        return res.json(result);
+      } catch (e) { return res.json({ ok: false, error: e.message }); }
+    }
+
+    // POST /v1/creative:draft:chapter
+    if (route === "/creative:draft:chapter" && method === "POST") {
+      try {
+        const creative = require("./services/creative");
+        const result = await creative.draftEngine.draftChapter({
+          ...body, actor: ctx.userId,
+        });
+        return res.json(result);
+      } catch (e) { return res.json({ ok: false, error: e.message }); }
+    }
+
+    // POST /v1/creative:draft:revise
+    if (route === "/creative:draft:revise" && method === "POST") {
+      try {
+        const creative = require("./services/creative");
+        const result = await creative.draftEngine.revisionPass({
+          ...body, actor: ctx.userId,
+        });
+        return res.json(result);
+      } catch (e) { return res.json({ ok: false, error: e.message }); }
+    }
+
+    // POST /v1/creative:continuity:check
+    if (route === "/creative:continuity:check" && method === "POST") {
+      try {
+        const creative = require("./services/creative");
+        const result = await creative.continuity.checkContinuity(body);
+        return res.json(result);
+      } catch (e) { return res.json({ ok: false, error: e.message }); }
+    }
+
+    // POST /v1/creative:format:screenplay
+    if (route === "/creative:format:screenplay" && method === "POST") {
+      try {
+        const creative = require("./services/creative");
+        const result = await creative.formatConverter.adaptToScreenplay({
+          ...body, actor: ctx.userId,
+        });
+        return res.json(result);
+      } catch (e) { return res.json({ ok: false, error: e.message }); }
+    }
+
+    // POST /v1/creative:format:stageplay
+    if (route === "/creative:format:stageplay" && method === "POST") {
+      try {
+        const creative = require("./services/creative");
+        const result = await creative.formatConverter.adaptToStageplay({
+          ...body, actor: ctx.userId,
+        });
+        return res.json(result);
+      } catch (e) { return res.json({ ok: false, error: e.message }); }
+    }
+
+    // POST /v1/creative:format:kdp
+    if (route === "/creative:format:kdp" && method === "POST") {
+      try {
+        const creative = require("./services/creative");
+        const result = await creative.formatConverter.formatForKDP({
+          ...body, actor: ctx.userId,
+        });
+        return res.json(result);
+      } catch (e) { return res.json({ ok: false, error: e.message }); }
+    }
+
+    // POST /v1/creative:publish:kdp
+    if (route === "/creative:publish:kdp" && method === "POST") {
+      try {
+        const creative = require("./services/creative");
+        const result = await creative.publishing.kdp.pushToKDP({
+          ...body, actor: ctx.userId,
+        });
+        return res.json(result);
+      } catch (e) { return res.json({ ok: false, error: e.message }); }
+    }
+
+    // POST /v1/creative:copyright:register
+    if (route === "/creative:copyright:register" && method === "POST") {
+      try {
+        const creative = require("./services/creative");
+        const result = await creative.publishing.copyright.registerCopyright({
+          ...body, actor: ctx.userId,
+        });
+        return res.json(result);
+      } catch (e) { return res.json({ ok: false, error: e.message }); }
+    }
+
+    // POST /v1/creative:campaign:create
+    if (route === "/creative:campaign:create" && method === "POST") {
+      try {
+        const creative = require("./services/creative");
+        const result = await creative.marketing.campaign.createLaunchCampaign({
+          ...body, actor: ctx.userId,
+        });
+        return res.json(result);
+      } catch (e) { return res.json({ ok: false, error: e.message }); }
+    }
+
+    // POST /v1/creative:campaign:pressList
+    if (route === "/creative:campaign:pressList" && method === "POST") {
+      try {
+        const creative = require("./services/creative");
+        const result = await creative.marketing.pressList.buildPressTargetList({
+          ...body, actor: ctx.userId,
+        });
+        return res.json(result);
+      } catch (e) { return res.json({ ok: false, error: e.message }); }
+    }
+
+    // POST /v1/creative:campaign:socialAssets
+    if (route === "/creative:campaign:socialAssets" && method === "POST") {
+      try {
+        const creative = require("./services/creative");
+        const result = await creative.marketing.socialAssets.generateSocialAssets({
+          ...body, actor: ctx.userId,
+        });
+        return res.json(result);
+      } catch (e) { return res.json({ ok: false, error: e.message }); }
+    }
+
     // MARKETING: Admin — list leads
     if (route === "/admin:leads:list" && method === "POST") {
       try {
@@ -13648,9 +13972,9 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
           probability: 100,
           source: "Direct",
           lastActivityAt: ts,
-          ownedBy: "sean@titleapp.ai",
+          ownedBy: "sean@sociii.ai",
           nextAction: "First major client and investor",
-          history: [{ stage: "CLOSED_WON", action: "Funded", by: "sean@titleapp.ai" }],
+          history: [{ stage: "CLOSED_WON", action: "Funded", by: "sean@sociii.ai" }],
         });
         seeded.push({ collection: "pipeline/b2b/deals", id: b2bRef.id, name: "Scott Eschelman — JMA Capital" });
 
@@ -13728,7 +14052,7 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
         if (!uid) return jsonError(res, 400, "uid required");
 
         // Only owners can impersonate
-        const OWNER_EMAILS = ["seanlcombs@gmail.com", "sean@titleapp.ai"];
+        const OWNER_EMAILS = ["seanlcombs@gmail.com", "sean@sociii.ai"];
         if (!OWNER_EMAILS.includes(user.email)) {
           return jsonError(res, 403, "Only owners can impersonate users");
         }
@@ -14518,7 +14842,7 @@ Active: ${rc.active ? "Yes" : "No"}`;
                     }
                   } else {
                     // Waitlist mode — do NOT inject raise terms
-                    investorRaiseContext = "\n\nRAISE STATUS: The raise is not yet active. Do not discuss specific terms, amounts, valuation, discount, or funding platforms. If asked about investing, tell the visitor that TitleApp is building its investor list and will be sharing terms with qualified parties soon. Offer to collect their name and email so we can send them our deck and executive summary when ready.";
+                    investorRaiseContext = "\n\nRAISE STATUS: The raise is not yet active. Do not discuss specific terms, amounts, valuation, discount, or funding platforms. If asked about investing, tell the visitor that SOCIII is building its investor list and will be sharing terms with qualified parties soon. Offer to collect their name and email so we can send them our deck and executive summary when ready.";
                   }
                 }
               } catch (raiseErr) {
@@ -14814,7 +15138,7 @@ RULES YOU MUST FOLLOW:
                   const wsWorkers2 = body.subscribedWorkers || workspace.activeWorkers || [];
                   const userName2 = (body.context || {}).userName || "";
 
-                  alexSystemPrompt = `You are ${workerName}, a Digital Worker on TitleApp.
+                  alexSystemPrompt = `You are ${workerName}, a Digital Worker on SOCIII.
 ${headline}
 
 WHAT YOU DO:
@@ -14973,7 +15297,7 @@ CRITICAL — UNTERMINATED MARKERS:
 If you cannot fit the ENTIRE marker (opening |||CANVAS_RENDER|||, full JSON payload, and closing |||END_CANVAS|||) within your response, do NOT emit any part of the marker. A truncated marker leaks as raw text into the user's chat and looks like a bug. Instead, write a short plain-text reply asking the user to confirm so you can deliver the structured deliverable in the next turn. Never emit "|||CANVAS_RENDER|||" without also emitting "|||END_CANVAS|||" in the same response.`;
             }
 
-            const personalSystemPrompt = `You are the user's personal Chief of Staff in their TitleApp Vault. You do everything for them directly in this chat. You create records, store files, manage logbooks, handle attestations, and organize their entire digital life. The dashboard is a read-only view into what you have already done -- the user never needs to leave this chat to accomplish anything.
+            const personalSystemPrompt = `You are the user's personal Chief of Staff in their SOCIII Vault. You do everything for them directly in this chat. You create records, store files, manage logbooks, handle attestations, and organize their entire digital life. The dashboard is a read-only view into what you have already done -- the user never needs to leave this chat to accomplish anything.
 
 Your role:
 You are not a chatbot. You are a trusted team member who acts on the user's behalf. When they tell you about something they own, you create the record. When they upload a file, you store it. When they need to attest ownership, you walk them through it. You never tell the user to "go to a section" or "use the left navigation." Everything happens here.
@@ -15065,15 +15389,15 @@ When the user explicitly asks to download, export, email, or print a file ("down
 After the markers, confirm to the user that their document is ready for download. Do NOT mention the markers to the user.
 
 CATALOG AWARENESS -- ALWAYS ACTIVE:
-TitleApp has 1,000+ Digital Workers across 14 industry verticals including Aviation (PC12-NG CoPilot, King Air B200, Currency Tracker, Flight Planning, Digital Logbook, FRAT Score), Real Estate (CRE Deal Analyst, Title Search, Contract Review, Construction Manager, Permit Tracker), Auto Dealer (F&I Compliance, Inventory Pricing, Lead Management, Service Scheduling), Healthcare, Government, Web3, and more.
+SOCIII has 1,000+ Digital Workers across 14 industry verticals including Aviation (PC12-NG CoPilot, King Air B200, Currency Tracker, Flight Planning, Digital Logbook, FRAT Score), Real Estate (CRE Deal Analyst, Title Search, Contract Review, Construction Manager, Permit Tracker), Auto Dealer (F&I Compliance, Inventory Pricing, Lead Management, Service Scheduling), Healthcare, Government, Web3, and more.
 
-When a user asks if TitleApp has a worker for something, the answer is almost certainly yes. Tell them what it is and offer to show it. Never say "I do not have an app for that" or "TitleApp does not offer that." If you are not certain of the exact worker name, say "Yes, we have workers for that. Want me to find the right one for you?"
+When a user asks if SOCIII has a worker for something, the answer is almost certainly yes. Tell them what it is and offer to show it. Never say "I do not have an app for that" or "SOCIII does not offer that." If you are not certain of the exact worker name, say "Yes, we have workers for that. Want me to find the right one for you?"
 
 When a user asks about a specific worker while in the Vault, confirm it exists, briefly describe what it does, and offer to set it up. For example: "Yes, we have the PC12-NG CoPilot for that. It handles flight ops, currency tracking, and training records for the Pilatus PC-12. Want me to add an Aviation team so you can use it? Takes about 30 seconds."
 
-You are in the Vault right now, but you always know the full TitleApp catalog. The Vault is the on-ramp to discovering workers, not a dead end.`;
+You are in the Vault right now, but you always know the full SOCIII catalog. The Vault is the on-ramp to discovering workers, not a dead end.`;
 
-            const businessSystemPrompt = `You are Alex, Chief of Staff at TitleApp, a business intelligence platform. The user's vertical is "${ctx.vertical || "general"}" and they are on the "${(context || {}).currentSection || "dashboard"}" section.
+            const businessSystemPrompt = `You are Alex, Chief of Staff at SOCIII, a business intelligence platform. The user's vertical is "${ctx.vertical || "general"}" and they are on the "${(context || {}).currentSection || "dashboard"}" section.
 
 Formatting rules — follow these strictly:
 - Never use emojis in your responses.
@@ -15102,7 +15426,7 @@ Service: Every service visit is a sales touchpoint. Route to Service MPI & Trade
 
 Compliance: Route OFAC screening to AD-011, FTC Safeguards to AD-002, CARS Rule to AD-024, TCPA to AD-025. These workers have hard stops that cannot be overridden.
 
-You NEVER say: "I cannot access your inventory" (you can), "Go to the inventory section" (YOU look it up), "I am just an assistant" (you are the CHIEF OF STAFF), "I cannot send messages" (you DRAFT and SEND them), "Check with your F&I manager" (YOU are the F&I expert).` : ctx.vertical === "investor" ? `You are Alex, TitleApp's investor relations AI. You are warm, knowledgeable, and professional. You are not a chatbot -- you are a knowledgeable representative who can discuss the company, the raise, and the product in depth.
+You NEVER say: "I cannot access your inventory" (you can), "Go to the inventory section" (YOU look it up), "I am just an assistant" (you are the CHIEF OF STAFF), "I cannot send messages" (you DRAFT and SEND them), "Check with your F&I manager" (YOU are the F&I expert).` : ctx.vertical === "investor" ? `You are Alex, SOCIII's investor relations AI. You are warm, knowledgeable, and professional. You are not a chatbot -- you are a knowledgeable representative who can discuss the company, the raise, and the product in depth.
 
 You manage: the data room (pitch deck, financials, legal docs, team info), cap table (shareholders, SAFEs, options), investor pipeline (prospects at various stages from contacted to invested), round configuration and compliance tracking.
 
@@ -15134,7 +15458,7 @@ You CAN:
 ESCALATION: For questions you cannot answer -- legal specifics, custom deal terms, strategic partnership details -- offer to connect the investor with Sean (CEO) or Kent (CFO) directly. Say: "That's a great question. Let me connect you with Sean/Kent who can give you a more detailed answer on that." Log the escalation.
 
 COMPLIANCE DISCLAIMER -- include when discussing securities, investment terms, or regulatory matters:
-"This is informational guidance only. TitleApp does not act as a registered funding portal, broker-dealer, or investment advisor. Securities offerings must comply with applicable SEC regulations. Consult qualified legal counsel before making investment decisions."
+"This is informational guidance only. SOCIII does not act as a registered funding portal, broker-dealer, or investment advisor. Securities offerings must comply with applicable SEC regulations. Consult qualified legal counsel before making investment decisions."
 
 DEAL MANAGEMENT:
 You can manage multiple investment deals simultaneously. When the user asks about a specific deal, reference it by name or ID from the ACTIVE DEALS list above. Available deal types: CRE Syndication, Startup Equity, Fund Formation, M&A/PE, Opportunity Zone, EB-5, Real Estate Debt, Revenue Share. You can create deals, add investors, track commitments, and close deals.
@@ -15156,7 +15480,7 @@ IR ACTION MARKERS -- use these to execute IR actions. The system processes them 
 {"action": "create_deal", "data": {"type": "cre_syndication", "name": "Deal Name", "targetRaise": 5000000, "purchasePrice": 15000000}}
 |||END_IR_ACTION|||
 
-Available actions: create_deal, close_deal, add_investor, create_capital_call, create_distribution, send_communication, run_compliance_check. After the markers, confirm to the user what was done. Do NOT mention the markers to the user.` : ctx.vertical === "real-estate" || ctx.vertical === "property-mgmt" || ctx.vertical === "re_development" || ctx.vertical === "re_sales" || ctx.vertical === "property_management" ? "You specialize in real estate transactions, property management, compliance, and document management. TitleApp has over 1,000 Digital Workers across all verticals, with dedicated workers covering the full CRE lifecycle from site selection through disposition." : ctx.vertical === "aviation" || ctx.vertical === "aviation_135" || ctx.vertical === "pilot_suite" ? "You specialize in aviation operations, Part 135/91 compliance, pilot certifications, crew management, safety and SMS, and flight operations. TitleApp has over 1,000 Digital Workers across all verticals, with dedicated aviation workers covering the full Part 135/91 lifecycle plus a Pilot Suite. Student pilots get free Pilot Pro while enrolled. CFI/CFII instructors on academy staff get free Pilot Pro+." : "Help with business operations, compliance questions, document management, and platform navigation. TitleApp has over 1,000 Digital Workers across auto dealer, real estate, aviation, and other verticals -- with more added daily."} When discussing deals or investments, note that you provide informational analysis only, not financial advice.
+Available actions: create_deal, close_deal, add_investor, create_capital_call, create_distribution, send_communication, run_compliance_check. After the markers, confirm to the user what was done. Do NOT mention the markers to the user.` : ctx.vertical === "real-estate" || ctx.vertical === "property-mgmt" || ctx.vertical === "re_development" || ctx.vertical === "re_sales" || ctx.vertical === "property_management" ? "You specialize in real estate transactions, property management, compliance, and document management. SOCIII has over 1,000 Digital Workers across all verticals, with dedicated workers covering the full CRE lifecycle from site selection through disposition." : ctx.vertical === "aviation" || ctx.vertical === "aviation_135" || ctx.vertical === "pilot_suite" ? "You specialize in aviation operations, Part 135/91 compliance, pilot certifications, crew management, safety and SMS, and flight operations. SOCIII has over 1,000 Digital Workers across all verticals, with dedicated aviation workers covering the full Part 135/91 lifecycle plus a Pilot Suite. Student pilots get free Pilot Pro while enrolled. CFI/CFII instructors on academy staff get free Pilot Pro+." : "Help with business operations, compliance questions, document management, and platform navigation. SOCIII has over 1,000 Digital Workers across auto dealer, real estate, aviation, and other verticals -- with more added daily."} When discussing deals or investments, note that you provide informational analysis only, not financial advice.
 
 Platform navigation — when users ask how to do things, give them accurate directions:
 - To analyze a new deal: Go to the Analyst section in the left navigation, then click the "+ Analyze Deal" button at the top right.
@@ -15531,7 +15855,7 @@ ${(context || {}).dealContext ? `\nThe user wants to discuss this deal analysis:
               messages: [
                 {
                   role: "system",
-                  content: `You are Alex from TitleApp, a business intelligence platform. Be concise and professional.
+                  content: `You are Alex from SOCIII, a business intelligence platform. Be concise and professional.
 
 Formatting rules — follow these strictly:
 - Never use emojis in your responses.
@@ -17722,7 +18046,7 @@ Return as JSON: { summary, risks: [], recommendations: [], confidence }`
               currency: "usd",
               unit_amount: 200,
               product_data: {
-                name: "TitleApp Identity Verification",
+                name: "SOCIII Identity Verification",
                 description: "One-time identity verification for investor data room access",
               },
             },
@@ -17794,8 +18118,8 @@ Return as JSON: { summary, risks: [], recommendations: [], confidence }`
           tenantId: ctx.tenantId,
           userId: investorId,
           title: `SAFE Agreement — ${investorName}`,
-          subject: `TitleApp SAFE Agreement — $${Number(amount).toLocaleString()}`,
-          message: `Please review and sign the SAFE agreement for your $${Number(amount).toLocaleString()} investment in TitleApp.`,
+          subject: `SOCIII SAFE Agreement — $${Number(amount).toLocaleString()}`,
+          message: `Please review and sign the SAFE agreement for your $${Number(amount).toLocaleString()} investment in SOCIII.`,
           signers: [{ email: investorEmail, name: investorName, order: 0, userId: investorId }],
           documentType: "safe_agreement",
           vertical: "investment",
@@ -17884,8 +18208,8 @@ Return as JSON: { summary, risks: [], recommendations: [], confidence }`
 
         // config/company
         batch.set(db.collection("config").doc("company"), {
-          legalName: "The Title App LLC",
-          dba: "TitleApp",
+          legalName: "SOCIII, Inc.",
+          dba: "SOCIII",
           state: "Delaware",
           stateCode: "DE",
           ein: "33-1330902",
@@ -17902,8 +18226,8 @@ Return as JSON: { summary, risks: [], recommendations: [], confidence }`
           documents: [
             {
               name: "Pitch Deck v7",
-              filename: "TitleApp_Pitch_Deck_v7.pptx",
-              storagePath: "investorDocs/TitleApp_Pitch_Deck_v7.pptx",
+              filename: "SOCIII_Pitch_Deck_v7.pptx",
+              storagePath: "investorDocs/SOCIII_Pitch_Deck_v7.pptx",
               type: "pitch_deck",
               description: "Full investor pitch deck -- March 2026",
               requiresVerification: false,
@@ -17912,8 +18236,8 @@ Return as JSON: { summary, risks: [], recommendations: [], confidence }`
             },
             {
               name: "One-Pager v7",
-              filename: "TitleApp_One_Pager_v7.pdf",
-              storagePath: "investorDocs/TitleApp_One_Pager_v7.pdf",
+              filename: "SOCIII_One_Pager_v7.pdf",
+              storagePath: "investorDocs/SOCIII_One_Pager_v7.pdf",
               type: "one_pager",
               description: "One-page overview -- market, product, team, terms",
               requiresVerification: false,
@@ -17922,8 +18246,8 @@ Return as JSON: { summary, risks: [], recommendations: [], confidence }`
             },
             {
               name: "Business Plan v5",
-              filename: "TitleApp_Business_Plan_March2026_v5.docx",
-              storagePath: "investorDocs/TitleApp_Business_Plan_March2026_v5.docx",
+              filename: "SOCIII_Business_Plan_March2026_v5.docx",
+              storagePath: "investorDocs/SOCIII_Business_Plan_March2026_v5.docx",
               type: "business_plan",
               description: "Business plan -- March 2026 update",
               requiresVerification: true,
@@ -17932,8 +18256,8 @@ Return as JSON: { summary, risks: [], recommendations: [], confidence }`
             },
             {
               name: "Financial Model v2",
-              filename: "TitleApp_Financial_Model_v2.xlsx",
-              storagePath: "investorDocs/TitleApp_Financial_Model_v2.xlsx",
+              filename: "SOCIII_Financial_Model_v2.xlsx",
+              storagePath: "investorDocs/SOCIII_Financial_Model_v2.xlsx",
               type: "financial_model",
               description: "36-month, 3-scenario cash flow model",
               requiresVerification: true,
@@ -17962,19 +18286,19 @@ Return as JSON: { summary, risks: [], recommendations: [], confidence }`
             {
               id: "investment_risk",
               label: "Investment Risk",
-              text: "I understand that investing in The Title App LLC involves significant risk, including the possibility of losing my entire investment. TitleApp is a pre-revenue, early-stage company. There is no guarantee of any return on investment.",
+              text: "I understand that investing in SOCIII, Inc. involves significant risk, including the possibility of losing my entire investment. SOCIII is a pre-revenue, early-stage company. There is no guarantee of any return on investment.",
               required: true,
             },
             {
               id: "forward_looking",
               label: "Forward-Looking Statements",
-              text: "I understand that information provided by TitleApp, including through its AI assistant Alex, may contain forward-looking statements. These are not guarantees of future performance.",
+              text: "I understand that information provided by SOCIII, including through its AI assistant Alex, may contain forward-looking statements. These are not guarantees of future performance.",
               required: true,
             },
             {
               id: "not_advice",
               label: "Not Investment Advice",
-              text: "I understand that nothing in the TitleApp data room or communicated by Alex constitutes investment, legal, or financial advice. I should consult my own advisors before making any investment decision.",
+              text: "I understand that nothing in the SOCIII data room or communicated by Alex constitutes investment, legal, or financial advice. I should consult my own advisors before making any investment decision.",
               required: true,
             },
           ],
@@ -17983,7 +18307,7 @@ Return as JSON: { summary, risks: [], recommendations: [], confidence }`
 
         // Update config/raise with correct legal entity
         batch.set(db.collection("config").doc("raise"), {
-          legalEntity: "The Title App LLC",
+          legalEntity: "SOCIII, Inc.",
           updatedAt: nowServerTs(),
         }, { merge: true });
 
@@ -21460,8 +21784,8 @@ Analyze now:`;
       try {
         const { purchaseCreditPack } = require("./billing/purchaseCreditPack");
         const credits = Number(body.credits);
-        const successUrl = body.successUrl || "https://app.titleapp.ai/billing/success?type=credits&amount=" + (credits || "");
-        const cancelUrl = body.cancelUrl || "https://app.titleapp.ai/billing?type=credits&status=cancel";
+        const successUrl = body.successUrl || "https://app.sociii.ai/billing/success?type=credits&amount=" + (credits || "");
+        const cancelUrl = body.cancelUrl || "https://app.sociii.ai/billing?type=credits&status=cancel";
         // 49.32 — tenantId optional. When present, the handler tops up the
         // tenant credit pool (admin role required) instead of the user pool.
         const tenantIdParam = body.tenantId || ctx.tenantId || null;

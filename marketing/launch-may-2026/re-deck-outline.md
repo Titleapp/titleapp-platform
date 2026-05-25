@@ -15,7 +15,7 @@
 
 Subtitle: "Without replacing brokers."
 
-May 22, 2026 · TitleApp AI · titleapp.ai
+May 22, 2026 · SOCIII · sociii.ai
 
 Sean opens. 60 sec.
 
@@ -24,7 +24,7 @@ Sean opens. 60 sec.
 ### Slide 2 — Why This Session (0:60 — 2:00)
 Sean delivers thesis directly:
 
-> "I'm a principal real-estate broker. I'm also a developer with luxury resort projects across the California Mountain resorts and beachfront in Hawaii, the Caribbean, and Florida. I've spent two decades inside the title-and-mortgage stack. I know how it works, who profits, and where the friction lives. I built TitleApp AI to remove the friction without removing the brokers, agents, title officers, and lenders who actually serve clients. This session is for the people who already see the stack is breaking and want to be on the right side of what comes next."
+> "I'm a principal real-estate broker. I'm also a developer with luxury resort projects across the California Mountain resorts and beachfront in Hawaii, the Caribbean, and Florida. I've spent two decades inside the title-and-mortgage stack. I know how it works, who profits, and where the friction lives. I built SOCIII to remove the friction without removing the brokers, agents, title officers, and lenders who actually serve clients. This session is for the people who already see the stack is breaking and want to be on the right side of what comes next."
 
 Sean. 60 sec.
 
@@ -33,8 +33,8 @@ Sean. 60 sec.
 ### Slide 3 — Who We Are (2:00 — 3:30)
 3 host bios:
 
-- **Sean Combs** — CEO and Co-founder, TitleApp AI. Principal broker and real-estate developer with luxury resort projects across the California Mountain resorts and beachfront in Hawaii, the Caribbean, and Florida. Medevac pilot. Patent-pending AI compliance architecture.
-- **Kent Redwine** — CFO and Co-founder, TitleApp AI. Fifteen years in investment banking, advising clients across one of the world's largest aircraft manufacturers, leading technology firms, green energy, and electric vehicles. Founded an electric vehicle company before Tesla took the segment.
+- **Sean Combs** — CEO and Co-founder, SOCIII. Principal broker and real-estate developer with luxury resort projects across the California Mountain resorts and beachfront in Hawaii, the Caribbean, and Florida. Medevac pilot. Patent-pending AI compliance architecture.
+- **Kent Redwine** — CFO and Co-founder, SOCIII. Fifteen years in investment banking, advising clients across one of the world's largest aircraft manufacturers, leading technology firms, green energy, and electric vehicles. Founded an electric vehicle company before Tesla took the segment.
 - **Alex** — Chief of Staff to Sean Lee Combs, CEO and Co-founder. Live Q&A in chat.
 
 90 sec total.
@@ -86,7 +86,7 @@ Sean. 90 sec.
 ### Slide 7 — The Five Pillars (11:00 — 12:00)
 *New slide added in v3, immediately before the Gate analogy.*
 
-**TitleApp AI — The Five Pillars**
+**SOCIII — The Five Pillars**
 1. **RAAS Engine** — rules enforced as the worker writes
 2. **Vault** — your private data layer; your data is not training data
 3. **Document Control** — versioning, distribution, acknowledgment, audit trail
@@ -100,7 +100,7 @@ Sean. 60 sec.
 ### Slide 8 — The Gate Analogy (12:00 — 15:00)
 **Locked language** (replaces technical RAAS description):
 
-> Most AI tools work like an open door. You ask, the AI answers, and you're left to figure out if the answer is compliant, accurate, and defensible. TitleApp AI works like three gates.
+> Most AI tools work like an open door. You ask, the AI answers, and you're left to figure out if the answer is compliant, accurate, and defensible. SOCIII works like three gates.
 >
 > The first gate is at the entrance: regulatory rules are loaded into the worker's context as it begins thinking — like giving a securities attorney the rule book before they draft an offering memo, not after.
 >
@@ -108,7 +108,7 @@ Sean. 60 sec.
 >
 > The third gate is at the exit: the final output is screened for jurisdiction-aware compliance before it ever reaches you, your customer, or your regulator.
 >
-> Three gates, every output, every time. Tamper-evident audit trail at each gate. That's why TitleApp AI works in regulated industries where generic AI doesn't.
+> Three gates, every output, every time. Tamper-evident audit trail at each gate. That's why SOCIII works in regulated industries where generic AI doesn't.
 
 Visual: Three-Gates architecture diagram with the gate text as caption.
 
@@ -157,9 +157,9 @@ Sean + Kent. 2 min.
 ✓ This recording
 ✓ First invite to Certified Creator program
 ✓ 15-min discovery call if you want one
-✓ 30-day TitleApp AI free trial — no credit card required
+✓ 30-day SOCIII free trial — no credit card required
 
-QR code → titleapp.ai/re-may22
+QR code → sociii.ai/re-may22
 
 Footer: "1,000+ digital workers and growing — patent-pending compliance architecture"
 

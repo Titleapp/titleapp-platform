@@ -106,7 +106,7 @@ REFERRAL PROGRAM:
 - Under $100: credited to account
 
 DEVELOPER PROGRAM:
-- Build Digital Workers on TitleApp marketplace
+- Build Digital Workers on SOCIII marketplace
 - 75% revenue share on all subscriber revenue
 - Creator License: $49/yr (free until July 1, 2026 with DEV100)
 - $2 Identity Check always required

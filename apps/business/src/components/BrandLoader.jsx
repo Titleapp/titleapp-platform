@@ -1,18 +1,20 @@
 import React, { useEffect, useState } from "react";
 import { brand, isSociii } from "../config/brandConfig";
+import sociiiMarkUrl from "../assets/sociii-brand/icon/sociii-icon-mark.svg";
 
-// 5-state SOCIII loader matching the brand-board geoscape system.
-// States cycle automatically when `state` prop is "auto" (default).
-// Pass an explicit state to lock to one frame.
+// 5-state SOCIII loader. The center mark is the canonical parent-child hex
+// (purple top blade, green bottom blade — DTC composition per patent 64/073,706).
+// State feedback rides on a ring overlay around the mark rather than animating
+// the mark itself, so the brand stays legible at every state.
 
 const STATES = ["idle", "connecting", "synchronizing", "processing", "activated"];
 
 const STATE_KEYFRAMES = `
-@keyframes geoscapePulse {
-  0%, 100% { opacity: 0.6; transform: scale(1); }
+@keyframes brandRingPulse {
+  0%, 100% { opacity: 0.4; transform: scale(0.95); }
   50% { opacity: 1; transform: scale(1.05); }
 }
-@keyframes geoscapeRotate {
+@keyframes brandRingRotate {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
@@ -22,52 +24,74 @@ const STATE_KEYFRAMES = `
 }
 `;
 
-function Geoscape({ state, size = 32 }) {
+function ParentChildMark({ state, size = 32 }) {
   const palette = brand.palette;
-  const primary = palette.primary;
-  const accent = palette.accent;
-  const magenta = palette.magenta || "#EC4899";
+  const primary = palette.primary;             // purple — top blade
+  const accentGreen = palette.accentGreen || "#16A34A";  // green — bottom blade
+  const accentCyan = palette.accentCyan || "#0686D4";
 
-  // S-mark geometric path drawn from the brand-board: two interlocking arrows
-  // forming a stylized S. The accent dots/strokes change per state.
-  const baseStroke = primary;
-
-  const stateConfig = {
-    idle: { dotFill: "none", strokeWidth: 12, animation: null, accentOpacity: 0 },
-    connecting: { dotFill: accent, strokeWidth: 12, animation: "geoscapePulse 1.4s ease-in-out infinite", accentOpacity: 0.9 },
-    synchronizing: { dotFill: primary, strokeWidth: 12, animation: "geoscapeRotate 2s linear infinite", accentOpacity: 0.7 },
-    processing: { dotFill: magenta, strokeWidth: 14, animation: "geoscapePulse 0.9s ease-in-out infinite", accentOpacity: 1 },
-    activated: { dotFill: primary, strokeWidth: 14, animation: null, accentOpacity: 1 },
+  const ringConfig = {
+    idle:           { color: "transparent", animation: null, strokeWidth: 0 },
+    connecting:     { color: accentCyan,    animation: "brandRingPulse 1.4s ease-in-out infinite", strokeWidth: 3 },
+    synchronizing:  { color: primary,       animation: "brandRingRotate 2s linear infinite",       strokeWidth: 3 },
+    processing:     { color: accentGreen,   animation: "brandRingPulse 0.9s ease-in-out infinite", strokeWidth: 4 },
+    activated:      { color: accentGreen,   animation: null,                                       strokeWidth: 3 },
   };
 
-  const cfg = stateConfig[state] || stateConfig.idle;
+  const cfg = ringConfig[state] || ringConfig.idle;
+  const ringSize = size * 1.15;
+  const ringOffset = (ringSize - size) / 2;
 
   return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 200 200"
-      fill="none"
-      style={{ animation: cfg.animation }}
+    <span
+      style={{
+        position: "relative",
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        width: size,
+        height: size,
+        lineHeight: 0,
+      }}
     >
-      {/* Stylized S — two arrow-blades curving in opposite directions */}
-      <path
-        d="M 50 60 Q 50 30, 100 30 L 140 30 L 140 55 L 110 55 Q 90 55, 90 75 Q 90 95, 110 95 L 130 95 Q 160 95, 160 130 Q 160 165, 120 165 L 60 165 L 60 140 L 100 140 Q 130 140, 130 125 Q 130 110, 110 110 L 80 110 Q 50 110, 50 80 Z"
-        stroke={baseStroke}
-        strokeWidth={cfg.strokeWidth}
-        strokeLinejoin="round"
-        fill={state === "activated" ? primary : "none"}
-        opacity={state === "activated" ? 0.9 : 1}
+      {cfg.strokeWidth > 0 && (
+        <svg
+          width={ringSize}
+          height={ringSize}
+          viewBox="0 0 100 100"
+          fill="none"
+          style={{
+            position: "absolute",
+            top: -ringOffset,
+            left: -ringOffset,
+            animation: cfg.animation,
+            pointerEvents: "none",
+          }}
+        >
+          <circle
+            cx="50"
+            cy="50"
+            r={48}
+            stroke={cfg.color}
+            strokeWidth={cfg.strokeWidth}
+            strokeLinecap="round"
+            strokeDasharray={state === "synchronizing" ? "20 12" : undefined}
+          />
+        </svg>
+      )}
+      <img
+        src={sociiiMarkUrl}
+        alt="SOCIII"
+        width={size}
+        height={size}
+        style={{ display: "block", borderRadius: size * 0.18 }}
       />
-      {/* Accent dot — varies per state */}
-      <circle cx="160" cy="40" r="12" fill={cfg.dotFill} opacity={cfg.accentOpacity} />
-      <circle cx="40" cy="160" r="12" fill={cfg.dotFill} opacity={cfg.accentOpacity * 0.7} />
-    </svg>
+    </span>
   );
 }
 
 function LegacyKey({ size = 32 }) {
-  // The current TitleApp spinning key — kept for ACTIVE_BRAND="titleapp".
+  // Retained for ACTIVE_BRAND="titleapp" fallback path.
   return (
     <svg
       width={size}
@@ -89,7 +113,6 @@ export default function BrandLoader({ state = "auto", size = 32 }) {
 
   useEffect(() => {
     if (state !== "auto") return;
-    // Inject keyframes once
     if (!document.getElementById("brandLoaderKeyframes")) {
       const style = document.createElement("style");
       style.id = "brandLoaderKeyframes";
@@ -109,7 +132,7 @@ export default function BrandLoader({ state = "auto", size = 32 }) {
   }
 
   const activeState = state === "auto" ? autoState : state;
-  return <Geoscape state={activeState} size={size} />;
+  return <ParentChildMark state={activeState} size={size} />;
 }
 
 export { STATES as BRAND_LOADER_STATES };

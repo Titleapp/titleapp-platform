@@ -488,7 +488,7 @@ function buildMorningHtml({ userName, today, priority, cc, reData, avData, verti
   ${avSection}
   <div style="padding:16px 24px;background:#f9fafb;border-top:1px solid #e5e7eb">
     <p style="font-size:13px;color:#6b7280;margin:0">Reply to this email to talk to me.</p>
-    <p style="font-size:13px;color:#6b7280;margin:4px 0 0">app.titleapp.ai</p>
+    <p style="font-size:13px;color:#6b7280;margin:4px 0 0">app.sociii.ai</p>
   </div>
 </div>
 </body></html>`;
@@ -613,7 +613,7 @@ function buildEveningHtml({ userName, today, priority, cc, reData, avData, verti
   ${tomorrowSection}
   <div style="padding:16px 24px;background:#f9fafb;border-top:1px solid #e5e7eb">
     <p style="font-size:13px;color:#6b7280;margin:0">Reply to this email to talk to me.</p>
-    <p style="font-size:13px;color:#6b7280;margin:4px 0 0">app.titleapp.ai</p>
+    <p style="font-size:13px;color:#6b7280;margin:4px 0 0">app.sociii.ai</p>
   </div>
 </div>
 </body></html>`;
@@ -629,7 +629,7 @@ function buildPlainText(runType, { userName, today, priority, cc, verticals, reD
     ? `Good morning${userName ? " " + userName : ""} — here is your day`
     : `End of day${userName ? ", " + userName : ""} — here is what happened`;
 
-  lines.push(`TitleApp — ${greeting}`);
+  lines.push(`SOCIII — ${greeting}`);
   lines.push(`${today}\n`);
   lines.push(`PRIORITY: ${priority.text}`);
   lines.push(`REVENUE: $${(cc.rev.mtd || 0).toLocaleString()} MTD (target $${cc.monthlyTarget.toLocaleString()})`);
@@ -678,8 +678,8 @@ async function sendDigestEmail(email, subject, htmlBody, plainText) {
       },
       body: JSON.stringify({
         personalizations: [{ to: [{ email }] }],
-        from: { email: "alex@titleapp.ai", name: "Alex — TitleApp" },
-        reply_to: { email: "alex@titleapp.ai", name: "Alex — TitleApp" },
+        from: { email: "alex@sociii.ai", name: "Alex — SOCIII" },
+        reply_to: { email: "alex@sociii.ai", name: "Alex — SOCIII" },
         subject,
         content: [
           { type: "text/plain", value: plainText },

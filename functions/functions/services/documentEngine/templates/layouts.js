@@ -23,7 +23,7 @@ const FONTS = {
 };
 
 const COLORS = {
-  primary: "#6B46C1",        // Purple (TitleApp brand — matches pitch deck)
+  primary: "#6B46C1",        // Purple (SOCIII brand — matches pitch deck)
   secondary: "#0D1B2A",      // Dark navy (slide backgrounds)
   accent: "#A78BFA",         // Light purple (accents, highlights)
   lightBg: "#EEF2F6",        // Light slide background (alternating)

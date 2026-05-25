@@ -34,12 +34,12 @@ const VERTICAL_PLACEHOLDERS = {
 };
 
 const VERTICAL_DISCLAIMERS = {
-  auto: "TitleApp provides tools for managing dealership operations. It does not replace licensed dealer management systems or compliance with state motor vehicle regulations.",
-  "real-estate": "TitleApp provides tools for real estate operations. It does not replace licensed brokerage compliance, MLS membership requirements, or state real estate commission regulations.",
-  analyst: "TitleApp provides analytical tools only. It does not provide investment advice, portfolio management services, or broker-dealer functions. Always consult a qualified financial advisor.",
-  investor: "TitleApp provides tools to manage investor communications and data rooms. It does not act as a registered funding portal, broker-dealer, or investment advisor. Securities offerings must comply with applicable SEC regulations (RegCF, RegD, RegA+). Consult qualified legal counsel before conducting any securities offering.",
-  aviation: "TitleApp provides tools for aviation operations management. It does not replace FAA-mandated record keeping systems or certified maintenance tracking programs.",
-  _default: "TitleApp provides AI-powered workspace tools. The platform does not provide professional advice in regulated fields. Consult qualified professionals for domain-specific guidance.",
+  auto: "SOCIII provides tools for managing dealership operations. It does not replace licensed dealer management systems or compliance with state motor vehicle regulations.",
+  "real-estate": "SOCIII provides tools for real estate operations. It does not replace licensed brokerage compliance, MLS membership requirements, or state real estate commission regulations.",
+  analyst: "SOCIII provides analytical tools only. It does not provide investment advice, portfolio management services, or broker-dealer functions. Always consult a qualified financial advisor.",
+  investor: "SOCIII provides tools to manage investor communications and data rooms. It does not act as a registered funding portal, broker-dealer, or investment advisor. Securities offerings must comply with applicable SEC regulations (RegCF, RegD, RegA+). Consult qualified legal counsel before conducting any securities offering.",
+  aviation: "SOCIII provides tools for aviation operations management. It does not replace FAA-mandated record keeping systems or certified maintenance tracking programs.",
+  _default: "SOCIII provides AI-powered workspace tools. The platform does not provide professional advice in regulated fields. Consult qualified professionals for domain-specific guidance.",
 };
 
 const INTEGRATIONS_CATALOG = {
@@ -520,7 +520,7 @@ export default function OnboardingWizard({ onComplete, onStepChange, vertical: p
     return (
       <div style={{ minHeight: "100%", display: "flex", alignItems: "center", justifyContent: "center", background: "#f8fafc", fontFamily: "-apple-system, BlinkMacSystemFont, sans-serif" }}>
         <div style={{ textAlign: "center" }}>
-          <div style={{ fontSize: "20px", fontWeight: 600, color: "#7c3aed", marginBottom: "16px" }}>TitleApp</div>
+          <div style={{ fontSize: "20px", fontWeight: 600, color: "#7c3aed", marginBottom: "16px" }}>SOCIII</div>
           <div style={{ fontSize: "16px", color: "#6b7280" }}>Loading...</div>
         </div>
       </div>
@@ -561,7 +561,7 @@ export default function OnboardingWizard({ onComplete, onStepChange, vertical: p
         <div style={{ width: "100%", maxWidth: "720px" }}>
           <ProgressBar />
           <div style={{ textAlign: "center", marginBottom: "32px" }}>
-            <div style={{ fontSize: "48px", fontWeight: 300, letterSpacing: "-2px", color: "#7c3aed", marginBottom: "16px" }}>TitleApp</div>
+            <div style={{ fontSize: "48px", fontWeight: 300, letterSpacing: "-2px", color: "#7c3aed", marginBottom: "16px" }}>SOCIII</div>
             <h1 style={{ margin: "0 0 8px 0", fontSize: "28px", fontWeight: 700 }}>What brings you here?</h1>
             <p style={{ margin: 0, color: "#6b7280", fontSize: "15px" }}>Choose your path and we'll set everything up</p>
           </div>
@@ -1331,7 +1331,7 @@ export default function OnboardingWizard({ onComplete, onStepChange, vertical: p
           maxWidth: "500px", padding: "40px 20px",
         }}>
           <div style={{ fontSize: "48px", marginBottom: "24px", fontWeight: 300, letterSpacing: "-2px" }}>
-            TitleApp
+            SOCIII
           </div>
           <h1 style={{ fontSize: "32px", fontWeight: 700, margin: "0 0 16px 0" }}>
             Welcome, {companyName || "partner"}.

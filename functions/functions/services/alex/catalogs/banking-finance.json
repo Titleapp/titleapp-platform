@@ -30,13 +30,13 @@
       "constraintRaasSources": [
         { "moduleId": "securities_compliance_v1", "required": true, "load_when": "always" }
       ],
-      "_status_note": "Flipped to live 2026-05-09 per user-counsel attestation pattern (project_user_counsel_attestation_pattern.md). The user's counsel attests at worker activation; TitleApp AI is not the legal-review authority. End-to-end dogfood test passed 2026-05-09."
+      "_status_note": "Flipped to live 2026-05-09 per user-counsel attestation pattern (project_user_counsel_attestation_pattern.md). The user's counsel attests at worker activation; SOCIII AI is not the legal-review authority. End-to-end dogfood test passed 2026-05-09."
     }
   ],
   "bundles": [
     {
       "id": "titleapp-founder",
-      "name": "TitleApp Founder",
+      "name": "SOCIII Founder",
       "description": "Spine + Fundraise bundle for early-stage founders running a fundraise alongside the company.",
       "persona": "founder",
       "workerIds": ["PLAT-001", "PLAT-003", "PLAT-006", "PLAT-004", "BANK-FUND-001"],

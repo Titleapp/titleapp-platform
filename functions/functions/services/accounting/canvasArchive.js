@@ -77,7 +77,7 @@ function slugifyPeriod(periodStr, fallbackYear) {
 
 function newWorkbook() {
   const wb = new ExcelJS.Workbook();
-  wb.creator = "TitleApp Accounting";
+  wb.creator = "SOCIII Accounting";
   wb.created = new Date();
   return wb;
 }

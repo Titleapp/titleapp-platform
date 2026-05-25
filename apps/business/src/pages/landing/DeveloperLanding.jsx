@@ -17,11 +17,11 @@ export default function DeveloperLanding() {
         }}>BETA</span>
 
         <h1 style={{ fontSize: "36px", fontWeight: "700", margin: "16px 0 8px" }}>
-          TitleApp Developer Hub
+          SOCIII Developer Hub
         </h1>
 
         <p style={{ color: "#94a3b8", fontSize: "16px", marginBottom: "40px", lineHeight: "1.6" }}>
-          Build on TitleApp using the SDK and public API.
+          Build on SOCIII using the SDK and public API.
           Spine endpoints (contacts, transactions, assets) coming in v0.2.
         </p>
 
@@ -60,7 +60,7 @@ export default function DeveloperLanding() {
 
         <div style={{ borderTop: "1px solid #1e293b", marginTop: "48px", paddingTop: "24px" }}>
           <p style={{ color: "#475569", fontSize: "12px" }}>
-            TitleApp — BETA — APIs subject to change.
+            SOCIII — BETA — APIs subject to change.
           </p>
         </div>
       </div>

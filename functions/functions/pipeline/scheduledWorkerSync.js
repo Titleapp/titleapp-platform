@@ -169,7 +169,7 @@ async function scheduledWorkerSync() {
     try {
       const { sendViaSendGrid } = require("../services/marketingService/emailNotify");
       await sendViaSendGrid({
-        to: "sean@titleapp.ai",
+        to: "sean@sociii.ai",
         subject: `Worker Sync Alert: ${results.errors.length} error(s)`,
         htmlBody: `<p>Nightly worker sync completed with ${results.errors.length} error(s):</p>
 <ul>${results.errors.map(e => `<li>${e}</li>`).join("")}</ul>

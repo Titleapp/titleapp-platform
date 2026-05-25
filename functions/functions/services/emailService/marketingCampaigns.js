@@ -75,8 +75,8 @@ async function sendMarketingEmail(userId, { listId, subject, htmlContent, plainC
   if (!subject) return { ok: false, error: "Missing subject" };
   if (!htmlContent) return { ok: false, error: "Missing htmlContent" };
 
-  const senderEmail = fromEmail || "alex@titleapp.ai";
-  const senderName = fromName || "Alex -- TitleApp";
+  const senderEmail = fromEmail || "alex@sociii.ai";
+  const senderName = fromName || "Alex -- SOCIII";
 
   // Create single send
   const sendResult = await sgFetch("/marketing/singlesends", "POST", {

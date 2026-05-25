@@ -596,7 +596,7 @@ export function PreflightCanvas({ session, onComplete }) {
 export function DistributeCanvas({ session, onComplete }) {
   const spec = session?.spec || {};
   const slug = (spec.name || "your-worker").toLowerCase().replace(/[^a-z0-9]+/g, "-");
-  const url = `https://app.titleapp.ai/preview/${slug}`;
+  const url = `https://app.sociii.ai/preview/${slug}`;
 
   return (
     <CanvasShell
@@ -634,7 +634,7 @@ export function GrowCanvas({ session, onComplete }) {
     >
       <div style={card}>
         <div style={{ fontSize: 14, color: "#1a1a2e", lineHeight: 1.6 }}>
-          You are a recognized expert. Your network trusts you more than any ad TitleApp could ever run.
+          You are a recognized expert. Your network trusts you more than any ad SOCIII could ever run.
           The most powerful thing you can do right now is tell 10 people you trust that this exists —
           not 10,000 strangers, 10 people who already believe in your expertise. That is your launch. Start there.
         </div>

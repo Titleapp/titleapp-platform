@@ -405,7 +405,7 @@ export default function LifecycleTab() {
                       </td>
                       <td>
                         <a
-                          href={`mailto:${user.email}?subject=Payment%20Issue%20-%20TitleApp&body=Hi%20${encodeURIComponent(user.displayName || "there")},%0A%0AWe%20noticed%20a%20payment%20issue%20on%20your%20account.%20Can%20we%20help%20resolve%20this?%0A%0A--%20TitleApp%20Team`}
+                          href={`mailto:${user.email}?subject=Payment%20Issue%20-%20SOCIII&body=Hi%20${encodeURIComponent(user.displayName || "there")},%0A%0AWe%20noticed%20a%20payment%20issue%20on%20your%20account.%20Can%20we%20help%20resolve%20this?%0A%0A--%20SOCIII%20Team`}
                           className="ac-btn ac-btn-sm"
                           style={{ textDecoration: "none" }}
                         >

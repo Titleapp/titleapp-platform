@@ -13,7 +13,7 @@
 **AI Will Change Your Dealership.**
 **Here's How to Lead It, Not Get Replaced.**
 
-May 19, 2026 · TitleApp AI · titleapp.ai
+May 19, 2026 · SOCIII · sociii.ai
 
 Sean opens. 60 sec.
 
@@ -29,8 +29,8 @@ Sean. 30 sec.
 ### Slide 3 — Who We Are (1:30 — 3:00)
 3 host bios:
 
-- **Sean Combs** — CEO and Co-founder, TitleApp AI. AI thought leader with patent-pending compliance architecture. Two decades operating in transportation — airline pilot, medevac pilot — where the cost of bad information is measured in lives, not metrics.
-- **Kent Redwine** — CFO and Co-founder, TitleApp AI. Fifteen years in investment banking, advising clients across one of the world's largest aircraft manufacturers, leading technology firms, green energy, and electric vehicles. Founded an electric vehicle company before Tesla took the segment.
+- **Sean Combs** — CEO and Co-founder, SOCIII. AI thought leader with patent-pending compliance architecture. Two decades operating in transportation — airline pilot, medevac pilot — where the cost of bad information is measured in lives, not metrics.
+- **Kent Redwine** — CFO and Co-founder, SOCIII. Fifteen years in investment banking, advising clients across one of the world's largest aircraft manufacturers, leading technology firms, green energy, and electric vehicles. Founded an electric vehicle company before Tesla took the segment.
 - **Alex** — Chief of Staff to Sean Lee Combs, CEO and Co-founder. Live Q&A in chat.
 
 Sean + Kent share. 90 sec total.
@@ -79,7 +79,7 @@ The point: it's not hypothetical. It's happening now.
 ### Slide 7 — The Five Pillars (11:30 — 12:30)
 *New slide added in v3, immediately before the Gate analogy.*
 
-**TitleApp AI — The Five Pillars**
+**SOCIII — The Five Pillars**
 1. **RAAS Engine** — rules enforced as the worker writes
 2. **Vault** — your private data layer; your data is not training data
 3. **Document Control** — versioning, distribution, acknowledgment, audit trail
@@ -93,7 +93,7 @@ Sean delivers in 60 sec. The Gate analogy then zooms into Pillar 1.
 ### Slide 8 — The Gate Analogy (12:30 — 15:30)
 **Replaces technical RAAS description.** Locked language:
 
-> Most AI tools work like an open door. You ask, the AI answers, and you're left to figure out if the answer is compliant, accurate, and defensible. TitleApp AI works like three gates.
+> Most AI tools work like an open door. You ask, the AI answers, and you're left to figure out if the answer is compliant, accurate, and defensible. SOCIII works like three gates.
 >
 > The first gate is at the entrance: regulatory rules are loaded into the worker's context as it begins thinking — like giving a securities attorney the rule book before they draft an offering memo, not after.
 >
@@ -101,7 +101,7 @@ Sean delivers in 60 sec. The Gate analogy then zooms into Pillar 1.
 >
 > The third gate is at the exit: the final output is screened for jurisdiction-aware compliance before it ever reaches you, your customer, or your regulator.
 >
-> Three gates, every output, every time. Tamper-evident audit trail at each gate. That's why TitleApp AI works in regulated industries where generic AI doesn't.
+> Three gates, every output, every time. Tamper-evident audit trail at each gate. That's why SOCIII works in regulated industries where generic AI doesn't.
 
 Visual: Three-Gates architecture diagram with the gate text as caption.
 
@@ -153,9 +153,9 @@ Kent. 90 sec.
 ✓ This recording
 ✓ First invite to Certified Creator program
 ✓ 15-min discovery call if you want one (no follow-up if you don't)
-✓ 30-day TitleApp AI free trial — no credit card required
+✓ 30-day SOCIII free trial — no credit card required
 
-QR code → titleapp.ai/auto-may19
+QR code → sociii.ai/auto-may19
 
 Footer: "1,000+ digital workers and growing — patent-pending compliance architecture"
 
@@ -179,7 +179,7 @@ Pre-staged questions in case the room is quiet:
 ## Production notes
 
 - **Designer build the deck** in Slidev or Pitch — clean dark theme, brand purple (#4F46E5)
-- **Sean does the demo from his actual TitleApp AI workspace** — not recorded video. Live = unfakable.
+- **Sean does the demo from his actual SOCIII workspace** — not recorded video. Live = unfakable.
 - **Alex's chat answers visible in OBS overlay** so attendees see Alex working alongside Sean
 - **Everything recorded** — Google Meet auto-record + secondary OBS recording
 - **Captions auto-generated** in Meet, then post-edited by Alex for accuracy

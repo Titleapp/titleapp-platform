@@ -60,7 +60,7 @@ export default function InviteLanding({ inviteCode }) {
   if (loading) return <div style={S.page}><div style={S.loading}>Loading invite...</div></div>;
   if (error) return (
     <div style={S.page}>
-      <nav style={S.nav}><a href="/" style={S.logo}>TitleApp</a><a href="/meet-alex" style={S.signIn}>Sign In</a></nav>
+      <nav style={S.nav}><a href="/" style={S.logo}>SOCIII</a><a href="/meet-alex" style={S.signIn}>Sign In</a></nav>
       <div style={S.error}>{error}</div>
     </div>
   );
@@ -71,7 +71,7 @@ export default function InviteLanding({ inviteCode }) {
   return (
     <div style={S.page}>
       <nav style={S.nav}>
-        <a href="/" style={S.logo}>TitleApp</a>
+        <a href="/" style={S.logo}>SOCIII</a>
         <a href="/meet-alex" style={S.signIn}>Sign In</a>
       </nav>
 
@@ -122,7 +122,7 @@ export default function InviteLanding({ inviteCode }) {
         </div>
       </div>
 
-      <footer style={S.footer}>TitleApp {"\u2014"} Digital Workers for every industry</footer>
+      <footer style={S.footer}>SOCIII {"\u2014"} Digital Workers for every industry</footer>
     </div>
   );
 }

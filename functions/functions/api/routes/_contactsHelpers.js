@@ -21,12 +21,12 @@ const VALID_TYPES = [
   // Original v2.1 types
   "customer", "vendor", "investor", "tenant", "employee", "patient", "student", "contractor", "personal",
   // S50.21 startup-ecosystem additions
-  "creator",              // Digital Worker authors on the TitleApp platform
+  "creator",              // Digital Worker authors on the SOCIII platform
   "advisor",              // formal advisors, cap-table observers
   "partner",              // integration partners, channel partners
   "journalist",           // press contacts, editors, reporters
   "regulator",            // SEC, state regulators, OFAC liaison contacts
-  "professional_services",// law firms, accounting firms, consultancies retained by TitleApp
+  "professional_services",// law firms, accounting firms, consultancies retained by SOCIII
 ];
 
 const VALID_TIERS = ["personal", "professional", "confidential", "investor", "customer", "prospect", "partner", "vendor"];

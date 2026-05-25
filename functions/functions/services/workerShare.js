@@ -360,7 +360,7 @@ async function getWorkerOgImage(req, res) {
   const w = snap.docs[0].data();
 
   // Get creator name
-  let creatorName = "TitleApp Creator";
+  let creatorName = "SOCIII Creator";
   if (w.creatorId) {
     const cSnap = await db.collection("users").doc(w.creatorId).get();
     if (cSnap.exists) creatorName = cSnap.data().displayName || cSnap.data().name || creatorName;
@@ -379,12 +379,12 @@ async function getWorkerOgImage(req, res) {
     </defs>
     <rect width="1200" height="630" fill="url(#bg)"/>
     <rect x="60" y="60" width="1080" height="510" rx="24" fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
-    <text x="120" y="140" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="700" fill="#7c3aed">TitleApp</text>
+    <text x="120" y="140" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="700" fill="#7c3aed">SOCIII</text>
     <text x="120" y="240" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="700" fill="#ffffff">${escapeXml(workerName)}</text>
     <text x="120" y="300" font-family="system-ui, -apple-system, sans-serif" font-size="22" fill="#a5b4fc">AI Worker by ${escapeXml(creatorName)}</text>
     <rect x="120" y="360" width="240" height="48" rx="24" fill="#16a34a"/>
     <text x="240" y="392" font-family="system-ui, -apple-system, sans-serif" font-size="18" font-weight="600" fill="white" text-anchor="middle">${escapeXml(trialText)}</text>
-    <text x="120" y="480" font-family="system-ui, -apple-system, sans-serif" font-size="18" fill="#94a3b8">titleapp.ai/w/${escapeXml(w.slug || "")}</text>
+    <text x="120" y="480" font-family="system-ui, -apple-system, sans-serif" font-size="18" fill="#94a3b8">sociii.ai/w/${escapeXml(w.slug || "")}</text>
   </svg>`;
 
   res.setHeader("Content-Type", "image/svg+xml");

@@ -410,6 +410,228 @@
       "requiredRoles": [],
       "emitsEvent": true,
       "writesAudit": true
+    },
+
+    {
+      "id": "ir.investor.initiate_v1",
+      "class": "ir",
+      "summary": "Create an IR investor record and email a magic-link invite for the SOCIII pre-seed flow.",
+      "contexts": ["civilian", "tenant"],
+      "allowedCallers": ["human", "chat"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": ["owner_admin", "admin_ops"],
+      "emitsEvent": true,
+      "writesAudit": true
+    },
+    {
+      "id": "ir.investor.step_v1",
+      "class": "ir",
+      "summary": "Advance the IR investor flow state machine (Stripe Identity, SAFE signing, Vault write).",
+      "contexts": ["civilian", "tenant"],
+      "allowedCallers": ["human", "chat"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": true,
+      "writesAudit": true
+    },
+    {
+      "id": "ir.investor.status_v1",
+      "class": "ir",
+      "summary": "Read the current IR investor flow status (self or admin).",
+      "contexts": ["civilian", "tenant"],
+      "allowedCallers": ["human", "chat", "worker"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": false,
+      "writesAudit": false
+    },
+
+    {
+      "id": "creative.create_project_v1",
+      "class": "creative",
+      "summary": "Create a long-form creative project (novel, screenplay, stageplay) with byline, output formats, and reference tones.",
+      "contexts": ["tenant", "civilian"],
+      "allowedCallers": ["human", "chat"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": true,
+      "writesAudit": true
+    },
+    {
+      "id": "creative.outline_draft_v1",
+      "class": "creative",
+      "summary": "Set or update a project outline — parts, chapters, page budgets, POV and voice notes per chapter.",
+      "contexts": ["tenant", "civilian"],
+      "allowedCallers": ["human", "chat"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": true,
+      "writesAudit": true
+    },
+    {
+      "id": "creative.character_bible_v1",
+      "class": "creative",
+      "summary": "Upsert a character bible entry — psychology, voice markers, biographical facts, arc-per-chapter.",
+      "contexts": ["tenant", "civilian"],
+      "allowedCallers": ["human", "chat"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": true,
+      "writesAudit": true
+    },
+    {
+      "id": "creative.voice_register_declare_v1",
+      "class": "creative",
+      "summary": "Declare a voice register (primary + secondary anchors) for a part or chapter.",
+      "contexts": ["tenant", "civilian"],
+      "allowedCallers": ["human", "chat"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": true,
+      "writesAudit": true
+    },
+    {
+      "id": "creative.voice_register_check_v1",
+      "class": "creative",
+      "summary": "Check a draft against the declared voice register and surface drift. v1 returns a stub; model wiring in v1.1.",
+      "contexts": ["tenant", "civilian"],
+      "allowedCallers": ["human", "chat", "worker"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": true,
+      "writesAudit": true
+    },
+    {
+      "id": "creative.theme_invariants_v1",
+      "class": "creative",
+      "summary": "Declare or check machine-checkable theme invariants for a project (e.g., no premature inversion cues).",
+      "contexts": ["tenant", "civilian"],
+      "allowedCallers": ["human", "chat", "worker"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": true,
+      "writesAudit": true
+    },
+    {
+      "id": "creative.draft_chapter_v1",
+      "class": "creative",
+      "summary": "Request a chapter draft from outline + character bible + voice register + prior chapter context.",
+      "contexts": ["tenant", "civilian"],
+      "allowedCallers": ["human", "chat"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": true,
+      "writesAudit": true
+    },
+    {
+      "id": "creative.revision_pass_v1",
+      "class": "creative",
+      "summary": "Apply a directed revision pass on an existing draft. Appends a new draft record; never overwrites.",
+      "contexts": ["tenant", "civilian"],
+      "allowedCallers": ["human", "chat"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": true,
+      "writesAudit": true
+    },
+    {
+      "id": "creative.continuity_check_v1",
+      "class": "creative",
+      "summary": "Cross-check a draft against the project facts collection. v1 returns a stub; model wiring in v1.1.",
+      "contexts": ["tenant", "civilian"],
+      "allowedCallers": ["human", "chat", "worker"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": true,
+      "writesAudit": true
+    },
+    {
+      "id": "creative.adapt_to_screenplay_v1",
+      "class": "creative",
+      "summary": "Convert source chapters into a screenplay (.fdx + PDF). v1 writes the output record; document generation in v1.1.",
+      "contexts": ["tenant", "civilian"],
+      "allowedCallers": ["human", "chat"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": true,
+      "writesAudit": true
+    },
+    {
+      "id": "creative.adapt_to_stageplay_v1",
+      "class": "creative",
+      "summary": "Convert source chapters into a stage play (Samuel French .docx). v1 writes the output record; doc gen in v1.1.",
+      "contexts": ["tenant", "civilian"],
+      "allowedCallers": ["human", "chat"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": true,
+      "writesAudit": true
+    },
+    {
+      "id": "creative.format_for_kdp_v1",
+      "class": "creative",
+      "summary": "Produce KDP-ready interior + cover PDFs at the declared trim size. v1 writes output records; PDF gen in v1.1.",
+      "contexts": ["tenant", "civilian"],
+      "allowedCallers": ["human", "chat"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": true,
+      "writesAudit": true
+    },
+    {
+      "id": "creative.publish_kdp_v1",
+      "class": "creative",
+      "summary": "Push manuscript to Amazon KDP. v1 generates manifest for manual upload; supervised-browser automation later.",
+      "contexts": ["tenant", "civilian"],
+      "allowedCallers": ["human"],
+      "requiredKyc": "KYC-1",
+      "requiredRoles": ["owner_admin", "admin_ops"],
+      "emitsEvent": true,
+      "writesAudit": true
+    },
+    {
+      "id": "creative.register_copyright_v1",
+      "class": "creative",
+      "summary": "Generate US Copyright Office Form TX fill payload and mint a DTC for the manuscript via the chain anchor.",
+      "contexts": ["tenant", "civilian"],
+      "allowedCallers": ["human"],
+      "requiredKyc": "KYC-1",
+      "requiredRoles": ["owner_admin", "admin_ops"],
+      "emitsEvent": true,
+      "writesAudit": true
+    },
+    {
+      "id": "creative.create_launch_campaign_v1",
+      "class": "creative",
+      "summary": "Scaffold a three-phase launch campaign (pre-launch buzz, launch week, sustained press) for a creative project.",
+      "contexts": ["tenant", "civilian"],
+      "allowedCallers": ["human", "chat"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": true,
+      "writesAudit": true
+    },
+    {
+      "id": "creative.build_press_list_v1",
+      "class": "creative",
+      "summary": "Build a literary press target list for a creative project. v1 uses a canonical 30-outlet list; tenant merge in v1.1.",
+      "contexts": ["tenant", "civilian"],
+      "allowedCallers": ["human", "chat"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": true,
+      "writesAudit": true
+    },
+    {
+      "id": "creative.generate_social_assets_v1",
+      "class": "creative",
+      "summary": "Scaffold launch-asset slots (cover reveal, quote cards, audio excerpts, video teaser). v1 placeholders; gen in v1.1.",
+      "contexts": ["tenant", "civilian"],
+      "allowedCallers": ["human", "chat"],
+      "requiredKyc": "KYC-0",
+      "requiredRoles": [],
+      "emitsEvent": true,
+      "writesAudit": true
     }
   ]
 }

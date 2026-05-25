@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { getAuth } from 'firebase/auth';
 
-const BUILDER_SYSTEM_PROMPT = `You are Alex, the Chief of Staff at TitleApp. You're helping someone build their own AI service (called a "Worker") that others can subscribe to on the TitleApp Marketplace.
+const BUILDER_SYSTEM_PROMPT = `You are Alex, the Chief of Staff at SOCIII. You're helping someone build their own AI service (called a "Worker") that others can subscribe to on the SOCIII Marketplace.
 
 Your job is to have a genuine, warm conversation that extracts enough information to generate their Worker. You're like a great podcast interviewer — you make people feel brilliant about what they know.
 
@@ -401,7 +401,7 @@ export default function BuilderInterview({ onComplete, onCancel }) {
             <rect x="94" y="122" width="5" height="3" fill="white"/>
           </svg>
           <div>
-            <span style={{ color: '#7c3aed', fontWeight: 700, fontSize: 18 }}>TitleApp</span>
+            <span style={{ color: '#7c3aed', fontWeight: 700, fontSize: 18 }}>SOCIII</span>
             <span style={{ color: '#94a3b8', marginLeft: 8, fontSize: 14 }}>Build an AI Service</span>
           </div>
         </div>

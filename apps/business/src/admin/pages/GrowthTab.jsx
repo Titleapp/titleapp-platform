@@ -125,7 +125,7 @@ export default function GrowthTab() {
 
   function generateRefLink() {
     if (!refEmail) return "";
-    return `https://titleapp.ai?ref=${encodeURIComponent(refEmail)}`;
+    return `https://sociii.ai?ref=${encodeURIComponent(refEmail)}`;
   }
 
   async function copyRefLink() {

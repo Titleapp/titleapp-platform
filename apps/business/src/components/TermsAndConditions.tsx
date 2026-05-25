@@ -63,7 +63,7 @@ export default function TermsAndConditions({ onAccept, onDecline }: TermsProps) 
             1. NO FINANCIAL, LEGAL, OR PROFESSIONAL ADVICE
           </h3>
           <p>
-            TitleApp AI is a software tool only. It does NOT provide financial, investment,
+            SOCIII AI is a software tool only. It does NOT provide financial, investment,
             legal, tax, accounting, or any other professional advice. All AI-generated
             analyses are for informational purposes only.
           </p>
@@ -77,7 +77,7 @@ export default function TermsAndConditions({ onAccept, onDecline }: TermsProps) 
 
           <h3 style={{ fontSize: "14px", fontWeight: 700 }}>2. RELEASE OF LIABILITY</h3>
           <p>
-            TO THE MAXIMUM EXTENT PERMITTED BY LAW, YOU RELEASE AND HOLD HARMLESS TitleApp AI
+            TO THE MAXIMUM EXTENT PERMITTED BY LAW, YOU RELEASE AND HOLD HARMLESS SOCIII AI
             from ANY AND ALL claims, damages, losses, or expenses arising from your use of the platform,
             including investment losses, data errors, third-party integrations, and service interruptions.
           </p>

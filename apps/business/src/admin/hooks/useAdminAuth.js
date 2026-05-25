@@ -85,9 +85,9 @@ export default function useAdminAuth() {
       } catch (err) {
         console.error("Admin auth check failed:", err);
         // Firestore rules may block client reads — fall back to known admin emails
-        const ADMIN_EMAILS = ["seanlcombs@gmail.com", "sean@titleapp.ai", "kent@titleapp.ai"];
+        const ADMIN_EMAILS = ["seanlcombs@gmail.com", "sean@sociii.ai", "kent@sociii.ai"];
         if (ADMIN_EMAILS.includes(firebaseUser.email)) {
-          const fallbackRole = firebaseUser.email === "kent@titleapp.ai" ? "admin" : "owner";
+          const fallbackRole = firebaseUser.email === "kent@sociii.ai" ? "admin" : "owner";
           _adminCache = { role: fallbackRole, permissions: ROLE_PERMISSIONS[fallbackRole] };
           _adminCacheUid = firebaseUser.uid;
           setUser(firebaseUser);

@@ -58,7 +58,7 @@ export default function PublicTeamRoster() {
     <div style={S.page}>
       <div style={S.header}>
         <div style={S.headerTitle}>{roster.projectName || "Project"} — Verified Team</div>
-        <div style={S.headerSub}>TitleApp Web3 Suite</div>
+        <div style={S.headerSub}>SOCIII Web3 Suite</div>
         <div style={S.badge}>Verified</div>
       </div>
 
@@ -85,13 +85,13 @@ export default function PublicTeamRoster() {
                 <a href={roster.vaultUrl} style={{ ...S.footerValue, color: "#7c3aed", textDecoration: "none" }}>View public vault</a>
               </div>
             )}
-            <div style={{ fontSize: 12, color: "#6b7280", marginTop: 12 }}>Verified by TitleApp &middot; Powered by Stripe Identity</div>
+            <div style={{ fontSize: 12, color: "#6b7280", marginTop: 12 }}>Verified by SOCIII &middot; Powered by Stripe Identity</div>
             {roster.rosterHash && <div style={S.hash}>Roster hash: {roster.rosterHash}</div>}
           </div>
         </div>
       </div>
 
-      <div style={S.powered}>TitleApp Web3 Suite &middot; All receipts. All the time.</div>
+      <div style={S.powered}>SOCIII Web3 Suite &middot; All receipts. All the time.</div>
     </div>
   );
 }

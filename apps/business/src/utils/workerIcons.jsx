@@ -1808,7 +1808,7 @@ export const THEME_ACCENT = {
   machines: "#0284c7",   // instrument blue
   finance: "#16a34a",    // capital green
   healthcare: "#0891b2", // clinical cyan
-  games: "#7c3aed",      // TitleApp purple
+  games: "#7c3aed",      // SOCIII purple
 };
 
 /**

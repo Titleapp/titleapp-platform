@@ -37,7 +37,7 @@ async function sendEmail({ to, subject, htmlBody }) {
     },
     body: JSON.stringify({
       personalizations: [{ to: [{ email: to }] }],
-      from: { email: "alex@titleapp.ai", name: "TitleApp" },
+      from: { email: "alex@sociii.ai", name: "SOCIII" },
       subject,
       content: [{ type: "text/html", value: htmlBody }],
     }),
@@ -332,10 +332,10 @@ async function checkTrialExpiry() {
             to: userSnap.data().email,
             subject: `Your trial of ${workerName} ends in ${daysLeft} days`,
             htmlBody: `<div style="font-family: -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-              <span style="font-size: 20px; font-weight: 700; color: #7c3aed;">TitleApp</span>
+              <span style="font-size: 20px; font-weight: 700; color: #7c3aed;">SOCIII</span>
               <p style="margin-top: 24px; font-size: 16px; color: #1a202c;">Your free trial of <strong>${workerName}</strong> ends in ${daysLeft} days.</p>
               <p style="font-size: 16px; color: #1a202c;">Subscribe for $${price}/month to keep access.</p>
-              <a href="https://app.titleapp.ai" style="display: inline-block; margin-top: 16px; padding: 12px 24px; background: #7c3aed; color: white; border-radius: 8px; text-decoration: none; font-weight: 600;">Subscribe Now</a>
+              <a href="https://app.sociii.ai" style="display: inline-block; margin-top: 16px; padding: 12px 24px; background: #7c3aed; color: white; border-radius: 8px; text-decoration: none; font-weight: 600;">Subscribe Now</a>
             </div>`,
           });
         }

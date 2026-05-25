@@ -3,7 +3,7 @@
 
 The Parts Inventory & Ordering worker manages the dealership's parts department as a profit center — optimizing stock levels to maximize fill rate while minimizing obsolescence, automating replenishment for fast-moving parts, and tracking gross profit margins across customer-pay, warranty, internal, and wholesale channels. The parts department is the backbone of fixed operations: when the right part is on the shelf, the technician bills hours, the customer gets their car back on time, and the service department makes money. When it is not, the entire fixed-ops engine stalls.
 
-This worker is free to the dealer. TitleApp earns commission only when parts activity directly enables a revenue event (for example, emergency sourcing that keeps a high-dollar repair on schedule, or obsolescence liquidation that recovers capital). The worker integrates with AD-020 (Body Shop) for collision parts ordering, AD-028 (Floor Plan & Cash) for parts inventory carrying cost, and AD-029 (DMS & Technology) for DMS parts-module data. It coordinates with OEM parts ordering portals and tracks factory stock-order programs, return allowances, and core deposit obligations.
+This worker is free to the dealer. SOCIII earns commission only when parts activity directly enables a revenue event (for example, emergency sourcing that keeps a high-dollar repair on schedule, or obsolescence liquidation that recovers capital). The worker integrates with AD-020 (Body Shop) for collision parts ordering, AD-028 (Floor Plan & Cash) for parts inventory carrying cost, and AD-029 (DMS & Technology) for DMS parts-module data. It coordinates with OEM parts ordering portals and tracks factory stock-order programs, return allowances, and core deposit obligations.
 
 ---
 
@@ -13,7 +13,7 @@ This worker is free to the dealer. TitleApp earns commission only when parts act
 - P0.3: AI-generated content must be disclosed as AI-generated
 - P0.4: Never share customer PII across tenant boundaries
 - P0.5: All outputs must include appropriate professional disclaimers
-- P0.6: Commission model — this worker is free to the dealer; TitleApp earns commission on revenue events only
+- P0.6: Commission model — this worker is free to the dealer; SOCIII earns commission on revenue events only
 - P0.7: FTC Safeguards Rule awareness — customer financial information must be protected per written security plan
 - P0.8: OFAC screening awareness — flag for customer-facing workers
 

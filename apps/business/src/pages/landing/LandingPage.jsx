@@ -278,7 +278,7 @@ export default function LandingPage({ vertical, headlines, problems, workers, te
       {/* ═══ GlobalNav ═══ */}
       <nav style={S.nav}>
         <div style={S.navInner}>
-          <a href="https://titleapp.ai" style={S.logo}>TitleApp</a>
+          <a href="https://sociii.ai" style={S.logo}>SOCIII</a>
           <div style={S.navLinks}>
             <a href="/workers" style={S.navLink}>Workers</a>
             <a href="/developers" style={S.navLink}>Developers</a>
@@ -427,7 +427,7 @@ export default function LandingPage({ vertical, headlines, problems, workers, te
               ))}
             </div>
             <div style={{ textAlign: "center", marginTop: 20, fontSize: 13, color: "#64748b" }}>
-              Both plans include the full Vibe Coding Sandbox, Alex, and the TitleApp distribution network.
+              Both plans include the full Vibe Coding Sandbox, Alex, and the SOCIII distribution network.
             </div>
           </div>
         </section>
@@ -519,10 +519,10 @@ export default function LandingPage({ vertical, headlines, problems, workers, te
           </div>
           <div>
             <div style={S.footerColTitle}>Company</div>
-            <a href="https://titleapp.ai" style={S.footerLink}>About</a>
+            <a href="https://sociii.ai" style={S.footerLink}>About</a>
             <a href="/invest/room" style={S.footerLink}>Investors</a>
             <a href="#" style={S.footerLink}>Blog</a>
-            <a href="mailto:sean@titleapp.ai" style={S.footerLink}>Contact</a>
+            <a href="mailto:sean@sociii.ai" style={S.footerLink}>Contact</a>
           </div>
           <div>
             <div style={S.footerColTitle}>Programs</div>
@@ -540,7 +540,7 @@ export default function LandingPage({ vertical, headlines, problems, workers, te
           </div>
         </div>
         <div style={S.footerBottom}>
-          <div style={S.footerBottomText}>&copy; 2026 TitleApp LLC | sean@titleapp.ai | +1 707-654-9864</div>
+          <div style={S.footerBottomText}>&copy; 2026 SOCIII, Inc. | sean@sociii.ai | +1 707-654-9864</div>
           <div style={{ ...S.footerBottomText, fontSize: 12 }}>Start Free. 60-Day Money Back. Your Data Is Always Yours.</div>
         </div>
       </footer>

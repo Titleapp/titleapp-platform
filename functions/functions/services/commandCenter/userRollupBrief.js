@@ -91,7 +91,7 @@ async function launchAdapter(tenantId) {
   const socialPosts7d = socialPostsSnap.size;
 
   // Customer growth — active paying tenants for THIS workspace's product (if applicable)
-  // For TitleApp itself, this is platform-wide active subscriptions.
+  // For SOCIII itself, this is platform-wide active subscriptions.
   let platformSubs = 0;
   try {
     const ps = await db().collection("subscriptions").where("status", "==", "active").get();
@@ -216,7 +216,7 @@ async function launchAdapter(tenantId) {
   // 50.27 — Development Milestones. Same shape as launch milestones but
   // tracks product/build roadmap rather than fundraise. Editable per
   // tenant via tenants/{id}.developmentMilestones.{id}.status. Defaults
-  // are a sane starter set for the TitleApp AI workspace; other workspaces
+  // are a sane starter set for the SOCIII AI workspace; other workspaces
   // get an empty list (no opinion) until the admin authors them.
   const devMilestoneState = tenantData.developmentMilestones || {};
   const defaultDevMilestones = tenantId === "ws_1778652045795_vk4sz1" ? [
@@ -357,7 +357,7 @@ function buildPlainText(userName, today, sections) {
   if (live.length === 0) return null; // hard rule: no signal, no email
 
   const lines = [];
-  lines.push(`TitleApp Command Center — ${today}`);
+  lines.push(`SOCIII Command Center — ${today}`);
   lines.push("");
   lines.push(`Good morning${userName ? ", " + userName : ""}.`);
   lines.push("");
@@ -473,8 +473,8 @@ async function generateUserRollupBrief(userId, { dryRun = true } = {}) {
         headers: { Authorization: `Bearer ${process.env.SENDGRID_API_KEY}`, "Content-Type": "application/json" },
         body: JSON.stringify({
           personalizations: [{ to: [{ email: userData.email }] }],
-          from: { email: "alex@titleapp.ai", name: "Alex — Command Center" },
-          reply_to: { email: "alex@titleapp.ai", name: "Alex — Command Center" },
+          from: { email: "alex@sociii.ai", name: "Alex — Command Center" },
+          reply_to: { email: "alex@sociii.ai", name: "Alex — Command Center" },
           subject: `Command Center — ${today}`,
           content: [
             { type: "text/plain", value: plainText },

@@ -22,7 +22,7 @@ export default function OnboardingTour({ onComplete, vertical = 'auto' }) {
   const getTourSteps = () => {
     const commonSteps = [
       {
-        title: 'Welcome to TitleApp',
+        title: 'Welcome to SOCIII',
         content: 'Let me show you around. This quick tour will help you get started with your AI-powered business platform.',
         action: 'Get Started',
         highlight: null,
@@ -51,7 +51,7 @@ export default function OnboardingTour({ onComplete, vertical = 'auto' }) {
       auto: [
         {
           title: 'Upload Your Data',
-          content: 'To get the most out of TitleApp, upload your business data:\n\n• Customer database\n• Current inventory\n• Service schedules\n• Financial products\n• Warranty offerings\n\nWe\'ll use AI to analyze and help you sell more effectively.',
+          content: 'To get the most out of SOCIII, upload your business data:\n\n• Customer database\n• Current inventory\n• Service schedules\n• Financial products\n• Warranty offerings\n\nWe\'ll use AI to analyze and help you sell more effectively.',
           action: 'Upload Now',
           highlight: null,
         },
@@ -89,7 +89,7 @@ export default function OnboardingTour({ onComplete, vertical = 'auto' }) {
       {
         title: 'You\'re All Set',
         content: 'That\'s it! Remember, you can always ask the AI chat assistant for help. It knows your business context and can guide you through any task.',
-        action: 'Start Using TitleApp',
+        action: 'Start Using SOCIII',
         highlight: null,
       },
     ];

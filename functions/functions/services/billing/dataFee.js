@@ -6,7 +6,7 @@
  * Every external data-source API call (Apollo, ATTOM, First American Title,
  * MLS, Treasury feeds, etc.) must record a data-fee event against the calling
  * user. Margin-survival rule: some calls cost $5–$10 (ATTOM, First American);
- * if these aren't billed through, TitleApp AI eats real money on every call.
+ * if these aren't billed through, SOCIII AI eats real money on every call.
  *
  * Usage:
  *   const { recordDataFee } = require("./services/billing/dataFee");
@@ -29,7 +29,7 @@ function getDb() { return admin.firestore(); }
 // Source registry — actual cost per unit and markup applied to user.
 // All amounts in cents (USD). Markup is a multiplier (e.g., 2.0 = 100% markup).
 //
-//   actualCentsPerUnit: what TitleApp pays the data provider per unit
+//   actualCentsPerUnit: what SOCIII pays the data provider per unit
 //   markup:             multiplier applied to actual cost when billing user
 //   billedCentsPerUnit: cached for clarity; computed at write time anyway
 //

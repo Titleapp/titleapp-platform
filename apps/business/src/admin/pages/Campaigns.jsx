@@ -98,7 +98,7 @@ export default function Campaigns() {
         },
         body: JSON.stringify({
           campaignId: campaignId || testCampaignId,
-          testEmail: "sean@titleapp.ai",
+          testEmail: "sean@sociii.ai",
           testPhone: "+17076549864",
         }),
       });
@@ -262,7 +262,7 @@ export default function Campaigns() {
                 {campaigns.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
-            <div style={{ fontSize: 12, color: "#64748b", marginBottom: 4 }}>Email: sean@titleapp.ai</div>
+            <div style={{ fontSize: 12, color: "#64748b", marginBottom: 4 }}>Email: sean@sociii.ai</div>
             <div style={{ fontSize: 12, color: "#64748b", marginBottom: 16 }}>Phone: +1 (707) 654-9864</div>
             {testResult && (
               <div style={{ fontSize: 13, padding: "8px 12px", borderRadius: 6, marginBottom: 12, background: testResult.includes("success") ? "#f0fdf4" : "#fff5f5", color: testResult.includes("success") ? "#16a34a" : "#dc2626" }}>

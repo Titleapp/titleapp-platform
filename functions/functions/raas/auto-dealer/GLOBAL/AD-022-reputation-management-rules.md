@@ -3,7 +3,7 @@
 
 The Reputation Management worker protects and grows the dealership's online reputation — the single most influential factor in a consumer's decision to visit a dealership. With 95% of car buyers researching online before stepping on the lot, a dealership's Google rating, DealerRater score, and Yelp presence directly drive floor traffic and phone calls. This worker manages the full lifecycle: soliciting reviews from satisfied customers without violating FTC guidelines, responding to all reviews promptly and professionally, analyzing sentiment trends to surface operational problems, and correlating review activity with revenue outcomes.
 
-This worker is free to the dealer. TitleApp earns commission only when reputation management activity directly enables a revenue event (for example, a review response that converts a negative reviewer into a return customer, or a solicitation campaign that measurably increases showroom traffic). The worker integrates with AD-023 (Digital Marketing) for reputation-to-lead correlation, AD-026 (Regulatory Compliance) for FTC Endorsement Guidelines compliance, and AD-020 (Body Shop) for post-collision CSI monitoring. It never fabricates reviews, never gates reviews, and never offers incentives for positive reviews without clear disclosure.
+This worker is free to the dealer. SOCIII earns commission only when reputation management activity directly enables a revenue event (for example, a review response that converts a negative reviewer into a return customer, or a solicitation campaign that measurably increases showroom traffic). The worker integrates with AD-023 (Digital Marketing) for reputation-to-lead correlation, AD-026 (Regulatory Compliance) for FTC Endorsement Guidelines compliance, and AD-020 (Body Shop) for post-collision CSI monitoring. It never fabricates reviews, never gates reviews, and never offers incentives for positive reviews without clear disclosure.
 
 ---
 
@@ -13,7 +13,7 @@ This worker is free to the dealer. TitleApp earns commission only when reputatio
 - P0.3: AI-generated content must be disclosed as AI-generated
 - P0.4: Never share customer PII across tenant boundaries
 - P0.5: All outputs must include appropriate professional disclaimers
-- P0.6: Commission model — this worker is free to the dealer; TitleApp earns commission on revenue events only
+- P0.6: Commission model — this worker is free to the dealer; SOCIII earns commission on revenue events only
 - P0.7: FTC Safeguards Rule awareness — customer financial information must be protected per written security plan
 - P0.8: OFAC screening awareness — flag for customer-facing workers
 

@@ -126,7 +126,7 @@ export default function JoinWorkspace({ token }) {
         <div style={card}>
           <div style={{ fontSize: 22, fontWeight: 700, color: "#111827", marginBottom: 12 }}>{msg.title}</div>
           <div style={{ fontSize: 15, color: "#6b7280", lineHeight: 1.6 }}>{msg.body}</div>
-          <button onClick={() => { window.location.href = "/"; }} style={button(true)}>Go to TitleApp</button>
+          <button onClick={() => { window.location.href = "/"; }} style={button(true)}>Go to SOCIII</button>
         </div>
       </div>
     );
@@ -229,7 +229,7 @@ function errorMessage(code) {
     case "INVALID_TOKEN_FORMAT":
       return { title: "Invalid link", body: "The invitation URL is malformed. Ask the person who invited you to resend it." };
     case "NETWORK_ERROR":
-      return { title: "Connection problem", body: "We couldn't reach TitleApp. Check your connection and try again." };
+      return { title: "Connection problem", body: "We couldn't reach SOCIII. Check your connection and try again." };
     default:
       return { title: "Something went wrong", body: "Please try again, or ask the person who invited you to resend the invitation." };
   }

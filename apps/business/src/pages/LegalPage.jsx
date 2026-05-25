@@ -16,7 +16,7 @@ export default function LegalPage({ slug }) {
       <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}>
         <div style={{ textAlign: "center" }}>
           <h1 style={{ fontSize: "24px", color: "#1a202c", marginBottom: "8px" }}>Document Not Found</h1>
-          <a href="/" style={{ color: "#7c3aed", textDecoration: "none" }}>Back to TitleApp</a>
+          <a href="/" style={{ color: "#7c3aed", textDecoration: "none" }}>Back to SOCIII</a>
         </div>
       </div>
     );
@@ -29,7 +29,7 @@ export default function LegalPage({ slug }) {
       {/* Header */}
       <header style={{ borderBottom: "1px solid #e2e8f0", padding: "16px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-          <a href="/" style={{ color: "#7c3aed", fontWeight: 700, fontSize: "18px", textDecoration: "none" }}>TitleApp</a>
+          <a href="/" style={{ color: "#7c3aed", fontWeight: 700, fontSize: "18px", textDecoration: "none" }}>SOCIII</a>
           <span style={{ color: "#cbd5e1" }}>/</span>
           <span style={{ color: "#64748b", fontSize: "14px" }}>Legal</span>
         </div>
@@ -78,7 +78,7 @@ export default function LegalPage({ slug }) {
 
       {/* Footer */}
       <footer style={{ borderTop: "1px solid #e2e8f0", padding: "24px", textAlign: "center", color: "#94a3b8", fontSize: "13px" }}>
-        &copy; 2026 TitleApp LLC
+        &copy; 2026 SOCIII, Inc.
       </footer>
     </div>
   );

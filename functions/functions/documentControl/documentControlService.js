@@ -755,7 +755,7 @@ async function _enqueueDistributionNotifications(operatorId, doc, userIds, notif
       campaignId: `docControl_${notificationType}`,
       channel: "email",
       to: "", // messageProcessor resolves email from userId
-      subject: `Alex — TitleApp: ${subject}`,
+      subject: `Alex — SOCIII: ${subject}`,
       body: `<p>${body.replace(/\n/g, "<br>")}</p><p style="color:#999;font-size:12px;">— Alex</p>`,
       textBody: body + "\n\n— Alex",
       scheduledAt: admin.firestore.Timestamp.fromDate(new Date()),

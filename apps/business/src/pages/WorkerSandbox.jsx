@@ -241,7 +241,7 @@ function TopBar({ workerName, onOpenBuildLog, onResetSession }) {
       padding: "12px 20px",
       background: "#FFFFFF", borderBottom: "1px solid #E2E8F0",
     }}>
-      <div style={{ fontSize: 16, fontWeight: 700, color: PURPLE }}>TitleApp</div>
+      <div style={{ fontSize: 16, fontWeight: 700, color: PURPLE }}>SOCIII</div>
       <div style={{ flex: 1, fontSize: 14, color: "#64748B" }}>
         Worker Sandbox · {workerName || "untitled"}
       </div>
@@ -390,7 +390,7 @@ function InlineSignup({ onSignupComplete }) {
           </button>
         </form>
         <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 14, lineHeight: 1.5, textAlign: "center" }}>
-          By signing up you agree to TitleApp's{" "}
+          By signing up you agree to SOCIII's{" "}
           <a href="/legal/terms-of-service" target="_blank" rel="noreferrer" style={{ color: PURPLE }}>Terms of Service</a>.
         </div>
       </div>

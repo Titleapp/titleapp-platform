@@ -319,7 +319,7 @@ export default function SampleDealsStep({ criteria, onComplete, onSkip }: Sample
             Sweet Spot Identified
           </div>
           <p style={{ fontSize: "14px", color: "#374151", marginBottom: "12px", lineHeight: 1.5 }}>
-            Based on your uploaded deals and criteria, TitleApp will help you:
+            Based on your uploaded deals and criteria, SOCIII will help you:
           </p>
           <ul style={{ margin: 0, paddingLeft: "20px", fontSize: "14px", color: "#374151" }}>
             <li>Screen incoming deals against your target box</li>

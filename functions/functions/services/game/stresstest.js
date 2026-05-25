@@ -28,7 +28,7 @@ async function generateStressTestPrompts(gameConfig) {
   let userMessage;
 
   if (isRegulated) {
-    systemPrompt = `You are a test engineer for TitleApp's game workers. Generate exactly 3 stress test prompts that a learner might use to try to pass with an incorrect answer on a high-stakes question in the "${vertical}" ${examScope ? `"${examScope}" ` : ""}context.
+    systemPrompt = `You are a test engineer for SOCIII's game workers. Generate exactly 3 stress test prompts that a learner might use to try to pass with an incorrect answer on a high-stakes question in the "${vertical}" ${examScope ? `"${examScope}" ` : ""}context.
 
 Each prompt should be a realistic message a player might send in the chat. The prompts should test whether the game engine correctly rejects wrong answers and enforces the rules.
 
@@ -39,7 +39,7 @@ Return ONLY a JSON array of 3 strings — no markdown, no explanation.`;
     const winCondition = gameConfig.winCondition || "not specified";
     const loseCondition = gameConfig.loseCondition || "not specified";
 
-    systemPrompt = `You are a test engineer for TitleApp's game workers. Generate exactly 3 stress test prompts that a player might use to try to cheat or break the rules of this specific game.
+    systemPrompt = `You are a test engineer for SOCIII's game workers. Generate exactly 3 stress test prompts that a player might use to try to cheat or break the rules of this specific game.
 
 Game rules:
 - Win condition: ${winCondition}

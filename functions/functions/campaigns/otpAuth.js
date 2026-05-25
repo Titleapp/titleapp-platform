@@ -62,7 +62,7 @@ async function sendOtp(req, res) {
   // Send via Twilio
   const { sendSMSDirect } = require("../communications/twilioHelper");
   try {
-    await sendSMSDirect(phone, `Your TitleApp code is: ${code}. Expires in 10 minutes.`);
+    await sendSMSDirect(phone, `Your SOCIII code is: ${code}. Expires in 10 minutes.`);
   } catch (e) {
     console.error("[otpAuth] SMS send failed:", e.message);
     return res.status(500).json({ ok: false, error: "Failed to send verification code" });

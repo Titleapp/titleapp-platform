@@ -1890,7 +1890,7 @@ export default function DeveloperSandbox() {
   function handleDraftShare() {
     const wId = worker?.id;
     if (!wId) return;
-    const url = `https://app.titleapp.ai/workers/${wId}?preview=true`;
+    const url = `https://app.sociii.ai/workers/${wId}?preview=true`;
     navigator.clipboard.writeText(url).then(() => {
       addAssistantMessage("Share link copied to clipboard.");
     }).catch(() => {
@@ -2641,7 +2641,7 @@ export default function DeveloperSandbox() {
           {isMobile && (
             <button onClick={() => setShowMobileNav(true)} style={{ background: "none", border: "none", fontSize: 20, color: "#64748B", cursor: "pointer", padding: "4px 8px 4px 0", lineHeight: 1 }}>&#9776;</button>
           )}
-          <span style={S.chatLogo}>TitleApp</span>
+          <span style={S.chatLogo}>SOCIII</span>
           <span style={S.chatName}>Alex — Chief of Staff</span>
           {localStorage.getItem("ID_TOKEN") && creatorName && (
             <span style={{ marginLeft: "auto", fontSize: 12, color: "#10b981", fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}>
@@ -2967,7 +2967,7 @@ export default function DeveloperSandbox() {
                 </button>
               </form>
               <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 10, lineHeight: 1.5, textAlign: "center" }}>
-                By signing up you agree to TitleApp's <a href="/legal/terms-of-service" target="_blank" style={{ color: "#7c3aed" }}>Terms of Service</a>.
+                By signing up you agree to SOCIII's <a href="/legal/terms-of-service" target="_blank" style={{ color: "#7c3aed" }}>Terms of Service</a>.
               </div>
             </div>
           )}

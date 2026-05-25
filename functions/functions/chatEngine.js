@@ -1,7 +1,7 @@
 'use strict';
 
 // ──────────────────────────────────────────────────────────────
-// chatEngine.js — TitleApp Conversation State Machine
+// chatEngine.js — SOCIII Conversation State Machine
 //
 // Pure logic module: no DOM, no HTML, no browser APIs.
 // Extracted from ~/titleapp-landing/worker.js (3525 lines).
@@ -291,13 +291,13 @@ const VERTICAL_MAP = {
 };
 
 const PITCHES = {
-  auto: "TitleApp creates a Digital Title Certificate for your vehicle -- it tracks ownership, service history, mileage, and documents all in one verified record. Takes about 2 minutes to set up.\n\nWould you like to get started? It's free.",
-  property: "TitleApp keeps a complete verified record of your property -- purchase documents, renovations, inspections, insurance. Everything organized and in one place.\n\nWould you like to get started? It's free.",
-  education: "TitleApp creates a verified, portable record of your academic history -- transcripts, diplomas, certifications. Stored permanently and shareable with employers or institutions.\n\nWould you like to get started? It's free.",
-  credential: "TitleApp creates a verified record of your professional credentials -- licenses, certifications, memberships, training. Tracked, verified, and always accessible.\n\nWould you like to get started? It's free.",
-  pet: "TitleApp creates a verified health record for your pet -- vaccinations, vet visits, medications, all in one place. Shareable with any vet or boarding facility.\n\nWould you like to get started? It's free.",
-  business: "TitleApp's Revenue Engine finds hidden opportunities in your customer database, automates follow-up, and helps your team close more deals. Built for dealerships and asset-heavy businesses.\n\nWant to see how it works?",
-  compliance: "TitleApp monitors regulatory changes, tracks document retention, and keeps your records audit-ready. Automated compliance so nothing falls through the cracks.\n\nWant to learn more?",
+  auto: "SOCIII creates a Digital Title Certificate for your vehicle -- it tracks ownership, service history, mileage, and documents all in one verified record. Takes about 2 minutes to set up.\n\nWould you like to get started? It's free.",
+  property: "SOCIII keeps a complete verified record of your property -- purchase documents, renovations, inspections, insurance. Everything organized and in one place.\n\nWould you like to get started? It's free.",
+  education: "SOCIII creates a verified, portable record of your academic history -- transcripts, diplomas, certifications. Stored permanently and shareable with employers or institutions.\n\nWould you like to get started? It's free.",
+  credential: "SOCIII creates a verified record of your professional credentials -- licenses, certifications, memberships, training. Tracked, verified, and always accessible.\n\nWould you like to get started? It's free.",
+  pet: "SOCIII creates a verified health record for your pet -- vaccinations, vet visits, medications, all in one place. Shareable with any vet or boarding facility.\n\nWould you like to get started? It's free.",
+  business: "SOCIII's Revenue Engine finds hidden opportunities in your customer database, automates follow-up, and helps your team close more deals. Built for dealerships and asset-heavy businesses.\n\nWant to see how it works?",
+  compliance: "SOCIII monitors regulatory changes, tracks document retention, and keeps your records audit-ready. Automated compliance so nothing falls through the cracks.\n\nWant to learn more?",
 };
 
 // ── Industry extraction ──
@@ -431,7 +431,7 @@ function getDemoResponse(message) {
   // ── Original consumer-focused responses ──
   if (msg.includes('car') || msg.includes('vehicle') || msg.includes('vin') ||
       msg.includes('truck') || msg.includes('motorcycle') || msg.includes('title and service')) {
-    return "TitleApp creates a verified digital record of your vehicle -- title, service history, mileage, everything in one place. It helps protect your car's value and makes selling easier. Want to get started?";
+    return "SOCIII creates a verified digital record of your vehicle -- title, service history, mileage, everything in one place. It helps protect your car's value and makes selling easier. Want to get started?";
   }
   if (msg.includes('home') || msg.includes('house') || msg.includes('property') ||
       msg.includes('real estate') || msg.includes('mortgage') || msg.includes('purchase and doc')) {
@@ -440,11 +440,11 @@ function getDemoResponse(message) {
   if (msg.includes('student') || msg.includes('transcript') || msg.includes('school') ||
       msg.includes('education') || msg.includes('college') || msg.includes('degree') ||
       msg.includes('diploma') || msg.includes('university')) {
-    return "TitleApp creates a verified, portable record of your academic history -- transcripts, diplomas, certifications. Stored permanently and shareable with employers or institutions. Want to get started?";
+    return "SOCIII creates a verified, portable record of your academic history -- transcripts, diplomas, certifications. Stored permanently and shareable with employers or institutions. Want to get started?";
   }
   if (msg.includes('credential') || msg.includes('certification') || msg.includes('license') ||
       msg.includes('professional') || msg.includes('cert')) {
-    return "TitleApp creates a verified record of your professional credentials -- licenses, certifications, memberships, training. Tracked, verified, and always accessible. Want to get started?";
+    return "SOCIII creates a verified record of your professional credentials -- licenses, certifications, memberships, training. Tracked, verified, and always accessible. Want to get started?";
   }
   if (msg.includes('pet') || msg.includes('dog') || msg.includes('cat') ||
       msg.includes('vet') || msg.includes('animal')) {
@@ -461,7 +461,7 @@ function getDemoResponse(message) {
     return "Yes -- you can build a Digital Worker without writing code. Describe what it should do and what rules it needs to follow, and Alex builds it for you in under an hour. Publish it on the marketplace and earn 75% of every subscription. Already mapped it out in ChatGPT or Claude? Just paste it here and I'll tell you exactly what it maps to.";
   }
   if (msg.includes('what') || msg.includes('who') || msg.includes('titleapp') || msg.includes('about')) {
-    return "TitleApp is a platform of Digital Workers -- AI agents trained on the rules of specific industries. Over 1,000 workers across 14 industries handle compliance, document management, and specialized workflows. You can hire pre-built workers or build your own. What industry are you in?";
+    return "SOCIII is a platform of Digital Workers -- AI agents trained on the rules of specific industries. Over 1,000 workers across 14 industries handle compliance, document management, and specialized workflows. You can hire pre-built workers or build your own. What industry are you in?";
   }
   if (msg.includes('how') || msg.includes('work')) {
     return "Pick a Digital Worker for your industry, set your rules, and put it to work. Each worker enforces compliance, handles documents, and manages workflows specific to your field. You can also build custom workers and sell them on the marketplace. What are you looking for?";
@@ -488,16 +488,16 @@ function getDemoResponse(message) {
   }
   if (msg.includes('inventory') || msg.includes('sales follow') || msg.includes('pipeline') ||
       (msg.includes('onboard') && msg.includes('dealer'))) {
-    return "TitleApp handles your inventory, automates follow-up, and helps your team close more deals. Built for dealerships and asset-heavy businesses. Want to see how it works?";
+    return "SOCIII handles your inventory, automates follow-up, and helps your team close more deals. Built for dealerships and asset-heavy businesses. Want to see how it works?";
   }
   if (msg.includes('compliance') || msg.includes('audit') || msg.includes('regulation') ||
       msg.includes('retention') || msg.includes('monitoring')) {
-    return "TitleApp monitors regulatory changes, tracks document retention, and keeps your records audit-ready. Automated compliance so nothing falls through the cracks. Want to learn more?";
+    return "SOCIII monitors regulatory changes, tracks document retention, and keeps your records audit-ready. Automated compliance so nothing falls through the cracks. Want to learn more?";
   }
   if (msg.includes('business') || msg.includes('company') || msg.includes('enterprise')) {
-    return "TitleApp gives you a team of Digital Workers that handle records, compliance, follow-up, and deals -- all in one place. Over 1,000 workers across 14 industries. Starting at $29/month. What industry are you in?";
+    return "SOCIII gives you a team of Digital Workers that handle records, compliance, follow-up, and deals -- all in one place. Over 1,000 workers across 14 industries. Starting at $29/month. What industry are you in?";
   }
-  return "I'm Alex. TitleApp has over 1,000 Digital Workers across 14 industries -- real estate, construction, mortgage, title and escrow, legal, aviation, government, and more. What industry are you in? I'll show you what fits.";
+  return "I'm Alex. SOCIII has over 1,000 Digital Workers across 14 industries -- real estate, construction, mortgage, title and escrow, legal, aviation, government, and more. What industry are you in? I'll show you what fits.";
 }
 
 // ── Default session state ──
@@ -697,12 +697,12 @@ async function processMessage(input, services = {}) {
     }
 
     state.step = 'terms_acceptance';
-    return response(state, `Account created. Welcome to TitleApp, ${state.name || 'friend'}.`, {
+    return response(state, `Account created. Welcome to SOCIII, ${state.name || 'friend'}.`, {
       cards: [{
         type: 'terms',
         data: {
-          termsUrl: 'https://app.titleapp.ai/legal/terms-of-service',
-          privacyUrl: 'https://app.titleapp.ai/legal/privacy-policy',
+          termsUrl: 'https://app.sociii.ai/legal/terms-of-service',
+          privacyUrl: 'https://app.sociii.ai/legal/privacy-policy',
           summary: "Your records are yours. We verify and secure them. We don't sell your data. You can export or delete anytime.",
         },
       }],
@@ -868,7 +868,7 @@ async function processMessage(input, services = {}) {
         state.step = 'collect_name';
         return response(state, "Let's get your business set up. What's your name?");
       }
-      return response(state, "Are you looking to use TitleApp for personal use or for your business?", {
+      return response(state, "Are you looking to use SOCIII for personal use or for your business?", {
         cards: [{
           type: 'audienceSelect',
           data: {
@@ -1991,7 +1991,7 @@ async function processMessage(input, services = {}) {
       state.propertyData = state.propertyData || {};
       state.propertyData.tenantName = parseName(message);
       state.step = 're_tenant_email';
-      return response(state, "What's their email? We'll send them an invite to set up their own TitleApp account.");
+      return response(state, "What's their email? We'll send them an invite to set up their own SOCIII account.");
     }
 
     case 're_tenant_email': {
@@ -3603,7 +3603,7 @@ function handleTenantDTC(state) {
         docCount,
       },
     }],
-    followUpMessage: `Lease created for ${p.tenantName || 'tenant'}. An invite will be sent to ${p.tenantEmail || 'their email'} to set up their own TitleApp account.`,
+    followUpMessage: `Lease created for ${p.tenantName || 'tenant'}. An invite will be sent to ${p.tenantEmail || 'their email'} to set up their own SOCIII account.`,
     generateMilestone: true,
     aiContext: {
       milestoneType: 'tenant',

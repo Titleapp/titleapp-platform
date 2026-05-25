@@ -1,7 +1,7 @@
 /**
  * purchaseWorker.js — Marketplace purchase with revenue split.
- * Creator workers: 75% to creator via Connect, 25% to TitleApp.
- * Platform workers: 100% to TitleApp, no split.
+ * Creator workers: 75% to creator via Connect, 25% to SOCIII.
+ * Platform workers: 100% to SOCIII, no split.
  */
 
 const admin = require("firebase-admin");
@@ -69,7 +69,7 @@ async function purchaseWorker(req, res) {
     return res.json({ ok: true, status: "free", amount: 0 });
   }
 
-  // Determine if platform worker (100% TitleApp) or creator worker (75/25 split)
+  // Determine if platform worker (100% SOCIII) or creator worker (75/25 split)
   const isPlatformWorker = worker.creatorId === "titleapp-platform" || !worker.creatorId;
 
   let paymentIntent;
@@ -77,7 +77,7 @@ async function purchaseWorker(req, res) {
   let creatorShare = 0;
 
   if (isPlatformWorker) {
-    // Platform worker — 100% TitleApp, no split
+    // Platform worker — 100% SOCIII, no split
     paymentIntent = await stripe.paymentIntents.create({
       amount,
       currency: "usd",

@@ -36,7 +36,7 @@ export default function Settings() {
   // Company profile
   const [company, setCompany] = useState({
     name: "The Title App LLC",
-    dba: "TitleApp",
+    dba: "SOCIII",
     ein: "33-1330902",
     address: "1209 N Orange St, Wilmington, DE 19801",
     ceo: "Sean Lee Combs",
@@ -115,8 +115,8 @@ export default function Settings() {
         // Hardcoded fallback
         setAdmins([
           { id: "1", email: "seanlcombs@gmail.com", role: "owner" },
-          { id: "2", email: "sean@titleapp.ai", role: "owner" },
-          { id: "3", email: "kent@titleapp.ai", role: "admin" },
+          { id: "2", email: "sean@sociii.ai", role: "owner" },
+          { id: "3", email: "kent@sociii.ai", role: "admin" },
         ]);
       }
     }

@@ -3,7 +3,7 @@
 
 The Digital Marketing & Advertising worker manages the dealership's marketing spend as a measurable, accountable investment — not a cost center. Auto dealers spend between $500 and $1,500 per vehicle retailed on advertising, making it the second-largest variable expense after compensation. This worker tracks every dollar from spend to lead to appointment to sale, identifies which channels produce the lowest cost-per-sale, and ensures every advertisement complies with the patchwork of state auto advertising laws, FTC truth-in-advertising rules, TCPA consent requirements, and manufacturer co-op program specifications.
 
-This worker is free to the dealer. TitleApp earns commission only when marketing activity directly enables a revenue event (for example, campaign optimization that measurably reduces cost-per-sale, or co-op reimbursement recovery for previously unclaimed funds). The worker integrates with AD-022 (Reputation Management) for review-driven marketing insights, AD-026 (Regulatory Compliance) for advertising law compliance, and AD-029 (DMS & Technology) for lead-to-sale attribution through the CRM/DMS pipeline.
+This worker is free to the dealer. SOCIII earns commission only when marketing activity directly enables a revenue event (for example, campaign optimization that measurably reduces cost-per-sale, or co-op reimbursement recovery for previously unclaimed funds). The worker integrates with AD-022 (Reputation Management) for review-driven marketing insights, AD-026 (Regulatory Compliance) for advertising law compliance, and AD-029 (DMS & Technology) for lead-to-sale attribution through the CRM/DMS pipeline.
 
 ---
 
@@ -13,7 +13,7 @@ This worker is free to the dealer. TitleApp earns commission only when marketing
 - P0.3: AI-generated content must be disclosed as AI-generated
 - P0.4: Never share customer PII across tenant boundaries
 - P0.5: All outputs must include appropriate professional disclaimers
-- P0.6: Commission model — this worker is free to the dealer; TitleApp earns commission on revenue events only
+- P0.6: Commission model — this worker is free to the dealer; SOCIII earns commission on revenue events only
 - P0.7: FTC Safeguards Rule awareness — customer financial information must be protected per written security plan
 - P0.8: OFAC screening awareness — flag for customer-facing workers
 

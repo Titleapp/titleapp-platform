@@ -1,8 +1,8 @@
 # Real Estate — Cold Email Invite (May 22 Webinar)
 
 **Send timing:** Day 1 — 10 contacts, then ramp 10/day
-**Sender:** sean@titleapp.ai (signed by Sean) — *not* alex@
-**Reply-to:** sean@titleapp.ai
+**Sender:** sean@sociii.ai (signed by Sean) — *not* alex@
+**Reply-to:** sean@sociii.ai
 **Audience:** Brokers, agents, broker-owners, title officers, escrow officers, mortgage loan officers, RE investment firm leadership in CA, NV, OR, WA, TX
 **CTA:** Register for May 22 webinar — **30 minutes**
 **Brand voice:** Swiss tone — direct, calm, no hype.
@@ -39,11 +39,11 @@ The brokers, title officers, and lenders who get this right in 2026 will
 own a permanent edge.
 
 Speakers:
-  - Sean Combs — CEO and Co-founder, TitleApp AI. Principal broker
+  - Sean Combs — CEO and Co-founder, SOCIII. Principal broker
     and real-estate developer with luxury resort projects across the
     California Mountain resorts and beachfront in Hawaii, the Caribbean,
     and Florida. Medevac pilot. Patent-pending AI compliance architecture.
-  - Kent Redwine — CFO and Co-founder, TitleApp AI. Fifteen years in
+  - Kent Redwine — CFO and Co-founder, SOCIII. Fifteen years in
     investment banking, advising clients across one of the world's
     largest aircraft manufacturers, leading technology firms, green
     energy, and electric vehicles. Founded an electric vehicle company
@@ -89,11 +89,11 @@ officers, and lenders who get this right in 2026 will own a permanent edge.</p>
 
 <p><strong>Speakers</strong></p>
 <ul>
-  <li><strong>Sean Combs</strong> — CEO and Co-founder, TitleApp AI. Principal broker
+  <li><strong>Sean Combs</strong> — CEO and Co-founder, SOCIII. Principal broker
       and real-estate developer with luxury resort projects across the California Mountain
       resorts and beachfront in Hawaii, the Caribbean, and Florida. Medevac pilot.
       Patent-pending AI compliance architecture.</li>
-  <li><strong>Kent Redwine</strong> — CFO and Co-founder, TitleApp AI. Fifteen years in
+  <li><strong>Kent Redwine</strong> — CFO and Co-founder, SOCIII. Fifteen years in
       investment banking, advising clients across one of the world's largest aircraft
       manufacturers, leading technology firms, green energy, and electric vehicles. Founded
       an electric vehicle company before Tesla took the segment.</li>
@@ -126,7 +126,7 @@ call unless you ask for one.</p>
 
 - [ ] `https://forms.gle/U9yf3S51vwKFRBndA` swapped with real Google Form URL
 - [ ] `{{first_name}}` merge tag works in your SendGrid list
-- [ ] Sender sean@titleapp.ai authenticated (Sean to verify Single Sender in SendGrid — alex@ is verified, sean@ may need separate verify)
+- [ ] Sender sean@sociii.ai authenticated (Sean to verify Single Sender in SendGrid — alex@ is verified, sean@ may need separate verify)
 - [ ] Unsubscribe group ID 29284 attached
 - [ ] First 10 sends only
 - [ ] **3 subject line variants assigned across the batch** (A/B test rotation)
@@ -136,7 +136,7 @@ call unless you ask for one.</p>
 
 ## Notes vs. v1 (what changed in v3 revisions)
 
-- Sender flipped from alex@ → sean@titleapp.ai
+- Sender flipped from alex@ → sean@sociii.ai
 - Webinar 60 min → **30 min**
 - Sean RE bio: broker + developer + resorts (luxury resort projects across CA Mountain, HI, Caribbean, FL)
 - Kent bio: industry sectors + EV founder

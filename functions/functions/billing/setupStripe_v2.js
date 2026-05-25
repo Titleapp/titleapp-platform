@@ -1,5 +1,5 @@
 /**
- * TitleApp — Stripe Launch Setup
+ * SOCIII — Stripe Launch Setup
  *
  * Run in TEST mode first:
  *   STRIPE_SECRET_KEY=sk_test_xxx node setupStripe_v2.js
@@ -23,7 +23,7 @@
  *   5-10       → 20% off (VOLUME5)
  *   10+        → 30% off (VOLUME10)
  *
- * DEV REV SHARE: 75% developer / 25% TitleApp — in webhooks.js via Stripe Connect
+ * DEV REV SHARE: 75% developer / 25% SOCIII — in webhooks.js via Stripe Connect
  *
  * SAFE TO RE-RUN — checks metadata tags before creating, skips if exists.
  */
@@ -318,7 +318,7 @@ T2 FOLLOW-UP (Claude Code)
 [ ] Archive old products — add prod_xxx IDs to ARCHIVE_PRODUCT_IDS, re-run
 
 [ ] Stripe webhook endpoint:
-    URL: https://api.titleapp.ai/webhooks/stripe
+    URL: https://api.sociii.ai/webhooks/stripe
     Events: checkout.session.completed, invoice.paid, invoice.payment_failed,
     customer.subscription.updated, customer.subscription.deleted,
     identity.verification_session.verified

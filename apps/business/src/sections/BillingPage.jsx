@@ -327,7 +327,7 @@ export default function BillingPage() {
       )}
 
       <div style={{ marginTop: 32, fontSize: 12, color: "#94A3B8", lineHeight: 1.6 }}>
-        Questions about billing? Email alex@titleapp.io or ask Alex in the chat.
+        Questions about billing? Email alex@sociii.ai or ask Alex in the chat.
       </div>
     </div>
   );

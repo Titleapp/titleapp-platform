@@ -33,7 +33,7 @@ async function createBillingPortalSession(req, res) {
 
   const session = await stripe.billingPortal.sessions.create({
     customer: customerId,
-    return_url: returnUrl || "https://titleapp.ai",
+    return_url: returnUrl || "https://sociii.ai",
   });
 
   return res.json({ ok: true, url: session.url });

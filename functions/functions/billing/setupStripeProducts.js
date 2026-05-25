@@ -35,18 +35,18 @@ async function setupStripeProducts(req, res) {
 
   // Create products
   const workspacePro = await stripe.products.create({
-    name: "TitleApp Pro Workspace",
+    name: "SOCIII Pro Workspace",
     description: "Full workspace with enforcement engine, audit trail, and marketplace publishing.",
   });
 
   const workspaceEnterprise = await stripe.products.create({
-    name: "TitleApp Enterprise Workspace",
+    name: "SOCIII Enterprise Workspace",
     description: "Enterprise workspace with dedicated support, SLA, and custom rules.",
   });
 
   const usageCredits = await stripe.products.create({
-    name: "TitleApp Credits",
-    description: "AI usage credits for TitleApp platform.",
+    name: "SOCIII Credits",
+    description: "AI usage credits for SOCIII platform.",
   });
 
   // Create prices

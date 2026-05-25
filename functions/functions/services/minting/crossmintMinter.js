@@ -2,13 +2,13 @@
  * crossmintMinter.js — CODEX 50.14 Layer D.
  *
  * Submits a DTC to Crossmint for managed minting on Polygon mainnet.
- * Crossmint operates an audited managed contract; TitleApp does not
+ * Crossmint operates an audited managed contract; SOCIII does not
  * custody the signing key. The architecture is chain-agnostic — adding
  * Base, BNB Chain, or Solana later means adding another minter
  * implementation; the DTC schema and Vault UI do not change.
  *
  * v1 mints to a server-managed recipient (configurable via
- * CROSSMINT_RECIPIENT, defaulting to email:treasury@titleapp.ai which
+ * CROSSMINT_RECIPIENT, defaulting to email:treasury@sociii.ai which
  * Crossmint resolves to a managed wallet). Future per-user or per-
  * tenant recipient routing is a Phase 2 concern.
  *
@@ -22,7 +22,7 @@
 
 const API_BASE = "https://www.crossmint.com/api/2022-06-09";
 const COLLECTION_ID = process.env.CROSSMINT_COLLECTION_ID || "default-polygon";
-const RECIPIENT = process.env.CROSSMINT_RECIPIENT || "email:treasury@titleapp.ai";
+const RECIPIENT = process.env.CROSSMINT_RECIPIENT || "email:treasury@sociii.ai";
 
 function getApiKey() {
   const key = process.env.CROSSMINT_SERVER_API_KEY;
@@ -38,19 +38,19 @@ function buildMetadata(dtcId, dtc) {
     `Digital Title Certificate.`,
     `Type: ${dtc.type || "record"}.`,
     `contentHash: ${dtc.contentHash || "(pending)"}.`,
-    `Issued by TitleApp.`,
+    `Issued by SOCIII.`,
   ].join(" ");
   return {
     name: title.slice(0, 64),
     description: description.slice(0, 1024),
     // Crossmint requires an image URL; use a deterministic placeholder so
     // the platform stays visually consistent. Phase 2 can render per-DTC
-    // SVGs from canonical fields and host them at storage.titleapp.ai.
-    image: "https://titleapp.ai/dtc-placeholder.png",
+    // SVGs from canonical fields and host them at storage.sociii.ai.
+    image: "https://sociii.ai/dtc-placeholder.png",
     attributes: [
       { trait_type: "type",         value: dtc.type || "record" },
       { trait_type: "contentHash",  value: dtc.contentHash || "" },
-      { trait_type: "issuedBy",     value: "TitleApp" },
+      { trait_type: "issuedBy",     value: "SOCIII" },
       { trait_type: "version",      value: String(dtc.version || 1) },
     ],
   };

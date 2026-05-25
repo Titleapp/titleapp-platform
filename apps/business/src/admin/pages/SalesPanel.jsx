@@ -9,7 +9,7 @@ const TEMPLATES = [
     id: "auto-dealer",
     label: "Auto Dealer",
     message: "Hey {{name}} \u2014 just set up something I think your dealership would actually use. Takes 2 min to see it: {{link}}",
-    defaultPrompt: "I run a dealership and I'm curious what TitleApp can do for me",
+    defaultPrompt: "I run a dealership and I'm curious what SOCIII can do for me",
   },
   {
     id: "solar-vpp",
@@ -107,8 +107,8 @@ function SendIntroText() {
   const template = TEMPLATES.find((t) => t.id === selectedTemplate);
   const prompt = customPrompt || template?.defaultPrompt || "";
   const link = prompt
-    ? `https://app.titleapp.ai/meet-alex?prompt=${encodeURIComponent(prompt)}`
-    : "https://app.titleapp.ai/meet-alex";
+    ? `https://app.sociii.ai/meet-alex?prompt=${encodeURIComponent(prompt)}`
+    : "https://app.sociii.ai/meet-alex";
   const resolvedMessage = template
     ? template.message.replace("{{name}}", name || "there").replace("{{link}}", link)
     : "";

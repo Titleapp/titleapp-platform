@@ -87,7 +87,7 @@ const LEGAL_DISCLAIMER =
   "This document is for informational purposes only. It does not constitute legal advice and does not create an attorney-client relationship. Consult qualified legal counsel before any public token or NFT launch.";
 
 const CODE_DISCLAIMER =
-  "This code is provided for review purposes only. TitleApp makes no representations about its security or fitness for deployment. Review by a qualified developer is required before deployment. Run W3-013 Contract Auditor before deploying any contract.";
+  "This code is provided for review purposes only. SOCIII makes no representations about its security or fitness for deployment. Review by a qualified developer is required before deployment. Run W3-013 Contract Auditor before deploying any contract.";
 
 const AUDIT_DISCLAIMER =
   "This automated audit identifies known vulnerability patterns. It does not guarantee contract security. Unknown vulnerabilities may exist. For contracts holding >$100K, engage a professional audit firm before deployment.";

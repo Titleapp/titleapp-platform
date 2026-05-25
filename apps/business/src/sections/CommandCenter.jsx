@@ -132,7 +132,7 @@ export default function CommandCenter() {
             None of your workspaces have a real signal worth reporting right now. The rule: no padding with sample content; if nothing is happening, no email.
           </div>
           <div style={{ fontSize: 13, color: "#78350f", marginTop: 8 }}>
-            To activate launch-mode briefs for TitleApp AI: flip its mode to <strong>Launch</strong> below — even zeros become the story during launch.
+            To activate launch-mode briefs for SOCIII AI: flip its mode to <strong>Launch</strong> below — even zeros become the story during launch.
           </div>
         </div>
       )}

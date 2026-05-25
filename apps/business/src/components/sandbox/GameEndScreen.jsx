@@ -5,7 +5,7 @@ export default function GameEndScreen({ gameResult, workerSlug }) {
   if (!gameResult) return null;
 
   const passed = gameResult.passed !== false;
-  const shareUrl = workerSlug ? `https://titleapp.ai/w/${workerSlug}` : null;
+  const shareUrl = workerSlug ? `https://sociii.ai/w/${workerSlug}` : null;
 
   return (
     <div style={{

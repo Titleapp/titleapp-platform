@@ -1228,7 +1228,7 @@ function BusinessSettings() {
                 Anyone can verify your authorship at your title URL.
               </div>
               <div style={{ fontSize: "13px", color: "#94a3b8", marginBottom: "12px" }}>
-                Wallet: TitleApp via Venly (gas fees covered)
+                Wallet: SOCIII via Venly (gas fees covered)
               </div>
 
               {/* Title Records List */}
@@ -1300,7 +1300,7 @@ function BusinessSettings() {
           {/* Current Plan */}
           <div style={{ padding: '16px', background: '#f5f3ff', borderRadius: '8px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
-              <div style={{ fontSize: '18px', fontWeight: '700' }}>TitleApp Pro</div>
+              <div style={{ fontSize: '18px', fontWeight: '700' }}>SOCIII Pro</div>
               <div style={{ fontSize: '13px', color: '#64748b' }}>$9/user/month · Billed monthly</div>
             </div>
             <span style={{ padding: '4px 12px', background: '#ede9fe', color: '#7c3aed', borderRadius: '20px', fontSize: '13px', fontWeight: '600' }}>Active</span>
@@ -1594,7 +1594,7 @@ function BusinessSettings() {
               autoFocus
               value={newCompanyData.name}
               onChange={(e) => setNewCompanyData({ ...newCompanyData, name: e.target.value })}
-              placeholder="e.g. TitleApp AI"
+              placeholder="e.g. SOCIII AI"
               style={{ width: "100%", padding: "10px", borderRadius: "12px", border: "1px solid var(--line)" }}
             />
           </div>

@@ -5,7 +5,7 @@
  *
  * Returns the contentHash, the Merkle proof reconstructed from the batch
  * leaves, the OpenTimestamps receipt, and the chain anchor status. Public
- * — no auth required. The point is verifiability without TitleApp's
+ * — no auth required. The point is verifiability without SOCIII's
  * cooperation; the proof is self-contained.
  *
  * The caller can verify offline:

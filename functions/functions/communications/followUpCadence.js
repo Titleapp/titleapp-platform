@@ -94,20 +94,20 @@ async function followUpCadence() {
 
 function generateFollowUp(index, contact) {
   const templates = [
-    `Hi ${contact.fullName || "there"}, just following up on my earlier message. Would love to chat about how TitleApp can help ${contact.company || "your business"}. Any time this week for a quick call?`,
+    `Hi ${contact.fullName || "there"}, just following up on my earlier message. Would love to chat about how SOCIII can help ${contact.company || "your business"}. Any time this week for a quick call?`,
     `Hi ${contact.fullName || "there"}, wanted to share a quick case study from a ${contact.vertical || "business"} similar to yours. They saw a 40% reduction in compliance processing time. Worth a 10-minute conversation?`,
-    `${contact.fullName || "Hi there"}, I know you're busy so I'll keep this brief. TitleApp is helping ${contact.vertical || "businesses"} like ${contact.company || "yours"} automate title management and compliance. Happy to show you in a quick demo whenever convenient.`,
+    `${contact.fullName || "Hi there"}, I know you're busy so I'll keep this brief. SOCIII is helping ${contact.vertical || "businesses"} like ${contact.company || "yours"} automate title management and compliance. Happy to show you in a quick demo whenever convenient.`,
     `One more check-in, ${contact.fullName || ""}. If now isn't the right time, no worries — just let me know and I'll follow up later. Otherwise, I have some availability this week for a demo.`,
-    `Last note from me for now, ${contact.fullName || ""}. If TitleApp sounds interesting down the road, you can always reach out at alex@titleapp.ai. Wishing you well.`,
+    `Last note from me for now, ${contact.fullName || ""}. If SOCIII sounds interesting down the road, you can always reach out at alex@sociii.ai. Wishing you well.`,
   ];
   return templates[Math.min(index, templates.length - 1)];
 }
 
 function generateFollowUpSubject(index, contact) {
   const subjects = [
-    `Quick follow-up — TitleApp for ${contact.company || "your team"}`,
-    `Case study: ${contact.vertical || "industry"} results with TitleApp`,
-    `10 minutes — see TitleApp in action?`,
+    `Quick follow-up — SOCIII for ${contact.company || "your team"}`,
+    `Case study: ${contact.vertical || "industry"} results with SOCIII`,
+    `10 minutes — see SOCIII in action?`,
     `Checking in one more time`,
     `Signing off for now`,
   ];

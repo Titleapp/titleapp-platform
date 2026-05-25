@@ -1,8 +1,8 @@
 # Auto Dealer — Cold Email Invite (May 19 Webinar)
 
 **Send timing:** Day 1 — 10 contacts, then ramp 10/day
-**Sender:** sean@titleapp.ai (signed by Sean) — *not* alex@
-**Reply-to:** sean@titleapp.ai
+**Sender:** sean@sociii.ai (signed by Sean) — *not* alex@
+**Reply-to:** sean@sociii.ai
 **Audience:** C-suite at auto dealerships in CA, NV, OR, WA, TX
 **CTA:** Register for May 19 webinar — **30 minutes**
 **Brand voice:** Swiss tone — direct, calm, no hype. No emojis.
@@ -34,11 +34,11 @@ who've started using AI for the right things and avoiding it on the
 wrong ones.
 
 Speakers:
-  - Sean Combs — CEO and Co-founder, TitleApp AI. AI thought leader
+  - Sean Combs — CEO and Co-founder, SOCIII. AI thought leader
     with patent-pending compliance architecture. Two decades operating
     in transportation — airline pilot, medevac pilot — where the cost
     of bad information is measured in lives, not metrics.
-  - Kent Redwine — CFO and Co-founder, TitleApp AI. Fifteen years in
+  - Kent Redwine — CFO and Co-founder, SOCIII. Fifteen years in
     investment banking, advising clients across one of the world's
     largest aircraft manufacturers, leading technology firms, green
     energy, and electric vehicles. Founded an electric vehicle company
@@ -78,11 +78,11 @@ using AI for the right things and avoiding it on the wrong ones.</p>
 
 <p><strong>Speakers</strong></p>
 <ul>
-  <li><strong>Sean Combs</strong> — CEO and Co-founder, TitleApp AI. AI thought leader
+  <li><strong>Sean Combs</strong> — CEO and Co-founder, SOCIII. AI thought leader
       with patent-pending compliance architecture. Two decades operating in transportation —
       airline pilot, medevac pilot — where the cost of bad information is measured in lives,
       not metrics.</li>
-  <li><strong>Kent Redwine</strong> — CFO and Co-founder, TitleApp AI. Fifteen years in
+  <li><strong>Kent Redwine</strong> — CFO and Co-founder, SOCIII. Fifteen years in
       investment banking, advising clients across one of the world's largest aircraft
       manufacturers, leading technology firms, green energy, and electric vehicles. Founded
       an electric vehicle company before Tesla took the segment.</li>
@@ -123,7 +123,7 @@ call unless you ask for one.</p>
 
 - [ ] `https://forms.gle/KQheZEzYWjX2SecG7` swapped with real Google Form URL
 - [ ] `{{first_name}}` merge tag matches SendGrid contact list field
-- [ ] Sender authenticated (sean@titleapp.ai must be Single Sender Verified in SendGrid — Sean to check)
+- [ ] Sender authenticated (sean@sociii.ai must be Single Sender Verified in SendGrid — Sean to check)
 - [ ] Unsubscribe group ID 29284 attached
 - [ ] First 10 sends only (today's batch). Ramp 10/day.
 - [ ] **3 subject line variants assigned across the batch** (rotate daily)
@@ -134,7 +134,7 @@ call unless you ask for one.</p>
 
 ## Notes vs. v1 (what changed in v3 revisions)
 
-- Sender flipped from alex@ → sean@titleapp.ai (founder-personal cold sends better)
+- Sender flipped from alex@ → sean@sociii.ai (founder-personal cold sends better)
 - Webinar 60 min → **30 min**
 - Sean Auto bio: AI thought leader + airline + medevac (transportation angle, no resort)
 - Kent bio: industry sectors + EV founder

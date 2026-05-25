@@ -220,7 +220,7 @@ export default function Onboarding({ onComplete, onStepChange }: OnboardingProps
     return (
       <div style={{ minHeight: "100%", display: "flex", alignItems: "center", justifyContent: "center", background: "#f8fafc", fontFamily: "-apple-system, BlinkMacSystemFont, sans-serif" }}>
         <div style={{ textAlign: "center" }}>
-          <div style={{ fontSize: "20px", fontWeight: 600, color: "#7c3aed", marginBottom: "16px" }}>TitleApp</div>
+          <div style={{ fontSize: "20px", fontWeight: 600, color: "#7c3aed", marginBottom: "16px" }}>SOCIII</div>
           <div style={{ fontSize: "16px", color: "#6b7280" }}>Loading...</div>
         </div>
       </div>
@@ -232,7 +232,7 @@ export default function Onboarding({ onComplete, onStepChange }: OnboardingProps
       <TermsAndConditions
         onAccept={() => setStep("welcome")}
         onDecline={() => {
-          alert("You must accept the terms to use TitleApp");
+          alert("You must accept the terms to use SOCIII");
           window.location.href = "/";
         }}
       />
@@ -858,7 +858,7 @@ export default function Onboarding({ onComplete, onStepChange }: OnboardingProps
           }}
         >
           <div style={{ fontSize: "48px", marginBottom: "24px", fontWeight: 300, letterSpacing: "-2px" }}>
-            TitleApp
+            SOCIII
           </div>
           <h1 style={{ fontSize: "32px", fontWeight: 700, margin: "0 0 16px 0" }}>
             Welcome, {companyName || "partner"}.
@@ -1068,9 +1068,9 @@ export default function Onboarding({ onComplete, onStepChange }: OnboardingProps
           maxWidth: "600px",
         }}
       >
-        <div style={{ fontSize: "48px", marginBottom: "24px", fontWeight: 300, letterSpacing: "-2px" }}>TitleApp</div>
+        <div style={{ fontSize: "48px", marginBottom: "24px", fontWeight: 300, letterSpacing: "-2px" }}>SOCIII</div>
         <h1 style={{ fontSize: "40px", fontWeight: 700, margin: "0 0 16px 0" }}>
-          Welcome to TitleApp
+          Welcome to SOCIII
         </h1>
         <p style={{ fontSize: "20px", opacity: 0.95, marginBottom: "40px", lineHeight: 1.5 }}>
           Your AI-powered platform for title, ownership, and business automation

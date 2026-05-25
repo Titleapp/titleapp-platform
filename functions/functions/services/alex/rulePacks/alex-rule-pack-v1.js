@@ -23,7 +23,7 @@ const layer1 = {
   name: "platform-facts",
   source: "static",
   facts: {
-    productName: "TitleApp",
+    productName: "SOCIII",
     workerTerm: "Digital Workers",
     alexTitle: "Chief of Staff",
     workerCount: "1,000+",
@@ -128,7 +128,7 @@ const verticalRules = {
       "subscription details",
       "team information",
     ],
-    focus: "sales, onboarding, general TitleApp questions only",
+    focus: "sales, onboarding, general SOCIII questions only",
     mustHandoff: [],
   },
 };

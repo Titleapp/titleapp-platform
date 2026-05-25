@@ -34,8 +34,8 @@ async function createConnectAccount(req, res) {
     // Generate new account link for existing account
     const accountLink = await stripe.accountLinks.create({
       account: userData.stripeConnectAccountId,
-      refresh_url: refreshUrl || "https://titleapp.ai?connect=refresh",
-      return_url: returnUrl || "https://titleapp.ai?connect=success",
+      refresh_url: refreshUrl || "https://sociii.ai?connect=refresh",
+      return_url: returnUrl || "https://sociii.ai?connect=success",
       type: "account_onboarding",
     });
     return res.json({
@@ -71,8 +71,8 @@ async function createConnectAccount(req, res) {
   // Generate onboarding link
   const accountLink = await stripe.accountLinks.create({
     account: account.id,
-    refresh_url: refreshUrl || "https://titleapp.ai?connect=refresh",
-    return_url: returnUrl || "https://titleapp.ai?connect=success",
+    refresh_url: refreshUrl || "https://sociii.ai?connect=refresh",
+    return_url: returnUrl || "https://sociii.ai?connect=success",
     type: "account_onboarding",
   });
 

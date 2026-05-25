@@ -7,7 +7,7 @@
 **Use:** Webinar deliverable, gated download, ad asset, sales-call leave-behind
 
 **Standard disclaimer (apply to all quantitative claims throughout):**
-> These are anticipated and modeled projections based on industry benchmarks and TitleApp AI's internal analysis. Your results may be higher or lower depending on workflow, data quality, and operational fit. We're sharing these to give you a reason to try it, not as a guaranteed outcome.
+> These are anticipated and modeled projections based on industry benchmarks and SOCIII's internal analysis. Your results may be higher or lower depending on workflow, data quality, and operational fit. We're sharing these to give you a reason to try it, not as a guaranteed outcome.
 
 ---
 
@@ -35,7 +35,7 @@ Stat callouts:
 - 18,000+ franchised + 40,000+ independent dealers in the US (NADA)
 - ~$70K average F&I manager salary; meaningful monthly compliance overhead per store (NADA, IBISWorld)
 - 70% of dealers report "considering AI" but only ~12% have deployed beyond chatbots (industry survey, 2026)
-- TitleApp AI: **1,000+ digital workers and growing** — state-augmented across regulated verticals — including a complete Auto Dealer suite covering F&I, service, inventory, and compliance across all 50 states
+- SOCIII: **1,000+ digital workers and growing** — state-augmented across regulated verticals — including a complete Auto Dealer suite covering F&I, service, inventory, and compliance across all 50 states
 
 ---
 
@@ -99,7 +99,7 @@ A real example walked through: a generic LLM drafts an APR disclosure, makes a m
 
 ### 3.3 The Gate Analogy (locked language — replaces technical RAAS description)
 
-> Most AI tools work like an open door. You ask, the AI answers, and you're left to figure out if the answer is compliant, accurate, and defensible. TitleApp AI works like three gates.
+> Most AI tools work like an open door. You ask, the AI answers, and you're left to figure out if the answer is compliant, accurate, and defensible. SOCIII works like three gates.
 >
 > The first gate is at the entrance: regulatory rules are loaded into the worker's context as it begins thinking — like giving a securities attorney the rule book before they draft an offering memo, not after.
 >
@@ -107,7 +107,7 @@ A real example walked through: a generic LLM drafts an APR disclosure, makes a m
 >
 > The third gate is at the exit: the final output is screened for jurisdiction-aware compliance before it ever reaches you, your customer, or your regulator.
 >
-> Three gates, every output, every time. Tamper-evident audit trail at each gate. That's why TitleApp AI works in regulated industries where generic AI doesn't.
+> Three gates, every output, every time. Tamper-evident audit trail at each gate. That's why SOCIII works in regulated industries where generic AI doesn't.
 
 ### 3.4 The architecture diagram
 The Three-Gates diagram (Pre-Generation / Post-Generation / Pre-Publish) with the gate analogy as caption. Architecture-only, no patent count claimed.
@@ -122,7 +122,7 @@ The Three-Gates diagram (Pre-Generation / Post-Generation / Pre-Publish) with th
 
 A composite scenario of a mid-tier West Coast franchise dealer (200-vehicle/month):
 - Starting state: paper-heavy F&I, third-party compliance vendor cost, ~18-day inventory turn
-- 90-day deployment of TitleApp AI workers: F&I product match, compliance pre-screen, dynamic used pricing
+- 90-day deployment of SOCIII workers: F&I product match, compliance pre-screen, dynamic used pricing
 - Modeled outcomes (directional, not guaranteed):
   - PVR: meaningful lift
   - Inventory turn: meaningful reduction in days
@@ -156,10 +156,10 @@ The implication is clear; don't state explicitly.
 The dealers who win with AI in 2026 won't buy a vendor's tool. They'll **build their own workers** for their specific store, brand, market.
 
 ### 6.2 Why this is now possible
-TitleApp AI's Sandbox: domain experts (F&I manager, service writer) author workers without writing code. Plain language + RAAS modules + reference materials.
+SOCIII's Sandbox: domain experts (F&I manager, service writer) author workers without writing code. Plain language + RAAS modules + reference materials.
 
 ### 6.3 What Certified Creator gets you
-- Worker visible in TitleApp AI marketplace with your branding
+- Worker visible in SOCIII marketplace with your branding
 - 75% of subscription revenue from other dealers who hire it
 - Audit trail proves your workflow is yours
 - "Built by [Your Dealership]" badge in marketplace
@@ -179,9 +179,9 @@ If you want help: book a 15-min call with us.
 
 ---
 
-## Section 8 — About TitleApp AI (page 15)
+## Section 8 — About SOCIII (page 15)
 
-**TitleApp AI** is the platform where domain experts build, ship, and monetize AI Digital Workers governed by patent-pending compliance architecture, with a private Vault for your data and a tamper-evident audit trail on every output.
+**SOCIII** is the platform where domain experts build, ship, and monetize AI Digital Workers governed by patent-pending compliance architecture, with a private Vault for your data and a tamper-evident audit trail on every output.
 
 **The Five Pillars:**
 1. RAAS Engine — rules enforced as the worker writes
@@ -198,13 +198,13 @@ If you want help: book a 15-min call with us.
 
 ### Speaker bios
 
-**Sean Combs** — CEO and Co-founder, TitleApp AI. AI thought leader with patent-pending compliance architecture. Two decades operating in transportation — airline pilot, medevac pilot — where the cost of bad information is measured in lives, not metrics.
+**Sean Combs** — CEO and Co-founder, SOCIII. AI thought leader with patent-pending compliance architecture. Two decades operating in transportation — airline pilot, medevac pilot — where the cost of bad information is measured in lives, not metrics.
 
-**Kent Redwine** — CFO and Co-founder, TitleApp AI. Fifteen years in investment banking, advising clients across one of the world's largest aircraft manufacturers, leading technology firms, green energy, and electric vehicles. Founded an electric vehicle company before Tesla took the segment. Brings the financial architecture and old-school i-banking discipline to TitleApp AI.
+**Kent Redwine** — CFO and Co-founder, SOCIII. Fifteen years in investment banking, advising clients across one of the world's largest aircraft manufacturers, leading technology firms, green energy, and electric vehicles. Founded an electric vehicle company before Tesla took the segment. Brings the financial architecture and old-school i-banking discipline to SOCIII.
 
 **Alex** — Chief of Staff to Sean Lee Combs, CEO and Co-founder. Live Q&A in chat throughout the session.
 
-QR code → titleapp.ai/auto
+QR code → sociii.ai/auto
 
 ---
 
@@ -218,8 +218,8 @@ QR code → titleapp.ai/auto
 - Section 3.4: Three-Gates architecture diagram (the central visual of the paper)
 - Section 4: ROI directional visual
 
-**Header on every page:** "The 2026 AI Playbook for Auto Dealers · TitleApp AI"
-**Footer:** "© 2026 TitleApp AI · titleapp.ai · This document is informational; consult licensed compliance counsel for specific legal advice."
+**Header on every page:** "The 2026 AI Playbook for Auto Dealers · SOCIII"
+**Footer:** "© 2026 SOCIII · sociii.ai · This document is informational; consult licensed compliance counsel for specific legal advice."
 
 ---
 

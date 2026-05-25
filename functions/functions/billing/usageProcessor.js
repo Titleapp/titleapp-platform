@@ -247,7 +247,7 @@ async function handleTopUpBalance(req, res, { userId }) {
         price_data: {
           currency: "usd",
           product_data: {
-            name: `TitleApp Balance Top-Up — $${amount}`,
+            name: `SOCIII Balance Top-Up — $${amount}`,
             description: "Prepaid balance for usage overages (signatures, blockchain records)",
           },
           unit_amount: amount * 100, // cents
@@ -260,8 +260,8 @@ async function handleTopUpBalance(req, res, { userId }) {
     mode: "payment",
     line_items: lineItems,
     metadata: { userId, type: "balance_topup", amount: String(amount) },
-    success_url: successUrl || "https://app.titleapp.ai/vault?topup=success",
-    cancel_url: cancelUrl || "https://app.titleapp.ai/vault?topup=cancelled",
+    success_url: successUrl || "https://app.sociii.ai/vault?topup=success",
+    cancel_url: cancelUrl || "https://app.sociii.ai/vault?topup=cancelled",
   });
 
   return res.json({ ok: true, checkoutUrl: session.url, sessionId: session.id });
@@ -532,7 +532,7 @@ async function checkBalanceRecharge() {
         payment_method: paymentMethodId,
         confirm: true,
         off_session: true,
-        description: `TitleApp auto-recharge — $${rechargeAmount}`,
+        description: `SOCIII auto-recharge — $${rechargeAmount}`,
         metadata: { userId: userDoc.id, type: "auto_recharge", amount: String(rechargeAmount) },
       });
 
@@ -720,7 +720,7 @@ async function chargeOverageToStripe(userId, overages, customerId) {
   const invoice = await stripe.invoices.create({
     customer: customerId,
     auto_advance: true,
-    description: "TitleApp usage overage",
+    description: "SOCIII usage overage",
   });
   await stripe.invoices.finalizeInvoice(invoice.id);
   await stripe.invoices.pay(invoice.id);
@@ -764,7 +764,7 @@ async function _enqueueAlexNotification(userId, notificationType, context = {}) 
   const db = getDb();
 
   const subjects = {
-    low_balance: "Your TitleApp balance is running low",
+    low_balance: "Your SOCIII balance is running low",
     billing_degraded: "Usage events paused — balance needed",
     recharge_failed: "Auto-recharge failed — update payment method",
     overage_80pct: "Approaching monthly allowance limit",
@@ -772,14 +772,14 @@ async function _enqueueAlexNotification(userId, notificationType, context = {}) 
   };
 
   const bodies = {
-    low_balance: `Your TitleApp balance is $${(context.balance || 0).toFixed(2)}. Auto-recharge will trigger at $${context.threshold || 20}. Want to adjust your auto-recharge settings?`,
+    low_balance: `Your SOCIII balance is $${(context.balance || 0).toFixed(2)}. Auto-recharge will trigger at $${context.threshold || 20}. Want to adjust your auto-recharge settings?`,
     billing_degraded: `New usage events are paused until your balance is restored. Outstanding overage: $${(context.overageAmount || 0).toFixed(2)}. Top up your balance in Settings.`,
     recharge_failed: `Your auto-recharge failed (${context.reason || "payment declined"}). Update your payment method in Settings to restore service.`,
     overage_80pct: `You've used 80% of your monthly allowance. Overages are $1 each. Want to upgrade your plan or top up your balance?`,
     overage_100pct: `You've reached your monthly allowance. Additional events are $1 each — deducted from your balance.`,
   };
 
-  const subject = subjects[notificationType] || "TitleApp Billing Notification";
+  const subject = subjects[notificationType] || "SOCIII Billing Notification";
   const body = bodies[notificationType] || "";
 
   await db.collection("messageQueue").add({
@@ -787,7 +787,7 @@ async function _enqueueAlexNotification(userId, notificationType, context = {}) 
     campaignId: `billing_${notificationType}`,
     channel: "email",
     to: "",
-    subject: `Alex — TitleApp: ${subject}`,
+    subject: `Alex — SOCIII: ${subject}`,
     body: `<p>${body.replace(/\n/g, "<br>")}</p><p style="color:#999;font-size:12px;">— Alex</p>`,
     textBody: body + "\n\n— Alex",
     scheduledAt: admin.firestore.Timestamp.fromDate(new Date()),

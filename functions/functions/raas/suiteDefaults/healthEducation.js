@@ -41,7 +41,7 @@ const HE_LANES = {
     disclaimerRequired: true,
     disclaimerType: "jurisdiction",
     anchor: "HE-019",
-    defaultDisclaimerText: "This worker uses TitleApp platform-default templates. Outputs are educational reference material only. Upload your employer protocols, scope of practice rules, and jurisdiction-specific policies to activate compliant documentation.",
+    defaultDisclaimerText: "This worker uses SOCIII platform-default templates. Outputs are educational reference material only. Upload your employer protocols, scope of practice rules, and jurisdiction-specific policies to activate compliant documentation.",
   },
   back_me_up: {
     name: "Back Me Up",
@@ -168,7 +168,7 @@ const HE_ONBOARDING_GATES = {
   },
   jurisdiction: {
     title: "Jurisdiction Acknowledgment",
-    text: "This worker uses TitleApp platform-default content. It is educational reference material only until you or the worker creator uploads jurisdiction-specific protocols, scope of practice rules, and employer policies. Do you understand?",
+    text: "This worker uses SOCIII platform-default content. It is educational reference material only until you or the worker creator uploads jurisdiction-specific protocols, scope of practice rules, and employer policies. Do you understand?",
     ackField: "chartItJurisdictionAck",
     perWorker: false,
   },

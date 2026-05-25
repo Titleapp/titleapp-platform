@@ -112,7 +112,7 @@ async function generate8710PDF(data) {
 
       // Footer
       doc.font("Helvetica").fontSize(7).fillColor("#666666")
-        .text(`Generated ${new Date().toISOString().substring(0, 10)} by TitleApp CoPilot`, { align: "center" })
+        .text(`Generated ${new Date().toISOString().substring(0, 10)} by SOCIII CoPilot`, { align: "center" })
         .text("This is a pre-fill reference document, not an official FAA form.", { align: "center" })
         .text("Verify all values against your official logbook before submission.", { align: "center" });
 

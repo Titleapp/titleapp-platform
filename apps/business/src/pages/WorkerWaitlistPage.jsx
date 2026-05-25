@@ -56,7 +56,7 @@ export default function WorkerWaitlistPage({ name, description, slug, suite }) {
   return (
     <div style={S.page}>
       <nav style={S.nav}>
-        <a href="/" style={S.logo}>TitleApp</a>
+        <a href="/" style={S.logo}>SOCIII</a>
         <a href="/workers" style={S.navLink}>Browse all workers</a>
       </nav>
 
@@ -109,7 +109,7 @@ export default function WorkerWaitlistPage({ name, description, slug, suite }) {
         </div>
       </div>
 
-      <footer style={S.footer}>TitleApp — Digital Workers for every industry</footer>
+      <footer style={S.footer}>SOCIII — Digital Workers for every industry</footer>
     </div>
   );
 }

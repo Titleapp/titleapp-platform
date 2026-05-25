@@ -6,7 +6,7 @@ const { emitCreatorEvent, CREATOR_EVENT_TYPES } = require("./creatorEvents");
 
 function getDb() { return admin.firestore(); }
 
-const SYSTEM_PROMPT = `You are TitleApp's Worker Architect. Given a creator's answers to 8 discovery questions, generate a complete draft Digital Worker specification.
+const SYSTEM_PROMPT = `You are SOCIII's Worker Architect. Given a creator's answers to 8 discovery questions, generate a complete draft Digital Worker specification.
 
 OUTPUT FORMAT: Return ONLY valid JSON with no markdown fencing. Schema:
 {
@@ -166,7 +166,7 @@ async function handleCreateSession(req, res, user) {
     ok: true,
     sessionId: sessionRef.id,
     spec,
-    previewUrl: `https://app.titleapp.ai/preview/${spec.slug}`,
+    previewUrl: `https://app.sociii.ai/preview/${spec.slug}`,
   });
 }
 

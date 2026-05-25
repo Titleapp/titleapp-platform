@@ -6,7 +6,7 @@
 **Audience:** Brokers, agents, broker-owners, title officers, escrow officers, mortgage loan officers, RE investment firm leadership in CA, NV, OR, WA, TX
 
 **Standard disclaimer (apply to all quantitative claims):**
-> These are anticipated and modeled projections based on industry benchmarks and TitleApp AI's internal analysis. Your results may be higher or lower depending on workflow, data quality, and operational fit. We're sharing these to give you a reason to try it, not as a guaranteed outcome.
+> These are anticipated and modeled projections based on industry benchmarks and SOCIII's internal analysis. Your results may be higher or lower depending on workflow, data quality, and operational fit. We're sharing these to give you a reason to try it, not as a guaranteed outcome.
 
 ---
 
@@ -35,13 +35,13 @@ Stat callouts:
 
 ---
 
-## Section 1 — How TitleApp AI Started (and Why That Matters) (page 3)
+## Section 1 — How SOCIII Started (and Why That Matters) (page 3)
 
 Sean's voice — short, direct.
 
-> "I'm a principal broker. I'm also a real-estate developer with luxury resort projects across the California Mountain resorts and beachfront in Hawaii, the Caribbean, and Florida. I'm a medevac pilot. The careers taught me the same thing: the cost of bad information is not a metric — it's a life, or it's a closing that nukes a family's biggest investment. I spent two years inside a DAO trying to put real-estate title on the blockchain because I'd seen too many fraudulent chains, missed easements, and forged signatures pass through closings. The blockchain idea was right; the delivery was wrong. The pivot was TitleApp AI. The same audit-trail thinking, applied to AI workers that do the work title officers and brokers used to do manually."
+> "I'm a principal broker. I'm also a real-estate developer with luxury resort projects across the California Mountain resorts and beachfront in Hawaii, the Caribbean, and Florida. I'm a medevac pilot. The careers taught me the same thing: the cost of bad information is not a metric — it's a life, or it's a closing that nukes a family's biggest investment. I spent two years inside a DAO trying to put real-estate title on the blockchain because I'd seen too many fraudulent chains, missed easements, and forged signatures pass through closings. The blockchain idea was right; the delivery was wrong. The pivot was SOCIII. The same audit-trail thinking, applied to AI workers that do the work title officers and brokers used to do manually."
 
-Page 3 closes with the strategic call: TitleApp AI sells direct to consumers and creators, not to legacy incumbents. The legacy industry will adapt to platforms like this one or face extinction at the hands of practitioners who can do the same work in minutes with full audit trails.
+Page 3 closes with the strategic call: SOCIII sells direct to consumers and creators, not to legacy incumbents. The legacy industry will adapt to platforms like this one or face extinction at the hands of practitioners who can do the same work in minutes with full audit trails.
 
 ---
 
@@ -132,7 +132,7 @@ A residential closing where AI handles a meaningful share of the work currently 
 
 ### 5.2 The Gate Analogy (locked language — replaces technical RAAS description)
 
-> Most AI tools work like an open door. You ask, the AI answers, and you're left to figure out if the answer is compliant, accurate, and defensible. TitleApp AI works like three gates.
+> Most AI tools work like an open door. You ask, the AI answers, and you're left to figure out if the answer is compliant, accurate, and defensible. SOCIII works like three gates.
 >
 > The first gate is at the entrance: regulatory rules are loaded into the worker's context as it begins thinking — like giving a securities attorney the rule book before they draft an offering memo, not after.
 >
@@ -140,13 +140,13 @@ A residential closing where AI handles a meaningful share of the work currently 
 >
 > The third gate is at the exit: the final output is screened for jurisdiction-aware compliance before it ever reaches you, your customer, or your regulator.
 >
-> Three gates, every output, every time. Tamper-evident audit trail at each gate. That's why TitleApp AI works in regulated industries where generic AI doesn't.
+> Three gates, every output, every time. Tamper-evident audit trail at each gate. That's why SOCIII works in regulated industries where generic AI doesn't.
 
 ### 5.3 The architecture diagram
 The Three-Gates diagram with the gate analogy as caption.
 
 ### 5.4 The Patent-Pending Footprint
-A page describing the architecture areas covered by TitleApp AI's patent-pending IP — without naming a count. Areas covered:
+A page describing the architecture areas covered by SOCIII's patent-pending IP — without naming a count. Areas covered:
 - The RAAS multi-gate enforcement model
 - Constraint module versioning + jurisdiction scoping
 - The audit-trail ledger system (cryptographic hash chain, tamper-evident records)
@@ -209,9 +209,9 @@ For RE, recommended starting workflow: **title chain analysis on your next 10 li
 
 ---
 
-## Section 10 — About TitleApp AI (page 15)
+## Section 10 — About SOCIII (page 15)
 
-**TitleApp AI** is the platform where domain experts build, ship, and monetize AI Digital Workers governed by patent-pending compliance architecture, with a private Vault for your data and a tamper-evident audit trail on every output.
+**SOCIII** is the platform where domain experts build, ship, and monetize AI Digital Workers governed by patent-pending compliance architecture, with a private Vault for your data and a tamper-evident audit trail on every output.
 
 **The Five Pillars:**
 1. RAAS Engine — rules enforced as the worker writes
@@ -228,13 +228,13 @@ For RE, recommended starting workflow: **title chain analysis on your next 10 li
 
 ### Speaker bios
 
-**Sean Combs** — CEO and Co-founder, TitleApp AI. Principal broker and real-estate developer with luxury resort projects across the California Mountain resorts and beachfront in Hawaii, the Caribbean, and Florida. Medevac pilot. Patent-pending AI compliance architecture.
+**Sean Combs** — CEO and Co-founder, SOCIII. Principal broker and real-estate developer with luxury resort projects across the California Mountain resorts and beachfront in Hawaii, the Caribbean, and Florida. Medevac pilot. Patent-pending AI compliance architecture.
 
-**Kent Redwine** — CFO and Co-founder, TitleApp AI. Fifteen years in investment banking, advising clients across one of the world's largest aircraft manufacturers, leading technology firms, green energy, and electric vehicles. Founded an electric vehicle company before Tesla took the segment. Brings the financial architecture and old-school i-banking discipline to TitleApp AI.
+**Kent Redwine** — CFO and Co-founder, SOCIII. Fifteen years in investment banking, advising clients across one of the world's largest aircraft manufacturers, leading technology firms, green energy, and electric vehicles. Founded an electric vehicle company before Tesla took the segment. Brings the financial architecture and old-school i-banking discipline to SOCIII.
 
 **Alex** — Chief of Staff to Sean Lee Combs, CEO and Co-founder. Live Q&A in chat throughout the session.
 
-QR code → titleapp.ai/real-estate
+QR code → sociii.ai/real-estate
 
 ---
 

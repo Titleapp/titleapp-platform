@@ -20,7 +20,7 @@ function getDb() {
   return admin.firestore();
 }
 
-const UPLOAD_ACKNOWLEDGMENT_TEXT = "I confirm this document is the correct version for my specific aircraft/equipment, is the current approved revision, and I accept responsibility for uploading incorrect or outdated documentation. TitleApp is not responsible for errors arising from incorrect document uploads.";
+const UPLOAD_ACKNOWLEDGMENT_TEXT = "I confirm this document is the correct version for my specific aircraft/equipment, is the current approved revision, and I accept responsibility for uploading incorrect or outdated documentation. SOCIII is not responsible for errors arising from incorrect document uploads.";
 
 const HIGH_RISK_ACKNOWLEDGMENT_TEXT = "This CoPilot is designed for ground use — study, planning, and reference. It is not designed for use as a primary in-flight reference. Always cross-check Direct Mode responses against your paper or EFB documents. The FAA requires you to have approved documentation on board — that requirement exists independently of this tool. This tool makes mistakes. Your judgment is always the final authority.";
 const HIGH_RISK_ACKNOWLEDGMENT_VERSION = "1.0";

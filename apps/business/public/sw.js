@@ -1,4 +1,4 @@
-// TitleApp Service Worker — 44.5 Cache Fix
+// SOCIII Service Worker — 44.5 Cache Fix
 // Pass-through SW: no offline caching. Handles update lifecycle only.
 // skipWaiting + clients.claim = new deploys activate immediately.
 

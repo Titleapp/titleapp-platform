@@ -110,7 +110,7 @@ async function mintTitleRecord(tenantId, workerId, workerData, memo = "") {
     tx_hash: mockTxHash,
     chain: "polygon",
     token_id: mockTokenId,
-    record_url: `https://titleapp.ai/title/${recordRef.id}`,
+    record_url: `https://sociii.ai/title/${recordRef.id}`,
     minted_at: new Date().toISOString(),
     version,
     metadata_hash: metadataHash,
