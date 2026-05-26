@@ -2841,40 +2841,56 @@ When the user asks "what have I completed?", "what's next?", or about their prog
             prospectName: sessionState.prospectName || "",
           });
 
-          // Build catalog context — vertical-specific workers first, then cross-vertical
+          // Build catalog context — platform/spine workers ALWAYS first, then vertical-specific, then cross-vertical.
+          // Spine workers (PLAT-*) need to be visible to Claude on every session so the QUICK MAP
+          // in the sales overlay can recommend them for common requests like "household finances".
           let catalogContext = "";
           try {
             let workers = [];
-            // Query vertical-specific workers first
+            const seenSlugs = new Set();
+            const pushWorker = (d) => {
+              if (seenSlugs.has(d.id)) return;
+              seenSlugs.add(d.id);
+              const w = d.data();
+              workers.push(`- ${d.id}: ${w.display_name || w.name} ($${w.pricing?.monthly || w.raas_tier_0 || 0}/mo) — ${(w.short_description || w.capabilitySummary || w.description || "").substring(0, 100)}`);
+            };
+
+            // 1) Always include all live platform/spine workers first
+            try {
+              const platSnap = await db.collection("digitalWorkers")
+                .where("vertical", "==", "platform")
+                .where("status", "==", "live")
+                .limit(10)
+                .get();
+              platSnap.docs.forEach(pushWorker);
+            } catch (pErr) {
+              console.warn("sales: platform catalog fetch failed:", pErr.message);
+            }
+
+            // 2) Vertical-specific workers next, if a vertical is known
             if (sessionState.vertical) {
               const vertSnap = await db.collection("digitalWorkers")
                 .where("vertical", "==", sessionState.vertical)
                 .where("status", "in", ["live", "coming_soon"])
-                .limit(50)
+                .limit(40)
                 .get();
-              workers = vertSnap.docs.map(d => {
-                const w = d.data();
-                return `- ${d.id}: ${w.display_name || w.name} ($${w.pricing?.monthly || w.raas_tier_0 || 0}/mo) — ${(w.short_description || w.capabilitySummary || w.description || "").substring(0, 100)}`;
-              });
+              vertSnap.docs.forEach(pushWorker);
             }
-            // If few vertical-specific results, add cross-vertical
-            if (workers.length < 5) {
+
+            // 3) If still short, top up with cross-vertical live workers
+            if (workers.length < 12) {
               const allSnap = await db.collection("digitalWorkers")
                 .where("status", "==", "live")
                 .limit(30)
                 .get();
-              const existing = new Set(workers.map(w => w.split(":")[0].trim().replace("- ", "")));
-              const extras = allSnap.docs
-                .filter(d => !existing.has(d.id))
-                .slice(0, 15 - workers.length)
-                .map(d => {
-                  const w = d.data();
-                  return `- ${d.id}: ${w.display_name || w.name} ($${w.pricing?.monthly || w.raas_tier_0 || 0}/mo) — ${(w.short_description || w.capabilitySummary || w.description || "").substring(0, 100)}`;
-                });
-              workers = [...workers, ...extras];
+              for (const d of allSnap.docs) {
+                if (workers.length >= 18) break;
+                pushWorker(d);
+              }
             }
+
             if (workers.length > 0) {
-              catalogContext = "\n\nAVAILABLE DIGITAL WORKERS (use these exact slugs in [WORKER_CARDS] markers — do NOT invent slugs — NEVER present workers from memory, ONLY from this list — present ALL relevant workers when asked about the vertical):\n" + workers.join("\n");
+              catalogContext = "\n\nAVAILABLE DIGITAL WORKERS (use these exact slugs in [WORKER_CARDS] markers — do NOT invent slugs — NEVER present workers from memory, ONLY from this list — present ALL relevant workers when asked about the vertical). Platform workers (slug starts with 'platform-') are always available to every user — recommend them first when the request matches their use case:\n" + workers.join("\n");
             }
           } catch (catErr) {
             console.warn("sales: catalog lookup failed:", catErr.message);
