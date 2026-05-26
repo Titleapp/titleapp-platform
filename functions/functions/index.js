@@ -1350,7 +1350,7 @@ exports.api = onRequest(
   // Override global cpu: "gcf_gen1" — this function runs Claude/OpenAI calls and needs full CPU.
   // timeoutSeconds bumped from 60 default to 300 to accommodate multi-file uploads
   // (each file: storage write + signed-url + Firestore record + pdf-parse).
-  { region: "us-central1", cpu: 1, memory: "1GiB", timeoutSeconds: 300, secrets: ["APOLLO_API_KEY", "STRIPE_SECRET_KEY", "STRIPE_PUBLISHABLE_KEY", "STRIPE_WEBHOOK_SECRET"] },
+  { region: "us-central1", cpu: 1, memory: "1GiB", timeoutSeconds: 300, secrets: ["APOLLO_API_KEY", "STRIPE_SECRET_KEY", "STRIPE_PUBLISHABLE_KEY", "STRIPE_WEBHOOK_SECRET", "TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_VERIFY_SERVICE_SID"] },
   async (req, res) => {
     console.log("✅ API_VERSION", "2026-03-01-document-engine");
 
@@ -1563,21 +1563,33 @@ exports.api = onRequest(
       }
     }
 
-    // ── TEMPORARILY DISABLED — Twilio TrustHub pending, restore when approved ──
-    // Magic link + OTP auth routes commented out in 37.6
-    if ((route === "/auth:sendMagicLink" || route === "/auth/sendMagicLink") && method === "POST") {
-      return jsonError(res, 503, "Magic link temporarily unavailable. Please use Google sign-in.");
-    }
-    if ((route === "/auth:verifyMagicLink" || route === "/auth/verifyMagicLink") && method === "GET") {
-      return jsonError(res, 503, "Magic link temporarily unavailable. Please use Google sign-in.");
-    }
+    // Auth: SMS OTP via Twilio Verify (managed; no toll-free / A2P dependency)
     if ((route === "/auth:sendOtp" || route === "/auth/sendOtp") && method === "POST") {
-      return jsonError(res, 503, "SMS sign-in temporarily unavailable. Please use Google sign-in.");
+      try {
+        const { sendOtp } = require("./campaigns/otpAuth");
+        return await sendOtp(req, res);
+      } catch (e) {
+        console.error("auth:sendOtp failed:", e);
+        return jsonError(res, 500, e.message);
+      }
     }
     if ((route === "/auth:verifyOtp" || route === "/auth/verifyOtp") && method === "POST") {
-      return jsonError(res, 503, "SMS sign-in temporarily unavailable. Please use Google sign-in.");
+      try {
+        const { verifyOtp } = require("./campaigns/otpAuth");
+        return await verifyOtp(req, res);
+      } catch (e) {
+        console.error("auth:verifyOtp failed:", e);
+        return jsonError(res, 500, e.message);
+      }
     }
-    // ── END TEMPORARILY DISABLED ──
+    // Legacy /auth:*MagicLink namespace — frontend uses /magic-link:send and /magic-link:verify
+    // (handled later in the file). These stubs return 410 Gone to discourage new callers.
+    if ((route === "/auth:sendMagicLink" || route === "/auth/sendMagicLink") && method === "POST") {
+      return jsonError(res, 410, "Use /v1/magic-link:send instead.");
+    }
+    if ((route === "/auth:verifyMagicLink" || route === "/auth/verifyMagicLink") && method === "GET") {
+      return jsonError(res, 410, "Use /v1/magic-link:verify instead.");
+    }
 
     // POST /v1/alex:summarizeGuestSession — generate + deliver session summary
     if (route === "/alex:summarizeGuestSession" && method === "POST") {
