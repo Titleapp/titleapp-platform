@@ -69,13 +69,64 @@ module.exports = {
   autoRechargeThresholdDefault: 20,    // trigger recharge at $20
   autoRechargeAmountDefault: 100,      // default recharge amount
 
-  // ── Stripe Product Price IDs (created by scripts/createBillingProducts.js) ──
+  // ── Stripe Product Price IDs ─────────────────────────────────
+  // SOCIII Stripe account (acct_1TYWqdBYvxF0jBHy)
+  // Created by scripts/portStripeToSociii.js on 2026-05-25
+  // Log: scripts/output/sociii-stripe-catalog-2026-05-26T01-11-31-934Z.json
   stripeProducts: {
-    signatureOverage: 'price_1TCYuiH3orVQEXOAiiDNQxR8',
-    blockchainOverage: 'price_1TCYujH3orVQEXOAcV6gnd0z',
-    topUp100: 'price_1TCYujH3orVQEXOAjD7ze444',
-    topUp500: 'price_1TCYukH3orVQEXOAmK5DJcpW',
-    topUp1000: 'price_1TCYukH3orVQEXOAy5nQEAMA',
+    // Per-worker subscriptions
+    workerTier1: 'price_1Tb9WbBYvxF0jBHyGnlhlQLz',
+    workerTier2: 'price_1Tb9WcBYvxF0jBHydXTgAVWa',
+    workerTier3: 'price_1Tb9WcBYvxF0jBHyWKdH8Uav',
+
+    // Kits — Business in a Box ($99/mo each)
+    kitStartup:            'price_1Tb9WdBYvxF0jBHyWC6br2Cr',
+    kitRePropertyManager:  'price_1Tb9WdBYvxF0jBHyj7CfFik5',
+    kitReBrokerage:        'price_1Tb9WeBYvxF0jBHy3d9ERLAP',
+    kitReDeveloper:        'price_1Tb9WfBYvxF0jBHyVuvS7S8z',
+    kitAviationOperator:   'price_1Tb9WfBYvxF0jBHywRbeY3ub',
+    kitAutoDealer:         'price_1Tb9WgBYvxF0jBHyoqOE5hEo',
+    kitTitleEscrow:        'price_1Tb9WgBYvxF0jBHyu1616CPs',
+    kitGovernment:         'price_1Tb9WhBYvxF0jBHyppHckBdN',
+    kitWeb3:               'price_1Tb9WhBYvxF0jBHyjsg3pWiB',
+    kitLawFirm:            'price_1Tb9WiBYvxF0jBHyQYXwB06m',
+    kitInvestmentFirm:     'price_1Tb9WiBYvxF0jBHyPObFFnhX',
+
+    // All Access / Enterprise
+    allAccess: 'price_1Tb9WjBYvxF0jBHyRCjoAiY4',
+
+    // Platform-included + Creator
+    vault:          'price_1Tb9WjBYvxF0jBHyGTYZMn0e',
+    creatorLicense: 'price_1Tb9WkBYvxF0jBHyl6wVyy75',
+
+    // Credits product (small top-ups + metered overage at $0.02/credit)
+    creditsTopUp5:         'price_1Tb9WkBYvxF0jBHy9lxRG7V4',
+    creditsTopUp15:        'price_1Tb9WkBYvxF0jBHyooGopOHd',
+    creditsTopUp50:        'price_1Tb9WkBYvxF0jBHyYUaYze5T',
+    creditsMeteredOverage: 'price_1Tb9WlBYvxF0jBHyiYsQ4pGR',
+
+    // Balance Top-Ups (production code reads these as `"topUp" + amount`)
+    topUp100:  'price_1Tb9WlBYvxF0jBHyzbIHUbMQ',
+    topUp500:  'price_1Tb9WmBYvxF0jBHykzwQZeQP',
+    topUp1000: 'price_1Tb9WmBYvxF0jBHyC1FxNt2E',
+
+    // Usage overages (metered, $1/unit)
+    signatureOverage:  'price_1Tb9WnBYvxF0jBHyO5KziiMM',
+    blockchainOverage: 'price_1Tb9WnBYvxF0jBHy28qkfLMz',
+
+    // Identity Checks
+    identityCheckStandard: 'price_1Tb9WoBYvxF0jBHy5NPIEuMm',
+    identityCheckInvestor: 'price_1Tb9WoBYvxF0jBHyIp1zzDv0',
+    identityCheckCreator:  'price_1Tb9WpBYvxF0jBHy3EWwyWcs',
+    identityCheckAdvisor:  'price_1Tb9WpBYvxF0jBHyepOWORC6',
+  },
+
+  // ── Stripe Billing Meter IDs (SOCIII account) ───────────────
+  stripeMeters: {
+    inferenceCreditsOverage:  'mtr_61UkXTwHMAWVnaT7b41BYvxF0jBHyScK',
+    auditTrailRecords:        'mtr_61UkXTxitv0RqADHy41BYvxF0jBHyVTU',
+    signatureRequestsOverage: 'mtr_61UkXTx4UJ7l0zJKM41BYvxF0jBHyL0i',
+    blockchainRecordsOverage: 'mtr_61UkXTxoQfY3FRFfX41BYvxF0jBHyRYe',
   },
 
   // ── Stripe Meter Event Names ─────────────────────────────────
