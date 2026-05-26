@@ -347,21 +347,21 @@ export default function RightPanel() {
   async function loadLeaderboard(v) {
     setLoading(true);
     try {
-      if (v) {
-        // Try leaderboard first — ranked by subscribers, live data
-        const res = await fetch(`${API_BASE}/api?path=/v1/leaderboard:top10&vertical=${encodeURIComponent(v)}`);
-        const data = await res.json();
-        if (data.ok && data.workers && data.workers.length > 0) {
-          setWorkers(data.workers);
-          setLoading(false);
-          return;
-        }
-      }
-      // No vertical or no leaderboard — fall back to catalog
-      const fallbackVertical = v || "aviation";
-      const res = await fetch(`${API_BASE}/api?path=/v1/catalog:byVertical&vertical=${encodeURIComponent(fallbackVertical)}&limit=10`);
+      // Use "all" as the cross-vertical default so anonymous landings on
+      // /meet-alex see a populated scoreboard immediately.
+      const effective = v || "all";
+      const res = await fetch(`${API_BASE}/api?path=/v1/leaderboard:top10&vertical=${encodeURIComponent(effective)}`);
       const data = await res.json();
-      if (data.ok && data.workers) setWorkers(data.workers);
+      if (data.ok && data.workers && data.workers.length > 0) {
+        setWorkers(data.workers);
+        setLoading(false);
+        return;
+      }
+      // Leaderboard returned empty — fall back to catalog with same vertical.
+      const fallbackVertical = v || "aviation";
+      const res2 = await fetch(`${API_BASE}/api?path=/v1/catalog:byVertical&vertical=${encodeURIComponent(fallbackVertical)}&limit=10`);
+      const data2 = await res2.json();
+      if (data2.ok && data2.workers) setWorkers(data2.workers);
     } catch (err) {
       console.error("Failed to load leaderboard:", err);
     }

@@ -1,0 +1,7 @@
+<svg width="120" height="32" viewBox="0 0 120 32" xmlns="http://www.w3.org/2000/svg">
+  <rect width="120" height="32" fill="#ffffff"/>
+  <rect x="2" y="4" width="24" height="24" rx="5" fill="#010918"/>
+  <polygon points="6,7 22,7 24,12 22,17 6,17 4,12" fill="#5234C6"/>
+  <polygon points="6,17 22,17 24,22 22,27 6,27 4,22" fill="#3D8A5C"/>
+  <text x="32" y="22" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="700" fill="#0F172A" letter-spacing="1.2">SOCIII</text>
+</svg>

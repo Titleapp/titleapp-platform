@@ -1,9 +1,21 @@
 # Pre-Formation Creditor Warrants — Structural Memo
 
-**Date:** 2026-05-22
+**Date:** 2026-05-22 (revised 2026-05-26 with Sean's canonical RealEx list and HOM DAO eligibility restriction)
 **Author:** Sean Lee Combs (with structural drafting assistance from Claude / Alex)
-**Status:** Draft for Sean's review when rested; not yet locked
+**Status:** Data Room artifact. Eligibility rule and RealEx list canonical; HOM DAO contributor list pending regeneration against $1K+ cash-contribution threshold.
 **Purpose:** Document the moral and structural commitment to honor cash exposure that early supporters carried across the RealEx → HOM DAO → TitleApp LLC arc, structured cleanly so it lives on the SOCIII Inc. cap table without compromising institutional fundraise mechanics.
+
+---
+
+## ⚠ Eligibility Restriction — HOM DAO contributors
+
+**Only HOM DAO contributors who put in $1,000 or more of direct cash count for warrant exposure.** The following do NOT qualify for warrant grants:
+
+- Secondary-market PHOM token purchases (people who bought PHOM from other holders, not from the DAO directly).
+- PHOM tokens issued *as a bonus alongside cash* — i.e., the PHOM portion of a mixed cash+token contribution does not separately qualify; only the underlying cash counts.
+- Sub-$1,000 direct cash contributions — these were participation tokens at small scale, not creditor exposure that requires warrant remediation.
+
+The HOM DAO contributor list will be regenerated against the original on-chain contribution records before warrants are issued. This rule scopes the warrant exposure tightly to material direct-cash supporters and avoids granting warrants to participants whose involvement was nominal or token-only.
 
 ---
 

@@ -1241,7 +1241,10 @@ export default function Sidebar({
       return name ? `${name}'s ${selectedWorkerName}` : selectedWorkerName;
     }
     if (isPersonal) return name ? `${name}'s Vault` : "Personal Vault";
-    return workspaceName || tenantName || "Business";
+    // Strip legacy "TitleApp" prefix from migrated tenants — brand has moved to SOCIII.
+    const raw = workspaceName || tenantName || "";
+    const cleaned = raw.replace(/^\s*TitleApp\s+/i, "").trim();
+    return cleaned || "SOCIII";
   })();
 
   // Spine nav → canvas signal map (CODEX 49.5 Fix 1)
@@ -1445,14 +1448,14 @@ export default function Sidebar({
             display: "flex", alignItems: "center", justifyContent: "center",
             color: "white", fontWeight: 700, fontSize: 14, flexShrink: 0,
           }}>
-            {(userFirstName || "T").charAt(0).toUpperCase()}
+            {(userFirstName || "S").charAt(0).toUpperCase()}
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div className="brandName" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {brandLabel}
             </div>
             <div className="brandSub" style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span>{selectedWorker ? (VERTICAL_LABELS[vertical] || "Worker") : (isPersonal ? "Personal Vault" : (VERTICAL_LABELS[vertical] || "Business"))}</span>
+              <span>{selectedWorker ? (VERTICAL_LABELS[vertical] || "Worker") : (isPersonal ? "Personal Vault" : (VERTICAL_LABELS[vertical] || "Workspace"))}</span>
               {!isPersonal && workspaceRole && (
                 <span style={{
                   fontSize: 9, fontWeight: 700, padding: "1px 6px", borderRadius: 999,

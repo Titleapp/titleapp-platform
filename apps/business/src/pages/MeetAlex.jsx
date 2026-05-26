@@ -596,7 +596,7 @@ export default function MeetAlex() {
           <div style={S.headerName}>Alex</div>
           <div style={S.headerSub}>Chief of Staff</div>
         </div>
-        <div style={S.logo}>TITLEAPP</div>
+        <div style={S.logo}>SOCIII</div>
       </div>
 
       {/* Messages */}

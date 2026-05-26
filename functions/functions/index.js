@@ -6385,10 +6385,16 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
         if (!doc || !doc.exists) {
           // No leaderboard yet — build on-the-fly from digitalWorkers
           const vc = getVerticalConfig(vertical);
-          const dwSnap = await db.collection("digitalWorkers")
-            .where("suite", "in", vc.suites)
-            .where("status", "==", "live")
-            .limit(vc.prefix ? 100 : 10)
+          // Firestore 'in' clause cannot be empty. For vertical=all (or any
+          // config with no suite list) skip the suite filter and pull live
+          // workers across the board, then trim to 10.
+          const isAllVerticals = vc.firestoreVertical === "*" || !vc.suites || vc.suites.length === 0;
+          let dwQuery = db.collection("digitalWorkers").where("status", "==", "live");
+          if (!isAllVerticals) {
+            dwQuery = dwQuery.where("suite", "in", vc.suites);
+          }
+          const dwSnap = await dwQuery
+            .limit(vc.prefix ? 100 : (isAllVerticals ? 60 : 10))
             .get();
           const workers = dwSnap.docs
             .filter(d => !vc.prefix || d.id.startsWith(vc.prefix))
@@ -12438,20 +12444,31 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
 
     // GET /v1/workspaces
     if (route === "/workspaces" && method === "GET") {
+      // Idempotent first-touch provisioning for users that signed in via Firebase Auth
+      // directly (Google, Apple, SAML) and never hit /auth:signup. Safe to call every time.
       try {
-        // Idempotent first-touch provisioning for users that signed in via Firebase Auth
-        // directly (Google, Apple, SAML) and never hit /auth:signup. Safe to call every time.
-        try {
-          const { ensureUserProvisioned } = require("./helpers/userProvisioning");
-          await ensureUserProvisioned(auth.user.uid, auth.user);
-        } catch (provErr) {
-          console.warn("workspaces:list provisioning skipped:", provErr.message);
-        }
+        const { ensureUserProvisioned } = require("./helpers/userProvisioning");
+        await ensureUserProvisioned(auth.user.uid, auth.user);
+      } catch (provErr) {
+        console.warn("workspaces:list provisioning skipped:", provErr.message);
+      }
+
+      // Never 500 this endpoint — at minimum, return the Personal Vault so the
+      // signup flow can complete. Without this fallback, the workspace picker
+      // shows "Failed to load workspaces" and the user can only create a
+      // business workspace, which is the wrong default.
+      try {
         const workspaces = await getUserWorkspaces(auth.user.uid);
         return res.json({ ok: true, workspaces });
       } catch (e) {
-        console.error("workspaces:list failed:", e);
-        return jsonError(res, 500, "Failed to list workspaces");
+        console.error("workspaces:list failed, returning Personal Vault fallback:", e);
+        const { PERSONAL_VAULT } = require("./helpers/workspaces");
+        return res.json({
+          ok: true,
+          workspaces: [PERSONAL_VAULT],
+          degraded: true,
+          warning: "Failed to load business workspaces — Personal Vault is available.",
+        });
       }
     }
 

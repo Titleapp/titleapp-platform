@@ -1,0 +1,11 @@
+<svg width="220" height="220" viewBox="0 0 42 42" xmlns="http://www.w3.org/2000/svg">
+  <rect width="42" height="42" fill="#ffffff"/>
+  <circle cx="21" cy="21" r="15.91549431" fill="#ffffff" stroke="#E2E8F0" stroke-width="2.2"/>
+  <circle cx="21" cy="21" r="15.91549431" fill="transparent" stroke="#5039CD" stroke-width="6.5" stroke-dasharray="49 51" stroke-dashoffset="25" />
+  <circle cx="21" cy="21" r="15.91549431" fill="transparent" stroke="#7C3AED" stroke-width="6.5" stroke-dasharray="15 85" stroke-dashoffset="-24" />
+  <circle cx="21" cy="21" r="15.91549431" fill="transparent" stroke="#3D8959" stroke-width="6.5" stroke-dasharray="30 70" stroke-dashoffset="-39" />
+  <circle cx="21" cy="21" r="15.91549431" fill="transparent" stroke="#2D248F" stroke-width="6.5" stroke-dasharray="1.7 98.3" stroke-dashoffset="-69" />
+  <circle cx="21" cy="21" r="15.91549431" fill="transparent" stroke="#0F172A" stroke-width="6.5" stroke-dasharray="4.3 95.7" stroke-dashoffset="-70.7" />
+  <text x="21" y="20" text-anchor="middle" font-family="Georgia, serif" font-size="3.2" fill="#0F172A" font-weight="600">Post-round</text>
+  <text x="21" y="24" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="2.2" fill="#64748B" letter-spacing="0.15">ILLUSTRATIVE</text>
+</svg>

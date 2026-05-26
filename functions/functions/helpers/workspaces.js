@@ -67,9 +67,16 @@ async function getUserWorkspaces(userId) {
     console.warn('workspaces: subscription merge failed:', e.message);
   }
 
-  // Merge shared workspaces (B2B pushed workers)
-  const shared = await getSharedWorkspaces(userId);
-  workspaces.push(...shared);
+  // Merge shared workspaces (B2B pushed workers). Wrapped in try/catch so a
+  // shared-workspace lookup failure (missing collection, rules, transient
+  // error) cannot 500 the entire /v1/workspaces endpoint — that breaks the
+  // signup flow and the user can't even see their Personal Vault.
+  try {
+    const shared = await getSharedWorkspaces(userId);
+    workspaces.push(...shared);
+  } catch (e) {
+    console.warn('workspaces: shared workspace lookup failed:', e.message);
+  }
 
   // Sort by creation time (Personal Vault stays first, shared at end)
   workspaces.sort((a, b) => {

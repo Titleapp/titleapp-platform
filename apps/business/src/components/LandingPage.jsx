@@ -85,9 +85,12 @@ const PRICING_TIERS = [
 ];
 
 export default function LandingPage() {
+  // Use the current origin so CTAs stay on whatever host is serving the app.
+  // Today that's app.titleapp.ai; when app.sociii.ai is provisioned the same
+  // code keeps working without a rebuild.
   const appBase = window.location.hostname === "localhost"
     ? ""
-    : "https://app.sociii.ai";
+    : window.location.origin;
 
   const [query, setQuery] = useState("");
   const [listening, setListening] = useState(false);
@@ -293,7 +296,7 @@ export default function LandingPage() {
                 onMouseLeave={() => { workersHovered.current = false; }}
               >
                 {TOP_WORKERS.map((w, i) => (
-                  <a key={w.name} data-scard="" href="https://app.sociii.ai" style={S.topWorkerCard}>
+                  <a key={w.name} data-scard="" href={appBase} style={S.topWorkerCard}>
                     <div style={{ fontSize: 12, fontWeight: 800, color: "#6B7280", marginBottom: 6 }}>#{i + 1}</div>
                     <div style={S.topWorkerName}>{w.name}</div>
                     <div style={{ fontSize: 11, color: "#6B7280", marginBottom: 8 }}>{w.sessions} sessions</div>
@@ -451,7 +454,7 @@ export default function LandingPage() {
                 <div style={S.priceTier}>{p.tier}</div>
                 <div style={S.priceAmount}>{p.price}{p.per && <span style={S.pricePer}>{p.per}</span>}</div>
                 <div style={S.priceDesc}>{p.desc}</div>
-                <a href="https://app.sociii.ai" style={S.priceBtn}>
+                <a href={appBase} style={S.priceBtn}>
                   {p.tier === "Free" ? "Get Started" : "Start Free Trial"}
                 </a>
               </div>
@@ -466,7 +469,7 @@ export default function LandingPage() {
             <div style={S.biabPrice}>$99<span style={S.biabPer}>/mo</span></div>
             <div style={S.biabSub}>15-20 expert Digital Workers. Built for your industry. $3 a day.</div>
             <div style={S.biabData}>Need more data? No problem — charge it up just like your Claude or ChatGPT account.</div>
-            <a href="https://app.sociii.ai" style={S.biabCta}>Get Started</a>
+            <a href={appBase} style={S.biabCta}>Get Started</a>
           </div>
         </div>
       </section>

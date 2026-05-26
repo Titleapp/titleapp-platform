@@ -1,0 +1,1168 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SOCIII Inc. — Pre-Seed Investor Memorandum — May 2026</title>
+<style>
+  :root {
+    --purple: #7C3AED;
+    --purple-dark: #5039CD;
+    --purple-deepest: #2D248F;
+    --green: #3D8959;
+    --green-deep: #2E7547;
+    --cyan: #0686D4;
+    --ink: #0F172A;
+    --ink-soft: #1E293B;
+    --slate: #334155;
+    --slate-mid: #475569;
+    --slate-light: #64748B;
+    --line: #E2E8F0;
+    --line-soft: #EEF2F6;
+    --cream: #FAFAF7;
+    --paper: #FFFFFF;
+    --highlight: #FEF3C7;
+    --confidential: #B91C1C;
+  }
+  * { box-sizing: border-box; }
+  @page {
+    size: 8.5in 11in;
+    margin: 0;
+  }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #E7E5E0;
+    color: var(--ink);
+    font-family: 'Helvetica Neue', Helvetica, Arial, system-ui, -apple-system, 'Segoe UI', sans-serif;
+    font-size: 11pt;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  @media print {
+    html, body { background: white; }
+    .doc { max-width: none; margin: 0; }
+    .page { page-break-after: always; break-after: page; }
+    .page:last-child { page-break-after: auto; break-after: auto; }
+  }
+  .doc {
+    max-width: 8.5in;
+    margin: 0 auto;
+    background: var(--paper);
+  }
+  .page {
+    padding: 0.5in 0.85in 0.6in;
+    position: relative;
+    background: var(--paper);
+  }
+  .page.cover { page-break-after: always; }
+  .page.cream { background: var(--cream); }
+  .page-break { page-break-before: always; }
+  table.bank, .chart-wrap, .pillars, .stat-grid, .callout {
+    page-break-inside: avoid;
+  }
+  h2, h3 { page-break-after: avoid; }
+  .page.cream { background: var(--cream); }
+  .page.cover { background: var(--ink); color: #fff; padding: 0; }
+  .page:last-child { page-break-after: auto; }
+
+  /* TYPOGRAPHY */
+  h1, h2, h3, h4 {
+    font-family: 'Georgia', 'Source Serif Pro', Cambria, 'Times New Roman', serif;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+  }
+  h1 { font-size: 32pt; line-height: 1.1; margin: 0 0 0.4em; }
+  h2 { font-size: 19pt; line-height: 1.2; margin: 0 0 0.4em; padding-bottom: 0.3em; border-bottom: 2px solid var(--ink); }
+  h3 { font-size: 13pt; line-height: 1.3; margin: 1.6em 0 0.4em; color: var(--purple-dark); }
+  h4 { font-size: 11pt; line-height: 1.3; margin: 1.2em 0 0.3em; color: var(--ink); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; font-family: 'Helvetica Neue', system-ui, sans-serif; }
+  p { margin: 0 0 0.9em; color: var(--slate); }
+  p.lead { font-size: 12.5pt; color: var(--ink-soft); line-height: 1.6; }
+  strong { color: var(--ink); font-weight: 600; }
+  em { color: var(--slate-mid); }
+  ul, ol { margin: 0 0 1em 0; padding-left: 1.3em; color: var(--slate); }
+  li { margin-bottom: 0.35em; }
+
+  /* COVER PAGE */
+  .cover-inner {
+    padding: 1.4in 1.1in;
+    min-height: 10in;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    color: #fff;
+    position: relative;
+    overflow: hidden;
+  }
+  .cover-mark {
+    width: 120px;
+    height: auto;
+    margin-bottom: 1.5em;
+  }
+  .cover-eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 0.22em;
+    font-size: 9.5pt;
+    color: rgba(255,255,255,0.55);
+    margin-bottom: 0.8em;
+    font-weight: 600;
+  }
+  .cover-title {
+    font-family: 'Georgia', serif;
+    font-size: 44pt;
+    line-height: 1.05;
+    font-weight: 400;
+    margin: 0 0 0.5em;
+    letter-spacing: -0.02em;
+  }
+  .cover-subtitle {
+    font-family: 'Georgia', serif;
+    font-size: 17pt;
+    line-height: 1.35;
+    font-weight: 400;
+    color: rgba(255,255,255,0.75);
+    margin: 0;
+    max-width: 5.5in;
+  }
+  .cover-meta {
+    border-top: 1px solid rgba(255,255,255,0.18);
+    padding-top: 1.4em;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5em;
+    font-size: 9.5pt;
+    color: rgba(255,255,255,0.7);
+  }
+  .cover-meta strong { color: #fff; font-weight: 600; display: block; margin-bottom: 0.2em; font-size: 8.5pt; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255,255,255,0.5); }
+  .cover-confidential {
+    position: absolute;
+    top: 0.7in;
+    right: 0.7in;
+    font-size: 8.5pt;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--confidential);
+    background: rgba(255,255,255,0.04);
+    padding: 6px 14px;
+    border: 1px solid rgba(185,28,28,0.5);
+  }
+  .cover-accent {
+    position: absolute;
+    bottom: -100px;
+    right: -120px;
+    width: 360px;
+    height: 360px;
+    background: radial-gradient(circle, rgba(80,57,205,0.45) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  /* HEADERS / FOOTERS on inner pages */
+  .running-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 8.5pt;
+    color: var(--slate-light);
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    padding-bottom: 1em;
+    margin-bottom: 2em;
+    border-bottom: 1px solid var(--line);
+  }
+  .running-header .left { font-weight: 600; }
+  .running-footer {
+    position: absolute;
+    bottom: 0.5in;
+    left: 0.95in;
+    right: 0.95in;
+    display: flex;
+    justify-content: space-between;
+    font-size: 8.5pt;
+    color: var(--slate-light);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    padding-top: 0.6em;
+    border-top: 1px solid var(--line);
+  }
+
+  /* SECTION INTRO */
+  .section-eyebrow {
+    color: var(--purple);
+    font-size: 9pt;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    font-weight: 700;
+    margin-bottom: 0.6em;
+  }
+
+  /* STAT GRID */
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    margin: 1.4em 0;
+  }
+  .stat {
+    background: var(--cream);
+    border-left: 3px solid var(--purple);
+    padding: 14px 14px 12px;
+  }
+  .stat .v {
+    font-family: 'Georgia', serif;
+    font-size: 22pt;
+    line-height: 1;
+    color: var(--ink);
+    font-weight: 500;
+    letter-spacing: -0.02em;
+  }
+  .stat .l {
+    font-size: 8.5pt;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--slate-light);
+    margin-top: 6px;
+    font-weight: 600;
+  }
+  .stat.green { border-left-color: var(--green); }
+  .stat.cyan { border-left-color: var(--cyan); }
+  .stat.ink { border-left-color: var(--ink); }
+
+  /* CALLOUT BOX */
+  .callout {
+    background: var(--cream);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--purple);
+    padding: 16px 20px;
+    margin: 1.2em 0;
+    font-size: 10.5pt;
+  }
+  .callout strong { color: var(--purple-dark); }
+  .callout.green { border-left-color: var(--green); }
+  .callout.green strong { color: var(--green-deep); }
+
+  /* TABLES */
+  table.bank {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1em 0;
+    font-size: 10pt;
+  }
+  table.bank th, table.bank td {
+    padding: 9px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+  }
+  table.bank th {
+    background: var(--ink);
+    color: #fff;
+    font-weight: 600;
+    font-size: 8.5pt;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  table.bank tr:nth-child(even) td { background: var(--cream); }
+  table.bank td.num { text-align: right; font-variant-numeric: tabular-nums; font-family: 'Helvetica Neue', system-ui, sans-serif; }
+  table.bank tr.total td {
+    border-top: 2px solid var(--ink);
+    font-weight: 700;
+    color: var(--ink);
+    background: #fff !important;
+  }
+
+  /* PILLAR CARDS */
+  .pillars {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin: 1.3em 0;
+  }
+  .pillar {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    padding: 18px;
+    position: relative;
+  }
+  .pillar::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0;
+    width: 30px;
+    height: 3px;
+    background: var(--purple);
+  }
+  .pillar.green::before { background: var(--green); }
+  .pillar.cyan::before { background: var(--cyan); }
+  .pillar h4 {
+    margin-top: 0.4em;
+    color: var(--purple-dark);
+    font-family: 'Georgia', serif;
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: 13pt;
+    font-weight: 600;
+  }
+  .pillar.green h4 { color: var(--green-deep); }
+  .pillar.cyan h4 { color: var(--cyan); }
+  .pillar p { font-size: 10pt; }
+
+  /* CHART */
+  .chart-wrap {
+    background: var(--cream);
+    border: 1px solid var(--line);
+    padding: 22px 24px 18px;
+    margin: 1em 0 1.6em;
+  }
+  .chart-title {
+    font-size: 9pt;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--slate-light);
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .chart-subtitle {
+    font-size: 11pt;
+    color: var(--ink);
+    margin-bottom: 14px;
+    font-family: 'Georgia', serif;
+  }
+  .chart-note {
+    font-size: 8.5pt;
+    color: var(--slate-light);
+    margin-top: 10px;
+    font-style: italic;
+  }
+
+  /* TOC */
+  .toc {
+    margin-top: 0.6em;
+  }
+  .toc-row {
+    display: flex;
+    align-items: baseline;
+    border-bottom: 1px dotted var(--line);
+    padding: 0.18em 0;
+    font-size: 9.5pt;
+    line-height: 1.25;
+    break-inside: avoid;
+  }
+  .toc-row .num {
+    color: var(--purple-dark);
+    font-weight: 700;
+    width: 28px;
+    font-variant-numeric: tabular-nums;
+  }
+  .toc-row .title { flex: 1; color: var(--ink); }
+  .toc-row .page { color: var(--slate-light); font-variant-numeric: tabular-nums; font-size: 8.5pt; }
+  .toc-row.part {
+    border-bottom: 1.5px solid var(--ink);
+    border-top: none;
+    padding: 0.5em 0 0.2em;
+    margin-top: 0.5em;
+  }
+  .toc-row.part:first-child { margin-top: 0; }
+  .toc-row.part .title {
+    font-family: 'Georgia', serif;
+    font-size: 10.5pt;
+    color: var(--ink);
+    font-weight: 600;
+  }
+  .toc-row.part .num { color: var(--ink); }
+
+  /* CAP TABLE LEGEND */
+  .legend {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 22px;
+    margin-top: 14px;
+  }
+  .legend-row {
+    display: flex;
+    align-items: center;
+    font-size: 10pt;
+    color: var(--slate);
+  }
+  .legend-row .sw { width: 14px; height: 14px; margin-right: 10px; flex-shrink: 0; }
+  .legend-row .label { flex: 1; }
+  .legend-row .pct { font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
+
+  /* TWO-COL */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 28px;
+    margin: 1em 0;
+  }
+
+  /* PRINT */
+  @media print {
+    body { background: #fff; }
+    .doc { max-width: none; }
+    .page { box-shadow: none; }
+  }
+  @page { size: letter; margin: 0; }
+</style>
+</head>
+<body>
+<div class="doc">
+
+<!-- ====================================================== -->
+<!-- COVER PAGE                                              -->
+<!-- ====================================================== -->
+<section class="page cover">
+  <div class="cover-confidential">Strictly Confidential</div>
+  <div class="cover-accent"></div>
+  <div class="cover-inner">
+    <div>
+      <img class="cover-mark" src="brand-mark.svg" alt="SOCIII" />
+      <div class="cover-eyebrow">SOCIII, Inc. &nbsp;·&nbsp; Pre-Seed</div>
+      <h1 class="cover-title">Investor Memorandum</h1>
+      <p class="cover-subtitle">
+        A platform where domain experts build, govern, and earn from AI workers that operate inside their professional rules.
+      </p>
+    </div>
+
+    <div class="cover-meta">
+      <div>
+        <strong>Issuer</strong>
+        SOCIII, Inc.<br/>
+        Delaware C-Corporation<br/>
+        Formed May 19, 2026
+      </div>
+      <div>
+        <strong>Instrument</strong>
+        YC-style SAFE (rolling)<br/>
+        Minimum viable close: $500K<br/>
+        Base target: $1 – 2M<br/>
+        Open to strategic capital
+      </div>
+      <div>
+        <strong>Document</strong>
+        Pre-Seed Round<br/>
+        Issued May 25, 2026<br/>
+        Distribution: NDA-gated
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ====================================================== -->
+<!-- LEGAL DISCLAIMER (between cover and Section I)          -->
+<!-- ====================================================== -->
+<section class="page">
+  <div class="running-header">
+    <span class="left">Important Notices</span>
+    <span>SOCIII Pre-Seed</span>
+  </div>
+
+  <h2 style="margin-top:0.6in">Important Notices</h2>
+
+  <p style="font-size:10pt; line-height:1.55; margin-top:1em">
+    <strong>Confidential and proprietary.</strong> This memorandum is the confidential and proprietary information of SOCIII, Inc. (the "Company") and is provided solely to the recipient identified on the cover for the purpose of evaluating a potential investment in the Company. By accepting this memorandum, the recipient agrees to maintain its contents in strict confidence, to use it solely for evaluation purposes, and not to reproduce or distribute it without the Company's prior written consent. Recipients are bound by the terms of the executed non-disclosure agreement that governs the disclosure of this material.
+  </p>
+
+  <p style="font-size:10pt; line-height:1.55">
+    <strong>No offer, no solicitation.</strong> This memorandum does not constitute an offer to sell, or the solicitation of an offer to buy, any securities of the Company in any jurisdiction in which such offer or solicitation is unlawful. Any offer of securities, if made, will be made only by means of a definitive subscription or financing agreement, and only to accredited investors who have established suitability through customary diligence.
+  </p>
+
+  <p style="font-size:10pt; line-height:1.55">
+    <strong>Forward-looking statements.</strong> This memorandum contains forward-looking statements regarding the Company's strategy, market opportunity, product roadmap, financial projections, and competitive position. These statements reflect current expectations and assumptions that may prove incorrect. Actual results may differ materially. Forward-looking statements include those identified by terms such as "expect," "plan," "intend," "anticipate," "project," "target," "believe," "estimate," and similar expressions. The Company undertakes no obligation to update these statements.
+  </p>
+
+  <p style="font-size:10pt; line-height:1.55">
+    <strong>Risk factors.</strong> An investment in the Company involves substantial risk, including risks specific to the Company, its industry, regulatory environment, and the macro environment. Prospective investors should review the risk factors in Section VIII before deciding to invest. The risks summarized in this memorandum are not exhaustive, and additional risks not currently known to management or deemed immaterial may also impair the Company's business.
+  </p>
+
+  <p style="font-size:10pt; line-height:1.55">
+    <strong>No representation.</strong> No representation or warranty, express or implied, is made as to the accuracy or completeness of the information contained in this memorandum. The Company disclaims any obligation to update or revise any statement to reflect events or circumstances after the date of this memorandum. Information from third-party sources is believed to be reliable but has not been independently verified.
+  </p>
+
+  <p style="font-size:10pt; line-height:1.55">
+    <strong>Tax and legal considerations.</strong> Prospective investors should consult their own tax, legal, accounting, and financial advisors regarding an investment in the Company. The Company and its officers, directors, and advisors are not providing tax, legal, accounting, or financial advice to any prospective investor.
+  </p>
+
+  <p style="font-size:10pt; line-height:1.55">
+    <strong>Patents.</strong> SOCIII has filed six provisional patent applications with the USPTO covering its core technology. Patent applications are pending and no claims have yet issued. Patent protection is not guaranteed; references to the patent portfolio in this memorandum are descriptions of filings, not assertions of issued claims.
+  </p>
+
+  <p style="font-size:10pt; line-height:1.55; margin-top:1.4em; padding-top:0.6em; border-top:1px solid #cbd5e1; color:#475569">
+    SOCIII, Inc. is a Delaware C-corporation formed May 19, 2026, with its principal office at 1810 E Sahara Avenue, Suite 75942, Las Vegas, NV 89104. EIN 42-2675951. Inquiries: <a href="mailto:legal@sociii.ai">legal@sociii.ai</a>.
+  </p>
+
+  <div class="running-footer"><span>SOCIII Inc.</span><span>ii</span></div>
+</section>
+
+<!-- ====================================================== -->
+<!-- I — EXECUTIVE SUMMARY                                   -->
+<!-- ====================================================== -->
+<section class="page">
+  <div class="running-header">
+    <span class="left">I. Executive Summary &amp; Highlights</span>
+    <span>SOCIII Pre-Seed</span>
+  </div>
+
+  <div class="section-eyebrow">Part I</div>
+  <h2>Executive Summary</h2>
+
+  <p class="lead">
+    SOCIII is a platform where seasoned professionals &mdash; the ICU nurse with 20 years of bedside judgment, the master mechanic who can diagnose by sound, the title clerk who knows the county's unwritten rules, the real-estate broker who has seen three market cycles &mdash; <strong>capture both the rules and the judgment of their work into a digital worker that other practitioners subscribe to.</strong> The expert keeps doing the work; the worker scales the knowledge to colleagues, juniors, and the next generation. <strong>The mechanism that makes the platform grow is direct economic incentive: every creator earns 75% of every subscription and 20% of the data (token) fees on every worker they author.</strong> Domain experts participate because they get paid, not because they are recruited. Every output runs inside a four-tier rules engine and is recorded in an append-only audit trail. SOCIII Inc. is a Delaware C-corporation formed May 19, 2026.
+  </p>
+
+  <p style="font-size:10.5pt; color:var(--slate-mid); margin-top:-0.4em">
+    The platform exists because a generation of practitioners is retiring with judgment that no textbook captures. SOCIII gives them a way to preserve it &mdash; and earn from it &mdash; before it leaves the profession entirely.
+  </p>
+
+  <div class="callout green" style="margin-top:0.8em">
+    <strong>The capital-efficiency punchline.</strong> Building dApps the prior generation required burning <strong>~$35,000 per week</strong> on a dedicated dev team. Today's platform development &mdash; inclusive of AI tokens, API costs, infrastructure, and tooling &mdash; runs at approximately <strong>~$35,000 every six months</strong>. That is an order-of-magnitude reduction in the largest line item a software startup carries. The mechanism is humans plus digital workers: SOCIII runs on its own workers (Alex, Marketing, Accounting, HR, Contacts, Control Center) with Anthropic Claude as the lead developer. The next dollar of investor capital extends the ratio rather than resetting it.
+  </div>
+
+  <div class="stat-grid">
+    <div class="stat">
+      <div class="v">1,000+</div>
+      <div class="l">Workers shipped &mdash; scale test, not endpoint</div>
+    </div>
+    <div class="stat green">
+      <div class="v">8</div>
+      <div class="l">Live verticals</div>
+    </div>
+    <div class="stat cyan">
+      <div class="v">~50&times;</div>
+      <div class="l">Dev-cost reduction vs prior generation</div>
+    </div>
+    <div class="stat ink">
+      <div class="v">$0</div>
+      <div class="l">Outside capital to date</div>
+    </div>
+  </div>
+
+  <h3>What we are raising</h3>
+  <p>
+    An open, rolling YC-style SAFE round. <strong>Minimum viable close: $500K</strong> (clears inherited debt service and extends operating runway). <strong>Base target: $1&ndash;2M</strong> (funds the 18-month commercial launch plan in §VII.4). <strong>Upper end: open to strategic capital up to $5M+</strong> if the right partners participate. Pricing is anchored to the AI-agent-platform comp set and finalized with the lead investor; vertical-AI references (Harvey AI at ~$3B) anchor the upside framing. The founder self-funded the prior twelve months of personal runway; SOCIII is choosing this raise rather than requiring it. Any close above $500K materially advances the plan; the band scales with investor demand rather than capping it.
+  </p>
+
+  <h3>Investment highlights</h3>
+
+  <div class="pillars">
+    <div class="pillar">
+      <h4>Defensible IP, filed</h4>
+      <p>Six provisional patent applications filed with USPTO May 24, 2026, covering audit trail, rules engine, Sandbox composition, document control, DTC primitive, and multi-tier RAAS architecture. Conversion deadline May 2027.</p>
+    </div>
+    <div class="pillar green">
+      <h4>Production, not pitch</h4>
+      <p>Platform has been live since 2024 across aviation Part&nbsp;135/91, real estate, auto dealer, government, and title &amp; escrow. Reference customers available in each vertical.</p>
+    </div>
+    <div class="pillar cyan">
+      <h4>Expertise as recurring income</h4>
+      <p>Creators earn 75% of every subscription and 20% of the data (token) fees on every worker they author. The nurse, the mechanic, the broker monetizes their judgment for the first time &mdash; and SOCIII's growth bottleneck becomes the labor pool of professionals willing to participate, not the labor pool of engineers we can hire.</p>
+    </div>
+  </div>
+
+  <h3>Capital efficiency to date</h3>
+  <p>
+    The operating thesis is best understood as a generational shift in dev-stack economics. At the prior peak &mdash; a small team building real-estate dApps in 2022&ndash;2024 &mdash; the dedicated dev-team burn ran at <strong>~$35,000 per week</strong>, the cost of a roughly 25-person engineering organization. Today, the equivalent platform-development burn &mdash; inclusive of every AI token, API call, and piece of infrastructure &mdash; runs at <strong>~$35,000 every six months</strong>. Same dollar, ~50&times; further reach, because the lead developer is Anthropic Claude rather than a payroll. The mechanism is the platform building the platform: SOCIII runs on its own workers (Alex, Marketing, Accounting, HR, Contacts, Control Center). The next dollar of investor capital extends that ratio rather than resetting it.
+  </p>
+
+  <div class="callout">
+    <strong>The investor question this memo answers.</strong> The AI agent category opened up commercially in the last six months. NanoClaw raised $12M in six weeks. The question is no longer "is this a category?" but "which platforms in this category will compound?" SOCIII argues that the platforms which compound are the ones where the people who <em>know the work</em> &mdash; not the people who know to code &mdash; can participate. That accessibility-to-domain-experts thesis is what this document defends.
+  </div>
+
+  <div class="running-footer"><span>SOCIII Inc.</span><span>3</span></div>
+</section>
+
+<!-- ====================================================== -->
+<!-- II — THE COMPANY                                        -->
+<!-- ====================================================== -->
+<section class="page cream">
+  <div class="running-header"><span class="left">II. The Company &amp; The Category</span><span>SOCIII Pre-Seed</span></div>
+  <div class="section-eyebrow">Part II</div>
+  <h2>The Company &amp; The Category</h2>
+
+  <h3>What SOCIII is, plainly</h3>
+  <p>SOCIII is an AI agent platform built around a specific bet: the workers that compound in regulated, high-judgment professions will be the ones built by the practitioners themselves, not by AI engineers contracted to study them. A nurse with 20 years of clinical experience can describe her judgment in conversation and the platform composes a worker that captures it. Her colleagues subscribe. She earns 75% of every subscription on a worker she built in an afternoon. The category is not new &mdash; Salesforce, Microsoft, and Google have all shipped agent-branded products; NanoClaw raised $12M on enterprise positioning; LangChain and AutoGen have matured from research toolkits to production frameworks &mdash; but none of those platforms is structured to recruit and pay the domain experts whose judgment makes the work valuable in the first place.</p>
+
+  <h3>How SOCIII differs from adjacent products</h3>
+
+  <table class="bank">
+    <thead>
+      <tr><th>Adjacent product</th><th>What it does</th><th>How SOCIII differs</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>ChatGPT / Claude</strong></td>
+        <td>General-purpose chat. Stateless conversation.</td>
+        <td>SOCIII records every output in an append-only audit trail. Rules engine validates outputs before delivery. Creators own and earn from the workers they build.</td>
+      </tr>
+      <tr>
+        <td><strong>LangChain / AutoGen</strong></td>
+        <td>Frameworks for developers to compose agents from code.</td>
+        <td>SOCIII is a platform for domain experts. The Sandbox composes workers from natural-language descriptions of work and rules &mdash; no coding required.</td>
+      </tr>
+      <tr>
+        <td><strong>Salesforce Agentforce / Microsoft Copilot</strong></td>
+        <td>Agents bolted onto existing enterprise platform seats.</td>
+        <td>SOCIII targets verticals whose data models do not sit naturally in CRM or productivity suites: aviation maintenance, county recording, dispatch.</td>
+      </tr>
+      <tr>
+        <td><strong>NanoClaw</strong></td>
+        <td>Enterprise agent platform, sales-led, white-glove implementation.</td>
+        <td>SOCIII's growth bottleneck is domain experts, not solution architects. See §3.3 on the team-risk inversion.</td>
+      </tr>
+      <tr>
+        <td><strong>Vertical SaaS incumbents</strong></td>
+        <td>Software for a specific industry; workflows fixed at vendor design time.</td>
+        <td>SOCIII covers the long tail of professional work that vertical SaaS cannot economically ship as features.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Three layers of differentiation</h3>
+  <p>SOCIII's architectural identity is described as three things, all of which are running in production today.</p>
+
+  <div class="pillars" style="margin-top:1em">
+    <div class="pillar">
+      <h4>Audit Trail</h4>
+      <p style="font-size:9.5pt"><em>Provisional 64/073,700</em></p>
+      <p>Every output is event-sourced, append-only, optionally anchored to a public blockchain. State is computed from event history; records are never overwritten. For regulated verticals this is not a feature &mdash; it is a deployability prerequisite.</p>
+    </div>
+    <div class="pillar green">
+      <h4>RAAS Four-Tier Guardrails</h4>
+      <p style="font-size:9.5pt"><em>Provisional 64/073,708</em></p>
+      <p><strong>Tier 0</strong> Platform Safety &mdash; universal rules, immutable. <strong>Tier 1</strong> Industry Regulations &mdash; FAR/AIM, NCLEX, state RE law, HIPAA, Reg&nbsp;D, compiled once. <strong>Tier 2</strong> Operator Policies &mdash; creator-editable for the deployment. <strong>Tier 3</strong> User Preferences &mdash; subscriber-editable within all tiers above. The model proposes; the rules engine validates; only validated outputs reach the user.</p>
+    </div>
+    <div class="pillar cyan">
+      <h4>Build-Without-Code</h4>
+      <p style="font-size:9.5pt"><em>Provisional 64/073,704</em></p>
+      <p>The Sandbox surface where a domain expert describes their work in plain conversation and the platform composes a worker around their judgment. The expert keeps their day job; the worker scales their judgment to colleagues, juniors, and the next generation &mdash; and pays the expert on every subscription. Accessibility to the people who know the work is the long-term moat.</p>
+    </div>
+  </div>
+
+  <div class="running-footer"><span>SOCIII Inc.</span><span>5</span></div>
+</section>
+
+<!-- ====================================================== -->
+<!-- III — MARKET                                            -->
+<!-- ====================================================== -->
+<section class="page">
+  <div class="running-header"><span class="left">III. Market &amp; Competition</span><span>SOCIII Pre-Seed</span></div>
+  <div class="section-eyebrow">Part III</div>
+  <h2>Market &amp; Competition</h2>
+
+  <h3>Market sizing framework</h3>
+  <p>The agent platform category is forming, so market sizing is more useful as framing than precision. Three reference layers:</p>
+
+  <table class="bank">
+    <thead><tr><th>Layer</th><th>Annual size</th><th>SOCIII relevance</th></tr></thead>
+    <tbody>
+      <tr><td>Vertical SaaS — aviation, real estate, auto dealer, gov, healthcare</td><td class="num">~$200B</td><td>Long-tail workflow &amp; compliance layer SaaS can't ship</td></tr>
+      <tr><td>Workflow-and-compliance addressable layer</td><td class="num">$30B – $40B</td><td>Direct addressable market</td></tr>
+      <tr><td>Consumer &amp; prosumer AI</td><td class="num">$50B – $100B</td><td>Slice where users have monetizable professional knowledge</td></tr>
+      <tr><td>Professional-knowledge prosumer slice</td><td class="num">$5B – $10B</td><td>Sandbox-side addressable</td></tr>
+      <tr><td>Platform marketplace ceiling (long-term)</td><td class="num">$1T+ <em>(App Store reference)</em></td><td>Upper bound only; not modeled in the round case</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Comparable companies &amp; valuations</h3>
+
+  <!-- COMP VALUATION CHART -->
+  <div class="chart-wrap">
+    <div class="chart-title">Competitive landscape — agent platform category</div>
+    <div class="chart-subtitle">Reference valuations and what each one signals to investors</div>
+
+    <img src="comp-chart.png" alt="Comp set valuation bar chart — SOCIII, OpenClaw, Harvey AI, Legacy SaaS, ChatGPT" style="width:100%; max-width:700px; display:block; margin:0 auto;" />
+    <div class="chart-note">Bar widths reflect a log-spaced visualization &mdash; not linear &mdash; designed to show the category sweep from pre-seed (~$50M) through verified vertical AI ($3B) through replaceable legacy SaaS ($40&ndash;300B) through unreachable general-purpose ($157B). Harvey AI is the closest single comp to SOCIII's positioning.</div>
+  </div>
+
+  <h3>The team-risk inversion</h3>
+  <p>The cleanest single frame for the difference between SOCIII and a sales-led agent platform.</p>
+
+  <div class="two-col">
+    <div>
+      <h4 style="color:var(--slate-mid)">Sales-led agent platform</h4>
+      <p style="font-size:10pt">Grows by hiring solution architects. Each new customer requires a custom implementation. Team size grows approximately linearly with customer count. Margins compress as the services-to-software ratio shifts toward services. Growth ceiling is set by recruitable solution-architect labor.</p>
+    </div>
+    <div>
+      <h4 style="color:var(--purple-dark)">SOCIII platform model</h4>
+      <p style="font-size:10pt">Grows by recruiting domain experts to build their own workers. New verticals do not require new engineering hires. Team-size growth scales with platform and ops needs, not implementation work. Growth ceiling is set by the labor pool of professionals willing to monetize their knowledge &mdash; a fundamentally larger number.</p>
+    </div>
+  </div>
+
+  <div class="callout green">
+    <strong>The investor question this frames.</strong> Are you funding a platform that needs to scale its services org with its revenue, or a platform that compounds without growing a services org at all? The unit economics of the two are not comparable.
+  </div>
+
+  <div class="running-footer"><span>SOCIII Inc.</span><span>8</span></div>
+</section>
+
+<!-- ====================================================== -->
+<!-- IV — DEFENSIBLE POSITION                                -->
+<!-- ====================================================== -->
+<section class="page cream">
+  <div class="running-header"><span class="left">IV. Defensible Position</span><span>SOCIII Pre-Seed</span></div>
+  <div class="section-eyebrow">Part IV</div>
+  <h2>Defensible Position</h2>
+
+  <p class="lead">Four layers, listed in descending order of how quickly they can be replicated by a well-funded entrant.</p>
+
+  <h3>4.1 &nbsp; The patent family</h3>
+  <p>Six provisional applications filed via USPTO EFS-Web on May 24, 2026. Each application cites a 2023 patent (18/398,973, now public) and a December 2024 logbook as the foundation for a continuous invention thread. The strategy is prior-art-as-priority: new claims protect system-level composition that builds on the cited foundation, not primitives a competitor could independently invent. Conversion deadline is May 2027.</p>
+
+  <table class="bank">
+    <thead><tr><th style="width:130px">Application</th><th>Coverage</th><th style="width:170px">Relevance</th></tr></thead>
+    <tbody>
+      <tr><td><strong>64/073,693</strong></td><td>Knowledge Capture &mdash; pipeline by which founder + AI conversations become worker rules and platform knowledge</td><td>Sandbox upstream + worker authoring pipeline</td></tr>
+      <tr><td><strong>64/073,700</strong></td><td>Audit Trail &mdash; append-only event store with optional public-chain anchoring</td><td>Compliance moat for regulated verticals</td></tr>
+      <tr><td><strong>64/073,704</strong></td><td>Build-Without-Code &mdash; the Sandbox surface and worker-composition pipeline</td><td>Accessibility moat</td></tr>
+      <tr><td><strong>64/073,705</strong></td><td>Escrow Locker &mdash; document control with cryptographic acknowledgment, version pinning, distribution tracking</td><td>Document control as a platform primitive</td></tr>
+      <tr><td><strong>64/073,706</strong></td><td>Title &amp; Property Assurance &mdash; Digital Title Certificate (DTC), parent-child certificate composition</td><td>Real estate &amp; title vertical; brand mark</td></tr>
+      <tr><td><strong>64/073,708</strong></td><td>RAAS Multi-Tier &mdash; rules engine's three-tier architecture and runtime validation pipeline</td><td>Rules-engine moat</td></tr>
+    </tbody>
+  </table>
+
+  <h3>4.2 &nbsp; The RAAS corpus</h3>
+  <p>The rules engine itself is an engineering primitive a competitor could replicate in a quarter. The corpus is not. Two years of professional-rule encoding across more than 200 verticals, each rule written and reviewed by someone who actually knows the rule, is the layer that does not show up in a feature comparison and does not compress on a roadmap.</p>
+
+  <div class="callout">
+    <strong>What a competitor sees, and what they do not.</strong> A competitor reading our patent applications sees the architecture. They do not see how long it took to make it work in production, how many domain experts we burned through before we knew what a rule definition needed to look like, or which rule formulations regulators actually accept under audit. Those are corpus facts, not architecture facts.
+  </div>
+
+  <h3>4.3 &nbsp; Production deployment</h3>
+  <p>SOCIII has been in production since 2024 across aviation Part&nbsp;135/91, real estate, auto dealer, government (DMV, recording, permitting, inspections), and title &amp; escrow. Healthcare and EMS are in development. A buyer doing a reference call to a Part&nbsp;135 operator running a SOCIII dispatch worker gets a different signal than a buyer doing a demo with a platform still in pilot.</p>
+
+  <div class="running-footer"><span>SOCIII Inc.</span><span>10</span></div>
+</section>
+
+<!-- ====================================================== -->
+<!-- V — TEAM                                                -->
+<!-- ====================================================== -->
+<section class="page">
+  <div class="running-header"><span class="left">V. Team &amp; Governance</span><span>SOCIII Pre-Seed</span></div>
+  <div class="section-eyebrow">Part V</div>
+  <h2>Team &amp; Governance</h2>
+
+  <h3>5.1 &nbsp; Not headcount. An AI shop.</h3>
+  <p>SOCIII runs on SOCIII. Eight humans set strategy. The platform's own workers run the company: Alex (Chief of Staff), Marketing, Accounting, HR, Contacts, Fundraise, Control Center. That is the dogfood proof and the structural reason the team scales without friction.</p>
+
+  <table class="bank">
+    <thead><tr><th>Name</th><th>Background</th><th>Scope at SOCIII</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>Sean Combs</strong><br/><em style="font-size:9pt; color:var(--slate-light)">Founder &amp; CEO</em></td>
+        <td>Aviation · RE Development · Technology spine. Active pilot. Built the platform 2024&ndash;present; self-funded prior twelve months.</td>
+        <td>Platform, product, engineering, operations. Runs Alex (CoS), Marketing, Accounting, HR, Contacts, Control Center workers.</td>
+      </tr>
+      <tr>
+        <td><strong>Kent Redwine</strong><br/><em style="font-size:9pt; color:var(--slate-light)">Cofounder</em></td>
+        <td>Bank of America · Thomas Weisel · capital markets.</td>
+        <td>Fundraising &amp; investor reporting. Operates the Fundraise worker, IR, cap table, Data Room. 15% milestone-vested + 5% success fee on capital sourced.</td>
+      </tr>
+      <tr>
+        <td><strong>Scott Eschelman</strong><br/><em style="font-size:9pt; color:var(--slate-light)">Advisor</em></td>
+        <td>BuildSF · California mixed-use developer.</td>
+        <td>Development &amp; security. Claude Code dev workers + security scanning. ~$5K/mo replaces a 25-person dev shop.</td>
+      </tr>
+      <tr>
+        <td><strong>Ruthie Clearwater, PhD</strong><br/><em style="font-size:9pt; color:var(--slate-light)">Creator community lead</em></td>
+        <td>University of Hawai'i nursing · EMS flight nurse.</td>
+        <td>Onboarding, support, payouts, marketplace ops. The professional-community distribution model exemplified.</td>
+      </tr>
+      <tr>
+        <td><strong>Elise van der Bel</strong></td>
+        <td>EU ecommerce · Digital Product Passport regulation.</td>
+        <td>Sandbox &mdash; no-code worker authoring. Domain experts build workers by conversation.</td>
+      </tr>
+      <tr>
+        <td><strong>Eric Altshuler</strong></td>
+        <td>Naval Aviator &mdash; <strong>Top Gun graduate</strong> &middot; FedEx 777 Pilot.</td>
+        <td>Terminal &amp; open source. Engineers pair-program with AI; OSS contributions. Aviation vertical sounding board.</td>
+      </tr>
+      <tr>
+        <td><strong>Kim Bennett</strong></td>
+        <td>PropertyRadar · real estate data pioneer.</td>
+        <td>Patent &amp; IP. Provisional drafting, prior-art search, claim management.</td>
+      </tr>
+      <tr>
+        <td><strong>Robert Rosenberg</strong></td>
+        <td>Oracle · infrastructure · legal · compliance.</td>
+        <td>Plus on-demand specialty workers authored as the day requires.</td>
+      </tr>
+      <tr>
+        <td><strong>Alex</strong><br/><em style="font-size:9pt; color:var(--slate-light)">AI Chief of Staff</em></td>
+        <td>Platform-entitled AI worker present in every SOCIII user account on signup.</td>
+        <td>Customer-facing IR, sales, support across all surfaces. Not headcount.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>5.2 &nbsp; Post-round hiring plan</h3>
+
+  <p>The deliberate non-hire is solution architects. SOCIII grows by recruiting domain experts to build their own workers, not by hiring a services org. First-six-months hires:</p>
+
+  <table class="bank">
+    <thead><tr><th>Role</th><th>Count</th><th>Profile</th></tr></thead>
+    <tbody>
+      <tr><td>Senior generalist engineer</td><td class="num">2 – 3</td><td>Cross-stack; rules engine, audit layer, worker-composition pipeline.</td></tr>
+      <tr><td>Product designer</td><td class="num">1</td><td>Strong consumer-product instincts. Accessibility for non-engineer domain experts is the design constraint.</td></tr>
+      <tr><td><strong>Solution architects</strong></td><td class="num">0</td><td>Intentionally zero. The team-risk inversion is the structural commitment.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>5.3 &nbsp; IP &amp; governance posture</h3>
+
+  <p><strong>Day 0 IP assignment.</strong> All pre-formation IP &mdash; the platform, the worker library, the patent family, the RAAS corpus, the DTC audit layer &mdash; was assigned to SOCIII Inc. at formation. Every contributor with repo or data access has signed an Invention Assignment Agreement (IAA) before access. Institutional capital can wire same-day; there is no IP-cleanup tail.</p>
+
+  <p><strong>Sole-manager governance.</strong> Sean is the sole founder structurally; the company operates under sole-manager governance through the Series A trigger ($150K MRR). Kent operates as cofounder externally with milestone-vested equity scoped to fundraising and BD. Advisors hold equity but not voting control. The structural decision is engineered for fast institutional fundraising and clean exit optionality.</p>
+
+  <div class="callout">
+    <strong>Why this posture, specifically.</strong> The HOM DAO experience produced this stance: distributed IP control without enforcement mechanisms is a hostage situation. Voting tokens are participation; cap-table equity is control. SOCIII separates the two intentionally. Pre-formation creditors are honored from the founder allocation, not from investor dilution &mdash; see §6.2.
+  </div>
+
+  <p><em style="font-size:10pt">HOM DAO's blockchain heritage evolved into the platform's Digital Title Certificate (DTC) audit layer. The same chain-anchor primitives that powered distributed real-estate dApp ownership now provide provable, traceable, defensible audit trails for every worker output. The technical inheritance is direct; the governance inheritance is exactly inverted.</em></p>
+
+  <div class="running-footer"><span>SOCIII Inc.</span><span>12</span></div>
+</section>
+
+<!-- ====================================================== -->
+<!-- VI — CAP TABLE                                          -->
+<!-- ====================================================== -->
+<section class="page cream">
+  <div class="running-header"><span class="left">VI. Capital Structure</span><span>SOCIII Pre-Seed</span></div>
+  <div class="section-eyebrow">Part VI</div>
+  <h2>Capital Structure</h2>
+
+  <h3>6.1 &nbsp; Cap table (illustrative post-round)</h3>
+
+  <p>Illustrative for the planning round size. Exact percentages depend on round size and are specified in the Data Room model. The founder allocation post-round lands between approximately 47% (worst case) and 60%+ (realistic case).</p>
+
+  <!-- CAP TABLE DONUT -->
+  <div class="chart-wrap" style="display:grid; grid-template-columns: 240px 1fr; gap:36px; align-items:center;">
+    <div>
+      <img src="cap-table-donut.png" alt="Cap table donut — illustrative post-round allocation" style="width:220px; height:220px; display:block;" />
+    </div>
+
+    <div>
+      <div class="chart-title">Cap table</div>
+      <div class="chart-subtitle">Illustrative post-round equity allocation</div>
+      <div class="legend" style="grid-template-columns:1fr">
+        <div class="legend-row"><span class="sw" style="background:#5039CD"></span><span class="label">Founder (Sean Combs)</span><span class="pct">~49.0%</span></div>
+        <div class="legend-row"><span class="sw" style="background:#7C3AED"></span><span class="label">Cofounder (Kent Redwine, milestone-vested)</span><span class="pct">15.0%</span></div>
+        <div class="legend-row"><span class="sw" style="background:#3D8959"></span><span class="label">Equity pool &mdash; advisors + future hires + creator-path</span><span class="pct">30.0%</span></div>
+        <div class="legend-row"><span class="sw" style="background:#2D248F"></span><span class="label">Pre-formation creditor warrants (from founder)</span><span class="pct">~1.7%</span></div>
+        <div class="legend-row"><span class="sw" style="background:#0F172A"></span><span class="label">New investors (this round)</span><span class="pct">~4.3%</span></div>
+      </div>
+      <div class="chart-note">The 30% equity pool is the institutional-grade structure: it absorbs advisors (up to 2.5%), future employees (the largest single sub-allocation), and creator-path warrants. New-investor % flexes with cap and raise size. Plus: 5% success fee on capital sourced paid to Kent on performance (not equity grant). Data Room model shows dilution at multiple cap and raise scenarios.</div>
+    </div>
+  </div>
+
+  <h3>6.2 &nbsp; Pre-formation creditor warrants</h3>
+  <p>Approximately <strong>$615,000 of documented exposure</strong> across roughly eight stakeholders from three prior ventures (HOM DAO, RealEx, TitleApp&nbsp;LLC). The resolution honors that exposure with basis-point warrant grants tiered to how many ventures the creditor participated in. The total cap-table footprint is approximately 1.7%, <strong>absorbed entirely from the founder's allocation, not from investor dilution.</strong></p>
+
+  <div class="callout">
+    <strong>Why this matters to a new investor.</strong> Prior-venture creditors are being paid first, from the founder's slice, before new investors see the cap table. The papering is documented in the Pre-Formation Creditor Warrants Memo (May 22, 2026, in the Data Room) and the legal instruments are counsel-reviewed.
+  </div>
+
+  <div class="running-footer"><span>SOCIII Inc.</span><span>14</span></div>
+</section>
+
+<!-- ====================================================== -->
+<!-- VII — FINANCIALS                                        -->
+<!-- ====================================================== -->
+<section class="page">
+  <div class="running-header"><span class="left">VII. Financials &amp; Capital Efficiency</span><span>SOCIII Pre-Seed</span></div>
+  <div class="section-eyebrow">Part VII</div>
+  <h2>Financials &amp; Capital Efficiency</h2>
+
+  <h3>7.1 &nbsp; Historical platform-build economics</h3>
+  <p>The platform underlying SOCIII was built across two prior structural eras and one current one. The shift in operating cost between them is the load-bearing argument of this raise.</p>
+
+  <table class="bank">
+    <thead><tr><th>Era</th><th>Platform-dev burn</th><th>Mechanism</th></tr></thead>
+    <tbody>
+      <tr><td>Prior-generation dApp build (2022&ndash;2024)</td><td class="num">~$35,000 / week</td><td>Dedicated dev team (~25 engineers) building real-estate dApps the way that generation required. Burned at the rate of a typical seed-stage engineering organization.</td></tr>
+      <tr><td>Founder bootstrap window (2024&ndash;2026)</td><td class="num">~$35,615 over 3 years</td><td>Productized title search inside a Delaware LLC. ~$1,000/month average. The worker platform that emerged from this work became the real product. TitleApp&nbsp;LLC is now winding down; platform IP and creditor positions paper into SOCIII&nbsp;Inc.</td></tr>
+      <tr class="total"><td>Current SOCIII platform-dev pace</td><td class="num">~$35,000 every 6 months</td><td>Humans plus digital workers. Lead developer: Anthropic Claude. All-inclusive figure &mdash; AI tokens, API costs, infrastructure, tooling. Roughly $5,800/month doing the work of a ~25-person dev shop.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout">
+    <strong>What this table is saying.</strong> The same category of platform-engineering work that cost <strong>~$35,000 per week</strong> in the prior generation now runs at <strong>~$35,000 every six months</strong> &mdash; an order-of-magnitude reduction in the largest line item a software company carries. SOCIII does not hire an engineering org and lay it off when the market turns; it starts without that exposure entirely and scales as fast as the underlying AI models scale. The next dollar of investor capital extends that ratio rather than resetting it. This is how a software startup compounds the most expensive part of its operating cost &mdash; by replacing it with a function call.
+  </div>
+
+  <h4>Other prior-entity items, for completeness</h4>
+  <table class="bank">
+    <thead><tr><th>Item</th><th>Amount</th><th>Treatment</th></tr></thead>
+    <tbody>
+      <tr><td>Documented prior-venture creditor exposure (3 ventures)</td><td class="num">~$615,000</td><td>Papered into SOCIII via creditor warrants (§6.2); absorbed from founder allocation.</td></tr>
+      <tr><td>Known TitleApp&nbsp;LLC liabilities at wind-down</td><td class="num">~$228,000</td><td>Subset of the $615K above; resolution scheduled through wind-down packet.</td></tr>
+      <tr><td>SOCIII&nbsp;Inc. opening balance (shareholder loan from founder)</td><td class="num">$1,000</td><td>Stripe Atlas formation; Stripe Treasury operating account.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>7.2 &nbsp; Capital efficiency benchmark</h3>
+
+  <div class="chart-wrap">
+    <div class="chart-title">Capital efficiency — prior platform build</div>
+    <div class="chart-subtitle">Cumulative business OPEX to reach production deployment</div>
+
+    <img src="capital-efficiency.png" alt="Capital efficiency comparison — SOCIII $35,000 vs VC-backed competitor $5M+" style="width:100%; max-width:700px; display:block; margin:0 auto;" />
+    <div class="chart-note">Visual not to scale: TitleApp bar is shown at minimum visible width to remain legible. At true scale TitleApp's $35.6K bar would be approximately one pixel wide against the industry benchmark.</div>
+  </div>
+
+  <p>The interpretation that matters: the founding team has already demonstrated that it can build a production AI platform across five verticals on a budget that would not fund a single senior engineer hire at most agent-platform competitors. Capital efficiency is the most expensive thing to teach a founding team; SOCIII does not need to be taught.</p>
+
+  <h3>7.3 &nbsp; Revenue architecture &mdash; five streams, three near-100% margin</h3>
+
+  <p>The platform monetizes through five independent revenue streams, three of which run at near-100% gross margin. Which stream dominates over the next two to three years is genuinely unknowable; it depends on which user behavior compounds fastest and how mass adoption unfolds. The structural point is that the platform does not depend on a single answer.</p>
+
+  <table class="bank">
+    <thead><tr><th>Stream</th><th>Pricing</th><th>Gross margin</th><th>Creator share</th><th>Scales with</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Subscription</strong></td><td class="num">$29 – $99/mo</td><td class="num">~75%</td><td class="num">75%</td><td>Creator + subscriber growth</td></tr>
+      <tr><td><strong>Data Credits</strong></td><td class="num">$0.02/credit</td><td class="num">~90%</td><td class="num">0%</td><td>Usage; Alex upsells bulk top-ups</td></tr>
+      <tr><td><strong>API Pass-Through</strong></td><td class="num">2× cost floor</td><td class="num">50 – 85%</td><td class="num">75%</td><td>Data richness per session</td></tr>
+      <tr><td><strong>Audit Trail</strong></td><td class="num">$0.005/record</td><td class="num">~95%</td><td class="num">0%</td><td>Regulated-vertical sessions</td></tr>
+      <tr><td><strong>Creator License</strong></td><td class="num">$49/yr</td><td class="num">~100%</td><td class="num">0%</td><td>Total creator population</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout">
+    <strong>The honest answer on revenue mix.</strong> We do not project which stream will dominate over the next 2&ndash;3 years. Subscriptions could lead if mass adoption arrives via creator-built workers. Data Credits and API Pass-Through could lead if enterprise workflow volume compounds faster than seat growth. Audit Trail could lead if regulated verticals adopt fastest because the compliance pressure is most immediate there. The investor takeaway is that <strong>all five are wired and metering today</strong>; the platform balances on five streams rather than one.
+  </div>
+
+  <h3>7.4 &nbsp; Use of proceeds &mdash; $1.75M base allocation</h3>
+
+  <p><strong>First $250K clears inherited debt obligations.</strong> Remaining $1.5M funds commercial launch, community activation, and 18-month runway. Profitable at month 24 with or without this check.</p>
+
+  <!-- USE OF PROCEEDS DONUT -->
+  <div class="chart-wrap" style="display:grid; grid-template-columns: 240px 1fr; gap:36px; align-items:center;">
+    <div>
+      <img src="use-of-proceeds-donut.png" alt="Use of proceeds donut — $1.75M allocation" style="width:220px; height:220px; display:block;" />
+    </div>
+    <div>
+      <div class="chart-title">Use of proceeds</div>
+      <div class="chart-subtitle">Allocation across 18-month operating horizon</div>
+      <div class="legend" style="grid-template-columns:1fr">
+        <div class="legend-row"><span class="sw" style="background:#2D248F"></span><span class="label">Debt service &mdash; honors inherited obligations</span><span class="pct">$250K</span></div>
+        <div class="legend-row"><span class="sw" style="background:#5039CD"></span><span class="label">Trade conferences &amp; industry presence</span><span class="pct">$500K</span></div>
+        <div class="legend-row"><span class="sw" style="background:#3D8959"></span><span class="label">Professional network activation (200+ experts)</span><span class="pct">$500K</span></div>
+        <div class="legend-row"><span class="sw" style="background:#0686D4"></span><span class="label">18-month runway + operations</span><span class="pct">$500K</span></div>
+      </div>
+      <div class="chart-note">Detailed breakdown in the Data Room. Numbers reflect a $1.75M base case within the $1&ndash;2M raise band.</div>
+    </div>
+  </div>
+
+  <table class="bank">
+    <thead><tr><th>Allocation</th><th>Amount</th><th>What it funds</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>Debt service</strong></td>
+        <td class="num">$250K</td>
+        <td>Honors outstanding pre-formation obligations: Robert Rosenberg ($100K), Chris Dunn ($15K), HOM DAO inherited accounts payable (~$100K), and remaining creditor positions. Clears the deck before commercial launch.</td>
+      </tr>
+      <tr>
+        <td><strong>Trade conferences &amp; industry presence</strong></td>
+        <td class="num">$500K</td>
+        <td>Ruthie at NurseCon. Pilots at NBAA. Dealers at NADA. The rooms where professionals gather. We send domain experts, not salespeople.</td>
+      </tr>
+      <tr>
+        <td><strong>Professional network activation</strong></td>
+        <td class="num">$500K</td>
+        <td>Identify and activate 200+ domain experts across all verticals &mdash; The Nurse, the pilot, the dealer, the inspector. Each one has a trusted community. Includes connector integrations and specialized vertical API access.</td>
+      </tr>
+      <tr>
+        <td><strong>18-month runway + operations</strong></td>
+        <td class="num">$500K</td>
+        <td>$25K/mo overhead &times; 18 months = $450K. Balance covers legal, accounting, and cap-table maintenance. We build with AI, not headcount.</td>
+      </tr>
+      <tr class="total"><td>Total (base case within $1&ndash;2M raise)</td><td class="num">$1.75M</td><td>Profitable at month 24 in the modeled base case.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>7.5 &nbsp; Scenario analysis &mdash; three growth paths</h3>
+
+  <p>The mass-adoption curve for vertical AI agent platforms is genuinely unknowable at this stage. The model below does not predict which path SOCIII follows; it answers the question <em>if mass adoption looks like X, then what does the math say.</em> Three scenarios. One model. All scenarios use a $99/mo blended base subscription and $25K/mo fixed overhead. Scenarios differ only on monthly growth rate and churn.</p>
+
+  <table class="bank">
+    <thead><tr><th>Assumption</th><th>Worst</th><th>Base</th><th>Best</th></tr></thead>
+    <tbody>
+      <tr><td>Monthly growth rate (new subscribers)</td><td class="num">5%</td><td class="num">10%</td><td class="num">20%</td></tr>
+      <tr><td>Monthly churn rate</td><td class="num">5%</td><td class="num">2%</td><td class="num">0.5%</td></tr>
+      <tr><td>Month 1 new subscribers</td><td class="num">3</td><td class="num">10</td><td class="num">25</td></tr>
+      <tr><td>% subscribers who are "active users"</td><td class="num">40%</td><td class="num">65%</td><td class="num">80%</td></tr>
+      <tr><td>Months to first 100 subscribers</td><td class="num">18</td><td class="num">9</td><td class="num">5</td></tr>
+    </tbody>
+  </table>
+
+  <table class="bank">
+    <thead><tr><th>Output</th><th>Worst</th><th>Base</th><th>Best</th></tr></thead>
+    <tbody>
+      <tr><td colspan="4" style="background:#0F172A; color:#fff; font-size:9pt; letter-spacing:0.1em; text-transform:uppercase;">Month 12</td></tr>
+      <tr><td>Total subscribers</td><td class="num">47</td><td class="num">213</td><td class="num">987</td></tr>
+      <tr><td>MRR</td><td class="num">$4.9K</td><td class="num">$25.1K</td><td class="num">$151.8K ✓</td></tr>
+
+      <tr><td colspan="4" style="background:#0F172A; color:#fff; font-size:9pt; letter-spacing:0.1em; text-transform:uppercase;">Month 24</td></tr>
+      <tr><td>Total subscribers</td><td class="num">133</td><td class="num">872</td><td class="num">9,772</td></tr>
+      <tr><td>MRR</td><td class="num">$13.8K</td><td class="num">$102.7K</td><td class="num">$1.5M</td></tr>
+      <tr><td>Profitability</td><td>Not yet</td><td><strong style="color:var(--green-deep)">✓ Profitable</strong></td><td><strong style="color:var(--green-deep)">✓ Profitable</strong></td></tr>
+
+      <tr><td colspan="4" style="background:#0F172A; color:#fff; font-size:9pt; letter-spacing:0.1em; text-transform:uppercase;">Month 36</td></tr>
+      <tr><td>Total subscribers</td><td class="num">278</td><td class="num">2,938</td><td class="num">88,108</td></tr>
+      <tr><td>MRR</td><td class="num">$28.8K</td><td class="num">$346.1K</td><td class="num">$13.5M</td></tr>
+      <tr><td>ARR run-rate</td><td class="num">$346K</td><td class="num">$4.2M</td><td class="num">$162.6M</td></tr>
+      <tr><td>LTV:CAC ratio</td><td class="num">4.0</td><td class="num">38.9</td><td class="num">1,550</td></tr>
+
+      <tr class="total"><td><strong>Series A trigger</strong> ($150K MRR)</td><td class="num">Month 36</td><td class="num">Month 18</td><td class="num">Month 10</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout">
+    <strong>What this table is saying.</strong> Even in the worst case (5% growth, 5% churn &mdash; the SaaS-industry-average churn), the platform reaches the Series A trigger by Month 36 and the company is still cash-positive on a $5M raise. The base case (10% growth, 2% churn &mdash; the community-led adoption pattern observed in Harvey AI and Figma) hits the Series A trigger at Month 18 with the company profitable by Month 24. The best case (20% growth, 0.5% churn &mdash; Ruthie's nursing community goes viral) hits Series A trigger at Month 10 and runs profitably from Month 9 forward.
+  </div>
+
+  <p><em style="font-size:9.5pt; color:var(--slate-light)">Illustrative model only &mdash; not a projection, promise, or forward-looking statement. The model was built around a $5M reference raise to test cash-runway sensitivity; the current $1&ndash;2M raise (Base case use-of-proceeds: $1.75M) reaches Series A trigger in the Base scenario at Month 18 with operating cash to spare, and survives the Worst scenario through Month 36. The complete model with monthly cash trajectories, unit economics, sensitivity analysis, and per-revenue-stream attribution is in the Data Room. See Important Notices on the back cover.</em></p>
+
+  <div class="running-footer"><span>SOCIII Inc.</span><span>19</span></div>
+</section>
+
+<!-- ====================================================== -->
+<!-- VIII — RISK FACTORS                                     -->
+<!-- ====================================================== -->
+<section class="page cream">
+  <div class="running-header"><span class="left">VIII. Risk Factors</span><span>SOCIII Pre-Seed</span></div>
+  <div class="section-eyebrow">Part VIII</div>
+  <h2>Risk Factors</h2>
+
+  <p class="lead">Honest enumeration of what could go wrong, ordered by probability-weighted impact.</p>
+
+  <table class="bank">
+    <thead><tr><th style="width:30%">Risk</th><th style="width:40%">What it means</th><th style="width:30%">Mitigation in place</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>LLM cost compression stalls</strong></td>
+        <td>If inference costs rise or stop compressing, the unit-economics assumption inverts and runway shortens.</td>
+        <td>Model-agnostic architecture: the rules engine validates output regardless of which model produced it. We can move providers in a quarter.</td>
+      </tr>
+      <tr>
+        <td><strong>Well-funded incumbent ships competing platform</strong></td>
+        <td>Notion, Airtable, or a foundation-model lab decides to target domain experts directly. Twenty-times-our-funding gap is real.</td>
+        <td>Patent priority date, RAAS corpus, two-year head start in production. Forces them to license, replicate the corpus, or differentiate elsewhere.</td>
+      </tr>
+      <tr>
+        <td><strong>Creator flywheel does not compound</strong></td>
+        <td>Sandbox-built workers don't find buyers. Platform reduces to vertical SaaS with audit trails.</td>
+        <td>Enterprise pipeline (Kent's outbound) produces revenue independent of creator funnel. Downside case is still a viable company; upside requires the flywheel.</td>
+      </tr>
+      <tr>
+        <td><strong>Regulatory exposure on specific RAAS modules</strong></td>
+        <td>A worker proposing maintenance intervals or disclosure language is cited as unlicensed practice.</td>
+        <td>User-counsel attestation pattern: at worker activation the user's counsel attests outputs are reviewed before action. Counsel-reviewed agreements.</td>
+      </tr>
+      <tr>
+        <td><strong>Patent prosecution narrows claims</strong></td>
+        <td>Conversion to non-provisional in May 2027 surfaces prior art we did not find. Some claim breadth is lost.</td>
+        <td>Counsel assessment: the core composition claims are defensible; the breadth is the variable. Prior-art-as-priority strategy was designed for this.</td>
+      </tr>
+      <tr>
+        <td><strong>Founder bandwidth and key-person risk</strong></td>
+        <td>Founder is an active medevac and airline pilot with a regular flight schedule and active type ratings; operates the company at small team size. Aviation has inherent operational risk separate from business risk.</td>
+        <td>AI workers absorb operational load by design — Alex, Marketing, Accounting, HR, Contacts, and Control Center run the company through Sean's flying schedule. Kent's bounded scope on fundraising and BD. Planned engineering hires post-raise. Key-person insurance under evaluation.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout">
+    <strong>What the founder is most worried about.</strong> Mass adoption. The platform is structurally hedged across five revenue streams (subscriptions, data credits, API pass-through, audit trail, creator licenses) precisely because we do not know which one will lead over the next two to three years. We watch the funnel weekly and adjust ruthlessly. The model assumes adoption; the company is built to survive if adoption is slower than the base case and to compound if it is faster.
+  </div>
+
+  <div class="running-footer"><span>SOCIII Inc.</span><span>19</span></div>
+</section>
+
+<!-- ====================================================== -->
+<!-- IX — INVESTMENT MECHANICS                               -->
+<!-- ====================================================== -->
+<section class="page">
+  <div class="running-header"><span class="left">IX. Investment Mechanics</span><span>SOCIII Pre-Seed</span></div>
+  <div class="section-eyebrow">Part IX</div>
+  <h2>Investment Mechanics</h2>
+
+  <h3>Round terms</h3>
+  <p><strong>Rolling YC-style SAFE.</strong> Minimum viable close: <strong>$500K.</strong> Base target: <strong>$1&ndash;2M.</strong> Open to strategic capital up to <strong>$5M+.</strong> Valuation cap finalized with the lead investor; comp-set anchoring described in §3.2. 30% equity pool reserved for advisors, future hires, and the creator path. Sole-manager governance through the Series A trigger ($150K MRR / ~$1.8M ARR). No discount layered on the cap. No MFN-plus terms. Designed to be readable and signable in fifteen minutes.</p>
+
+  <p><em>The round structure is deliberately flexible. SAFEs are signed and counted on a rolling basis as investors decide; the company calls the close when the cap fills or when strategic concentration is achieved. A $500K close meaningfully extends the runway. A $1&ndash;2M close funds the full 18-month plan in §VII.4. A $5M close accelerates engineering and creator-acquisition spend. Any close above the minimum is a successful raise; the band scales with investor demand, not against it.</em></p>
+
+  <h3>Securities-law posture</h3>
+  <p>Reg D 506(b). Offered to accredited investors with pre-existing relationships to the founders. Investors complete Stripe Identity verification (~3 minutes; SOCIII covers the fee) and provide accreditation representations before SAFE execution. Verification flow is integrated into the IR Worker on the SOCIII platform. Counsel has reviewed the SAFE template and the verification flow. No general solicitation; this memorandum is sent in confidence to a specific named investor.</p>
+
+  <h3>End-to-end flow for an investor</h3>
+
+  <table class="bank">
+    <thead><tr><th style="width:60px">Step</th><th>Action</th><th style="width:120px">Time</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>Platform sends a magic link to your email.</td><td class="num">&mdash;</td></tr>
+      <tr><td>2</td><td>You click the magic link; IR flow opens on SOCIII.</td><td class="num">10 seconds</td></tr>
+      <tr><td>3</td><td>Stripe Identity verification (SOCIII covers fee).</td><td class="num">~3 minutes</td></tr>
+      <tr><td>4</td><td>Accredited-investor verification.</td><td class="num">~3 minutes</td></tr>
+      <tr><td>5</td><td>Review the YC-style SAFE in Dropbox Sign.</td><td class="num">~5 minutes</td></tr>
+      <tr><td>6</td><td>Sign.</td><td class="num">~30 seconds</td></tr>
+      <tr><td>7</td><td>Executed SAFE files in your SOCIII Vault; confirmation email; wire instructions in the SAFE.</td><td class="num">Immediate</td></tr>
+      <tr class="total"><td colspan="2">Total end-to-end including SAFE reading</td><td class="num">~15 minutes</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Larger positions, co-investors, and SPVs</h3>
+  <p>Commitments above $250K warrant direct involvement on terms; Sean or Kent runs that conversation. Introductions to co-investors are handled by sending the prospect's name and email to Sean or Kent. Syndicates and SPVs can be structured; a fifteen-minute scoping call is the starting point.</p>
+
+  <h3>What lives in the Data Room (NDA-gated)</h3>
+  <ul>
+    <li>Working cap-table model with dilution scenarios at multiple round sizes</li>
+    <li>Use-of-proceeds model with sensitivities (hiring cadence, compute, marketing mix)</li>
+    <li>Patent applications and counsel's prior-art analysis</li>
+    <li>Pre-Formation Creditor Warrants Memo (May 22, 2026)</li>
+    <li>SOCIII Inc. corporate formation documents (Stripe Atlas, EIN 42-2675951)</li>
+    <li>Production deployment customer references (vertical-tagged)</li>
+    <li>Executed SAFE template and Reg D 506(c) verification flow</li>
+  </ul>
+
+  <div class="running-footer"><span>SOCIII Inc.</span><span>20</span></div>
+</section>
+
+<!-- ====================================================== -->
+<!-- X — APPENDIX & CONTACTS                                 -->
+<!-- ====================================================== -->
+<section class="page cover" style="background:var(--ink)">
+  <div class="cover-accent"></div>
+  <div class="cover-inner">
+    <div>
+      <img class="cover-mark" src="brand-mark.svg" alt="SOCIII"/>
+      <div class="cover-eyebrow" style="color:rgba(255,255,255,0.55)">Appendix &amp; Contacts</div>
+      <h1 class="cover-title" style="font-size:34pt">How to engage from here</h1>
+      <p class="cover-subtitle" style="font-size:14pt; margin-bottom:2em">
+        Request Data Room access for the working financial model and the underlying legal documents. Schedule office hours with Sean or Kent for substantive conversation. Start the IR flow at any time &mdash; the magic link works whether you've read the Data Room first or not.
+      </p>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:2em; margin-top:1em; color:rgba(255,255,255,0.85); font-size:11pt;">
+        <div>
+          <div style="text-transform:uppercase; letter-spacing:0.18em; font-size:8.5pt; color:rgba(255,255,255,0.5); margin-bottom:0.5em">Founder &amp; CEO</div>
+          <div style="font-family:Georgia, serif; font-size:18pt; margin-bottom:0.3em">Sean Lee Combs</div>
+          <div style="color:rgba(255,255,255,0.7); font-size:10pt">sean@sociii.ai<br/>+1 (707) 654-9864<br/>Office hours: cal.sociii.ai/sean</div>
+        </div>
+        <div>
+          <div style="text-transform:uppercase; letter-spacing:0.18em; font-size:8.5pt; color:rgba(255,255,255,0.5); margin-bottom:0.5em">Cofounder</div>
+          <div style="font-family:Georgia, serif; font-size:18pt; margin-bottom:0.3em">Kent Redwine</div>
+          <div style="color:rgba(255,255,255,0.7); font-size:10pt">kent@sociii.ai<br/>Office hours: cal.sociii.ai/kent</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="border-top:1px solid rgba(255,255,255,0.18); padding-top:1.4em; font-size:9pt; color:rgba(255,255,255,0.55); line-height:1.6;">
+      <p style="color:rgba(255,255,255,0.55); margin-bottom:0.5em"><strong style="color:rgba(255,255,255,0.75); font-weight:600">Disclaimer.</strong> This document is provided for informational purposes only to qualified investors evaluating the SOCIII pre-seed round. It does not constitute an offer to sell or a solicitation to buy any securities. Securities are offered only by definitive subscription documents executed inside the SOCIII IR flow, and only to investors who satisfy Reg D 506(c) accreditation. Forward-looking statements are subject to risks and uncertainties. Specific numbers (cap-table percentages, round terms, valuation cap, application IDs) are sourced from the canonical company records and the Data Room model; this memorandum renders them in prose for diligence convenience. Where this document conflicts with the Data Room, the Data Room controls.</p>
+      <p style="color:rgba(255,255,255,0.55); margin:0">SOCIII, Inc. · 1810 E Sahara Ave STE 75942, Las Vegas, NV 89104 · EIN 42-2675951 · Delaware file 10629231<br/>Memorandum issued May 25, 2026 &nbsp;·&nbsp; Strictly Confidential</p>
+    </div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

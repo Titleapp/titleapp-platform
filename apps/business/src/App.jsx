@@ -5382,7 +5382,17 @@ export default function App() {
             viewResolvedRef.current = true;
             transitionTo("app");
           } else {
-            transitionTo("hub");
+            // Fresh signup, zero memberships, no existing tenant.
+            // Land the user directly in their Personal Vault rather than the
+            // workspace picker. PERSONAL_VAULT is always served by the
+            // /v1/workspaces endpoint and seeded with the 6 default Spine
+            // workers via ensureUserProvisioned (helpers/userProvisioning.js).
+            // Adding a Business Workspace stays available via the sidebar
+            // switcher; the picker hub is no longer the default landing.
+            localStorage.setItem("TENANT_ID", "vault");
+            localStorage.setItem("WORKSPACE_NAME", "Personal Vault");
+            viewResolvedRef.current = true;
+            transitionTo("app");
           }
         }
       } catch (err) {
