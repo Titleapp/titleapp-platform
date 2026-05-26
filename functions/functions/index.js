@@ -500,10 +500,21 @@ function getPathFromMeta(meta) {
 // CORS — approved origins only
 // ----------------------------
 const ALLOWED_ORIGINS = [
+  // Firebase Hosting canonical URLs (always allowed — the React app builds here)
   'https://title-app-alpha.web.app',
   'https://title-app-alpha.firebaseapp.com',
+  // Cloudflare frontdoor — the worker that proxies to api.run.app
   'https://titleapp-frontdoor.titleapp-core.workers.dev',
+  // Active production hostnames (today: titleapp.ai/.io; future: sociii.ai)
+  // CRITICAL: app.titleapp.ai serves the live app. Removing it broke CORS.
+  // app.sociii.ai is reserved for the SOCIII cutover but DNS not yet wired.
+  'https://app.titleapp.ai',
+  'https://titleapp.ai',
+  'https://www.titleapp.ai',
+  'https://titleapp.io',
   'https://app.sociii.ai',
+  'https://sociii.ai',
+  'https://www.sociii.ai',
 ];
 
 if (process.env.FUNCTIONS_EMULATOR === 'true') {
