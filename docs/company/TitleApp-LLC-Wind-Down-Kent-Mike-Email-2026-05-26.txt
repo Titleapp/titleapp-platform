@@ -1,0 +1,86 @@
+TO:      Kent Redwine <kent.redwine@[address]>; Mike Lee <mike.lee@[address]>
+FROM:    Sean Lee Combs <seanlcombs@gmail.com>
+DATE:    May 26, 2026
+SUBJECT: The Title App LLC — Authorization to commence dissolution + winding up
+
+Kent, Mike —
+
+Following our recent conversations, this email confirms the path we are now taking
+with respect to The Title App LLC (Delaware file no. 5128056, formed September 17,
+2024 — the "Company"). The business activity that the Company was originally
+organized to support has been re-platformed under a new Delaware C-corporation,
+SOCIII Inc. (EIN 42-2675951, formed May 19, 2026). With that operating successor
+in place, there is no further business purpose for the LLC, and I am moving to
+formally wind it up.
+
+WHAT WE NEED TO DO, AS MANAGING MEMBERS
+
+Under our LLC Agreement and the Delaware Limited Liability Company Act
+(6 Del. C. § 18-801 et seq.), the three of us — Sean Lee Combs (President & CEO),
+Kent Redwine (Treasurer & Secretary), and Mike Lee (Vice President), in our
+capacities as the Managing Members — need to authorize:
+
+  1. The dissolution of the Company effective on a date certain (proposed: the
+     last day of the month in which the third Managing Member signature is obtained).
+  2. The commencement of winding up under § 18-803, including:
+        - giving written notice to known creditors and counterparties,
+        - publication or other notice to any unknown claimants,
+        - paying or making reasonable provision for all known liabilities,
+        - and distributing any remaining assets in accordance with the LLC Agreement.
+  3. The filing of a Certificate of Cancellation with the Delaware Secretary of
+     State under § 18-203 once the winding up is complete.
+  4. Authority for me, acting as President & CEO, to execute and deliver all
+     instruments and notices required to effect the foregoing.
+
+I will send you a short Action by Written Consent of the Managing Members for
+electronic signature in the same form as the organizational consent we executed
+on September 17, 2024. The Consent will attach the form of creditor notice
+(below) and a brief plan of winding up.
+
+WHAT YOU SHOULD KNOW ABOUT WHERE WE STAND
+
+  - Known liabilities: ~$228K, dominated by [trade payables / professional fees /
+    the Robert Rosenberg advance]. The Rosenberg advance is being formalized as
+    a promissory note at 4% per quarter with personal guaranty and will transfer
+    to SOCIII Inc. on closure. All other known liabilities will be paid or
+    provided for during winding up.
+  - Cash on hand: [to be confirmed once final statements close — see Accounting
+    Worker output].
+  - IP and operating assets: any platform IP and operating know-how were
+    developed by, or assigned to, SOCIII Inc. directly; there is no IP transfer
+    from the LLC to SOCIII. The wind-up packet will confirm this in writing so
+    nothing is left ambiguous.
+  - Books and records: I will retain the Company's books and records for the
+    statutory period (at least three years post-cancellation under § 18-804(b)(3))
+    so that any later creditor claim can be evaluated against the record.
+  - Tax: a final federal partnership return (Form 1065) will be prepared and
+    filed; final Delaware franchise tax will be paid through cancellation.
+
+WHAT I NEED FROM EACH OF YOU
+
+  1. Confirmation (reply to this email is fine) that you have no objection to
+     authorizing dissolution and winding up as described above.
+  2. Disclosure of any creditor, contract, or claim you are aware of that I should
+     ensure is on the known-claimants list before the creditor notice goes out.
+  3. Electronic signature on the Action by Written Consent of the Managing Members
+     when it arrives in your inbox over the next 24-48 hours.
+
+There is no surprise here and no dispute. We are simply closing the LLC the right
+way so that personal liability is fully released and the SOCIII Inc. platform
+moves forward with a clean cap table and clean books.
+
+Thank you both. Please respond by reply-all so we keep one record. I expect to
+send the formal Consent for signature this week and to mail/email the creditor
+notice the same day the Consent is fully executed.
+
+Best,
+
+Sean Lee Combs
+President & Chief Executive Officer
+THE TITLE APP LLC (in dissolution)
+DE file no. 5128056
+seanlcombs@gmail.com  ·  (707) 654-9864
+
+—
+This communication is sent in my capacity as an authorized officer and Managing
+Member of The Title App LLC and not on behalf of SOCIII Inc. or any other entity.

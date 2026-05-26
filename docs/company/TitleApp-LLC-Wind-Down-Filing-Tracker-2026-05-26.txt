@@ -1,0 +1,148 @@
+THE TITLE APP LLC — WIND-DOWN FILING TRACKER
+DE file no. 5128056  |  Formed Sept 17, 2024  |  Last updated 2026-05-26
+
+Short answer to "can a worker track this for me?" — YES.
+The Accounting worker already has the "Actions you must take" deadline
+surface (shipped CODEX 51.1 Phase 2, 2026-05-18) and Control Center
+aggregates deadline alerts across all workers. Three options to load
+these dates:
+
+  A. Tell Accounting worker in chat: "Please track these LLC wind-down
+     filing dates: [paste the list below]." It will write them into the
+     deadline surface for you.
+  B. Add them yourself in the Accounting Actions panel.
+  C. Have me load them directly via Firestore script when you confirm
+     dates (I need final dissolution-effective date before I can do this
+     cleanly).
+
+I recommend (A) — exercises the worker, and the loop is what catches
+schedule slippage. Sean lost $20K in prior filing penalties trusting
+himself; the rule is "every deadline-driven workflow MUST surface
+required actions persistently." This is exactly that case.
+
+
+===========================================================================
+TIMELINE — calendar-driven items only. Adjust dates once Consent is fully
+executed and dissolution-effective date is locked.
+===========================================================================
+
+T+0    Consent circulation — within 24-48 hrs of Kent+Mike confirming
+       (Action by Written Consent of Managing Members via DocuSign)
+
+T+2    Consent fully executed (target: 2026-05-28 to 2026-05-30)
+
+T+3    Mail/email creditor notice the SAME DAY Consent fully executed.
+       Send by both email AND U.S. mail to known creditors.
+       Keep delivery receipts.
+
+T+3    Mail certified copies of creditor notice to:
+        - Robert Rosenberg (formalize his note BEFORE this goes out so
+          he is on SOCIII as a noteholder, not on TitleApp LLC as a
+          creditor)
+        - All trade-payable vendors with unpaid invoices
+        - Allen Overy Shearman Sterling US LLP (counsel of record per
+          org consent — give them a courtesy copy)
+        - The Corporation Trust Company (registered agent — file copy
+          for the minute book)
+
+T+3    Optional belt-and-suspenders: publish creditor notice in a
+       Delaware newspaper of general circulation in New Castle County
+       for unknown-claimant protection. (Statute does not strictly
+       require this for LLCs but counsel sometimes recommends it for
+       cleaner closure.)
+
+T+33   30 days after notice — first interest payment due to Robert
+       Rosenberg under formalized note (4%/quarter, paid quarterly).
+       Schedule this from SOCIII Inc. operating account, not LLC.
+
+T+120  CLAIMS BAR DATE — exactly 120 days after notice is given.
+       Any claim arriving after this date is barred under
+       6 Del. C. § 18-804. Tentative date if mailed today:
+       ~2026-09-23. Lock this date when notice is mailed.
+
+T+120  Begin final winding-up steps as soon as claims window closes:
+        - Reconcile all timely claims, accept or reject in writing
+          (rejection starts the 90-day clock for claimant to sue)
+        - Pay or make reasonable provision for all known liabilities
+        - File final federal Form 1065 partnership return (final K-1s
+          to Sean, Kent, Mike) — short-year return due 15th day of 3rd
+          month after dissolution-effective date
+        - Pay final Delaware franchise tax through cancellation date
+          (LLCs owe $300/year flat — make sure 2026 is paid before
+          cancellation filing)
+        - File DE Certificate of Cancellation under § 18-203 with
+          Delaware SoS. Use Form CERT-CANC. Fee ~$200.
+        - Close all Company bank accounts (after final disbursements)
+        - Close EIN with IRS via final-return checkbox + 966 NOT needed
+          for LLC (corporations only)
+
+T+120  to T+210 — any rejected-claim 90-day windows are running.
+
+T+3yr  Records retention — keep the LLC books and records for at least
+       3 years past Cancellation per § 18-804(b)(3). Calendar a destroy-
+       or-archive review for 2029-09 once cancellation date is locked.
+
+
+===========================================================================
+HARD DEADLINES INDEPENDENT OF NOTICE DATE
+===========================================================================
+
+2026-06-01   DE franchise tax due for 2025 calendar year if not already
+             paid ($300 flat for LLCs). Confirm status — if unpaid, pay
+             before sending creditor notice so registered agent isn't
+             stuck with an open balance.
+
+2027-03-15   Final federal Form 1065 partnership return due (if 2026
+             is the final tax year — calendar may shift depending on
+             actual dissolution-effective date and final short-year
+             treatment).
+
+2027-04-15   Final K-1s to Sean, Kent, Mike — incorporated into their
+             2026 personal returns.
+
+
+===========================================================================
+ITEMS TO RESOLVE BEFORE CREDITOR NOTICE GOES OUT
+===========================================================================
+
+[ ] Robert Rosenberg promissory note SIGNED and dated. Note assignment
+    from TitleApp LLC to SOCIII Inc. SIGNED. Rosenberg consent to
+    assignment SIGNED. Without these, Rosenberg shows up as an LLC
+    creditor on the notice list — messy.
+
+[ ] Final TitleApp LLC cash balance confirmed (close out Mercury / any
+    LLC accounts and consolidate to one statement). The "Cash on hand"
+    line in the Kent+Mike email needs this number.
+
+[ ] Final liabilities list — vendor by vendor, professional fees, any
+    accrued interest, any contract termination fees. Accounting Worker
+    should produce this directly from the imported statements. Roughly
+    $228K total per prior tally; need an itemized breakout for the
+    creditor notice distribution list.
+
+[ ] Confirm Allen Overy Shearman Sterling fees are settled or on a
+    payment plan agreed in writing — they were counsel of record on
+    formation and will likely want closure on any open A/R before
+    you file Cancellation.
+
+[ ] Confirm no foreign qualifications outstanding (the org consent
+    authorizes "any state, territory, or dependency") — if TitleApp
+    LLC ever foreign-qualified anywhere, withdraw those before DE
+    Cancellation.
+
+
+===========================================================================
+FILES IN THIS WIND-DOWN PACKET (current)
+===========================================================================
+
+~/Downloads/Email-to-Kent-Mike-LLC-Termination-2026-05-26.txt
+~/Downloads/Notice-to-Vendors-Creditors-The-Title-App-LLC-2026-05-26.txt
+~/Downloads/LLC-Wind-Down-Filing-Tracker-2026-05-26.txt  (this file)
+
+Pending drafts (let me know when to produce):
+- Action by Written Consent of the Managing Members (mirrors Sept 17,
+  2024 org consent in form — adds dissolution + winding-up resolutions)
+- DE Certificate of Cancellation (form CERT-CANC) — only file at T+120
+  once claims window closes and liabilities are resolved
+- Promissory note + assignment for Rosenberg loan formalization (memory
+  says this was already drafted 2026-05-19, fill-in-the-blanks pending)
