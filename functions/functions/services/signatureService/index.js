@@ -619,10 +619,44 @@ async function handleWebhookEvent({ event }) {
  *
  * @returns {Promise<{ok, requestId?, hellosignRequestId?, error?, instructions?}>}
  */
+// SOCIII countersigner. Overridable via env so QA / future ops changes don't
+// require a code deploy. Defaults match the Dropbox Sign account holder so
+// test-mode sends still work (test mode requires account-holder email).
+const COMPANY_SIGNER = {
+  email: process.env.SOCIII_COMPANY_SIGNER_EMAIL || "seanlcombs@gmail.com",
+  name: process.env.SOCIII_COMPANY_SIGNER_NAME || "Sean Combs",
+  userId: process.env.SOCIII_COMPANY_SIGNER_USER_ID || "WResykI56hW16silsOtvlw1UjJK2",
+};
+
 const ROLE_TEMPLATE_ENV = {
-  investor: { envKey: "DROPBOX_SIGN_TEMPLATE_INVESTOR_SAFE", signerRole: "Investor", docType: "safe_agreement", title: "SOCIII SAFE Agreement" },
-  advisor:  { envKey: "DROPBOX_SIGN_TEMPLATE_ADVISOR_WARRANT", signerRole: "Advisor", docType: "advisor_warrant", title: "SOCIII Advisor Warrant Agreement" },
-  creator:  { envKey: "DROPBOX_SIGN_TEMPLATE_CREATOR_AGREEMENT", signerRole: "Creator", docType: "creator_agreement", title: "SOCIII Creator Platform Agreement" },
+  investor: {
+    envKey: "DROPBOX_SIGN_TEMPLATE_INVESTOR_SAFE",
+    signerRole: "INVESTOR",
+    companyRole: "COMPANY",
+    docType: "safe_agreement",
+    title: "SOCIII SAFE Agreement",
+  },
+  advisor: {
+    envKey: "DROPBOX_SIGN_TEMPLATE_ADVISOR_WARRANT",
+    signerRole: "Advisor",
+    companyRole: "Company",
+    docType: "advisor_warrant",
+    title: "SOCIII Advisor Agreement",
+  },
+  creator: {
+    envKey: "DROPBOX_SIGN_TEMPLATE_CREATOR_AGREEMENT",
+    signerRole: "CREATOR",
+    companyRole: "PLATFORM",
+    docType: "creator_agreement",
+    title: "SOCIII Creator Platform Agreement",
+  },
+  nda: {
+    envKey: "DROPBOX_SIGN_TEMPLATE_NDA",
+    signerRole: "COUNTERPARTY",
+    companyRole: "COMPANY",
+    docType: "mutual_nda",
+    title: "SOCIII Mutual NDA",
+  },
 };
 
 function _buildCustomFields(role, recipient, vars) {
@@ -643,8 +677,8 @@ function _buildCustomFields(role, recipient, vars) {
     return {
       advisor_name: recipient.name,
       advisor_email: recipient.email,
-      warrant_shares: v.warrantShares != null ? String(v.warrantShares) : "",
-      strike_price: v.strikePrice != null ? String(v.strikePrice) : "0.001",
+      advisor_address: v.advisorAddress || "",
+      equity_pct: v.equityPct != null ? String(v.equityPct) : "",
       vesting_months: v.vestingMonths != null ? String(v.vestingMonths) : "24",
       cliff_months: v.cliffMonths != null ? String(v.cliffMonths) : "6",
       agreement_date: v.agreementDate || new Date().toISOString().slice(0, 10),
@@ -655,6 +689,15 @@ function _buildCustomFields(role, recipient, vars) {
       creator_name: recipient.name,
       creator_email: recipient.email,
       revenue_share: v.revenueShare || "75%",
+      agreement_date: v.agreementDate || new Date().toISOString().slice(0, 10),
+    };
+  }
+  if (role === "nda") {
+    return {
+      counterparty_name: recipient.name,
+      counterparty_email: recipient.email,
+      counterparty_company: v.counterpartyCompany || "",
+      company_name: v.companyName || "SOCIII, Inc.",
       agreement_date: v.agreementDate || new Date().toISOString().slice(0, 10),
     };
   }
@@ -703,6 +746,13 @@ async function sendSignaturePacket({
     signatureServiceRequestId: requestId,
   };
 
+  // Two-signer flow: recipient + SOCIII Company countersigner. Order matters —
+  // recipient signs first (order 0), Company countersigns (order 1). Dropbox
+  // Sign emails them in sequence.
+  const recipientSigner = { role: cfg.signerRole, email: recipientEmail, name: recipientName };
+  const companySigner = { role: cfg.companyRole, email: COMPANY_SIGNER.email, name: COMPANY_SIGNER.name };
+  const hsSignersPayload = [recipientSigner, companySigner];
+
   let hsResult;
   try {
     hsResult = await hellosign.sendWithTemplate({
@@ -710,7 +760,7 @@ async function sendSignaturePacket({
       title: cfg.title,
       subject: cfg.title,
       message: `Please review and sign your ${cfg.title}.`,
-      signers: [{ role: cfg.signerRole, email: recipientEmail, name: recipientName }],
+      signers: hsSignersPayload,
       customFields: _buildCustomFields(role, { email: recipientEmail, name: recipientName }, vars),
       metadata: combinedMetadata,
       testMode: process.env.HELLOSIGN_TEST_MODE !== "0",
@@ -727,21 +777,41 @@ async function sendSignaturePacket({
     };
   }
 
-  const signers = [{
-    email: recipientEmail,
-    name: recipientName,
-    userId: userId || null,
-    role: cfg.signerRole,
-    order: 0,
-    status: "pending",
-    hellosignSignatureId: (hsResult.signatures && hsResult.signatures[0]?.signature_id) || null,
-    signedAt: null,
-    signHash: null,
-  }];
+  // Match returned HelloSign signature IDs by email so each signer carries the
+  // correct hellosignSignatureId in Firestore.
+  const hsSignaturesByEmail = {};
+  for (const hsSig of (hsResult.signatures || [])) {
+    hsSignaturesByEmail[hsSig.signer_email_address] = hsSig.signature_id;
+  }
+
+  const signers = [
+    {
+      email: recipientEmail,
+      name: recipientName,
+      userId: userId || null,
+      role: cfg.signerRole,
+      order: 0,
+      status: "pending",
+      hellosignSignatureId: hsSignaturesByEmail[recipientEmail] || null,
+      signedAt: null,
+      signHash: null,
+    },
+    {
+      email: COMPANY_SIGNER.email,
+      name: COMPANY_SIGNER.name,
+      userId: COMPANY_SIGNER.userId || null,
+      role: cfg.companyRole,
+      order: 1,
+      status: "pending",
+      hellosignSignatureId: hsSignaturesByEmail[COMPANY_SIGNER.email] || null,
+      signedAt: null,
+      signHash: null,
+    },
+  ];
 
   const preSignHash = blockchain.computePreSignHash({
     documentRef: { templateId, role },
-    signers: [{ email: recipientEmail }],
+    signers: signers.map((s) => ({ email: s.email })),
     createdAt,
     metadata: combinedMetadata,
   });

@@ -9,7 +9,7 @@ const COA_TEMPLATES = {
   "saas-startup": {
     id: "saas-startup",
     name: "Tech / SaaS Startup",
-    description: "Defaults skewed toward marketing, infra, AI, and people costs. Best for software companies pre- or post-launch.",
+    description: "C-corp shaped (Delaware default). Marketing, infra, AI, and people costs up top; equity structured for stock + APIC + Retained Earnings.",
     accounts: [
       // Revenue
       { code: "4000", name: "Subscription Revenue", type: "revenue" },
@@ -30,7 +30,7 @@ const COA_TEMPLATES = {
       // People
       { code: "6000", name: "Salaries & Contractor Fees", type: "expense" },
       { code: "6010", name: "Payroll Taxes & Benefits", type: "expense" },
-      { code: "6100", name: "Founder Comp / Owner Draw", type: "expense" },
+      { code: "6100", name: "Officer Compensation (W-2 founder salary)", type: "expense" },
 
       // G&A
       { code: "7000", name: "Software Subscriptions (other SaaS tools)", type: "expense", suggestedMonthlyCapCents: 50000 },
@@ -41,10 +41,21 @@ const COA_TEMPLATES = {
       { code: "7500", name: "Travel & Entertainment", type: "expense", suggestedMonthlyCapCents: 30000 },
       { code: "7900", name: "Miscellaneous Expenses", type: "expense" },
 
-      // Balance sheet
+      // Balance sheet — assets
       { code: "1000", name: "Operating Cash", type: "asset" },
+      { code: "1010", name: "Holding / Savings Cash", type: "asset" },
+
+      // Balance sheet — liabilities
       { code: "1100", name: "Credit Card Liability", type: "liability" },
-      { code: "3000", name: "Owner Contributions", type: "equity" },
+      { code: "2100", name: "Deferred Revenue", type: "liability" },
+      { code: "2500", name: "Federal Income Tax Payable", type: "liability" },
+      { code: "2510", name: "State Income Tax Payable", type: "liability" },
+      { code: "2600", name: "Notes Payable — Founder / Insider Loans", type: "liability" },
+
+      // Balance sheet — equity (C-corp)
+      { code: "3000", name: "Common Stock", type: "equity" },
+      { code: "3010", name: "Additional Paid-In Capital (APIC)", type: "equity" },
+      { code: "3100", name: "Retained Earnings", type: "equity" },
     ],
   },
 

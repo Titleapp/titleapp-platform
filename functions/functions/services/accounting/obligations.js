@@ -129,8 +129,32 @@ async function getCompletions(tenantId) {
 // in can override by setting an explicit incorporationDate on the workspace
 // doc (post-launch enhancement). Returns null if not determinable, in which
 // case the caller keeps the legacy [y-1, y, y+1] behavior.
-async function getTenantFormationDate(tenantId) {
-  if (!tenantId || tenantId === "vault" || tenantId === "personal") return null;
+async function getTenantFormationDate(tenantId, userId = null) {
+  // Personal Vault / no-tenant case: gate on the user's account creation
+  // instead. A freshly-signed-up personal user cannot be on the hook for
+  // 2025 corporate taxes; surfacing them is the same bug class as showing
+  // pre-formation obligations to a new C-corp tenant.
+  if (!tenantId || tenantId === "vault" || tenantId === "personal") {
+    if (!userId) return null;
+    try {
+      const uSnap = await getDb().doc(`users/${userId}`).get();
+      const at = tsToDate(uSnap.exists ? uSnap.data()?.createdAt : null);
+      if (at) return at;
+    } catch (e) {
+      console.warn("[obligations] personal-vault formation lookup failed:", e.message);
+    }
+    try {
+      const userRec = await admin.auth().getUser(userId);
+      const at = userRec?.metadata?.creationTime ? new Date(userRec.metadata.creationTime) : null;
+      if (at) return at;
+    } catch (e) {
+      console.warn("[obligations] auth-metadata formation lookup failed:", e.message);
+    }
+    // Last-resort fallback: treat "now" as formation so only forward-looking
+    // statutory dates surface. Better to under-surface than to scare a brand-
+    // new user with 2025 overdue items they cannot possibly owe.
+    return today();
+  }
   try {
     const snap = await getDb().collection("memberships")
       .where("tenantId", "==", tenantId)
@@ -208,14 +232,34 @@ function taxObligation({ obligationKey, label, detail, dueDate, action, complete
 }
 
 // Returns ordered list of obligations. Red first, then amber, then by due date.
-async function listObligations({ tenantId }) {
+// Load custom obligations created by other workers (e.g. Business Law worker
+// seeding LLC wind-down deadlines, or Patent Worker seeding USPTO response
+// dates). Schema mirrors the synthetic obligations built below: each record
+// is { tenantId, obligationKey, label, detail, dueDate (ISO YYYY-MM-DD),
+// severity?, kind?, createdByWorker }.
+async function getCustomObligations(tenantId) {
+  if (!tenantId) return [];
+  try {
+    const snap = await getDb().collection("customObligations")
+      .where("tenantId", "==", tenantId)
+      .limit(200)
+      .get();
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch (e) {
+    console.warn("[obligations] getCustomObligations failed:", e.message);
+    return [];
+  }
+}
+
+async function listObligations({ tenantId, userId = null }) {
   if (!tenantId) throw new Error("Missing tenantId");
 
-  const [accounts, imports, completedKeys, formationDate] = await Promise.all([
+  const [accounts, imports, completedKeys, formationDate, customs] = await Promise.all([
     getActiveConnectedAccounts(tenantId),
     getLatestImportPerAccount(tenantId),
     getCompletions(tenantId),
-    getTenantFormationDate(tenantId),
+    getTenantFormationDate(tenantId, userId),
+    getCustomObligations(tenantId),
   ]);
 
   const out = [];
@@ -287,6 +331,28 @@ async function listObligations({ tenantId }) {
       });
       if (deO) out.push(deO);
     }
+  }
+
+  // 3. Custom obligations seeded by other workers (Business Law,
+  // Patent Worker, etc.). Each record carries its own dueDate and
+  // optionally severity; we recompute severity from the date so it stays
+  // truthful as time passes.
+  for (const c of customs) {
+    if (!c.dueDate) continue;
+    if (completedKeys[c.obligationKey]) continue;
+    const { severity, daysUntilDue } = severityFromTaxDate(c.dueDate);
+    out.push({
+      obligationKey: c.obligationKey,
+      label: c.label || c.obligationKey,
+      detail: c.detail || "",
+      dueDate: c.dueDate,
+      daysUntilDue,
+      severity: c.severity && ["red","amber","green"].includes(c.severity) && daysUntilDue >= 0 ? c.severity : severity,
+      lastCompletedAt: null,
+      action: { kind: "mark_complete" },
+      source: c.createdByWorker || "custom",
+      kind: c.kind || null,
+    });
   }
 
   // Sort: red first, then amber; within each, by daysUntilDue ascending.

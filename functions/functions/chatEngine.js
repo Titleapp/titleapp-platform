@@ -2484,7 +2484,16 @@ async function processMessage(input, services = {}) {
     // ── Default / Idle ──
 
     default: {
-      // Detect vertical first — works for both authenticated and unauthenticated
+      // Authenticated users get the AI path. The PITCHES table is a sales
+      // surface for cold visitors; a signed-in user asking "how do I set up
+      // my household accounting" should NOT get a property-records pitch
+      // because "house" appears inside "household". Route to AI which sees
+      // the user's actual workers (spine seed) and routes accordingly.
+      if (state.userId) {
+        return response(state, null, { useAI: true });
+      }
+
+      // Unauthenticated visitor: keyword-detect a vertical for the sales pitch.
       const detected = detectVertical(lowerMsg);
       if (detected) {
         state.vertical = detected;
@@ -2493,12 +2502,7 @@ async function processMessage(input, services = {}) {
         return response(state, PITCHES[detected]);
       }
 
-      // Authenticated user in idle with no vertical match — fall through to AI
-      if (state.step === 'idle' && state.userId) {
-        return response(state, null, { useAI: true });
-      }
-
-      // No vertical detected, not authenticated — demo response
+      // No vertical detected, not authenticated — demo response.
       return response(state, getDemoResponse(message));
     }
   }
@@ -2509,8 +2513,19 @@ async function processMessage(input, services = {}) {
 // ──────────────────────────────────────────────────────────────
 
 function detectVertical(lowerMsg) {
+  // Word-boundary match so "house" doesn't fire on "household" / "warehouse"
+  // and "auto" doesn't fire on "automated" / "automatic".
   for (const [v, keywords] of Object.entries(VERTICAL_MAP)) {
-    if (keywords.some(k => lowerMsg.includes(k))) return v;
+    for (const k of keywords) {
+      // Multi-word phrases stay as substring (they're already specific).
+      if (k.includes(' ')) {
+        if (lowerMsg.includes(k)) return v;
+      } else {
+        const escaped = k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const re = new RegExp(`\\b${escaped}\\b`, 'i');
+        if (re.test(lowerMsg)) return v;
+      }
+    }
   }
   return null;
 }

@@ -1439,8 +1439,8 @@ export default function Sidebar({
       <div className="sidebarHeader" style={{ position: "relative" }}>
         <div
           className="brand"
-          onClick={() => workspaces.length > 1 && setShowSwitcher(!showSwitcher)}
-          style={{ cursor: workspaces.length > 1 ? "pointer" : "default", flex: 1 }}
+          onClick={() => setShowSwitcher(!showSwitcher)}
+          style={{ cursor: "pointer", flex: 1 }}
         >
           <div style={{
             width: 32, height: 32, borderRadius: 8,
@@ -1468,7 +1468,7 @@ export default function Sidebar({
               )}
             </div>
           </div>
-          {workspaces.length > 1 && (
+          {(
             <svg
               width="16" height="16" viewBox="0 0 16 16" fill="none"
               style={{

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 
 const VERTICAL_ABBREVS = {
+  general: 'GB',
   auto: 'AD',
   analyst: 'IA',
   'real-estate': 'RE',
@@ -10,6 +11,17 @@ const VERTICAL_ABBREVS = {
 };
 
 const VERTICALS = [
+  {
+    id: 'general',
+    label: 'General Business / Software / Other',
+    description: "Don't fit a named vertical? Start here. Describe your business in chat and Alex suggests workers.",
+    cosManages: [
+      'Accounting, HR, contacts, marketing (spine workers)',
+      'Recommendations based on how you describe your business',
+      'Add named-vertical workers later when needed',
+      'Best fit for software, consulting, services, holding companies',
+    ],
+  },
   {
     id: 'auto',
     label: 'Auto Dealer',
@@ -65,20 +77,15 @@ const VERTICALS = [
       'Compliance and RegCF filing assistance',
     ],
   },
-  {
-    id: 'builder',
-    label: 'Build an AI Service',
-    description: 'Turn your expertise into a subscribable AI product',
-    cosManages: [
-      'Conversational interview to extract your workflow',
-      'Auto-generated AI Worker from your expertise',
-      'Pricing and subscriber management',
-      'Publish to the Marketplace',
-    ],
-  },
 ];
 
 const VERTICAL_PLACEHOLDERS = {
+  general: {
+    name: 'Acme Inc.',
+    tagline: 'Software / services / holding company',
+    stateLabel: 'State of incorporation or primary operations',
+    stateHelp: 'Used for tax filings and obligations. You can change this later.',
+  },
   auto: {
     name: 'Demo Motors',
     tagline: 'Toyota Dealership — Houston, TX',
@@ -112,13 +119,27 @@ const VERTICAL_PLACEHOLDERS = {
 };
 
 const JURISDICTIONS = [
-  { code: 'IL', label: 'Illinois' },
-  { code: 'FL', label: 'Florida' },
-  { code: 'CA', label: 'California' },
-  { code: 'TX', label: 'Texas' },
+  { code: 'AL', label: 'Alabama' }, { code: 'AK', label: 'Alaska' }, { code: 'AZ', label: 'Arizona' },
+  { code: 'AR', label: 'Arkansas' }, { code: 'CA', label: 'California' }, { code: 'CO', label: 'Colorado' },
+  { code: 'CT', label: 'Connecticut' }, { code: 'DE', label: 'Delaware' }, { code: 'DC', label: 'District of Columbia' },
+  { code: 'FL', label: 'Florida' }, { code: 'GA', label: 'Georgia' }, { code: 'HI', label: 'Hawaii' },
+  { code: 'ID', label: 'Idaho' }, { code: 'IL', label: 'Illinois' }, { code: 'IN', label: 'Indiana' },
+  { code: 'IA', label: 'Iowa' }, { code: 'KS', label: 'Kansas' }, { code: 'KY', label: 'Kentucky' },
+  { code: 'LA', label: 'Louisiana' }, { code: 'ME', label: 'Maine' }, { code: 'MD', label: 'Maryland' },
+  { code: 'MA', label: 'Massachusetts' }, { code: 'MI', label: 'Michigan' }, { code: 'MN', label: 'Minnesota' },
+  { code: 'MS', label: 'Mississippi' }, { code: 'MO', label: 'Missouri' }, { code: 'MT', label: 'Montana' },
+  { code: 'NE', label: 'Nebraska' }, { code: 'NV', label: 'Nevada' }, { code: 'NH', label: 'New Hampshire' },
+  { code: 'NJ', label: 'New Jersey' }, { code: 'NM', label: 'New Mexico' }, { code: 'NY', label: 'New York' },
+  { code: 'NC', label: 'North Carolina' }, { code: 'ND', label: 'North Dakota' }, { code: 'OH', label: 'Ohio' },
+  { code: 'OK', label: 'Oklahoma' }, { code: 'OR', label: 'Oregon' }, { code: 'PA', label: 'Pennsylvania' },
+  { code: 'RI', label: 'Rhode Island' }, { code: 'SC', label: 'South Carolina' }, { code: 'SD', label: 'South Dakota' },
+  { code: 'TN', label: 'Tennessee' }, { code: 'TX', label: 'Texas' }, { code: 'UT', label: 'Utah' },
+  { code: 'VT', label: 'Vermont' }, { code: 'VA', label: 'Virginia' }, { code: 'WA', label: 'Washington' },
+  { code: 'WV', label: 'West Virginia' }, { code: 'WI', label: 'Wisconsin' }, { code: 'WY', label: 'Wyoming' },
 ];
 
 const SAMPLE_WORKERS = {
+  general: [],
   auto: [
     { id: 'auto-inventory', name: 'Inventory Manager', price: 29, description: 'Track vehicles, aging alerts, pricing' },
     { id: 'auto-sales', name: 'Sales Assistant', price: 29, description: 'Lead gen, customer outreach, follow-ups' },
@@ -150,8 +171,11 @@ const SAMPLE_WORKERS = {
 };
 
 export default function AddWorkspaceWizard({ existingWorkspaces, onCreated, onCancel, onBuilderStart }) {
-  const [step, setStep] = useState(0);
-  const [wsType, setWsType] = useState(null);
+  const hasPersonal = existingWorkspaces.some(w => w.type === 'personal' || w.id === 'vault');
+  // User already has a Personal Vault → only choice is "My company" (org). Skip the
+  // single-option Step 0 entirely and land on the vertical picker.
+  const [step, setStep] = useState(hasPersonal ? 1 : 0);
+  const [wsType, setWsType] = useState(hasPersonal ? 'org' : null);
   const [selectedVertical, setSelectedVertical] = useState(null);
   const [name, setName] = useState('');
   const [tagline, setTagline] = useState('');
@@ -161,8 +185,7 @@ export default function AddWorkspaceWizard({ existingWorkspaces, onCreated, onCa
   const [error, setError] = useState(null);
 
   const verticalInfo = VERTICALS.find(v => v.id === selectedVertical);
-  const hasPersonal = existingWorkspaces.some(w => w.type === 'personal' || w.id === 'vault');
-  const totalSteps = 5;
+  const totalSteps = 4;
   const availableWorkers = SAMPLE_WORKERS[selectedVertical] || [];
 
   function handleTypeSelect(type) {
@@ -204,7 +227,9 @@ export default function AddWorkspaceWizard({ existingWorkspaces, onCreated, onCa
     }
 
     setError(null);
-    setStep(3);
+    // Skip the "Pick 3 workers to unlock Alex" step — Alex + spine workers
+    // are free entitlements now. User adds workers from the Marketplace later.
+    setStep(4);
   }
 
   function toggleWorker(workerId) {
@@ -707,7 +732,7 @@ export default function AddWorkspaceWizard({ existingWorkspaces, onCreated, onCa
 
             <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
               <button
-                onClick={() => { setStep(3); setError(null); }}
+                onClick={() => { setStep(2); setError(null); }}
                 style={{
                   padding: '10px 20px', border: '1px solid #e2e8f0', borderRadius: 8,
                   background: 'white', cursor: 'pointer', fontSize: 14, color: '#64748b',

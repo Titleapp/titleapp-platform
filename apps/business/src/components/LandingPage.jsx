@@ -1,4 +1,5 @@
 import React, { useState, useRef, useCallback, useMemo, useEffect } from "react";
+import sociiiMarkUrl from "../assets/sociii-brand/icon/sociii-icon-mark.svg";
 
 // ── SOCIII Landing Page ─────────────────────────────────────────
 // White premium aesthetic. Chat bar hero. Industry carousel. No auth — that happens on /login.
@@ -211,9 +212,7 @@ export default function LandingPage() {
       <header className="ta-landing-header" style={S.header}>
         <div style={S.logoWrap}>
           <div style={S.logoIcon}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" />
-            </svg>
+            <img src={sociiiMarkUrl} alt="SOCIII" width={28} height={28} style={{ display: "block", borderRadius: 6 }} />
           </div>
           <span className="ta-logo-text" style={S.logoText}>SOCIII</span>
           <span className="ta-beta-badge" style={{ background: "#6B46C1", color: "white", fontSize: "10px", fontWeight: "700", padding: "2px 8px", borderRadius: "999px", letterSpacing: "0.08em", marginLeft: "8px", verticalAlign: "middle", textTransform: "uppercase" }}>BETA</span>

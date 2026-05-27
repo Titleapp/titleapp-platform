@@ -686,7 +686,7 @@ function AccountsPane({ accounts, loading, onAdd, onDelete, onConnectBank, onSyn
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, gap: 8, flexWrap: "wrap" }}>
         <div style={{ fontSize: 14, color: "#64748b" }}>
-          {accounts.length} connected account{accounts.length === 1 ? "" : "s"}. Add manually for now — auto-sync via Stripe ships after the entity migration.
+          {accounts.length} connected account{accounts.length === 1 ? "" : "s"}. Add manually, or connect a bank via Stripe.
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           <button
@@ -711,7 +711,7 @@ function AccountsPane({ accounts, loading, onAdd, onDelete, onConnectBank, onSyn
           </div>
           <div style={{ fontSize: 18, fontWeight: 700, color: "#1e293b", marginBottom: 8 }}>No connected accounts yet</div>
           <div style={{ fontSize: 14, color: "#64748b", maxWidth: 420, margin: "0 auto 20px", lineHeight: 1.6 }}>
-            Connect your operating bank, credit card, Stripe, or payroll provider. Add manually now; full Plaid integration ships this week.
+            Connect your operating bank, credit card, Stripe, or payroll provider. Add manually, or connect a bank via Stripe.
           </div>
           <button onClick={onAdd} style={{ padding: "10px 20px", fontSize: 14, fontWeight: 600, background: "linear-gradient(135deg, #7c3aed, #6d28d9)", color: "white", border: "none", borderRadius: 10, cursor: "pointer" }}>
             Add your first account
@@ -2156,7 +2156,7 @@ function AddAccountModal({ onClose, onSubmit }) {
     <div style={{ position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={onClose}>
       <form className="card" onClick={e => e.stopPropagation()} onSubmit={submit} style={{ width: "min(480px, 92vw)", padding: 24, background: "white" }}>
         <h2 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700 }}>Add a connected account</h2>
-        <p style={{ margin: "0 0 16px", fontSize: 13, color: "#64748b" }}>Manual entry — Plaid auto-sync ships this week.</p>
+        <p style={{ margin: "0 0 16px", fontSize: 13, color: "#64748b" }}>Manual entry. For auto-sync, connect a bank via Stripe.</p>
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <Field label="Name *">
             <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Mercury Operating, AmEx Platinum, Stripe…" required style={inputStyle} />

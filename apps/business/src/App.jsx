@@ -7,6 +7,7 @@ import OnboardingWizard from "./components/OnboardingWizard";
 import AppShell from "./components/AppShell";
 import ChatPanel from "./components/ChatPanel";
 import WorkspaceHub from "./components/WorkspaceHub";
+import AddWorkspaceWizard from "./components/AddWorkspaceWizard";
 import BuilderInterview from "./components/BuilderInterview";
 import Dashboard from "./sections/Dashboard";
 import WorkerHome from "./sections/WorkerHome";
@@ -4889,8 +4890,15 @@ export default function App() {
     setCurrentView(view);
   }
 
-  // Handle Google signInWithRedirect result on mount — must be in App.jsx (always mounted)
+  // Handle Google signInWithRedirect result on mount — must be in App.jsx (always mounted).
+  // Gate this behind a pre-redirect marker so it doesn't fire (and emit
+  // identitytoolkit 400 noise) on every cold page load. The marker is set
+  // by MeetAlex/CampaignPage just before kicking off signInWithRedirect.
   useEffect(() => {
+    const pendingRedirect = sessionStorage.getItem("ta_pre_link_anon_uid") ||
+                            sessionStorage.getItem("ta_pre_magic_uid") ||
+                            sessionStorage.getItem("ta_redirect_pending");
+    if (!pendingRedirect) return;
     getRedirectResult(auth).then((result) => {
       if (result?.user) {
         result.user.getIdToken(true).then((idToken) => {
@@ -4937,6 +4945,10 @@ export default function App() {
       }
     }).catch((err) => {
       console.error("[App] getRedirectResult failed:", err);
+    }).finally(() => {
+      // Clear the pending-redirect marker so the next page load doesn't
+      // re-fire getRedirectResult and emit another identitytoolkit ping.
+      sessionStorage.removeItem("ta_redirect_pending");
     });
   }, []);
 
@@ -5763,8 +5775,34 @@ export default function App() {
         onLaunch={handleWorkspaceLaunch}
         onBuilderStart={() => setCurrentView("builder-interview")}
         onAdminLaunch={() => setCurrentView("admin")}
-        onAddWorker={() => setCurrentView("marketplace")}
+        onAddWorker={() => setCurrentView("add-workspace")}
         onBack={() => transitionTo("app")}
+      />
+    );
+  }
+
+  if (currentView === "add-workspace") {
+    return (
+      <AddWorkspaceWizardLoader
+        onCreated={(workspace) => {
+          localStorage.setItem("VERTICAL", workspace.vertical);
+          localStorage.setItem("WORKSPACE_ID", workspace.id);
+          localStorage.setItem("WORKSPACE_NAME", workspace.name || "");
+          localStorage.setItem("COMPANY_NAME", workspace.name || "");
+          localStorage.setItem("TENANT_NAME", workspace.name || "");
+          if (workspace.jurisdiction) {
+            localStorage.setItem("JURISDICTION", workspace.jurisdiction);
+          } else {
+            localStorage.removeItem("JURISDICTION");
+          }
+          // Don't force the legacy OnboardingWizard — it strips the 3-panel
+          // shell. User lands directly in the AdminShell with their new
+          // tenant active and discovers their workspace through chat.
+          localStorage.removeItem("PENDING_ONBOARDING");
+          handleWorkspaceLaunch({ ...workspace, _needsOnboarding: false });
+        }}
+        onCancel={() => setCurrentView("hub")}
+        onBuilderStart={() => setCurrentView("builder-interview")}
       />
     );
   }
@@ -5811,4 +5849,54 @@ export default function App() {
   }
 
   return <AppErrorBoundary><AdminShell onBackToHub={handleBackToHub} /></AppErrorBoundary>;
+}
+
+function AddWorkspaceWizardLoader({ onCreated, onCancel, onBuilderStart }) {
+  const [existing, setExisting] = useState(null);
+  const [loadError, setLoadError] = useState(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const token = localStorage.getItem("ID_TOKEN");
+        const apiBase = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+        const resp = await fetch(`${apiBase}/api?path=/v1/workspaces`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await resp.json();
+        if (data.ok) setExisting(data.workspaces || []);
+        else setLoadError(data.error || "Failed to load workspaces");
+      } catch (e) {
+        setLoadError("Failed to load workspaces");
+      }
+    })();
+  }, []);
+
+  if (loadError) {
+    return (
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#f8fafc", padding: 20 }}>
+        <div style={{ maxWidth: 480, textAlign: "center" }}>
+          <div style={{ color: "#dc2626", marginBottom: 16 }}>{loadError}</div>
+          <button onClick={onCancel} style={{ padding: "8px 16px", borderRadius: 8, border: "1px solid #e2e8f0", background: "white", cursor: "pointer" }}>Back</button>
+        </div>
+      </div>
+    );
+  }
+
+  if (existing === null) {
+    return (
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#f8fafc" }}>
+        <div style={{ color: "#6b7280" }}>Loading...</div>
+      </div>
+    );
+  }
+
+  return (
+    <AddWorkspaceWizard
+      existingWorkspaces={existing}
+      onCreated={onCreated}
+      onCancel={onCancel}
+      onBuilderStart={onBuilderStart}
+    />
+  );
 }

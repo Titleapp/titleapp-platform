@@ -22,9 +22,12 @@ export default function MeetAlex() {
     new URLSearchParams(window.location.search).get("action") || ""
   );
   const isSignIn = action === "signin";
-  const [nameCollected, setNameCollected] = useState(isSignIn);
+  const isSignUp = action === "signup";
+  // signup/signin both gate the auth UI up front. Free-chat flow only kicks in
+  // when there's no explicit action= param (e.g. plain /meet-alex from a campaign link).
+  const [nameCollected, setNameCollected] = useState(isSignIn || isSignUp);
   const userMsgCount = useRef(0);
-  const [showSave, setShowSave] = useState(isSignIn);
+  const [showSave, setShowSave] = useState(isSignIn || isSignUp);
   const [savedAccount, setSavedAccount] = useState(false);
   const [saveEmail, setSaveEmail] = useState("");
   const [saveError, setSaveError] = useState("");
@@ -212,12 +215,15 @@ export default function MeetAlex() {
   // Opening message — name-first, no API round-trip
   useEffect(() => {
     if (messages.length === 0) {
-      setMessages([{
-        role: "assistant",
-        text: isSignIn
-          ? "Welcome back. Sign in below to pick up where you left off."
-          : "Hey \u2014 what's your name?",
-      }]);
+      let opening;
+      if (isSignIn) {
+        opening = "Welcome back. Sign in below to pick up where you left off.";
+      } else if (isSignUp) {
+        opening = "Welcome to SOCIII. Sign up below to get your workspace set up with Accounting, HR, Marketing, Contacts, and Control Center \u2014 included with every account. You can browse other workers after.";
+      } else {
+        opening = "Hey \u2014 what's your name?";
+      }
+      setMessages([{ role: "assistant", text: opening }]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -232,6 +238,28 @@ export default function MeetAlex() {
     if (currentUser?.email) localStorage.setItem("USER_EMAIL", currentUser.email);
     setSavedAccount(true);
     setShowSave(false);
+
+    // Spine seed — every new SOCIII account gets these 5 workers on signup.
+    // Fire-and-forget; failures are non-fatal (worker just won't appear in MY WORKERS).
+    if (!isSignIn) {
+      const SPINE_SLUGS = [
+        "platform-accounting",
+        "platform-hr-people",
+        "platform-marketing-content",
+        "platform-contacts",
+        "platform-control-center-pro",
+      ];
+      Promise.allSettled(SPINE_SLUGS.map(slug =>
+        fetch(`${API_BASE}/api?path=/v1/worker:subscribe`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+          body: JSON.stringify({ slug }),
+        })
+      )).then(results => {
+        const failed = results.filter(r => r.status === "rejected").length;
+        if (failed > 0) console.warn(`[MeetAlex] spine seed: ${failed}/${SPINE_SLUGS.length} subscribe calls failed`);
+      });
+    }
 
     const guestName = sessionStorage.getItem("ta_guest_name") || "";
     setMessages(prev => [...prev, {
@@ -258,11 +286,22 @@ export default function MeetAlex() {
     }
     sessionStorage.setItem("ta_guest_promoted", "true");
 
+    // Show a visible "loading workspace" beat instead of leaving the chat
+    // shell on a stale message during the handoff. Then redirect to the
+    // workspace home (existing 1200ms is enough for spine subscribe writes
+    // to land in Firestore so the sidebar populates on first render).
+    setTimeout(() => {
+      setMessages(prev => [...prev, {
+        role: "assistant",
+        text: "Setting up your workspace — Accounting, HR, Marketing, Contacts, and Control Center. One moment…",
+      }]);
+    }, 200);
+
     setTimeout(() => {
       const v = vertical ? `&vertical=${vertical}` : "";
       window.history.replaceState({}, "", `/?promoted=true${v}&utm_source=meet-alex&utm_medium=guest-chat`);
       window.dispatchEvent(new CustomEvent("ta:meet-alex-unlock"));
-    }, 2500);
+    }, 1200);
   }
 
   // Save moment — Google auth (primary)
@@ -299,7 +338,10 @@ export default function MeetAlex() {
       completeAuthUpgrade(idToken, result.user.uid);
     } catch (err) {
       if (err?.code === "auth/popup-blocked") {
-        // Mobile fallback — redirect-based flow
+        // Mobile fallback — redirect-based flow.
+        // Set the pending-redirect marker so App.jsx fires getRedirectResult
+        // on the return navigation (otherwise we gate it off to avoid noise).
+        sessionStorage.setItem("ta_redirect_pending", "1");
         try {
           if (isSignIn) {
             await signInWithRedirect(auth, new GoogleAuthProvider());

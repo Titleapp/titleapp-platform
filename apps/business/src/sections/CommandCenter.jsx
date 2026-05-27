@@ -125,17 +125,39 @@ export default function CommandCenter() {
       {loading && <div className="card" style={{ padding: 24, textAlign: "center", color: "#64748b" }}>Building your brief…</div>}
       {!loading && error && <div className="card" style={{ padding: 16, background: "#fef2f2", color: "#dc2626" }}>Error: {error}</div>}
 
-      {!loading && brief?.skipped && (
-        <div className="card" style={{ padding: 24, background: "#fffbeb", border: "1px solid #fde68a" }}>
-          <div style={{ fontWeight: 700, color: "#92400e", marginBottom: 6 }}>No brief to send</div>
-          <div style={{ fontSize: 14, color: "#78350f" }}>
-            None of your workspaces have a real signal worth reporting right now. The rule: no padding with sample content; if nothing is happening, no email.
+      {!loading && brief?.skipped && (() => {
+        const businessSections = (brief?.sections || []).filter(s => s.tenantId && s.tenantId !== "personal" && s.tenantId !== "vault");
+        // New-user state: no business workspace yet → guide to setup, not the
+        // "no brief" warning which reads as "the worker is broken".
+        if (businessSections.length === 0) {
+          return (
+            <div className="card" style={{ padding: 24, background: "#f5f3ff", border: "1px solid #ddd6fe" }}>
+              <div style={{ fontWeight: 700, color: "#5b21b6", marginBottom: 8 }}>Let's set up Control Center</div>
+              <div style={{ fontSize: 14, color: "#4c1d95", marginBottom: 16, lineHeight: 1.5 }}>
+                Control Center rolls up launch + operations signal across every business workspace you're in. Right now you only have your Personal Vault, so there's nothing to summarize yet.
+              </div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: "#5b21b6", marginBottom: 8, letterSpacing: 0.5, textTransform: "uppercase" }}>To activate:</div>
+              <ol style={{ margin: 0, paddingLeft: 20, color: "#4c1d95", fontSize: 14, lineHeight: 1.7 }}>
+                <li>Open <strong>Settings → Workspaces</strong> and create your first business workspace (or accept an invite to one).</li>
+                <li>Set the workspace's mode to <strong>Launch</strong> to surface milestones, runway, and outreach roll-ups.</li>
+                <li>Come back here — the brief will populate automatically as the spine workers (Accounting / HR / Marketing / Contacts) start tracking signal.</li>
+              </ol>
+            </div>
+          );
+        }
+        // Returning user with workspaces but no signal across them → original copy.
+        return (
+          <div className="card" style={{ padding: 24, background: "#fffbeb", border: "1px solid #fde68a" }}>
+            <div style={{ fontWeight: 700, color: "#92400e", marginBottom: 6 }}>No brief to send</div>
+            <div style={{ fontSize: 14, color: "#78350f" }}>
+              None of your workspaces have a real signal worth reporting right now. The rule: no padding with sample content; if nothing is happening, no email.
+            </div>
+            <div style={{ fontSize: 13, color: "#78350f", marginTop: 8 }}>
+              To activate launch-mode briefs: flip a workspace's mode to <strong>Launch</strong> below — even zeros become the story during launch.
+            </div>
           </div>
-          <div style={{ fontSize: 13, color: "#78350f", marginTop: 8 }}>
-            To activate launch-mode briefs for SOCIII AI: flip its mode to <strong>Launch</strong> below — even zeros become the story during launch.
-          </div>
-        </div>
-      )}
+        );
+      })()}
 
       {sendStatus?.state === "sent" && (
         <div className="card" style={{ padding: 12, marginTop: 12, background: "#f0fdf4", color: "#166534", fontSize: 13 }}>

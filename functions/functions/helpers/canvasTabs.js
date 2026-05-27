@@ -140,6 +140,19 @@ const GEN_SCHEDULING_TABS = [
   { id: "followups",  label: "Follow-ups",   signal: "card:work-product", order: 4 },
 ];
 
+// BIZ-LAW-001 Business Law / Paralegal — entity lifecycle, document
+// templates, signature orchestration, audit trail. First dogfood is the
+// TitleApp LLC wind-down; later flows include SOCIII formation governance,
+// option grants, board consents, BOI filings, foreign quals.
+const BUSINESS_LAW_TABS = [
+  { id: "overview",   label: "Overview",      signal: "card:work-product", default: true, order: 0 },
+  { id: "documents",  label: "Documents",     signal: "card:work-product", order: 1 },
+  { id: "signatures", label: "Signatures",    signal: "card:work-product", order: 2 },
+  { id: "filings",    label: "Filings",       signal: "card:work-product", order: 3 },
+  { id: "deadlines",  label: "Deadlines",     signal: "card:work-product", order: 4 },
+  { id: "audit-trail",label: "Audit Trail",   signal: "card:work-product", order: 5 },
+];
+
 const AUTO_TABS = [
   { id: "overview",  label: "Overview",  signal: "card:work-product",          default: true, order: 0 },
   { id: "inventory", label: "Inventory", signal: "card:auto-inventory",        order: 1 },
@@ -170,6 +183,9 @@ function generateDefaultTabs(worker) {
 
   // 1. Spine workers — explicit map
   if (SPINE_TABS[slug]) return SPINE_TABS[slug].map(t => ({ ...t }));
+
+  // 1b. Business Law — single slug, vertical-adjacent.
+  if (slug === "business-law") return BUSINESS_LAW_TABS.map(t => ({ ...t }));
 
   // 2. Aviation CoPilots — EFB mirror. Identified by catalogId AV-P01..AV-P11
   // (the 11 pilot CoPilots; marketplace slugs vary, e.g. av-caravan-208b).

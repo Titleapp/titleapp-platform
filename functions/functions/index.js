@@ -1361,7 +1361,7 @@ exports.api = onRequest(
   // Override global cpu: "gcf_gen1" — this function runs Claude/OpenAI calls and needs full CPU.
   // timeoutSeconds bumped from 60 default to 300 to accommodate multi-file uploads
   // (each file: storage write + signed-url + Firestore record + pdf-parse).
-  { region: "us-central1", cpu: 1, memory: "1GiB", timeoutSeconds: 300, secrets: ["APOLLO_API_KEY", "STRIPE_SECRET_KEY", "STRIPE_PUBLISHABLE_KEY", "STRIPE_WEBHOOK_SECRET", "TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_VERIFY_SERVICE_SID"] },
+  { region: "us-central1", cpu: 1, memory: "1GiB", timeoutSeconds: 300, secrets: ["APOLLO_API_KEY", "STRIPE_SECRET_KEY", "STRIPE_PUBLISHABLE_KEY", "STRIPE_WEBHOOK_SECRET", "TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_VERIFY_SERVICE_SID", "HELLOSIGN_API_KEY", "HELLOSIGN_CLIENT_ID", "DROPBOX_SIGN_TEMPLATE_INVESTOR_SAFE", "DROPBOX_SIGN_TEMPLATE_ADVISOR_WARRANT", "DROPBOX_SIGN_TEMPLATE_NDA"] },
   async (req, res) => {
     console.log("✅ API_VERSION", "2026-03-01-document-engine");
 
@@ -1730,6 +1730,40 @@ exports.api = onRequest(
         }
       } catch (e) {
         console.warn("chatEngine: early auth check failed, continuing as unauthenticated:", e.message);
+      }
+
+      // Builder Interview ("Build an AI Service") sandbox — bypass state-machine
+      // canned responses. The frontend ships a dedicated BUILDER_SYSTEM_PROMPT in
+      // body.context.systemPrompt plus conversationHistory. Route those straight
+      // to Claude so the chat feels like Claude (candid, conversational) instead
+      // of a scripted Q&A. The state-machine fires keyword-matched marketing
+      // copy (e.g. "The legal suite includes Contract Review ($29/mo)...") that
+      // breaks the building-a-worker conversation.
+      if (body.context && body.context.source === "builder_interview" && body.context.systemPrompt) {
+        try {
+          const history = Array.isArray(body.context.conversationHistory)
+            ? body.context.conversationHistory.filter(m => m && m.role && m.content)
+            : [];
+          const messages = history.map(m => ({
+            role: m.role === "assistant" ? "assistant" : "user",
+            content: String(m.content),
+          }));
+          if (!messages.length || messages[messages.length - 1].role !== "user") {
+            messages.push({ role: "user", content: String(userInput || "") });
+          }
+          const anthropic = getAnthropic();
+          const completion = await anthropic.messages.create({
+            model: "claude-sonnet-4-5-20250929",
+            max_tokens: 1024,
+            system: String(body.context.systemPrompt),
+            messages,
+          });
+          const replyText = completion.content[0]?.text || "What would you like to build?";
+          return res.json({ ok: true, response: replyText });
+        } catch (e) {
+          console.error("[builder_interview] Claude call failed:", e.message);
+          return res.json({ ok: true, response: "I'm here to help you shape this. Tell me more about what you'd build." });
+        }
       }
 
       // CODEX 47.10 — Process inline file uploads from sandbox chat.
@@ -10813,7 +10847,7 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
     if (route === "/accounting:obligations" && method === "GET") {
       try {
         const { listObligations } = require("./services/accounting/obligations");
-        const result = await listObligations({ tenantId: ctx.tenantId });
+        const result = await listObligations({ tenantId: ctx.tenantId, userId: user?.uid || null });
         return res.json(result);
       } catch (e) {
         console.error("[accounting:obligations] error:", e.message);
@@ -18934,24 +18968,61 @@ Return as JSON: { summary, risks: [], recommendations: [], confidence }`
     // POST /v1/staff:create
     if (route === "/staff:create" && method === "POST") {
       try {
-        const { name, email, role, permissions, phone } = body;
+        const { name, email, role, permissions, phone, personType, advisor, vendor, notes } = body;
 
-        if (!name || !email || !role) {
-          return jsonError(res, 400, "Missing name, email, or role");
+        if (!name || !email) {
+          return jsonError(res, 400, "Missing name or email");
         }
 
-        const ref = await db.collection("staff").add({
+        const type = personType || "employee"; // backwards-compat default
+        if (!["employee", "advisor", "vendor"].includes(type)) {
+          return jsonError(res, 400, "personType must be employee, advisor, or vendor");
+        }
+
+        const data = {
           tenantId: ctx.tenantId,
           name,
           email,
-          role,
-          permissions: permissions || [],
+          personType: type,
           phone: phone || "",
+          notes: notes || "",
           status: "active",
           createdAt: nowServerTs(),
-        });
+        };
 
-        return res.json({ ok: true, staffId: ref.id });
+        if (type === "employee") {
+          data.role = role || "employee";
+          data.permissions = permissions || [];
+        } else if (type === "advisor") {
+          // Equity-bearing advisor (warrant grant + vesting + milestones + success fee)
+          data.advisor = {
+            warrantShares: advisor?.warrantShares ?? null,         // number of shares granted
+            equityPct: advisor?.equityPct ?? null,                  // alt to shares — % of cap table
+            strikePrice: advisor?.strikePrice ?? null,              // per-share strike, e.g. 0.001
+            vestingMonths: advisor?.vestingMonths ?? null,          // e.g. 24
+            cliffMonths: advisor?.cliffMonths ?? null,              // e.g. 6
+            vestingType: advisor?.vestingType || "time",            // time | milestone
+            milestones: advisor?.milestones || "",                  // free text — milestone descriptions
+            successFeeTerms: advisor?.successFeeTerms || "",        // free text — e.g. "5% on capital sourced"
+            grantDate: advisor?.grantDate || null,                  // ISO date
+            cofounderTitle: advisor?.cofounderTitle || null,        // external title only, if any
+          };
+        } else if (type === "vendor") {
+          // 1099 / contractor — no equity
+          data.vendor = {
+            scope: vendor?.scope || "",                             // what they do
+            contractStart: vendor?.contractStart || null,
+            contractEnd: vendor?.contractEnd || null,
+            paymentTerms: vendor?.paymentTerms || "",               // "Net 30", "$X/mo retainer", etc.
+            paymentAmount: vendor?.paymentAmount ?? null,           // monthly $ or contract total
+            form1099: vendor?.form1099 ?? true,                     // bool — do they need a 1099?
+            taxId: vendor?.taxId || null,                           // SSN/EIN if collected (sensitive)
+          };
+        }
+
+        const ref = await db.collection("staff").add(data);
+
+        return res.json({ ok: true, staffId: ref.id, personType: type });
       } catch (e) {
         console.error("❌ staff:create failed:", e);
         return jsonError(res, 500, "Failed to create staff member");
@@ -18961,7 +19032,7 @@ Return as JSON: { summary, risks: [], recommendations: [], confidence }`
     // PUT /v1/staff:update
     if (route === "/staff:update" && method === "PUT") {
       try {
-        const { id, name, email, role, permissions, status, phone } = body;
+        const { id, name, email, role, permissions, status, phone, personType, advisor, vendor, notes } = body;
 
         if (!id) {
           return jsonError(res, 400, "Missing staff id");
@@ -18979,6 +19050,15 @@ Return as JSON: { summary, risks: [], recommendations: [], confidence }`
         if (permissions !== undefined) updates.permissions = permissions;
         if (status !== undefined) updates.status = status;
         if (phone !== undefined) updates.phone = phone;
+        if (notes !== undefined) updates.notes = notes;
+        if (personType !== undefined) {
+          if (!["employee", "advisor", "vendor"].includes(personType)) {
+            return jsonError(res, 400, "personType must be employee, advisor, or vendor");
+          }
+          updates.personType = personType;
+        }
+        if (advisor !== undefined) updates.advisor = advisor;
+        if (vendor !== undefined) updates.vendor = vendor;
 
         await db.collection("staff").doc(id).update(updates);
 
