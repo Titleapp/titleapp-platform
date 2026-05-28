@@ -168,29 +168,41 @@ async function sendWithTemplate({
     value: value == null ? "" : String(value),
   }));
 
+  const requestBody = {
+    template_ids: [templateId],
+    title,
+    subject,
+    message,
+    signers: signersPayload,
+    custom_fields: customFieldsPayload,
+    metadata: metadata || {},
+    test_mode: testMode ? 1 : 0,
+  };
+
+  console.log(`[hellosign.sendWithTemplate] POST template=${templateId} test_mode=${requestBody.test_mode} signers=${signersPayload.map((s) => `${s.role}:${s.email_address}`).join(", ")}`);
+
   const response = await fetch(`${HELLOSIGN_BASE}/signature_request/send_with_template`, {
     method: "POST",
     headers: {
       "Authorization": getAuthHeader(keys.apiKey),
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      template_ids: [templateId],
-      title,
-      subject,
-      message,
-      signers: signersPayload,
-      custom_fields: customFieldsPayload,
-      metadata: metadata || {},
-      test_mode: testMode ? 1 : 0,
-    }),
+    body: JSON.stringify(requestBody),
   });
 
   const result = await response.json();
+
   if (!result.signature_request) {
-    throw new Error(result.error?.error_msg || `HelloSign template send failed (${response.status})`);
+    const errorMsg = result.error?.error_msg || `HelloSign template send failed (${response.status})`;
+    console.error(`[hellosign.sendWithTemplate] FAILED status=${response.status} error=${JSON.stringify(result.error)} fullBody=${JSON.stringify(result).slice(0, 1000)}`);
+    const err = new Error(errorMsg);
+    err.dropboxSignError = result.error || null;
+    err.dropboxSignStatus = response.status;
+    throw err;
   }
   const sigReq = result.signature_request;
+
+  console.log(`[hellosign.sendWithTemplate] OK signatureRequestId=${sigReq.signature_request_id} signatures=${(sigReq.signatures || []).map((s) => `${s.signer_role}:${s.signer_email_address}(${s.signature_id})`).join(", ")}`);
 
   // Email-only flow — no embedded sign URLs. Returning an empty signUrls map
   // keeps the caller surface identical to createEmbeddedRequest().

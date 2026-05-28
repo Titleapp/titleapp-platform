@@ -545,7 +545,16 @@ async function handleWebhookEvent({ event }) {
             metadata: refreshed.metadata || {},
             finalHash,
           });
+        } else if (role === "advisor") {
+          const advisorFlow = require("../ir/advisorFlow");
+          await advisorFlow.onSignaturePacketSigned({
+            requestId,
+            hellosignRequestId: refreshed.hellosignRequestId,
+            metadata: refreshed.metadata || {},
+            finalHash,
+          });
         }
+        // role === "warrant" + "nda" + "creator" post-processing deferred to next pass.
       } catch (postErr) {
         console.error("[signatureService] role post-processing failed:", postErr);
         // Do not throw — the signature itself succeeded; downstream retry can pick this up.
@@ -609,7 +618,7 @@ async function handleWebhookEvent({ event }) {
  * fire downstream side effects (Vault write, etc.).
  *
  * @param {object} input
- * @param {"investor"|"advisor"|"creator"} input.role
+ * @param {"investor"|"advisor"|"creator"|"nda"|"warrant"} input.role
  * @param {string} input.recipientEmail
  * @param {string} input.recipientName
  * @param {object} input.vars             — template merge values (see TEMPLATES.md)
@@ -657,6 +666,13 @@ const ROLE_TEMPLATE_ENV = {
     docType: "mutual_nda",
     title: "SOCIII Mutual NDA",
   },
+  warrant: {
+    envKey: "DROPBOX_SIGN_TEMPLATE_HOMMIE_WARRANT",
+    signerRole: "HOLDER",
+    companyRole: "COMPANY",
+    docType: "hommie_warrant",
+    title: "SOCIII HOMMIE Warrant Agreement",
+  },
 };
 
 function _buildCustomFields(role, recipient, vars) {
@@ -667,7 +683,6 @@ function _buildCustomFields(role, recipient, vars) {
       investor_email: recipient.email,
       investment_amount: v.investmentAmount != null ? String(v.investmentAmount) : "",
       valuation_cap: v.valuationCap != null ? String(v.valuationCap) : "10000000",
-      shares_issued: v.sharesIssued != null ? String(v.sharesIssued) : "",
       agreement_date: v.agreementDate || new Date().toISOString().slice(0, 10),
       company_name: v.companyName || "SOCIII, Inc.",
       company_state: v.companyState || "Delaware",
@@ -694,11 +709,23 @@ function _buildCustomFields(role, recipient, vars) {
   }
   if (role === "nda") {
     return {
-      counterparty_name: recipient.name,
-      counterparty_email: recipient.email,
-      counterparty_company: v.counterpartyCompany || "",
-      company_name: v.companyName || "SOCIII, Inc.",
+      counterparty_name: v.counterpartyCompany || recipient.name,
+      counterparty_address: v.counterpartyAddress || "",
       agreement_date: v.agreementDate || new Date().toISOString().slice(0, 10),
+    };
+  }
+  if (role === "warrant") {
+    return {
+      holder_name: recipient.name,
+      holder_email: recipient.email,
+      holder_address: v.holderAddress || "",
+      phom_balance: v.phomBalance != null ? String(v.phomBalance) : "",
+      warrant_shares: v.warrantShares != null ? String(v.warrantShares) : "",
+      strike_price: v.strikePrice != null ? String(v.strikePrice) : "0.0001",
+      expiration_date: v.expirationDate || "",
+      agreement_date: v.agreementDate || new Date().toISOString().slice(0, 10),
+      company_name: v.companyName || "SOCIII, Inc.",
+      company_state: v.companyState || "Delaware",
     };
   }
   return {};
@@ -753,6 +780,11 @@ async function sendSignaturePacket({
   const companySigner = { role: cfg.companyRole, email: COMPANY_SIGNER.email, name: COMPANY_SIGNER.name };
   const hsSignersPayload = [recipientSigner, companySigner];
 
+  // Default to LIVE mode. Test mode emails are commonly spam-filtered by Gmail
+  // and signatures aren't legally binding. Only opt into test mode explicitly
+  // by setting HELLOSIGN_TEST_MODE=1.
+  const testMode = process.env.HELLOSIGN_TEST_MODE === "1";
+
   let hsResult;
   try {
     hsResult = await hellosign.sendWithTemplate({
@@ -763,11 +795,16 @@ async function sendSignaturePacket({
       signers: hsSignersPayload,
       customFields: _buildCustomFields(role, { email: recipientEmail, name: recipientName }, vars),
       metadata: combinedMetadata,
-      testMode: process.env.HELLOSIGN_TEST_MODE !== "0",
+      testMode,
     });
   } catch (e) {
-    console.error("[sendSignaturePacket] HelloSign send_with_template failed:", e);
-    return { ok: false, error: e.message || "Failed to send signature request" };
+    console.error("[sendSignaturePacket] HelloSign send_with_template failed:", e.message, e.dropboxSignError || "");
+    return {
+      ok: false,
+      error: e.message || "Failed to send signature request",
+      dropboxSignError: e.dropboxSignError || null,
+      dropboxSignStatus: e.dropboxSignStatus || null,
+    };
   }
 
   if (!hsResult) {

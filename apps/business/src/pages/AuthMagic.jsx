@@ -69,7 +69,33 @@ export default function AuthMagic() {
 
         setStatus("success");
 
-        // Redirect to vault with context — preserve worker slug for auto-open
+        // Role-aware redirect. Magic links may carry role + entity ID for IR
+        // tracks (advisor / investor / warrant / creator). Route to the right
+        // onboarding surface; default fallthrough to the legacy Vault.
+        const role = params.get("role");
+        const advisorId = params.get("advisor");
+        const investorId = params.get("investor");
+        const fundraiseId = params.get("fundraise");
+
+        if (role === "advisor" && advisorId) {
+          setTimeout(() => {
+            window.location.href = "/onboard/advisor?advisorId=" + encodeURIComponent(advisorId);
+          }, 600);
+          return;
+        }
+        if (role === "investor" && investorId) {
+          setTimeout(() => {
+            window.location.href = "/onboard/investor?investorId=" + encodeURIComponent(investorId)
+              + (fundraiseId ? "&fundraiseId=" + encodeURIComponent(fundraiseId) : "");
+          }, 600);
+          return;
+        }
+        if (role === "creator") {
+          setTimeout(() => { window.location.href = "/onboard/creator"; }, 600);
+          return;
+        }
+
+        // Legacy / worker-trial fallthrough
         const vertical = data.vertical || "";
         const workerSlug = workerParam || data.workerSlug || "";
         setTimeout(() => {

@@ -4828,6 +4828,7 @@ export default function App() {
   const isDevelopersLanding = /^\/developers\/?$/.test(window.location.pathname);
   const isDevelopersRedirect = /^\/developers\/?$/.test(window.location.pathname);
   const isPilotLanding = /^\/pilot\/?$/.test(window.location.pathname);
+  const isWhitepaper = /^\/whitepaper\/?$/.test(window.location.pathname);
 
   // ── /legal/:slug route intercept ─────────────────────────
   const legalSlugMatch = window.location.pathname.match(/^\/legal\/([a-z0-9-]+)\/?$/);
@@ -4857,6 +4858,9 @@ export default function App() {
 
   // ── /auth/magic route intercept ─────────────────────
   const isAuthMagic = /^\/auth\/magic\/?$/.test(window.location.pathname);
+
+  // ── /onboard/advisor route intercept (IR Phase 2) ──
+  const isAdvisorOnboard = /^\/onboard\/advisor\/?$/.test(window.location.pathname);
 
   // ── /subscribe/success route intercept ────────────────
   const isSubscribeSuccess = /^\/subscribe\/success\/?$/.test(window.location.pathname);
@@ -5662,6 +5666,12 @@ export default function App() {
     return <React.Suspense fallback={<div style={{ minHeight: "100vh", background: "#FFFFFF" }} />}><AuthMagic /></React.Suspense>;
   }
 
+  // ── Advisor onboarding (IR Phase 2) ────────────────────────
+  if (isAdvisorOnboard) {
+    const AdvisorOnboarding = React.lazy(() => import("./pages/AdvisorOnboarding"));
+    return <React.Suspense fallback={<div style={{ minHeight: "100vh", background: "#FFFFFF" }} />}><AdvisorOnboarding /></React.Suspense>;
+  }
+
   // ── Subscribe success page ──────────────────────────────
   if (isSubscribeSuccess) {
     const SubscribeSuccess = React.lazy(() => import("./pages/SubscribeSuccess"));
@@ -5703,6 +5713,10 @@ export default function App() {
   if (isPropMgmtLanding) return <PropertyMgmtLanding />;
   if (isDevelopersLanding) return <DeveloperLanding />;
   if (isPilotLanding) return <PilotLanding />;
+  if (isWhitepaper) {
+    const Whitepaper = React.lazy(() => import("./pages/Whitepaper"));
+    return <React.Suspense fallback={<div style={{ minHeight: "100vh", background: "#FFFFFF" }} />}><Whitepaper /></React.Suspense>;
+  }
 
   if (handoffInProgress || currentView === "loading") {
     return (

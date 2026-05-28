@@ -20,3 +20,8 @@ functions/**/.env.*
 *.bak.*
 *~
 .DS_Store
+
+# Local working folder for confidential investor/advisor decks. Live data
+# room is the Firestore-backed fundraises collection — see
+# functions/functions/services/fundraise/dataRoom.js.
+docs/data-room/

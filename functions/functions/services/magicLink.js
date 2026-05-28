@@ -291,6 +291,19 @@ async function verifyMagicLink(req, res) {
     }
   }
 
+  // IR advisor magic link: same pattern — stamp uid on advisor record.
+  if (linkData.role === "advisor" && linkData.advisorId) {
+    try {
+      await db.collection("advisors").doc(linkData.advisorId).set({
+        uid,
+        magicLinkVerifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+        updated_at: admin.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
+    } catch (e) {
+      console.error("[magic-link:verify] failed to stamp uid on advisor record:", e.message);
+    }
+  }
+
   // Transfer guest subscriptions to real UID
   const guestId = req.body.guestId;
   let transferred = 0;

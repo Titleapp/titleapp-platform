@@ -137,7 +137,7 @@ async function initiateInvestorFlow(input) {
     used: false,
   });
 
-  const baseUrl = "https://app.sociii.ai";
+  const baseUrl = process.env.SOCIII_APP_BASE_URL || "https://title-app-alpha.web.app";
   const magicUrl = `${baseUrl}/auth/magic?token=${token}&role=investor&fundraise=${encodeURIComponent(fundraiseId)}&investor=${encodeURIComponent(investorId)}`;
 
   // ── Email send (Phase 1: coded but will bounce) ─────────────

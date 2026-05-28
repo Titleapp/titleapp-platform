@@ -12119,6 +12119,97 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
     }
 
     // ──────────────────────────────────────────────────────────
+    // IR Phase 2 — Advisor flow endpoints (mirror of investor)
+    // ──────────────────────────────────────────────────────────
+
+    // POST /v1/ir:advisor:initiate
+    // Body: { email, name, equityPct, vestingMonths?, cliffMonths?, advisorRole? }
+    if (route === "/ir:advisor:initiate" && method === "POST") {
+      try {
+        const advisorFlow = require("./services/ir/advisorFlow");
+        const result = await advisorFlow.initiateAdvisorFlow({
+          advisorId: body.advisorId || null,
+          email: body.email,
+          name: body.name,
+          equityPct: body.equityPct,
+          vestingMonths: body.vestingMonths,
+          cliffMonths: body.cliffMonths,
+          advisorRole: body.advisorRole || null,
+          invitedBy: auth.user.uid,
+        });
+        return res.json(result);
+      } catch (e) {
+        console.error("ir:advisor:initiate failed:", e);
+        return jsonError(res, 500, e.message || "Failed to initiate advisor flow");
+      }
+    }
+
+    // POST /v1/ir:advisor:step
+    // Body: { advisorId, action, ...args }
+    // action ∈ { "magic_link_clicked", "start_identity", "start_signature" }
+    if (route === "/ir:advisor:step" && method === "POST") {
+      try {
+        const advisorFlow = require("./services/ir/advisorFlow");
+        const action = body.action;
+        const advisorId = body.advisorId;
+        if (!advisorId) return jsonError(res, 400, "advisorId required");
+
+        if (action === "magic_link_clicked") {
+          const result = await advisorFlow.onMagicLinkClick({ advisorId });
+          return res.json(result);
+        }
+        if (action === "acknowledge_terms") {
+          const result = await advisorFlow.acknowledgeTerms({
+            advisorId,
+            uid: auth.user.uid,
+            userAgent: req.headers["user-agent"] || null,
+            ip: req.headers["x-forwarded-for"] || req.ip || null,
+          });
+          return res.json(result);
+        }
+        if (action === "start_identity") {
+          const result = await advisorFlow.startIdentityVerification({
+            advisorId,
+            uid: auth.user.uid,
+            returnUrl: body.returnUrl || null,
+          });
+          return res.json(result);
+        }
+        if (action === "sync_kyc") {
+          const result = await advisorFlow.syncKycFromStripe({ advisorId });
+          return res.json(result);
+        }
+        if (action === "start_signature" || action === "resend_signature") {
+          const result = await advisorFlow.startAdvisorSigning({
+            advisorId,
+            advisorAddress: body.advisorAddress || null,
+            uid: auth.user.uid,
+            force: action === "resend_signature",
+          });
+          return res.json(result);
+        }
+        return jsonError(res, 400, `Unknown action: ${action}`);
+      } catch (e) {
+        console.error("ir:advisor:step failed:", e);
+        return jsonError(res, 500, e.message || "Advisor step failed");
+      }
+    }
+
+    // GET /v1/ir:advisor:status?advisorId=...
+    if (route === "/ir:advisor:status" && method === "GET") {
+      try {
+        const advisorFlow = require("./services/ir/advisorFlow");
+        const advisorId = req.query?.advisorId;
+        if (!advisorId) return jsonError(res, 400, "advisorId required");
+        const result = await advisorFlow.getStatus({ advisorId });
+        return res.json(result);
+      } catch (e) {
+        console.error("ir:advisor:status failed:", e);
+        return jsonError(res, 500, e.message || "Status read failed");
+      }
+    }
+
+    // ──────────────────────────────────────────────────────────
     // CREATIVE-001 — Long-Form Author worker
     // (Book / Script / Play). Capability registry:
     //   creative.create_project_v1, creative.outline_draft_v1,

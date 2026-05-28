@@ -48,30 +48,36 @@ function getStripe() {
  * @returns {Promise<{ok, sessionId, client_secret, url}>}
  */
 async function createIdentitySession(input) {
-  const { uid, fundraiseId, investorId, returnUrl = null, email = null, name = null } = input || {};
+  const { uid, fundraiseId, investorId, advisorId, returnUrl = null, email = null, name = null } = input || {};
   if (!uid) throw new Error("createIdentitySession: uid required");
-  if (!fundraiseId || !investorId) {
-    throw new Error("createIdentitySession: fundraiseId and investorId required");
+  const isAdvisor = !!advisorId;
+  const isInvestor = !!(fundraiseId && investorId);
+  if (!isAdvisor && !isInvestor) {
+    throw new Error("createIdentitySession: advisorId OR (fundraiseId + investorId) required");
   }
+
+  const purpose = isAdvisor ? "ir_advisor_identity" : "ir_investor_identity";
 
   const stripe = getStripe();
   const session = await stripe.identity.verificationSessions.create({
     type: "document",
     metadata: {
       uid,
-      fundraiseId,
-      investorId,
-      purpose: "ir_investor_identity",
+      fundraiseId: fundraiseId || "",
+      investorId: investorId || "",
+      advisorId: advisorId || "",
+      purpose,
       email: email || "",
       name: name || "",
     },
     return_url: returnUrl || undefined,
   });
 
-  // Persist a lightweight record on the investor doc (no PII).
-  const invRef = getDb().collection("fundraises").doc(fundraiseId)
-    .collection("investors").doc(investorId);
-  await invRef.set({
+  // Persist a lightweight record on the entity doc (no PII).
+  const entityRef = isAdvisor
+    ? getDb().collection("advisors").doc(advisorId)
+    : getDb().collection("fundraises").doc(fundraiseId).collection("investors").doc(investorId);
+  await entityRef.set({
     stripeIdentitySessionId: session.id,
     stripeIdentityStatus: session.status || "created",
     stripeIdentityCreatedAt: ts(),
@@ -120,25 +126,33 @@ async function handleIdentityWebhookEvent(event) {
   }
 
   const metadata = session.metadata || {};
-  const { fundraiseId, investorId, purpose } = metadata;
+  const { fundraiseId, investorId, advisorId, purpose } = metadata;
 
-  // Only handle investor identity sessions. Generic /v1/identity:session:create
-  // sessions still flow through the existing identityVerifications collection
-  // and are handled by the main webhook handler.
-  if (purpose !== "ir_investor_identity") {
-    return { ok: true, skipped: true, reason: "not_investor_identity" };
+  console.log(`[stripeIdentity] webhook event=${type} session=${session.id} purpose=${purpose || "(none)"} advisorId=${advisorId || "(none)"} fundraiseId=${fundraiseId || "(none)"} investorId=${investorId || "(none)"} status=${session.status || "(none)"}`);
+
+  return await _applyIdentitySessionToEntity({ session, eventType: type, metadata });
+}
+
+// Shared writer used by both the webhook handler and the manual sync recovery
+// path. Routes the session to the right Firestore doc based on metadata.purpose.
+async function _applyIdentitySessionToEntity({ session, eventType, metadata }) {
+  const { fundraiseId, investorId, advisorId, purpose } = metadata || {};
+
+  let entityRef = null;
+  let entityKind = null;
+  if (purpose === "ir_investor_identity" && fundraiseId && investorId) {
+    entityRef = getDb().collection("fundraises").doc(fundraiseId).collection("investors").doc(investorId);
+    entityKind = "investor";
+  } else if (purpose === "ir_advisor_identity" && advisorId) {
+    entityRef = getDb().collection("advisors").doc(advisorId);
+    entityKind = "advisor";
+  } else {
+    console.log(`[stripeIdentity] skipped — purpose=${purpose} doesn't match any IR entity`);
+    return { ok: true, skipped: true, reason: "not_ir_identity", purpose: purpose || null };
   }
-
-  if (!fundraiseId || !investorId) {
-    console.warn("[stripeIdentity] investor identity event missing fundraiseId/investorId metadata", { sessionId: session.id });
-    return { ok: false, reason: "missing_metadata" };
-  }
-
-  const invRef = getDb().collection("fundraises").doc(fundraiseId)
-    .collection("investors").doc(investorId);
 
   const eventEntry = {
-    type,
+    type: eventType || `sync.${session.status || "unknown"}`,
     at: new Date().toISOString(),
     sessionId: session.id,
     status: session.status || null,
@@ -151,30 +165,100 @@ async function handleIdentityWebhookEvent(event) {
     updated_at: ts(),
   };
 
-  switch (type) {
-    case "identity.verification_session.verified": {
-      await invRef.set({
-        ...baseUpdate,
-        kycStatus: "approved",
-        kycVerifiedAt: ts(),
-        kycMethod: "stripe_identity",
-        kycRejectionReason: null,
-      }, { merge: true });
-      return { ok: true, action: "approved", fundraiseId, investorId };
+  if (session.status === "verified") {
+    // Pull the verification report to extract verified address/name.
+    let verifiedAddress = null;
+    let verifiedName = null;
+    let verifiedDob = null;
+    try {
+      const reportId = session.last_verification_report;
+      if (reportId) {
+        const stripe = getStripe();
+        const report = await stripe.identity.verificationReports.retrieve(reportId);
+        const doc = report?.document || {};
+        const addr = doc.address || {};
+        verifiedAddress = [addr.line1, addr.line2, addr.city, addr.state, addr.postal_code, addr.country]
+          .filter(Boolean).join(", ") || null;
+        if (doc.first_name || doc.last_name) {
+          verifiedName = [doc.first_name, doc.last_name].filter(Boolean).join(" ");
+        }
+        if (doc.dob) {
+          verifiedDob = `${doc.dob.year}-${String(doc.dob.month).padStart(2, "0")}-${String(doc.dob.day).padStart(2, "0")}`;
+        }
+        console.log(`[stripeIdentity] verified report pulled — name=${verifiedName} addressLines=${verifiedAddress ? "yes" : "no"}`);
+      } else {
+        console.warn("[stripeIdentity] verified session missing last_verification_report");
+      }
+    } catch (e) {
+      console.error("[stripeIdentity] verification report fetch failed:", e.message);
     }
-    case "identity.verification_session.requires_input":
-    case "identity.verification_session.processing":
-    case "identity.verification_session.canceled":
-    case "identity.verification_session.created":
-    default: {
-      await invRef.set(baseUpdate, { merge: true });
-      return { ok: true, action: "event_appended", fundraiseId, investorId, type };
-    }
+
+    await entityRef.set({
+      ...baseUpdate,
+      kycStatus: "approved",
+      kycVerifiedAt: ts(),
+      kycMethod: "stripe_identity",
+      kycRejectionReason: null,
+      flowStep: "identity_complete",
+      ...(verifiedAddress ? { verifiedAddress } : {}),
+      ...(verifiedName ? { verifiedName } : {}),
+      ...(verifiedDob ? { verifiedDob } : {}),
+    }, { merge: true });
+    console.log(`[stripeIdentity] approved — entityKind=${entityKind} advisorId=${advisorId || ""} fundraiseId=${fundraiseId || ""} investorId=${investorId || ""}`);
+    return {
+      ok: true,
+      action: "approved",
+      entityKind,
+      status: session.status,
+      fundraiseId: fundraiseId || null,
+      investorId: investorId || null,
+      advisorId: advisorId || null,
+    };
   }
+
+  await entityRef.set(baseUpdate, { merge: true });
+  return { ok: true, action: "event_appended", entityKind, status: session.status, type: eventType };
+}
+
+/**
+ * Manual sync path — pulls the current state of a Stripe Identity session
+ * and writes it back to the entity doc. Used when the webhook silently
+ * misses (e.g., subscription wasn't enrolled at verification time).
+ *
+ * @param {object} input
+ * @param {string} input.sessionId
+ * @param {string} [input.advisorId]
+ * @param {string} [input.fundraiseId]
+ * @param {string} [input.investorId]
+ */
+async function syncIdentitySessionToEntity({ sessionId, advisorId = null, fundraiseId = null, investorId = null }) {
+  if (!sessionId) throw new Error("syncIdentitySessionToEntity: sessionId required");
+  const stripe = getStripe();
+  const session = await stripe.identity.verificationSessions.retrieve(sessionId);
+  // Trust the session metadata over caller-supplied IDs (defense in depth),
+  // but fall back to caller IDs if metadata is empty.
+  const metadata = {
+    ...(session.metadata || {}),
+  };
+  if (advisorId && !metadata.advisorId) {
+    metadata.advisorId = advisorId;
+    metadata.purpose = metadata.purpose || "ir_advisor_identity";
+  }
+  if (fundraiseId && investorId && !metadata.investorId) {
+    metadata.fundraiseId = fundraiseId;
+    metadata.investorId = investorId;
+    metadata.purpose = metadata.purpose || "ir_investor_identity";
+  }
+  return await _applyIdentitySessionToEntity({
+    session,
+    eventType: `sync.${session.status || "unknown"}`,
+    metadata,
+  });
 }
 
 module.exports = {
   createIdentitySession,
   getIdentitySessionStatus,
   handleIdentityWebhookEvent,
+  syncIdentitySessionToEntity,
 };
