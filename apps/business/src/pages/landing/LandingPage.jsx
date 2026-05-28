@@ -528,13 +528,13 @@ export default function LandingPage({ vertical, headlines, problems, workers, te
             <div style={S.footerColTitle}>Programs</div>
             <a href="/referrals" style={S.footerLink}>Referral Program</a>
             <a href="/developers" style={S.footerLink}>Developer Program</a>
-            <a href="#" style={S.footerLink}>Bug Bounty</a>
+            <a href="mailto:alex@sociii.ai?subject=Security" style={S.footerLink}>Security</a>
             <a href="/apply" style={S.footerLink}>Creators</a>
           </div>
           <div>
             <div style={S.footerColTitle}>Support</div>
-            <a href="#" style={S.footerLink}>Help Center</a>
-            <a href="#" style={S.footerLink}>Status</a>
+            <a href="/meet-alex" style={S.footerLink}>Ask Alex</a>
+            <a href="/whitepaper" style={S.footerLink}>Whitepaper</a>
             <a href="/legal/privacy-policy" style={S.footerLink}>Privacy Policy</a>
             <a href="/legal/terms-of-service" style={S.footerLink}>Terms</a>
           </div>
