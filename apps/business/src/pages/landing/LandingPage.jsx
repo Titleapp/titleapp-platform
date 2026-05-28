@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import sociiiMarkUrl from "../../assets/sociii-brand/icon/sociii-icon-mark.svg";
 
 const MAX_W = 1200;
 
@@ -278,11 +279,14 @@ export default function LandingPage({ vertical, headlines, problems, workers, te
       {/* ═══ GlobalNav ═══ */}
       <nav style={S.nav}>
         <div style={S.navInner}>
-          <a href="https://sociii.ai" style={S.logo}>SOCIII</a>
+          <a href="https://sociii.ai" style={{ ...S.logo, display: "flex", alignItems: "center", gap: 10 }}>
+            <img src={sociiiMarkUrl} alt="" width={28} height={28} style={{ display: "block", borderRadius: 6 }} />
+            <span>SOCIII</span>
+          </a>
           <div style={S.navLinks}>
             <a href="/workers" style={S.navLink}>Workers</a>
             <a href="/developers" style={S.navLink}>Developers</a>
-            <a href="/invest/room" style={S.navLink}>Investors</a>
+            <a href="mailto:kent@sociii.ai?cc=alex@sociii.ai&subject=SOCIII%20Investor%20Inquiry" style={S.navLink}>Investors</a>
             <button style={S.navLink} onClick={() => scrollTo(pricingRef)}>Pricing</button>
           </div>
           <div style={S.navRight}>
@@ -300,7 +304,7 @@ export default function LandingPage({ vertical, headlines, problems, workers, te
         <div style={S.mobileMenu}>
           <a href="/workers" style={S.mobileLink}>Workers</a>
           <a href="/developers" style={S.mobileLink}>Developers</a>
-          <a href="/invest/room" style={S.mobileLink}>Investors</a>
+          <a href="mailto:kent@sociii.ai?cc=alex@sociii.ai&subject=SOCIII%20Investor%20Inquiry" style={S.mobileLink}>Investors</a>
           <button style={{ ...S.mobileLink, background: "none", border: "none", textAlign: "left", cursor: "pointer", fontFamily: "inherit" }} onClick={() => { setMobileNav(false); scrollTo(pricingRef); }}>Pricing</button>
           <a href="/login" style={S.mobileLink}>Sign In</a>
           <button style={{ ...S.startBtn, width: "100%", marginTop: 8 }} onClick={() => { setMobileNav(false); scrollTo(signupRef); }}>Start Free</button>
@@ -520,7 +524,7 @@ export default function LandingPage({ vertical, headlines, problems, workers, te
           <div>
             <div style={S.footerColTitle}>Company</div>
             <a href="https://sociii.ai" style={S.footerLink}>About</a>
-            <a href="/invest/room" style={S.footerLink}>Investors</a>
+            <a href="mailto:kent@sociii.ai?cc=alex@sociii.ai&subject=SOCIII%20Investor%20Inquiry" style={S.footerLink}>Investors</a>
             <a href="/whitepaper" style={S.footerLink}>Whitepaper</a>
             <a href="mailto:sean@sociii.ai" style={S.footerLink}>Contact</a>
           </div>

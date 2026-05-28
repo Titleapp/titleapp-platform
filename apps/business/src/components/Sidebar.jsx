@@ -5,6 +5,7 @@ import WorkerIcon, { getThemeAccent } from "../utils/workerIcons";
 import { getWorkerColor } from "../utils/workerColors";
 import { useWorkerState } from "../context/WorkerStateContext.jsx";
 import DataLinkStatus from "./studio/DataLinkStatus";
+import sociiiMarkUrl from "../assets/sociii-brand/icon/sociii-icon-mark.svg";
 
 // Worker slug → additional "My Work" nav items
 const WORKER_NAV_MAP = {
@@ -1435,6 +1436,14 @@ export default function Sidebar({
 
   return (
     <div className="sidebar">
+      {/* ═══ BRAND STRIP ═══ */}
+      <div style={{
+        display: "flex", alignItems: "center", gap: 10,
+        padding: "14px 18px 10px", borderBottom: "1px solid rgba(255,255,255,0.06)",
+      }}>
+        <img src={sociiiMarkUrl} alt="" width={24} height={24} style={{ display: "block", borderRadius: 5 }} />
+        <span style={{ color: "#f1f5f9", fontWeight: 700, fontSize: 17, letterSpacing: "-0.3px" }}>SOCIII</span>
+      </div>
       {/* ═══ WORKSPACE IDENTITY ═══ */}
       <div className="sidebarHeader" style={{ position: "relative" }}>
         <div

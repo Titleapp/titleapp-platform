@@ -511,7 +511,7 @@ export default function LandingPage() {
           </div>
           <div style={S.footerLinks}>
             <a href={`${appBase}/whitepaper`} style={S.footerLink}>Whitepaper</a>
-            <a href={`${appBase}/invest/room`} style={S.footerLink}>Investors</a>
+            <a href="mailto:kent@sociii.ai?cc=alex@sociii.ai&subject=SOCIII%20Investor%20Inquiry" style={S.footerLink}>Investors</a>
             <a href={`${appBase}/sandbox`} style={S.footerLink}>Creators</a>
             <a href={`${appBase}/legal/privacy-policy`} style={S.footerLink}>Privacy</a>
             <a href={`${appBase}/legal/terms-of-service`} style={S.footerLink}>Terms</a>

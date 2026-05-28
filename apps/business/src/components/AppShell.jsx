@@ -9,6 +9,7 @@ import { RightPanelProvider } from "../context/RightPanelContext";
 import { WorkerStateProvider } from "../context/WorkerStateContext.jsx";
 import { useVisitorContext } from "../hooks/useVisitorContext";
 import { auth } from "../firebase";
+import sociiiMarkUrl from "../assets/sociii-brand/icon/sociii-icon-mark.svg";
 
 const RightPanel = lazy(() => import("./RightPanel/RightPanel"));
 
@@ -296,7 +297,10 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
         >
           ☰
         </button>
-        <div className="topbarTitle">SOCIII</div>
+        <div className="topbarTitle" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <img src={sociiiMarkUrl} alt="" width={22} height={22} style={{ display: "block", borderRadius: 5 }} />
+          <span>SOCIII</span>
+        </div>
         {tenantInfo && (
           <div style={{
             marginLeft: "auto",
