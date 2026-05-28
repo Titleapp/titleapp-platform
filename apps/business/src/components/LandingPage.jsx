@@ -510,13 +510,14 @@ export default function LandingPage() {
             <span style={{ color: "#9ca3af", fontSize: 13, marginLeft: 8 }}>The Digital Worker Platform</span>
           </div>
           <div style={S.footerLinks}>
+            <a href={`${appBase}/whitepaper`} style={S.footerLink}>Whitepaper</a>
+            <a href={`${appBase}/invest/room`} style={S.footerLink}>Investors</a>
+            <a href={`${appBase}/sandbox`} style={S.footerLink}>Creators</a>
             <a href={`${appBase}/legal/privacy-policy`} style={S.footerLink}>Privacy</a>
             <a href={`${appBase}/legal/terms-of-service`} style={S.footerLink}>Terms</a>
-            <a href={`${appBase}/meet-alex?prompt=I%20want%20to%20invest`} style={S.footerLink}>Investors</a>
-            <a href={`${appBase}/sandbox`} style={S.footerLink}>Creators</a>
           </div>
           <div style={{ fontSize: 12, color: "#9ca3af" }}>
-            The Title App LLC &middot; 1209 N Orange St, Wilmington DE 19801
+            SOCIII, Inc. &middot; 1810 E Sahara Ave Ste 75942, Las Vegas NV 89104
           </div>
         </div>
       </footer>

@@ -521,7 +521,7 @@ export default function LandingPage({ vertical, headlines, problems, workers, te
             <div style={S.footerColTitle}>Company</div>
             <a href="https://sociii.ai" style={S.footerLink}>About</a>
             <a href="/invest/room" style={S.footerLink}>Investors</a>
-            <a href="#" style={S.footerLink}>Blog</a>
+            <a href="/whitepaper" style={S.footerLink}>Whitepaper</a>
             <a href="mailto:sean@sociii.ai" style={S.footerLink}>Contact</a>
           </div>
           <div>

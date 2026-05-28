@@ -24,7 +24,7 @@ const TIERS = [
 
 // Matrix-style code lines — realistic rule/schema/compliance content
 const MATRIX_LINES = [
-  'const TIER_0 = require("@titleapp/rules/platform");',
+  'const TIER_0 = require("@sociii/rules/platform");',
   'import { ComplianceEngine } from "./engine";',
   '',
   '// Tier 1 — Regulatory rules',

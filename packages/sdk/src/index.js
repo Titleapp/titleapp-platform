@@ -1,5 +1,5 @@
 /**
- * @titleapp/sdk — JavaScript SDK for the TitleApp Digital Worker platform.
+ * @sociii/sdk — JavaScript SDK for the SOCIII Digital Worker platform.
  *
  * Capabilities:
  *   - workers.list(filters)     — browse/search the marketplace
@@ -13,23 +13,23 @@
 //  ERRORS
 // ═══════════════════════════════════════════════════════════════
 
-class TitleAppError extends Error {
+class SociiiError extends Error {
   constructor(message, code, status) {
     super(message);
-    this.name = "TitleAppError";
+    this.name = "SociiiError";
     this.code = code || "UNKNOWN";
     this.status = status || 0;
   }
 }
 
-class AuthenticationError extends TitleAppError {
+class AuthenticationError extends SociiiError {
   constructor(message) {
     super(message || "Authentication required", "UNAUTHORIZED", 401);
     this.name = "AuthenticationError";
   }
 }
 
-class RateLimitError extends TitleAppError {
+class RateLimitError extends SociiiError {
   constructor(message, retryAfter) {
     super(message || "Rate limit exceeded", "RATE_LIMITED", 429);
     this.name = "RateLimitError";
@@ -37,7 +37,7 @@ class RateLimitError extends TitleAppError {
   }
 }
 
-class NotFoundError extends TitleAppError {
+class NotFoundError extends SociiiError {
   constructor(message) {
     super(message || "Resource not found", "NOT_FOUND", 404);
     this.name = "NotFoundError";
@@ -93,7 +93,7 @@ async function fetchWithRetry(url, options, retries = MAX_RETRIES) {
       }
 
       if (!res.ok) {
-        throw new TitleAppError(
+        throw new SociiiError(
           body?.error || `HTTP ${res.status}`,
           body?.code || "HTTP_ERROR",
           res.status,
@@ -103,7 +103,7 @@ async function fetchWithRetry(url, options, retries = MAX_RETRIES) {
       return body;
     } catch (err) {
       lastError = err;
-      if (err instanceof TitleAppError) throw err;
+      if (err instanceof SociiiError) throw err;
       if (attempt < retries) {
         await sleep(INITIAL_BACKOFF_MS * Math.pow(2, attempt));
         continue;
@@ -111,7 +111,7 @@ async function fetchWithRetry(url, options, retries = MAX_RETRIES) {
     }
   }
 
-  throw lastError || new TitleAppError("Request failed after retries", "NETWORK_ERROR");
+  throw lastError || new SociiiError("Request failed after retries", "NETWORK_ERROR");
 }
 
 function sleep(ms) {
@@ -130,9 +130,9 @@ async function safeJson(res) {
 //  SDK CLIENT
 // ═══════════════════════════════════════════════════════════════
 
-class TitleApp {
+class Sociii {
   /**
-   * Create a TitleApp SDK client.
+   * Create a SOCIII SDK client.
    *
    * @param {Object} options
    * @param {string} [options.apiKey] - API key (ta_xxx format) for public API access
@@ -237,7 +237,7 @@ class WorkersClient {
    * @returns {Promise<{ok: boolean, worker: Object}>}
    */
   async get(slugOrId) {
-    if (!slugOrId) throw new TitleAppError("slugOrId is required", "MISSING_FIELDS");
+    if (!slugOrId) throw new SociiiError("slugOrId is required", "MISSING_FIELDS");
     return this._client._get("/v1/marketplace:worker", { slug: slugOrId });
   }
 
@@ -253,8 +253,8 @@ class WorkersClient {
    * @returns {Promise<{ok: boolean, response: string, sessionId: string}>}
    */
   async chat(workerId, message, options = {}) {
-    if (!workerId) throw new TitleAppError("workerId is required", "MISSING_FIELDS");
-    if (!message) throw new TitleAppError("message is required", "MISSING_FIELDS");
+    if (!workerId) throw new SociiiError("workerId is required", "MISSING_FIELDS");
+    if (!message) throw new SociiiError("message is required", "MISSING_FIELDS");
 
     const body = {
       message,
@@ -282,7 +282,7 @@ class WorkersClient {
    */
   async compare(workerIds) {
     if (!Array.isArray(workerIds) || workerIds.length === 0) {
-      throw new TitleAppError("workerIds array is required", "MISSING_FIELDS");
+      throw new SociiiError("workerIds array is required", "MISSING_FIELDS");
     }
     return this._client._get("/v1/marketplace:compare", {
       workerIds: workerIds.slice(0, 4).join(","),
@@ -309,10 +309,10 @@ class WorkersClient {
    */
   async fork(workerId, options) {
     if (!workerId) {
-      throw new TitleAppError("workerId is required", "MISSING_FIELDS");
+      throw new SociiiError("workerId is required", "MISSING_FIELDS");
     }
     if (!options || !options.name || !options.ownerId) {
-      throw new TitleAppError("name and ownerId are required", "MISSING_FIELDS");
+      throw new SociiiError("name and ownerId are required", "MISSING_FIELDS");
     }
     return this._client._post(`/v1/workers/${encodeURIComponent(workerId)}/fork`, options);
   }
@@ -394,10 +394,10 @@ class MarketplaceClient {
 //  EXPORTS
 // ═══════════════════════════════════════════════════════════════
 
-export default TitleApp;
+export default Sociii;
 export {
-  TitleApp,
-  TitleAppError,
+  Sociii,
+  SociiiError,
   AuthenticationError,
   RateLimitError,
   NotFoundError,

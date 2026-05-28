@@ -1,6 +1,6 @@
-# @titleapp/sdk
+# @sociii/sdk
 
-JavaScript SDK for the TitleApp Digital Worker platform.
+JavaScript SDK for the SOCIII Digital Worker platform.
 
 ## Current Version: v0.1.0 (BETA)
 
@@ -13,15 +13,15 @@ Available client modules: workers, vault, marketplace.
 ## Install
 
 ```bash
-npm install @titleapp/sdk
+npm install @sociii/sdk
 ```
 
 ## Quick Start
 
 ```javascript
-import TitleApp from "@titleapp/sdk";
+import Sociii from "@sociii/sdk";
 
-const client = new TitleApp();
+const client = new Sociii();
 
 // Browse the marketplace (no auth required)
 const results = await client.marketplace.search("deal analyst");
@@ -36,10 +36,10 @@ console.log(worker.worker.name);
 
 ```javascript
 // Public API key (for server-side use)
-const client = new TitleApp({ apiKey: "ta_your_api_key" });
+const client = new Sociii({ apiKey: "ta_your_api_key" });
 
 // Firebase ID token (for client-side use)
-const client = new TitleApp({ token: firebaseIdToken });
+const client = new Sociii({ token: firebaseIdToken });
 
 // Update token after refresh
 client.setToken(newToken);
@@ -129,7 +129,7 @@ const { session } = await client.vault.getSession();
 ## Error Handling
 
 ```javascript
-import { TitleAppError, AuthenticationError, RateLimitError, NotFoundError } from "@titleapp/sdk";
+import { SociiiError, AuthenticationError, RateLimitError, NotFoundError } from "@sociii/sdk";
 
 try {
   await client.workers.get("nonexistent");
@@ -147,7 +147,7 @@ try {
 ## Configuration
 
 ```javascript
-const client = new TitleApp({
+const client = new Sociii({
   apiKey: "ta_xxx",              // API key for public API
   token: "firebase-id-token",    // Firebase auth token
   baseUrl: "https://custom.api", // Custom API URL

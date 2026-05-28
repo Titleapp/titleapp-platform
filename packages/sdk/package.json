@@ -1,7 +1,7 @@
 {
-  "name": "@titleapp/sdk",
+  "name": "@sociii/sdk",
   "version": "0.1.0",
-  "description": "JavaScript SDK for the TitleApp Digital Worker platform",
+  "description": "JavaScript SDK for the SOCIII Digital Worker platform",
   "main": "dist/index.cjs",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
@@ -20,13 +20,13 @@
     "prepublishOnly": "npm run build"
   },
   "keywords": [
-    "titleapp",
+    "sociii",
     "digital-worker",
     "ai",
     "marketplace",
     "sdk"
   ],
-  "author": "TitleApp AI <hello@titleapp.ai>",
+  "author": "SOCIII, Inc. <hello@sociii.ai>",
   "license": "MIT",
   "repository": {
     "type": "git",

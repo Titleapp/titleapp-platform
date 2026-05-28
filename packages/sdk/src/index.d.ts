@@ -1,25 +1,25 @@
 /**
- * @titleapp/sdk — TypeScript declarations
+ * @sociii/sdk — TypeScript declarations
  */
 
 // ── Errors ──
 
-export declare class TitleAppError extends Error {
+export declare class SociiiError extends Error {
   code: string;
   status: number;
   constructor(message: string, code?: string, status?: number);
 }
 
-export declare class AuthenticationError extends TitleAppError {
+export declare class AuthenticationError extends SociiiError {
   constructor(message?: string);
 }
 
-export declare class RateLimitError extends TitleAppError {
+export declare class RateLimitError extends SociiiError {
   retryAfter: string | null;
   constructor(message?: string, retryAfter?: string);
 }
 
-export declare class NotFoundError extends TitleAppError {
+export declare class NotFoundError extends SociiiError {
   constructor(message?: string);
 }
 
@@ -182,20 +182,20 @@ export declare class MarketplaceClient {
 
 // ── Main Client ──
 
-export interface TitleAppOptions {
+export interface SociiiOptions {
   apiKey?: string;
   token?: string;
   baseUrl?: string;
   retries?: number;
 }
 
-export declare class TitleApp {
+export declare class Sociii {
   workers: WorkersClient;
   vault: VaultClient;
   marketplace: MarketplaceClient;
 
-  constructor(options?: TitleAppOptions);
+  constructor(options?: SociiiOptions);
   setToken(token: string): void;
 }
 
-export default TitleApp;
+export default Sociii;

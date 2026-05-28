@@ -34,7 +34,7 @@ export default function DeveloperLanding() {
           color: "#00FF00", overflowX: "auto",
           marginBottom: "32px",
         }}>
-          {"npm install @titleapp/sdk"}
+          {"npm install @sociii/sdk"}
         </pre>
 
         <h2 style={{ fontSize: "20px", fontWeight: "600", marginBottom: "16px", color: "#e2e8f0" }}>
