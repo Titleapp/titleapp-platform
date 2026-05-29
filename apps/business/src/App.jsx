@@ -4831,6 +4831,7 @@ export default function App() {
   const isWhitepaper = /^\/whitepaper\/?$/.test(window.location.pathname);
   const isInvestorInquiry = /^\/investors\/?$/.test(window.location.pathname);
   const isInvestorVote = /^\/invest\/vote\/?$/.test(window.location.pathname);
+  const isCreatorOnboard = /^\/onboard\/creator\/?$/.test(window.location.pathname);
 
   // ── /legal/:slug route intercept ─────────────────────────
   const legalSlugMatch = window.location.pathname.match(/^\/legal\/([a-z0-9-]+)\/?$/);
@@ -5726,6 +5727,10 @@ export default function App() {
   if (isInvestorVote) {
     const InvestorVote = React.lazy(() => import("./pages/InvestorVote"));
     return <React.Suspense fallback={<div style={{ minHeight: "100vh", background: "#FFFFFF" }} />}><InvestorVote /></React.Suspense>;
+  }
+  if (isCreatorOnboard) {
+    const CreatorOnboard = React.lazy(() => import("./pages/CreatorOnboard"));
+    return <React.Suspense fallback={<div style={{ minHeight: "100vh", background: "#FFFFFF" }} />}><CreatorOnboard /></React.Suspense>;
   }
 
   if (handoffInProgress || currentView === "loading") {

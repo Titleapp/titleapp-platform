@@ -91,7 +91,11 @@ export default function AuthMagic() {
           return;
         }
         if (role === "creator") {
-          setTimeout(() => { window.location.href = "/onboard/creator"; }, 600);
+          const creatorId = params.get("creator") || params.get("creatorId");
+          setTimeout(() => {
+            window.location.href = "/onboard/creator"
+              + (creatorId ? "?creatorId=" + encodeURIComponent(creatorId) : "");
+          }, 600);
           return;
         }
 

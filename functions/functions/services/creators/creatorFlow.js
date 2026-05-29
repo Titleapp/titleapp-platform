@@ -423,8 +423,8 @@ async function startSubscription({ creatorId, uid, returnUrl = null }) {
   const stripe = new Stripe(stripeSecret);
 
   const baseUrl = process.env.SOCIII_APP_BASE_URL || "https://title-app-alpha.web.app";
-  const successUrl = returnUrl || `${baseUrl}/creator/onboard?creatorId=${encodeURIComponent(creatorId)}&checkout=success`;
-  const cancelUrl = `${baseUrl}/creator/onboard?creatorId=${encodeURIComponent(creatorId)}&checkout=cancel`;
+  const successUrl = returnUrl || `${baseUrl}/onboard/creator?creatorId=${encodeURIComponent(creatorId)}&checkout=success`;
+  const cancelUrl = `${baseUrl}/onboard/creator?creatorId=${encodeURIComponent(creatorId)}&checkout=cancel`;
 
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",
