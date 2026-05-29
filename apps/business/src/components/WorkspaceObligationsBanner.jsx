@@ -151,8 +151,11 @@ export default function WorkspaceObligationsBanner({ inviteId, onAllComplete }) 
         setError(data.error || "Action failed");
         return;
       }
-      if (data.identitySession?.url) {
-        window.location.href = data.identitySession.url;
+      // Stripe Identity — advisor/investor flows return a flat `url` field;
+      // creator flow wraps under `identitySession.url`. Handle both.
+      const identityUrl = data.identitySession?.url || (data.url && data.sessionId ? data.url : null);
+      if (identityUrl) {
+        window.location.href = identityUrl;
         return;
       }
       if (data.checkoutUrl) {

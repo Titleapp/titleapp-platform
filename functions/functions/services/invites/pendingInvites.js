@@ -239,8 +239,10 @@ async function listInvitesByUserId(uid) {
 
   if (snap.empty) return [];
 
-  return snap.docs
-    .map(d => ({ id: d.id, ...d.data() }))
+  const raw = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const enriched = await Promise.all(raw.map(d => enrichInviteWithEntityState(d)));
+
+  return enriched
     .filter(d => Array.isArray(d.pendingObligations) && d.pendingObligations.some(o => !o.completedAt))
     .sort((a, b) => {
       const ta = a.claimedAt?.seconds || a.invitedAt?.seconds || 0;
@@ -250,13 +252,98 @@ async function listInvitesByUserId(uid) {
 }
 
 /**
- * Get a single invite by id (Phase 2 canvas reads).
+ * Compute obligation completion from the actual entity record (advisor /
+ * investor / creator / warrant) so the canvas banner reflects the truth
+ * even when the step action updates only the entity, not the invite
+ * (TC-010). Mutates the obligations array on the passed invite and
+ * returns it.
+ */
+async function enrichInviteWithEntityState(invite) {
+  if (!invite || !invite.role || !invite.entityId) return invite;
+  const obligations = Array.isArray(invite.pendingObligations) ? invite.pendingObligations : [];
+  if (obligations.length === 0) return invite;
+
+  const db = getDb();
+  const collMap = { advisor: "advisors", investor_pre_safe_signed: "investors", warrant_holder: "warrants", creator: "creators" };
+  // Map known roles to (collection, doneCheckers)
+  let entity = null;
+  try {
+    if (invite.role === "advisor") {
+      const snap = await db.collection("advisors").doc(invite.entityId).get();
+      entity = snap.exists ? snap.data() : null;
+    } else if (invite.role === "investor") {
+      // investors live under fundraises/{fundraiseId}/investors/{investorId}.
+      // The pendingInvite's context.fundraiseId tells us which fundraise.
+      const fundraiseId = invite.context?.fundraiseId;
+      if (fundraiseId) {
+        const snap = await db.collection("fundraises").doc(fundraiseId)
+          .collection("investors").doc(invite.entityId).get();
+        entity = snap.exists ? snap.data() : null;
+      }
+    } else if (invite.role === "warrant_holder") {
+      const snap = await db.collection("warrants").doc(invite.entityId).get();
+      entity = snap.exists ? snap.data() : null;
+    } else if (invite.role === "creator") {
+      const snap = await db.collection("creators").doc(invite.entityId).get();
+      entity = snap.exists ? snap.data() : null;
+    }
+  } catch (_) { /* fall through with entity=null */ }
+
+  if (!entity) return invite;
+
+  const tsToIso = (v) => {
+    if (!v) return null;
+    if (typeof v === "string") return v;
+    if (typeof v.toDate === "function") return v.toDate().toISOString();
+    if (v._seconds) return new Date(v._seconds * 1000).toISOString();
+    return null;
+  };
+
+  // Per-role obligation completion map. Each entry maps obligation.id → an
+  // entity-state predicate that decides whether to set completedAt.
+  const completionMap = {
+    advisor: {
+      "acknowledge-terms": () => tsToIso(entity.termsAcknowledgedAt) || (entity.flowStep && ["identity_pending","identity_complete","signature_pending","signature_complete","closed"].includes(entity.flowStep) ? new Date().toISOString() : null),
+      "verify-identity": () => entity.kycStatus === "approved" ? (tsToIso(entity.kycApprovedAt) || new Date().toISOString()) : null,
+      "sign-agreement": () => ["signature_complete","closed"].includes(entity.flowStep) ? (tsToIso(entity.signatureCompletedAt) || new Date().toISOString()) : null,
+    },
+    investor: {
+      "verify-identity": () => entity.kycStatus === "approved" ? new Date().toISOString() : null,
+      "sign-safe": () => ["safe_signed","safe_complete","closed"].includes(entity.flowStep) ? new Date().toISOString() : null,
+    },
+    warrant_holder: {
+      "verify-identity": () => entity.kycStatus === "approved" ? new Date().toISOString() : null,
+      "sign-warrant": () => ["signature_complete","closed"].includes(entity.flowStep) ? new Date().toISOString() : null,
+    },
+    creator: {
+      "accept-license": () => tsToIso(entity.agreementAcceptedAt),
+      "verify-identity": () => entity.kycStatus === "approved" ? new Date().toISOString() : null,
+      "activate-license": () => entity.subscriptionStatus === "active" ? new Date().toISOString() : null,
+    },
+  };
+
+  const checks = completionMap[invite.role] || {};
+  invite.pendingObligations = obligations.map(o => {
+    if (o.completedAt) return o;
+    const check = checks[o.id];
+    if (!check) return o;
+    const completedAt = check();
+    return completedAt ? { ...o, completedAt } : o;
+  });
+  return invite;
+}
+
+/**
+ * Get a single invite by id (Phase 2 canvas reads). Enriches obligations
+ * with entity-derived completion state — the truth source is the entity
+ * doc, not the pendingInvite write log.
  */
 async function getInviteById(inviteId) {
   if (!inviteId) return null;
   const snap = await getDb().collection("pendingInvites").doc(inviteId).get();
   if (!snap.exists) return null;
-  return { id: snap.id, ...snap.data() };
+  const invite = { id: snap.id, ...snap.data() };
+  return await enrichInviteWithEntityState(invite);
 }
 
 /**

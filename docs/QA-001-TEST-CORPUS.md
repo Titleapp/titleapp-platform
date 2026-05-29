@@ -179,6 +179,36 @@ Sean 2026-05-29 (post S51.30 deploy): many workers will require outbound comms (
 - **Discovery method:** Anticipated from "magic link landed at /auth/magic with no params" report on Friday morning.
 - **Fix sketch:** If detected, use hash routing (`/#invite=<id>`) which survives more aggressively, or set a sessionStorage token AuthMagic writes and the banner reads.
 
+### TC-016 — Step-action response shape varies across flows
+- **Family:** 3 + 7 (Endpoint smoke + ID check lifecycle)
+- **Severity:** P0 (Stripe Identity redirect fails silently — button "doesn't work" from user's perspective)
+- **Real bug:** `creatorFlow.startIdentityVerification` returns `{ ok: true, identitySession: result }` — wraps the Stripe session under `identitySession.url`. `advisorFlow.startIdentityVerification` returns the bare Stripe result `{ ok, sessionId, client_secret, url }` — flat. Banner code only checked the wrapped shape (`data.identitySession?.url`), so the advisor button click would silently fall through to a `refresh()` instead of redirecting. From the user's POV: click does nothing.
+- **Test:** For each role's step:start_identity action, assert the response contains EITHER `identitySession.url` OR `(url AND sessionId)`. Banner should redirect on either.
+- **Pass:** Banner navigates to Stripe Identity within 2s of button click.
+- **Fail signal:** Click resolves silently with no navigation (network-200 but no UI change).
+- **Discovery method:** Dogfood click on Verify Identity → no redirect. Server logs showed 200 OK on /v1/ir:advisor:step. Diff between creatorFlow and advisorFlow return shapes surfaced the inconsistency.
+- **Fix sketch:** Banner accepts both shapes (shipped in S51.32). Long-term: normalize step-action response shape across all flows — every role's startIdentityVerification returns `{ ok, identitySession: { sessionId, url } }`. Document the contract in `services/_shared/`.
+
+### TC-017 — No welcome chat message for invited users
+- **Family:** 4 (Chat LLM-as-judge — extended to opener)
+- **Severity:** P2 (no broken behavior, but the chat panel sits empty during onboarding — wastes the two-screen-movie effect)
+- **Real bug:** Invited user lands in workspace with obligation banner on canvas + empty chat panel. The hr-people chat header is visible but no message kicks off. Sean's observation 2026-05-29: chat should auto-fire "Welcome FIRSTNAME, let's get you set up with your advisor role at SOCIII" when an invite is detected.
+- **Test:** Land in workspace with `?invite=<id>` for each role. Within 3s of mount, assert chat panel has ≥1 assistant message AND message content matches the role-appropriate welcome template.
+- **Pass:** Chat opens with role-specific welcome referencing the user's first name.
+- **Fail signal:** Chat panel empty 5s after invite-driven workspace load.
+- **Discovery method:** Sean's screenshot of incognito dogfood — empty chat panel above the visible obligation banner.
+- **Fix sketch:** Detect invite param on workspace mount; fire a chat opener with role-aware copy. Templates live in `services/_shared/chatOpeners.js` (new). Worker prompt registry takes a `welcome` field for invited users.
+
+### TC-015 — requireFirebaseUser return-shape misuse silently 403s
+- **Family:** 3 (Endpoint smoke — extended to auth-helper contract)
+- **Severity:** P0 (every authenticated call to the new endpoint silently fails; banner appears to "just not render")
+- **Real bug:** `/v1/invites:current` and `/v1/invites:get` consumed `await requireFirebaseUser(req, res)` as if it returned the decoded user directly. The helper actually returns `{ handled, user, res? }`. So my `user.uid` was `undefined`. The 403 guard `invite.claimedByUserId !== user.uid` evaluated `"<aspensean uid>" !== undefined` = true. Every call returned 403. Function logs at 20:11:22Z 2026-05-29 showed `❌ API ERROR: 403 not your invite {}` even though Firestore had the matching claimedByUserId.
+- **Test:** For every authenticated route, assert the auth-helper destructure matches the helper's contract (`auth.user.uid`, not `user.uid` directly). Shipped pattern across `index.js` is `const auth = await requireFirebaseUser(...); if (auth.handled) return;` then `auth.user.uid`.
+- **Pass:** New endpoint returns 200 with the invite body when caller IS the claimer.
+- **Fail signal:** 403 on a route the user should own; no error in client logs (silent banner-empty state).
+- **Discovery method:** Live dogfood by Sean 2026-05-29 — aspensean clicked the magic link, banner didn't appear, function log showed 403. Caught via `firebase functions:log` grep for the route + timestamp window.
+- **Why this matters for QA-001:** Auth-helper contract violations are the single most common class of "endpoint exists, looks deployed, silently 4xxs" bug. QA-001 must hit every new authenticated route at least once with a known-authorized caller and assert 2xx + expected body shape.
+
 ---
 
 (slot for next bug)
