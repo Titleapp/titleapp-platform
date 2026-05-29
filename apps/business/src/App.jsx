@@ -4829,6 +4829,8 @@ export default function App() {
   const isDevelopersRedirect = /^\/developers\/?$/.test(window.location.pathname);
   const isPilotLanding = /^\/pilot\/?$/.test(window.location.pathname);
   const isWhitepaper = /^\/whitepaper\/?$/.test(window.location.pathname);
+  const isInvestorInquiry = /^\/investors\/?$/.test(window.location.pathname);
+  const isInvestorVote = /^\/invest\/vote\/?$/.test(window.location.pathname);
 
   // ── /legal/:slug route intercept ─────────────────────────
   const legalSlugMatch = window.location.pathname.match(/^\/legal\/([a-z0-9-]+)\/?$/);
@@ -5716,6 +5718,14 @@ export default function App() {
   if (isWhitepaper) {
     const Whitepaper = React.lazy(() => import("./pages/Whitepaper"));
     return <React.Suspense fallback={<div style={{ minHeight: "100vh", background: "#FFFFFF" }} />}><Whitepaper /></React.Suspense>;
+  }
+  if (isInvestorInquiry) {
+    const InvestorInquiry = React.lazy(() => import("./pages/InvestorInquiry"));
+    return <React.Suspense fallback={<div style={{ minHeight: "100vh", background: "#FFFFFF" }} />}><InvestorInquiry /></React.Suspense>;
+  }
+  if (isInvestorVote) {
+    const InvestorVote = React.lazy(() => import("./pages/InvestorVote"));
+    return <React.Suspense fallback={<div style={{ minHeight: "100vh", background: "#FFFFFF" }} />}><InvestorVote /></React.Suspense>;
   }
 
   if (handoffInProgress || currentView === "loading") {

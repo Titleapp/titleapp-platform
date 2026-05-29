@@ -21,7 +21,7 @@ function computeLeadScore({ vertical, company, utm_source, promo_code, source })
   return Math.min(score, 100);
 }
 
-async function captureLead({ name, email, company, role, vertical, utm_source, utm_medium, utm_campaign, utm_content, ref, promo_code, headline_index, source }) {
+async function captureLead({ name, email, company, role, vertical, utm_source, utm_medium, utm_campaign, utm_content, ref, promo_code, headline_index, source, message }) {
   // Validate email
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return { ok: false, error: "Valid email is required" };
@@ -68,6 +68,7 @@ async function captureLead({ name, email, company, role, vertical, utm_source, u
     promo_code: promo_code || null,
     headline_index: headline_index != null ? headline_index : null,
     source: source || "signup_form",
+    message: message || null,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
     convertedAt: null,
     userId: null,
@@ -75,12 +76,17 @@ async function captureLead({ name, email, company, role, vertical, utm_source, u
 
   const docRef = await db.collection("leads").add(leadData);
 
-  // Fire notifications (non-blocking)
+  // Fire notifications (non-blocking). Investor inquiries get a different
+  // auto-reply (whitepaper + deck-follow-up promise) routed via notifySean
+  // to kent@sociii.ai with alex@sociii.ai cc'd.
   try {
     const notify = getEmailNotify();
+    const investor = notify.isInvestorLead(vertical, source);
     await Promise.all([
       notify.notifySean({ ...leadData, leadId: docRef.id }),
-      notify.sendWelcomeEmail({ ...leadData, leadId: docRef.id }),
+      investor
+        ? notify.sendInvestorAutoReply({ ...leadData })
+        : notify.sendWelcomeEmail({ ...leadData, leadId: docRef.id }),
     ]);
   } catch (e) {
     console.error("Lead notification failed (non-blocking):", e);

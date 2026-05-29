@@ -35,6 +35,10 @@ const DEFAULT_AUTHORIZED_SHARES = 10_000_000;
 const OFFICE_HOURS_BOOKING_URL =
   process.env.OFFICE_HOURS_BOOKING_URL || "https://cal.com/sociii/office-hours";
 
+const INVESTOR_DECK_URL = process.env.SOCIII_INVESTOR_DECK_URL || null;
+const WHITEPAPER_URL = process.env.SOCIII_WHITEPAPER_URL || "https://sociii.ai/whitepaper";
+const DATA_ROOM_URL = process.env.SOCIII_DATA_ROOM_URL || null;
+
 const VALID_STEPS = [
   "created",
   "identity_pending",
@@ -157,11 +161,15 @@ async function initiateInvestorFlow(input) {
           personalizations: [{ to: [{ email, name }] }],
           from: { email: "sean@sociii.ai", name: "Sean Combs — SOCIII" },
           reply_to: { email: "sean@sociii.ai", name: "Sean Combs" },
-          subject: "Your SOCIII investor access",
+          subject: `Welcome to SOCIII, ${(name || "").split(" ")[0] || "friend"} — pre-seed access`,
           content: [{
             type: "text/html",
-            value: _investorInviteEmail({ name, magicUrl, investmentAmount }),
+            value: _investorInviteEmail({ name, magicUrl, investmentAmount, deckUrl: INVESTOR_DECK_URL, whitepaperUrl: WHITEPAPER_URL, dataRoomUrl: DATA_ROOM_URL }),
           }],
+          tracking_settings: {
+            click_tracking: { enable: false, enable_text: false },
+            open_tracking: { enable: false },
+          },
         }),
       });
       emailQueued = sgResp.ok;
@@ -521,34 +529,63 @@ async function getStatus({ fundraiseId = DEFAULT_FUNDRAISE_ID, investorId }) {
 //  EMAIL TEMPLATES
 // ═══════════════════════════════════════════════════════════════
 
-function _investorInviteEmail({ name, magicUrl, investmentAmount }) {
-  const firstName = (name || "").split(" ")[0] || "there";
-  const amountLine = investmentAmount
-    ? `<p style="font-size: 16px; color: #1a202c; line-height: 1.6;">Indicated commitment: <strong>$${Number(investmentAmount).toLocaleString()}</strong>.</p>`
+function _investorInviteEmail({ name, magicUrl, investmentAmount, deckUrl, whitepaperUrl, dataRoomUrl }) {
+  const firstName = (name || "").split(" ")[0] || "friend";
+  const amountSentence = investmentAmount
+    ? ` Based on our conversation, we've reserved a <strong>$${Number(investmentAmount).toLocaleString()}</strong> allocation in your name on the round; nothing's locked until you sign.`
     : "";
+  const deckLine = deckUrl
+    ? `<a href="${deckUrl}" style="color: #7C3AED; text-decoration: underline;">the SOCIII pre-seed deck</a>`
+    : `the SOCIII pre-seed deck (we'll follow up with the link directly)`;
+  const whitepaperLine = whitepaperUrl
+    ? ` and <a href="${whitepaperUrl}" style="color: #7C3AED; text-decoration: underline;">the SOCIII whitepaper</a>`
+    : "";
+  const dataRoomLine = dataRoomUrl
+    ? ` The full data room (financials, cap table, formation docs, patent family) is at <a href="${dataRoomUrl}" style="color: #7C3AED; text-decoration: underline;">your scoped link</a>, accessible once ID verification is complete.`
+    : ` The data room link will appear in your portal as soon as ID verification is complete.`;
   return `
-<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-  <div style="margin-bottom: 32px;">
-    <span style="font-size: 20px; font-weight: 700; color: #7C3AED;">SOCIII</span>
+<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 620px; margin: 0 auto; padding: 40px 20px; color: #1a202c;">
+  <div style="margin-bottom: 28px;">
+    <span style="font-size: 22px; font-weight: 700; color: #7C3AED; letter-spacing: -0.5px;">SOCIII</span>
   </div>
-  <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">Hi ${firstName},</p>
-  <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">
-    Use the link below to verify identity and sign your SAFE for SOCIII's pre-seed round.
+
+  <p style="font-size: 16px; line-height: 1.7; margin: 0 0 16px 0;">${firstName},</p>
+
+  <p style="font-size: 16px; line-height: 1.7; margin: 0 0 16px 0;">
+    Genuinely grateful you're considering coming in on this round. SOCIII is the digital-worker platform we wish had existed when we were running operations across title, aviation, and auto — and the pre-seed window is when the people closest to us get the chance to be part of it from Day 0.${amountSentence}
   </p>
-  ${amountLine}
-  <div style="margin: 32px 0;">
-    <a href="${magicUrl}" style="display: inline-block; padding: 14px 32px; background: #7C3AED; color: white; text-decoration: none; border-radius: 10px; font-size: 16px; font-weight: 600;">
-      Open investor access
-    </a>
-  </div>
-  <p style="font-size: 14px; color: #64748b; line-height: 1.6;">
-    This link expires in 60 minutes. If it does, reply and we'll send a new one.
+
+  <p style="font-size: 16px; line-height: 1.7; margin: 0 0 16px 0;">
+    The round is structured as a SAFE at a $10M post-money cap. Each $1 invested converts to one share on the priced round, which keeps the math clean and the cap table tidy.
   </p>
-  <p style="font-size: 14px; color: #64748b; line-height: 1.6;">
-    Questions: book a slot at <a href="${OFFICE_HOURS_BOOKING_URL}" style="color: #7C3AED;">SOCIII office hours</a>.
+
+  <h3 style="font-size: 14px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin: 32px 0 12px 0;">What happens next</h3>
+
+  <p style="font-size: 16px; line-height: 1.7; margin: 0 0 16px 0;">
+    <strong>1. A quick identity check.</strong> Click <a href="${magicUrl}" style="color: #7C3AED; text-decoration: underline;">your private investor portal</a> to run a 30-second ID verification through Stripe Identity. SOCIII covers the verification fee. This is the gate that keeps the cap table KYC-clean for the priced round downstream — no Reg D headaches when we close.
   </p>
-  <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
-    <p style="font-size: 13px; color: #94a3b8;">SOCIII, Inc. | Collaborative Intelligence</p>
+
+  <p style="font-size: 16px; line-height: 1.7; margin: 0 0 16px 0;">
+    <strong>2. The materials.</strong> Inside the portal you'll find ${deckLine}${whitepaperLine}. The deck is the 12-slide version of the thesis; the whitepaper is the architectural deep-dive when you want to go a layer down on patents, RAAS, and the cross-vertical roll-out.${dataRoomLine}
+  </p>
+
+  <p style="font-size: 16px; line-height: 1.7; margin: 0 0 16px 0;">
+    <strong>3. The SAFE.</strong> When you're ready, a Dropbox Sign packet will land in your inbox with the SAFE. <strong>Heads up:</strong> it'll come <em>from me</em> — "Sean Lee Combs (SOCIII), via Dropbox Sign" — not from a generic hellosign address. My signature is queued right behind yours, so it closes the moment you're done.
+  </p>
+
+  <p style="font-size: 16px; line-height: 1.7; margin: 24px 0 16px 0;">
+    If you want to talk through any of this live, book a slot at <a href="${OFFICE_HOURS_BOOKING_URL}" style="color: #7C3AED;">SOCIII office hours</a> or just reply to this email. Truly happy to take it at whatever pace works for you.
+  </p>
+
+  <p style="font-size: 16px; line-height: 1.7; margin: 0 0 4px 0;">Talk soon,</p>
+  <p style="font-size: 16px; line-height: 1.7; margin: 0 0 24px 0;"><strong>Sean Lee Combs</strong><br/>
+    <span style="color: #64748b;">Founder, SOCIII</span>
+  </p>
+
+  <div style="margin-top: 36px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+    <p style="font-size: 12px; color: #94a3b8; line-height: 1.6; margin: 0;">
+      SOCIII, Inc. — Collaborative Intelligence. This invitation and the linked materials are confidential and intended only for the named recipient. Nothing herein constitutes an offer to sell or solicitation to buy securities; any such offer is made solely through the executed SAFE and accompanying disclosures.
+    </p>
   </div>
 </div>`;
 }

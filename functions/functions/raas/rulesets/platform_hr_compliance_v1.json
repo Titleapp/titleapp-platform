@@ -1,0 +1,158 @@
+{
+  "rulesetId": "platform_hr_compliance_v1",
+  "version": "1.0.0",
+  "tier": 1,
+  "label": "HR Compliance — Federal baseline + state augmentation",
+  "description": "Compliance law underneath any HR worker output. Federal-level baseline rules apply to all US tenants; jurisdictional augmentations layer on top at runtime based on tenant.state. Covers hiring (I-9, W-4), classification (FLSA exempt vs non-exempt, 1099 vs W-2), benefits-eligibility (ACA), training (harassment, OSHA), recordkeeping (FLSA 3-year + EEO-1), posters (FLSA/EEOC/OSHA), terminations (final-paycheck timing + COBRA), and protected leave (FMLA/state PFL).",
+  "appliesTo": ["platform-hr", "hr-people", "PLAT-005"],
+  "jurisdictions": ["US", "US-CA", "US-NY", "US-TX", "US-IL", "US-WA"],
+  "loadStrategy": "federal_then_state",
+  "rules": [
+    {
+      "id": "hr.i9_within_3_days",
+      "category": "hiring",
+      "severity": "hard_stop",
+      "trigger": "on_new_hire_action",
+      "subject": "I-9 employment-eligibility verification",
+      "rule": "Section 2 of Form I-9 MUST be completed by the employer within three (3) business days of the employee's first day of paid work. Section 1 MUST be completed by the employee on or before the first day.",
+      "violation_action": "block_payroll_until_complete + surface_deadline_in_control_center",
+      "cite": "8 U.S.C. § 1324a; 8 C.F.R. § 274a.2"
+    },
+    {
+      "id": "hr.w4_before_first_payroll",
+      "category": "hiring",
+      "severity": "hard_stop",
+      "trigger": "on_new_hire_action",
+      "subject": "Federal W-4 withholding",
+      "rule": "A signed Form W-4 MUST be on file before the employee's first payroll run. State W-4 (or equivalent) MUST also be on file where applicable.",
+      "violation_action": "block_payroll_until_complete",
+      "cite": "26 U.S.C. § 3402; IRS Pub 15"
+    },
+    {
+      "id": "hr.flsa_classification",
+      "category": "classification",
+      "severity": "soft_flag",
+      "trigger": "on_role_assignment",
+      "subject": "FLSA exempt vs non-exempt classification",
+      "rule": "Any role classified as exempt MUST satisfy duties test + salary test. Salary test threshold reflects current DOL rule. Misclassification creates back-wage liability up to 2-3 years.",
+      "violation_action": "require_human_review + log_to_compliance_canvas",
+      "cite": "29 U.S.C. § 213; 29 C.F.R. Part 541"
+    },
+    {
+      "id": "hr.1099_vs_w2",
+      "category": "classification",
+      "severity": "hard_stop",
+      "trigger": "on_contractor_creation",
+      "subject": "Independent contractor vs employee",
+      "rule": "Worker classified as 1099 MUST pass the IRS common-law test AND state ABC test (where applicable, e.g. CA AB5). Failure to meet either test recharacterizes the worker as W-2.",
+      "violation_action": "block_creation + surface_test_questionnaire",
+      "cite": "IRS Rev. Rul. 87-41; CA Lab. Code § 2775; Dynamex"
+    },
+    {
+      "id": "hr.aca_offer_of_coverage",
+      "category": "benefits",
+      "severity": "soft_flag",
+      "trigger": "monthly + on_headcount_change",
+      "subject": "ACA employer mandate",
+      "rule": "Applicable Large Employers (50+ FTE) MUST offer affordable, minimum-essential coverage to at least 95% of full-time employees, or face § 4980H penalties. Track via Form 1095-C.",
+      "violation_action": "alert + surface_in_compliance_canvas",
+      "cite": "26 U.S.C. § 4980H"
+    },
+    {
+      "id": "hr.recordkeeping_3_year",
+      "category": "recordkeeping",
+      "severity": "hard_stop",
+      "trigger": "on_termination + ongoing",
+      "subject": "FLSA payroll recordkeeping",
+      "rule": "Payroll, time, and basic employment records MUST be retained for three (3) years. Records on which wage computations are based (timecards, work schedules) MUST be retained for two (2) years.",
+      "violation_action": "block_record_deletion + audit_log",
+      "cite": "29 C.F.R. § 516"
+    },
+    {
+      "id": "hr.harassment_training_cadence",
+      "category": "training",
+      "severity": "soft_flag",
+      "trigger": "on_hire + biennial",
+      "subject": "Anti-harassment training",
+      "rule": "Anti-harassment training required at hire and on a periodic cadence. Cadence varies by state: CA requires every 2 years (≥5 employees), NY requires annually, IL requires annually. Federal baseline = best-practice biennial.",
+      "violation_action": "schedule_training + alert",
+      "cite": "CA Gov. Code § 12950.1; NY Lab. Law § 201-g; IL 775 ILCS 5/2-109"
+    },
+    {
+      "id": "hr.osha_training_general_duty",
+      "category": "training",
+      "severity": "soft_flag",
+      "trigger": "on_hire + role_change",
+      "subject": "OSHA general-duty training",
+      "rule": "Employer MUST provide safety training appropriate to the workplace hazards. Industry-specific standards (e.g. construction, healthcare) layer on top of the general duty clause.",
+      "violation_action": "schedule_training + log",
+      "cite": "29 U.S.C. § 654; 29 C.F.R. § 1910"
+    },
+    {
+      "id": "hr.posters_required",
+      "category": "posters",
+      "severity": "hard_stop",
+      "trigger": "on_tenant_setup + annually",
+      "subject": "Required workplace posters",
+      "rule": "Federal posters MUST be displayed: FLSA, OSHA, FMLA, EEO, USERRA, EPPA, polygraph. State posters layer on top.",
+      "violation_action": "send_posters_to_tenant + log",
+      "cite": "29 C.F.R. § 825.300; 29 C.F.R. § 1903.2"
+    },
+    {
+      "id": "hr.fmla_eligibility",
+      "category": "leave",
+      "severity": "soft_flag",
+      "trigger": "on_leave_request + monthly",
+      "subject": "FMLA eligibility",
+      "rule": "Employers with 50+ employees within 75 miles must offer up to 12 weeks of unpaid, job-protected leave for eligible employees (12 months tenure, 1250 hours).",
+      "violation_action": "evaluate_eligibility + surface_response",
+      "cite": "29 U.S.C. § 2611"
+    },
+    {
+      "id": "hr.final_paycheck_timing",
+      "category": "termination",
+      "severity": "hard_stop",
+      "trigger": "on_termination",
+      "subject": "Final paycheck timing",
+      "rule": "Final paycheck timing varies by state. CA: immediately on involuntary termination; 72 hours on resignation. NY: next regular payday. TX: 6 calendar days. Failure can incur waiting-time penalties.",
+      "violation_action": "compute_deadline + block_termination_until_paycheck_scheduled",
+      "cite": "CA Lab. Code §§ 201-203; NY Lab. Law § 191; TX Lab. Code § 61.014"
+    },
+    {
+      "id": "hr.cobra_notice",
+      "category": "termination",
+      "severity": "hard_stop",
+      "trigger": "on_termination",
+      "subject": "COBRA continuation coverage notice",
+      "rule": "If the employer offers group health coverage and is subject to COBRA (20+ employees), a COBRA election notice MUST be sent within 14 days of the qualifying event.",
+      "violation_action": "queue_notice + alert",
+      "cite": "29 U.S.C. § 1166"
+    },
+    {
+      "id": "hr.digital_worker_24_7",
+      "category": "workforce_composition",
+      "severity": "informational",
+      "trigger": "on_worker_subscription",
+      "subject": "Digital worker coverage windows",
+      "rule": "Digital workers default to 24×7×365 availability and are not subject to FLSA hours, breaks, or overtime. Maintenance windows must be logged but do not require human approval. Digital workers are tracked in the HR schedule for visibility only.",
+      "violation_action": "log_only",
+      "cite": "SOCIII platform convention"
+    }
+  ],
+  "stateAugmentations": {
+    "US-CA": [
+      { "ruleId": "hr.harassment_training_cadence", "override": "every 2 years for employers with ≥5 employees; 2 hours for supervisors, 1 hour for non-supervisors" },
+      { "ruleId": "hr.final_paycheck_timing", "override": "Immediate on involuntary termination; 72 hours on resignation. Waiting-time penalty = daily wage × days late, capped at 30 days." },
+      { "ruleId": "hr.1099_vs_w2", "override": "AB5 / ABC test applies. Worker MUST satisfy ALL three prongs (A) free from control, (B) outside usual course of business, (C) independent trade." }
+    ],
+    "US-NY": [
+      { "ruleId": "hr.harassment_training_cadence", "override": "Annual training required for all employees" }
+    ],
+    "US-TX": [
+      { "ruleId": "hr.final_paycheck_timing", "override": "6 calendar days after termination (voluntary or involuntary)" }
+    ]
+  },
+  "auditLogRetentionDays": 1825,
+  "createdAt": "2026-05-29T00:00:00Z",
+  "supersedes": "platform_hr_v1.deprecated"
+}

@@ -12210,6 +12210,319 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
     }
 
     // ──────────────────────────────────────────────────────────
+    // IR Phase 2 — Voting / weighted polling (Snapshot-style)
+    // ──────────────────────────────────────────────────────────
+
+    // POST /v1/ir:ballot:create
+    // Body: { fundraiseId, title, description?, options?, closesAt, quorumPct? }
+    // Caller: founder/admin
+    if (route === "/ir:ballot:create" && method === "POST") {
+      try {
+        const voting = require("./services/ir/voting");
+        const fundraiseId = body.fundraiseId;
+        if (!fundraiseId) return jsonError(res, 400, "fundraiseId required");
+        const result = await voting.createBallot(fundraiseId, body, auth.user.uid);
+        return res.json(result);
+      } catch (e) {
+        console.error("ir:ballot:create failed:", e);
+        return jsonError(res, 500, e.message || "Failed to create ballot");
+      }
+    }
+
+    // POST /v1/ir:ballot:notify — fan out ballot notifications to eligible investors
+    if (route === "/ir:ballot:notify" && method === "POST") {
+      try {
+        const voting = require("./services/ir/voting");
+        const { fundraiseId, ballotId, baseUrl } = body;
+        if (!fundraiseId || !ballotId) return jsonError(res, 400, "fundraiseId + ballotId required");
+        const result = await voting.notifyBallot({ fundraiseId, ballotId, baseUrl });
+        return res.json(result);
+      } catch (e) {
+        console.error("ir:ballot:notify failed:", e);
+        return jsonError(res, 500, e.message || "Failed to notify");
+      }
+    }
+
+    // GET /v1/ir:ballot:list?fundraiseId=...&status=open|closed
+    if (route === "/ir:ballot:list" && method === "GET") {
+      try {
+        const voting = require("./services/ir/voting");
+        const fundraiseId = req.query?.fundraiseId;
+        if (!fundraiseId) return jsonError(res, 400, "fundraiseId required");
+        const ballots = await voting.listBallots(fundraiseId, { status: req.query?.status || null });
+        return res.json({ ok: true, ballots });
+      } catch (e) {
+        console.error("ir:ballot:list failed:", e);
+        return jsonError(res, 500, e.message || "Failed to list");
+      }
+    }
+
+    // GET /v1/ir:ballot:get?fundraiseId=...&ballotId=...
+    if (route === "/ir:ballot:get" && method === "GET") {
+      try {
+        const voting = require("./services/ir/voting");
+        const { fundraiseId, ballotId } = req.query || {};
+        if (!fundraiseId || !ballotId) return jsonError(res, 400, "fundraiseId + ballotId required");
+        const ballot = await voting.getBallot(fundraiseId, ballotId);
+        if (!ballot) return jsonError(res, 404, "ballot not found");
+        return res.json({ ok: true, ballot });
+      } catch (e) {
+        console.error("ir:ballot:get failed:", e);
+        return jsonError(res, 500, e.message || "Failed to read");
+      }
+    }
+
+    // POST /v1/ir:ballot:vote
+    // Body: { fundraiseId, ballotId, investorId, choice }
+    if (route === "/ir:ballot:vote" && method === "POST") {
+      try {
+        const voting = require("./services/ir/voting");
+        const { fundraiseId, ballotId, investorId, choice } = body;
+        if (!fundraiseId || !ballotId || !investorId || !choice) {
+          return jsonError(res, 400, "fundraiseId + ballotId + investorId + choice required");
+        }
+        const result = await voting.castVote(fundraiseId, ballotId, investorId, choice);
+        return res.json(result);
+      } catch (e) {
+        console.error("ir:ballot:vote failed:", e);
+        return jsonError(res, 400, e.message || "Failed to cast vote");
+      }
+    }
+
+    // GET /v1/ir:ballot:tally?fundraiseId=...&ballotId=...
+    if (route === "/ir:ballot:tally" && method === "GET") {
+      try {
+        const voting = require("./services/ir/voting");
+        const { fundraiseId, ballotId } = req.query || {};
+        if (!fundraiseId || !ballotId) return jsonError(res, 400, "fundraiseId + ballotId required");
+        const tally = await voting.tallyBallot(fundraiseId, ballotId);
+        return res.json({ ok: true, ...tally });
+      } catch (e) {
+        console.error("ir:ballot:tally failed:", e);
+        return jsonError(res, 500, e.message || "Failed to tally");
+      }
+    }
+
+    // POST /v1/ir:ballot:close — admin closes ballot early or at expiry
+    if (route === "/ir:ballot:close" && method === "POST") {
+      try {
+        const voting = require("./services/ir/voting");
+        const { fundraiseId, ballotId } = body;
+        if (!fundraiseId || !ballotId) return jsonError(res, 400, "fundraiseId + ballotId required");
+        const result = await voting.closeBallot(fundraiseId, ballotId, auth.user.uid);
+        return res.json(result);
+      } catch (e) {
+        console.error("ir:ballot:close failed:", e);
+        return jsonError(res, 500, e.message || "Failed to close");
+      }
+    }
+
+    // ──────────────────────────────────────────────────────────
+    // HR — Schedule & coverage (humans + 24×7 digital workers)
+    // ──────────────────────────────────────────────────────────
+
+    // POST /v1/hr:schedule:upsert  body: { memberId, memberType, name, role, ... }
+    if (route === "/hr:schedule:upsert" && method === "POST") {
+      try {
+        const schedule = require("./services/hr/schedule");
+        const memberId = body.memberId;
+        if (!memberId) return jsonError(res, 400, "memberId required");
+        const result = await schedule.upsertSchedule(ctx.tenantId, memberId, body);
+        return res.json(result);
+      } catch (e) {
+        console.error("hr:schedule:upsert failed:", e);
+        return jsonError(res, 500, e.message || "Failed");
+      }
+    }
+
+    // GET /v1/hr:schedule:list?memberType=human|digital_worker&status=active
+    if (route === "/hr:schedule:list" && method === "GET") {
+      try {
+        const schedule = require("./services/hr/schedule");
+        const schedules = await schedule.listSchedules(ctx.tenantId, {
+          memberType: req.query?.memberType || null,
+          status: req.query?.status || "active",
+        });
+        return res.json({ ok: true, schedules });
+      } catch (e) {
+        console.error("hr:schedule:list failed:", e);
+        return jsonError(res, 500, e.message || "Failed");
+      }
+    }
+
+    // GET /v1/hr:schedule:coverage  — current coverage roll-up
+    if (route === "/hr:schedule:coverage" && method === "GET") {
+      try {
+        const schedule = require("./services/hr/schedule");
+        const coverage = await schedule.computeCoverage(ctx.tenantId);
+        return res.json({ ok: true, ...coverage });
+      } catch (e) {
+        console.error("hr:schedule:coverage failed:", e);
+        return jsonError(res, 500, e.message || "Failed");
+      }
+    }
+
+    // POST /v1/hr:schedule:pto  body: { memberId, start, end, type, approved }
+    if (route === "/hr:schedule:pto" && method === "POST") {
+      try {
+        const schedule = require("./services/hr/schedule");
+        const { memberId, ...pto } = body;
+        if (!memberId) return jsonError(res, 400, "memberId required");
+        const result = await schedule.addPto(ctx.tenantId, memberId, pto);
+        return res.json(result);
+      } catch (e) {
+        console.error("hr:schedule:pto failed:", e);
+        return jsonError(res, 500, e.message || "Failed");
+      }
+    }
+
+    // POST /v1/hr:schedule:register-worker  body: { workerId, name, role }
+    // Idempotent — call when a digital worker is subscribed so it shows in HR coverage view.
+    if (route === "/hr:schedule:register-worker" && method === "POST") {
+      try {
+        const schedule = require("./services/hr/schedule");
+        const result = await schedule.registerDigitalWorker(ctx.tenantId, body);
+        return res.json(result);
+      } catch (e) {
+        console.error("hr:schedule:register-worker failed:", e);
+        return jsonError(res, 500, e.message || "Failed");
+      }
+    }
+
+    // GET /v1/hr:people:list?type=advisor|human|digital_worker
+    // Unified roster across employees, contractors, advisors, digital workers.
+    if (route === "/hr:people:list" && method === "GET") {
+      try {
+        const people = require("./services/hr/people");
+        const type = req.query.type || null;
+        const result = await people.listPeople(ctx.tenantId, { type });
+        return res.json(result);
+      } catch (e) {
+        console.error("hr:people:list failed:", e);
+        return jsonError(res, 500, e.message || "Failed");
+      }
+    }
+
+    // GET /v1/hr:onboarding:list — in-flight onboardings across all people types.
+    if (route === "/hr:onboarding:list" && method === "GET") {
+      try {
+        const people = require("./services/hr/people");
+        const result = await people.listOnboardings(ctx.tenantId);
+        return res.json(result);
+      } catch (e) {
+        console.error("hr:onboarding:list failed:", e);
+        return jsonError(res, 500, e.message || "Failed");
+      }
+    }
+
+    // GET /v1/hr:compliance:status — open compliance obligations roll-up.
+    if (route === "/hr:compliance:status" && method === "GET") {
+      try {
+        const people = require("./services/hr/people");
+        const result = await people.getComplianceStatus(ctx.tenantId);
+        return res.json(result);
+      } catch (e) {
+        console.error("hr:compliance:status failed:", e);
+        return jsonError(res, 500, e.message || "Failed");
+      }
+    }
+
+    // ──────────────────────────────────────────────────────────
+    // HR — Advisor onboarding (delegates to services/ir/advisorFlow)
+    //
+    // HR worker is the canonical "people management" surface for advisors,
+    // employees, contractors, and digital workers. These endpoints expose
+    // the advisor flow under the HR namespace so the HR worker has a
+    // self-contained API surface. The IR namespace remains live for
+    // backwards-compatibility (Kent + aspensean tests + investor flow
+    // depend on it). Both namespaces hit the same underlying service.
+    // ──────────────────────────────────────────────────────────
+
+    // POST /v1/hr:advisor:initiate — invite a new advisor.
+    if (route === "/hr:advisor:initiate" && method === "POST") {
+      try {
+        const advisorFlow = require("./services/ir/advisorFlow");
+        const result = await advisorFlow.initiateAdvisorFlow({
+          advisorId: body.advisorId || null,
+          email: body.email,
+          name: body.name,
+          equityPct: body.equityPct,
+          vestingMonths: body.vestingMonths,
+          cliffMonths: body.cliffMonths,
+          advisorRole: body.advisorRole || null,
+          invitedBy: auth.user.uid,
+        });
+        return res.json(result);
+      } catch (e) {
+        console.error("hr:advisor:initiate failed:", e);
+        return jsonError(res, 500, e.message || "Failed to initiate advisor onboarding");
+      }
+    }
+
+    // POST /v1/hr:advisor:step — same shape as /v1/ir:advisor:step.
+    if (route === "/hr:advisor:step" && method === "POST") {
+      try {
+        const advisorFlow = require("./services/ir/advisorFlow");
+        const action = body.action;
+        const advisorId = body.advisorId;
+        if (!advisorId) return jsonError(res, 400, "advisorId required");
+
+        if (action === "magic_link_clicked") {
+          const result = await advisorFlow.onMagicLinkClick({ advisorId });
+          return res.json(result);
+        }
+        if (action === "acknowledge_terms") {
+          const result = await advisorFlow.acknowledgeTerms({
+            advisorId,
+            uid: auth.user.uid,
+            userAgent: req.headers["user-agent"] || null,
+            ip: req.headers["x-forwarded-for"] || req.ip || null,
+          });
+          return res.json(result);
+        }
+        if (action === "start_identity") {
+          const result = await advisorFlow.startIdentityVerification({
+            advisorId,
+            uid: auth.user.uid,
+            returnUrl: body.returnUrl || null,
+          });
+          return res.json(result);
+        }
+        if (action === "sync_kyc") {
+          const result = await advisorFlow.syncKycFromStripe({ advisorId });
+          return res.json(result);
+        }
+        if (action === "start_signature" || action === "resend_signature") {
+          const result = await advisorFlow.startAdvisorSigning({
+            advisorId,
+            advisorAddress: body.advisorAddress || null,
+            uid: auth.user.uid,
+            force: action === "resend_signature",
+          });
+          return res.json(result);
+        }
+        return jsonError(res, 400, `Unknown action: ${action}`);
+      } catch (e) {
+        console.error("hr:advisor:step failed:", e);
+        return jsonError(res, 500, e.message || "Advisor step failed");
+      }
+    }
+
+    // GET /v1/hr:advisor:status?advisorId=...
+    if (route === "/hr:advisor:status" && method === "GET") {
+      try {
+        const advisorFlow = require("./services/ir/advisorFlow");
+        const advisorId = req.query?.advisorId;
+        if (!advisorId) return jsonError(res, 400, "advisorId required");
+        const result = await advisorFlow.getStatus({ advisorId });
+        return res.json(result);
+      } catch (e) {
+        console.error("hr:advisor:status failed:", e);
+        return jsonError(res, 500, e.message || "Status read failed");
+      }
+    }
+
+    // ──────────────────────────────────────────────────────────
     // CREATIVE-001 — Long-Form Author worker
     // (Book / Script / Play). Capability registry:
     //   creative.create_project_v1, creative.outline_draft_v1,

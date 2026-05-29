@@ -2,11 +2,13 @@
 
 const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY || "";
 
-async function sendViaSendGrid({ to, subject, htmlBody, textBody }) {
+async function sendViaSendGrid({ to, cc, replyTo, subject, htmlBody, textBody }) {
   if (!SENDGRID_API_KEY) {
     console.warn("SENDGRID_API_KEY not set — skipping email");
     return;
   }
+  const personalization = { to: [{ email: to }] };
+  if (cc && cc.length) personalization.cc = (Array.isArray(cc) ? cc : [cc]).map((e) => ({ email: e }));
   const res = await fetch("https://api.sendgrid.com/v3/mail/send", {
     method: "POST",
     headers: {
@@ -14,9 +16,9 @@ async function sendViaSendGrid({ to, subject, htmlBody, textBody }) {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      personalizations: [{ to: [{ email: to }] }],
+      personalizations: [personalization],
       from: { email: "alex@sociii.ai", name: "Alex — SOCIII" },
-      reply_to: { email: "sean@sociii.ai", name: "Sean Combs" },
+      reply_to: replyTo ? { email: replyTo } : { email: "sean@sociii.ai", name: "Sean Combs" },
       subject,
       content: [
         ...(textBody ? [{ type: "text/plain", value: textBody }] : []),
@@ -30,21 +32,72 @@ async function sendViaSendGrid({ to, subject, htmlBody, textBody }) {
   }
 }
 
-async function notifySean({ name, email, company, vertical, score, leadId }) {
-  const subject = `New Lead: ${name || email} — ${vertical || "general"} — Score: ${score}`;
-  const textBody = [
-    `New lead captured:`,
+function isInvestorLead(vertical, source) {
+  const v = String(vertical || "").toLowerCase();
+  const s = String(source || "").toLowerCase();
+  return v === "investor" || v === "investors" || s.includes("investor");
+}
+
+async function notifySean({ name, email, company, vertical, source, message, score, leadId }) {
+  const investor = isInvestorLead(vertical, source);
+  const tag = investor ? "INVESTOR INQUIRY" : "New Lead";
+  const subject = `${tag}: ${name || email} — ${vertical || source || "general"} — Score: ${score}`;
+  const textLines = [
+    `${tag}:`,
     `  Name: ${name || "(not provided)"}`,
     `  Email: ${email}`,
     `  Company: ${company || "(not provided)"}`,
     `  Vertical: ${vertical || "(not specified)"}`,
+    `  Source: ${source || "(not specified)"}`,
     `  Score: ${score}/100`,
     `  Lead ID: ${leadId}`,
-    ``,
-    `View in Command Center: https://app.sociii.ai/admin`,
-  ].join("\n");
+  ];
+  if (message) {
+    textLines.push("", "  Message:", `  ${String(message).split("\n").join("\n  ")}`);
+  }
+  textLines.push("", `View in Command Center: https://app.sociii.ai/admin`);
+  const textBody = textLines.join("\n");
 
-  await sendViaSendGrid({ to: "sean@sociii.ai", subject, textBody });
+  if (investor) {
+    // Investor inquiries route to Kent with Alex CC'd; replies go to the prospect.
+    await sendViaSendGrid({
+      to: "kent@sociii.ai",
+      cc: ["alex@sociii.ai"],
+      replyTo: email,
+      subject,
+      textBody,
+    });
+  } else {
+    await sendViaSendGrid({ to: "sean@sociii.ai", subject, textBody });
+  }
+}
+
+async function sendInvestorAutoReply({ name, email }) {
+  const firstName = name ? name.split(" ")[0] : "there";
+  const subject = "Thanks for reaching out — SOCIII materials";
+  const htmlBody = `
+<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+  <div style="margin-bottom: 32px;">
+    <span style="font-size: 20px; font-weight: 700; color: #7c3aed;">SOCIII</span>
+  </div>
+  <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">Hi ${firstName},</p>
+  <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">
+    Thanks for the interest in SOCIII. The fastest way to get the platform thesis is the public whitepaper — it covers the architecture, the four-tier RAAS rules engine, the audit trail, and where it runs today.
+  </p>
+  <div style="margin: 28px 0;">
+    <a href="https://sociii.ai/whitepaper" style="display: inline-block; padding: 14px 28px; background: #7c3aed; color: #fff; text-decoration: none; border-radius: 8px; font-size: 15px; font-weight: 600;">
+      Read the SOCIII Whitepaper →
+    </a>
+  </div>
+  <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">
+    Kent Redwine (our Cofounder Advisor on capital formation) will follow up shortly with the investor deck and a calendar link. He runs point on our round; I'm copied on the thread.
+  </p>
+  <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">— Alex<br/><span style="color: #64748b; font-size: 14px;">Chief of Staff, SOCIII</span></p>
+  <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+    <p style="font-size: 13px; color: #94a3b8;">SOCIII, Inc. — Delaware C-Corporation, Las Vegas, Nevada · <a href="https://sociii.ai" style="color: #94a3b8;">sociii.ai</a></p>
+  </div>
+</div>`;
+  await sendViaSendGrid({ to: email, subject, htmlBody });
 }
 
 async function sendWelcomeEmail({ name, email, vertical }) {
@@ -112,4 +165,4 @@ async function sendConnectOnboardingEmail({ email, name, onboardingUrl, workerNa
   await sendViaSendGrid({ to: email, subject, htmlBody });
 }
 
-module.exports = { notifySean, sendWelcomeEmail, sendViaSendGrid, sendConnectOnboardingEmail };
+module.exports = { notifySean, sendWelcomeEmail, sendViaSendGrid, sendConnectOnboardingEmail, sendInvestorAutoReply, isInvestorLead };

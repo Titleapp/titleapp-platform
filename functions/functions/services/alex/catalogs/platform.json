@@ -129,7 +129,7 @@
     },
     {
       "id": "PLAT-005",
-      "name": "HR & People Worker",
+      "name": "HR & People",
       "slug": "hr-people",
       "suite": "People",
       "phase": 1,
@@ -137,16 +137,35 @@
       "pricing": {
         "monthly": 29
       },
-      "status": "development",
-      "capabilitySummary": "Employee onboarding, scheduling, compliance reminders, and contractor management. Tracks I-9, W-4, certifications, and license expirations. Alex reminds you what needs attention. Does not run payroll. Applies to all verticals.",
-      "tags": ["hr", "people", "compliance", "scheduling", "onboarding"],
+      "status": "live",
+      "capabilitySummary": "Unified roster, onboarding pipeline, schedule, and compliance surface for humans + digital workers. Tracks employees, contractors, advisors, and digital workers in one place. I-9, W-4, certifications, harassment training, PTO, and license expirations surfaced as obligations. Digital workers default to 24×7×365 coverage. Applies to all verticals. Does not run payroll.",
+      "tags": ["hr", "people", "compliance", "scheduling", "onboarding", "advisors", "contractors"],
       "valueBucket": ["stay_compliant", "save_money"],
       "alexRegistration": {
-        "priority": "normal",
+        "priority": "high",
         "acceptsTasks": true,
         "briefingContribution": "people_compliance"
       },
-      "temporalType": "always_on"
+      "temporalType": "always_on",
+      "constraintRaasSources": [
+        { "moduleId": "platform_hr_compliance_v1", "required": true, "load_when": "always" }
+      ],
+      "canvasTabs": [
+        { "id": "people", "label": "People", "view": "hr", "description": "Roster — employees, contractors, advisors, digital workers in one view" },
+        { "id": "onboarding", "label": "Onboarding", "view": "hr", "description": "In-flight onboardings with state — invited / ID-verified / signing / closed" },
+        { "id": "schedule", "label": "Schedule", "view": "hr", "description": "Coverage by shift — humans on duty + digital workers 24×7" },
+        { "id": "compliance", "label": "Compliance", "view": "hr", "description": "I-9, W-4, harassment training, posters, COBRA, PTO — open obligations" },
+        { "id": "documents", "label": "Documents", "view": "hr", "description": "Agreements, NDAs, offer letters, signed packets" },
+        { "id": "notices", "label": "Notices", "view": "hr", "description": "Outbound HR communications and required regulatory notices" },
+        { "id": "my-onboarding", "label": "My Onboarding", "view": "member", "description": "Where you are in your onboarding flow" },
+        { "id": "my-documents", "label": "My Documents", "view": "member", "description": "Your signed agreements and HR documents" },
+        { "id": "my-schedule", "label": "My Schedule", "view": "member", "description": "Your shifts, PTO balance, and time-off requests" }
+      ],
+      "controlCenterContribution": {
+        "section": "people",
+        "kpis": ["headcount_humans", "headcount_digital", "open_onboardings", "compliance_obligations_open", "coverage_healthy"]
+      },
+      "_status_note": "Flipped to live 2026-05-29 per user-counsel attestation pattern. HR worker is the unifying surface; advisor onboarding still runs through services/ir/advisorFlow.js (proven path — Kent + aspensean tests passed). Proper port of advisor flow → services/hr/ scheduled as 51.x follow-up."
     },
     {
       "id": "PLAT-006",

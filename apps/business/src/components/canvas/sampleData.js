@@ -342,47 +342,244 @@ const SPINE_FIXTURES = {
     },
   },
   "platform-hr": {
-    "employees": {
-      employees: [
-        { name: "Maya Chen",    role: "Operations Manager",   startDate: "2024-08-12", status: "active" },
-        { name: "Jordan Reed",  role: "Senior Analyst",        startDate: "2025-02-04", status: "active" },
-        { name: "Priya Patel",  role: "Marketing Lead",        startDate: "2024-04-22", status: "active" },
-        { name: "Sam Walters",  role: "Customer Success",      startDate: "2025-09-15", status: "onboarding" },
-        { name: "Lee Nakamura", role: "Engineering",           startDate: "2023-11-03", status: "active" },
+    "people": {
+      title: "Roster",
+      subtitle: "Sample data · humans + digital workers",
+      fields: [
+        { label: "Total",          value: "12" },
+        { label: "Humans",         value: "5" },
+        { label: "Digital workers", value: "4" },
+        { label: "Advisors",       value: "3" },
+      ],
+      people: [
+        { name: "Maya Chen",        type: "human",          role: "Operations Manager", status: "active" },
+        { name: "Jordan Reed",      type: "human",          role: "Senior Analyst",      status: "active" },
+        { name: "Priya Patel",      type: "human",          role: "Marketing Lead",      status: "active" },
+        { name: "Sam Walters",      type: "human",          role: "Customer Success",    status: "onboarding" },
+        { name: "Lee Nakamura",     type: "human",          role: "Engineering",         status: "active" },
+        { name: "Kent Redwine",     type: "advisor",        role: "Cofounder Advisor",   status: "closed" },
+        { name: "Eric Klein",       type: "advisor",        role: "Strategic Advisor",   status: "signature_pending" },
+        { name: "Scott Eschelman",  type: "advisor",        role: "Real Estate Advisor", status: "identity_complete" },
+        { name: "Marketing Worker", type: "digital_worker", role: "PLAT-004",            status: "active" },
+        { name: "Accounting Worker", type: "digital_worker", role: "PLAT-003",           status: "active" },
+        { name: "Contacts Worker",  type: "digital_worker", role: "PLAT-006",            status: "active" },
+        { name: "Investor Relations", type: "digital_worker", role: "BANK-FUND-001",     status: "active" },
       ],
     },
     "onboarding": {
-      title: "Onboarding checklist",
+      title: "In-flight onboardings",
+      subtitle: "Sample data · current pipeline",
+      fields: [
+        { label: "Open",           value: "2 advisors + 1 employee" },
+        { label: "Awaiting ID",    value: "1" },
+        { label: "Awaiting sig",   value: "1" },
+        { label: "This week",      value: "Eric Klein, Sam Walters" },
+      ],
       items: [
-        "Offer letter signed",
-        "I-9 / W-4 collected",
-        "Direct deposit set up",
-        "Equipment provisioned",
-        "Day-1 systems access",
-        "Manager 1:1 scheduled",
+        "Eric Klein — Advisor · signature_pending · sent 2026-05-28",
+        "Scott Eschelman — Advisor · identity_complete · sent 2026-05-26",
+        "Sam Walters — Employee · I-9 collected, equipment pending",
       ],
     },
-    "performance": {
-      title: "Performance reviews",
-      subtitle: "Sample cycle · current quarter",
+    "schedule": {
+      title: "Coverage",
+      subtitle: "Sample data · current shift roll-up",
       fields: [
-        { label: "Reviews due",    value: "5" },
-        { label: "Completed",      value: "8" },
-        { label: "Avg rating",     value: "4.1 / 5" },
-        { label: "PIPs active",    value: "0" },
+        { label: "On shift now",   value: "3 humans" },
+        { label: "Digital workers", value: "4 (24×7)" },
+        { label: "On PTO",         value: "1" },
+        { label: "Coverage healthy", value: "Yes" },
       ],
       sections: [
-        { heading: "Recent",       body: "Maya Chen · Exceeds (4.5)\nJordan Reed · Meets (3.8)\nPriya Patel · Exceeds (4.4)" },
+        { heading: "On shift now",  body: "Maya Chen · 09:00–17:00 PT\nJordan Reed · 09:00–17:00 PT\nPriya Patel · 10:00–18:00 PT" },
+        { heading: "Digital workers (24×7×365)", body: "Marketing · Accounting · Contacts · Investor Relations" },
+        { heading: "Out today",     body: "Lee Nakamura · PTO through Fri" },
       ],
     },
     "compliance": {
       title: "HR compliance",
-      summary: "All federal posters current. State filings on schedule. One harassment-prevention training overdue.",
+      subtitle: "Sample data · platform_hr_compliance_v1 ruleset",
+      summary: "Federal baseline + CA augmentation active. Two open obligations require attention.",
       fields: [
-        { label: "Compliance score",   value: "92%" },
-        { label: "Training overdue",   value: "1" },
-        { label: "Posters current",    value: "Yes" },
-        { label: "Last audit",         value: "2026-03-12" },
+        { label: "Obligations open",   value: "2" },
+        { label: "Hard-stop",          value: "1" },
+        { label: "Soft-flag",          value: "1" },
+        { label: "Last audit",         value: "2026-05-12" },
+      ],
+      sections: [
+        { heading: "Open obligations", body: "Eric Klein — Advisor agreement signature (hard_stop)\nScott Eschelman — Advisor agreement signature (hard_stop)" },
+        { heading: "Federal coverage", body: "I-9 · W-4 · FLSA · ACA · COBRA · FMLA · OSHA — all current" },
+        { heading: "State augmentation", body: "CA: harassment training cycle (every 2yr) · final paycheck timing" },
+      ],
+    },
+    "documents": {
+      title: "HR documents",
+      subtitle: "Sample data · agreements + signed packets",
+      fields: [
+        { label: "Total",          value: "14" },
+        { label: "Signed",         value: "11" },
+        { label: "Pending sig",    value: "2" },
+        { label: "Expiring 30d",   value: "1" },
+      ],
+      sections: [
+        { heading: "Recent",       body: "Kent Redwine — Cofounder Advisor Agreement · signed 2026-05-28\nEric Klein — Advisor Agreement · sent 2026-05-28\nSean Lee Combs (test) — Advisor Agreement · signed 2026-05-29" },
+      ],
+    },
+    "notices": {
+      title: "HR notices",
+      subtitle: "Sample data · outbound communications",
+      fields: [
+        { label: "Sent 30d",       value: "8" },
+        { label: "Queued",         value: "2" },
+        { label: "Failed",         value: "0" },
+      ],
+      sections: [
+        { heading: "Recent sends",  body: "Welcome — Kent Redwine · 2026-05-28\nAdvisor invite — Eric Klein · 2026-05-28\nQuarterly compliance digest — all team · 2026-05-01" },
+      ],
+    },
+    "my-onboarding": {
+      title: "Your onboarding",
+      subtitle: "Sample data · advisor view",
+      fields: [
+        { label: "Step",           value: "Signature pending" },
+        { label: "ID verified",    value: "Yes · 2026-05-28" },
+        { label: "Agreement sent", value: "Yes · 2026-05-28" },
+        { label: "Next",           value: "Sign in Dropbox Sign" },
+      ],
+    },
+    "my-documents": {
+      title: "Your HR documents",
+      subtitle: "Sample data · advisor view",
+      sections: [
+        { heading: "Signed",       body: "Advisor Agreement · 2026-05-29" },
+        { heading: "Pending",      body: "None" },
+      ],
+    },
+    "my-schedule": {
+      title: "Your schedule",
+      subtitle: "Sample data · employee view",
+      fields: [
+        { label: "PTO balance",    value: "12 days" },
+        { label: "Sick balance",   value: "5 days" },
+        { label: "Next time off",  value: "None scheduled" },
+        { label: "On call",        value: "No" },
+      ],
+    },
+  },
+  "fundraise": {
+    "pipeline": {
+      title: "Investor pipeline",
+      subtitle: "Sample data · SOCIII pre-seed 2026",
+      fields: [
+        { label: "Approached",     value: "42" },
+        { label: "1st meeting",    value: "11" },
+        { label: "Diligence",      value: "4" },
+        { label: "Term sheet",     value: "2" },
+        { label: "Closed",         value: "1" },
+      ],
+      sections: [
+        { heading: "Active",       body: "Storyhouse Ventures · diligence · next: data room walkthrough Jun 15\nRobert Rosenberg · closed · $250k SAFE\nKent Redwine network · 1st meeting × 3 this week" },
+      ],
+    },
+    "progress": {
+      title: "Capital raise",
+      subtitle: "Sample data · SOCIII pre-seed 2026",
+      fields: [
+        { label: "Target",         value: "$1.5M" },
+        { label: "Committed",      value: "$650K" },
+        { label: "Received",       value: "$250K" },
+        { label: "Remaining",      value: "$850K" },
+        { label: "Close ladder",   value: "First close Jun · Final close Aug" },
+      ],
+    },
+    "data-room": {
+      title: "Data room",
+      subtitle: "Sample data · scoped sharing log",
+      fields: [
+        { label: "Documents",      value: "23" },
+        { label: "Share links",    value: "8 active" },
+        { label: "Views (30d)",    value: "47" },
+        { label: "Avg time on",    value: "11 min" },
+      ],
+      sections: [
+        { heading: "Recent access", body: "Storyhouse · viewed financials.xlsx · 2026-05-28\nA. Polo · viewed pitch-deck.pdf · 2026-05-27\nEric K. · viewed cap-table.xlsx · 2026-05-27" },
+      ],
+    },
+    "cap-table": {
+      title: "Cap table",
+      subtitle: "Sample data · SOCIII Inc.",
+      fields: [
+        { label: "Founder",        value: "60% (Sean Combs)" },
+        { label: "Cofounder",      value: "15% (Kent Redwine)" },
+        { label: "Advisor pool",   value: "12% (capped at 7 advisors)" },
+        { label: "Option pool",    value: "10%" },
+        { label: "Open",           value: "3%" },
+      ],
+      sections: [
+        { heading: "Shareholders", body: "Sean Combs · 6,000,000 sh\nKent Redwine · 1,500,000 sh (vesting)\nRobert Rosenberg · 25,000 sh\nAdvisor pool · 1,200,000 sh reserved" },
+      ],
+    },
+    "governance": {
+      title: "Governance",
+      subtitle: "Sample data · ballots + board cadence",
+      fields: [
+        { label: "Open ballots",   value: "1" },
+        { label: "Avg turnout",    value: "92%" },
+        { label: "Board observers", value: "1" },
+        { label: "Next quarterly",  value: "Jul 15" },
+      ],
+      sections: [
+        { heading: "Open ballot",   body: "Approve revised advisor pool size (12% → 15%) · closes 2026-06-05 · 4/6 voted" },
+      ],
+    },
+    "notices": {
+      title: "Investor notices",
+      subtitle: "Sample data · outbound",
+      fields: [
+        { label: "Sent 30d",       value: "5" },
+        { label: "Quarterly due",  value: "Jul 15" },
+        { label: "Open rate",      value: "100%" },
+      ],
+      sections: [
+        { heading: "Recent",       body: "Pre-seed status update · 2026-05-15\nKYC reminder · 2026-05-08\nWelcome — Robert Rosenberg · 2026-04-22" },
+      ],
+    },
+    "communication": {
+      title: "Company updates",
+      subtitle: "Sample data · investor view",
+      sections: [
+        { heading: "Latest",       body: "Pre-seed status update — 2026-05-15\nProduct milestone: 238 workers live — 2026-05-09\nTeam: Kent Redwine onboarded as Cofounder Advisor — 2026-04-30" },
+      ],
+    },
+    "voting": {
+      title: "Your ballots",
+      subtitle: "Sample data · investor view",
+      fields: [
+        { label: "Open",           value: "1" },
+        { label: "Your weight",    value: "2.5%" },
+        { label: "Voted",          value: "Not yet" },
+        { label: "Closes",         value: "2026-06-05" },
+      ],
+      sections: [
+        { heading: "Open ballot",   body: "Approve revised advisor pool size (12% → 15%) — closes 2026-06-05" },
+      ],
+    },
+    "my-position": {
+      title: "Your position",
+      subtitle: "Sample data · investor view",
+      fields: [
+        { label: "Invested",       value: "$250,000" },
+        { label: "Shares",         value: "250,000" },
+        { label: "Ownership",      value: "2.5%" },
+        { label: "Instrument",     value: "SAFE · $10M post" },
+      ],
+    },
+    "documents": {
+      title: "Your documents",
+      subtitle: "Sample data · investor view",
+      sections: [
+        { heading: "Signed",       body: "SAFE — SOCIII Inc. · 2026-04-22\nW-9 · 2026-04-22" },
+        { heading: "Tax docs",     body: "2025 K-1 · expected Mar 2026" },
       ],
     },
   },

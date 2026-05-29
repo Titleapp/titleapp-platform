@@ -28,6 +28,8 @@ const OFFICE_HOURS_BOOKING_URL =
 // hides the link entirely. Prior default pointed at app.sociii.ai which does not resolve.
 const INVESTOR_DECK_URL = process.env.SOCIII_INVESTOR_DECK_URL || null;
 
+const WHITEPAPER_URL = process.env.SOCIII_WHITEPAPER_URL || "https://sociii.ai/whitepaper";
+
 // Advisor magic-link TTL. 7 days so first-time advisors (Kent, etc.) aren't expired by
 // the time they get back to their inbox. Tokens are still single-use.
 const ADVISOR_MAGIC_LINK_TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -157,10 +159,10 @@ async function initiateAdvisorFlow(input) {
           personalizations: [{ to: [{ email: effectiveEmail, name: effectiveName }] }],
           from: { email: "sean@sociii.ai", name: "Sean Combs — SOCIII" },
           reply_to: { email: "sean@sociii.ai", name: "Sean Combs" },
-          subject: "Your SOCIII advisor invitation",
+          subject: `Welcome to the SOCIII ohana, ${(effectiveName || "").split(" ")[0] || "friend"}`,
           content: [{
             type: "text/html",
-            value: _advisorInviteEmail({ name: effectiveName, magicUrl, equityPct: effectiveEquityPct, advisorRole: effectiveAdvisorRole, deckUrl: INVESTOR_DECK_URL }),
+            value: _advisorInviteEmail({ name: effectiveName, magicUrl, equityPct: effectiveEquityPct, advisorRole: effectiveAdvisorRole, deckUrl: INVESTOR_DECK_URL, whitepaperUrl: WHITEPAPER_URL }),
           }],
           // SendGrid click-tracking rewrites links through url813.sociii.ai which
           // lacks HTTPS. Chrome shows a "Not Secure" warning that breaks the flow
@@ -188,7 +190,7 @@ async function initiateAdvisorFlow(input) {
     direction: "outbound",
     from: "sean@sociii.ai",
     to: effectiveEmail,
-    subject: "Your SOCIII advisor invitation",
+    subject: `Welcome to the SOCIII ohana, ${(effectiveName || "").split(" ")[0] || "friend"}`,
     purpose: "ir_advisor_invite",
     advisorId,
     magicLinkTokenId: tokenId,
@@ -569,38 +571,60 @@ async function getStatus({ advisorId }) {
 //  EMAIL TEMPLATES
 // ═══════════════════════════════════════════════════════════════
 
-function _advisorInviteEmail({ name, magicUrl, equityPct, advisorRole, deckUrl }) {
-  const firstName = (name || "").split(" ")[0] || "there";
-  const roleLine = advisorRole
-    ? `<p style="font-size: 16px; color: #1a202c; line-height: 1.6;">Advisor role: <strong>${advisorRole}</strong>.</p>`
+function _advisorInviteEmail({ name, magicUrl, equityPct, advisorRole, deckUrl, whitepaperUrl }) {
+  const firstName = (name || "").split(" ")[0] || "friend";
+  const roleSentence = advisorRole
+    ? ` Specifically, we'd love to lean on you as our <strong>${advisorRole}</strong>.`
     : "";
   const deckLine = deckUrl
-    ? `<p style="font-size: 14px; color: #64748b; line-height: 1.6;">Investor deck: <a href="${deckUrl}" style="color: #7C3AED;">view the SOCIII pre-seed deck</a>.</p>`
+    ? `<a href="${deckUrl}" style="color: #7C3AED; text-decoration: underline;">your custom advisor deck</a>`
+    : `your custom advisor deck (we'll follow up with the link shortly)`;
+  const whitepaperLine = whitepaperUrl
+    ? ` and <a href="${whitepaperUrl}" style="color: #7C3AED; text-decoration: underline;">the SOCIII whitepaper</a>`
     : "";
   return `
-<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-  <div style="margin-bottom: 32px;">
-    <span style="font-size: 20px; font-weight: 700; color: #7C3AED;">SOCIII</span>
+<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 620px; margin: 0 auto; padding: 40px 20px; color: #1a202c;">
+  <div style="margin-bottom: 28px;">
+    <span style="font-size: 22px; font-weight: 700; color: #7C3AED; letter-spacing: -0.5px;">SOCIII</span>
   </div>
-  <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">Hi ${firstName},</p>
-  <p style="font-size: 16px; color: #1a202c; line-height: 1.6;">
-    You're invited to join SOCIII as an advisor. Proposed terms: <strong>${equityPct}</strong> equity, vesting over the standard schedule.
+
+  <p style="font-size: 16px; line-height: 1.7; margin: 0 0 16px 0;">${firstName},</p>
+
+  <p style="font-size: 16px; line-height: 1.7; margin: 0 0 16px 0;">
+    Welcome to the SOCIII ohana. You're one of a small handful of people we're inviting to be early advisors, and we couldn't be more excited to have you in the room.${roleSentence}
   </p>
-  ${roleLine}
-  <div style="margin: 28px 0; padding: 20px 24px; background: #f8fafc; border-left: 4px solid #7C3AED; border-radius: 6px;">
-    <p style="margin: 0 0 8px 0; font-size: 15px; font-weight: 600; color: #1a202c;">
-      Your Advisor Agreement is on its way from Dropbox Sign.
-    </p>
-    <p style="margin: 0; font-size: 14px; color: #475569; line-height: 1.6;">
-      Look for a separate email from <strong>hellosign.com</strong> or <strong>dropboxsign.com</strong> in your inbox (check spam if you don't see it). That's the email to open and sign. No action needed on this email — it's just a heads-up.
-    </p>
-  </div>
-  ${deckLine}
-  <p style="font-size: 13px; color: #94a3b8; line-height: 1.6; margin-top: 28px;">
-    Need to check your status after signing? <a href="${magicUrl}" style="color: #94a3b8; text-decoration: underline;">View your onboarding portal</a> (link valid for 7 days). Reply to this email with any questions.
+
+  <p style="font-size: 16px; line-height: 1.7; margin: 0 0 16px 0;">
+    Here's the shape of it: <strong>${equityPct}</strong> in advisor equity, vesting over a standard schedule. In exchange we'd ask for a steady cadence of honest feedback, a few warm intros where they make sense, and the occasional reality check when we're getting ahead of ourselves. Beyond the equity, you get a front-row seat to what we're building and full access to the platform we're shipping.
   </p>
-  <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
-    <p style="font-size: 13px; color: #94a3b8;">SOCIII, Inc. | Collaborative Intelligence</p>
+
+  <h3 style="font-size: 14px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin: 32px 0 12px 0;">What happens next</h3>
+
+  <p style="font-size: 16px; line-height: 1.7; margin: 0 0 16px 0;">
+    <strong>1. A quick identity check.</strong> Click <a href="${magicUrl}" style="color: #7C3AED; text-decoration: underline;">your private onboarding link</a> (good for 7 days) to run a 30-second ID verification through Stripe Identity. It's free for you — we cover the fee — and it's how we keep the cap table clean.
+  </p>
+
+  <p style="font-size: 16px; line-height: 1.7; margin: 0 0 16px 0;">
+    <strong>2. The materials.</strong> Once you're in the portal you'll find ${deckLine}${whitepaperLine}. The deck is tailored to your background; the whitepaper is the deeper architectural read for when you want to go a layer down.
+  </p>
+
+  <p style="font-size: 16px; line-height: 1.7; margin: 0 0 16px 0;">
+    <strong>3. The paperwork.</strong> After ID verification, a Dropbox Sign packet will land in your inbox with the Advisor Agreement. <strong>Heads up:</strong> it'll come <em>from me</em> — "Sean Lee Combs (SOCIII), via Dropbox Sign" — not from a generic hellosign address. Sign at your convenience; my signature is queued right behind yours, so it closes the moment you're done.
+  </p>
+
+  <p style="font-size: 16px; line-height: 1.7; margin: 24px 0 16px 0;">
+    Truly grateful to have you considering this. Reply to this email with anything at all — questions, pushback, scheduling — and we'll move at whatever pace works for you.
+  </p>
+
+  <p style="font-size: 16px; line-height: 1.7; margin: 0 0 4px 0;">Talk soon,</p>
+  <p style="font-size: 16px; line-height: 1.7; margin: 0 0 24px 0;"><strong>Sean Lee Combs</strong><br/>
+    <span style="color: #64748b;">Founder, SOCIII</span>
+  </p>
+
+  <div style="margin-top: 36px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+    <p style="font-size: 12px; color: #94a3b8; line-height: 1.6; margin: 0;">
+      SOCIII, Inc. — Collaborative Intelligence. This invitation and the linked materials are confidential. If you received this in error, please disregard.
+    </p>
   </div>
 </div>`;
 }
