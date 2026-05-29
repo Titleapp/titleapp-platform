@@ -12523,6 +12523,99 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
     }
 
     // ──────────────────────────────────────────────────────────
+    // Creator track onboarding
+    //
+    // Click-through agreement (no DBX Sign) + Stripe Identity + $49/yr
+    // subscription. FIRST100 promo waives first year + ID fee.
+    // Anchored on creators/{creatorId}.
+    // ──────────────────────────────────────────────────────────
+
+    // POST /v1/creator:initiate
+    // Body: { email, name, vertical?, promoCode? }
+    if (route === "/creator:initiate" && method === "POST") {
+      try {
+        const creatorFlow = require("./services/creators/creatorFlow");
+        const result = await creatorFlow.initiateCreatorFlow({
+          creatorId: body.creatorId || null,
+          email: body.email,
+          name: body.name,
+          vertical: body.vertical || null,
+          promoCode: body.promoCode || null,
+          invitedBy: auth.user.uid,
+        });
+        return res.json(result);
+      } catch (e) {
+        console.error("creator:initiate failed:", e);
+        return jsonError(res, 500, e.message || "Failed to initiate creator onboarding");
+      }
+    }
+
+    // POST /v1/creator:step
+    // Body: { creatorId, action, ...args }
+    // actions: magic_link_clicked, accept_terms, start_identity, sync_kyc,
+    //          start_subscription, sync_subscription
+    if (route === "/creator:step" && method === "POST") {
+      try {
+        const creatorFlow = require("./services/creators/creatorFlow");
+        const action = body.action;
+        const creatorId = body.creatorId;
+        if (!creatorId) return jsonError(res, 400, "creatorId required");
+
+        if (action === "magic_link_clicked") {
+          const result = await creatorFlow.onMagicLinkClick({ creatorId });
+          return res.json(result);
+        }
+        if (action === "accept_terms") {
+          const result = await creatorFlow.acceptTerms({
+            creatorId,
+            uid: auth.user.uid,
+            userAgent: req.headers["user-agent"] || null,
+            ip: req.headers["x-forwarded-for"] || req.ip || null,
+          });
+          return res.json(result);
+        }
+        if (action === "start_identity") {
+          const result = await creatorFlow.startIdentityVerification({
+            creatorId,
+            uid: auth.user.uid,
+            returnUrl: body.returnUrl || null,
+          });
+          return res.json(result);
+        }
+        if (action === "sync_kyc") {
+          const result = await creatorFlow.syncKycFromStripe({ creatorId });
+          return res.json(result);
+        }
+        if (action === "start_subscription") {
+          const result = await creatorFlow.startSubscription({
+            creatorId,
+            uid: auth.user.uid,
+            returnUrl: body.returnUrl || null,
+          });
+          return res.json(result);
+        }
+        return jsonError(res, 400, `Unknown action: ${action}`);
+      } catch (e) {
+        console.error("creator:step failed:", e);
+        return jsonError(res, 500, e.message || "Creator step failed");
+      }
+    }
+
+    // GET /v1/creator:status?creatorId=...
+    if (route === "/creator:status" && method === "GET") {
+      try {
+        const creatorFlow = require("./services/creators/creatorFlow");
+        const creatorId = req.query?.creatorId;
+        if (!creatorId) return jsonError(res, 400, "creatorId required");
+        const result = await creatorFlow.getStatus({ creatorId });
+        return res.json(result);
+      } catch (e) {
+        console.error("creator:status failed:", e);
+        return jsonError(res, 500, e.message || "Status read failed");
+      }
+    }
+
+    // ──────────────────────────────────────────────────────────
     // CREATIVE-001 — Long-Form Author worker
     // (Book / Script / Play). Capability registry:
     //   creative.create_project_v1, creative.outline_draft_v1,

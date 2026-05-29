@@ -48,15 +48,18 @@ function getStripe() {
  * @returns {Promise<{ok, sessionId, client_secret, url}>}
  */
 async function createIdentitySession(input) {
-  const { uid, fundraiseId, investorId, advisorId, returnUrl = null, email = null, name = null } = input || {};
+  const { uid, fundraiseId, investorId, advisorId, creatorId, returnUrl = null, email = null, name = null } = input || {};
   if (!uid) throw new Error("createIdentitySession: uid required");
   const isAdvisor = !!advisorId;
   const isInvestor = !!(fundraiseId && investorId);
-  if (!isAdvisor && !isInvestor) {
-    throw new Error("createIdentitySession: advisorId OR (fundraiseId + investorId) required");
+  const isCreator = !!creatorId;
+  if (!isAdvisor && !isInvestor && !isCreator) {
+    throw new Error("createIdentitySession: advisorId, creatorId, OR (fundraiseId + investorId) required");
   }
 
-  const purpose = isAdvisor ? "ir_advisor_identity" : "ir_investor_identity";
+  const purpose = isAdvisor ? "ir_advisor_identity"
+                : isCreator ? "creator_identity"
+                : "ir_investor_identity";
 
   const stripe = getStripe();
   const session = await stripe.identity.verificationSessions.create({
@@ -66,6 +69,7 @@ async function createIdentitySession(input) {
       fundraiseId: fundraiseId || "",
       investorId: investorId || "",
       advisorId: advisorId || "",
+      creatorId: creatorId || "",
       purpose,
       email: email || "",
       name: name || "",
@@ -76,7 +80,9 @@ async function createIdentitySession(input) {
   // Persist a lightweight record on the entity doc (no PII).
   const entityRef = isAdvisor
     ? getDb().collection("advisors").doc(advisorId)
-    : getDb().collection("fundraises").doc(fundraiseId).collection("investors").doc(investorId);
+    : isCreator
+      ? getDb().collection("creators").doc(creatorId)
+      : getDb().collection("fundraises").doc(fundraiseId).collection("investors").doc(investorId);
   await entityRef.set({
     stripeIdentitySessionId: session.id,
     stripeIdentityStatus: session.status || "created",
@@ -91,6 +97,11 @@ async function createIdentitySession(input) {
     url: session.url || null,
     status: session.status || "created",
   };
+}
+
+// Convenience alias used by creatorFlow + future callers.
+async function getIdentitySession(sessionId) {
+  return getIdentitySessionStatus(sessionId);
 }
 
 /**
@@ -126,9 +137,9 @@ async function handleIdentityWebhookEvent(event) {
   }
 
   const metadata = session.metadata || {};
-  const { fundraiseId, investorId, advisorId, purpose } = metadata;
+  const { fundraiseId, investorId, advisorId, creatorId, purpose } = metadata;
 
-  console.log(`[stripeIdentity] webhook event=${type} session=${session.id} purpose=${purpose || "(none)"} advisorId=${advisorId || "(none)"} fundraiseId=${fundraiseId || "(none)"} investorId=${investorId || "(none)"} status=${session.status || "(none)"}`);
+  console.log(`[stripeIdentity] webhook event=${type} session=${session.id} purpose=${purpose || "(none)"} advisorId=${advisorId || "(none)"} creatorId=${creatorId || "(none)"} fundraiseId=${fundraiseId || "(none)"} investorId=${investorId || "(none)"} status=${session.status || "(none)"}`);
 
   return await _applyIdentitySessionToEntity({ session, eventType: type, metadata });
 }
@@ -136,7 +147,7 @@ async function handleIdentityWebhookEvent(event) {
 // Shared writer used by both the webhook handler and the manual sync recovery
 // path. Routes the session to the right Firestore doc based on metadata.purpose.
 async function _applyIdentitySessionToEntity({ session, eventType, metadata }) {
-  const { fundraiseId, investorId, advisorId, purpose } = metadata || {};
+  const { fundraiseId, investorId, advisorId, creatorId, purpose } = metadata || {};
 
   let entityRef = null;
   let entityKind = null;
@@ -146,9 +157,12 @@ async function _applyIdentitySessionToEntity({ session, eventType, metadata }) {
   } else if (purpose === "ir_advisor_identity" && advisorId) {
     entityRef = getDb().collection("advisors").doc(advisorId);
     entityKind = "advisor";
+  } else if (purpose === "creator_identity" && creatorId) {
+    entityRef = getDb().collection("creators").doc(creatorId);
+    entityKind = "creator";
   } else {
-    console.log(`[stripeIdentity] skipped — purpose=${purpose} doesn't match any IR entity`);
-    return { ok: true, skipped: true, reason: "not_ir_identity", purpose: purpose || null };
+    console.log(`[stripeIdentity] skipped — purpose=${purpose} doesn't match any known entity`);
+    return { ok: true, skipped: true, reason: "unknown_purpose", purpose: purpose || null };
   }
 
   const eventEntry = {
