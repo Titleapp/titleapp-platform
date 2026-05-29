@@ -309,7 +309,9 @@ async function enrichInviteWithEntityState(invite) {
     },
     investor: {
       "verify-identity": () => entity.kycStatus === "approved" ? new Date().toISOString() : null,
-      "sign-safe": () => ["safe_signed","safe_complete","closed"].includes(entity.flowStep) ? new Date().toISOString() : null,
+      // signature_complete is what onSignaturePacketSigned actually writes (matches advisor flow).
+      // Keep legacy safe_signed/safe_complete for compat with older docs. TC-027.
+      "sign-safe": () => ["signature_complete","safe_signed","safe_complete","closed"].includes(entity.flowStep) ? new Date().toISOString() : null,
     },
     warrant_holder: {
       "verify-identity": () => entity.kycStatus === "approved" ? new Date().toISOString() : null,

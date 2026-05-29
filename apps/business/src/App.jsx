@@ -99,6 +99,7 @@ import { useRightPanel } from "./context/RightPanelContext";
 import CanvasPanel from "./components/canvas/CanvasPanel";
 import CanvasTabBar from "./components/canvas/CanvasTabBar";
 import { getFixtureForTab, markWorkerVisitedAndCheck } from "./components/canvas/sampleData";
+import { getLiveDataForTab } from "./components/canvas/liveData";
 import { lookupSignal } from "./config/canvasTypes";
 import WorkerCanvas from "./components/canvas/WorkerCanvas";
 import { auth } from "./firebase";
@@ -4419,13 +4420,14 @@ function WorkerHomeRenderer({ onBack }) {
     return <CommandCenter />;
   }
 
-  // 50.10-T4 — fixture-aware tab click. When demo mode is on, derive the per-tab
-  // payload from sampleData (the canonical source) and pass it as context.payload
-  // so the card renders sample content with the SAMPLE chip in its header.
-  const handleTabSelect = React.useCallback((tab, resolved) => {
-    const payload = getFixtureForTab(worker, tab.id);
-    // Always include worker in context so cards can render worker-scoped UI
-    // (e.g., OperatorUploadPrompt needs workerSlug to tag uploaded files).
+  // S51.37 — try real tenant data first, then fall back to sample fixture.
+  // Real payload has no _demo flag → CanvasPanel skips the SAMPLE chip.
+  // Builders live in liveData.js; workers without a builder return null and
+  // we fall straight to the existing fixture path (no regression).
+  const handleTabSelect = React.useCallback(async (tab, resolved) => {
+    let payload = null;
+    try { payload = await getLiveDataForTab(worker, tab.id); } catch (_) {}
+    if (!payload) payload = getFixtureForTab(worker, tab.id);
     const ctx = { worker, ...(payload ? { payload } : {}) };
     if (panel?.showCanvas) panel.showCanvas(resolved, ctx);
   }, [worker, panel]);
@@ -4446,9 +4448,13 @@ function WorkerHomeRenderer({ onBack }) {
     if (!def) return;
     const resolved = lookupSignal(def.signal);
     if (!resolved) return;
-    const payload = getFixtureForTab(worker, def.id);
-    const ctx = { worker, ...(payload ? { payload } : {}) };
-    if (panel?.showCanvas) panel.showCanvas(resolved, ctx);
+    (async () => {
+      let payload = null;
+      try { payload = await getLiveDataForTab(worker, def.id); } catch (_) {}
+      if (!payload) payload = getFixtureForTab(worker, def.id);
+      const ctx = { worker, ...(payload ? { payload } : {}) };
+      if (panel?.showCanvas) panel.showCanvas(resolved, ctx);
+    })();
   }, [worker?.slug, tabs, panel]);
 
   const activeSignal = panel?.canvasData?.resolved?._signal || null;

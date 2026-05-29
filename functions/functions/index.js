@@ -12086,12 +12086,25 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
           });
           return res.json(result);
         }
-        if (action === "start_signature") {
+        if (action === "sync_kyc") {
+          const result = await investorFlow.syncKycFromStripe({ fundraiseId, investorId });
+          return res.json(result);
+        }
+        if (action === "sync_signature") {
+          const result = await investorFlow.syncSignatureFromDropboxSign({ fundraiseId, investorId });
+          return res.json(result);
+        }
+        // `start_safe_signing` is the action string emitted by the obligation
+        // declaration in pendingInvites.js for the sign-safe obligation. It
+        // means the same thing as `start_signature` — kept as an alias so the
+        // banner can fire it directly without translating action names.
+        if (action === "start_signature" || action === "resend_signature" || action === "start_safe_signing") {
           const result = await investorFlow.startSafeSigning({
             fundraiseId,
             investorId,
             investmentAmount: body.investmentAmount,
             uid: auth.user.uid,
+            force: action === "resend_signature",
           });
           return res.json(result);
         }

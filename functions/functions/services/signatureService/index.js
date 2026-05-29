@@ -639,9 +639,13 @@ const COMPANY_SIGNER = {
 
 const ROLE_TEMPLATE_ENV = {
   investor: {
+    // Role names MUST match the template's signer_roles exactly (case-sensitive).
+    // SOCIII SAFE template has roles "Investor" and "Company" — NOT "INVESTOR"
+    // and "COMPANY". DBX Sign returns the cryptic "No recipients specified"
+    // error on case mismatch (TC-026). Verified via /v3/template/{id} fetch.
     envKey: "DROPBOX_SIGN_TEMPLATE_INVESTOR_SAFE",
-    signerRole: "INVESTOR",
-    companyRole: "COMPANY",
+    signerRole: "Investor",
+    companyRole: "Company",
     docType: "safe_agreement",
     title: "SOCIII SAFE Agreement",
   },
