@@ -130,38 +130,66 @@ export default function WorkspaceObligationsBanner({ inviteId, onAllComplete }) 
     );
   }, [invites]);
 
-  // Defensive sync: if a verify-identity obligation is still open and the
-  // user is back in the workspace (likely returning from Stripe Identity),
-  // fire sync_kyc once to recover from a missed webhook (TC-018). Runs
-  // once per invite per mount.
+  // Defensive sync: covers two webhook-miss recovery paths (TC-018 + TC-019).
+  // If a verify-identity obligation is still open we hit sync_kyc; if a
+  // sign-agreement obligation is still open we hit sync_signature. Both fire
+  // once per (invite, action) per mount so a stuck webhook can be recovered
+  // by the user simply landing back on the workspace.
   const syncedRef = useRef(new Set());
   useEffect(() => {
     if (loading || openInvites.length === 0) return;
-    const SYNC_ACTION_BY_ROLE = {
+    const KYC_ACTION_BY_ROLE = {
       advisor: "ir:advisor:step:sync_kyc",
       investor: "ir:investor:step:sync_kyc",
       warrant_holder: "ir:warrant:step:sync_kyc",
       creator: "creator:step:sync_kyc",
     };
+    const SIG_ACTION_BY_ROLE = {
+      advisor: "ir:advisor:step:sync_signature",
+      investor: "ir:investor:step:sync_signature",
+      warrant_holder: "ir:warrant:step:sync_signature",
+    };
     (async () => {
       for (const invite of openInvites) {
-        if (syncedRef.current.has(invite.inviteId)) continue;
-        const hasOpenIdentity = (invite.pendingObligations || []).some(
-          o => !o.completedAt && /verify-identity/.test(o.id)
-        );
-        if (!hasOpenIdentity) continue;
-        const actionStr = SYNC_ACTION_BY_ROLE[invite.role];
-        if (!actionStr) continue;
-        const resolved = resolveAction(actionStr, invite);
-        if (!resolved) continue;
-        syncedRef.current.add(invite.inviteId);
-        try {
-          await apiFetch(resolved.endpoint, {
-            method: "POST",
-            body: JSON.stringify({ ...resolved.payload }),
-          });
-          await refresh();
-        } catch (_) { /* non-fatal */ }
+        const obligations = invite.pendingObligations || [];
+
+        const hasOpenIdentity = obligations.some(o => !o.completedAt && /verify-identity/.test(o.id));
+        if (hasOpenIdentity) {
+          const key = `${invite.inviteId}:kyc`;
+          const actionStr = KYC_ACTION_BY_ROLE[invite.role];
+          if (actionStr && !syncedRef.current.has(key)) {
+            const resolved = resolveAction(actionStr, invite);
+            if (resolved) {
+              syncedRef.current.add(key);
+              try {
+                await apiFetch(resolved.endpoint, {
+                  method: "POST",
+                  body: JSON.stringify({ ...resolved.payload }),
+                });
+                await refresh();
+              } catch (_) { /* non-fatal */ }
+            }
+          }
+        }
+
+        const hasOpenSignature = obligations.some(o => !o.completedAt && /^sign-/.test(o.id));
+        if (hasOpenSignature) {
+          const key = `${invite.inviteId}:sig`;
+          const actionStr = SIG_ACTION_BY_ROLE[invite.role];
+          if (actionStr && !syncedRef.current.has(key)) {
+            const resolved = resolveAction(actionStr, invite);
+            if (resolved) {
+              syncedRef.current.add(key);
+              try {
+                await apiFetch(resolved.endpoint, {
+                  method: "POST",
+                  body: JSON.stringify({ ...resolved.payload }),
+                });
+                await refresh();
+              } catch (_) { /* non-fatal */ }
+            }
+          }
+        }
       }
     })();
   }, [loading, openInvites, refresh]);

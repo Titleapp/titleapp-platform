@@ -12179,6 +12179,10 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
           const result = await advisorFlow.syncKycFromStripe({ advisorId });
           return res.json(result);
         }
+        if (action === "sync_signature") {
+          const result = await advisorFlow.syncSignatureFromDropboxSign({ advisorId });
+          return res.json(result);
+        }
         if (action === "start_signature" || action === "resend_signature") {
           const result = await advisorFlow.startAdvisorSigning({
             advisorId,
@@ -12490,6 +12494,10 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
         }
         if (action === "sync_kyc") {
           const result = await advisorFlow.syncKycFromStripe({ advisorId });
+          return res.json(result);
+        }
+        if (action === "sync_signature") {
+          const result = await advisorFlow.syncSignatureFromDropboxSign({ advisorId });
           return res.json(result);
         }
         if (action === "start_signature" || action === "resend_signature") {

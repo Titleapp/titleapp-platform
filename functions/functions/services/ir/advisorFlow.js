@@ -399,6 +399,15 @@ async function startAdvisorSigning({ advisorId, advisorAddress, uid = null, forc
   if (data.kycStatus !== "approved") {
     throw new Error("startAdvisorSigning: identity verification not complete");
   }
+  // Idempotency guard: if a packet is already pending (or signed), don't fire
+  // a new one. The user clicking "Start" again is almost always them checking
+  // status, not asking to re-send. Fall back to syncSignatureFromDropboxSign
+  // and let the result drive UI. Explicit re-send goes through force=true
+  // (action="resend_signature").
+  if (!force && data.hellosignRequestId && (data.flowStep === "signature_pending" || data.flowStep === "signature_complete" || data.flowStep === "closed")) {
+    console.log(`[advisorFlow] startAdvisorSigning — packet already exists, deferring to sync (advisor=${advisorId}, flowStep=${data.flowStep}, hellosign=${data.hellosignRequestId})`);
+    return syncSignatureFromDropboxSign({ advisorId });
+  }
   if (force) {
     console.log(`[advisorFlow] startAdvisorSigning FORCE — advisor=${advisorId} priorRequestId=${data.signatureRequestId || "(none)"} priorHellosign=${data.hellosignRequestId || "(none)"}`);
   }
@@ -569,6 +578,45 @@ async function onSignaturePacketSigned({ requestId, hellosignRequestId, metadata
   return { ok: true, advisorId, vaultDocId, advisorDocumentRef };
 }
 
+// Recovery path: pulls current Dropbox Sign request status and replays
+// onSignaturePacketSigned when the signature is complete. Used as a fallback
+// when the DBX Sign webhook fails to flip the advisor doc (TC-019).
+async function syncSignatureFromDropboxSign({ advisorId }) {
+  if (!advisorId) throw new Error("syncSignatureFromDropboxSign: advisorId required");
+  const { data } = await _getAdvisor(advisorId);
+  if (!data) throw new Error(`advisor ${advisorId} not found`);
+
+  if (data.flowStep === "signature_complete" || data.flowStep === "closed") {
+    return { ok: true, flowStep: data.flowStep, note: "already_complete" };
+  }
+  const requestId = data.signatureRequestId;
+  // `hellosignRequestId` is the real Dropbox Sign signature_request_id. The
+  // internal `signatureRequestId` is our own prefixed handle (sig_*) and is
+  // NOT valid against the DBX Sign API.
+  const dbxSignRequestId = data.hellosignRequestId;
+  if (!dbxSignRequestId) {
+    return { ok: true, flowStep: data.flowStep, note: "no_signature_request_yet" };
+  }
+
+  const hellosign = require("../signatureService/hellosign");
+  const sigReq = await hellosign.getSignatureRequest(dbxSignRequestId);
+  if (!sigReq) {
+    return { ok: true, flowStep: data.flowStep, note: "hellosign_keys_missing" };
+  }
+  console.log(`[advisorFlow] syncSignatureFromDropboxSign advisor=${advisorId} request=${dbxSignRequestId} is_complete=${sigReq.is_complete}`);
+  if (!sigReq.is_complete) {
+    return { ok: true, flowStep: data.flowStep, note: "not_yet_signed", signers: sigReq.signatures?.map(s => ({ email: s.signer_email_address, signed: !!s.signed_at })) };
+  }
+
+  await onSignaturePacketSigned({
+    requestId: requestId || dbxSignRequestId,
+    hellosignRequestId: dbxSignRequestId,
+    metadata: { advisorId },
+    finalHash: null,
+  });
+  return { ok: true, flowStep: "signature_complete", note: "synced_from_dropbox_sign" };
+}
+
 // ═══════════════════════════════════════════════════════════════
 //  STATUS
 // ═══════════════════════════════════════════════════════════════
@@ -684,6 +732,7 @@ module.exports = {
   syncKycFromStripe,
   startAdvisorSigning,
   onSignaturePacketSigned,
+  syncSignatureFromDropboxSign,
   getStatus,
   VALID_STEPS,
   INVESTOR_DECK_URL,

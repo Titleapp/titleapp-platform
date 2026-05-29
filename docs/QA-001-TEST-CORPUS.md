@@ -221,6 +221,26 @@ Sean 2026-05-29 (post S51.30 deploy): many workers will require outbound comms (
 - **Discovery method:** Live dogfood by Sean 2026-05-29 — aspensean clicked the magic link, banner didn't appear, function log showed 403. Caught via `firebase functions:log` grep for the route + timestamp window.
 - **Why this matters for QA-001:** Auth-helper contract violations are the single most common class of "endpoint exists, looks deployed, silently 4xxs" bug. QA-001 must hit every new authenticated route at least once with a known-authorized caller and assert 2xx + expected body shape.
 
+### TC-019 — Dropbox Sign sync defensive path + "user opened email but didn't sign" failure mode
+- **Family:** 8 (Document signing lifecycle)
+- **Severity:** P1 (UX dead-end — user thinks they signed, banner correctly shows incomplete, but no surface tells them what's actually pending on the DBX Sign side)
+- **Real bug** (the surprise — *not* the bug we expected): Sean signed the SOCIII Advisor Agreement via Dropbox Sign at 2026-05-29 ~10:54 (screenshot of "Review & sign" email + completed in-browser flow). Reported "agreement worked, but didn't update status on the worksapce." We built `syncSignatureFromDropboxSign` assuming a webhook-miss (same archetype as TC-018) and ran it. Result: `is_complete: false`, `aspensean@gmail.com signed=false`, `seanlcombs@gmail.com signed=false`. DBX Sign reports the document is NOT signed by either party. So the advisor doc state is correct — it's the **user's mental model** that diverged from DBX Sign. Either: (a) the in-browser signing flow opened but never reached final submit, or (b) the two-signer template requires both Sean's accounts to sign and only the first leg was attempted. Webhook is not broken; user is stuck mid-flow with no surface telling them so.
+- **Test:** After a user opens a DBX Sign packet and the workspace banner detects an open sign-* obligation, the banner should poll DBX Sign and surface signer-level state ("Aspen Sean — not yet signed; Sean L Combs — not yet signed") instead of staying silent. Assert: when DBX Sign reports `is_complete: false` AND at least one signer.signed=false, banner shows a per-signer status line.
+- **Pass:** Banner sub-text shows which signers still need to sign, with a Resume Signing link if the current user is a pending signer.
+- **Fail signal:** Banner shows generic "Start" / "Working..." with no indication that the DBX Sign side knows nothing has actually been signed.
+- **Discovery method:** Live dogfood 2026-05-29 ~10:54. Defensive sync we'd shipped to handle TC-018-style webhook miss actually surfaced a different problem class — user-side signing-flow drop-off.
+- **Recovery shipped:**
+  1. `hellosign.getSignatureRequest()` wrapper for DBX Sign `GET /signature_request/{id}`.
+  2. `advisorFlow.syncSignatureFromDropboxSign({ advisorId })` — pulls current state, replays `onSignaturePacketSigned()` if `is_complete=true`, otherwise returns per-signer status.
+  3. `/v1/ir:advisor:step` action `sync_signature` + parallel `hr:advisor:step` route.
+  4. Banner defensive auto-sync — when an open `sign-*` obligation is present, banner fires `sync_signature` once per (invite, mount) so a webhook miss can self-heal on next page load.
+  5. ID-mapping fix: sync uses `hellosignRequestId` (real DBX Sign id, e.g. `77d6711e3459...`) not `signatureRequestId` (our internal `sig_*` handle — DBX Sign rejects it as invalid).
+- **What still needs building:**
+  1. Banner should display per-signer signed/not-signed state when sync returns `note: "not_yet_signed"`, with a Resume Signing CTA for any signer whose email matches the current user.
+  2. DBX Sign has a separate "Reminder" API — surface that as the Resume Signing action.
+  3. If the same user is BOTH signers (Sean's two-Gmail dogfood case), banner needs to tell the second account to sign too. (Real production case = recipient + countersigning officer; same fix applies.)
+- **Generalization:** TC-018 + TC-019 are *not* actually the same archetype, even though we initially treated them that way. TC-018 = webhook miss → entity stuck despite provider being done. TC-019 = user-side drop-off → entity correctly pending, but user thinks they're done. The defensive sync pattern covers both: it always re-pulls provider truth at workspace mount, and the response shape (`is_complete` + per-signer) tells the banner which case it's in. QA-001 should distinguish these in assertion language: "provider says complete, entity says pending" (webhook miss) vs. "provider says incomplete, user thinks complete" (UX gap).
+
 ---
 
 (slot for next bug)

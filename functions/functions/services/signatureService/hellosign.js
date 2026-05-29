@@ -126,6 +126,27 @@ async function getSignedFile(signatureRequestId) {
 }
 
 /**
+ * Fetch current state of a signature request. Used by recovery sync paths when
+ * the Dropbox Sign webhook fails to deliver (TC-019, analogous to TC-018 Stripe).
+ * Returns the raw signature_request object or null if keys missing.
+ */
+async function getSignatureRequest(signatureRequestId) {
+  const keys = getKeys();
+  if (!keys) return null;
+
+  const resp = await fetch(
+    `${HELLOSIGN_BASE}/signature_request/${signatureRequestId}`,
+    { headers: { "Authorization": getAuthHeader(keys.apiKey) } }
+  );
+  if (!resp.ok) {
+    const text = await resp.text().catch(() => "");
+    throw new Error(`HelloSign getSignatureRequest ${resp.status}: ${text.slice(0, 200)}`);
+  }
+  const json = await resp.json();
+  return json.signature_request || null;
+}
+
+/**
  * Send a signature request using a pre-uploaded template.
  *
  * @param {object} input
@@ -219,5 +240,6 @@ module.exports = {
   getEmbedSignUrl,
   cancelRequest,
   getSignedFile,
+  getSignatureRequest,
   sendWithTemplate,
 };
