@@ -555,6 +555,16 @@ async function onSignaturePacketSigned({
     console.error("[investorFlow] confirmation email failed:", e.message);
   }
 
+  // ── 3b. Install investor-side persistence — virtual SOCIII Investor Relations
+  //        worker entitlement (task #353). Failure here is non-fatal; investor
+  //        still has access via the signed SAFE. Real frontend integration
+  //        wires this entitlement into the My Workers nav (separate session).
+  try {
+    await installInvestorWorkerEntitlement({ fundraiseId, investorId });
+  } catch (e) {
+    console.error("[investorFlow] entitlement install failed (non-fatal):", e.message);
+  }
+
   // ── 4. Audit trail row ──────────────────────────────────────
   await db.collection("auditTrail").add({
     type: "ir_investor_safe_executed",
@@ -566,6 +576,79 @@ async function onSignaturePacketSigned({
   });
 
   return { ok: true, fundraiseId, investorId, vaultDocId, safeDocumentRef };
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  ENTITLEMENT — virtual SOCIII Investor Relations worker (task #353)
+// ═══════════════════════════════════════════════════════════════
+//
+//  After SAFE signing, the investor needs a persistent surface in their
+//  workspace nav — somewhere to see their position, vote on ballots, read
+//  investor notices, download docs. This is the "investor portal as digital
+//  worker" pattern: a virtual worker that READS from SOCIII tenant data but
+//  RENDERS inside the investor's own personal vault. No tenant membership
+//  required (which would over-grant access).
+//
+//  V1 scope (this file): write an entitlement record at
+//  users/{uid}/entitlements/{entitlementId}. Each record represents one
+//  investment in one fundraise. A single user can hold N entitlements
+//  across multiple SOCIII fundraises or other portfolio companies.
+//
+//  V2 (frontend, separate session): My Workers nav loader merges in
+//  entitled workers alongside the user's own subscriptions. Worker chrome
+//  detects "entitled" mode and renders the IR worker view scoped to the
+//  user's investorId + fundraiseId.
+//
+//  V3: same pattern for advisor/warrant_holder/creator tracks.
+
+async function installInvestorWorkerEntitlement({ fundraiseId, investorId }) {
+  if (!fundraiseId || !investorId) throw new Error("installInvestorWorkerEntitlement: fundraiseId and investorId required");
+
+  const db = getDb();
+  const { data: investor } = await _getInvestor(fundraiseId, investorId);
+  if (!investor) throw new Error(`investor ${investorId} not found`);
+
+  // Resolve the user uid. Two paths:
+  //   1. Look up the pending invite for this investor's email — has claimedByUserId
+  //      when the magic link was claimed during onboarding (the normal path).
+  //   2. Fall back to firebase-admin auth.getUserByEmail if no invite record.
+  let uid = null;
+  const inviteSnap = await db.collection("pendingInvites")
+    .where("email", "==", (investor.email || "").toLowerCase())
+    .where("role", "==", "investor")
+    .limit(1).get();
+  if (!inviteSnap.empty) {
+    uid = inviteSnap.docs[0].data().claimedByUserId || null;
+  }
+  if (!uid) {
+    try {
+      const u = await admin.auth().getUserByEmail((investor.email || "").toLowerCase());
+      uid = u.uid;
+    } catch (_) { /* user may not exist in firebase auth */ }
+  }
+  if (!uid) {
+    console.warn(`[investorFlow] installInvestorWorkerEntitlement: no uid resolved for investor=${investorId} email=${investor.email}`);
+    return { ok: false, reason: "no_uid_resolved" };
+  }
+
+  const entitlementId = `ent_inv_${fundraiseId}_${investorId}`;
+  await db.collection("users").doc(uid).collection("entitlements").doc(entitlementId).set({
+    entitlementId,
+    type: "investor_portal",
+    workerKey: "sociii-investor-relations",
+    workerTitle: "SOCIII — Investor Relations",
+    workerSubtitle: "Your position, votes, notices",
+    workerIcon: "📈",
+    role: "investor",
+    fundraiseId,
+    investorId,
+    tenantId: "sociii-platform", // SOCIII platform tenant — entitlement reads cross-tenant
+    installedAt: ts(),
+    status: "active",
+  }, { merge: true });
+
+  console.log(`[investorFlow] entitlement installed uid=${uid} investorId=${investorId} fundraiseId=${fundraiseId}`);
+  return { ok: true, uid, entitlementId };
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -725,6 +808,7 @@ module.exports = {
   startSafeSigning,
   syncSignatureFromDropboxSign,
   onSignaturePacketSigned,
+  installInvestorWorkerEntitlement,
   getStatus,
   // exports for tests / chat-engine integration
   _calcSharesIssued,
