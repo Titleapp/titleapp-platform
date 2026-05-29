@@ -130,6 +130,42 @@ export default function WorkspaceObligationsBanner({ inviteId, onAllComplete }) 
     );
   }, [invites]);
 
+  // Defensive sync: if a verify-identity obligation is still open and the
+  // user is back in the workspace (likely returning from Stripe Identity),
+  // fire sync_kyc once to recover from a missed webhook (TC-018). Runs
+  // once per invite per mount.
+  const syncedRef = useRef(new Set());
+  useEffect(() => {
+    if (loading || openInvites.length === 0) return;
+    const SYNC_ACTION_BY_ROLE = {
+      advisor: "ir:advisor:step:sync_kyc",
+      investor: "ir:investor:step:sync_kyc",
+      warrant_holder: "ir:warrant:step:sync_kyc",
+      creator: "creator:step:sync_kyc",
+    };
+    (async () => {
+      for (const invite of openInvites) {
+        if (syncedRef.current.has(invite.inviteId)) continue;
+        const hasOpenIdentity = (invite.pendingObligations || []).some(
+          o => !o.completedAt && /verify-identity/.test(o.id)
+        );
+        if (!hasOpenIdentity) continue;
+        const actionStr = SYNC_ACTION_BY_ROLE[invite.role];
+        if (!actionStr) continue;
+        const resolved = resolveAction(actionStr, invite);
+        if (!resolved) continue;
+        syncedRef.current.add(invite.inviteId);
+        try {
+          await apiFetch(resolved.endpoint, {
+            method: "POST",
+            body: JSON.stringify({ ...resolved.payload }),
+          });
+          await refresh();
+        } catch (_) { /* non-fatal */ }
+      }
+    })();
+  }, [loading, openInvites, refresh]);
+
   useEffect(() => {
     if (!loading && openInvites.length === 0 && typeof onAllComplete === "function") {
       onAllComplete();

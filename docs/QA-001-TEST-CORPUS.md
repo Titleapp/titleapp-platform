@@ -189,6 +189,18 @@ Sean 2026-05-29 (post S51.30 deploy): many workers will require outbound comms (
 - **Discovery method:** Dogfood click on Verify Identity → no redirect. Server logs showed 200 OK on /v1/ir:advisor:step. Diff between creatorFlow and advisorFlow return shapes surfaced the inconsistency.
 - **Fix sketch:** Banner accepts both shapes (shipped in S51.32). Long-term: normalize step-action response shape across all flows — every role's startIdentityVerification returns `{ ok, identitySession: { sessionId, url } }`. Document the contract in `services/_shared/`.
 
+### TC-018 — Stripe Identity webhook doesn't fire, only fallback works
+- **Family:** 7 (ID check lifecycle)
+- **Severity:** P0 (every advisor/investor/creator who completes ID stays in identity_pending forever until manual sync)
+- **Real bug:** Sean completed Stripe Identity verification (real ID, name verified) at 2026-05-29 ~10:50. Advisor doc stayed `kycStatus: not_submitted, flowStep: identity_pending` indefinitely. Stripe webhook was either not configured, not delivered, or silently failed. Manual call to `advisorFlow.syncKycFromStripe({ advisorId })` immediately flipped advisor to `kycStatus: approved, flowStep: identity_complete, kycApprovedAt: set`. So the recovery path works; the webhook does not.
+- **Test:** After Stripe Identity verification completes (mock or live), assert the entity's `kycStatus === "approved"` within 30s. If not, fail and capture: was the webhook delivered? Stripe webhook console shows event status.
+- **Pass:** Webhook lands within 30s and flips entity state without user action.
+- **Fail signal:** Entity stuck at identity_pending after 30s post-verification. Banner shows Verify Identity as still "Start" even though Stripe says approved.
+- **Discovery method:** Live dogfood 2026-05-29. Sean said "Did the ID check but it didn't register on the workspace." Manual sync via /tmp/sync_kyc.js confirmed Stripe verified, advisor flipped.
+- **Fix sketch (two pieces):**
+  1. Diagnose webhook: is endpoint registered in Stripe dashboard? Is signing secret correct? Does the handler match the event type? Check function logs for any `stripe webhook` calls — if none, webhook is not delivered.
+  2. Defensive: banner auto-fires `sync_kyc` action when it detects an open verify-identity obligation with a `stripeIdentitySessionId` set on the entity. Single backend poll that takes ~500ms and recovers the state without depending on the webhook landing first. This is the right UX even when the webhook works.
+
 ### TC-017 — No welcome chat message for invited users
 - **Family:** 4 (Chat LLM-as-judge — extended to opener)
 - **Severity:** P2 (no broken behavior, but the chat panel sits empty during onboarding — wastes the two-screen-movie effect)
