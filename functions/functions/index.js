@@ -12616,6 +12616,45 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
     }
 
     // ──────────────────────────────────────────────────────────
+    // Pending invites — workspace-at-invite Phase 1 (2026-05-29)
+    //
+    // Look up an invite (or list of invites) for a given email so the sign-up
+    // flow can detect that this user has pending obligations and pre-populate
+    // their workspace canvas with obligation cards.
+    // ──────────────────────────────────────────────────────────
+
+    // GET /v1/invites:pending:get?email=foo@bar.com
+    // Returns the most recent unclaimed, unexpired pending invite (or null).
+    if (route === "/invites:pending:get" && method === "GET") {
+      try {
+        const { findPendingInviteByEmail } = require("./services/invites/pendingInvites");
+        const email = req.query?.email;
+        if (!email) return jsonError(res, 400, "email required");
+        const invite = await findPendingInviteByEmail(email);
+        return res.json({ ok: true, invite });
+      } catch (e) {
+        console.error("invites:pending:get failed:", e);
+        return jsonError(res, 500, e.message || "Lookup failed");
+      }
+    }
+
+    // GET /v1/invites:pending:list?email=foo@bar.com
+    // Returns all unclaimed, unexpired pending invites for an email — useful
+    // when one person is invited as both advisor and investor, etc.
+    if (route === "/invites:pending:list" && method === "GET") {
+      try {
+        const { listPendingInvitesByEmail } = require("./services/invites/pendingInvites");
+        const email = req.query?.email;
+        if (!email) return jsonError(res, 400, "email required");
+        const invites = await listPendingInvitesByEmail(email);
+        return res.json({ ok: true, invites, count: invites.length });
+      } catch (e) {
+        console.error("invites:pending:list failed:", e);
+        return jsonError(res, 500, e.message || "Lookup failed");
+      }
+    }
+
+    // ──────────────────────────────────────────────────────────
     // CREATIVE-001 — Long-Form Author worker
     // (Book / Script / Play). Capability registry:
     //   creative.create_project_v1, creative.outline_draft_v1,

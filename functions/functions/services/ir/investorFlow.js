@@ -199,6 +199,27 @@ async function initiateInvestorFlow(input) {
     timestamp: ts(),
   });
 
+  // Phase 1 of workspace-at-invite (2026-05-29): record pending invite so the
+  // sign-up flow can later detect it by email and pre-populate the workspace's
+  // canvas with obligation cards (verify ID / sign SAFE).
+  // Non-blocking.
+  try {
+    const { recordPendingInvite } = require("../invites/pendingInvites");
+    await recordPendingInvite({
+      email,
+      role: "investor",
+      entityId: investorId,
+      name,
+      invitedBy: null,
+      context: {
+        fundraiseId,
+        investmentAmount,
+      },
+    });
+  } catch (e) {
+    console.warn("[investorFlow] pendingInvite record failed (non-blocking):", e.message);
+  }
+
   return {
     ok: true,
     investorId,

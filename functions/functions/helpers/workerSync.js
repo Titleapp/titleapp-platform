@@ -865,6 +865,16 @@ async function syncCatalogWorkers(db, opts = {}) {
           groundUseOnly: validated.groundUseOnly || false,
           documentHierarchy: validated.documentHierarchy || ["titleapp_baseline", "public_regulatory"],
           documentChecklist: validated.documentChecklist || [],
+          // Catalog-driven structural fields (canvas tabs, RAAS sources,
+          // control center contribution, intent spec). Without these the
+          // Firestore mirror diverges from catalog JSON and the frontend
+          // falls back to generic Overview/Activity/Resources defaults.
+          // Pulled fresh from catalog every sync — these are source-of-truth-
+          // owned-by-catalog fields.
+          canvasTabs: Array.isArray(worker.canvasTabs) ? worker.canvasTabs : [],
+          constraintRaasSources: Array.isArray(worker.constraintRaasSources) ? worker.constraintRaasSources : [],
+          controlCenterContribution: worker.controlCenterContribution || null,
+          intent: worker.intent || null,
           syncedAt: new Date().toISOString(),
         }, { merge: true });
       }

@@ -230,6 +230,28 @@ async function initiateCreatorFlow(input) {
     timestamp: ts(),
   });
 
+  // Phase 1 of workspace-at-invite architecture (2026-05-29): record the
+  // pending invite so the sign-up flow can later detect it by email and
+  // pre-populate the new workspace's canvas with obligation cards.
+  // Non-blocking — log on failure but don't break the invite.
+  try {
+    const { recordPendingInvite } = require("../invites/pendingInvites");
+    await recordPendingInvite({
+      email: effectiveEmail,
+      role: "creator",
+      entityId: creatorId,
+      name: effectiveName,
+      invitedBy,
+      context: {
+        vertical: effectiveVertical,
+        firstHundred: effectiveFirstHundred,
+        creatorLicenseVersion: CREATOR_LICENSE_VERSION,
+      },
+    });
+  } catch (e) {
+    console.warn("[creatorFlow] pendingInvite record failed (non-blocking):", e.message);
+  }
+
   return {
     ok: true,
     creatorId,

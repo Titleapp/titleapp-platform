@@ -1,0 +1,276 @@
+"use strict";
+
+/**
+ * services/invites/pendingInvites.js
+ *
+ * Pre-creation of invite records at the time we invite someone (advisor,
+ * investor, creator) — BEFORE they sign up.
+ *
+ * This is Phase 1 of the workspace-at-invite architecture decision (2026-05-29).
+ * See memory/project_magic_link_lands_in_workspace.md for context.
+ *
+ * What this does:
+ *   - Records a pending invite keyed by email
+ *   - Captures the obligations the invitee will have (terms / ID / signature /
+ *     activation) so they can be surfaced as canvas cards once their workspace
+ *     materializes
+ *   - Provides a lookup-by-email API so the sign-up flow can detect pending
+ *     invites and pre-populate workspace state
+ *
+ * What this does NOT do (Phase 2+):
+ *   - Materialize the workspace at sign-up time (markInviteClaimed scaffolded
+ *     here but the sign-up flow doesn't call it yet)
+ *   - Render the obligation cards in the canvas (frontend work)
+ *   - Replace the existing magicLink flow (parallel for now; magic link still
+ *     drops users at /auth/magic, which redirects to /onboard/* until Phase 4
+ *     deprecates that path)
+ *
+ * Schema: pendingInvites/{inviteId}
+ *   - inviteId, email, role, entityType, entityId, invitedBy, invitedAt
+ *   - pendingObligations: [{ id, type, label, action, worker, completedAt }]
+ *   - status: "pending" | "claimed" | "expired"
+ *   - claimedAt, claimedByUserId, claimedWorkspaceId
+ *   - expiresAt (default +30 days)
+ */
+
+const admin = require("firebase-admin");
+const crypto = require("crypto");
+
+function getDb() { return admin.firestore(); }
+const ts = () => admin.firestore.FieldValue.serverTimestamp();
+
+const DEFAULT_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+const VALID_ROLES = ["creator", "advisor", "investor", "warrant_holder"];
+
+/**
+ * Default pending obligation lists per role. Each obligation declares which
+ * worker is responsible for resolving it, so the canvas card pattern can
+ * surface them under the correct worker context.
+ */
+const DEFAULT_OBLIGATIONS = {
+  creator: [
+    { id: "accept-license", type: "click_through", label: "Accept the SOCIII Creator License", action: "creator:step:accept_terms", worker: "platform-creators" },
+    { id: "verify-identity", type: "stripe_identity", label: "Verify your identity (Stripe Identity)", action: "creator:step:start_identity", worker: "platform-creators" },
+    { id: "activate-license", type: "subscription", label: "Activate your Creator License", action: "creator:step:start_subscription", worker: "platform-creators" },
+  ],
+  advisor: [
+    { id: "acknowledge-terms", type: "click_through", label: "Acknowledge advisor terms", action: "ir:advisor:step:acknowledge_terms", worker: "hr-people" },
+    { id: "verify-identity", type: "stripe_identity", label: "Verify your identity (Stripe Identity)", action: "ir:advisor:step:start_identity", worker: "hr-people" },
+    { id: "sign-agreement", type: "dropbox_sign", label: "Sign your Advisor Agreement", action: "ir:advisor:step:start_signature", worker: "hr-people" },
+  ],
+  investor: [
+    { id: "verify-identity", type: "stripe_identity", label: "Verify your identity (Stripe Identity)", action: "ir:investor:step:start_identity", worker: "fundraise" },
+    { id: "sign-safe", type: "dropbox_sign", label: "Sign your SAFE", action: "ir:investor:step:start_safe_signing", worker: "fundraise" },
+  ],
+  warrant_holder: [
+    { id: "verify-identity", type: "stripe_identity", label: "Verify your identity (Stripe Identity)", action: "ir:warrant:step:start_identity", worker: "fundraise" },
+    { id: "sign-warrant", type: "dropbox_sign", label: "Sign your Warrant Agreement", action: "ir:warrant:step:start_signature", worker: "fundraise" },
+  ],
+};
+
+/**
+ * Record a pending invite. Idempotent on (email, role, entityId) — if the
+ * same triple already has a pending invite, we update it rather than
+ * create a duplicate.
+ *
+ * @param {object} input
+ * @param {string} input.email       — required; lowercased
+ * @param {string} input.role        — one of VALID_ROLES
+ * @param {string} input.entityId    — advisorId / creatorId / investorId
+ * @param {string} [input.entityType] — defaults to role
+ * @param {string} [input.name]      — friendly display name
+ * @param {string} [input.invitedBy] — uid of inviter
+ * @param {array}  [input.pendingObligations] — override the default obligations
+ * @param {object} [input.context]   — freeform per-role context (vertical, equity, amount, etc.)
+ *
+ * @returns {Promise<{ok, inviteId}>}
+ */
+async function recordPendingInvite(input) {
+  const {
+    email,
+    role,
+    entityId,
+    entityType = null,
+    name = null,
+    invitedBy = null,
+    pendingObligations = null,
+    context = null,
+  } = input || {};
+
+  if (!email) throw new Error("recordPendingInvite: email required");
+  if (!role || !VALID_ROLES.includes(role)) {
+    throw new Error(`recordPendingInvite: role must be one of ${VALID_ROLES.join(", ")}`);
+  }
+  if (!entityId) throw new Error("recordPendingInvite: entityId required");
+
+  const normalizedEmail = String(email).toLowerCase().trim();
+  const db = getDb();
+
+  // Idempotency check — look for an existing pending invite for the same triple.
+  const existingSnap = await db.collection("pendingInvites")
+    .where("email", "==", normalizedEmail)
+    .where("role", "==", role)
+    .where("entityId", "==", entityId)
+    .limit(1)
+    .get();
+
+  const obligations = Array.isArray(pendingObligations) && pendingObligations.length > 0
+    ? pendingObligations
+    : (DEFAULT_OBLIGATIONS[role] || []).map(o => ({ ...o, completedAt: null }));
+
+  const now = Date.now();
+  const expiresAt = new Date(now + DEFAULT_TTL_MS).toISOString();
+
+  if (!existingSnap.empty) {
+    const ref = existingSnap.docs[0].ref;
+    const update = {
+      name: name || existingSnap.docs[0].data().name || null,
+      invitedBy: invitedBy || existingSnap.docs[0].data().invitedBy || null,
+      pendingObligations: obligations,
+      context: context || existingSnap.docs[0].data().context || null,
+      expiresAt,
+      updatedAt: ts(),
+    };
+    await ref.update(update);
+    return { ok: true, inviteId: existingSnap.docs[0].id, existed: true };
+  }
+
+  const inviteId = `inv_${crypto.randomBytes(8).toString("hex")}`;
+  await db.collection("pendingInvites").doc(inviteId).set({
+    inviteId,
+    email: normalizedEmail,
+    role,
+    entityType: entityType || role,
+    entityId,
+    name: name || null,
+    invitedBy,
+    invitedAt: ts(),
+    pendingObligations: obligations,
+    context: context || null,
+    status: "pending",
+    claimedAt: null,
+    claimedByUserId: null,
+    claimedWorkspaceId: null,
+    expiresAt,
+    createdAt: ts(),
+    updatedAt: ts(),
+  });
+
+  return { ok: true, inviteId, existed: false };
+}
+
+/**
+ * Find the most recent pending (unclaimed, unexpired) invite for an email.
+ * Used by the sign-up flow once Phase 2 lands.
+ *
+ * @param {string} email
+ * @returns {Promise<object|null>}
+ */
+async function findPendingInviteByEmail(email) {
+  if (!email) return null;
+  const normalizedEmail = String(email).toLowerCase().trim();
+  const nowIso = new Date().toISOString();
+
+  const snap = await getDb().collection("pendingInvites")
+    .where("email", "==", normalizedEmail)
+    .where("status", "==", "pending")
+    .limit(10)
+    .get();
+
+  if (snap.empty) return null;
+
+  // Filter out expired in code (Firestore can't compound the where clauses
+  // without an index we haven't added yet). Return the most recent.
+  const live = snap.docs
+    .map(d => ({ id: d.id, ...d.data() }))
+    .filter(d => !d.expiresAt || d.expiresAt > nowIso)
+    .sort((a, b) => {
+      const ta = a.invitedAt?.seconds || 0;
+      const tb = b.invitedAt?.seconds || 0;
+      return tb - ta;
+    });
+
+  return live[0] || null;
+}
+
+/**
+ * List ALL pending invites for an email (e.g. someone invited as both
+ * advisor and investor). Used by the canvas to render multiple
+ * obligation card sets if the user wears multiple hats.
+ */
+async function listPendingInvitesByEmail(email) {
+  if (!email) return [];
+  const normalizedEmail = String(email).toLowerCase().trim();
+  const nowIso = new Date().toISOString();
+
+  const snap = await getDb().collection("pendingInvites")
+    .where("email", "==", normalizedEmail)
+    .limit(20)
+    .get();
+
+  if (snap.empty) return [];
+
+  return snap.docs
+    .map(d => ({ id: d.id, ...d.data() }))
+    .filter(d => d.status === "pending" && (!d.expiresAt || d.expiresAt > nowIso))
+    .sort((a, b) => {
+      const ta = a.invitedAt?.seconds || 0;
+      const tb = b.invitedAt?.seconds || 0;
+      return tb - ta;
+    });
+}
+
+/**
+ * Mark an invite as claimed. Phase 2 sign-up flow will call this once
+ * it materializes the workspace.
+ */
+async function markInviteClaimed(inviteId, { userId, workspaceId }) {
+  if (!inviteId) throw new Error("markInviteClaimed: inviteId required");
+  if (!userId) throw new Error("markInviteClaimed: userId required");
+
+  await getDb().collection("pendingInvites").doc(inviteId).update({
+    status: "claimed",
+    claimedAt: ts(),
+    claimedByUserId: userId,
+    claimedWorkspaceId: workspaceId || null,
+    updatedAt: ts(),
+  });
+
+  return { ok: true };
+}
+
+/**
+ * Mark an individual obligation as completed (e.g., user accepted terms,
+ * verified identity, etc.). Returns the updated invite.
+ */
+async function markObligationComplete(inviteId, obligationId) {
+  if (!inviteId) throw new Error("markObligationComplete: inviteId required");
+  if (!obligationId) throw new Error("markObligationComplete: obligationId required");
+
+  const ref = getDb().collection("pendingInvites").doc(inviteId);
+  const snap = await ref.get();
+  if (!snap.exists) throw new Error(`invite ${inviteId} not found`);
+
+  const data = snap.data();
+  const obligations = (data.pendingObligations || []).map(o =>
+    o.id === obligationId ? { ...o, completedAt: new Date().toISOString() } : o
+  );
+
+  await ref.update({
+    pendingObligations: obligations,
+    updatedAt: ts(),
+  });
+
+  return { ok: true, obligations };
+}
+
+module.exports = {
+  recordPendingInvite,
+  findPendingInviteByEmail,
+  listPendingInvitesByEmail,
+  markInviteClaimed,
+  markObligationComplete,
+  VALID_ROLES,
+  DEFAULT_OBLIGATIONS,
+};

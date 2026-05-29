@@ -198,6 +198,29 @@ async function initiateAdvisorFlow(input) {
     timestamp: ts(),
   });
 
+  // Phase 1 of workspace-at-invite (2026-05-29): record pending invite so the
+  // sign-up flow can later detect it by email and pre-populate the workspace's
+  // canvas with obligation cards (acknowledge terms / verify ID / sign agreement).
+  // Non-blocking.
+  try {
+    const { recordPendingInvite } = require("../invites/pendingInvites");
+    await recordPendingInvite({
+      email: effectiveEmail,
+      role: "advisor",
+      entityId: advisorId,
+      name: effectiveName,
+      invitedBy,
+      context: {
+        equityPct: effectiveEquityPct,
+        advisorRole: effectiveAdvisorRole,
+        vestingMonths,
+        cliffMonths,
+      },
+    });
+  } catch (e) {
+    console.warn("[advisorFlow] pendingInvite record failed (non-blocking):", e.message);
+  }
+
   return {
     ok: true,
     advisorId,
