@@ -97,6 +97,9 @@ export default function WorkspaceObligationsBanner({ inviteId, onAllComplete }) 
   useEffect(() => () => { mountedRef.current = false; }, []);
 
   const refresh = useCallback(async () => {
+    // Clear stale UI state before refetching so sticky errors from a prior
+    // click don't bleed across reloads.
+    setError("");
     try {
       if (inviteId) {
         // Targeted fetch — the URL specified an invite, so just load that one.
