@@ -3,6 +3,7 @@ import "./App.css";
 import "./styles/heartbeat.css";
 import LandingPage from "./components/LandingPage";
 import OnboardingWizard from "./components/OnboardingWizard";
+import WorkspaceObligationsBanner from "./components/WorkspaceObligationsBanner";
 // OnboardingTour removed in 37.11 — replaced by STATE-5 onboarding checklist
 import AppShell from "./components/AppShell";
 import ChatPanel from "./components/ChatPanel";
@@ -4403,6 +4404,15 @@ function WorkerHomeRenderer({ onBack }) {
   const worker = workerCtx?.activeWorkerData || null;
   const tabs = Array.isArray(worker?.canvasTabs) ? worker.canvasTabs : [];
 
+  // Workspace-at-invite (Phase 2) — pinned obligation banner. If the URL
+  // carries ?invite=<id>, target that specific invite; otherwise fetch all
+  // open invites claimed by the user. Hides itself when every obligation
+  // is complete.
+  const inviteIdFromUrl = React.useMemo(() => {
+    try { return new URLSearchParams(window.location.search).get("invite") || null; }
+    catch (_) { return null; }
+  }, []);
+
   // Spine-worker overrides — for workers with first-class UI sections, render
   // those instead of the generic canvas-tab home. Contacts has its own list
   // view with workspace pill, search, tabs, KPIs, and Apollo pull. Accounting
@@ -4453,6 +4463,7 @@ function WorkerHomeRenderer({ onBack }) {
   if (panel?.state === "CANVAS" && panel?.canvasData) {
     return (
       <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+        <WorkspaceObligationsBanner inviteId={inviteIdFromUrl} />
         {tabs.length > 0 && (
           <CanvasTabBar tabs={tabs} activeSignal={activeSignal} onSelectTab={handleTabSelect} workerSlug={worker?.slug} />
         )}
@@ -4465,6 +4476,7 @@ function WorkerHomeRenderer({ onBack }) {
   if (workerCtx?.activeWorkerData) {
     return (
       <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+        <WorkspaceObligationsBanner inviteId={inviteIdFromUrl} />
         {tabs.length > 0 && (
           <CanvasTabBar tabs={tabs} activeSignal={null} onSelectTab={handleTabSelect} workerSlug={worker?.slug} />
         )}
@@ -4482,7 +4494,12 @@ function WorkerHomeRenderer({ onBack }) {
       </div>
     );
   }
-  return <WorkerHome />;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+      <WorkspaceObligationsBanner inviteId={inviteIdFromUrl} />
+      <div style={{ flex: 1, minHeight: 0 }}><WorkerHome /></div>
+    </div>
+  );
 }
 
 function AdminShell({ onBackToHub, initialSection }) {

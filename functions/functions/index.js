@@ -12654,6 +12654,44 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       }
     }
 
+    // GET /v1/invites:current — authenticated; returns invites claimed by
+    // the signed-in user that still have open obligations. Workspace-at-invite
+    // canvas reads this on load to render obligation cards.
+    if (route === "/invites:current" && method === "GET") {
+      const user = await requireFirebaseUser(req, res);
+      if (!user) return;
+      try {
+        const { listInvitesByUserId } = require("./services/invites/pendingInvites");
+        const invites = await listInvitesByUserId(user.uid);
+        return res.json({ ok: true, invites, count: invites.length });
+      } catch (e) {
+        console.error("invites:current failed:", e);
+        return jsonError(res, 500, e.message || "Lookup failed");
+      }
+    }
+
+    // GET /v1/invites:get?inviteId=... — authenticated; returns a single
+    // invite if the caller is the claimer. Used by the obligation card to
+    // refresh after each action completes.
+    if (route === "/invites:get" && method === "GET") {
+      const user = await requireFirebaseUser(req, res);
+      if (!user) return;
+      try {
+        const { getInviteById } = require("./services/invites/pendingInvites");
+        const inviteId = req.query?.inviteId;
+        if (!inviteId) return jsonError(res, 400, "inviteId required");
+        const invite = await getInviteById(inviteId);
+        if (!invite) return jsonError(res, 404, "invite not found");
+        if (invite.claimedByUserId && invite.claimedByUserId !== user.uid) {
+          return jsonError(res, 403, "not your invite");
+        }
+        return res.json({ ok: true, invite });
+      } catch (e) {
+        console.error("invites:get failed:", e);
+        return jsonError(res, 500, e.message || "Lookup failed");
+      }
+    }
+
     // ──────────────────────────────────────────────────────────
     // CREATIVE-001 — Long-Form Author worker
     // (Book / Script / Play). Capability registry:

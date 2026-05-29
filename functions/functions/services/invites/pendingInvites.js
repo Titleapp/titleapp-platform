@@ -222,6 +222,44 @@ async function listPendingInvitesByEmail(email) {
 }
 
 /**
+ * List invites claimed by a given user (any status — pending obligations
+ * may still exist on claimed invites until each obligation is marked
+ * complete). Used by the workspace canvas to render obligation cards for
+ * the signed-in user without needing the email at query time.
+ *
+ * @param {string} uid
+ * @returns {Promise<object[]>}
+ */
+async function listInvitesByUserId(uid) {
+  if (!uid) return [];
+  const snap = await getDb().collection("pendingInvites")
+    .where("claimedByUserId", "==", uid)
+    .limit(20)
+    .get();
+
+  if (snap.empty) return [];
+
+  return snap.docs
+    .map(d => ({ id: d.id, ...d.data() }))
+    .filter(d => Array.isArray(d.pendingObligations) && d.pendingObligations.some(o => !o.completedAt))
+    .sort((a, b) => {
+      const ta = a.claimedAt?.seconds || a.invitedAt?.seconds || 0;
+      const tb = b.claimedAt?.seconds || b.invitedAt?.seconds || 0;
+      return tb - ta;
+    });
+}
+
+/**
+ * Get a single invite by id (Phase 2 canvas reads).
+ */
+async function getInviteById(inviteId) {
+  if (!inviteId) return null;
+  const snap = await getDb().collection("pendingInvites").doc(inviteId).get();
+  if (!snap.exists) return null;
+  return { id: snap.id, ...snap.data() };
+}
+
+/**
  * Mark an invite as claimed. Phase 2 sign-up flow will call this once
  * it materializes the workspace.
  */
@@ -269,6 +307,8 @@ module.exports = {
   recordPendingInvite,
   findPendingInviteByEmail,
   listPendingInvitesByEmail,
+  listInvitesByUserId,
+  getInviteById,
   markInviteClaimed,
   markObligationComplete,
   VALID_ROLES,

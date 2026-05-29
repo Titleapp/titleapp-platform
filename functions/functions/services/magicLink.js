@@ -347,6 +347,34 @@ async function verifyMagicLink(req, res) {
     }
   }
 
+  // Claim any pending invites for this email — workspace-at-invite Phase 2.
+  // The pendingInvites surface keys by email; once we know the uid, link them
+  // so the workspace canvas can render obligation cards on first login.
+  let claimedInvites = [];
+  try {
+    const {
+      listPendingInvitesByEmail,
+      markInviteClaimed,
+    } = require("./invites/pendingInvites");
+    const invites = await listPendingInvitesByEmail(email);
+    for (const invite of invites) {
+      try {
+        await markInviteClaimed(invite.inviteId, { userId: uid, workspaceId: null });
+        claimedInvites.push({
+          inviteId: invite.inviteId,
+          role: invite.role,
+          entityId: invite.entityId,
+          worker: invite.pendingObligations?.[0]?.worker || null,
+          obligationCount: (invite.pendingObligations || []).filter(o => !o.completedAt).length,
+        });
+      } catch (claimErr) {
+        console.warn(`[magic-link:verify] could not claim invite ${invite.inviteId}:`, claimErr.message);
+      }
+    }
+  } catch (inviteErr) {
+    console.warn("[magic-link:verify] pendingInvites lookup failed:", inviteErr.message);
+  }
+
   // Generate Firebase custom token
   const customToken = await admin.auth().createCustomToken(uid);
 
@@ -359,6 +387,7 @@ async function verifyMagicLink(req, res) {
     workerSlug: linkData.workerSlug,
     trial: trialResult,
     transferred,
+    pendingInvites: claimedInvites,
   });
 }
 

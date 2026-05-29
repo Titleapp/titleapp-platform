@@ -69,32 +69,54 @@ export default function AuthMagic() {
 
         setStatus("success");
 
-        // Role-aware redirect. Magic links may carry role + entity ID for IR
-        // tracks (advisor / investor / warrant / creator). Route to the right
-        // onboarding surface; default fallthrough to the legacy Vault.
+        // Workspace-at-invite (Phase 2) — if magic-link:verify returned a
+        // pendingInvite, drop the user into the SOCIII workspace with the
+        // invite-appropriate worker auto-selected. The canvas reads the
+        // invite query param and surfaces obligation cards in-place.
+        // Legacy /onboard/* routes are kept below for backward-compat but
+        // the workspace path is preferred whenever a pendingInvite exists.
         const role = params.get("role");
         const advisorId = params.get("advisor");
         const investorId = params.get("investor");
         const fundraiseId = params.get("fundraise");
 
-        if (role === "advisor" && advisorId) {
+        const pendingInvites = Array.isArray(data.pendingInvites) ? data.pendingInvites : [];
+        const primaryInvite = pendingInvites[0] || null;
+        const workerByRole = {
+          advisor: "hr-people",
+          investor: "fundraise",
+          warrant_holder: "fundraise",
+          creator: "platform-creators",
+        };
+
+        if (primaryInvite) {
+          const workerSlug = primaryInvite.worker || workerByRole[primaryInvite.role] || "";
+          const qs = new URLSearchParams();
+          if (workerSlug) qs.set("worker", workerSlug);
+          qs.set("invite", primaryInvite.inviteId);
+          qs.set("utm_source", "magic-link");
           setTimeout(() => {
-            window.location.href = "/onboard/advisor?advisorId=" + encodeURIComponent(advisorId);
+            window.location.href = `/?${qs.toString()}`;
           }, 600);
           return;
         }
-        if (role === "investor" && investorId) {
-          setTimeout(() => {
-            window.location.href = "/onboard/investor?investorId=" + encodeURIComponent(investorId)
-              + (fundraiseId ? "&fundraiseId=" + encodeURIComponent(fundraiseId) : "");
-          }, 600);
-          return;
-        }
-        if (role === "creator") {
+
+        // Backward-compat: role params with no pendingInvite (older magic
+        // links sent before pendingInvites recording was wired). Land in
+        // workspace with a role+entity hint so the canvas can synthesize
+        // obligations from the entity record itself.
+        if (role && workerByRole[role]) {
+          const qs = new URLSearchParams();
+          qs.set("worker", workerByRole[role]);
+          qs.set("role", role);
+          if (advisorId) qs.set("advisorId", advisorId);
+          if (investorId) qs.set("investorId", investorId);
+          if (fundraiseId) qs.set("fundraiseId", fundraiseId);
           const creatorId = params.get("creator") || params.get("creatorId");
+          if (creatorId) qs.set("creatorId", creatorId);
+          qs.set("utm_source", "magic-link");
           setTimeout(() => {
-            window.location.href = "/onboard/creator"
-              + (creatorId ? "?creatorId=" + encodeURIComponent(creatorId) : "");
+            window.location.href = `/?${qs.toString()}`;
           }, 600);
           return;
         }

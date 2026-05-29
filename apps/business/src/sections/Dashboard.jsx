@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { getAuth } from "firebase/auth";
 import * as api from "../api/client";
+import WorkspaceObligationsBanner from "../components/WorkspaceObligationsBanner";
 
 const PIE_COLORS = ["#7c3aed", "#06b6d4", "#10b981", "#f59e0b", "#ef4444"];
 
@@ -723,8 +724,17 @@ export default function Dashboard() {
     { label: kpiLabels[3], ...kpis.customers },
   ];
 
+  // Workspace-at-invite (Phase 2) — render obligation banner above the dashboard
+  // when the user has open invites or arrived via ?invite=<id>. Hides itself
+  // when all obligations resolve.
+  const inviteIdFromUrl = React.useMemo(() => {
+    try { return new URLSearchParams(window.location.search).get("invite") || null; }
+    catch (_) { return null; }
+  }, []);
+
   return (
     <div>
+      <WorkspaceObligationsBanner inviteId={inviteIdFromUrl} />
       <div className="pageHeader">
         <div>
           <h1 className="h1">{isBuilder ? "AI Service Builder" : "Dashboard"}</h1>
