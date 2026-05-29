@@ -31,16 +31,16 @@
         { "moduleId": "securities_compliance_v1", "required": true, "load_when": "always" }
       ],
       "canvasTabs": [
-        { "id": "pipeline", "label": "Pipeline", "view": "fundraise", "description": "Investor funnel — Approached → Meeting → Diligence → Term Sheet → Closed" },
-        { "id": "progress", "label": "Capital Raised", "view": "fundraise", "description": "Round target vs committed vs received; close-by-close ladder" },
-        { "id": "data-room", "label": "Data Room", "view": "fundraise", "description": "Documents, share-links issued, access log" },
-        { "id": "cap-table", "label": "Cap Table", "view": "fundraise", "description": "Current shareholders + share class breakdown" },
-        { "id": "governance", "label": "Governance", "view": "fundraise", "description": "Ballots, voting results, board observer cadence, quarterly notices" },
-        { "id": "notices", "label": "Notices", "view": "fundraise", "description": "Outbound investor updates and required regulatory notices" },
-        { "id": "communication", "label": "Updates", "view": "investor", "description": "Investor-facing updates from the company" },
-        { "id": "voting", "label": "Vote", "view": "investor", "description": "Open ballots and your voting history" },
-        { "id": "my-position", "label": "My Position", "view": "investor", "description": "Your shares, ownership %, and documents" },
-        { "id": "documents", "label": "Documents", "view": "investor", "description": "Your SAFE, signed agreements, and tax docs" }
+        { "id": "pipeline", "label": "Pipeline", "signal": "card:work-product", "default": true, "order": 0, "view": "fundraise", "description": "Investor funnel — Approached → Meeting → Diligence → Term Sheet → Closed" },
+        { "id": "progress", "label": "Capital Raised", "signal": "card:work-product", "order": 1, "view": "fundraise", "description": "Round target vs committed vs received; close-by-close ladder" },
+        { "id": "data-room", "label": "Data Room", "signal": "card:work-product", "order": 2, "view": "fundraise", "description": "Documents, share-links issued, access log" },
+        { "id": "cap-table", "label": "Cap Table", "signal": "card:work-product", "order": 3, "view": "fundraise", "description": "Current shareholders + share class breakdown" },
+        { "id": "governance", "label": "Governance", "signal": "card:work-product", "order": 4, "view": "fundraise", "description": "Ballots, voting results, board observer cadence, quarterly notices" },
+        { "id": "notices", "label": "Notices", "signal": "card:work-product", "order": 5, "view": "fundraise", "description": "Outbound investor updates and required regulatory notices" },
+        { "id": "communication", "label": "Updates", "signal": "card:work-product", "order": 6, "view": "investor", "description": "Investor-facing updates from the company" },
+        { "id": "voting", "label": "Vote", "signal": "card:work-product", "order": 7, "view": "investor", "description": "Open ballots and your voting history" },
+        { "id": "my-position", "label": "My Position", "signal": "card:work-product", "order": 8, "view": "investor", "description": "Your shares, ownership %, and documents" },
+        { "id": "documents", "label": "Documents", "signal": "card:work-product", "order": 9, "view": "investor", "description": "Your SAFE, signed agreements, and tax docs" }
       ],
       "controlCenterContribution": {
         "section": "capital_formation",

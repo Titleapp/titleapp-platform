@@ -151,15 +151,15 @@
         { "moduleId": "platform_hr_compliance_v1", "required": true, "load_when": "always" }
       ],
       "canvasTabs": [
-        { "id": "people", "label": "People", "view": "hr", "description": "Roster — employees, contractors, advisors, digital workers in one view" },
-        { "id": "onboarding", "label": "Onboarding", "view": "hr", "description": "In-flight onboardings with state — invited / ID-verified / signing / closed" },
-        { "id": "schedule", "label": "Schedule", "view": "hr", "description": "Coverage by shift — humans on duty + digital workers 24×7" },
-        { "id": "compliance", "label": "Compliance", "view": "hr", "description": "I-9, W-4, harassment training, posters, COBRA, PTO — open obligations" },
-        { "id": "documents", "label": "Documents", "view": "hr", "description": "Agreements, NDAs, offer letters, signed packets" },
-        { "id": "notices", "label": "Notices", "view": "hr", "description": "Outbound HR communications and required regulatory notices" },
-        { "id": "my-onboarding", "label": "My Onboarding", "view": "member", "description": "Where you are in your onboarding flow" },
-        { "id": "my-documents", "label": "My Documents", "view": "member", "description": "Your signed agreements and HR documents" },
-        { "id": "my-schedule", "label": "My Schedule", "view": "member", "description": "Your shifts, PTO balance, and time-off requests" }
+        { "id": "people", "label": "People", "signal": "card:work-product", "default": true, "order": 0, "view": "hr", "description": "Roster — employees, contractors, advisors, digital workers in one view" },
+        { "id": "onboarding", "label": "Onboarding", "signal": "card:work-product", "order": 1, "view": "hr", "description": "In-flight onboardings with state — invited / ID-verified / signing / closed" },
+        { "id": "schedule", "label": "Schedule", "signal": "card:work-product", "order": 2, "view": "hr", "description": "Coverage by shift — humans on duty + digital workers 24×7" },
+        { "id": "compliance", "label": "Compliance", "signal": "card:work-product", "order": 3, "view": "hr", "description": "I-9, W-4, harassment training, posters, COBRA, PTO — open obligations" },
+        { "id": "documents", "label": "Documents", "signal": "card:work-product", "order": 4, "view": "hr", "description": "Agreements, NDAs, offer letters, signed packets" },
+        { "id": "notices", "label": "Notices", "signal": "card:work-product", "order": 5, "view": "hr", "description": "Outbound HR communications and required regulatory notices" },
+        { "id": "my-onboarding", "label": "My Onboarding", "signal": "card:work-product", "order": 6, "view": "member", "description": "Where you are in your onboarding flow" },
+        { "id": "my-documents", "label": "My Documents", "signal": "card:work-product", "order": 7, "view": "member", "description": "Your signed agreements and HR documents" },
+        { "id": "my-schedule", "label": "My Schedule", "signal": "card:work-product", "order": 8, "view": "member", "description": "Your shifts, PTO balance, and time-off requests" }
       ],
       "controlCenterContribution": {
         "section": "people",
