@@ -121,6 +121,66 @@ Honest answer: not until that moment. Debugging the HR/Fundraise canvas tabs sur
 
 ---
 
+## Outbound-comms / ID / Documents test families
+
+Sean 2026-05-29 (post S51.30 deploy): many workers will require outbound comms (email/SMS), ID checks (Stripe Identity), and document signing (Dropbox Sign). These are external-system integrations with their own failure modes that QA-001 must verify. Three new families:
+
+- **Family 6 — Outbound comms delivery.** Email queued → SendGrid 2xx → deliverable address → not spam. SMS via Twilio analogous.
+- **Family 7 — ID check lifecycle.** Stripe Identity session create → user submits → webhook → entity state updated → obligation marked complete.
+- **Family 8 — Document signing lifecycle.** Dropbox Sign request → signature email → user signs → webhook → signed PDF persisted to storage → obligation marked complete.
+
+### TC-010 — pendingInvite obligations must reflect existing entity state
+- **Family:** 1 (Catalog ↔ Firestore parity — extended to invite ↔ entity)
+- **Severity:** P1 (banner shows "Start" on already-completed steps; confusing for resumed flows)
+- **Real bug:** `recordPendingInvite` writes the default obligation list whenever an invite is re-fired, even if the entity (advisor/investor/creator) already has `kycStatus=approved` or `flowStep=signature_complete`. The banner then shows "verify-identity" as open even though the existing advisor record has it done. Test fire of aspensean@gmail.com re-invite on 2026-05-29 surfaced this — advisor adv_a6702cc819e40f23 is at `kyc=approved step=signature_pending`, but the pending-invite obligations still show all 3 as not-yet-completed.
+- **Test:** After `recordPendingInvite` runs, for each obligation check the corresponding entity field (kycStatus / flowStep / agreementAcceptedAt) and assert `completedAt` is populated if the entity already shows that step done.
+- **Pass:** Open obligations only include steps not already complete on the entity.
+- **Fail signal:** Banner renders "Start" button for an action that won't actually do anything new (e.g., Stripe Identity refuses to re-verify an approved user).
+- **Discovery method:** Re-fired aspensean advisor invite while existing advisor record was mid-flow. Banner would show stale obligations.
+- **Fix sketch:** `recordPendingInvite` reads the entity doc and pre-populates `completedAt` on each obligation that's already done on the entity side. Idempotent re-runs heal stale state.
+
+### TC-011 — Missing email-provider credentials fail loudly
+- **Family:** 6 (Outbound comms delivery)
+- **Severity:** P1 (silent failure — invite "succeeds" but recipient never gets it)
+- **Real bug:** `advisorFlow.initiateAdvisorFlow` returns `{ ok: true, magicLinkUrl, emailQueued: false }` when `SENDGRID_API_KEY` env var is missing. The flow looks successful, the magic link is generated, but no email goes out. Test on 2026-05-29 logged "SENDGRID_API_KEY not set — invite email NOT sent" but the API response still claims `ok: true`. Production with misconfigured secrets ships invites that never arrive.
+- **Test:** After initiate, assert email actually queued (SendGrid 2xx) OR response explicitly carries `emailQueued: false` AND surfaces the failure to the caller (not buried in a warning log). For external recipients, post-condition check: SendGrid delivery webhook fires within N minutes.
+- **Pass:** Recipient inbox received the message (verified via SendGrid event webhook OR mailbox poll).
+- **Fail signal:** `emailQueued: false` returned with `ok: true` (current state) — should be `ok: false, reason: "email_provider_unconfigured"` instead.
+- **Discovery method:** Test fire on 2026-05-29 caught this in the log; would not be caught by any current automation.
+- **Fix sketch:** When `emailQueued: false` AND the recipient is real (not Sean himself dogfooding), return `ok: false`. Optionally fall back to a different provider.
+
+### TC-012 — Stripe Identity session re-use vs re-create
+- **Family:** 7 (ID check lifecycle)
+- **Severity:** P2 (charge double for redundant verifications, OR fail with "already verified")
+- **Real bug:** Banner click for "verify-identity" calls `/v1/ir:advisor:step` with action `start_identity`. If advisor already has `kycStatus=approved`, Stripe Identity will either return a useless session or charge again. Behavior is currently undefined.
+- **Test:** Call `start_identity` on an entity with `kycStatus=approved`. Assert one of: (a) backend returns `{ok: true, alreadyVerified: true}` without hitting Stripe; (b) Stripe session is created but obligation closes immediately on next status check.
+- **Pass:** No duplicate Stripe charge, no user-visible "already verified" error.
+- **Fail signal:** Stripe charge fires for an approved user, OR user lands on Stripe Identity and sees "we couldn't process your request."
+- **Discovery method:** Anticipated from TC-010 — already-approved entities shouldn't enter the verify-identity action path.
+- **Fix sketch:** Backend pre-check on `kycStatus` before creating a new identity session. If approved, return inline-complete; banner marks obligation done.
+
+### TC-013 — Dropbox Sign signing-link delivery (no inline URL)
+- **Family:** 8 (Document signing lifecycle)
+- **Severity:** P1 (banner click does nothing visible; user doesn't know to check email)
+- **Real bug:** `advisorFlow.startAdvisorSigning` returns `{ok, requestId, hellosignRequestId, recipientEmail}` — NO `signingUrl`. Dropbox Sign delivers the signing link via its own email. Banner click currently calls `await refresh()` after the response, which shows no visible change. User is left wondering if anything happened.
+- **Test:** After `start_signature` action returns without `signingUrl`/`identitySession`, banner must show a "Check your email — Dropbox Sign sent a signing link to {recipientEmail}" status message inline. Webhook then fires on signed → obligation marked complete → banner row crosses off.
+- **Pass:** User sees clear inline confirmation that the action triggered an email, plus the recipient address (for self-verification).
+- **Fail signal:** Banner click goes silent. Nothing in UI tells the user what to do next.
+- **Discovery method:** Code-read of advisorFlow.startAdvisorSigning during S51.30 deploy. Will manifest as a user complaint ("clicked Sign Agreement, nothing happened") if not pre-fixed.
+- **Fix sketch:** Banner detects `hellosignRequestId || signatureRequestId` in response and renders "Email sent to {recipientEmail} — check inbox" instead of redirecting.
+
+### TC-014 — Magic-link redirect carries invite param through Cloudflare
+- **Family:** 1 + 6 (parity + outbound)
+- **Severity:** P0 (without invite param, banner can't fetch obligations; flow degrades to legacy /onboard/* prompt-state)
+- **Real bug:** AuthMagic.jsx sets `window.location.href = "/?worker=hr-people&invite=" + id`. If Cloudflare frontdoor or the hosting rewrites strip the query string, the banner gets no inviteId and falls back to `/v1/invites:current` (which also works once the invite is claimed, but is a different code path).
+- **Test:** Hit the AuthMagic URL with a known token in headless browser; assert that after redirect, `window.location.search` contains `invite=<id>`.
+- **Pass:** Invite param survives redirect.
+- **Fail signal:** Invite param missing in final URL after redirect; banner relies on `/v1/invites:current` fallback only.
+- **Discovery method:** Anticipated from "magic link landed at /auth/magic with no params" report on Friday morning.
+- **Fix sketch:** If detected, use hash routing (`/#invite=<id>`) which survives more aggressively, or set a sessionStorage token AuthMagic writes and the banner reads.
+
+---
+
 (slot for next bug)
 
 ---

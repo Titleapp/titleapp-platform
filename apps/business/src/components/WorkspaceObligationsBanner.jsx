@@ -90,6 +90,7 @@ export default function WorkspaceObligationsBanner({ inviteId, onAllComplete }) 
   const [invites, setInvites] = useState([]);
   const [busyAction, setBusyAction] = useState(null);
   const [error, setError] = useState("");
+  const [info, setInfo] = useState("");
   const [dismissed, setDismissed] = useState(false);
   const mountedRef = useRef(true);
 
@@ -134,6 +135,7 @@ export default function WorkspaceObligationsBanner({ inviteId, onAllComplete }) 
 
   const runAction = useCallback(async (invite, obligation) => {
     setError("");
+    setInfo("");
     const resolved = resolveAction(obligation.action, invite);
     if (!resolved) {
       setError(`No handler wired for ${obligation.action}`);
@@ -159,6 +161,14 @@ export default function WorkspaceObligationsBanner({ inviteId, onAllComplete }) 
       }
       if (data.signingUrl) {
         window.location.href = data.signingUrl;
+        return;
+      }
+      // Dropbox Sign delivers the signing link via its own email rather than
+      // returning an inline URL — surface that to the user so they know to
+      // check their inbox (TC-013).
+      if (data.hellosignRequestId || data.signatureRequestId) {
+        setInfo(`Signing link sent to ${data.recipientEmail || "your email"} — check your inbox.`);
+        await refresh();
         return;
       }
       // Inline-completion (accept_terms, sync_kyc) — refresh state.
@@ -191,6 +201,7 @@ export default function WorkspaceObligationsBanner({ inviteId, onAllComplete }) 
     btnDisabled: { background: "#94a3b8", cursor: "not-allowed" },
     btnDone: { padding: "7px 14px", background: "transparent", color: "#16a34a", border: "none", fontSize: 13, fontWeight: 600 },
     err: { color: "#dc2626", fontSize: 13, marginTop: 8 },
+    info: { color: "#15803d", fontSize: 13, marginTop: 8, padding: "8px 12px", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 6 },
   };
 
   return (
@@ -233,6 +244,7 @@ export default function WorkspaceObligationsBanner({ inviteId, onAllComplete }) 
                 );
               })}
             </div>
+            {info && <div style={S.info}>{info}</div>}
             {error && <div style={S.err}>{error}</div>}
           </div>
         );
