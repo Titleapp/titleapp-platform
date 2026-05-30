@@ -12691,6 +12691,23 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       }
     }
 
+    // GET /v1/invites:all — authenticated; returns ALL invites claimed by the
+    // signed-in user, regardless of completion status. Used by post-onboarding
+    // surfaces (investor materials, advisor benefits, etc.) that should remain
+    // accessible after the obligations close out.
+    if (route === "/invites:all" && method === "GET") {
+      const auth = await requireFirebaseUser(req, res);
+      if (auth.handled) return;
+      try {
+        const { listAllInvitesByUserId } = require("./services/invites/pendingInvites");
+        const invites = await listAllInvitesByUserId(auth.user.uid);
+        return res.json({ ok: true, invites, count: invites.length });
+      } catch (e) {
+        console.error("invites:all failed:", e);
+        return jsonError(res, 500, e.message || "Lookup failed");
+      }
+    }
+
     // GET /v1/invites:get?inviteId=... — authenticated; returns a single
     // invite if the caller is the claimer. Used by the obligation card to
     // refresh after each action completes.

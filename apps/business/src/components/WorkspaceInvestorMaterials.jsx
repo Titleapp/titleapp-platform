@@ -42,12 +42,16 @@ export default function WorkspaceInvestorMaterials() {
 
   const load = useCallback(async () => {
     try {
-      const data = await apiFetch("/v1/invites:current", { method: "GET" });
+      // Use :all (not :current) so materials persist for the investor after
+      // the SAFE is signed and all obligations are complete. invites:current
+      // filters out fully-completed invites, which is the wrong behavior for
+      // post-signing surfaces.
+      const data = await apiFetch("/v1/invites:all", { method: "GET" });
       if (!mountedRef.current) return;
       const invites = Array.isArray(data?.invites) ? data.invites : [];
-      // Show materials for ANY investor invite that has cleared identity,
-      // regardless of whether the SAFE is signed yet. The whole point is
-      // to give them access to deck + whitepaper while they decide.
+      // Materials gate: investor role + ID verified. Whether the SAFE is
+      // signed yet is irrelevant — investor evaluating the round or holding
+      // the position both deserve access.
       const inv = invites.find(i =>
         i.role === "investor" &&
         Array.isArray(i.pendingObligations) &&

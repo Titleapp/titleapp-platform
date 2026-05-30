@@ -251,6 +251,30 @@ async function listInvitesByUserId(uid) {
     });
 }
 
+// Same as listInvitesByUserId but does NOT filter out invites where all
+// obligations are complete. Used by surfaces that should persist after the
+// onboarding is finished — e.g., investor materials (deck + whitepaper +
+// data room) should remain accessible to the investor forever, not vanish
+// the moment they sign the SAFE.
+async function listAllInvitesByUserId(uid) {
+  if (!uid) return [];
+  const snap = await getDb().collection("pendingInvites")
+    .where("claimedByUserId", "==", uid)
+    .limit(20)
+    .get();
+
+  if (snap.empty) return [];
+
+  const raw = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const enriched = await Promise.all(raw.map(d => enrichInviteWithEntityState(d)));
+
+  return enriched.sort((a, b) => {
+    const ta = a.claimedAt?.seconds || a.invitedAt?.seconds || 0;
+    const tb = b.claimedAt?.seconds || b.invitedAt?.seconds || 0;
+    return tb - ta;
+  });
+}
+
 /**
  * Compute obligation completion from the actual entity record (advisor /
  * investor / creator / warrant) so the canvas banner reflects the truth
@@ -397,6 +421,7 @@ module.exports = {
   findPendingInviteByEmail,
   listPendingInvitesByEmail,
   listInvitesByUserId,
+  listAllInvitesByUserId,
   getInviteById,
   markInviteClaimed,
   markObligationComplete,
