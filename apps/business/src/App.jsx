@@ -4480,16 +4480,31 @@ function WorkerHomeRenderer({ onBack }) {
 
   const activeSignal = panel?.canvasData?.resolved?._signal || null;
 
-  // Founder-side composer affordance — always show when on the fundraise
-  // worker. The investor-entitlement early-return higher up in this component
-  // already guarantees entitled investors never reach this code path, so
-  // gating by tab/role here is redundant (and was buggy across canvasTabs
-  // signal-naming conventions).
-  const showNoticeComposer = worker?.slug === "fundraise";
+  // Founder/admin composer affordance — show only on the Notices tab of a
+  // worker that has notice infra wired up (IR = fundraise, HR = platform-hr).
+  // The entitlement early-return higher up protects this from end-users.
+  const composerKind = (() => {
+    if (worker?.slug === "fundraise") return "ir";
+    if (worker?.slug === "platform-hr") return "hr";
+    return null;
+  })();
+  const showNoticeComposer = (() => {
+    if (!composerKind) return false;
+    const payloadTitle = String(panel?.canvasData?.context?.payload?.title || "").toLowerCase();
+    return payloadTitle.includes("notice");
+  })();
   const NoticeComposerPanel = React.useMemo(
     () => showNoticeComposer ? React.lazy(() => import("./components/NoticeComposerPanel")) : null,
     [showNoticeComposer]
   );
+  const composerProps = React.useMemo(() => {
+    if (!composerKind) return null;
+    if (composerKind === "ir") {
+      return { kind: "ir", fundraiseId: "fr_d291731b90725d12", compact: true };
+    }
+    const tid = typeof window !== "undefined" ? localStorage.getItem("TENANT_ID") : null;
+    return { kind: "hr", tenantId: tid || "", compact: true };
+  }, [composerKind]);
 
   if (panel?.state === "CANVAS" && panel?.canvasData) {
     return (
@@ -4498,10 +4513,10 @@ function WorkerHomeRenderer({ onBack }) {
           <CanvasTabBar tabs={tabs} activeSignal={activeSignal} onSelectTab={handleTabSelect} workerSlug={worker?.slug} />
         )}
         <div style={{ flex: 1, minHeight: 0, overflow: "auto" }}>
-          {showNoticeComposer && NoticeComposerPanel && (
+          {showNoticeComposer && NoticeComposerPanel && composerProps && (
             <div style={{ padding: "16px 16px 0" }}>
               <React.Suspense fallback={<div style={{ padding: 16, fontSize: 12, color: "#94a3b8" }}>Loading composer…</div>}>
-                <NoticeComposerPanel fundraiseId="fr_d291731b90725d12" compact />
+                <NoticeComposerPanel {...composerProps} />
               </React.Suspense>
             </div>
           )}

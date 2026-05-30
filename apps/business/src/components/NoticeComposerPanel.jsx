@@ -1,9 +1,12 @@
-// Reusable IR notice composer — used by /fundraise/admin (full-page) AND
-// inline inside the Fundraise worker's Notices canvas tab (founder side).
+// Reusable notice composer — used by IR (fundraise worker, /fundraise/admin)
+// AND HR (platform-hr worker). Kind prop swaps the endpoint set + templates;
+// shell renders identical UX both sides.
 //
-// Renders template picker + recipients (entitled investors / manual list /
-// cold list) + subject + optional HTML body + send. Calls /v1/ir:send-notice
-// or /v1/ir:send-cold-invite or /v1/ir:send-safe depending on template.
+// Props:
+//   kind: "ir" | "hr"           which endpoint set + recipient group to use
+//   fundraiseId: string         (ir mode) required
+//   tenantId: string            (hr mode) required
+//   compact?: boolean           hide header/divider when embedded in worker
 
 import React, { useCallback, useEffect, useState } from "react";
 import { auth } from "../firebase";
@@ -27,6 +30,49 @@ async function apiFetch(path, opts = {}) {
   return res.json();
 }
 
+// Per-kind endpoint configs. Adding a new worker = drop another entry here.
+const KIND_CONFIG = {
+  ir: {
+    title: "Notice composer",
+    blurb: "Email, cold-invite, or SAFE signature requests. Logs audit + tracks opens/clicks via SendGrid; SAFE goes through DBX Sign.",
+    templatesEndpoint: "/v1/ir:notice-templates",
+    listEndpoint: (id) => `/v1/ir:notices:list?fundraiseId=${encodeURIComponent(id)}`,
+    sendEndpoint: "/v1/ir:send-notice",
+    coldInviteEndpoint: "/v1/ir:send-cold-invite",
+    coldInviteTemplateId: "cold_invite",
+    signatureEndpoint: "/v1/ir:send-safe",
+    signatureTemplateId: "safe",
+    signatureLabel: "Send SAFE for signature",
+    entityIdField: "fundraiseId",
+    entitledGroup: "entitled-investors",
+    entitledLabel: "All entitled investors",
+    signatureFields: [
+      { key: "name",    label: "Investor name",            placeholder: "Jane Investor" },
+      { key: "email",   label: "Investor email",           placeholder: "jane@fund.com", type: "email" },
+      { key: "amount",  label: "Investment amount (USD)",  placeholder: "100000", hint: "Optional. Merged into the SAFE as commitment amount." },
+    ],
+  },
+  hr: {
+    title: "HR notice composer",
+    blurb: "Advisor welcome, cold invites, or Advisor Agreement signature requests. SendGrid for email; DBX Sign for the HOMMIE Warrant.",
+    templatesEndpoint: "/v1/hr:notice-templates",
+    listEndpoint: (id) => `/v1/hr:notices:list?tenantId=${encodeURIComponent(id)}`,
+    sendEndpoint: "/v1/hr:send-notice",
+    coldInviteEndpoint: "/v1/hr:send-advisor-invite",
+    coldInviteTemplateId: "advisor_cold_invite",
+    signatureEndpoint: "/v1/hr:send-advisor-agreement",
+    signatureTemplateId: "advisor_agreement",
+    signatureLabel: "Send Advisor Agreement for signature",
+    entityIdField: "tenantId",
+    entitledGroup: "entitled-advisors",
+    entitledLabel: "All entitled advisors",
+    signatureFields: [
+      { key: "name",   label: "Advisor name",   placeholder: "Jane Advisor" },
+      { key: "email",  label: "Advisor email",  placeholder: "jane@example.com", type: "email" },
+    ],
+  },
+};
+
 const S = {
   card:        { background: "#fff", border: "1px solid #a78bfa", borderRadius: 12, padding: 24, margin: "16px 0" },
   frTitle:     { fontSize: 16, fontWeight: 700, color: "#1a202c" },
@@ -44,35 +90,41 @@ const S = {
   err:         { color: "#dc2626" },
 };
 
-const SAFE_RECIPIENT_LIMIT = 1; // SAFE is per-investor; multi-send disabled to prevent footgun
+export default function NoticeComposerPanel({ kind = "ir", fundraiseId, tenantId, compact = false }) {
+  const cfg = KIND_CONFIG[kind] || KIND_CONFIG.ir;
+  const entityId = kind === "hr" ? tenantId : fundraiseId;
 
-export default function NoticeComposerPanel({ fundraiseId, compact = false }) {
   const [templates, setTemplates] = useState([]);
-  const [templateId, setTemplateId] = useState("kickoff");
+  const [templateId, setTemplateId] = useState(""); // set once templates load
   const [subject, setSubject] = useState("");
   const [customBody, setCustomBody] = useState("");
   const [recipientMode, setRecipientMode] = useState("entitled");
   const [manualEmails, setManualEmails] = useState("");
-  // SAFE-specific fields
-  const [safeName, setSafeName] = useState("");
-  const [safeEmail, setSafeEmail] = useState("");
-  const [safeAmount, setSafeAmount] = useState("");
+  // Signature-specific fields (SAFE for IR, Advisor Agreement for HR)
+  const [sigName, setSigName] = useState("");
+  const [sigEmail, setSigEmail] = useState("");
+  const [sigAmount, setSigAmount] = useState("");
   const [sending, setSending] = useState(false);
   const [status, setStatus] = useState(null);
   const [recentNotices, setRecentNotices] = useState([]);
 
   const loadRecent = useCallback(() => {
-    apiFetch(`/v1/ir:notices:list?fundraiseId=${encodeURIComponent(fundraiseId)}`).then(r => {
+    if (!entityId) return;
+    apiFetch(cfg.listEndpoint(entityId)).then(r => {
       if (r?.ok) setRecentNotices(r.notices || []);
     });
-  }, [fundraiseId]);
+  }, [cfg, entityId]);
 
   useEffect(() => {
-    apiFetch("/v1/ir:notice-templates").then(r => {
-      if (r?.ok) setTemplates(r.templates || []);
+    apiFetch(cfg.templatesEndpoint).then(r => {
+      if (r?.ok) {
+        setTemplates(r.templates || []);
+        if (r.templates?.length > 0 && !templateId) setTemplateId(r.templates[0].id);
+      }
     });
     loadRecent();
-  }, [loadRecent]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cfg.templatesEndpoint, loadRecent]);
 
   useEffect(() => {
     const t = templates.find(x => x.id === templateId);
@@ -80,31 +132,38 @@ export default function NoticeComposerPanel({ fundraiseId, compact = false }) {
   }, [templateId, templates]);
 
   const isCustom = templateId === "custom";
-  const isSafe = templateId === "safe";
-  const isColdInvite = templateId === "cold_invite";
+  const isSignature = templateId === cfg.signatureTemplateId;
+  const isColdInvite = templateId === cfg.coldInviteTemplateId;
 
   async function send() {
     setSending(true); setStatus(null);
     try {
       let res;
-      if (isSafe) {
-        if (!safeName || !safeEmail) {
-          setStatus({ kind: "err", msg: "Investor name + email required." });
+      if (isSignature) {
+        if (!sigName || !sigEmail) {
+          setStatus({ kind: "err", msg: "Name + email required." });
           setSending(false); return;
         }
-        res = await apiFetch("/v1/ir:send-safe", {
+        const payload = {
+          [cfg.entityIdField]: entityId,
+          recipientEmail: sigEmail,
+          recipientName: sigName,
+        };
+        if (kind === "ir" && sigAmount) {
+          payload.investmentAmount = Number(sigAmount.replace(/[^\d.]/g, ""));
+        }
+        res = await apiFetch(cfg.signatureEndpoint, {
           method: "POST",
-          body: JSON.stringify({
-            fundraiseId,
-            recipientEmail: safeEmail,
-            recipientName: safeName,
-            investmentAmount: safeAmount ? Number(safeAmount.replace(/[^\d.]/g, "")) : null,
-          }),
+          body: JSON.stringify(payload),
         });
       } else {
-        const payload = { fundraiseId, templateId, subject };
+        const payload = {
+          [cfg.entityIdField]: entityId,
+          templateId,
+          subject,
+        };
         if (recipientMode === "entitled") {
-          payload.recipientGroup = "entitled-investors";
+          payload.recipientGroup = cfg.entitledGroup;
         } else {
           payload.recipients = manualEmails
             .split(/[\s,;]+/).map(s => s.trim()).filter(Boolean)
@@ -115,15 +174,12 @@ export default function NoticeComposerPanel({ fundraiseId, compact = false }) {
           }
         }
         if (isCustom) payload.body = customBody;
-        const endpoint = isColdInvite ? "/v1/ir:send-cold-invite" : "/v1/ir:send-notice";
-        res = await apiFetch(endpoint, {
-          method: "POST",
-          body: JSON.stringify(payload),
-        });
+        const endpoint = isColdInvite ? cfg.coldInviteEndpoint : cfg.sendEndpoint;
+        res = await apiFetch(endpoint, { method: "POST", body: JSON.stringify(payload) });
       }
       if (res.ok) {
-        const sentMsg = isSafe
-          ? "SAFE sent for signature. Investor will receive DBX Sign email."
+        const sentMsg = isSignature
+          ? `${cfg.signatureLabel.replace("Send ", "")} sent. Recipient gets DBX Sign email.`
           : `Sent ${res.okCount}/${res.okCount + res.failCount}`;
         setStatus({ kind: "ok", msg: sentMsg });
         loadRecent();
@@ -137,12 +193,16 @@ export default function NoticeComposerPanel({ fundraiseId, compact = false }) {
     }
   }
 
+  if (!entityId) {
+    return <div style={{ ...S.card, color: "#94a3b8", fontSize: 13 }}>No {cfg.entityIdField} provided.</div>;
+  }
+
   return (
     <div style={S.card}>
       {!compact && (
         <>
-          <div style={S.frTitle}>Notice composer · {fundraiseId}</div>
-          <div style={S.frMeta}>Email, cold-invite, or SAFE signature requests. Logs audit + tracks opens/clicks via SendGrid; SAFE goes through DBX Sign.</div>
+          <div style={S.frTitle}>{cfg.title} · {entityId}</div>
+          <div style={S.frMeta}>{cfg.blurb}</div>
           <div style={S.divider} />
         </>
       )}
@@ -154,7 +214,7 @@ export default function NoticeComposerPanel({ fundraiseId, compact = false }) {
         </select>
       </div>
 
-      {!isSafe && (
+      {!isSignature && (
         <div style={S.field}>
           <label style={S.label}>Subject</label>
           <input style={S.input} value={subject} onChange={e => setSubject(e.target.value)} />
@@ -174,27 +234,29 @@ export default function NoticeComposerPanel({ fundraiseId, compact = false }) {
         </div>
       )}
 
-      {isSafe ? (
+      {isSignature ? (
         <>
           <div style={S.field}>
-            <label style={S.label}>Investor name</label>
-            <input style={S.input} value={safeName} onChange={e => setSafeName(e.target.value)} placeholder="Jane Investor" />
+            <label style={S.label}>{cfg.signatureFields[0].label}</label>
+            <input style={S.input} value={sigName} onChange={e => setSigName(e.target.value)} placeholder={cfg.signatureFields[0].placeholder} />
           </div>
           <div style={S.field}>
-            <label style={S.label}>Investor email</label>
-            <input style={S.input} type="email" value={safeEmail} onChange={e => setSafeEmail(e.target.value)} placeholder="jane@fund.com" />
+            <label style={S.label}>{cfg.signatureFields[1].label}</label>
+            <input style={S.input} type="email" value={sigEmail} onChange={e => setSigEmail(e.target.value)} placeholder={cfg.signatureFields[1].placeholder} />
           </div>
-          <div style={S.field}>
-            <label style={S.label}>Investment amount (USD)</label>
-            <input style={S.input} value={safeAmount} onChange={e => setSafeAmount(e.target.value)} placeholder="100000" />
-            <div style={S.hint}>Optional. Will be merged into the SAFE document as the commitment amount.</div>
-          </div>
+          {cfg.signatureFields[2] && (
+            <div style={S.field}>
+              <label style={S.label}>{cfg.signatureFields[2].label}</label>
+              <input style={S.input} value={sigAmount} onChange={e => setSigAmount(e.target.value)} placeholder={cfg.signatureFields[2].placeholder} />
+              {cfg.signatureFields[2].hint && <div style={S.hint}>{cfg.signatureFields[2].hint}</div>}
+            </div>
+          )}
         </>
       ) : (
         <div style={S.field}>
           <label style={S.label}>Recipients</label>
           <div style={{ display: "flex", gap: 12, fontSize: 13, marginBottom: 6 }}>
-            <label><input type="radio" name="rm" value="entitled" checked={recipientMode === "entitled"} onChange={() => setRecipientMode("entitled")} /> All entitled investors</label>
+            <label><input type="radio" name="rm" value="entitled" checked={recipientMode === "entitled"} onChange={() => setRecipientMode("entitled")} /> {cfg.entitledLabel}</label>
             <label><input type="radio" name="rm" value="manual" checked={recipientMode === "manual"} onChange={() => setRecipientMode("manual")} /> Manual list</label>
           </div>
           {recipientMode === "manual" && (
@@ -205,18 +267,12 @@ export default function NoticeComposerPanel({ fundraiseId, compact = false }) {
               placeholder="alice@example.com, bob@example.com"
             />
           )}
-          {isColdInvite && (
-            <div style={S.hint}>
-              Cold invite includes a magic link to /onboard/investor — KYC + accreditation,
-              then auto-grants data-room access.
-            </div>
-          )}
         </div>
       )}
 
       <div style={S.row}>
         <button style={sending ? S.btnDis : S.btnPrim} disabled={sending} onClick={send}>
-          {sending ? "Sending…" : (isSafe ? "Send SAFE for signature" : isColdInvite ? "Send cold invite" : "Send notice")}
+          {sending ? "Sending…" : (isSignature ? cfg.signatureLabel : isColdInvite ? "Send cold invite" : "Send notice")}
         </button>
         {status && <span style={{ ...S.status, ...(status.kind === "ok" ? S.ok : S.err) }}>{status.msg}</span>}
       </div>

@@ -217,11 +217,48 @@ async function buildFundraisePayload(tabId) {
 //  Public entry
 // ──────────────────────────────────────────────────────────────────
 
+async function buildPlatformHrPayload(tabId) {
+  // HR worker live data — V1 only handles Notices tab (composer needs it to
+  // render). Other HR tabs fall through to fixture.
+  if (tabId === "notices") {
+    const tenantId = typeof window !== "undefined" ? localStorage.getItem("TENANT_ID") : "";
+    if (!tenantId) return null;
+    try {
+      const r = await liveApiFetch(`/v1/hr:notices:list?tenantId=${encodeURIComponent(tenantId)}`);
+      const notices = Array.isArray(r?.notices) ? r.notices : [];
+      const recent = notices.slice(0, 6).map(n => {
+        const when = n.sentAt ? new Date(n.sentAt).toLocaleString() : "—";
+        return `${n.subject} · ${n.recipientCount} sent · ${when}`;
+      });
+      // Always return a payload shell — the composer attaches to this tab
+      // and we want it visible even before the first notice is sent.
+      return {
+        title: "HR notices",
+        subtitle: notices.length === 0 ? "No notices sent yet" : `${notices.length} recent`,
+        fields: notices.length === 0
+          ? [{ label: "Status", value: "Compose your first notice below" }]
+          : [
+              { label: "Sent (recent)", value: String(notices.length) },
+              { label: "Last subject",  value: notices[0]?.subject || "—" },
+              { label: "Last sent",     value: notices[0]?.sentAt ? new Date(notices[0].sentAt).toLocaleDateString() : "—" },
+            ],
+        sections: notices.length === 0
+          ? []
+          : [{ heading: "Recent", body: recent.join("\n") }],
+      };
+    } catch (_) {
+      return null;
+    }
+  }
+  return null;
+}
+
 export async function getLiveDataForTab(worker, tabId) {
   if (!worker) return null;
   const slug = worker.slug || worker.workerId;
   try {
-    if (slug === "fundraise") return await buildFundraisePayload(tabId);
+    if (slug === "fundraise")    return await buildFundraisePayload(tabId);
+    if (slug === "platform-hr")  return await buildPlatformHrPayload(tabId);
   } catch (e) {
     console.warn("[liveData] failed for", slug, tabId, e?.message || e);
   }

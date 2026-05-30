@@ -70,6 +70,7 @@ const SPINE_TABS = {
     { id: "onboarding",  label: "Onboarding",  signal: "checklist:hr-onboarding",   order: 1 },
     { id: "performance", label: "Performance", signal: "card:hr-performance",       order: 2 },
     { id: "compliance",  label: "Compliance",  signal: "card:work-product",         order: 3 },
+    { id: "notices",     label: "Notices",     signal: "card:work-product",         order: 4 },
   ],
   "platform-marketing": [
     { id: "kpis",             label: "KPIs",              signal: "card:work-product",                default: true, order: 0 },

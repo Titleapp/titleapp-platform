@@ -13080,6 +13080,274 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       }
     }
 
+    // ═══════════════════════════════════════════════════════════════
+    //  HR NOTICES — same primitives as IR, ported for advisor/employee
+    //  outreach. Tenant-scoped (one tenant = one HR scope). Templates:
+    //  advisor_welcome (kickoff), advisor_cold_invite, custom (HTML),
+    //  advisor_agreement (DBX Sign HOMMIE Warrant via signatureService).
+    // ═══════════════════════════════════════════════════════════════
+
+    const HR_NOTICE_TEMPLATES = {
+      advisor_welcome: {
+        label: "Advisor welcome (post-signing)",
+        subject: "Welcome to SOCIII — your advisor onboarding",
+        bodyHtml: (vars) => `
+<p>Hi ${vars.firstName || "there"},</p>
+<p>Welcome to the SOCIII advisor circle. Now that your agreement is countersigned, here's what's queued up for you:</p>
+<ul>
+  <li><strong>Your role</strong> — review the focus + cadence we discussed; reply if anything needs adjusting</li>
+  <li><strong>Code of conduct + IP/confidentiality summary</strong> — short reads, in your advisor data room</li>
+  <li><strong>Operating SOPs</strong> — how decisions get made, where docs live, how to reach me fast</li>
+  <li><strong>Direct line</strong> — reply to this email or text/call (951) 4-SOC-2444</li>
+</ul>
+<p>First quarterly advisor update goes out end of the month. I'll loop you in earlier if anything materially shifts.</p>
+<p>— Sean<br/>Founder, SOCIII Inc.</p>
+`,
+      },
+      advisor_cold_invite: {
+        label: "Cold advisor invite (qualify + onboarding kit)",
+        subject: "SOCIII — quick note + advisor opportunity",
+        bodyHtml: (vars) => `
+<p>Hi ${vars.firstName || "there"},</p>
+<p>Quick note from Sean Combs, founder of SOCIII. We're building out a small advisor circle (capped at 7) and your name surfaced as someone whose perspective would materially shape the next 12 months.</p>
+<p><strong>30-second pitch</strong>: SOCIII captures the rules of regulated professions from senior experts and ships them as governed AI workers with cryptographic audit trails. The experts earn from their workers; businesses consolidate SaaS through the platform.</p>
+<p><strong>The advisor offer</strong>: 0.5–2.5% equity vesting over 24 months, milestone-tied. Specific cadence and focus tailored to where you can move the needle. HOMMIE Warrant structure (downside-protected; details in the agreement).</p>
+<p><strong>If you'd like to take a look</strong>, the next step is a quick qualification + your advisor kit:</p>
+<p><a href="https://app.titleapp.ai/onboard/advisor?ref=${encodeURIComponent(vars.email || "")}" style="background:#7c3aed;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;display:inline-block;font-weight:600;">Start advisor onboarding →</a></p>
+<p>Reply with two windows if a 30-min intro call makes sense.</p>
+<p>— Sean<br/>Founder, SOCIII Inc. · sean@sociii.ai · (951) 4-SOC-2444</p>
+<p style="font-size:11px;color:#94a3b8;margin-top:24px">Not interested? Just reply "remove" and you won't hear from me again.</p>
+`,
+      },
+      custom: {
+        label: "Custom message",
+        subject: "",
+        bodyHtml: (vars) => vars.body || "",
+      },
+      advisor_agreement: {
+        label: "Advisor Agreement for signature",
+        subject: "SOCIII Advisor Agreement — ready for your signature",
+        bodyHtml: () => "(sent via DBX Sign — this body is unused)",
+        signaturePacket: true,
+      },
+    };
+
+    // Tenant-admin gate for HR. User must be admin/owner of the tenant.
+    async function userCanAdminTenant(uid, tenantId) {
+      if (!tenantId) return false;
+      const db = admin.firestore();
+      const memSnap = await db.collection("memberships")
+        .where("userId", "==", uid)
+        .where("tenantId", "==", tenantId)
+        .limit(5).get();
+      return memSnap.docs.some(d => {
+        const r = (d.data() || {}).role;
+        return r === "admin" || r === "owner";
+      });
+    }
+
+    // GET /v1/hr:notice-templates — auth required. Same shape as ir variant.
+    if (route === "/hr:notice-templates" && method === "GET") {
+      const auth = await requireFirebaseUser(req, res);
+      if (auth.handled) return;
+      const templates = Object.entries(HR_NOTICE_TEMPLATES).map(([id, t]) => ({
+        id, label: t.label, defaultSubject: t.subject,
+      }));
+      return res.json({ ok: true, templates });
+    }
+
+    // GET /v1/hr:notices:list?tenantId=...
+    if (route === "/hr:notices:list" && method === "GET") {
+      const auth = await requireFirebaseUser(req, res);
+      if (auth.handled) return;
+      try {
+        const tenantId = req.query?.tenantId;
+        if (!tenantId) return jsonError(res, 400, "tenantId required");
+        const allowed = await userCanAdminTenant(auth.user.uid, tenantId);
+        if (!allowed) return jsonError(res, 403, "Not authorized");
+        const db = admin.firestore();
+        const snap = await db.collection("tenants").doc(tenantId)
+          .collection("hr_notices").orderBy("sentAt", "desc").limit(20).get();
+        const notices = snap.docs.map(d => {
+          const x = d.data();
+          return {
+            noticeId: x.noticeId, templateLabel: x.templateLabel, subject: x.subject,
+            okCount: x.okCount || 0, failCount: x.failCount || 0,
+            recipientCount: (x.recipients || []).length,
+            sentAt: x.sentAt?.toMillis ? x.sentAt.toMillis() : null,
+            sentByEmail: x.sentByEmail || null,
+          };
+        });
+        return res.json({ ok: true, notices, count: notices.length });
+      } catch (e) {
+        console.error("hr:notices:list failed:", e);
+        return jsonError(res, 500, e.message || "Lookup failed");
+      }
+    }
+
+    // Shared HR-send helper: SendGrid-based template flow.
+    async function _hrSendTemplate({ auth, tenantId, templateId, body }) {
+      const tpl = HR_NOTICE_TEMPLATES[templateId];
+      if (!tpl) return { error: "Unknown templateId", status: 400 };
+      const allowed = await userCanAdminTenant(auth.user.uid, tenantId);
+      if (!allowed) return { error: "Not authorized", status: 403 };
+      const recipients = Array.isArray(body.recipients) ? body.recipients : [];
+      if (recipients.length === 0) return { error: "No recipients", status: 400 };
+      const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY || "";
+      if (!SENDGRID_API_KEY) return { error: "SENDGRID_API_KEY not configured", status: 500 };
+      const subject = body.subject || tpl.subject;
+      const noticeId = "hr_notice_" + crypto.randomUUID().replace(/-/g, "").slice(0, 16);
+      const sentResults = [];
+      for (const r of recipients) {
+        const html = tpl.bodyHtml({
+          firstName: r.firstName || (r.name || "").split(" ")[0] || null,
+          name: r.name, email: r.email,
+          body: body.body,
+        });
+        try {
+          const sgRes = await fetch("https://api.sendgrid.com/v3/mail/send", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${SENDGRID_API_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              personalizations: [{ to: [{ email: r.email, name: r.name || undefined }] }],
+              from: { email: "sean@sociii.ai", name: "Sean Combs · SOCIII" },
+              reply_to: { email: "sean@sociii.ai", name: "Sean Combs" },
+              subject,
+              content: [{ type: "text/html", value: html }],
+              custom_args: { noticeId, tenantId, templateId, kind: "hr" },
+              tracking_settings: {
+                click_tracking: { enable: true }, open_tracking: { enable: true },
+              },
+            }),
+          });
+          sentResults.push({ email: r.email, ok: sgRes.ok, status: sgRes.status, error: sgRes.ok ? null : await sgRes.text() });
+        } catch (e) {
+          sentResults.push({ email: r.email, ok: false, error: e.message });
+        }
+      }
+      const db = admin.firestore();
+      await db.collection("tenants").doc(tenantId).collection("hr_notices").doc(noticeId).set({
+        noticeId, tenantId, templateId, templateLabel: tpl.label, subject,
+        recipients: recipients.map(r => ({ email: r.email, name: r.name || null })),
+        sentResults, sentAt: admin.firestore.FieldValue.serverTimestamp(),
+        sentBy: auth.user.uid, sentByEmail: auth.user.email || null,
+        okCount: sentResults.filter(x => x.ok).length,
+        failCount: sentResults.filter(x => !x.ok).length,
+      });
+      return {
+        noticeId,
+        okCount: sentResults.filter(x => x.ok).length,
+        failCount: sentResults.filter(x => !x.ok).length,
+        results: sentResults,
+      };
+    }
+
+    // POST /v1/hr:send-notice
+    if (route === "/hr:send-notice" && method === "POST") {
+      const auth = await requireFirebaseUser(req, res);
+      if (auth.handled) return;
+      try {
+        const body = req.body || {};
+        const tenantId = body.tenantId;
+        if (!tenantId) return jsonError(res, 400, "tenantId required");
+        const templateId = body.templateId || "advisor_welcome";
+        // recipientGroup === "entitled-advisors" pulls all active advisor entitlements
+        if (body.recipientGroup === "entitled-advisors") {
+          const ents = await admin.firestore().collectionGroup("entitlements")
+            .where("type", "==", "advisor_portal")
+            .where("status", "==", "active")
+            .where("tenantId", "==", tenantId).limit(500).get();
+          const out = [];
+          for (const d of ents.docs) {
+            const uid = d.ref.parent.parent.id;
+            try {
+              const u = await admin.auth().getUser(uid);
+              if (u.email && !out.some(r => r.email === u.email)) {
+                out.push({
+                  email: u.email, name: u.displayName || null,
+                  firstName: (u.displayName || "").split(" ")[0] || null,
+                });
+              }
+            } catch (_) {}
+          }
+          body.recipients = out;
+        }
+        const result = await _hrSendTemplate({ auth, tenantId, templateId, body });
+        if (result.error) return jsonError(res, result.status, result.error);
+        return res.json({ ok: true, ...result });
+      } catch (e) {
+        console.error("hr:send-notice failed:", e);
+        return jsonError(res, 500, e.message || "Send failed");
+      }
+    }
+
+    // POST /v1/hr:send-advisor-invite — cold outreach
+    if (route === "/hr:send-advisor-invite" && method === "POST") {
+      const auth = await requireFirebaseUser(req, res);
+      if (auth.handled) return;
+      try {
+        const body = req.body || {};
+        const tenantId = body.tenantId;
+        if (!tenantId) return jsonError(res, 400, "tenantId required");
+        const result = await _hrSendTemplate({
+          auth, tenantId, templateId: "advisor_cold_invite", body,
+        });
+        if (result.error) return jsonError(res, result.status, result.error);
+        return res.json({ ok: true, ...result });
+      } catch (e) {
+        console.error("hr:send-advisor-invite failed:", e);
+        return jsonError(res, 500, e.message || "Send failed");
+      }
+    }
+
+    // POST /v1/hr:send-advisor-agreement — DBX Sign HOMMIE Warrant
+    // Body: { tenantId, recipientEmail, recipientName, vars? }
+    if (route === "/hr:send-advisor-agreement" && method === "POST") {
+      const auth = await requireFirebaseUser(req, res);
+      if (auth.handled) return;
+      try {
+        const body = req.body || {};
+        const tenantId = body.tenantId;
+        const recipientEmail = body.recipientEmail;
+        const recipientName = body.recipientName;
+        if (!tenantId || !recipientEmail || !recipientName) {
+          return jsonError(res, 400, "tenantId, recipientEmail, recipientName required");
+        }
+        const allowed = await userCanAdminTenant(auth.user.uid, tenantId);
+        if (!allowed) return jsonError(res, 403, "Not authorized");
+        const { sendSignaturePacket } = require("./services/signatureService");
+        const sigResult = await sendSignaturePacket({
+          role: "advisor",
+          recipientEmail, recipientName,
+          vars: body.vars || {},
+          tenantId,
+          metadata: { source: "hr:send-advisor-agreement", triggeredBy: auth.user.uid, tenantId },
+        });
+        if (!sigResult?.ok && sigResult?.error) {
+          return jsonError(res, 500, `Signature request failed: ${sigResult.error}`);
+        }
+        const noticeId = "hr_notice_" + crypto.randomUUID().replace(/-/g, "").slice(0, 16);
+        await admin.firestore().collection("tenants").doc(tenantId).collection("hr_notices").doc(noticeId).set({
+          noticeId, tenantId, templateId: "advisor_agreement",
+          templateLabel: "Advisor Agreement for signature",
+          subject: "SOCIII Advisor Agreement — ready for your signature",
+          recipients: [{ email: recipientEmail, name: recipientName }],
+          signatureRequestId: sigResult?.requestId || null,
+          sentResults: [{ email: recipientEmail, ok: true }],
+          sentAt: admin.firestore.FieldValue.serverTimestamp(),
+          sentBy: auth.user.uid, sentByEmail: auth.user.email || null,
+          okCount: 1, failCount: 0,
+        });
+        return res.json({ ok: true, noticeId, signatureRequestId: sigResult?.requestId || null });
+      } catch (e) {
+        console.error("hr:send-advisor-agreement failed:", e);
+        return jsonError(res, 500, e.message || "Send failed");
+      }
+    }
+
     // GET /v1/ir:notice-templates — public-but-authed catalog.
     if (route === "/ir:notice-templates" && method === "GET") {
       const auth = await requireFirebaseUser(req, res);
