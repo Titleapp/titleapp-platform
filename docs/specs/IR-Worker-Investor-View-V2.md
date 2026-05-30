@@ -161,13 +161,23 @@ The whole point of capturing this spec rigorously is so QA-001 can test against 
 
 That's the leverage thesis turned into a measurable contract.
 
-## Open questions for Sean
+## Answered (Sean, 2026-05-29)
 
-1. **Founder thread vs. office hours** — should the "direct message to founder" be a real thread surface or just an "email founder" button that opens mailto:?
-2. **Conference call infrastructure** — host on Zoom/Meet (link in workspace) or build a native conferencing layer? V2 = link-only is probably right.
-3. **Annual meeting voting proxy** — separate UX or extends `/invest/vote`?
-4. **Investor-specific deck variants** — does the deck shown to Storyhouse differ from what aspensean test sees? Probably yes for real production. Spec'd via per-investor `accessGrant` records.
-5. **Where do video updates live** — Drive-native upload + canvas embed, or external Loom links that we just track?
+1. **Founder thread**: Founder's email is the source (e.g. `sean@sociii.ai`). **Must be configurable per tenant** — at scale, the IR/CFO person handles correspondence, not the founder. Spec calls for a `tenants/{id}/irContact` field with `{email, name, role}`. Defaults to founder; overridable.
+2. **Conference calls**: **Google Meet via existing GSuite integration**, with recording + notes. Don't build native conferencing. Meet links surface in the canvas; recordings + auto-generated notes land in Drive subfolder + are referenced from the canvas.
+3. **Annual meeting voting**: **Extend `/invest/vote`** (the S51.24 UI). Do NOT integrate Snapshot or other external voting protocols. Memory rule: [[feedback_fewer_apis_principle]] — fewer APIs and integrations the better.
+4. **Per-investor deck variants + one-off docs**: Yes, customizable per-investor decks/memos. **Plus introduce the Paralegal worker** for ad-hoc legal docs that get signed via DBX Sign. Sean's expectation: one-off documents will be MORE common than templated ones, because every investor wants their own deal and other use cases (actual legal actions) also need ad-hoc docs. Paralegal worker is on next week's task list (after Marketing worker deep-dive).
+5. **Video updates**: **YouTube unlisted primary, Drive archival backup, server-logged view event for audit.** Hybrid pattern: store master in Drive (compliance archive), embed YouTube unlisted in canvas (streaming + auto-transcription + free storage), log "viewed" events server-side on iframe interaction. Avoids large-video-files-in-Drive cost without losing audit fidelity.
+
+## Architecture additions implied by the answers
+
+- `tenants/{id}/irContact` field — single source of truth for "who sends investor comms"
+- Google Meet integration extended — meeting events tagged with `investorId`/`fundraiseId` so the call shows up in the investor's canvas comms tab
+- Paralegal worker (separate, but its outputs feed the IR worker's signing queue):
+  - DBX Sign templates are for high-volume docs (SAFE, advisor agreement, NDA)
+  - Paralegal worker generates one-off docs from prompts + uploads to DBX Sign for signing
+  - Surfacing: paralegal-generated docs appear in investor's signing queue alongside templated ones; same audit trail
+- YouTube unlisted handler: a small backend service that registers the YouTube video ID against an investor record + logs view events when the canvas iframe fires interaction telemetry
 
 ## Related memory + tasks
 
