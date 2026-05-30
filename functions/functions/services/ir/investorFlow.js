@@ -632,10 +632,15 @@ async function installInvestorWorkerEntitlement({ fundraiseId, investorId }) {
   }
 
   const entitlementId = `ent_inv_${fundraiseId}_${investorId}`;
+  // workerKey is "fundraise" (the existing IR worker slug) so the Sidebar nav
+  // routes the click to the existing canvas render path. The isEntitled flag
+  // is what scopes the view (V2 — currently just renders standard fundraise
+  // canvas; future work will pass investorId/fundraiseId so the canvas shows
+  // the investor's position rather than the founder's view).
   await db.collection("users").doc(uid).collection("entitlements").doc(entitlementId).set({
     entitlementId,
     type: "investor_portal",
-    workerKey: "sociii-investor-relations",
+    workerKey: "fundraise",
     workerTitle: "SOCIII — Investor Relations",
     workerSubtitle: "Your position, votes, notices",
     workerIcon: "📈",

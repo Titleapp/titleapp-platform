@@ -12708,6 +12708,40 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       }
     }
 
+    // GET /v1/user:entitlements:list — authenticated; returns the signed-in
+    // user's entitled workers (investor portal, etc.) so My Workers nav can
+    // merge them alongside tenant-subscribed workers. Task #353.
+    if (route === "/user:entitlements:list" && method === "GET") {
+      const auth = await requireFirebaseUser(req, res);
+      if (auth.handled) return;
+      try {
+        const db = admin.firestore();
+        const snap = await db.collection("users").doc(auth.user.uid)
+          .collection("entitlements").where("status", "==", "active").limit(50).get();
+        const entitlements = snap.docs.map(d => {
+          const x = d.data();
+          return {
+            entitlementId: x.entitlementId,
+            type: x.type,
+            workerKey: x.workerKey,
+            workerTitle: x.workerTitle,
+            workerSubtitle: x.workerSubtitle || null,
+            workerIcon: x.workerIcon || null,
+            role: x.role,
+            fundraiseId: x.fundraiseId || null,
+            investorId: x.investorId || null,
+            advisorId: x.advisorId || null,
+            tenantId: x.tenantId || null,
+            installedAt: x.installedAt || null,
+          };
+        });
+        return res.json({ ok: true, entitlements, count: entitlements.length });
+      } catch (e) {
+        console.error("user:entitlements:list failed:", e);
+        return jsonError(res, 500, e.message || "Lookup failed");
+      }
+    }
+
     // GET /v1/invites:get?inviteId=... — authenticated; returns a single
     // invite if the caller is the claimer. Used by the obligation card to
     // refresh after each action completes.

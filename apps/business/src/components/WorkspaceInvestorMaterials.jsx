@@ -25,11 +25,17 @@ async function apiFetch(path, opts = {}) {
 // Materials catalog. Items render when their `url` resolves to a truthy value.
 // If url is null/undefined the item still renders with a "shared directly"
 // placeholder so the investor knows the material exists.
+// Material URLs that aren't set show "Sean will share directly" rather than a
+// broken link. The office hours URL was originally hardcoded to a phantom
+// cal.com path that 404'd — investors got a "Page does not exist" page when
+// they clicked. URLs now ship in only when known-good. The right long-term
+// fix is reading these from the fundraise's tenant config so each round can
+// override.
 const MATERIAL_DEFAULTS = {
   deck:       { title: "Pre-seed deck",             subtitle: "12-slide thesis + traction",          icon: "📊" },
   whitepaper: { title: "SOCIII whitepaper",         subtitle: "Architecture, patents, vertical roll-out", icon: "📄", url: "https://sociii.ai/whitepaper" },
   dataRoom:   { title: "Data room",                 subtitle: "Financials, cap table, formation docs", icon: "🗂" },
-  office:     { title: "Office hours with Sean",    subtitle: "30 min, async OK",                      icon: "📅", url: "https://cal.com/sociii/office-hours" },
+  office:     { title: "Office hours with Sean",    subtitle: "30 min, async OK",                      icon: "📅" },
 };
 
 export default function WorkspaceInvestorMaterials() {

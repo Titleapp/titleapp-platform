@@ -272,7 +272,65 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
     return () => window.removeEventListener("ta:worker-subscribed", onWorkerSubscribed);
   }, [guestMode]);
 
-  const activeWorkers = guestMode ? guestWorkers : (currentWs.activeWorkers || []);
+  // Entitled workers — virtual workers installed on the user (not the tenant).
+  // Task #353: investor signs SAFE → installInvestorWorkerEntitlement writes
+  // to users/{uid}/entitlements → here we fetch them + merge into activeWorkers
+  // so the My Workers nav renders the user's persistent investor-side surface.
+  const [entitledWorkers, setEntitledWorkers] = useState([]);
+  useEffect(() => {
+    if (guestMode) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+        let token = null;
+        try { if (auth.currentUser) token = await auth.currentUser.getIdToken(); } catch (_) {}
+        if (!token) token = localStorage.getItem("ID_TOKEN");
+        if (!token) return;
+        const res = await fetch(`${API_BASE}/api?path=${encodeURIComponent("/v1/user:entitlements:list")}`, {
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        if (cancelled) return;
+        const ents = Array.isArray(data?.entitlements) ? data.entitlements : [];
+        // Shape to look like an activeWorkers entry so Sidebar treats it the same way.
+        const mapped = ents.map(e => ({
+          slug: e.workerKey,
+          name: e.workerTitle,
+          displayName: e.workerTitle,
+          isChiefOfStaff: false,
+          isEntitled: true,
+          entitlementId: e.entitlementId,
+          role: e.role,
+          fundraiseId: e.fundraiseId,
+          investorId: e.investorId,
+          advisorId: e.advisorId,
+          tenantId: e.tenantId,
+          vertical: e.role === "investor" ? "Banking & Finance" : "Platform",
+        }));
+        setEntitledWorkers(mapped);
+      } catch (_) { /* non-fatal */ }
+    })();
+    return () => { cancelled = true; };
+  }, [guestMode]);
+
+  const tenantActiveWorkers = guestMode ? guestWorkers : (currentWs.activeWorkers || []);
+  // Merge tenant-subscribed workers with user-entitled workers. Dedupe by slug
+  // so a tenant subscription to the IR worker takes precedence over an
+  // investor entitlement for the same worker key.
+  const activeWorkers = React.useMemo(() => {
+    const slugs = new Set();
+    const out = [];
+    for (const w of tenantActiveWorkers) {
+      const slug = typeof w === "string" ? w : (w?.slug || w?.id || "");
+      if (slug && !slugs.has(slug)) { slugs.add(slug); out.push(w); }
+    }
+    for (const w of entitledWorkers) {
+      if (w.slug && !slugs.has(w.slug)) { slugs.add(w.slug); out.push(w); }
+    }
+    return out;
+  }, [tenantActiveWorkers, entitledWorkers]);
+
   // Store active workers in localStorage so ChatPanel can pass them to Alex
   useEffect(() => {
     if (activeWorkers.length > 0) {
