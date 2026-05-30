@@ -135,6 +135,139 @@ function FundraiseCard({ fundraise, onSaved }) {
   );
 }
 
+function NoticeComposerPanel({ fundraiseId }) {
+  const [templates, setTemplates] = useState([]);
+  const [templateId, setTemplateId] = useState("kickoff");
+  const [subject, setSubject] = useState("");
+  const [customBody, setCustomBody] = useState("");
+  const [recipientMode, setRecipientMode] = useState("entitled");
+  const [manualEmails, setManualEmails] = useState("");
+  const [sending, setSending] = useState(false);
+  const [status, setStatus] = useState(null);
+  const [recentNotices, setRecentNotices] = useState([]);
+
+  useEffect(() => {
+    apiFetch("/v1/ir:notice-templates").then(r => {
+      if (r?.ok) setTemplates(r.templates || []);
+    });
+    apiFetch(`/v1/ir:notices:list?fundraiseId=${encodeURIComponent(fundraiseId)}`).then(r => {
+      if (r?.ok) setRecentNotices(r.notices || []);
+    });
+  }, [fundraiseId]);
+
+  useEffect(() => {
+    const t = templates.find(x => x.id === templateId);
+    if (t?.defaultSubject) setSubject(t.defaultSubject);
+  }, [templateId, templates]);
+
+  async function send() {
+    setSending(true); setStatus(null);
+    try {
+      const payload = { fundraiseId, templateId, subject };
+      if (recipientMode === "entitled") {
+        payload.recipientGroup = "entitled-investors";
+      } else {
+        payload.recipients = manualEmails
+          .split(/[\s,;]+/).map(s => s.trim()).filter(Boolean)
+          .map(email => ({ email }));
+        if (payload.recipients.length === 0) {
+          setStatus({ kind: "err", msg: "No valid emails." });
+          setSending(false);
+          return;
+        }
+      }
+      if (templateId === "custom") payload.body = customBody;
+      const res = await apiFetch("/v1/ir:send-notice", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) {
+        setStatus({ kind: "ok", msg: `Sent ${res.okCount}/${res.okCount + res.failCount}` });
+        // Refresh recent list
+        apiFetch(`/v1/ir:notices:list?fundraiseId=${encodeURIComponent(fundraiseId)}`).then(r => {
+          if (r?.ok) setRecentNotices(r.notices || []);
+        });
+      } else {
+        setStatus({ kind: "err", msg: res.error || "Send failed" });
+      }
+    } catch (e) {
+      setStatus({ kind: "err", msg: e.message });
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return (
+    <div style={{ ...S.card, marginBottom: 16, borderColor: "#a78bfa" }}>
+      <div style={S.frTitle}>Notice composer · {fundraiseId}</div>
+      <div style={S.frMeta}>Send a kickoff letter or custom message to entitled investors. Logs to the audit trail; tracks opens + clicks via SendGrid.</div>
+      <div style={S.divider} />
+      <div style={S.field}>
+        <label style={S.label}>Template</label>
+        <select style={S.input} value={templateId} onChange={e => setTemplateId(e.target.value)}>
+          {templates.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
+        </select>
+      </div>
+      <div style={S.field}>
+        <label style={S.label}>Subject</label>
+        <input style={S.input} value={subject} onChange={e => setSubject(e.target.value)} />
+      </div>
+      {templateId === "custom" && (
+        <div style={S.field}>
+          <label style={S.label}>HTML body</label>
+          <textarea
+            style={{ ...S.input, minHeight: 120, fontFamily: "monospace", fontSize: 12 }}
+            value={customBody}
+            onChange={e => setCustomBody(e.target.value)}
+            placeholder="<p>Hi {firstName}, ...</p>"
+          />
+          <div style={S.hint}>Plain HTML. Available variables on the server: {`{firstName}`}, {`{name}`}, {`{email}`} (sub by hand for now).</div>
+        </div>
+      )}
+      <div style={S.field}>
+        <label style={S.label}>Recipients</label>
+        <div style={{ display: "flex", gap: 12, fontSize: 13, marginBottom: 6 }}>
+          <label><input type="radio" name="rm" value="entitled" checked={recipientMode === "entitled"} onChange={() => setRecipientMode("entitled")} /> All entitled investors</label>
+          <label><input type="radio" name="rm" value="manual" checked={recipientMode === "manual"} onChange={() => setRecipientMode("manual")} /> Manual list</label>
+        </div>
+        {recipientMode === "manual" && (
+          <textarea
+            style={{ ...S.input, minHeight: 60, fontSize: 12 }}
+            value={manualEmails}
+            onChange={e => setManualEmails(e.target.value)}
+            placeholder="alice@example.com, bob@example.com"
+          />
+        )}
+      </div>
+      <div style={S.row}>
+        <button style={sending ? S.btnDis : S.btnPrim} disabled={sending} onClick={send}>
+          {sending ? "Sending…" : "Send notice"}
+        </button>
+        {status && <span style={{ ...S.status, ...(status.kind === "ok" ? S.ok : S.err) }}>{status.msg}</span>}
+      </div>
+
+      {recentNotices.length > 0 && (
+        <>
+          <div style={S.divider} />
+          <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", letterSpacing: "0.04em", textTransform: "uppercase", marginBottom: 8 }}>Recent notices</div>
+          {recentNotices.slice(0, 5).map(n => (
+            <div key={n.noticeId} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", fontSize: 12, color: "#475569", borderBottom: "1px solid #f1f5f9" }}>
+              <div>
+                <div style={{ color: "#1a202c", fontWeight: 500 }}>{n.subject}</div>
+                <div style={{ fontSize: 11, color: "#94a3b8" }}>{n.templateLabel} · {n.recipientCount} recipient{n.recipientCount === 1 ? "" : "s"}</div>
+              </div>
+              <div style={{ textAlign: "right" }}>
+                <div>{n.okCount}/{n.recipientCount} sent</div>
+                <div style={{ fontSize: 11, color: "#94a3b8" }}>{n.sentAt ? new Date(n.sentAt).toLocaleString() : ""}</div>
+              </div>
+            </div>
+          ))}
+        </>
+      )}
+    </div>
+  );
+}
+
 function SmsTestPanel() {
   const [phone, setPhone] = useState("+13104300780");
   const [sending, setSending] = useState(false);
@@ -217,7 +350,10 @@ export default function FundraiseAdmin() {
           </div>
         )}
         {!error && list !== null && list.map(fr => (
-          <FundraiseCard key={fr.fundraiseId} fundraise={fr} />
+          <div key={fr.fundraiseId}>
+            <FundraiseCard fundraise={fr} />
+            <NoticeComposerPanel fundraiseId={fr.fundraiseId} />
+          </div>
         ))}
       </div>
     </div>

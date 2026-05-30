@@ -151,6 +151,32 @@ async function buildFundraisePayload(tabId) {
     };
   }
 
+  if (tabId === "notices") {
+    // Founder Notices tab — list recent outbound notices for this fundraise.
+    // Investor side returns null (their inbox view comes next pass).
+    try {
+      const r = await liveApiFetch(`/v1/ir:notices:list?fundraiseId=${encodeURIComponent(fr.fundraiseId)}`);
+      const notices = Array.isArray(r?.notices) ? r.notices : [];
+      if (notices.length === 0) return null;
+      const recent = notices.slice(0, 6).map(n => {
+        const when = n.sentAt ? new Date(n.sentAt).toLocaleString() : "—";
+        return `${n.subject} · ${n.recipientCount} sent · ${when}`;
+      });
+      return {
+        title: "Investor notices",
+        subtitle,
+        fields: [
+          { label: "Sent (recent)", value: String(notices.length) },
+          { label: "Last subject", value: notices[0]?.subject || "—" },
+          { label: "Last sent", value: notices[0]?.sentAt ? new Date(notices[0].sentAt).toLocaleDateString() : "—" },
+        ],
+        sections: [{ heading: "Recent", body: recent.join("\n") }],
+      };
+    } catch (_) {
+      return null;
+    }
+  }
+
   if (tabId === "my-position") {
     // Investor-side view: read /v1/investor:my-position which derives the
     // investor's own record from their entitlement. Falls back to null

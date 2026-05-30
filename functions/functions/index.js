@@ -12746,6 +12746,195 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       }
     }
 
+    // ═══════════════════════════════════════════════════════════════
+    //  IR NOTICES — founder outbound email
+    //  Send templates (kickoff letter, custom) to a recipient list via
+    //  SendGrid. Log full audit to fundraises/{id}/notices for tracking.
+    // ═══════════════════════════════════════════════════════════════
+
+    const IR_NOTICE_TEMPLATES = {
+      kickoff: {
+        label: "Kickoff letter (advisors + investors)",
+        subject: "SOCIII — pre-seed kickoff",
+        bodyHtml: (vars) => `
+<p>Hi ${vars.firstName || "there"},</p>
+<p>Quick note to mark the start of the SOCIII pre-seed round.</p>
+<p><strong>The thesis</strong>: every regulated profession has rules a junior practitioner takes years to learn. SOCIII captures those rules from senior experts and ships them as governed AI workers. The audit trail is cryptographic; the workers earn for the experts who built them; the platform consolidates SaaS for the businesses that run them.</p>
+<p><strong>What's there for you right now:</strong></p>
+<ul>
+  <li>Investor data room — <a href="https://app.titleapp.ai/data-room">app.titleapp.ai/data-room</a> (memorandum, deck, SAFE, NDA, warrant, patent portfolio)</li>
+  <li>Whitepaper — <a href="https://app.titleapp.ai/whitepaper">app.titleapp.ai/whitepaper</a></li>
+  <li>Direct line — reply to this email or text/call (951) 4-SOC-2444</li>
+</ul>
+<p>Aiming for first close inside 30 days. If you want a 30-min call to walk through, hit reply with two windows.</p>
+<p>— Sean<br/>Founder, SOCIII Inc.</p>
+`,
+      },
+      custom: {
+        label: "Custom message",
+        subject: "",
+        bodyHtml: (vars) => vars.body || "",
+      },
+    };
+
+    // POST /v1/ir:send-notice
+    // Body: { fundraiseId, templateId, recipients: [{email,name,firstName?}],
+    //         recipientGroup?: "entitled-investors", subject?, body? }
+    // Membership-gated to fundraise admins. Fires SendGrid for each recipient,
+    // logs audit row per send.
+    if (route === "/ir:send-notice" && method === "POST") {
+      const auth = await requireFirebaseUser(req, res);
+      if (auth.handled) return;
+      try {
+        const body = req.body || {};
+        const fundraiseId = body.fundraiseId || "fr_d291731b90725d12";
+        const templateId = body.templateId || "kickoff";
+        const tpl = IR_NOTICE_TEMPLATES[templateId];
+        if (!tpl) return jsonError(res, 400, "Unknown templateId");
+
+        const db = admin.firestore();
+        const frSnap = await db.collection("fundraises").doc(fundraiseId).get();
+        const allowed = await userCanAdminFundraise(auth.user.uid, frSnap);
+        if (!allowed) return jsonError(res, 403, "Not authorized to send notices for this fundraise");
+
+        // Resolve recipients.
+        let recipients = Array.isArray(body.recipients) ? body.recipients.slice() : [];
+        if (body.recipientGroup === "entitled-investors") {
+          const ents = await db.collectionGroup("entitlements")
+            .where("type", "==", "investor_portal")
+            .where("status", "==", "active")
+            .where("fundraiseId", "==", fundraiseId)
+            .limit(500).get();
+          for (const d of ents.docs) {
+            const uid = d.ref.parent.parent.id;
+            try {
+              const u = await admin.auth().getUser(uid);
+              if (u.email && !recipients.some(r => r.email === u.email)) {
+                recipients.push({
+                  email: u.email,
+                  name: u.displayName || null,
+                  firstName: (u.displayName || "").split(" ")[0] || null,
+                });
+              }
+            } catch (_) {}
+          }
+        }
+        if (recipients.length === 0) return jsonError(res, 400, "No recipients");
+
+        const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY || "";
+        if (!SENDGRID_API_KEY) return jsonError(res, 500, "SENDGRID_API_KEY not configured");
+
+        const subject = body.subject || tpl.subject || "Message from SOCIII";
+        const noticeId = "notice_" + crypto.randomUUID().replace(/-/g, "").slice(0, 16);
+        const sentResults = [];
+        for (const r of recipients) {
+          const html = tpl.bodyHtml({
+            firstName: r.firstName || (r.name || "").split(" ")[0] || null,
+            name: r.name,
+            email: r.email,
+            body: body.body,
+          });
+          try {
+            const sgRes = await fetch("https://api.sendgrid.com/v3/mail/send", {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${SENDGRID_API_KEY}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                personalizations: [{ to: [{ email: r.email, name: r.name || undefined }] }],
+                from: { email: "sean@sociii.ai", name: "Sean Combs · SOCIII" },
+                reply_to: { email: "sean@sociii.ai", name: "Sean Combs" },
+                subject,
+                content: [{ type: "text/html", value: html }],
+                custom_args: { noticeId, fundraiseId, templateId },
+                tracking_settings: {
+                  click_tracking: { enable: true },
+                  open_tracking: { enable: true },
+                },
+              }),
+            });
+            const ok = sgRes.ok;
+            const txt = ok ? null : await sgRes.text();
+            sentResults.push({ email: r.email, ok, status: sgRes.status, error: txt });
+          } catch (e) {
+            sentResults.push({ email: r.email, ok: false, error: e.message });
+          }
+        }
+
+        await db.collection("fundraises").doc(fundraiseId).collection("notices").doc(noticeId).set({
+          noticeId,
+          fundraiseId,
+          templateId,
+          templateLabel: tpl.label,
+          subject,
+          recipients: recipients.map(r => ({ email: r.email, name: r.name || null })),
+          sentResults,
+          sentAt: admin.firestore.FieldValue.serverTimestamp(),
+          sentBy: auth.user.uid,
+          sentByEmail: auth.user.email || null,
+          okCount: sentResults.filter(x => x.ok).length,
+          failCount: sentResults.filter(x => !x.ok).length,
+        });
+
+        return res.json({
+          ok: true,
+          noticeId,
+          okCount: sentResults.filter(x => x.ok).length,
+          failCount: sentResults.filter(x => !x.ok).length,
+          results: sentResults,
+        });
+      } catch (e) {
+        console.error("ir:send-notice failed:", e);
+        return jsonError(res, 500, e.message || "Send failed");
+      }
+    }
+
+    // GET /v1/ir:notices:list?fundraiseId=...
+    // Membership-gated. Returns recent notices for the founder Notices tab.
+    if (route === "/ir:notices:list" && method === "GET") {
+      const auth = await requireFirebaseUser(req, res);
+      if (auth.handled) return;
+      try {
+        const fundraiseId = req.query?.fundraiseId || "fr_d291731b90725d12";
+        const db = admin.firestore();
+        const frSnap = await db.collection("fundraises").doc(fundraiseId).get();
+        const allowed = await userCanAdminFundraise(auth.user.uid, frSnap);
+        if (!allowed) return jsonError(res, 403, "Not authorized");
+        const snap = await db.collection("fundraises").doc(fundraiseId)
+          .collection("notices").orderBy("sentAt", "desc").limit(20).get();
+        const notices = snap.docs.map(d => {
+          const x = d.data();
+          return {
+            noticeId: x.noticeId,
+            templateLabel: x.templateLabel,
+            subject: x.subject,
+            okCount: x.okCount || 0,
+            failCount: x.failCount || 0,
+            recipientCount: (x.recipients || []).length,
+            sentAt: x.sentAt?.toMillis ? x.sentAt.toMillis() : null,
+            sentByEmail: x.sentByEmail || null,
+          };
+        });
+        return res.json({ ok: true, notices, count: notices.length });
+      } catch (e) {
+        console.error("ir:notices:list failed:", e);
+        return jsonError(res, 500, e.message || "Lookup failed");
+      }
+    }
+
+    // GET /v1/ir:notice-templates — public-but-authed catalog.
+    if (route === "/ir:notice-templates" && method === "GET") {
+      const auth = await requireFirebaseUser(req, res);
+      if (auth.handled) return;
+      const templates = Object.entries(IR_NOTICE_TEMPLATES).map(([id, t]) => ({
+        id,
+        label: t.label,
+        defaultSubject: t.subject,
+      }));
+      return res.json({ ok: true, templates });
+    }
+
     // POST /v1/canonical-docs:log
     // Body: { workerSlug, docId, action }  // action: "page_view" | "download"
     // Logs visitor activity on canonical-doc surfaces (data room page, doc
