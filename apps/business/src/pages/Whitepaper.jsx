@@ -1,4 +1,23 @@
 import { useEffect } from "react";
+import { auth } from "../firebase";
+
+const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+
+async function logVisit(docId, action) {
+  try {
+    let token = null;
+    try { if (auth.currentUser) token = await auth.currentUser.getIdToken(); } catch (_) {}
+    if (!token) token = localStorage.getItem("ID_TOKEN");
+    await fetch(`${API_BASE}/api?path=${encodeURIComponent("/v1/canonical-docs:log")}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ workerSlug: "fundraise", docId, action }),
+    });
+  } catch (_) { /* non-blocking */ }
+}
 
 const TITLE = "SOCIII Whitepaper — Governed AI Workers for Regulated Professions";
 const DESCRIPTION = "How SOCIII captures expert judgment into rule-governed AI workers with cryptographic audit trails. The four-tier RAAS rules engine, no-code authoring, and why regulation is local.";
@@ -224,6 +243,7 @@ const INDUSTRIES = [
 export default function Whitepaper() {
   useEffect(() => {
     setHead();
+    logVisit("whitepaper", "page_view");
     // JSON-LD structured data for richer search indexing
     const ld = document.createElement("script");
     ld.type = "application/ld+json";
@@ -254,7 +274,7 @@ export default function Whitepaper() {
           <span style={styles.crumbSep}>/</span>
           <span style={styles.crumbLabel}>Whitepaper</span>
         </div>
-        <a href={DOCX_URL} style={styles.downloadBtn} download>Download .docx</a>
+        <a href={DOCX_URL} style={styles.downloadBtn} download onClick={() => logVisit("whitepaper", "download")}>Download .docx</a>
       </header>
 
       <main style={styles.main}>

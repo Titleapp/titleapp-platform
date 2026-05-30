@@ -105,14 +105,19 @@ async function buildFundraisePayload(tabId) {
   }
 
   if (tabId === "data-room") {
-    // Bind to the worker's canonical document set. Founder + investor both
-    // see this — investor sees read-only contents, founder will get upload
-    // controls in a later pass. Same canvas tab, role-adaptive content
-    // (the unified-tabs / role-varying-payload pattern).
+    // Bind to the worker's canonical document set + visit stats.
+    // Founder sees doc list + Views/Last viewer/Most-downloaded; investor
+    // sees the same doc list (their analytics view comes next pass).
+    // Same canvas tab, role-adaptive payload (unified-tabs pattern).
     let docs = [];
+    let stats = null;
     try {
-      const r = await liveApiFetch("/v1/canonical-docs?workerSlug=fundraise");
-      docs = Array.isArray(r?.docs) ? r.docs : [];
+      const [docsRes, statsRes] = await Promise.all([
+        liveApiFetch("/v1/canonical-docs?workerSlug=fundraise"),
+        liveApiFetch("/v1/canonical-docs:stats?workerSlug=fundraise&days=30"),
+      ]);
+      docs = Array.isArray(docsRes?.docs) ? docsRes.docs : [];
+      stats = statsRes?.ok ? statsRes : null;
     } catch (_) {}
     if (docs.length === 0) return null; // fall back to sample fixture
     const groups = docs.reduce((acc, d) => {
@@ -125,13 +130,22 @@ async function buildFundraisePayload(tabId) {
       heading: catLabel[cat] || cat,
       body: items.map(d => `${d.title}${d.version ? " · v" + d.version : ""}`).join("\n"),
     }));
+    const docTitleById = docs.reduce((m, d) => { m[d.id] = d.title; return m; }, {});
+    const mostDownloadedLabel = stats?.mostDownloaded
+      ? `${docTitleById[stats.mostDownloaded.docId] || stats.mostDownloaded.docId} (${stats.mostDownloaded.downloads}×)`
+      : "—";
+    const lastViewerLabel = stats?.lastViewer
+      ? (stats.lastViewer.name || stats.lastViewer.email || "anonymous")
+      : "—";
     return {
       title: "Data room",
       subtitle,
       fields: [
-        { label: "Documents",   value: String(docs.length) },
-        { label: "Share links", value: "0 active" },
-        { label: "Views (30d)", value: "0" },
+        { label: "Documents",        value: String(docs.length) },
+        { label: "Views (30d)",      value: String(stats?.totalEvents ?? 0) },
+        { label: "Unique visitors",  value: String(stats?.uniqueVisitors ?? 0) },
+        { label: "Last viewer",      value: lastViewerLabel },
+        { label: "Most-downloaded",  value: mostDownloadedLabel },
       ],
       sections,
     };

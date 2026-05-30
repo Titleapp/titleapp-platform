@@ -12746,6 +12746,120 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       }
     }
 
+    // POST /v1/canonical-docs:log
+    // Body: { workerSlug, docId, action }  // action: "page_view" | "download"
+    // Logs visitor activity on canonical-doc surfaces (data room page, doc
+    // downloads, whitepaper page). Captures userId+email when signed in;
+    // anonymous visits also logged. Drives the founder-side Data Room tab
+    // surface (views, last viewer, most-downloaded).
+    if (route === "/canonical-docs:log" && method === "POST") {
+      try {
+        const body = req.body || {};
+        const workerSlug = body.workerSlug;
+        const docId = body.docId || "data-room";
+        const action = body.action || "page_view";
+        if (!workerSlug) return jsonError(res, 400, "workerSlug required");
+        if (!["page_view", "download"].includes(action)) {
+          return jsonError(res, 400, "action must be page_view or download");
+        }
+
+        // Auth is optional — anonymous visits are valid data.
+        let userId = null, userEmail = null, userName = null;
+        try {
+          const authHeader = req.headers.authorization || "";
+          const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
+          if (token && token !== "null") {
+            const decoded = await admin.auth().verifyIdToken(token);
+            userId = decoded.uid;
+            userEmail = decoded.email || null;
+            userName = decoded.name || null;
+          }
+        } catch (_) { /* anonymous is fine */ }
+
+        const userAgent = req.headers["user-agent"] || null;
+        const referer = req.headers["referer"] || req.headers["referrer"] || null;
+        const ip = (req.headers["x-forwarded-for"] || "").split(",")[0].trim() || null;
+
+        const db = admin.firestore();
+        const eventDoc = {
+          workerSlug,
+          docId,
+          action,
+          userId,
+          userEmail,
+          userName,
+          userAgent,
+          referer,
+          ip,
+          ts: admin.firestore.FieldValue.serverTimestamp(),
+        };
+        await db.collection("digitalWorkers").doc(workerSlug)
+          .collection("canonicalDocsActivity").add(eventDoc);
+
+        return res.json({ ok: true });
+      } catch (e) {
+        console.error("canonical-docs:log failed:", e);
+        return jsonError(res, 500, e.message || "Log failed");
+      }
+    }
+
+    // GET /v1/canonical-docs:stats?workerSlug=fundraise&days=30
+    // Aggregates the activity log for the founder-side Data Room tab.
+    // Returns: total views (30d), unique visitors (best-effort by uid/email),
+    // breakdown by doc, last viewer, most-downloaded doc.
+    if (route === "/canonical-docs:stats" && method === "GET") {
+      const auth = await requireFirebaseUser(req, res);
+      if (auth.handled) return;
+      try {
+        const workerSlug = req.query?.workerSlug || req.query?.slug;
+        if (!workerSlug) return jsonError(res, 400, "workerSlug required");
+        const days = Math.max(1, Math.min(365, parseInt(req.query?.days || "30", 10)));
+        const cutoff = admin.firestore.Timestamp.fromDate(
+          new Date(Date.now() - days * 24 * 60 * 60 * 1000)
+        );
+        const db = admin.firestore();
+        const snap = await db.collection("digitalWorkers").doc(workerSlug)
+          .collection("canonicalDocsActivity")
+          .where("ts", ">=", cutoff)
+          .orderBy("ts", "desc").limit(500).get();
+
+        const events = snap.docs.map(d => d.data());
+        const byDoc = {};
+        const downloadsByDoc = {};
+        const visitorKeys = new Set();
+        let lastViewer = null;
+        events.forEach(e => {
+          const k = e.docId || "data-room";
+          byDoc[k] = (byDoc[k] || 0) + 1;
+          if (e.action === "download") downloadsByDoc[k] = (downloadsByDoc[k] || 0) + 1;
+          const visitorKey = e.userId || e.userEmail || e.ip;
+          if (visitorKey) visitorKeys.add(visitorKey);
+          if (!lastViewer && (e.userEmail || e.userName)) {
+            lastViewer = {
+              email: e.userEmail || null,
+              name: e.userName || null,
+              tsMillis: e.ts?.toMillis ? e.ts.toMillis() : null,
+            };
+          }
+        });
+        const mostDownloaded = Object.entries(downloadsByDoc)
+          .sort((a, b) => b[1] - a[1])[0] || null;
+        return res.json({
+          ok: true,
+          windowDays: days,
+          totalEvents: events.length,
+          uniqueVisitors: visitorKeys.size,
+          byDoc,
+          downloadsByDoc,
+          mostDownloaded: mostDownloaded ? { docId: mostDownloaded[0], downloads: mostDownloaded[1] } : null,
+          lastViewer,
+        });
+      } catch (e) {
+        console.error("canonical-docs:stats failed:", e);
+        return jsonError(res, 500, e.message || "Stats failed");
+      }
+    }
+
     // POST /v1/sms:test
     // Body: { phone, message? }
     // Minimal Twilio SMS smoke test. Any authenticated user can fire to verify

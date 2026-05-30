@@ -1,4 +1,23 @@
 import { useEffect } from "react";
+import { auth } from "../firebase";
+
+const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
+
+async function logVisit(docId, action) {
+  try {
+    let token = null;
+    try { if (auth.currentUser) token = await auth.currentUser.getIdToken(); } catch (_) {}
+    if (!token) token = localStorage.getItem("ID_TOKEN");
+    await fetch(`${API_BASE}/api?path=${encodeURIComponent("/v1/canonical-docs:log")}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ workerSlug: "fundraise", docId, action }),
+    });
+  } catch (_) { /* non-blocking */ }
+}
 
 const TITLE = "SOCIII Investor Data Room";
 const DESCRIPTION = "Canonical pre-seed materials for accredited investors. Memorandum, deck, post-money SAFE, NDA, warrant, patent portfolio.";
@@ -7,22 +26,22 @@ const DOCS = [
   {
     section: "Investment thesis",
     items: [
-      { title: "Investor Memorandum (v2)",       file: "SOCIII-Investor-Memorandum-v2.docx", note: "Long-form thesis + market + financials" },
-      { title: "Investor Deck (v3)",             file: "SOCIII-InvestorDeck-v3.pptx",        note: "12-slide pitch" },
+      { id: "memorandum", title: "Investor Memorandum (v2)",       file: "SOCIII-Investor-Memorandum-v2.docx", note: "Long-form thesis + market + financials" },
+      { id: "deck",       title: "Investor Deck (v3)",             file: "SOCIII-InvestorDeck-v3.pptx",        note: "12-slide pitch" },
     ],
   },
   {
     section: "Deal documents",
     items: [
-      { title: "Post-Money SAFE",                file: "SOCIII-Post-Money-SAFE.docx",        note: "Y Combinator standard, $10M cap" },
-      { title: "Mutual NDA",                     file: "SOCIII-Mutual-NDA.docx",             note: "For diligence conversations" },
-      { title: "HOMMIE Warrant",                 file: "SOCIII-HOMMIE-Warrant.docx",         note: "Bridge-holder warrant template" },
+      { id: "safe",       title: "Post-Money SAFE",                file: "SOCIII-Post-Money-SAFE.docx",        note: "Y Combinator standard, $10M cap" },
+      { id: "nda",        title: "Mutual NDA",                     file: "SOCIII-Mutual-NDA.docx",             note: "For diligence conversations" },
+      { id: "warrant",    title: "HOMMIE Warrant",                 file: "SOCIII-HOMMIE-Warrant.docx",         note: "Bridge-holder warrant template" },
     ],
   },
   {
     section: "IP + technical",
     items: [
-      { title: "Patent Portfolio (2026-05-24)",  file: "SOCIII-Patent-Portfolio.docx",       note: "6 provisional filings + continuation thread" },
+      { id: "patents",    title: "Patent Portfolio (2026-05-24)",  file: "SOCIII-Patent-Portfolio.docx",       note: "6 provisional filings + continuation thread" },
     ],
   },
 ];
@@ -73,7 +92,10 @@ function extLabel(file) {
 }
 
 export default function DataRoom() {
-  useEffect(() => { setHead(); }, []);
+  useEffect(() => {
+    setHead();
+    logVisit("data-room", "page_view");
+  }, []);
 
   return (
     <div style={S.page}>
@@ -98,7 +120,12 @@ export default function DataRoom() {
             <div style={S.sectionH}>{group.section}</div>
             <div style={S.list}>
               {group.items.map(doc => (
-                <a key={doc.file} href={`/data-room/${doc.file}`} style={S.row}>
+                <a
+                  key={doc.file}
+                  href={`/data-room/${doc.file}`}
+                  style={S.row}
+                  onClick={() => logVisit(doc.id, "download")}
+                >
                   <div style={S.rowLeft}>
                     <div style={S.icon}>{extLabel(doc.file)}</div>
                     <div>
