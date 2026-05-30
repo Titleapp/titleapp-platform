@@ -12708,6 +12708,213 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       }
     }
 
+    // GET /v1/investor:materials — authenticated; returns the user's
+    // investor materials per entitled fundraise. URLs come from
+    // fundraises/{id}/materials.{deckUrl, whitepaperUrl, dataRoomUrl,
+    // officeHoursUrl} so each fundraise can configure its own. Falls back
+    // to nulls (renders as "Sean will share directly" placeholders).
+    if (route === "/investor:materials" && method === "GET") {
+      const auth = await requireFirebaseUser(req, res);
+      if (auth.handled) return;
+      try {
+        const db = admin.firestore();
+        const entSnap = await db.collection("users").doc(auth.user.uid)
+          .collection("entitlements")
+          .where("type", "==", "investor_portal")
+          .where("status", "==", "active").limit(10).get();
+        const materials = [];
+        for (const ed of entSnap.docs) {
+          const e = ed.data();
+          if (!e.fundraiseId) continue;
+          const frSnap = await db.collection("fundraises").doc(e.fundraiseId).get();
+          if (!frSnap.exists) continue;
+          const fr = frSnap.data();
+          const m = fr.materials || {};
+          materials.push({
+            fundraiseId: e.fundraiseId,
+            fundraiseName: fr.name || null,
+            deckUrl: m.deckUrl || null,
+            whitepaperUrl: m.whitepaperUrl || null,
+            dataRoomUrl: m.dataRoomUrl || null,
+            officeHoursUrl: m.officeHoursUrl || null,
+          });
+        }
+        return res.json({ ok: true, materials, count: materials.length });
+      } catch (e) {
+        console.error("investor:materials failed:", e);
+        return jsonError(res, 500, e.message || "Lookup failed");
+      }
+    }
+
+    // POST /v1/sms:test
+    // Body: { phone, message? }
+    // Minimal Twilio SMS smoke test. Any authenticated user can fire to verify
+    // the Twilio integration + A2P 10DLC approval state end-to-end. Deliberately
+    // simple — no signature, no template, no DB write.
+    if (route === "/sms:test" && method === "POST") {
+      const auth = await requireFirebaseUser(req, res);
+      if (auth.handled) return;
+      try {
+        const body = req.body || {};
+        const phone = body.phone;
+        if (!phone) return jsonError(res, 400, "phone required");
+        const message = body.message || `SOCIII test message — Twilio is wired. Sent ${new Date().toISOString()}.`;
+        const { sendSMSDirect } = require("./communications/twilioHelper");
+        const result = await sendSMSDirect(phone, message);
+        return res.json({ ok: true, to: phone, twilio: result || null });
+      } catch (e) {
+        console.error("sms:test failed:", e);
+        return jsonError(res, 500, e.message || "SMS send failed");
+      }
+    }
+
+    // GET /v1/canonical-docs?workerSlug=fundraise
+    // Returns the canonical document set attached to a worker
+    // (digitalWorkers/{slug}/canonicalDocs/*). Designed for surfaces that need
+    // to render the worker's authoritative artifacts (Data Room tab, etc).
+    // Public/authenticated read — these docs are intentionally shareable
+    // within entitled investor + founder scopes.
+    if (route === "/canonical-docs" && method === "GET") {
+      const auth = await requireFirebaseUser(req, res);
+      if (auth.handled) return;
+      try {
+        const workerSlug = req.query?.workerSlug || req.query?.slug;
+        if (!workerSlug) return jsonError(res, 400, "workerSlug required");
+        const db = admin.firestore();
+        const snap = await db.collection("digitalWorkers").doc(workerSlug)
+          .collection("canonicalDocs").limit(100).get();
+        const docs = snap.docs.map(d => {
+          const x = d.data() || {};
+          return {
+            id: x.id || d.id,
+            title: x.title || null,
+            category: x.category || null,
+            url: x.url || null,
+            path: x.path || null,
+            version: x.version || null,
+            tenant: x.tenant || null,
+          };
+        });
+        return res.json({ ok: true, docs, count: docs.length });
+      } catch (e) {
+        console.error("canonical-docs failed:", e);
+        return jsonError(res, 500, e.message || "Lookup failed");
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    //  FUNDRAISE ADMIN — founder-side management endpoints
+    //  Gated by membership: caller must be admin/owner of the fundraise's
+    //  tenantId. Used by the FundraiseAdmin UI to set materials URLs etc.
+    // ═══════════════════════════════════════════════════════════════
+
+    async function userCanAdminFundraise(uid, fundraiseDoc) {
+      if (!fundraiseDoc || !fundraiseDoc.exists) return false;
+      const fr = fundraiseDoc.data();
+      // Direct ownership escape hatches (set by formation flow)
+      if (fr.ownerUid === uid || fr.createdBy === uid) return true;
+      const tenantId = fr.tenantId;
+      if (!tenantId) return false;
+      const db = admin.firestore();
+      const memSnap = await db.collection("memberships")
+        .where("userId", "==", uid)
+        .where("tenantId", "==", tenantId)
+        .limit(5).get();
+      return memSnap.docs.some(d => {
+        const r = (d.data() || {}).role;
+        return r === "admin" || r === "owner";
+      });
+    }
+
+    // GET /v1/fundraise-admin:list — founder-side; lists fundraises this user
+    // can admin (membership-gated).
+    if (route === "/fundraise-admin:list" && method === "GET") {
+      const auth = await requireFirebaseUser(req, res);
+      if (auth.handled) return;
+      try {
+        const db = admin.firestore();
+        const memSnap = await db.collection("memberships")
+          .where("userId", "==", auth.user.uid)
+          .get();
+        const tenantIds = new Set();
+        memSnap.docs.forEach(d => {
+          const m = d.data();
+          if (m.tenantId && (m.role === "admin" || m.role === "owner")) tenantIds.add(m.tenantId);
+        });
+        const items = [];
+        // Also catch fundraises owned directly by this uid
+        const directSnap = await db.collection("fundraises")
+          .where("ownerUid", "==", auth.user.uid).limit(20).get().catch(() => ({ docs: [] }));
+        directSnap.docs.forEach(d => {
+          const fr = d.data();
+          items.push({
+            fundraiseId: d.id,
+            name: fr.name || null,
+            tenantId: fr.tenantId || null,
+            materials: fr.materials || {},
+          });
+        });
+        if (tenantIds.size > 0) {
+          const tArr = Array.from(tenantIds);
+          for (let i = 0; i < tArr.length; i += 10) {
+            const chunk = tArr.slice(i, i + 10);
+            const frSnap = await db.collection("fundraises")
+              .where("tenantId", "in", chunk).limit(20).get();
+            frSnap.docs.forEach(d => {
+              if (items.some(x => x.fundraiseId === d.id)) return;
+              const fr = d.data();
+              items.push({
+                fundraiseId: d.id,
+                name: fr.name || null,
+                tenantId: fr.tenantId || null,
+                materials: fr.materials || {},
+              });
+            });
+          }
+        }
+        return res.json({ ok: true, fundraises: items, count: items.length });
+      } catch (e) {
+        console.error("fundraise-admin:list failed:", e);
+        return jsonError(res, 500, e.message || "Lookup failed");
+      }
+    }
+
+    // POST /v1/fundraise-admin:set-materials
+    // Body: { fundraiseId, materials: { whitepaperUrl, deckUrl, dataRoomUrl, officeHoursUrl } }
+    // Membership-gated. Empty strings are normalized to null.
+    if (route === "/fundraise-admin:set-materials" && method === "POST") {
+      const auth = await requireFirebaseUser(req, res);
+      if (auth.handled) return;
+      try {
+        const body = req.body || {};
+        const fundraiseId = body.fundraiseId;
+        if (!fundraiseId) return jsonError(res, 400, "fundraiseId required");
+        const db = admin.firestore();
+        const frRef = db.collection("fundraises").doc(fundraiseId);
+        const frSnap = await frRef.get();
+        if (!frSnap.exists) return jsonError(res, 404, "Fundraise not found");
+        const allowed = await userCanAdminFundraise(auth.user.uid, frSnap);
+        if (!allowed) return jsonError(res, 403, "Not authorized to manage this fundraise");
+        const m = body.materials || {};
+        const norm = (v) => {
+          if (v === null || v === undefined) return null;
+          const s = String(v).trim();
+          return s.length === 0 ? null : s;
+        };
+        const next = {
+          whitepaperUrl:  norm(m.whitepaperUrl),
+          deckUrl:        norm(m.deckUrl),
+          dataRoomUrl:    norm(m.dataRoomUrl),
+          officeHoursUrl: norm(m.officeHoursUrl),
+        };
+        await frRef.set({ materials: next, materialsUpdatedAt: admin.firestore.FieldValue.serverTimestamp(), materialsUpdatedBy: auth.user.uid }, { merge: true });
+        return res.json({ ok: true, fundraiseId, materials: next });
+      } catch (e) {
+        console.error("fundraise-admin:set-materials failed:", e);
+        return jsonError(res, 500, e.message || "Update failed");
+      }
+    }
+
     // GET /v1/investor:deadlines — authenticated; aggregates time-sensitive
     // items for the investor across their entitled fundraises. Returns:
     //  - open ballots they can vote on (closing date)
@@ -12748,14 +12955,17 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
             });
           } catch (_) {}
 
-          // Pending obligations on the pending invite (signatures, ID, etc).
+          // Pending obligations — use enrichment (not the raw stored
+          // pendingObligations) so completion derived from entity state
+          // (kycStatus=approved, flowStep=signature_complete, etc) is
+          // honored. Without enrichment we hit the same TC-027 archetype:
+          // entity actually done, stored doc still says completedAt=null.
           try {
-            const piSnap = await db.collection("pendingInvites")
-              .where("claimedByUserId", "==", auth.user.uid)
-              .where("role", "==", "investor").limit(20).get();
-            piSnap.forEach(pd => {
-              const obligations = pd.data().pendingObligations || [];
-              obligations.forEach(o => {
+            const { listInvitesByUserId } = require("./services/invites/pendingInvites");
+            const enriched = await listInvitesByUserId(auth.user.uid);
+            enriched.forEach(inv => {
+              if (inv.role !== "investor") return;
+              (inv.pendingObligations || []).forEach(o => {
                 if (!o.completedAt) {
                   items.push({
                     kind: "obligation",
@@ -12763,7 +12973,7 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
                     dueAt: null,
                     urgency: "action_required",
                     obligationId: o.id,
-                    inviteId: pd.id,
+                    inviteId: inv.id,
                   });
                 }
               });

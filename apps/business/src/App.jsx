@@ -4422,6 +4422,25 @@ function WorkerHomeRenderer({ onBack }) {
     return <CommandCenter />;
   }
 
+  // Investor entitlement override — when the IR/fundraise worker is opened
+  // by an entitled investor (not the founder/tenant), swap the founder canvas
+  // for the investor-side surface (position + materials/deadlines render via
+  // the AdminShell-level banners). Detected via ACTIVE_WORKERS which carries
+  // the isEntitled flag set in AppShell when fetching /v1/user:entitlements:list.
+  if (worker?.slug === "fundraise") {
+    let isInvestorEntitlement = false;
+    try {
+      const active = JSON.parse(localStorage.getItem("ACTIVE_WORKERS") || "[]");
+      isInvestorEntitlement = active.some(w =>
+        (w?.slug === "fundraise") && w?.isEntitled === true && w?.role === "investor"
+      );
+    } catch (_) { /* non-fatal */ }
+    if (isInvestorEntitlement) {
+      const InvestorHome = React.lazy(() => import("./sections/InvestorHome"));
+      return <React.Suspense fallback={<div style={{ padding: 40 }}>Loading…</div>}><InvestorHome /></React.Suspense>;
+    }
+  }
+
   // S51.37 — try real tenant data first, then fall back to sample fixture.
   // Real payload has no _demo flag → CanvasPanel skips the SAMPLE chip.
   // Builders live in liveData.js; workers without a builder return null and
@@ -4496,6 +4515,7 @@ function WorkerHomeRenderer({ onBack }) {
 }
 
 function AdminShell({ onBackToHub, initialSection }) {
+  const workerCtx = useWorkerState();
   const [currentSection, setCurrentSection] = useState(() => {
     if (initialSection) return initialSection;
     const redirectPage = sessionStorage.getItem("ta_redirect_page");
@@ -4512,7 +4532,14 @@ function AdminShell({ onBackToHub, initialSection }) {
     }
     function handleWorkerSelect(e) {
       const slug = e.detail?.slug;
-      if (slug) setCurrentSection("worker-home");
+      if (!slug) return;
+      // Any surface that fires ta:select-worker (Sidebar, VaultDashboard
+      // My Workers cards, entitled-worker shortcuts) needs the worker
+      // actually loaded into context so WorkerHomeRenderer has something
+      // to render. Sidebar already calls selectWorker directly; other
+      // surfaces only fire the event. Centralizing here covers both.
+      if (workerCtx?.selectWorker) workerCtx.selectWorker(slug);
+      setCurrentSection("worker-home");
     }
     window.addEventListener("ta:navigate", handleNav);
     window.addEventListener("ta:select-worker", handleWorkerSelect);
@@ -4520,7 +4547,7 @@ function AdminShell({ onBackToHub, initialSection }) {
       window.removeEventListener("ta:navigate", handleNav);
       window.removeEventListener("ta:select-worker", handleWorkerSelect);
     };
-  }, []);
+  }, [workerCtx]);
 
   function renderSection() {
     switch (currentSection) {
@@ -4850,6 +4877,8 @@ export default function App() {
   const isDevelopersRedirect = /^\/developers\/?$/.test(window.location.pathname);
   const isPilotLanding = /^\/pilot\/?$/.test(window.location.pathname);
   const isWhitepaper = /^\/whitepaper\/?$/.test(window.location.pathname);
+  const isDataRoom = /^\/data-room\/?$/.test(window.location.pathname);
+  const isFundraiseAdmin = /^\/fundraise\/admin\/?$/.test(window.location.pathname);
   const isInvestorInquiry = /^\/investors\/?$/.test(window.location.pathname);
   const isInvestorVote = /^\/invest\/vote\/?$/.test(window.location.pathname);
   const isCreatorOnboard = /^\/onboard\/creator\/?$/.test(window.location.pathname);
@@ -5740,6 +5769,14 @@ export default function App() {
   if (isWhitepaper) {
     const Whitepaper = React.lazy(() => import("./pages/Whitepaper"));
     return <React.Suspense fallback={<div style={{ minHeight: "100vh", background: "#FFFFFF" }} />}><Whitepaper /></React.Suspense>;
+  }
+  if (isDataRoom) {
+    const DataRoom = React.lazy(() => import("./pages/DataRoom"));
+    return <React.Suspense fallback={<div style={{ minHeight: "100vh", background: "#FFFFFF" }} />}><DataRoom /></React.Suspense>;
+  }
+  if (isFundraiseAdmin) {
+    const FundraiseAdmin = React.lazy(() => import("./pages/FundraiseAdmin"));
+    return <React.Suspense fallback={<div style={{ minHeight: "100vh", background: "#FFFFFF" }} />}><FundraiseAdmin /></React.Suspense>;
   }
   if (isInvestorInquiry) {
     const InvestorInquiry = React.lazy(() => import("./pages/InvestorInquiry"));

@@ -105,18 +105,35 @@ async function buildFundraisePayload(tabId) {
   }
 
   if (tabId === "data-room") {
+    // Bind to the worker's canonical document set. Founder + investor both
+    // see this — investor sees read-only contents, founder will get upload
+    // controls in a later pass. Same canvas tab, role-adaptive content
+    // (the unified-tabs / role-varying-payload pattern).
+    let docs = [];
+    try {
+      const r = await liveApiFetch("/v1/canonical-docs?workerSlug=fundraise");
+      docs = Array.isArray(r?.docs) ? r.docs : [];
+    } catch (_) {}
+    if (docs.length === 0) return null; // fall back to sample fixture
+    const groups = docs.reduce((acc, d) => {
+      const cat = d.category || "other";
+      (acc[cat] ||= []).push(d);
+      return acc;
+    }, {});
+    const catLabel = { thesis: "Investment thesis", deal: "Deal documents", ip: "IP + technical", other: "Other" };
+    const sections = Object.entries(groups).map(([cat, items]) => ({
+      heading: catLabel[cat] || cat,
+      body: items.map(d => `${d.title}${d.version ? " · v" + d.version : ""}`).join("\n"),
+    }));
     return {
       title: "Data room",
       subtitle,
       fields: [
-        { label: "Documents",   value: "0" },
+        { label: "Documents",   value: String(docs.length) },
         { label: "Share links", value: "0 active" },
         { label: "Views (30d)", value: "0" },
       ],
-      sections: [{
-        heading: "Getting started",
-        body: "Upload your deck, financials, and cap table to begin. Drag files into chat or use the Documents tab.",
-      }],
+      sections,
     };
   }
 

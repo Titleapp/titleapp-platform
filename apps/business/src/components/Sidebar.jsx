@@ -1847,8 +1847,8 @@ export default function Sidebar({
                     {ws.role && !isPersonalRow && (
                       <span style={{
                         fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 999,
-                        background: ws.role === "admin" ? "rgba(124,58,237,0.25)" : ws.role === "viewer" ? "rgba(99,102,241,0.18)" : "rgba(34,197,94,0.18)",
-                        color: ws.role === "admin" ? "#c4b5fd" : ws.role === "viewer" ? "#a5b4fc" : "#86efac",
+                        background: ws.role === "admin" ? "rgba(124,58,237,0.25)" : ws.role === "viewer" ? "rgba(99,102,241,0.18)" : ws.role === "investor" ? "rgba(6,134,212,0.22)" : "rgba(34,197,94,0.18)",
+                        color: ws.role === "admin" ? "#c4b5fd" : ws.role === "viewer" ? "#a5b4fc" : ws.role === "investor" ? "#7dd3fc" : "#86efac",
                         textTransform: "uppercase", letterSpacing: 0.4, flexShrink: 0,
                       }}>
                         {ws.role}

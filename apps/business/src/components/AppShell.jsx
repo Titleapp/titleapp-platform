@@ -6,7 +6,23 @@ import CartDrawer from "./CartDrawer";
 import InviteMemberModal from "./InviteMemberModal";
 import * as api from "../api/client";
 import { RightPanelProvider } from "../context/RightPanelContext";
-import { WorkerStateProvider } from "../context/WorkerStateContext.jsx";
+import { WorkerStateProvider, useWorkerState } from "../context/WorkerStateContext.jsx";
+
+// Lives inside WorkerStateProvider so it has a real selectWorker. AdminShell's
+// own ta:select-worker listener runs outside the provider and gets null ctx,
+// which is why card clicks would flip the section but never load the worker.
+function WorkerSelectListener() {
+  const ctx = useWorkerState();
+  useEffect(() => {
+    function onSelect(e) {
+      const slug = e?.detail?.slug;
+      if (slug && ctx?.selectWorker) ctx.selectWorker(slug);
+    }
+    window.addEventListener("ta:select-worker", onSelect);
+    return () => window.removeEventListener("ta:select-worker", onSelect);
+  }, [ctx]);
+  return null;
+}
 import { useVisitorContext } from "../hooks/useVisitorContext";
 import { auth } from "../firebase";
 import sociiiMarkUrl from "../assets/sociii-brand/icon/sociii-icon-mark.svg";
@@ -152,6 +168,16 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
   }
 
   function handleSwitchWorkspace(workspace) {
+    // Entitlement-backed synthetic workspaces (investor personas) skip the
+    // workspace context switch — they just route to the worker view via the
+    // existing ta:select-worker pipeline (which loads the IR worker and the
+    // investor-mode WorkerHomeRenderer surface).
+    if (workspace?.type === "entitlement" && workspace?._entitlement?.slug) {
+      window.dispatchEvent(new CustomEvent("ta:select-worker", {
+        detail: { slug: workspace._entitlement.slug, name: workspace._entitlement.name },
+      }));
+      return;
+    }
     localStorage.setItem("VERTICAL", workspace.vertical);
     localStorage.setItem("WORKSPACE_ID", workspace.id);
     localStorage.setItem("WORKSPACE_NAME", workspace.name);
@@ -314,6 +340,26 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
     return () => { cancelled = true; };
   }, [guestMode]);
 
+  // Synthetic workspaces from investor entitlements — surface each as a row
+  // in MY WORKSPACES so investors can switch into the worker view from the
+  // sidebar persona switcher (parallel to founder-admin workspaces).
+  const syntheticWorkspaces = React.useMemo(() => {
+    return entitledWorkers
+      .filter(w => w.role === "investor" && w.slug)
+      .map(w => ({
+        id: `entitlement:${w.entitlementId}`,
+        name: w.name || "SOCIII (Investor)",
+        vertical: "investor",
+        role: "investor",
+        type: "entitlement",
+        _entitlement: w,
+      }));
+  }, [entitledWorkers]);
+
+  const workspacesWithEntitlements = React.useMemo(() => {
+    return [...workspaces, ...syntheticWorkspaces];
+  }, [workspaces, syntheticWorkspaces]);
+
   const tenantActiveWorkers = guestMode ? guestWorkers : (currentWs.activeWorkers || []);
   // Merge tenant-subscribed workers with user-entitled workers. Dedupe by slug
   // so a tenant subscription to the IR worker takes precedence over an
@@ -344,6 +390,7 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
 
   return (
     <WorkerStateProvider>
+    <WorkerSelectListener />
     <RightPanelProvider initialState={visitorCtx.state} initialVertical={visitorCtx.vertical} initialVerticalLabel={visitorCtx.verticalLabel}>
     <div className="appShell">
       {/* Mobile topbar */}
@@ -444,7 +491,7 @@ export default function AppShell({ children, currentSection, onNavigate, onBackT
           onClose={() => setSidebarOpen(false)}
           tenantName={guestMode ? ({ solar: "Solar Energy", solar_vpp: "Solar Energy", "auto-dealer": "Auto Dealer", auto_dealer: "Auto Dealer", "real-estate": "Real Estate", real_estate_development: "Real Estate", aviation: "Aviation", creator: "Creator Studio", creators: "Creator Studio" }[guestVertical] || "SOCIII") : tenantInfo?.name}
           onBackToHub={onBackToHub}
-          workspaces={workspaces}
+          workspaces={workspacesWithEntitlements}
           currentWorkspaceId={currentWorkspaceId}
           onSwitchWorkspace={handleSwitchWorkspace}
           workerGroups={workerGroups}

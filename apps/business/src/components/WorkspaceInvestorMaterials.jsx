@@ -31,11 +31,14 @@ async function apiFetch(path, opts = {}) {
 // they clicked. URLs now ship in only when known-good. The right long-term
 // fix is reading these from the fundraise's tenant config so each round can
 // override.
+// Key names MUST match the fundraises/{id}.materials field suffixes:
+// deckUrl / whitepaperUrl / dataRoomUrl / officeHoursUrl. The merge in `items`
+// computes cfg[key + "Url"], so the key here = field-name minus "Url".
 const MATERIAL_DEFAULTS = {
-  deck:       { title: "Pre-seed deck",             subtitle: "12-slide thesis + traction",          icon: "📊" },
-  whitepaper: { title: "SOCIII whitepaper",         subtitle: "Architecture, patents, vertical roll-out", icon: "📄", url: "https://sociii.ai/whitepaper" },
-  dataRoom:   { title: "Data room",                 subtitle: "Financials, cap table, formation docs", icon: "🗂" },
-  office:     { title: "Office hours with Sean",    subtitle: "30 min, async OK",                      icon: "📅" },
+  deck:        { title: "Pre-seed deck",          subtitle: "12-slide thesis + traction",               icon: "📊" },
+  whitepaper:  { title: "SOCIII whitepaper",      subtitle: "Architecture, patents, vertical roll-out", icon: "📄", url: "https://app.titleapp.ai/whitepaper" },
+  dataRoom:    { title: "Data room",              subtitle: "Financials, cap table, formation docs",    icon: "🗂" },
+  officeHours: { title: "Office hours with Sean", subtitle: "30 min, async OK",                         icon: "📅" },
 };
 
 export default function WorkspaceInvestorMaterials() {
@@ -46,26 +49,36 @@ export default function WorkspaceInvestorMaterials() {
 
   useEffect(() => () => { mountedRef.current = false; }, []);
 
+  const [materialsConfig, setMaterialsConfig] = useState(null);
+
   const load = useCallback(async () => {
     try {
-      // Use :all (not :current) so materials persist for the investor after
-      // the SAFE is signed and all obligations are complete. invites:current
-      // filters out fully-completed invites, which is the wrong behavior for
-      // post-signing surfaces.
-      const data = await apiFetch("/v1/invites:all", { method: "GET" });
+      // Investor materials surface — render when the user has either
+      // (a) an active investor invite with verify-identity completed
+      //     (still in onboarding but past KYC), or
+      // (b) an active investor_portal entitlement (signed + entitled).
+      // Materials URLs come from /v1/investor:materials which reads from
+      // the fundraise doc's materials.{deck,whitepaper,dataRoom,office} —
+      // per-fundraise overrides instead of platform-wide defaults. Falls
+      // back to null (renders as "Sean will share directly" placeholder)
+      // when no URL is set.
+      const [invitesData, matData] = await Promise.all([
+        apiFetch("/v1/invites:all", { method: "GET" }),
+        apiFetch("/v1/investor:materials", { method: "GET" }),
+      ]);
       if (!mountedRef.current) return;
-      const invites = Array.isArray(data?.invites) ? data.invites : [];
-      // Materials gate: investor role + ID verified. Whether the SAFE is
-      // signed yet is irrelevant — investor evaluating the round or holding
-      // the position both deserve access.
+      const invites = Array.isArray(invitesData?.invites) ? invitesData.invites : [];
       const inv = invites.find(i =>
         i.role === "investor" &&
         Array.isArray(i.pendingObligations) &&
         i.pendingObligations.some(o => o.id === "verify-identity" && o.completedAt)
       );
-      setInvestorInvite(inv || null);
+      const mats = Array.isArray(matData?.materials) ? matData.materials : [];
+      // Also render materials when entitlement exists (post-signing).
+      setInvestorInvite(inv || (mats.length > 0 ? { role: "investor", _viaEntitlement: true } : null));
+      setMaterialsConfig(mats[0] || null);
     } catch (_) {
-      if (mountedRef.current) setInvestorInvite(null);
+      if (mountedRef.current) { setInvestorInvite(null); setMaterialsConfig(null); }
     } finally {
       if (mountedRef.current) setLoading(false);
     }
@@ -75,11 +88,16 @@ export default function WorkspaceInvestorMaterials() {
 
   const items = useMemo(() => {
     if (!investorInvite) return [];
-    // In a real implementation each fundraise overrides material URLs from
-    // its own data-room subcollection. For the V1 surface we use platform
-    // defaults; URLs that aren't set show a "shared directly" placeholder.
-    return Object.entries(MATERIAL_DEFAULTS).map(([key, m]) => ({ key, ...m }));
-  }, [investorInvite]);
+    // Materials URLs are now configurable per-fundraise. Fall back to
+    // MATERIAL_DEFAULTS where the fundraise hasn't set one. URLs that
+    // remain null show as "Sean will share directly" placeholders.
+    const cfg = materialsConfig || {};
+    return Object.entries(MATERIAL_DEFAULTS).map(([key, m]) => ({
+      key,
+      ...m,
+      url: cfg[key + "Url"] || m.url || null,
+    }));
+  }, [investorInvite, materialsConfig]);
 
   if (dismissed) return null;
   if (loading) return null;
