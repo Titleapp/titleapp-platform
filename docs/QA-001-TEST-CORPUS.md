@@ -243,6 +243,76 @@ Sean 2026-05-29 (post S51.30 deploy): many workers will require outbound comms (
 
 ---
 
+## Test cases captured during S51.37 IR worker dogfood (2026-05-29)
+
+Single end-to-end SAFE walkthrough (aspensean@gmail.com invited to SOCIII Seed Round 2026) surfaced 8 P0 bugs across 7 distinct failure classes. **None would have been caught by code review or unit tests** — each required live execution against real third-party services with state propagation. See `~/.claude/projects/-Users-seancombs/memory/project_ir_dogfood_2026_05_29.md` for the meta-analysis.
+
+### TC-020 — Email subject triggers Gmail Promotions filter
+- **Family:** 6 (Outbound comms)
+- **Severity:** P0
+- **Real bug:** Invite subject "Welcome to SOCIII, Sean — pre-seed access" lands in Gmail Promotions, not Primary. Adjacent emails (Veterans United Home Giveaway, Upwork Hiring Needs) confirm classifier reading "Welcome to..." + financial language as marketing. Real Storyhouse-style investors would miss it.
+- **Test:** For every outbound provider email send, assert delivered-to-Primary via SendGrid event log OR Gmail Postmaster signals. Subject lines should be personalized ("{firstName} — SOCIII intro") not announcement-shaped ("Welcome to...").
+- **Fix:** Lead with recipient firstname, no product name in subject. Validated: subject "Sean — SOCIII intro" lands in Primary.
+
+### TC-021 — Obligation action string doesn't match backend route; sync_kyc missing
+- **Family:** 3 (Endpoint smoke) + 7 (ID check lifecycle)
+- **Severity:** P0
+- **Real bug:** Two distinct bugs in one click. (1) `pendingInvites.DEFAULT_OBLIGATIONS` declared action `ir:investor:step:start_safe_signing` but `/v1/ir:investor:step` route only knew `start_signature` → "Unknown action" error. (2) Investor route had no `sync_kyc` handler and investorFlow had no `syncKycFromStripe` → same TC-018 stuck-state with no recovery.
+- **Test:** For every obligation declaration in pendingInvites.js, assert the action string is handled by the route handler. Cross-flow: every flow that has Stripe Identity must have syncKycFromStripe.
+- **Fix:** Added `start_safe_signing` as alias for `start_signature`. Ported `syncKycFromStripe` from advisorFlow and wired `sync_kyc` action on investor route.
+
+### TC-022 — Hardcoded valuation cap ignores fundraise's actual cap
+- **Family:** 1 (Catalog ↔ Firestore parity) extended to cross-doc fidelity
+- **Severity:** P0 (existential — SAFE with wrong terms ships to investor)
+- **Real bug:** `DEFAULT_VALUATION_CAP = 10_000_000` hardcoded in 7 places throughout investorFlow.js (sharesIssued calc, SAFE packet vars, email template, investor doc stamp). Sean's SOCIII Seed Round had `valuation_cap: 25000000` on the fundraise doc — entirely ignored. Email + DBX Sign packet would have shipped a $10M-cap SAFE for a $25M-cap round.
+- **Test:** For every entity field used in an outbound document, assert the source-of-truth path is the parent record (fundraise.valuation_cap), not a hardcoded constant. QA-001 should grep for `DEFAULT_*` constants in flow code and flag any that override tenant-level config.
+- **Fix:** Read fundraise.valuation_cap in startSafeSigning, initiateInvestorFlow (email), and `_investorInviteEmail`. DEFAULT only as fallback when fundraise has no cap set.
+
+### TC-023 — SAFE signing required investmentAmount but banner doesn't have it
+- **Family:** 3 (Endpoint smoke) + 8 (Document signing lifecycle)
+- **Severity:** P0
+- **Real bug:** `startSafeSigning` validates `investmentAmount >= 100` and rejects when missing. The workspace banner fires `start_safe_signing` with `{ investorId, fundraiseId, action }` — no amount context. Result: "investmentAmount must be >= 100" error every click. Banner has no UX surface to ask for amount either.
+- **Test:** For every flow action, assert the caller's payload contract matches the function signature's required fields. Missing fields should have a fallback source on the entity doc, not just a hard error.
+- **Fix:** Backend falls back to investor.commitment_amount (stamped at invite time) when caller doesn't supply investmentAmount. Explicit caller-supplied amount still wins.
+
+### TC-024 — Email promises materials the workspace doesn't surface
+- **Family:** 6 (Outbound comms) + UX gap class (new)
+- **Severity:** P0
+- **Real bug:** Email body section 2 says "Inside the portal you'll find the SOCIII pre-seed deck and the SOCIII whitepaper." Investor lands in workspace, completes ID, signs SAFE — at no point sees deck or whitepaper anywhere. Email promised, workspace doesn't deliver. Real investor would feel misled.
+- **Test:** For every claim an outbound communication makes about a UI surface, assert the UI surface exists and is reachable for the recipient. QA-001 needs a semantic check across email content + workspace render trees.
+- **Fix (fast):** Rewrote email to "I'll follow up directly with [deck] and [whitepaper]". **Fix (real):** Built WorkspaceInvestorMaterials component (S51.38) — card on investor's workspace landing showing deck/whitepaper/data-room/office-hours. Renders when verify-identity is complete; uses placeholder text when URL not configured.
+
+### TC-025 — Template ID secret points at phantom (no template with that ID exists)
+- **Family:** 8 (Document signing lifecycle) + secret-validity check
+- **Severity:** P0
+- **Real bug:** `DROPBOX_SIGN_TEMPLATE_INVESTOR_SAFE` firebase secret was set to `a449d959c7fad977625e56c19b5e33400cefd459`. Real SAFE template in the DBX Sign account is `b02348bc530d225d1a913cc38d55aa4ed03a8bbf` ("SOCIII, Inc. SAFE note"). Phantom ID → "Template not found" on send. NDA secret (`e0c73be8...`) is also phantom; real NDA is `cde2a301...`. Latent: warrant + creator template secrets aren't set at all.
+- **Test:** At deploy time (or as part of QA-001 startup), for every `DROPBOX_SIGN_TEMPLATE_*` secret, hit DBX Sign `/v3/template/{id}` and assert the template exists with the expected signer_roles.
+- **Fix:** Updated SAFE secret to correct template ID. Others tracked.
+
+### TC-026 — Role name case mismatch returns cryptic "No recipients specified"
+- **Family:** 8 (Document signing lifecycle)
+- **Severity:** P0
+- **Real bug:** `ROLE_TEMPLATE_ENV` in signatureService used ALL CAPS role names ("INVESTOR", "COMPANY", "CREATOR", "COUNTERPARTY", "HOLDER", "PLATFORM"). DBX Sign templates have Title Case role names ("Investor", "Company"). Case mismatch → DBX Sign API returns "No recipients specified" (misleading — recipients ARE specified, just under unrecognized role names). Only advisor cfg had the correct case (which is why advisor flow worked).
+- **Test:** For every cfg entry in `ROLE_TEMPLATE_ENV`, fetch the template via `/v3/template/{id}` and assert `signer_roles[*].name` exactly equals `signerRole` and `companyRole` from cfg (case-sensitive).
+- **Fix:** Investor cfg corrected to "Investor"/"Company". Creator/NDA/warrant still wrong (latent).
+
+### TC-027 — State-name drift between flow code and obligation enrichment
+- **Family:** 1 (Catalog ↔ Firestore parity) extended to state-machine consistency
+- **Severity:** P0
+- **Real bug:** `onSignaturePacketSigned` (investorFlow) writes `flowStep: "signature_complete"`. The pendingInvites enrichment for `sign-safe` obligation only checked `["safe_signed", "safe_complete", "closed"]` — none of those match. Result: SAFE actually closed in Firestore, DBX Sign returned is_complete=true, webhook fired and propagated, BUT the workspace banner still showed Step 2 as "Start" because the enrichment didn't recognize the actual state value.
+- **Test:** For every flowStep value written by any flow's `onSignaturePacketSigned` (or equivalent), assert that value appears in pendingInvites enrichment's "completed" list for the corresponding obligation. State-machine cross-file consistency check.
+- **Fix:** Added "signature_complete" to the recognized list. Keep legacy "safe_signed"/"safe_complete" for compat. **Deeper fix is the shared `onboardingFlow.js` refactor (task #306) which would have a single source of truth for state names.**
+
+---
+
+## Meta-finding: dogfood density
+
+Above 8 P0 bugs were caught in **one single SAFE walkthrough** (one investor, one action sequence). That's the strongest signal yet for QA-001 ROI sizing: every outbound flow has 6-8 latent P0s at any given moment, and they only surface in real execution against real third-party services.
+
+QA-001 doesn't need to be sophisticated to be valuable. A simple harness that runs each outbound flow end-to-end weekly would catch all 8 of these bugs before they shipped to any real customer.
+
+---
+
 (slot for next bug)
 
 ---
