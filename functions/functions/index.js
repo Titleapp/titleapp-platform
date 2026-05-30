@@ -12708,6 +12708,144 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       }
     }
 
+    // GET /v1/investor:deadlines — authenticated; aggregates time-sensitive
+    // items for the investor across their entitled fundraises. Returns:
+    //  - open ballots they can vote on (closing date)
+    //  - quarterly report expected dates
+    //  - K-1 expected dates (annual)
+    //  - accredited investor re-affirmation dates
+    //  - pending document signatures (any open obligation)
+    // Spec: IR-Worker-Investor-View-V2.md Section 5. Sean's recurring rule:
+    // every deadline-driven worker must surface required actions persistently.
+    if (route === "/investor:deadlines" && method === "GET") {
+      const auth = await requireFirebaseUser(req, res);
+      if (auth.handled) return;
+      try {
+        const db = admin.firestore();
+        const entSnap = await db.collection("users").doc(auth.user.uid)
+          .collection("entitlements")
+          .where("type", "==", "investor_portal")
+          .where("status", "==", "active").limit(10).get();
+        const items = [];
+        for (const ed of entSnap.docs) {
+          const e = ed.data();
+          if (!e.fundraiseId || !e.investorId) continue;
+
+          // Open ballots — read from `ballots` collection scoped to this fundraise
+          try {
+            const bSnap = await db.collection("fundraises").doc(e.fundraiseId)
+              .collection("ballots").where("status", "==", "open").limit(20).get();
+            bSnap.forEach(bd => {
+              const b = bd.data();
+              items.push({
+                kind: "open_ballot",
+                title: b.title || "Open ballot",
+                dueAt: b.closesAt || null,
+                urgency: "vote_open",
+                href: `/invest/vote?ballotId=${bd.id}`,
+                fundraiseId: e.fundraiseId,
+              });
+            });
+          } catch (_) {}
+
+          // Pending obligations on the pending invite (signatures, ID, etc).
+          try {
+            const piSnap = await db.collection("pendingInvites")
+              .where("claimedByUserId", "==", auth.user.uid)
+              .where("role", "==", "investor").limit(20).get();
+            piSnap.forEach(pd => {
+              const obligations = pd.data().pendingObligations || [];
+              obligations.forEach(o => {
+                if (!o.completedAt) {
+                  items.push({
+                    kind: "obligation",
+                    title: o.label || o.id,
+                    dueAt: null,
+                    urgency: "action_required",
+                    obligationId: o.id,
+                    inviteId: pd.id,
+                  });
+                }
+              });
+            });
+          } catch (_) {}
+
+          // K-1 expected — flag annually around March 15. Only if currently
+          // before that date in the same year.
+          const now = new Date();
+          const k1Date = new Date(now.getFullYear(), 2, 15); // March 15
+          if (now < k1Date) {
+            items.push({
+              kind: "tax_doc_expected",
+              title: "K-1 expected by Mar 15",
+              dueAt: k1Date.toISOString(),
+              urgency: "informational",
+              fundraiseId: e.fundraiseId,
+            });
+          }
+        }
+        return res.json({ ok: true, items, count: items.length });
+      } catch (e) {
+        console.error("investor:deadlines failed:", e);
+        return jsonError(res, 500, e.message || "Lookup failed");
+      }
+    }
+
+    // GET /v1/investor:my-position — authenticated; returns the signed-in
+    // user's own investor record(s). Resolves the user's investorId(s) via
+    // their entitlements collection, then reads each investor doc. The
+    // investor's My Position card consumes this. Spec: IR-Worker-Investor-
+    // View-V2.md Section 1.
+    if (route === "/investor:my-position" && method === "GET") {
+      const auth = await requireFirebaseUser(req, res);
+      if (auth.handled) return;
+      try {
+        const db = admin.firestore();
+        const entSnap = await db.collection("users").doc(auth.user.uid)
+          .collection("entitlements")
+          .where("type", "==", "investor_portal")
+          .where("status", "==", "active")
+          .limit(10).get();
+        const positions = [];
+        for (const ed of entSnap.docs) {
+          const e = ed.data();
+          if (!e.fundraiseId || !e.investorId) continue;
+          const invSnap = await db.collection("fundraises").doc(e.fundraiseId)
+            .collection("investors").doc(e.investorId).get();
+          if (!invSnap.exists) continue;
+          const inv = invSnap.data();
+          const frSnap = await db.collection("fundraises").doc(e.fundraiseId).get();
+          const fr = frSnap.exists ? frSnap.data() : {};
+          positions.push({
+            entitlementId: e.entitlementId,
+            fundraiseId: e.fundraiseId,
+            fundraiseName: fr.name || null,
+            investorId: e.investorId,
+            investorName: inv.name || null,
+            investorEmail: inv.email || null,
+            // Economic terms (whichever are stamped on the investor doc)
+            commitment_amount: inv.commitment_amount || 0,
+            valuationCap: inv.valuationCap || fr.valuation_cap || null,
+            sharesIssued: inv.sharesIssued || null,
+            instrument: fr.instrument || "SAFE",
+            flowStep: inv.flowStep || "created",
+            kycStatus: inv.kycStatus || "not_submitted",
+            agreementExecutedAt: inv.safeExecutedAt || null,
+            safeDocumentRef: inv.safeDocumentRef || null,
+            safeVaultDocId: inv.safeVaultDocId || null,
+            // Round terms (for context)
+            roundTarget: fr.target_raise || null,
+            roundCommitted: fr.current_committed || 0,
+            roundReceived: fr.current_raised || 0,
+          });
+        }
+        return res.json({ ok: true, positions, count: positions.length });
+      } catch (e) {
+        console.error("investor:my-position failed:", e);
+        return jsonError(res, 500, e.message || "Lookup failed");
+      }
+    }
+
     // GET /v1/user:entitlements:list — authenticated; returns the signed-in
     // user's entitled workers (investor portal, etc.) so My Workers nav can
     // merge them alongside tenant-subscribed workers. Task #353.

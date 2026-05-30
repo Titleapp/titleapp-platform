@@ -120,6 +120,38 @@ async function buildFundraisePayload(tabId) {
     };
   }
 
+  if (tabId === "my-position") {
+    // Investor-side view: read /v1/investor:my-position which derives the
+    // investor's own record from their entitlement. Falls back to null
+    // (sample fixture) if the user has no investor entitlement — that's
+    // expected for the founder view (their own My Position is meaningless).
+    try {
+      const r = await liveApiFetch("/v1/investor:my-position");
+      const positions = Array.isArray(r?.positions) ? r.positions : [];
+      if (!positions.length) return null;
+      // V1 only handles the first position — V2 will let the investor
+      // switch between positions if they hold multiple SAFEs.
+      const p = positions[0];
+      const ownership = (p.sharesIssued && p.valuationCap)
+        ? `${((p.commitment_amount / p.valuationCap) * 100).toFixed(2)}%`
+        : "—";
+      return {
+        title: "Your position",
+        subtitle: p.fundraiseName || subtitle,
+        fields: [
+          { label: "Invested",    value: fmtCurrency(p.commitment_amount) },
+          { label: "Shares",      value: p.sharesIssued ? Number(p.sharesIssued).toLocaleString() : "—" },
+          { label: "Ownership",   value: ownership },
+          { label: "Instrument",  value: `${p.instrument} · ${p.valuationCap ? fmtCurrency(p.valuationCap) + " cap" : "no cap"}` },
+          ...(p.agreementExecutedAt ? [{ label: "Executed", value: "Signed" }] : []),
+        ],
+        sections: p.flowStep === "signature_complete"
+          ? [{ heading: "Status", body: "SAFE executed and stored in your vault. You'll receive notices and ballots as the round progresses." }]
+          : [{ heading: "Status", body: `In progress — flowStep=${p.flowStep}` }],
+      };
+    } catch (_) { return null; }
+  }
+
   // Tabs not yet wired to live data — fall through to sample fixture.
   return null;
 }

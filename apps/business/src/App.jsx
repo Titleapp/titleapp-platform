@@ -5,6 +5,7 @@ import LandingPage from "./components/LandingPage";
 import OnboardingWizard from "./components/OnboardingWizard";
 import WorkspaceObligationsBanner from "./components/WorkspaceObligationsBanner";
 import WorkspaceInvestorMaterials from "./components/WorkspaceInvestorMaterials";
+import WorkspaceInvestorDeadlines from "./components/WorkspaceInvestorDeadlines";
 // OnboardingTour removed in 37.11 — replaced by STATE-5 onboarding checklist
 import AppShell from "./components/AppShell";
 import ChatPanel from "./components/ChatPanel";
@@ -4734,6 +4735,7 @@ function AdminShell({ onBackToHub, initialSection }) {
     <AppShell currentSection={currentSection} onNavigate={setCurrentSection} onBackToHub={onBackToHub}>
       <AppErrorBoundary>
         <WorkspaceObligationsBanner inviteId={inviteIdFromUrl} />
+        <WorkspaceInvestorDeadlines />
         <WorkspaceInvestorMaterials />
         {renderSection()}
       </AppErrorBoundary>

@@ -35,6 +35,36 @@ const DEFAULT_AUTHORIZED_SHARES = 10_000_000;
 const OFFICE_HOURS_BOOKING_URL =
   process.env.OFFICE_HOURS_BOOKING_URL || "https://cal.com/sociii/office-hours";
 
+// Fallback IR contact identity. At scale this is the founder; at larger
+// tenants it's the IR/CFO person. Resolved per-tenant via getIrContact()
+// below — tenants/{id}/irContact overrides this.
+const DEFAULT_IR_CONTACT = {
+  email: process.env.SOCIII_IR_CONTACT_EMAIL || "sean@sociii.ai",
+  name: process.env.SOCIII_IR_CONTACT_NAME || "Sean Combs",
+  fromLabel: process.env.SOCIII_IR_CONTACT_FROM_LABEL || "Sean Combs — SOCIII",
+  role: process.env.SOCIII_IR_CONTACT_ROLE || "Founder",
+};
+
+// Resolve the IR contact for a tenant. Reads tenants/{tenantId}/irContact
+// field if set, falls back to platform default. Spec answer to Q1 in
+// IR-Worker-Investor-View-V2.md — configurable per tenant so larger
+// tenants can route to their IR/CFO person instead of the founder.
+async function getIrContact(tenantId) {
+  try {
+    const tSnap = await getDb().collection("tenants").doc(tenantId || "sociii-platform").get();
+    const irContact = tSnap.exists ? tSnap.data().irContact : null;
+    if (irContact && irContact.email && irContact.name) {
+      return {
+        email: irContact.email,
+        name: irContact.name,
+        fromLabel: irContact.fromLabel || `${irContact.name} — ${tSnap.data().name || "SOCIII"}`,
+        role: irContact.role || "IR Contact",
+      };
+    }
+  } catch (_) { /* fall through to default */ }
+  return DEFAULT_IR_CONTACT;
+}
+
 const INVESTOR_DECK_URL = process.env.SOCIII_INVESTOR_DECK_URL || null;
 const WHITEPAPER_URL = process.env.SOCIII_WHITEPAPER_URL || "https://sociii.ai/whitepaper";
 const DATA_ROOM_URL = process.env.SOCIII_DATA_ROOM_URL || null;
@@ -160,6 +190,12 @@ async function initiateInvestorFlow(input) {
   // TODO: manual test after SendGrid sociii.ai domain auth completes. Until
   // then this call is intentionally fire-and-forget; we log the URL so Sean
   // can ship it to Storyhouse manually for the 5/28 walkthrough.
+  // Resolve the IR contact for this fundraise's tenant. Per spec, defaults
+  // to platform default (founder) but tenants can configure their IR/CFO
+  // person via tenants/{id}/irContact field.
+  const fundraiseTenantId = (await db.collection("fundraises").doc(fundraiseId).get()).data()?.tenantId || "sociii-platform";
+  const ir = await getIrContact(fundraiseTenantId);
+
   let emailQueued = false;
   try {
     if (process.env.SENDGRID_API_KEY) {
@@ -171,8 +207,8 @@ async function initiateInvestorFlow(input) {
         },
         body: JSON.stringify({
           personalizations: [{ to: [{ email, name }] }],
-          from: { email: "sean@sociii.ai", name: "Sean Combs — SOCIII" },
-          reply_to: { email: "sean@sociii.ai", name: "Sean Combs" },
+          from: { email: ir.email, name: ir.fromLabel },
+          reply_to: { email: ir.email, name: ir.name },
           // Subject avoids "Welcome to" / "pre-seed access" phrasing — those
           // trigger Gmail's Promotions classifier (TC-020). Personal-sounding
           // lead-with-first-name reads as correspondence, lands in Primary.
@@ -203,7 +239,7 @@ async function initiateInvestorFlow(input) {
   await db.collection("messages").add({
     channel: "email",
     direction: "outbound",
-    from: "sean@sociii.ai",
+    from: ir.email,
     to: email,
     subject: "Your SOCIII investor access",
     purpose: "ir_investor_invite",
