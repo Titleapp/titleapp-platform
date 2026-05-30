@@ -4479,6 +4479,18 @@ function WorkerHomeRenderer({ onBack }) {
   }, [worker?.slug, tabs, panel]);
 
   const activeSignal = panel?.canvasData?.resolved?._signal || null;
+
+  // Founder-side composer affordance — always show when on the fundraise
+  // worker. The investor-entitlement early-return higher up in this component
+  // already guarantees entitled investors never reach this code path, so
+  // gating by tab/role here is redundant (and was buggy across canvasTabs
+  // signal-naming conventions).
+  const showNoticeComposer = worker?.slug === "fundraise";
+  const NoticeComposerPanel = React.useMemo(
+    () => showNoticeComposer ? React.lazy(() => import("./components/NoticeComposerPanel")) : null,
+    [showNoticeComposer]
+  );
+
   if (panel?.state === "CANVAS" && panel?.canvasData) {
     return (
       <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
@@ -4486,6 +4498,13 @@ function WorkerHomeRenderer({ onBack }) {
           <CanvasTabBar tabs={tabs} activeSignal={activeSignal} onSelectTab={handleTabSelect} workerSlug={worker?.slug} />
         )}
         <div style={{ flex: 1, minHeight: 0, overflow: "auto" }}>
+          {showNoticeComposer && NoticeComposerPanel && (
+            <div style={{ padding: "16px 16px 0" }}>
+              <React.Suspense fallback={<div style={{ padding: 16, fontSize: 12, color: "#94a3b8" }}>Loading composer…</div>}>
+                <NoticeComposerPanel fundraiseId="fr_d291731b90725d12" compact />
+              </React.Suspense>
+            </div>
+          )}
           <CanvasPanel canvasData={panel.canvasData} onDismiss={panel.dismissCanvas} />
         </div>
       </div>

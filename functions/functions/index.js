@@ -12770,10 +12770,30 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
 <p>— Sean<br/>Founder, SOCIII Inc.</p>
 `,
       },
+      cold_invite: {
+        label: "Cold investor invite (qualify + data room)",
+        subject: "SOCIII pre-seed — quick intro + investor materials",
+        bodyHtml: (vars) => `
+<p>Hi ${vars.firstName || "there"},</p>
+<p>Quick note from Sean Combs, founder of SOCIII. We're running a pre-seed round and your name surfaced as someone who'd find the thesis interesting.</p>
+<p><strong>30-second pitch</strong>: every regulated profession (medicine, law, aviation, real estate, finance) runs on rules that a junior practitioner takes years to learn. SOCIII captures those rules from senior experts and ships them as AI workers governed by cryptographic audit trails. The experts earn from their workers; the platform consolidates SaaS for the businesses that run them.</p>
+<p><strong>If you'd like to take a look</strong>, the next step is a 90-second accreditation check. Once that clears you get immediate access to the data room (memorandum, deck, post-money SAFE, NDA, warrant, patent portfolio):</p>
+<p><a href="https://app.titleapp.ai/onboard/investor?ref=${encodeURIComponent(vars.email || "")}" style="background:#7c3aed;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;display:inline-block;font-weight:600;">Start the qualification →</a></p>
+<p>Patent-pending. Pre-seed open to accredited investors. Aiming for first close inside 30 days. If a 30-min call makes sense, reply with two windows.</p>
+<p>— Sean<br/>Founder, SOCIII Inc. · sean@sociii.ai · (951) 4-SOC-2444</p>
+<p style="font-size:11px;color:#94a3b8;margin-top:24px">Not interested? Just reply "remove" and you won't hear from me again.</p>
+`,
+      },
       custom: {
         label: "Custom message",
         subject: "",
         bodyHtml: (vars) => vars.body || "",
+      },
+      safe: {
+        label: "Post-Money SAFE for signature",
+        subject: "SOCIII Post-Money SAFE — ready for your signature",
+        bodyHtml: () => "(sent via DBX Sign — this body is unused)",
+        signaturePacket: true, // routes through signatureService instead of SendGrid
       },
     };
 
@@ -12886,6 +12906,143 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
         });
       } catch (e) {
         console.error("ir:send-notice failed:", e);
+        return jsonError(res, 500, e.message || "Send failed");
+      }
+    }
+
+    // POST /v1/ir:send-cold-invite
+    // Body: { fundraiseId, recipients: [{email,name?,firstName?}], subject? }
+    // Sends the cold_invite template via SendGrid + logs to notices audit. Same
+    // recipient handling as /v1/ir:send-notice but forces templateId=cold_invite.
+    if (route === "/ir:send-cold-invite" && method === "POST") {
+      const auth = await requireFirebaseUser(req, res);
+      if (auth.handled) return;
+      try {
+        const body = req.body || {};
+        body.templateId = "cold_invite";
+        req.body = body;
+        // Hand off to the main notice send by recursing into the route logic
+        // is awkward — easier to inline: fetch fundraise, check perm, send.
+        const fundraiseId = body.fundraiseId || "fr_d291731b90725d12";
+        const tpl = IR_NOTICE_TEMPLATES.cold_invite;
+        const db = admin.firestore();
+        const frSnap = await db.collection("fundraises").doc(fundraiseId).get();
+        const allowed = await userCanAdminFundraise(auth.user.uid, frSnap);
+        if (!allowed) return jsonError(res, 403, "Not authorized");
+        const recipients = Array.isArray(body.recipients) ? body.recipients : [];
+        if (recipients.length === 0) return jsonError(res, 400, "No recipients");
+        const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY || "";
+        if (!SENDGRID_API_KEY) return jsonError(res, 500, "SENDGRID_API_KEY not configured");
+        const subject = body.subject || tpl.subject;
+        const noticeId = "notice_" + crypto.randomUUID().replace(/-/g, "").slice(0, 16);
+        const sentResults = [];
+        for (const r of recipients) {
+          const html = tpl.bodyHtml({
+            firstName: r.firstName || (r.name || "").split(" ")[0] || null,
+            name: r.name,
+            email: r.email,
+          });
+          try {
+            const sgRes = await fetch("https://api.sendgrid.com/v3/mail/send", {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${SENDGRID_API_KEY}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                personalizations: [{ to: [{ email: r.email, name: r.name || undefined }] }],
+                from: { email: "sean@sociii.ai", name: "Sean Combs · SOCIII" },
+                reply_to: { email: "sean@sociii.ai", name: "Sean Combs" },
+                subject,
+                content: [{ type: "text/html", value: html }],
+                custom_args: { noticeId, fundraiseId, templateId: "cold_invite" },
+                tracking_settings: {
+                  click_tracking: { enable: true },
+                  open_tracking: { enable: true },
+                },
+              }),
+            });
+            sentResults.push({ email: r.email, ok: sgRes.ok, status: sgRes.status, error: sgRes.ok ? null : await sgRes.text() });
+          } catch (e) {
+            sentResults.push({ email: r.email, ok: false, error: e.message });
+          }
+        }
+        await db.collection("fundraises").doc(fundraiseId).collection("notices").doc(noticeId).set({
+          noticeId, fundraiseId, templateId: "cold_invite", templateLabel: tpl.label,
+          subject, recipients: recipients.map(r => ({ email: r.email, name: r.name || null })),
+          sentResults, sentAt: admin.firestore.FieldValue.serverTimestamp(),
+          sentBy: auth.user.uid, sentByEmail: auth.user.email || null,
+          okCount: sentResults.filter(x => x.ok).length,
+          failCount: sentResults.filter(x => !x.ok).length,
+        });
+        return res.json({
+          ok: true, noticeId,
+          okCount: sentResults.filter(x => x.ok).length,
+          failCount: sentResults.filter(x => !x.ok).length,
+          results: sentResults,
+        });
+      } catch (e) {
+        console.error("ir:send-cold-invite failed:", e);
+        return jsonError(res, 500, e.message || "Send failed");
+      }
+    }
+
+    // POST /v1/ir:send-safe
+    // Body: { fundraiseId, recipientEmail, recipientName, investmentAmount? }
+    // Fires a DBX Sign SAFE for signature via signatureService, logs to notices.
+    if (route === "/ir:send-safe" && method === "POST") {
+      const auth = await requireFirebaseUser(req, res);
+      if (auth.handled) return;
+      try {
+        const body = req.body || {};
+        const fundraiseId = body.fundraiseId || "fr_d291731b90725d12";
+        const recipientEmail = body.recipientEmail;
+        const recipientName = body.recipientName;
+        const investmentAmount = body.investmentAmount;
+        if (!recipientEmail || !recipientName) {
+          return jsonError(res, 400, "recipientEmail and recipientName required");
+        }
+        const db = admin.firestore();
+        const frSnap = await db.collection("fundraises").doc(fundraiseId).get();
+        const allowed = await userCanAdminFundraise(auth.user.uid, frSnap);
+        if (!allowed) return jsonError(res, 403, "Not authorized");
+        const fr = frSnap.exists ? frSnap.data() : {};
+        const valuationCap = fr.valuation_cap || fr.valuationCap || 10000000;
+        const { sendSignaturePacket } = require("./services/signatureService");
+        const sigResult = await sendSignaturePacket({
+          role: "investor",
+          recipientEmail,
+          recipientName,
+          vars: { investmentAmount, valuationCap },
+          tenantId: fr.tenantId || "sociii-platform",
+          metadata: {
+            source: "ir:send-safe",
+            triggeredBy: auth.user.uid,
+            fundraiseId,
+          },
+        });
+        if (!sigResult?.ok && sigResult?.error) {
+          return jsonError(res, 500, `Signature request failed: ${sigResult.error}`);
+        }
+        const noticeId = "notice_" + crypto.randomUUID().replace(/-/g, "").slice(0, 16);
+        await db.collection("fundraises").doc(fundraiseId).collection("notices").doc(noticeId).set({
+          noticeId, fundraiseId, templateId: "safe", templateLabel: "Post-Money SAFE for signature",
+          subject: "SOCIII Post-Money SAFE — ready for your signature",
+          recipients: [{ email: recipientEmail, name: recipientName }],
+          investmentAmount: investmentAmount || null,
+          valuationCap,
+          signatureRequestId: sigResult?.requestId || null,
+          sentResults: [{ email: recipientEmail, ok: true }],
+          sentAt: admin.firestore.FieldValue.serverTimestamp(),
+          sentBy: auth.user.uid, sentByEmail: auth.user.email || null,
+          okCount: 1, failCount: 0,
+        });
+        return res.json({
+          ok: true, noticeId,
+          signatureRequestId: sigResult?.requestId || null,
+        });
+      } catch (e) {
+        console.error("ir:send-safe failed:", e);
         return jsonError(res, 500, e.message || "Send failed");
       }
     }
