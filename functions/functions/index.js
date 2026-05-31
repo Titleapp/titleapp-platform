@@ -5935,8 +5935,8 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
         // 1. Write/upsert the digitalWorkers catalog doc
         await db.doc("digitalWorkers/nursing-education-001").set({
           slug: "nursing-education-001",
-          display_name: "Nursing Education",
-          name: "Nursing Education",
+          display_name: "Clearwater Nursing Education",
+          name: "Clearwater Nursing Education",
           short_description: "Longitudinal student record for nursing programs — competency + professionalism + attendance + clinical incidents, in one tamper-proof place.",
           description: "Built by Dr. Ruthie Clearwater (CRNA, nursing instructor). 5 nursing courses (NURS 210/220/230/320/360), 45 SLOs mapped to ANA Standards, 45 reflection templates using Tanner clinical judgment framework, 31 clinical sites, 25 instructors, 6 cohorts. Multi-dimensional event tracking: reflections + SLO observations + professionalism + attendance + clinical incidents. Locked grades chain-anchored.",
           vertical: "education",

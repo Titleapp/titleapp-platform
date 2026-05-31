@@ -284,22 +284,238 @@ function StudentJourney({ data, studentId, onBack }) {
   );
 }
 
+// Sample student reflection text (Tanner framework, ~400 words) for demo grading.
+const SAMPLE_REFLECTIONS = {
+  "Maya L.": `**Scenario:** During NURS 220 clinical at Medical-Surgical, I was assigned to support a family meeting for Mr. K, a 72-year-old patient with end-stage COPD. The patient's daughter was upset because she felt providers weren't listening to her concerns about her father's pain management.
+
+**Analysis:**
+
+*Noticing:* The daughter's voice was raised and her body language was closed off — arms crossed, looking down. The patient himself was quiet and seemed embarrassed. The attending physician was running behind and entered the room visibly hurried.
+
+*Interpreting:* I recognized this as a situation where the family member's emotional state (frustration, fear of losing her father) was being interpreted by the team as "difficult family" rather than as legitimate advocacy. From class I remembered that emotional escalation often signals unmet needs around being heard.
+
+*Responding:* I made eye contact with the daughter, used her father's first name when speaking to her, and asked one open question: "Help me understand what feels like it's not working." I let her speak without interrupting. I then summarized her main concerns and confirmed back with her before the physician spoke.
+
+*Reflecting:* The physician later thanked me for "calming things down." But I think what actually helped was that the daughter felt heard, not that she was calmed. I noticed I was nervous to take this role and almost stayed silent.
+
+**Evaluation:** The patient's daughter agreed to a pain management adjustment trial. She gave me a hug at the end of the shift. I felt useful in a way that was different from skills-based clinical work. The patient's pain score dropped from 7 to 4 within 24 hours.
+
+**Future Goal:** I want to get more comfortable being the person who says the thing in the room. I tend to defer to the senior person present. I'll practice initiating in lower-stakes interactions first (huddle, handoff) before doing it in family meetings.`,
+};
+
+// Per-course SLO 8 (Communication) criteria for grading — pulled from Ruthie's
+// Master Config Sheet via data.json
+function findSloCriteria(data, courseCode, sloNumber) {
+  const slo = (data.slos || []).find(s => s.courseCode === courseCode && s.sloNumber === sloNumber);
+  if (!slo) return null;
+  // Criteria may be JSON-encoded or a plain array
+  if (Array.isArray(slo.criteria)) return slo.criteria;
+  if (typeof slo.criteria === "string") {
+    try { const parsed = JSON.parse(slo.criteria); return Array.isArray(parsed) ? parsed : []; } catch (_) { return []; }
+  }
+  return [];
+}
+
+function GradeReflectionModal({ reflection, data, onClose }) {
+  const [stage, setStage] = useState("preview"); // preview | scoring | proposed | locked
+  const [proposedScore, setProposedScore] = useState(null);
+  const [scoringInProgress, setScoringInProgress] = useState(false);
+  const studentText = SAMPLE_REFLECTIONS[reflection.name] || "Sample reflection text not yet authored for this student. In the live worker, this loads from the student's submission.";
+  const criteria = findSloCriteria(data, reflection.course, reflection.slo) || [];
+
+  function startScoring() {
+    setStage("scoring");
+    setScoringInProgress(true);
+    // Simulate AI grading in 2 seconds — in production this calls
+    // /v1/nurse-edu:reflection:score which streams the AI response.
+    setTimeout(() => {
+      const score = reflection.slo === "8.0" ? 4 : reflection.slo === "4.0" ? 3 : reflection.slo === "9.0" ? 4 : 3;
+      setProposedScore({
+        overall: score,
+        label: score === 5 ? "Expert" : score === 4 ? "Proficient" : score === 3 ? "Competent" : score === 2 ? "Beginner" : "Novice",
+        criteriaBreakdown: criteria.map((c, i) => {
+          const cText = typeof c === "string" ? c : (c.description || JSON.stringify(c));
+          const cScore = i === 0 ? score : Math.max(2, score - (i % 2));
+          return {
+            text: cText,
+            score: cScore,
+            rationale: i === 0
+              ? "Strong evidence in the Responding section — student named the daughter's emotional state correctly and acted on it without escalating."
+              : i === 1
+                ? "Clear evidence in summarizing back to family before the physician spoke."
+                : "Some evidence; could be more specific about future application.",
+          };
+        }),
+        summary: "Strong reflection. Student demonstrates the core SLO criteria with concrete examples. Notable: she names her own hesitation, which is reflective practice at the proficient level. Recommendation: lock at 4/5 (Proficient). Add coaching note on initiation — she identified that growth area herself.",
+        coachingNote: "Sarah K. names her own discomfort with taking the speaking role. That self-awareness IS the SLO. Consider scaffolding her into a leadership initiating role in her next NURS 230 ER simulation.",
+      });
+      setScoringInProgress(false);
+      setStage("proposed");
+    }, 1800);
+  }
+
+  function lockGrade() {
+    setStage("locked");
+    setTimeout(() => onClose(), 1400);
+  }
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999, padding: 20 }} onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} style={{ background: "#fff", borderRadius: 14, maxWidth: 1080, width: "100%", maxHeight: "90vh", overflow: "hidden", display: "flex", flexDirection: "column", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}>
+        {/* Header */}
+        <div style={{ padding: "16px 24px", borderBottom: "1px solid #e2e8f0", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+          <div>
+            <div style={{ fontSize: 12, color: "#64748b", marginBottom: 2 }}>Grading reflection</div>
+            <div style={{ fontSize: 16, fontWeight: 700 }}>{reflection.name} · {reflection.course} · SLO {reflection.slo}</div>
+            <div style={{ fontSize: 12, color: "#64748b" }}>{reflection.title}</div>
+          </div>
+          <button onClick={onClose} style={{ background: "transparent", border: "none", fontSize: 20, color: "#94a3b8", cursor: "pointer", padding: 4 }}>×</button>
+        </div>
+
+        {/* Body: split view */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 360px", flex: 1, minHeight: 0 }}>
+
+          {/* LEFT: student work */}
+          <div style={{ padding: "20px 24px", overflowY: "auto", borderRight: "1px solid #e2e8f0" }}>
+            <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", color: "#64748b", fontWeight: 700, marginBottom: 10 }}>
+              Student's reflection · Tanner framework
+            </div>
+            <div style={{ fontSize: 13, color: "#334155", lineHeight: 1.7, whiteSpace: "pre-line" }}>
+              {studentText}
+            </div>
+          </div>
+
+          {/* RIGHT: grading panel */}
+          <div style={{ background: "#f8fafc", padding: "20px 22px", overflowY: "auto", display: "flex", flexDirection: "column", gap: 16 }}>
+
+            {/* Rubric */}
+            <div>
+              <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", color: "#64748b", fontWeight: 700, marginBottom: 8 }}>
+                Your rubric · {reflection.course} SLO {reflection.slo} criteria
+              </div>
+              <div style={{ fontSize: 12, color: "#475569", background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, padding: "10px 12px" }}>
+                {criteria.length === 0 ? (
+                  <div style={{ color: "#94a3b8", fontStyle: "italic" }}>SLO criteria not loaded for this combination.</div>
+                ) : criteria.map((c, i) => (
+                  <div key={i} style={{ marginBottom: i < criteria.length - 1 ? 8 : 0 }}>
+                    <b>{String.fromCharCode(65 + i)}.</b> {typeof c === "string" ? c : (c.description || JSON.stringify(c))}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Action area */}
+            {stage === "preview" && (
+              <div>
+                <button
+                  onClick={startScoring}
+                  style={{ background: "linear-gradient(135deg, #7C3AED, #5B21B6)", color: "#fff", border: "none", padding: "12px 16px", borderRadius: 8, fontWeight: 700, fontSize: 14, cursor: "pointer", width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+                >
+                  ✨ Score with AI against your rubric
+                </button>
+                <div style={{ fontSize: 11, color: "#64748b", marginTop: 8, textAlign: "center", lineHeight: 1.5 }}>
+                  AI proposes a score based on your SLO criteria. You accept, adjust, or override. Final score is yours.
+                </div>
+              </div>
+            )}
+
+            {stage === "scoring" && (
+              <div style={{ padding: "20px 16px", background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, textAlign: "center" }}>
+                <div style={{ fontSize: 13, color: "#475569", marginBottom: 8 }}>
+                  <span style={{ display: "inline-block", animation: "pulse 1.5s ease-in-out infinite" }}>⚡</span> Reading reflection against your rubric…
+                </div>
+                <div style={{ fontSize: 11, color: "#94a3b8" }}>Comparing each Tanner phase to criteria A-{String.fromCharCode(64 + criteria.length)}</div>
+              </div>
+            )}
+
+            {stage === "proposed" && proposedScore && (
+              <>
+                <div style={{ background: "linear-gradient(135deg, #fff, #f0fdf4)", border: "2px solid #16A34A", borderRadius: 10, padding: "16px" }}>
+                  <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", color: "#16A34A", fontWeight: 700, marginBottom: 4 }}>
+                    AI proposes
+                  </div>
+                  <div style={{ fontSize: 32, fontWeight: 700, color: "#0f172a", lineHeight: 1 }}>
+                    {proposedScore.overall}/5
+                  </div>
+                  <div style={{ fontSize: 13, color: "#16A34A", fontWeight: 600, marginBottom: 10 }}>
+                    {proposedScore.label}
+                  </div>
+                  <div style={{ fontSize: 12, color: "#475569", lineHeight: 1.6 }}>
+                    {proposedScore.summary}
+                  </div>
+                </div>
+
+                <div>
+                  <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", color: "#64748b", fontWeight: 700, marginBottom: 8 }}>
+                    Criteria-by-criteria
+                  </div>
+                  {proposedScore.criteriaBreakdown.map((c, i) => (
+                    <div key={i} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, padding: "10px 12px", marginBottom: 6, fontSize: 12 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                        <b style={{ color: "#0f172a" }}>{String.fromCharCode(65 + i)}.</b>
+                        <span style={{ fontWeight: 700, color: "#16A34A" }}>{c.score}/5</span>
+                      </div>
+                      <div style={{ color: "#475569", fontSize: 11, marginBottom: 4 }}>{c.text.slice(0, 110)}{c.text.length > 110 ? "…" : ""}</div>
+                      <div style={{ color: "#64748b", fontSize: 11, fontStyle: "italic" }}>{c.rationale}</div>
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, padding: "12px" }}>
+                  <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", color: "#7C3AED", fontWeight: 700, marginBottom: 6 }}>
+                    Coaching note for next observation
+                  </div>
+                  <div style={{ fontSize: 12, color: "#475569", lineHeight: 1.5 }}>{proposedScore.coachingNote}</div>
+                </div>
+
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button onClick={lockGrade} style={{ background: "#16A34A", color: "#fff", border: "none", padding: "10px 14px", borderRadius: 6, fontWeight: 700, fontSize: 12, cursor: "pointer", flex: 1 }}>
+                    ✓ Accept &amp; lock {proposedScore.overall}/5
+                  </button>
+                  <button onClick={() => setStage("preview")} style={{ background: "#fff", color: "#475569", border: "1px solid #cbd5e1", padding: "10px 14px", borderRadius: 6, fontWeight: 600, fontSize: 12, cursor: "pointer" }}>
+                    Adjust
+                  </button>
+                </div>
+                <div style={{ fontSize: 10, color: "#94a3b8", textAlign: "center" }}>
+                  Locked grades chain-anchored to Base · cannot be modified after
+                </div>
+              </>
+            )}
+
+            {stage === "locked" && (
+              <div style={{ padding: "30px 16px", background: "linear-gradient(135deg, #16A34A, #15803D)", color: "#fff", borderRadius: 10, textAlign: "center" }}>
+                <div style={{ fontSize: 32, marginBottom: 8 }}>✓</div>
+                <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 6 }}>Grade locked · {proposedScore.overall}/5 {proposedScore.label}</div>
+                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.85)", fontFamily: "SF Mono, Menlo, monospace" }}>Chain-anchored: 0x9c4a…2d1f</div>
+                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", marginTop: 8 }}>Event logged to Sarah's DTC. Coaching note attached.</div>
+              </div>
+            )}
+
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ReflectionsInbox({ data }) {
-  // Placeholder — Sunday wire to real submissions
+  const [gradingTarget, setGradingTarget] = useState(null);
+  const reflections = [
+    { name: "Maya L.",   course: "NURS 220", slo: "8.0", title: "Patient family meeting — managing emotional load", age: "12 days old", old: true },
+    { name: "James C.",  course: "NURS 220", slo: "4.0", title: "Delegating wound care under time pressure", age: "5 days" },
+    { name: "Sarah K.",  course: "NURS 230", slo: "9.0", title: "Triage decision-making in fast-paced ER environment", age: "2 days" },
+    { name: "Aaron R.",  course: "NURS 320", slo: "7.0", title: "MMMG pediatric assessment with non-English-speaking family", age: "2 days" },
+  ];
+
   return (
     <div>
       <h1 style={S.h1}>Reflections inbox</h1>
-      <div style={S.subtitle}>4 reflections awaiting your review · Tanner framework rendering · sample data</div>
+      <div style={S.subtitle}>4 reflections awaiting your review · Tanner framework · click "Grade with AI" to score against your SLO rubric</div>
       <div style={S.demoBanner}>
-        Wire to live `/v1/nurse-edu:reflection:list?status=pending` Sunday. Tonight: shows shape only.
+        <b>AI-assisted grading.</b> Click any "Grade with AI" button to see how it works: AI reads the student's reflection against your SLO criteria, proposes a score with per-criterion rationale, you accept or adjust. Sample reflection text shipped for Maya L. — others get a placeholder until Sunday's data wire-in.
       </div>
       <div style={S.card}>
-        {[
-          { name: "Maya L.",   course: "NURS 220", slo: "8.0", title: "Patient family meeting — managing emotional load", age: "12 days old", old: true },
-          { name: "James C.",  course: "NURS 220", slo: "4.0", title: "Delegating wound care under time pressure", age: "5 days" },
-          { name: "Sarah K.",  course: "NURS 230", slo: "9.0", title: "Triage decision-making in fast-paced ER environment", age: "2 days" },
-          { name: "Aaron R.",  course: "NURS 320", slo: "7.0", title: "MMMG pediatric assessment with non-English-speaking family", age: "2 days" },
-        ].map((r, i) => (
+        {reflections.map((r, i) => (
           <div key={i} style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 18px", borderBottom: "1px solid #f1f5f9" }}>
             <div>
               <div style={{ fontWeight: 600, fontSize: 13 }}>{r.name}</div>
@@ -307,10 +523,19 @@ function ReflectionsInbox({ data }) {
             </div>
             <div style={{ flex: 1 }} />
             <div style={{ fontSize: 11, padding: "2px 7px", borderRadius: 4, fontWeight: 600, background: r.old ? "rgba(217, 119, 6, 0.12)" : "#f1f5f9", color: r.old ? "#D97706" : "#64748b" }}>{r.age}</div>
-            <button style={{ background: "#7C3AED", color: "#fff", border: "none", padding: "6px 12px", borderRadius: 5, fontWeight: 600, fontSize: 11, cursor: "pointer" }}>Grade now</button>
+            <button
+              onClick={() => setGradingTarget(r)}
+              style={{ background: "linear-gradient(135deg, #7C3AED, #5B21B6)", color: "#fff", border: "none", padding: "8px 14px", borderRadius: 5, fontWeight: 600, fontSize: 11, cursor: "pointer" }}
+            >
+              ✨ Grade with AI
+            </button>
           </div>
         ))}
       </div>
+
+      {gradingTarget && (
+        <GradeReflectionModal reflection={gradingTarget} data={data} onClose={() => setGradingTarget(null)} />
+      )}
     </div>
   );
 }
