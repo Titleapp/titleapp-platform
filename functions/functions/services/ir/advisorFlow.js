@@ -64,6 +64,13 @@ async function initiateAdvisorFlow(input) {
     cliffMonths = 6,
     advisorRole = null,
     invitedBy = null,
+    // When set, advisorFlow mints the advisor record + magic link but skips
+    // SendGrid send. Caller owns email delivery (e.g. HR cold-invite warm
+    // 4-section copy that wraps the same magicUrl).
+    suppressEmail = false,
+    // Allow callers without an equityPct yet (e.g. cold invite before terms
+    // are negotiated) to mint the record. Default 0 surfaces as "TBD" downstream.
+    allowMissingEquity = false,
   } = input || {};
 
   const db = getDb();
@@ -91,7 +98,7 @@ async function initiateAdvisorFlow(input) {
     if (!email || !name) {
       throw new Error("initiateAdvisorFlow: email and name required to create a new advisor");
     }
-    if (equityPct == null) {
+    if (equityPct == null && !allowMissingEquity) {
       throw new Error("initiateAdvisorFlow: equityPct required to create a new advisor");
     }
     advisorId = `adv_${crypto.randomBytes(8).toString("hex")}`;
@@ -99,7 +106,7 @@ async function initiateAdvisorFlow(input) {
       advisorId,
       email: email.toLowerCase(),
       name,
-      equityPct: String(equityPct),
+      equityPct: equityPct != null ? String(equityPct) : "TBD",
       vestingMonths: Number(vestingMonths),
       cliffMonths: Number(cliffMonths),
       advisorRole,
@@ -148,7 +155,9 @@ async function initiateAdvisorFlow(input) {
 
   let emailQueued = false;
   try {
-    if (process.env.SENDGRID_API_KEY) {
+    if (suppressEmail) {
+      console.log(`[advisorFlow] suppressEmail=true — caller owns delivery. Magic link: ${magicUrl}`);
+    } else if (process.env.SENDGRID_API_KEY) {
       const sgResp = await fetch("https://api.sendgrid.com/v3/mail/send", {
         method: "POST",
         headers: {

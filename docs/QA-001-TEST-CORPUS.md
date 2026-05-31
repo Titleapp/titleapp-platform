@@ -313,6 +313,30 @@ QA-001 doesn't need to be sophisticated to be valuable. A simple harness that ru
 
 ---
 
+## TC-041 — Cold-invite CTA dead-ends at "Missing advisorId" (HR worker dogfood)
+
+- **Date:** 2026-05-30
+- **Worker:** Fundraise + Platform HR
+- **Family:** 4 (Outbound delivery) + 5 (Onboarding sequencing)
+- **Severity:** P0
+- **Real bug:** Cold-invite email templates (`ir.cold_invite` + `hr.advisor_cold_invite`) hardcoded a CTA pointing at `/onboard/advisor?ref=<email>` (and `/onboard/investor?ref=<email>`). `AdvisorOnboarding.jsx` requires `?advisorId=<id>` and bails with the literal text "Missing advisorId." IR side appeared to work because `InvestorInquiry.jsx` accepted `ref=email` and provisioned inline — but per Phase 2.D the `/onboard/*` routes are deprecated; both should land in materialized workspace via `/auth/magic`.
+- **Onboarding sequence violation (deeper):** Composer also exposed `safe` (IR) + `advisor_agreement` (HR) as founder one-click templates. The intended flow is **deck → ID check → sign** with Step 3 firing from the recipient's workspace obligation card post-KYC, not as a founder ad-hoc send.
+- **Test:** Send a cold invite via `/v1/hr:send-advisor-invite` and `/v1/ir:send-cold-invite`; assert the CTA URL in the rendered HTML matches `/auth/magic?token=...` AND that an advisor/investor record + magic-link record exist in Firestore tied to the same recipient email. Separate assertion: `/v1/hr:notice-templates` and `/v1/ir:notice-templates` MUST NOT return `safe` or `advisor_agreement` (composerVisible=false gate).
+- **Fix (S51.43.5):** `hr:send-advisor-invite` + `ir:send-cold-invite` now call `initiateAdvisorFlow`/`initiateInvestorFlow` with `suppressEmail: true, allowMissingEquity: true` to mint pending records, then thread `magicLinkUrl` into the cold-invite template body. Both templates lists filter on `composerVisible !== false`. `/onboard/advisor` without `advisorId` redirects to `/`. Click tracking disabled (was rewriting magic URL through url813.sociii.ai without HTTPS).
+- **Out of scope:** personalized per-advisor deck generation (deck pipeline is its own work — Sean confirms decks are pre-made per recipient for current cohort).
+
+## TC-042 — HR signature templates need DBX Sign provisioning (stub captured)
+
+- **Date:** 2026-05-30
+- **Worker:** Platform HR
+- **Family:** 6 (Template lifecycle)
+- **Severity:** P1 (won't fire until used; surfaced as stub for visibility)
+- **Real bug (latent):** Added HR template stubs (`employment_agreement`, `independent_contractor_agreement`) marked `signaturePacket: true` + `stub: true`. `signatureService.sendSignaturePacket` will fail with "no template configured" if invoked because the DBX Sign account doesn't have these templates uploaded.
+- **Test:** Boot-time assertion: every template with `signaturePacket: true` has a corresponding DBX Sign template ID configured in signatureService role configs. Templates flagged `stub: true` are excluded.
+- **Fix:** Templates flagged `stub: true` and not exposed in the composer (gated by `composerVisible` separately for the agreements, exposed for the email notices `performance_improvement` + `termination_notice` since those have placeholder legal copy). Real fix is upload DBX templates + wire IDs into signatureService. Performance Improvement Plan + Termination Notice email templates ship as stubs with placeholder legal copy pending counsel review.
+
+---
+
 (slot for next bug)
 
 ---

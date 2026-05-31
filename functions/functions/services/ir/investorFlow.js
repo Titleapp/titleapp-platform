@@ -116,6 +116,10 @@ async function initiateInvestorFlow(input) {
     investmentAmount = null,
     fundraiseId = DEFAULT_FUNDRAISE_ID,
     invitedBy = null,
+    // When set, investorFlow mints the investor record + magic link but skips
+    // SendGrid send. Caller owns email delivery (e.g. IR cold-invite warm copy
+    // that wraps the same magicUrl).
+    suppressEmail = false,
   } = input || {};
 
   if (!email || !name) {
@@ -198,7 +202,9 @@ async function initiateInvestorFlow(input) {
 
   let emailQueued = false;
   try {
-    if (process.env.SENDGRID_API_KEY) {
+    if (suppressEmail) {
+      console.log(`[investorFlow] suppressEmail=true — caller owns delivery. Magic link: ${magicUrl}`);
+    } else if (process.env.SENDGRID_API_KEY) {
       const sgResp = await fetch("https://api.sendgrid.com/v3/mail/send", {
         method: "POST",
         headers: {

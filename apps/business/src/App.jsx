@@ -5754,7 +5754,17 @@ export default function App() {
   }
 
   // ── Advisor onboarding (IR Phase 2) ────────────────────────
+  // Phase 2.D deprecated /onboard/advisor in favor of /auth/magic →
+  // materialized workspace. Direct visits with an advisorId still resolve to
+  // the legacy page (existing magic links in flight); visits without one
+  // (cold-invite ref=email links sent before S51.43.5) redirect to "/" so
+  // the user lands on the public marketing surface instead of a broken page.
   if (isAdvisorOnboard) {
+    const params = new URLSearchParams(window.location.search);
+    if (!params.get("advisorId")) {
+      window.location.replace("/");
+      return <div style={{ minHeight: "100vh", background: "#FFFFFF" }} />;
+    }
     const AdvisorOnboarding = React.lazy(() => import("./pages/AdvisorOnboarding"));
     return <React.Suspense fallback={<div style={{ minHeight: "100vh", background: "#FFFFFF" }} />}><AdvisorOnboarding /></React.Suspense>;
   }

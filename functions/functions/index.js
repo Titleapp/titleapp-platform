@@ -12773,12 +12773,15 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       cold_invite: {
         label: "Cold investor invite (qualify + data room)",
         subject: "SOCIII pre-seed — quick intro + investor materials",
+        // magicUrl is threaded in by /v1/ir:send-cold-invite which mints
+        // a pending investor record + magic link via initiateInvestorFlow
+        // (suppressEmail=true) and passes the URL to this template.
         bodyHtml: (vars) => `
 <p>Hi ${vars.firstName || "there"},</p>
 <p>Quick note from Sean Combs, founder of SOCIII. We're running a pre-seed round and your name surfaced as someone who'd find the thesis interesting.</p>
 <p><strong>30-second pitch</strong>: every regulated profession (medicine, law, aviation, real estate, finance) runs on rules that a junior practitioner takes years to learn. SOCIII captures those rules from senior experts and ships them as AI workers governed by cryptographic audit trails. The experts earn from their workers; the platform consolidates SaaS for the businesses that run them.</p>
-<p><strong>If you'd like to take a look</strong>, the next step is a 90-second accreditation check. Once that clears you get immediate access to the data room (memorandum, deck, post-money SAFE, NDA, warrant, patent portfolio):</p>
-<p><a href="https://app.titleapp.ai/onboard/investor?ref=${encodeURIComponent(vars.email || "")}" style="background:#7c3aed;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;display:inline-block;font-weight:600;">Start the qualification →</a></p>
+<p><strong>If you'd like to take a look</strong>, open your SOCIII investor workspace. You'll find the deck and whitepaper waiting; the data room (memorandum, post-money SAFE, NDA, warrant, patent portfolio) unlocks after a 90-second accreditation check:</p>
+<p><a href="${vars.magicUrl || "https://app.titleapp.ai"}" style="background:#7c3aed;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;display:inline-block;font-weight:600;">Open your investor workspace →</a></p>
 <p>Patent-pending. Pre-seed open to accredited investors. Aiming for first close inside 30 days. If a 30-min call makes sense, reply with two windows.</p>
 <p>— Sean<br/>Founder, SOCIII Inc. · sean@sociii.ai · (951) 4-SOC-2444</p>
 <p style="font-size:11px;color:#94a3b8;margin-top:24px">Not interested? Just reply "remove" and you won't hear from me again.</p>
@@ -12792,6 +12795,7 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       safe: {
         label: "Post-Money SAFE for signature",
         subject: "SOCIII Post-Money SAFE — ready for your signature",
+        composerVisible: false, // gated — fires from investor workspace obligation after KYC approved, not founder one-click
         bodyHtml: () => "(sent via DBX Sign — this body is unused)",
         signaturePacket: true, // routes through signatureService instead of SendGrid
       },
@@ -12921,8 +12925,6 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
         const body = req.body || {};
         body.templateId = "cold_invite";
         req.body = body;
-        // Hand off to the main notice send by recursing into the route logic
-        // is awkward — easier to inline: fetch fundraise, check perm, send.
         const fundraiseId = body.fundraiseId || "fr_d291731b90725d12";
         const tpl = IR_NOTICE_TEMPLATES.cold_invite;
         const db = admin.firestore();
@@ -12935,12 +12937,40 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
         if (!SENDGRID_API_KEY) return jsonError(res, 500, "SENDGRID_API_KEY not configured");
         const subject = body.subject || tpl.subject;
         const noticeId = "notice_" + crypto.randomUUID().replace(/-/g, "").slice(0, 16);
+        // Mint a pending investor record per recipient and thread the magic
+        // link into the email CTA — same pattern as hr:send-advisor-invite.
+        // Replaces the prior /onboard/investor?ref=<email> link which routed
+        // to the now-deprecated inquiry page. Magic link → /auth/magic →
+        // materialized workspace with deck/ID/SAFE obligation cards.
+        const investorFlow = require("./services/ir/investorFlow");
         const sentResults = [];
         for (const r of recipients) {
+          if (!r.email) {
+            sentResults.push({ email: null, ok: false, error: "missing email" });
+            continue;
+          }
+          let magicUrl = null;
+          let investorId = null;
+          try {
+            const init = await investorFlow.initiateInvestorFlow({
+              email: r.email,
+              name: r.name || (r.email.split("@")[0]),
+              fundraiseId,
+              invitedBy: auth.user.uid,
+              suppressEmail: true,
+            });
+            magicUrl = init?.magicLinkUrl || null;
+            investorId = init?.investorId || null;
+          } catch (e) {
+            console.warn(`[ir:send-cold-invite] initiate failed for ${r.email}: ${e.message}`);
+            sentResults.push({ email: r.email, ok: false, error: `initiate failed: ${e.message}` });
+            continue;
+          }
           const html = tpl.bodyHtml({
             firstName: r.firstName || (r.name || "").split(" ")[0] || null,
             name: r.name,
             email: r.email,
+            magicUrl,
           });
           try {
             const sgRes = await fetch("https://api.sendgrid.com/v3/mail/send", {
@@ -12955,16 +12985,22 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
                 reply_to: { email: "sean@sociii.ai", name: "Sean Combs" },
                 subject,
                 content: [{ type: "text/html", value: html }],
-                custom_args: { noticeId, fundraiseId, templateId: "cold_invite" },
+                custom_args: { noticeId, fundraiseId, templateId: "cold_invite", investorId },
+                // Click tracking off — SendGrid rewrites the magic link
+                // through url813.sociii.ai which lacks HTTPS and Chrome
+                // warns "Not Secure", breaking the flow for the recipient.
                 tracking_settings: {
-                  click_tracking: { enable: true },
+                  click_tracking: { enable: false, enable_text: false },
                   open_tracking: { enable: true },
                 },
               }),
             });
-            sentResults.push({ email: r.email, ok: sgRes.ok, status: sgRes.status, error: sgRes.ok ? null : await sgRes.text() });
+            sentResults.push({
+              email: r.email, ok: sgRes.ok, status: sgRes.status,
+              investorId, error: sgRes.ok ? null : await sgRes.text(),
+            });
           } catch (e) {
-            sentResults.push({ email: r.email, ok: false, error: e.message });
+            sentResults.push({ email: r.email, ok: false, error: e.message, investorId });
           }
         }
         await db.collection("fundraises").doc(fundraiseId).collection("notices").doc(noticeId).set({
@@ -13091,6 +13127,7 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       advisor_welcome: {
         label: "Advisor welcome (post-signing)",
         subject: "Welcome to SOCIII — your advisor onboarding",
+        composerVisible: true,
         bodyHtml: (vars) => `
 <p>Hi ${vars.firstName || "there"},</p>
 <p>Welcome to the SOCIII advisor circle. Now that your agreement is countersigned, here's what's queued up for you:</p>
@@ -13107,14 +13144,18 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       advisor_cold_invite: {
         label: "Cold advisor invite (qualify + onboarding kit)",
         subject: "SOCIII — quick note + advisor opportunity",
+        composerVisible: true,
+        // magicUrl is threaded in by /v1/hr:send-advisor-invite which mints
+        // a pending advisor record + magic link via initiateAdvisorFlow
+        // (suppressEmail=true) and passes the URL to this template.
         bodyHtml: (vars) => `
 <p>Hi ${vars.firstName || "there"},</p>
 <p>Quick note from Sean Combs, founder of SOCIII. We're building out a small advisor circle (capped at 7) and your name surfaced as someone whose perspective would materially shape the next 12 months.</p>
 <p><strong>30-second pitch</strong>: SOCIII captures the rules of regulated professions from senior experts and ships them as governed AI workers with cryptographic audit trails. The experts earn from their workers; businesses consolidate SaaS through the platform.</p>
 <p><strong>The advisor offer</strong>: 0.5–2.5% equity vesting over 24 months, milestone-tied. Specific cadence and focus tailored to where you can move the needle. HOMMIE Warrant structure (downside-protected; details in the agreement).</p>
-<p><strong>If you'd like to take a look</strong>, the next step is a quick qualification + your advisor kit:</p>
-<p><a href="https://app.titleapp.ai/onboard/advisor?ref=${encodeURIComponent(vars.email || "")}" style="background:#7c3aed;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;display:inline-block;font-weight:600;">Start advisor onboarding →</a></p>
-<p>Reply with two windows if a 30-min intro call makes sense.</p>
+<p><strong>If you'd like to take a look</strong>, the next step is a quick qualification + your advisor kit. Open your SOCIII workspace to review the deck, complete a quick ID check, and sign the advisor agreement when ready:</p>
+<p><a href="${vars.magicUrl || "https://app.titleapp.ai"}" style="background:#7c3aed;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;display:inline-block;font-weight:600;">Open your advisor workspace →</a></p>
+<p>Reply with two windows if a 30-min intro call makes sense before you sign anything.</p>
 <p>— Sean<br/>Founder, SOCIII Inc. · sean@sociii.ai · (951) 4-SOC-2444</p>
 <p style="font-size:11px;color:#94a3b8;margin-top:24px">Not interested? Just reply "remove" and you won't hear from me again.</p>
 `,
@@ -13122,13 +13163,81 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       custom: {
         label: "Custom message",
         subject: "",
+        composerVisible: true,
         bodyHtml: (vars) => vars.body || "",
       },
+      // Signature packets — NOT exposed in the founder-side composer.
+      // Step 3 of the onboarding sequence (deck → ID check → sign). These fire
+      // from the recipient's workspace obligation card after KYC is approved,
+      // not as a one-click founder send. Endpoints stay live for that path.
       advisor_agreement: {
         label: "Advisor Agreement for signature",
         subject: "SOCIII Advisor Agreement — ready for your signature",
+        composerVisible: false,
         bodyHtml: () => "(sent via DBX Sign — this body is unused)",
         signaturePacket: true,
+        signatureRole: "advisor",
+      },
+      // ─── HR template stubs (2026-05-30) — signature packets ─────────────
+      // DBX Sign template IDs are not yet provisioned in the SOCIII Dropbox
+      // Sign account. signatureService.sendSignaturePacket will fail with
+      // "no template configured" until these are uploaded + their template
+      // IDs are wired into signatureService role configs. The template
+      // metadata + endpoint surface ships now so the composer + obligation
+      // card paths are ready when the legal copy is finalized.
+      employment_agreement: {
+        label: "Employment Agreement (stub — DBX template TBD)",
+        subject: "SOCIII Employment Agreement — ready for your signature",
+        composerVisible: false,
+        bodyHtml: () => "(sent via DBX Sign — this body is unused)",
+        signaturePacket: true,
+        signatureRole: "employee",
+        stub: true,
+      },
+      independent_contractor_agreement: {
+        label: "Independent Contractor Agreement (stub — DBX template TBD)",
+        subject: "SOCIII Independent Contractor Agreement — ready for your signature",
+        composerVisible: false,
+        bodyHtml: () => "(sent via DBX Sign — this body is unused)",
+        signaturePacket: true,
+        signatureRole: "contractor",
+        stub: true,
+      },
+      // ─── HR template stubs (2026-05-30) — formal email notices ─────────
+      // No DBX Sign packet; structured prose for the recipient + countersign
+      // expectations. Legal copy is placeholder until reviewed by counsel.
+      performance_improvement: {
+        label: "Performance Improvement Plan (stub)",
+        subject: "Performance Improvement Plan — review + acknowledge",
+        composerVisible: true,
+        stub: true,
+        bodyHtml: (vars) => `
+<p>${vars.name || "Team member"},</p>
+<p>This message formalizes a Performance Improvement Plan (PIP) covering the next ${vars.durationWeeks || 4} weeks. The goals, support resources, and check-in cadence are summarized below.</p>
+<p><strong>Areas of focus:</strong></p>
+<ul><li>${vars.focusArea1 || "[Focus area 1 — measurable]"}</li><li>${vars.focusArea2 || "[Focus area 2 — measurable]"}</li></ul>
+<p><strong>Support:</strong> Weekly 1:1 check-ins, manager support, and access to internal resources as noted in your workspace.</p>
+<p><strong>Acknowledgment:</strong> Please reply confirming receipt within 3 business days. Your workspace will surface the structured plan and check-in dates.</p>
+<p>This is intended as a constructive framework; we're invested in your success. Reach out directly with any questions.</p>
+<p>— SOCIII People</p>
+<p style="font-size:11px;color:#94a3b8;margin-top:24px">STUB TEMPLATE — counsel review pending before live use.</p>
+`,
+      },
+      termination_notice: {
+        label: "Termination notice (stub)",
+        subject: "Notice of separation — SOCIII",
+        composerVisible: true,
+        stub: true,
+        bodyHtml: (vars) => `
+<p>${vars.name || "Team member"},</p>
+<p>This letter confirms that your employment with SOCIII, Inc. ends effective ${vars.effectiveDate || "[effective date]"}. The basis for this decision was discussed in our meeting on ${vars.discussionDate || "[date]"}.</p>
+<p><strong>Final pay and benefits:</strong> Your final paycheck, including any accrued unused PTO per state law, will be processed per the standard cycle (or accelerated where state law requires). Benefits continuation information (COBRA where applicable) will be sent under separate cover.</p>
+<p><strong>Return of property:</strong> Please return all company property — laptop, badges, access cards, documents — by ${vars.returnDate || "[return date]"}. Workspace and system access will be revoked at end of day on your effective date.</p>
+<p><strong>Ongoing obligations:</strong> Your confidentiality, non-disclosure, and IP assignment obligations under your employment agreement remain in effect.</p>
+<p>If you have questions about anything in this notice, contact people@sociii.ai.</p>
+<p>— SOCIII People</p>
+<p style="font-size:11px;color:#94a3b8;margin-top:24px">STUB TEMPLATE — counsel review pending before live use.</p>
+`,
       },
     };
 
@@ -13147,12 +13256,17 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
     }
 
     // GET /v1/hr:notice-templates — auth required. Same shape as ir variant.
+    // Filters to templates flagged composerVisible: signature packets +
+    // workspace-driven obligations don't surface in the founder composer.
     if (route === "/hr:notice-templates" && method === "GET") {
       const auth = await requireFirebaseUser(req, res);
       if (auth.handled) return;
-      const templates = Object.entries(HR_NOTICE_TEMPLATES).map(([id, t]) => ({
-        id, label: t.label, defaultSubject: t.subject,
-      }));
+      const templates = Object.entries(HR_NOTICE_TEMPLATES)
+        .filter(([, t]) => t.composerVisible !== false)
+        .map(([id, t]) => ({
+          id, label: t.label, defaultSubject: t.subject,
+          stub: t.stub || false,
+        }));
       return res.json({ ok: true, templates });
     }
 
@@ -13285,6 +13399,13 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
     }
 
     // POST /v1/hr:send-advisor-invite — cold outreach
+    // Per worker-001 onboarding sequence (deck → ID check → sign), this
+    // endpoint mints a pending advisor record for each recipient via
+    // initiateAdvisorFlow (suppressEmail=true, allowMissingEquity=true so the
+    // founder doesn't have to pre-negotiate terms), then sends the warm
+    // cold-invite copy with the magic link as CTA. Recipients click → land
+    // in their materialized SOCIII workspace via /auth/magic; obligation
+    // cards surface the deck/ID/agreement in order.
     if (route === "/hr:send-advisor-invite" && method === "POST") {
       const auth = await requireFirebaseUser(req, res);
       if (auth.handled) return;
@@ -13292,11 +13413,89 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
         const body = req.body || {};
         const tenantId = body.tenantId;
         if (!tenantId) return jsonError(res, 400, "tenantId required");
-        const result = await _hrSendTemplate({
-          auth, tenantId, templateId: "advisor_cold_invite", body,
+        const allowed = await userCanAdminTenant(auth.user.uid, tenantId);
+        if (!allowed) return jsonError(res, 403, "Not authorized");
+        const recipients = Array.isArray(body.recipients) ? body.recipients : [];
+        if (recipients.length === 0) return jsonError(res, 400, "No recipients");
+        const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY || "";
+        if (!SENDGRID_API_KEY) return jsonError(res, 500, "SENDGRID_API_KEY not configured");
+        const tpl = HR_NOTICE_TEMPLATES.advisor_cold_invite;
+        const subject = body.subject || tpl.subject;
+        const noticeId = "hr_notice_" + crypto.randomUUID().replace(/-/g, "").slice(0, 16);
+        const advisorFlow = require("./services/ir/advisorFlow");
+        const sentResults = [];
+        for (const r of recipients) {
+          if (!r.email) {
+            sentResults.push({ email: null, ok: false, error: "missing email" });
+            continue;
+          }
+          let magicUrl = null;
+          let advisorId = null;
+          try {
+            const init = await advisorFlow.initiateAdvisorFlow({
+              email: r.email,
+              name: r.name || (r.email.split("@")[0]),
+              suppressEmail: true,
+              allowMissingEquity: true,
+              invitedBy: auth.user.uid,
+            });
+            magicUrl = init?.magicLinkUrl || null;
+            advisorId = init?.advisorId || null;
+          } catch (e) {
+            console.warn(`[hr:send-advisor-invite] initiate failed for ${r.email}: ${e.message}`);
+            sentResults.push({ email: r.email, ok: false, error: `initiate failed: ${e.message}` });
+            continue;
+          }
+          const html = tpl.bodyHtml({
+            firstName: r.firstName || (r.name || "").split(" ")[0] || null,
+            name: r.name, email: r.email, magicUrl,
+          });
+          try {
+            const sgRes = await fetch("https://api.sendgrid.com/v3/mail/send", {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${SENDGRID_API_KEY}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                personalizations: [{ to: [{ email: r.email, name: r.name || undefined }] }],
+                from: { email: "sean@sociii.ai", name: "Sean Combs · SOCIII" },
+                reply_to: { email: "sean@sociii.ai", name: "Sean Combs" },
+                subject,
+                content: [{ type: "text/html", value: html }],
+                custom_args: { noticeId, tenantId, templateId: "advisor_cold_invite", advisorId, kind: "hr" },
+                // Click tracking off — SendGrid rewrites the magic link
+                // through url813.sociii.ai which lacks HTTPS and Chrome
+                // warns "Not Secure", breaking the flow for the recipient.
+                tracking_settings: {
+                  click_tracking: { enable: false, enable_text: false },
+                  open_tracking: { enable: true },
+                },
+              }),
+            });
+            sentResults.push({
+              email: r.email, ok: sgRes.ok, status: sgRes.status,
+              advisorId, error: sgRes.ok ? null : await sgRes.text(),
+            });
+          } catch (e) {
+            sentResults.push({ email: r.email, ok: false, error: e.message, advisorId });
+          }
+        }
+        const db = admin.firestore();
+        await db.collection("tenants").doc(tenantId).collection("hr_notices").doc(noticeId).set({
+          noticeId, tenantId, templateId: "advisor_cold_invite", templateLabel: tpl.label, subject,
+          recipients: recipients.map(r => ({ email: r.email, name: r.name || null })),
+          sentResults, sentAt: admin.firestore.FieldValue.serverTimestamp(),
+          sentBy: auth.user.uid, sentByEmail: auth.user.email || null,
+          okCount: sentResults.filter(x => x.ok).length,
+          failCount: sentResults.filter(x => !x.ok).length,
         });
-        if (result.error) return jsonError(res, result.status, result.error);
-        return res.json({ ok: true, ...result });
+        return res.json({
+          ok: true, noticeId,
+          okCount: sentResults.filter(x => x.ok).length,
+          failCount: sentResults.filter(x => !x.ok).length,
+          results: sentResults,
+        });
       } catch (e) {
         console.error("hr:send-advisor-invite failed:", e);
         return jsonError(res, 500, e.message || "Send failed");
@@ -13349,14 +13548,18 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
     }
 
     // GET /v1/ir:notice-templates — public-but-authed catalog.
+    // Filters to composerVisible templates — signature packets (SAFE) fire
+    // from the investor workspace obligation card post-KYC, not founder one-click.
     if (route === "/ir:notice-templates" && method === "GET") {
       const auth = await requireFirebaseUser(req, res);
       if (auth.handled) return;
-      const templates = Object.entries(IR_NOTICE_TEMPLATES).map(([id, t]) => ({
-        id,
-        label: t.label,
-        defaultSubject: t.subject,
-      }));
+      const templates = Object.entries(IR_NOTICE_TEMPLATES)
+        .filter(([, t]) => t.composerVisible !== false)
+        .map(([id, t]) => ({
+          id,
+          label: t.label,
+          defaultSubject: t.subject,
+        }));
       return res.json({ ok: true, templates });
     }
 
