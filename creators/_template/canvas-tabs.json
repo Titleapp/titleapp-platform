@@ -1,0 +1,47 @@
+{
+  "workerSlug": "your-worker-slug",
+  "version": "0.1.0",
+  "canvasTabs": [
+    {
+      "id": "main",
+      "label": "Main",
+      "signal": "card:work-product",
+      "order": 1,
+      "default": true,
+      "view": "operator",
+      "description": "The primary work surface — what users see when they open the worker"
+    },
+    {
+      "id": "activity",
+      "label": "Activity",
+      "signal": "card:work-product",
+      "order": 2,
+      "view": "operator",
+      "description": "Recent activity, pending items, things to do"
+    },
+    {
+      "id": "audit",
+      "label": "Audit Trail",
+      "signal": "card:work-product",
+      "order": 3,
+      "view": "admin",
+      "description": "Every action timestamped, identity-verified, chain-anchored where applicable"
+    },
+    {
+      "id": "settings",
+      "label": "Settings",
+      "signal": "card:work-product",
+      "order": 4,
+      "view": "admin",
+      "description": "Admin-only configuration"
+    }
+  ],
+  "_notes": {
+    "ids_are_stable": "Tab ids are referenced by service.js and sample-data.js. Don't rename after first merge.",
+    "default_required": "Exactly one tab must be default:true. It auto-opens on the user's second visit.",
+    "signal_almost_always": "Use 'card:work-product' for almost all tabs. Other signals exist for specialized tabs — ask in review.",
+    "view_types": "operator (default), admin (gated), member (end-user), instructor (domain-specific)",
+    "min_tabs": 3,
+    "max_tabs": 7
+  }
+}

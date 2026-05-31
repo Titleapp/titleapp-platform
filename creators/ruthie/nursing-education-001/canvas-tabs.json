@@ -1,0 +1,79 @@
+{
+  "workerSlug": "nursing-education-001",
+  "version": "0.1.0",
+  "canvasTabs": [
+    {
+      "id": "students",
+      "label": "Students",
+      "signal": "card:work-product",
+      "order": 1,
+      "default": true,
+      "view": "instructor",
+      "description": "Students across all cohorts I teach — their progress at a glance"
+    },
+    {
+      "id": "journey",
+      "label": "Student Journey",
+      "signal": "card:work-product",
+      "order": 2,
+      "view": "instructor",
+      "description": "Longitudinal timeline for a single student — every reflection, SLO observation, and grade across all courses they've taken"
+    },
+    {
+      "id": "cohorts",
+      "label": "Cohorts",
+      "signal": "card:work-product",
+      "order": 3,
+      "view": "admin",
+      "description": "Program-wide view across all active cohorts (ASN20, Faculty Playground, etc.)"
+    },
+    {
+      "id": "reflections",
+      "label": "Reflections",
+      "signal": "card:work-product",
+      "order": 4,
+      "view": "instructor",
+      "description": "Inbox of reflections to grade, rendered in Tanner clinical judgment framework"
+    },
+    {
+      "id": "slos",
+      "label": "SLOs",
+      "signal": "card:work-product",
+      "order": 5,
+      "view": "admin",
+      "description": "Rubric library: SLOs mapped to ANA Standards by course"
+    },
+    {
+      "id": "audit",
+      "label": "Audit Trail",
+      "signal": "card:work-product",
+      "order": 6,
+      "view": "admin",
+      "description": "Every read, grade, lock, unlock attempt — timestamped, identity-verified, chain-anchored"
+    },
+    {
+      "id": "settings",
+      "label": "Settings",
+      "signal": "card:work-product",
+      "order": 7,
+      "view": "admin",
+      "description": "Instructors, sites, courses, branding — admin-only"
+    },
+    {
+      "id": "my-reflections",
+      "label": "My Reflections",
+      "signal": "card:work-product",
+      "order": 8,
+      "view": "student",
+      "description": "Student view: my submitted reflections, what's due, my grades"
+    },
+    {
+      "id": "my-journey",
+      "label": "My Journey",
+      "signal": "card:work-product",
+      "order": 9,
+      "view": "student",
+      "description": "Student view: my longitudinal record across courses I've taken, exportable as a verified transcript"
+    }
+  ]
+}

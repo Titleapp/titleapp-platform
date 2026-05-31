@@ -1,70 +1,112 @@
 # Contributing to SOCIII
 
-Thank you for your interest in the SOCIII platform.
+Welcome. This repo runs on a creator-driven model — anyone with domain expertise can build a Digital Worker and list it in the SOCIII marketplace for 75% revenue share.
 
-This document outlines the contribution flow for code, documentation, and rule-set updates.
-
----
-
-## Current Status
-
-SOCIII is in active pre-launch development with sole-founder contribution (Sean Lee Combs). External contributions are not currently accepted as the platform stabilizes and the open-source licensing strategy is finalized.
-
-When external contributions open (anticipated post-launch, mid-2026), this document will be updated with the full contribution flow.
+The fastest path in: read [`docs/CREATOR-ONBOARDING.md`](docs/CREATOR-ONBOARDING.md). The next 90 minutes get you from fork to first PR.
 
 ---
 
-## For Future External Contributors
+## Two kinds of contributions
 
-### Code Contributions
+### 1. Creator workers — most contributions go here
 
-1. **Fork the repository** at the org level (URL to be published when SOCIII Inc. open-source release is finalized).
-2. **Create a branch** from `main` with a descriptive name (`feature/your-feature`, `fix/bug-description`).
-3. **Develop and test locally** using Firebase emulators (`firebase emulators:start`). See `README.md` for setup.
-4. **Submit a pull request** describing:
-   - What the change does
-   - Why the change is needed
-   - How you tested it
-5. **Code review** will be performed by SOCIII Inc. maintainers.
-6. **Merge** occurs once review is complete and CI passes.
+If you're a domain expert (nursing, real estate, aviation, accounting, legal, education, etc.) and you want to build a worker that solves a problem in your domain:
 
-### Rule-Set Contributions (Tier 2 Vertical Baselines)
+1. **Fork** this repo on GitHub.
+2. **Clone** your fork locally: `git clone https://github.com/<you>/sociii-platform.git`
+3. **Install Claude Code**: `npm install -g @anthropic-ai/claude-code` (then `claude /login`)
+4. **Copy the template**: `cp -r creators/_template creators/<your-handle>/<your-worker-slug>`
+5. **Fill in the five files**:
+   - `intent.md` — what / who / success / what-it's-NOT / why-it-dovetails-with-SOCIII
+   - `canvas-tabs.json` — the tab structure your users see
+   - `service.js` — your worker's exposed functions (pure event proposals)
+   - `sample-data.js` — fixture data for first-visit users
+   - `tests/assertions.md` — QA-001 assertions that must pass before merge
+6. **Open a PR** to upstream `sociii/sociii-platform:main`
 
-The platform's vertical baseline rule sets (real estate, aviation, automotive, securities, healthcare, etc.) are anticipated to be open-source contributions in the medium term. Domain experts in regulated industries will be invited to propose rule updates through a structured review process:
+A maintainer reviews within 48 hours. Most workers ship in 1-2 review rounds.
 
-1. Open an Issue describing the rule update with citations to the underlying regulation
-2. Submit a pull request modifying the appropriate rule definitions in `raas/<vertical>/<jurisdiction>/`
-3. Rule updates are reviewed by SOCIII Inc. for safety and platform-invariant compatibility
-4. Approved updates are versioned and published to the rule registry
+**Full build pattern**: [`docs/CREATOR-WORKER-BUILD.md`](docs/CREATOR-WORKER-BUILD.md)
 
-### Documentation Contributions
+### 2. Platform contributions — narrower scope
 
-Documentation improvements are welcomed once external contribution opens. Documentation lives in:
-- `README.md` — project overview
-- `CLAUDE.md` — architecture conventions
-- `docs/specs/` — design specifications
-- `docs/patents/` — IP family overview
+If you want to contribute to the platform itself — backend API, RAAS rule engine, capability registry, audit trail, payment processing — open an issue describing what you want to work on **before** writing code. The platform layer is intentionally narrow and protected by patents (six provisionals filed 2026-05-24). Most enhancements to platform behavior should land as new capabilities declared in `contracts/capabilities.json` rather than new code paths.
 
 ---
 
-## Code of Conduct
+## What gets reviewed in your PR
 
-All contributors are expected to maintain professional, respectful interaction. Specifics will be published with the open-source release.
+Creator-worker PRs are reviewed against:
 
----
+| Check | Why |
+|---|---|
+| **Worker DoD** (5 files present, complete) | Predictable structure, easier review |
+| **Intent spec clarity** | A non-domain-expert reviewer must understand what your worker does |
+| **No real-money side effects without approval** | Real-money actions go through the capability registry, not inline code |
+| **No secret leaks** | CI blocks PR merge if `process.env.SECRET_KEY` etc. appears in new files |
+| **No PII in code or sample data** | Use anonymized personas in sample data; real PII never in repo |
+| **RAAS compliance** | Your worker's rules layer on platform safety rules (no PII exposure, AI-generation disclosure, etc.) |
+| **QA-001 assertions exercisable** | Your `tests/assertions.md` must contain ≥ 5 testable statements |
 
-## Reporting Security Issues
-
-Please report security vulnerabilities responsibly. Send details to security@sociii.ai (mailbox to be activated with brand cutover) or sean@titleapp.ai during the transition period. Do not file public Issues for security vulnerabilities.
-
----
-
-## Contact
-
-- Product or general questions: hello@titleapp.ai (transitioning to hello@sociii.ai)
-- Engineering: alex@sociii.ai (brand account, monitored)
-- Direct founder contact: sean@titleapp.ai
+Pull requests that touch only `creators/<your-handle>/` get lighter review than PRs that touch root configs, `functions/`, `raas/`, or `contracts/` — those require explicit maintainer approval per `CODEOWNERS`.
 
 ---
 
-*Last updated: 2026-05-22. This document will be substantially expanded when external contributions open.*
+## License + IP
+
+This repo is licensed under **Apache 2.0** (see [LICENSE](LICENSE)).
+
+What this means:
+- **You can fork, modify, redistribute, and use this code commercially.** Including running your own infrastructure with workers based on this SDK.
+- **You retain copyright on the worker code you write** in `creators/<your-handle>/`. When you contribute a worker via PR, you grant SOCIII and downstream users a perpetual license to use, modify, and distribute it under Apache 2.0 (standard for open-source contributions).
+- **You do not get a license to the SOCIII *platform* service** (audit trail engine, payment processing, identity verification, marketplace, capability registry — patent-protected, runs at app.sociii.ai). To list workers on SOCIII or use platform infrastructure, a separate creator agreement applies.
+- **You do not get a license to the SOCIII trademark.** Use the name to accurately describe origin ("based on the SOCIII platform") but not to brand a derivative product as SOCIII.
+
+---
+
+## Earning model (for creator workers listed on SOCIII)
+
+When your worker is merged and live in the marketplace:
+
+- **75% of net revenue to you**, 25% to SOCIII
+- Net = gross minus payment processing fees, refunds, and chargebacks
+- Paid monthly via the payment method on your creator profile
+- 1099 generated automatically at year-end for US creators (via the SOCIII HR worker)
+- Some creators cross into the advisor track (7 max, 0.5%/worker capped at 2.5% per advisor, total 17.5% reserved). That's a separate negotiation.
+
+Full economics: [`docs/CREATOR-EARNINGS.md`](docs/CREATOR-EARNINGS.md) (Sunday-2026-05-31 placeholder; see governance docs)
+
+---
+
+## Code of conduct
+
+Be a good colleague.
+
+- Disagree with the work, not the person.
+- Default to assuming good faith.
+- If a reviewer asks for changes, take them seriously even if you disagree — they're seeing something you might be missing.
+- Conversely, if you're the reviewer, explain *why* you're asking for a change, not just *what* to change.
+- No harassment, no discrimination, no doxxing, no weaponizing the issue tracker.
+
+Violations get a single warning. Repeat violations get banned.
+
+---
+
+## Getting unstuck
+
+| Situation | Where to go |
+|---|---|
+| "How do I do X in the codebase?" | Ask Claude. It has the full codebase context. Most "how does X work" questions resolve in one prompt. |
+| "Is X a good idea for my worker?" | Open a GitHub Discussion at `github.com/sociii/sociii-platform/discussions` |
+| "How do I test this without running prod?" | Firebase emulators: `cd functions && firebase emulators:start` |
+| "I think I found a bug in the platform itself" | Open a GitHub Issue with reproduction steps |
+| "I want feedback on my worker before opening a PR" | Open a draft PR — reviewers will engage |
+| "I want to chat with other creators" | The SOCIII Creators Slack — you get an invite after your first merged PR |
+
+---
+
+## Maintainer
+
+**Sean Lee Combs**, Founder, SOCIII, Inc.
+
+Reach via PR review comments or `github.com/seanlcombs`.

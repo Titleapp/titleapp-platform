@@ -1,11 +1,13 @@
 # UX & Navigation Reference
 
-Canonical reference for how the TitleApp UI is laid out, what each surface is for,
+Canonical reference for how the SOCIII UI is laid out, what each surface is for,
 and how data flows between them. **Source of truth for Alex's prompt** — when
 Alex needs to explain Drive, Vault, Logbook, personas, or the sidebar, the answer
 must come from here. Do not let Alex hallucinate alternative models.
 
-Last updated: CODEX 50.13 Day 2 (2026-05-05).
+Last updated: CODEX S51.43.8 (2026-05-30) — brand cutover SOCIII canonical;
+HR Schedule moved inside the worker canvas (no sidebar sub-nav); workers-
+are-self-contained principle codified.
 
 ---
 
@@ -146,3 +148,74 @@ When users ask Alex about Drive, Vault, or Logbook, Alex must:
 
 The condensed version of this knowledge lives in
 `functions/functions/services/alex/prompts/core.js` under `DATA LAYER`.
+
+---
+
+## Workers are self-contained (2026-05-30)
+
+When a worker has a feature, that feature lives **inside the worker's canvas**, not
+in the sidebar. The sidebar names workers; the worker's canvas tabs do everything
+else. Specifically:
+
+- **HR Schedule lives inside the HR & People worker canvas** as the Schedule tab.
+  There is no longer a sidebar "Scheduling" sub-nav. The Schedule tab renders the
+  live `HRSchedulePanel` (team-member CRUD, time-off chips, IRS form links,
+  Policies & Procedures doc) when the user is the tenant admin.
+- The signal collision between HR canvas tabs (all six share signal
+  `card:work-product`) is disambiguated by `payload.title` — for HR, when the
+  canvas payload title is "Coverage", `<HRSchedulePanel />` is rendered instead
+  of the generic sample card.
+- The dead `case "scheduling"` route in `App.jsx` and the orphan
+  `SPINE_NAV_CANVAS_MAP["scheduling"]` entry in `Sidebar.jsx` were removed in
+  CODEX S51.43.8.
+
+Why: clean UX (no disconnected nav), faster onboarding (everything for a worker
+is reachable from one place), and prepares the marketplace pattern where a
+listed worker has full UI sovereignty inside its canvas.
+
+---
+
+## Open SDK / Closed Platform pattern (decided 2026-05-30)
+
+The codebase has two halves:
+
+- **Open** (Apache 2.0, github.com/sociii) — `creators/`, `packages/sdk/`,
+  `apps/business/src/components/canvas/`, worker authoring docs (`docs/CREATOR-
+  ONBOARDING.md`, `docs/CREATOR-WORKER-BUILD.md`). Devs fork freely and build.
+- **Closed** (proprietary, runs only on app.sociii.ai) — `functions/functions/`
+  (API + audit + payments + identity), `raas/` (rules engine — patented),
+  `contracts/capabilities.json` (capability registry — patented), marketplace
+  infrastructure.
+
+Creators authoring workers in `creators/<their-handle>/<worker-slug>/` follow the
+template at `creators/_template/` (planned). Ruthie Clearwater's
+`creators/ruthie/nursing-education-001/` is the first reference creator worker.
+
+---
+
+## Spine workers (5, every workspace)
+
+All spine workers get a sidebar pin under MY WORKERS. The worker's home renders
+inside the right panel via `WorkerHomeRenderer` (App.jsx). Canvas tabs come from
+the worker's `canvasTabs[]` field.
+
+| Slug                         | Sidebar label    | Has bespoke UI section? |
+|------------------------------|------------------|-------------------------|
+| `platform-accounting`        | Accounting       | Yes — `<Accounting />`           |
+| `platform-hr`                | HR & People      | Yes — Schedule tab → `<HRSchedulePanel />` |
+| `platform-marketing-content` | Marketing & Content | Generic canvas      |
+| `platform-contacts`          | Contacts         | Yes — `<Contacts />` |
+| `platform-control-center-pro`| Control Center Pro | Yes — `<CommandCenter />` |
+
+When adding bespoke UI for a spine worker, branch in `WorkerHomeRenderer` (App.jsx)
+by `worker?.slug` — that's the established pattern.
+
+---
+
+## Current platform truth (digest)
+
+See `functions/functions/services/alex/knowledge/sociii-platform-context.md` for
+the full reference — company status, governance, spine worker details, IR worker
+state, identity + audit infrastructure, patent family, business model, current
+creator work, and design discipline. The digest is embedded in
+`functions/functions/services/alex/prompts/core.js` under `CURRENT PLATFORM STATE`.

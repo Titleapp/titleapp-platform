@@ -10,6 +10,24 @@ This repository contains the SOCIII platform implementation: web application, ba
 
 ---
 
+## Build a Digital Worker. List it. Get paid.
+
+You bring the domain expertise. We bring the platform — tamper-proof audit trail, identity verification, payments, regulatory rule engine, and a customer base.
+
+- **Fork this repo.** Build your worker in `creators/<your-handle>/<worker-slug>/`. Run it on your own infra for free, forever.
+- **List it on SOCIII.** When you're ready, open a PR. After review, your worker is live in the marketplace and you keep **75%** of every dollar it earns. Platform takes 25%.
+- **No infrastructure work required.** Audit logging, payment processing, identity checks, secure storage, FERPA/SOC-friendly architecture, customer acquisition — all handled by the platform layer.
+
+**Want to build one?** Start at [`docs/CREATOR-ONBOARDING.md`](docs/CREATOR-ONBOARDING.md) — fork → install Claude Code → first PR in about 90 minutes.
+
+**Want a reference example?** [`creators/ruthie/nursing-education-001/`](creators/ruthie/nursing-education-001/) — a longitudinal nursing student record built by a CRNA + nursing instructor.
+
+**Want a blank skeleton to copy?** [`creators/_template/`](creators/_template/) — five files, fill in the blanks.
+
+This repository is licensed under **Apache 2.0** (see [LICENSE](LICENSE)). Fork freely, including commercial use. The SOCIII *platform* (audit trail, payments, identity, marketplace) runs as a service at app.sociii.ai and is separately licensed for creators and enterprise self-hosting.
+
+---
+
 ## Architecture
 
 ```

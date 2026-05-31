@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Nursing Education — Sarah K. Journey · SOCIII Preview</title>
+<style>
+  :root {
+    --sociii-purple: #7C3AED;
+    --sociii-green:  #16A34A;
+    --sociii-amber:  #D97706;
+    --sociii-red:    #DC2626;
+    --slate-50:  #f8fafc;
+    --slate-100: #f1f5f9;
+    --slate-200: #e2e8f0;
+    --slate-300: #cbd5e1;
+    --slate-400: #94a3b8;
+    --slate-500: #64748b;
+    --slate-600: #475569;
+    --slate-700: #334155;
+    --slate-800: #1e293b;
+    --slate-900: #0f172a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: var(--slate-50);
+    color: var(--slate-900);
+    line-height: 1.55;
+    font-size: 14px;
+  }
+  .app {
+    max-width: 1280px;
+    margin: 0 auto;
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    grid-template-rows: 56px 1fr;
+    background: #fff;
+  }
+  /* Top bar */
+  .topbar {
+    grid-column: 1 / -1;
+    background: var(--slate-900);
+    color: #fff;
+    display: flex; align-items: center; padding: 0 20px;
+    gap: 16px;
+    border-bottom: 1px solid var(--slate-700);
+  }
+  .topbar .brand {
+    display: flex; align-items: center; gap: 10px;
+    font-weight: 700; letter-spacing: 0.02em;
+  }
+  .topbar .brand .dot { width: 22px; height: 22px; border-radius: 5px; background: var(--sociii-purple); display: inline-block; }
+  .topbar .breadcrumb {
+    color: var(--slate-400);
+    font-size: 13px;
+    margin-left: 8px;
+  }
+  .topbar .breadcrumb b { color: #fff; font-weight: 500; }
+  .topbar .spacer { flex: 1; }
+  .topbar .preview-chip {
+    background: var(--sociii-amber);
+    color: #fff;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  /* Left sidebar */
+  .sidebar {
+    background: var(--slate-100);
+    border-right: 1px solid var(--slate-200);
+    padding: 20px 0;
+  }
+  .sidebar .section-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--slate-500);
+    padding: 0 20px;
+    margin-bottom: 8px;
+    margin-top: 16px;
+  }
+  .sidebar .nav-item {
+    padding: 7px 20px;
+    color: var(--slate-700);
+    font-size: 13px;
+    cursor: pointer;
+    border-left: 3px solid transparent;
+  }
+  .sidebar .nav-item.active {
+    background: #fff;
+    color: var(--slate-900);
+    border-left-color: var(--sociii-purple);
+    font-weight: 600;
+  }
+  .sidebar .nav-item:hover { background: rgba(124, 58, 237, 0.04); }
+  /* Main */
+  .main {
+    padding: 0;
+    display: flex; flex-direction: column;
+    min-width: 0;
+  }
+  /* Worker canvas tabs */
+  .canvas-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--slate-200);
+    padding: 0 28px;
+    background: #fff;
+    flex-shrink: 0;
+  }
+  .canvas-tab {
+    padding: 14px 16px;
+    font-size: 13px;
+    color: var(--slate-500);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    font-weight: 500;
+  }
+  .canvas-tab.active {
+    color: var(--slate-900);
+    border-bottom-color: var(--sociii-purple);
+    font-weight: 700;
+  }
+  /* Page content */
+  .page {
+    padding: 28px 32px;
+    overflow-y: auto;
+    flex: 1;
+  }
+  .page h1 {
+    font-size: 22px; font-weight: 700; margin: 0 0 6px;
+    letter-spacing: -0.01em;
+  }
+  .page .subtitle {
+    color: var(--slate-500);
+    font-size: 13px;
+    margin-bottom: 20px;
+  }
+  /* Student header card */
+  .student-card {
+    background: #fff;
+    border: 1px solid var(--slate-200);
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin-bottom: 24px;
+    display: grid;
+    grid-template-columns: 60px 1fr auto;
+    gap: 16px;
+    align-items: center;
+  }
+  .student-card .avatar {
+    width: 60px; height: 60px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--sociii-purple), #5B21B6);
+    color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700;
+    font-size: 22px;
+  }
+  .student-card .name { font-size: 18px; font-weight: 700; margin-bottom: 3px; }
+  .student-card .meta { font-size: 13px; color: var(--slate-500); }
+  .student-card .meta b { color: var(--slate-700); font-weight: 600; }
+  .student-card .actions {
+    display: flex; flex-direction: column; gap: 6px;
+    font-size: 12px; text-align: right;
+  }
+  .student-card .actions .pill {
+    background: rgba(22, 163, 74, 0.1);
+    color: var(--sociii-green);
+    padding: 3px 10px;
+    border-radius: 4px;
+    font-weight: 600;
+  }
+  .student-card .actions .export {
+    color: var(--sociii-purple);
+    cursor: pointer;
+    font-weight: 600;
+  }
+  /* Course swim lanes */
+  .courses-row {
+    display: flex; gap: 8px;
+    margin-bottom: 24px;
+    overflow-x: auto;
+  }
+  .course-chip {
+    padding: 6px 12px;
+    border-radius: 6px;
+    background: var(--slate-100);
+    color: var(--slate-600);
+    font-size: 12px;
+    font-weight: 600;
+    border: 1px solid var(--slate-200);
+    flex-shrink: 0;
+  }
+  .course-chip.current {
+    background: rgba(124, 58, 237, 0.1);
+    color: var(--sociii-purple);
+    border-color: var(--sociii-purple);
+  }
+  .course-chip .arrow { margin-left: 8px; color: var(--slate-400); }
+  /* Timeline */
+  .timeline {
+    position: relative;
+    padding-left: 32px;
+    margin-top: 8px;
+  }
+  .timeline::before {
+    content: "";
+    position: absolute;
+    left: 11px; top: 0; bottom: 0;
+    width: 2px;
+    background: var(--slate-200);
+  }
+  .event {
+    position: relative;
+    margin-bottom: 18px;
+    background: #fff;
+    border: 1px solid var(--slate-200);
+    border-radius: 8px;
+    padding: 14px 18px;
+  }
+  .event::before {
+    content: "";
+    position: absolute;
+    left: -27px; top: 16px;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: #fff;
+    border: 3px solid var(--slate-400);
+  }
+  .event.reflection::before { border-color: var(--sociii-purple); }
+  .event.observed::before    { border-color: var(--sociii-green); }
+  .event.locked::before      { border-color: var(--sociii-amber); background: var(--sociii-amber); }
+  .event-header {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 11px;
+    color: var(--slate-500);
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 600;
+  }
+  .event-header .date { color: var(--slate-700); }
+  .event-header .course-tag {
+    background: var(--slate-100);
+    color: var(--slate-600);
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-weight: 700;
+  }
+  .event-header .type-pill {
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 700;
+  }
+  .event.reflection .type-pill { background: rgba(124, 58, 237, 0.1); color: var(--sociii-purple); }
+  .event.observed .type-pill    { background: rgba(22, 163, 74, 0.1); color: var(--sociii-green); }
+  .event.locked .type-pill      { background: rgba(217, 119, 6, 0.1); color: var(--sociii-amber); }
+  .event-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--slate-900);
+    margin-bottom: 4px;
+  }
+  .event-body {
+    font-size: 13px;
+    color: var(--slate-600);
+  }
+  .event-meta {
+    margin-top: 8px;
+    display: flex; gap: 14px;
+    font-size: 12px;
+    color: var(--slate-500);
+  }
+  .event-meta .field b { color: var(--slate-700); font-weight: 600; }
+  .score {
+    display: inline-block;
+    padding: 1px 7px;
+    background: var(--slate-100);
+    border-radius: 4px;
+    font-weight: 700;
+    color: var(--slate-700);
+  }
+  .score.s2 { background: rgba(220, 38, 38, 0.08); color: var(--sociii-red); }
+  .score.s3 { background: rgba(217, 119, 6, 0.1); color: var(--sociii-amber); }
+  .score.s4 { background: rgba(22, 163, 74, 0.1); color: var(--sociii-green); }
+  .score.s5 { background: rgba(124, 58, 237, 0.1); color: var(--sociii-purple); }
+  /* Right side rail */
+  .right-rail {
+    background: var(--slate-50);
+    border-left: 1px solid var(--slate-200);
+    padding: 24px;
+    min-width: 260px;
+  }
+  .right-rail h3 {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--slate-500);
+    margin: 0 0 10px;
+    font-weight: 700;
+  }
+  .right-rail .stat {
+    background: #fff;
+    border: 1px solid var(--slate-200);
+    border-radius: 8px;
+    padding: 14px;
+    margin-bottom: 10px;
+  }
+  .right-rail .stat .label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--slate-500);
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+  .right-rail .stat .value { font-size: 20px; font-weight: 700; }
+  .right-rail .stat .value small { font-size: 12px; color: var(--slate-500); font-weight: 500; }
+  /* Footer note */
+  .footer-note {
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px dashed var(--slate-300);
+    font-size: 12px;
+    color: var(--slate-500);
+    line-height: 1.6;
+  }
+  .footer-note b { color: var(--slate-700); }
+  /* Main grid with right rail */
+  .main-grid {
+    display: grid;
+    grid-template-columns: 1fr 300px;
+    gap: 0;
+    min-height: 0;
+    flex: 1;
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="topbar">
+    <div class="brand"><span class="dot"></span> SOCIII</div>
+    <div class="breadcrumb">app.sociii.ai · <b>Clearwater Nursing Education</b> · Nursing Education Worker</div>
+    <div class="spacer"></div>
+    <div class="preview-chip">Preview · Not Live</div>
+  </div>
+
+  <div class="sidebar">
+    <div class="section-label">Workspace</div>
+    <div class="nav-item">My Drive</div>
+    <div class="nav-item">My Vault</div>
+    <div class="nav-item">Marketplace</div>
+    <div class="section-label">My Workers</div>
+    <div class="nav-item">Alex</div>
+    <div class="nav-item active">Nursing Education</div>
+    <div class="nav-item">Accounting</div>
+    <div class="nav-item">Contacts</div>
+    <div class="section-label">Account</div>
+    <div class="nav-item">Settings</div>
+  </div>
+
+  <div class="main">
+    <div class="canvas-tabs">
+      <div class="canvas-tab">Students</div>
+      <div class="canvas-tab active">Student Journey</div>
+      <div class="canvas-tab">Cohorts</div>
+      <div class="canvas-tab">Reflections</div>
+      <div class="canvas-tab">SLOs</div>
+      <div class="canvas-tab">Audit Trail</div>
+      <div class="canvas-tab">Settings</div>
+    </div>
+
+    <div class="main-grid">
+      <div class="page">
+        <h1>Sarah K. — longitudinal journey</h1>
+        <div class="subtitle">8 months · NURS 210 → NURS 220 → NURS 230 · ASN20 cohort</div>
+
+        <div class="student-card">
+          <div class="avatar">SK</div>
+          <div>
+            <div class="name">Sarah K.</div>
+            <div class="meta">
+              ASN20 · <b>Currently:</b> NURS 230 Clinical Immersion I ·
+              <b>Enrolled:</b> Aug 26, 2025 ·
+              <b>Identity verified</b> via Stripe Identity
+            </div>
+          </div>
+          <div class="actions">
+            <span class="pill">On Track</span>
+            <span class="export">Export FERPA record ↗</span>
+          </div>
+        </div>
+
+        <div class="courses-row">
+          <span class="course-chip">NURS 210 · Locked B+ <span class="arrow">→</span></span>
+          <span class="course-chip">NURS 220 · Locked A- <span class="arrow">→</span></span>
+          <span class="course-chip current">NURS 230 · in progress</span>
+        </div>
+
+        <div class="timeline">
+
+          <div class="event reflection">
+            <div class="event-header">
+              <span class="date">Sep 4, 2025</span>
+              <span class="course-tag">NURS 210</span>
+              <span class="type-pill">Reflection</span>
+            </div>
+            <div class="event-title">First LTC shift — patient with mid-stage dementia</div>
+            <div class="event-body">Tanner framework reflection (Noticing → Interpreting → Responding → Reflecting). Submitted on time.</div>
+            <div class="event-meta">
+              <span class="field"><b>SLO:</b> 7.0 Client Care</span>
+              <span class="field"><b>Site:</b> Hale Makua (LTC)</span>
+            </div>
+          </div>
+
+          <div class="event reflection">
+            <div class="event-header">
+              <span class="date">Sep 11, 2025</span>
+              <span class="course-tag">NURS 210</span>
+              <span class="type-pill">Reflection</span>
+            </div>
+            <div class="event-title">Therapeutic communication with non-verbal patient</div>
+            <div class="event-meta">
+              <span class="field"><b>SLO:</b> 8.0 Communication</span>
+              <span class="field"><b>Site:</b> Hale Makua (LTC)</span>
+            </div>
+          </div>
+
+          <div class="event observed">
+            <div class="event-header">
+              <span class="date">Sep 18, 2025</span>
+              <span class="course-tag">NURS 210</span>
+              <span class="type-pill">SLO Observed</span>
+            </div>
+            <div class="event-title">SLO 7.0 Client Care — observed at clinical</div>
+            <div class="event-body">"Competent — task completion solid; building confidence with families."</div>
+            <div class="event-meta">
+              <span class="field"><b>Score:</b> <span class="score s3">3 · Competent</span></span>
+              <span class="field"><b>Instructor:</b> Dr. Wendy Dahmen</span>
+              <span class="field"><b>Site:</b> Hale Makua</span>
+            </div>
+          </div>
+
+          <div class="event reflection">
+            <div class="event-header">
+              <span class="date">Oct 23, 2025</span>
+              <span class="course-tag">NURS 210</span>
+              <span class="type-pill">Reflection</span>
+            </div>
+            <div class="event-title">Resource access for uninsured family</div>
+            <div class="event-meta">
+              <span class="field"><b>SLO:</b> 6.0 Resources</span>
+              <span class="field"><b>Site:</b> Kula Hospital (LTC)</span>
+            </div>
+          </div>
+
+          <div class="event locked">
+            <div class="event-header">
+              <span class="date">Dec 4, 2025</span>
+              <span class="course-tag">NURS 210</span>
+              <span class="type-pill">Grade Locked · Chain-Anchored</span>
+            </div>
+            <div class="event-title">NURS 210 final grade: B+</div>
+            <div class="event-body">"Locked end-of-semester; consistent reflective practice."</div>
+            <div class="event-meta">
+              <span class="field"><b>Locked by:</b> Dr. Wendy Dahmen (verified)</span>
+              <span class="field"><b>Chain anchor:</b> 0x4f2e…a1b3 ✓ on Base</span>
+              <span class="field"><b>Immutable.</b></span>
+            </div>
+          </div>
+
+          <div class="event reflection">
+            <div class="event-header">
+              <span class="date">Jan 22, 2026</span>
+              <span class="course-tag">NURS 220</span>
+              <span class="type-pill">Reflection</span>
+            </div>
+            <div class="event-title">Ethical dilemma — patient refusing pain medication</div>
+            <div class="event-meta">
+              <span class="field"><b>SLO:</b> 1.0 Ethics</span>
+              <span class="field"><b>Site:</b> Medical-Surgical</span>
+            </div>
+          </div>
+
+          <div class="event observed">
+            <div class="event-header">
+              <span class="date">Feb 5, 2026</span>
+              <span class="course-tag">NURS 220</span>
+              <span class="type-pill">SLO Observed</span>
+            </div>
+            <div class="event-title">SLO 1.0 Ethics — observed during patient case</div>
+            <div class="event-body">"Proficient — strong ethical reasoning; pushed back appropriately on team decision."</div>
+            <div class="event-meta">
+              <span class="field"><b>Score:</b> <span class="score s4">4 · Proficient</span></span>
+              <span class="field"><b>Instructor:</b> Dr. Ruthie Clearwater</span>
+            </div>
+          </div>
+
+          <div class="event observed">
+            <div class="event-header">
+              <span class="date">Mar 12, 2026</span>
+              <span class="course-tag">NURS 220</span>
+              <span class="type-pill">SLO Observed</span>
+            </div>
+            <div class="event-title">SLO 4.0 Leadership — Simulation lab</div>
+            <div class="event-body">"Beginner — hesitant to delegate; works through it with debrief."</div>
+            <div class="event-meta">
+              <span class="field"><b>Score:</b> <span class="score s2">2 · Beginner</span></span>
+              <span class="field"><b>Instructor:</b> Dr. Ruthie Clearwater</span>
+              <span class="field"><b>Site:</b> Simulation</span>
+            </div>
+          </div>
+
+          <div class="event observed">
+            <div class="event-header">
+              <span class="date">Apr 9, 2026</span>
+              <span class="course-tag">NURS 220</span>
+              <span class="type-pill">SLO Observed</span>
+            </div>
+            <div class="event-title">SLO 4.0 Leadership — growth from beginner to competent</div>
+            <div class="event-body">"Delegated wound care to LPN appropriately, followed up. Clear growth from March observation."</div>
+            <div class="event-meta">
+              <span class="field"><b>Score:</b> <span class="score s3">3 · Competent</span></span>
+              <span class="field"><b>Instructor:</b> Dr. Ruthie Clearwater</span>
+              <span class="field"><b>Site:</b> Medical-Surgical</span>
+            </div>
+          </div>
+
+          <div class="event locked">
+            <div class="event-header">
+              <span class="date">May 15, 2026</span>
+              <span class="course-tag">NURS 220</span>
+              <span class="type-pill">Grade Locked · Chain-Anchored</span>
+            </div>
+            <div class="event-title">NURS 220 final grade: A-</div>
+            <div class="event-body">"Strong growth across leadership and judgment. Locked end-of-semester."</div>
+            <div class="event-meta">
+              <span class="field"><b>Locked by:</b> Dr. Ruthie Clearwater (verified)</span>
+              <span class="field"><b>Chain anchor:</b> 0x7a3f…e91c ✓ on Base</span>
+              <span class="field"><b>Immutable.</b></span>
+            </div>
+          </div>
+
+          <div class="event reflection">
+            <div class="event-header">
+              <span class="date">May 28, 2026</span>
+              <span class="course-tag">NURS 230</span>
+              <span class="type-pill">Reflection</span>
+            </div>
+            <div class="event-title">Triage decision-making in fast-paced ER environment</div>
+            <div class="event-body">First clinical-immersion reflection — applying Tanner framework to acute care environment.</div>
+            <div class="event-meta">
+              <span class="field"><b>SLO:</b> 9.0 Judgment</span>
+              <span class="field"><b>Site:</b> Clinical</span>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="footer-note">
+          <b>Why this view matters:</b> Every event on this timeline is an append-only record. Locked grades are anchored to a public blockchain — even Dr. Clearwater cannot modify them after lock. Sarah can export her full record at any time as a FERPA-portable transcript a future employer or licensing board can verify independently. The instructor never has to wonder "is this the right doc?" — there's one record per student that follows them from Day 1 to graduation.
+        </div>
+
+      </div>
+
+      <div class="right-rail">
+        <h3>Sarah at a Glance</h3>
+
+        <div class="stat">
+          <div class="label">Reflections submitted</div>
+          <div class="value">12 <small>across 3 courses</small></div>
+        </div>
+        <div class="stat">
+          <div class="label">SLOs observed</div>
+          <div class="value">8 <small>of 27 program total</small></div>
+        </div>
+        <div class="stat">
+          <div class="label">Average score (most recent SLO)</div>
+          <div class="value">3.2 <small>Competent</small></div>
+        </div>
+        <div class="stat">
+          <div class="label">Grades locked</div>
+          <div class="value">2 <small>both chain-anchored</small></div>
+        </div>
+
+        <h3 style="margin-top: 28px;">Ask Alex</h3>
+        <div class="stat" style="background: rgba(124, 58, 237, 0.05); border-color: rgba(124, 58, 237, 0.2);">
+          <div style="font-size: 13px; color: var(--slate-700); margin-bottom: 8px;">
+            <i>"Where does Sarah need extra support this semester?"</i>
+          </div>
+          <div style="font-size: 12px; color: var(--slate-600); line-height: 1.6;">
+            Sarah's Leadership scores (SLO 4) show real growth — beginner in March, competent by April. Continue scaffolding delegation scenarios in NURS 230. Her judgment reflections in the ER suggest she's ready for more autonomy; consider pairing her with a 4th-year student on her next shift.
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
