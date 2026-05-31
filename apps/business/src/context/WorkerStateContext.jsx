@@ -41,6 +41,40 @@ export function WorkerStateProvider({ children }) {
       // current Cloudflare frontdoor) and gives us all fields including the
       // canvasTabs array used by the right-panel tab bar.
       const snap = await getDoc(doc(db, "digitalWorkers", slug));
+
+      // Creator-worker fallback (S51.43.9): some creator workers are wired
+      // into the platform via slug-routed React panels (App.jsx WorkerHomeRenderer)
+      // before they have a digitalWorkers/{slug} catalog entry. Synthesize a
+      // minimal worker object so workerState transitions to "arrival" and the
+      // panel renders. Sunday: real Firestore catalog write will replace this.
+      const CREATOR_WORKER_FALLBACKS = {
+        "nursing-education-001": {
+          slug: "nursing-education-001",
+          workerId: "nursing-education-001",
+          name: "Nursing Education",
+          shortDescription: "Longitudinal student record for nursing programs — competency + professionalism + attendance + clinical incidents, in one tamper-proof place.",
+          vertical: "Education",
+          suite: "Education",
+          status: "live",
+          workerType: "worker",
+          canvasTabs: [],
+          catalogId: "nursing-education-001",
+          tagline: "Follow each student from day 1 to graduation",
+          whatYoullHave: "",
+          quickStartPrompts: [],
+          activeSubstrateFeatures: [],
+        },
+      };
+
+      if (!snap.exists() && CREATOR_WORKER_FALLBACKS[slug]) {
+        const worker = CREATOR_WORKER_FALLBACKS[slug];
+        setActiveWorkerData((prev) => prev && prev.slug === slug ? { ...worker, name: prev.name || worker.name } : worker);
+        setWorkerReady(true);
+        setWorkerState("arrival");
+        if (wasPreviousWorker) setTimeout(() => setIsTransitioning(false), 150);
+        return;
+      }
+
       if (snap.exists()) {
         const d = snap.data();
         const lp = d.workspaceLaunchPage || {};

@@ -1,6 +1,18 @@
 import React, { useState, useMemo } from "react";
 import NURSING_DATA from "../data/nursingEducationData.json";
 
+// P1 fix (QA-001): real clinical site names per student instead of abstract types
+const STUDENT_SITE_LOOKUP = {
+  "stu_sarah":   "Clinical (ER)",
+  "stu_maya":    "Medical-Surgical",
+  "stu_james":   "Medical-Surgical",
+  "stu_aaron":   "MMMG",
+  "stu_priya":   "Simulation",
+  "stu_emi":     "Clinical (ER)",
+  "stu_kainoa":  "Peds MCE 1",
+  "stu_leilani": "Hospice",
+};
+
 /**
  * NursingEducationPanel — renders Ruthie Clearwater's nursing-education-001
  * worker against her real Master Config Sheet data.
@@ -77,12 +89,28 @@ const EVENT_TYPE_STYLE = {
   "grade.locked":             { dot: "#D97706", pillBg: "rgba(217, 119, 6, 0.1)",  pillColor: "#D97706", label: "Grade Locked · Chain-Anchored" },
 };
 
+function avgScore(entries) {
+  const scored = entries.filter(e => typeof e.score === "number");
+  if (scored.length === 0) return null;
+  const sum = scored.reduce((a, e) => a + e.score, 0);
+  return (sum / scored.length).toFixed(1);
+}
+
 function StudentList({ data, onPickStudent }) {
   const students = data.students || [];
+  const allEntries = data.logbookEntries || [];
+  const pendingReflections = allEntries.filter(e => e.type === "reflection.submitted").length;
+  const lockedGrades = allEntries.filter(e => e.type === "grade.locked").length;
+  const studentEntries = useMemo(() => {
+    const map = {};
+    for (const s of students) map[s.studentId] = allEntries.filter(e => e.studentId === s.studentId);
+    return map;
+  }, [students, allEntries]);
+
   return (
     <div>
       <div style={S.demoBanner}>
-        <b>Demo data:</b> 8 sample students bootstrap the cohort. To enroll real students, use <em>Invite Student</em> (Sunday — mirrors the advisor/investor flow shipped today: invite → Stripe Identity KYC → educational-record DTC minted in student's personal Vault → entitled membership to Clearwater Nursing).
+        <b>Demo data:</b> 8 sample students bootstrap the cohort. To enroll real students, use <em>+ Invite Student</em> (Sunday wire — mirrors advisor/investor flow shipped today: invite → Stripe Identity KYC → educational-record DTC minted in student's personal Vault → entitled membership to Clearwater Nursing).
       </div>
 
       <div style={S.statsRow}>
@@ -95,12 +123,12 @@ function StudentList({ data, onPickStudent }) {
           <div style={{ ...S.statV, ...S.statVwarn }}>{students.filter(s => s.flag).length}</div>
         </div>
         <div style={S.statCard}>
-          <div style={S.statK}>Reflections to grade</div>
-          <div style={S.statV}>4 <span style={S.statSm}>oldest: 12 days</span></div>
+          <div style={S.statK}>Reflections submitted</div>
+          <div style={S.statV}>{pendingReflections}</div>
         </div>
         <div style={S.statCard}>
-          <div style={S.statK}>Locked this term</div>
-          <div style={S.statV}>2 <span style={S.statSm}>chain-anchored</span></div>
+          <div style={S.statK}>Grades locked</div>
+          <div style={S.statV}>{lockedGrades} <span style={S.statSm}>chain-anchored</span></div>
         </div>
       </div>
 
@@ -112,6 +140,9 @@ function StudentList({ data, onPickStudent }) {
         {students.map(s => {
           const isFlag = !!s.flag;
           const rowStyle = isFlag ? { ...S.studentRow, ...S.studentRowFlag } : S.studentRow;
+          const entries = studentEntries[s.studentId] || [];
+          const score = avgScore(entries);
+          const hasJourney = entries.length > 0;
           return (
             <div key={s.studentId} style={rowStyle} onClick={() => onPickStudent(s.studentId)}>
               <div style={{ ...S.avatar, background: s.colorAccent }}>{s.initials}</div>
@@ -122,8 +153,8 @@ function StudentList({ data, onPickStudent }) {
               <div>
                 <span style={{ ...S.pill, ...(s.progressStatus === "On track" ? S.pillGood : S.pillWarn) }}>{s.progressStatus}</span>
               </div>
-              <div style={{ fontWeight: 700, fontSize: 13 }}>{s.flag ? "—" : "3.2"}</div>
-              <div style={{ fontSize: 11, color: "#64748b" }}>{s.note || s.flag || "Steady progress"}</div>
+              <div style={{ fontWeight: 700, fontSize: 13 }}>{score || "—"}</div>
+              <div style={{ fontSize: 11, color: "#64748b" }}>{s.note || s.flag || (hasJourney ? `${entries.length} events` : "Newly enrolled — no events yet")}</div>
               <div style={{ color: "#cbd5e1", fontWeight: 700 }}>›</div>
             </div>
           );
@@ -135,21 +166,26 @@ function StudentList({ data, onPickStudent }) {
 
 function StudentJourney({ data, studentId, onBack }) {
   const student = (data.students || []).find(s => s.studentId === studentId);
-  const entries = (data.logbookEntries || []).filter(e => e.studentId === studentId).sort((a, b) => (a.date > b.date ? 1 : -1));
+  const entries = useMemo(() => {
+    return (data.logbookEntries || [])
+      .filter(e => e.studentId === studentId)
+      .sort((a, b) => (a.date > b.date ? 1 : -1));
+  }, [data, studentId]);
+
+  // P0-2 fix (QA-001): useMemo MUST be called before any conditional return —
+  // React hook rules. Counts memoized regardless of student lookup result.
+  const dimensions = useMemo(() => ({
+    sloCount: entries.filter(e => e.type === "slo.observed").length,
+    reflCount: entries.filter(e => e.type === "reflection.submitted").length,
+    profCount: entries.filter(e => e.type === "professionalism.observed").length,
+    attendCount: entries.filter(e => e.type === "attendance.recorded").length,
+    incidentCount: entries.filter(e => e.type === "incident.recorded").length,
+    lockedCount: entries.filter(e => e.type === "grade.locked").length,
+  }), [entries]);
 
   if (!student) {
     return <div style={S.wrap}>Student not found. <button onClick={onBack}>← Back</button></div>;
   }
-
-  const dimensions = useMemo(() => {
-    const sloCount = entries.filter(e => e.type === "slo.observed").length;
-    const reflCount = entries.filter(e => e.type === "reflection.submitted").length;
-    const profCount = entries.filter(e => e.type === "professionalism.observed").length;
-    const attendCount = entries.filter(e => e.type === "attendance.recorded").length;
-    const incidentCount = entries.filter(e => e.type === "incident.recorded").length;
-    const lockedCount = entries.filter(e => e.type === "grade.locked").length;
-    return { sloCount, reflCount, profCount, attendCount, incidentCount, lockedCount };
-  }, [entries]);
 
   function fmtDate(iso) {
     return new Date(iso + "T00:00:00Z").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
@@ -182,6 +218,17 @@ function StudentJourney({ data, studentId, onBack }) {
           <div style={S.statV}>{dimensions.incidentCount}/{dimensions.attendCount}</div>
         </div>
       </div>
+
+      {entries.length === 0 && (
+        <div style={{ padding: "32px 24px", background: "#fff", border: "1px dashed #cbd5e1", borderRadius: 10, textAlign: "center" }}>
+          <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 6, color: "#334155" }}>
+            No events recorded yet
+          </div>
+          <div style={{ fontSize: 13, color: "#64748b", maxWidth: 480, margin: "0 auto" }}>
+            {student.displayName} is newly enrolled. Their academic record DTC has been minted to their personal Vault but no clinical reflections, SLO observations, or attendance events have been recorded yet. Start a reflection from chat, or record an attendance event from the upcoming clinical shift.
+          </div>
+        </div>
+      )}
 
       <div style={S.timeline}>
         <div style={S.timelineLine} />
@@ -354,9 +401,10 @@ export default function NursingEducationPanel() {
   const [focusedStudentId, setFocusedStudentId] = useState(null);
   const data = NURSING_DATA;
 
+  const reflectionCount = (data.logbookEntries || []).filter(e => e.type === "reflection.submitted").length;
   const tabs = [
     { id: "students",   label: "Students" },
-    { id: "reflections", label: "Reflections", badge: 4 },
+    { id: "reflections", label: "Reflections", badge: reflectionCount > 0 ? reflectionCount : null },
     { id: "cohorts",    label: "Cohorts" },
     { id: "slos",       label: "SLOs" },
     { id: "audit",      label: "Audit Trail" },
