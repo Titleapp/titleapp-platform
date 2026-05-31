@@ -396,9 +396,57 @@ function AuditTrail({ data }) {
   );
 }
 
+function StudentView({ data }) {
+  // Student perspective — what Sarah K. sees when she logs in.
+  // Reuses StudentJourney for the timeline, adds a DTC card on top + scoped
+  // reflections list (only Sarah's). This is preview-quality; full student
+  // experience including KYC/onboarding/submit-reflection flow lands Sunday.
+  const sarah = (data.students || []).find(s => s.studentId === "stu_sarah");
+  const entries = (data.logbookEntries || []).filter(e => e.studentId === "stu_sarah");
+  const lockedGrades = entries.filter(e => e.type === "grade.locked").length;
+  const reflections = entries.filter(e => e.type === "reflection.submitted").length;
+  if (!sarah) return <div style={{ padding: 24 }}>Demo student not found.</div>;
+
+  return (
+    <div>
+      <div style={{ background: "linear-gradient(135deg, #fff, #f8f5ff)", border: "1px solid #7C3AED", borderRadius: 10, padding: "16px 20px", marginBottom: 20 }}>
+        <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", color: "#7C3AED", fontWeight: 700, marginBottom: 6 }}>
+          Student preview · Showing what Sarah K. sees when SHE logs in
+        </div>
+        <div style={{ fontSize: 12, color: "#475569" }}>
+          Real students arrive via the invite flow (email → Stripe Identity KYC → academic-record DTC minted to their personal Vault → entitled membership to Clearwater Nursing). Sunday wire. For now: Sarah K. as the demo persona.
+        </div>
+      </div>
+
+      <div style={{ background: "linear-gradient(135deg, #0f172a, #2a1052)", color: "#fff", borderRadius: 10, padding: "20px 24px", marginBottom: 20 }}>
+        <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", color: "rgba(255,255,255,0.7)", fontWeight: 700, marginBottom: 4 }}>
+          My Vault · Academic Record DTC
+        </div>
+        <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 12 }}>
+          Sarah K. — Clearwater Nursing Academic Record
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 24px" }}>
+          <div><div style={{ fontSize: 10, color: "rgba(255,255,255,0.6)", textTransform: "uppercase", fontWeight: 600 }}>DTC ID</div><div style={{ fontSize: 13, fontWeight: 600 }}>dtc_2025_asn20_sk</div></div>
+          <div><div style={{ fontSize: 10, color: "rgba(255,255,255,0.6)", textTransform: "uppercase", fontWeight: 600 }}>Minted</div><div style={{ fontSize: 13, fontWeight: 600 }}>Aug 26, 2025</div></div>
+          <div><div style={{ fontSize: 10, color: "rgba(255,255,255,0.6)", textTransform: "uppercase", fontWeight: 600 }}>Cohort</div><div style={{ fontSize: 13, fontWeight: 600 }}>ASN20</div></div>
+          <div><div style={{ fontSize: 10, color: "rgba(255,255,255,0.6)", textTransform: "uppercase", fontWeight: 600 }}>Reflections submitted</div><div style={{ fontSize: 13, fontWeight: 600 }}>{reflections}</div></div>
+          <div><div style={{ fontSize: 10, color: "rgba(255,255,255,0.6)", textTransform: "uppercase", fontWeight: 600 }}>Grades locked</div><div style={{ fontSize: 13, fontWeight: 600 }}>{lockedGrades} <span style={{ color: "rgba(255,255,255,0.5)" }}>(chain-anchored)</span></div></div>
+          <div><div style={{ fontSize: 10, color: "rgba(255,255,255,0.6)", textTransform: "uppercase", fontWeight: 600 }}>Currently</div><div style={{ fontSize: 13, fontWeight: 600 }}>{sarah.currentCourse}</div></div>
+        </div>
+        <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid rgba(255,255,255,0.15)", fontSize: 11, color: "rgba(255,255,255,0.7)", fontFamily: "SF Mono, Menlo, monospace" }}>
+          Hash anchor: <b style={{ color: "#A78BFA" }}>0x4f2e…a1b3</b> ✓ on Base · <b style={{ color: "#fff" }}>Portable.</b> Export as FERPA transcript any time. <b style={{ color: "#fff" }}>Immutable.</b> Past entries can't be modified.
+        </div>
+      </div>
+
+      <StudentJourney data={data} studentId="stu_sarah" onBack={() => {}} />
+    </div>
+  );
+}
+
 export default function NursingEducationPanel() {
   const [activeTab, setActiveTab] = useState("students");
   const [focusedStudentId, setFocusedStudentId] = useState(null);
+  const [viewMode, setViewMode] = useState("instructor"); // "instructor" | "student"
   const data = NURSING_DATA;
 
   const reflectionCount = (data.logbookEntries || []).filter(e => e.type === "reflection.submitted").length;
@@ -412,31 +460,66 @@ export default function NursingEducationPanel() {
 
   return (
     <div style={S.wrap}>
-      <div style={S.tabs}>
-        {tabs.map(t => (
+      {/* View-mode toggle — preview student perspective vs instructor */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14, padding: "8px 12px", background: "#f8fafc", borderRadius: 8, border: "1px solid #e2e8f0" }}>
+        <div style={{ fontSize: 12, color: "#64748b" }}>
+          <b style={{ color: "#334155" }}>View as:</b>
+        </div>
+        <div style={{ display: "flex", gap: 6 }}>
           <button
-            key={t.id}
-            onClick={() => { setActiveTab(t.id); setFocusedStudentId(null); }}
-            style={{ ...S.tab, ...(activeTab === t.id ? S.tabActive : {}) }}
-          >
-            {t.label}
-            {t.badge && (
-              <span style={{ background: "#7C3AED", color: "#fff", padding: "1px 6px", borderRadius: 10, fontSize: 10, fontWeight: 700, marginLeft: 4 }}>{t.badge}</span>
-            )}
-          </button>
-        ))}
+            onClick={() => setViewMode("instructor")}
+            style={{
+              padding: "5px 12px", borderRadius: 5, border: "1px solid",
+              borderColor: viewMode === "instructor" ? "#7C3AED" : "#cbd5e1",
+              background: viewMode === "instructor" ? "#7C3AED" : "#fff",
+              color: viewMode === "instructor" ? "#fff" : "#475569",
+              fontWeight: 600, fontSize: 12, cursor: "pointer",
+            }}
+          >Instructor / Admin</button>
+          <button
+            onClick={() => setViewMode("student")}
+            style={{
+              padding: "5px 12px", borderRadius: 5, border: "1px solid",
+              borderColor: viewMode === "student" ? "#7C3AED" : "#cbd5e1",
+              background: viewMode === "student" ? "#7C3AED" : "#fff",
+              color: viewMode === "student" ? "#fff" : "#475569",
+              fontWeight: 600, fontSize: 12, cursor: "pointer",
+            }}
+          >Student (Sarah K.)</button>
+        </div>
       </div>
 
-      {activeTab === "students" && !focusedStudentId && (
-        <StudentList data={data} onPickStudent={(id) => setFocusedStudentId(id)} />
+      {viewMode === "student" ? (
+        <StudentView data={data} />
+      ) : (
+        <>
+          <div style={S.tabs}>
+            {tabs.map(t => (
+              <button
+                key={t.id}
+                onClick={() => { setActiveTab(t.id); setFocusedStudentId(null); }}
+                style={{ ...S.tab, ...(activeTab === t.id ? S.tabActive : {}) }}
+              >
+                {t.label}
+                {t.badge && (
+                  <span style={{ background: "#7C3AED", color: "#fff", padding: "1px 6px", borderRadius: 10, fontSize: 10, fontWeight: 700, marginLeft: 4 }}>{t.badge}</span>
+                )}
+              </button>
+            ))}
+          </div>
+
+          {activeTab === "students" && !focusedStudentId && (
+            <StudentList data={data} onPickStudent={(id) => setFocusedStudentId(id)} />
+          )}
+          {activeTab === "students" && focusedStudentId && (
+            <StudentJourney data={data} studentId={focusedStudentId} onBack={() => setFocusedStudentId(null)} />
+          )}
+          {activeTab === "reflections" && <ReflectionsInbox data={data} />}
+          {activeTab === "cohorts" && <CohortsView data={data} />}
+          {activeTab === "slos" && <SLOLibrary data={data} />}
+          {activeTab === "audit" && <AuditTrail data={data} />}
+        </>
       )}
-      {activeTab === "students" && focusedStudentId && (
-        <StudentJourney data={data} studentId={focusedStudentId} onBack={() => setFocusedStudentId(null)} />
-      )}
-      {activeTab === "reflections" && <ReflectionsInbox data={data} />}
-      {activeTab === "cohorts" && <CohortsView data={data} />}
-      {activeTab === "slos" && <SLOLibrary data={data} />}
-      {activeTab === "audit" && <AuditTrail data={data} />}
     </div>
   );
 }
