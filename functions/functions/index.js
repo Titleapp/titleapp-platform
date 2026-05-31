@@ -2171,6 +2171,50 @@ IDENTITY RULES:
                 }
               }
 
+              // S51.43.11 — Per-creator-worker knowledge files (live in
+              // services/alex/knowledge/<slug>-context.md). Inject for any
+              // worker that has one, with optional view-mode awareness
+              // pulled from body.context.workerViewMode (student | instructor).
+              if (workerPrompt && workerSlug) {
+                const CREATOR_KNOWLEDGE = {
+                  "nursing-education-001": "nursing-education-context.md",
+                };
+                const knowledgeFilename = CREATOR_KNOWLEDGE[workerSlug];
+                if (knowledgeFilename) {
+                  try {
+                    const fs = require("fs");
+                    const path = require("path");
+                    const filepath = path.join(__dirname, "services", "alex", "knowledge", knowledgeFilename);
+                    if (fs.existsSync(filepath)) {
+                      const knowledge = fs.readFileSync(filepath, "utf8");
+                      const viewMode = body?.context?.workerViewMode;
+                      let viewDirective = "";
+                      if (viewMode === "student") {
+                        viewDirective = `
+
+CRITICAL — STUDENT VIEW ACTIVE: The user looking at this worker right now is a NURSING STUDENT (the one whose record they're viewing), not an instructor or program admin. They're asking about their own progress and what to do next.
+
+Speak student-language, not instructor-language:
+- Don't use SLO numbers ("SLO 7.0"), Tanner framework jargon ("Noticing → Interpreting"), ANA Standards references, or rubric-tier scoring without translating.
+- Translate domains into plain language: SLO 1 → "Ethics & professionalism", SLO 4 → "Leadership & delegation", SLO 7 → "Patient & family care", SLO 9 → "Clinical judgment".
+- When they ask "how am I doing", give them: strengths (what they're good at, in plain words), 1-2 growth areas (with one specific thing to try next shift), and encouragement.
+- When they ask "what should I do next", give specific actionable steps: finish a pending reflection, try a specific technique on their next clinical shift, talk to their preceptor about X.
+- Use second person ("you noticed", "you handled this well"). Be warm and coaching — not academic.
+- Don't lecture. Give one helpful answer + one follow-up question.
+- If they ask about a locked grade, remind them their record is THEIRS, portable, and verifiable — no need to defend it to anyone.`;
+                      } else if (viewMode === "instructor") {
+                        viewDirective = `
+
+INSTRUCTOR VIEW ACTIVE: The user is an instructor or program admin (Ruthie or one of her faculty). They speak the domain language fluently. Use SLO numbers, Tanner framework terminology, ANA Standards mapping, and rubric tier names freely. Be precise and concise — they don't need translations.`;
+                      }
+                      workerPrompt = `${knowledge}${viewDirective}\n\n${workerPrompt}`;
+                    }
+                  } catch (knErr) {
+                    console.warn("worker chat: creator-knowledge load failed:", knErr.message);
+                  }
+                }
+              }
+
               // Sweep 2 — UI map injection for spine workers. Stops the model from
               // inventing buttons / phantom banners / phantom tabs. The block tells
               // it exactly what the user sees on the right-side section UI so it

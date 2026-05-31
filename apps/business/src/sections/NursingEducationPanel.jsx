@@ -612,6 +612,14 @@ export default function NursingEducationPanel() {
   const [viewMode, setViewMode] = useState("instructor"); // "instructor" | "student"
   const data = NURSING_DATA;
 
+  // Sync viewMode to a localStorage hook the chat picks up, so Alex knows
+  // who it's talking to (student looking at their own record vs. instructor
+  // looking at a cohort). Cleared when user leaves the worker.
+  React.useEffect(() => {
+    localStorage.setItem("ta_nursing_view_mode", viewMode);
+    return () => { localStorage.removeItem("ta_nursing_view_mode"); };
+  }, [viewMode]);
+
   const reflectionCount = (data.logbookEntries || []).filter(e => e.type === "reflection.submitted").length;
   const tabs = [
     { id: "students",   label: "Students" },

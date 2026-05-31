@@ -1185,6 +1185,10 @@ export default function ChatPanel({ currentSection, onboardingStep, disclaimerAc
             jurisdiction,
             workspaceId: localStorage.getItem('WORKSPACE_ID') || '',
             workspaceName: localStorage.getItem('WORKSPACE_NAME') || '',
+            // S51.43.11 — per-worker view mode hint (nursing worker uses
+            // ta_nursing_view_mode: "student" | "instructor" so Alex speaks
+            // the right language to the right audience).
+            workerViewMode: localStorage.getItem('ta_nursing_view_mode') || null,
             userName: localStorage.getItem('COMPANY_NAME') || localStorage.getItem('WORKSPACE_NAME') || '',
             allTeams: (() => { try { const ws = JSON.parse(localStorage.getItem("ta_all_teams") || "[]"); return ws.join(", "); } catch { return ""; } })(),
             ...(dealContext ? { dealContext } : {}),
