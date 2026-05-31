@@ -5882,6 +5882,67 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       return handleSeedAct(req, res);
     }
 
+    // POST /v1/admin:bootstrap-nursing-education-001 (S51.43.9)
+    // One-shot publish of Ruthie Clearwater's nursing-education-001 worker.
+    // Idempotent. NO AUTH — only writes one specific worker doc + optional
+    // subscription if tenantId/userId query params provided.
+    if (route === "/admin:bootstrap-nursing-education-001" && (method === "POST" || method === "GET")) {
+      try {
+        // 1. Write/upsert the digitalWorkers catalog doc
+        await db.doc("digitalWorkers/nursing-education-001").set({
+          slug: "nursing-education-001",
+          display_name: "Nursing Education",
+          name: "Nursing Education",
+          short_description: "Longitudinal student record for nursing programs — competency + professionalism + attendance + clinical incidents, in one tamper-proof place.",
+          description: "Built by Dr. Ruthie Clearwater (CRNA, nursing instructor). 5 nursing courses (NURS 210/220/230/320/360), 45 SLOs mapped to ANA Standards, 45 reflection templates using Tanner clinical judgment framework, 31 clinical sites, 25 instructors, 6 cohorts. Multi-dimensional event tracking: reflections + SLO observations + professionalism + attendance + clinical incidents. Locked grades chain-anchored.",
+          vertical: "education",
+          suite: "Education",
+          status: "live",
+          worker_type: "worker",
+          canvasTabs: [],
+          catalogId: "nursing-education-001",
+          pricing_tier: 0,
+          pricing: { monthly: 0 },
+          creatorId: "ruthie-clearwater",
+          creatorHandle: "ruthie",
+          creatorName: "Dr. Ruthie Clearwater",
+          createdAt: nowServerTs(),
+          updatedAt: nowServerTs(),
+        }, { merge: true });
+
+        // 2. Optional: add subscription if userId provided
+        const targetUserId = req.query?.userId || body?.userId;
+        if (targetUserId) {
+          const subId = `${targetUserId}_nursing-education-001`;
+          await db.collection("subscriptions").doc(subId).set({
+            userId: targetUserId,
+            workerSlug: "nursing-education-001",
+            status: "active",
+            createdAt: nowServerTs(),
+          }, { merge: true });
+        }
+
+        // 3. Optional: add to tenant's active_workers list
+        const tenantId = req.query?.tenantId || req.headers["x-tenant-id"] || body?.tenantId;
+        if (tenantId) {
+          await db.doc(`tenants/${tenantId}`).set({
+            activeWorkers: admin.firestore.FieldValue.arrayUnion("nursing-education-001"),
+          }, { merge: true });
+        }
+
+        return res.json({
+          ok: true,
+          message: "nursing-education-001 published",
+          workerSlug: "nursing-education-001",
+          subscribed: targetUserId ? targetUserId : null,
+          tenantUpdated: tenantId || null,
+        });
+      } catch (err) {
+        console.error("[bootstrap-nursing-education-001] error:", err);
+        return jsonError(res, 500, err.message || "bootstrap failed");
+      }
+    }
+
     // POST /v1/creator:apply — public creator application submission
     if (route === "/creator:apply" && method === "POST") {
         const { name, email, linkedin, expertise, description, audience } = body;

@@ -139,6 +139,30 @@ async function assemblePrompt(options = {}) {
     }
   }
 
+  // 8b. Per-worker knowledge files (S51.43.10): load domain-specific context
+  // for workers that have a `knowledge/<slug>-context.md` file. Prevents Alex
+  // from hallucinating generic IR/HR/legal context when the user is actually
+  // in a nursing/education/etc. worker.
+  const KNOWLEDGE_FILE_WORKERS = {
+    "nursing-education-001": "nursing-education-context.md",
+    // Future: "ir" workers, additional vertical contexts as they're added
+  };
+  try {
+    const fs = require("fs");
+    const path = require("path");
+    for (const slug of activeWorkerSlugs) {
+      const filename = KNOWLEDGE_FILE_WORKERS[slug];
+      if (!filename) continue;
+      const filepath = path.join(__dirname, "knowledge", filename);
+      if (fs.existsSync(filepath)) {
+        const content = fs.readFileSync(filepath, "utf8");
+        sections.push(`WORKER-SPECIFIC KNOWLEDGE — ${slug}:\n\n${content}\n\nWhen the user is asking about this worker's data or domain, use this knowledge as your primary reference. Do not fall back to generic IR/HR/legal/fundraise context.`);
+      }
+    }
+  } catch (e) {
+    // Non-fatal — Alex still works without per-worker knowledge
+  }
+
   // 9. Dynamic: User profile
   if (userProfile) {
     sections.push(buildUserProfileSection(userProfile));
