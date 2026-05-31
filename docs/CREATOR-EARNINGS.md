@@ -97,11 +97,19 @@ The 25% platform share covers:
 - **Identity verification** — Stripe Identity-backed KYC for users who interact with your worker, included free
 - **Regulatory rule loading** — OFAC SDN feed, jurisdictional compliance modules, FERPA-friendly architecture, etc.
 - **Hosting** — Firebase Hosting, Firebase Functions, Firestore, Cloud Storage
-- **AI inference costs** — when your worker calls Claude / GPT / Gemini through the SOCIII platform (subject to fair-use limits — heavy AI usage may incur additional per-call data fees billed to the customer)
+- **AI inference costs (in-platform)** — when your customer's USER calls your worker via the SOCIII platform, platform-hosted AI inference is covered (subject to fair-use limits; heavy AI usage may incur additional per-call data fees billed to the customer)
 - **Customer acquisition** — marketplace discovery, search ranking, featured placement, marketing emails to platform users, content marketing
 - **Tax handling** — 1099 generation, sales tax collection + remittance, annual earnings statements
 - **Customer support** — first-line support for billing, account, and platform-level issues (you handle product-specific support for your worker)
 - **Marketing assistance** — the Marketing & Content worker on the platform can help you author launch copy, social posts, email sequences for your worker's audience
+
+### What's NOT covered (you bring your own)
+
+- **Your own Claude Code / Anthropic subscription.** You build your worker using Claude Code on YOUR Anthropic account, with YOUR billing. SOCIII does not subsidize your personal AI tooling — only AI inference inside the deployed platform when a customer uses your worker. (Reasonable; you'd carry the same cost building anything as an independent contractor.)
+- **Your own GitHub account.** Free tier works fine for forking and contributing.
+- **Your own development environment.** Mac, Windows, or Linux. We test on all three.
+
+This separation matters: your worker authoring is your independent business; the platform deploys and monetizes what you build. Keeping the tooling on your account, not ours, keeps that line clean.
 
 ---
 

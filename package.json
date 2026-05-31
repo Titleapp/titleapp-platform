@@ -1,4 +1,17 @@
 {
+  "name": "sociii-platform",
+  "version": "0.1.0",
+  "description": "SOCIII Digital Worker platform — open SDK + closed platform layer. Creators build workers in creators/<handle>/, ship via marketplace.",
+  "private": true,
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "init-worker": "node scripts/initWorker.js",
+    "preview-worker": "node scripts/previewWorker.js",
+    "validate-worker": "node scripts/validateWorker.js"
+  },
   "dependencies": {
     "csv-parse": "^6.1.0",
     "xlsx": "^0.18.5"
