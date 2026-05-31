@@ -67,6 +67,7 @@ import PendingSignatures from "./sections/PendingSignatures";
 import AlexPipelines from "./sections/AlexPipelines";
 import SpineSection from "./sections/SpineSection";
 import HRSchedulePanel from "./sections/HRSchedulePanel";
+import NursingEducationPanel from "./sections/NursingEducationPanel";
 import MarketingDrafts from "./sections/MarketingDrafts";
 import ContentCalendar from "./sections/ContentCalendar";
 import SocialMedia from "./sections/SocialMedia";
@@ -4421,6 +4422,16 @@ function WorkerHomeRenderer({ onBack }) {
   }
   if (worker?.slug === "platform-control-center-pro") {
     return <CommandCenter />;
+  }
+
+  // Ruthie Clearwater's nursing-education-001 worker — first reference
+  // creator worker. Real data from her Master Config Sheet (5 courses,
+  // 45 SLOs, 31 sites, 25 instructors, 6 cohorts) + 8 demo students with
+  // multi-dimensional event timelines (competency + professionalism +
+  // attendance + clinical incidents). Tonight: reads from bundled JSON.
+  // Sunday: swap to live Firestore tenants/clearwater-nursing/nurseEdu/...
+  if (worker?.slug === "nursing-education-001") {
+    return <NursingEducationPanel />;
   }
 
   // Investor entitlement override — when the IR/fundraise worker is opened

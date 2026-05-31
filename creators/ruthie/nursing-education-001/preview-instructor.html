@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Nursing Education — Instructor View (Dr. Clearwater) · SOCIII Preview</title>
+<style>
+  :root {
+    --sociii-purple: #7C3AED;
+    --sociii-purple-dark: #5B21B6;
+    --sociii-green:  #16A34A;
+    --sociii-amber:  #D97706;
+    --sociii-red:    #DC2626;
+    --slate-50: #f8fafc; --slate-100: #f1f5f9; --slate-200: #e2e8f0; --slate-300: #cbd5e1; --slate-400: #94a3b8; --slate-500: #64748b; --slate-600: #475569; --slate-700: #334155; --slate-800: #1e293b; --slate-900: #0f172a;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--slate-50); color: var(--slate-900); line-height: 1.55; font-size: 14px; }
+  .app { max-width: 1480px; margin: 0 auto; min-height: 100vh; display: grid; grid-template-columns: 220px 380px 1fr; grid-template-rows: 56px 1fr; background: #fff; }
+  .topbar { grid-column: 1 / -1; background: var(--slate-900); color: #fff; display: flex; align-items: center; padding: 0 20px; gap: 16px; border-bottom: 1px solid var(--slate-700); }
+  .topbar .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; }
+  .topbar .brand .dot { width: 22px; height: 22px; border-radius: 5px; background: var(--sociii-purple); }
+  .topbar .breadcrumb { color: var(--slate-400); font-size: 13px; margin-left: 8px; }
+  .topbar .breadcrumb b { color: #fff; font-weight: 500; }
+  .topbar .spacer { flex: 1; }
+  .topbar .preview-chip { background: var(--sociii-amber); color: #fff; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+  .topbar .user-chip { background: var(--slate-700); color: #fff; padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+  .topbar .user-chip .avatar { width: 22px; height: 22px; border-radius: 50%; background: linear-gradient(135deg, #DB2777, #BE185D); display: flex; align-items: center; justify-content: center; font-weight: 700; }
+  .sidebar { background: var(--slate-100); border-right: 1px solid var(--slate-200); padding: 20px 0; overflow-y: auto; }
+  .sidebar .workspace-header { padding: 0 16px 16px; border-bottom: 1px solid var(--slate-200); margin-bottom: 12px; }
+  .sidebar .workspace-header .name { font-size: 13px; font-weight: 700; }
+  .sidebar .workspace-header .role { font-size: 11px; color: var(--slate-500); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; margin-top: 2px; }
+  .sidebar .section-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--slate-500); padding: 0 20px; margin-bottom: 8px; margin-top: 16px; display: flex; justify-content: space-between; }
+  .sidebar .nav-item { padding: 7px 20px; color: var(--slate-700); font-size: 13px; cursor: pointer; border-left: 3px solid transparent; }
+  .sidebar .nav-item.active { background: #fff; color: var(--slate-900); border-left-color: var(--sociii-purple); font-weight: 600; }
+  .sidebar .nav-item.sub { padding-left: 32px; font-size: 12px; color: var(--slate-500); }
+  .chat { background: var(--slate-50); border-right: 1px solid var(--slate-200); display: flex; flex-direction: column; min-height: 0; }
+  .chat-header { padding: 16px 20px; border-bottom: 1px solid var(--slate-200); background: #fff; display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+  .chat-header .alex-icon { width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg, var(--sociii-purple), var(--sociii-purple-dark)); display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 13px; }
+  .chat-header .label { font-weight: 700; font-size: 14px; }
+  .chat-header .label .role { font-weight: 500; color: var(--slate-500); font-size: 12px; }
+  .chat-messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+  .msg { max-width: 92%; padding: 12px 14px; border-radius: 12px; font-size: 13px; line-height: 1.5; }
+  .msg.alex { background: #fff; border: 1px solid var(--slate-200); align-self: flex-start; color: var(--slate-800); }
+  .msg.user { background: var(--sociii-purple); color: #fff; align-self: flex-end; }
+  .msg-meta { font-size: 11px; color: var(--slate-400); margin-bottom: 4px; padding: 0 4px; }
+  .msg-meta.right { align-self: flex-end; }
+  .msg.alex b { color: var(--sociii-purple); font-weight: 700; }
+  .msg.alex em { color: var(--slate-600); background: var(--slate-100); padding: 1px 6px; border-radius: 4px; font-style: normal; }
+  .chat-input { padding: 14px 20px; border-top: 1px solid var(--slate-200); background: #fff; display: flex; gap: 10px; align-items: center; flex-shrink: 0; }
+  .chat-input input { flex: 1; padding: 10px 14px; border: 1px solid var(--slate-200); border-radius: 8px; font-size: 13px; outline: none; }
+  .chat-input button { background: var(--sociii-purple); color: #fff; border: none; padding: 10px 16px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 13px; }
+  .citations { margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--slate-300); font-size: 11px; color: var(--slate-500); }
+  .citations b { color: var(--slate-600); font-weight: 700; }
+  .main { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+  .canvas-tabs { display: flex; border-bottom: 1px solid var(--slate-200); padding: 0 28px; background: #fff; flex-shrink: 0; }
+  .canvas-tab { padding: 14px 16px; font-size: 13px; color: var(--slate-500); cursor: pointer; border-bottom: 2px solid transparent; font-weight: 500; }
+  .canvas-tab.active { color: var(--slate-900); border-bottom-color: var(--sociii-purple); font-weight: 700; }
+  .canvas-tab .badge { background: var(--sociii-purple); color: #fff; padding: 1px 6px; border-radius: 10px; font-size: 10px; font-weight: 700; margin-left: 4px; }
+  .page { padding: 28px 32px; overflow-y: auto; flex: 1; }
+  .page h1 { font-size: 22px; font-weight: 700; margin: 0 0 6px; }
+  .page .subtitle { color: var(--slate-500); font-size: 13px; margin-bottom: 24px; }
+  /* Cohort stats row */
+  .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
+  .stat-card { background: #fff; border: 1px solid var(--slate-200); border-radius: 8px; padding: 14px 16px; }
+  .stat-card .k { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--slate-500); font-weight: 600; margin-bottom: 4px; }
+  .stat-card .v { font-size: 24px; font-weight: 700; }
+  .stat-card .v.warn { color: var(--sociii-amber); }
+  .stat-card .v.good { color: var(--sociii-green); }
+  .stat-card .small { font-size: 12px; color: var(--slate-500); font-weight: 500; }
+  /* Students table */
+  .students { background: #fff; border: 1px solid var(--slate-200); border-radius: 10px; overflow: hidden; }
+  .students-header { padding: 14px 18px; border-bottom: 1px solid var(--slate-200); display: flex; align-items: center; justify-content: space-between; }
+  .students-header h3 { margin: 0; font-size: 15px; font-weight: 700; }
+  .students-header .filters { display: flex; gap: 6px; }
+  .filter-chip { padding: 4px 10px; border-radius: 16px; font-size: 12px; font-weight: 600; background: var(--slate-100); color: var(--slate-600); cursor: pointer; border: 1px solid var(--slate-200); }
+  .filter-chip.active { background: var(--sociii-purple); color: #fff; border-color: var(--sociii-purple); }
+  .student-row { display: grid; grid-template-columns: 36px 1fr 130px 90px 120px 60px; gap: 14px; align-items: center; padding: 12px 18px; border-bottom: 1px solid var(--slate-100); cursor: pointer; }
+  .student-row:last-child { border-bottom: none; }
+  .student-row:hover { background: rgba(124, 58, 237, 0.02); }
+  .student-row.flag { background: rgba(217, 119, 6, 0.04); }
+  .student-row.flag:hover { background: rgba(217, 119, 6, 0.08); }
+  .student-row .avatar { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, var(--sociii-purple), var(--sociii-purple-dark)); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; }
+  .student-row .name { font-weight: 700; font-size: 14px; }
+  .student-row .meta { font-size: 12px; color: var(--slate-500); margin-top: 2px; }
+  .student-row .pill { padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; display: inline-block; }
+  .pill-active { background: rgba(22, 163, 74, 0.1); color: var(--sociii-green); }
+  .pill-flag { background: rgba(217, 119, 6, 0.12); color: var(--sociii-amber); }
+  .student-row .score { font-weight: 700; font-size: 14px; }
+  .student-row .arrow { color: var(--slate-300); font-weight: 600; }
+  .student-row .pattern { font-size: 11px; color: var(--slate-500); }
+  /* Reflection queue */
+  .queue { background: #fff; border: 1px solid var(--slate-200); border-radius: 10px; padding: 18px 22px; margin-bottom: 24px; }
+  .queue h3 { margin: 0 0 12px; font-size: 15px; font-weight: 700; }
+  .queue-item { display: flex; align-items: center; gap: 14px; padding: 10px 0; border-bottom: 1px solid var(--slate-100); }
+  .queue-item:last-child { border-bottom: none; }
+  .queue-item .name { font-weight: 600; font-size: 13px; }
+  .queue-item .detail { font-size: 12px; color: var(--slate-500); }
+  .queue-item .spacer { flex: 1; }
+  .queue-item .btn { background: var(--sociii-purple); color: #fff; border: none; padding: 6px 12px; border-radius: 5px; font-weight: 600; font-size: 11px; cursor: pointer; }
+  .queue-item .age { font-size: 11px; color: var(--slate-500); padding: 2px 7px; background: var(--slate-100); border-radius: 4px; font-weight: 600; }
+  .queue-item .age.old { background: rgba(217, 119, 6, 0.12); color: var(--sociii-amber); }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="topbar">
+    <div class="brand"><span class="dot"></span> SOCIII</div>
+    <div class="breadcrumb">app.sociii.ai · <b>Clearwater Nursing Education</b></div>
+    <div class="spacer"></div>
+    <div class="preview-chip">Preview · Not Live</div>
+    <div class="user-chip"><div class="avatar">RC</div> Dr. Ruthie Clearwater · Instructor</div>
+  </div>
+
+  <div class="sidebar">
+    <div class="workspace-header">
+      <div class="name">Clearwater Nursing</div>
+      <div class="role">Instructor · Admin</div>
+    </div>
+    <div class="section-label">Workspace</div>
+    <div class="nav-item">My Drive</div>
+    <div class="nav-item">My Vault</div>
+    <div class="nav-item">Marketplace</div>
+    <div class="section-label">My Workers</div>
+    <div class="nav-item">Alex · CoS</div>
+    <div class="nav-item active">Nursing Education</div>
+    <div class="nav-item sub">Students</div>
+    <div class="nav-item sub">Cohorts</div>
+    <div class="nav-item sub">Reflections</div>
+    <div class="nav-item sub">SLOs</div>
+    <div class="nav-item sub">Audit Trail</div>
+    <div class="nav-item sub">Settings</div>
+    <div class="section-label">Account</div>
+    <div class="nav-item">Billing</div>
+    <div class="nav-item">Settings</div>
+  </div>
+
+  <div class="chat">
+    <div class="chat-header">
+      <div class="alex-icon">A</div>
+      <div class="label">Alex<br><span class="role">Chief of Staff · in Nursing Education</span></div>
+    </div>
+    <div class="chat-messages">
+      <div>
+        <div class="msg-meta">Alex · 7:42 AM</div>
+        <div class="msg alex">
+          Morning, Dr. Clearwater. Quick brief for ASN20 this week:
+          <br><br>
+          • <b>4 reflections pending your review</b> — oldest is from Maya L. (NURS 220 SLO 8) submitted 12 days ago. Worth flagging.
+          <br>
+          • <b>2 students showing patterns</b> — Maya L. is behind on submissions; James C. is strong on reflections but struggling with delegation (SLO 4, 3 observations in a row).
+          <br>
+          • <b>1 grade ready to lock</b> — Sarah K. NURS 230 mid-term. All SLOs observed, reflections complete.
+        </div>
+      </div>
+      <div>
+        <div class="msg-meta right">You · 7:43 AM</div>
+        <div class="msg user">Where is James struggling exactly?</div>
+      </div>
+      <div>
+        <div class="msg-meta">Alex · 7:43 AM</div>
+        <div class="msg alex">
+          James C. on <b>SLO 4.0 Leadership</b>, specifically delegation under time pressure:
+          <br><br>
+          <em>Feb 19 (Med-Surg)</em>: Score 2 · Beginner — "hesitant to delegate medication pass during full assignment; defaulted to doing everything himself."
+          <br>
+          <em>Mar 5 (Simulation)</em>: Score 2 · Beginner — "froze when sim instructor introduced second admission; needed prompt to call for help."
+          <br>
+          <em>Apr 9 (Med-Surg)</em>: Score 3 · Competent — "delegated vitals to LPN; followed up appropriately."
+          <br><br>
+          Pattern: he <em>can</em> delegate when there's no acute time pressure. Hospice rotation next week might be a good low-stakes site to scaffold. Want me to draft a check-in message?
+          <div class="citations">
+            <b>Sources:</b> James C. logbook entries (SLO 4) · ASN20 schedule · NURS 320 site assignments
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="chat-input">
+      <input type="text" placeholder="Ask Alex about your cohort, students, or what's due…" />
+      <button>Send</button>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="canvas-tabs">
+      <div class="canvas-tab active">Students</div>
+      <div class="canvas-tab">Student Journey</div>
+      <div class="canvas-tab">Cohorts</div>
+      <div class="canvas-tab">Reflections <span class="badge">4</span></div>
+      <div class="canvas-tab">SLOs</div>
+      <div class="canvas-tab">Audit Trail</div>
+      <div class="canvas-tab">Settings</div>
+    </div>
+
+    <div class="page">
+      <h1>ASN20 Cohort</h1>
+      <div class="subtitle">28 students · currently across NURS 220 + NURS 230 + NURS 320 · 2 flagged for support · sample data</div>
+
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="k">On track</div>
+          <div class="v good">24<span class="small"> / 28</span></div>
+        </div>
+        <div class="stat-card">
+          <div class="k">Need check-in</div>
+          <div class="v warn">2</div>
+        </div>
+        <div class="stat-card">
+          <div class="k">Reflections to grade</div>
+          <div class="v">4 <span class="small">oldest: 12 days</span></div>
+        </div>
+        <div class="stat-card">
+          <div class="k">Locked this term</div>
+          <div class="v">14 <span class="small">all chain-anchored</span></div>
+        </div>
+      </div>
+
+      <div class="queue">
+        <h3>Reflections inbox · 4 awaiting your review</h3>
+        <div class="queue-item">
+          <div>
+            <div class="name">Maya L.</div>
+            <div class="detail">NURS 220 · SLO 8.0 Communication · "Patient family meeting — managing emotional load"</div>
+          </div>
+          <div class="spacer"></div>
+          <div class="age old">12 days old</div>
+          <button class="btn">Grade now</button>
+        </div>
+        <div class="queue-item">
+          <div>
+            <div class="name">James C.</div>
+            <div class="detail">NURS 220 · SLO 4.0 Leadership · "Delegating wound care under time pressure"</div>
+          </div>
+          <div class="spacer"></div>
+          <div class="age">5 days old</div>
+          <button class="btn">Grade now</button>
+        </div>
+        <div class="queue-item">
+          <div>
+            <div class="name">Sarah K.</div>
+            <div class="detail">NURS 230 · SLO 9.0 Judgment · "Triage decision-making in fast-paced ER environment"</div>
+          </div>
+          <div class="spacer"></div>
+          <div class="age">2 days old</div>
+          <button class="btn">Grade now</button>
+        </div>
+        <div class="queue-item">
+          <div>
+            <div class="name">Aaron R.</div>
+            <div class="detail">NURS 320 · SLO 7.0 Family Care · "MMMG pediatric assessment with non-English-speaking family"</div>
+          </div>
+          <div class="spacer"></div>
+          <div class="age">2 days old</div>
+          <button class="btn">Grade now</button>
+        </div>
+      </div>
+
+      <div class="students">
+        <div class="students-header">
+          <h3>Students · ASN20</h3>
+          <div class="filters">
+            <span class="filter-chip active">All (28)</span>
+            <span class="filter-chip">Flagged (2)</span>
+            <span class="filter-chip">NURS 220 (14)</span>
+            <span class="filter-chip">NURS 230 (10)</span>
+            <span class="filter-chip">NURS 320 (4)</span>
+          </div>
+        </div>
+
+        <div class="student-row flag">
+          <div class="avatar" style="background: linear-gradient(135deg, #DB2777, #BE185D);">ML</div>
+          <div>
+            <div class="name">Maya L.</div>
+            <div class="meta">NURS 220 · Medical-Surgical · enrolled Aug 2025</div>
+          </div>
+          <div><span class="pill pill-flag">Behind</span></div>
+          <div class="score">2.4 <span style="font-weight: 500; color: var(--slate-500); font-size: 11px;">avg</span></div>
+          <div class="pattern">Last submitted 12d ago</div>
+          <div class="arrow">→</div>
+        </div>
+
+        <div class="student-row flag">
+          <div class="avatar" style="background: linear-gradient(135deg, #0EA5E9, #0369A1);">JC</div>
+          <div>
+            <div class="name">James C.</div>
+            <div class="meta">NURS 220 · Medical-Surgical · enrolled Aug 2025</div>
+          </div>
+          <div><span class="pill pill-flag">SLO 4 pattern</span></div>
+          <div class="score">3.0 <span style="font-weight: 500; color: var(--slate-500); font-size: 11px;">avg</span></div>
+          <div class="pattern">Leadership growth +1</div>
+          <div class="arrow">→</div>
+        </div>
+
+        <div class="student-row">
+          <div class="avatar">SK</div>
+          <div>
+            <div class="name">Sarah K.</div>
+            <div class="meta">NURS 230 · Clinical · enrolled Aug 2025</div>
+          </div>
+          <div><span class="pill pill-active">On track</span></div>
+          <div class="score">3.2 <span style="font-weight: 500; color: var(--slate-500); font-size: 11px;">avg</span></div>
+          <div class="pattern">Ready to lock NURS 230</div>
+          <div class="arrow">→</div>
+        </div>
+
+        <div class="student-row">
+          <div class="avatar" style="background: linear-gradient(135deg, #16A34A, #15803D);">AR</div>
+          <div>
+            <div class="name">Aaron R.</div>
+            <div class="meta">NURS 320 · MMMG · enrolled Aug 2025</div>
+          </div>
+          <div><span class="pill pill-active">On track</span></div>
+          <div class="score">3.5 <span style="font-weight: 500; color: var(--slate-500); font-size: 11px;">avg</span></div>
+          <div class="pattern">Strong on family care</div>
+          <div class="arrow">→</div>
+        </div>
+
+        <div class="student-row">
+          <div class="avatar" style="background: linear-gradient(135deg, #F59E0B, #B45309);">PT</div>
+          <div>
+            <div class="name">Priya T.</div>
+            <div class="meta">NURS 220 · Simulation · enrolled Aug 2025</div>
+          </div>
+          <div><span class="pill pill-active">On track</span></div>
+          <div class="score">3.8 <span style="font-weight: 500; color: var(--slate-500); font-size: 11px;">avg</span></div>
+          <div class="pattern">Top of cohort</div>
+          <div class="arrow">→</div>
+        </div>
+
+        <div class="student-row">
+          <div class="avatar" style="background: linear-gradient(135deg, #06B6D4, #0E7490);">EW</div>
+          <div>
+            <div class="name">Emi W.</div>
+            <div class="meta">NURS 230 · ER · enrolled Aug 2025</div>
+          </div>
+          <div><span class="pill pill-active">On track</span></div>
+          <div class="score">3.1 <span style="font-weight: 500; color: var(--slate-500); font-size: 11px;">avg</span></div>
+          <div class="pattern">Steady progress</div>
+          <div class="arrow">→</div>
+        </div>
+
+        <div class="student-row" style="border-top: 1px solid var(--slate-200);">
+          <div></div>
+          <div style="color: var(--slate-400); font-size: 13px; font-style: italic;">+ 22 more students · click to expand</div>
+          <div></div><div></div><div></div><div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
