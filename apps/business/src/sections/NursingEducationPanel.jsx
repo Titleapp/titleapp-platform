@@ -396,48 +396,211 @@ function AuditTrail({ data }) {
   );
 }
 
+// Student-facing translations: SLO short codes → plain-language domains.
+// Students think in "how am I doing at X", not "SLO 7.0 Client Care."
+const DOMAIN_LABEL = {
+  "1.0": "Ethics & professionalism",
+  "2.0": "Self-reflection",
+  "3.0": "Evidence-based thinking",
+  "4.0": "Leadership & delegation",
+  "5.0": "Teamwork",
+  "6.0": "Connecting patients to resources",
+  "7.0": "Patient & family care",
+  "8.0": "Communication",
+  "9.0": "Clinical judgment",
+};
+
+// Friendly micro-coaching strings — what an instructor would say to a student
+// looking at their growth area, in plain words.
+const DOMAIN_COACHING = {
+  "1.0": "When you notice an ethical tension, name it out loud in your team.",
+  "2.0": "Try one small experiment each shift and write what you learned.",
+  "3.0": "Before acting, ask: 'what does the evidence say?'",
+  "4.0": "Try delegating one task this shift — start small, follow up after.",
+  "5.0": "Brief the next shift on patient priorities — it builds your team voice.",
+  "6.0": "When a patient mentions a barrier, look for one resource that helps.",
+  "7.0": "Ask one extra question about your patient's day before you start care.",
+  "8.0": "Mirror back what your patient says before responding — they'll feel heard.",
+  "9.0": "After each priority decision, ask: 'why this one first?' That's judgment.",
+};
+
+function studentSummary(entries) {
+  // Compute friendly strengths + growth areas from instructor observations
+  const observations = entries.filter(e => e.type === "slo.observed" && typeof e.score === "number");
+  const profObs = entries.filter(e => e.type === "professionalism.observed" && typeof e.score === "number");
+  const incidents = entries.filter(e => e.type === "incident.recorded");
+  const attended = entries.filter(e => e.type === "attendance.recorded" && e.status === "present").length;
+  const missed = entries.filter(e => e.type === "attendance.recorded" && e.status === "absent").length;
+
+  // Average score by domain (SLO short code)
+  const bySloAvg = {};
+  for (const o of observations) {
+    if (!o.sloNum) continue;
+    if (!bySloAvg[o.sloNum]) bySloAvg[o.sloNum] = { sum: 0, count: 0 };
+    bySloAvg[o.sloNum].sum += o.score;
+    bySloAvg[o.sloNum].count += 1;
+  }
+  const domainScores = Object.entries(bySloAvg).map(([slo, v]) => ({ slo, avg: v.sum / v.count }));
+  domainScores.sort((a, b) => b.avg - a.avg);
+
+  const strengths = domainScores.filter(d => d.avg >= 3.5).slice(0, 3);
+  const growth = domainScores.filter(d => d.avg < 3).slice(0, 2);
+  const profAvg = profObs.length ? (profObs.reduce((a, e) => a + e.score, 0) / profObs.length) : null;
+
+  const recentObs = observations.slice(-3);
+  const trending = recentObs.length >= 2 && recentObs.every((o, i) => i === 0 || o.score >= recentObs[i - 1].score);
+
+  return { strengths, growth, profAvg, attended, missed, incidents: incidents.length, trending };
+}
+
 function StudentView({ data }) {
   // Student perspective — what Sarah K. sees when she logs in.
-  // Reuses StudentJourney for the timeline, adds a DTC card on top + scoped
-  // reflections list (only Sarah's). This is preview-quality; full student
-  // experience including KYC/onboarding/submit-reflection flow lands Sunday.
+  // The student record is JOINT: Sarah submits reflections (Tanner framework)
+  // and end-of-course evaluations, while instructors record SLO observations,
+  // professionalism, attendance, and incidents. Both sides contribute events
+  // to the same Academic Record DTC. This view surfaces Sarah's active role
+  // (pending work + submit affordances) alongside the read-only instructor-
+  // recorded events.
+  //
+  // CRITICAL DESIGN PRINCIPLE: Students don't speak in SLO/ANA/Tanner jargon.
+  // They want to know "how am I doing" and "what do I do next to get better."
+  // Translate everything into plain language + coaching.
   const sarah = (data.students || []).find(s => s.studentId === "stu_sarah");
   const entries = (data.logbookEntries || []).filter(e => e.studentId === "stu_sarah");
-  const lockedGrades = entries.filter(e => e.type === "grade.locked").length;
-  const reflections = entries.filter(e => e.type === "reflection.submitted").length;
   if (!sarah) return <div style={{ padding: 24 }}>Demo student not found.</div>;
+
+  const summary = studentSummary(entries);
+  const lockedGrades = entries.filter(e => e.type === "grade.locked").length;
+  const myReflections = entries.filter(e => e.type === "reflection.submitted").length;
 
   return (
     <div>
-      <div style={{ background: "linear-gradient(135deg, #fff, #f8f5ff)", border: "1px solid #7C3AED", borderRadius: 10, padding: "16px 20px", marginBottom: 20 }}>
-        <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", color: "#7C3AED", fontWeight: 700, marginBottom: 6 }}>
-          Student preview · Showing what Sarah K. sees when SHE logs in
-        </div>
-        <div style={{ fontSize: 12, color: "#475569" }}>
-          Real students arrive via the invite flow (email → Stripe Identity KYC → academic-record DTC minted to their personal Vault → entitled membership to Clearwater Nursing). Sunday wire. For now: Sarah K. as the demo persona.
-        </div>
+      {/* Demo-mode banner (small, honest) */}
+      <div style={{ background: "#f8f5ff", border: "1px solid #ddd6fe", borderRadius: 8, padding: "8px 14px", marginBottom: 14, fontSize: 11, color: "#5B21B6" }}>
+        <b>Student preview · what Sarah K. sees when SHE logs in.</b> Real students arrive via invite → ID verify → academic record minted to their personal Vault (Sunday wire).
       </div>
 
-      <div style={{ background: "linear-gradient(135deg, #0f172a, #2a1052)", color: "#fff", borderRadius: 10, padding: "20px 24px", marginBottom: 20 }}>
-        <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", color: "rgba(255,255,255,0.7)", fontWeight: 700, marginBottom: 4 }}>
-          My Vault · Academic Record DTC
+      {/* THE HERO: "How you're doing" in plain language */}
+      <div style={{ background: "linear-gradient(135deg, #7C3AED, #5B21B6)", color: "#fff", borderRadius: 12, padding: "26px 28px", marginBottom: 20 }}>
+        <div style={{ fontSize: 13, color: "rgba(255,255,255,0.8)", marginBottom: 4 }}>
+          Hi Sarah —
         </div>
-        <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 12 }}>
-          Sarah K. — Clearwater Nursing Academic Record
+        <div style={{ fontSize: 22, fontWeight: 700, marginBottom: 14, letterSpacing: "-0.01em" }}>
+          You're doing well. {summary.trending ? "And growing." : "Keep building."}
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 24px" }}>
-          <div><div style={{ fontSize: 10, color: "rgba(255,255,255,0.6)", textTransform: "uppercase", fontWeight: 600 }}>DTC ID</div><div style={{ fontSize: 13, fontWeight: 600 }}>dtc_2025_asn20_sk</div></div>
-          <div><div style={{ fontSize: 10, color: "rgba(255,255,255,0.6)", textTransform: "uppercase", fontWeight: 600 }}>Minted</div><div style={{ fontSize: 13, fontWeight: 600 }}>Aug 26, 2025</div></div>
-          <div><div style={{ fontSize: 10, color: "rgba(255,255,255,0.6)", textTransform: "uppercase", fontWeight: 600 }}>Cohort</div><div style={{ fontSize: 13, fontWeight: 600 }}>ASN20</div></div>
-          <div><div style={{ fontSize: 10, color: "rgba(255,255,255,0.6)", textTransform: "uppercase", fontWeight: 600 }}>Reflections submitted</div><div style={{ fontSize: 13, fontWeight: 600 }}>{reflections}</div></div>
-          <div><div style={{ fontSize: 10, color: "rgba(255,255,255,0.6)", textTransform: "uppercase", fontWeight: 600 }}>Grades locked</div><div style={{ fontSize: 13, fontWeight: 600 }}>{lockedGrades} <span style={{ color: "rgba(255,255,255,0.5)" }}>(chain-anchored)</span></div></div>
-          <div><div style={{ fontSize: 10, color: "rgba(255,255,255,0.6)", textTransform: "uppercase", fontWeight: 600 }}>Currently</div><div style={{ fontSize: 13, fontWeight: 600 }}>{sarah.currentCourse}</div></div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+          <div>
+            <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", color: "rgba(255,255,255,0.7)", fontWeight: 700, marginBottom: 8 }}>
+              What you're strong at
+            </div>
+            {summary.strengths.length === 0 && (
+              <div style={{ fontSize: 13, color: "rgba(255,255,255,0.85)" }}>You're just getting started — patterns will show up in a few weeks.</div>
+            )}
+            {summary.strengths.map(s => (
+              <div key={s.slo} style={{ fontSize: 13, marginBottom: 4 }}>
+                ✓ {DOMAIN_LABEL[s.slo] || s.slo} <span style={{ color: "rgba(255,255,255,0.6)" }}>· avg {s.avg.toFixed(1)}/5</span>
+              </div>
+            ))}
+          </div>
+          <div>
+            <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", color: "rgba(255,255,255,0.7)", fontWeight: 700, marginBottom: 8 }}>
+              Where to grow
+            </div>
+            {summary.growth.length === 0 && (
+              <div style={{ fontSize: 13, color: "rgba(255,255,255,0.85)" }}>No growth flags right now. Keep showing up.</div>
+            )}
+            {summary.growth.map(g => (
+              <div key={g.slo} style={{ fontSize: 13, marginBottom: 6 }}>
+                <div>• {DOMAIN_LABEL[g.slo] || g.slo} <span style={{ color: "rgba(255,255,255,0.6)" }}>· avg {g.avg.toFixed(1)}/5</span></div>
+                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.75)", marginLeft: 12, marginTop: 2, fontStyle: "italic" }}>{DOMAIN_COACHING[g.slo]}</div>
+              </div>
+            ))}
+          </div>
         </div>
-        <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid rgba(255,255,255,0.15)", fontSize: 11, color: "rgba(255,255,255,0.7)", fontFamily: "SF Mono, Menlo, monospace" }}>
-          Hash anchor: <b style={{ color: "#A78BFA" }}>0x4f2e…a1b3</b> ✓ on Base · <b style={{ color: "#fff" }}>Portable.</b> Export as FERPA transcript any time. <b style={{ color: "#fff" }}>Immutable.</b> Past entries can't be modified.
-        </div>
+
+        {summary.attended > 0 && (
+          <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid rgba(255,255,255,0.2)", fontSize: 12, color: "rgba(255,255,255,0.85)" }}>
+            <b>Attendance:</b> {summary.attended} present, {summary.missed} missed.
+            {" "}<b>Self-reported near-misses:</b> {summary.incidents > 0 ? `${summary.incidents} (your instructors recognize self-reporting as a strength — it shows you noticed)` : "none"}.
+          </div>
+        )}
       </div>
 
+      {/* What's next — clear actions */}
+      <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, padding: "20px 22px", marginBottom: 16 }}>
+        <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 14, color: "#0f172a" }}>
+          What's next for you
+        </div>
+
+        {/* Pending reflection */}
+        <div style={{ padding: "14px 16px", background: "linear-gradient(135deg, #fff, #FEF3C7)", border: "1px solid #FCD34D", borderRadius: 8, marginBottom: 10 }}>
+          <div style={{ fontSize: 11, color: "#92400E", fontWeight: 700, marginBottom: 4 }}>FINISH BY FRIDAY · You started this one</div>
+          <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 6 }}>
+            Reflection: "Triage decision-making in the ER"
+          </div>
+          <div style={{ fontSize: 12, color: "#64748b", marginBottom: 12 }}>
+            You wrote the scenario. Now finish the next three steps: what you noticed → how you interpreted it → what you did → what you'd do differently. About 15 minutes.
+          </div>
+          <button style={{ background: "#7C3AED", color: "#fff", border: "none", padding: "8px 14px", borderRadius: 5, fontWeight: 600, fontSize: 12, cursor: "pointer" }}>Continue writing →</button>
+        </div>
+
+        {/* End-of-course wrap-up */}
+        <div style={{ padding: "14px 16px", background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, marginBottom: 10 }}>
+          <div style={{ fontSize: 11, color: "#475569", fontWeight: 700, marginBottom: 4 }}>NURS 220 FINISHED — REFLECT ON THE WHOLE COURSE</div>
+          <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 6 }}>
+            Course wrap-up: looking back on Health &amp; Illness I
+          </div>
+          <div style={{ fontSize: 12, color: "#64748b", marginBottom: 12 }}>
+            Your grade is locked. This wrap-up is for <i>you</i> — it goes on your record alongside what your instructors saw. Three questions: what surprised you, what you're proud of, what you want to bring into NURS 230.
+          </div>
+          <button style={{ background: "#fff", color: "#7C3AED", border: "1px solid #7C3AED", padding: "7px 12px", borderRadius: 5, fontWeight: 600, fontSize: 12, cursor: "pointer" }}>Start wrap-up →</button>
+        </div>
+
+        {/* This week's clinical */}
+        {summary.growth.length > 0 && (
+          <div style={{ padding: "14px 16px", background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, marginBottom: 10 }}>
+            <div style={{ fontSize: 11, color: "#475569", fontWeight: 700, marginBottom: 4 }}>SOMETHING TO TRY THIS WEEK</div>
+            <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 6 }}>
+              On your next ER shift…
+            </div>
+            <div style={{ fontSize: 12, color: "#64748b" }}>
+              {DOMAIN_COACHING[summary.growth[0].slo]} Then write a quick reflection about it — that's where the growth shows up.
+            </div>
+          </div>
+        )}
+
+        {/* Start a fresh reflection — open affordance */}
+        <button style={{ background: "transparent", color: "#7C3AED", border: "1px dashed #7C3AED", padding: "10px 14px", borderRadius: 6, fontWeight: 600, fontSize: 12, cursor: "pointer", width: "100%" }}>
+          + Reflect on something else that happened
+        </button>
+      </div>
+
+      {/* My record card — simpler than instructor view */}
+      <div style={{ background: "linear-gradient(135deg, #0f172a, #2a1052)", color: "#fff", borderRadius: 10, padding: "18px 22px", marginBottom: 20 }}>
+        <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", color: "rgba(255,255,255,0.7)", fontWeight: 700, marginBottom: 4 }}>
+          My verified record
+        </div>
+        <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 8 }}>
+          This is yours. It follows you across every course and after you graduate.
+        </div>
+        <div style={{ fontSize: 13, color: "rgba(255,255,255,0.85)", marginBottom: 12, lineHeight: 1.55 }}>
+          You can show this record to a future employer or licensing board — they can verify it independently without going through your school's registrar. {myReflections} reflections you've written. {lockedGrades} courses locked and signed off. Nothing you've finished can be quietly changed later.
+        </div>
+        <button style={{ background: "rgba(255,255,255,0.15)", color: "#fff", border: "1px solid rgba(255,255,255,0.3)", padding: "7px 14px", borderRadius: 5, fontWeight: 600, fontSize: 12, cursor: "pointer" }}>
+          Export my record →
+        </button>
+      </div>
+
+      {/* The full journey — same component as instructor view, but now framed as "your story so far" */}
+      <div style={{ marginBottom: 8, paddingLeft: 4 }}>
+        <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", color: "#64748b", fontWeight: 700, marginBottom: 4 }}>
+          Your story so far
+        </div>
+        <div style={{ fontSize: 12, color: "#94a3b8", marginBottom: 12 }}>
+          Everything you've done + everything your instructors observed. Both sides write here. Past entries can't be changed.
+        </div>
+      </div>
       <StudentJourney data={data} studentId="stu_sarah" onBack={() => {}} />
     </div>
   );
