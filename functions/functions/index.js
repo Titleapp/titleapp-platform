@@ -5939,6 +5939,7 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
           name: "Clearwater Nursing Education",
           short_description: "Longitudinal student record for nursing programs — competency + professionalism + attendance + clinical incidents, in one tamper-proof place.",
           description: "Built by Dr. Ruthie Clearwater (CRNA, nursing instructor). 5 nursing courses (NURS 210/220/230/320/360), 45 SLOs mapped to ANA Standards, 45 reflection templates using Tanner clinical judgment framework, 31 clinical sites, 25 instructors, 6 cohorts. Multi-dimensional event tracking: reflections + SLO observations + professionalism + attendance + clinical incidents. Locked grades chain-anchored.",
+          tagline: "Longitudinal nursing student records with tamper-proof grades.",
           vertical: "education",
           suite: "Education",
           status: "live",
@@ -5948,10 +5949,43 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
           pricing_tier: 0,
           pricing: { monthly: 0 },
           creatorId: "ruthie-clearwater",
+          createdBy: "ruthie-clearwater",
           creatorHandle: "ruthie",
           creatorName: "Dr. Ruthie Clearwater",
           createdAt: nowServerTs(),
           updatedAt: nowServerTs(),
+        }, { merge: true });
+
+        // 1b. V4: seed creators/{uid} doc for Ruthie
+        await db.doc("creators/ruthie-clearwater").set({
+          handle: "ruthie",
+          displayName: "Dr. Ruthie Clearwater",
+          title: "CRNA, Nursing Educator",
+          bio: "Twenty-five years of clinical and teaching experience in nursing education. Author of the Clearwater Nursing Education worker — a tamper-proof longitudinal student record system built on Tanner's clinical judgment framework and ANA Standards of Practice. SOCIII Fellow.",
+          yearsExperience: "25+",
+          credentials: "CRNA, MSN, BSN, RN",
+          photoURL: null,
+          verifiedExpert: true,
+          createdAt: nowServerTs(),
+          updatedAt: nowServerTs(),
+        }, { merge: true });
+
+        // 1c. V4: seed creatorHandles/ruthie -> ruthie-clearwater
+        await db.doc("creatorHandles/ruthie").set({
+          uid: "ruthie-clearwater",
+          claimedAt: nowServerTs(),
+        }, { merge: true });
+
+        // 1d. V4: seed a sample SOCIII Certified Creator credential
+        const credentialId = "SOCIII-CC-RUTHIE-0001";
+        await db.doc(`creatorCredentials/${credentialId}`).set({
+          uid: "ruthie-clearwater",
+          handle: "ruthie",
+          tier: "certified",
+          status: "active",
+          issuedAt: nowServerTs(),
+          workerCount: 1,
+          workers: [{ slug: "nursing-education-001", name: "Clearwater Nursing Education" }],
         }, { merge: true });
 
         // 2. Optional: add subscription if userId provided
@@ -6405,29 +6439,32 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
 
         const credSnap = await db.collection("creatorCredentials")
           .where("uid", "==", uid)
-          .where("status", "==", "active")
-          .orderBy("issuedAt", "asc")
-          .limit(10)
-          .get();
-        const credentials = credSnap.docs.map(d => ({
-          id: d.id,
-          tier: d.data().tier,
-          issuedAt: d.data().issuedAt?.toDate?.()?.toISOString?.() || null,
-        }));
-
-        const workersSnap = await db.collection("digitalWorkers")
-          .where("createdBy", "==", uid)
-          .where("status", "==", "live")
           .limit(20)
           .get();
-        const workers = workersSnap.docs.map(d => ({
-          id: d.id,
-          slug: d.data().slug || d.id,
-          name: d.data().name || d.data().displayName || d.id,
-          tagline: d.data().tagline || d.data().description || "",
-          vertical: d.data().vertical || null,
-          logoUrl: d.data().logoUrl || null,
-        }));
+        const credentials = credSnap.docs
+          .map(d => ({
+            id: d.id,
+            tier: d.data().tier,
+            status: d.data().status,
+            issuedAt: d.data().issuedAt?.toDate?.()?.toISOString?.() || null,
+          }))
+          .filter(c => c.status === "active");
+
+        const workersSnap = await db.collection("digitalWorkers")
+          .where("creatorId", "==", uid)
+          .limit(20)
+          .get();
+        const workers = workersSnap.docs
+          .map(d => ({
+            id: d.id,
+            slug: d.data().slug || d.id,
+            name: d.data().name || d.data().display_name || d.data().displayName || d.id,
+            tagline: d.data().tagline || d.data().short_description || "",
+            vertical: d.data().vertical || null,
+            logoUrl: d.data().logoUrl || null,
+            status: d.data().status || "draft",
+          }))
+          .filter(w => w.status === "live");
 
         return res.json({
           ok: true,
@@ -8070,29 +8107,32 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
 
         const credSnap = await db.collection("creatorCredentials")
           .where("uid", "==", uid)
-          .where("status", "==", "active")
-          .orderBy("issuedAt", "asc")
-          .limit(10)
-          .get();
-        const credentials = credSnap.docs.map(d => ({
-          id: d.id,
-          tier: d.data().tier,
-          issuedAt: d.data().issuedAt?.toDate?.()?.toISOString?.() || null,
-        }));
-
-        const workersSnap = await db.collection("digitalWorkers")
-          .where("createdBy", "==", uid)
-          .where("status", "==", "live")
           .limit(20)
           .get();
-        const workers = workersSnap.docs.map(d => ({
-          id: d.id,
-          slug: d.data().slug || d.id,
-          name: d.data().name || d.data().displayName || d.id,
-          tagline: d.data().tagline || d.data().description || "",
-          vertical: d.data().vertical || null,
-          logoUrl: d.data().logoUrl || null,
-        }));
+        const credentials = credSnap.docs
+          .map(d => ({
+            id: d.id,
+            tier: d.data().tier,
+            status: d.data().status,
+            issuedAt: d.data().issuedAt?.toDate?.()?.toISOString?.() || null,
+          }))
+          .filter(c => c.status === "active");
+
+        const workersSnap = await db.collection("digitalWorkers")
+          .where("creatorId", "==", uid)
+          .limit(20)
+          .get();
+        const workers = workersSnap.docs
+          .map(d => ({
+            id: d.id,
+            slug: d.data().slug || d.id,
+            name: d.data().name || d.data().display_name || d.data().displayName || d.id,
+            tagline: d.data().tagline || d.data().short_description || "",
+            vertical: d.data().vertical || null,
+            logoUrl: d.data().logoUrl || null,
+            status: d.data().status || "draft",
+          }))
+          .filter(w => w.status === "live");
 
         return res.json({
           ok: true,
