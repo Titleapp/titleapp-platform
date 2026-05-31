@@ -100,6 +100,17 @@ export default function NoticeComposerPanel({ kind = "ir", fundraiseId, tenantId
   const [customBody, setCustomBody] = useState("");
   const [recipientMode, setRecipientMode] = useState("entitled");
   const [manualEmails, setManualEmails] = useState("");
+  // Cold-invite mode — rich per-recipient rows with optional personalized
+  // deck PDF attachment. Each row is its own send; PDFs are base64-encoded
+  // client-side and threaded through the SendGrid attachments field.
+  const [richRecipients, setRichRecipients] = useState([
+    { name: "", email: "", firstName: "", deckBase64: "", deckFilename: "", customBodyHtml: "" },
+  ]);
+  // CC list — defaults to Sean for visibility on every cold-invite send so
+  // he sees what landed in advisors' inboxes. Post-rebrand the working address
+  // is sean@sociii.ai; the @titleapp.ai address still routes but lands in the
+  // legacy inbox.
+  const [ccList, setCcList] = useState("sean@sociii.ai");
   // Signature-specific fields (SAFE for IR, Advisor Agreement for HR)
   const [sigName, setSigName] = useState("");
   const [sigEmail, setSigEmail] = useState("");
@@ -107,6 +118,36 @@ export default function NoticeComposerPanel({ kind = "ir", fundraiseId, tenantId
   const [sending, setSending] = useState(false);
   const [status, setStatus] = useState(null);
   const [recentNotices, setRecentNotices] = useState([]);
+
+  function updateRichRecipient(idx, field, value) {
+    setRichRecipients(prev => prev.map((r, i) => i === idx ? { ...r, [field]: value } : r));
+  }
+  function addRichRecipient() {
+    setRichRecipients(prev => [...prev, { name: "", email: "", firstName: "", deckBase64: "", deckFilename: "", customBodyHtml: "" }]);
+  }
+  function removeRichRecipient(idx) {
+    setRichRecipients(prev => prev.filter((_, i) => i !== idx));
+  }
+  async function handleDeckFile(idx, file) {
+    if (!file) {
+      updateRichRecipient(idx, "deckBase64", "");
+      updateRichRecipient(idx, "deckFilename", "");
+      return;
+    }
+    if (file.size > 15 * 1024 * 1024) {
+      setStatus({ kind: "err", msg: `File ${file.name} is ${(file.size/1024/1024).toFixed(1)}MB. Keep under 15MB.` });
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = String(reader.result || "");
+      const base64 = result.split(",")[1] || "";
+      setRichRecipients(prev => prev.map((r, i) => i === idx
+        ? { ...r, deckBase64: base64, deckFilename: file.name }
+        : r));
+    };
+    reader.readAsDataURL(file);
+  }
 
   const loadRecent = useCallback(() => {
     if (!entityId) return;
@@ -162,7 +203,27 @@ export default function NoticeComposerPanel({ kind = "ir", fundraiseId, tenantId
           templateId,
           subject,
         };
-        if (recipientMode === "entitled") {
+        // Cold invite uses rich recipient rows (per-row deck PDF + CC).
+        // Other templates use the simpler entitled-group / manual list flow.
+        if (isColdInvite) {
+          const rows = richRecipients
+            .filter(r => r.email && r.email.includes("@"))
+            .map(r => ({
+              email: r.email.trim(),
+              name: r.name?.trim() || null,
+              firstName: r.firstName?.trim() || (r.name || "").trim().split(/\s+/)[0] || null,
+              deckBase64: r.deckBase64 || null,
+              deckFilename: r.deckFilename || null,
+              customBodyHtml: r.customBodyHtml?.trim() || null,
+            }));
+          if (rows.length === 0) {
+            setStatus({ kind: "err", msg: "Need at least one recipient with a valid email." });
+            setSending(false); return;
+          }
+          payload.recipients = rows;
+          const ccs = ccList.split(/[\s,;]+/).map(s => s.trim()).filter(s => s.includes("@"));
+          if (ccs.length) payload.cc = ccs;
+        } else if (recipientMode === "entitled") {
           payload.recipientGroup = cfg.entitledGroup;
         } else {
           payload.recipients = manualEmails
@@ -251,6 +312,96 @@ export default function NoticeComposerPanel({ kind = "ir", fundraiseId, tenantId
               {cfg.signatureFields[2].hint && <div style={S.hint}>{cfg.signatureFields[2].hint}</div>}
             </div>
           )}
+        </>
+      ) : isColdInvite ? (
+        <>
+          <div style={S.field}>
+            <label style={S.label}>CC (every send is BCC'd here)</label>
+            <input
+              style={S.input}
+              value={ccList}
+              onChange={e => setCcList(e.target.value)}
+              placeholder="sean@sociii.ai"
+            />
+            <div style={S.hint}>Comma-separated. Defaults to sean@sociii.ai so you see what landed in each advisor's inbox.</div>
+          </div>
+          <div style={S.field}>
+            <label style={S.label}>Recipients · personalized deck per row</label>
+            {richRecipients.map((r, idx) => (
+              <div key={idx} style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 8, padding: 12, marginBottom: 8 }}>
+                <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+                  <input
+                    style={{ ...S.input, flex: 1 }}
+                    value={r.name}
+                    onChange={e => updateRichRecipient(idx, "name", e.target.value)}
+                    placeholder="Full name (e.g. Jane Doe)"
+                  />
+                  <input
+                    style={{ ...S.input, flex: 1 }}
+                    type="email"
+                    value={r.email}
+                    onChange={e => updateRichRecipient(idx, "email", e.target.value)}
+                    placeholder="email@example.com"
+                  />
+                </div>
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <input
+                    style={{ ...S.input, flex: 1, fontSize: 12 }}
+                    value={r.firstName}
+                    onChange={e => updateRichRecipient(idx, "firstName", e.target.value)}
+                    placeholder="First name for greeting (optional)"
+                  />
+                  {richRecipients.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeRichRecipient(idx)}
+                      style={{ background: "#fff", color: "#dc2626", border: "1px solid #fecaca", borderRadius: 6, padding: "6px 10px", fontSize: 12, cursor: "pointer" }}
+                    >Remove</button>
+                  )}
+                </div>
+                <label
+                  style={{
+                    display: "flex", alignItems: "center", gap: 8,
+                    marginTop: 8,
+                    fontSize: 13, fontWeight: 500,
+                    color: r.deckFilename ? "#15803d" : "#7c3aed",
+                    cursor: "pointer",
+                    padding: "10px 14px",
+                    border: r.deckFilename ? "2px solid #86efac" : "2px dashed #c4b5fd",
+                    borderRadius: 8,
+                    background: r.deckFilename ? "#f0fdf4" : "#faf5ff",
+                  }}
+                >
+                  <span style={{ fontSize: 16 }}>{r.deckFilename ? "✓" : "📎"}</span>
+                  {r.deckFilename
+                    ? <span>Attached: <strong>{r.deckFilename}</strong> · click to replace</span>
+                    : <span>Attach personalized deck (PDF) for this recipient</span>}
+                  <input
+                    type="file"
+                    accept="application/pdf,.pdf"
+                    style={{ display: "none" }}
+                    onChange={e => handleDeckFile(idx, e.target.files?.[0])}
+                  />
+                </label>
+                <div style={{ marginTop: 8 }}>
+                  <textarea
+                    style={{ ...S.input, minHeight: 60, fontSize: 12, fontFamily: "monospace" }}
+                    value={r.customBodyHtml}
+                    onChange={e => updateRichRecipient(idx, "customBodyHtml", e.target.value)}
+                    placeholder="Optional custom message — overrides the template body for THIS recipient only. Plain text or HTML. Leave blank to use the standard cold-invite copy."
+                  />
+                  <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 4 }}>
+                    Optional. Use {"{firstName}"} as a placeholder. If set, the template body is replaced entirely for this row.
+                  </div>
+                </div>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={addRichRecipient}
+              style={{ background: "#fff", color: "#7c3aed", border: "1px dashed #c4b5fd", borderRadius: 6, padding: "8px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+            >+ Add recipient</button>
+          </div>
         </>
       ) : (
         <div style={S.field}>

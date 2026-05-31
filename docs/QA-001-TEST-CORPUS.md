@@ -337,6 +337,188 @@ QA-001 doesn't need to be sophisticated to be valuable. A simple harness that ru
 
 ---
 
+## TC-043 — Composer per-recipient PDF deck attachment + 15MB cap
+
+- **Date:** 2026-05-30
+- **Worker:** Platform HR (composer)
+- **Family:** 4 (Outbound delivery)
+- **Severity:** P1
+- **Real bug (latent):** Composer accepts a per-recipient deck PDF inlined via base64 in the SendGrid `attachments` array. Without a client-side size cap, a >22MB file would blow past the 32MB Cloud Functions request body limit (33% base64 expansion). Currently capped at 15MB.
+- **Test:** Pick a 16MB PDF in the per-recipient picker; assert client-side rejects with filename + size error before send. Also: pick a 14MB PDF; assert send succeeds and SendGrid receives `attachments[0].content` as valid base64.
+- **Fix:** `handleDeckFile` in `NoticeComposerPanel.jsx` rejects `file.size > 15 * 1024 * 1024` with `setStatus({ kind: "err" })`.
+
+## TC-044 — Composer per-recipient `customBodyHtml` override
+
+- **Date:** 2026-05-30
+- **Worker:** Platform HR (composer)
+- **Family:** 4 (Outbound delivery) + 5 (Onboarding sequencing)
+- **Severity:** P0
+- **Real bug (latent):** Different advisors need different email copy in the same send (e.g. Kent gets a "final draft, sign or revise" follow-up while six others get the standard cold-invite). Without per-recipient override, founder has to send each as a separate batch.
+- **Test:** Build a 2-recipient send. Set `customBodyHtml` on recipient #1 only. Assert: recipient #1's rendered HTML uses the custom body with `{firstName}` interpolated; recipient #2's HTML uses the default template body with `magicUrl` interpolated. No cross-contamination.
+- **Fix:** `/v1/hr:send-advisor-invite` checks `r.customBodyHtml`; if truthy, substitutes `{firstName}`/`{name}`/`{magicUrl}` tokens and uses as the body; if blank, falls back to `tpl.bodyHtml(...)`. SendGrid `custom_args.customBody` = "1"|"0" for tracking.
+
+## TC-045 — Custom body token substitution with empty firstName
+
+- **Date:** 2026-05-30
+- **Worker:** Platform HR (composer)
+- **Family:** 4 (Outbound delivery)
+- **Severity:** P2
+- **Real bug (latent):** Token interpolation uses `r.firstName || (r.name || "").split(" ")[0] || ""`. If both blank (composer row filled email-only), `{firstName}` substitutes to empty → "Dear ,". Should fallback to email localpart or skip the salutation.
+- **Test:** Send to recipient with email only. Assert rendered body either: (a) substitutes firstName to title-cased email-localpart, or (b) detects empty + uses name-less salutation. "Dear ," is not acceptable.
+- **Fix (deferred):** Explicit fallback chain in token substitution OR frontend requires either name or firstName before send.
+
+## TC-046 — CC default address routing post-rebrand
+
+- **Date:** 2026-05-30
+- **Worker:** Platform HR (composer)
+- **Family:** 4 (Outbound delivery)
+- **Severity:** P2
+- **Real bug:** Composer CC defaulted to `sean@titleapp.ai` (legacy). Sean's working inbox is `sean@sociii.ai`. Sends were CC'd to the legacy address; founder didn't see them in his working inbox.
+- **Test:** Open composer in cold-invite mode; assert default CC = `sean@sociii.ai`. Send to test recipient; assert SendGrid `personalizations.cc` contains `sean@sociii.ai`.
+- **Fix (S51.43.7):** Flipped `ccList` initial state + placeholder + hint in `NoticeComposerPanel.jsx`.
+
+## TC-047 — Cold-invite recipient lands in wrong workspace context
+
+- **Date:** 2026-05-30
+- **Worker:** Platform HR + magic-link + App.jsx tenant resolution
+- **Family:** 5 (Onboarding sequencing) + 1 (Workspace context)
+- **Severity:** P0
+- **Real bug:** Magic-link claim correctly identifies the pendingInvite + redirects to `/?worker=hr-people&invite=<id>`. The `WorkspaceObligationsBanner` renders correctly with the right obligations (verify-identity, sign-agreement). BUT App.jsx tenant resolution lands recipient in their PERSONAL workspace, not the inviting tenant's workspace. Sidebar shows their own stuff; SOCIII branding doesn't appear; recipient confused about WHOSE workspace they're in.
+- **Test:** Cold-invite to `dev@homdao.io` (no SOCIII membership). Click magic link in incognito. Assert: (a) URL contains `?invite=<id>`, (b) WorkspaceObligationsBanner renders with right obligations, (c) **active tenant in App.jsx is `sociii-platform`, NOT user's personal workspace**, (d) sidebar's MY WORKSPACES section shows "SOCIII, Inc." as active, (e) page header shows SOCIII branding.
+- **Fix (pending S51.43.8 — tonight or Sunday):** CODEX 51.43.6 Phase A — magic-link claim creates an entitlement record + App.jsx tenant resolver prefers active entitlement when invite param is present + sidebar renders entitled workspace.
+
+## TC-048 — Workspace obligation → Stripe Identity ID check
+
+- **Date:** 2026-05-30
+- **Worker:** Platform HR + IR (Stripe Identity)
+- **Family:** 5 (Onboarding sequencing)
+- **Severity:** P0
+- **Real bug:** ID check is Step 2 of obligation sequence (deck → ID → sign). Verify-identity card calls `/v1/ir:advisor:step` with `action: "start_identity"` → backend creates Stripe Identity session → returns `data.identitySession.url` → frontend redirects to verify.stripe.com. On return, defensive sync polls `sync_kyc` to recover from missed webhook.
+- **Test:** Fresh cold-invite + magic link. Land on workspace. Click "Start" on verify-identity. Assert: (a) browser redirects to `https://verify.stripe.com/...`, (b) after completing in Stripe test mode, callback returns to workspace, (c) verify-identity card → "Complete" (green check), (d) sign-agreement card unlocks, (e) Firestore `advisors/{id}.kyc_status === "approved"`.
+- **Fix:** Existing infra; assertion captures for regression.
+
+## TC-049 — Workspace obligation → DBX Sign signing card
+
+- **Date:** 2026-05-30
+- **Worker:** Platform HR + IR (DBX Sign)
+- **Family:** 5 (Onboarding sequencing)
+- **Severity:** P0
+- **Real bug:** Sign-agreement card calls `/v1/ir:advisor:step` with `action: "request_signature"` → backend creates DBX Sign signature_request → DBX emails recipient → backend returns `{ hellosignRequestId, recipientEmail }` (NOT a `signingUrl`). Frontend surfaces "Signing link sent to {email} — check your inbox" (TC-013 fix).
+- **Test:** With KYC complete, click "Start" on sign-agreement card. Assert: (a) banner shows info message with recipient email, (b) Firestore `signaturePackets/{id}` created, (c) DBX Sign email received, (d) on completion, webhook fires → sign-agreement card → Complete.
+- **Fix:** Existing infra; assertion captures for regression.
+
+## TC-050 — Bundled advisor + warrant pendingInvites (Eric/Scott/Robert case)
+
+- **Date:** 2026-05-30
+- **Worker:** Platform HR + IR
+- **Family:** 5 (Onboarding sequencing)
+- **Severity:** P0 (when warrant bundling ships)
+- **Real bug (not yet shipped):** Advisors with prior HOM contribution (Eric $75K, Scott $50K services, Robert $175K) need BOTH advisor + warrant_holder pendingInvites. Failure mode: only advisor invite minted → workspace shows advisor obligations only → no warrant signing → recipient confused about how warrant gets executed.
+- **Test:** Cold-invite send with `warrantCoverage > 0`. Assert: (a) two pendingInvites created (advisor + warrant_holder), both tied to same recipient email, (b) workspace renders obligations from BOTH invites — materials review + verify-identity (shared, single prompt) + sign-advisor + sign-warrant. KYC obligation deduplicated across invites.
+- **Fix (pending S51.43.8):** Backend `initiateWarrantFlow` mirrors `initiateAdvisorFlow`. Composer per-recipient `warrantCoverage` field. `/v1/hr:send-advisor-invite` mints both invites when `warrantCoverage > 0`. WorkspaceObligationsBanner already handles multi-invite case.
+
+## TC-051 — Warrant agreement coverage amount matches composer input
+
+- **Date:** 2026-05-30
+- **Worker:** IR (warrant minting)
+- **Family:** 6 (Template lifecycle) + 7 (Cap table integrity)
+- **Severity:** P0
+- **Real bug (latent):** When composer sends `warrantCoverage: 75000` (Eric), the resulting warrant agreement document must reflect $75K, not the default template value. Mismatch between email body + signing document = legal/trust failure.
+- **Test:** Cold-invite send with `warrantCoverage: 75000`. Assert: (a) warrant pendingInvite carries `coverage: 75000`, (b) DBX Sign template merge → `coverage_amount` token = "$75,000", (c) email body "Your $75K warrant" matches doc "to purchase common stock equal to $75,000 of make-whole coverage".
+- **Fix (pending S51.43.8):** Add coverage merge field to HOMMIE warrant DBX template + thread through `initiateWarrantFlow` → signaturePacket creation.
+
+## TC-052 — Services-warrant variant (Scott's $50K case)
+
+- **Date:** 2026-05-30
+- **Worker:** IR (warrant minting)
+- **Family:** 6 (Template lifecycle) + 7 (Cap table integrity)
+- **Severity:** P0
+- **Real bug (latent):** Scott's warrant is for SERVICES rendered to HOM, not cash contributed. Different Reg D 506(b) recital language; different tax treatment (compensation income at grant vs capital event at exercise). Using cash-creditor warrant template for Scott creates securities-law + tax-reporting issues.
+- **Test:** When composer flags warrant as `warrantType: "services"`, resulting DBX Sign packet uses DIFFERENT template ID than `warrantType: "cash_creditor"`. Assert: (a) `signaturePacket.templateId` differs, (b) recital paragraph differs in rendered PDF.
+- **Fix (pending S51.43.8 + counsel review):** New DBX Sign template for services-warrant variant. Counsel-finalize recital language distinguishing services from cash. Wire `warrantType` field through composer → backend → signatureService.
+
+## TC-053 — Robert two-email pattern (loan separate from advisor+warrant)
+
+- **Date:** 2026-05-30
+- **Worker:** Platform HR (composer) + IR (loan flow)
+- **Family:** 5 (Onboarding sequencing)
+- **Severity:** P1
+- **Real bug (latent):** Robert receives TWO emails Monday: (a) loan-only thread for the $100K formalization, (b) advisor+warrant bundle. Composer needs to support both as distinct sends. Failure mode: founder accidentally bundles loan into advisor+warrant email → muddies all three legal threads.
+- **Test:** Loan email send: Robert's row has `loanAmount > 0`, `warrantCoverage` empty, `templateId === "loan_formalization"`. Advisor+warrant email send: `warrantCoverage: 175000`, `loanAmount` empty, `templateId === "advisor_cold_invite"`. Two separate sends; two separate pendingInvite arrays.
+- **Fix (pending S51.43.8):** Composer per-recipient `loanAmount` field (only Robert tonight). Backend `initiateLoanFlow` mints creditor-loan pendingInvite. New HR template `loan_formalization`.
+
+## TC-054 — Email markdown italics render correctly in Gmail
+
+- **Date:** 2026-05-30
+- **Worker:** Platform HR (composer)
+- **Family:** 4 (Outbound delivery)
+- **Severity:** P2
+- **Real bug (latent):** Drafts use markdown `*italics*` for the AI-disclaimer line. Backend `customBodyHtml` substitution wraps plain text in `<p>` blocks but doesn't convert markdown. If founder pastes markdown directly, recipient sees literal asterisks in Gmail.
+- **Test:** Custom body containing `*Claude (my AI assistant) ran a quick valuation read*`. Assert: rendered HTML has `<em>` or `<i>` wrapping the line, not literal `*`. Either (a) backend converts markdown to HTML, OR (b) composer instructs founder to write HTML directly.
+- **Fix (option):** Server-side simple markdown-to-HTML for `*emphasis*` + `**bold**` + line breaks. Or document HTML expectation explicitly.
+
+## TC-055 — Kent custom body has no `{magicUrl}` token (existing user case)
+
+- **Date:** 2026-05-30
+- **Worker:** Platform HR (composer)
+- **Family:** 4 (Outbound delivery)
+- **Severity:** P2
+- **Real bug (latent):** Kent already has a SOCIII account. His custom body is a follow-up ("final draft, sign or revise"), NOT a cold invite — no magic link needed. Backend still mints a magic-link record via `initiateAdvisorFlow` which is wasted but non-fatal.
+- **Test:** Cold-invite send where `customBodyHtml` doesn't contain `{magicUrl}`. Assert: (a) rendered HTML identical to custom body (no token replacement artifacts), (b) **optional optimization:** skip `initiateAdvisorFlow` minting when custom body doesn't reference the magic link.
+- **Fix (deferred):** Add `r.skipMagicLink === true` flag to skip pendingInvite minting. Edge case; not P0.
+
+## TC-056 — Universal P.S. attribution rendering
+
+- **Date:** 2026-05-30
+- **Worker:** Platform HR (composer) — all advisor emails
+- **Family:** 4 (Outbound delivery)
+- **Severity:** P2
+- **Real bug (latent):** Every email must end with P.S. attributing draft to Alex + worker. If composer's customBodyHtml omits it, recipient won't see dogfood + AI-cover message. Sean's universal rule per `feedback_ai_attribution_postscript.md`.
+- **Test:** Send a cold-invite. Assert rendered HTML contains P.S. pattern matching `/Alex.*AI chief of staff.*Digital Worker/`. Either the default `tpl.bodyHtml` includes it OR the custom body author includes it.
+- **Fix (deferred):** Backend appends canonical P.S. block automatically if not detected. Risk: founder may want different attribution for some sends; needs opt-out flag.
+
+## TC-057 — PDF deck picker too visually deemphasized
+
+- **Date:** 2026-05-30 (caught in dogfood)
+- **Worker:** Platform HR (composer)
+- **Family:** 4 (Outbound delivery)
+- **Severity:** P2
+- **Real bug:** Per-recipient PDF picker was inline with the firstName field + Remove button as a small dashed-border element. Sean missed it entirely during dogfood and asked "is there no way to attach a deck?" — visual hierarchy made it invisible.
+- **Test:** Open composer, click cold-invite template. Assert: per-recipient PDF picker is visually prominent (its own row, ≥2px purple dashed border, ≥13px font, file emoji prefix), and flips to green ✓ state with filename visible after attachment.
+- **Fix (S51.43.7):** Moved picker to its own row below firstName/Remove. Used `border: 2px dashed #c4b5fd` (purple-300), `background: #faf5ff`, `📎` icon + "Attach personalized deck (PDF) for this recipient" label. Selected state flips to green border + "Attached: {filename} · click to replace".
+
+## TC-058 — "Acknowledge advisor terms" was a no-op (no content shown)
+
+- **Date:** 2026-05-30 (caught in dogfood)
+- **Worker:** Platform HR + WorkspaceObligationsBanner
+- **Family:** 5 (Onboarding sequencing)
+- **Severity:** P0
+- **Real bug:** Step 1 of advisor onboarding was an "Acknowledge advisor terms" card. Clicking Start fired `ir:advisor:step:acknowledge_terms` immediately, flipping the card to green without ever showing the recipient any terms to acknowledge. Acknowledgment without content = meaningless gate. Sean: "There should probably be an agreement and a deck. And this should probably read through the deck and terms of the advisor to see if you want to do it."
+- **Test:** Click Start on an obligation card with id matching `/acknowledge|accept-license|accept-terms/i`. Assert: a modal opens with (a) clear "Before we get started" heading, (b) bullet list of advisor expectations (time commitment, responsiveness, conflicts, confidentiality, mutual termination), (c) explicit reference to the personalized deck attached to the invitation email, (d) clarification that the legal binding happens at Step 3 (not here), (e) two buttons: "Not yet" (closes modal, action NOT fired) and "I acknowledge and agree to proceed" (closes modal AND fires the backend action). Assert backend `acknowledge_terms` is NOT called unless the second button is clicked.
+- **Fix (S51.43.7):** Added `termsModal` state to `WorkspaceObligationsBanner.jsx`. Click handler routes acknowledge-* obligations into the modal first; non-acknowledge obligations (verify-identity, sign-agreement, etc.) still fire `runAction` directly. Modal includes per-role copy (using `ROLE_LABEL`) for advisor/investor/warrant_holder/creator differentiation.
+
+## TC-059 — Signing complete didn't auto-refresh obligation card (TC-019 sequel)
+
+- **Date:** 2026-05-30 (caught in dogfood)
+- **Worker:** Platform HR + WorkspaceObligationsBanner + DBX Sign webhook
+- **Family:** 5 (Onboarding sequencing)
+- **Severity:** P1
+- **Real bug:** After completing DBX Sign in a different tab, returning to the workspace tab did NOT flip the sign-agreement obligation card to "Complete" — required manual page refresh. The defensive `sync_signature` polling was firing once per (invite, action) per mount via `syncedRef.current` Set; the gate didn't reset on tab refocus.
+- **Test:** With ID verified and sign-agreement obligation open, click Start → DBX Sign email arrives → open + complete signing in separate tab → return focus to workspace tab. Assert: within 2 seconds of refocus, refresh fires automatically AND sync_signature retries if the obligation is still flagged open. Card transitions to Complete without page refresh.
+- **Fix (S51.43.7):** Added `window.focus` + `document.visibilitychange` event listeners to `WorkspaceObligationsBanner.jsx` that (1) clear `syncedRef.current` so the defensive sync polling can re-fire, AND (2) call `refresh()` to pull the latest invite state from Firestore. Handles both webhook-already-fired (refresh picks up the new completedAt) and webhook-delayed (sync_signature retry recovers) cases.
+
+## TC-060 — Workspace context still locked to personal vault for existing-user case (TC-047 sequel)
+
+- **Date:** 2026-05-30 (caught in dogfood)
+- **Worker:** AuthMagic + App.jsx tenant resolution
+- **Family:** 1 (Workspace context) + 5 (Onboarding sequencing)
+- **Severity:** P0
+- **Real bug:** Initial TC-047 fix set `localStorage.TENANT_ID = invite.tenantId` in `AuthMagic.jsx` before redirect. But `App.jsx` at line 5253–5260 has a fast-path: if `localStorage.TENANT_ID` is set AND no `sessionStorage` overrides are present, it skips the membership-fetch entirely and calls `transitionTo("app")`. Result: TENANT_ID switched to `sociii-platform` but `COMPANY_NAME` / `WORKSPACE_NAME` localStorage values stayed at the user's previous vault, so sidebar displayed wrong workspace name. Dogfood: Vishal's Vault rendered as active even though TENANT_ID was sociii-platform.
+- **Test:** Cold-invite to an email tied to an existing SOCIII user (not a new account). Click magic link. Assert: (a) sidebar's MY WORKSPACES section shows the inviting tenant as the active workspace with correct companyName, (b) page header shows the inviting tenant's branding, (c) `/v1/me:memberships` was called (visible in Network tab), (d) `localStorage.WORKSPACE_NAME` matches the inviting tenant's name (not the user's previous workspace).
+- **Fix (S51.43.7):** Changed `AuthMagic.jsx` to use `sessionStorage.setItem("ta_preselected_tid", primaryInvite.tenantId)` instead of `localStorage.TENANT_ID`. This triggers App.jsx's full preselectedTid resolution path (membership validation, COMPANY_NAME + WORKSPACE_NAME refresh from tenant doc, vertical/jurisdiction updates) instead of the fast-path that skipped all of those.
+
+---
+
 (slot for next bug)
 
 ---

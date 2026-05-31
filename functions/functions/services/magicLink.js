@@ -350,6 +350,11 @@ async function verifyMagicLink(req, res) {
   // Claim any pending invites for this email — workspace-at-invite Phase 2.
   // The pendingInvites surface keys by email; once we know the uid, link them
   // so the workspace canvas can render obligation cards on first login.
+  //
+  // S51.43.7 — TC-047 fix: also mint an "entitled" membership on the inviting
+  // tenant so App.jsx tenant resolution lands the user in that workspace
+  // (instead of their personal vault). Entitled is a limited role — they can
+  // see and complete obligations, but don't get full admin/owner access.
   let claimedInvites = [];
   try {
     const {
@@ -357,13 +362,69 @@ async function verifyMagicLink(req, res) {
       markInviteClaimed,
     } = require("./invites/pendingInvites");
     const invites = await listPendingInvitesByEmail(email);
+
+    // Helper: resolve the tenant a given invite belongs to by looking up the
+    // associated entity (advisor / investor / warrant_holder / creator).
+    // Falls back to "sociii-platform" since SOCIII is currently the only
+    // tenant sending invites. When multi-tenant ships, pendingInvite itself
+    // should carry tenantId; for now this lookup is honest about state.
+    async function resolveInviteTenantId(invite) {
+      try {
+        if (invite.role === "advisor" && invite.entityId) {
+          const snap = await db.collection("advisors").doc(invite.entityId).get();
+          return snap.exists ? (snap.data().tenantId || "sociii-platform") : "sociii-platform";
+        }
+        if (invite.role === "investor" && invite.entityId && invite.context?.fundraiseId) {
+          const snap = await db.collection("fundraises").doc(invite.context.fundraiseId).get();
+          return snap.exists ? (snap.data().tenantId || "sociii-platform") : "sociii-platform";
+        }
+        if (invite.role === "warrant_holder" && invite.entityId) {
+          const snap = await db.collection("warrants").doc(invite.entityId).get();
+          return snap.exists ? (snap.data().tenantId || "sociii-platform") : "sociii-platform";
+        }
+      } catch (_) { /* fall through to default */ }
+      return "sociii-platform";
+    }
+
+    // Upsert an entitled membership idempotently — skip if (uid, tenantId)
+    // already exists in any role, so we never downgrade an existing admin/
+    // owner to entitled.
+    const grantedTenantIds = new Set();
+    async function ensureEntitledMembership(tenantId) {
+      if (!tenantId || grantedTenantIds.has(tenantId)) return;
+      grantedTenantIds.add(tenantId);
+      try {
+        const existing = await db.collection("memberships")
+          .where("userId", "==", uid)
+          .where("tenantId", "==", tenantId)
+          .where("status", "==", "active")
+          .limit(1)
+          .get();
+        if (!existing.empty) return; // Already a member of any role — don't overwrite.
+        await db.collection("memberships").add({
+          userId: uid,
+          tenantId,
+          role: "entitled",
+          status: "active",
+          source: "magic_link_invite",
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        console.log(`[magic-link:verify] minted entitled membership uid=${uid} tenantId=${tenantId}`);
+      } catch (memErr) {
+        console.warn(`[magic-link:verify] entitled membership write failed for ${tenantId}:`, memErr.message);
+      }
+    }
+
     for (const invite of invites) {
       try {
-        await markInviteClaimed(invite.inviteId, { userId: uid, workspaceId: null });
+        const inviteTenantId = await resolveInviteTenantId(invite);
+        await ensureEntitledMembership(inviteTenantId);
+        await markInviteClaimed(invite.inviteId, { userId: uid, workspaceId: inviteTenantId });
         claimedInvites.push({
           inviteId: invite.inviteId,
           role: invite.role,
           entityId: invite.entityId,
+          tenantId: inviteTenantId,
           worker: invite.pendingObligations?.[0]?.worker || null,
           obligationCount: (invite.pendingObligations || []).filter(o => !o.completedAt).length,
         });

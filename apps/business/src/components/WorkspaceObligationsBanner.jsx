@@ -92,6 +92,11 @@ export default function WorkspaceObligationsBanner({ inviteId, onAllComplete }) 
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
   const [dismissed, setDismissed] = useState(false);
+  // S51.43.7 — TC-058 fix: acknowledge-terms must present actual content
+  // (advisor expectations + materials note) before flipping the gate. Click
+  // on the "Start" button for an acknowledge-* obligation opens this modal;
+  // confirming inside the modal calls runAction.
+  const [termsModal, setTermsModal] = useState(null);
   const mountedRef = useRef(true);
 
   useEffect(() => () => { mountedRef.current = false; }, []);
@@ -132,10 +137,31 @@ export default function WorkspaceObligationsBanner({ inviteId, onAllComplete }) 
 
   // Defensive sync: covers two webhook-miss recovery paths (TC-018 + TC-019).
   // If a verify-identity obligation is still open we hit sync_kyc; if a
-  // sign-agreement obligation is still open we hit sync_signature. Both fire
-  // once per (invite, action) per mount so a stuck webhook can be recovered
-  // by the user simply landing back on the workspace.
+  // sign-agreement obligation is still open we hit sync_signature.
+  //
+  // S51.43.7 — TC-059 fix: also re-fire when the user returns to the tab
+  // (focus event) since signing complete in DBX Sign happens in a separate
+  // tab and the webhook may lag. Without the focus retrigger, the obligation
+  // card stays "Start" until manual page refresh even though signing finished.
   const syncedRef = useRef(new Set());
+  useEffect(() => {
+    function handleFocus() {
+      // Clear the once-per-mount gate so sync_kyc/sync_signature can re-fire
+      // if the obligation is still open. Also refetch state from backend in
+      // case the webhook already completed (most common path).
+      syncedRef.current = new Set();
+      refresh();
+    }
+    function handleVisibility() {
+      if (!document.hidden) handleFocus();
+    }
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, [refresh]);
   useEffect(() => {
     if (loading || openInvites.length === 0) return;
     const KYC_ACTION_BY_ROLE = {
@@ -304,7 +330,18 @@ export default function WorkspaceObligationsBanner({ inviteId, onAllComplete }) 
                     ) : (
                       <button
                         style={{ ...S.btn, ...(busy ? S.btnDisabled : {}) }}
-                        onClick={() => runAction(invite, o)}
+                        onClick={() => {
+                          // S51.43.7 — TC-058: acknowledge-* gates open the
+                          // review modal first; everything else fires the
+                          // backend action directly (Stripe Identity redirect,
+                          // DBX Sign packet, etc.).
+                          const needsReview = /acknowledge|accept-license|accept-terms/i.test(o.id);
+                          if (needsReview) {
+                            setTermsModal({ invite, obligation: o });
+                          } else {
+                            runAction(invite, o);
+                          }
+                        }}
                         disabled={busy || busyAction !== null}
                       >
                         {busy ? "Working…" : "Start"}
@@ -319,6 +356,72 @@ export default function WorkspaceObligationsBanner({ inviteId, onAllComplete }) 
           </div>
         );
       })}
+
+      {termsModal && (
+        <div
+          onClick={() => setTermsModal(null)}
+          style={{
+            position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.6)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            zIndex: 1000, padding: 20,
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: "#fff", borderRadius: 14, padding: 28, maxWidth: 640,
+              width: "100%", maxHeight: "85vh", overflowY: "auto",
+              boxShadow: "0 25px 50px -12px rgba(0,0,0,0.4)",
+            }}
+          >
+            <div style={{ color: "#7c3aed", fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 6 }}>
+              {ROLE_LABEL[termsModal.invite.role] || termsModal.invite.role} Onboarding · Step 1
+            </div>
+            <h2 style={{ fontSize: 22, fontWeight: 700, color: "#1a202c", margin: "0 0 16px" }}>
+              Before we get started
+            </h2>
+            <div style={{ fontSize: 14, lineHeight: 1.65, color: "#334155" }}>
+              <p style={{ marginTop: 0 }}>
+                Welcome to SOCIII. Before completing your onboarding, take a moment to review what you're agreeing to as a SOCIII advisor.
+              </p>
+              <p style={{ fontWeight: 600, color: "#1a202c", marginBottom: 6 }}>What we're asking of you:</p>
+              <ul style={{ paddingLeft: 20, margin: "0 0 16px" }}>
+                <li><strong>Time commitment:</strong> ~2–4 hours per month of engagement, scoped to where you can move the needle.</li>
+                <li><strong>Responsiveness:</strong> respond to inquiries within five business days (longer if you flag a vacation).</li>
+                <li><strong>Conflicts:</strong> disclose any current or future role at a competing company — most overlap is fine, but transparency is required.</li>
+                <li><strong>Confidentiality:</strong> non-public information about SOCIII (roadmap, customers, fundraising) stays within the advisor circle.</li>
+                <li><strong>Mutual termination:</strong> either side can end the advisor relationship with 30 days' notice. No hard feelings.</li>
+              </ul>
+              <p style={{ fontWeight: 600, color: "#1a202c", marginBottom: 6 }}>Before you click acknowledge:</p>
+              <ul style={{ paddingLeft: 20, margin: "0 0 16px" }}>
+                <li>Make sure you've reviewed the <strong>personalized advisor deck</strong> attached to Sean's invitation email — it covers the SOCIII vision and your specific scope of engagement.</li>
+                <li>The formal Advisor Agreement (with the equity grant, vesting schedule, IP assignment, and termination terms) is presented in <strong>Step 3</strong>. This step (Step 1) is your acknowledgment that the relationship makes sense in principle; the legal binding happens at Step 3.</li>
+              </ul>
+              <p style={{ fontSize: 13, color: "#64748b", fontStyle: "italic", marginBottom: 0 }}>
+                Questions before acknowledging? Reply to Sean's email directly and we'll talk through anything that's unclear.
+              </p>
+            </div>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginTop: 24, paddingTop: 18, borderTop: "1px solid #e2e8f0" }}>
+              <button
+                onClick={() => setTermsModal(null)}
+                style={{ padding: "9px 18px", background: "#fff", color: "#475569", border: "1px solid #cbd5e1", borderRadius: 8, fontSize: 14, fontWeight: 500, cursor: "pointer" }}
+              >
+                Not yet
+              </button>
+              <button
+                onClick={() => {
+                  const { invite, obligation } = termsModal;
+                  setTermsModal(null);
+                  runAction(invite, obligation);
+                }}
+                style={{ padding: "9px 18px", background: "#7c3aed", color: "#fff", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer" }}
+              >
+                I acknowledge and agree to proceed
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

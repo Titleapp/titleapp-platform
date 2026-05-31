@@ -13143,7 +13143,7 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       },
       advisor_cold_invite: {
         label: "Cold advisor invite (qualify + onboarding kit)",
-        subject: "SOCIII — quick note + advisor opportunity",
+        subject: "Your invitation to advise SOCIII",
         composerVisible: true,
         // magicUrl is threaded in by /v1/hr:send-advisor-invite which mints
         // a pending advisor record + magic link via initiateAdvisorFlow
@@ -13423,6 +13423,11 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
         const subject = body.subject || tpl.subject;
         const noticeId = "hr_notice_" + crypto.randomUUID().replace(/-/g, "").slice(0, 16);
         const advisorFlow = require("./services/ir/advisorFlow");
+        // CC list is shared across all recipients — Sean wants every cold
+        // invite BCC'd to sean@titleapp.ai by default for visibility.
+        const ccList = Array.isArray(body.cc)
+          ? body.cc.filter(e => typeof e === "string" && e.includes("@")).map(e => ({ email: e.trim() }))
+          : [];
         const sentResults = [];
         for (const r of recipients) {
           if (!r.email) {
@@ -13446,36 +13451,76 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
             sentResults.push({ email: r.email, ok: false, error: `initiate failed: ${e.message}` });
             continue;
           }
-          const html = tpl.bodyHtml({
-            firstName: r.firstName || (r.name || "").split(" ")[0] || null,
-            name: r.name, email: r.email, magicUrl,
-          });
+          let html;
+          if (r.customBodyHtml && typeof r.customBodyHtml === "string" && r.customBodyHtml.trim()) {
+            const firstNameValue = r.firstName || (r.name || "").split(" ")[0] || "";
+            html = r.customBodyHtml
+              .replace(/\{firstName\}/g, firstNameValue)
+              .replace(/\{name\}/g, r.name || "")
+              .replace(/\{magicUrl\}/g, magicUrl || "");
+            if (!/<\w+/.test(html)) {
+              html = html
+                .split(/\n{2,}/)
+                .map(p => `<p>${p.replace(/\n/g, "<br>")}</p>`)
+                .join("");
+            }
+          } else {
+            html = tpl.bodyHtml({
+              firstName: r.firstName || (r.name || "").split(" ")[0] || null,
+              name: r.name, email: r.email, magicUrl,
+            });
+          }
+          // Per-recipient attachment — personalized deck PDF base64 from the
+          // composer. SendGrid attachments cap at 30MB total per message; we
+          // gate at 15MB client-side. Pass through any other doc type the
+          // composer adds in future (Word, slides) by letting the client
+          // declare deckFilename's extension.
+          const attachments = [];
+          if (r.deckBase64 && r.deckFilename) {
+            attachments.push({
+              content: r.deckBase64,
+              type: "application/pdf",
+              filename: r.deckFilename,
+              disposition: "attachment",
+            });
+          }
           try {
+            const personalization = { to: [{ email: r.email, name: r.name || undefined }] };
+            if (ccList.length) personalization.cc = ccList;
+            const sgBody = {
+              personalizations: [personalization],
+              from: { email: "sean@sociii.ai", name: "Sean Combs · SOCIII" },
+              reply_to: { email: "sean@sociii.ai", name: "Sean Combs" },
+              subject,
+              content: [{ type: "text/html", value: html }],
+              custom_args: {
+                noticeId, tenantId,
+                templateId: "advisor_cold_invite",
+                advisorId, kind: "hr",
+                hasAttachment: attachments.length > 0 ? "1" : "0",
+                customBody: r.customBodyHtml ? "1" : "0",
+              },
+              // Click tracking off — SendGrid rewrites the magic link
+              // through url813.sociii.ai which lacks HTTPS and Chrome
+              // warns "Not Secure", breaking the flow for the recipient.
+              tracking_settings: {
+                click_tracking: { enable: false, enable_text: false },
+                open_tracking: { enable: true },
+              },
+            };
+            if (attachments.length) sgBody.attachments = attachments;
             const sgRes = await fetch("https://api.sendgrid.com/v3/mail/send", {
               method: "POST",
               headers: {
                 Authorization: `Bearer ${SENDGRID_API_KEY}`,
                 "Content-Type": "application/json",
               },
-              body: JSON.stringify({
-                personalizations: [{ to: [{ email: r.email, name: r.name || undefined }] }],
-                from: { email: "sean@sociii.ai", name: "Sean Combs · SOCIII" },
-                reply_to: { email: "sean@sociii.ai", name: "Sean Combs" },
-                subject,
-                content: [{ type: "text/html", value: html }],
-                custom_args: { noticeId, tenantId, templateId: "advisor_cold_invite", advisorId, kind: "hr" },
-                // Click tracking off — SendGrid rewrites the magic link
-                // through url813.sociii.ai which lacks HTTPS and Chrome
-                // warns "Not Secure", breaking the flow for the recipient.
-                tracking_settings: {
-                  click_tracking: { enable: false, enable_text: false },
-                  open_tracking: { enable: true },
-                },
-              }),
+              body: JSON.stringify(sgBody),
             });
             sentResults.push({
-              email: r.email, ok: sgRes.ok, status: sgRes.status,
-              advisorId, error: sgRes.ok ? null : await sgRes.text(),
+              email: r.email, ok: sgRes.ok, status: sgRes.status, advisorId,
+              attachedDeck: r.deckFilename || null,
+              error: sgRes.ok ? null : await sgRes.text(),
             });
           } catch (e) {
             sentResults.push({ email: r.email, ok: false, error: e.message, advisorId });
@@ -13544,6 +13589,163 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       } catch (e) {
         console.error("hr:send-advisor-agreement failed:", e);
         return jsonError(res, 500, e.message || "Send failed");
+      }
+    }
+
+    // ── HR People CRUD (S51.43.7 evening) ───────────────────────────────
+    // Tenant-scoped team roster stored at tenants/{tid}/teamMembers/{id}.
+    // Schema is intentionally simple for tonight; Sunday refactor migrates
+    // to the canonical `employees` collection with contact_id linking + the
+    // user-level KYC schema (per feedback_kyc_user_level_one_year). Frontend:
+    // apps/business/src/sections/HRSchedulePanel.jsx.
+
+    // GET /v1/hr:people:list?tenantId=...
+    // Returns the team roster. On first call with empty collection, bootstraps
+    // Sean (W2) + Kent (1099) as the default SOCIII founding pair so the HR
+    // worker isn't a blank screen for new tenants spinning up.
+    if (route === "/hr:people:list" && method === "GET") {
+      const auth = await requireFirebaseUser(req, res);
+      if (auth.handled) return;
+      try {
+        const tenantId = req.query?.tenantId || req.headers["x-tenant-id"];
+        if (!tenantId) return jsonError(res, 400, "tenantId required");
+        const allowed = await userCanAdminTenant(auth.user.uid, tenantId);
+        if (!allowed) return jsonError(res, 403, "Not authorized");
+        const colRef = admin.firestore().collection("tenants").doc(tenantId).collection("teamMembers");
+        let snap = await colRef.where("status", "in", ["active", "onboarding"]).get();
+        if (snap.empty) {
+          // Bootstrap defaults — only fires the first time HR is opened on a new tenant
+          const defaults = [
+            {
+              name: "Sean Lee Combs",
+              email: "sean@sociii.ai",
+              role: "Founder / CEO",
+              type: "W2",
+              schedule: "Su–Sa 7am–9am HT, then on call",
+              timeOff: [
+                { id: "pto_2026_summer", label: "Summer break", start: "2026-07-18", end: "2026-07-25" },
+                { id: "pto_2026_fall", label: "Fall break", start: "2026-09-10", end: "2026-10-01" },
+              ],
+              status: "active",
+            },
+            {
+              name: "Kent Redwine",
+              email: "kent@9thelement.com",
+              role: "Cofounder Advisor · capital formation",
+              type: "1099",
+              schedule: "M–F 9am–5pm PT, on call",
+              timeOff: [],
+              status: "active",
+            },
+          ];
+          for (const p of defaults) {
+            await colRef.add({
+              ...p,
+              created_at: admin.firestore.FieldValue.serverTimestamp(),
+              created_by: auth.user.uid,
+            });
+          }
+          snap = await colRef.where("status", "in", ["active", "onboarding"]).get();
+        }
+        const people = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+          .sort((a, b) => {
+            // W2 employees first, then 1099 contractors, then alpha by name
+            if (a.type !== b.type) return a.type === "W2" ? -1 : 1;
+            return (a.name || "").localeCompare(b.name || "");
+          });
+        return res.json({ ok: true, people });
+      } catch (e) {
+        console.error("hr:people:list failed:", e);
+        return jsonError(res, 500, e.message || "List failed");
+      }
+    }
+
+    // POST /v1/hr:people:create
+    // Body: { tenantId, name, email?, role, type ("W2"|"1099"), schedule?, startDate? }
+    if (route === "/hr:people:create" && method === "POST") {
+      const auth = await requireFirebaseUser(req, res);
+      if (auth.handled) return;
+      try {
+        const body = req.body || {};
+        const tenantId = body.tenantId;
+        if (!tenantId) return jsonError(res, 400, "tenantId required");
+        const allowed = await userCanAdminTenant(auth.user.uid, tenantId);
+        if (!allowed) return jsonError(res, 403, "Not authorized");
+        const name = String(body.name || "").trim();
+        if (!name) return jsonError(res, 400, "name required");
+        const type = body.type === "1099" ? "1099" : "W2";
+        const role = String(body.role || "").trim() || (type === "W2" ? "Team Member" : "Contractor");
+        const email = body.email ? String(body.email).trim().toLowerCase() : null;
+        const schedule = String(body.schedule || "").trim()
+          || (type === "W2" ? "Standard work week · 9a–5p" : "Project-based · billable blocks");
+        const startDate = body.startDate || new Date().toISOString().slice(0, 10);
+        const docRef = await admin.firestore()
+          .collection("tenants").doc(tenantId).collection("teamMembers")
+          .add({
+            name, email, role, type, schedule, startDate,
+            status: "active",
+            created_at: admin.firestore.FieldValue.serverTimestamp(),
+            created_by: auth.user.uid,
+          });
+        return res.json({ ok: true, personId: docRef.id });
+      } catch (e) {
+        console.error("hr:people:create failed:", e);
+        return jsonError(res, 500, e.message || "Create failed");
+      }
+    }
+
+    // POST /v1/hr:people:update
+    // Body: { tenantId, personId, ...fields to update (name, email, role, type, schedule, startDate) }
+    if (route === "/hr:people:update" && method === "POST") {
+      const auth = await requireFirebaseUser(req, res);
+      if (auth.handled) return;
+      try {
+        const body = req.body || {};
+        const { tenantId, personId } = body;
+        if (!tenantId || !personId) return jsonError(res, 400, "tenantId + personId required");
+        const allowed = await userCanAdminTenant(auth.user.uid, tenantId);
+        if (!allowed) return jsonError(res, 403, "Not authorized");
+        const updates = {};
+        const fields = ["name", "email", "role", "type", "schedule", "startDate", "timeOff"];
+        for (const f of fields) {
+          if (body[f] !== undefined) updates[f] = body[f];
+        }
+        if (Object.keys(updates).length === 0) return jsonError(res, 400, "No fields to update");
+        updates.updated_at = admin.firestore.FieldValue.serverTimestamp();
+        updates.updated_by = auth.user.uid;
+        await admin.firestore()
+          .collection("tenants").doc(tenantId).collection("teamMembers").doc(personId)
+          .update(updates);
+        return res.json({ ok: true });
+      } catch (e) {
+        console.error("hr:people:update failed:", e);
+        return jsonError(res, 500, e.message || "Update failed");
+      }
+    }
+
+    // POST /v1/hr:people:remove
+    // Body: { tenantId, personId }
+    // Soft-delete (status: archived); preserves history for downstream reporting.
+    if (route === "/hr:people:remove" && method === "POST") {
+      const auth = await requireFirebaseUser(req, res);
+      if (auth.handled) return;
+      try {
+        const body = req.body || {};
+        const { tenantId, personId } = body;
+        if (!tenantId || !personId) return jsonError(res, 400, "tenantId + personId required");
+        const allowed = await userCanAdminTenant(auth.user.uid, tenantId);
+        if (!allowed) return jsonError(res, 403, "Not authorized");
+        await admin.firestore()
+          .collection("tenants").doc(tenantId).collection("teamMembers").doc(personId)
+          .update({
+            status: "archived",
+            archived_at: admin.firestore.FieldValue.serverTimestamp(),
+            archived_by: auth.user.uid,
+          });
+        return res.json({ ok: true });
+      } catch (e) {
+        console.error("hr:people:remove failed:", e);
+        return jsonError(res, 500, e.message || "Remove failed");
       }
     }
 

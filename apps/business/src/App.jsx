@@ -66,6 +66,7 @@ import B2BAnalytics from "./sections/B2BAnalytics";
 import PendingSignatures from "./sections/PendingSignatures";
 import AlexPipelines from "./sections/AlexPipelines";
 import SpineSection from "./sections/SpineSection";
+import HRSchedulePanel from "./sections/HRSchedulePanel";
 import MarketingDrafts from "./sections/MarketingDrafts";
 import ContentCalendar from "./sections/ContentCalendar";
 import SocialMedia from "./sections/SocialMedia";
@@ -4441,11 +4442,18 @@ function WorkerHomeRenderer({ onBack }) {
     }
   }
 
+  // S51.43.7 — keep the currently-active tab id so worker-canvas can swap
+  // bespoke section components (e.g. HRSchedulePanel) in for the generic
+  // fixture renderer. Reset when worker changes.
+  const [activeTabId, setActiveTabId] = React.useState(null);
+  React.useEffect(() => { setActiveTabId(null); }, [worker?.slug]);
+
   // S51.37 — try real tenant data first, then fall back to sample fixture.
   // Real payload has no _demo flag → CanvasPanel skips the SAMPLE chip.
   // Builders live in liveData.js; workers without a builder return null and
   // we fall straight to the existing fixture path (no regression).
   const handleTabSelect = React.useCallback(async (tab, resolved) => {
+    setActiveTabId(tab.id);
     let payload = null;
     try { payload = await getLiveDataForTab(worker, tab.id); } catch (_) {}
     if (!payload) payload = getFixtureForTab(worker, tab.id);
@@ -4469,6 +4477,7 @@ function WorkerHomeRenderer({ onBack }) {
     if (!def) return;
     const resolved = lookupSignal(def.signal);
     if (!resolved) return;
+    setActiveTabId(def.id);
     (async () => {
       let payload = null;
       try { payload = await getLiveDataForTab(worker, def.id); } catch (_) {}
@@ -4506,6 +4515,19 @@ function WorkerHomeRenderer({ onBack }) {
     return { kind: "hr", tenantId: tid || "", compact: true };
   }, [composerKind]);
 
+  // S51.43.7 — HR Schedule tab renders the live team panel (Sean+Kent, timeOff
+  // chips, Add/Remove). Sample Coverage fixture is replaced. Workers stay
+  // self-contained — schedule lives inside the HR worker, not a sidebar tab.
+  //
+  // Discriminator is payload.title ("Coverage") because all HR canvas tabs share
+  // signal `card:work-product` — activeTabId alone goes stale when chat emits
+  // a follow-up signal targeting a different tab (QA-001 P0).
+  const _hrPayloadTitle = String(panel?.canvasData?.context?.payload?.title || "").toLowerCase();
+  const showHRScheduleLive = worker?.slug === "platform-hr" && (
+    _hrPayloadTitle === "coverage" ||
+    (!_hrPayloadTitle && activeTabId === "schedule")
+  );
+
   if (panel?.state === "CANVAS" && panel?.canvasData) {
     return (
       <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
@@ -4520,7 +4542,10 @@ function WorkerHomeRenderer({ onBack }) {
               </React.Suspense>
             </div>
           )}
-          <CanvasPanel canvasData={panel.canvasData} onDismiss={panel.dismissCanvas} />
+          {showHRScheduleLive
+            ? <HRSchedulePanel />
+            : <CanvasPanel canvasData={panel.canvasData} onDismiss={panel.dismissCanvas} />
+          }
         </div>
       </div>
     );
@@ -4748,8 +4773,6 @@ function AdminShell({ onBackToHub, initialSection }) {
       // ── Spine Worker Sub-Nav (CODEX 49.4) ──
       case "employees":
         return <SpineSection label="Employees" workerSlug="platform-hr" />;
-      case "scheduling":
-        return <SpineSection label="Scheduling" workerSlug="platform-hr" />;
       case "hr-compliance":
         return <SpineSection label="HR Compliance" workerSlug="platform-hr" />;
       case "onboarding":

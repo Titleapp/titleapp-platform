@@ -877,15 +877,15 @@ const WORKER_NAV_MAP = {
     { id: "my-logbook", label: "Logbooks" },
   ],
   // ── Platform Spine Workers ──
+  // S51.43.7 — Scheduling lives inside the HR worker canvas (Schedule tab),
+  // not as a sidebar sub-nav. Keeps workers self-contained.
   "platform-hr": [
     { id: "employees", label: "Employees" },
-    { id: "scheduling", label: "Scheduling" },
     { id: "hr-compliance", label: "Compliance" },
     { id: "onboarding", label: "Onboarding" },
   ],
   "hr-people": [
     { id: "employees", label: "Employees" },
-    { id: "scheduling", label: "Scheduling" },
     { id: "hr-compliance", label: "Compliance" },
     { id: "onboarding", label: "Onboarding" },
   ],
@@ -1266,7 +1266,6 @@ export default function Sidebar({
     "campaigns": "content-calendar",
     "social-media": "content-calendar",
     "control-center": "control-center",
-    "scheduling": "employee-register",
     "hr-compliance": "employee-register",
     "onboarding": "employee-register",
     "kpi-builder": "control-center",
