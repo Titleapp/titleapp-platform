@@ -1,0 +1,122 @@
+# CODEOWNERS — review gates for the SOCIII platform
+#
+# This file maps directories to required reviewers. When a Pull Request
+# changes files in a directory listed here, GitHub automatically requests
+# review from the listed owners and (with branch protection enabled on
+# `main`) BLOCKS merging until they approve.
+#
+# Purpose: creator-published workers can be reviewed quickly by anyone with
+# write access; changes to the platform itself (backend, rules engine,
+# capability registry, infrastructure config) require Sean's explicit
+# review before they merge.
+#
+# Syntax: each line is `<path-pattern> @<github-username-or-team>`.
+# Patterns later in the file override earlier ones for the same path.
+# See: https://docs.github.com/en/repositories/managing-your-repositories-settings-and-customizations/customizing-your-repository/about-code-owners
+
+# ─────────────────────────────────────────────────────────────────
+# DEFAULT — everything not otherwise specified requires Sean's review
+# ─────────────────────────────────────────────────────────────────
+
+*       @seanlcombs
+
+# ─────────────────────────────────────────────────────────────────
+# PLATFORM CORE — explicitly require Sean. These are the moat.
+# Even if a future maintainer is added with write access, changes
+# in these paths still need Sean's approval.
+# ─────────────────────────────────────────────────────────────────
+
+# Backend API (single Firebase Function handles all routes)
+/functions/                     @seanlcombs
+
+# Rules engine (RAAS) — patent 64/073,708
+/raas/                          @seanlcombs
+
+# Capability registry — patent 64/073,704
+/contracts/                     @seanlcombs
+
+# React app source (the user-facing platform UI)
+/apps/                          @seanlcombs
+
+# SDK package (the contract every creator builds against)
+/packages/                      @seanlcombs
+
+# Firebase config, hosting, indexes, security rules
+/firebase.json                  @seanlcombs
+/firestore.indexes.json         @seanlcombs
+/firestore.rules                @seanlcombs
+/storage.rules                  @seanlcombs
+
+# Repo-level config (npm, build tooling, CI)
+/package.json                   @seanlcombs
+/package-lock.json              @seanlcombs
+/.github/                       @seanlcombs
+
+# Platform documentation (architectural docs, codex records, patents)
+/docs/                          @seanlcombs
+
+# Brand assets, marketing collateral, public landing pages
+/marketing/                     @seanlcombs
+
+# Migration and admin scripts (anything that touches Firestore as admin)
+/scripts/                       @seanlcombs
+
+# Cloudflare Worker / Frontdoor
+/cloudflare/                    @seanlcombs
+
+# Legal docs — license, contribution terms
+/LICENSE                        @seanlcombs
+/CONTRIBUTING.md                @seanlcombs
+/CODEOWNERS                     @seanlcombs
+
+# ─────────────────────────────────────────────────────────────────
+# CREATOR DIRECTORIES — light-touch review
+#
+# Each creator owns their own subdirectory under /creators/. PRs that
+# change ONLY files inside their own directory get a faster review
+# path because the changes can't affect anyone else's worker, the
+# platform infrastructure, or the marketplace billing logic.
+#
+# Note: the maintainer (Sean or a future delegated reviewer) still
+# reviews creator PRs before merge, but the bar is "does the worker
+# meet the DoD" rather than "does this change compromise platform
+# safety." A creator cannot merge their own PR.
+# ─────────────────────────────────────────────────────────────────
+
+# Top-level creators directory — Sean owns the structure and the
+# templates, but individual creator workspaces are self-managed
+# by their creator (see per-creator entries below).
+/creators/                      @seanlcombs
+/creators/_template/            @seanlcombs
+
+# Per-creator workspaces. Each line below grants the creator review
+# privileges over their OWN directory only. Add a new line when you
+# onboard a new creator.
+#
+# Format: /creators/<handle>/    @<their-github-username>
+
+/creators/ruthie/               @seanlcombs    # @ruthie-handle — to be added once Ruthie has GitHub set up
+# /creators/<handle>/            @<their-github>
+
+# ─────────────────────────────────────────────────────────────────
+# Notes for setup
+# ─────────────────────────────────────────────────────────────────
+#
+# 1. CODEOWNERS only enforces review requests. To actually BLOCK a merge
+#    without the listed owner's approval, enable branch protection on
+#    `main` in GitHub settings:
+#
+#      Settings → Branches → Add rule for `main`
+#         → Require a pull request before merging
+#         → Require approvals from Code Owners
+#         → Require status checks to pass (CI workflows)
+#         → Do not allow bypassing the above settings
+#
+# 2. When you add a new creator, add a line above mapping their
+#    /creators/<handle>/ directory to their GitHub username. Until you
+#    do, all their PRs route to Sean.
+#
+# 3. To remove a creator (suspension, departure), comment out their
+#    line. They lose review privilege over their own directory; their
+#    workspace remains in the repo for historical/audit purposes
+#    but they can no longer self-approve changes.
