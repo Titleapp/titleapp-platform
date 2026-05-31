@@ -6384,6 +6384,145 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       }
     }
 
+    // ═══════════════════════════════════════════════════════════════
+    //  V4 CREATOR PUBLIC SURFACES — UNAUTHENTICATED
+    //  Per docs/specs/SOCIII-Creator-Experience-Brief-v4.md
+    // ═══════════════════════════════════════════════════════════════
+
+    // GET /v1/creator:public-profile?handle=<handle> — PUBLIC
+    if (route === "/creator:public-profile" && method === "GET") {
+      try {
+        const handle = String(req.query?.handle || "").toLowerCase().trim();
+        if (!handle) return res.json({ ok: false, error: "missing_handle" });
+
+        const handleSnap = await db.collection("creatorHandles").doc(handle).get();
+        if (!handleSnap.exists) return res.json({ ok: false, error: "not_found" });
+        const { uid } = handleSnap.data();
+
+        const creatorSnap = await db.collection("creators").doc(uid).get();
+        if (!creatorSnap.exists) return res.json({ ok: false, error: "not_found" });
+        const creator = creatorSnap.data();
+
+        const credSnap = await db.collection("creatorCredentials")
+          .where("uid", "==", uid)
+          .where("status", "==", "active")
+          .orderBy("issuedAt", "asc")
+          .limit(10)
+          .get();
+        const credentials = credSnap.docs.map(d => ({
+          id: d.id,
+          tier: d.data().tier,
+          issuedAt: d.data().issuedAt?.toDate?.()?.toISOString?.() || null,
+        }));
+
+        const workersSnap = await db.collection("digitalWorkers")
+          .where("createdBy", "==", uid)
+          .where("status", "==", "live")
+          .limit(20)
+          .get();
+        const workers = workersSnap.docs.map(d => ({
+          id: d.id,
+          slug: d.data().slug || d.id,
+          name: d.data().name || d.data().displayName || d.id,
+          tagline: d.data().tagline || d.data().description || "",
+          vertical: d.data().vertical || null,
+          logoUrl: d.data().logoUrl || null,
+        }));
+
+        return res.json({
+          ok: true,
+          profile: {
+            handle,
+            displayName: creator.displayName || creator.title || "",
+            photoURL: creator.photoURL || null,
+            bio: creator.bio || "",
+            title: creator.title || "",
+            yearsExperience: creator.yearsExperience || "",
+            credentials: creator.credentials || "",
+            verifiedExpert: !!creator.verifiedExpert,
+            joinedAt: creator.createdAt?.toDate?.()?.toISOString?.() || null,
+            linkedIn: creator.linkedIn || null,
+          },
+          workers,
+          socIICredentials: credentials,
+        });
+      } catch (e) {
+        console.error("[creator:public-profile] error:", e.message);
+        return res.json({ ok: false, error: "server_error" });
+      }
+    }
+
+    // GET /v1/credential:verify?credentialId=<id> — PUBLIC
+    if (route === "/credential:verify" && method === "GET") {
+      try {
+        const credentialId = String(req.query?.credentialId || "").trim();
+        if (!credentialId) return res.json({ ok: false, error: "missing_id" });
+
+        const credSnap = await db.collection("creatorCredentials").doc(credentialId).get();
+        if (!credSnap.exists) return res.json({ ok: false, error: "not_found" });
+        const cred = credSnap.data();
+
+        const creatorSnap = await db.collection("creators").doc(cred.uid).get();
+        const creator = creatorSnap.exists ? creatorSnap.data() : {};
+
+        return res.json({
+          ok: true,
+          credential: {
+            id: credentialId,
+            tier: cred.tier || "certified",
+            status: cred.status || "active",
+            issuedAt: cred.issuedAt?.toDate?.()?.toISOString?.() || null,
+            renewedAt: cred.renewedAt?.toDate?.()?.toISOString?.() || null,
+            expiresAt: cred.expiresAt?.toDate?.()?.toISOString?.() || null,
+            revokedAt: cred.revokedAt?.toDate?.()?.toISOString?.() || null,
+            revokedReason: cred.revokedReason || null,
+            issuingOrg: "SOCIII, Inc.",
+          },
+          creator: {
+            handle: cred.handle || creator.handle || "",
+            displayName: creator.displayName || creator.title || "",
+            photoURL: creator.photoURL || null,
+            verifiedExpert: !!creator.verifiedExpert,
+            workerCount: cred.workerCount || 0,
+          },
+          workers: cred.workers || [],
+        });
+      } catch (e) {
+        console.error("[credential:verify] error:", e.message);
+        return res.json({ ok: false, error: "server_error" });
+      }
+    }
+
+    // POST /v1/studio:intake — PUBLIC
+    if (route === "/studio:intake" && method === "POST") {
+      try {
+        const { name, email, company, role, problem, budget, timeframe } = body || {};
+        if (!name || !email || !problem) return res.json({ ok: false, error: "missing_fields" });
+
+        const ref = await db.collection("studioIntake").add({
+          name: String(name).substring(0, 200),
+          email: String(email).substring(0, 200),
+          company: String(company || "").substring(0, 200),
+          role: String(role || "").substring(0, 200),
+          problem: String(problem).substring(0, 4000),
+          budget: String(budget || "").substring(0, 100),
+          timeframe: String(timeframe || "").substring(0, 100),
+          status: "new",
+          createdAt: nowServerTs(),
+          source: req.headers?.["referer"] || "direct",
+        });
+
+        return res.json({ ok: true, intakeId: ref.id });
+      } catch (e) {
+        console.error("[studio:intake] error:", e.message);
+        return res.json({ ok: false, error: "server_error" });
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    //  END V4 CREATOR PUBLIC SURFACES
+    // ═══════════════════════════════════════════════════════════════
+
     // POST /v1/magic-link:verify — Verify magic link token (no auth)
     if (route === "/magic-link:verify" && method === "POST") {
       try {
@@ -7908,6 +8047,272 @@ ${ctx.category ? "- Category: " + ctx.category : ""}`,
       const { AGREEMENT_VERSION, AGREEMENT_TEXT } = require("./legal/creatorAgreement_v1");
       return res.json({ ok: true, version: AGREEMENT_VERSION, text: AGREEMENT_TEXT });
     }
+
+    // ─────────────────────────────────────────────────────────────────
+    // V4 CREATOR JOURNEY + PUBLIC PROFILE + CREDENTIAL VERIFY + STUDIO
+    // Per docs/specs/SOCIII-Creator-Experience-Brief-v4.md
+    // ─────────────────────────────────────────────────────────────────
+
+    // GET /v1/creator:public-profile?handle=<handle> — PUBLIC, no auth
+    // Returns the public-facing profile for sociii.ai/c/<handle>
+    if (route === "/creator:public-profile" && method === "GET") {
+      try {
+        const handle = String(req.query?.handle || "").toLowerCase().trim();
+        if (!handle) return res.json({ ok: false, error: "missing_handle" });
+
+        const handleSnap = await db.collection("creatorHandles").doc(handle).get();
+        if (!handleSnap.exists) return res.json({ ok: false, error: "not_found" });
+        const { uid } = handleSnap.data();
+
+        const creatorSnap = await db.collection("creators").doc(uid).get();
+        if (!creatorSnap.exists) return res.json({ ok: false, error: "not_found" });
+        const creator = creatorSnap.data();
+
+        const credSnap = await db.collection("creatorCredentials")
+          .where("uid", "==", uid)
+          .where("status", "==", "active")
+          .orderBy("issuedAt", "asc")
+          .limit(10)
+          .get();
+        const credentials = credSnap.docs.map(d => ({
+          id: d.id,
+          tier: d.data().tier,
+          issuedAt: d.data().issuedAt?.toDate?.()?.toISOString?.() || null,
+        }));
+
+        const workersSnap = await db.collection("digitalWorkers")
+          .where("createdBy", "==", uid)
+          .where("status", "==", "live")
+          .limit(20)
+          .get();
+        const workers = workersSnap.docs.map(d => ({
+          id: d.id,
+          slug: d.data().slug || d.id,
+          name: d.data().name || d.data().displayName || d.id,
+          tagline: d.data().tagline || d.data().description || "",
+          vertical: d.data().vertical || null,
+          logoUrl: d.data().logoUrl || null,
+        }));
+
+        return res.json({
+          ok: true,
+          profile: {
+            handle,
+            displayName: creator.displayName || creator.title || "",
+            photoURL: creator.photoURL || null,
+            bio: creator.bio || "",
+            title: creator.title || "",
+            yearsExperience: creator.yearsExperience || "",
+            credentials: creator.credentials || "",
+            verifiedExpert: !!creator.verifiedExpert,
+            joinedAt: creator.createdAt?.toDate?.()?.toISOString?.() || null,
+            linkedIn: creator.linkedIn || null,
+          },
+          workers,
+          socIICredentials: credentials,
+        });
+      } catch (e) {
+        console.error("[creator:public-profile] error:", e.message);
+        return res.json({ ok: false, error: "server_error" });
+      }
+    }
+
+    // GET /v1/credential:verify?credentialId=<id> — PUBLIC, no auth
+    // The win-condition page: verifiable credential for LinkedIn/UpWork/Fiverr
+    if (route === "/credential:verify" && method === "GET") {
+      try {
+        const credentialId = String(req.query?.credentialId || "").trim();
+        if (!credentialId) return res.json({ ok: false, error: "missing_id" });
+
+        const credSnap = await db.collection("creatorCredentials").doc(credentialId).get();
+        if (!credSnap.exists) return res.json({ ok: false, error: "not_found" });
+        const cred = credSnap.data();
+
+        const creatorSnap = await db.collection("creators").doc(cred.uid).get();
+        const creator = creatorSnap.exists ? creatorSnap.data() : {};
+
+        return res.json({
+          ok: true,
+          credential: {
+            id: credentialId,
+            tier: cred.tier || "certified",
+            status: cred.status || "active",
+            issuedAt: cred.issuedAt?.toDate?.()?.toISOString?.() || null,
+            renewedAt: cred.renewedAt?.toDate?.()?.toISOString?.() || null,
+            expiresAt: cred.expiresAt?.toDate?.()?.toISOString?.() || null,
+            revokedAt: cred.revokedAt?.toDate?.()?.toISOString?.() || null,
+            revokedReason: cred.revokedReason || null,
+            issuingOrg: "SOCIII, Inc.",
+          },
+          creator: {
+            handle: cred.handle || creator.handle || "",
+            displayName: creator.displayName || creator.title || "",
+            photoURL: creator.photoURL || null,
+            verifiedExpert: !!creator.verifiedExpert,
+            workerCount: cred.workerCount || 0,
+          },
+          workers: cred.workers || [],
+        });
+      } catch (e) {
+        console.error("[credential:verify] error:", e.message);
+        return res.json({ ok: false, error: "server_error" });
+      }
+    }
+
+    // GET /v1/journey:state — authed
+    // Returns the creator's current journey state (13 beats per v4)
+    if (route === "/journey:state" && method === "GET") {
+      try {
+        const uid = auth.user.uid;
+        const stateSnap = await db.collection("journeyState").doc(uid).get();
+        const existing = stateSnap.exists ? stateSnap.data() : null;
+
+        const defaultBeats = [
+          { id: "discovery",       n: 1,  title: "Discovery",                  completed: true,  status: "auto" },
+          { id: "maybe-i-could",   n: 2,  title: "Maybe I Could",              completed: true,  status: "auto" },
+          { id: "commitment",      n: 3,  title: "Commitment + CV Capture",    completed: false, status: "active" },
+          { id: "idea-conversation", n: 4, title: "Idea Conversation",         completed: false, status: "locked" },
+          { id: "mockup-preview",  n: 5,  title: "Mockup Preview (Shareable)", completed: false, status: "locked" },
+          { id: "install",         n: 6,  title: "The Install Grind",          completed: false, status: "locked" },
+          { id: "real-preview",    n: 7,  title: "Real Workspace Preview",     completed: false, status: "locked" },
+          { id: "validation",      n: 8,  title: "Validation + QA-001",        completed: false, status: "locked" },
+          { id: "pull-request",    n: 9,  title: "The Pull Request",           completed: false, status: "locked" },
+          { id: "merge-identity",  n: 10, title: "Merge + Public Identity",    completed: false, status: "locked" },
+          { id: "forge-customer",  n: 11, title: "Forge First Customer",       completed: false, status: "locked" },
+          { id: "network-activation", n: 12, title: "Network Activation",      completed: false, status: "locked" },
+          { id: "first-payout",    n: 13, title: "First Payout + Loop",        completed: false, status: "locked" },
+        ];
+
+        const beats = existing?.beats || defaultBeats;
+        const completedCount = beats.filter(b => b.completed).length;
+
+        return res.json({
+          ok: true,
+          state: {
+            uid,
+            currentBeat: existing?.currentBeat || 3,
+            beats,
+            completedCount,
+            totalBeats: beats.length,
+            startedAt: existing?.startedAt?.toDate?.()?.toISOString?.() || null,
+            lastUpdatedAt: existing?.lastUpdatedAt?.toDate?.()?.toISOString?.() || null,
+          },
+        });
+      } catch (e) {
+        console.error("[journey:state] error:", e.message);
+        return res.json({ ok: false, error: "server_error" });
+      }
+    }
+
+    // POST /v1/journey:advance — authed
+    // Mark a beat complete and advance currentBeat. Body: { beatId, completed }
+    if (route === "/journey:advance" && method === "POST") {
+      try {
+        const uid = auth.user.uid;
+        const { beatId, completed } = body || {};
+        if (!beatId) return res.json({ ok: false, error: "missing_beat_id" });
+
+        const ref = db.collection("journeyState").doc(uid);
+        const snap = await ref.get();
+        const existing = snap.exists ? snap.data() : { startedAt: nowServerTs(), beats: null };
+
+        const defaultBeats = [
+          { id: "discovery", n: 1, completed: true,  status: "auto" },
+          { id: "maybe-i-could", n: 2, completed: true, status: "auto" },
+          { id: "commitment", n: 3, completed: false, status: "active" },
+          { id: "idea-conversation", n: 4, completed: false, status: "locked" },
+          { id: "mockup-preview", n: 5, completed: false, status: "locked" },
+          { id: "install", n: 6, completed: false, status: "locked" },
+          { id: "real-preview", n: 7, completed: false, status: "locked" },
+          { id: "validation", n: 8, completed: false, status: "locked" },
+          { id: "pull-request", n: 9, completed: false, status: "locked" },
+          { id: "merge-identity", n: 10, completed: false, status: "locked" },
+          { id: "forge-customer", n: 11, completed: false, status: "locked" },
+          { id: "network-activation", n: 12, completed: false, status: "locked" },
+          { id: "first-payout", n: 13, completed: false, status: "locked" },
+        ];
+
+        const beats = existing.beats || defaultBeats;
+        const idx = beats.findIndex(b => b.id === beatId);
+        if (idx < 0) return res.json({ ok: false, error: "unknown_beat" });
+
+        beats[idx].completed = !!completed;
+        beats[idx].status = completed ? "done" : "active";
+        if (completed && idx + 1 < beats.length && beats[idx + 1].status === "locked") {
+          beats[idx + 1].status = "active";
+        }
+        const currentBeat = beats.find(b => b.status === "active")?.n || beats[beats.length - 1].n;
+
+        await ref.set({
+          uid,
+          beats,
+          currentBeat,
+          startedAt: existing.startedAt || nowServerTs(),
+          lastUpdatedAt: nowServerTs(),
+        }, { merge: true });
+
+        return res.json({ ok: true, currentBeat, completedCount: beats.filter(b => b.completed).length });
+      } catch (e) {
+        console.error("[journey:advance] error:", e.message);
+        return res.json({ ok: false, error: "server_error" });
+      }
+    }
+
+    // POST /v1/studio:intake — PUBLIC, no auth
+    // Sociii Build (Studio) inbound lead form per v4 Section 10
+    if (route === "/studio:intake" && method === "POST") {
+      try {
+        const { name, email, company, role, problem, budget, timeframe } = body || {};
+        if (!name || !email || !problem) return res.json({ ok: false, error: "missing_fields" });
+
+        const ref = await db.collection("studioIntake").add({
+          name: String(name).substring(0, 200),
+          email: String(email).substring(0, 200),
+          company: String(company || "").substring(0, 200),
+          role: String(role || "").substring(0, 200),
+          problem: String(problem).substring(0, 4000),
+          budget: String(budget || "").substring(0, 100),
+          timeframe: String(timeframe || "").substring(0, 100),
+          status: "new",
+          createdAt: nowServerTs(),
+          source: req.headers?.["referer"] || "direct",
+        });
+
+        return res.json({ ok: true, intakeId: ref.id });
+      } catch (e) {
+        console.error("[studio:intake] error:", e.message);
+        return res.json({ ok: false, error: "server_error" });
+      }
+    }
+
+    // POST /v1/creator:claim-handle — authed
+    // Reserve a handle for the current creator (sociii.ai/c/<handle>)
+    if (route === "/creator:claim-handle" && method === "POST") {
+      try {
+        const uid = auth.user.uid;
+        const handle = String(body?.handle || "").toLowerCase().trim();
+        if (!handle || !/^[a-z0-9][a-z0-9-]{1,30}[a-z0-9]$/.test(handle)) {
+          return res.json({ ok: false, error: "invalid_handle" });
+        }
+
+        const handleRef = db.collection("creatorHandles").doc(handle);
+        const handleSnap = await handleRef.get();
+        if (handleSnap.exists && handleSnap.data().uid !== uid) {
+          return res.json({ ok: false, error: "handle_taken" });
+        }
+
+        await handleRef.set({ uid, claimedAt: nowServerTs() }, { merge: true });
+        await db.collection("creators").doc(uid).set({ handle }, { merge: true });
+
+        return res.json({ ok: true, handle });
+      } catch (e) {
+        console.error("[creator:claim-handle] error:", e.message);
+        return res.json({ ok: false, error: "server_error" });
+      }
+    }
+    // ─────────────────────────────────────────────────────────────────
+    // END V4 CREATOR JOURNEY BLOCK
+    // ─────────────────────────────────────────────────────────────────
 
     // POST /v1/creator:accept-agreement — Accept Creator Agreement
     if (route === "/creator:accept-agreement" && method === "POST") {

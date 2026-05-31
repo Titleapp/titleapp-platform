@@ -4951,6 +4951,18 @@ export default function App() {
   const isInvestorVote = /^\/invest\/vote\/?$/.test(window.location.pathname);
   const isCreatorOnboard = /^\/onboard\/creator\/?$/.test(window.location.pathname);
 
+  // ── V4 Creator Journey + public profile + credential + Studio ──
+  const creatorProfileMatch = window.location.pathname.match(/^\/c\/([a-z0-9][a-z0-9-]{0,30}[a-z0-9])\/?$/);
+  const creatorProfileHandle = creatorProfileMatch ? creatorProfileMatch[1] : null;
+  const isCreatorProfile = !!creatorProfileHandle;
+
+  const credentialMatch = window.location.pathname.match(/^\/credential\/([A-Za-z0-9_-]+)\/?$/);
+  const credentialId = credentialMatch ? credentialMatch[1] : null;
+  const isCredentialPage = !!credentialId;
+
+  const isSociiiBuild = /^\/build\/?$/.test(window.location.pathname);
+  const isCreatorJourney = /^\/creators\/journey\/?$/.test(window.location.pathname);
+
   // ── /legal/:slug route intercept ─────────────────────────
   const legalSlugMatch = window.location.pathname.match(/^\/legal\/([a-z0-9-]+)\/?$/);
   const legalSlug = legalSlugMatch ? legalSlugMatch[1] : null;
@@ -5867,6 +5879,22 @@ export default function App() {
   if (isCreatorOnboard) {
     const CreatorOnboard = React.lazy(() => import("./pages/CreatorOnboard"));
     return <React.Suspense fallback={<div style={{ minHeight: "100vh", background: "#FFFFFF" }} />}><CreatorOnboard /></React.Suspense>;
+  }
+  if (isCreatorProfile) {
+    const CreatorProfilePublic = React.lazy(() => import("./pages/CreatorProfilePublic"));
+    return <React.Suspense fallback={<div style={{ minHeight: "100vh", background: "#FFFFFF" }} />}><CreatorProfilePublic handle={creatorProfileHandle} /></React.Suspense>;
+  }
+  if (isCredentialPage) {
+    const CredentialVerify = React.lazy(() => import("./pages/CredentialVerify"));
+    return <React.Suspense fallback={<div style={{ minHeight: "100vh", background: "#FFFFFF" }} />}><CredentialVerify credentialId={credentialId} /></React.Suspense>;
+  }
+  if (isSociiiBuild) {
+    const SociiiBuild = React.lazy(() => import("./pages/SociiiBuild"));
+    return <React.Suspense fallback={<div style={{ minHeight: "100vh", background: "#FFFFFF" }} />}><SociiiBuild /></React.Suspense>;
+  }
+  if (isCreatorJourney) {
+    const CreatorJourney = React.lazy(() => import("./pages/CreatorJourney"));
+    return <React.Suspense fallback={<div style={{ minHeight: "100vh", background: "#FFFFFF" }} />}><CreatorJourney /></React.Suspense>;
   }
 
   if (handoffInProgress || currentView === "loading") {
