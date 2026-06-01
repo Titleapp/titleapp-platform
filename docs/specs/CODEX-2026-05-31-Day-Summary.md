@@ -124,16 +124,18 @@
 
 ---
 
-## Tomorrow's docket
+## Tomorrow's docket (reordered per Sean 2026-05-31 ~23:00)
 
-In order of priority:
+In order of execution:
 
-1. **Build the three-part shell refactor for Creator Journey** (S52.2 spec). Run QA-001 pre-flight before showing Sean. Target ≥75% catch rate on the 25 assertions.
-2. **Robert's loan + advisor letter** — paper the $100K note, draft warm letter, send via DBX Sign.
-3. **DNS swap** — Cloudflare + Firebase Hosting custom domain for sociii.ai → app.sociii.ai.
-4. **Contacts → IR bridge** (S52.1) — endpoints + UI + sync hooks.
-5. **Investor Data Room three-part fix** — apply same architectural pattern as Creator Journey.
-6. **Send Kent the live IR + HR test invites** (Kent agreement sent; tests pending — `tasks 311 + 312`).
+1. **DNS swap** — Cloudflare + Firebase Hosting custom domain for sociii.ai → app.sociii.ai. (Was #3 originally — moved to first for quick infra win.)
+2. **Contacts → IR bridge** (S52.1) — endpoints + UI + sync hooks. (Was #4 — moved up because actually-useful-for-fundraising.)
+3. **Investor Data Room three-part fix** — apply same architectural pattern as Creator Journey. Quick fix using same shell. (Was #5 — moved up; low-risk pattern reuse.)
+4. **Robert's loan + advisor letter** — paper the $100K note, draft warm letter, send via DBX Sign. (Was #2 — personal relationship work; do it when focused.)
+5. **Build the three-part shell refactor for Creator Journey** (S52.2 spec). Run QA-001 pre-flight before showing Sean. Target ≥75% catch rate on the 25 assertions. (Was #1 — biggest refactor; save for last when momentum is built.)
+6. ✅ **DONE TONIGHT** — Kent's agreement sent via DBX Sign + IR cold-call and Advisor cold-call test forms fired. Awaiting his feedback. (Was #6 originally.)
+
+**Strategic shape of the order:** start with infra wins (DNS, contacts bridge), pattern-reuse fix (data room), then focus-required personal work (Robert), then big UI refactor (Creator Journey shell with full QA-001 pre-flight) last.
 
 ---
 
