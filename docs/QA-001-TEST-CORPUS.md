@@ -519,6 +519,91 @@ QA-001 doesn't need to be sophisticated to be valuable. A simple harness that ru
 
 ---
 
+### TC-028: Creator Journey rendered as standalone page, broke three-part workspace
+
+- **Date:** 2026-05-31 (S51.50)
+- **Worker:** Creator Journey page (`apps/business/src/pages/CreatorJourney.jsx`)
+- **Family:** New family — **6 (Layout / surface conventions)**
+- **Severity:** P0 (structural — every user-facing surface affected)
+- **Real bug:** Built `/creators/journey` as a full-page surface with its own header/footer. No sidebar nav, no Alex chat panel, no canvas right rail. User lands and can't navigate elsewhere without browser back; can't ask Alex for help on a step. Same pattern broken on `/data-room` (separate fix queued).
+- **Rule established:** [[feedback_three_part_workspace_layout]] — every authenticated SOCIII surface MUST preserve sidebar + chat + canvas three rails. Standalone full-page is reserved for public/unauthenticated routes only.
+- **Test:** Load any authenticated surface. Assert: (a) `.sidebar` element renders in DOM, (b) Alex chat is reachable from the current view, (c) browser back button is not the only navigation affordance.
+- **Fix (S52.2):** Refactor Creator Journey to render inside AppShell as a section, preserving sidebar+chat+canvas. Build sequence + QA-001 assertions in `docs/specs/CODEX-S52.2-Creator-Journey-v2-with-QA-001.md`.
+
+### TC-029: Sidebar nav item rendered invisible — `color: inherit` overrode `.navItem` CSS
+
+- **Date:** 2026-05-31 (S51.48 → S51.49 fix)
+- **Worker:** Sidebar.jsx
+- **Family:** 6 (Layout / surface conventions)
+- **Severity:** P1 (link existed but was unreachable visually)
+- **Real bug:** First version of the Creator Journey sidebar link used `<a>` with inline `style={{ color: "inherit" }}`. The `.navItem` CSS class sets `color: #e5e7eb` but inline styles win — so the link inherited the parent's transparent/dark color and rendered invisible against the dark sidebar background.
+- **Test:** For every sidebar nav item, assert `window.getComputedStyle(el).color` is NOT the same as the sidebar's background color, AND is NOT `transparent`.
+- **Fix (S51.49):** Replaced `<a>` with `<button>` using the same styling pattern as adjacent buttons.
+
+### TC-030: User-facing copy contained time references
+
+- **Date:** 2026-05-31 (S51.50)
+- **Worker:** Creator Journey page copy
+- **Family:** New family — **7 (Copy / voice)**
+- **Severity:** P1
+- **Real bug:** Step descriptions and progress text included phrases like "30 minutes invested in your monetization path" and "13 beats from..." Time-in-copy violates Sean's rule that AI has no real sense of time.
+- **Rule established:** [[feedback_user_facing_copy_rules]] — no time references in any user-facing copy.
+- **Test:** Regex scan user-facing strings for `/\d+\s*(minute|hour|second|day|week|month)s?/i` — no matches allowed.
+- **Fix (S51.50):** Removed all time references.
+
+### TC-031: User-facing status copy was humblebrag-manipulative
+
+- **Date:** 2026-05-31 (S51.50)
+- **Worker:** Creator Journey page status thread copy
+- **Family:** 7 (Copy / voice)
+- **Severity:** P1
+- **Real bug:** "Most people close this tab. You're still reading." appearing one sentence into Step 1. Reads as manipulation, especially for Type C creators who see through it instantly.
+- **Test:** Regex scan for known patterns: `/Most people (close|scroll past|don't|never)/i` — no matches allowed.
+- **Fix (S51.50):** Rewrote status thread to be direct + factual ("You discovered SOCIII") instead of comparative-manipulative.
+
+### TC-032: "Beat" jargon in user-facing copy
+
+- **Date:** 2026-05-31 (S51.50)
+- **Worker:** Creator Journey page
+- **Family:** 7 (Copy / voice)
+- **Severity:** P1
+- **Real bug:** Used "Beat" (internal jargon from the Creator Experience Brief) in user-facing copy. Should be "Step."
+- **Test:** Regex scan rendered text for `/Beat \d/` — no matches in user-facing strings.
+- **Fix (S51.50):** Renamed all instances to "Step."
+
+### TC-033: Journey had 13 steps; should be 10 max
+
+- **Date:** 2026-05-31 (S51.50)
+- **Worker:** Creator Journey page
+- **Family:** 7 (Copy / voice)
+- **Severity:** P2
+- **Real bug:** Journey rendered 13 beats. Sean's intuition: 10 max — fewer feels achievable, more feels long.
+- **Test:** Assert journey state has `<= 10` steps.
+- **Fix (S51.50):** Compressed to 10 steps.
+
+### TC-034: Step 2 link pointed at `/onboard/creator` without required token
+
+- **Date:** 2026-05-31 (S51.50)
+- **Worker:** Creator Journey page Step 2 action link
+- **Family:** New family — **8 (Routing / link validity)**
+- **Severity:** P0 (broken user flow)
+- **Real bug:** Step 2 "Go to commitment" linked to `/onboard/creator` which requires `?creator=<id>` token. Without it, "Link looks incomplete" error renders.
+- **Test:** Click every CTA in the journey. Assert no resulting page renders an error state.
+- **Fix (S51.50):** Changed link to `/meet-alex?intent=creator-signup` which works without a token.
+
+### TC-035: Creator Journey link buried in Account section instead of top-level persona
+
+- **Date:** 2026-05-31 (S51.49)
+- **Worker:** Sidebar.jsx
+- **Family:** 6 (Layout / surface conventions)
+- **Severity:** P1
+- **Real bug:** First placement put "Creator Journey" as the last item in the Account section. Being a Creator is a major persona — should be a first-class top-level nav item.
+- **Rule established:** Persona-first navigation per [[feedback_user_facing_copy_rules]] — major personas (Creator, Investor, Advisor) get their own top-level sidebar sections.
+- **Test:** Assert the Creator section appears above the Account section.
+- **Fix (S51.50):** Moved to top of sidebar as its own "Creator" section labeled "Become a Creator," placed above MY DRIVE.
+
+---
+
 (slot for next bug)
 
 ---
