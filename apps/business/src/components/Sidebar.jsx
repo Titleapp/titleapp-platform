@@ -1713,6 +1713,25 @@ export default function Sidebar({
         </div>
       )}
 
+      {/* ═══ CREATOR — top-level persona (S51.49) ═══
+           A SOCIII Creator is a distinct, first-class persona — domain
+           experts who build Digital Workers and earn 75% of net revenue.
+           This entry lives at the top so the path is unmissable. ═══ */}
+      {!guestMode && (
+        <div className="sidebarSection">
+          <div className="sidebarLabel" style={{ color: "#a78bfa" }}>Creator</div>
+          <nav className="nav">
+            <button
+              className="navItem"
+              onClick={() => { window.location.href = "/creators/journey"; }}
+              style={{ width: "100%", textAlign: "left", cursor: "pointer", fontWeight: 600 }}
+            >
+              Become a Creator
+            </button>
+          </nav>
+        </div>
+      )}
+
       {/* ═══ MY DRIVE + MY VAULT — peer top-level destinations (CODEX 50.13 Layer B) ═══
            Drive (storageObjects) and Vault (Digital Title Certificates) are
            distinct stores. Before 50.13 they were rendered under the same
@@ -2175,13 +2194,6 @@ export default function Sidebar({
             style={{ width: "100%", textAlign: "left", cursor: "pointer" }}
           >
             Worker Rules
-          </button>
-          <button
-            className={`navItem ${currentSection === "creator-journey" ? "navItemActive" : ""}`}
-            onClick={() => { window.location.href = "/creators/journey"; }}
-            style={{ width: "100%", textAlign: "left", cursor: "pointer" }}
-          >
-            Creator Journey
           </button>
         </nav>
       </div>

@@ -24,221 +24,271 @@ async function apiFetch(path, opts = {}) {
   return res.json();
 }
 
-const BEAT_DETAILS = {
-  discovery: {
-    statusThread: "Most people close this tab. You're still reading.",
-    what: "You discovered SOCIII. Most prospects bounce within 5 seconds — you didn't.",
-    action: null,
+const STEPS = [
+  {
+    id: "discover",
+    n: 1,
+    title: "Discover SOCIII",
+    what: "Read what SOCIII is and what creators do here. The platform is a marketplace for Digital Workers built by domain experts — you bring the expertise, you earn 75% of net revenue.",
   },
-  "maybe-i-could": {
-    statusThread: "You clicked into the marketplace. Most people scroll past listings.",
-    what: "You looked at other creators and saw yourself in the work.",
-    action: null,
+  {
+    id: "sign-up",
+    n: 2,
+    title: "Sign up",
+    what: "Accept the Creator Agreement and tell us about yourself in three sentences — your title, your years of experience, your biggest win. We use that to recognize what you bring.",
+    action: { label: "Start sign-up", url: "/meet-alex?intent=creator-signup" },
   },
-  commitment: {
-    statusThread: "30 minutes invested in your monetization path — further than most professionals get.",
-    what: "Accept the Creator Agreement. Tell us about your experience in 3 sentences. We use it to recognize what you bring.",
-    action: { label: "Go to commitment", url: "/onboard/creator" },
+  {
+    id: "design",
+    n: 3,
+    title: "Design your worker with Alex",
+    what: "Talk to Alex about what your Worker does, who uses it, and what success looks like. Pick a name, a voice, and a generated logo. By the end you have a Worker with an identity — before any code exists.",
+    action: { label: "Talk to Alex", url: "/meet-alex?intent=create-worker" },
   },
-  "idea-conversation": {
-    statusThread: "You just designed something. Most people who look at this page never do.",
-    what: "Talk to Alex about what your Worker does. Name it. Pick a voice. Choose a logo. By the end you have a Worker with an identity — before any code exists.",
-    action: { label: "Start the conversation", url: "/meet-alex?intent=create-worker" },
+  {
+    id: "preview",
+    n: 4,
+    title: "Get a shareable preview",
+    what: "We render a server-side mockup of your Worker based on what you and Alex designed. You'll get a URL you can text or email to colleagues — show your network what you're building before you've written a line of code.",
   },
-  "mockup-preview": {
-    statusThread: "This shareable URL is yours. Most people in your network can't even imagine making this.",
-    what: "We render a server-side mockup of your Worker based on the Idea Conversation. Share the URL with your network — you've made something real.",
-    action: null,
+  {
+    id: "tools",
+    n: 5,
+    title: "Set up your tools",
+    what: "This is the technical step. You install three things: a Claude subscription (free tier is fine to start), Claude Code (which runs in your terminal), and a GitHub account. The 'Tools' panel at the top of this page has the install links — work through them in order. If you get stuck, paste a screenshot into Claude Chat (browser) and it will walk you through.",
   },
-  install: {
-    statusThread: "Hardest step is behind you.",
-    what: "Install Node, Git, Claude Code on your laptop. Fork the SOCIII repo. This is the technical step — open claude.ai in another tab as your screenshot helper.",
-    action: { label: "Open install guide", url: "/docs/CREATOR-INSTALL.md" },
+  {
+    id: "build",
+    n: 6,
+    title: "Build your worker in Claude Code",
+    what: "Open your terminal in the SOCIII repo. Type 'claude'. Tell it what you want to build — Claude Code does the file editing while you focus on the domain. Your intent, rules, sample data, and assertions all get authored conversationally.",
   },
-  "real-preview": {
-    statusThread: "Real product with your name on it.",
-    what: "Your Worker is now running on YOUR fork. Open the SOCIII workspace and see it render with your sample data.",
-    action: null,
+  {
+    id: "validate",
+    n: 7,
+    title: "Validate it works",
+    what: "Run the validator. It checks that your worker has all required pieces and that your assertions pass. Anything that fails comes back with a plain-language explanation and a button to ask Claude Code to fix it. Then red-team your own work — add assertions that should fail, see if they do.",
   },
-  validation: {
-    statusThread: "Most software ships with zero assertions.",
-    what: "Run npm run validate-worker. The validator checks structure. QA-001 checks behavior. Fix what fails. Then red-team your own work — add assertions that SHOULD fail.",
-    action: null,
+  {
+    id: "ship",
+    n: 8,
+    title: "Ship it",
+    what: "Push your code. Open a pull request. CI runs the validator plus an AI reviewer. Most PRs merge automatically. Your worker is then listed on the SOCIII Marketplace at sociii.ai with your name on it — and your public Creator Profile goes live at sociii.ai/c/&lt;your-handle&gt;.",
   },
-  "pull-request": {
-    statusThread: "Your name in open-source record.",
-    what: "git push. Open a Pull Request. CI runs the validator + QA-001 + AI reviewer. Most PRs auto-merge if clean.",
-    action: null,
+  {
+    id: "first-customer",
+    n: 9,
+    title: "Your first customer",
+    what: "Forge Reviews — an independent reviewer funded by SOCIII — subscribes to your Worker shortly after it lists. You get your first paying customer and a structured private review. If they flag issues, you have a window to fix things before the review publishes.",
   },
-  "merge-identity": {
-    statusThread: "Welcome to the SOCIII roster.",
-    what: "PR merged. Your Worker is listed. Your Creator Profile page is live at sociii.ai/c/<your-handle>. Verified Expert mark applied.",
-    action: null,
+  {
+    id: "earn",
+    n: 10,
+    title: "Earn",
+    what: "Share your Worker with your professional network. Email primary, LinkedIn secondary. Most early Workers get their first 50 customers from the creator's own network — that's why your expertise matters. Payouts land on the 5th of each month.",
   },
-  "forge-customer": {
-    statusThread: "You just monetized your expertise. Most people with your skills never do.",
-    what: "Within 72 hours of listing, Forge Reviews subscribes to your Worker. Your first earnings are real. Forge sends a private feedback review within 7 days.",
-    action: null,
-  },
-  "network-activation": {
-    statusThread: "Your network is your moat.",
-    what: "Share your Worker with the people who already trust your expertise. Email primary, LinkedIn secondary. 80% of early customers come from your network.",
-    action: { label: "Get share assets", url: "/creators/journey?panel=share" },
-  },
-  "first-payout": {
-    statusThread: "Data fees grow faster than subscriptions.",
-    what: "Payout lands on the 5th. Watch your TRpW — Total Revenue per Worker. Subscriptions + data fees + per-use. Worker #2 starts forming.",
-    action: null,
-  },
-};
+];
 
 export default function CreatorJourney() {
-  const [state, setState] = useState({ loading: true });
+  const [state, setState] = useState({ loading: true, completedIds: new Set() });
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => { document.title = "Your SOCIII Journey"; }, []);
+  useEffect(() => { document.title = "Your SOCIII Creator Steps"; }, []);
 
   const refresh = useCallback(async () => {
     try {
       const r = await apiFetch("/v1/journey:state", { method: "GET" });
-      setState({ loading: false, ...r });
+      if (r.ok && r.state?.beats) {
+        // Map old "beat" state to new "step" state by id
+        const completed = new Set(r.state.beats.filter(b => b.completed).map(b => b.id));
+        // Map old ids to new ones where they changed
+        if (completed.has("discovery")) completed.add("discover");
+        if (completed.has("maybe-i-could")) completed.add("discover");
+        if (completed.has("commitment")) completed.add("sign-up");
+        if (completed.has("idea-conversation")) completed.add("design");
+        if (completed.has("mockup-preview")) completed.add("preview");
+        if (completed.has("install")) completed.add("tools");
+        if (completed.has("real-preview")) completed.add("build");
+        if (completed.has("validation")) completed.add("validate");
+        if (completed.has("pull-request") || completed.has("merge-identity")) completed.add("ship");
+        if (completed.has("forge-customer")) completed.add("first-customer");
+        if (completed.has("network-activation") || completed.has("first-payout")) completed.add("earn");
+        setState({ loading: false, ok: true, completedIds: completed });
+      } else {
+        setState({ loading: false, ok: !!r.ok, completedIds: new Set(), error: r.error });
+      }
     } catch (e) {
-      setState({ loading: false, ok: false, error: "fetch_failed" });
+      setState({ loading: false, ok: false, completedIds: new Set(), error: "fetch_failed" });
     }
   }, []);
 
   useEffect(() => {
     const unsub = auth.onAuthStateChanged((u) => {
       if (u) refresh();
-      else setState({ loading: false, ok: false, error: "not_authenticated" });
+      else setState({ loading: false, ok: false, completedIds: new Set(), error: "not_authenticated" });
     });
     return () => unsub();
   }, [refresh]);
 
-  async function toggleBeat(beatId, currentCompleted) {
+  async function toggleStep(stepId) {
     setBusy(true);
     try {
+      const isCompleted = state.completedIds.has(stepId);
+      // Map new step ids back to old beat ids for the API
+      const stepToBeatMap = {
+        "discover": "discovery",
+        "sign-up": "commitment",
+        "design": "idea-conversation",
+        "preview": "mockup-preview",
+        "tools": "install",
+        "build": "real-preview",
+        "validate": "validation",
+        "ship": "pull-request",
+        "first-customer": "forge-customer",
+        "earn": "network-activation",
+      };
+      const beatId = stepToBeatMap[stepId] || stepId;
       await apiFetch("/v1/journey:advance", {
         method: "POST",
-        body: JSON.stringify({ beatId, completed: !currentCompleted }),
+        body: JSON.stringify({ beatId, completed: !isCompleted }),
       });
       await refresh();
     } finally { setBusy(false); }
   }
 
-  if (state.loading) return <div style={S.page}><div style={S.loading}>Loading your journey…</div></div>;
+  if (state.loading) return <div style={S.page}><div style={S.loading}>Loading your steps…</div></div>;
 
   if (state.error === "not_authenticated") {
     return (
       <div style={S.page}>
         <Header />
         <div style={S.notSignedIn}>
-          <h1 style={S.notFoundH1}>Sign in to see your journey</h1>
-          <p style={S.notFoundSub}>The Creator Journey is your private surface — sign in to continue.</p>
+          <h1 style={S.notFoundH1}>Sign in to see your creator steps</h1>
+          <p style={S.notFoundSub}>This is your private progress board — sign in to continue.</p>
           <a href="/login" style={S.btnPrimary}>Sign in</a>
         </div>
       </div>
     );
   }
 
-  if (!state.ok) return <div style={S.page}><div style={S.loading}>Something went wrong. Refresh to try again.</div></div>;
-
-  const { beats = [], completedCount = 0, totalBeats = 13, currentBeat } = state.state || {};
-  const progressPct = Math.round((completedCount / totalBeats) * 100);
+  const completedCount = STEPS.filter(s => state.completedIds.has(s.id)).length;
+  const totalSteps = STEPS.length;
+  const progressPct = Math.round((completedCount / totalSteps) * 100);
+  const activeIdx = STEPS.findIndex(s => !state.completedIds.has(s.id));
 
   return (
     <div style={S.page}>
       <Header />
       <main style={S.main}>
         <section style={S.heroSection}>
-          <h1 style={S.h1}>Your SOCIII Journey</h1>
+          <h1 style={S.h1}>Your SOCIII Creator Steps</h1>
           <p style={S.heroSub}>
-            13 beats from "I have expertise" to "I have a paying, publicly-recognized business built on it." This is your private progress board. The platform meets you where you are; you mark what's done.
+            From "I have expertise" to "I have a publicly-recognized business built on it." Ten steps. You mark what's done as you go.
           </p>
           <div style={S.progressBar}>
             <div style={{ ...S.progressFill, width: `${progressPct}%` }} />
           </div>
           <div style={S.progressLabel}>
-            <span>{completedCount} of {totalBeats} complete</span>
+            <span>{completedCount} of {totalSteps} complete</span>
             <span style={S.progressPct}>{progressPct}%</span>
           </div>
         </section>
 
-        <section style={S.helpersSection}>
-          <div style={S.helperCard}>
-            <div style={S.helperIcon}>💬</div>
-            <div>
-              <div style={S.helperTitle}>Claude Chat</div>
-              <div style={S.helperBody}>
-                Open <a href="https://claude.ai" target="_blank" rel="noreferrer" style={S.inlineLink}>claude.ai</a> in another tab. Screenshot anything confusing. Paste it there. You'll get answers in seconds.
-              </div>
-              <div style={S.helperHint}>
-                Mac: Cmd+Shift+4 · Windows: Win+Shift+S
-              </div>
-            </div>
+        <section style={S.toolsSection}>
+          <h2 style={S.h2}>The tools you'll need</h2>
+          <p style={S.toolsIntro}>
+            Three things, all on you to install. Most creators set them up in one focused sitting. The links below take you to the official install pages.
+          </p>
+          <div style={S.toolsGrid}>
+            <ToolCard
+              icon="1"
+              title="Claude (subscription or free)"
+              body="A working Anthropic Claude account. The free tier is enough to start; many creators upgrade to a paid plan as they go."
+              link={{ label: "Sign up for Claude", url: "https://claude.ai" }}
+            />
+            <ToolCard
+              icon="2"
+              title="Claude Chat (your browser)"
+              body="Open claude.ai in a browser tab. This is your always-on helper — paste screenshots, ask conceptual questions, get unstuck during setup."
+              link={{ label: "Open Claude Chat", url: "https://claude.ai", external: true }}
+            />
+            <ToolCard
+              icon="3"
+              title="Claude Code (your terminal)"
+              body="An AI pair programmer that runs in your terminal. Requires Node.js on your computer. This is where you'll actually build your worker."
+              link={{ label: "Install Claude Code", url: "https://docs.claude.com/en/docs/claude-code/setup", external: true }}
+            />
           </div>
-          <div style={S.helperCard}>
-            <div style={S.helperIcon}>⌨️</div>
-            <div>
-              <div style={S.helperTitle}>Claude Code</div>
-              <div style={S.helperBody}>
-                Once installed, your AI pair programmer for actual Worker authoring. Run <code>claude</code> in your terminal from the SOCIII repo.
-              </div>
-            </div>
-          </div>
+          <p style={S.toolsHint}>
+            New to the terminal? On Mac it's called "Terminal" — find it via Spotlight (Cmd+Space). On Windows, use "Windows Terminal" from the Microsoft Store. No prior coding required; you'll mostly be talking to Claude Code.
+          </p>
         </section>
 
-        <section style={S.beatsSection}>
-          {beats.map((b) => {
-            const details = BEAT_DETAILS[b.id] || {};
-            const isActive = b.status === "active";
-            const isLocked = b.status === "locked";
+        <section style={S.stepsSection}>
+          {STEPS.map((s, idx) => {
+            const isCompleted = state.completedIds.has(s.id);
+            const isActive = !isCompleted && idx === activeIdx;
             return (
               <article
-                key={b.id}
+                key={s.id}
                 style={{
-                  ...S.beatCard,
-                  ...(b.completed ? S.beatCompleted : {}),
-                  ...(isActive ? S.beatActive : {}),
-                  ...(isLocked ? S.beatLocked : {}),
+                  ...S.stepCard,
+                  ...(isCompleted ? S.stepCompleted : {}),
+                  ...(isActive ? S.stepActive : {}),
                 }}
               >
-                <div style={S.beatHeader}>
+                <div style={S.stepHeader}>
                   <button
                     type="button"
-                    disabled={isLocked || busy}
-                    onClick={() => toggleBeat(b.id, b.completed)}
+                    disabled={busy}
+                    onClick={() => toggleStep(s.id)}
                     style={{
                       ...S.checkbox,
-                      ...(b.completed ? S.checkboxChecked : {}),
-                      ...(isLocked ? S.checkboxLocked : {}),
+                      ...(isCompleted ? S.checkboxChecked : {}),
                     }}
-                    aria-label={`Mark beat ${b.n} ${b.completed ? "incomplete" : "complete"}`}
+                    aria-label={`Mark step ${s.n} ${isCompleted ? "incomplete" : "complete"}`}
                   >
-                    {b.completed && (
+                    {isCompleted && (
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                         <polyline points="20 6 9 17 4 12" />
                       </svg>
                     )}
                   </button>
-                  <div style={S.beatNum}>Beat {b.n}</div>
-                  <div style={S.beatTitle}>{b.title}</div>
-                  {isActive && <div style={S.activeChip}>Active</div>}
+                  <div style={S.stepNum}>Step {s.n}</div>
+                  <div style={S.stepTitle}>{s.title}</div>
+                  {isActive && <div style={S.activeChip}>Up next</div>}
                 </div>
-                {details.statusThread && (
-                  <div style={S.statusThread}>{details.statusThread}</div>
-                )}
-                {details.what && (
-                  <p style={S.beatWhat}>{details.what}</p>
-                )}
-                {details.action && !b.completed && !isLocked && (
-                  <a href={details.action.url} style={S.beatAction}>{details.action.label} →</a>
+                <p style={S.stepWhat} dangerouslySetInnerHTML={{ __html: s.what }} />
+                {s.action && !isCompleted && (
+                  <a href={s.action.url} style={S.stepAction}>{s.action.label} →</a>
                 )}
               </article>
             );
           })}
         </section>
       </main>
+    </div>
+  );
+}
+
+function ToolCard({ icon, title, body, link }) {
+  return (
+    <div style={tS.card}>
+      <div style={tS.iconCircle}>{icon}</div>
+      <div style={tS.cardBody}>
+        <div style={tS.cardTitle}>{title}</div>
+        <div style={tS.cardText}>{body}</div>
+        {link && (
+          <a
+            href={link.url}
+            target={link.external ? "_blank" : undefined}
+            rel={link.external ? "noreferrer" : undefined}
+            style={tS.cardLink}
+          >
+            {link.label} →
+          </a>
+        )}
+      </div>
     </div>
   );
 }
@@ -252,11 +302,28 @@ function Header() {
       </a>
       <div style={S.headerRight}>
         <a href="/marketplace" style={S.headerLink}>Marketplace</a>
-        <a href="/c/me" style={S.headerLink}>My Profile</a>
       </div>
     </header>
   );
 }
+
+const tS = {
+  card: {
+    display: "flex", gap: 14, padding: 18,
+    background: "#fff", borderRadius: 12, border: "1.5px solid #e2e8f0",
+  },
+  iconCircle: {
+    flexShrink: 0,
+    width: 36, height: 36, borderRadius: "50%",
+    background: "#7c3aed", color: "#fff",
+    display: "flex", alignItems: "center", justifyContent: "center",
+    fontSize: 16, fontWeight: 700,
+  },
+  cardBody: { flex: 1 },
+  cardTitle: { fontSize: 15, fontWeight: 700, marginBottom: 6 },
+  cardText: { fontSize: 13, color: "#475569", lineHeight: 1.5, marginBottom: 10 },
+  cardLink: { fontSize: 13, color: "#7c3aed", fontWeight: 600, textDecoration: "none" },
+};
 
 const S = {
   page: {
@@ -286,9 +353,9 @@ const S = {
 
   main: { maxWidth: 880, margin: "0 auto", padding: "40px 32px" },
 
-  heroSection: { marginBottom: 32 },
+  heroSection: { marginBottom: 36 },
   h1: { fontSize: 36, fontWeight: 800, letterSpacing: "-1px", marginBottom: 12 },
-  heroSub: { fontSize: 16, color: "#475569", lineHeight: 1.6, marginBottom: 24 },
+  heroSub: { fontSize: 16, color: "#475569", lineHeight: 1.55, marginBottom: 24 },
   progressBar: {
     height: 8, background: "#e2e8f0", borderRadius: 999,
     overflow: "hidden", marginBottom: 8,
@@ -303,60 +370,52 @@ const S = {
   },
   progressPct: { fontWeight: 700, color: "#7c3aed" },
 
-  helpersSection: {
-    display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16,
-    marginBottom: 32,
+  toolsSection: {
+    marginBottom: 40, padding: "24px 28px",
+    background: "#fff", borderRadius: 16, border: "1.5px solid #e2e8f0",
   },
-  helperCard: {
-    display: "flex", gap: 16, padding: 20,
-    background: "#fff", borderRadius: 12, border: "1.5px solid #e2e8f0",
+  h2: { fontSize: 20, fontWeight: 700, marginBottom: 8 },
+  toolsIntro: { fontSize: 14, color: "#475569", lineHeight: 1.5, marginBottom: 18 },
+  toolsGrid: { display: "grid", gridTemplateColumns: "1fr", gap: 12, marginBottom: 14 },
+  toolsHint: {
+    fontSize: 12, color: "#64748b", lineHeight: 1.5,
+    padding: 12, background: "#f1f5f9", borderRadius: 8, marginTop: 6,
   },
-  helperIcon: { fontSize: 32, lineHeight: 1 },
-  helperTitle: { fontSize: 15, fontWeight: 700, marginBottom: 4 },
-  helperBody: { fontSize: 13, color: "#475569", lineHeight: 1.5 },
-  helperHint: { fontSize: 11, color: "#94a3b8", marginTop: 6, fontFamily: "monospace" },
-  inlineLink: { color: "#7c3aed", textDecoration: "underline" },
 
-  beatsSection: { display: "flex", flexDirection: "column", gap: 12 },
-  beatCard: {
-    background: "#fff", borderRadius: 12, padding: 24,
-    border: "1.5px solid #e2e8f0", transition: "border-color 0.15s",
+  stepsSection: { display: "flex", flexDirection: "column", gap: 12 },
+  stepCard: {
+    background: "#fff", borderRadius: 12, padding: 22,
+    border: "1.5px solid #e2e8f0",
   },
-  beatCompleted: { background: "#f8fafc", opacity: 0.85 },
-  beatActive: { borderColor: "#7c3aed", boxShadow: "0 0 0 3px #7c3aed20" },
-  beatLocked: { opacity: 0.5 },
+  stepCompleted: { background: "#f8fafc", opacity: 0.75 },
+  stepActive: { borderColor: "#7c3aed", boxShadow: "0 0 0 3px #7c3aed1a" },
 
-  beatHeader: { display: "flex", alignItems: "center", gap: 12, marginBottom: 8 },
+  stepHeader: { display: "flex", alignItems: "center", gap: 12, marginBottom: 10 },
   checkbox: {
-    width: 24, height: 24, borderRadius: 6,
+    width: 26, height: 26, borderRadius: 6,
     border: "2px solid #cbd5e1", background: "#fff",
     cursor: "pointer", flexShrink: 0,
     display: "flex", alignItems: "center", justifyContent: "center",
   },
   checkboxChecked: { background: "#16a34a", borderColor: "#16a34a" },
-  checkboxLocked: { cursor: "not-allowed", background: "#f1f5f9" },
 
-  beatNum: {
+  stepNum: {
     fontSize: 11, fontWeight: 700, color: "#94a3b8",
     textTransform: "uppercase", letterSpacing: "0.1em",
   },
-  beatTitle: { fontSize: 17, fontWeight: 700, color: "#0f172a", flex: 1 },
+  stepTitle: { fontSize: 17, fontWeight: 700, color: "#0f172a", flex: 1 },
   activeChip: {
     fontSize: 11, fontWeight: 700, color: "#fff",
     background: "#7c3aed", padding: "3px 10px",
     borderRadius: 999, letterSpacing: "0.05em",
   },
 
-  statusThread: {
-    fontSize: 14, fontWeight: 600, color: "#7c3aed",
-    marginBottom: 8, marginLeft: 36, fontStyle: "italic",
+  stepWhat: {
+    fontSize: 14, color: "#334155", lineHeight: 1.6,
+    marginLeft: 38, marginBottom: 12,
   },
-  beatWhat: {
-    fontSize: 14, color: "#475569", lineHeight: 1.6,
-    marginLeft: 36, marginBottom: 12,
-  },
-  beatAction: {
-    display: "inline-block", marginLeft: 36,
+  stepAction: {
+    display: "inline-block", marginLeft: 38,
     color: "#7c3aed", fontSize: 14, fontWeight: 600,
     textDecoration: "none",
   },
