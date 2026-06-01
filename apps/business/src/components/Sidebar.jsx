@@ -2176,13 +2176,13 @@ export default function Sidebar({
           >
             Worker Rules
           </button>
-          <a
-            className="navItem"
-            href="/creators/journey"
-            style={{ width: "100%", textAlign: "left", cursor: "pointer", display: "block", textDecoration: "none", color: "inherit" }}
+          <button
+            className={`navItem ${currentSection === "creator-journey" ? "navItemActive" : ""}`}
+            onClick={() => { window.location.href = "/creators/journey"; }}
+            style={{ width: "100%", textAlign: "left", cursor: "pointer" }}
           >
             Creator Journey
-          </a>
+          </button>
         </nav>
       </div>
 
