@@ -1,0 +1,15 @@
+# Soft rules — AI is allowed to deviate with rationale.
+# Format: https://sociii.ai/docs/raas
+#
+# Both the rule and the AI's rationale are logged in the audit trail.
+
+- id: REPLACE-soft-rule-id
+  description: "REPLACE — preferred behavior, deviation allowed with rationale"
+  enforce: soft
+  rationale: "REPLACE — why this rule exists"
+
+# Example pattern:
+# - id: serial-troponin-on-chest-pain
+#   description: "On chest pain inputs, order serial troponin q6h"
+#   enforce: soft
+#   rationale: "Per ACS pathway v3, section 4.2 — but cardiology may have called for different cadence"

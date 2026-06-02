@@ -4526,6 +4526,35 @@ function WorkerHomeRenderer({ onBack }) {
     return { kind: "hr", tenantId: tid || "", compact: true };
   }, [composerKind]);
 
+  // S52.1b — IR Pipeline tab surfaces the Contacts↔IR Bridge prospects list.
+  // Trigger: fundraise worker + active payload titled "pipeline".
+  const showProspectsPanel = (() => {
+    if (worker?.slug !== "fundraise") return false;
+    const payloadTitle = String(panel?.canvasData?.context?.payload?.title || "").toLowerCase();
+    return payloadTitle.includes("pipeline");
+  })();
+  const ProspectsPanel = React.useMemo(
+    () => showProspectsPanel ? React.lazy(() => import("./components/ProspectsPanel")) : null,
+    [showProspectsPanel]
+  );
+  const prospectsProps = React.useMemo(() => ({
+    fundraiseId: "fr_d291731b90725d12",
+    compact: true,
+  }), []);
+
+  // S52.2b — IR Data Room tab renders the real DataRoom doc list inline
+  // (replaces the SAMPLE summary card). Trigger: fundraise worker + active
+  // payload titled "data room".
+  const showDataRoomInline = (() => {
+    if (worker?.slug !== "fundraise") return false;
+    const payloadTitle = String(panel?.canvasData?.context?.payload?.title || "").toLowerCase();
+    return payloadTitle.includes("data room");
+  })();
+  const DataRoomInline = React.useMemo(
+    () => showDataRoomInline ? React.lazy(() => import("./pages/DataRoom")) : null,
+    [showDataRoomInline]
+  );
+
   // S51.43.7 — HR Schedule tab renders the live team panel (Sean+Kent, timeOff
   // chips, Add/Remove). Sample Coverage fixture is replaced. Workers stay
   // self-contained — schedule lives inside the HR worker, not a sidebar tab.
@@ -4553,9 +4582,23 @@ function WorkerHomeRenderer({ onBack }) {
               </React.Suspense>
             </div>
           )}
+          {showProspectsPanel && ProspectsPanel && (
+            <div>
+              <React.Suspense fallback={<div style={{ padding: 16, fontSize: 12, color: "#94a3b8" }}>Loading prospects…</div>}>
+                <ProspectsPanel {...prospectsProps} />
+              </React.Suspense>
+            </div>
+          )}
+          {showDataRoomInline && DataRoomInline && (
+            <div>
+              <React.Suspense fallback={<div style={{ padding: 16, fontSize: 12, color: "#94a3b8" }}>Loading data room…</div>}>
+                <DataRoomInline embedded />
+              </React.Suspense>
+            </div>
+          )}
           {showHRScheduleLive
             ? <HRSchedulePanel />
-            : <CanvasPanel canvasData={panel.canvasData} onDismiss={panel.dismissCanvas} />
+            : ((showProspectsPanel || showDataRoomInline) ? null : <CanvasPanel canvasData={panel.canvasData} onDismiss={panel.dismissCanvas} />)
           }
         </div>
       </div>
@@ -4842,19 +4885,48 @@ function AdminShell({ onBackToHub, initialSection }) {
 class AppErrorBoundary extends React.Component {
   constructor(props) { super(props); this.state = { hasError: false, error: null }; }
   static getDerivedStateFromError(error) { return { hasError: true, error }; }
-  componentDidCatch(e, info) { console.error("[AppErrorBoundary]", e, info?.componentStack); }
+  componentDidCatch(e, info) {
+    console.error("[AppErrorBoundary]", e, info?.componentStack);
+    // Stale chunk after deploy — old index references a renamed asset.
+    // Auto-reload once to pull the new index. Guard against loops with sessionStorage.
+    const msg = String(e?.message || "");
+    const isChunkLoadError = msg.includes("Failed to fetch dynamically imported module")
+      || msg.includes("Importing a module script failed")
+      || msg.includes("error loading dynamically imported module");
+    if (isChunkLoadError) {
+      const KEY = "__chunk_reload_at";
+      const last = parseInt(sessionStorage.getItem(KEY) || "0", 10);
+      const now = Date.now();
+      if (now - last > 30000) {
+        sessionStorage.setItem(KEY, String(now));
+        window.location.reload();
+      }
+    }
+  }
   render() {
     if (this.state.hasError) {
       const errMsg = this.state.error?.message || "Unknown error";
+      const isChunkLoadError = errMsg.includes("Failed to fetch dynamically imported module")
+        || errMsg.includes("Importing a module script failed")
+        || errMsg.includes("error loading dynamically imported module");
       return (
         <div style={{ padding: 40, maxWidth: 600, margin: "80px auto", textAlign: "center", fontFamily: "system-ui, -apple-system, sans-serif" }}>
-          <div style={{ fontSize: 18, fontWeight: 600, color: "#1e293b", marginBottom: 12 }}>Something went wrong</div>
-          <div style={{ fontSize: 13, color: "#64748b", marginBottom: 16 }}>An error occurred while loading this section.</div>
+          <div style={{ fontSize: 18, fontWeight: 600, color: "#1e293b", marginBottom: 12 }}>
+            {isChunkLoadError ? "New version available" : "Something went wrong"}
+          </div>
+          <div style={{ fontSize: 13, color: "#64748b", marginBottom: 16 }}>
+            {isChunkLoadError
+              ? "A newer build is live. Click reload to load it."
+              : "An error occurred while loading this section."}
+          </div>
           <div style={{ fontSize: 11, color: "#94a3b8", fontFamily: "monospace", marginBottom: 20, wordBreak: "break-word", background: "#f8fafc", padding: 12, borderRadius: 8, border: "1px solid #e2e8f0" }}>{errMsg}</div>
           <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
-            <button onClick={() => { this.setState({ hasError: false, error: null }); }}
+            <button onClick={() => {
+                if (isChunkLoadError) window.location.reload();
+                else this.setState({ hasError: false, error: null });
+              }}
               style={{ padding: "10px 24px", background: "#7c3aed", color: "white", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
-              Try Again
+              {isChunkLoadError ? "Reload" : "Try Again"}
             </button>
             <button onClick={() => { this.setState({ hasError: false, error: null }); window.location.href = "/"; }}
               style={{ padding: "10px 24px", background: "#f1f5f9", color: "#64748b", border: "1px solid #e2e8f0", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
@@ -4963,6 +5035,12 @@ export default function App() {
   const isSociiiBuild = /^\/build\/?$/.test(window.location.pathname);
   const isCreatorJourney = /^\/creators\/journey\/?$/.test(window.location.pathname);
 
+  // S52.3 — /docs (index) + /docs/<slug> (page)
+  const isDocsIndex = /^\/docs\/?$/.test(window.location.pathname);
+  const docsPageMatch = window.location.pathname.match(/^\/docs\/([a-z0-9][a-z0-9-]{0,80})\/?$/);
+  const docsSlug = docsPageMatch ? docsPageMatch[1] : null;
+  const isDocsPage = !!docsSlug && docsSlug !== "admin"; // don't intercept /docs/admin if it exists
+
   // ── /legal/:slug route intercept ─────────────────────────
   const legalSlugMatch = window.location.pathname.match(/^\/legal\/([a-z0-9-]+)\/?$/);
   const legalSlug = legalSlugMatch ? legalSlugMatch[1] : null;
@@ -4975,6 +5053,18 @@ export default function App() {
   const campaignMatch = window.location.pathname.match(/^\/campaign\/([a-z0-9-]+)\/?$/);
   const campaignSlug = campaignMatch ? campaignMatch[1] : null;
   const isCampaignPage = !!campaignSlug;
+
+  // ── /creator/:slug route intercept (S52.9 — workspace landing) ──
+  const creatorLandingMatch = window.location.pathname.match(/^\/creator\/([a-z0-9-]+)\/?$/);
+  const creatorLandingSlug = creatorLandingMatch ? creatorLandingMatch[1] : null;
+  const isCreatorLanding = !!creatorLandingSlug;
+
+  // ── /creator (no slug) — generic gallery / IG-bio destination ──
+  const isCreatorGallery = /^\/creator\/?$/.test(window.location.pathname);
+
+  // ── /creator-workspace/:slug — "what my finished worker looks like to me" (S52.12 salvage) ──
+  const creatorWorkspaceMatch = window.location.pathname.match(/^\/creator-workspace\/([a-z0-9-]+)\/?$/);
+  const isCreatorWorkspace = !!creatorWorkspaceMatch;
 
   // ── /w3/roster/:projectId route intercept ────────────
   const isW3Roster = /^\/w3\/roster\/[a-zA-Z0-9_-]+\/?$/.test(window.location.pathname);
@@ -5000,6 +5090,12 @@ export default function App() {
 
   // ── /meet-alex route intercept ────────────────────────
   const isMeetAlex = /^\/meet-alex\/?$/.test(window.location.pathname);
+
+  // ── /start/<campaign> — S52.7 Campaign Landing Workspace ────
+  // Reuses /meet-alex guest shell; campaign context is read from URL inside
+  // MeetAlex (see lib/campaignRouting.js).
+  const startCampaignMatch = window.location.pathname.match(/^\/start\/([a-z0-9-]+)\/?$/);
+  const isStartCampaign = !!startCampaignMatch;
   const [meetAlexLock, setMeetAlexLock] = useState(false);
 
   // ── /platform route intercept (PearX S26 Doc 1.4) ────
@@ -5783,6 +5879,24 @@ export default function App() {
     return <CampaignPage slug={campaignSlug} />;
   }
 
+  // ── /creator/<slug>: workspace landing from ad campaign (S52.9) ──
+  if (isCreatorLanding) {
+    const CreatorLanding = React.lazy(() => import("./pages/CreatorLanding"));
+    return <React.Suspense fallback={<div style={{ minHeight: "100vh", background: "#0B0E14" }} />}><CreatorLanding /></React.Suspense>;
+  }
+
+  // ── /creator (gallery): IG-bio-style fallback when no character slug ──
+  if (isCreatorGallery) {
+    const CreatorGallery = React.lazy(() => import("./pages/CreatorGallery"));
+    return <React.Suspense fallback={<div style={{ minHeight: "100vh", background: "#000" }} />}><CreatorGallery /></React.Suspense>;
+  }
+
+  // ── /creator-workspace/<slug>: creator's view of their own finished worker (S52.12) ──
+  if (isCreatorWorkspace) {
+    const CreatorWorkspace = React.lazy(() => import("./pages/CreatorWorkspace"));
+    return <React.Suspense fallback={<div style={{ minHeight: "100vh", background: "#0B0E14" }} />}><CreatorWorkspace /></React.Suspense>;
+  }
+
   // ── Public W3 team roster: no auth required ─────────────────
   if (isW3Roster) {
     const PublicTeamRoster = React.lazy(() => import("./pages/web3/PublicTeamRoster"));
@@ -5833,7 +5947,9 @@ export default function App() {
   // ── Meet Alex: guest shell — three-panel with guest mode ────
   // Show MeetAlex for unauthenticated users, or while auth+subscribe is in progress
   // (meetAlexLock). Once lock releases and token exists, fall through to workspace.
-  if (isMeetAlex && (!token || meetAlexLock)) {
+  // S52.7 — also handles /start/<campaign> paths via the same guest shell;
+  // MeetAlex reads campaign context off the URL.
+  if ((isMeetAlex || isStartCampaign) && (!token || meetAlexLock)) {
     const guestVertical = new URLSearchParams(window.location.search).get("vertical") || "";
     const guestId = sessionStorage.getItem("ta_guest_sid") || Math.random().toString(36).slice(2) + Date.now().toString(36);
     if (!sessionStorage.getItem("ta_guest_sid")) sessionStorage.setItem("ta_guest_sid", guestId);
@@ -5862,6 +5978,19 @@ export default function App() {
   }
   if (isDataRoom) {
     const DataRoom = React.lazy(() => import("./pages/DataRoom"));
+    // S52.2 — per [[feedback_three_part_workspace_layout]] authenticated users
+    // get DataRoom rendered as the canvas inside AppShell (sidebar + Alex chat
+    // remain present). Unauthenticated visitors fall through to the standalone
+    // surface so they can read the materials without nav noise.
+    if (token) {
+      return (
+        <AppShell currentSection="data-room" onNavigate={() => {}}>
+          <React.Suspense fallback={<div style={{ padding: 40, color: "#94a3b8" }}>Loading data room…</div>}>
+            <DataRoom embedded />
+          </React.Suspense>
+        </AppShell>
+      );
+    }
     return <React.Suspense fallback={<div style={{ minHeight: "100vh", background: "#FFFFFF" }} />}><DataRoom /></React.Suspense>;
   }
   if (isFundraiseAdmin) {
@@ -5892,8 +6021,30 @@ export default function App() {
     const SociiiBuild = React.lazy(() => import("./pages/SociiiBuild"));
     return <React.Suspense fallback={<div style={{ minHeight: "100vh", background: "#FFFFFF" }} />}><SociiiBuild /></React.Suspense>;
   }
+  // S52.3 — Docs site (public, crawlable, GitBook-style nav)
+  if (isDocsIndex) {
+    const DocsIndex = React.lazy(() => import("./pages/docs/DocsIndex"));
+    return <React.Suspense fallback={<div style={{ minHeight: "100vh", background: "#fff" }} />}><DocsIndex /></React.Suspense>;
+  }
+  if (isDocsPage) {
+    const DocsShell = React.lazy(() => import("./pages/docs/DocsShell"));
+    return <React.Suspense fallback={<div style={{ minHeight: "100vh", background: "#fff" }} />}><DocsShell slug={docsSlug} /></React.Suspense>;
+  }
+
   if (isCreatorJourney) {
     const CreatorJourney = React.lazy(() => import("./pages/CreatorJourney"));
+    // S52.2 — three-panel layout for authenticated creator journey. Unauth
+    // visitors fall through to the standalone surface (they'll hit the
+    // "Sign in to see your creator steps" gate from inside the page).
+    if (token) {
+      return (
+        <AppShell currentSection="creator-journey" onNavigate={() => {}}>
+          <React.Suspense fallback={<div style={{ padding: 40, color: "#94a3b8" }}>Loading creator journey…</div>}>
+            <CreatorJourney embedded />
+          </React.Suspense>
+        </AppShell>
+      );
+    }
     return <React.Suspense fallback={<div style={{ minHeight: "100vh", background: "#FFFFFF" }} />}><CreatorJourney /></React.Suspense>;
   }
 

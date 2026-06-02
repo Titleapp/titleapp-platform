@@ -1,0 +1,13 @@
+{
+  "_meta": {
+    "description": "Sample input + expected output. Used by QA-001 validator.",
+    "docs": "https://sociii.ai/docs/qa-001"
+  },
+  "input": {
+    "REPLACE_input_name": "REPLACE — a realistic input from your domain"
+  },
+  "expected": {
+    "REPLACE_output_name": "REPLACE — what the worker should produce (structurally, not byte-exact)"
+  },
+  "notes": "REPLACE — anything a future contributor needs to know about this case (e.g., why it was added, what bug it catches)"
+}

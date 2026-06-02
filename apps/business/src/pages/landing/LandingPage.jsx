@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import sociiiMarkUrl from "../../assets/sociii-brand/icon/sociii-icon-mark.svg";
+import { applyLandingMeta } from "../../lib/landingMeta";
 
 const MAX_W = 1200;
 
@@ -37,6 +38,11 @@ export default function LandingPage({ vertical, headlines, problems, workers, te
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, []);
+
+  // ── S52.5 SEO meta per vertical ───────────────────────────
+  useEffect(() => {
+    if (vertical) applyLandingMeta(vertical);
+  }, [vertical]);
 
   // ── UTM extraction ────────────────────────────────────────
   useEffect(() => {

@@ -1,0 +1,30 @@
+{
+  "_meta": {
+    "description": "Tabs rendered in the right panel of the SOCIII workspace.",
+    "docs": "https://sociii.ai/docs/canvas-tabs"
+  },
+  "tabs": [
+    {
+      "id": "REPLACE-tab-id",
+      "title": "REPLACE — display label (under 20 chars)",
+      "signal": "card:REPLACE-tab-id",
+      "default": true,
+      "data_source": "live",
+      "fixture": "fixtures/case-001.json"
+    },
+    {
+      "id": "history",
+      "title": "History",
+      "signal": "card:history",
+      "data_source": "live",
+      "scope": "user"
+    },
+    {
+      "id": "settings",
+      "title": "Settings",
+      "signal": "card:settings",
+      "data_source": "live",
+      "scope": "tenant"
+    }
+  ]
+}

@@ -1713,24 +1713,44 @@ export default function Sidebar({
         </div>
       )}
 
-      {/* ═══ CREATOR — top-level persona (S51.49) ═══
+      {/* ═══ CREATOR — top-level persona (S51.49) · collapsible (S52.1c) ═══
            A SOCIII Creator is a distinct, first-class persona — domain
            experts who build Digital Workers and earn 75% of net revenue.
-           This entry lives at the top so the path is unmissable. ═══ */}
-      {!guestMode && (
-        <div className="sidebarSection">
-          <div className="sidebarLabel" style={{ color: "#a78bfa" }}>Creator</div>
-          <nav className="nav">
+           Collapsed by default after first visit so it doesn't crowd
+           non-creator users. ═══ */}
+      {!guestMode && (() => {
+        const creatorCollapsed = collapsedGroups["__creator__"];
+        return (
+          <div className="sidebarSection">
             <button
-              className="navItem"
-              onClick={() => { window.location.href = "/creators/journey"; }}
-              style={{ width: "100%", textAlign: "left", cursor: "pointer", fontWeight: 600 }}
+              onClick={() => setCollapsedGroups(prev => ({ ...prev, __creator__: !prev.__creator__ }))}
+              className="sidebarLabel"
+              style={{
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                width: "100%", background: "none", border: "none", cursor: "pointer",
+                padding: 0, margin: 0, color: "#a78bfa",
+              }}
             >
-              Become a Creator
+              <span>Creator</span>
+              <span style={{ fontSize: 10, transition: "transform 0.2s", transform: creatorCollapsed ? "rotate(0deg)" : "rotate(90deg)" }}>&rsaquo;</span>
             </button>
-          </nav>
-        </div>
-      )}
+            {!creatorCollapsed && (
+              <nav className="nav">
+                <button
+                  className="navItem"
+                  onClick={() => { window.location.href = "/creators/journey"; }}
+                  style={{
+                    width: "100%", textAlign: "left", cursor: "pointer",
+                    fontWeight: 500, paddingLeft: 20, fontSize: 13,
+                  }}
+                >
+                  Become a Creator
+                </button>
+              </nav>
+            )}
+          </div>
+        );
+      })()}
 
       {/* ═══ MY DRIVE + MY VAULT — peer top-level destinations (CODEX 50.13 Layer B) ═══
            Drive (storageObjects) and Vault (Digital Title Certificates) are

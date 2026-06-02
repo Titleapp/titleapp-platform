@@ -61,6 +61,7 @@ export default function LandingPage() {
           <span style={S.logoText}>SOCIII</span>
         </div>
         <div style={S.headerRight}>
+          <a href={`${appBase}/creator`} style={S.headerLink}>OF for Smart People →</a>
           <a href={`${appBase}/meet-alex?action=signin`} style={S.headerLink}>Sign in</a>
           <a href={`${appBase}/meet-alex`} style={S.headerCta}>Start free</a>
         </div>
@@ -71,7 +72,11 @@ export default function LandingPage() {
           <h1 style={S.heroH1}>Digital Workers for the work that matters.</h1>
           <p style={S.heroSub}>
             Built by the experts in your field. Trained on the rules of your industry.
-            Tell Alex what you need.
+            Tell Alex what you need — or{" "}
+            <a href={`${appBase}/creator`} style={{ color: "#7c3aed", fontWeight: 600, textDecoration: "underline" }}>
+              browse the OF for Smart People gallery
+            </a>{" "}
+            to meet them.
           </p>
 
           <div style={S.chatBar}>

@@ -304,6 +304,23 @@ async function markStepComplete(fundraiseId, investorId, step, extra = {}) {
     ...extra,
   }, { merge: true });
 
+  // S52.1 — sync hook: write engagement event back to source contact
+  try {
+    const { recordIrEventOnContact } = require("./contactsBridge");
+    const eventTypeMap = {
+      "magic_link_clicked": "ir.magic_link_clicked",
+      "identity_started": "ir.identity_started",
+      "identity_complete": "ir.kyc_complete",
+      "signature_started": "ir.signature_started",
+      "signature_complete": "ir.signed_safe",
+      "closed": "ir.closed",
+    };
+    const eventType = eventTypeMap[step];
+    if (eventType) {
+      await recordIrEventOnContact({ investorId, fundraiseId, type: eventType });
+    }
+  } catch (_) { /* never break the flow on sync errors */ }
+
   return { ok: true, fundraiseId, investorId, step };
 }
 
@@ -617,6 +634,17 @@ async function onSignaturePacketSigned({
     at: ts(),
   });
 
+  // ── 5. S52.1 — sync hook: write signed_safe event back to source contact
+  try {
+    const { recordIrEventOnContact } = require("./contactsBridge");
+    await recordIrEventOnContact({
+      investorId,
+      fundraiseId,
+      type: "ir.signed_safe",
+      extra: { requestId, vaultDocId },
+    });
+  } catch (_) { /* never break the flow on sync errors */ }
+
   return { ok: true, fundraiseId, investorId, vaultDocId, safeDocumentRef };
 }
 
@@ -802,6 +830,19 @@ async function syncKycFromStripe({ fundraiseId = DEFAULT_FUNDRAISE_ID, investorI
   const { syncIdentitySessionToEntity } = require("../identity/stripeIdentity");
   const result = await syncIdentitySessionToEntity({ sessionId, fundraiseId, investorId });
   console.log(`[investorFlow] syncKycFromStripe investor=${investorId} session=${sessionId} status=${result?.status}`);
+
+  // S52.1 — sync hook: write kyc_complete event back to source contact if verified
+  if (result?.status === "verified" || result?.kycStatus === "approved") {
+    try {
+      const { recordIrEventOnContact } = require("./contactsBridge");
+      await recordIrEventOnContact({
+        investorId,
+        fundraiseId,
+        type: "ir.kyc_complete",
+      });
+    } catch (_) { /* never break the flow on sync errors */ }
+  }
+
   return result;
 }
 

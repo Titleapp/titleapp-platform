@@ -47,13 +47,20 @@ const SOURCE_REGISTRY = {
   // ingest + Firestore scan costs. Charged per screen call, not per match.
   "ofac:screen":         { actualCentsPerUnit: 1, markup: 5.0, label: "OFAC SDN sanctions screen" },
 
-  // Property data — placeholder rates. Update when ATTOM/First American
-  // contracts land. ATTOM list rate is ~$0.50–$2 per property pull;
-  // First American Title detail pulls run $5–$10. Worst case wins until we
-  // have real invoices.
-  "attom:property":      { actualCentsPerUnit: 200, markup: 2.0, label: "ATTOM property data" },
+  // Property data. ATTOM rate updated per Sean 2026-06-01 — actual cost is
+  // $3/property report, 2× markup ⇒ user pays $6.
+  "attom:property":      { actualCentsPerUnit: 300, markup: 2.0, label: "ATTOM property data" },
   "firstam:title":       { actualCentsPerUnit: 1000, markup: 1.5, label: "First American title detail" },
   "mls:listing":         { actualCentsPerUnit: 50, markup: 2.0, label: "MLS listing pull" },
+
+  // Aviation — NOTAMIFY pulls NOTAMs by airport / route. Per Sean 2026-06-01
+  // our cost is $0.25 per pull; 2× markup ⇒ pilot pays $0.50.
+  "notamify:notams":     { actualCentsPerUnit: 25, markup: 2.0, label: "NOTAMIFY NOTAM pull" },
+
+  // Generative media — Kling video gen. Per Sean 2026-06-01 our cost is
+  // ~$0.50/clip; 2× markup ⇒ creator pays $1.00. Wired so the Marketing
+  // worker can charge for every render the platform produces server-side.
+  "kling:video":         { actualCentsPerUnit: 50, markup: 2.0, label: "Kling AI video generation" },
 };
 
 function getSourceConfig(source) {

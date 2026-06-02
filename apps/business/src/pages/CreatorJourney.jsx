@@ -29,7 +29,11 @@ const STEPS = [
     id: "discover",
     n: 1,
     title: "Discover SOCIII",
-    what: "Read what SOCIII is and what creators do here. The platform is a marketplace for Digital Workers built by domain experts — you bring the expertise, you earn 75% of net revenue.",
+    what: "SOCIII is a marketplace for Digital Workers built by domain experts. You bring the expertise — the platform handles billing, hosting, marketplace listing, and the legal scaffolding. Creators earn 75% of net revenue on their workers. Two ways to get oriented: <strong>open the whitepaper</strong> (the architectural deep-dive) or <strong>ask Alex in the chat to your left</strong> — Alex can explain SOCIII in your own domain's terms.",
+    actions: [
+      { label: "Read the whitepaper", url: "/whitepaper", external: false },
+      { label: "Ask Alex what SOCIII is", url: "/meet-alex?intent=what-is-sociii" },
+    ],
   },
   {
     id: "sign-up",
@@ -55,7 +59,7 @@ const STEPS = [
     id: "tools",
     n: 5,
     title: "Set up your tools",
-    what: "This is the technical step. You install three things: a Claude subscription (free tier is fine to start), Claude Code (which runs in your terminal), and a GitHub account. The 'Tools' panel at the top of this page has the install links — work through them in order. If you get stuck, paste a screenshot into Claude Chat (browser) and it will walk you through.",
+    what: "This is the technical step. You install three things: an Anthropic Claude account (one sign-up gets you both the browser chat and the terminal tool), Claude Code (the terminal tool itself), and a GitHub account (free — used to publish your worker). The 'Tools' panel at the top of this page has the install links — work through them in order. If you get stuck, paste a screenshot into Claude Chat (browser) and it will walk you through.",
   },
   {
     id: "build",
@@ -89,7 +93,7 @@ const STEPS = [
   },
 ];
 
-export default function CreatorJourney() {
+export default function CreatorJourney({ embedded = false }) {
   const [state, setState] = useState({ loading: true, completedIds: new Set() });
   const [busy, setBusy] = useState(false);
 
@@ -176,9 +180,14 @@ export default function CreatorJourney() {
   const progressPct = Math.round((completedCount / totalSteps) * 100);
   const activeIdx = STEPS.findIndex(s => !state.completedIds.has(s.id));
 
+  // S52.2 — when embedded inside AppShell (three-panel layout), drop the
+  // page chrome (Header + full-bleed background) so the journey renders
+  // cleanly inside the canvas slot alongside sidebar + Alex chat.
+  const pageStyle = embedded ? { ...S.page, minHeight: 0, background: "transparent" } : S.page;
+
   return (
-    <div style={S.page}>
-      <Header />
+    <div style={pageStyle}>
+      {!embedded && <Header />}
       <main style={S.main}>
         <section style={S.heroSection}>
           <h1 style={S.h1}>Your SOCIII Creator Steps</h1>
@@ -197,26 +206,26 @@ export default function CreatorJourney() {
         <section style={S.toolsSection}>
           <h2 style={S.h2}>The tools you'll need</h2>
           <p style={S.toolsIntro}>
-            Three things, all on you to install. Most creators set them up in one focused sitting. The links below take you to the official install pages.
+            Three accounts, all free to start. Most creators set them up in one focused sitting. The links below take you to the official sign-up pages.
           </p>
           <div style={S.toolsGrid}>
             <ToolCard
               icon="1"
-              title="Claude (subscription or free)"
-              body="A working Anthropic Claude account. The free tier is enough to start; many creators upgrade to a paid plan as they go."
-              link={{ label: "Sign up for Claude", url: "https://claude.ai" }}
+              title="Anthropic Claude account"
+              body="One sign-up gets you both Claude Chat (in your browser, for asking questions and pasting screenshots) and access to Claude Code (the terminal tool you'll install next). Free tier is enough to start — many creators upgrade as they go."
+              link={{ label: "Sign up at claude.ai", url: "https://claude.ai", external: true }}
             />
             <ToolCard
               icon="2"
-              title="Claude Chat (your browser)"
-              body="Open claude.ai in a browser tab. This is your always-on helper — paste screenshots, ask conceptual questions, get unstuck during setup."
-              link={{ label: "Open Claude Chat", url: "https://claude.ai", external: true }}
+              title="Claude Code (terminal tool)"
+              body="An AI pair programmer that runs in your terminal — this is where you'll actually build your Worker. You sign in with the Claude account from step 1. Install instructions assume no prior coding experience."
+              link={{ label: "Install Claude Code", url: "https://docs.claude.com/en/docs/claude-code/setup", external: true }}
             />
             <ToolCard
               icon="3"
-              title="Claude Code (your terminal)"
-              body="An AI pair programmer that runs in your terminal. Requires Node.js on your computer. This is where you'll actually build your worker."
-              link={{ label: "Install Claude Code", url: "https://docs.claude.com/en/docs/claude-code/setup", external: true }}
+              title="GitHub account"
+              body="GitHub is where the world stores code. Your Worker lives there too — that's how it gets published to the SOCIII Marketplace. The account is free; you'll never write code directly on GitHub (Claude Code handles that). Use any email."
+              link={{ label: "Sign up at github.com", url: "https://github.com/signup", external: true }}
             />
           </div>
           <p style={S.toolsHint}>
@@ -259,7 +268,14 @@ export default function CreatorJourney() {
                   {isActive && <div style={S.activeChip}>Up next</div>}
                 </div>
                 <p style={S.stepWhat} dangerouslySetInnerHTML={{ __html: s.what }} />
-                {s.action && !isCompleted && (
+                {!isCompleted && Array.isArray(s.actions) && s.actions.length > 0 && (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 16, marginTop: 4 }}>
+                    {s.actions.map((a, i) => (
+                      <a key={i} href={a.url} style={S.stepAction}>{a.label} →</a>
+                    ))}
+                  </div>
+                )}
+                {!isCompleted && !s.actions && s.action && (
                   <a href={s.action.url} style={S.stepAction}>{s.action.label} →</a>
                 )}
               </article>

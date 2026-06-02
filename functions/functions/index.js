@@ -12540,6 +12540,71 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
       }
     }
 
+    // ─────────────────────────────────────────────────────────────────
+    // S52.1 — Contacts ↔ IR Bridge
+    // Per docs/specs/CODEX-S52.1-Contacts-IR-Bridge.md
+    // ─────────────────────────────────────────────────────────────────
+
+    // GET /v1/ir:eligible-contacts — list contacts that can be invited to a fundraise
+    // Query: ?fundraiseId=X&segment=Y&persona_type=Z&persona_tier=W&limit=100
+    if (route === "/ir:eligible-contacts" && method === "GET") {
+      try {
+        const { listEligibleContacts } = require("./services/ir/contactsBridge");
+        const result = await listEligibleContacts({
+          fundraiseId: req.query?.fundraiseId,
+          segment: req.query?.segment,
+          persona_type: req.query?.persona_type,
+          persona_tier: req.query?.persona_tier,
+          limit: parseInt(req.query?.limit || "100", 10),
+        });
+        return res.json({ ok: true, ...result });
+      } catch (e) {
+        console.error("[ir:eligible-contacts] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // POST /v1/ir:import-from-contacts — bulk-create investor records from contactIds
+    // Body: { fundraiseId, contactIds: [], sendInvitesNow: bool }
+    if (route === "/ir:import-from-contacts" && method === "POST") {
+      try {
+        const { importFromContacts } = require("./services/ir/contactsBridge");
+        if (!Array.isArray(body?.contactIds) || body.contactIds.length === 0) {
+          return res.json({ ok: false, error: "contactIds array is required" });
+        }
+        const result = await importFromContacts({
+          fundraiseId: body.fundraiseId,
+          contactIds: body.contactIds,
+          sendInvitesNow: !!body.sendInvitesNow,
+          invitedBy: ctx.userId || null,
+        });
+        return res.json({ ok: true, ...result });
+      } catch (e) {
+        console.error("[ir:import-from-contacts] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // GET /v1/ir:investor-contact-link?investorId=X&fundraiseId=Y — inverse navigation
+    if (route === "/ir:investor-contact-link" && method === "GET") {
+      try {
+        const { getInvestorContactLink } = require("./services/ir/contactsBridge");
+        const result = await getInvestorContactLink({
+          investorId: req.query?.investorId,
+          fundraiseId: req.query?.fundraiseId,
+        });
+        if (!result) return res.json({ ok: false, error: "not_found" });
+        return res.json({ ok: true, ...result });
+      } catch (e) {
+        console.error("[ir:investor-contact-link] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // END S52.1 Contacts ↔ IR Bridge
+    // ─────────────────────────────────────────────────────────────────
+
     // P0-15 — Investor KYC submission
     if (route === "/fundraise:kyc:submit" && method === "POST") {
       try {
@@ -15035,6 +15100,44 @@ Return ONLY the JSON object. No markdown, no explanation, no preamble.`;
         return res.json(result);
       } catch (e) { return res.json({ ok: false, error: e.message }); }
     }
+
+    // ─────────────────────────────────────────────────────────────
+    // S52.8 — Marketing worker campaign orchestration
+    // ─────────────────────────────────────────────────────────────
+
+    // GET /v1/marketing:assets — list registered launch assets
+    // Query: ?campaign=<id>&status=<status>&type=<still|video>
+    if (route === "/marketing:assets" && method === "GET") {
+      try {
+        const registry = require("./services/marketing/assetRegistry");
+        const assets = registry.listAssets({
+          campaign: req.query?.campaign || null,
+          status: req.query?.status || null,
+          type: req.query?.type || null,
+        });
+        return res.json({ ok: true, assets, counts: registry.assetCounts() });
+      } catch (e) {
+        console.error("[marketing:assets] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // POST /v1/marketing:campaign:calendar — draft posting calendar
+    // Body: { startDate?, days?, postsPerDay?, platforms?, campaigns? }
+    if (route === "/marketing:campaign:calendar" && method === "POST") {
+      try {
+        const campaigns = require("./services/marketing/campaigns");
+        const result = campaigns.buildPostingCalendar(body || {});
+        return res.json({ ok: true, ...result });
+      } catch (e) {
+        console.error("[marketing:campaign:calendar] error:", e.message);
+        return res.json({ ok: false, error: e.message });
+      }
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // END S52.8
+    // ─────────────────────────────────────────────────────────────
 
     // MARKETING: Admin — list leads
     if (route === "/admin:leads:list" && method === "POST") {

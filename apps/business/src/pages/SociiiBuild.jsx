@@ -22,7 +22,46 @@ export default function SociiiBuild() {
   const [status, setStatus] = useState({ idle: true });
 
   React.useEffect(() => {
-    document.title = "Sociii Build — Concierge Worker Engineering";
+    document.title = "Sociii Build — Concierge Worker Engineering for Fortune 500";
+    const desc = "Sociii Build is the concierge engineering tier of SOCIII — bespoke Digital Workers authored by the platform team for enterprise customers. $500/hr engagement. For organizations that need custom workflow automation governed by audit + compliance.";
+    function setMeta(selector, attr, value, createWith) {
+      let el = document.querySelector(selector);
+      if (!el && createWith) {
+        el = document.createElement(createWith.tag);
+        Object.entries(createWith.attrs || {}).forEach(([k, v]) => el.setAttribute(k, v));
+        document.head.appendChild(el);
+      }
+      if (el) el.setAttribute(attr, value);
+    }
+    setMeta('meta[name="description"]', "content", desc, { tag: "meta", attrs: { name: "description" } });
+    setMeta('meta[property="og:title"]', "content", "Sociii Build — Concierge Worker Engineering", { tag: "meta", attrs: { property: "og:title" } });
+    setMeta('meta[property="og:description"]', "content", desc, { tag: "meta", attrs: { property: "og:description" } });
+    setMeta('meta[property="og:url"]', "content", "https://sociii.ai/build", { tag: "meta", attrs: { property: "og:url" } });
+    setMeta('meta[property="og:type"]', "content", "website", { tag: "meta", attrs: { property: "og:type" } });
+    setMeta('meta[name="twitter:card"]', "content", "summary_large_image", { tag: "meta", attrs: { name: "twitter:card" } });
+    setMeta('meta[name="twitter:title"]', "content", "Sociii Build — Concierge Worker Engineering", { tag: "meta", attrs: { name: "twitter:title" } });
+    setMeta('meta[name="twitter:description"]', "content", desc, { tag: "meta", attrs: { name: "twitter:description" } });
+    setMeta('link[rel="canonical"]', "href", "https://sociii.ai/build", { tag: "link", attrs: { rel: "canonical" } });
+
+    // JSON-LD Service schema for the concierge offer
+    let ld = document.querySelector('script[type="application/ld+json"][data-build="1"]');
+    if (!ld) {
+      ld = document.createElement("script");
+      ld.type = "application/ld+json";
+      ld.setAttribute("data-build", "1");
+      document.head.appendChild(ld);
+    }
+    ld.textContent = JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "Service",
+      name: "Sociii Build",
+      provider: { "@type": "Organization", name: "SOCIII Inc.", url: "https://sociii.ai" },
+      serviceType: "Concierge Digital Worker engineering",
+      description: desc,
+      areaServed: "United States",
+      url: "https://sociii.ai/build",
+      offers: { "@type": "Offer", priceCurrency: "USD", price: "500", priceSpecification: { "@type": "UnitPriceSpecification", price: "500", priceCurrency: "USD", unitText: "per hour" } },
+    });
   }, []);
 
   function update(field, value) {

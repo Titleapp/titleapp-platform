@@ -91,18 +91,25 @@ function extLabel(file) {
   return ext.length <= 4 ? ext : "DOC";
 }
 
-export default function DataRoom() {
+export default function DataRoom({ embedded = false }) {
   useEffect(() => {
     setHead();
     logVisit("data-room", "page_view");
   }, []);
 
+  // S52.2 — when embedded inside AppShell (three-panel), drop the standalone
+  // header chrome + full-page background so the data room renders cleanly
+  // inside the canvas slot alongside sidebar + Alex chat.
+  const pageStyle = embedded ? { ...S.page, minHeight: 0, background: "transparent" } : S.page;
+
   return (
-    <div style={S.page}>
-      <div style={S.header}>
-        <a href="/" style={S.brand}>SOCIII</a>
-        <div style={{ fontSize: 13, color: "#64748b" }}>Investor data room</div>
-      </div>
+    <div style={pageStyle}>
+      {!embedded && (
+        <div style={S.header}>
+          <a href="/" style={S.brand}>SOCIII</a>
+          <div style={{ fontSize: 13, color: "#64748b" }}>Investor data room</div>
+        </div>
+      )}
 
       <div style={S.hero}>
         <div style={S.eyebrow}>SOCIII Inc. · Pre-seed</div>

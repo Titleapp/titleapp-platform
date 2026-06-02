@@ -602,6 +602,76 @@ QA-001 doesn't need to be sophisticated to be valuable. A simple harness that ru
 - **Test:** Assert the Creator section appears above the Account section.
 - **Fix (S51.50):** Moved to top of sidebar as its own "Creator" section labeled "Become a Creator," placed above MY DRIVE.
 
+### TC-036: Contacts spine isolated from IR worker — no bulk import path
+
+- **Date:** 2026-06-01 (S52.1)
+- **Worker:** IR Worker / Contacts Spine
+- **Family:** 4 (Data integration / cross-worker)
+- **Severity:** P0 (blocker for IR scale-out)
+- **Real bug:** Investor records and contact records lived in parallel without back-references. Every investor invite had to be hand-typed; engagement events on the IR side never landed on the contact's history. No path to filter contacts → bulk-invite as investors.
+- **Test:** Given N contacts with `types_index: ["investor"]`, calling `GET /v1/ir:eligible-contacts?persona_type=investor` returns ≥ N rows; subsequent `POST /v1/ir:import-from-contacts` with their IDs creates N investor records each carrying `contactId` back-reference.
+- **Fix (S52.1):** `services/ir/contactsBridge.js` + 3 routes (`ir:eligible-contacts`, `ir:import-from-contacts`, `ir:investor-contact-link`).
+
+### TC-037: IR lifecycle events don't surface on source contact
+
+- **Date:** 2026-06-01 (S52.1)
+- **Worker:** IR Worker → Contacts Spine
+- **Family:** 4 (Data integration / cross-worker)
+- **Severity:** P0
+- **Real bug:** When an investor advanced through magic-link → identity → signed-SAFE, none of those events showed up on the contact's `engagementHistory`. The contacts spine was blind to the worker's activity.
+- **Test:** After investor flow completes through `markStepComplete("signature_complete")` AND `onSignaturePacketSigned`, the linked contact has `engagementHistory[]` containing `ir.signed_safe` event AND `fundraiseStatus.{fundraiseId} === "signed"`.
+- **Fix (S52.1):** Sync hooks in `markStepComplete`, `onSignaturePacketSigned`, and `syncKycFromStripe` call `recordIrEventOnContact` non-blockingly.
+
+### TC-039: Creator Journey "Tools" panel double-counts Claude
+
+- **Date:** 2026-06-01
+- **Worker:** CreatorJourney page Tools section
+- **Family:** 7 (Copy / voice)
+- **Severity:** P1
+- **Real bug:** Tools panel renders three cards: "Claude (subscription or free)", "Claude Chat (your browser)", "Claude Code (your terminal)". The first two are the same Anthropic account — one sign-up surfaces both Claude Chat (browser) and Claude Code (terminal). Reads as three install steps when it's two.
+- **Test:** No card may describe the same purchase/install action as the prior card.
+- **Fix (S52.1c):** Collapse cards 1+2 into one ("Claude account · chat + code"). Reuse the third slot for GitHub (genuinely new).
+
+### TC-040: Creator Journey missing GitHub as a tool
+
+- **Date:** 2026-06-01
+- **Worker:** CreatorJourney page Tools section
+- **Family:** 7 (Copy / voice) + 8 (Routing / link validity)
+- **Severity:** P0 (blocks Step 8 "Ship it")
+- **Real bug:** Step 8 says "Push your code. Open a pull request." which requires a GitHub account. Tools panel does not list GitHub. Target audience may not know what GitHub is.
+- **Test:** Every install referenced in any step body MUST have a corresponding ToolCard.
+- **Fix (S52.1c):** Add GitHub tool card with non-coder-friendly description + sign-up link.
+
+### TC-041: "Discover SOCIII" step has no link or action
+
+- **Date:** 2026-06-01
+- **Worker:** CreatorJourney page Step 1
+- **Family:** 8 (Routing / link validity)
+- **Severity:** P1
+- **Real bug:** Step 1 says "Read what SOCIII is and what creators do here" but offers no link, no doc, no Alex deep-link. User cannot fulfill the step from the page itself.
+- **Test:** Every step that asks the user to *read* something must link to that thing OR offer an Alex deep-link with a pre-filled prompt.
+- **Fix (S52.1c):** Add `action: { label: "Ask Alex what SOCIII is", url: "/meet-alex?intent=what-is-sociii" }` to Step 1; also surface a static "What is SOCIII" reference (to be authored next).
+
+### TC-042: Creator Journey violates three-part workspace rule
+
+- **Date:** 2026-06-01
+- **Worker:** /creators/journey
+- **Family:** 6 (Layout / surface conventions)
+- **Severity:** P0 per [[feedback_three_part_workspace_layout]]
+- **Real bug:** Page renders as full-page surface with no sidebar, no Alex chat. Violates the universal rule that authenticated surfaces must have sidebar + Alex chat + canvas. User confirmed: "we completely step away from our three part workspace."
+- **Test:** Every authed route under `/creators/*` must render AppShell with Alex chat present.
+- **Fix (S52.2):** Refactor into a canvas card surfaced via the Creator Journey worker — content stays the same, lives inside the canvas.
+
+### TC-038: KYC-complete event mismapped to `ir.identity_started`
+
+- **Date:** 2026-06-01 (S52.1)
+- **Worker:** IR Worker → Contacts Spine sync hook
+- **Family:** 7 (Copy / voice — but for event-type strings)
+- **Severity:** P1
+- **Real bug:** First pass of the eventTypeMap in `markStepComplete` mapped `"identity_complete"` → `"ir.identity_started"` (typo), which collided with the actual `identity_started` event. Contacts would see two `ir.identity_started` entries and never see `ir.kyc_complete`.
+- **Test:** Trigger `markStepComplete(_, _, "identity_complete")` → assert linked contact's last engagement event is `ir.kyc_complete` AND `fundraiseStatus === "kyc_verified"`.
+- **Fix (S52.1):** Mapped to `"ir.kyc_complete"`.
+
 ---
 
 (slot for next bug)

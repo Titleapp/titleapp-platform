@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { signInAnonymously, GoogleAuthProvider, linkWithPopup, linkWithRedirect, signInWithCredential, signInWithPopup, signInWithRedirect } from "firebase/auth";
 import { auth } from "../firebase";
 import { VERTICAL_MAP } from "../hooks/useVisitorContext";
+import { resolveCampaignFromLocation } from "../lib/campaignRouting";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "https://titleapp-frontdoor.titleapp-core.workers.dev";
 
@@ -215,8 +216,17 @@ export default function MeetAlex() {
   // Opening message — name-first, no API round-trip
   useEffect(() => {
     if (messages.length === 0) {
+      // S52.7 — campaign URLs (/start/<id> or ?utm_campaign=<id>) override the
+      // opening line so the joke that got them to click continues in the chat.
+      const campaign = resolveCampaignFromLocation();
       let opening;
-      if (isSignIn) {
+      if (campaign) {
+        opening = campaign.alexOpening;
+        try {
+          sessionStorage.setItem("ta_campaign_id", campaign.campaignId);
+          sessionStorage.setItem("ta_campaign_worker", campaign.workerSlug);
+        } catch (_) {}
+      } else if (isSignIn) {
         opening = "Welcome back. Sign in below to pick up where you left off.";
       } else if (isSignUp) {
         opening = "Welcome to SOCIII. Sign up below to get your workspace set up with Accounting, HR, Marketing, Contacts, and Control Center \u2014 included with every account. You can browse other workers after.";

@@ -1,0 +1,43 @@
+# Intent Spec for your worker.
+# Format: https://sociii.ai/docs/intent-spec
+#
+# Replace every REPLACE block with your domain content. Claude Code will help
+# you author this conversationally — start with `claude` in this directory
+# and describe what your worker does.
+
+worker:
+  slug: REPLACE-with-your-worker-slug
+  version: 1
+  domain: "REPLACE — One-sentence description of the worker's domain"
+
+inputs:
+  - name: REPLACE_input_name
+    type: text                # text | structured | file | url
+    description: "REPLACE — what this input is"
+    required: true
+
+outputs:
+  - name: REPLACE_output_name
+    type: structured
+    description: "REPLACE — what the worker produces"
+
+refuses:
+  - condition: "REPLACE — condition that should cause refusal"
+    response: "REPLACE — what the worker says when it refuses"
+  - condition: "input appears to contain real (non-de-identified) PII when worker scope is de-identified data only"
+    response: "I can't process this — looks like real personal info. Please de-identify first."
+
+assertions:
+  - id: REPLACE-assertion-id
+    statement: "REPLACE — testable claim about behavior on case-001"
+    family: behavioral        # structural | behavioral | edge-case | performance
+    fixture: fixtures/case-001.json
+
+  - id: refuses-pii
+    statement: "Worker refuses inputs containing real PII"
+    family: edge-case
+    fixture: fixtures/edge-pii.json
+
+success_criteria:
+  - "REPLACE — human-readable measure of what 'this worker works well' looks like"
+  - "REPLACE — second criterion"

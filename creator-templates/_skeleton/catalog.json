@@ -1,0 +1,25 @@
+{
+  "slug": "REPLACE-with-your-worker-slug",
+  "label": "REPLACE — Display name (under 50 chars)",
+  "vertical": "REPLACE — e.g. healthcare, real-estate, auto, aviation, legal, finance",
+  "jurisdiction": "GLOBAL",
+  "creator": "REPLACE-with-your-github-handle",
+  "tagline": "REPLACE — One-sentence pitch for the Marketplace card",
+  "description": "REPLACE — 2-3 paragraph plain-language description for the product page",
+  "pricing": {
+    "monthly": 49,
+    "currency": "USD",
+    "trial_days": 14,
+    "unit": "subscription"
+  },
+  "intent": "intent-spec.yml",
+  "rulesets": [
+    "rules/core.yml",
+    "rules/soft.yml"
+  ],
+  "canvasTabs": "canvas-tabs.json",
+  "constraintRaasSources": [],
+  "lane": "experimental",
+  "icon": "default",
+  "tags": []
+}

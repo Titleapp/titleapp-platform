@@ -1,0 +1,16 @@
+# Hard rules — violations block the worker output.
+# Format: https://sociii.ai/docs/raas
+#
+# Levels 0, 1, and 2 (platform + vertical) are merged in automatically.
+# This file is for YOUR worker's domain-specific hard invariants.
+
+- id: REPLACE-rule-id
+  description: "REPLACE — invariant that must always hold"
+  enforce: hard
+  refuse_message: "REPLACE — what the worker says when this rule fires"
+
+# Example pattern:
+# - id: medication-indication-check
+#   description: Never recommend a medication outside its FDA-approved indication
+#   enforce: hard
+#   refuse_message: "That medication is not FDA-approved for this indication."

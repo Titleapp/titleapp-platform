@@ -16,7 +16,60 @@ export default function CreatorProfilePublic({ handle }) {
   useEffect(() => {
     document.title = `${handle} — SOCIII Creator`;
     fetchPublic(`/v1/creator:public-profile?handle=${encodeURIComponent(handle)}`)
-      .then((r) => setData({ loading: false, ...r }))
+      .then((r) => {
+        setData({ loading: false, ...r });
+        // Rich meta once profile resolved
+        if (r?.ok && r?.profile) {
+          const p = r.profile;
+          const workerCount = (r.workers || []).length;
+          const name = p.displayName || handle;
+          const title = p.title || "Domain expert";
+          const bio = p.bio || `${name} is a SOCIII Creator${p.title ? ` — ${p.title}` : ""}. Earning on ${workerCount} Digital Worker${workerCount === 1 ? "" : "s"} in the SOCIII Marketplace.`;
+          const canonical = `https://sociii.ai/c/${handle}`;
+          document.title = `${name} — SOCIII Creator${p.title ? ` · ${p.title}` : ""}`;
+          function setMeta(selector, attr, value, createWith) {
+            let el = document.querySelector(selector);
+            if (!el && createWith) {
+              el = document.createElement(createWith.tag);
+              Object.entries(createWith.attrs || {}).forEach(([k, v]) => el.setAttribute(k, v));
+              document.head.appendChild(el);
+            }
+            if (el) el.setAttribute(attr, value);
+          }
+          setMeta('meta[name="description"]', "content", bio, { tag: "meta", attrs: { name: "description" } });
+          setMeta('meta[property="og:title"]', "content", `${name} — SOCIII Creator`, { tag: "meta", attrs: { property: "og:title" } });
+          setMeta('meta[property="og:description"]', "content", bio, { tag: "meta", attrs: { property: "og:description" } });
+          setMeta('meta[property="og:url"]', "content", canonical, { tag: "meta", attrs: { property: "og:url" } });
+          setMeta('meta[property="og:type"]', "content", "profile", { tag: "meta", attrs: { property: "og:type" } });
+          if (p.photoURL) {
+            setMeta('meta[property="og:image"]', "content", p.photoURL, { tag: "meta", attrs: { property: "og:image" } });
+          }
+          setMeta('meta[name="twitter:card"]', "content", p.photoURL ? "summary_large_image" : "summary", { tag: "meta", attrs: { name: "twitter:card" } });
+          setMeta('meta[name="twitter:title"]', "content", `${name} — SOCIII Creator`, { tag: "meta", attrs: { name: "twitter:title" } });
+          setMeta('meta[name="twitter:description"]', "content", bio, { tag: "meta", attrs: { name: "twitter:description" } });
+          setMeta('link[rel="canonical"]', "href", canonical, { tag: "link", attrs: { rel: "canonical" } });
+
+          // JSON-LD Person schema
+          let ld = document.querySelector('script[type="application/ld+json"][data-creator="1"]');
+          if (!ld) {
+            ld = document.createElement("script");
+            ld.type = "application/ld+json";
+            ld.setAttribute("data-creator", "1");
+            document.head.appendChild(ld);
+          }
+          ld.textContent = JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Person",
+            name,
+            description: bio,
+            jobTitle: title,
+            url: canonical,
+            image: p.photoURL || undefined,
+            worksFor: { "@type": "Organization", name: "SOCIII Inc.", url: "https://sociii.ai" },
+            knowsAbout: (r.workers || []).map(w => w.vertical || w.label).filter(Boolean),
+          });
+        }
+      })
       .catch(() => setData({ loading: false, ok: false, error: "fetch_failed" }));
   }, [handle]);
 
