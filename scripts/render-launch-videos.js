@@ -387,6 +387,13 @@ function renderOne({ inputPath, outputPath, headline, urlText, hashtagText, font
       `[v1][2:v]overlay=0:${bottomY}[outv]`,
     ].join(";");
 
+    // Bitrate floor for LinkedIn-grade quality. crf-only encoding can dip
+    // too low on simpler scenes (character videos with limited motion
+    // get over-compressed and look soft on LinkedIn / Reels playback).
+    // Target ~3 Mbps with a 2 Mbps floor — clean 1080p quality, files
+    // around 1.5-2 MB for 5-sec clips. Compatible with every social
+    // platform's upload requirements (LinkedIn 75 KB floor, TikTok no
+    // ceiling, Reels accepts up to 100 MB / 90 sec).
     const args = [
       "-y",
       "-i", inputPath,
@@ -398,7 +405,10 @@ function renderOne({ inputPath, outputPath, headline, urlText, hashtagText, font
       "-c:v", "libx264",
       "-pix_fmt", "yuv420p",
       "-preset", "fast",
-      "-crf", "20",
+      "-b:v", "3000k",
+      "-minrate", "2000k",
+      "-maxrate", "3500k",
+      "-bufsize", "6000k",
       "-c:a", "copy",
       outputPath,
     ];

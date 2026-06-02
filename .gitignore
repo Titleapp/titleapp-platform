@@ -25,3 +25,13 @@ functions/**/.env.*
 # room is the Firestore-backed fundraises collection — see
 # functions/functions/services/fundraise/dataRoom.js.
 docs/data-room/
+
+# Belt-and-suspenders security additions (CODEX S52.18)
+*.pem
+*.p12
+*.pfx
+*-credentials.json
+*-service-account.json
+firebase-debug.log
+.firebase/
+!.env.example
